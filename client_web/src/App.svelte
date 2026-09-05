@@ -179,6 +179,18 @@
     token = null;
   }
 
+  // Modul: A REJECTED TOKEN HAS TO REACH THE LOGIN FORM.
+  //
+  // The socket used to retry an expired JWT forever behind "reconnecting
+  // (attempt 5)", which can never succeed and hides the only action that
+  // would work. connection.ts reports 'signedout' for exactly that case;
+  // this is what turns it into the login screen.
+  $effect(() => {
+    if ($connectionStatus.phase === 'signedout' && token) {
+      signOut();
+    }
+  });
+
   const snap = $derived($playerState);
 
   // Surfaced in the header rather than only on the screen that caused it: a

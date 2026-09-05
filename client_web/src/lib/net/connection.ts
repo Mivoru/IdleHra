@@ -28,7 +28,54 @@ export type ConnectionPhase =
   | 'authenticating'
   | 'live'
   | 'reconnecting'
-  | 'failed';
+  | 'failed'
+  /** The server rejected the token. Reconnecting cannot fix it; signing in can. */
+  | 'signedout';
+
+/**
+ * What a socket close MEANS, separated from what the connection does about it.
+ *
+ * Modul: THE CLIENT BLAMED THE WRONG THING AND THEN RETRIED FOREVER.
+ *
+ * Close code 1008 carries both wire obligations AND a rejected token, and this
+ * message asserted the first regardless - so a player whose 24-hour JWT had
+ * simply expired was told "this is almost always a stale LogicEpochCounter or
+ * an unanswered anti-cheat challenge", which sent the next hour of debugging
+ * into the anti-cheat path. Worse, the reconnect loop then retried the same
+ * dead token with exponential backoff forever: it can never succeed, and the
+ * one screen that could fix it - the login form - never appeared.
+ *
+ * There is no refresh token (see auth.ts), so an expired JWT means signing in
+ * again, and the honest thing is to say so and stop.
+ */
+export function interpretClose(
+  code: number,
+  reason: string,
+): { phase: ConnectionPhase; detail: string; reconnect: boolean } {
+  if (code === 1008 && /token/i.test(reason)) {
+    return {
+      phase: 'signedout',
+      detail: 'Your session expired. Please sign in again.',
+      reconnect: false,
+    };
+  }
+
+  if (code === 1008) {
+    return {
+      phase: 'reconnecting',
+      detail:
+        `Server terminated the session (${reason || 'no reason given'}). ` +
+        'This is almost always a stale LogicEpochCounter or an unanswered anti-cheat challenge.',
+      reconnect: true,
+    };
+  }
+
+  return {
+    phase: 'reconnecting',
+    detail: `Connection lost (code ${code}${reason ? `: ${reason}` : ''})`,
+    reconnect: true,
+  };
+}
 
 export interface ConnectionStatus {
   phase: ConnectionPhase;
@@ -166,16 +213,15 @@ export class GameConnection {
         return;
       }
 
-      // 1008 is what BOTH wire obligations produce, with no server-side log
-      // line, so the message says so rather than leaving the next person to
-      // rediscover it.
-      const detail =
-        event.code === 1008
-          ? `Server terminated the session (${event.reason || 'no reason given'}). ` +
-            'This is almost always a stale LogicEpochCounter or an unanswered anti-cheat challenge.'
-          : `Connection lost (code ${event.code}${event.reason ? `: ${event.reason}` : ''})`;
+      const outcome = interpretClose(event.code, event.reason ?? '');
+      if (!outcome.reconnect) {
+        // Nothing to retry - App.svelte watches for this phase and hands the
+        // player the login form instead of a spinner counting attempts.
+        this.report(outcome.phase, outcome.detail);
+        return;
+      }
 
-      this.scheduleReconnect(detail);
+      this.scheduleReconnect(outcome.detail);
     };
 
     socket.onerror = () => {

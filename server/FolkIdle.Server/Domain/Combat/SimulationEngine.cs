@@ -6316,6 +6316,16 @@ namespace FolkIdle.Server.Domain.Combat
                     bonusRarityTiers: fleeceTiers,
                     skipMaterialRoll: false));
 
+                // Modul: THE OTHER HALF OF THE LOOT TELEMETRY.
+                //
+                // CombatLootEngine reports what it DRAINS. Without a matching
+                // count of what the tick ENQUEUES, a silent loot path still has
+                // two possible causes and no way to separate them - which is
+                // exactly where a day went. These two numbers must track each
+                // other; a gap is the bug, and which side the gap is on says
+                // which half to look at.
+                CombatLootEngine.NoteKillEnqueued();
+
                 var lootTable = ContentRegistry.GetLootTable(activeMonster.LootTableId);
                 if (lootTable.Length > 0 && payload.InventorySpaceRemaining > 0)
                 {

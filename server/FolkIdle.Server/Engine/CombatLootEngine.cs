@@ -453,7 +453,19 @@ namespace FolkIdle.Server.Engine
         private static long _materialsGranted;
         private static long _salvagedOnTheWayIn;
         private static long _requestsFailed;
+
+        // Modul: counted on the TICK thread, reported on the worker's. The tick
+        // must not allocate or lock here, so this is a plain interlocked
+        // increment and nothing more.
+        private static long _killsEnqueued;
         private long _lastLootReportMs;
+
+        /// <summary>
+        /// One kill's loot request has just been queued by the tick. Paired
+        /// with the worker's own drain count so a silent loot path says WHICH
+        /// half is silent.
+        /// </summary>
+        public static void NoteKillEnqueued() => Interlocked.Increment(ref _killsEnqueued);
 
         public CombatLootEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
         {
@@ -577,16 +589,18 @@ namespace FolkIdle.Server.Engine
             // was demonstrably flowing - telemetry that lies by silence is
             // worse than none, because silence is what "no requests" looks
             // like. See LootThroughputReportTests.
-            if (_killsRolled == 0) return;
+            if (_killsRolled == 0 && Interlocked.Read(ref _killsEnqueued) == 0) return;
 
             long nowMs = Environment.TickCount64;
             if (nowMs - _lastLootReportMs < 60_000) return;
             _lastLootReportMs = nowMs;
 
             Console.WriteLine(
-                $"Loot: {_requestsDrained} requests / {_killsRolled} kills rolled -> "
+                $"Loot: tick enqueued {Interlocked.Exchange(ref _killsEnqueued, 0)} kills, "
+                + $"worker drained {_requestsDrained} requests / {_killsRolled} kills -> "
                 + $"{_equipmentWritten} equipment, {_materialsGranted} materials, "
-                + $"{_salvagedOnTheWayIn} auto-salvaged, {_requestsFailed} failed");
+                + $"{_salvagedOnTheWayIn} auto-salvaged, {_requestsFailed} failed, "
+                + $"{DropRequestQueue.Count} still queued");
 
             _requestsFailed = 0;
             _requestsDrained = 0;

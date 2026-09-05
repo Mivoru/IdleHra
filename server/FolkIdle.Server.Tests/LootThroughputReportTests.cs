@@ -32,6 +32,7 @@ namespace FolkIdle.Server.Tests
             var report = typeof(CombatLootEngine)
                 .GetMethod("ReportLootThroughput", BindingFlags.NonPublic | BindingFlags.Instance)!;
 
+            SetStatic("_killsEnqueued", 12);
             SetStatic("_requestsDrained", 12);
             SetStatic("_killsRolled", 12);
             SetStatic("_equipmentWritten", 3);
@@ -53,7 +54,8 @@ namespace FolkIdle.Server.Tests
             string output = captured.ToString();
             _o.WriteLine($"captured: [{output.Trim()}]");
             Assert.Contains("Loot:", output);
-            Assert.Contains("12 kills rolled", output);
+            Assert.Contains("worker drained 12 requests / 12 kills", output);
+            Assert.Contains("tick enqueued", output);
             Assert.Contains("3 equipment", output);
         }
 
@@ -66,6 +68,7 @@ namespace FolkIdle.Server.Tests
 
             SetStatic("_requestsDrained", 0);
             SetStatic("_killsRolled", 0);
+            SetStatic("_killsEnqueued", 0);
 
             var captured = new StringWriter();
             var previous = Console.Out;
@@ -100,6 +103,7 @@ namespace FolkIdle.Server.Tests
 
             SetStatic("_requestsDrained", 0);
             SetStatic("_killsRolled", 0);
+            SetStatic("_killsEnqueued", 0);
 
             var captured = new StringWriter();
             var previous = Console.Out;
@@ -116,7 +120,7 @@ namespace FolkIdle.Server.Tests
                 Console.SetOut(previous);
             }
 
-            Assert.Contains("40 kills rolled", captured.ToString());
+            Assert.Contains("worker drained 40 requests / 40 kills", captured.ToString());
         }
     }
 }
