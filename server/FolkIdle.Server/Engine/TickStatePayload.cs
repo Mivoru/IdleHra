@@ -283,6 +283,19 @@ namespace FolkIdle.Server.Engine
         // from scratch on every tick anyway.
         public long CachedEffectiveMaxHp;
 
+        // Modul: the character's attack power, in milli, before any per-swing
+        // roll. Cached for the same reason the health pool above is - it is
+        // rebuilt from gear, lineage, level, inheritance, the guild buff, the
+        // legacy perk and the Strength aptitude on every tick and then thrown
+        // away.
+        //
+        // THE WORLD BOSS NEEDS IT. Its attack used to be a damage figure the
+        // CLIENT computed about itself and posted, bounded only by a
+        // 100,000,000 clamp. The server can answer that question itself, and
+        // this is the answer - the same number the live tick swings with, not a
+        // second derivation of it.
+        public long CachedEffectiveMilliAttack;
+
         // Village Infrastructure
         public int CachedCurrentToolTier;
 
@@ -717,6 +730,11 @@ namespace FolkIdle.Server.Engine
         public bool IsQuarantined;
         public byte ActiveLanguageState;
         public byte WorldBossAttemptCount;
+
+        // Modul: when this player's remaining world boss attempts stop working.
+        // 0 while they have not struck yet. See
+        // WorldBossAttemptUpdateNotification.SessionEndsEpoch.
+        public long WorldBossSessionEndsEpoch;
         public uint ActiveUiContextBitmask;
         public uint ActiveChroniclePassLevel;
         public uint AccumulatedSeasonalXp;

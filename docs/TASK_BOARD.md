@@ -13,13 +13,13 @@ Ordering for the closed set was 7 → 1 → 2 → 6 → 5 → 4 → 3, cheapest 
 visible first, riskiest last. **For the open set it is 8 → 9 → 10, and that is a
 dependency rather than a preference — see "Execution plan" below.**
 
-**Tasks 1-9 are all done. The one OPEN item is 10:**
+**Tasks 1-10 are all done.** The table below is kept as the record of what each one turned out to be:
 
 | # | Open task | Shape |
 |---|---|---|
 | 8 | ~~Combat is not readable as a fight~~ | **DONE 2026-09-04.** The bar was never broken — the wire carried no combat event at all. Feed, log and death animation shipped |
 | 9 | ~~Rarity barely does anything~~ | **DONE.** Ladder 1.48x → 3.00x, equal to one region step; monster health buffed per region so kill time and XP/sec land within 0.2% of neutral |
-| 10 | World boss rework | **Design written** in docs/world_boss_design.md, build not started. Server half is sound; the interaction is the gap |
+| 10 | ~~World boss rework~~ | **DONE 2026-09-05.** Five armour plates, one soft, re-seeded per encounter. The client sends a choice, not a damage figure. Two invisible-failure defects fixed on the way |
 
 ---
 
@@ -1059,7 +1059,72 @@ instinct that wrote it.**
 **Numbers to build against:** 5 plates, 3x on the weak point, 1.0x and a break
 elsewhere, 3 attempts unchanged, weak point re-seeded every encounter.
 
-Phase H has not started.
+### PHASE H RESULT, 2026-09-05: built, and it found two defects on the way
+
+The design shipped as written. Five plates, one soft, re-seeded per encounter;
+a strike on the soft one pays 3x, a strike anywhere else pays in full and breaks
+that plate for everyone.
+
+**The security half landed too, and it is the part worth reading.** The client
+no longer sends a damage figure at all - `AttackWorldBoss` carries a
+`TargetedPlateIndex` (0-4) and the validator now *disconnects* a client that
+still posts `ClientPredictedDamage`. The server takes the damage from
+`TickStatePayload.CachedEffectiveMilliAttack`, which is the same number the live
+tick swings with, extracted into one helper so there is not a second authority
+over how hard a character hits.
+
+`ClientPredictedDamage` survives on the packet only because the Guild War shard
+attack still uses it. That is its own problem for whenever Guild Wars comes off
+the roadmap.
+
+### Two defects found while building it, neither of them in the new code
+
+**1. Spent world boss attempts did not survive a logout.**
+`WorldBossAttemptCount` was written in exactly one place - the notification
+raised after an attack resolves - and read straight onto the wire. Nothing
+loaded it. So a player who spent their attempts, logged out and came back saw
+three unspent pips; clicking Attack hit the cap inside `ExecuteAttackAsync`,
+which rolls back in silence. The screen only told the truth after they had
+wasted a click on it.
+
+Found by the exercise script's own numbers rather than by reading: it reported
+an attempt going **"0 -> 2 spent" on a single strike**, which is not a thing one
+strike can do. Hydrated at login now, with two tests.
+
+**2. THE BATTLE SESSION CAP WAS INVISIBLE FROM EVERY ANGLE, and this is the
+worse one.**
+
+`WorldBossEngine.BattleSessionCapSeconds` is **300**. A player gets five minutes
+from their FIRST strike to spend the other two - inside an encounter that runs
+for **up to seven days**. After that every attack rolls back with no damage, no
+message and no telemetry they will ever see, and the button stays enabled
+forever.
+
+**An idle player who strikes once and comes back an hour later is the normal
+case in this genre**, and it silently cost them two thirds of their
+participation. The screen's own header comment already listed this as one of
+three silent rollbacks it existed to explain - and it explained the other two.
+
+`WorldBossSessionEndsEpoch` is on the wire now (789 -> 797 bytes), hydrated at
+login and refreshed on every attack. The screen shows a countdown while the
+session is open and says outright when it has closed; the button disables
+itself. Verified live: an account with **1 of 3 attempts left** and a closed
+session now reads "Your battle session has closed" with the button greyed,
+where before it read "1 of 3 left" beside a button that did nothing.
+
+**The 300-second value itself is left alone deliberately** - that is a balance
+decision, not a bug. But it is worth a look: see the audit notes.
+
+### Verification
+
+585 server tests (9 new in `WorldBossArmourTests`), 306 client tests,
+**112/112 `npm run exercise`** including four new world boss checks, 0 clipping
+findings, 0 overlaps, `svelte-check` at the four known `GuildOps` errors.
+
+One pre-existing test was made deterministic on the way:
+`Test_WorldBoss_AttemptLimitingAndScaling` asserted damage lands exactly as
+sent, which a randomly-seeded weak plate would have broken one run in five - a
+test that passes four times out of five is worse than one that fails.
 
 ---
 

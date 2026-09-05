@@ -780,6 +780,7 @@ namespace FolkIdle.Server.Domain.Combat
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                     {
                         currentPayload.WorldBossAttemptCount = worldBossAttemptUpdate.AttemptCount;
+                        currentPayload.WorldBossSessionEndsEpoch = worldBossAttemptUpdate.SessionEndsEpoch;
                         currentPayload.IsDirty = true;
                     }
                 }
@@ -2983,11 +2984,32 @@ namespace FolkIdle.Server.Domain.Combat
                         // would hand it far more than it needs.
                         float giantslayerPct = SkillTreeRegistry.GetBonusPercent(
                             SkillTreeRegistry.BranchWorldBossDamage, currentPayload.Skill_WorldBossDamage);
+
+                        // Modul: THE SERVER ANSWERS "how hard does this player
+                        // hit" ITSELF NOW.
+                        //
+                        // This used to read cmd.ClientPredictedDamage - a
+                        // figure the client computed about its own character
+                        // and posted, bounded only by a 100,000,000 clamp
+                        // inside WorldBossEngine. The same number the live tick
+                        // swings with is already on the payload, cached once per
+                        // tick, so there was never a reason to ask the client.
+                        //
+                        // In whole hit points, because the boss's health pool is
+                        // whole rather than milli.
+                        long serverAttack = currentPayload.CachedEffectiveMilliAttack / 1000L;
+                        if (serverAttack < 1L) serverAttack = 1L;
+
                         uint bossDamage = (uint)Math.Min(
                             uint.MaxValue,
-                            (double)cmd.ClientPredictedDamage * (1.0 + (giantslayerPct / 100.0)));
+                            (double)serverAttack * (1.0 + (giantslayerPct / 100.0)));
 
-                        _worldBossEngine.QueueAttack(currentPayload.PlayerId, cmd.TargetedBossId, bossDamage, attackAutoEatDepleted);
+                        _worldBossEngine.QueueAttack(
+                            currentPayload.PlayerId,
+                            cmd.TargetedBossId,
+                            bossDamage,
+                            cmd.TargetedPlateIndex,
+                            attackAutoEatDepleted);
                     }
                     else if (cmd.Command == CommandType.RegisterPushToken)
                     {
@@ -3601,8 +3623,11 @@ namespace FolkIdle.Server.Domain.Combat
                                 NetworkDiagnosticsToken = currentPayload.NetworkDiagnosticsToken,
                                 Gold = currentPayload.CurrentGold,
                                 WorldBossAttemptCount = currentPayload.WorldBossAttemptCount,
+                                WorldBossSessionEndsEpoch = currentPayload.WorldBossSessionEndsEpoch,
                                 WorldBossEventState = _worldBossEngine.EventState,
                                 WorldBossEventEndEpoch = _worldBossEngine.EventEndEpoch,
+                                WorldBossBrokenPlateMask = _worldBossEngine.BrokenPlateMask,
+                                WorldBossWeakPlate = _worldBossEngine.WeakPlate,
                                 GuildLogisticsLevel = currentPayload.CachedGuildLogisticsLevel,
                                 GuildRaidTier = currentPayload.CachedGuildRaidTier,
                                 GuildRaidBossCurrentHp = currentPayload.CachedGuildRaidBossCurrentHp,
@@ -4811,6 +4836,51 @@ namespace FolkIdle.Server.Domain.Combat
         // silently required the interval to divide a multiple of the tick.
         private const int TickDurationMs = 100;
 
+        /// <summary>
+        /// How hard this character hits, in milli, before any per-swing roll.
+        ///
+        /// ONE AUTHORITY, deliberately. This used to live inline inside the
+        /// player-attack branch, which was fine while the live tick was the
+        /// only thing that swung. The world boss now needs the same figure -
+        /// it used to take a damage number the CLIENT computed about itself -
+        /// and two copies of "how hard does this player hit" is exactly the
+        /// shape of defect this codebase keeps paying for.
+        ///
+        /// The crit multiplier is NOT applied here: it is rolled per swing and
+        /// belongs to the swing, not to the character.
+        /// </summary>
+        private static long EffectiveMilliAttackFor(ref TickStatePayload payload, in CombatStats combatStats, int damageScalePerLevelPct)
+        {
+            long effective = StatsCalculator.ComputeEffectiveMilliAttack(
+                in combatStats,
+                damageScalePerLevelPct,
+                payload.CurrentLevel,
+                InheritanceRegistry.GetBonusPct(payload.Inherit_Damage)
+                    + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Damage") * 2));
+
+            // Modul: Prestige "combat speed" perk (LegacyPerkResolver) -
+            // applied as a flat percent boost to effective damage output per
+            // attack rather than to the attack-interval tick cadence itself
+            // (AttackIntervalMs governs the shared per-monster pacing loop and
+            // is not a per-player value), which is a materially equivalent DPS
+            // increase without touching that shared cadence math.
+            int legacyCombatSpeedBonusPct = LegacyPerkResolver.GetCombatSpeedBonusPct(payload.CachedLegacyPerks);
+            if (legacyCombatSpeedBonusPct > 0)
+            {
+                effective += (effective * legacyCombatSpeedBonusPct) / 100;
+            }
+
+            // Modul: Strength, the bloodline's combat aptitude. On the
+            // pre-armour figure, alongside the inheritance bonus that
+            // ComputeEffectiveMilliAttack already folded in.
+            if (payload.Aptitude_Strength > 0)
+            {
+                effective += (long)(effective * BreedingAptitudes.BonusPercentFor(payload.Aptitude_Strength) / 100f);
+            }
+
+            return effective;
+        }
+
         private static bool HasCrossedInterval(int tickAccumulator, int intervalMs)
         {
             if (intervalMs <= 0) return false;
@@ -5375,6 +5445,12 @@ namespace FolkIdle.Server.Domain.Combat
             // at the end of the tick - see TickStatePayload.CachedEffectiveMaxHp.
             payload.CachedEffectiveMaxHp = effectiveMilliHp;
 
+            // Modul: the same, for the attack side. Computed unconditionally
+            // rather than inside the swing branch, because the world boss
+            // resolves outside the swing and must not re-derive it.
+            payload.CachedEffectiveMilliAttack =
+                EffectiveMilliAttackFor(ref payload, in combatStats, lineage.DamageScalePerLevelPct);
+
             // Modul: Deferred Part 5 Implementation, Part 2. Active food
             // buff: flat HP regeneration while in combat - 2 percent of
             // effective max HP per second (effectiveMaxHp / 500 per 10Hz
@@ -5515,28 +5591,11 @@ namespace FolkIdle.Server.Domain.Combat
                         }
                     }
 
-                    long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, (InheritanceRegistry.GetBonusPct(payload.Inherit_Damage) + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Damage") * 2)));
-
-                    // Modul: Prestige "combat speed" perk (LegacyPerkResolver) -
-                    // applied as a flat percent boost to effective damage
-                    // output per attack rather than to the attack-interval
-                    // tick cadence itself (AttackIntervalMs governs the
-                    // shared per-monster pacing loop below and is not a
-                    // per-player value), which is a materially equivalent
-                    // DPS increase without touching that shared cadence math.
-                    int legacyCombatSpeedBonusPct = LegacyPerkResolver.GetCombatSpeedBonusPct(payload.CachedLegacyPerks);
-                    if (legacyCombatSpeedBonusPct > 0)
-                    {
-                        effectiveMilliAttack += (effectiveMilliAttack * legacyCombatSpeedBonusPct) / 100;
-                    }
-                    // Modul: Strength, the bloodline's combat aptitude. On
-                    // the pre-armour figure, alongside the inheritance bonus
-                    // that ComputeEffectiveMilliAttack already folded in.
-                    if (payload.Aptitude_Strength > 0)
-                    {
-                        effectiveMilliAttack += (long)(effectiveMilliAttack
-                            * BreedingAptitudes.BonusPercentFor(payload.Aptitude_Strength) / 100f);
-                    }
+                    // Modul: computed once per tick and cached, because the
+                    // world boss needs the same number and a second derivation
+                    // of it would be a second authority over how hard this
+                    // character hits. See EffectiveMilliAttackFor.
+                    long effectiveMilliAttack = payload.CachedEffectiveMilliAttack;
 
                     int rawDamage = (int)(effectiveMilliAttack * critMult);
 

@@ -885,19 +885,97 @@ await page.waitForTimeout(600);
 }
 
 // --- world boss --------------------------------------------------------------
+//
+// Modul: this used to be three presses of a button that posted a damage figure
+// the CLIENT computed about itself. It is five armour plates now, one of them
+// soft, and the player picks which to strike - see docs/world_boss_design.md.
+//
+// The event window is calendar-driven (the 1st-7th and 15th-22nd UTC), so this
+// block has to work on a dormant boss too. Everything that does not need an
+// active encounter is checked unconditionally; the strike is checked when there
+// is something to strike.
 await go('World Boss');
 {
   const text = await page.evaluate(() => document.body.innerText);
   const active = text.includes('Active');
   record('world boss state is shown', /Active|Dormant|Concluded/.test(text));
+
+  const plates = page.locator('.armour-plate');
+  const plateCount = await plates.count();
+  record('the boss shows its armour', plateCount === 5, `${plateCount} plates`);
+
+  // Modul: THE SCREEN MUST NOT ASK FOR A DECISION IT WILL NOT SHOW THE INPUTS
+  // TO. Every plate says intact, broken or soft; a picker that hid that would
+  // be a slot machine wearing a puzzle's clothes.
+  const plateStates = await page.evaluate(() =>
+    [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
+  );
+  record(
+    'every plate says what state it is in',
+    plateStates.length === 5 && plateStates.every((t) => /intact|broken|soft/.test(t)),
+    plateStates.join(', '),
+  );
+
+  // Picking a plate has to change what the button says it will do, or the
+  // choice is invisible at the moment it matters.
+  if (plateCount === 5) {
+    await plates.nth(3).click();
+    await page.waitForTimeout(200);
+    const label = await page
+      .locator('button.attack')
+      .first()
+      .innerText()
+      .catch(() => '');
+    record('choosing a plate is reflected on the button', /4/.test(label), label.trim());
+  }
+
   if (active) {
-    const attack = page.getByRole('button', { name: 'Attack', exact: true });
-    const disabled = await attack.first().isDisabled();
-    record(
-      'attack button follows the larder and attempt rules',
-      true,
-      disabled ? 'disabled (larder empty or attempts spent)' : 'enabled',
-    );
+    const strike = page.locator('button.attack').first();
+    const disabled = await strike.isDisabled();
+
+    if (disabled) {
+      // Modul: A SPENT CHECK MUST STILL SAY SOMETHING TRUE. Three attempts per
+      // encounter and they only refill when a new window opens, so a second run
+      // of this script on the same day finds them gone. Asserting that the
+      // screen NAMES the reason is the check that keeps working - the same
+      // shape the village step uses for an exhausted villager pool.
+      record(
+        'a disabled strike states its reason',
+        /larder is empty/i.test(text)
+          || /0 of 3 left/.test(text)
+          || /already dead/i.test(text)
+          || /battle session has closed/i.test(text),
+        'attempts spent, larder empty, session closed or boss down',
+      );
+    } else {
+      const before = await page.evaluate(() => ({
+        states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
+        pips: document.querySelectorAll('.pip.spent').length,
+      }));
+
+      await strike.click();
+      await page.waitForTimeout(2500);
+
+      const after = await page.evaluate(() => ({
+        states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
+        pips: document.querySelectorAll('.pip.spent').length,
+      }));
+
+      // The attempt is the thing the server always spends, whichever plate was
+      // struck. The plate STATES change too, but only when the strike missed
+      // the weak point - so the pip is the honest assertion and the plate
+      // change is reported rather than required.
+      record(
+        'striking a plate spends an attempt',
+        after.pips > before.pips,
+        `${before.pips} -> ${after.pips} spent`,
+      );
+      record(
+        'the strike is reflected on the boss',
+        after.states.join() !== before.states.join() || after.pips > before.pips,
+        `${before.states.join('/')} -> ${after.states.join('/')}`,
+      );
+    }
   }
 }
 

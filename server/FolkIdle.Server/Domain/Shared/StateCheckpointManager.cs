@@ -578,6 +578,40 @@ namespace FolkIdle.Server.Domain.Shared
             // HighestUnlockedRegion cannot answer for region 5.
             byte defeatedRegionBossMask = BossFirstClearRules.MaskFrom(defeatedBosses);
 
+            // Modul: HOW MANY WORLD BOSS ATTEMPTS THIS PLAYER HAS ALREADY SPENT,
+            // which nothing loaded until 2026-09-05.
+            //
+            // WorldBossAttemptCount was written in exactly one place - the
+            // notification the engine raises after an attack resolves - and read
+            // straight onto the wire. So a player who spent their attempts,
+            // logged out and came back saw three pips, all unspent. Clicking
+            // Attack then hit the cap inside ExecuteAttackAsync, which ROLLS
+            // BACK IN SILENCE: no damage, no message, no telemetry they would
+            // ever see. The screen only told the truth after they had wasted a
+            // click on it.
+            //
+            // Found by the exercise script's own numbers rather than by
+            // reasoning: it reported an attempt going "0 -> 2 spent" on a single
+            // strike, which is not a thing one strike can do.
+            //
+            // The row is deleted whenever a new event window opens, so its
+            // absence is the honest zero.
+            byte worldBossAttemptCount = 0;
+            var bossAttemptRow = await dbContext.PlayerWorldBossAttempts
+                .AsNoTracking()
+                .SingleOrDefaultAsync(a => a.PlayerId == playerId
+                    && a.BossInstanceId == FolkIdle.Server.Engine.WorldBossEngine.ActiveBossInstanceId);
+            long worldBossSessionEndsEpoch = 0;
+            if (bossAttemptRow != null)
+            {
+                worldBossAttemptCount = (byte)Math.Clamp(bossAttemptRow.AttemptCount, 0, byte.MaxValue);
+                if (bossAttemptRow.SessionStartEpoch > 0)
+                {
+                    worldBossSessionEndsEpoch = bossAttemptRow.SessionStartEpoch
+                        + FolkIdle.Server.Engine.WorldBossEngine.BattleSessionCapSeconds;
+                }
+            }
+
             // Modul: the tools the ACTIVE CHARACTER IS WEARING.
             //
             // This used to scan both halves of the chest for the best tool
@@ -913,6 +947,8 @@ namespace FolkIdle.Server.Domain.Shared
                 HighestLocationReached = highestLocationReached,
                 HighestUnlockedRegion = highestUnlockedRegion,
                 DefeatedRegionBossMask = defeatedRegionBossMask,
+                WorldBossAttemptCount = worldBossAttemptCount,
+                WorldBossSessionEndsEpoch = worldBossSessionEndsEpoch,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,
                 DraugrMasteryLevel = draugrMastery,

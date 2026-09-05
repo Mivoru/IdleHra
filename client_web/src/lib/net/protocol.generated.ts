@@ -33,7 +33,7 @@ export interface AuthHandshake {
   PlatformSignature: number;
 }
 
-/** ClientCommandPacket - 339 bytes on the binary wire. */
+/** ClientCommandPacket - 340 bytes on the binary wire. */
 export interface ClientCommand {
   readonly type: typeof PacketType.ClientCommand;
   Command: number;
@@ -60,6 +60,7 @@ export interface ClientCommand {
   ChallengeVerificationHash: number;
   TargetedBossId: number;
   ClientPredictedDamage: number;
+  TargetedPlateIndex: number;
   DeviceTokenBytes: string;
   TargetPlatformFamily: number;
   PushReserved0: number;
@@ -88,7 +89,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 787 bytes on the binary wire. */
+/** StateUpdatePacket - 797 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -238,6 +239,9 @@ export interface StateUpdate {
   WorldBossAttemptCount: number;
   WorldBossEventState: number;
   WorldBossEventEndEpoch: number;
+  WorldBossBrokenPlateMask: number;
+  WorldBossWeakPlate: number;
+  WorldBossSessionEndsEpoch: number;
   GuildLogisticsLevel: number;
   GuildRaidTier: number;
   GuildRaidBossCurrentHp: number;
@@ -435,8 +439,8 @@ export type CommandTypeName = keyof typeof CommandType;
 /** Binary wire sizes, kept for tests that assert the binary path is untouched. */
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
-  ClientCommand: 339,
-  StateUpdate: 787,
+  ClientCommand: 340,
+  StateUpdate: 797,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,

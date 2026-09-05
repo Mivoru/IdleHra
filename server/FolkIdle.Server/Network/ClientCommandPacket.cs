@@ -226,7 +226,23 @@ namespace FolkIdle.Server.Network
         public uint ChallengeId;
         public uint ChallengeVerificationHash;
         public uint TargetedBossId;
+
+        // Modul: SHARED WITH THE GUILD WAR SHARD ATTACK, which is the only
+        // reason this field still exists.
+        //
+        // AttackWorldBoss stopped using it on 2026-09-05 and the validator now
+        // requires it to be ZERO for that command. The world boss takes its
+        // damage from the player's own cached attack power on the server -
+        // there is no longer a number the client can inflate. The guild war
+        // still posts one, and that is its own problem to solve when Guild Wars
+        // comes off the roadmap.
         public uint ClientPredictedDamage;
+
+        // Modul: which armour plate the strike is aimed at, 0-4. A CHOICE, not
+        // a quantity - so unlike the field above there is nothing here to
+        // inflate, and an out-of-range value is simply an invalid command.
+        // See WorldBossEngine.PlateCount and docs/world_boss_design.md.
+        public byte TargetedPlateIndex;
         public fixed byte DeviceTokenBytes[64];
         public byte TargetPlatformFamily;
         public byte PushReserved0;

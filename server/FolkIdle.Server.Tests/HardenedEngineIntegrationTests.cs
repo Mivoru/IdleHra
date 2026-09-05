@@ -471,17 +471,34 @@ namespace FolkIdle.Server.Tests
             const uint attackDamage = 5000;
             long hpBeforeAttacks = worldBossEngine.BossCurrentHp;
 
+            // Modul: STRIKE A PLATE THAT IS NOT THE WEAK ONE, deliberately.
+            //
+            // This test is about the attempt cap and the health scaling, and it
+            // asserts damage lands exactly as sent. Since 2026-09-05 the weak
+            // plate takes triple, and which plate that is is re-seeded randomly
+            // on every ActivateEventWindowAsync - so a hardcoded plate 0 would
+            // pass four runs in five and fail the fifth, which is worse than
+            // failing every time. Reading the seed and stepping past it keeps
+            // this test about what it is about.
+            byte armouredPlate;
+            await using (var seedDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var seeded = await seedDb.WorldBossSnapshots.AsNoTracking()
+                    .SingleAsync(b => b.BossInstanceId == WorldBossEngine.ActiveBossInstanceId);
+                armouredPlate = (byte)((seeded.WeakPlateIndex + 1) % WorldBossEngine.PlateCount);
+            }
+
             for (int i = 0; i < 3; i++)
             {
                 long hpBeforeThisAttack = worldBossEngine.BossCurrentHp;
-                await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage);
+                await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage, armouredPlate);
                 Assert.Equal(hpBeforeThisAttack - attackDamage, worldBossEngine.BossCurrentHp);
             }
 
             Assert.Equal(hpBeforeAttacks - (attackDamage * 3), worldBossEngine.BossCurrentHp);
 
             long hpBeforeFourthAttack = worldBossEngine.BossCurrentHp;
-            await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage);
+            await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage, armouredPlate);
 
             Assert.Equal(hpBeforeFourthAttack, worldBossEngine.BossCurrentHp);
 

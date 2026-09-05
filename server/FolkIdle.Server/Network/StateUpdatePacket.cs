@@ -551,6 +551,29 @@ namespace FolkIdle.Server.Network
         public byte WorldBossAttemptCount;
         public byte WorldBossEventState;
         public long WorldBossEventEndEpoch;
+
+        // Modul: the boss's armour, so a player can SEE what everyone before
+        // them learned. Bit i is plate i, broken.
+        //
+        // Without this the mechanic is a slot machine: a decision the player
+        // cannot see the inputs to is not a decision. The weak point below is
+        // 255 until somebody lands on it - it is held server-side and revealed
+        // only by the consequence of a strike, or the deduction is over before
+        // it starts.
+        public byte WorldBossBrokenPlateMask;
+        public byte WorldBossWeakPlate;
+
+        // Modul: AND WHEN THE PLAYER'S OWN ATTEMPTS STOP WORKING.
+        //
+        // WorldBossEngine gives 300 seconds from a player's first strike to
+        // spend the other two, then rolls every later attack back in silence.
+        // Nothing carried that, so the button stayed enabled and did nothing
+        // for the rest of an encounter that runs for up to seven days - the
+        // exact silent-failure shape this screen already had to be built around
+        // once, for the empty larder.
+        //
+        // 0 means they have not struck yet and the clock has not started.
+        public long WorldBossSessionEndsEpoch;
         public int GuildLogisticsLevel;
         public int GuildRaidTier;
         public long GuildRaidBossCurrentHp;

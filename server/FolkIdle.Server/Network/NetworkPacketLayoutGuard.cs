@@ -22,7 +22,12 @@ namespace FolkIdle.Server.Network
         // stop min rarity (1), stop affix index (1). Both guards move in
         // the same commit - the client copy silently drifted once before
         // and threw on every startup.
-        public const int ExpectedClientCommandSize = 339;
+        // Modul: world boss armour, 339 -> 340. One byte, TargetedPlateIndex -
+        // WHICH plate the strike is aimed at, replacing a damage figure the
+        // client used to compute about itself. ClientPredictedDamage stays
+        // because the guild war shard attack still posts one; AttackWorldBoss
+        // now requires it to be zero.
+        public const int ExpectedClientCommandSize = 340;
 
         // Modul: Full-Stack Expansion, Part 1. 680 -> 689: the Leggings
         // equipment slot added EquippedLeggingsId (8 bytes) +
@@ -163,7 +168,17 @@ namespace FolkIdle.Server.Network
         // Validate() checks it against Unsafe.SizeOf - and the deltas are still
         // the record of WHY the packet grew. Do not "fix" the arithmetic by
         // changing the constant.
-        public const int ExpectedStateUpdateSize = 787;
+        //
+        // Modul: world boss armour, 787 -> 789. Two bytes:
+        // WorldBossBrokenPlateMask and WorldBossWeakPlate. A player choosing
+        // which plate to strike has to be able to see which are already broken,
+        // or the choice is a slot machine rather than a decision.
+        //
+        // Modul: the world boss battle session, 789 -> 797. One long,
+        // WorldBossSessionEndsEpoch. A player has 300 seconds from their first
+        // strike to spend the rest, and until now nothing said so - the attack
+        // simply stopped working and never explained itself.
+        public const int ExpectedStateUpdateSize = 797;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper
