@@ -465,6 +465,11 @@ namespace FolkIdle.Server.Engine
         {
             _cts = new CancellationTokenSource();
             Task.Run(() => ExecuteAsync(_cts.Token));
+
+            // Said out loud so "loot is not being granted" can be told from
+            // "the worker never started" without attaching a debugger to a
+            // production container.
+            Console.WriteLine("Loot worker started.");
         }
 
         // Modul: ONE FAILED REQUEST USED TO KILL LOOT FOR THE WHOLE PROCESS.
@@ -562,11 +567,21 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         private void ReportLootThroughput()
         {
+            // Modul: ASK WHETHER THERE IS ANYTHING TO SAY *FIRST*.
+            //
+            // Stamping the clock before that check meant the empty call three
+            // seconds after start-up consumed the whole window, and since the
+            // loop calls this every three seconds and the counters only reset
+            // on a successful print, the rate limiter kept re-arming against
+            // nothing. Shipped once and printed not a single line while loot
+            // was demonstrably flowing - telemetry that lies by silence is
+            // worse than none, because silence is what "no requests" looks
+            // like. See LootThroughputReportTests.
+            if (_killsRolled == 0) return;
+
             long nowMs = Environment.TickCount64;
             if (nowMs - _lastLootReportMs < 60_000) return;
             _lastLootReportMs = nowMs;
-
-            if (_killsRolled == 0) return;
 
             Console.WriteLine(
                 $"Loot: {_requestsDrained} requests / {_killsRolled} kills rolled -> "
