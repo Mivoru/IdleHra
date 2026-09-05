@@ -189,3 +189,49 @@ Five other cron workers drain a queue with **no catch in their loop at all**:
 `PushNotificationTriggerEngine`, `GuildWarEngine`. Each can die exactly the same
 way, silently, and each would present as one feature quietly ceasing to exist
 while the game runs on. They are the same defect, unfired.
+
+## Verified live
+
+After the fix, on the production box:
+
+```
+Loot worker started.
+Loot: 3 requests / 559 kills rolled -> 83 equipment, 1 materials, 0 auto-salvaged, 0 failed
+```
+
+83 pieces from 559 kills is 14.8% against an authored 15%. Three requests for
+559 kills is the offline catch-up, which carries a whole window in one request
+and skips materials because its own bulk projection already granted them - hence
+the single material, which is correct rather than suspicious.
+
+On the database, over the same period: the account went from 935 owned items to
+1,059, the equipment sequence moved for the first time in hours, and
+`mat_frozen_wing` **exists for the first time ever** at 25,000+ Ice Bat kills.
+Cold recovery reconstructed all 20 sessions with **zero** `EMAXCONNSESSION`
+failures, against five (player 8 among them) on the boot before the pool bound.
+
+### A postscript worth reading: the telemetry lied first
+
+The throughput line shipped an hour before the rest and printed **nothing** for
+fifteen minutes while 124 rows were landing - so the one signal that
+distinguishes "the tick never enqueued" from "the worker wrote nothing" was
+asserting the first while the second was provably false. It stamped its rate
+limiter's clock *before* checking whether it had anything to say, so the empty
+call three seconds after start-up consumed the window and the limiter kept
+re-arming against nothing.
+
+It was caught only because the database disagreed with it. Telemetry that lies
+by silence is worse than none: silence is exactly what the failure it exists to
+detect looks like. `LootThroughputReportTests` pins it, and `StartCron` now
+announces itself so "loot is not being granted" and "the worker never started"
+never again need a debugger on a production container.
+
+## Also found: a second server has been running for three weeks
+
+`docker ps` on the box shows an orphaned stack from 2026-08-10 -
+`folk-idle-server`, `folk-idle-pgbouncer`, `folk-idle-db` - from the ROOT
+`docker-compose.yml` rather than `ops/oracle/`. It points at its own local
+`folkidle_prod` database, so it has never touched live player data, but it has
+been spinning on a 2 vCPU box for three weeks logging a Redis timeout every
+second (583 million completed thread-pool items). It is competing with the live
+game for CPU and should be removed.
