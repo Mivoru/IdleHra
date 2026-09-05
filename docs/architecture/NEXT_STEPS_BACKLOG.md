@@ -41,6 +41,28 @@ monster's from a hand-copy of `BossFirstClearRules` that predates First Blood,
 the player's from a session high-water mark caught reading "2320 / 2320" while
 `PlayerHp` was 3701. Both are on the wire now.
 
+## OPEN AND URGENT, 2026-09-06
+
+**Live kills pay no loot; only the offline catch-up does.** One cause was found
+and fixed (a background worker with no exception handling, killed by Supabase's
+15-client session pooler against Npgsql's default pool of 100 - see below), and
+a SECOND fault is still live behind it. The full evidence table, everything
+ruled out and the three next steps are in
+`docs/drop_rates_investigation_2026_09_05.md` under "STILL OPEN". Start there;
+do not re-derive it.
+
+**Gathering is 26x faster than its own slowest node.** 2.3 million logs on one
+account, and the cause is not the tool that was blamed: mastery contributes
++10% per level, linear and uncapped, which is 76% of the total speed at level
+127 against the tool's 21%. Everything also collapses onto the 0.2 s
+`MinRequiredTicks` floor, so the five node tiers pay the same at high mastery.
+Measured tables and candidate fixes (none applied):
+`docs/gathering_balance_2026_09_06.md`.
+
+**A 24-hour JWT with no refresh token** logs every player out mid-session; the
+client now signs them out cleanly instead of retrying a dead token forever, but
+the product decision is unmade.
+
 **Reported after those landed: "it looks like no items are dropping."** The
 pipeline was intact - the roll matches its authored table across 2,000,000
 samples, nothing caps the ladder, every monster's table is its own region's,

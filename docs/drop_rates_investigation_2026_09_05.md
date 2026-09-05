@@ -235,3 +235,87 @@ never again need a debugger on a production container.
 been spinning on a 2 vCPU box for three weeks logging a Redis timeout every
 second (583 million completed thread-pool items). It is competing with the live
 game for CPU and should be removed.
+
+---
+
+# STILL OPEN, 2026-09-06: live kills pay no loot
+
+The worker-death fix above is real and holds. **A second, different fault is
+still live** and this section is the handoff for it. Read it before touching
+anything in the loot path.
+
+## The symptom now
+
+Loot arrives **only through the offline catch-up**, at the moment a client
+connects or reconnects — 490 pieces on one login, 36 on the next, 8 from a
+38-kill batch. Between those, a player who fights continuously receives
+nothing, while their codex kill count, gold and gathering all advance normally.
+
+That is also why the player reported it twice as "nothing drops": after logging
+in, the loot panel is empty (it is session-scoped and offline drops predate it),
+and everything that lands afterwards lands only at the next reconnect.
+
+## What the instrumentation says
+
+`CombatLootEngine` now counts BOTH ends of the queue and beats once a minute:
+
+```
+Loot: tick saw 1 kills, enqueued 1, worker drained 2 requests / 38 kills
+      -> 8 equipment, 0 materials, 0 auto-salvaged, 0 failed, 0 still queued
+```
+
+`tick saw` is incremented immediately after `CodexEngine.KillEventQueue.Enqueue`
+(SimulationEngine ~6258), `enqueued` immediately after
+`CombatLootEngine.DropRequestQueue.Enqueue` (~6318). **They always agree.** The
+two sit at the same brace depth in one straight-line block with no `return`,
+`break`, `continue` or `goto` between them (verified by a brace-depth scan, not
+by eye).
+
+And yet, over a measured 204 seconds: **the database gained 127 codex kills
+while `tick saw` reported 0.** Over another 226 seconds: 163 codex kills, and
+the log printed nothing at all.
+
+## What has been ruled out, with the evidence
+
+| Hypothesis | How it was tested | Result |
+|---|---|---|
+| A second server writing to the same database | Stopped the app container for 90 s | Kills **stopped** (+6, a flush in flight). This process is the writer. |
+| The retired Render deployment | `curl folkidle.onrender.com` | 404 from Render's edge; service gone. |
+| The orphaned `folk-idle-server` stack on the box | Inspected its env and started its DB | Points at a LOCAL `folkidle_prod` with **zero** player rows. Now stopped. |
+| A dev server on the developer's machine | `Get-Process`, command line | Only Roslyn's compiler server. |
+| Stale deployment | Box HEAD == local HEAD; searched the running container's DLL for the new symbols | `NoteKillEnqueued`, `tick enqueued`, `Loot worker STOPPED` all present. |
+| The worker died again | Grepped for its own STOPPED line; watched gathering | Alive: gathering grants keep landing, drained from the same loop. |
+| An exception between the two enqueues | Grepped for `Tick processing failed` across the whole log | Zero. A throw there would log, suspend the player and disconnect them. |
+| Codex counts being multiplied | Read `CodexEngine.ExecuteAsync` end to end | `entry.KillCount += group.Count()` — one event, one kill. No other writer of `KillCount` exists outside migrations. |
+
+So: the codex enqueue fires ~40 times a minute (the database proves it, and
+stopping the process stops it), the counter three lines below it reports zero,
+and the counter demonstrably works because it printed `tick saw 1` once.
+
+**Those three facts cannot all be true.** One of the measurements is lying and
+the next session's first job is to find out which.
+
+## Where to go next, in order
+
+1. **Log inside `CodexEngine.ExecuteAsync` how many events it dequeues per
+   cycle.** That splits the remaining space cleanly: events dequeued means the
+   enqueue ran (and the counter beside it is somehow not running); zero events
+   dequeued while `KillCount` still climbs means the rows come from somewhere
+   nobody has found yet.
+2. **Check the multi-slot path.** `ProcessAllSlotSubTicks` is called twice per
+   tick (SimulationEngine 4436, and 4459 for the `AccumulatedTimeBankMs`
+   acceleration). Both go through the same block, but the second has not been
+   observed directly.
+3. **Reproduce locally with a fighting character** and watch the same heartbeat.
+   Local drops work (`npm run exercise` sees them), so a local run that shows
+   `tick saw N, enqueued N` with N large is the control that proves the
+   instrumentation, and a local run that reproduces the gap is the whole answer.
+
+## What is already committed and working
+
+- The worker cannot die on one bad request; the pool is bounded below the
+  database's client limit; both fixes verified live.
+- The loot path beats once a minute with counts from both ends of its queue.
+- An expired JWT signs the player out instead of retrying forever
+  (`interpretClose`); the 24-hour token with no refresh is itself worth a
+  product decision.
