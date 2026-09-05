@@ -1715,6 +1715,22 @@ carries a destructive migration. The single largest task here.
 
 ---
 
+## Follow-up, 2026-09-05: the drop report
+
+"It looks like no items are dropping", then "nothing better than Rare from
+23,804 Ice Bat kills", then "something broke in an update". Measured rather than
+argued: the roll, the clamp, the per-monster tables, the drop chance's whole git
+history and the player's own last 91 drops all say the pipeline is intact. The
+defect was the loot PANEL - one shared ring buffer whose material volume evicted
+every piece of equipment within minutes.
+
+`docs/drop_rates_investigation_2026_09_05.md` has the evidence table and the
+odds. Two new server tests print their tables (`RarityRollDistributionTests`,
+`EquipmentDropTableTests`), so the same question is answerable next time without
+re-deriving anything.
+
+---
+
 ## Cross-cutting notes
 
 - **Two of these are already half-built** (tutorial, daily login) and one is

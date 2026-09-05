@@ -358,6 +358,19 @@ describe('the numbers the client mirrors still match the server', () => {
     expect(wiki).not.toContain('WORLD_BOSS_DAMAGE_CEILING =');
   });
 
+  it('loot: the equipment drop chance the odds line quotes', () => {
+    // The Loot drops panel tells the player "Legendary+ about 1 in N kills",
+    // and N is rarityOdds() divided by this. If the server changed the drop
+    // rate the panel would go on quoting the old number with total confidence,
+    // which is exactly the failure this file exists for.
+    const loot = read(serverRoot, 'Engine', 'CombatLootEngine.cs');
+    const rarity = read(clientRoot, 'lib', 'ui', 'rarity.ts');
+
+    expect(num(rarity, /EQUIPMENT_DROP_CHANCE = ([\d.]+)/, 'client drop chance')).toBe(
+      num(loot, /EquipmentDropChance = ([\d.]+)/, 'server drop chance'),
+    );
+  });
+
   it('combat log: the event kinds and flags the server actually sends', () => {
     // The fight log decodes a numeric EventKind and a Flags bitmask into the
     // words a player reads. A mismatch here does not throw - it silently

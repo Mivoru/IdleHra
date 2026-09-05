@@ -17,6 +17,14 @@
 //
 // A miss is the proof this is real: it moves no health at all, so it is the
 // one line no inference from a health difference could ever have produced.
+//
+// THIS LOG CARRIES NO LOOT, deliberately. Drops briefly lived here and were
+// moved out on request - "under the monster there should be only the course of
+// the fight, and the loot drops window on the right" - and the reason is
+// bigger than layout: this is a 50-line ring, and at two gathering characters
+// plus combat the material volume evicted every piece of equipment within
+// minutes. Loot has its own two stores and its own panel now; see
+// stores/game.ts lootLogEquipment / lootLogMaterials.
 import { writable } from 'svelte/store';
 import type { ResponseCombatEvent } from '../net/protocol.generated';
 
@@ -30,28 +38,6 @@ export const CombatEventKind = {
   Kill: 5,
 } as const;
 
-/**
- * Modul: LOOT IS NOT A COMBAT EVENT AND IT BELONGS IN THIS LOG ANYWAY.
- *
- * Reported as "it looks like no items are dropping to me". They were: the
- * database showed 31 recent drops for that account and the server log showed
- * the dispatch. What was missing is that this log narrated the hits, the
- * misses, the lifesteal and the kill - and said nothing whatsoever about the
- * reward.
- *
- * A player reading a detailed, live account of a fight that never mentions
- * loot will conclude there is none, and they will be right to. The loot feed
- * already existed as its own packet (ResponseLootDropPacket) and was rendered
- * in a panel at the BOTTOM of the screen, below the whole twenty-five monster
- * list - which is not where somebody watching a fight is looking.
- *
- * Kept above the wire kinds numerically so a future server-side kind cannot
- * collide with it. This one is synthesised client-side from the loot packet.
- */
-export const LOOT_LINE_KIND = 100;
-
-/** Mirrors ResponseLootDropPacket's DropKind. */
-export const LootDropKind = { Material: 0, Equipment: 1, Scrap: 2 } as const;
 
 /** Mirrors ResponseCombatEventPacket's Flag constants. */
 export const CombatEventFlag = {
@@ -70,14 +56,6 @@ export interface CombatLogLine {
   monsterHpAfter: number;
   flags: number;
   atMs: number;
-
-  /** Loot lines only: the ContentRegistry item id that dropped. The NAME is
-   *  resolved by the component, which is where the content registry lives. */
-  lootItemId?: number;
-  /** Loot lines only: 0 for a material, 1-14 for equipment. */
-  lootTier?: number;
-  /** Loot lines only: ResponseLootDropPacket.DropKind. */
-  lootDropKind?: number;
 }
 
 /**
@@ -115,13 +93,6 @@ export const killPulse = writable(0);
  */
 let lastSequence = -1;
 
-/**
- * Loot arrives on a different packet with no sequence of its own, so these get
- * ids from a separate descending counter. Negative, so they can never collide
- * with a combat event's sequence however long a session runs.
- */
-let lootLineId = 0;
-
 export function pushCombatEvent(packet: ResponseCombatEvent): void {
   const sequence = Number(packet.Sequence);
   if (sequence <= lastSequence) return;
@@ -149,27 +120,6 @@ export function pushCombatEvent(packet: ResponseCombatEvent): void {
   });
 }
 
-/** One dropped item, narrated in the same place the fight is. */
-export function pushLootLine(itemId: number, quantity: number, tier: number, dropKind: number): void {
-  const line: CombatLogLine = {
-    id: --lootLineId,
-    kind: LOOT_LINE_KIND,
-    amount: quantity,
-    monsterId: 0,
-    monsterHpAfter: 0,
-    flags: 0,
-    atMs: Date.now(),
-    lootItemId: itemId,
-    lootTier: tier,
-    lootDropKind: dropKind,
-  };
-
-  combatLog.update((lines) => {
-    const next = [line, ...lines];
-    return next.length > MAX_LOG_LINES ? next.slice(0, MAX_LOG_LINES) : next;
-  });
-}
-
 /**
  * Cleared on sign-out and on switching characters, along with the sequence
  * guard - a new session starts its own numbering, so a stale high-water mark
@@ -177,7 +127,6 @@ export function pushLootLine(itemId: number, quantity: number, tier: number, dro
  */
 export function resetCombatLog(): void {
   lastSequence = -1;
-  lootLineId = 0;
   combatLog.set([]);
   killPulse.set(0);
 }
@@ -215,14 +164,6 @@ export function describeCombatLine(line: CombatLogLine, monsterName: string): st
       return `Lifesteal heals you for ${amount}`;
     case CombatEventKind.Kill:
       return `${monsterName} dies — ${amount} xp`;
-    case LOOT_LINE_KIND: {
-      // `monsterName` carries the ITEM name for a loot line - the caller
-      // resolves whichever is relevant, because only it has the registry.
-      const what = monsterName;
-      if (line.lootDropKind === LootDropKind.Equipment) return `Dropped: ${what}`;
-      if (line.lootDropKind === LootDropKind.Scrap) return `Salvaged into ${what} x${amount}`;
-      return `Dropped: ${what} x${amount}`;
-    }
     default:
       return '';
   }

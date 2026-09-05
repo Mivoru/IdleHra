@@ -28,8 +28,6 @@
     killPulse,
     CombatEventKind,
     CombatEventFlag,
-    LOOT_LINE_KIND,
-    LootDropKind,
   } from '../lib/stores/combatLog';
 
   const snap = $derived($playerState);
@@ -371,7 +369,12 @@
         </div>
 
         <!-- Modul: the fight log, under the monster's picture and health bar
-             exactly where it was asked for.
+             exactly where it was asked for - and ONLY the fight.
+             Loot briefly lived here too and was moved out: asked for directly,
+             "under the monster there should be only the course of the fight,
+             and the loot drops window on the right". They were right, and for
+             a reason bigger than taste - see SessionLoot on how material
+             volume was evicting every piece of equipment.
              {#if} rather than a <details>: a closed <details> whose child
              carries an author display rule keeps its content live and
              clickable on top of whatever is below it, which this project has
@@ -383,17 +386,8 @@
                   class:miss={line.kind === CombatEventKind.PlayerMiss || line.kind === CombatEventKind.MonsterMiss}
                   class:kill={line.kind === CombatEventKind.Kill}
                   class:heal={line.kind === CombatEventKind.Lifesteal}
-                  class:incoming={line.kind === CombatEventKind.MonsterHit}
-                  class:loot={line.kind === LOOT_LINE_KIND}
-                  class:lootrare={line.kind === LOOT_LINE_KIND
-                    && line.lootDropKind === LootDropKind.Equipment
-                    && (line.lootTier ?? 0) >= 7}>
-                {describeCombatLine(
-                  line,
-                  line.kind === LOOT_LINE_KIND
-                    ? itemName(registry, line.lootItemId ?? 0)
-                    : monsterName(registry, line.monsterId),
-                )}
+                  class:incoming={line.kind === CombatEventKind.MonsterHit}>
+                {describeCombatLine(line, monsterName(registry, line.monsterId))}
               </li>
             {/each}
           </ol>
@@ -541,8 +535,14 @@
       {/if}
     {/if}
 
-    <SessionLoot {registry} />
+  </section>
 
+  <!-- Modul: its own panel, so the grid gives it a column of its own instead of
+       burying it below twenty-five monster rows. `.layout` is
+       repeat(auto-fit, minmax(20rem, 1fr)), so this sits to the RIGHT on a wide
+       screen and stacks on a narrow one with no breakpoint of its own. -->
+  <section class="panel">
+    <SessionLoot {registry} />
   </section>
 </div>
 
@@ -884,19 +884,6 @@
 
   .fightlog li.heal {
     color: var(--good);
-  }
-
-  /* Modul: loot is the REWARD, so it reads differently from the blows. The
-     rare tier gets the rarity colour, because a Legendary scrolling past at
-     the same weight as a wolf pelt is the thing SessionLoot already had to
-     solve once. */
-  .fightlog li.loot {
-    color: var(--good);
-  }
-
-  .fightlog li.lootrare {
-    color: var(--rarity-10, #e8b339);
-    font-weight: 600;
   }
 
   .fightlog li.kill {

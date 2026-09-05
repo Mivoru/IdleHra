@@ -298,7 +298,7 @@
         Combat has had this feed since the loot events landed; gathering showed
         nothing, so a working node and a broken one looked identical.
       </p>
-      <SessionLoot {registry} />
+      <SessionLoot {registry} showEquipment={false} />
     </section>
 
     {#each byProfession as profession}

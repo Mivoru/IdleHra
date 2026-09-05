@@ -16,7 +16,7 @@ import {
   type InterpolatedFields,
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
-import { pushCombatEvent, pushLootLine, resetCombatLog, CombatEventKind, CombatEventFlag } from './combatLog';
+import { pushCombatEvent, resetCombatLog, CombatEventKind, CombatEventFlag } from './combatLog';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
 import { play, playHit, playWithFallback } from '../ui/audio';
@@ -145,10 +145,29 @@ export interface LootEntry {
   atMs: number;
 }
 
+// Modul: TWO BUFFERS, BECAUSE ONE LET MATERIALS EVICT EVERY PIECE OF GEAR.
+//
+// Reported as "in all that time nothing better than Rare dropped from the Ice
+// Bat, and I have 23,804 kills". The database disagreed - that account holds
+// 144 Legendary, 53 Mythic, 13 Relic and 9 Ancient, and had taken a Relic
+// recently. The drops were real; the LOG had thrown them away.
+//
+// One shared 100-entry ring held both kinds. Two characters gathering plus
+// combat's own material rolls produce a drop every few seconds, so the whole
+// buffer turned over in about four minutes - and every equipment entry older
+// than that was evicted regardless of rarity. A player checking what they had
+// found saw the last four minutes of ore.
+//
+// Split, so material volume cannot reach the gear. Equipment drops on 15% of
+// kills, so 100 of those is hours rather than minutes.
 const MAX_LOOT_ENTRIES = 100;
 let lootSequence = 0;
 
-export const lootLog = writable<LootEntry[]>([]);
+/** Equipment only. Never evicted by material volume - see above. */
+export const lootLogEquipment = writable<LootEntry[]>([]);
+
+/** Materials and salvage scrap. High volume, low individual interest. */
+export const lootLogMaterials = writable<LootEntry[]>([]);
 
 // ---------------------------------------------------------------------------
 // Chat
@@ -408,6 +427,11 @@ export function startSession(token: string): void {
   interpolator.reset();
   damageFeed.reset();
   damageEvents.set([]);
+  // Modul: the loot log was never cleared by either of these, so signing out
+  // and back in - or into a DIFFERENT account - showed the previous session's
+  // drops as if they were this one's.
+  lootLogEquipment.set([]);
+  lootLogMaterials.set([]);
   offlineSummary.set(null);
   lastOfflineSummaryTick = -1;
   victorySummary.set(null);
@@ -730,37 +754,21 @@ export function startSession(token: string): void {
     onLootDrop: (packet: ResponseLootDrop) => {
       play(packet.QualityTier >= 10 ? 'lootRare' : 'lootDropped');
 
-      // Modul: AND THE FIGHT LOG SAYS SO.
-      //
-      // Reported as "it looks like no items are dropping". They were - the
-      // database showed 31 recent drops on that account - but the log narrated
-      // the hits, the misses, the lifesteal and the kill and never once
-      // mentioned the reward. Somebody reading a live account of a fight that
-      // says nothing about loot will conclude there is none.
-      //
-      // The name is resolved here rather than in the store because the content
-      // registry lives on this side of the wire; the packet carries only a
-      // numeric item id.
-      pushLootLine(
-        Number(packet.ItemId),
-        Number(packet.Quantity),
-        Number(packet.QualityTier),
-        Number(packet.DropKind),
-      );
 
-      lootLog.update((entries) => {
-        const next: LootEntry[] = [
-          {
-            id: ++lootSequence,
-            itemId: packet.ItemId,
-            quantity: packet.Quantity,
-            monsterId: packet.MonsterId,
-            qualityTier: packet.QualityTier,
-            dropKind: packet.DropKind,
-            atMs: connection.serverNowMs(),
-          },
-          ...entries,
-        ];
+      const entry: LootEntry = {
+        id: ++lootSequence,
+        itemId: packet.ItemId,
+        quantity: packet.Quantity,
+        monsterId: packet.MonsterId,
+        qualityTier: packet.QualityTier,
+        dropKind: packet.DropKind,
+        atMs: connection.serverNowMs(),
+      };
+
+      // DropKind 1 is equipment; 0 material and 2 salvage scrap.
+      const target = Number(packet.DropKind) === 1 ? lootLogEquipment : lootLogMaterials;
+      target.update((entries) => {
+        const next = [entry, ...entries];
         return next.length > MAX_LOOT_ENTRIES ? next.slice(0, MAX_LOOT_ENTRIES) : next;
       });
     },
@@ -789,6 +797,8 @@ export function endSession(): void {
   interpolator.reset();
   damageFeed.reset();
   damageEvents.set([]);
+  lootLogEquipment.set([]);
+  lootLogMaterials.set([]);
   commandResultFeed.reset();
   commandResults.set([]);
   offlineSummary.set(null);

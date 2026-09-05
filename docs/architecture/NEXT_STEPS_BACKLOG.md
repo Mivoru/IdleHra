@@ -41,6 +41,18 @@ monster's from a hand-copy of `BossFirstClearRules` that predates First Blood,
 the player's from a session high-water mark caught reading "2320 / 2320" while
 `PlayerHp` was 3701. Both are on the wire now.
 
+**Reported after those landed: "it looks like no items are dropping."** The
+pipeline was intact - the roll matches its authored table across 2,000,000
+samples, nothing caps the ladder, every monster's table is its own region's,
+`EquipmentDropChance` has only ever gone up, and the player's last 91 drops
+averaged tier 2.26 against a theoretical 1.918. **The panel was throwing them
+away**: one shared 100-entry ring held materials and equipment, and two
+characters gathering turned the whole buffer over in about four minutes. Split
+into two stores and two lists; the odds (Legendary+ is 1 kill in ~780) are now
+stated on screen, because they never had been. Full evidence in
+`docs/drop_rates_investigation_2026_09_05.md` - read it before "fixing" drop
+rates in response to a similar report.
+
 **9. "Rarity barely does anything."** True, and worse than reported. The whole
 fourteen-tier ladder was worth **1.48x** against a region step's **3.00x** -
 walking from the worst item in the game to the best one bought less than half a

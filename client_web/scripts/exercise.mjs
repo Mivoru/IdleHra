@@ -305,16 +305,66 @@ await page.waitForTimeout(4000);
   // Both directions of the fight, so a feed that only reports one half is
   // still a failure. The player's own swing and the monster's reply are
   // resolved in different branches of the tick and published separately.
-  // Modul: AND IT HAS TO MENTION THE LOOT.
+  // Modul: AND THE LOOT IS DELIBERATELY NOT IN IT.
   //
-  // Reported as "it looks like no items are dropping" on a build where they
-  // demonstrably were - the log narrated everything about a fight except its
-  // reward, so the only live account of what was happening said nothing about
-  // the one part the player was looking for.
+  // Drops lived in this log for one build and were moved out: "under the
+  // monster there should be only the course of the fight, and on the right a
+  // loot drops window split into materials and equipment". The reason is not
+  // taste - this is a 50-line ring, and with two characters gathering the
+  // material volume evicted every piece of equipment from it within minutes,
+  // which is how a player farming for hours concluded nothing was dropping.
   record(
-    'the fight log reports what dropped',
-    (logLines ?? []).some((l) => /^(Dropped|Salvaged into):?/.test(l)),
-    (logLines ?? []).find((l) => /^Dropped/.test(l)) ?? 'no loot line in the log',
+    'the fight log carries no loot lines',
+    !(logLines ?? []).some((l) => /^(Dropped|Salvaged into):?/.test(l)),
+    (logLines ?? []).find((l) => /^(Dropped|Salvaged)/.test(l)) ?? 'none, as intended',
+  );
+
+  // Modul: THE LOOT PANEL IS WHERE DROPS HAVE TO SHOW UP.
+  //
+  // Its own packet (ResponseLootDropPacket), its own two stores, so it can be
+  // dead while everything around it works. Polled rather than sampled once:
+  // gear drops on 15% of kills, so a single read a few seconds into a fight
+  // proves nothing either way.
+  const lootPanel = await (async () => {
+    const deadline = Date.now() + 25000;
+    let seen = { sections: [], rows: 0 };
+    while (Date.now() < deadline) {
+      seen = await page.evaluate(() => {
+        const panel = document.querySelector('.loot');
+        const sections = panel ? [...panel.querySelectorAll('.lootsection')] : [];
+        return {
+          sections: sections.map((sec) => sec.querySelector('h3')?.textContent.trim() ?? ''),
+          rows: sections.reduce((n, sec) => n + sec.querySelectorAll('li').length, 0),
+        };
+      });
+      if (seen.rows > 0) break;
+      await page.waitForTimeout(1000);
+    }
+    return seen;
+  })();
+
+  record(
+    'the loot panel is split into equipment and materials',
+    lootPanel.sections.length === 2,
+    lootPanel.sections.join(' / '),
+  );
+  record(
+    'the loot panel fills from the server feed',
+    lootPanel.rows > 0,
+    `${lootPanel.rows} rows`,
+  );
+
+  // The layout half of the same request: the fight goes under the monster, the
+  // drops go beside it.
+  const lootIsBeside = await page.evaluate(() => {
+    const log = document.querySelector('.fightlog')?.getBoundingClientRect();
+    const loot = document.querySelector('.loot')?.getBoundingClientRect();
+    return log && loot ? { log: Math.round(log.left), loot: Math.round(loot.left) } : null;
+  });
+  record(
+    'the loot panel sits to the right of the fight log',
+    !!lootIsBeside && lootIsBeside.loot > lootIsBeside.log,
+    JSON.stringify(lootIsBeside),
   );
 
   record(

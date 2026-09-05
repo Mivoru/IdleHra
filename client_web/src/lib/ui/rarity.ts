@@ -69,6 +69,29 @@ export function shouldGlow(qualityTier: number): boolean {
 }
 
 /** One drop in how many is this tier or better. For "Ultra Rare - 1 in 21". */
+/** CombatLootEngine.EquipmentDropChance - how often a kill drops gear at all. */
+export const EQUIPMENT_DROP_CHANCE = 0.15;
+
+/**
+ * How many KILLS, on average, for one drop of this tier or better.
+ *
+ * Modul: THIS EXISTED AND NOTHING SHOWED IT.
+ *
+ * `rarityOdds` and `RARITY_DROP_SHARE` were written, exported and never
+ * imported by any screen - found by an audit scan for dead client exports on
+ * 2026-09-05, the same day a player asked why 24,198 Ice Bat kills had produced
+ * nothing above Rare.
+ *
+ * The answer is arithmetic they had no way to see: gear drops on 15% of kills
+ * and Legendary-or-better is 0.85% of those, so it is one kill in about
+ * thirteen hundred. A player counting kills and seeing no Legendary is not
+ * observing a bug, they are observing a number nobody told them.
+ */
+export function killsPerRarity(qualityTier: number): number {
+  const perDrop = rarityOdds(qualityTier);
+  return perDrop > 0 ? Math.round(perDrop / EQUIPMENT_DROP_CHANCE) : 0;
+}
+
 export function rarityOdds(qualityTier: number): number {
   let share = 0;
   for (let tier = qualityTier; tier <= MAX_QUALITY_TIER; tier++) {

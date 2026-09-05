@@ -1,33 +1,47 @@
 <script lang="ts">
-  // Modul: what this session actually produced, best first.
+  // Modul: what this session actually produced, in TWO lists.
   //
-  // The backpack is gone and everything lands in the village chest, which the
-  // player is not watching. So this feed is the ONLY place a session's output
-  // is visible as it happens, which makes its ordering a real decision rather
-  // than a display preference.
+  // Reported as "in all that time nothing better than Rare dropped from the Ice
+  // Bat, and I have 23,804 kills". The database disagreed - that account holds
+  // 144 Legendary, 53 Mythic, 13 Relic and 9 Ancient, and had taken a Relic
+  // recently. The drops were real. This panel had thrown them away.
   //
-  // Sorted by RARITY descending, not by time. A chronological feed of an idle
-  // session is a wall of Normal-tier scrap with the one Legendary buried four
-  // hundred lines up - the exact thing a player came back to check for. Time
-  // ordering is what you want when you are watching; rarity ordering is what
-  // you want when you return, and returning is the whole premise of the genre.
+  // One shared ring buffer held both kinds. With two characters gathering, a
+  // material drop lands every few seconds and the whole buffer turned over in
+  // about four minutes, evicting every piece of equipment older than that
+  // whatever its rarity. The player's own diagnosis was exactly right: "with 2
+  // characters on gathering the equipment probably gets overwritten straight
+  // away".
   //
-  // Aggregated by item and tier, because forty Iron Ore is one fact.
+  // Two stores now (lootLogEquipment / lootLogMaterials), so material volume
+  // cannot reach the gear, and two lists here so it cannot crowd it out
+  // visually either.
+  //
+  // Within each list, sorted by RARITY descending rather than by time. A
+  // chronological feed of an idle session is a wall of Normal-tier scrap with
+  // the one Legendary buried four hundred lines up - the exact thing a player
+  // came back to check for. Aggregated by item and tier, because forty Iron Ore
+  // is one fact.
 
-  import { lootLog, type LootEntry } from '../stores/game';
+  import { lootLogEquipment, lootLogMaterials, type LootEntry } from '../stores/game';
   import { itemName, type ContentRegistry } from '../net/content';
-  import { rarityColor, shouldGlow } from './rarity';
+  import { rarityColor, shouldGlow, rarityName, killsPerRarity } from './rarity';
   import Burst from './Burst.svelte';
 
   interface Props {
     registry: ContentRegistry | null;
+    /**
+     * Modul: GATHERING HAS NO EQUIPMENT SECTION.
+     *
+     * A node drops materials and nothing else, so on that screen the equipment
+     * list is permanently "Nothing yet." under a line quoting the odds of a
+     * Legendary per KILL - a panel telling a fisherman his fishing is failing
+     * at something fishing does not do. Combat shows both.
+     */
+    showEquipment?: boolean;
   }
 
-  const { registry }: Props = $props();
-
-  /** ResponseLootDropPacket's DropKind. */
-  const KIND_MATERIAL = 0;
-  const KIND_EQUIPMENT = 1;
+  const { registry, showEquipment = true }: Props = $props();
 
   interface Row {
     key: string;
@@ -39,10 +53,10 @@
     newest: number;
   }
 
-  const rows = $derived.by((): Row[] => {
+  function aggregate(entries: LootEntry[]): Row[] {
     const byKey = new Map<string, Row>();
 
-    for (const entry of $lootLog as LootEntry[]) {
+    for (const entry of entries) {
       // Kind is part of the key so a material and an equipment piece that
       // happen to share an id never merge into one row.
       const key = `${entry.dropKind}:${entry.itemId}:${entry.qualityTier}`;
@@ -65,85 +79,120 @@
     }
 
     return [...byKey.values()].sort(
-      // Rarity first, then equipment above materials at the same tier, then
-      // most recent - so the top of the list is stable and the tail is where
-      // churn happens.
-      (a, b) =>
-        b.qualityTier - a.qualityTier ||
-        (b.dropKind === KIND_EQUIPMENT ? 1 : 0) - (a.dropKind === KIND_EQUIPMENT ? 1 : 0) ||
-        b.newest - a.newest,
+      (a, b) => b.qualityTier - a.qualityTier || b.newest - a.newest,
     );
-  });
-
-  const equipmentCount = $derived(
-    rows.filter((r) => r.dropKind === KIND_EQUIPMENT).reduce((n, r) => n + r.count, 0),
-  );
-  const materialCount = $derived(
-    rows.filter((r) => r.dropKind === KIND_MATERIAL).reduce((n, r) => n + r.quantity, 0),
-  );
-
-  function label(row: Row): string {
-    return itemName(registry, row.itemId);
   }
+
+  const equipmentRows = $derived(aggregate($lootLogEquipment as LootEntry[]));
+  const materialRows = $derived(aggregate($lootLogMaterials as LootEntry[]));
+
+  const equipmentCount = $derived(equipmentRows.reduce((n, r) => n + r.count, 0));
+  const materialCount = $derived(materialRows.reduce((n, r) => n + r.quantity, 0));
+
+  // Modul: SAY HOW RARE RARE ACTUALLY IS.
+  //
+  // Asked, in effect, by "it's strange that nothing better than Rare dropped
+  // and I have 23,804 kills". Nothing was wrong - gear drops on 15% of kills
+  // and Legendary-or-better is 0.85% of those, so it is one kill in about
+  // thirteen hundred. Twenty-four thousand kills is a couple of dozen, and the
+  // chest sweep deletes everything up to Epic, so what a player SEES at the top
+  // is whatever they last fused.
+  //
+  // The odds were computable all along - rarityOdds() was written, exported and
+  // imported by nothing. A player counting kills against a number nobody showed
+  // them will conclude the game is broken, and be reasonable about it.
+  const odds = [
+    { tier: 7, kills: killsPerRarity(7) },
+    { tier: 10, kills: killsPerRarity(10) },
+  ];
 </script>
 
 <div class="loot">
-  <div class="head">
-    <h3>Loot received</h3>
-    {#if rows.length > 0}
-      <span class="dim tiny">
-        {equipmentCount} equipment &middot; {materialCount.toLocaleString()} materials
-      </span>
-    {/if}
-  </div>
+  <h2>Loot drops</h2>
 
-  {#if rows.length === 0}
-    <p class="dim">Nothing yet.</p>
-  {:else}
-    <ul>
-      {#each rows as row (row.key)}
-        {@const isRare = row.dropKind === KIND_EQUIPMENT && shouldGlow(row.qualityTier)}
-        <li class:rare={isRare} class:folk-sweep={isRare}>
-          <!-- Modul: A TOP-TIER DROP LOOKED LIKE EVERY OTHER LINE OF TEXT.
-               It had a sound and a colour and nothing else, so the one drop in
-               twenty-one that is worth stopping for scrolled past at the same
-               speed as a wolf pelt. Sparks in the item's own rarity colour,
-               and the shared sweep across the row.
+  {#if showEquipment}
+  <section class="lootsection">
+    <div class="head">
+      <h3>Equipment</h3>
+      {#if equipmentCount > 0}
+        <span class="dim tiny">{equipmentCount} piece{equipmentCount === 1 ? '' : 's'}</span>
+      {/if}
+    </div>
 
-               Gated on shouldGlow - tier 10 and up - for the reason that
-               function exists: an effect on every drop is an effect on none. -->
-          {#if isRare}
-            <span class="burstwrap">
-              <Burst color={rarityColor(row.qualityTier)} reach={2.4} count={10} />
-            </span>
-          {/if}
+    <p class="dim tiny odds">
+      {#each odds as row, i}{i > 0 ? ' · ' : ''}{rarityName(row.tier)}+ about 1 in {row.kills.toLocaleString()} kills{/each}
+    </p>
 
-          <span
-            class="name"
-            style="color: {row.dropKind === KIND_MATERIAL ? 'var(--text)' : rarityColor(row.qualityTier)}"
-            class:rarity-glow={isRare}
-          >
-            {label(row)}
-          </span>
-
-          {#if row.dropKind === KIND_EQUIPMENT}
-            <span class="tag kept-tag">equipment</span>
-          {/if}
-
-          <span class="qty">
-            {#if row.dropKind === KIND_EQUIPMENT}
-              x{row.count}
-            {:else}
-              {row.quantity.toLocaleString()}
+    {#if equipmentRows.length === 0}
+      <p class="dim tiny">Nothing yet.</p>
+    {:else}
+      <ul>
+        {#each equipmentRows as row (row.key)}
+          {@const isRare = shouldGlow(row.qualityTier)}
+          <li class:rare={isRare} class:folk-sweep={isRare}>
+            <!-- Modul: A TOP-TIER DROP LOOKED LIKE EVERY OTHER LINE OF TEXT.
+                 Gated on shouldGlow - tier 10 and up - for the reason that
+                 function exists: an effect on every drop is an effect on none. -->
+            {#if isRare}
+              <span class="burstwrap">
+                <Burst color={rarityColor(row.qualityTier)} reach={2.4} count={10} />
+              </span>
             {/if}
-          </span>
-        </li>
-      {/each}
-    </ul>
+
+            <!-- Modul: NAME THE RARITY, do not only colour it.
+                 The same base item at three different qualities renders as
+                 three rows, and without the tier they read as duplicates of
+                 one thing - on a panel whose entire purpose is telling the
+                 player how good a drop was. Colour alone also fails anyone who
+                 cannot separate the fourteen hues. -->
+            <span class="name" style="color: {rarityColor(row.qualityTier)}" class:rarity-glow={isRare}>
+              {itemName(registry, row.itemId)}
+            </span>
+            <span class="tier" style="color: {rarityColor(row.qualityTier)}">{rarityName(row.qualityTier)}</span>
+            <span class="qty">x{row.count}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
   {/if}
+
+  <section class="lootsection">
+    <div class="head">
+      <h3>Materials</h3>
+      {#if materialCount > 0}
+        <span class="dim tiny">{materialCount.toLocaleString()}</span>
+      {/if}
+    </div>
+
+    {#if materialRows.length === 0}
+      <p class="dim tiny">Nothing yet.</p>
+    {:else}
+      <ul>
+        {#each materialRows as row (row.key)}
+          <li>
+            <span class="name">{itemName(registry, row.itemId)}</span>
+            <span class="qty">{row.quantity.toLocaleString()}</span>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
 </div>
 
 <style>
+  .loot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+  }
+
+  .lootsection {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+
   .head {
     display: flex;
     align-items: baseline;
@@ -152,79 +201,72 @@
   }
 
   h3 {
-    margin: 1.1rem 0 0.4rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
-  }
-
-  .dim {
-    color: var(--text-dim);
-  }
-  .tiny {
-    font-size: 0.72rem;
+    margin: 0;
+    font-size: 0.9rem;
   }
 
   ul {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: grid;
-    gap: 0.2rem;
-    max-height: 22rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    /* Modul: each list scrolls on its OWN, so a long material run cannot push
+       the equipment list off the screen - which is the display half of the
+       defect the split buffers fixed. */
+    max-height: 16rem;
     overflow-y: auto;
   }
 
   li {
-    display: flex;
-    align-items: baseline;
-    gap: 0.45rem;
-    font-size: 0.83rem;
-  }
-
-  /* Positioned so the burst can anchor to the row it belongs to, and padded so
-     the sweep has something to cross. */
-  li.rare {
     position: relative;
-    border-radius: var(--radius);
-    padding: 0.1rem 0.25rem;
-  }
-
-  .burstwrap {
-    position: absolute;
-    left: 1.2rem;
-    top: 50%;
-    width: 0;
-    height: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.82rem;
+    padding: 0.1rem 0;
+    border-bottom: 1px solid var(--border);
   }
 
   .name {
-    flex: 1;
+    flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .tag {
-    font-size: 0.62rem;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-dim);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    padding: 0 0.35rem;
-  }
-
-  .kept-tag {
-    color: var(--good);
-    border-color: var(--good);
+  .tier {
+    font-size: 0.72rem;
+    opacity: 0.85;
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .qty {
     font-variant-numeric: tabular-nums;
-    color: var(--text-dim);
-    font-size: 0.78rem;
+    opacity: 0.85;
+    flex: 0 0 auto;
+  }
+
+  .burstwrap {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .odds {
+    margin: 0 0 0.15rem;
+    opacity: 0.55;
+  }
+
+  .dim {
+    opacity: 0.7;
+  }
+
+  .tiny {
+    font-size: 0.75rem;
   }
 </style>
