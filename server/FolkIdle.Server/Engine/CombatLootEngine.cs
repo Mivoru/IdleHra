@@ -433,6 +433,27 @@ namespace FolkIdle.Server.Engine
         // ProcessMonsterLootDropAsync for why drops are held until commit.
         private readonly List<Network.ResponseLootDropPacket> _pendingDrops = new(8);
 
+        // Modul: THE LOOT PATH HAD NO OBSERVABILITY AT ALL, and it cost a day.
+        //
+        // Reported live: kills climbing, gold climbing, gathering materials
+        // climbing, and not one equipment row or combat material for hours.
+        // Every part answered for itself - the roll matches its table over two
+        // million samples, every monster grants gear against a real database,
+        // the content tables are correct, the drop chance has only ever gone up
+        // - and none of that could say which HALF was broken, because the queue
+        // between them printed nothing whether it carried everything or
+        // nothing.
+        //
+        // One line a minute, and only when something moved. It answers the only
+        // question that matters when this is reported again: did the requests
+        // arrive (the tick's half) and did rows come out (this half)?
+        private static long _requestsDrained;
+        private static long _killsRolled;
+        private static long _equipmentWritten;
+        private static long _materialsGranted;
+        private static long _salvagedOnTheWayIn;
+        private long _lastLootReportMs;
+
         public CombatLootEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
         {
             _serviceProvider = serviceProvider;
@@ -453,20 +474,50 @@ namespace FolkIdle.Server.Engine
 
                 while (DropRequestQueue.TryDequeue(out var request))
                 {
+                    int killsThisRequest = request.Kills <= 0 ? 1 : request.Kills;
+                    _requestsDrained++;
+                    _killsRolled += killsThisRequest;
+
                     await ProcessMonsterLootDropAsync(
                         request.PlayerId, request.MonsterId, request.LootLuckPct,
                         request.MaterialQuantityPct, request.BonusRarityTiers,
                         // Zero means one - see CombatLootDropRequest.Kills.
-                        request.Kills <= 0 ? 1 : request.Kills,
+                        killsThisRequest,
                         request.SkipMaterialRoll,
                         request.AutoSalvageBelowTier);
                 }
+
+                ReportLootThroughput();
 
                 while (GatheringGrantQueue.TryDequeue(out var gathered))
                 {
                     await GrantGatheredMaterialAsync(gathered.PlayerId, gathered.ActivityId, gathered.ItemId, gathered.Quantity);
                 }
             }
+        }
+
+        /// <summary>
+        /// One line a minute while loot is flowing, silent when nothing is.
+        /// See the counters' declaration for why this exists.
+        /// </summary>
+        private void ReportLootThroughput()
+        {
+            long nowMs = Environment.TickCount64;
+            if (nowMs - _lastLootReportMs < 60_000) return;
+            _lastLootReportMs = nowMs;
+
+            if (_killsRolled == 0) return;
+
+            Console.WriteLine(
+                $"Loot: {_requestsDrained} requests / {_killsRolled} kills rolled -> "
+                + $"{_equipmentWritten} equipment, {_materialsGranted} materials, "
+                + $"{_salvagedOnTheWayIn} auto-salvaged");
+
+            _requestsDrained = 0;
+            _killsRolled = 0;
+            _equipmentWritten = 0;
+            _materialsGranted = 0;
+            _salvagedOnTheWayIn = 0;
         }
 
         // Modul: Architecture Overhaul, Part 3. Independent Multi-Drop
@@ -623,6 +674,7 @@ namespace FolkIdle.Server.Engine
                         if (lootTable.Length > 0)
                         {
                             await GrantMaterialDropAsync(dbContext, playerId, monsterId, lootTable, materialQuantityPct);
+                            _materialsGranted++;
                         }
                     }
 
@@ -871,6 +923,7 @@ namespace FolkIdle.Server.Engine
             {
                 // Same valuation as a manual chest sale - one function, so
                 // salvaging and selling can never drift into two economies.
+                _salvagedOnTheWayIn++;
                 return VillageChestEngine.ValueEquipment(baseItemId, tier);
             }
 
@@ -896,6 +949,7 @@ namespace FolkIdle.Server.Engine
                 AffixPayload = affixPayload,
                 IsAffixLocked = false
             });
+            _equipmentWritten++;
 
             PublishLootDrop(playerId, monsterId, chosenItemId, 1, (byte)tier, Network.ResponseLootDropPacket.DropKindEquipment);
 
