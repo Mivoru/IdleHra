@@ -283,4 +283,85 @@ describe('the numbers the client mirrors still match the server', () => {
       num(rules, /FirstClearHpMultiplier = (\d+)/, 'server first-clear hp'),
     );
   });
+
+  // Modul: the world boss rework of 2026-09-05 added SIX hand-mirrored numbers
+  // in one commit - the plate count, the weak-point multiplier, the hidden
+  // sentinel, the session cap, and it inherited an attempt cap that had never
+  // been guarded at all. Every one of them decides something the screen says
+  // out loud BEFORE the player commits, which is exactly the case this file
+  // exists for: change the rule, and the preview goes on confidently quoting
+  // the old answer.
+  it('world boss: the armour, its multiplier and the hidden sentinel', () => {
+    const engine = read(serverRoot, 'Engine', 'WorldBossEngine.cs');
+    const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
+
+    expect(num(commands, /BOSS_PLATE_COUNT = (\d+)/, 'client plate count')).toBe(
+      num(engine, /PlateCount = (\d+)/, 'server plate count'),
+    );
+    expect(num(commands, /BOSS_WEAK_PLATE_MULTIPLIER = (\d+)/, 'client weak multiplier')).toBe(
+      num(engine, /WeakPlateDamageMultiplier = ([\d.]+)/, 'server weak multiplier'),
+    );
+    // The sentinel is not a balance number, but a mismatch would make every
+    // client believe the weak point had been found on plate 255.
+    expect(num(commands, /BOSS_WEAK_PLATE_HIDDEN = (\d+)/, 'client hidden sentinel')).toBe(
+      num(engine, /WeakPlateHidden = (\d+)/, 'server hidden sentinel'),
+    );
+  });
+
+  it('world boss: the attempt budget and the battle session cap', () => {
+    const engine = read(serverRoot, 'Engine', 'WorldBossEngine.cs');
+    const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
+
+    expect(num(commands, /MAX_BOSS_ATTEMPTS = (\d+)/, 'client attempt cap')).toBe(
+      num(engine, /MaxAttemptsPerEncounter = (\d+)/, 'server attempt cap'),
+    );
+
+    // THIS ONE COST THE MOST BY BEING UNSAID. The server gives a player 300
+    // seconds from their first strike to spend the other two, and until
+    // 2026-09-05 nothing carried that - the button stayed enabled and the
+    // attack rolled back in silence for the rest of an encounter that runs for
+    // up to seven days. The screen counts down against this number now, so the
+    // two halves have to agree or the countdown lies.
+    expect(num(commands, /BOSS_SESSION_CAP_SECONDS = (\d+)/, 'client session cap')).toBe(
+      num(engine, /BattleSessionCapSeconds = (\d+)L/, 'server session cap'),
+    );
+  });
+
+  it('combat log: the event kinds and flags the server actually sends', () => {
+    // The fight log decodes a numeric EventKind and a Flags bitmask into the
+    // words a player reads. A mismatch here does not throw - it silently
+    // relabels every line, which is worse: "You miss" where the server said
+    // "Critical".
+    const packet = read(serverRoot, 'Network', 'ResponseCombatEventPacket.cs');
+    const store = read(clientRoot, 'lib', 'stores', 'combatLog.ts');
+
+    const kinds: [string, string][] = [
+      ['PlayerHit', 'KindPlayerHit'],
+      ['PlayerMiss', 'KindPlayerMiss'],
+      ['MonsterHit', 'KindMonsterHit'],
+      ['MonsterMiss', 'KindMonsterMiss'],
+      ['Lifesteal', 'KindLifesteal'],
+      ['Kill', 'KindKill'],
+    ];
+    for (const [clientName, serverName] of kinds) {
+      expect(
+        num(store, new RegExp(`${clientName}: (\\d+)`), `client ${clientName}`),
+      ).toBe(num(packet, new RegExp(`${serverName} = (\\d+)`), `server ${serverName}`));
+    }
+
+    // The flags are written as shifts server-side, so they are compared as the
+    // shift rather than the value.
+    const flags: [string, string, number][] = [
+      ['Crit', 'FlagCrit', 0],
+      ['Blocked', 'FlagBlocked', 1],
+      ['Burn', 'FlagBurn', 2],
+      ['Thorns', 'FlagThorns', 3],
+    ];
+    for (const [clientName, serverName, shift] of flags) {
+      expect(num(store, new RegExp(`${clientName}: (\\d+)`), `client ${clientName}`)).toBe(
+        1 << num(packet, new RegExp(`${serverName} = 1 << (\\d+)`), `server ${serverName}`),
+      );
+      expect(num(packet, new RegExp(`${serverName} = 1 << (\\d+)`), `server ${serverName}`)).toBe(shift);
+    }
+  });
 });
