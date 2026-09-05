@@ -382,7 +382,6 @@ export const CommandType = {
   ExecuteBreeding: 15,
   UpdateAutoEatThreshold: 16,
   InitializeCrafting: 18,
-  RegisterWorldBossDamage: 19,
   UpgradeTool: 21,
   AssignMentor: 22,
   ContributeToWarSupply: 23,

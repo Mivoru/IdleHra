@@ -32,7 +32,17 @@ namespace FolkIdle.Server.Network
         ExecuteBreeding = 15,
         UpdateAutoEatThreshold = 16,
         InitializeCrafting = 18,
-        RegisterWorldBossDamage = 19,
+        // 19 was RegisterWorldBossDamage, RETIRED. It was a second entry into
+        // WorldBossEngine.QueueAttack with weaker validation than
+        // AttackWorldBoss - it took the damage figure straight out of
+        // cmd.TargetId and only clamped it, where AttackWorldBoss checks the
+        // boss instance, that the event is live, and that the boss is not
+        // already dead. No client path ever sent it.
+        //
+        // The handler went first and the enum value outlived it, so the opcode
+        // stayed on the generated protocol and on the wire, accepted and doing
+        // nothing. The number is deliberately NOT reused - see the note at the
+        // top of NEXT_STEPS_BACKLOG.md on why a gap is fine.
         // 20 intentionally unused - was LegacyUpgradeBuilding, a
         // buildingType 1-4-only wrapper that the command dispatch loop never
         // actually routed to (UpgradeBuilding = 29, below, is the real one,
