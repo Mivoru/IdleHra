@@ -16,7 +16,7 @@ import {
   type InterpolatedFields,
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
-import { pushCombatEvent, resetCombatLog } from './combatLog';
+import { pushCombatEvent, resetCombatLog, CombatEventKind, CombatEventFlag } from './combatLog';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
 import { play, playHit, playWithFallback } from '../ui/audio';
@@ -470,35 +470,20 @@ export function startSession(token: string): void {
       );
 
       // Fed from the AUTHORITATIVE packet, never the interpolated value - the
-      // smoothed number passes through every intermediate value on its way,
-      // which would turn one hit into a blizzard of fictional tiny ones.
-      // A monster's health reaching zero on a snapshot that still names it is
-      // the only "you won" signal available - see damage.ts for why this wire
-      // carries no combat events at all.
+      // smoothed number passes through every intermediate value on its way.
+      //
+      // Modul: THE DEATH SOUND STAYS ON THE SNAPSHOT, and the damage does not.
+      //
+      // A kill also arrives on the combat event feed, which is where the
+      // floating numbers now come from - but a monster whose health reaches
+      // zero on a snapshot that still names it is a second, independent witness
+      // to the same moment, and the sound is cheap enough that the belt and the
+      // braces are both worth having. Rate-limited by lastMonsterHp, so a
+      // stream of zero-health snapshots plays once.
       if (lastMonsterHp > 0 && packet.CurrentMonsterHp <= 0 && packet.CurrentMonsterId > 0) {
         play('monsterDefeated');
       }
       lastMonsterHp = packet.CurrentMonsterHp;
-
-      const hit = damageFeed.push({
-        monsterId: packet.CurrentMonsterId,
-        monsterHp: packet.CurrentMonsterHp,
-        atMs: arrivedAtMs,
-        wasCrit: Number(packet.LastHitWasCrit) === 1,
-        weaponKind: Number(packet.EquippedWeaponKind),
-      });
-      if (hit !== null) {
-        damageEvents.set(damageFeed.current);
-        typicalHit.set(damageFeed.typicalHit);
-
-        // Modul: A HIT MADE A SOUND AND A MARK.
-        //
-        // Combat was silent apart from the monster dying - the one thing that
-        // happens every 1.5 seconds for hours had no feedback at all. The clip
-        // is chosen by weapon family, so a wand does not sound like a sword.
-        playHit(hit.weaponKind, hit.isCrit);
-        hitSparks.set({ id: hit.id, weaponKind: hit.weaponKind, isCrit: hit.isCrit });
-      }
 
       // Turns every silently-rejected command into an explanation. Without
       // this the player presses a button, nothing happens, and nothing
@@ -703,10 +688,43 @@ export function startSession(token: string): void {
       startPump();
     },
 
-    // Modul: the fight log's only source. See stores/combatLog.ts for why it
-    // is a server event and not another inference from CurrentMonsterHp.
+    // Modul: the fight log's only source, and the floating numbers' too.
+    //
+    // Both used to be inferred from the difference between two CurrentMonsterHp
+    // snapshots, because the wire carried no combat event. It does now, and
+    // keeping the inference alongside it would be two sources for one truth -
+    // this codebase's dominant bug class.
+    //
+    // The inference was also WRONG about the case that mattered. It refuses to
+    // report when the monster changed, which is exactly what a one-hit kill
+    // looks like, so the player whose character killed something instantly saw
+    // no number at all. See stores/damage.ts.
     onCombatEvent: (packet: ResponseCombatEvent) => {
       pushCombatEvent(packet);
+
+      // Only the player's own blows float. A monster's hit moves the player's
+      // health bar, which is its own feedback, and a screen that threw a number
+      // for every event would be unreadable at this cadence.
+      if (Number(packet.EventKind) !== CombatEventKind.PlayerHit) return;
+
+      const hit = damageFeed.push(
+        Number(packet.Amount),
+        (Number(packet.Flags) & CombatEventFlag.Crit) !== 0,
+        Number(get(playerState)?.EquippedWeaponKind ?? 0),
+        connection.serverNowMs(),
+      );
+      if (hit === null) return;
+
+      damageEvents.set(damageFeed.current);
+      typicalHit.set(damageFeed.typicalHit);
+
+      // Modul: A HIT MADE A SOUND AND A MARK.
+      //
+      // Combat was silent apart from the monster dying - the one thing that
+      // happens every 1.5 seconds for hours had no feedback at all. The clip
+      // is chosen by weapon family, so a wand does not sound like a sword.
+      playHit(hit.weaponKind, hit.isCrit);
+      hitSparks.set({ id: hit.id, weaponKind: hit.weaponKind, isCrit: hit.isCrit });
     },
 
     onLootDrop: (packet: ResponseLootDrop) => {
