@@ -467,6 +467,11 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public static void NoteKillEnqueued() => Interlocked.Increment(ref _killsEnqueued);
 
+        private static long _codexKills;
+
+        /// <summary>A kill reached the codex enqueue, sixty lines above the loot one.</summary>
+        public static void NoteCodexKill() => Interlocked.Increment(ref _codexKills);
+
         public CombatLootEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
         {
             _serviceProvider = serviceProvider;
@@ -589,14 +594,17 @@ namespace FolkIdle.Server.Engine
             // was demonstrably flowing - telemetry that lies by silence is
             // worse than none, because silence is what "no requests" looks
             // like. See LootThroughputReportTests.
-            if (_killsRolled == 0 && Interlocked.Read(ref _killsEnqueued) == 0) return;
+            if (_killsRolled == 0
+                && Interlocked.Read(ref _killsEnqueued) == 0
+                && Interlocked.Read(ref _codexKills) == 0) return;
 
             long nowMs = Environment.TickCount64;
             if (nowMs - _lastLootReportMs < 60_000) return;
             _lastLootReportMs = nowMs;
 
             Console.WriteLine(
-                $"Loot: tick enqueued {Interlocked.Exchange(ref _killsEnqueued, 0)} kills, "
+                $"Loot: tick saw {Interlocked.Exchange(ref _codexKills, 0)} kills, "
+                + $"enqueued {Interlocked.Exchange(ref _killsEnqueued, 0)}, "
                 + $"worker drained {_requestsDrained} requests / {_killsRolled} kills -> "
                 + $"{_equipmentWritten} equipment, {_materialsGranted} materials, "
                 + $"{_salvagedOnTheWayIn} auto-salvaged, {_requestsFailed} failed, "

@@ -6263,6 +6263,14 @@ namespace FolkIdle.Server.Domain.Combat
                     GainedXp = seasonalCombatXp
                 });
 
+                // Modul: counted HERE as well as sixty lines below, because the
+                // live server insisted on something the source says is
+                // impossible - codex kills climbing while the loot enqueue in
+                // this same straight-line block never fired. One of those two
+                // observations is wrong, and only the running process can say
+                // which.
+                CombatLootEngine.NoteCodexKill();
+
                 // Modul: one shared definition. This site and CombatLootEngine
                 // both used `% 6 == 0`, copied between them on the reasoning
                 // that it kept "regional boss" consistent - which it did, at
