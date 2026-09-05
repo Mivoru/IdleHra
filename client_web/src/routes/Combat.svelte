@@ -28,6 +28,8 @@
     killPulse,
     CombatEventKind,
     CombatEventFlag,
+    LOOT_LINE_KIND,
+    LootDropKind,
   } from '../lib/stores/combatLog';
 
   const snap = $derived($playerState);
@@ -381,8 +383,17 @@
                   class:miss={line.kind === CombatEventKind.PlayerMiss || line.kind === CombatEventKind.MonsterMiss}
                   class:kill={line.kind === CombatEventKind.Kill}
                   class:heal={line.kind === CombatEventKind.Lifesteal}
-                  class:incoming={line.kind === CombatEventKind.MonsterHit}>
-                {describeCombatLine(line, monsterName(registry, line.monsterId))}
+                  class:incoming={line.kind === CombatEventKind.MonsterHit}
+                  class:loot={line.kind === LOOT_LINE_KIND}
+                  class:lootrare={line.kind === LOOT_LINE_KIND
+                    && line.lootDropKind === LootDropKind.Equipment
+                    && (line.lootTier ?? 0) >= 7}>
+                {describeCombatLine(
+                  line,
+                  line.kind === LOOT_LINE_KIND
+                    ? itemName(registry, line.lootItemId ?? 0)
+                    : monsterName(registry, line.monsterId),
+                )}
               </li>
             {/each}
           </ol>
@@ -764,38 +775,69 @@
     min-width: 0;
   }
 
-  /* Modul: the death. Deliberately a different shape from the hit flash - a
-     flinch says "that hurt" and this says "that was the last one", so they
-     must not read as the same event at different intensities. Falls, turns
-     grey and fades, then the next monster arrives on the following snapshot.
+  /* Modul: the death. DISINTEGRATION, not a fall.
+     Asked for directly - "something like when Thanos snaps" - and the falling,
+     rotating, greying version that shipped first was wrong for a reason worth
+     keeping: at this cadence a monster dies every second or so, and a body
+     toppling over reads as heavy. A dissolve is over before it can feel slow.
+
+     Built from a MASK rather than particles. A particle system would need a
+     canvas, a per-frame loop and a pool, for an effect that lasts 420ms on a
+     sprite the size of a thumbnail - and this codebase has already paid for
+     keying a per-frame effect to combat (it starved the main thread). Two
+     radial gradients scrolling across an alpha mask eat the sprite from one
+     corner, which is the same trick the film used and costs one compositor
+     layer.
+
      `forwards` so it holds the final frame rather than snapping back for the
      few hundred milliseconds before the replacement lands. */
   .dying {
-    animation: monster-death 480ms ease-in forwards;
+    animation: monster-disintegrate 420ms cubic-bezier(0.4, 0, 0.9, 0.6) forwards;
+    /* The mask is animated by moving its position, which the compositor can do
+       without repainting the sprite. */
+    -webkit-mask-image: radial-gradient(circle at 12% 88%, transparent 0 34%, #000 62%);
+    mask-image: radial-gradient(circle at 12% 88%, transparent 0 34%, #000 62%);
+    -webkit-mask-size: 300% 300%;
+    mask-size: 300% 300%;
   }
 
-  @keyframes monster-death {
+  @keyframes monster-disintegrate {
     0% {
-      transform: rotate(0) translateY(0) scale(1);
-      filter: grayscale(0);
+      -webkit-mask-position: 100% 0%;
+      mask-position: 100% 0%;
+      filter: brightness(1.9) saturate(0.4);
+      transform: scale(1.05);
       opacity: 1;
     }
-    35% {
-      transform: rotate(-8deg) translateY(2px) scale(1.04);
-      filter: grayscale(0.3) brightness(1.4);
+    /* A single bright frame first: the blow lands, THEN it comes apart. Without
+       it the dissolve starts before the hit has registered and reads as the
+       sprite failing to load. */
+    12% {
+      -webkit-mask-position: 92% 8%;
+      mask-position: 92% 8%;
+      filter: brightness(2.4) saturate(0.2);
+      transform: scale(1.07);
       opacity: 1;
     }
     100% {
-      transform: rotate(-70deg) translateY(26px) scale(0.82);
-      filter: grayscale(1) brightness(0.6);
+      -webkit-mask-position: 0% 100%;
+      mask-position: 0% 100%;
+      filter: brightness(1.1) saturate(0.9);
+      /* Drifts up and slightly apart rather than falling - ash goes the other
+         way from a body. */
+      transform: scale(1.14) translateY(-10px);
       opacity: 0;
     }
   }
 
-  /* A player who does not want the motion should not be given it. */
+  /* A player who does not want the motion should not be given it. The mask has
+     to be cleared too, or the sprite keeps whatever slice of itself the static
+     gradient happens to cover. */
   @media (prefers-reduced-motion: reduce) {
     .dying {
       animation: none;
+      -webkit-mask-image: none;
+      mask-image: none;
       opacity: 0.35;
       filter: grayscale(1);
     }
@@ -842,6 +884,19 @@
 
   .fightlog li.heal {
     color: var(--good);
+  }
+
+  /* Modul: loot is the REWARD, so it reads differently from the blows. The
+     rare tier gets the rarity colour, because a Legendary scrolling past at
+     the same weight as a wolf pelt is the thing SessionLoot already had to
+     solve once. */
+  .fightlog li.loot {
+    color: var(--good);
+  }
+
+  .fightlog li.lootrare {
+    color: var(--rarity-10, #e8b339);
+    font-weight: 600;
   }
 
   .fightlog li.kill {

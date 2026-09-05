@@ -305,6 +305,18 @@ await page.waitForTimeout(4000);
   // Both directions of the fight, so a feed that only reports one half is
   // still a failure. The player's own swing and the monster's reply are
   // resolved in different branches of the tick and published separately.
+  // Modul: AND IT HAS TO MENTION THE LOOT.
+  //
+  // Reported as "it looks like no items are dropping" on a build where they
+  // demonstrably were - the log narrated everything about a fight except its
+  // reward, so the only live account of what was happening said nothing about
+  // the one part the player was looking for.
+  record(
+    'the fight log reports what dropped',
+    (logLines ?? []).some((l) => /^(Dropped|Salvaged into):?/.test(l)),
+    (logLines ?? []).find((l) => /^Dropped/.test(l)) ?? 'no loot line in the log',
+  );
+
   record(
     'the log reports both sides of the fight',
     (logLines ?? []).some((l) => /^(Critical! )?You (hit|miss)/.test(l))

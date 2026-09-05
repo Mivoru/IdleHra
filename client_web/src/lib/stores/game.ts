@@ -16,7 +16,7 @@ import {
   type InterpolatedFields,
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
-import { pushCombatEvent, resetCombatLog, CombatEventKind, CombatEventFlag } from './combatLog';
+import { pushCombatEvent, pushLootLine, resetCombatLog, CombatEventKind, CombatEventFlag } from './combatLog';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
 import { play, playHit, playWithFallback } from '../ui/audio';
@@ -729,6 +729,24 @@ export function startSession(token: string): void {
 
     onLootDrop: (packet: ResponseLootDrop) => {
       play(packet.QualityTier >= 10 ? 'lootRare' : 'lootDropped');
+
+      // Modul: AND THE FIGHT LOG SAYS SO.
+      //
+      // Reported as "it looks like no items are dropping". They were - the
+      // database showed 31 recent drops on that account - but the log narrated
+      // the hits, the misses, the lifesteal and the kill and never once
+      // mentioned the reward. Somebody reading a live account of a fight that
+      // says nothing about loot will conclude there is none.
+      //
+      // The name is resolved here rather than in the store because the content
+      // registry lives on this side of the wire; the packet carries only a
+      // numeric item id.
+      pushLootLine(
+        Number(packet.ItemId),
+        Number(packet.Quantity),
+        Number(packet.QualityTier),
+        Number(packet.DropKind),
+      );
 
       lootLog.update((entries) => {
         const next: LootEntry[] = [
