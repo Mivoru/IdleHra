@@ -78,6 +78,9 @@
     WORLD_BOSS_HP,
     WORLD_BOSS_ATTEMPTS,
     WORLD_BOSS_DAMAGE_FLOOR,
+    WORLD_BOSS_PLATES,
+    WORLD_BOSS_WEAK_MULTIPLIER,
+    WORLD_BOSS_SESSION_MINUTES,
     WORLD_BOSS_MAILBOX_LIMIT,
     WORLD_BOSS_REWARDS,
     DAILY_LOGIN_MATRICES,
@@ -1272,8 +1275,27 @@
             in real time.
           </p>
           <ul class="styled-list">
-            <li><strong>{WORLD_BOSS_ATTEMPTS} attempts per encounter.</strong></li>
-            <li>Your hit is your own typical damage, floored at {WORLD_BOSS_DAMAGE_FLOOR.toLocaleString()} — an account that has never fought still contributes something.</li>
+            <li><strong>{WORLD_BOSS_ATTEMPTS} attempts per encounter</strong>, and each one is a choice.</li>
+            <li>
+              <strong>The boss wears {WORLD_BOSS_PLATES} armour plates and one of them is soft.</strong>
+              Striking the soft one does {WORLD_BOSS_WEAK_MULTIPLIER}x damage. Striking any other does
+              full damage and <strong>breaks</strong> that plate — for everyone, for the rest of the
+              encounter.
+            </li>
+            <li>
+              So the boss you arrive at is a message from everyone who came before you: read the
+              plates before you swing. Which one is soft changes every encounter, so it cannot be
+              looked up.
+            </li>
+            <li>
+              A wrong guess is <strong>not punished</strong> — it does full damage and strips armour
+              that narrows the search for whoever is next.
+            </li>
+            <li>Your hit is your character's real attack power, floored at {WORLD_BOSS_DAMAGE_FLOOR.toLocaleString()} — an account that has never fought still contributes something.</li>
+            <li>
+              <strong>You have {WORLD_BOSS_SESSION_MINUTES} minutes from your first strike</strong> to
+              use the rest. After that your remaining attempts are gone until the next encounter.
+            </li>
             <li><strong>An empty larder makes the server discard your attack without a word.</strong> Stock it before you swing.</li>
             <li>Rewards land in the mailbox when the boss dies, by your percentile among everybody who dealt damage.</li>
           </ul>

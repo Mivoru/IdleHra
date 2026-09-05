@@ -327,6 +327,37 @@ describe('the numbers the client mirrors still match the server', () => {
     );
   });
 
+  it('wiki: the world boss page quotes the rules the server enforces', () => {
+    // Modul: THE WIKI TAUGHT A MECHANIC THE GAME NO LONGER HAD.
+    //
+    // Before 2026-09-05 the page quoted a 100,000,000 damage CEILING - the
+    // clamp on the damage figure the client used to compute about itself. The
+    // client stopped sending one, so the ceiling stopped existing, and the page
+    // would have gone on explaining it. This project has already shipped a wiki
+    // that taught the wrong thing once: its core loop described the old,
+    // pre-2026-09-02 order and said the FOURTH monster kills an unfed
+    // character.
+    const engine = read(serverRoot, 'Engine', 'WorldBossEngine.cs');
+    const wiki = read(clientRoot, 'lib', 'ui', 'wikiData.ts');
+
+    expect(num(wiki, /WORLD_BOSS_PLATES = (\d+)/, 'wiki plate count')).toBe(
+      num(engine, /PlateCount = (\d+)/, 'server plate count'),
+    );
+    expect(num(wiki, /WORLD_BOSS_WEAK_MULTIPLIER = (\d+)/, 'wiki weak multiplier')).toBe(
+      num(engine, /WeakPlateDamageMultiplier = ([\d.]+)/, 'server weak multiplier'),
+    );
+    expect(num(wiki, /WORLD_BOSS_ATTEMPTS = (\d+)/, 'wiki attempt cap')).toBe(
+      num(engine, /MaxAttemptsPerEncounter = (\d+)/, 'server attempt cap'),
+    );
+    // The page says the session in MINUTES; the server counts seconds.
+    expect(num(wiki, /WORLD_BOSS_SESSION_MINUTES = (\d+)/, 'wiki session minutes') * 60).toBe(
+      num(engine, /BattleSessionCapSeconds = (\d+)L/, 'server session cap'),
+    );
+
+    // And the retired ceiling must not come back as a number nobody enforces.
+    expect(wiki).not.toContain('WORLD_BOSS_DAMAGE_CEILING =');
+  });
+
   it('combat log: the event kinds and flags the server actually sends', () => {
     // The fight log decodes a numeric EventKind and a Flags bitmask into the
     // words a player reads. A mismatch here does not throw - it silently

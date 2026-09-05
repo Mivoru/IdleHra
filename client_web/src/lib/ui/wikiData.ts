@@ -447,8 +447,25 @@ export const MARKET_FEE_BRACKETS: readonly { wealth: string; feePct: number }[] 
 export const WORLD_BOSS_HP = 50_000_000;
 export const WORLD_BOSS_ATTEMPTS = 3;
 export const WORLD_BOSS_DAMAGE_FLOOR = 1000;
-export const WORLD_BOSS_DAMAGE_CEILING = 100_000_000;
 export const WORLD_BOSS_MAILBOX_LIMIT = 50;
+
+// Modul: WORLD_BOSS_DAMAGE_CEILING is gone, and its absence is the point.
+//
+// It was 100,000,000 - the clamp on `clientPredictedDamage`, the figure the
+// CLIENT used to compute about its own character and post. Since 2026-09-05 the
+// client sends a PLATE INDEX and the server reads the player's real attack
+// power, so there is no client-supplied quantity left to bound and no ceiling
+// to document. A wiki that still quoted one would be teaching a mechanic the
+// game no longer has.
+
+/** WorldBossEngine.PlateCount - the armour a strike has to choose between. */
+export const WORLD_BOSS_PLATES = 5;
+
+/** WorldBossEngine.WeakPlateDamageMultiplier. */
+export const WORLD_BOSS_WEAK_MULTIPLIER = 3;
+
+/** WorldBossEngine.BattleSessionCapSeconds, in minutes, as the page says it. */
+export const WORLD_BOSS_SESSION_MINUTES = 5;
 
 /** The percentile brackets AwardRewards pays into the mailbox. */
 export const WORLD_BOSS_REWARDS: readonly { bracket: string; tokens: number; gold: number }[] = [

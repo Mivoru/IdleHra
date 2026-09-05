@@ -772,23 +772,44 @@ await go('Guild');
     );
 
     if (!stillDisabled) {
-      const before = await page.evaluate(() => document.body.innerText);
+      // Modul: WAIT FOR THE OUTCOME, NOT FOR ANY CHANGE AT ALL.
+      //
+      // This used to wait for document.body.innerText to differ from a snapshot
+      // taken before the click, then read the page. The donation is a REST
+      // round trip and the panel refetches on a timer, so the FIRST thing that
+      // changes is usually the depot number arriving - before the confirmation
+      // has rendered. The check then read too early and reported a working
+      // feature as broken.
+      //
+      // Verified by hand on 2026-09-05: POST /api/v1/guilds/depot/donate
+      // answers 200, the depot balance rises and the contribution points rise
+      // with it. The donation was never the problem.
+      //
+      // Waiting for the OUTCOME - the confirmation or a named failure - is the
+      // form that keeps holding. Same discipline as the three checks that were
+      // red on a working game for a long time; see CLAUDE.md.
       await donate.click();
-      // The donation is a REST round trip and the panel refetches on a timer,
-      // so wait for the outcome rather than a fixed delay.
-      await page
+
+      const settled = await page
         .waitForFunction(
-          (prev) => document.body.innerText !== prev,
-          before,
+          () => /donated/i.test(document.body.innerText)
+            || /Failed to donate|not in a guild|must be positive/i.test(document.body.innerText),
+          undefined,
           { timeout: 15000 },
         )
-        .catch(() => {});
+        .then(() => true)
+        .catch(() => false);
+
       const after = await page.evaluate(() => document.body.innerText);
       const failed = /Failed to donate|not in a guild|must be positive/i.test(after);
       record(
         'donating a material is accepted by the server',
-        /donated/i.test(after) && !failed,
-        failed ? after.match(/Failed to donate.*/i)?.[0] ?? 'refused' : 'contribution points granted',
+        settled && !failed,
+        failed
+          ? after.match(/Failed to donate.*/i)?.[0] ?? 'refused'
+          : settled
+            ? 'contribution points granted'
+            : 'no outcome shown within 15s - the panel said nothing either way',
       );
     }
   }
