@@ -61,7 +61,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void ItStaysQuietWhenNothingWasRolled()
+        public void ItBeatsEvenWithNothingToReport()
         {
             var engine = new CombatLootEngine(null!, new PlayerSessionRegistry());
             var report = typeof(CombatLootEngine)
@@ -84,24 +84,29 @@ namespace FolkIdle.Server.Tests
                 Console.SetOut(previous);
             }
 
-            Assert.DoesNotContain("Loot:", captured.ToString());
+            // Now a HEARTBEAT: it must speak even with nothing to report, because
+            // silence was indistinguishable from a stopped loop.
+            Assert.Contains("Loot:", captured.ToString());
         }
 
         [Fact]
-        public void AQuietFirstMinuteDoesNotSILENCETheNextOne()
+        public void CountersSurviveASkippedBeat()
         {
-            // Modul: THE BUG THIS FILE EXISTS FOR.
+            // Modul: THE BUG THIS FILE EXISTS FOR, in its current form.
             //
-            // The gate stamped its clock BEFORE checking whether there was
-            // anything to say, so an empty first call - the overwhelmingly
-            // likely one, three seconds after start-up - consumed the window
-            // and every subsequent call inside the next minute returned early.
-            // With a busy queue the loop calls this every three seconds, and
-            // the counters were reset only on a successful print, so it settled
-            // into never printing at all while loot poured through.
+            // The gate used to stamp its clock before deciding it had nothing
+            // to say, so an empty call three seconds after start-up ate the
+            // window; with the loop calling this every three seconds and the
+            // counters resetting only on a print, it settled into never
+            // printing while loot poured through. It is a heartbeat now, so the
+            // remaining guarantee is the other half: work counted between two
+            // beats must still be there at the next one, never dropped by the
+            // beat that was skipped.
             var engine = new CombatLootEngine(null!, new PlayerSessionRegistry());
             var report = typeof(CombatLootEngine)
                 .GetMethod("ReportLootThroughput", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            var lastReport = typeof(CombatLootEngine)
+                .GetField("_lastLootReportMs", BindingFlags.NonPublic | BindingFlags.Instance)!;
 
             SetStatic("_requestsDrained", 0);
             SetStatic("_killsRolled", 0);
@@ -113,10 +118,14 @@ namespace FolkIdle.Server.Tests
             Console.SetOut(captured);
             try
             {
-                report.Invoke(engine, null);   // nothing to say
+                report.Invoke(engine, null);            // the beat, empty
                 SetStatic("_requestsDrained", 40);
                 SetStatic("_killsRolled", 40);
-                report.Invoke(engine, null);   // now there is, immediately after
+                report.Invoke(engine, null);            // too soon: skipped
+
+                // A minute later, the same work must still be reported.
+                lastReport.SetValue(engine, (long)lastReport.GetValue(engine)! - 61_000);
+                report.Invoke(engine, null);
             }
             finally
             {

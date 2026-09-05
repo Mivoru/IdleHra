@@ -594,10 +594,13 @@ namespace FolkIdle.Server.Engine
             // was demonstrably flowing - telemetry that lies by silence is
             // worse than none, because silence is what "no requests" looks
             // like. See LootThroughputReportTests.
-            if (_killsRolled == 0
-                && Interlocked.Read(ref _killsEnqueued) == 0
-                && Interlocked.Read(ref _codexKills) == 0) return;
-
+            // Modul: UNCONDITIONAL, one line a minute.
+            //
+            // The quiet version could not be told apart from a loop that had
+            // stopped calling this at all, and that ambiguity is the whole
+            // reason this hunt took a day. A heartbeat costs 1440 log lines a
+            // day and answers "is this worker still turning" without a
+            // debugger.
             long nowMs = Environment.TickCount64;
             if (nowMs - _lastLootReportMs < 60_000) return;
             _lastLootReportMs = nowMs;
