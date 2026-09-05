@@ -667,6 +667,30 @@ export function discardFromChest(target: { equipmentId: number } | { itemId: str
   return authedPost<ChestActionResult>('/api/v1/chest/discard', target);
 }
 
+/**
+ * The affix lock's result. `Locked` is the state the item ENDED in, not the
+ * one that was asked for - the server toggles what it finds, so two clicks
+ * racing cannot leave the screen showing whichever one lost.
+ */
+export interface ChestLockResult {
+  Success: boolean;
+  Locked: boolean;
+  Reason: string;
+}
+
+/**
+ * Locks or unlocks one item. A locked item cannot be rerolled, fused, sold,
+ * binned, or taken by the bulk sweep.
+ *
+ * Modul: the lock was READ in ten places on the server and set by nothing, so
+ * none of that code could ever run. This is the write side. What it protects
+ * against is the sweep, which clears a whole rarity band in one call and had
+ * no way to express "not that one".
+ */
+export function toggleChestLock(equipmentId: number) {
+  return authedPost<ChestLockResult>('/api/v1/chest/lock', { equipmentId });
+}
+
 // ---------------------------------------------------------------------------
 // /api/v1/mailbox/list
 // ---------------------------------------------------------------------------

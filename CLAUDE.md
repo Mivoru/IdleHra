@@ -135,6 +135,36 @@ settled — one per region, common and rare, listed in
 `VillageManagementEngine.TierMaterials` and matched by the gathering loot tables
 and the guild's buff tiers. Six defects in one day came from confusing these.
 
+**The wire carries combat EVENTS now, and the health bars have honest
+maximums.** `ResponseCombatEventPacket` reports each resolved blow - hit, miss,
+the monster's reply, lifesteal, kill - dispatched off the tick like loot drops.
+It exists because the snapshot stream cannot describe a fast fight: measured,
+`CurrentMonsterHp` took *one* value across 27 consecutive snapshots, because a
+geared character kills an early monster between two samples. Anything that wants
+to show what happened in a fight reads the feed; do not add a second inference
+from a health difference. `stores/damage.ts` still infers the floating numbers
+and is the one place that should eventually stop.
+
+**A field on `StateUpdatePacket` must be loaded at login or declared
+runtime-only.** `WorldBossAttemptCount` was written by one notification and
+loaded by nothing, so after a relogin it read as zero and the screen offered
+three spent attempts to a server that silently refused them.
+`StateUpdatePacketFieldCoverageTests` now checks the whole wire both ways: every
+field is copied into the packet AND either hydrated or on
+`RuntimeOnlyByDesign` with a reason. Adding a wire field forces that decision.
+
+**Silent rollback is this server's favourite way to lie.** `ExecuteAttackAsync`
+alone had three: the attempt cap, an empty larder, and a five-minute battle
+session nothing put on the wire - so the button stayed enabled and did nothing
+for the rest of a seven-day encounter. When a handler rolls back, ask what the
+player sees. If the answer is "nothing", that is the defect, not the rollback.
+
+**Grep for a WRITER as well as a reader.** The recurring "computed but never
+consumed" trap has an inverse that is just as bad: `IsAffixLocked` was read in
+ten places - reroll, fusion, the validator, both removal paths - and set to true
+by nothing, so none of it could ever run. A thoroughly wired read side is not
+evidence a feature exists.
+
 **Do not edit multi-line C# initialisers by blind string replacement.** One
 such edit inserted a field into the middle of a four-term sum and silently
 re-parented three bonuses onto the wrong field. It compiled and every test

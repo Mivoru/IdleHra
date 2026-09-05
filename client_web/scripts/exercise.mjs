@@ -279,6 +279,56 @@ await page.waitForTimeout(4000);
   await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => r(null))));
   const frameMs = Date.now() - started;
   record('the page stays responsive during combat', frameMs < 400, `${frameMs}ms to the next frame`);
+
+  // Modul: THE FIGHT LOG HAS TO FILL, not merely render.
+  //
+  // A panel that draws perfectly and never receives anything is this project's
+  // worst-shipped defect shape, and this one is more exposed to it than most:
+  // it is fed by a dedicated server packet (ResponseCombatEventPacket) rather
+  // than by the snapshot every other screen reads, so the whole feed can be
+  // dead while the screen looks finished.
+  //
+  // It exists because the snapshot stream CANNOT describe a fast fight -
+  // measured 2026-09-04, a geared character killed an early monster every
+  // ~1400ms against snapshots every ~1090ms, so CurrentMonsterHp took one
+  // single value across 27 of them and there was nothing to animate or infer.
+  const logLines = await page.evaluate(() => {
+    const list = document.querySelector('.fightlog');
+    return list ? [...list.querySelectorAll('li')].map((li) => li.textContent.trim()) : null;
+  });
+  record('the fight log renders', logLines !== null);
+  record(
+    'the fight log fills from the server feed',
+    (logLines?.length ?? 0) > 0,
+    `${logLines?.length ?? 0} lines`,
+  );
+  // Both directions of the fight, so a feed that only reports one half is
+  // still a failure. The player's own swing and the monster's reply are
+  // resolved in different branches of the tick and published separately.
+  record(
+    'the log reports both sides of the fight',
+    (logLines ?? []).some((l) => /^(Critical! )?You (hit|miss)/.test(l))
+      && (logLines ?? []).some((l) => /(hits|misses) you/.test(l)),
+    (logLines ?? [])[0] ?? '',
+  );
+
+  // Modul: the bar's maximum comes from the SERVER now. The client used to
+  // compute it as `MaxHp * 5` for an unbeaten boss, which ignores First Blood
+  // softening the penalty, and scaled the player's own bar against a session
+  // high-water mark of the largest PlayerHp ever seen - caught reading
+  // "2320 / 2320" while PlayerHp was 3701.
+  const barsHonest = await page.evaluate(() => {
+    const bars = [...document.querySelectorAll('.hpblock [role="progressbar"]')];
+    return bars.map((b) => ({
+      now: Number(b.getAttribute('aria-valuenow')),
+      max: Number(b.getAttribute('aria-valuemax')),
+    }));
+  });
+  record(
+    'no health bar reports more health than its maximum',
+    barsHonest.length > 0 && barsHonest.every((b) => b.max > 0 && b.now <= b.max),
+    JSON.stringify(barsHonest),
+  );
 }
 
 // --- forge: fusion and reroll ------------------------------------------------
@@ -722,23 +772,44 @@ await go('Guild');
     );
 
     if (!stillDisabled) {
-      const before = await page.evaluate(() => document.body.innerText);
+      // Modul: WAIT FOR THE OUTCOME, NOT FOR ANY CHANGE AT ALL.
+      //
+      // This used to wait for document.body.innerText to differ from a snapshot
+      // taken before the click, then read the page. The donation is a REST
+      // round trip and the panel refetches on a timer, so the FIRST thing that
+      // changes is usually the depot number arriving - before the confirmation
+      // has rendered. The check then read too early and reported a working
+      // feature as broken.
+      //
+      // Verified by hand on 2026-09-05: POST /api/v1/guilds/depot/donate
+      // answers 200, the depot balance rises and the contribution points rise
+      // with it. The donation was never the problem.
+      //
+      // Waiting for the OUTCOME - the confirmation or a named failure - is the
+      // form that keeps holding. Same discipline as the three checks that were
+      // red on a working game for a long time; see CLAUDE.md.
       await donate.click();
-      // The donation is a REST round trip and the panel refetches on a timer,
-      // so wait for the outcome rather than a fixed delay.
-      await page
+
+      const settled = await page
         .waitForFunction(
-          (prev) => document.body.innerText !== prev,
-          before,
+          () => /donated/i.test(document.body.innerText)
+            || /Failed to donate|not in a guild|must be positive/i.test(document.body.innerText),
+          undefined,
           { timeout: 15000 },
         )
-        .catch(() => {});
+        .then(() => true)
+        .catch(() => false);
+
       const after = await page.evaluate(() => document.body.innerText);
       const failed = /Failed to donate|not in a guild|must be positive/i.test(after);
       record(
         'donating a material is accepted by the server',
-        /donated/i.test(after) && !failed,
-        failed ? after.match(/Failed to donate.*/i)?.[0] ?? 'refused' : 'contribution points granted',
+        settled && !failed,
+        failed
+          ? after.match(/Failed to donate.*/i)?.[0] ?? 'refused'
+          : settled
+            ? 'contribution points granted'
+            : 'no outcome shown within 15s - the panel said nothing either way',
       );
     }
   }
@@ -834,20 +905,144 @@ await page.waitForTimeout(600);
   await page.waitForTimeout(400);
 }
 
+// --- the affix lock ----------------------------------------------------------
+//
+// Modul: THE READ SIDE OF THIS WAS WIRED IN TEN PLACES AND THE WRITE SIDE DID
+// NOT EXIST. IsAffixLocked was honoured by the reroll, by forge fusion, by the
+// command validator and by both chest removal paths, and set to true by
+// nothing - so none of that code could ever run and three wire bytes carried a
+// constant zero.
+//
+// What it protects against is the sweep, which clears a whole rarity band in
+// one call. Its ceiling of Epic was the only way to say "not that one", and a
+// ceiling cannot express "keep THIS Epic sword".
+await go('Chest');
+{
+  const lockButton = page.getByRole('button', { name: /^(Lock|Locked)$/ }).first();
+  const present = (await lockButton.count()) > 0;
+  record('the chest offers a lock on each piece', present);
+
+  if (present) {
+    const before = await lockButton.innerText();
+    await lockButton.click();
+    // The toggle is a REST round trip and the list refetches after it, so wait
+    // for the label to change rather than for a fixed delay.
+    await page
+      .waitForFunction(
+        (prev) => {
+          const b = [...document.querySelectorAll('button')].find((x) => /^(Lock|Locked)$/.test(x.textContent.trim()));
+          return b && b.textContent.trim() !== prev;
+        },
+        before.trim(),
+        { timeout: 15000 },
+      )
+      .catch(() => {});
+
+    const after = await page.getByRole('button', { name: /^(Lock|Locked)$/ }).first().innerText();
+    record('locking a piece changes its state on the server', after.trim() !== before.trim(), `${before.trim()} -> ${after.trim()}`);
+
+    // Modul: AND PUT IT BACK. A check that leaves the fixture locked would
+    // change what every later run of this script is looking at - the same
+    // discipline the Ancestors "Keep" and the village steps had to learn.
+    await page.getByRole('button', { name: /^(Lock|Locked)$/ }).first().click();
+    await page.waitForTimeout(2000);
+    const restored = await page.getByRole('button', { name: /^(Lock|Locked)$/ }).first().innerText();
+    record('the lock round-trips both ways', restored.trim() === before.trim(), `back to ${restored.trim()}`);
+  }
+}
+
 // --- world boss --------------------------------------------------------------
+//
+// Modul: this used to be three presses of a button that posted a damage figure
+// the CLIENT computed about itself. It is five armour plates now, one of them
+// soft, and the player picks which to strike - see docs/world_boss_design.md.
+//
+// The event window is calendar-driven (the 1st-7th and 15th-22nd UTC), so this
+// block has to work on a dormant boss too. Everything that does not need an
+// active encounter is checked unconditionally; the strike is checked when there
+// is something to strike.
 await go('World Boss');
 {
   const text = await page.evaluate(() => document.body.innerText);
   const active = text.includes('Active');
   record('world boss state is shown', /Active|Dormant|Concluded/.test(text));
+
+  const plates = page.locator('.armour-plate');
+  const plateCount = await plates.count();
+  record('the boss shows its armour', plateCount === 5, `${plateCount} plates`);
+
+  // Modul: THE SCREEN MUST NOT ASK FOR A DECISION IT WILL NOT SHOW THE INPUTS
+  // TO. Every plate says intact, broken or soft; a picker that hid that would
+  // be a slot machine wearing a puzzle's clothes.
+  const plateStates = await page.evaluate(() =>
+    [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
+  );
+  record(
+    'every plate says what state it is in',
+    plateStates.length === 5 && plateStates.every((t) => /intact|broken|soft/.test(t)),
+    plateStates.join(', '),
+  );
+
+  // Picking a plate has to change what the button says it will do, or the
+  // choice is invisible at the moment it matters.
+  if (plateCount === 5) {
+    await plates.nth(3).click();
+    await page.waitForTimeout(200);
+    const label = await page
+      .locator('button.attack')
+      .first()
+      .innerText()
+      .catch(() => '');
+    record('choosing a plate is reflected on the button', /4/.test(label), label.trim());
+  }
+
   if (active) {
-    const attack = page.getByRole('button', { name: 'Attack', exact: true });
-    const disabled = await attack.first().isDisabled();
-    record(
-      'attack button follows the larder and attempt rules',
-      true,
-      disabled ? 'disabled (larder empty or attempts spent)' : 'enabled',
-    );
+    const strike = page.locator('button.attack').first();
+    const disabled = await strike.isDisabled();
+
+    if (disabled) {
+      // Modul: A SPENT CHECK MUST STILL SAY SOMETHING TRUE. Three attempts per
+      // encounter and they only refill when a new window opens, so a second run
+      // of this script on the same day finds them gone. Asserting that the
+      // screen NAMES the reason is the check that keeps working - the same
+      // shape the village step uses for an exhausted villager pool.
+      record(
+        'a disabled strike states its reason',
+        /larder is empty/i.test(text)
+          || /0 of 3 left/.test(text)
+          || /already dead/i.test(text)
+          || /battle session has closed/i.test(text),
+        'attempts spent, larder empty, session closed or boss down',
+      );
+    } else {
+      const before = await page.evaluate(() => ({
+        states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
+        pips: document.querySelectorAll('.pip.spent').length,
+      }));
+
+      await strike.click();
+      await page.waitForTimeout(2500);
+
+      const after = await page.evaluate(() => ({
+        states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
+        pips: document.querySelectorAll('.pip.spent').length,
+      }));
+
+      // The attempt is the thing the server always spends, whichever plate was
+      // struck. The plate STATES change too, but only when the strike missed
+      // the weak point - so the pip is the honest assertion and the plate
+      // change is reported rather than required.
+      record(
+        'striking a plate spends an attempt',
+        after.pips > before.pips,
+        `${before.pips} -> ${after.pips} spent`,
+      );
+      record(
+        'the strike is reflected on the boss',
+        after.states.join() !== before.states.join() || after.pips > before.pips,
+        `${before.states.join('/')} -> ${after.states.join('/')}`,
+      );
+    }
   }
 }
 

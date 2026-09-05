@@ -355,6 +355,7 @@ namespace FolkIdle.Server.Network
             SubscribeToSessionEviction();
             _chatEngine.Subscribe();
             Task.Run(LootDropDispatchLoopAsync);
+            Task.Run(CombatEventDispatchLoopAsync);
         }
 
         // Modul: Loot Event Feed. Drains PlayerSessionRegistry.OutboundLootDropQueue
@@ -410,6 +411,58 @@ namespace FolkIdle.Server.Network
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Loot drop dispatch failed for player {drop.PlayerId}: {ex.Message}");
+                }
+            }
+        }
+
+        // Modul: Combat Event Feed. Drains Domain.Combat.CombatEventFeed and
+        // pushes each resolved blow to the socket of the player it belongs to.
+        //
+        // The same shape as the loot loop directly above, for the same reasons,
+        // with one difference worth knowing: combat events are produced by the
+        // 10Hz simulation tick itself rather than by a 3-second cron, so the
+        // idle sleep is shorter. At 50ms a burst of events resolved in one tick
+        // would be delivered over several hundred milliseconds and arrive
+        // visibly after the health change they explain.
+        //
+        // The queue is bounded and drops when full (see CombatEventFeed), so a
+        // client that cannot keep up costs the simulation nothing.
+        private readonly byte[] _combatEventDispatchBuffer = new byte[Marshal.SizeOf<ResponseCombatEventPacket>()];
+
+        private async Task CombatEventDispatchLoopAsync()
+        {
+            while (_isRunning)
+            {
+                if (!Domain.Combat.CombatEventFeed.TryDequeue(out ResponseCombatEventPacket combatEvent))
+                {
+                    await Task.Delay(20);
+                    continue;
+                }
+
+                if (!_connectedClients.TryGetValue(combatEvent.PlayerId, out var session) || session.Socket.State != WebSocketState.Open)
+                {
+                    // Nobody is watching. The blow already happened and is
+                    // already reflected in the authoritative state; only the
+                    // on-screen line is lost.
+                    continue;
+                }
+
+                try
+                {
+                    if (session.UseJsonProtocol)
+                    {
+                        byte[] json = PacketJsonCodec.SerializeToUtf8(ref combatEvent);
+                        await session.SendAsync(new ArraySegment<byte>(json), WebSocketMessageType.Text, true, CancellationToken.None);
+                    }
+                    else
+                    {
+                        MemoryMarshal.Write(_combatEventDispatchBuffer, in combatEvent);
+                        await session.SendAsync(new ArraySegment<byte>(_combatEventDispatchBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Combat event dispatch failed for player {combatEvent.PlayerId}: {ex.Message}");
                 }
             }
         }
@@ -936,6 +989,16 @@ namespace FolkIdle.Server.Network
                     if (requestPath == "/api/v1/chest/bulk-discard" && context.Request.HttpMethod == "POST")
                     {
                         await HandleChestBulkAction(context, sell: false);
+                        continue;
+                    }
+
+                    // Modul: the lock's write side. See
+                    // VillageChestEngine.ToggleAffixLockAsync - the flag was
+                    // read in ten places and set by nothing, so none of that
+                    // code could ever run.
+                    if (requestPath == "/api/v1/chest/lock" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleChestToggleLock(context);
                         continue;
                     }
 
@@ -2681,6 +2744,67 @@ namespace FolkIdle.Server.Network
             }
 
             context.Response.Close();
+        }
+
+        /// <summary>
+        /// Toggles one item's affix lock. Mirrors HandleChestAction's shape
+        /// exactly, including the ChestActionResult it reports back, so the
+        /// screen has one vocabulary for everything it can ask of an item.
+        /// </summary>
+        private async Task HandleChestToggleLock(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+
+                if (!payload.TryGetProperty("equipmentId", out var equipmentElement))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var (result, locked) = await VillageChestEngine.ToggleAffixLockAsync(
+                    db, playerId, equipmentElement.GetInt64());
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new ChestLockResponse
+                {
+                    Success = result == VillageChestEngine.ChestActionResult.Success,
+                    Locked = locked,
+                    Reason = result.ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Chest lock error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class ChestLockResponse
+        {
+            public bool Success { get; set; }
+
+            /// <summary>The state the item ended in, so the screen never guesses.</summary>
+            public bool Locked { get; set; }
+
+            public string Reason { get; set; } = string.Empty;
         }
 
         private async Task HandleGuildShardMatch(HttpListenerContext context)

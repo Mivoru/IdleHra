@@ -151,20 +151,42 @@ on top of the primary key.
 
 ## 7. Client Network Layer
 
-Binary, fixed-layout packet structs shared in spirit (not in code) between
-client and server: `AuthHandshakePacket` (530 bytes), `ClientCommandPacket`
-(352 bytes), `StateUpdatePacket` (695 bytes, against a hard ceiling of 700
-that `Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder700Bytes` pins -
-686 plus `EquippedOffhandId` (8) and `UnlockedRaceBitmask` (1), leaving 5
-bytes of headroom). **Both layout guards must be changed in the same
-commit**: the client's copy silently drifted to a stale 699 once, and
-because `WebSocketClient.Start()` calls `Validate()` unguarded, it threw on
-every client startup before `ClientContentRegistry.Initialize()` on the next
-line ever ran. Both sides validate their own
-compiled struct size at startup against these constants
-(`server/FolkIdle.Server/Network/NetworkPacketLayoutGuard.cs` /
-`client/Assets/Scripts/Network/NetworkPacketLayoutGuard.cs`, the latter
-called from `WebSocketClient.Start`).
+Fixed-layout packet structs. **Seven of them as of 2026-09-05**, and the sizes
+move - read `NetworkPacketLayoutGuard.cs` rather than this paragraph, because
+that file is the authority and carries a byte-by-byte history of every change:
+
+| packet | size | direction |
+|---|---|---|
+| `AuthHandshakePacket` | 530 | client -> server, first message only |
+| `ClientCommandPacket` | 340 | client -> server |
+| `StateUpdatePacket` | 797 | server -> client, the 10 Hz snapshot |
+| `RequestChatMessagePacket` | 139 | client -> server |
+| `ResponseChatMessagePacket` | 147 | server -> client |
+| `ResponseLootDropPacket` | 22 | server -> client, one per item granted |
+| `ResponseCombatEventPacket` | 26 | server -> client, one per resolved blow |
+
+**Every size must be unique.** The binary receive loops demultiplex on byte
+length alone, and `Validate()` fails the build on a collision - which it did
+when `ResponseCombatEventPacket` was first written at 22 bytes, exactly the
+loot drop's size.
+
+The 700-byte structural ceiling on `StateUpdatePacket` is **gone**: it moved to
+768 when Fishing and Herbalism mastery arrived, and the packet has since passed
+that too. The guard's own comment explains why the number was a discipline
+marker rather than a transport limit - nothing fragments at 700, and size-based
+demultiplexing stays unambiguous because the nearest other packet is 530.
+
+**THE CLIENT'S COPY IS GENERATED, NOT MIRRORED.** This section used to describe
+two hand-maintained guards that drifted; the web client's
+`protocol.generated.ts` comes from the server's own `--dump-protocol` and CI
+fails on a diff. The Unity guard it refers to belongs to the retired client.
+
+`ResponseCombatEventPacket` (2026-09-05) is the newest and the reason is worth
+keeping: **this wire carried no combat event at all** until then. Everything a
+player saw during a fight was inferred from the difference between two
+`CurrentMonsterHp` snapshots - and a measured trace showed that field taking
+exactly ONE value across 27 consecutive snapshots, because a geared character
+kills an early monster between two samples. See `docs/TASK_BOARD.md` task 8.
 
 Connections authenticate via a hand-rolled HMAC-SHA256 JWT
 (`Engine/AuthenticationEngine.cs`), not a raw bearer Guid. The client obtains
@@ -192,8 +214,15 @@ state.
 
 ## 8. Test Suite State
 
-**182 tests, all passing** as of 2026-08-01, verified against a real
-Postgres via Testcontainers. Both previously-recorded exceptions are gone:
+**592 server tests, all passing** as of 2026-09-05, verified against a real
+Postgres via Testcontainers. The client carries a further **310** (vitest), and
+`npm run exercise` drives **120** checks against a running stack.
+
+**Do not quote any of those three numbers from a document, including this one.**
+CLAUDE.md says so and it is right: 182, 341 and 470 all appear in different
+places in this repo, each true on the day it was written. Run the suite.
+
+Historic note, kept because the two exceptions below were real:
 
 - `E2EGameLoopTest.Test_E2E_ClosedLoopVerification` (the WebSocket 503 noted
   below) now passes.
@@ -473,9 +502,26 @@ output, larder writes, loot census, item base power, the affix payload
 collision, and the three below). **When adding a stat or bonus, grep for a
 consumer before believing it works.**
 
-**As of 2026-08-01 there are no known outstanding instances.** Every one
-listed here has been closed, which is worth recording because the pattern is
-easy to reintroduce:
+**The pattern recurred on 2026-09-04/05, three times, in a new direction each
+time.** Recording them because "no known outstanding instances" is a statement
+with a date on it, not a property of the codebase:
+
+- **`AffixRegistry.RollAffixes` took an `itemRarityTier` and never read it.**
+  A dead parameter, and the influence it was named for had never been wired -
+  which is why the entire fourteen-tier rarity ladder was worth 1.48x against a
+  region step's 3.00x. Now wired; see `docs/TASK_BOARD.md` task 9.
+- **`WorldBossAttemptCount` was written in one place and loaded by nothing.**
+  After a relogin it read as zero, so the screen showed three unspent attempts
+  and the server silently rolled back the click. Found by an exercise run
+  reporting "0 -> 2 spent" on a single strike. **`StateUpdatePacketFieldCoverageTests`
+  now checks the whole wire for this shape**: every field that travels is either
+  loaded at login or on an explicit `RuntimeOnlyByDesign` list with a reason.
+- **`EquipmentInstance.IsAffixLocked` was the INVERSE.** Read in ten places -
+  reroll, forge fusion, the validator, the market projections - and set to true
+  by nothing, so none of that code could ever run. The read side was
+  thoroughly wired and the write side did not exist. Built on 2026-09-05.
+
+Everything below was closed earlier and is kept as the record:
 
 - All five 4-piece set-bonus effects are consumed by the combat tick.
   `FireDamageMultiplierPct` and `BurnApplicationActive` in the outgoing damage

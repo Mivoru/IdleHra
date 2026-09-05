@@ -236,6 +236,17 @@ namespace FolkIdle.Server.Engine
     {
         public long PlayerId;
         public byte AttemptCount;
+
+        // Modul: WHEN THIS PLAYER'S REMAINING ATTEMPTS STOP WORKING, in unix
+        // seconds. 0 while they have not struck yet.
+        //
+        // WorldBossEngine gives a player 300 seconds from their FIRST strike to
+        // spend the other two, and after that every attack rolls back in
+        // silence - no damage, no message, no telemetry the player will ever
+        // see. Nothing put that deadline on the wire, so the button stayed
+        // enabled and did nothing, for the rest of an encounter that runs for
+        // up to seven days.
+        public long SessionEndsEpoch;
     }
 
     public struct MasteryUpdateNotification

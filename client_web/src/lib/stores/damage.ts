@@ -2,22 +2,25 @@
 // CombatVfxPool, minus the pooling - a keyed Svelte each-block reuses DOM
 // nodes on its own, which is what UIComponentPool existed to do by hand.
 //
-// The hard part is not the animation, it is that THE WIRE CARRIES NO DAMAGE
-// EVENT. There is no "you hit for N" packet anywhere in this protocol; there
-// is only `CurrentMonsterHp` on a snapshot. So a hit has to be inferred from
-// the difference between two snapshots, and the inference has to be careful
-// about the three ways that difference can lie:
+// THIS FILE USED TO INFER EVERY HIT FROM THE DIFFERENCE BETWEEN TWO SNAPSHOTS,
+// because the wire carried no damage event. It carried none for a long time,
+// and the inference had to be careful about the three ways a health difference
+// can lie: the monster changing, a regeneration or respawn, and a reconnect gap
+// collapsing thirty hits into one number.
 //
-//   1. The monster changed. Health going from 6 to 3500 is a new monster, not
-//      a heal, and 3500 to 6 on the same tick is not a 3494 hit.
-//   2. The monster REGENERATED or the same monster id respawned at full
-//      health. An increase is never a hit.
-//   3. A reconnect gap collapses many hits into one difference. Reporting
-//      "4210" for what was really thirty hits is worse than reporting nothing.
+// It was careful, and it was still wrong about the case that mattered most.
+// Measured 2026-09-04: snapshots arrive every ~1090 ms and a geared character
+// kills an early monster every ~1400 ms, so spawn and death both happen between
+// two samples. `CurrentMonsterHp` took ONE value across 27 consecutive
+// snapshots. The inference refuses to report when the monster changed - which
+// is exactly what a one-hit kill looks like - so the player who most needed a
+// number on screen got nothing at all.
 //
-// This is deliberately fed from the AUTHORITATIVE snapshot stream, never from
-// the interpolated one - the smoothed value passes through every intermediate
-// number on its way, which would produce a blizzard of tiny fictional hits.
+// The server states each blow now (ResponseCombatEventPacket), so this reads a
+// fact instead of deducing one. `inferDamage` and its snapshot plumbing are
+// GONE rather than kept as a fallback: two sources for one truth is this
+// codebase's dominant bug class, and a cosmetic number is not worth being the
+// exception.
 
 export interface DamageEvent {
   id: number;
@@ -29,12 +32,11 @@ export interface DamageEvent {
   /**
    * Whether the blow that caused this crit.
    *
-   * Modul: THE WIRE CARRIES THIS NOW. It did not when this file was written -
-   * the comment above still explains why a hit has to be inferred at all - so
-   * the client used to guess "that one was larger than usual" from a running
-   * median and was careful never to call it a crit. The server now says
-   * outright (LastHitWasCrit), because a crit that looks like every other hit
-   * is a stat the player pays for and never sees.
+   * Stated by the server, on the event itself. It used to be a guess from a
+   * running median - the client was careful never to call it a crit - then
+   * became `LastHitWasCrit` on the snapshot, which was true of the LAST swing
+   * rather than of any particular number on screen. Now it belongs to the hit
+   * it describes.
    */
   isCrit: boolean;
 
@@ -45,63 +47,27 @@ export interface DamageEvent {
 /** How long a number stays on screen. Matches the CSS animation duration. */
 export const DAMAGE_TEXT_LIFETIME_MS = 1100;
 
-/**
- * Beyond this the two snapshots are not adjacent - a reconnect, a tab that was
- * frozen by the OS, or a long dirty-check silence. Attributing the whole
- * accumulated difference to one hit would put an absurd number on screen.
- */
-export const MAX_ADJACENT_SNAPSHOT_GAP_MS = 3000;
-
-export interface CombatSample {
-  monsterId: number;
-  monsterHp: number;
-  atMs: number;
-
-  /** From the packet's LastHitWasCrit. Optional so the pure damage rules and
-   *  their tests stay independent of it. */
-  wasCrit?: boolean;
-  /** From the packet's EquippedWeaponKind: 0 melee, 1 ranged, 2 magic. */
-  weaponKind?: number;
-}
-
-/**
- * Pure: given the previous and current combat samples, the damage to show, or
- * null. Separated from any store so the rules above are unit-testable without
- * a DOM, a clock or a component.
- */
-export function inferDamage(previous: CombatSample | null, current: CombatSample): number | null {
-  if (previous === null) return null;
-  if (previous.monsterId !== current.monsterId) return null;
-  if (current.monsterId <= 0) return null;
-
-  const gap = current.atMs - previous.atMs;
-  if (gap <= 0 || gap > MAX_ADJACENT_SNAPSHOT_GAP_MS) return null;
-
-  const delta = previous.monsterHp - current.monsterHp;
-  // Zero is the common case (most snapshots carry no hit); negative is a heal
-  // or a respawn at full health, and neither is damage the player dealt.
-  return delta > 0 ? delta : null;
-}
-
 let sequence = 0;
 
 export class DamageFeed {
-  private previous: CombatSample | null = null;
   private events: DamageEvent[] = [];
 
-  /** Returns the new event, if this snapshot represented a hit. */
-  push(sample: CombatSample): DamageEvent | null {
-    const amount = inferDamage(this.previous, sample);
-    this.previous = sample;
-    if (amount === null) return null;
+  /**
+   * One resolved blow, as the server reported it.
+   *
+   * `amount` is whole hit points and already final - post-armour, post-crit,
+   * burn folded in. Nothing here recomputes or second-guesses it.
+   */
+  push(amount: number, isCrit: boolean, weaponKind: number, atMs: number): DamageEvent | null {
+    if (!Number.isFinite(amount) || amount <= 0) return null;
 
     const event: DamageEvent = {
       id: ++sequence,
       amount,
       offset: Math.random(),
-      atMs: sample.atMs,
-      isCrit: sample.wasCrit === true,
-      weaponKind: sample.weaponKind ?? 0,
+      atMs,
+      isCrit,
+      weaponKind,
     };
     this.events = [...this.events, event];
     this.record(amount);
@@ -120,7 +86,6 @@ export class DamageFeed {
   }
 
   reset(): void {
-    this.previous = null;
     this.events = [];
     this.recentHits = [];
   }
@@ -128,9 +93,14 @@ export class DamageFeed {
   // Modul: a rolling record of real hits, kept SEPARATELY from `events`.
   //
   // `events` exists to drive floating damage text and is pruned after about a
-  // second, so it is empty most of the time and useless as a measurement. The
-  // world boss needs a damage estimate to send, and the only honest source of
-  // one is what this player's hits actually land for.
+  // second, so it is empty most of the time and useless as a measurement.
+  //
+  // Two things still read it: the floating text scales its font against the
+  // median so a big hit looks big, and the GUILD WAR shard attack still posts a
+  // client-computed damage figure. The world boss used to as well and no longer
+  // does - it sends a plate index and the server reads the player's own attack
+  // power - so this is the last consumer of that shape, and it goes when Guild
+  // Wars comes off the roadmap.
   //
   // Deliberately not a running mean: a single outlier crit would drag it for
   // the rest of the session. The median of the last sixteen is stable, cheap,

@@ -19,6 +19,7 @@ export const PacketType = {
   RequestChatMessage: "RequestChatMessage",
   ResponseChatMessage: "ResponseChatMessage",
   ResponseLootDrop: "ResponseLootDrop",
+  ResponseCombatEvent: "ResponseCombatEvent",
 } as const;
 
 export type PacketTypeName = (typeof PacketType)[keyof typeof PacketType];
@@ -32,7 +33,7 @@ export interface AuthHandshake {
   PlatformSignature: number;
 }
 
-/** ClientCommandPacket - 339 bytes on the binary wire. */
+/** ClientCommandPacket - 340 bytes on the binary wire. */
 export interface ClientCommand {
   readonly type: typeof PacketType.ClientCommand;
   Command: number;
@@ -59,6 +60,7 @@ export interface ClientCommand {
   ChallengeVerificationHash: number;
   TargetedBossId: number;
   ClientPredictedDamage: number;
+  TargetedPlateIndex: number;
   DeviceTokenBytes: string;
   TargetPlatformFamily: number;
   PushReserved0: number;
@@ -87,7 +89,7 @@ export interface ClientCommand {
   RerollStopAffixIndex: number;
 }
 
-/** StateUpdatePacket - 779 bytes on the binary wire. */
+/** StateUpdatePacket - 797 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -106,6 +108,8 @@ export interface StateUpdate {
   CurrentMonsterId: number;
   CurrentMonsterHp: number;
   PlayerHp: number;
+  CurrentMonsterMaxHp: number;
+  PlayerMaxHp: number;
   Quarantine_Active: number;
   CurrentLevel: number;
   CurrentXp: number;
@@ -235,6 +239,9 @@ export interface StateUpdate {
   WorldBossAttemptCount: number;
   WorldBossEventState: number;
   WorldBossEventEndEpoch: number;
+  WorldBossBrokenPlateMask: number;
+  WorldBossWeakPlate: number;
+  WorldBossSessionEndsEpoch: number;
   GuildLogisticsLevel: number;
   GuildRaidTier: number;
   GuildRaidBossCurrentHp: number;
@@ -334,6 +341,18 @@ export interface ResponseLootDrop {
   DropKind: number;
 }
 
+/** ResponseCombatEventPacket - 26 bytes on the binary wire. */
+export interface ResponseCombatEvent {
+  readonly type: typeof PacketType.ResponseCombatEvent;
+  PlayerId: number;
+  MonsterId: number;
+  Amount: number;
+  MonsterHpAfter: number;
+  Sequence: number;
+  EventKind: number;
+  Flags: number;
+}
+
 /** Fields a client fills in; everything omitted defaults to zero server-side. */
 export type AuthHandshakeDraft = Partial<Omit<AuthHandshake, 'type'>>;
 export type ClientCommandDraft = Partial<Omit<ClientCommand, 'type'>>;
@@ -341,6 +360,7 @@ export type StateUpdateDraft = Partial<Omit<StateUpdate, 'type'>>;
 export type RequestChatMessageDraft = Partial<Omit<RequestChatMessage, 'type'>>;
 export type ResponseChatMessageDraft = Partial<Omit<ResponseChatMessage, 'type'>>;
 export type ResponseLootDropDraft = Partial<Omit<ResponseLootDrop, 'type'>>;
+export type ResponseCombatEventDraft = Partial<Omit<ResponseCombatEvent, 'type'>>;
 
 /** The command opcodes. Numbering has deliberate gaps - see CommandType in C#. */
 export const CommandType = {
@@ -362,7 +382,6 @@ export const CommandType = {
   ExecuteBreeding: 15,
   UpdateAutoEatThreshold: 16,
   InitializeCrafting: 18,
-  RegisterWorldBossDamage: 19,
   UpgradeTool: 21,
   AssignMentor: 22,
   ContributeToWarSupply: 23,
@@ -419,11 +438,12 @@ export type CommandTypeName = keyof typeof CommandType;
 /** Binary wire sizes, kept for tests that assert the binary path is untouched. */
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
-  ClientCommand: 339,
-  StateUpdate: 779,
+  ClientCommand: 340,
+  StateUpdate: 797,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 22,
+  ResponseCombatEvent: 26,
 } as const;
 
 /** Server-computed challenge answers. See tests/antiCheat.test.ts. */

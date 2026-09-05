@@ -1027,11 +1027,25 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            if (packet.ClientPredictedDamage == 0 ||
-                (packet.ClientPredictedDamage & 0x80000000u) != 0 ||
-                packet.ClientPredictedDamage > WorldBossEngine.MaxClientPredictedDamage)
+            // Modul: THE CLIENT NO LONGER SENDS A DAMAGE FIGURE, and this is
+            // where that is enforced.
+            //
+            // It used to post ClientPredictedDamage - a number it computed
+            // about itself - and this check only bounded it. The server takes
+            // the damage from the player's own cached attack power now, so a
+            // non-zero value here means a client that is either stale or
+            // trying, and either way it is not a command this build speaks.
+            if (packet.ClientPredictedDamage != 0)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 32, Value2 = 1, Timestamp = Environment.TickCount64 });
+                return false;
+            }
+
+            // A choice, not a quantity: there is nothing to inflate, only a
+            // range to be inside. See WorldBossEngine.PlateCount.
+            if (packet.TargetedPlateIndex >= WorldBossEngine.PlateCount)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 32, Value2 = 5, Timestamp = Environment.TickCount64 });
                 return false;
             }
 
@@ -1081,7 +1095,7 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetGuid != Guid.Empty || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0 || packet.ChallengeId != 0 || packet.ChallengeVerificationHash != 0 || packet.TargetedBossId != 0 || packet.ClientPredictedDamage != 0 || packet.TargetPlatformFamily != 0 || packet.TargetLanguageId != 0 || HasAnyDeviceTokenBytes(ref packet))
+            if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetGuid != Guid.Empty || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0 || packet.ChallengeId != 0 || packet.ChallengeVerificationHash != 0 || packet.TargetedBossId != 0 || packet.ClientPredictedDamage != 0 || packet.TargetedPlateIndex != 0 || packet.TargetPlatformFamily != 0 || packet.TargetLanguageId != 0 || HasAnyDeviceTokenBytes(ref packet))
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 34, Value2 = 2, Timestamp = Environment.TickCount64 });
                 return false;
@@ -1103,7 +1117,7 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetGuid != Guid.Empty || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0 || packet.ChallengeId != 0 || packet.ChallengeVerificationHash != 0 || packet.TargetedBossId != 0 || packet.ClientPredictedDamage != 0 || packet.TargetPlatformFamily != 0 || packet.ConfirmationHash != 0 || HasAnyDeviceTokenBytes(ref packet))
+            if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetGuid != Guid.Empty || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0 || packet.ChallengeId != 0 || packet.ChallengeVerificationHash != 0 || packet.TargetedBossId != 0 || packet.ClientPredictedDamage != 0 || packet.TargetedPlateIndex != 0 || packet.TargetPlatformFamily != 0 || packet.ConfirmationHash != 0 || HasAnyDeviceTokenBytes(ref packet))
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 35, Value2 = 2, Timestamp = Environment.TickCount64 });
                 return false;
@@ -1188,7 +1202,7 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetGuid != Guid.Empty || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0 || packet.ChallengeId != 0 || packet.ChallengeVerificationHash != 0 || packet.TargetedBossId != 0 || packet.ClientPredictedDamage != 0 || packet.ConfirmationHash != 0 || packet.TargetLanguageId != 0)
+            if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetGuid != Guid.Empty || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0 || packet.ChallengeId != 0 || packet.ChallengeVerificationHash != 0 || packet.TargetedBossId != 0 || packet.ClientPredictedDamage != 0 || packet.TargetedPlateIndex != 0 || packet.ConfirmationHash != 0 || packet.TargetLanguageId != 0)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 33, Value2 = 4, Timestamp = Environment.TickCount64 });
                 return false;

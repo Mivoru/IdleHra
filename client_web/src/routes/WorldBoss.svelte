@@ -12,9 +12,12 @@
     attackWorldBoss,
     BossEventState,
     MAX_BOSS_ATTEMPTS,
-    MAX_PREDICTED_DAMAGE,
+    BOSS_PLATE_COUNT,
+    BOSS_WEAK_PLATE_HIDDEN,
+    BOSS_WEAK_PLATE_MULTIPLIER,
+    BOSS_SESSION_CAP_SECONDS,
   } from '../lib/net/commands';
-  import { playerState, typicalHit, pushLocalNotice } from '../lib/stores/game';
+  import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { play } from '../lib/ui/audio';
 
   const snap = $derived($playerState);
@@ -33,18 +36,69 @@
     !snap || (snap.Food1_Count <= 0 && snap.Food2_Count <= 0 && snap.Food3_Count <= 0),
   );
 
-  // The server floors an attack at 1000 regardless of what is sent, so an
-  // account that has never been in combat still contributes something rather
-  // than being blocked from an event it is eligible for.
-  const SERVER_DAMAGE_FLOOR = 1000;
-  const estimate = $derived(Math.max($typicalHit ?? 0, SERVER_DAMAGE_FLOOR));
-  const measured = $derived($typicalHit !== null);
-
-  // What the server will actually apply: the estimate clamped up to the floor,
-  // down to the ceiling, and finally down to what the boss has left.
-  const projected = $derived(Math.min(Math.min(estimate, MAX_PREDICTED_DAMAGE), currentHp));
-
   const attemptsLeft = $derived(Math.max(0, MAX_BOSS_ATTEMPTS - attempts));
+
+  // Modul: THE ARMOUR, and it is the whole interaction now.
+  //
+  // This screen used to show an estimate of the player's own damage, because
+  // the CLIENT computed that number and posted it. It does not any more - the
+  // server takes the damage from the character's real attack power, so there
+  // is nothing here to predict and nothing to display about it.
+  //
+  // What replaces it is a decision: five plates, one of them soft, and the
+  // board in front of you is what everyone who attacked before you found out.
+  const brokenMask = $derived(snap?.WorldBossBrokenPlateMask ?? 0);
+  const weakPlate = $derived(snap?.WorldBossWeakPlate ?? BOSS_WEAK_PLATE_HIDDEN);
+  const weakPlateFound = $derived(weakPlate !== BOSS_WEAK_PLATE_HIDDEN);
+
+  function isBroken(index: number): boolean {
+    return (brokenMask & (1 << index)) !== 0;
+  }
+
+  const brokenCount = $derived(
+    Array.from({ length: BOSS_PLATE_COUNT }, (_, i) => i).filter(isBroken).length,
+  );
+
+  // Modul: the deduction, stated for the player rather than left implicit.
+  //
+  // If every plate but one has been broken and nobody has found the weak point,
+  // the survivor IS the weak point. Saying so out loud is the difference
+  // between a puzzle and a guess - the information is on screen either way, and
+  // hiding the conclusion from someone who can see the premises is a riddle,
+  // not a decision.
+  const deducedPlate = $derived.by(() => {
+    if (weakPlateFound) return weakPlate;
+    if (brokenCount !== BOSS_PLATE_COUNT - 1) return -1;
+    for (let i = 0; i < BOSS_PLATE_COUNT; i++) {
+      if (!isBroken(i)) return i;
+    }
+    return -1;
+  });
+
+  let selectedPlate = $state(0);
+
+  // Modul: THE BATTLE SESSION, which used to be invisible from every angle.
+  //
+  // The server gives a player 300 seconds from their FIRST strike to spend the
+  // other two, then rolls every later attack back in silence - inside an
+  // encounter that runs for up to seven days. Nothing carried the deadline, so
+  // the button stayed enabled and did nothing, forever, with no message. An
+  // idle player who strikes once and comes back later is the NORMAL case in
+  // this genre; it cost them two thirds of their participation and never said
+  // why.
+  const sessionEndsEpoch = $derived(Number(snap?.WorldBossSessionEndsEpoch ?? 0));
+
+  let nowEpoch = $state(Math.floor(Date.now() / 1000));
+  $effect(() => {
+    // One second is the resolution the countdown is displayed at; anything
+    // faster is a timer nobody can read.
+    const id = setInterval(() => (nowEpoch = Math.floor(Date.now() / 1000)), 1000);
+    return () => clearInterval(id);
+  });
+
+  const sessionStarted = $derived(sessionEndsEpoch > 0);
+  const sessionExpired = $derived(sessionStarted && nowEpoch >= sessionEndsEpoch);
+  const sessionSecondsLeft = $derived(sessionStarted ? Math.max(0, sessionEndsEpoch - nowEpoch) : 0);
 
   let remainingLabel = $state('');
   $effect(() => {
@@ -69,11 +123,12 @@
 
   function attack() {
     const outcome = attackWorldBoss({
-      predictedDamage: estimate,
+      plateIndex: selectedPlate,
       eventState,
       bossCurrentHp: currentHp,
       attemptCount: attempts,
       larderEmpty,
+      sessionEndsEpoch,
     });
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
     play('playerHit');
@@ -141,42 +196,77 @@
       </p>
     {/if}
 
-    <h3>Damage</h3>
-    <dl class="stats">
-      <div>
-        <dt>Your typical hit</dt>
-        <dd>
-          {#if measured}
-            {estimate.toLocaleString()}
-          {:else}
-            <span class="dim">not measured</span>
-          {/if}
-        </dd>
-      </div>
-      <div>
-        <dt>Would apply</dt>
-        <dd>{projected.toLocaleString()}</dd>
-      </div>
-    </dl>
+    {#if sessionExpired && attemptsLeft > 0}
+      <!-- The second most important sentence on this screen, for the same
+           reason as the larder warning above it: the server accepts the attack
+           and applies nothing. -->
+      <p class="warn" role="status">
+        <strong>Your battle session has closed.</strong> It lasts
+        {BOSS_SESSION_CAP_SECONDS / 60} minutes from your first strike, and your
+        remaining {attemptsLeft} {attemptsLeft === 1 ? 'attempt' : 'attempts'} cannot be
+        used until the next encounter.
+      </p>
+    {:else if sessionStarted && attemptsLeft > 0}
+      <p class="dim tiny" role="status">
+        Battle session closes in {Math.floor(sessionSecondsLeft / 60)}m {sessionSecondsLeft % 60}s -
+        spend your remaining {attemptsLeft} before then.
+      </p>
+    {/if}
 
+    <h3>Its armour</h3>
     <p class="dim tiny">
-      {#if measured}
-        Measured from the median of your last sixteen real hits - there is no
-        attack stat on the wire to compute it from.
+      Five plates, one of them soft. A strike on the soft one does
+      <strong>{BOSS_WEAK_PLATE_MULTIPLIER}x</strong> damage. A strike anywhere else does full
+      damage and <strong>breaks</strong> that plate - for everyone, for the rest of this
+      encounter. Which plate is soft changes every encounter.
+    </p>
+
+    <div class="armour-plates" role="radiogroup" aria-label="Which plate to strike">
+      {#each Array(BOSS_PLATE_COUNT) as _, index}
+        <button
+          type="button"
+          role="radio"
+          aria-checked={selectedPlate === index}
+          class="armour-plate"
+          class:selected={selectedPlate === index}
+          class:broken={isBroken(index)}
+          class:weak={deducedPlate === index}
+          onclick={() => (selectedPlate = index)}
+        >
+          <span class="armour-plate-index">{index + 1}</span>
+          <span class="armour-plate-state">
+            {#if deducedPlate === index}
+              soft
+            {:else if isBroken(index)}
+              broken
+            {:else}
+              intact
+            {/if}
+          </span>
+        </button>
+      {/each}
+    </div>
+
+    <p class="dim tiny" role="status">
+      {#if weakPlateFound}
+        Somebody found the soft plate: it is <strong>plate {weakPlate + 1}</strong>. Every
+        strike on it pays {BOSS_WEAK_PLATE_MULTIPLIER}x.
+      {:else if deducedPlate >= 0}
+        Every other plate is broken and nobody has found the soft one, so it must be
+        <strong>plate {deducedPlate + 1}</strong>.
+      {:else if brokenCount === 0}
+        Nobody has struck this boss yet. Whatever you learn, everyone else will see.
       {:else}
-        Nothing measured yet, so the server's own floor of {SERVER_DAMAGE_FLOOR.toLocaleString()}
-        applies. Fight anything once and this becomes your real number.
+        {brokenCount} of {BOSS_PLATE_COUNT} plates broken, and the soft one is not among them.
       {/if}
-      The server clamps every attack to between {SERVER_DAMAGE_FLOOR.toLocaleString()} and
-      whatever the boss has left.
     </p>
 
     <button
       class="attack"
-      disabled={eventState !== BossEventState.Active || attemptsLeft === 0 || larderEmpty || currentHp <= 0}
+      disabled={eventState !== BossEventState.Active || attemptsLeft === 0 || larderEmpty || currentHp <= 0 || sessionExpired}
       onclick={attack}
     >
-      Attack
+      Strike plate {selectedPlate + 1}
     </button>
   </section>
 </div>
@@ -292,6 +382,58 @@
     margin: 0;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
+  }
+
+  .armour-plates {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin: 0.6rem 0;
+  }
+
+  .armour-plate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    padding: 0.5rem 0.2rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-panel);
+    cursor: pointer;
+    font-size: 0.75rem;
+    line-height: 1.2;
+  }
+
+  .armour-plate-index {
+    font-size: 1.1rem;
+    font-weight: 600;
+  }
+
+  .armour-plate-state {
+    opacity: 0.7;
+    /* The five states have to fit a 390px phone, so the word truncates rather
+       than wrapping the grid into two rows. */
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .armour-plate.broken {
+    opacity: 0.55;
+    border-style: dashed;
+  }
+
+  .armour-plate.weak {
+    border-color: var(--good);
+    color: var(--good);
+    opacity: 1;
+  }
+
+  .armour-plate.selected {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
   }
 
   .attack {

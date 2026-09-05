@@ -68,6 +68,27 @@ namespace FolkIdle.Server.Engine
             /// <summary>Equipment a character is wearing is never sold or binned by accident.</summary>
             Equipped = 2,
             InvalidQuantity = 3,
+
+            /// <summary>
+            /// The item is affix-locked, which means "do not change or destroy
+            /// this one".
+            ///
+            /// Modul: THE LOCK MEANT LESS THAN ITS NAME. IsAffixLocked was
+            /// honoured by the reroll and by forge fusion, and ignored by both
+            /// removal paths - so a locked item could not be CHANGED but could
+            /// still be sold, binned, or swallowed by the bulk sweep.
+            ///
+            /// That is not a distinction any player would draw from the word
+            /// "locked", and the sweep is the operation that makes it matter:
+            /// it deletes every unworn piece at or below a tier in one
+            /// statement, and its rarity ceiling of 6 is the only thing
+            /// standing between a player and their favourite Epic sword.
+            ///
+            /// Nothing can set the lock today (see docs/audit_2026_09_05.md
+            /// finding A), so this is inert until it is built - which is
+            /// exactly when it wants to already be true.
+            /// </summary>
+            Locked = 4,
         }
 
         /// <summary>
@@ -114,6 +135,15 @@ namespace FolkIdle.Server.Engine
                 {
                     await transaction.RollbackAsync();
                     return (ChestActionResult.Equipped, 0L);
+                }
+
+                // A locked piece is never sold or binned either - see
+                // ChestActionResult.Locked for why the lock had to mean this
+                // as well as "cannot be rerolled or fused".
+                if (item.IsAffixLocked)
+                {
+                    await transaction.RollbackAsync();
+                    return (ChestActionResult.Locked, 0L);
                 }
 
                 long gold = sell ? ValueEquipment(item.BaseItemId, item.QualityTier) : 0L;
@@ -278,6 +308,63 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
+        /// Turns an item's lock on or off, and reports the state it ended in.
+        ///
+        /// Modul: THE WRITE SIDE THE LOCK NEVER HAD.
+        ///
+        /// EquipmentInstance.IsAffixLocked was read in ten places - the affix
+        /// reroll, forge fusion, the command validator, the market
+        /// projections, and both removal paths here - and written in three,
+        /// always to false. Nothing could set it to true, so a player could
+        /// never engage any of it and three bytes rode every snapshot carrying
+        /// a constant zero.
+        ///
+        /// What it protects against is the bulk sweep, which deletes every
+        /// unworn piece at or below a quality tier in one statement. Its
+        /// rarity ceiling of 6 was the only way to say "not that one", and a
+        /// ceiling cannot express "keep THIS Epic sword".
+        ///
+        /// TOGGLED, not set. The caller asks for a flip rather than asserting
+        /// a value, so two clicks racing cannot leave the item in whichever
+        /// one lost - and the answer comes back, so the screen never has to
+        /// guess what happened.
+        ///
+        /// A worn piece may be locked freely: wearing something already stops
+        /// it being sold, and the lock is about what happens when it comes off.
+        /// </summary>
+        public static async Task<(ChestActionResult Result, bool Locked)> ToggleAffixLockAsync(
+            FolkIdleDbContext db, long playerId, long equipmentId)
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
+            {
+                // Scoped to the player in the SELECT, which is where ownership
+                // is decided - a locked item belonging to somebody else must
+                // read as "not found" rather than as a refusal that confirms it
+                // exists.
+                var item = await db.EquipmentInstances
+                    .FromSqlInterpolated($"SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {equipmentId} AND \"PlayerId\" = {playerId} FOR UPDATE")
+                    .FirstOrDefaultAsync();
+
+                if (item == null)
+                {
+                    await transaction.RollbackAsync();
+                    return (ChestActionResult.NotFound, false);
+                }
+
+                item.IsAffixLocked = !item.IsAffixLocked;
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return (ChestActionResult.Success, item.IsAffixLocked);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        /// <summary>
         /// The highest rarity a player may point the bulk tools or auto-salvage
         /// at. Legendary (7) and above is never sweepable in bulk and never
         /// auto-salvaged: those are the drops the whole loop is for, and a
@@ -350,10 +437,24 @@ namespace FolkIdle.Server.Engine
                         && e.QualityTier <= maxQualityTier
                         && wornIds.Contains(e.Id));
 
+                // Modul: AND A LOCKED PIECE SURVIVES THE SWEEP.
+                //
+                // This is the operation the lock exists for. It deletes every
+                // unworn piece at or below a tier in a single statement, and
+                // until now its rarity ceiling of 6 was the ONLY thing between
+                // a player and a favourite Epic sword. "Locked" has to mean
+                // "not this one" here or it does not mean anything a player
+                // would recognise.
+                //
+                // Inert today - nothing can set the flag (see
+                // docs/audit_2026_09_05.md finding A) - which is exactly when a
+                // safety predicate wants to already be in place, rather than
+                // being remembered on the day the lock is built.
                 var doomed = await db.EquipmentInstances
                     .AsNoTracking()
                     .Where(e => e.PlayerId == playerId
                         && e.QualityTier <= maxQualityTier
+                        && !e.IsAffixLocked
                         && !wornIds.Contains(e.Id))
                     .Select(e => new { e.BaseItemId, e.QualityTier })
                     .ToListAsync();
@@ -373,9 +474,16 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
+                // THE DELETE MUST REPEAT THE SELECT EXACTLY, including the
+                // lock. The two run inside one Serializable transaction and are
+                // meant to see the same rows; a predicate that appears in one
+                // and not the other would sell a set of items and delete a
+                // different one - here, deleting locked pieces the gold total
+                // did not pay for.
                 int removed = await db.EquipmentInstances
                     .Where(e => e.PlayerId == playerId
                         && e.QualityTier <= maxQualityTier
+                        && !e.IsAffixLocked
                         && !wornIds.Contains(e.Id))
                     .ExecuteDeleteAsync();
 

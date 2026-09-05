@@ -266,6 +266,49 @@ namespace FolkIdle.Server.Engine
             return AffixRarity.Common;
         }
 
+        // Modul: A TRANSCENDENT'S AFFIXES USED TO ROLL FROM THE SAME TABLE AS A
+        // NORMAL'S.
+        //
+        // RollAffixes took an `itemRarityTier` and never read it - a dead
+        // parameter, which in this codebase almost always means an intended
+        // influence that was never wired. It is wired now, and it is the half
+        // of the rarity rework that makes a high-tier item feel DIFFERENT
+        // rather than merely bigger: better rolls, not just a larger number on
+        // the same roll.
+        //
+        // Best-of-N rather than a second weight table, for two reasons. A
+        // second table would be a second authority over the same distribution,
+        // and the shape of best-of-N is exactly right for what a rarity should
+        // mean - it cannot produce a magnitude the base table could not, it
+        // just stops handing you the bottom of it. Legendary stays rare at
+        // every tier; it simply stops being vanishingly rare at the top.
+        //
+        // The extra attempts are FRACTIONAL, so all fourteen tiers differ:
+        // tier 1 gets exactly one roll, tier 14 gets four, and the tiers
+        // between get a whole number plus a probabilistic extra. This is the
+        // second half of ending "nine of thirteen adjacent tiers are
+        // mechanically identical".
+        public const double MaxExtraRarityRolls = 3.0;
+
+        public static AffixRarity RollAffixRarity(int itemRarityTier)
+        {
+            if (itemRarityTier <= 1) return RollAffixRarity();
+
+            int tier = itemRarityTier > 14 ? 14 : itemRarityTier;
+            double extra = MaxExtraRarityRolls * (tier - 1) / 13.0;
+
+            int attempts = 1 + (int)Math.Floor(extra);
+            if (Random.Shared.NextDouble() < extra - Math.Floor(extra)) attempts++;
+
+            AffixRarity best = RollAffixRarity();
+            for (int i = 1; i < attempts; i++)
+            {
+                AffixRarity candidate = RollAffixRarity();
+                if (candidate > best) best = candidate;
+            }
+            return best;
+        }
+
         // Splits a payload key into its definition id and affix rarity.
         public static AffixRarity ParseRarity(string payloadKey)
         {
@@ -671,7 +714,7 @@ namespace FolkIdle.Server.Engine
                 // An unrecognised slot suffix should not produce a silently
                 // affix-less item; fall back to the two universal flat
                 // affixes so the item still scales with rarity.
-                AddOrStack(destination, _definitions[0], regionTier, RollAffixRarity());
+                AddOrStack(destination, _definitions[0], regionTier, RollAffixRarity(itemRarityTier));
                 return;
             }
 
@@ -711,7 +754,10 @@ namespace FolkIdle.Server.Engine
                 // item can carry a Legendary next to a Common. That variance is
                 // the point: it gives the reroll system per-affix targets
                 // instead of one item-wide verdict.
-                AddOrStack(destination, _definitions[legal[chosen]], regionTier, RollAffixRarity(), stackCounts[chosen]);
+                //
+                // The item's tier biases each of those rolls upward without
+                // removing the variance - see RollAffixRarity(int).
+                AddOrStack(destination, _definitions[legal[chosen]], regionTier, RollAffixRarity(itemRarityTier), stackCounts[chosen]);
             }
         }
 

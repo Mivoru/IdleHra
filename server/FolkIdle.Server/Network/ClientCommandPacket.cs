@@ -32,7 +32,17 @@ namespace FolkIdle.Server.Network
         ExecuteBreeding = 15,
         UpdateAutoEatThreshold = 16,
         InitializeCrafting = 18,
-        RegisterWorldBossDamage = 19,
+        // 19 was RegisterWorldBossDamage, RETIRED. It was a second entry into
+        // WorldBossEngine.QueueAttack with weaker validation than
+        // AttackWorldBoss - it took the damage figure straight out of
+        // cmd.TargetId and only clamped it, where AttackWorldBoss checks the
+        // boss instance, that the event is live, and that the boss is not
+        // already dead. No client path ever sent it.
+        //
+        // The handler went first and the enum value outlived it, so the opcode
+        // stayed on the generated protocol and on the wire, accepted and doing
+        // nothing. The number is deliberately NOT reused - see the note at the
+        // top of NEXT_STEPS_BACKLOG.md on why a gap is fine.
         // 20 intentionally unused - was LegacyUpgradeBuilding, a
         // buildingType 1-4-only wrapper that the command dispatch loop never
         // actually routed to (UpgradeBuilding = 29, below, is the real one,
@@ -226,7 +236,23 @@ namespace FolkIdle.Server.Network
         public uint ChallengeId;
         public uint ChallengeVerificationHash;
         public uint TargetedBossId;
+
+        // Modul: SHARED WITH THE GUILD WAR SHARD ATTACK, which is the only
+        // reason this field still exists.
+        //
+        // AttackWorldBoss stopped using it on 2026-09-05 and the validator now
+        // requires it to be ZERO for that command. The world boss takes its
+        // damage from the player's own cached attack power on the server -
+        // there is no longer a number the client can inflate. The guild war
+        // still posts one, and that is its own problem to solve when Guild Wars
+        // comes off the roadmap.
         public uint ClientPredictedDamage;
+
+        // Modul: which armour plate the strike is aimed at, 0-4. A CHOICE, not
+        // a quantity - so unlike the field above there is nothing here to
+        // inflate, and an out-of-range value is simply an invalid command.
+        // See WorldBossEngine.PlateCount and docs/world_boss_design.md.
+        public byte TargetedPlateIndex;
         public fixed byte DeviceTokenBytes[64];
         public byte TargetPlatformFamily;
         public byte PushReserved0;

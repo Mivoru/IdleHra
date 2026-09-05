@@ -74,6 +74,7 @@ namespace FolkIdle.Server.Network
         public const string TypeRequestChatMessage = "RequestChatMessage";
         public const string TypeResponseChatMessage = "ResponseChatMessage";
         public const string TypeResponseLootDrop = "ResponseLootDrop";
+        public const string TypeResponseCombatEvent = "ResponseCombatEvent";
 
         // Every packet on this wire.
         //
@@ -92,6 +93,7 @@ namespace FolkIdle.Server.Network
             { typeof(RequestChatMessagePacket), TypeRequestChatMessage },
             { typeof(ResponseChatMessagePacket), TypeResponseChatMessage },
             { typeof(ResponseLootDropPacket), TypeResponseLootDrop },
+            { typeof(ResponseCombatEventPacket), TypeResponseCombatEvent },
         };
 
         public static IReadOnlyDictionary<Type, string> Discriminators => DiscriminatorsByType;

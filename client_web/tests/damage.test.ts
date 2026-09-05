@@ -1,103 +1,116 @@
+// The floating damage numbers, and where they stopped coming from.
+//
+// This file used to test `inferDamage` - a careful set of rules for deducing a
+// hit from the difference between two CurrentMonsterHp snapshots, because the
+// wire carried no combat event. It was careful about the monster changing,
+// about heals and respawns, and about a reconnect gap collapsing thirty hits
+// into one number.
+//
+// It was also wrong about the case that mattered most, and no amount of care
+// could have fixed it. Measured 2026-09-04: snapshots arrive every ~1090 ms and
+// a geared character kills an early monster every ~1400 ms, so spawn and death
+// both fall between two samples. The inference refuses to report when the
+// monster changed - which is exactly what a one-hit kill looks like - so the
+// player whose character killed something instantly saw no number at all.
+//
+// The server states each blow now. These tests cover what is left: the feed's
+// own bookkeeping, and the median that two things still read.
 import { describe, it, expect } from 'vitest';
-import {
-  inferDamage,
-  DamageFeed,
-  DAMAGE_TEXT_LIFETIME_MS,
-  MAX_ADJACENT_SNAPSHOT_GAP_MS,
-  type CombatSample,
-} from '../src/lib/stores/damage';
+import { DamageFeed, DAMAGE_TEXT_LIFETIME_MS } from '../src/lib/stores/damage';
 
-// Modul: THE WIRE CARRIES NO DAMAGE EVENT. There is no "you hit for N" packet
-// anywhere in this protocol - only CurrentMonsterHp on a snapshot - so every
-// number the player sees is inferred from a difference between two snapshots.
-// That makes the inference rules the whole feature, and each of the cases
-// below is a way the difference lies.
+const MELEE = 0;
+const MAGIC = 2;
 
-function sample(monsterId: number, monsterHp: number, atMs: number): CombatSample {
-  return { monsterId, monsterHp, atMs };
-}
+describe('the damage feed', () => {
+  it('turns a resolved blow into one floating number', () => {
+    const feed = new DamageFeed();
+    const event = feed.push(412, false, MELEE, 1000);
 
-describe('inferDamage', () => {
-  it('reports the drop between two adjacent snapshots of the same monster', () => {
-    expect(inferDamage(sample(91, 80, 0), sample(91, 74, 1100))).toBe(6);
+    expect(event).not.toBeNull();
+    expect(event!.amount).toBe(412);
+    expect(event!.isCrit).toBe(false);
+    expect(event!.weaponKind).toBe(MELEE);
+    expect(feed.current).toHaveLength(1);
   });
 
-  it('reports nothing when health did not move', () => {
-    // Most snapshots carry no hit at all, so this is the common path.
-    expect(inferDamage(sample(91, 80, 0), sample(91, 80, 1100))).toBeNull();
+  it('carries the crit and the weapon family, because the server states both', () => {
+    const feed = new DamageFeed();
+    const event = feed.push(861, true, MAGIC, 1000);
+
+    // A crit used to be a guess from a running median - the client was careful
+    // never to call it one - and then LastHitWasCrit on the snapshot, which
+    // described the LAST swing rather than any number on screen. It belongs to
+    // the hit now.
+    expect(event!.isCrit).toBe(true);
+    expect(event!.weaponKind).toBe(MAGIC);
   });
 
-  it('reports nothing for the first snapshot of a session', () => {
-    expect(inferDamage(null, sample(91, 80, 0))).toBeNull();
+  it('refuses a nonsense amount rather than drawing a zero', () => {
+    const feed = new DamageFeed();
+    expect(feed.push(0, false, MELEE, 1000)).toBeNull();
+    expect(feed.push(-5, false, MELEE, 1000)).toBeNull();
+    expect(feed.push(Number.NaN, false, MELEE, 1000)).toBeNull();
+    expect(feed.current).toHaveLength(0);
   });
 
-  it('never reports a hit across a monster change', () => {
-    // The previous monster died at 6 HP and a fresh one is at 3500. Neither
-    // direction of that difference is damage the player dealt.
-    expect(inferDamage(sample(91, 6, 0), sample(95, 3500, 1100))).toBeNull();
-    expect(inferDamage(sample(95, 3500, 0), sample(91, 6, 1100))).toBeNull();
+  it('gives every number its own id and jitter, so two at once do not stack', () => {
+    const feed = new DamageFeed();
+    const a = feed.push(100, false, MELEE, 1000)!;
+    const b = feed.push(100, false, MELEE, 1000)!;
+
+    expect(a.id).not.toBe(b.id);
+    expect(a.offset).toBeGreaterThanOrEqual(0);
+    expect(a.offset).toBeLessThanOrEqual(1);
   });
 
-  it('never reports a heal or a respawn as damage', () => {
-    // Same monster id back at full health is a respawn, not a negative hit.
-    expect(inferDamage(sample(91, 6, 0), sample(91, 80, 1100))).toBeNull();
+  it('prunes expired numbers from the render loop, not from a timer per event', () => {
+    const feed = new DamageFeed();
+    feed.push(100, false, MELEE, 1000);
+    feed.push(200, false, MELEE, 1000 + DAMAGE_TEXT_LIFETIME_MS);
+
+    const kept = feed.prune(1000 + DAMAGE_TEXT_LIFETIME_MS + 1);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].amount).toBe(200);
   });
 
-  it('reports nothing when not in combat', () => {
-    expect(inferDamage(sample(0, 0, 0), sample(0, 0, 1100))).toBeNull();
-  });
+  it('reset clears the numbers and the running median together', () => {
+    const feed = new DamageFeed();
+    feed.push(500, false, MELEE, 1000);
+    expect(feed.typicalHit).toBe(500);
 
-  it('refuses to attribute a reconnect gap to a single hit', () => {
-    // Thirty hits collapsed into one difference would put an absurd number on
-    // screen and misrepresent what happened. Silence is the honest answer.
-    const gap = MAX_ADJACENT_SNAPSHOT_GAP_MS + 1;
-    expect(inferDamage(sample(91, 4300, 0), sample(91, 90, gap))).toBeNull();
-  });
-
-  it('still reports across this game\'s real 2183 ms combat cadence', () => {
-    // The measured gap between monster-HP changes is 1100-2183 ms. A threshold
-    // tighter than that would suppress most real hits - the same mistake the
-    // interpolator originally made with its 1000 ms reconnect guard.
-    expect(inferDamage(sample(91, 80, 0), sample(91, 74, 2183))).toBe(6);
-  });
-
-  it('reports nothing for a non-advancing or reordered timestamp', () => {
-    expect(inferDamage(sample(91, 80, 1000), sample(91, 74, 1000))).toBeNull();
-    expect(inferDamage(sample(91, 80, 1000), sample(91, 74, 900))).toBeNull();
+    feed.reset();
+    expect(feed.current).toHaveLength(0);
+    expect(feed.typicalHit).toBeNull();
   });
 });
 
-describe('DamageFeed', () => {
-  it('emits one event per hit and keeps them until they expire', () => {
-    const feed = new DamageFeed();
-    expect(feed.push(sample(91, 80, 0))).toBeNull();
-
-    const hit = feed.push(sample(91, 74, 1000));
-    expect(hit?.amount).toBe(6);
-    expect(feed.current).toHaveLength(1);
-
-    feed.push(sample(91, 68, 2000));
-    expect(feed.current).toHaveLength(2);
-
-    // Still inside the lifetime of the second, past that of the first.
-    expect(feed.prune(2000 + DAMAGE_TEXT_LIFETIME_MS - 1)).toHaveLength(1);
-    expect(feed.prune(2000 + DAMAGE_TEXT_LIFETIME_MS + 1)).toHaveLength(0);
+describe('the typical hit', () => {
+  // Modul: TWO THINGS STILL READ THIS. The floating text scales its font
+  // against the median so a big hit looks big, and the guild war shard attack
+  // still posts a client-computed damage figure. The world boss used to and no
+  // longer does - it sends a plate index and the server reads the player's own
+  // attack power.
+  it('is null until something has actually been hit', () => {
+    expect(new DamageFeed().typicalHit).toBeNull();
   });
 
-  it('gives each event a distinct id so a keyed list animates each once', () => {
+  it('is a median, so one lucky crit cannot drag it', () => {
     const feed = new DamageFeed();
-    feed.push(sample(91, 80, 0));
-    const first = feed.push(sample(91, 74, 1000))!;
-    const second = feed.push(sample(91, 68, 2000))!;
-    expect(first.id).not.toBe(second.id);
+    for (const amount of [100, 100, 100, 100, 9999]) {
+      feed.push(amount, false, MELEE, 1000);
+    }
+
+    // A running mean would read 2079 here. The median is the point.
+    expect(feed.typicalHit).toBe(100);
   });
 
-  it('forgets its previous sample on reset, so a reconnect invents no hit', () => {
+  it('keeps only the last sixteen, so it follows the character as it grows', () => {
     const feed = new DamageFeed();
-    feed.push(sample(91, 80, 0));
-    feed.reset();
-    // Without the reset this would report a 74-point hit spanning the outage.
-    expect(feed.push(sample(91, 6, 1000))).toBeNull();
-    expect(feed.current).toHaveLength(0);
+    for (let i = 0; i < 16; i++) feed.push(10, false, MELEE, 1000);
+    expect(feed.typicalHit).toBe(10);
+
+    // Sixteen much larger hits displace every one of the old ones.
+    for (let i = 0; i < 16; i++) feed.push(1000, false, MELEE, 2000);
+    expect(feed.typicalHit).toBe(1000);
   });
 });

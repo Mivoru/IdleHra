@@ -22,7 +22,12 @@ namespace FolkIdle.Server.Network
         // stop min rarity (1), stop affix index (1). Both guards move in
         // the same commit - the client copy silently drifted once before
         // and threw on every startup.
-        public const int ExpectedClientCommandSize = 339;
+        // Modul: world boss armour, 339 -> 340. One byte, TargetedPlateIndex -
+        // WHICH plate the strike is aimed at, replacing a damage figure the
+        // client used to compute about itself. ClientPredictedDamage stays
+        // because the guild war shard attack still posts one; AttackWorldBoss
+        // now requires it to be zero.
+        public const int ExpectedClientCommandSize = 340;
 
         // Modul: Full-Stack Expansion, Part 1. 680 -> 689: the Leggings
         // equipment slot added EquippedLeggingsId (8 bytes) +
@@ -148,7 +153,32 @@ namespace FolkIdle.Server.Network
         // carries no combat event at all - the client infers every hit from a
         // health difference - so without these two a crit looked exactly like
         // an ordinary swing and a wand looked exactly like a sword.
-        public const int ExpectedStateUpdateSize = 779;
+        //
+        // Modul: honest health bars, 779 -> 787. Two ints, CurrentMonsterMaxHp
+        // and PlayerMaxHp. NEITHER MAXIMUM WAS ON THIS WIRE, so the client
+        // invented both: the monster's from a hand-copy of BossFirstClearRules
+        // that predates First Blood softening the penalty, the player's from a
+        // running high-water mark of the largest PlayerHp seen this session -
+        // which a measured trace caught reading "2320 / 2320" while PlayerHp
+        // was 3701. See StateUpdatePacket's note at the fields.
+        //
+        // NOTE FOR THE NEXT READER: the running total in the comments above
+        // says 801 and the constant said 779, so this history has drifted from
+        // the code somewhere before this entry. The constant is the truth -
+        // Validate() checks it against Unsafe.SizeOf - and the deltas are still
+        // the record of WHY the packet grew. Do not "fix" the arithmetic by
+        // changing the constant.
+        //
+        // Modul: world boss armour, 787 -> 789. Two bytes:
+        // WorldBossBrokenPlateMask and WorldBossWeakPlate. A player choosing
+        // which plate to strike has to be able to see which are already broken,
+        // or the choice is a slot machine rather than a decision.
+        //
+        // Modul: the world boss battle session, 789 -> 797. One long,
+        // WorldBossSessionEndsEpoch. A player has 300 seconds from their first
+        // strike to spend the rest, and until now nothing said so - the attack
+        // simply stopped working and never explained itself.
+        public const int ExpectedStateUpdateSize = 797;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper
@@ -162,6 +192,15 @@ namespace FolkIdle.Server.Network
         // the size-based demultiplexing in both receive loops stays
         // unambiguous.
         public const int ExpectedResponseLootDropSize = 22;
+
+        // Modul: Combat Event Feed. 26 bytes: PlayerId(8) + MonsterId(4) +
+        // Amount(4) + MonsterHpAfter(4) + Sequence(4) + EventKind(1) +
+        // Flags(1).
+        //
+        // Without Sequence it would be 22 and collide exactly with the loot
+        // drop above, which the binary receive loops - demultiplexing on length
+        // alone - could not tell apart. The check below is what caught that.
+        public const int ExpectedResponseCombatEventSize = 26;
 
         public static void Validate()
         {
@@ -204,6 +243,19 @@ namespace FolkIdle.Server.Network
             if (ExpectedResponseLootDropSize == ExpectedClientCommandSize || ExpectedResponseLootDropSize == ExpectedStateUpdateSize ||
                 ExpectedResponseLootDropSize == ExpectedAuthHandshakeSize || ExpectedResponseLootDropSize == ExpectedRequestChatMessageSize ||
                 ExpectedResponseLootDropSize == ExpectedResponseChatMessageSize)
+            {
+                throw new InvalidOperationException("Packet size collision detected - the WS receive loops on both sides distinguish inbound message types by exact byte size, so every packet type must have a unique size.");
+            }
+
+            int combatEventSize = Unsafe.SizeOf<ResponseCombatEventPacket>();
+            if (combatEventSize != ExpectedResponseCombatEventSize)
+            {
+                throw new InvalidOperationException($"ResponseCombatEventPacket byte layout mismatch. Expected {ExpectedResponseCombatEventSize}, got {combatEventSize}.");
+            }
+
+            if (ExpectedResponseCombatEventSize == ExpectedClientCommandSize || ExpectedResponseCombatEventSize == ExpectedStateUpdateSize ||
+                ExpectedResponseCombatEventSize == ExpectedAuthHandshakeSize || ExpectedResponseCombatEventSize == ExpectedRequestChatMessageSize ||
+                ExpectedResponseCombatEventSize == ExpectedResponseChatMessageSize || ExpectedResponseCombatEventSize == ExpectedResponseLootDropSize)
             {
                 throw new InvalidOperationException("Packet size collision detected - the WS receive loops on both sides distinguish inbound message types by exact byte size, so every packet type must have a unique size.");
             }

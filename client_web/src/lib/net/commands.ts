@@ -179,40 +179,63 @@ export const ACTIVE_BOSS_INSTANCE_ID = 1;
 /** WorldBossEngine.MaxAttemptsPerEncounter. */
 export const MAX_BOSS_ATTEMPTS = 3;
 
-/** WorldBossEngine.MaxClientPredictedDamage. Above this the session dies. */
-export const MAX_PREDICTED_DAMAGE = 100_000_000;
-
 /** StateUpdatePacket.WorldBossEventState. */
 export const BossEventState = { Dormant: 0, Active: 1, Concluded: 2 } as const;
+
+/** WorldBossEngine.PlateCount. */
+export const BOSS_PLATE_COUNT = 5;
+
+/** WorldBossEngine.WeakPlateHidden - nobody has found the weak point yet. */
+export const BOSS_WEAK_PLATE_HIDDEN = 255;
+
+/** WorldBossEngine.WeakPlateDamageMultiplier. */
+export const BOSS_WEAK_PLATE_MULTIPLIER = 3;
+
+/** WorldBossEngine.BattleSessionCapSeconds. */
+export const BOSS_SESSION_CAP_SECONDS = 300;
 
 /**
  * Mirrors ValidateWorldBossAttackRequest - and then goes further, because that
  * validator is only half the story.
  *
- * The validator DISCONNECTS on: the event not being active, a zero or
- * out-of-range predicted damage, a boss id other than the active one, the boss
- * already being dead, or any of twenty unrelated fields being non-zero.
+ * The validator DISCONNECTS on: the event not being active, a plate index
+ * outside 0-4, a boss id other than the active one, the boss already being
+ * dead, or any of twenty unrelated fields being non-zero - INCLUDING
+ * ClientPredictedDamage, which this command stopped carrying on 2026-09-05.
+ * The server takes the damage from the player's own attack power now; there is
+ * no number here to get wrong or to inflate.
  *
  * ExecuteAttackAsync then SILENTLY ROLLS BACK - no damage, no message, no
  * telemetry the player will ever see - on three further conditions:
  *
  *   - the player has already used all three attempts this encounter
- *   - the battle session cap has elapsed
+ *   - THE BATTLE SESSION CAP HAS ELAPSED: 300 seconds from the FIRST strike to
+ *     spend the other two, inside an encounter that runs for up to seven days
  *   - AUTO-EAT FOOD IS DEPLETED (all three larder slots empty)
  *
- * That last one is the cruel one: with an empty larder the button works, the
- * request is accepted, and absolutely nothing happens. So it is refused here
- * with an explanation rather than sent into the void.
+ * All three are refused here with an explanation rather than sent into the
+ * void. The session cap was the worst of them and went unsaid the longest: the
+ * deadline was not on the wire at all until 2026-09-05, so the button stayed
+ * enabled and did nothing for the rest of the encounter. An idle player who
+ * strikes once and comes back an hour later is the NORMAL case in this genre,
+ * and it silently cost them two thirds of their participation.
  */
 export function attackWorldBoss(options: {
-  predictedDamage: number;
+  /** Which armour plate to strike, 0-4. A choice, not a quantity. */
+  plateIndex: number;
   eventState: number;
   bossCurrentHp: number;
   attemptCount: number;
   /** True when Food1_Count, Food2_Count and Food3_Count are all zero. */
   larderEmpty: boolean;
+  /** StateUpdatePacket.WorldBossSessionEndsEpoch; 0 before the first strike. */
+  sessionEndsEpoch?: number;
+  /** Unix seconds. Injected so this stays pure and testable. */
+  nowEpoch?: number;
 }): CommandOutcome {
-  const { predictedDamage, eventState, bossCurrentHp, attemptCount, larderEmpty } = options;
+  const { plateIndex, eventState, bossCurrentHp, attemptCount, larderEmpty } = options;
+  const sessionEndsEpoch = options.sessionEndsEpoch ?? 0;
+  const nowEpoch = options.nowEpoch ?? Math.floor(Date.now() / 1000);
 
   if (eventState !== BossEventState.Active) {
     return refuse('No world boss is active right now.');
@@ -226,16 +249,20 @@ export function attackWorldBoss(options: {
   if (larderEmpty) {
     return refuse('Stock your larder first - an attack with no food is discarded silently.');
   }
+  if (sessionEndsEpoch > 0 && nowEpoch >= sessionEndsEpoch) {
+    return refuse(
+      `Your battle session for this encounter has closed - it lasts ${BOSS_SESSION_CAP_SECONDS / 60} minutes from your first strike.`,
+    );
+  }
 
-  const damage = Math.trunc(predictedDamage);
-  if (!Number.isFinite(damage) || damage <= 0 || damage > MAX_PREDICTED_DAMAGE) {
-    return refuse('Cannot estimate your damage right now.');
+  if (!Number.isInteger(plateIndex) || plateIndex < 0 || plateIndex >= BOSS_PLATE_COUNT) {
+    return refuse('Pick a plate to strike.');
   }
 
   connection.send({
     Command: CommandType.AttackWorldBoss,
     TargetedBossId: ACTIVE_BOSS_INSTANCE_ID,
-    ClientPredictedDamage: damage,
+    TargetedPlateIndex: plateIndex,
   });
   return OK;
 }

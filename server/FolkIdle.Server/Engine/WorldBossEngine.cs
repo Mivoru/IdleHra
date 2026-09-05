@@ -26,6 +26,31 @@ namespace FolkIdle.Server.Engine
     {
         public const uint ActiveBossInstanceId = 1;
         public const uint MaxClientPredictedDamage = 100000000;
+
+        // Modul: THE BOSS WEARS ARMOUR NOW, and the whole point is that the
+        // client stops sending a damage figure.
+        //
+        // Until 2026-09-05 an attack posted `clientPredictedDamage` - a number
+        // the client computed about itself - and the only thing between it and
+        // a shared health pool was the clamp above. It sends a PLATE INDEX now,
+        // which has nothing to bound because it is not a quantity, and the
+        // server takes the damage from the player's own cached attack power.
+        //
+        // Five plates against three attempts. Three of each was the first
+        // design and it was wrong: a blind player cannot fail to find the weak
+        // point in three tries out of three, so knowing where it is would be
+        // worth 1.2x and nobody would ever read the board. At five it is worth
+        // 1.67x. See docs/world_boss_design.md for the table.
+        public const int PlateCount = 5;
+
+        // A strike on the weak point. A strike anywhere else does full normal
+        // damage - deliberately NOT reduced, so a player who guesses wrong
+        // loses an upside rather than paying a fine, and has no reason to wait
+        // for someone else to strip the armour.
+        public const double WeakPlateDamageMultiplier = 3.0;
+
+        /// <summary>On the wire while nobody has landed on the weak point yet.</summary>
+        public const byte WeakPlateHidden = 255;
         private const long BaseHp = 50000000L;
         private const int MaxAttemptsPerEncounter = 3;
 
@@ -39,6 +64,17 @@ namespace FolkIdle.Server.Engine
         private int _eventState;
         private long _eventEndEpoch;
 
+        // Modul: the armour, mirrored in memory for the same reason the health
+        // is - the broadcast reads this on the tick thread once per player per
+        // snapshot and must not touch the database to do it.
+        //
+        // _weakPlate is 255 while the weak point is still a secret. The
+        // snapshot holds the real index either way; this mirror only ever
+        // carries it once WeakPlateRevealed is set, so a bug that leaks this
+        // field cannot leak the answer.
+        private int _brokenPlateMask;
+        private int _weakPlate = WeakPlateHidden;
+
         private readonly ConcurrentDictionary<long, long> _playerDamageMap = new();
 
         public long BossMaxHp => Interlocked.Read(ref _bossMaxHp);
@@ -47,6 +83,12 @@ namespace FolkIdle.Server.Engine
         public bool IsEventActive => Volatile.Read(ref _eventState) == 1;
         public byte EventState => (byte)Volatile.Read(ref _eventState);
         public long EventEndEpoch => Interlocked.Read(ref _eventEndEpoch);
+
+        /// <summary>Bit i is plate i, broken. What every player can see.</summary>
+        public byte BrokenPlateMask => (byte)Volatile.Read(ref _brokenPlateMask);
+
+        /// <summary>The weak point once somebody has found it, or 255 while it is still a secret.</summary>
+        public byte WeakPlate => (byte)Volatile.Read(ref _weakPlate);
 
         public WorldBossEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
         {
@@ -91,9 +133,14 @@ namespace FolkIdle.Server.Engine
             return Volatile.Read(ref _bossIsAlive) == 0 || BossCurrentHp <= 0;
         }
 
-        public void QueueAttack(long playerId, uint bossId, uint clientPredictedDamage, bool autoEatFoodDepleted = false)
+        /// <summary>
+        /// Queues one strike. `serverComputedDamage` is exactly that - taken
+        /// from the player's own cached attack power inside the tick, never
+        /// from anything the client said about itself.
+        /// </summary>
+        public void QueueAttack(long playerId, uint bossId, uint serverComputedDamage, byte plateIndex, bool autoEatFoodDepleted = false)
         {
-            _ = Task.Run(async () => await ExecuteAttackAsync(playerId, bossId, clientPredictedDamage, autoEatFoodDepleted));
+            _ = Task.Run(async () => await ExecuteAttackAsync(playerId, bossId, serverComputedDamage, plateIndex, autoEatFoodDepleted));
         }
 
         public async Task ScaleActiveBossAsync(long[] onlinePlayerIds)
@@ -310,7 +357,8 @@ namespace FolkIdle.Server.Engine
                     _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
                     {
                         PlayerId = onlinePlayerIds[i],
-                        AttemptCount = 0
+                        AttemptCount = 0,
+                        SessionEndsEpoch = 0
                     });
                 }
 
@@ -353,6 +401,16 @@ namespace FolkIdle.Server.Engine
                 snapshot.EventEndEpoch = eventEndEpoch;
                 snapshot.LastActiveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
+                // Modul: a fresh set of armour, and a fresh secret.
+                //
+                // RE-SEEDED PER ENCOUNTER, which is the difference between a
+                // decision and a wiki lookup. If the weak point were a property
+                // of the boss rather than of the encounter, this mechanic would
+                // have a shelf life of about a day.
+                snapshot.BrokenPlateMask = 0;
+                snapshot.WeakPlateRevealed = 0;
+                snapshot.WeakPlateIndex = (byte)Random.Shared.Next(PlateCount);
+
                 await db.SaveChangesAsync();
                 await db.Database.ExecuteSqlRawAsync(
                     "DELETE FROM \"player_world_boss_attempts\" WHERE \"BossInstanceId\" = {0}", (long)ActiveBossInstanceId);
@@ -370,7 +428,8 @@ namespace FolkIdle.Server.Engine
                     _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
                     {
                         PlayerId = onlinePlayerIds[i],
-                        AttemptCount = 0
+                        AttemptCount = 0,
+                        SessionEndsEpoch = 0
                     });
                 }
 
@@ -418,11 +477,20 @@ namespace FolkIdle.Server.Engine
 
         // Modul 06/15: session cutoff duration, matching the brief's absolute
         // 300-second per-player battle entry cap.
-        private const long BattleSessionCapSeconds = 300L;
+        // Modul: how long a player has, from their FIRST strike, to spend the
+        // rest of their attempts. Public because the client has to be able to
+        // say it - see WorldBossAttemptUpdateNotification.SessionEndsEpoch for
+        // what it cost to leave that unsaid.
+        public const long BattleSessionCapSeconds = 300L;
 
-        internal async Task ExecuteAttackAsync(long playerId, uint bossId, uint clientPredictedDamage, bool autoEatFoodDepleted = false)
+        internal async Task ExecuteAttackAsync(long playerId, uint bossId, uint serverComputedDamage, byte plateIndex = 0, bool autoEatFoodDepleted = false)
         {
-            if (playerId <= 0 || bossId != ActiveBossInstanceId || clientPredictedDamage == 0)
+            if (playerId <= 0 || bossId != ActiveBossInstanceId || serverComputedDamage == 0)
+            {
+                return;
+            }
+
+            if (plateIndex >= PlateCount)
             {
                 return;
             }
@@ -484,7 +552,28 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                long appliedDamage = ComputeAppliedDamage(snapshot.CurrentHp, clientPredictedDamage);
+                // Modul: which plate was struck decides what the blow is worth,
+                // and what it teaches everyone else.
+                //
+                // Hitting the weak point pays triple and REVEALS it, from then
+                // on, to every player - the finder included. Hitting anything
+                // else pays in full and breaks that plate, permanently, which
+                // is how the boss ends up telling the next arrival where not to
+                // look.
+                bool struckWeakPoint = plateIndex == snapshot.WeakPlateIndex;
+                double plateMultiplier = struckWeakPoint ? WeakPlateDamageMultiplier : 1.0;
+
+                if (struckWeakPoint)
+                {
+                    snapshot.WeakPlateRevealed = 1;
+                }
+                else
+                {
+                    snapshot.BrokenPlateMask |= (byte)(1 << plateIndex);
+                }
+
+                long scaledDamage = (long)Math.Min(uint.MaxValue, serverComputedDamage * plateMultiplier);
+                long appliedDamage = ComputeAppliedDamage(snapshot.CurrentHp, (uint)scaledDamage);
                 snapshot.CurrentHp -= appliedDamage;
                 if (snapshot.CurrentHp < 0)
                 {
@@ -497,6 +586,7 @@ namespace FolkIdle.Server.Engine
                 attempt.TotalInflictedDamage += appliedDamage;
 
                 byte updatedAttemptCount = (byte)attempt.AttemptCount;
+                long attemptSessionStart = attempt.SessionStartEpoch;
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -509,7 +599,8 @@ namespace FolkIdle.Server.Engine
                 _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
                 {
                     PlayerId = playerId,
-                    AttemptCount = updatedAttemptCount
+                    AttemptCount = updatedAttemptCount,
+                    SessionEndsEpoch = attemptSessionStart + BattleSessionCapSeconds
                 });
                 RefreshLocalSnapshot(snapshot);
             }
@@ -527,6 +618,13 @@ namespace FolkIdle.Server.Engine
             Volatile.Write(ref _bossIsAlive, snapshot.CurrentHp > 0 ? 1 : 0);
             Volatile.Write(ref _eventState, snapshot.EventState);
             Interlocked.Exchange(ref _eventEndEpoch, snapshot.EventEndEpoch);
+            Volatile.Write(ref _brokenPlateMask, snapshot.BrokenPlateMask);
+
+            // The secret stays a secret. Only a revealed weak point reaches the
+            // mirror the broadcast reads, so nothing downstream can leak it by
+            // accident.
+            Volatile.Write(ref _weakPlate,
+                snapshot.WeakPlateRevealed == 1 ? snapshot.WeakPlateIndex : WeakPlateHidden);
         }
 
         private async Task<System.Collections.Generic.Dictionary<long, long>> LoadDistributedContributionsAsync()

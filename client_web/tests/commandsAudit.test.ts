@@ -33,6 +33,7 @@ const {
   triggerGdprPurge,
   MAX_BUFF_TICKS,
   MAX_BOSS_ATTEMPTS,
+  BOSS_PLATE_COUNT,
   ACTIVE_BOSS_INSTANCE_ID,
 } = await import('../src/lib/net/commands');
 const { CommandType } = await import('../src/lib/net/protocol.generated');
@@ -92,7 +93,7 @@ describe('mailbox', () => {
 
 describe('world boss', () => {
   const healthy = {
-    predictedDamage: 5000,
+    plateIndex: 2,
     eventState: 1,
     bossCurrentHp: 1_000_000,
     attemptCount: 0,
@@ -106,8 +107,20 @@ describe('world boss', () => {
     expect(sent[0]).toMatchObject({
       Command: CommandType.AttackWorldBoss,
       TargetedBossId: ACTIVE_BOSS_INSTANCE_ID,
-      ClientPredictedDamage: 5000,
+      TargetedPlateIndex: 2,
     });
+  });
+
+  it('SENDS NO DAMAGE FIGURE AT ALL, which is the point of the rework', () => {
+    // Until 2026-09-05 this command posted ClientPredictedDamage - a number
+    // the client computed about its own character - and the only thing between
+    // it and a shared, server-authoritative health pool was a 100,000,000
+    // clamp. The server reads the player's real attack power now, and
+    // ValidateWorldBossAttackRequest DISCONNECTS a client that still sends a
+    // figure. So the absence of that field is a security property, not a
+    // tidiness one.
+    attackWorldBoss(healthy);
+    expect(sent[0].ClientPredictedDamage ?? 0).toBe(0);
   });
 
   it('refuses when the event is dormant or concluded', () => {
@@ -129,9 +142,51 @@ describe('world boss', () => {
     expect(sent).toHaveLength(0);
   });
 
-  it('refuses damage above the server ceiling', () => {
-    expect(attackWorldBoss({ ...healthy, predictedDamage: 100_000_001 }).ok).toBe(false);
+  it('refuses a plate index the server would disconnect over', () => {
+    // WorldBossEngine.PlateCount is 5, so 0-4 are the whole range.
+    // ValidateWorldBossAttackRequest treats anything else as a client that is
+    // either stale or trying, and kills the session either way - so it is
+    // refused here instead of sent.
+    expect(attackWorldBoss({ ...healthy, plateIndex: 5 }).ok).toBe(false);
+    expect(attackWorldBoss({ ...healthy, plateIndex: -1 }).ok).toBe(false);
+    expect(attackWorldBoss({ ...healthy, plateIndex: 1.5 }).ok).toBe(false);
     expect(sent).toHaveLength(0);
+  });
+
+  it('refuses once the BATTLE SESSION has closed, which the server does in silence', () => {
+    // WorldBossEngine gives a player 300 seconds from their FIRST strike to
+    // spend the other two, then rolls every later attack back with no damage,
+    // no message and no telemetry they will ever see - inside an encounter that
+    // runs for up to seven days.
+    //
+    // The deadline was not on the wire at all until 2026-09-05, so the button
+    // stayed enabled and did nothing forever. An idle player who strikes once
+    // and comes back later is the NORMAL case in this genre.
+    const closed = attackWorldBoss({
+      ...healthy,
+      sessionEndsEpoch: 1_000_000,
+      nowEpoch: 1_000_001,
+    });
+    expect(closed.ok).toBe(false);
+    expect(closed.ok === false && closed.reason).toMatch(/battle session/i);
+    expect(sent).toHaveLength(0);
+  });
+
+  it('allows a strike while the session is still open', () => {
+    expect(
+      attackWorldBoss({ ...healthy, sessionEndsEpoch: 1_000_000, nowEpoch: 999_999 }).ok,
+    ).toBe(true);
+    // Zero means the clock has not started - the player has not struck yet.
+    expect(attackWorldBoss({ ...healthy, sessionEndsEpoch: 0, nowEpoch: 9_999_999 }).ok).toBe(true);
+    expect(sent).toHaveLength(2);
+  });
+
+  it('accepts every plate the server does', () => {
+    for (let plate = 0; plate < BOSS_PLATE_COUNT; plate++) {
+      expect(attackWorldBoss({ ...healthy, plateIndex: plate }).ok).toBe(true);
+    }
+    expect(sent).toHaveLength(BOSS_PLATE_COUNT);
+    expect(sent.map((packet) => packet.TargetedPlateIndex)).toEqual([0, 1, 2, 3, 4]);
   });
 });
 

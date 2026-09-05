@@ -16,6 +16,93 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-05 - Tasks 8, 9 and 10 closed, and what closing them found
+
+`docs/TASK_BOARD.md` now reads 1-10 done. The detail lives there, phase by
+phase; this is the short version and the loose ends.
+
+## The three tasks
+
+**8. "I can't see the fight."** The health bar was never broken - the wire was
+empty. Measured before changing anything: across 27 consecutive snapshots
+`CurrentMonsterHp` took **exactly one value**, because snapshots arrive every
+~1090 ms and a geared character kills an early monster every ~1400 ms. Spawn and
+death both happened between two samples. A control run against a 71,000 HP boss
+produced 20 distinct values, which proves the bar animates fine when there is
+something to animate.
+
+So the wire carries combat events now (`ResponseCombatEventPacket`, 26 bytes,
+one per resolved blow) and the screen has the fight log the player asked for.
+The **miss** is the load-bearing event: it moves no health, so no inference from
+a health difference could ever have produced it.
+
+Two defects fell out: both health bars had **fictional maximums** - the
+monster's from a hand-copy of `BossFirstClearRules` that predates First Blood,
+the player's from a session high-water mark caught reading "2320 / 2320" while
+`PlayerHp` was 3701. Both are on the wire now.
+
+**9. "Rarity barely does anything."** True, and worse than reported. The whole
+fourteen-tier ladder was worth **1.48x** against a region step's **3.00x** -
+walking from the worst item in the game to the best one bought less than half a
+region. Nine of thirteen adjacent tiers were mechanically identical, Godly and
+Transcendent among them.
+
+Decided with the player: rarity is worth one region step, 1:1. It is **3.00x**
+now, the region curve is untouched, and monster health rose per region so kill
+time and XP/sec land within **0.2%** of where they were. Region 1 is deliberately
+unbuffed - a new player is only 1.07x stronger and this game has shipped a
+closed entrance once already.
+
+**10. World boss.** Five armour plates, one soft, re-seeded every encounter.
+The design went in `docs/world_boss_design.md` before any code, and the
+arithmetic overturned its first answer: three plates matched the attempt budget
+exactly, which meant a blind player could not fail, so knowing was worth 1.2x
+and nobody would read the board. Five puts it at 1.67x.
+
+The half worth reading is smaller than the mechanic: **the client stopped
+sending a damage figure.** It posts a plate index and the server takes the
+damage from the player's own cached attack power. There is no longer a quantity
+to inflate.
+
+## What building them turned up
+
+Four silent-failure defects, none of them in the new code:
+
+1. **World boss attempts did not survive a logout** - written by one
+   notification, loaded by nothing, so the screen offered three spent attempts
+   to a server that refused them in silence.
+2. **The battle session cap was invisible from every angle.** Five minutes from
+   the first strike, inside a seven-day encounter, and nothing carried the
+   deadline. An idle player who strikes once and comes back later is the NORMAL
+   case in this genre; it cost them two thirds of their participation and never
+   said why.
+3. **The affix lock was inert** - read in ten places, set to true by nothing.
+   The inverse of this codebase's usual defect. Built.
+4. **The lock meant less than its name** - honoured by reroll and fusion,
+   ignored by both removal paths, so a "locked" item could still be swept.
+
+## Two new guards, because both of those found their own defect
+
+- `StateUpdatePacketFieldCoverageTests` now checks the wire BOTH ways: every
+  field is copied into the packet, and either loaded at login or on
+  `RuntimeOnlyByDesign` with a reason. That is what would have caught (1).
+- `serverMirrors.test.ts` gained the world boss and combat-log constants. The
+  log ones matter most: a mismatch there does not throw, it relabels every line.
+
+## Loose ends, all in `docs/audit_2026_09_05.md`
+
+- **`stores/damage.ts` still infers the floating numbers** from snapshot
+  differences. The feed makes that redundant and it should end as one source of
+  truth - deliberately not done in the commit that introduced the replacement.
+- **The 300-second battle session cap should probably go.** Now that it is
+  visible, it punishes the player who strikes once and closes the game and
+  rewards the one who sits on the screen. Same shape as the clicker ban and the
+  active skills, both reverted.
+- **Four orphan logs** in `items.json` that nothing can obtain.
+- **`RegisterWorldBossDamage` (opcode 19)** is retired but still declared.
+
+---
+
 # HANDOFF 2026-09-03 (c) - The chest had no drain, and that is what made it lag
 
 Reported as "it's starting to lag because of the amount of items I have".

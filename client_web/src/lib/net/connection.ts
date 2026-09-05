@@ -17,6 +17,7 @@ import {
   type StateUpdate,
   type ResponseChatMessage,
   type ResponseLootDrop,
+  type ResponseCombatEvent,
   type ClientCommandDraft,
   type RequestChatMessageDraft,
 } from './protocol.generated';
@@ -41,6 +42,7 @@ export interface ConnectionHandlers {
   onStateUpdate?: (packet: StateUpdate) => void;
   onChatMessage?: (packet: ResponseChatMessage) => void;
   onLootDrop?: (packet: ResponseLootDrop) => void;
+  onCombatEvent?: (packet: ResponseCombatEvent) => void;
   onStatus?: (status: ConnectionStatus) => void;
 }
 
@@ -223,6 +225,9 @@ export class GameConnection {
         break;
       case PacketType.ResponseLootDrop:
         this.handlers.onLootDrop?.(packet as unknown as ResponseLootDrop);
+        break;
+      case PacketType.ResponseCombatEvent:
+        this.handlers.onCombatEvent?.(packet as unknown as ResponseCombatEvent);
         break;
       default:
         console.warn('unhandled packet type', packet[TYPE_PROPERTY]);
