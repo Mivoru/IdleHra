@@ -905,6 +905,52 @@ await page.waitForTimeout(600);
   await page.waitForTimeout(400);
 }
 
+// --- the affix lock ----------------------------------------------------------
+//
+// Modul: THE READ SIDE OF THIS WAS WIRED IN TEN PLACES AND THE WRITE SIDE DID
+// NOT EXIST. IsAffixLocked was honoured by the reroll, by forge fusion, by the
+// command validator and by both chest removal paths, and set to true by
+// nothing - so none of that code could ever run and three wire bytes carried a
+// constant zero.
+//
+// What it protects against is the sweep, which clears a whole rarity band in
+// one call. Its ceiling of Epic was the only way to say "not that one", and a
+// ceiling cannot express "keep THIS Epic sword".
+await go('Chest');
+{
+  const lockButton = page.getByRole('button', { name: /^(Lock|Locked)$/ }).first();
+  const present = (await lockButton.count()) > 0;
+  record('the chest offers a lock on each piece', present);
+
+  if (present) {
+    const before = await lockButton.innerText();
+    await lockButton.click();
+    // The toggle is a REST round trip and the list refetches after it, so wait
+    // for the label to change rather than for a fixed delay.
+    await page
+      .waitForFunction(
+        (prev) => {
+          const b = [...document.querySelectorAll('button')].find((x) => /^(Lock|Locked)$/.test(x.textContent.trim()));
+          return b && b.textContent.trim() !== prev;
+        },
+        before.trim(),
+        { timeout: 15000 },
+      )
+      .catch(() => {});
+
+    const after = await page.getByRole('button', { name: /^(Lock|Locked)$/ }).first().innerText();
+    record('locking a piece changes its state on the server', after.trim() !== before.trim(), `${before.trim()} -> ${after.trim()}`);
+
+    // Modul: AND PUT IT BACK. A check that leaves the fixture locked would
+    // change what every later run of this script is looking at - the same
+    // discipline the Ancestors "Keep" and the village steps had to learn.
+    await page.getByRole('button', { name: /^(Lock|Locked)$/ }).first().click();
+    await page.waitForTimeout(2000);
+    const restored = await page.getByRole('button', { name: /^(Lock|Locked)$/ }).first().innerText();
+    record('the lock round-trips both ways', restored.trim() === before.trim(), `back to ${restored.trim()}`);
+  }
+}
+
 // --- world boss --------------------------------------------------------------
 //
 // Modul: this used to be three presses of a button that posted a damage figure

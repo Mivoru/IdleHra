@@ -992,6 +992,16 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: the lock's write side. See
+                    // VillageChestEngine.ToggleAffixLockAsync - the flag was
+                    // read in ten places and set by nothing, so none of that
+                    // code could ever run.
+                    if (requestPath == "/api/v1/chest/lock" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleChestToggleLock(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/chest/settings")
                     {
                         await HandleChestSettings(context);
@@ -2734,6 +2744,67 @@ namespace FolkIdle.Server.Network
             }
 
             context.Response.Close();
+        }
+
+        /// <summary>
+        /// Toggles one item's affix lock. Mirrors HandleChestAction's shape
+        /// exactly, including the ChestActionResult it reports back, so the
+        /// screen has one vocabulary for everything it can ask of an item.
+        /// </summary>
+        private async Task HandleChestToggleLock(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+
+                if (!payload.TryGetProperty("equipmentId", out var equipmentElement))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var (result, locked) = await VillageChestEngine.ToggleAffixLockAsync(
+                    db, playerId, equipmentElement.GetInt64());
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new ChestLockResponse
+                {
+                    Success = result == VillageChestEngine.ChestActionResult.Success,
+                    Locked = locked,
+                    Reason = result.ToString()
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Chest lock error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class ChestLockResponse
+        {
+            public bool Success { get; set; }
+
+            /// <summary>The state the item ended in, so the screen never guesses.</summary>
+            public bool Locked { get; set; }
+
+            public string Reason { get; set; } = string.Empty;
         }
 
         private async Task HandleGuildShardMatch(HttpListenerContext context)

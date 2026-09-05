@@ -22,11 +22,15 @@ namespace FolkIdle.Server.Tests
     /// below a quality tier in one statement, and its rarity ceiling of 6 was
     /// the only thing standing between a player and a favourite Epic sword.
     ///
-    /// NOTHING CAN SET THE FLAG YET - see docs/audit_2026_09_05.md finding A,
-    /// where the whole lock feature is read in ten places and written in none.
-    /// These tests set it directly, which is the only way to prove the
-    /// behaviour is in place BEFORE the feature that needs it is built, rather
-    /// than being remembered on the day.
+    /// Nothing could SET the flag either, which is how all of that went
+    /// unnoticed: it was read in ten places and written in three, always to
+    /// false. `ToggleAffixLockAsync` and `POST /api/v1/chest/lock` are the
+    /// write side, added in the same pass - see docs/audit_2026_09_05.md
+    /// finding A.
+    ///
+    /// The seeding helper still sets the flag directly rather than going
+    /// through the toggle, so a defect in the write path cannot hide a defect
+    /// in the read path by making both tests fail for one reason.
     /// </summary>
     [Collection("Postgres collection")]
     public class ChestLockTests
@@ -122,6 +126,44 @@ namespace FolkIdle.Server.Tests
 
             Assert.Single(survivors);
             Assert.True(survivors[0].IsAffixLocked, "the sweep kept the wrong one");
+        }
+
+        [Fact]
+        public async Task TheLockCanActuallyBeSetNow_whichIsTheWholePoint()
+        {
+            // Until 2026-09-05 IsAffixLocked was read in ten places and written
+            // in three, always to false. Nothing could set it, so none of that
+            // code could ever run.
+            var (_, looseId) = await SeedPairAsync(qualityTier: 4);
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            var on = await VillageChestEngine.ToggleAffixLockAsync(db, TestPlayerId, looseId);
+            Assert.Equal(VillageChestEngine.ChestActionResult.Success, on.Result);
+            Assert.True(on.Locked);
+
+            // TOGGLED, not set: the caller asks for a flip and is told where it
+            // landed, so two clicks racing cannot leave the screen showing
+            // whichever one lost.
+            var off = await VillageChestEngine.ToggleAffixLockAsync(db, TestPlayerId, looseId);
+            Assert.Equal(VillageChestEngine.ChestActionResult.Success, off.Result);
+            Assert.False(off.Locked);
+        }
+
+        [Fact]
+        public async Task LockingSomebodyElsesItemReadsAsNotFound()
+        {
+            // Ownership is decided in the SELECT, scoped to the player. A
+            // refusal that distinguished "not yours" from "does not exist"
+            // would confirm the item exists to somebody who has no business
+            // knowing.
+            var (lockedId, _) = await SeedPairAsync(qualityTier: 2);
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var outcome = await VillageChestEngine.ToggleAffixLockAsync(db, DbSeeder.PlayerMidId, lockedId);
+
+            Assert.Equal(VillageChestEngine.ChestActionResult.NotFound, outcome.Result);
+            Assert.False(outcome.Locked);
         }
 
         [Fact]

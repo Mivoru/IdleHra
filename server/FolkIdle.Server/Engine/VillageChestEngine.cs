@@ -308,6 +308,63 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
+        /// Turns an item's lock on or off, and reports the state it ended in.
+        ///
+        /// Modul: THE WRITE SIDE THE LOCK NEVER HAD.
+        ///
+        /// EquipmentInstance.IsAffixLocked was read in ten places - the affix
+        /// reroll, forge fusion, the command validator, the market
+        /// projections, and both removal paths here - and written in three,
+        /// always to false. Nothing could set it to true, so a player could
+        /// never engage any of it and three bytes rode every snapshot carrying
+        /// a constant zero.
+        ///
+        /// What it protects against is the bulk sweep, which deletes every
+        /// unworn piece at or below a quality tier in one statement. Its
+        /// rarity ceiling of 6 was the only way to say "not that one", and a
+        /// ceiling cannot express "keep THIS Epic sword".
+        ///
+        /// TOGGLED, not set. The caller asks for a flip rather than asserting
+        /// a value, so two clicks racing cannot leave the item in whichever
+        /// one lost - and the answer comes back, so the screen never has to
+        /// guess what happened.
+        ///
+        /// A worn piece may be locked freely: wearing something already stops
+        /// it being sold, and the lock is about what happens when it comes off.
+        /// </summary>
+        public static async Task<(ChestActionResult Result, bool Locked)> ToggleAffixLockAsync(
+            FolkIdleDbContext db, long playerId, long equipmentId)
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
+            {
+                // Scoped to the player in the SELECT, which is where ownership
+                // is decided - a locked item belonging to somebody else must
+                // read as "not found" rather than as a refusal that confirms it
+                // exists.
+                var item = await db.EquipmentInstances
+                    .FromSqlInterpolated($"SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {equipmentId} AND \"PlayerId\" = {playerId} FOR UPDATE")
+                    .FirstOrDefaultAsync();
+
+                if (item == null)
+                {
+                    await transaction.RollbackAsync();
+                    return (ChestActionResult.NotFound, false);
+                }
+
+                item.IsAffixLocked = !item.IsAffixLocked;
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                return (ChestActionResult.Success, item.IsAffixLocked);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
+
+        /// <summary>
         /// The highest rarity a player may point the bulk tools or auto-salvage
         /// at. Legendary (7) and above is never sweepable in bulk and never
         /// auto-salvaged: those are the drops the whole loop is for, and a

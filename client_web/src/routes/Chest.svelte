@@ -22,6 +22,7 @@
     fetchInventory,
     sellFromChest,
     discardFromChest,
+    toggleChestLock,
     bulkClearChest,
     fetchChestSettings,
     type InventoryEquipment,
@@ -274,6 +275,38 @@
     }
   }
 
+  // Modul: THE LOCK, which the server has always understood and nothing could
+  // ever set.
+  //
+  // A locked piece cannot be rerolled, fused, sold, binned, or taken by the
+  // sweep. That last one is why it matters: "Sell them all" clears a whole
+  // rarity band in one call, and its ceiling of Epic was the only way to say
+  // "not that one" - which cannot express "keep THIS Epic sword".
+  //
+  // The server TOGGLES and reports the state it ended in, so this never has to
+  // guess: two clicks racing cannot leave the screen showing whichever lost.
+  async function toggleLock(equipmentId: number, label: string) {
+    busy = true;
+    try {
+      const result = await toggleChestLock(equipmentId);
+      if (!result || result.Success === false) {
+        pushLocalNotice(`Could not change the lock on ${label}.`);
+      } else {
+        pushLocalNotice(
+          result.Locked
+            ? `${label} is locked - it cannot be sold, binned, swept, rerolled or fused.`
+            : `${label} is unlocked.`,
+          'info',
+        );
+      }
+      refresh();
+    } catch {
+      pushLocalNotice('Could not reach the server.');
+    } finally {
+      busy = false;
+    }
+  }
+
   // Modul: equipping lives HERE now.
   //
   // It used to be on an Inventory screen that the chest replaced, and removing
@@ -489,10 +522,30 @@
                 Reroll
               </button>
 
+              <!-- Modul: the lock is a BUTTON rather than a checkbox because
+                   it is an action with a consequence, and because the server
+                   answers with the state it ended in - a checkbox would
+                   have to predict that. -->
               <button
                 class="tiny-btn"
-                disabled={busy || item.IsEquipped}
-                title={item.IsEquipped ? 'Worn - take it off first' : ''}
+                class:locked={item.IsAffixLocked}
+                disabled={busy}
+                title={item.IsAffixLocked
+                  ? 'Locked - cannot be sold, binned, swept, rerolled or fused. Click to unlock.'
+                  : 'Lock this piece so nothing can sell, bin, sweep, reroll or fuse it'}
+                onclick={() => toggleLock(item.Id, prettifyBaseId(item.BaseItemId))}
+              >
+                {item.IsAffixLocked ? 'Locked' : 'Lock'}
+              </button>
+
+              <button
+                class="tiny-btn"
+                disabled={busy || item.IsEquipped || item.IsAffixLocked}
+                title={item.IsEquipped
+                  ? 'Worn - take it off first'
+                  : item.IsAffixLocked
+                    ? 'Locked - unlock it first'
+                    : ''}
                 onclick={() => act({ equipmentId: item.Id }, true, prettifyBaseId(item.BaseItemId))}
               >
                 Sell
@@ -761,6 +814,15 @@
   .qty {
     font-variant-numeric: tabular-nums;
     color: var(--text-dim);
+  }
+
+  /* Modul: a locked piece has to READ as locked at a glance, or the player
+     has to click each one to find out - which is the opposite of what a lock
+     is for when there are thousands of rows. */
+  .tiny-btn.locked {
+    border-color: var(--warn, #e8b339);
+    color: var(--warn, #e8b339);
+    font-weight: 600;
   }
 
   .tiny-btn {
