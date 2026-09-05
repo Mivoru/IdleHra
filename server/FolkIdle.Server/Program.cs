@@ -269,6 +269,27 @@ if (connectionString == null)
     }
     connectionString = ConnectionStringDefaults.LocalDevelopmentFallback;
 }
+// Modul: NPGSQL WILL OPEN A HUNDRED CONNECTIONS TO A SERVER THAT ALLOWS 15.
+//
+// Production talks to Supabase's SESSION pooler, which refuses the sixteenth
+// client outright: `XX000 (EMAXCONNSESSION) max clients reached in session mode
+// - max clients are limited to pool_size: 15`. Npgsql's own default Maximum
+// Pool Size is 100, so nothing on this side ever waits - it opens what it likes
+// and the SERVER throws, which surfaces as a random operation failing rather
+// than as back-pressure.
+//
+// That error is in the boot log against cold recovery, and it is what killed
+// the combat loot worker: one throw on a connection acquire ended its task for
+// the life of the process (see CombatLootEngine.ExecuteAsync, now guarded).
+// Guarding the workers stops one failure being fatal; this stops the failure.
+//
+// Below the server's own ceiling, so the wait happens HERE, in Npgsql's pool,
+// where it is a queue rather than an exception. Override with
+// FOLKIDLE_DB_MAX_POOL if the database's limit ever changes.
+connectionString = ConnectionStringDefaults.WithBoundedPool(
+    connectionString,
+    Environment.GetEnvironmentVariable("FOLKIDLE_DB_MAX_POOL"));
+
 serviceCollection.AddDbContextFactory<FolkIdleDbContext>(options =>
     options.UseNpgsql(connectionString));
 serviceCollection.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());

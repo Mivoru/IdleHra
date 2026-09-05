@@ -93,3 +93,99 @@ Run `RarityRollDistributionTests` and `EquipmentDropTableTests` — both print
 their tables. If they are green, the drops are happening and the question is
 where they went: the sweep, auto-salvage, the forge, or a panel that dropped
 them on the floor.
+
+---
+
+# THE SECOND REPORT, same day: "nothing drops, check it yourself"
+
+The panel fix above was real and necessary, and it was **not** what the player
+was hitting. Reported again after it shipped, with an instruction to verify
+rather than reason: nothing had dropped since.
+
+## What the live server actually showed
+
+Measured on the production database while the account played:
+
+| Signal | Over ~6 minutes | Reading |
+|---|---|---|
+| Ice Bat kills (codex) | 25,094 -> 25,635 | combat is running |
+| Gold | +93,554 | kills are paying |
+| Gathering materials | +26,498 | that grant path is alive |
+| Combat materials (`mat_*`) | **0** | combat loot grants nothing |
+| Equipment rows | **0** | ditto |
+| `EquipmentInstances_Id_seq` | **unmoved** | no insert was even ATTEMPTED |
+
+The sequence is the load-bearing one: a rolled-back insert still burns a
+sequence value, so an untouched sequence means nothing reached the table at all.
+And the account has 25,635 Ice Bat kills and has never once received
+`mat_frozen_wing`, that monster's own material.
+
+## What it was not
+
+Every component was tested in isolation and every one was correct:
+
+- `RollTier` matches its authored table across 2,000,000 samples.
+- Every canonical monster grants gear AND materials against a real Postgres -
+  Ice Bat gave 37 pieces and 80 materials in 200 kills (`LootWorkerResilienceTests`).
+- Ice Bat's tables are right: `mat_frozen_wing`, and eight region-4 pieces.
+- `EquipmentDropChance` is 0.150 and has only ever risen.
+- Auto-salvage is 0 in the player's row.
+- The deployed binary was verified to be the current commit, by finding a
+  newly-added string inside the running container's DLL.
+
+## What it was
+
+`CombatLootEngine.ExecuteAsync` had **no exception handling of any kind**, and
+`ProcessMonsterLootDropAsync` acquires its scope and opens its SERIALIZABLE
+transaction **outside** its own try. So the two calls that take a database
+connection could throw straight through the drain loop, out of the `Task.Run`
+in `StartCron`, and end the worker. Nothing restarted it. Nothing logged it.
+The queue simply filled for the rest of the process's life.
+
+The throw is in the boot log:
+
+```
+ColdRecoveryCoordinator: Failed to reconstruct session for player 8:
+  XX000: (EMAXCONNSESSION) max clients reached in session mode
+  - max clients are limited to pool_size: 15
+```
+
+Production talks to Supabase's **session** pooler, which refuses the sixteenth
+client. Npgsql's own default pool is **100**, so nothing on the client side ever
+waits - it opens what it likes and the server throws, at whichever operation
+happens to ask. One of those landed on the loot worker.
+
+Everything else kept working because everything else is on another path: the
+tick pays gold in memory, the codex has its own queue and its own worker, and
+gathering grants were still being applied. From the player's seat the game was
+running perfectly and simply stopped giving loot.
+
+**Why it never reproduced locally:** there is no pooler on a dev box and never a
+sixteenth client. The exact same code, content and tests are green there.
+
+## The fix
+
+1. **The worker cannot die.** Every dequeued request is isolated in its own
+   try/catch, the cycle is guarded, and if the loop ever does exit it says so
+   loudly instead of vanishing. The cost of a failure is one kill's loot.
+2. **The pool is bounded below the server's limit** -
+   `ConnectionStringDefaults.WithBoundedPool`, default 12, override with
+   `FOLKIDLE_DB_MAX_POOL`. The same load now waits in Npgsql's queue instead of
+   being refused. A slow acquire is recoverable; a throw was not.
+3. **The loot path reports itself** - one line a minute when kills are rolling:
+
+   ```
+   Loot: 412 requests / 412 kills rolled -> 61 equipment, 144 materials, 0 auto-salvaged, 0 failed
+   ```
+
+   Requests at zero while a player is killing means the tick's half; requests
+   flowing with no rows out means the worker's half. Neither was distinguishable
+   from outside before, which is why this took a day.
+
+## The wider lesson, and what is still open
+
+Five other cron workers drain a queue with **no catch in their loop at all**:
+`LeaderboardCronEngine`, `GuildMatchmakingEngine`, `LiveOpsTickEngine`,
+`PushNotificationTriggerEngine`, `GuildWarEngine`. Each can die exactly the same
+way, silently, and each would present as one feature quietly ceasing to exist
+while the game runs on. They are the same defect, unfired.

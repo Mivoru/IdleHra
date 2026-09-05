@@ -452,6 +452,7 @@ namespace FolkIdle.Server.Engine
         private static long _equipmentWritten;
         private static long _materialsGranted;
         private static long _salvagedOnTheWayIn;
+        private static long _requestsFailed;
         private long _lastLootReportMs;
 
         public CombatLootEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
@@ -466,34 +467,93 @@ namespace FolkIdle.Server.Engine
             Task.Run(() => ExecuteAsync(_cts.Token));
         }
 
+        // Modul: ONE FAILED REQUEST USED TO KILL LOOT FOR THE WHOLE PROCESS.
+        //
+        // This loop had no exception handling of any kind, and
+        // ProcessMonsterLootDropAsync opens its scope and its SERIALIZABLE
+        // transaction OUTSIDE its own try - so the two operations that acquire
+        // a database connection could throw straight through this loop, out of
+        // the Task.Run in StartCron, and end the worker. Nothing restarted it,
+        // nothing logged it, and the queue simply filled for the rest of the
+        // process's life.
+        //
+        // That is not hypothetical. Production runs against Supabase's SESSION
+        // pooler, which refuses the sixteenth client with
+        // `XX000 (EMAXCONNSESSION) max clients reached in session mode - max
+        // clients are limited to pool_size: 15`, and the boot log shows exactly
+        // that error hitting cold recovery. One of those on a connection
+        // acquire, at any moment, and equipment and combat materials stopped
+        // for everyone - while kills, XP, gold, the codex and gathering all
+        // carried on, because they are on other paths. That is precisely how it
+        // was reported: "nothing drops any more", on a server where every
+        // component tested green in isolation and locally, where there is no
+        // pooler and no sixteenth client, it never reproduced once.
+        //
+        // So: every request is isolated, and the cycle itself is guarded. The
+        // cost of a failure is now ONE kill's loot instead of all of it.
         private async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                await Task.Delay(3000, stoppingToken);
-
-                while (DropRequestQueue.TryDequeue(out var request))
+                try
                 {
-                    int killsThisRequest = request.Kills <= 0 ? 1 : request.Kills;
-                    _requestsDrained++;
-                    _killsRolled += killsThisRequest;
+                    await Task.Delay(3000, stoppingToken);
 
-                    await ProcessMonsterLootDropAsync(
-                        request.PlayerId, request.MonsterId, request.LootLuckPct,
-                        request.MaterialQuantityPct, request.BonusRarityTiers,
-                        // Zero means one - see CombatLootDropRequest.Kills.
-                        killsThisRequest,
-                        request.SkipMaterialRoll,
-                        request.AutoSalvageBelowTier);
+                    while (DropRequestQueue.TryDequeue(out var request))
+                    {
+                        int killsThisRequest = request.Kills <= 0 ? 1 : request.Kills;
+                        _requestsDrained++;
+                        _killsRolled += killsThisRequest;
+
+                        try
+                        {
+                            await ProcessMonsterLootDropAsync(
+                                request.PlayerId, request.MonsterId, request.LootLuckPct,
+                                request.MaterialQuantityPct, request.BonusRarityTiers,
+                                // Zero means one - see CombatLootDropRequest.Kills.
+                                killsThisRequest,
+                                request.SkipMaterialRoll,
+                                request.AutoSalvageBelowTier);
+                        }
+                        catch (Exception ex)
+                        {
+                            _requestsFailed++;
+                            Console.WriteLine(
+                                $"Loot: drop request for player {request.PlayerId} (monster {request.MonsterId}) failed: {ex.Message}");
+                        }
+                    }
+
+                    ReportLootThroughput();
+
+                    while (GatheringGrantQueue.TryDequeue(out var gathered))
+                    {
+                        try
+                        {
+                            await GrantGatheredMaterialAsync(gathered.PlayerId, gathered.ActivityId, gathered.ItemId, gathered.Quantity);
+                        }
+                        catch (Exception ex)
+                        {
+                            _requestsFailed++;
+                            Console.WriteLine(
+                                $"Loot: gathering grant for player {gathered.PlayerId} failed: {ex.Message}");
+                        }
+                    }
                 }
-
-                ReportLootThroughput();
-
-                while (GatheringGrantQueue.TryDequeue(out var gathered))
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
-                    await GrantGatheredMaterialAsync(gathered.PlayerId, gathered.ActivityId, gathered.ItemId, gathered.Quantity);
+                    // Shutdown, not a fault.
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    // Nothing above should reach this - the per-item handlers
+                    // cover the work. It exists because the ONE thing this
+                    // worker must never do is stop.
+                    Console.WriteLine($"Loot worker cycle failed: {ex.Message}");
                 }
             }
+
+            Console.WriteLine("Loot worker STOPPED. No further drops will be granted until restart.");
         }
 
         /// <summary>
@@ -511,8 +571,9 @@ namespace FolkIdle.Server.Engine
             Console.WriteLine(
                 $"Loot: {_requestsDrained} requests / {_killsRolled} kills rolled -> "
                 + $"{_equipmentWritten} equipment, {_materialsGranted} materials, "
-                + $"{_salvagedOnTheWayIn} auto-salvaged");
+                + $"{_salvagedOnTheWayIn} auto-salvaged, {_requestsFailed} failed");
 
+            _requestsFailed = 0;
             _requestsDrained = 0;
             _killsRolled = 0;
             _equipmentWritten = 0;

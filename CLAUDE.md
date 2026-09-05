@@ -159,6 +159,19 @@ session nothing put on the wire - so the button stayed enabled and did nothing
 for the rest of a seven-day encounter. When a handler rolls back, ask what the
 player sees. If the answer is "nothing", that is the defect, not the rollback.
 
+**A background worker that can throw is a feature that can vanish.** Every
+`StartCron` loop runs in a bare `Task.Run`, so an exception anywhere in the loop
+ends the task - no log, no restart, no other symptom. `CombatLootEngine` lost
+its whole drain that way and equipment stopped dropping for every player on the
+live server while kills, XP, gold, the codex and gathering all kept working; it
+never reproduced locally because the trigger was Supabase's session pooler
+refusing the sixteenth client (`EMAXCONNSESSION`, `pool_size: 15`) against
+Npgsql's default pool of 100. Isolate every dequeued item in its own try/catch,
+and bound the pool below the server's limit (`ConnectionStringDefaults
+.WithBoundedPool`) so back-pressure is a queue rather than a throw. Five other
+cron loops still have no catch at all - see
+`docs/drop_rates_investigation_2026_09_05.md`.
+
 **Grep for a WRITER as well as a reader.** The recurring "computed but never
 consumed" trap has an inverse that is just as bad: `IsAffixLocked` was read in
 ten places - reroll, fusion, the validator, both removal paths - and set to true
