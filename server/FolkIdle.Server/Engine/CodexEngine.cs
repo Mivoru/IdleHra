@@ -57,6 +57,34 @@ namespace FolkIdle.Server.Engine
             return (long)(500 * currentLevel * System.Math.Pow(1.32, currentLevel));
         }
 
+        /// <summary>
+        /// The most the codex may multiply a harvest or a material drop by.
+        ///
+        /// Modul: IT WAS 71.9x ON THE LIVE ACCOUNT, 2026-09-06.
+        ///
+        /// This multiplier is the ROLL COUNT for gathering (SimulationEngine's
+        /// gathering block), for combat material drops, and for the offline
+        /// catch-up's projection. +0.5% per codex level reads as a small
+        /// flourish; a codex level is ten kills of one monster and nothing
+        /// bounded the sum, so the account that reported 2.3 million logs had
+        /// 14,178 codex levels and every harvest paid out SEVENTY-TWO times.
+        ///
+        /// Measured against what the game actually charges: every village
+        /// upgrade in the game costs about 24,000 units of material and every
+        /// recipe in the crafting tree about 384,000. That account was earning
+        /// half a million an hour PER CHARACTER - the entire sink of the game,
+        /// twice over, in an hour. The runaway was never the axe.
+        ///
+        /// 2.0x keeps the codex worth filling (it doubles, which is a real
+        /// reward) and reaches its ceiling at 200 codex levels - about two
+        /// thousand kills, which is a region's worth of play rather than a
+        /// rounding error. The cap is on the MULTIPLIER, not on the codex: kill
+        /// counts, levels and the damage multiplier are untouched.
+        ///
+        /// See docs/gathering_balance_2026_09_06.md for the tables.
+        /// </summary>
+        public const float MaxYieldMultiplier = 2.0f;
+
         internal static async Task<(float YieldMultiplier, float DamageMultiplier)> CalculateActiveMultipliersAsync(long playerId, FolkIdleDbContext db)
         {
             int levelSum = await db.MonsterCodexEntries
@@ -64,6 +92,13 @@ namespace FolkIdle.Server.Engine
                 .SumAsync(c => c.Level);
 
             float yieldMultiplier = 1.0f + (levelSum * 0.005f);
+            if (yieldMultiplier > MaxYieldMultiplier) yieldMultiplier = MaxYieldMultiplier;
+
+            // Modul: DELIBERATELY NOT CAPPED HERE. The damage multiplier reaches
+            // 142x on the same account and that is its own decision - capping it
+            // would divide a live character's output by a hundred without being
+            // asked. It is written up as the open item at the top of
+            // docs/gathering_balance_2026_09_06.md, with the arithmetic.
             float damageMultiplier = 1.0f + (levelSum * 0.010f);
             return (yieldMultiplier, damageMultiplier);
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -454,6 +455,13 @@ namespace FolkIdle.Server.Engine
         private static long _salvagedOnTheWayIn;
         private static long _requestsFailed;
 
+        // Modul: the gathering half of the same loop, which is what actually
+        // starved the loot half. Reported beside it because "loot is silent"
+        // and "gathering is drowning this worker" look identical from outside
+        // and have completely different fixes.
+        private static long _gatheringGrantsCoalesced;
+        private static long _gatheringWrites;
+
         // Modul: counted on the TICK thread, reported on the worker's. The tick
         // must not allocate or lock here, so this is a plain interlocked
         // increment and nothing more.
@@ -521,8 +529,21 @@ namespace FolkIdle.Server.Engine
                 {
                     await Task.Delay(3000, stoppingToken);
 
-                    while (DropRequestQueue.TryDequeue(out var request))
+                    // Modul: TAKE A BUDGET, NOT "EVERYTHING THERE IS".
+                    //
+                    // Both drains below used to be `while (TryDequeue)`, which
+                    // terminates only when the producer pauses. Gathering
+                    // produces faster than this worker can write - see
+                    // DrainGatheringGrantsAsync - so the second loop never
+                    // returned, the first never ran again, and equipment stopped
+                    // for everyone with a gatherer online. Reading the depth
+                    // once and stopping there makes a cycle finite whatever the
+                    // producers are doing.
+                    int lootBudget = DropRequestQueue.Count;
+                    for (int drained = 0; drained < lootBudget; drained++)
                     {
+                        if (!DropRequestQueue.TryDequeue(out var request)) break;
+
                         int killsThisRequest = request.Kills <= 0 ? 1 : request.Kills;
                         _requestsDrained++;
                         _killsRolled += killsThisRequest;
@@ -545,21 +566,12 @@ namespace FolkIdle.Server.Engine
                         }
                     }
 
-                    ReportLootThroughput();
+                    await DrainGatheringGrantsAsync();
 
-                    while (GatheringGrantQueue.TryDequeue(out var gathered))
-                    {
-                        try
-                        {
-                            await GrantGatheredMaterialAsync(gathered.PlayerId, gathered.ActivityId, gathered.ItemId, gathered.Quantity);
-                        }
-                        catch (Exception ex)
-                        {
-                            _requestsFailed++;
-                            Console.WriteLine(
-                                $"Loot: gathering grant for player {gathered.PlayerId} failed: {ex.Message}");
-                        }
-                    }
+                    // Reported at the END of a cycle, so its queue depths
+                    // describe what this cycle could not finish rather than what
+                    // it had not started.
+                    ReportLootThroughput();
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -576,6 +588,92 @@ namespace FolkIdle.Server.Engine
             }
 
             Console.WriteLine("Loot worker STOPPED. No further drops will be granted until restart.");
+        }
+
+        /// <summary>
+        /// One player's running total of one gathered material, plus the node it
+        /// last came from (the feed wants an origin, and every grant in a batch
+        /// for the same material is overwhelmingly from the same node).
+        /// </summary>
+        internal struct GatheringGrantTotal
+        {
+            public long ActivityId;
+            public int Quantity;
+        }
+
+        /// <summary>
+        /// How many raw grants one cycle will take off the queue. High enough
+        /// that a normal backlog clears in one pass, low enough that the
+        /// dictionary and the SELECT it builds stay small.
+        /// </summary>
+        internal const int MaxGatheringGrantsPerCycle = 50_000;
+
+        /// <summary>
+        /// Takes at most <paramref name="budget"/> grants off the queue and adds
+        /// them up per (player, material).
+        ///
+        /// Modul: THE GRANT COUNT IS NOT THE HARVEST COUNT.
+        ///
+        /// A harvest enqueues one grant PER ROLL, and the roll count is scaled
+        /// by the codex yield multiplier - which is uncapped and stood at
+        /// <b>71.9x</b> on the live account that reported this. So one harvest
+        /// enqueued seventy-two grants, each of which used to cost its own
+        /// scope, its own transaction and three round trips to a database in
+        /// another datacentre. Two characters gathering produced several hundred
+        /// grants a second against a worker that could write perhaps thirty.
+        ///
+        /// Adding them up first turns that into one write per material per
+        /// cycle. The player is owed a total, not a sequence of ones.
+        /// </summary>
+        /// <returns>How many raw grants were removed from the queue.</returns>
+        internal static int CoalesceGatheringGrants(
+            ConcurrentQueue<GatheredMaterialGrant> queue,
+            int budget,
+            Dictionary<(long PlayerId, int ItemId), GatheringGrantTotal> into)
+        {
+            int taken = 0;
+            while (taken < budget && queue.TryDequeue(out var grant))
+            {
+                taken++;
+                if (grant.ItemId <= 0 || grant.Quantity <= 0) continue;
+
+                var key = (grant.PlayerId, grant.ItemId);
+                into.TryGetValue(key, out var total);
+                // Saturating rather than wrapping: a long offline batch on a
+                // 70x yield multiplier is genuinely capable of overflowing an
+                // int, and a negative quantity would be written to the chest.
+                long summed = (long)total.Quantity + grant.Quantity;
+                total.Quantity = summed > int.MaxValue ? int.MaxValue : (int)summed;
+                total.ActivityId = grant.ActivityId;
+                into[key] = total;
+            }
+
+            return taken;
+        }
+
+        private async Task DrainGatheringGrantsAsync()
+        {
+            int budget = GatheringGrantQueue.Count;
+            if (budget <= 0) return;
+            if (budget > MaxGatheringGrantsPerCycle) budget = MaxGatheringGrantsPerCycle;
+
+            var totals = new Dictionary<(long PlayerId, int ItemId), GatheringGrantTotal>();
+            _gatheringGrantsCoalesced += CoalesceGatheringGrants(GatheringGrantQueue, budget, totals);
+
+            foreach (var player in totals.GroupBy(t => t.Key.PlayerId))
+            {
+                try
+                {
+                    await GrantGatheredMaterialsAsync(player.Key, player);
+                    _gatheringWrites++;
+                }
+                catch (Exception ex)
+                {
+                    _requestsFailed++;
+                    Console.WriteLine(
+                        $"Loot: gathering grant for player {player.Key} failed: {ex.Message}");
+                }
+            }
         }
 
         /// <summary>
@@ -611,8 +709,12 @@ namespace FolkIdle.Server.Engine
                 + $"worker drained {_requestsDrained} requests / {_killsRolled} kills -> "
                 + $"{_equipmentWritten} equipment, {_materialsGranted} materials, "
                 + $"{_salvagedOnTheWayIn} auto-salvaged, {_requestsFailed} failed, "
-                + $"{DropRequestQueue.Count} still queued");
+                + $"{DropRequestQueue.Count} still queued; "
+                + $"gathering {_gatheringGrantsCoalesced} grants -> {_gatheringWrites} writes, "
+                + $"{GatheringGrantQueue.Count} still queued");
 
+            _gatheringGrantsCoalesced = 0;
+            _gatheringWrites = 0;
             _requestsFailed = 0;
             _requestsDrained = 0;
             _killsRolled = 0;
@@ -1125,12 +1227,56 @@ namespace FolkIdle.Server.Engine
         /// showed nothing at all, so there was no way to tell a working node
         /// from a broken one.
         /// </summary>
-        public async Task GrantGatheredMaterialAsync(long playerId, long activityId, int itemId, int quantity)
+        public Task GrantGatheredMaterialAsync(long playerId, long activityId, int itemId, int quantity)
         {
-            if (itemId <= 0 || quantity <= 0) return;
+            if (itemId <= 0 || quantity <= 0) return Task.CompletedTask;
 
-            string materialItemId = ContentRegistry.GetItemBaseId(itemId);
-            if (string.IsNullOrEmpty(materialItemId)) return;
+            var single = new List<KeyValuePair<(long PlayerId, int ItemId), GatheringGrantTotal>>(1)
+            {
+                new(
+                    (playerId, itemId),
+                    new GatheringGrantTotal { ActivityId = activityId, Quantity = quantity })
+            };
+
+            return GrantGatheredMaterialsAsync(playerId, single);
+        }
+
+        /// <summary>
+        /// Writes one player's whole coalesced batch of gathered materials in a
+        /// single transaction, then publishes one feed line per material.
+        ///
+        /// Modul: ONE TRANSACTION FOR THE BATCH, not one per grant. The
+        /// per-grant version was three round trips (SELECT FOR UPDATE, UPDATE,
+        /// COMMIT) against a database in another datacentre, and the tick can
+        /// enqueue hundreds of grants a second - see CoalesceGatheringGrants for
+        /// where that number comes from. The row lock is still taken with FOR
+        /// UPDATE, and still only over the rows this batch actually touches.
+        /// </summary>
+        private async Task GrantGatheredMaterialsAsync(
+            long playerId,
+            IEnumerable<KeyValuePair<(long PlayerId, int ItemId), GatheringGrantTotal>> grants)
+        {
+            // ItemId (numeric, from the loot table) -> BaseId (the string the
+            // chest is keyed on). Anything the catalogue cannot name is dropped
+            // here rather than written as an empty key.
+            var byMaterial = new Dictionary<string, (int ItemId, long ActivityId, int Quantity)>();
+            foreach (var grant in grants)
+            {
+                if (grant.Value.Quantity <= 0) continue;
+                string materialItemId = ContentRegistry.GetItemBaseId(grant.Key.ItemId);
+                if (string.IsNullOrEmpty(materialItemId)) continue;
+
+                byMaterial.TryGetValue(materialItemId, out var existing);
+                long summed = (long)existing.Quantity + grant.Value.Quantity;
+                byMaterial[materialItemId] = (
+                    grant.Key.ItemId,
+                    grant.Value.ActivityId,
+                    summed > int.MaxValue ? int.MaxValue : (int)summed);
+            }
+
+            if (byMaterial.Count == 0) return;
+
+            var materialIds = byMaterial.Keys.ToArray();
 
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -1141,34 +1287,46 @@ namespace FolkIdle.Server.Engine
                 dbContext.ChangeTracker.Clear();
                 using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
 
-                var existing = await dbContext.CommodityRecords
-                    .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {materialItemId} FOR UPDATE")
-                    .SingleOrDefaultAsync();
+                var existingRows = await dbContext.CommodityRecords
+                    .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = ANY({materialIds}) FOR UPDATE")
+                    .ToListAsync();
 
-                if (existing == null)
+                foreach (var material in byMaterial)
                 {
-                    dbContext.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = materialItemId, Quantity = quantity });
-                }
-                else
-                {
-                    existing.Quantity += quantity;
+                    var row = existingRows.FirstOrDefault(r => r.ItemId == material.Key);
+                    if (row == null)
+                    {
+                        dbContext.CommodityRecords.Add(new CommodityRecord
+                        {
+                            PlayerId = playerId,
+                            ItemId = material.Key,
+                            Quantity = material.Value.Quantity
+                        });
+                    }
+                    else
+                    {
+                        row.Quantity += material.Value.Quantity;
+                    }
                 }
 
                 await dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
             });
 
-            // MonsterId doubles as "where this came from" on the wire; a
-            // gathering node id is as much an origin as a monster id is.
-            _playerRegistry.OutboundLootDropQueue.Enqueue(new Network.ResponseLootDropPacket
+            foreach (var material in byMaterial)
             {
-                PlayerId = playerId,
-                ItemId = itemId,
-                Quantity = quantity,
-                MonsterId = (int)activityId,
-                QualityTier = 0,
-                DropKind = Network.ResponseLootDropPacket.DropKindMaterial
-            });
+                // MonsterId doubles as "where this came from" on the wire; a
+                // gathering node id is as much an origin as a monster id is.
+                _playerRegistry.OutboundLootDropQueue.Enqueue(new Network.ResponseLootDropPacket
+                {
+                    PlayerId = playerId,
+                    ItemId = material.Value.ItemId,
+                    Quantity = material.Value.Quantity,
+                    MonsterId = (int)material.Value.ActivityId,
+                    QualityTier = 0,
+                    DropKind = Network.ResponseLootDropPacket.DropKindMaterial
+                });
+            }
         }
 
         private void PublishLootDrop(long playerId, int monsterId, int itemId, int quantity, byte qualityTier, byte dropKind)

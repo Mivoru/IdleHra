@@ -14,7 +14,8 @@ import {
   SKILL_POINTS_PER_SEAL,
   DEED_CHAPTERS,
   TOOL_TIERS,
-  MASTERY_SPEED_PCT_PER_LEVEL,
+  MASTERY_SPEED_PCT_AT_LEVEL_ONE,
+  masterySpeedPct,
   VILLAGE_SPEED_PCT_PER_LEVEL,
   DAILY_LOGIN_DAY7_DIAMONDS,
   WORLD_BOSS_HP,
@@ -253,9 +254,16 @@ describe('the tables the wiki restates still match the server', () => {
       expect(row!.speedPct, `tool tier ${tier} speed`).toBe(pct);
     }
 
-    expect(MASTERY_SPEED_PCT_PER_LEVEL).toBe(
-      num(tools, /MasterySpeedPctPerLevel = (\d+)/, 'mastery pct'),
+    // Mastery is a curve now, not a per-level constant: 40 * sqrt(level).
+    // Both halves have to agree on the constant AND on the shape, because a
+    // client that mirrors only the constant would draw a straight line through
+    // a square root and be wrong everywhere except level 1.
+    expect(MASTERY_SPEED_PCT_AT_LEVEL_ONE).toBe(
+      num(tools, /MasterySpeedPctAtLevelOne = (\d+)/, 'mastery pct at level one'),
     );
+    expect(masterySpeedPct(0)).toBe(0);
+    expect(masterySpeedPct(1)).toBe(MASTERY_SPEED_PCT_AT_LEVEL_ONE);
+    expect(masterySpeedPct(100)).toBe(MASTERY_SPEED_PCT_AT_LEVEL_ONE * 10);
     expect(VILLAGE_SPEED_PCT_PER_LEVEL).toBe(
       num(tools, /VillageYieldBonusPctPerLevel = (\d+)/, 'village pct'),
     );

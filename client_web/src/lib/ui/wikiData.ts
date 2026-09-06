@@ -303,8 +303,17 @@ export const TOOL_TIERS: readonly {
   { tier: 10, wood: 'Voidbark', slug: 'voidbark', speedPct: 1912, band: 'Shadow Citadel' },
 ];
 
-/** GatheringToolEngine.MasterySpeedPctPerLevel. */
-export const MASTERY_SPEED_PCT_PER_LEVEL = 10;
+/**
+ * GatheringToolEngine.GetMasterySpeedBonusPct - `40 * sqrt(level)` percent.
+ *
+ * It was a flat 10% per level, linear and uncapped, which reached +1270% at
+ * mastery 127 and drowned the tool curve it is supposed to sit beside. The
+ * square root pays MORE for the first levels and bounds the top.
+ */
+export const MASTERY_SPEED_PCT_AT_LEVEL_ONE = 40;
+export function masterySpeedPct(level: number): number {
+  return level <= 0 ? 0 : Math.floor(MASTERY_SPEED_PCT_AT_LEVEL_ONE * Math.sqrt(level));
+}
 /** GatheringToolEngine.VillageYieldBonusPctPerLevel. */
 export const VILLAGE_SPEED_PCT_PER_LEVEL = 5;
 /** GatheringToolEngine.MinRequiredTicks - ten ticks is one second. */

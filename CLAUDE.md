@@ -172,6 +172,26 @@ and bound the pool below the server's limit (`ConnectionStringDefaults
 cron loops still have no catch at all - see
 `docs/drop_rates_investigation_2026_09_05.md`.
 
+**An unbounded drain in a worker loop is a starvation bug.** `CombatLootEngine`
+drains two queues in one loop; the gathering half was `while (queue.TryDequeue)`
+with an `await` inside, which terminates only when the producer pauses. It does
+not: a harvest enqueues one grant PER ROLL, the roll count is scaled by the
+codex yield multiplier, and that multiplier was **71.9x** on a live account -
+about 290 grants a second against a worker that could write thirty. Equipment
+stopped for everyone with a gatherer online and only arrived at a relogin, when
+the queue finally emptied. Take a BUDGET (the depth read once at the top of the
+cycle), coalesce what can be added up, and report every queue's depth in the
+heartbeat. `GatheringGrantStarvationTests` guards the shape.
+
+**A multiplier with no ceiling becomes the economy.** `CachedCodexYieldMultiplier`
+is +0.5% per codex level, a codex level is ten kills, and nothing bounded the
+sum - it reached 71.9x and made one character out-earn the entire material sink
+of the game twice an hour. It is capped at 2.0x now
+(`CodexEngine.MaxYieldMultiplier`); the DAMAGE multiplier beside it is the same
+formula, is at 142x, and is deliberately still open. `GatheringEconomyTests`
+prints supply and every sink in the same units - read it before touching a yield
+or speed curve.
+
 **Grep for a WRITER as well as a reader.** The recurring "computed but never
 consumed" trap has an inverse that is just as bad: `IsAffixLocked` was read in
 ten places - reroll, fusion, the validator, both removal paths - and set to true

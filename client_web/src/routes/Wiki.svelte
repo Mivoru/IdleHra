@@ -61,7 +61,8 @@
     AFFIX_RARITIES,
     AFFIX_POOL,
     TOOL_TIERS,
-    MASTERY_SPEED_PCT_PER_LEVEL,
+    MASTERY_SPEED_PCT_AT_LEVEL_ONE,
+    masterySpeedPct,
     VILLAGE_SPEED_PCT_PER_LEVEL,
     MIN_GATHER_TICKS,
     DEED_CHAPTERS,
@@ -836,7 +837,7 @@
 
           <h3 id="speed">What makes gathering faster</h3>
           <ul class="styled-list">
-            <li><strong>Mastery</strong> — +{MASTERY_SPEED_PCT_PER_LEVEL}% a level in that profession, compounding with everything below.</li>
+            <li><strong>Mastery</strong> — +{MASTERY_SPEED_PCT_AT_LEVEL_ONE}% at level 1 and {masterySpeedPct(100)}% at level 100 in that profession (it grows as the square root of the level, so early levels are worth the most), compounding with everything below.</li>
             <li><strong>Your tool's tier</strong> — the table above.</li>
             <li><strong>Your tool's affixes</strong> — gathering speed rolls on tools and nothing else.</li>
             <li><strong>The village</strong> — the Lumberjack speeds woodcutting and the Mine speeds mining, +{VILLAGE_SPEED_PCT_PER_LEVEL}% a level each.</li>

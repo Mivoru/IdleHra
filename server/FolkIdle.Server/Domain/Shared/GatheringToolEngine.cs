@@ -109,7 +109,45 @@ namespace FolkIdle.Server.Domain.Shared
         // A subtraction cannot be balanced against a threshold it does not
         // know. Ten percent a level compounds with the tool curve instead of
         // racing it to the floor.
-        public const int MasterySpeedPctPerLevel = 10;
+        //
+        // Modul: LINEAR AND UNCAPPED IS WHAT DROWNED THE TOOL, 2026-09-06.
+        //
+        // Ten percent a level has no ceiling and mastery levels have no ceiling
+        // either. Measured on the account that reported gathering as broken:
+        // mastery 127 was +1270%, against +348% for the tier-5 axe it was
+        // blaming - 76% of the speed came from the lever nobody had tuned, and
+        // past about level 35 mastery exceeded even a tier-10 tool. The forge
+        // upgrade that the whole geometric tool curve exists to motivate had
+        // become a rounding error, which is the exact flatness that curve was
+        // written to end, reintroduced from the other side.
+        //
+        // Square root, so every level still pays and none of them run away:
+        //
+        //   level    1    10    25    50   100   127   400
+        //   old    10%  100%  250%  500% 1000% 1270% 4000%
+        //   new     40%  126%  200%  283%  400%  451%  800%
+        //
+        // Early mastery is now WORTH more than it was (a first level is +40%
+        // rather than +10%), the top is bounded in practice, and at every point
+        // past level 25 the tool is the bigger lever again. The tool curve
+        // itself is untouched - it was measured, it is paid for in materials,
+        // and it was never the defect.
+        public const int MasterySpeedPctAtLevelOne = 40;
+
+        /// <summary>
+        /// The mastery term of the speed bonus, in percent.
+        /// </summary>
+        /// <remarks>
+        /// One hardware sqrt on the 10 Hz path. The class comment asks for
+        /// integer arithmetic and no allocation; this allocates nothing and
+        /// costs a single instruction, which buys a curve that cannot be
+        /// written as a table without pinning a maximum mastery level.
+        /// </remarks>
+        public static int GetMasterySpeedBonusPct(int masteryLevel)
+        {
+            if (masteryLevel <= 0) return 0;
+            return (int)(MasterySpeedPctAtLevelOne * Math.Sqrt(masteryLevel));
+        }
 
         public static int ComputeRequiredTicks(int baseTickThreshold, int masteryLevel, int toolTier, int villageProductionLevel, int toolAffixSpeedPct)
         {
@@ -120,10 +158,7 @@ namespace FolkIdle.Server.Domain.Shared
             }
 
             int totalSpeedBonusPct = GetToolSpeedBonusPct(toolTier);
-            if (masteryLevel > 0)
-            {
-                totalSpeedBonusPct += masteryLevel * MasterySpeedPctPerLevel;
-            }
+            totalSpeedBonusPct += GetMasterySpeedBonusPct(masteryLevel);
             if (villageProductionLevel > 0)
             {
                 totalSpeedBonusPct += villageProductionLevel * VillageYieldBonusPctPerLevel;

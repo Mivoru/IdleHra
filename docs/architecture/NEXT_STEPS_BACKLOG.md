@@ -41,23 +41,43 @@ monster's from a hand-copy of `BossFirstClearRules` that predates First Blood,
 the player's from a session high-water mark caught reading "2320 / 2320" while
 `PlayerHp` was 3701. Both are on the wire now.
 
-## OPEN AND URGENT, 2026-09-06
+## CLOSED 2026-09-06 - the second loot fault, and the gathering economy
 
-**Live kills pay no loot; only the offline catch-up does.** One cause was found
-and fixed (a background worker with no exception handling, killed by Supabase's
-15-client session pooler against Npgsql's default pool of 100 - see below), and
-a SECOND fault is still live behind it. The full evidence table, everything
-ruled out and the three next steps are in
-`docs/drop_rates_investigation_2026_09_05.md` under "STILL OPEN". Start there;
-do not re-derive it.
+**Live kills paid no loot because GATHERING was starving the loot worker.**
+One background loop drains two queues, and the gathering half was
+`while (queue.TryDequeue(...))` with an `await` inside - which terminates only
+when the producer pauses. The producer does not pause: a harvest enqueues one
+grant PER ROLL, the roll count is scaled by the codex yield multiplier, and that
+multiplier was **71.9x** on the reporting account. ~290 grants a second against
+a worker that could write thirty, each grant paying for its own transaction and
+three round trips to Supabase. The loop entered the gathering drain and never
+came out.
 
-**Gathering is 26x faster than its own slowest node.** 2.3 million logs on one
-account, and the cause is not the tool that was blamed: mastery contributes
-+10% per level, linear and uncapped, which is 76% of the total speed at level
-127 against the tool's 21%. Everything also collapses onto the 0.2 s
-`MinRequiredTicks` floor, so the five node tiers pay the same at high mastery.
-Measured tables and candidate fixes (none applied):
+Every symptom of the previous handoff falls out of that: `tick saw 0` was the
+last honest line printed *before* the wedge (the report sits above the drain),
+the log going silent was the same loop, and "loot only arrives at a relogin" is
+the queue finally emptying when gathering stops. Confirmed live before changing
+anything - codex +54 kills a minute, `EquipmentInstances.Id` unmoved,
+`CommodityRecords` taking 52 writes a second, last log line eleven minutes old.
+
+Fixed by budgeting both drains, coalescing grants per (player, material) into
+one transaction, and reporting the gathering queue in the heartbeat. Full
+evidence: `docs/drop_rates_investigation_2026_09_05.md`, section "THE SECOND
+FAULT".
+
+**The gathering economy was rebalanced against its own sinks.** The codex yield
+multiplier is capped at 2.0x and mastery speed is `40 * sqrt(level)` where it
+was `10 * level` uncapped; the tool curve is untouched. Supply at the top falls
+36x, a new player is unaffected, and the most expensive recipe in the game moves
+from eight minutes to 3.2 hours. `GatheringEconomyTests` prints supply and every
+sink in the same units and fails when they drift apart. Details and the tables:
 `docs/gathering_balance_2026_09_06.md`.
+
+**STILL OPEN, and deliberately not taken: the codex DAMAGE multiplier is
+`1 + 0.01 * levelSum`, uncapped, and stands at 142x on that same account.** It
+is one line above the one that was capped, and capping it would divide a live
+character's output by a hundred - a re-pacing of the whole game, not a bug fix.
+The arithmetic and what to read first are at the bottom of the gathering doc.
 
 **A 24-hour JWT with no refresh token** logs every player out mid-session; the
 client now signs them out cleanly instead of retrying a dead token forever, but

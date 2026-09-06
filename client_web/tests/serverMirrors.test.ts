@@ -152,9 +152,16 @@ describe('the numbers the client mirrors still match the server', () => {
     const tools = read(serverRoot, 'Domain', 'Shared', 'GatheringToolEngine.cs');
     const gathering = read(clientRoot, 'routes', 'Gathering.svelte');
 
-    expect(num(gathering, /MASTERY_SPEED_PCT_PER_LEVEL = (\d+)/, 'client mastery pct')).toBe(
-      num(tools, /MasterySpeedPctPerLevel = (\d+)/, 'server mastery pct'),
+    // Modul: mastery is a CURVE now - 40 * sqrt(level) - because a flat 10%
+    // a level with no ceiling reached +1270% and drowned the tool curve beside
+    // it. Both sides must agree on the constant and on the square root; a
+    // client that mirrored only the constant would draw a straight line and be
+    // wrong at every level but the first.
+    expect(num(gathering, /MASTERY_SPEED_PCT_AT_LEVEL_ONE = (\d+)/, 'client mastery pct')).toBe(
+      num(tools, /MasterySpeedPctAtLevelOne = (\d+)/, 'server mastery pct'),
     );
+    expect(gathering).toMatch(/Math\.sqrt\(level\)/);
+    expect(tools).toMatch(/Math\.Sqrt\(masteryLevel\)/);
     expect(num(gathering, /VILLAGE_SPEED_PCT_PER_LEVEL = (\d+)/, 'client village pct')).toBe(
       num(tools, /VillageYieldBonusPctPerLevel = (\d+)/, 'server village pct'),
     );

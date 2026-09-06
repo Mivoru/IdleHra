@@ -238,7 +238,15 @@ game for CPU and should be removed.
 
 ---
 
-# STILL OPEN, 2026-09-06: live kills pay no loot
+# FOUND AND FIXED, 2026-09-06: gathering starved the loot worker
+
+> The section below is the handoff as it stood before the cause was
+> found. It is kept because everything it ruled out is still ruled out,
+> and because the answer is *why* two of its measurements disagreed.
+> **The answer itself is at the bottom of this file, under "THE SECOND
+> FAULT".** Start there.
+
+# STILL OPEN as of the previous session: live kills pay no loot
 
 The worker-death fix above is real and holds. **A second, different fault is
 still live** and this section is the handoff for it. Read it before touching
@@ -319,3 +327,80 @@ the next session's first job is to find out which.
 - An expired JWT signs the player out instead of retrying forever
   (`interpretClose`); the 24-hour token with no refresh is itself worth a
   product decision.
+
+---
+
+# THE SECOND FAULT, found 2026-09-06: gathering starved the loot worker
+
+One worker loop drains two queues. The gathering half never gave it back.
+
+```csharp
+while (DropRequestQueue.TryDequeue(out var request)) { ...await... }
+ReportLootThroughput();
+while (GatheringGrantQueue.TryDequeue(out var gathered)) { ...await... }   // <-- here
+```
+
+A `while (TryDequeue)` terminates only when the producer pauses. **The producer
+does not pause**, and it is far faster than this consumer:
+
+- A harvest enqueues one grant **per roll**, not per harvest.
+- The roll count is `(100 + yieldBonus) * CachedCodexYieldMultiplier / 100`.
+- That multiplier is `1 + 0.005 * (sum of codex levels)`, **uncapped**. On the
+  reporting account the sum is **14,178**, so the multiplier is **71.9x**.
+- So one harvest enqueues ~72 grants, each of which paid for its own DI scope,
+  its own transaction and three round trips (`SELECT ... FOR UPDATE`, `UPDATE`,
+  `COMMIT`) to a database in another datacentre.
+
+Two characters harvesting twice a second is ~290 grants a second against a
+worker that can write perhaps thirty. The loop enters the gathering drain and
+never comes out.
+
+## Every symptom of the previous section falls out of that one fact
+
+| Observed | Because |
+|---|---|
+| `tick saw 0 kills, enqueued 0` while the codex climbed | the counters are `Interlocked.Exchange`d to zero *by the report*, and the report sits **above** the gathering drain. Once the loop wedged, the last printed line was the last one before the player started fighting - and it was honest. Nothing after it was ever printed. |
+| The log "printed nothing at all" for minutes | same. The heartbeat is inside the loop that stopped coming round. |
+| Loot arrives **only** at a relogin | logging out stops the gathering tick, the queue finally empties, the loop returns to the top and drains everything that had piled up. 490 pieces in one burst is a whole session's kills arriving at once. |
+| Kills, XP, gold, the codex and gathering all fine | none of them are on this worker. |
+| Never reproduced locally | a local Postgres answers in under a millisecond, so the drain keeps up and the loop always returns. |
+
+## How it was confirmed, live, before any code changed
+
+| Measurement | Result |
+|---|---|
+| `sum(KillCount)` on `monster_codex_entries`, twice a minute apart | +54 kills in 68 s - combat is running |
+| `max("Id")` on `EquipmentInstances` over the same window | **unmoved** |
+| `CommodityRecords` for the gathering materials, 75 s apart | **+2,262 frostpine and +1,700 silver ore** - 52 writes a second |
+| `pg_stat_activity` | an `UPDATE "CommodityRecords" SET "Quantity"` in flight, from the app |
+| `docker compose logs`, box clock at 08:04 UTC | last line **07:53:49**, and one a minute exactly before that |
+
+The worker was neither dead nor blocked. It was **fully occupied**, writing
+gathering grants one at a time, and it had been since the moment the player
+started gathering.
+
+## The fix
+
+1. **Both drains take a budget** - the queue depth read once at the top of the
+   cycle - instead of running until the queue is empty. A cycle is now finite
+   whatever the producers do. `GatheringGrantStarvationTests` pins the shape:
+   no `while (…Queue.TryDequeue` may appear in the worker's cycle again.
+2. **Grants are coalesced** by (player, material) before any database work, and
+   one player's whole batch is written in **one transaction**. 290 grants a
+   second becomes two writes per three-second cycle. The player is owed a
+   total, not a sequence of ones.
+3. **The heartbeat moved to the end of the cycle** and now reports the gathering
+   queue as well, so "this worker is drowning" is a line in the log rather than
+   silence: `gathering N grants -> M writes, K still queued`.
+
+The 71.9x multiplier that made the producer that fast is a balance defect in its
+own right and is capped at 2.0x - see `docs/gathering_balance_2026_09_06.md`.
+Either fix alone would have been enough to hide the other; both are wanted, and
+the starvation fix is the one that holds whatever the yield curve does next.
+
+## The lesson, generalised
+
+Five other `StartCron` loops still have no `catch`. That was the *previous*
+fault's lesson. This one adds a second: **a background loop that awaits inside
+an unbounded drain is not a worker, it is a race between a producer and a
+network round trip** - and the queue beside it is the thing that loses.

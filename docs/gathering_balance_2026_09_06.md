@@ -1,5 +1,11 @@
 # Gathering is 26x faster than its own slowest node — 2026-09-06
 
+> **APPLIED, later the same day.** The measurement below stands, and it was
+> INCOMPLETE: it measured speed and never looked at the roll count beside it,
+> which was a further **71.9x**. What was changed, and what it now pays against
+> what the game charges, is at the bottom under "WHAT WAS APPLIED". The
+> "not been decided" section is what was decided.
+
 Reported: "farmení materiálů je moc OP, mám přes 2 mil frostpine log, jenom kvůli
 tomu že mám t3 axe — tohle se musí upravit a správně propočítat".
 
@@ -89,3 +95,112 @@ table above as a test that fails when the ratio between the levers moves, so
 this cannot silently drift again. Do not retune the tool curve without reading
 the `GatheringToolEngine` header — the reasoning for every tier is there, and it
 is sound; the defect is the term beside it.
+
+---
+
+# WHAT WAS APPLIED, 2026-09-06
+
+## The lever the measurement above missed
+
+Speed is only half of a harvest. The other half is how many times the node's
+loot table is rolled, and each roll grants one unit:
+
+```csharp
+int multiplier = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier);
+int rollsToExecute = multiplier / 100;   // plus a fractional chance
+```
+
+`CachedCodexYieldMultiplier` is `1 + 0.005 * (sum of every codex level)`, and a
+codex level is ten kills of one monster. **Nothing bounded it.** On the
+reporting account the sum is **14,178 levels**, so:
+
+| lever | factor |
+|---|---:|
+| **codex yield multiplier** | **71.9x** |
+| mastery speed, 127 x 10% | 14.7x |
+| tool tier (measured, tuned, paid for in materials) | 4.5x |
+
+Real supply at that state was not 7,200 units an hour. It was **~862,800 an
+hour, per character** - the speed table above multiplied by seventy-two.
+
+## What the game actually charges
+
+| sink | units of material |
+|---|---:|
+| the most expensive single village upgrade | 507 |
+| one village building from level 0 to 12 (logs + ore) | 5,780 |
+| the most expensive recipe in the game (Voidbark axe) | 69,862 |
+| **every recipe in the crafting tree, once** | **383,553** |
+
+So one character was earning the **entire material sink of the game, twice
+over, every hour**, and holding a hundred times the village's lifetime cost in
+a single log type. The supply was not slightly out; it was three orders of
+magnitude out.
+
+## The three changes
+
+**1. The codex yield multiplier is capped at 2.0x** (`CodexEngine
+.MaxYieldMultiplier`). It reaches the ceiling at 200 codex levels - about two
+thousand kills, a region's worth of play - and doubling a harvest is still a
+real reward. Kill counts, codex levels and the codex **damage** multiplier are
+untouched.
+
+**2. Mastery speed is `40 * sqrt(level)` percent**, where it was `10 * level`
+linear and uncapped.
+
+| mastery | 1 | 10 | 25 | 50 | 100 | 127 | 400 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| old | 10% | 100% | 250% | 500% | 1000% | 1270% | 4000% |
+| **new** | **40%** | **126%** | **200%** | **283%** | **400%** | **450%** | **800%** |
+
+The first levels are worth *more* than they were, and past level 25 the tool is
+the bigger lever again - which is the whole point. A curve that bounds the top
+by punishing the bottom would be a different, worse game.
+
+**3. The tool curve is untouched.** It was the one lever that had been designed,
+its reasoning is in `GatheringToolEngine`'s header, and it costs materials -
+which is exactly what a dominant lever should do.
+
+**The relative tick floor was considered and rejected.** "Never faster than 25%
+of the node's base" needs 300% of total bonus to bind, and a tier-5 axe alone is
+348%, so every tool from tier 5 up would have been worth the same on every node.
+Even at 10% it binds at 900% and flattens tiers 8, 9 and 10 - re-creating from a
+third direction the exact flatness the tool rework exists to end. The absolute
+`MinRequiredTicks = 2` stays. The consequence is that a fully-maxed gatherer
+does floor a region-1 node, and that is harmless: region-1 logs buy region-1
+recipes and nothing else.
+
+## What it pays now
+
+`GatheringEconomyTests` prints this table and fails if it drifts:
+
+| profile | s/harvest | units/h | common/h |
+|---|---:|---:|---:|
+| new player, region 1, bare hands | 3.0 | 1,200 | 1,080 |
+| region 1, first axe | 1.3 | 2,908 | 2,617 |
+| region 3, keeping up | 0.8 | 6,750 | 6,075 |
+| region 5, geared | 0.8 | 9,000 | 8,100 |
+| region 5, everything maxed | 0.3 | 24,000 | 21,600 |
+
+At the maxed rate: the most expensive village upgrade is **1.4 minutes**, the
+most expensive recipe in the game **3.2 hours**, and the entire crafting tree
+**17.8 hours** for one character. That is a **36x** cut at the top and no cut at
+all for a new player.
+
+## Still open, and deliberately not taken
+
+**The codex DAMAGE multiplier is `1 + 0.01 * levelSum` and is also uncapped.**
+On the same account that is **142x**, which is why a region-5 monster dies in
+about a second there and why the codex kill count climbs at one a second. It is
+the same defect in the same formula, one line above the one that was capped.
+
+It was left alone on purpose: capping it would divide a live character's combat
+output by a hundred without being asked, and that is a product decision, not a
+bug fix. If it is taken, the shape is the same one line in
+`CodexEngine.CalculateActiveMultipliersAsync`, and `MonsterLadderTests` /
+`ProgressionRateTests` are what should be read first - the ladder was tuned
+against a player who did *not* have a 142x multiplier, so capping it is a
+re-pacing of the whole game rather than a nerf to one number.
+
+**Existing stockpiles are untouched.** Nobody's 2.4 million logs were taken
+away; only the rate at which the next ones arrive changed.

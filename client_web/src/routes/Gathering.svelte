@@ -124,7 +124,12 @@
   // The tool curve is geometric, 1.35x a tier, so the ladder from Birch to
   // Void Bark is worth about twenty times rather than the old threefold.
   const TOOL_SPEED_PCT = [0, 35, 82, 146, 232, 348, 505, 717, 1003, 1390, 1912];
-  const MASTERY_SPEED_PCT_PER_LEVEL = 10;
+  // Mirrors GatheringToolEngine.GetMasterySpeedBonusPct: 40 * sqrt(level),
+  // where it used to be a flat 10% a level with no ceiling.
+  const MASTERY_SPEED_PCT_AT_LEVEL_ONE = 40;
+  function masterySpeedPct(level: number): number {
+    return level <= 0 ? 0 : Math.floor(MASTERY_SPEED_PCT_AT_LEVEL_ONE * Math.sqrt(level));
+  }
   const VILLAGE_SPEED_PCT_PER_LEVEL = 5;
 
   function villageLevelFor(professionId: number): number {
@@ -142,7 +147,7 @@
     const tier = toolTierFor(node.ProfessionType);
     const speedPct =
       (TOOL_SPEED_PCT[Math.max(0, Math.min(tier, TOOL_SPEED_PCT.length - 1))] ?? 0) +
-      masteryLevelOf(node.ProfessionType) * MASTERY_SPEED_PCT_PER_LEVEL +
+      masterySpeedPct(masteryLevelOf(node.ProfessionType)) +
       villageLevelFor(node.ProfessionType) * VILLAGE_SPEED_PCT_PER_LEVEL +
       Number(snap.ToolGatherSpeedPct ?? 0);
 
