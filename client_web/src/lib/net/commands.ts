@@ -1247,6 +1247,43 @@ export function diminishedPercent(perRootPoint: number, value: number): number {
   return value <= 0 ? 0 : perRootPoint * Math.sqrt(value);
 }
 
+/**
+ * EquipmentAttributeGate, mirrored - what a piece asks of the character wearing
+ * it.
+ *
+ * Derived on both sides from the same two facts (the slot and the region tier)
+ * rather than authored per item, so this mirror is a rule rather than a table.
+ * serverMirrors.test.ts pins the constant and the slot mapping.
+ *
+ * Shown BEFORE the player presses Wear. The server refuses correctly either
+ * way, but a refusal that arrives with no way to see it coming is the failure
+ * this codebase keeps finding at the bottom of "the button does nothing".
+ */
+export const EQUIP_REQUIREMENT_PER_REGION_TIER = 20;
+
+/** Slot index -> attribute id, matching EquipmentAttributeGate.AttributeForSlot. */
+const REQUIREMENT_BY_SLOT_INDEX: Record<number, number> = {
+  0: 0, // weapon   -> Might
+  1: 2, // helmet   -> Vigour
+  2: 2, // chest    -> Vigour
+  3: 1, // gloves   -> Finesse
+  4: 2, // leggings -> Vigour
+  5: 1, // boots    -> Finesse
+  6: 3, // amulet   -> Fortune
+  7: 3, // ring     -> Fortune
+  // 8/9/10 are the tools, which ask for nothing - gathering is not gated by a
+  // combat stat.
+};
+
+export function equipRequirement(
+  slotIndex: number,
+  regionTier: number,
+): { attribute: number; minimum: number } | null {
+  const attribute = REQUIREMENT_BY_SLOT_INDEX[slotIndex];
+  if (attribute === undefined || !regionTier || regionTier < 1) return null;
+  return { attribute, minimum: EQUIP_REQUIREMENT_PER_REGION_TIER * regionTier };
+}
+
 /** Refund every placed point. Free - see the server handler for why. */
 export function respecAttributes(): CommandOutcome {
   connection.send({ Command: CommandType.RespecAttributes });

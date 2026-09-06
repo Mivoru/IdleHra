@@ -184,3 +184,89 @@ so the two stack without either escaping the fourteen real tiers.
 Forge success survives as **Fortune's capstone milestone only** — "Fortune's
 Favour, 8% off fusion fees" — where a discrete perk is an honest shape for a fee
 discount, and where the panel now says what it actually does.
+
+
+---
+
+# Addendum 2: gear asks for attributes — 2026-09-06
+
+The lever named at the end of the last pass, taken.
+
+Attributes had identities, curves and milestone tracks and still **no
+consequence**: a pure-Vigour character could wield the best weapon in the game,
+so "specialise" only ever meant "and also get everything else anyway".
+
+## The rule
+
+A minimum on the item, checked when equipping. Derived from the slot and the
+region tier rather than authored per item, for the same reason
+`MonsterDefenceCurve` is: seventy-eight pieces hand-edited in JSON is
+seventy-eight chances to mistype a number.
+
+| slot | asks for |
+|---|---|
+| Weapon | Might |
+| Helmet, Chest, Leggings | Vigour |
+| Gloves, Boots | Finesse |
+| Amulet, Ring | Fortune |
+| Tools | **nothing** |
+
+Tools are exempt deliberately: a player who cannot equip an axe cannot gather,
+cannot craft, and cannot buy their way out of it. That is a dead end, not a
+choice, and this game has built one before.
+
+Spread across all four so a full set needs all four — a **floor**, with
+everything above it as the real choice:
+
+| region | requirement | full set | points held | free |
+|---|---|---|---|---|
+| 1 | **0** | 0 | 0 | — |
+| 2 | 20 | 80 | 140 | 60 |
+| 3 | 40 | 160 | 280 | 120 |
+| 4 | 60 | 240 | 420 | 180 |
+| 5 | 80 | 320 | 560 | 240 |
+
+**43% of a player's points stay free at every region.** `EquipmentAttributeGateTests`
+prints that table and fails at both ends: too high is a wall, too low is nothing.
+
+## Two things the tests caught, one of them serious
+
+**Region 1 asks for nothing, and it has to.** My first version charged
+`20 × tier`, so region-1 gear needed 20 Might. I had written
+`AttributeRegistry.StartingValue` as 50/50/50/25 — **read off the one legacy
+account that has those numbers.** `PlayerRecord`'s four `Base*` columns are
+plain ints with no initialiser, so a registration gets **zeroes**, and the live
+database confirms it: three accounts at 0, one at 50/50/50/25 from some earlier
+scheme.
+
+So a brand-new player would not have been able to equip the first weapon the
+game hands them. That is the closed entrance this project has already shipped
+once. The curve starts at region 2 now, `20 × (tier − 1)`, and the test asks the
+real catalogue rather than the formula: every region-1 piece must be wearable at
+0/0/0/0.
+
+**Two integration fixtures created level-60 and level-100 players with no
+attributes** and then equipped region-2 and region-5 gear. Those refusals were
+correct; the fixtures were the unrealistic thing, and now place points.
+
+## Checked at equip, never on the tick
+
+Nothing already worn is ever stripped. The live account holds 595 unspent points
+with attributes still at their starting values, and enforcing this continuously
+would have undressed it completely at the next deploy. A respec can therefore
+leave a character wearing something they could not put back on — the standard
+shape of this rule, and a consequence the player chose rather than one the
+server sprang on them.
+
+The refusal has its own result code (`AttributeRequirementNotMet`) rather than
+reusing the region one, because "beat a boss" and "spend points" are different
+instructions — and the gear row shows the requirement **before** you press Wear,
+in red when unmet. A refusal that cannot say what to do is the shape this
+codebase keeps finding at the bottom of "the button does nothing".
+
+## Note
+
+`StartingValue` is 0 now, so a respec refunds everything a character holds. The
+one legacy account carrying 50/50/50/25 will get those 175 points back as
+spendable — harmless, and arguably right, since they are attribute points either
+way.

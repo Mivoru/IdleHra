@@ -176,7 +176,15 @@ namespace FolkIdle.Server.Network
         // Adding an enum value does not resize the packet - the field is one
         // byte and stays one byte - so no layout guard or protocol
         // regeneration is involved.
-        TownHallCeilingReached = 21
+        TownHallCeilingReached = 21,
+
+        // Modul: the item asks for an attribute this character does not have -
+        // see EquipmentAttributeGate. Its own code rather than RegionLocked,
+        // because the two refusals need different sentences: one says "beat the
+        // boss that opens this region", the other says "put points into Might".
+        // A refusal that cannot say what to DO is the shape this codebase keeps
+        // finding at the bottom of "the button does nothing".
+        AttributeRequirementNotMet = 22
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

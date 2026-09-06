@@ -9360,7 +9360,13 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                // Modul: gear asks for attributes now (EquipmentAttributeGate), so a
+                // level-100 fixture has to have PLACED some or it cannot wear the
+                // very items this test is about. 100 each is well under the 693
+                // points a character of that level holds, and comfortably over the
+                // 80 a region-5 piece asks.
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100,
+                    BaseStrength = 100, BaseDexterity = 100, BaseConstitution = 100, BaseLuck = 100 });
                 SeedAllRegionBossKills(db, testPlayerId);
                 db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
 
@@ -11860,7 +11866,11 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
+                // Modul: attributes placed, because gear asks for them now - a
+                // level-60 character holds 413 points and the tier-2 Sentry set
+                // asks 20. See EquipmentAttributeGate.
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60,
+                    BaseStrength = 100, BaseDexterity = 100, BaseConstitution = 100, BaseLuck = 100 });
                 SeedAllRegionBossKills(db, testPlayerId);
                 db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 60, AgePhase = 1, SlotIndex = 0 });
 

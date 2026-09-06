@@ -16,6 +16,7 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
+  import { ATTRIBUTES, equipRequirement } from '../lib/net/commands';
   import { locationName, nodeLocation } from '../lib/ui/locations';
   // EMPTY_GUID is the sentinel the roster filter below tests against.
   import { raceName } from '../lib/ui/races';
@@ -47,6 +48,32 @@
     if (key === 'CON') return Number(snap.CON ?? 0);
     return Number(snap.LCK ?? 0);
   }
+
+  // Modul: WHAT A PIECE ASKS BEFORE YOU PRESS WEAR.
+  //
+  // Gear has attribute minimums now (EquipmentAttributeGate). The server
+  // refuses correctly either way, but a refusal a player could not see coming
+  // is the failure this codebase keeps finding at the bottom of "the button
+  // does nothing" - so the requirement is on the row, and the row says whether
+  // this character meets it.
+  function requirementFor(baseItemId: string): { label: string; minimum: number; met: boolean } | null {
+    const slotIndex = resolveSlotIndex(baseItemId);
+    if (slotIndex < 0) return null;
+
+    const definition = registry?.itemsByBaseId.get(baseItemId);
+    const requirement = equipRequirement(slotIndex, Number(definition?.RegionTier ?? 0));
+    if (!requirement) return null;
+
+    const attribute = ATTRIBUTES.find((a) => a.id === requirement.attribute);
+    if (!attribute) return null;
+
+    return {
+      label: attribute.label,
+      minimum: requirement.minimum,
+      met: attributeValue(attribute.key) >= requirement.minimum,
+    };
+  }
+
 
   const visual = $derived($visualState);
 
@@ -577,6 +604,12 @@
                       class:rarity-glow={shouldGlow(candidate.QualityTier)}
                     >{prettifyBaseId(candidate.BaseItemId)}</span>
                     <span class="dim tiny">[{rarityName(candidate.QualityTier)}]</span>
+                    {#if requirementFor(candidate.BaseItemId)}
+                      {@const req = requirementFor(candidate.BaseItemId)!}
+                      <span class="req" class:unmet={!req.met}>
+                        {req.minimum} {req.label}
+                      </span>
+                    {/if}
                     <button class="tiny-btn" onclick={() => equipInstance(candidate.Id)}>Wear</button>
                   </li>
                 {/each}
@@ -678,6 +711,19 @@
 {/if}
 
 <style>
+  /* The requirement on a gear row - dim when met, loud when not, because the
+     only time it needs attention is when it is the reason Wear will refuse. */
+  .req {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    white-space: nowrap;
+  }
+  .req.unmet {
+    opacity: 1;
+    color: var(--bad, #d9694a);
+    font-weight: 600;
+  }
+
 
   .tools {
     display: grid;

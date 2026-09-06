@@ -54,10 +54,21 @@ namespace FolkIdle.Server.Engine
         public const int Count = 4;
 
         /// <summary>
-        /// The value each attribute starts at. Registration deals these and the
-        /// respec returns to them, so they are the floor of "spent".
+        /// The value each attribute starts at: ZERO.
+        ///
+        /// Modul: I ASSUMED 50/50/50/25 AND IT WAS WRONG. PlayerRecord's four
+        /// Base* columns are plain ints with no initialiser, so a registration
+        /// gets zeroes - the live database confirms it, with three accounts at
+        /// 0 and only the oldest one holding 50/50/50/25 from some earlier
+        /// scheme. Reading a starting value off one legacy row is how that got
+        /// in, and the equipment gate built on top of it would have refused a
+        /// brand-new player their first weapon.
+        ///
+        /// Everything a character has is placed. That is the whole point of the
+        /// system, and it is also the honest floor for "spent" when a respec
+        /// hands it all back.
         /// </summary>
-        public static int StartingValue(int attributeId) => attributeId == Fortune ? 25 : 50;
+        public static int StartingValue(int attributeId) => 0;
 
         public static string NameOf(int attributeId) => attributeId switch
         {

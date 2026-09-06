@@ -5,7 +5,7 @@ import {
   APTITUDE_VILLAGE_CEILING,
 } from '../src/lib/net/commands';
 import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
-import { ATTRIBUTE_MILESTONES, ATTRIBUTE_THRESHOLDS, ATTRIBUTE_CURVES } from '../src/lib/net/commands';
+import { ATTRIBUTE_MILESTONES, ATTRIBUTE_THRESHOLDS, ATTRIBUTE_CURVES, EQUIP_REQUIREMENT_PER_REGION_TIER, equipRequirement } from '../src/lib/net/commands';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -214,6 +214,45 @@ describe('the numbers the client mirrors still match the server', () => {
     expect(ATTRIBUTE_CURVES.rarityElevationPerRootPoint).toBe(
       num(registry, /RarityElevationPerRootPoint = ([\d.]+)f/, 'rarity elevation per root point'),
     );
+  });
+
+  // Modul: gear asks for attributes now, and the client shows the requirement
+  // BEFORE the player presses Wear - which means it computes it, which means it
+  // is a mirror. Derived on both sides from the slot and the region tier rather
+  // than authored per item, so what has to match is the constant and the
+  // slot mapping.
+  it('equipment: the attribute requirement per region tier', () => {
+    const gate = read(serverRoot, 'Domain', 'Combat', 'EquipmentAttributeGate.cs');
+
+    expect(EQUIP_REQUIREMENT_PER_REGION_TIER).toBe(
+      num(gate, /RequirementPerRegionTier = (\d+)/, 'requirement per region tier'),
+    );
+
+    // Slot -> attribute, checked against the server's own switch. The client
+    // indexes by slot INDEX and the server by slot KIND, so the pairs are
+    // compared by name rather than by position.
+    const serverPairs = [...gate.matchAll(/EquipmentSlotKind\.(\w+) => AttributeRegistry\.(\w+),/g)]
+      .map((m) => [m[1], m[2]] as const);
+    expect(serverPairs.length).toBe(8);
+
+    const attributeName = ['Might', 'Finesse', 'Vigour', 'Fortune'];
+    const clientBySlotName: Record<string, number> = {
+      Weapon: 0, Helmet: 1, Chest: 2, Gloves: 3, Leggings: 4, Boots: 5, Amulet: 6, Ring: 7,
+    };
+
+    for (const [slotName, attribute] of serverPairs) {
+      const slotIndex = clientBySlotName[slotName];
+      expect(slotIndex, `${slotName} is missing from the client slot map`).toBeDefined();
+      const clientRequirement = equipRequirement(slotIndex, 3);
+      expect(clientRequirement, `${slotName} should have a requirement`).toBeTruthy();
+      expect(attributeName[clientRequirement!.attribute], `${slotName}`).toBe(attribute);
+    }
+
+    // The three tool slots ask for nothing - gathering is not gated by a combat
+    // stat, and a player who cannot equip an axe cannot craft their way out.
+    for (const toolSlot of [8, 9, 10]) {
+      expect(equipRequirement(toolSlot, 5)).toBeNull();
+    }
   });
 
   it('gathering: mastery and village production percentages', () => {

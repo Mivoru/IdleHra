@@ -55,6 +55,12 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   19: 'Your Forge is too low a level to produce that rarity. Upgrade it in your village.',
   20: 'Fusion needs three copies of the SAME item - same piece, same rarity.',
   21: 'Raise the Town Hall first - it caps how far every other building can go.',
+
+  // Modul: gear asks for attributes now (EquipmentAttributeGate). Its own code
+  // rather than reusing the region one, because the two refusals need different
+  // sentences - "beat a boss" and "spend points" are not the same instruction,
+  // and the item card names the exact attribute and number beside this.
+  22: 'That piece needs more of one attribute - check its requirement on the item.',
 };
 
 export const COMMAND_RESULT_SUCCESS = 0;

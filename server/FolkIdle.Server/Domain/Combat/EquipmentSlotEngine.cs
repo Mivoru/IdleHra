@@ -421,6 +421,38 @@ namespace FolkIdle.Server.Domain.Combat
                         return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.RegionLocked);
                     }
 
+                    // Modul: AND WHAT THE ITEM ASKS OF THE CHARACTER, 2026-09-06.
+                    //
+                    // Attributes had identities, curves and milestone tracks and
+                    // still no consequence - a pure-Vigour character could wield
+                    // the best weapon in the game, so specialising only ever
+                    // meant "and also get everything else anyway". A minimum on
+                    // the item is the one rule that makes the choice binding
+                    // without taking anything from anyone.
+                    //
+                    // Beside the region gate rather than anywhere else because
+                    // this is the same question asked twice: may this character
+                    // wear this thing. Checked ONLY here, never on the tick -
+                    // see EquipmentAttributeGate for why nothing already worn is
+                    // ever stripped.
+                    var wearer = await db.PlayerRecords
+                        .AsNoTracking()
+                        .Where(p => p.Id == playerId)
+                        .Select(p => new { p.BaseStrength, p.BaseDexterity, p.BaseConstitution, p.BaseLuck })
+                        .SingleOrDefaultAsync();
+
+                    if (wearer != null && !EquipmentAttributeGate.CanWear(
+                            item.BaseItemId, wearer.BaseStrength, wearer.BaseDexterity,
+                            wearer.BaseConstitution, wearer.BaseLuck))
+                    {
+                        var (needed, minimum) = EquipmentAttributeGate.RequirementOf(item.BaseItemId);
+                        await transaction.RollbackAsync();
+                        Console.WriteLine(
+                            $"Equip rejected: player {playerId} needs {minimum} {AttributeRegistry.NameOf(needed)} for {item.BaseItemId}.");
+                        return EquipAttemptOutcome.Rejected(
+                            (byte)FolkIdle.Server.Network.CommandResultCode.AttributeRequirementNotMet);
+                    }
+
                     WriteSlot(character, slotIndex, item.Id);
 
                     await db.SaveChangesAsync();
