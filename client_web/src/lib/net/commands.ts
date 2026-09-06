@@ -1183,7 +1183,7 @@ export const ATTRIBUTES: readonly {
     key: 'LCK',
     label: 'Fortune',
     tagline: 'Takes more from the world.',
-    effects: ['loot luck', 'forge success'],
+    effects: ['loot luck', 'rarity elevation'],
     accent: '#c9a227',
     start: 25,
   },
@@ -1227,7 +1227,7 @@ export const ATTRIBUTE_MILESTONES: readonly {
   { attribute: 3, threshold: 60, name: 'Prospector', effect: '+5% gathering yield' },
   { attribute: 3, threshold: 120, name: 'Lucky Strike', effect: '+2% crit chance' },
   { attribute: 3, threshold: 200, name: 'Golden Touch', effect: '+8% gold' },
-  { attribute: 3, threshold: 300, name: "Fortune's Favour", effect: '+8% forge success' },
+  { attribute: 3, threshold: 300, name: "Fortune's Favour", effect: '8% off fusion fees' },
 ];
 
 /**
@@ -1240,6 +1240,7 @@ export const ATTRIBUTE_CURVES = {
   blockStrengthPerRootPoint: 0.6,
   lootLuckPerRootPoint: 1.2,
   forgeSuccessPerRootPoint: 0.6,
+  rarityElevationPerRootPoint: 0.35,
 } as const;
 
 export function diminishedPercent(perRootPoint: number, value: number): number {

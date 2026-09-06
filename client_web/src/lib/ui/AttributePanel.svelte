@@ -96,9 +96,12 @@
         `${diminishedPercent(ATTRIBUTE_CURVES.blockStrengthPerRootPoint, value).toFixed(1)}% block`,
       ];
     }
+    // Modul: loot luck reweights the rarity ROLL - it is not a drop chance,
+    // which is a flat 15% and nothing moves it. Said plainly here because the
+    // old label ("loot luck") let everyone assume the opposite.
     return [
-      `${diminishedPercent(ATTRIBUTE_CURVES.lootLuckPerRootPoint, value).toFixed(1)}% loot luck`,
-      `${diminishedPercent(ATTRIBUTE_CURVES.forgeSuccessPerRootPoint, value).toFixed(1)}% forge success`,
+      `${diminishedPercent(ATTRIBUTE_CURVES.lootLuckPerRootPoint, value).toFixed(1)}% rarer drops`,
+      `${diminishedPercent(ATTRIBUTE_CURVES.rarityElevationPerRootPoint, value).toFixed(1)}% chance to elevate a drop a tier`,
     ];
   }
 
@@ -117,10 +120,10 @@
       return `+1 accuracy, +${crit.toFixed(2)}% crit`;
     }
     if (key === 'CON') return '+15 health, +1 armour';
-    const luck =
-      diminishedPercent(ATTRIBUTE_CURVES.lootLuckPerRootPoint, value + 1) -
-      diminishedPercent(ATTRIBUTE_CURVES.lootLuckPerRootPoint, value);
-    return `+${luck.toFixed(2)}% loot luck`;
+    const elevate =
+      diminishedPercent(ATTRIBUTE_CURVES.rarityElevationPerRootPoint, value + 1) -
+      diminishedPercent(ATTRIBUTE_CURVES.rarityElevationPerRootPoint, value);
+    return `+${elevate.toFixed(3)}% elevation`;
   }
 
   const totalPlaced = $derived(

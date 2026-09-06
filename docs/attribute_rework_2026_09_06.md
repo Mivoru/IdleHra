@@ -137,3 +137,50 @@ TOTAL 2,755x   monster ladder 750x   headroom 3.7x
 ```
 
 Still inside the 0.5–10x band.
+
+
+---
+
+# Addendum: Fortune's second effect — 2026-09-06
+
+Reported: *"forge success is a shit stat — we have 100% chance to upgrade an
+item from 3 rarities to 1 higher, is that like a chance to get one more bonus
+rarity?"*
+
+No, and it was worse than that. **Fusion is guaranteed** — three of a rarity make
+one of the next, with no roll — so `ForgeSuccessPct` was never a success chance.
+It had been quietly repurposed into a **gold discount on the fusion fee**, capped
+at 25%, under a name promising something else. A discount on the abundant
+currency (the live account holds 85 million gold), invisible at the moment it
+lands, is a weak second effect for the attribute whose whole identity is what
+the world gives back.
+
+**One correction to the premise, though: loot luck is not drop chance.**
+`RollTier(lootLuckPct)` multiplies the weight of every rarity above Normal, so
+it is *already* a rarity stat. Drop chance is a flat 15% and nothing moves it.
+The panel said "loot luck", which let everyone assume the opposite; it now says
+**"rarer drops"**.
+
+## What Fortune grants now
+
+| | |
+|---|---|
+| **rarer drops** | reweights the rarity roll (unchanged, honestly labelled) |
+| **rarity elevation** | a chance the dropped piece comes out **one tier above** what it rolled |
+
+They are genuinely different mechanics rather than one stat twice: luck reshapes
+the roll silently, elevation bumps the result **visibly**. A player sees an
+elevated drop happen.
+
+`0.35 per root point` — 1.75% at 25 points, 8.6% at 600. Rare enough that it
+stays an event; if it ever read like a coin flip, every drop would simply be a
+tier better and the rarity ladder would have moved rather than gained a bonus.
+`AttributeSystemTests` asserts that band.
+
+The machinery already existed: `bonusRarityTiers` is what Golden Fleece uses for
+its every-hundredth-kill bump. Elevation rolls *after* it and shares the clamp,
+so the two stack without either escaping the fourteen real tiers.
+
+Forge success survives as **Fortune's capstone milestone only** — "Fortune's
+Favour, 8% off fusion fees" — where a discrete perk is an honest shape for a fee
+discount, and where the panel now says what it actually does.

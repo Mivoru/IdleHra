@@ -149,7 +149,7 @@ namespace FolkIdle.Server.Engine
             new(Fortune, 60,  "Prospector",        MilestoneEffect.GatheringYieldPct, 5f),
             new(Fortune, 120, "Lucky Strike",      MilestoneEffect.CritChancePct, 2f),
             new(Fortune, 200, "Golden Touch",      MilestoneEffect.GoldPct, 8f),
-            new(Fortune, 300, "Fortune's Favour",  MilestoneEffect.ForgeSuccessPct, 8f),
+            new(Fortune, 300, "Fortune's Favour",  MilestoneEffect.ForgeSuccessPct, 8f),  // 8% off fusion fees
         };
 
         /// <summary>How many rungs of an attribute's track a value has reached.</summary>
@@ -188,6 +188,18 @@ namespace FolkIdle.Server.Engine
         public const float AttackSpeedPerRootPoint = 0.8f;
         public const float BlockStrengthPerRootPoint = 0.6f;
         public const float LootLuckPerRootPoint = 1.2f;
+        /// <summary>
+        /// Fortune's second effect, replacing forge success. 0.35 per root
+        /// point is 1.75% at 25 and 8.6% at 600 - rare enough that an elevated
+        /// drop stays an event, common enough to be worth building toward.
+        /// </summary>
+        public const float RarityElevationPerRootPoint = 0.35f;
+
+        /// <summary>
+        /// Kept for the capstone milestone only. Fusion cannot fail, so this is
+        /// a discount on the fusion FEE - see StatsCalculator.RarityElevationPct
+        /// for why it stopped being a per-point effect.
+        /// </summary>
         public const float ForgeSuccessPerRootPoint = 0.6f;
 
         public static float DiminishedPercent(float perRootPoint, int value)

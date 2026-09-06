@@ -30,6 +30,27 @@ namespace FolkIdle.Server.Engine
         public float CritChancePct { get; set; }
         public float OutOfCombatHpRegen { get; set; }
         public float ForgeSuccessPct { get; set; }
+
+        /// <summary>
+        /// The chance, in percent, that a dropped piece of equipment comes out
+        /// ONE rarity tier above what it rolled.
+        ///
+        /// Modul: FORTUNE'S SECOND EFFECT, 2026-09-06 - replacing forge success,
+        /// which was neither.
+        ///
+        /// Fusion is guaranteed (three of a rarity make one of the next, with no
+        /// roll), so `ForgeSuccessPct` had been quietly repurposed into a gold
+        /// DISCOUNT on the fusion fee, capped at 25%, under a name that promises
+        /// a success chance. A discount on the abundant currency is a weak
+        /// reward and a misleading one.
+        ///
+        /// Elevation is the opposite on both counts: it acts on the scarce thing
+        /// (rarity), and the player SEES it - the piece arrives a tier better
+        /// than it should have. Loot luck reweights the roll silently; this
+        /// bumps the result visibly, which is why the two read as different
+        /// stats rather than one stat twice.
+        /// </summary>
+        public float RarityElevationPct { get; set; }
         public float LootLuckPct { get; set; }
         public float DodgeChancePct { get; set; }
         public float LifestealPct { get; set; }
@@ -141,10 +162,15 @@ namespace FolkIdle.Server.Engine
             // Its milestone track is the half that reaches outside a fight -
             // gathering yield and gold - which is what stops it being the dump
             // stat it has always been.
-            stats.ForgeSuccessPct = AttributeRegistry.DiminishedPercent(
-                AttributeRegistry.ForgeSuccessPerRootPoint, lck);
             stats.LootLuckPct = AttributeRegistry.DiminishedPercent(
                 AttributeRegistry.LootLuckPerRootPoint, lck);
+            stats.RarityElevationPct = AttributeRegistry.DiminishedPercent(
+                AttributeRegistry.RarityElevationPerRootPoint, lck);
+            // Modul: Fortune no longer grants forge success PER POINT. Fusion
+            // cannot fail, so that stat was only ever a fee discount - it
+            // survives as the capstone milestone, where a discrete perk is an
+            // honest shape for it, instead of a trickle under a wrong name.
+            stats.ForgeSuccessPct = 0f;
             stats.DodgeChancePct = 0f;
             stats.LifestealPct = 0f;
 

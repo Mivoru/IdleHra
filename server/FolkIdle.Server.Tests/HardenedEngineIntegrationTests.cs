@@ -8166,9 +8166,21 @@ namespace FolkIdle.Server.Tests
             var lowLuck = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 10);
             var highLuck = StatsCalculator.Calculate(str: 0, dex: 0, con: 0, lck: 200);
 
-            Assert.True(lowLuck.ForgeSuccessPct > 0f,
-                "Luck must produce a non-zero forge success bonus - ForgeSplicingEngine now adds it to the fusion roll.");
-            Assert.True(highLuck.ForgeSuccessPct > lowLuck.ForgeSuccessPct);
+            // Modul: FORTUNE'S SECOND EFFECT IS ELEVATION NOW, not forge
+            // success. Fusion cannot fail - three of a rarity make one of the
+            // next, with no roll - so `ForgeSuccessPct` was never a success
+            // chance; it had been repurposed into a capped discount on the
+            // fusion FEE, under a name promising otherwise. A discount on the
+            // abundant currency, invisible when it lands, is a weak second
+            // effect for the attribute whose identity is what the world gives
+            // back. It survives as Fortune's capstone milestone.
+            //
+            // The point of this test is unchanged: Luck must buy something real
+            // and it must scale. That is now elevation.
+            Assert.True(lowLuck.RarityElevationPct > 0f,
+                "Luck must produce a non-zero rarity elevation chance - TryRollEquipment rolls it on every drop.");
+            Assert.True(highLuck.RarityElevationPct > lowLuck.RarityElevationPct);
+            Assert.True(highLuck.LootLuckPct > lowLuck.LootLuckPct);
 
             var lowCon = StatsCalculator.Calculate(str: 0, dex: 0, con: 10, lck: 0);
             var highCon = StatsCalculator.Calculate(str: 0, dex: 0, con: 200, lck: 0);
@@ -9035,7 +9047,7 @@ namespace FolkIdle.Server.Tests
                 // becomes a row and the assertions below still count what they always
                 // counted. Auto-salvage has its own coverage; switching it on here would
                 // silently turn these into tests of the salvage path instead.
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0 })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f })!;
             }
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -11592,7 +11604,7 @@ namespace FolkIdle.Server.Tests
                 // becomes a row and the assertions below still count what they always
                 // counted. Auto-salvage has its own coverage; switching it on here would
                 // silently turn these into tests of the salvage path instead.
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0 })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f })!;
             }
 
             int publishedCount = 0;

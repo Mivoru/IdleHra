@@ -279,6 +279,14 @@ namespace FolkIdle.Server.Engine
         // every drop had before this field existed.
         public int AutoSalvageBelowTier;
 
+        /// <summary>
+        /// Fortune's chance, in percent, that a dropped piece comes out one
+        /// rarity tier above what it rolled. Carried on the request rather than
+        /// re-read here, for the same reason LootLuckPct is: the roll happens on
+        /// the worker thread and the stats belong to the tick.
+        /// </summary>
+        public float RarityElevationPct;
+
         // Modul: named for the SKIP, not the roll, for the same reason - a
         // `RollMaterials` bool would default to false and silently stop the
         // live tick paying materials at all.
@@ -343,6 +351,7 @@ namespace FolkIdle.Server.Engine
                 // different question from what falls, and has its own field.
                 MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
                     SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty),
+                RarityElevationPct = combatStats.RarityElevationPct,
             };
         }
     }
@@ -556,7 +565,8 @@ namespace FolkIdle.Server.Engine
                                 // Zero means one - see CombatLootDropRequest.Kills.
                                 killsThisRequest,
                                 request.SkipMaterialRoll,
-                                request.AutoSalvageBelowTier);
+                                request.AutoSalvageBelowTier,
+                                request.RarityElevationPct);
                         }
                         catch (Exception ex)
                         {
@@ -802,7 +812,8 @@ namespace FolkIdle.Server.Engine
 
         private async Task ProcessMonsterLootDropAsync(
             long playerId, int monsterId, float lootLuckPct, float materialQuantityPct,
-            int bonusRarityTiers, int kills, bool skipMaterialRoll, int autoSalvageBelowTier)
+            int bonusRarityTiers, int kills, bool skipMaterialRoll, int autoSalvageBelowTier,
+            float rarityElevationPct)
         {
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
@@ -885,7 +896,7 @@ namespace FolkIdle.Server.Engine
                     // the materials roll above, so a kill can pay both, either or
                     // neither.
                     salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                        EquipmentDropChance, bonusRarityTiers, autoSalvageBelowTier));
+                        EquipmentDropChance, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
 
                     // Regional bosses always drop one piece on top of that, which
                     // is the whole of what makes a boss kill worth walking to. It
@@ -895,7 +906,7 @@ namespace FolkIdle.Server.Engine
                     if (isRegionalBoss)
                     {
                         salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                            1.0, bonusRarityTiers, autoSalvageBelowTier));
+                            1.0, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
                     }
                 }
 
@@ -1073,7 +1084,7 @@ namespace FolkIdle.Server.Engine
         private long TryRollEquipment(
             FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion,
             float lootLuckPct, double dropChance, int bonusRarityTiers = 0,
-            int autoSalvageBelowTier = 0)
+            int autoSalvageBelowTier = 0, float rarityElevationPct = 0f)
         {
             if (Random.Shared.NextDouble() >= dropChance) return 0L;
 
@@ -1093,6 +1104,23 @@ namespace FolkIdle.Server.Engine
             if (bonusRarityTiers > 0)
             {
                 tier = Math.Clamp(tier + bonusRarityTiers, 1, Domain.Economy.CraftingEngine.RarityTierCount);
+            }
+
+            // Modul: FORTUNE'S RARITY ELEVATION, 2026-09-06.
+            //
+            // One tier above what the roll produced, on a chance. It replaces
+            // forge success as Fortune's second per-point effect - fusion cannot
+            // fail, so that stat was only ever a discount on the fusion fee,
+            // under a name promising otherwise.
+            //
+            // Deliberately a SEPARATE mechanic from loot luck rather than more
+            // of it: luck reweights the rarity roll silently and elevation bumps
+            // the result, so the player can see this one happen. Rolled AFTER
+            // the Golden Fleece bonus and clamped with it, so the two stack
+            // without either being able to leave the fourteen real tiers.
+            if (rarityElevationPct > 0f && Random.Shared.NextDouble() * 100.0 < rarityElevationPct)
+            {
+                tier = Math.Clamp(tier + 1, 1, Domain.Economy.CraftingEngine.RarityTierCount);
             }
             string baseItemId = ContentRegistry.GetItemBaseId(chosenItemId);
 

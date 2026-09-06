@@ -235,6 +235,49 @@ namespace FolkIdle.Server.Tests
              + (higher.ForgeSuccessPct - lower.ForgeSuccessPct);
 
         [Fact]
+        public void FortuneElevatesDropsInsteadOfDiscountingAFeeThatCannotFail()
+        {
+            // Modul: WHY THIS REPLACED FORGE SUCCESS.
+            //
+            // Fusion is guaranteed - three of a rarity make one of the next,
+            // with no roll - so `ForgeSuccessPct` was never a success chance.
+            // It had been repurposed into a gold DISCOUNT on the fusion fee,
+            // capped at 25%, under a name that promises otherwise. A discount on
+            // the abundant currency, invisible when it lands, is a weak second
+            // effect for the attribute whose whole identity is what the world
+            // gives back.
+            _o.WriteLine("Fortune   elevation%   rarer-drops%");
+            foreach (int points in new[] { 25, 60, 120, 300, 600 })
+            {
+                var s = StatsFor(0, 0, 0, points);
+                _o.WriteLine($"{points,7}   {s.RarityElevationPct,9:F2}   {s.LootLuckPct,12:F1}");
+            }
+
+            var low = StatsFor(0, 0, 0, 25);
+            var high = StatsFor(0, 0, 0, 600);
+
+            Assert.True(low.RarityElevationPct > 0f, "Fortune grants no elevation at all.");
+            Assert.True(high.RarityElevationPct > low.RarityElevationPct);
+
+            // Rare enough that an elevated drop stays an event. If this ever
+            // reads like a coin flip, every drop is simply a tier better and the
+            // rarity ladder has moved rather than gained a bonus.
+            Assert.InRange(high.RarityElevationPct, 1f, 20f);
+
+            // And it is a CURVE, like every other percentage on an attribute.
+            float lowGain = low.RarityElevationPct;
+            float highGain = high.RarityElevationPct;
+            Assert.True(highGain / lowGain < 600f / 25f,
+                "rarity elevation grows linearly - that is the shape PowerCeilingTests refuses.");
+
+            // Forge success survives only as the capstone rung, where a discrete
+            // perk is an honest shape for a fee discount.
+            Assert.Equal(0f, StatsFor(0, 0, 0, 299).ForgeSuccessPct);
+            Assert.True(StatsFor(0, 0, 0, 300).ForgeSuccessPct > 0f,
+                "Fortune's Favour at 300 should still be the fusion-fee discount.");
+        }
+
+        [Fact]
         public void TheTrackIsFiveRungsPerAttributeAndTheyRise()
         {
             for (int attribute = 0; attribute < AttributeRegistry.Count; attribute++)

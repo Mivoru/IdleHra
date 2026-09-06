@@ -211,6 +211,9 @@ describe('the numbers the client mirrors still match the server', () => {
     expect(ATTRIBUTE_CURVES.lootLuckPerRootPoint).toBe(
       num(registry, /LootLuckPerRootPoint = ([\d.]+)f/, 'loot luck per root point'),
     );
+    expect(ATTRIBUTE_CURVES.rarityElevationPerRootPoint).toBe(
+      num(registry, /RarityElevationPerRootPoint = ([\d.]+)f/, 'rarity elevation per root point'),
+    );
   });
 
   it('gathering: mastery and village production percentages', () => {

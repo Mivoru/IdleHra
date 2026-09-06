@@ -125,7 +125,7 @@ namespace FolkIdle.Server.Tests
                 for (int i = 0; i < 200; i++)
                 {
                     await (Task)process.Invoke(engine,
-                        new object[] { playerId, monsterId, 0f, 0f, 0, 1, false, 0 })!;
+                        new object[] { playerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f })!;
                 }
 
                 await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
