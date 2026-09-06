@@ -62,13 +62,33 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void Test_AttackSpeed_DexterityPaysWhatItsDocumentationPromises()
         {
-            // "+0.05% Attack Speed" per point, per StatsCalculator's own
-            // comment. A hundred points is therefore five percent - a real
-            // bonus, not a seven-fold one.
+            // Modul: DEXTERITY IS A CURVE NOW, not a flat 0.05% a point.
+            //
+            // A level pays 7 attribute points and nothing spends them for you,
+            // so a long-played character holds hundreds in one attribute - at
+            // the old flat rate that is +29% attack speed and +59% crit chance
+            // from Finesse alone, which is the linear-and-uncapped shape
+            // PowerCeilingTests refuses. See AttributeRegistry.
+            //
+            // A hundred points is 0.8 * sqrt(100) = 8%, plus the Quick Step
+            // milestone at 25. The point of this test survives the change: DEX
+            // pays what its documentation promises, and the documentation is
+            // now the curve.
             var hundredDex = StatsCalculator.Calculate(str: 0, dex: 100, con: 0, lck: 0);
 
-            Assert.Equal(5f, hundredDex.AttackSpeedPct, 3);
-            Assert.Equal(1425, CombatDamageModel.AttackIntervalMs(in hundredDex));
+            float curve = AttributeRegistry.DiminishedPercent(
+                AttributeRegistry.AttackSpeedPerRootPoint, 100);
+            _output.WriteLine($"100 DEX: {hundredDex.AttackSpeedPct:F1}% attack speed ({curve:F1}% from the curve, the rest from Quick Step)");
+
+            Assert.True(hundredDex.AttackSpeedPct >= curve,
+                "the curve alone should be a floor - the milestone adds to it.");
+            Assert.Equal(11f, hundredDex.AttackSpeedPct, 3);
+
+            // And it still reaches the interval, which is what the whole file
+            // is about: attack speed was read as a fraction and written as a
+            // percent once, and every player past level ten attacked at the
+            // 200 ms floor for the whole game.
+            Assert.Equal(1335, CombatDamageModel.AttackIntervalMs(in hundredDex));
         }
 
         // The live tick used to compute the interval itself, so the two could

@@ -109,6 +109,32 @@ namespace FolkIdle.Server.Tests
             double setFire = 1.0 + SetBonusEngine.Evaluate(FullSet()).FireDamageMultiplierPct / 100.0;
             levers.Add(new Lever("set: fire damage", setFire, "SetBonusEngine, a full set"));
 
+            // 7. The attribute milestone tracks, which are new as of 2026-09-06
+            //    and are exactly the kind of addition this ledger exists to
+            //    catch. Might's whole track plus Finesse's crit damage, at a
+            //    character who has taken both to the top rung.
+            var maxed = StatsCalculator.Calculate(
+                AttributeRegistry.Thresholds[^1], AttributeRegistry.Thresholds[^1],
+                AttributeRegistry.Thresholds[^1], AttributeRegistry.Thresholds[^1],
+                0, 0, 1, 0, 0, 0, 0, 0);
+            var bare = StatsCalculator.Calculate(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0);
+
+            levers.Add(new Lever("attribute milestones: damage",
+                1.0 + (maxed.EquipmentDamagePct - bare.EquipmentDamagePct) / 100.0,
+                "Might's track, all five rungs"));
+
+            // 8. Armour penetration, which did nothing at all until today. It is
+            //    a mitigation lever rather than a damage one, so it is measured
+            //    as what it actually buys against the toughest monster in the
+            //    game - and it can never do better than ignoring armour, which
+            //    is a natural ceiling of about 1.4x.
+            var malakor = ContentRegistry.Monsters[ContentRegistry.LastCanonicalMonsterId - 1];
+            int halving = CombatDamageModel.MonsterArmourHalvingConstant(malakor.RegionTier);
+            double withoutPen = CombatDamageModel.Mitigate(1_000_000L, malakor.Armor, halving, 0);
+            double withPen = CombatDamageModel.Mitigate(1_000_000L, malakor.Armor, halving, maxed.FlatArmorPenetration);
+            levers.Add(new Lever("armour penetration", withPen / withoutPen,
+                $"{maxed.FlatArmorPenetration} penetration against Malakor's {malakor.Armor} armour"));
+
             double product = 1.0;
             _o.WriteLine("lever                        multiplier   running   source");
             foreach (var lever in levers)

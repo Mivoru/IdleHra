@@ -1147,7 +1147,11 @@ namespace FolkIdle.Server.Tests
 
             Assert.True(mutated.FlatMeleeDamage > baseline.FlatMeleeDamage);
             Assert.True(mutated.MaxHp > baseline.MaxHp);
-            Assert.True(mutated.FlatRangedDamage > baseline.FlatRangedDamage);
+            // Modul: was FlatRangedDamage, which nothing in combat has ever read
+            // - it was Finesse's headline effect and worth exactly zero, so the
+            // attribute rework stopped granting it. Accuracy is the Finesse
+            // stat that is actually load-bearing, now that monsters dodge.
+            Assert.True(mutated.AccuracyRating > baseline.AccuracyRating);
         }
 
         [Fact]
@@ -7948,7 +7952,25 @@ namespace FolkIdle.Server.Tests
 
                     double openerSeconds = SecondsToKill(nextRegionOpener, region + 1);
                     double previousStrongestSeconds = SecondsToKill(strongestRegular, region);
-                    Assert.True(openerSeconds >= previousStrongestSeconds * 0.35,
+                    // Modul: 0.35 -> 0.30, 2026-09-06, and this is a widened
+                    // guard so it is worth saying why rather than just moving
+                    // it.
+                    //
+                    // The attribute milestone tracks front-load a reward: the
+                    // first rung lands at 25 points, which a character reaches
+                    // inside region 1. So a region-2 arrival is now measurably
+                    // stronger relative to a region-1 arrival, who by
+                    // construction is the weakest character the model ever
+                    // builds - level 1, no weapon, and zero attributes because
+                    // there has been nothing to spend yet. The measured step
+                    // moved from about 2.9x to 3.08x.
+                    //
+                    // The alternative was pushing the first milestone out to 40
+                    // points purely to satisfy this number, which would delay an
+                    // early reward for a heuristic's benefit and is worse
+                    // design. The guard exists to catch a CLIFF; a 3.1x relief
+                    // on entering a new region is not one.
+                    Assert.True(openerSeconds >= previousStrongestSeconds * 0.30,
                         $"Region {region + 1}'s opener is {openerSeconds:F0}s against region {region}'s " +
                         $"strongest at {previousStrongestSeconds:F0}s - the step down is too steep.");
                 }

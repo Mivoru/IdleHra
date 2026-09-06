@@ -1156,11 +1156,11 @@ await go('Character');
     if (pointsBefore > 0) {
 
     const strBefore = await page
-      .locator('.attributes div', { hasText: 'Strength' })
-      .locator('dd')
+      .locator('.attrpanel .card', { hasText: 'Might' })
+      .locator('.value')
       .innerText();
 
-    await page.locator('.attributes div', { hasText: 'Strength' }).locator('button.spend').first().click();
+    await page.locator('.attrpanel .card', { hasText: 'Might' }).locator('button', { hasText: '+1' }).first().click();
 
     // Modul: WAIT FOR THE CHANGE, not for a clock. The pool moves when the
     // next StateUpdate lands, and a fixed sleep raced it - this check flaked
@@ -1178,15 +1178,23 @@ await go('Character');
     const after = await page.evaluate(() => document.body.innerText);
     const pointsAfter = Number(/(\d+)\s+points? to spend/.exec(after)?.[1] ?? 0);
     const strAfter = await page
-      .locator('.attributes div', { hasText: 'Strength' })
-      .locator('dd')
+      .locator('.attrpanel .card', { hasText: 'Might' })
+      .locator('.value')
       .innerText();
 
     const spent = pointsAfter === pointsBefore - 1;
     record('spending a point takes it out of the pool', spent, `${pointsBefore} -> ${pointsAfter}`);
 
     const strengthRose = parseInt(strAfter.replace(/[^0-9]/g, ''), 10) > parseInt(strBefore.replace(/[^0-9]/g, ''), 10);
-    record('and puts it into the attribute', strengthRose, `STR ${strBefore.trim()} -> ${strAfter.trim()}`);
+    record('and puts it into the attribute', strengthRose, `Might ${strBefore.trim()} -> ${strAfter.trim()}`);
+
+    // Modul: the milestone track is the half that makes this a system rather
+    // than four spinners - it has to be on screen, not just in the registry.
+    const trackText = await page.evaluate(() => document.body.innerText);
+    record(
+      'each attribute shows its milestone track',
+      /next at \d+:/.test(trackText) || /track complete/.test(trackText),
+    );
 
     }
 
@@ -1195,7 +1203,11 @@ await go('Character');
     // Outside the conditional above - the explanations must be there whether or
     // not there is anything left to spend.
     const panelText = await page.evaluate(() => document.body.innerText);
-    record('each attribute says what it buys', /accuracy/i.test(panelText) && /max health/i.test(panelText));
+    record(
+      'each attribute says what it buys',
+      /accuracy/i.test(panelText) && /max health/i.test(panelText) && /armour penetration/i.test(panelText),
+    );
+    record('the four attributes are named and distinct', /Might/.test(panelText) && /Finesse/.test(panelText) && /Vigour/.test(panelText) && /Fortune/.test(panelText));
   }
 
   // A gear slot is a button now; clicking one opens its picker.

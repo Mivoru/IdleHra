@@ -2568,6 +2568,57 @@ namespace FolkIdle.Server.Domain.Combat
                                 (byte)Network.CommandResultCode.Success);
                         }
                     }
+                    else if (cmd.Command == CommandType.RespecAttributes)
+                    {
+                        // Modul: FREE, AND THAT IS A DECISION.
+                        //
+                        // Every other purchase in this game charges through a
+                        // database transaction off the tick. Gold spent on the
+                        // TICK would need a new path - decrement CurrentGold and
+                        // RedisPendingGoldDelta together - and "two gold paths,
+                        // and mixing them pays the player twice" is a rule this
+                        // codebase learned the hard way. Inventing a third one
+                        // for a respec button is not worth it.
+                        //
+                        // Doing it off the tick instead would mean an engine
+                        // writing the four attribute columns while a live
+                        // session holds its own copy, which is the exact
+                        // split-brain the checkpoint's own comment warns about:
+                        // these are absolutes, so there can only be one writer,
+                        // and on the tick that writer is the payload.
+                        //
+                        // So the cost is the placing, not the paying. The points
+                        // come back and have to be spent again, which is enough
+                        // friction for a season-long choice and cannot corrupt a
+                        // balance. If it should cost gold later, the honest way
+                        // is a safe tick-side spend path first.
+                        int refunded =
+                            (currentPayload.STR - AttributeRegistry.StartingValue(AttributeRegistry.Might))
+                            + (currentPayload.DEX - AttributeRegistry.StartingValue(AttributeRegistry.Finesse))
+                            + (currentPayload.CON - AttributeRegistry.StartingValue(AttributeRegistry.Vigour))
+                            + (currentPayload.LCK - AttributeRegistry.StartingValue(AttributeRegistry.Fortune));
+
+                        if (refunded <= 0)
+                        {
+                            // Nothing placed. Says so rather than appearing to
+                            // work - a button that silently does nothing is this
+                            // server's favourite way to lie.
+                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
+                                (byte)Network.CommandResultCode.GenericValidationFailure);
+                        }
+                        else
+                        {
+                            currentPayload.STR = AttributeRegistry.StartingValue(AttributeRegistry.Might);
+                            currentPayload.DEX = AttributeRegistry.StartingValue(AttributeRegistry.Finesse);
+                            currentPayload.CON = AttributeRegistry.StartingValue(AttributeRegistry.Vigour);
+                            currentPayload.LCK = AttributeRegistry.StartingValue(AttributeRegistry.Fortune);
+                            currentPayload.UnspentAttributePoints += refunded;
+                            currentPayload.IsDirty = true;
+
+                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
+                                (byte)Network.CommandResultCode.Success);
+                        }
+                    }
                     else if (cmd.Command == CommandType.PurchaseSkillTreeLevel)
                     {
                         // Modul: skill tree. Same shape as the inheritance
@@ -5702,10 +5753,15 @@ namespace FolkIdle.Server.Domain.Combat
                     // a factor of two: every projection in the game said a kill
                     // took half as long as it did.
                     int defenderArmor = activeMonster.Armor;
+                    // Modul: and the player's armour PENETRATION, which this
+                    // call never passed and nothing else applied - so Might's
+                    // second effect and every armor_pen_flat affix in the game
+                    // were worth exactly nothing. See Mitigate's own note.
                     int netDamage = (int)CombatDamageModel.Mitigate(
                         rawDamage,
                         defenderArmor,
-                        CombatDamageModel.MonsterArmourHalvingConstant(activeMonster.RegionTier));
+                        CombatDamageModel.MonsterArmourHalvingConstant(activeMonster.RegionTier),
+                        combatStats.FlatArmorPenetration);
                     netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
 
                     // Modul: set bonuses made real. The Chiming Steel 4-piece

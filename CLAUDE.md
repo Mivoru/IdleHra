@@ -183,6 +183,13 @@ the queue finally emptied. Take a BUDGET (the depth read once at the top of the
 cycle), coalesce what can be added up, and report every queue's depth in the
 heartbeat. `GatheringGrantStarvationTests` guards the shape.
 
+**Never name a local binding `derived` in a Svelte file.** It shadows the
+`$derived` rune, so the compiler reads `$derived(...)` in the same file as a
+store auto-subscription and the component throws `store_invalid_shape` at
+RUNTIME. `svelte-check` passes it - it is legal TypeScript - so the only thing
+that catches it is loading the page. It took out the whole Character screen
+once, and the symptom was three unrelated exercise checks failing downstream.
+
 **Every multiplier declares a cap or a curve, and `PowerCeilingTests` is the
 ledger.** Nothing had ever computed what a maxed character multiplies up to, so
 two runaways (codex yield 71.9x, codex damage 142.8x) were both found by a

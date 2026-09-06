@@ -1140,12 +1140,117 @@ export function purchaseSkillTreeLevel(
  * buys, and until this existed the four attributes had never once been
  * explained anywhere in the game.
  */
-export const ATTRIBUTES: readonly { id: number; key: string; label: string; effect: string }[] = [
-  { id: 0, key: 'STR', label: 'Strength', effect: 'Attack power.' },
-  { id: 1, key: 'DEX', label: 'Dexterity', effect: '+1 accuracy and +0.1% crit chance a point. Accuracy is what lands a swing against a monster that dodges.' },
-  { id: 2, key: 'CON', label: 'Constitution', effect: '+15 max health, +1 armour, +0.05% block strength a point.' },
-  { id: 3, key: 'LCK', label: 'Luck', effect: '+0.1% loot luck and +0.05% forge success a point.' },
+export const ATTRIBUTES: readonly {
+  id: number;
+  key: 'STR' | 'DEX' | 'CON' | 'LCK';
+  label: string;
+  tagline: string;
+  /** Per-point effects, for the card. */
+  effects: readonly string[];
+  /** A colour identity, so the four are distinguishable at a glance. */
+  accent: string;
+  start: number;
+}[] = [
+  {
+    id: 0,
+    key: 'STR',
+    label: 'Might',
+    tagline: 'Hits hard, and through armour.',
+    effects: ['+2 attack power', '+1 armour penetration'],
+    accent: '#d9694a',
+    start: 50,
+  },
+  {
+    id: 1,
+    key: 'DEX',
+    label: 'Finesse',
+    tagline: 'Hits often, and precisely.',
+    effects: ['+1 accuracy', 'crit chance', 'attack speed'],
+    accent: '#4aa3d9',
+    start: 50,
+  },
+  {
+    id: 2,
+    key: 'CON',
+    label: 'Vigour',
+    tagline: 'Survives being hit.',
+    effects: ['+15 max health', '+1 armour', 'block strength', 'health regen'],
+    accent: '#5fbf6a',
+    start: 50,
+  },
+  {
+    id: 3,
+    key: 'LCK',
+    label: 'Fortune',
+    tagline: 'Takes more from the world.',
+    effects: ['loot luck', 'forge success'],
+    accent: '#c9a227',
+    start: 25,
+  },
 ];
+
+/**
+ * AttributeRegistry.Thresholds and .Milestones, mirrored.
+ *
+ * A mirror rather than a wire field because it is a static table the server
+ * never changes at runtime, and StateUpdatePacket is a fixed-layout struct with
+ * a size guard - twenty rows of names and magnitudes do not belong on it.
+ * serverMirrors.test.ts parses the C# and compares both, element by element.
+ */
+export const ATTRIBUTE_THRESHOLDS: readonly number[] = [25, 60, 120, 200, 300];
+
+export const ATTRIBUTE_MILESTONES: readonly {
+  attribute: number;
+  threshold: number;
+  name: string;
+  effect: string;
+}[] = [
+  { attribute: 0, threshold: 25, name: 'Heavy Hands', effect: '+5% attack power' },
+  { attribute: 0, threshold: 60, name: 'Sunder', effect: '+40 armour penetration' },
+  { attribute: 0, threshold: 120, name: 'Executioner', effect: '+8% attack power' },
+  { attribute: 0, threshold: 200, name: "Titan's Grip", effect: '+80 armour penetration' },
+  { attribute: 0, threshold: 300, name: 'Worldbreaker', effect: '+12% attack power' },
+
+  { attribute: 1, threshold: 25, name: 'Quick Step', effect: '+3% attack speed' },
+  { attribute: 1, threshold: 60, name: 'Keen Eye', effect: '+25 accuracy' },
+  { attribute: 1, threshold: 120, name: 'Deadly Precision', effect: '+15% crit damage' },
+  { attribute: 1, threshold: 200, name: 'Flurry', effect: '+4% attack speed' },
+  { attribute: 1, threshold: 300, name: 'Perfect Form', effect: '+25% crit damage' },
+
+  { attribute: 2, threshold: 25, name: 'Hardy', effect: '+5% max health' },
+  { attribute: 2, threshold: 60, name: 'Thick Skin', effect: '+10% armour' },
+  { attribute: 2, threshold: 120, name: 'Second Wind', effect: '+2.0 health regen a second' },
+  { attribute: 2, threshold: 200, name: 'Ironhide', effect: '+8% max health' },
+  { attribute: 2, threshold: 300, name: 'Unbreakable', effect: '+25% crit mitigation' },
+
+  { attribute: 3, threshold: 25, name: 'Scavenger', effect: '+8% loot luck' },
+  { attribute: 3, threshold: 60, name: 'Prospector', effect: '+5% gathering yield' },
+  { attribute: 3, threshold: 120, name: 'Lucky Strike', effect: '+2% crit chance' },
+  { attribute: 3, threshold: 200, name: 'Golden Touch', effect: '+8% gold' },
+  { attribute: 3, threshold: 300, name: "Fortune's Favour", effect: '+8% forge success' },
+];
+
+/**
+ * AttributeRegistry's curves, mirrored so a card can preview what the next
+ * point buys. Square root, matching the server exactly.
+ */
+export const ATTRIBUTE_CURVES = {
+  critChancePerRootPoint: 1.5,
+  attackSpeedPerRootPoint: 0.8,
+  blockStrengthPerRootPoint: 0.6,
+  lootLuckPerRootPoint: 1.2,
+  forgeSuccessPerRootPoint: 0.6,
+} as const;
+
+export function diminishedPercent(perRootPoint: number, value: number): number {
+  return value <= 0 ? 0 : perRootPoint * Math.sqrt(value);
+}
+
+/** Refund every placed point. Free - see the server handler for why. */
+export function respecAttributes(): CommandOutcome {
+  connection.send({ Command: CommandType.RespecAttributes });
+  return OK;
+}
 
 /**
  * Spend attribute points earned by levelling.

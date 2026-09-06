@@ -5,6 +5,7 @@ import {
   APTITUDE_VILLAGE_CEILING,
 } from '../src/lib/net/commands';
 import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
+import { ATTRIBUTE_MILESTONES, ATTRIBUTE_THRESHOLDS, ATTRIBUTE_CURVES } from '../src/lib/net/commands';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -166,6 +167,50 @@ describe('the numbers the client mirrors still match the server', () => {
     expect(KNOWN_AFFIX_IDS.length).toBe(serverOrder.length);
     // Element by element, not as a set: the INDEX is what goes on the wire.
     expect([...KNOWN_AFFIX_IDS]).toEqual(serverOrder);
+  });
+
+  // Modul: THE MILESTONE TABLE IS A MIRROR, and a long one.
+  //
+  // Twenty rows of thresholds, names and magnitudes live in AttributeRegistry
+  // and again in commands.ts, because they are a static table the server never
+  // changes at runtime and StateUpdatePacket is a fixed-layout struct with a
+  // size guard. A mirror is the right call there - but only with this test
+  // under it, because a track that promises "Sunder at 60" and delivers
+  // something else at 60 is worse than no track at all.
+  it('attributes: the milestone table and the curves', () => {
+    const registry = read(serverRoot, 'Engine', 'AttributeRegistry.cs');
+
+    const thresholds = JSON.parse(
+      '[' + /Thresholds = \{([^}]+)\}/.exec(registry)![1].replace(/,\s*$/, '') + ']',
+    ) as number[];
+    expect([...ATTRIBUTE_THRESHOLDS]).toEqual(thresholds);
+
+    // `new(attribute, threshold, "Name", MilestoneEffect.Thing, magnitude)`
+    const serverRows = [...registry.matchAll(
+      /new\((\w+),\s*(\d+),\s*"([^"]+)",\s*MilestoneEffect\.(\w+),\s*([\d.]+)f\)/g,
+    )].map((m) => ({ attribute: m[1], threshold: Number(m[2]), name: m[3] }));
+
+    expect(serverRows.length).toBe(ATTRIBUTE_MILESTONES.length);
+
+    const attributeIndex: Record<string, number> = { Might: 0, Finesse: 1, Vigour: 2, Fortune: 3 };
+    serverRows.forEach((row, i) => {
+      const client = ATTRIBUTE_MILESTONES[i];
+      expect(attributeIndex[row.attribute], `row ${i} attribute`).toBe(client.attribute);
+      expect(row.threshold, `row ${i} threshold`).toBe(client.threshold);
+      expect(row.name, `row ${i} name`).toBe(client.name);
+    });
+
+    // And the curves, so a card's preview cannot promise a different number
+    // from the one the server grants.
+    expect(ATTRIBUTE_CURVES.critChancePerRootPoint).toBe(
+      num(registry, /CritChancePerRootPoint = ([\d.]+)f/, 'crit chance per root point'),
+    );
+    expect(ATTRIBUTE_CURVES.attackSpeedPerRootPoint).toBe(
+      num(registry, /AttackSpeedPerRootPoint = ([\d.]+)f/, 'attack speed per root point'),
+    );
+    expect(ATTRIBUTE_CURVES.lootLuckPerRootPoint).toBe(
+      num(registry, /LootLuckPerRootPoint = ([\d.]+)f/, 'loot luck per root point'),
+    );
   });
 
   it('gathering: mastery and village production percentages', () => {

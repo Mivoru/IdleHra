@@ -103,27 +103,48 @@ namespace FolkIdle.Server.Engine
                 lck = (int)(lck * 1.05f);
             }
 
-            // Strength (STR): +2 Melee Damage, +1 Armor Penetration.
+            // Modul: THE FOUR ATTRIBUTES, REWORKED 2026-09-06 - see
+            // AttributeRegistry for the identities, the curves and the milestone
+            // tracks, and for what was dead before it.
+            //
+            // MIGHT: the blow, and getting it through armour. Both linear -
+            // they race content that grows geometrically, so a curve here would
+            // make them stop mattering rather than stop running away. Armour
+            // penetration is a REAL stat now: CombatDamageModel.Mitigate takes
+            // it, where before nothing did and every point of it was wasted.
             stats.FlatMeleeDamage = str * 2;
             stats.FlatArmorPenetration = str * 1;
-            
-            // Dexterity (DEX): +2 Ranged Damage, +0.05% Attack Speed, +0.1% Critical Hit Chance,
-            // +1 Accuracy Rating.
-            stats.FlatRangedDamage = dex * 2;
-            stats.AttackSpeedPct = dex * 0.05f;
-            stats.CritChancePct = dex * 0.1f;
+
+            // FINESSE: landing the blow, and landing it well. No damage term at
+            // all any more - that was `FlatRangedDamage`, which nothing in
+            // combat has ever read, and which made Finesse a strictly better
+            // Might with three bonuses attached. Accuracy stays linear because
+            // it is priced against monster dodge, which rises per region;
+            // crit chance and attack speed are curved, because at 0.1% and
+            // 0.05% a point a long-played character reached +59% and +29% from
+            // one attribute.
+            stats.AttackSpeedPct = AttributeRegistry.DiminishedPercent(
+                AttributeRegistry.AttackSpeedPerRootPoint, dex);
+            stats.CritChancePct = AttributeRegistry.DiminishedPercent(
+                AttributeRegistry.CritChancePerRootPoint, dex);
             stats.AccuracyRating = dex * 1;
 
-            // Constitution (CON): +15 Max HP, +1 Physical Armor, +0.1 Out-of-Combat HP Regen/sec,
-            // +0.05% Block Strength.
+            // VIGOUR: the bar and what reaches it. Health and armour linear for
+            // the same reason as Might; block is a percentage and curved.
             stats.MaxHp = con * 15;
             stats.FlatPhysicalArmor = con * 1;
             stats.OutOfCombatHpRegen = con * 0.1f;
-            stats.BlockStrengthPct = con * 0.05f;
-            
-            // Luck (LCK): +0.05% Forge Success, +0.1% Loot Luck.
-            stats.ForgeSuccessPct = lck * 0.05f;
-            stats.LootLuckPct = lck * 0.1f;
+            stats.BlockStrengthPct = AttributeRegistry.DiminishedPercent(
+                AttributeRegistry.BlockStrengthPerRootPoint, con);
+
+            // FORTUNE: what the world gives back. Both percentages, both curved.
+            // Its milestone track is the half that reaches outside a fight -
+            // gathering yield and gold - which is what stops it being the dump
+            // stat it has always been.
+            stats.ForgeSuccessPct = AttributeRegistry.DiminishedPercent(
+                AttributeRegistry.ForgeSuccessPerRootPoint, lck);
+            stats.LootLuckPct = AttributeRegistry.DiminishedPercent(
+                AttributeRegistry.LootLuckPerRootPoint, lck);
             stats.DodgeChancePct = 0f;
             stats.LifestealPct = 0f;
 
@@ -255,6 +276,17 @@ namespace FolkIdle.Server.Engine
             stats.EquipmentDamagePct += equippedAffixTotals.DamageTenthsPct / 10f;
             stats.EquipmentCritDamagePct += equippedAffixTotals.CritDamageTenthsPct / 10f;
 
+            // Modul: THE MILESTONE TRACKS, applied AFTER gear on purpose - the
+            // percentage rungs are meant to act on what the character actually
+            // has. A +5% health rung landing before the affixes would be worth a
+            // twentieth of what it reads on the card.
+            //
+            // Every effect routes into a field the live tick already reads. That
+            // is the constraint AttributeRegistry's table was written under,
+            // because a milestone list inventing new mechanics would be twenty
+            // fresh chances at this codebase's most expensive recurring defect.
+            ApplyAttributeMilestones(ref stats, str, dex, con, lck);
+
             // Modul 13.4.3: inherited genetic loci (see GeneticSplicingEngine/
             // BreedingEngine). LocusCrit scales Crit Chance directly; LocusSpeed
             // reduces the effective attack interval by adding to AttackSpeedPct
@@ -349,6 +381,62 @@ namespace FolkIdle.Server.Engine
         // baseline plus whatever crit_dmg_pct the equipped weapon rolled. A
         // single accessor so the live combat tick and the offline/warp
         // projections cannot drift apart on crit maths.
+        /// <summary>Adds every milestone the four attribute values have reached.</summary>
+        private static void ApplyAttributeMilestones(ref CombatStats stats, int str, int dex, int con, int lck)
+        {
+            var milestones = AttributeRegistry.Milestones;
+            for (int i = 0; i < milestones.Length; i++)
+            {
+                var milestone = milestones[i];
+
+                int value = milestone.Attribute switch
+                {
+                    AttributeRegistry.Might => str,
+                    AttributeRegistry.Finesse => dex,
+                    AttributeRegistry.Vigour => con,
+                    _ => lck,
+                };
+
+                if (value < milestone.Threshold) continue;
+
+                switch (milestone.Effect)
+                {
+                    case AttributeRegistry.MilestoneEffect.AttackPowerPct:
+                        stats.EquipmentDamagePct += milestone.Magnitude; break;
+                    case AttributeRegistry.MilestoneEffect.ArmourPenetrationFlat:
+                        stats.FlatArmorPenetration += (int)milestone.Magnitude; break;
+                    case AttributeRegistry.MilestoneEffect.AttackSpeedPct:
+                        stats.AttackSpeedPct += milestone.Magnitude; break;
+                    case AttributeRegistry.MilestoneEffect.AccuracyFlat:
+                        stats.AccuracyRating += (int)milestone.Magnitude; break;
+                    case AttributeRegistry.MilestoneEffect.CritDamagePct:
+                        stats.EquipmentCritDamagePct += milestone.Magnitude; break;
+                    case AttributeRegistry.MilestoneEffect.CritChancePct:
+                        stats.CritChancePct += milestone.Magnitude; break;
+                    case AttributeRegistry.MilestoneEffect.MaxHpPct:
+                        stats.MaxHp = (int)(stats.MaxHp * (1f + milestone.Magnitude / 100f)); break;
+                    case AttributeRegistry.MilestoneEffect.ArmourPct:
+                        stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * (1f + milestone.Magnitude / 100f)); break;
+                    case AttributeRegistry.MilestoneEffect.RegenPerSecond:
+                        stats.OutOfCombatHpRegen += milestone.Magnitude; break;
+                    case AttributeRegistry.MilestoneEffect.CritMitigationPct:
+                        stats.CritMitigationPct += milestone.Magnitude; break;
+                    case AttributeRegistry.MilestoneEffect.LootLuckPct:
+                        stats.LootLuckPct += milestone.Magnitude; break;
+                    case AttributeRegistry.MilestoneEffect.GatheringYieldPct:
+                        // Both branches, so a Prospector is not secretly a miner -
+                        // SimulationEngine picks one of these two by profession.
+                        stats.WoodcuttingYieldBonusPct += milestone.Magnitude;
+                        stats.MiningOreDuplicationBonusPct += milestone.Magnitude;
+                        break;
+                    case AttributeRegistry.MilestoneEffect.GoldPct:
+                        stats.GoldAcquisitionMultiplierPct += milestone.Magnitude; break;
+                    default:
+                        stats.ForgeSuccessPct += milestone.Magnitude; break;
+                }
+            }
+        }
+
         public static float ComputeCritMultiplier(in CombatStats stats)
         {
             return 1.5f + (stats.EquipmentCritDamagePct / 100f);

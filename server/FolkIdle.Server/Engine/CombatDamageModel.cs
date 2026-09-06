@@ -56,10 +56,36 @@ namespace FolkIdle.Server.Engine
         /// Both constants below are keyed to the monster's region, which is
         /// available at every one of the four call sites.
         /// </summary>
-        public static long Mitigate(long rawMilliDamage, int armour, int halvingConstant)
+        /// <param name="penetration">
+        /// ARMOUR PENETRATION, WHICH DID NOTHING UNTIL 2026-09-06.
+        ///
+        /// `FlatArmorPenetration` was granted by Might, rolled as the
+        /// `armor_pen_flat` affix and summed into CombatStats - and this method,
+        /// the only place armour is ever applied, never took it. The live
+        /// account is carrying 1,122 of it on its weapon for no effect
+        /// whatever. A stat that is granted, rolled, displayed and never read is
+        /// this codebase's most expensive recurring defect, and this is the
+        /// third one found in a day.
+        ///
+        /// IT RAISES THE HALVING CONSTANT rather than subtracting from armour,
+        /// which matters because the two are on wildly different scales:
+        /// monster armour runs 1 to 62, while one affix rolls above a thousand.
+        /// Subtracting would let a single roll erase every monster's armour in
+        /// the game and turn a stat into a switch.
+        ///
+        /// `K + pen` instead means penetration has smoothly diminishing returns
+        /// and a hard natural ceiling - it can approach "ignore armour" and can
+        /// never do better than that, so it is worth stacking without ever being
+        /// worth stacking exclusively. At region 5 (K=150) against Malakor's 62
+        /// armour: no penetration lets 71% through, 500 lets 91% through, and
+        /// 5,000 lets 99% - a 1.4x span across the whole possible range.
+        /// </param>
+        public static long Mitigate(long rawMilliDamage, int armour, int halvingConstant, int penetration = 0)
         {
             if (rawMilliDamage <= 0L) return 0L;
             if (armour <= 0 || halvingConstant <= 0) return rawMilliDamage;
+
+            if (penetration > 0) halvingConstant += penetration;
 
             long reduced = (long)((double)rawMilliDamage * halvingConstant / (halvingConstant + (double)armour));
 
@@ -119,7 +145,8 @@ namespace FolkIdle.Server.Engine
         public static long NetMilliDamage(long rawMilliAttack, float critMultiplier, in CombatStats stats, in MonsterDefinition monster, float codexDamageMultiplier)
         {
             long raw = (long)(rawMilliAttack * critMultiplier);
-            long net = Mitigate(raw, monster.Armor, MonsterArmourHalvingConstant(monster.RegionTier));
+            long net = Mitigate(raw, monster.Armor, MonsterArmourHalvingConstant(monster.RegionTier),
+                stats.FlatArmorPenetration);
 
             if (codexDamageMultiplier > 0f)
             {

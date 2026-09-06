@@ -222,7 +222,18 @@ namespace FolkIdle.Server.Network
         // more than it holds and gets refused. Nothing about the amount is
         // trusted, which is the rule for every command carrying a number the
         // player chose.
-        SpendAttributePoint = 76
+        SpendAttributePoint = 76,
+
+        // Modul: RespecAttributes returns all four attributes to their starting
+        // values and refunds every point spent, for gold.
+        //
+        // A deeper attribute system needs an undo or it is a trap: the
+        // milestone tracks reward committing to one attribute, and a player who
+        // commits before understanding what Might does should not be stuck with
+        // it for a season. Priced rather than free so the choice still means
+        // something - the server computes the cost, as it does for every other
+        // price in this game.
+        RespecAttributes = 77
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

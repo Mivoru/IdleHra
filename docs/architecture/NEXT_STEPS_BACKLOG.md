@@ -41,6 +41,34 @@ monster's from a hand-copy of `BossFirstClearRules` that predates First Blood,
 the player's from a session high-water mark caught reading "2320 / 2320" while
 `PlayerHp` was 3701. Both are on the wire now.
 
+## CLOSED 2026-09-06 (e) - the attributes got a system
+
+Making them a choice exposed how little they did: **two of their eleven effects
+were dead.** `Mitigate` never took an armour-penetration term, so Might's second
+effect and every `armor_pen_flat` affix was worth zero (the live account carries
+1,122 of it); and nothing in combat reads `FlatRangedDamage`, so Finesse's
+headline effect was worth zero too - which made Finesse a strictly better Might
+and Fortune a dump stat.
+
+Now: four identities that each beat the others at something (Finesse grants no
+damage at all), penetration wired as `K + pen` so it diminishes and can never do
+better than ignoring armour, percentage effects on a square root while flat ones
+stay linear, and **five milestone rungs per attribute** at 25/60/120/200/300 -
+every one landing on a CombatStats field that already has a reader, which was
+the constraint the table was written under. Fortune's track is the only one that
+reaches outside a fight. Free respec, on the tick, for the reasons in the doc.
+
+The window is `AttributePanel.svelte` on the Character screen: live derived
+stats, a pip row per track, what one more point buys, and a jump button to the
+next rung.
+
+Detail: `docs/attribute_rework_2026_09_06.md`.
+
+**Open: no attribute gates gear.** Every other RPG that does this uses attribute
+minimums on items to make a choice binding; here nothing stops a pure-Vigour
+character wielding the best weapon in the game. That is the natural next step if
+the tracks turn out not to be commitment enough.
+
 ## CLOSED 2026-09-06 (d) - attributes became a choice, and the power ledger
 
 **Attributes are spent, not dealt.** A level pays 7 points and the player places

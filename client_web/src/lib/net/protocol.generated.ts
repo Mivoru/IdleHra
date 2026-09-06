@@ -433,6 +433,7 @@ export const CommandType = {
   ReleaseAncestor: 74,
   AssignCharacterSlot: 75,
   SpendAttributePoint: 76,
+  RespecAttributes: 77,
 } as const;
 
 export type CommandTypeName = keyof typeof CommandType;
