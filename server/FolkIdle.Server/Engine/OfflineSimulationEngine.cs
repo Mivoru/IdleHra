@@ -740,6 +740,7 @@ namespace FolkIdle.Server.Engine
             }
 
             payload.CurrentXp += xpGained;
+            int levelsGained = 0;
             while (true)
             {
                 // Modul: must stay identical to the live-tick formula, or a
@@ -752,6 +753,7 @@ namespace FolkIdle.Server.Engine
                 {
                     payload.CurrentXp -= requiredXp;
                     payload.CurrentLevel++;
+                    levelsGained++;
                     // Modul: and the skill point that comes with the level.
                     // Identical to the live tick was already the stated rule
                     // here, and it held for the XP formula while quietly
@@ -762,6 +764,37 @@ namespace FolkIdle.Server.Engine
                 {
                     break;
                 }
+            }
+
+            // Modul: AND THE ATTRIBUTES, WHICH WERE THE THIRD THING THIS PATH
+            // FORGOT, 2026-09-06.
+            //
+            // Both live level-up paths call RaceAttributeGrowth here. This one
+            // never has, so every level gained while the player was away raised
+            // the level and paid the skill point and granted NO STR, DEX, CON or
+            // LCK. In an idle game most levels are gained exactly this way.
+            //
+            // Measured on the only account past level 1: level 86, and its four
+            // attributes read 50 / 50 / 50 / 25 - the values a fresh
+            // registration gets. A Human at level 86 should hold 220 of the
+            // first three.
+            //
+            // It matters more than it did. DEX is AccuracyRating, and accuracy
+            // bought nothing at all while every canonical monster had
+            // DodgeRating 0. Monsters evade now, and MonsterDefenceCurve prices
+            // their dodge against the accuracy levelling is supposed to provide
+            // - so a character stuck at its starting DEX misses swings the
+            // curve assumes it lands. CON is 15 max HP a point on top of that.
+            //
+            // The same comment three fixes ago said this path "must stay
+            // identical to the live tick"; that is now true of the XP formula,
+            // the skill point AND the attributes.
+            if (levelsGained > 0)
+            {
+                int activeRaceId = payload.Slot1_CharacterId != System.Guid.Empty
+                    ? (int)(payload.Slot1_GeneticVector & 0xFF)
+                    : 0;
+                RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId, levelsGained);
             }
         }
 

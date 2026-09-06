@@ -39,19 +39,43 @@ export const AFFIX_RARITY_NAMES = ['', 'Common', 'Uncommon', 'Rare', 'Epic', 'Le
 export const LEGACY_AFFIX_RARITY = 3;
 
 /** Every affix id in AffixRegistry.Definitions, as of 2026-08-02. */
+/**
+ * AffixRegistry.Definitions, IN THE SERVER'S ORDER.
+ *
+ * Modul: THE ORDER IS THE WIRE FORMAT, and it was wrong for ten of twelve.
+ *
+ * Auto-reroll's "stop on stat" is sent as a 1-BASED INDEX into this array,
+ * because ClientCommandPacket is fixed-layout and cannot carry a string. The
+ * server resolves it straight back through AffixRegistry.Definitions - so the
+ * two orders are one wire format written down twice, and they had drifted:
+ * this list omitted the three tool affixes entirely and ordered the rest
+ * differently.
+ *
+ * Choosing "crit_chance_pct" therefore sent index 7, which the server read as
+ * `range_dmg_pct`. On anything but a weapon that is not a legal affix, so the
+ * whole run was refused before the first attempt - reported as "I chose crit
+ * chance, lowered it to Rare and higher, did 1000 attempts and the affix never
+ * changed". It never rolled once.
+ *
+ * serverMirrors.test.ts now parses the C# registry and compares this array
+ * element by element. Do not reorder either side alone.
+ */
 export const KNOWN_AFFIX_IDS: readonly string[] = [
   'flat_hp',
   'flat_armor',
-  'armor_pen_flat',
+  'gather_speed_pct',
+  'gather_yield_pct',
+  'gather_rare_find_pct',
   'melee_dmg_pct',
   'range_dmg_pct',
   'magic_dmg_pct',
+  'attack_speed_pct',
   'crit_chance_pct',
   'crit_dmg_pct',
-  'attack_speed_pct',
   'lifesteal_pct',
-  'block_chance_pct',
+  'armor_pen_flat',
   'dodge_chance_pct',
+  'block_chance_pct',
 ];
 
 export interface ParsedAffixKey {

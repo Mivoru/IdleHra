@@ -4,6 +4,7 @@ import {
   APTITUDE_MAX,
   APTITUDE_VILLAGE_CEILING,
 } from '../src/lib/net/commands';
+import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -146,6 +147,25 @@ describe('the numbers the client mirrors still match the server', () => {
     }
     // Index 0 is "no tool", which the switch answers with its default.
     expect(clientTable[0]).toBe(0);
+  });
+
+  // Modul: THE AFFIX ORDER IS A WIRE FORMAT.
+  //
+  // Auto-reroll's "stop on stat" travels as a 1-based INDEX into
+  // AffixRegistry.Definitions, because ClientCommandPacket is fixed-layout and
+  // cannot carry a string. So the client's KNOWN_AFFIX_IDS is not a display
+  // list - it is the same ordering written down a second time, and it had
+  // drifted for ten of its twelve entries. Picking "crit chance" sent the index
+  // the server reads as `range_dmg_pct`, which is weapon-only, so on any other
+  // slot the run was refused before it rolled once.
+  it('affixes: the registry order, which auto-reroll sends as an index', () => {
+    const registry = read(serverRoot, 'Engine', 'AffixRegistry.cs');
+    const serverOrder = [...registry.matchAll(/new AffixDefinition\("([a-z_]+)"/g)].map((m) => m[1]);
+
+    expect(serverOrder.length).toBeGreaterThan(10);
+    expect(KNOWN_AFFIX_IDS.length).toBe(serverOrder.length);
+    // Element by element, not as a set: the INDEX is what goes on the wire.
+    expect([...KNOWN_AFFIX_IDS]).toEqual(serverOrder);
   });
 
   it('gathering: mastery and village production percentages', () => {

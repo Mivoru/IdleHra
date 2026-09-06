@@ -41,6 +41,37 @@ monster's from a hand-copy of `BossFirstClearRules` that predates First Blood,
 the player's from a session high-water mark caught reading "2320 / 2320" while
 `PlayerHp` was 3701. Both are on the wire now.
 
+## CLOSED 2026-09-06 (c) - the stats audit and two forge defects
+
+Asked for after the combat rework: audit the whole stats pipeline, not just what
+turned up by accident. **The affix -> stat -> combat pipeline is intact** - every
+affix maps to a total, every total is consumed, every CombatStats field has a
+reader, and the live tick reads accuracy, crit, lifesteal, dodge, crit
+mitigation and block. Crit chance from gear does apply; it was invisible under
+the 142x codex multiplier, not unwired.
+
+Four real defects found and fixed:
+
+1. **Offline levels granted no attributes.** Three paths grow a level and only
+   two called `RaceAttributeGrowth`. In an idle game the offline path is most
+   levels - the live account is level 86 with a fresh registration's
+   50/50/50/25. Worse now than it was, because DEX is `AccuracyRating` and
+   monsters have dodge as of the same day.
+2. **Auto-reroll's stop-on-stat pointed at the wrong stat.** The index into
+   `AffixRegistry.Definitions` had drifted for ten of twelve entries; crit
+   chance sent the index for `range_dmg_pct`, weapon-only, so the run was
+   refused before rolling once.
+3. **Auto-reroll refused to roll away a result it liked**, silently - a
+   Legendary satisfies "Rare or better", so the button did nothing and the
+   player had to switch to manual to continue.
+4. **A brittle literal count** in the client affix test made a correct registry
+   change look like a regression.
+
+Full write-up: `docs/stats_and_forge_audit_2026_09_06.md`.
+
+**Open: player 8's ~85 levels of missing attribute growth.** The fix stops the
+loss and does not backfill it; backfilling is a deliberate one-off write.
+
 ## CLOSED 2026-09-06 (b) - combat had no identity
 
 Reported: "every monster is one-shot and then the boss instakills me... I deal

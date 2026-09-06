@@ -59,8 +59,14 @@ describe('parseAffixKey', () => {
 
 describe('unit selection', () => {
   it('treats every _pct affix as tenths of a percent', () => {
+    // Derived rather than a literal count: KNOWN_AFFIX_IDS is the server's
+    // registry order and grows when the registry does (it gained the three
+    // tool affixes when the auto-reroll index mismatch was fixed). Pinning a
+    // number here made a correct registry change look like a regression.
     const percentage = KNOWN_AFFIX_IDS.filter((id) => id.endsWith('_pct'));
-    expect(percentage).toHaveLength(9);
+    const flat = KNOWN_AFFIX_IDS.filter((id) => !id.endsWith('_pct'));
+    expect(flat).toEqual(['flat_hp', 'flat_armor', 'armor_pen_flat']);
+    expect(percentage).toHaveLength(KNOWN_AFFIX_IDS.length - flat.length);
     for (const id of percentage) expect(isPercentageAffix(id)).toBe(true);
   });
 

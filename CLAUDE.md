@@ -183,6 +183,24 @@ the queue finally emptied. Take a BUDGET (the depth read once at the top of the
 cycle), coalesce what can be added up, and report every queue's depth in the
 heartbeat. `GatheringGrantStarvationTests` guards the shape.
 
+**An INDEX on the wire is a two-sources-of-truth surface.** Auto-reroll's
+"stop on stat" travels as a 1-based index into `AffixRegistry.Definitions`
+because `ClientCommandPacket` is fixed-layout, so the client's
+`KNOWN_AFFIX_IDS` is that ordering written down twice. Ten of its twelve entries
+had drifted: picking crit chance sent the index the server reads as
+`range_dmg_pct`, weapon-only, so the run was refused before it rolled once and
+the feature looked dead. `serverMirrors.test.ts` compares the two element by
+element now. An ordered list that crosses the wire as a position needs a
+mechanical guard, not a comment.
+
+**Three paths grow a level, and each one has to be told separately.**
+`ProgressionEngine` (a kill), `SimulationEngine.ApplyBulkExperience` (warp) and
+`OfflineSimulationEngine.ApplyCombatXp` (away). That file's comments record the
+XP formula diverging, then the skill point diverging - and the attributes were
+the third: offline levels granted no STR/DEX/CON/LCK at all, which in an idle
+game is most levels. The live account sat at level 86 with a fresh
+registration's 50/50/50/25. `AttributeGrowthTests` guards all three.
+
 **A stat that scales with the same term as its own constant is inert.** Monster
 armour was `10 * regionTier` and its halving constant `30 * regionTier`, so the
 tier cancelled out of `raw * K / (K + armour)` and every monster in the game

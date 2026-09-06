@@ -158,11 +158,27 @@ namespace FolkIdle.Server.Engine
                 return AutoRerollStopReason.RejectedUnreachableCondition;
             }
 
-            // Already good enough before spending anything.
-            if (AutoRerollPlanner.IsSatisfied(stopCondition, currentRarity, currentAffixId))
-            {
-                return AutoRerollStopReason.ConditionMet;
-            }
+            // Modul: THE "ALREADY GOOD ENOUGH" EARLY-OUT IS GONE, 2026-09-06.
+            //
+            // It returned ConditionMet without rolling once AND without telling
+            // anybody - no command result, no toast, nothing moved. So a player
+            // who auto-rerolled to "Rare or better", landed a Legendary they did
+            // not want, and pressed the button again got silence: the Legendary
+            // already satisfied the condition. Reported exactly that way - "I
+            // have to switch to normal rerolling, approve deleting that
+            // legendary, then go back to automatic".
+            //
+            // Pressing a button that costs gold, on a screen that has already
+            // made you confirm destroying the affix in the slot, is not
+            // ambiguous. The press means roll. The guard against rerolling away
+            // something good belongs in that confirmation - which is where it
+            // is, keyed on the affix ABOUT TO BE DESTROYED - not in a silent
+            // server-side refusal that leaves the auto panel unable to do the
+            // one thing the player is asking of it.
+            //
+            // IsTriviallySatisfied above is a different case and stays: a
+            // condition that can never fail would charge for a guaranteed
+            // outcome, and it reports itself.
 
             for (int attempt = 0; attempt < maxAttempts; attempt++)
             {
