@@ -189,6 +189,10 @@ all for a new player.
 
 ## Still open, and deliberately not taken
 
+> **TAKEN, later the same day** - as a diminishing curve rather than a cap, at
+> the player's choice. See `docs/combat_rework_2026_09_06.md`. The paragraph
+> below is why it was left open at first.
+
 **The codex DAMAGE multiplier is `1 + 0.01 * levelSum` and is also uncapped.**
 On the same account that is **142x**, which is why a region-5 monster dies in
 about a second there and why the codex kill count climbs at one a second. It is

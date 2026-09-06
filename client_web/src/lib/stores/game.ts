@@ -158,9 +158,32 @@ export interface LootEntry {
 // than that was evicted regardless of rarity. A player checking what they had
 // found saw the last four minutes of ore.
 //
-// Split, so material volume cannot reach the gear. Equipment drops on 15% of
-// kills, so 100 of those is hours rather than minutes.
-const MAX_LOOT_ENTRIES = 100;
+// Split, so material volume cannot reach the gear.
+//
+// Modul: AND 100 WAS STILL A CAP THE PLAYER COULD SEE, 2026-09-06.
+//
+// Reported as "the table is still capped at 100 pieces, I don't want that" -
+// the panel's own "100 pieces" label was the ceiling showing through, because
+// equipmentCount sums the raw entries. At 15% of kills and 45 kills a minute
+// that ceiling is reached in about fifteen minutes, and every drop before it
+// was gone.
+//
+// The rendering cost does NOT scale with this number. SessionLoot aggregates
+// by (kind, itemId, qualityTier) before it renders, and the catalogue has 75
+// equipment pieces across 14 rarity tiers - so the number of ROWS is bounded by
+// the content whatever the entry count is, and only the tallies grow. Each
+// entry is a seven-field object, so 25,000 of them is a couple of megabytes.
+//
+// A bound still exists because this is a browser tab that people leave open for
+// days, and an unbounded array in one is a leak whatever it holds. These are
+// sized as "a very long session", not as a limit anybody should reach: a full
+// day of continuous combat is about 10,000 equipment drops.
+const MAX_LOOT_ENTRIES_EQUIPMENT = 25_000;
+
+// Materials are coalesced server-side now (CombatLootEngine's gathering drain
+// writes one grant per material per cycle rather than one per roll), so this
+// fills far more slowly than it used to.
+const MAX_LOOT_ENTRIES_MATERIALS = 5_000;
 let lootSequence = 0;
 
 /** Equipment only. Never evicted by material volume - see above. */
@@ -766,10 +789,12 @@ export function startSession(token: string): void {
       };
 
       // DropKind 1 is equipment; 0 material and 2 salvage scrap.
-      const target = Number(packet.DropKind) === 1 ? lootLogEquipment : lootLogMaterials;
+      const isEquipment = Number(packet.DropKind) === 1;
+      const target = isEquipment ? lootLogEquipment : lootLogMaterials;
+      const cap = isEquipment ? MAX_LOOT_ENTRIES_EQUIPMENT : MAX_LOOT_ENTRIES_MATERIALS;
       target.update((entries) => {
         const next = [entry, ...entries];
-        return next.length > MAX_LOOT_ENTRIES ? next.slice(0, MAX_LOOT_ENTRIES) : next;
+        return next.length > cap ? next.slice(0, cap) : next;
       });
     },
 

@@ -5420,7 +5420,11 @@ namespace FolkIdle.Server.Domain.Combat
 
             var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
             
-            long baseMilliHp = 100000L;
+            // Modul: the base pool is a CURVE now, not a constant - see
+            // ProgressionEngine.BaseMilliHpForLevel. A flat 100 against monster
+            // attack that goes up 4.2x a region is why region 5 one-shot
+            // everybody.
+            long baseMilliHp = ProgressionEngine.BaseMilliHpForLevel(payload.CurrentLevel);
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
             // Modul: inheritance, applied to the whole pool for the same reason
             // the damage bonus is applied last - a flat addition would stop

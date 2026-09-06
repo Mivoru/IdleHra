@@ -1307,6 +1307,34 @@ namespace FolkIdle.Server.Engine
                     throw new InvalidOperationException($"ContentRegistry.Initialize: monsters.json entry Id={m.Id} has a negative RegionTier, Armor, or DodgeRating.");
                 }
 
+                // Modul: THE CANON'S DEFENCES ARE DERIVED, NOT AUTHORED.
+                //
+                // monsters.json shipped all twenty-five canonical monsters with
+                // `Armor = 10 * RegionTier` and `DodgeRating = 0`. Armour cancels
+                // against its own halving constant at that value - every monster
+                // in the game mitigated exactly 25% - and zero dodge pins
+                // HitChance at its ceiling. See MonsterDefenceCurve for the whole
+                // measurement.
+                //
+                // Overwritten HERE rather than corrected in the JSON so there is
+                // one source of truth: everything downstream (the damage model,
+                // the monster card on the wire, the wiki) reads MonsterDefinition,
+                // and a flat table cannot creep back in through a content edit.
+                // Legacy monsters (1-90) keep their own authored values, which
+                // were never flat.
+                int armour = m.Armor;
+                int dodge = m.DodgeRating;
+                bool isCanonical = m.Id >= FirstCanonicalMonsterId && m.Id <= LastCanonicalMonsterId;
+                if (isCanonical)
+                {
+                    int rank = Domain.Combat.MonsterDefenceCurve.RankWithinRegion(
+                        m.Id, FirstCanonicalMonsterId, MonstersPerRegion);
+                    int regionTier = (m.Id - FirstCanonicalMonsterId) / MonstersPerRegion + 1;
+                    armour = Domain.Combat.MonsterDefenceCurve.ArmorFor(
+                        regionTier, rank, CombatDamageModel.MonsterArmourHalvingConstant(regionTier));
+                    dodge = Domain.Combat.MonsterDefenceCurve.DodgeFor(regionTier, rank);
+                }
+
                 int index = m.Id - 1;
                 newMonsters[index] = new MonsterDefinition
                 {
@@ -1318,8 +1346,8 @@ namespace FolkIdle.Server.Engine
                     AttackIntervalMs = m.AttackIntervalMs,
                     LootTableId = m.LootTableId,
                     RegionTier = m.RegionTier,
-                    Armor = m.Armor,
-                    DodgeRating = m.DodgeRating
+                    Armor = armour,
+                    DodgeRating = dodge
                 };
                 newMonsterNames[index] = m.Name;
                 newMonsterEnemyIds[index] = m.EnemyId;

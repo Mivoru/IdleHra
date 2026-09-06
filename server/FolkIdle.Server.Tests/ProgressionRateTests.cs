@@ -343,6 +343,21 @@ namespace FolkIdle.Server.Tests
                 payload.CachedAffixTotals.FlatAttack = weaponAttack;
                 payload.CachedAffixTotals.FlatDefense = armourDefence;
 
+                // Modul: LEVEL THE CHARACTER HERE TOO.
+                //
+                // The health-pool block below has said since it was written that
+                // setting CurrentLevel leaves STR, DEX, CON and LCK at zero and
+                // that a reading taken from such a payload is "a finding about
+                // the fixture". This loop had the identical flaw and nobody
+                // noticed, because the one stat it changes - DEX, which is
+                // AccuracyRating - bought exactly nothing while every canonical
+                // monster had DodgeRating 0.
+                //
+                // Now that monsters evade, an unlevelled character misses most
+                // of its swings and this test reported region 5 at 344 s/kill
+                // against a real 116. The fixture, not the game.
+                RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId: 1, levelsGained: startLevel - 1);
+
                 var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, payload.CachedAffixTotals, false, 0, 0, payload.CachedSetIds);
                 var lineage = ProgressionEngine.Lineages[payload.SelectedLineageId];
                 long raw = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
@@ -384,7 +399,7 @@ namespace FolkIdle.Server.Tests
                 RaceAttributeGrowth.ApplyLevelUpGrowth(ref poolPayload, activeRaceId: 1, levelsGained: startLevel - 1);
                 var poolStats = StatsCalculator.Calculate(poolPayload.STR, poolPayload.DEX, poolPayload.CON, poolPayload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, poolPayload.CachedAffixTotals, false, 0, 0, poolPayload.CachedSetIds);
                 var poolLineage = ProgressionEngine.Lineages[poolPayload.SelectedLineageId];
-                long baseMilliHp = 100_000L;
+                long baseMilliHp = ProgressionEngine.BaseMilliHpForLevel(poolPayload.CurrentLevel);
                 long effectiveMilliHp = baseMilliHp
                     + (baseMilliHp * poolLineage.HpScalePerLevelPct * poolPayload.CurrentLevel / 100)
                     + (poolStats.MaxHp * 1000L);
@@ -431,6 +446,37 @@ namespace FolkIdle.Server.Tests
                     $" region {region}: health pool {effectiveMilliHp / 1000.0,10:N0} hp bare, {gearedMilliHp / 1000.0,10:N0} hp with five health rolls, " +
                     $"armour {poolStats.FlatPhysicalArmor,6}, strongest regular hits {netMilliPerHit / 1000.0,8:N0} net = " +
                     $"{incomingPerSecond / effectiveMilliHp:P2} of the bare bar per second ({incomingPerSecond / gearedMilliHp:P2} geared)");
+
+                // Modul: AND NOW IT IS ASSERTED, 2026-09-06.
+                //
+                // These lines were printed and never checked, for months, while
+                // they said this:
+                //
+                //   region 1   9.5%     region 4   64.4%
+                //   region 2  17.0%     region 5  104.0%
+                //   region 3  33.2%
+                //
+                // Over 100% is an ordinary region-5 REGULAR emptying a fully
+                // geared bar in under a second. The cause was structural: player
+                // health was linear in level (and, for a Warrior lineage, flat)
+                // while monster attack is geometric per region, so the two curves
+                // crossed in region 3 and never came back. It is the whole of the
+                // "the boss instakills me" report.
+                //
+                // ProgressionEngine.BaseMilliHpForLevel puts the bar on the same
+                // shape as the thing hitting it. This assertion is what stops the
+                // two drifting apart again in silence - printing a number nobody
+                // reads is how it got to 104% in the first place.
+                double sharePerSecond = incomingPerSecond / gearedMilliHp;
+                Assert.InRange(sharePerSecond, 0.04, 0.25);
+
+                // A single blow must never take the whole bar. A hit larger than
+                // the pool cannot be healed, dodged or geared around - it is not
+                // a difficulty, it is a wall, and the model here is the FLOOR
+                // player (no attack affixes, five health rolls).
+                Assert.True(
+                    netMilliPerHit < gearedMilliHp / 2,
+                    $"region {region}: one hit from the strongest regular takes {netMilliPerHit / (double)gearedMilliHp:P0} of the geared bar.");
             }
 
             // XP the region's twenty levels demand, from the real curve.

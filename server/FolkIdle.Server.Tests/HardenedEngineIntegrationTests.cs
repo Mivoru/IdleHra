@@ -578,8 +578,16 @@ namespace FolkIdle.Server.Tests
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             (float yieldMultiplier, float damageMultiplier) = await CodexEngine.CalculateActiveMultipliersAsync(testPlayerId, verifyDb);
 
+            // Yield stays linear-with-a-ceiling: 15 codex levels is well under
+            // the 2.0x cap, so this is still 1 + 0.005 * 15.
             Assert.Equal(1.075f, yieldMultiplier);
-            Assert.Equal(1.15f, damageMultiplier);
+
+            // Damage is a square-root curve now, not `1 + 0.01 * levelSum` -
+            // that was linear and uncapped and reached 142x on a live account,
+            // where it was doing 99.3% of the player's damage. Asked of the
+            // formula rather than restated, so the two cannot drift.
+            Assert.Equal(CodexEngine.DamageMultiplierFor(15), damageMultiplier);
+            Assert.Equal(1.155f, damageMultiplier, 3);
         }
 
         [Fact]
@@ -8404,7 +8412,24 @@ namespace FolkIdle.Server.Tests
                 }
             }
 
-            var stats = StatsCalculator.Calculate(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0);
+            // Modul: AND THE ARRIVING CHARACTER HAS THE ATTRIBUTES OF ITS LEVEL.
+            //
+            // This passed zeroes for STR/DEX/CON/LCK, which is not a player
+            // arriving at region 5 - it is a level-1 character holding region-4
+            // gear. It went unnoticed because the only stat it changes on this
+            // path is DEX, and DEX is AccuracyRating, and accuracy bought
+            // nothing at all while every canonical monster had DodgeRating 0.
+            //
+            // Monsters evade now (MonsterDefenceCurve), so an unlevelled model
+            // misses most of its swings and reported a region-5 regular at 246
+            // seconds against a real 60. Same flaw, same fix, as the one
+            // ProgressionRateTests' health-pool block has documented all along.
+            // A Human gains 2 STR / 2 DEX / 2 CON / 1 LCK a level.
+            int arrivalLevel = ((regionOfArrival - 1) * 20) + 1;
+            int levelsGained = arrivalLevel - 1;
+            var stats = StatsCalculator.Calculate(
+                2 * levelsGained, 2 * levelsGained, 2 * levelsGained, 1 * levelsGained,
+                0, 0, 1, 0, 0, 0, 0, 0);
             // Modul: THE CARRIED WEAPON HAS ROLLS ON IT.
             //
             // This modelled arrival as the previous region's weapon and nothing

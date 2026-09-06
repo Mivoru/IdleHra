@@ -575,7 +575,11 @@ namespace FolkIdle.Server.Engine
             // with simply no food stocked (Food1-3 all zero, the common case
             // for most players) would be treated as unable to survive any
             // combat time at all, which is wrong.
-            long baseMilliHp = 100000L;
+            // Modul: the base pool is a CURVE now, not a constant - see
+            // ProgressionEngine.BaseMilliHpForLevel. A flat 100 against monster
+            // attack that goes up 4.2x a region is why region 5 one-shot
+            // everybody.
+            long baseMilliHp = ProgressionEngine.BaseMilliHpForLevel(payload.CurrentLevel);
             long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
             effectiveMilliHp += effectiveMilliHp * InheritanceRegistry.GetBonusPct(payload.Inherit_MaxHp) / 100L;
             // Modul: Fortitude, the Cruelty bough - more health, layered the

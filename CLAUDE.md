@@ -183,6 +183,27 @@ the queue finally emptied. Take a BUDGET (the depth read once at the top of the
 cycle), coalesce what can be added up, and report every queue's depth in the
 heartbeat. `GatheringGrantStarvationTests` guards the shape.
 
+**A stat that scales with the same term as its own constant is inert.** Monster
+armour was `10 * regionTier` and its halving constant `30 * regionTier`, so the
+tier cancelled out of `raw * K / (K + armour)` and every monster in the game
+mitigated exactly 25% - authored, validated at start-up, read on every swing,
+and incapable of distinguishing a Field Mouse from Malakor. Beside it,
+`DodgeRating` was 0 on all 25 canonical monsters (the 68 legacy ones they
+replaced had real values), so `HitChance` sat on its 0.95 ceiling and DEX bought
+nothing. Both are derived from a monster's rank in its region now
+(`MonsterDefenceCurve`, applied in `ContentRegistry.Initialize`), and
+`CombatIdentityTests` fails if the canon ever goes flat again.
+
+**A number a test PRINTS is not a number a test CHECKS.**
+`ProgressionRateTests` had been printing "the strongest regular takes 104% of
+the geared health bar per second" in region 5 for months. Player HP was linear
+in level, monster attack is geometric per region, and the curves crossed in
+region 3 - a region-5 regular two-shot a fully geared character and the boss's
+single blow exceeded the whole bar. The fix is
+`ProgressionEngine.BaseMilliHpForLevel`; the guard is that the same block now
+asserts the share stays in a band. When you add a measurement to a test, assert
+on it or it is decoration.
+
 **A multiplier with no ceiling becomes the economy.** `CachedCodexYieldMultiplier`
 is +0.5% per codex level, a codex level is ten kills, and nothing bounded the
 sum - it reached 71.9x and made one character out-earn the entire material sink

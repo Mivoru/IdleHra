@@ -79,7 +79,13 @@ namespace FolkIdle.Server.Engine
         /// reward) and reaches its ceiling at 200 codex levels - about two
         /// thousand kills, which is a region's worth of play rather than a
         /// rounding error. The cap is on the MULTIPLIER, not on the codex: kill
-        /// counts, levels and the damage multiplier are untouched.
+        /// counts and codex levels are untouched.
+        ///
+        /// A HARD CAP HERE AND A CURVE FOR DAMAGE, deliberately. This one is a
+        /// roll count feeding an economy whose sinks are FIXED - every recipe in
+        /// the game costs 383,553 units and no amount of play raises that - so a
+        /// ceiling is the honest shape. DamageMultiplierFor feeds a monster
+        /// ladder that keeps climbing, so it diminishes instead of stopping.
         ///
         /// See docs/gathering_balance_2026_09_06.md for the tables.
         /// </summary>
@@ -94,13 +100,51 @@ namespace FolkIdle.Server.Engine
             float yieldMultiplier = 1.0f + (levelSum * 0.005f);
             if (yieldMultiplier > MaxYieldMultiplier) yieldMultiplier = MaxYieldMultiplier;
 
-            // Modul: DELIBERATELY NOT CAPPED HERE. The damage multiplier reaches
-            // 142x on the same account and that is its own decision - capping it
-            // would divide a live character's output by a hundred without being
-            // asked. It is written up as the open item at the top of
-            // docs/gathering_balance_2026_09_06.md, with the arithmetic.
-            float damageMultiplier = 1.0f + (levelSum * 0.010f);
-            return (yieldMultiplier, damageMultiplier);
+            return (yieldMultiplier, DamageMultiplierFor(levelSum));
+        }
+
+        /// <summary>
+        /// How hard the codex makes a player hit, as a multiplier on every
+        /// connecting swing.
+        ///
+        /// Modul: IT WAS 142x, AND IT WAS THE WHOLE OF COMBAT, 2026-09-06.
+        ///
+        /// `1 + 0.01 * levelSum`, linear and uncapped, against a level sum with
+        /// no ceiling - a codex level is ten kills of one monster. On the
+        /// reporting account that is 14,178 levels and **142.8x**, so a raw
+        /// swing of about 690 landed as 73,500 and did the same 73,500 to every
+        /// monster in the game. Gear, affixes, set bonuses and the entire
+        /// fourteen-tier rarity ladder - which had just been rebuilt to be worth
+        /// a whole region step - were together contributing **0.7%** of the
+        /// player's damage. Nothing else in combat could be felt underneath it.
+        ///
+        /// A CURVE, NOT A CEILING, chosen deliberately over a hard cap: unlike
+        /// the yield multiplier beside it, this one does not feed an economy
+        /// with fixed sinks. It feeds a monster ladder that keeps climbing, so
+        /// a player who has killed a hundred thousand monsters should keep
+        /// getting stronger - just not geometrically faster than the ladder.
+        ///
+        ///   level sum      10     100     500   2,000   14,178   50,000
+        ///   old           1.1x    2.0x    6.0x   21.0x   142.8x   501.0x
+        ///   new          1.13x   1.40x   1.89x   2.79x    5.76x    9.94x
+        ///
+        /// Square root, the same shape as the gathering mastery curve, and for
+        /// the same reason: the first codex levels are worth MORE than they were
+        /// (a first level pays 4% against 1%) and the top is bounded in
+        /// practice without ever being closed.
+        ///
+        /// 5.76x at the live account's level sum is deliberate and was picked
+        /// from the fight it produces, not from the shape: at that multiplier
+        /// Malakor takes about seventy seconds and a region-4 regular about
+        /// three - a boss fight and a skirmish, where both used to be one swing.
+        /// Rarity, armour and dodge are all legible again underneath it.
+        /// </summary>
+        public const float DamagePctPerRootLevel = 4.0f;
+
+        public static float DamageMultiplierFor(int codexLevelSum)
+        {
+            if (codexLevelSum <= 0) return 1.0f;
+            return 1.0f + (DamagePctPerRootLevel / 100f) * (float)Math.Sqrt(codexLevelSum);
         }
 
         public static async Task RecalculateAndSyncMultipliersAsync(long playerId, FolkIdleDbContext db, PlayerSessionRegistry registry)

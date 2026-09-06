@@ -93,6 +93,64 @@ namespace FolkIdle.Server.Engine
         // character slots and the deeper tools unlock.
         public const double LevelCurveGrowth = 1.16;
 
+        /// <summary>
+        /// The health pool a character has before lineage, CON and affixes -
+        /// the floor under every health bar in the game.
+        ///
+        /// Modul: IT WAS A FLAT 100, AND MONSTERS WERE GEOMETRIC, 2026-09-06.
+        ///
+        /// `baseMilliHp = 100000L` was a CONSTANT at both sites that compute a
+        /// health pool, so the only level term in a player's bar was the
+        /// lineage percentage - which is LINEAR (`base * (1 + pct * level/100)`)
+        /// and, for a Warrior, is zero. Monster attack power over the same five
+        /// regions runs 40 -> 500 -> 2,100 -> 8,725 -> 36,400 for the strongest
+        /// regular: geometric, about 4.2x a region.
+        ///
+        /// Linear against geometric has exactly one outcome, and
+        /// ProgressionRateTests had been PRINTING it for months without
+        /// asserting on it - the strongest regular of a region, as a share of
+        /// the geared health bar per second:
+        ///
+        ///   region 1   9.5%     region 4   64.4%
+        ///   region 2  17.0%     region 5  104.0%
+        ///   region 3  33.2%
+        ///
+        /// Over 100% means an ordinary region-5 regular empties a fully geared
+        /// bar in under a second, and Malakor's 118,400 is an instant death that
+        /// no gear, no food and no amount of healing can survive - a single blow
+        /// larger than the whole bar is not a fight, it is a wall. That is the
+        /// "boss instakills me" report, and it was structural rather than tuning.
+        ///
+        /// 9.2% a level compounding is about 5.8x every twenty levels, which is
+        /// a region: the bar now climbs on the same shape as the thing hitting
+        /// it. Level 1 is still exactly 100, so nothing about the opening hour
+        /// moves.
+        ///
+        ///   level      1     21      41      61       81      101
+        ///   old      100    100     100     100      100      100
+        ///   new      100    581   3,379  19,649  114,238  664,146
+        ///
+        /// TUNED AGAINST THE TABLE, NOT PICKED. 6.5% and 8% were both measured
+        /// first and both left region 5 above a third of the geared bar per
+        /// second; ProgressionRateTests prints the share for every region and
+        /// now ASSERTS on it, which is the thing that was missing when this
+        /// reached 104%.
+        ///
+        /// The lineage percentage still layers on top and still differentiates
+        /// Tank from Warrior - but a Warrior, whose HpScalePerLevelPct is 0, now
+        /// has a health curve at all for the first time.
+        /// </summary>
+        public const double HpCurveGrowthPerLevel = 1.092;
+
+        public const long BaseMilliHpAtLevelOne = 100_000L;
+
+        public static long BaseMilliHpForLevel(int level)
+        {
+            if (level <= 1) return BaseMilliHpAtLevelOne;
+            double scaled = BaseMilliHpAtLevelOne * Math.Pow(HpCurveGrowthPerLevel, level - 1);
+            return scaled >= long.MaxValue ? long.MaxValue : (long)scaled;
+        }
+
         public static long GetRequiredXpForLevel(int currentLevel)
         {
             return (long)Math.Ceiling(LevelCurveBase * Math.Pow(LevelCurveGrowth, currentLevel));

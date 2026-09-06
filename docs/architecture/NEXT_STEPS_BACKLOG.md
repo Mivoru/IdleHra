@@ -41,6 +41,34 @@ monster's from a hand-copy of `BossFirstClearRules` that predates First Blood,
 the player's from a session high-water mark caught reading "2320 / 2320" while
 `PlayerHp` was 3701. Both are on the wire now.
 
+## CLOSED 2026-09-06 (b) - combat had no identity
+
+Reported: "every monster is one-shot and then the boss instakills me... I deal
+73,500 to all monsters but my damage should be lower on the harder monsters in
+that location". Three separate causes, two of them content defects in systems
+that were already fully built:
+
+1. **Monster armour cancelled against its own halving constant** (`10 * tier`
+   against `30 * tier`), so all 115 monsters mitigated exactly 25%; and
+   **DodgeRating was 0 on all 25 canonical monsters**, pinning `HitChance` at
+   its ceiling. Derived from rank-in-region now (`MonsterDefenceCurve`).
+2. **The codex damage multiplier was 142.8x**, uncapped, doing 99.3% of the
+   player's damage. A diminishing curve now, `1 + 0.04*sqrt(levelSum)`.
+3. **Player HP was linear in level against geometric monster attack.** In
+   region 5 an ordinary regular took 104% of the geared bar per second and the
+   boss's single blow exceeded the whole pool. `ProgressionEngine
+   .BaseMilliHpForLevel` compounds at 9.2% a level.
+
+`ProgressionRateTests` had printed (3) for months without asserting on it; it
+asserts now. Two test fixtures that set a character's LEVEL without its
+ATTRIBUTES were exposed by (1) and fixed. Full write-up with every table:
+`docs/combat_rework_2026_09_06.md`.
+
+**Still open there: the lineage HP disparity.** `HpScalePerLevelPct` is 8 for a
+Tank and 0 for a Warrior, applied to the base - so with a geometric base a Tank
+has ~7.5x a Warrior's pool. A real choice now rather than the difference between
+playable and not, but wider than a lineage should probably buy.
+
 ## CLOSED 2026-09-06 - the second loot fault, and the gathering economy
 
 **Live kills paid no loot because GATHERING was starving the loot worker.**
