@@ -309,6 +309,7 @@ namespace FolkIdle.Server.Domain.Shared
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
                         player.AvailableSkillPoints = state.AvailableSkillPoints;
+                        player.UnspentAttributePoints = state.UnspentAttributePoints;
 
                         // Modul: larder. The auto-eat step consumes from these
                         // slots every time it fires, so the payload - not the
@@ -1076,7 +1077,8 @@ namespace FolkIdle.Server.Domain.Shared
                 ActiveChroniclePassLevel = (uint)Math.Max(0, chroniclePass?.PassLevel ?? 0),
                 AccumulatedSeasonalXp = (uint)Math.Max(0, chroniclePass?.AccumulatedXp ?? 0),
                 CachedClaimedMilestonesBitmask = chroniclePass?.ClaimedMilestonesBitmask ?? 0UL,
-                AvailableSkillPoints = player.AvailableSkillPoints
+                AvailableSkillPoints = player.AvailableSkillPoints,
+                UnspentAttributePoints = player.UnspentAttributePoints
             };
 
             payload.InitializeObfuscation(GenerateSessionXorKey(playerId, player.LogicEpochCounter));

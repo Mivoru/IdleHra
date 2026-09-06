@@ -207,7 +207,22 @@ namespace FolkIdle.Server.Network
         // past the third slot was permanently unplayable - which makes the
         // season loop the whole design is built on ("begin the next season with
         // your best child") impossible to actually perform.
-        AssignCharacterSlot = 75
+        AssignCharacterSlot = 75,
+
+        // Modul: SpendAttributePoint places one or more of the attribute points
+        // a level pays out - see RaceAttributeGrowth.ApplyLevelUpGrowth for why
+        // levelling stopped allocating them for the player.
+        //
+        // Carries WHICH attribute on TargetId (0 STR, 1 DEX, 2 CON, 3 LCK) and
+        // HOW MANY on LimitPrice, reusing two fields the packet already has
+        // rather than growing a fixed-layout struct for four bytes - the same
+        // thing RerollItemAffix does with LimitPrice for its affix index.
+        //
+        // The server owns the balance entirely: the client may ask to spend
+        // more than it holds and gets refused. Nothing about the amount is
+        // trusted, which is the rule for every command carrying a number the
+        // player chose.
+        SpendAttributePoint = 76
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

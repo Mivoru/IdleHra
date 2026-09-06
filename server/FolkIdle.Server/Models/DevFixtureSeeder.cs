@@ -35,6 +35,9 @@ namespace FolkIdle.Server.Models
 
         private const long Gold = 5_000_000L;
         private const int Diamonds = 5_000;
+        /// <summary>Enough for exercise.mjs to spend some and still leave a balance.</summary>
+        public const int FixtureUnspentAttributePoints = 25;
+
         private const int PlayerLevel = 40;
 
         // Town Hall 5 unlocks all three character slots (slot 2 at level 3,
@@ -102,6 +105,13 @@ namespace FolkIdle.Server.Models
             player.CurrentXp = 0;
             player.PremiumDiamonds = Diamonds;
             player.AvailableSkillPoints = PlayerLevel;
+
+            // Modul: and some UNSPENT attribute points, because attributes are
+            // placed by the player now (CommandType.SpendAttributePoint) and a
+            // fixture with none cannot exercise that screen at all. Assigned
+            // rather than incremented, like everything else here - a re-seed
+            // returns this account to a known state.
+            player.UnspentAttributePoints = FixtureUnspentAttributePoints;
 
             // Modul: RESET THE INHERITANCE LADDER, 2026-09-01, for the same
             // reason the attributes above are recomputed rather than

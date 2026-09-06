@@ -1128,6 +1128,47 @@ export function purchaseSkillTreeLevel(
 }
 
 // ---------------------------------------------------------------------------
+// Attribute points
+// ---------------------------------------------------------------------------
+
+/**
+ * The four attributes, in the order the server switches on
+ * (SimulationEngine's SpendAttributePoint handler: 0 STR, 1 DEX, 2 CON, 3 LCK).
+ *
+ * `effect` is what StatsCalculator actually does with a point, quoted so the
+ * screen can say it. A player asked to allocate a stat has to be told what it
+ * buys, and until this existed the four attributes had never once been
+ * explained anywhere in the game.
+ */
+export const ATTRIBUTES: readonly { id: number; key: string; label: string; effect: string }[] = [
+  { id: 0, key: 'STR', label: 'Strength', effect: 'Attack power.' },
+  { id: 1, key: 'DEX', label: 'Dexterity', effect: '+1 accuracy and +0.1% crit chance a point. Accuracy is what lands a swing against a monster that dodges.' },
+  { id: 2, key: 'CON', label: 'Constitution', effect: '+15 max health, +1 armour, +0.05% block strength a point.' },
+  { id: 3, key: 'LCK', label: 'Luck', effect: '+0.1% loot luck and +0.05% forge success a point.' },
+];
+
+/**
+ * Spend attribute points earned by levelling.
+ *
+ * The server owns the balance: it re-checks the amount against its own copy and
+ * refuses what it cannot pay, so this validation is for the player's benefit
+ * rather than the server's protection.
+ */
+export function spendAttributePoint(attributeId: number, amount: number, available: number): CommandOutcome {
+  if (!ATTRIBUTES.some((a) => a.id === attributeId)) return refuse('Unknown attribute.');
+  if (!Number.isInteger(amount) || amount <= 0) return refuse('Pick how many points to spend.');
+  if (amount > available) {
+    return refuse(`You have ${available.toLocaleString()} point${available === 1 ? '' : 's'} to spend.`);
+  }
+
+  // Which attribute rides on TargetId and the amount on LimitPrice - the same
+  // two general-purpose fields RerollItemAffix reuses, rather than growing a
+  // fixed-layout packet for four bytes.
+  connection.send({ Command: CommandType.SpendAttributePoint, TargetId: attributeId, LimitPrice: amount });
+  return OK;
+}
+
+// ---------------------------------------------------------------------------
 // Breeding aptitudes
 // ---------------------------------------------------------------------------
 

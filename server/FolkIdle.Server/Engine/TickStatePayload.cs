@@ -750,6 +750,20 @@ namespace FolkIdle.Server.Engine
         // above are what it buys now.
         public int AvailableSkillPoints;
 
+        // Modul: ATTRIBUTES ARE SPENT, NOT DEALT, 2026-09-06.
+        //
+        // Levelling used to allocate STR/DEX/CON/LCK for the player, by race,
+        // with no say in it - and the offline path forgot to do even that, so
+        // the only account past level 1 sat at level 86 holding a fresh
+        // registration's 50/50/50/25. A system nobody could see, nobody could
+        // steer, and whose absence went unnoticed for months was not carrying
+        // its weight.
+        //
+        // A level grants POINTS now and the player places them. Persisted on
+        // PlayerRecord like AvailableSkillPoints above, and on the wire so the
+        // screen can offer them.
+        public int UnspentAttributePoints;
+
         // Set by a skill cast and consumed by the next attack. Nothing sets it
         // any more, and it is kept at zero rather than removed because the
         // damage step multiplies by it only when positive - a future active

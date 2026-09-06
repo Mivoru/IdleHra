@@ -41,6 +41,35 @@ monster's from a hand-copy of `BossFirstClearRules` that predates First Blood,
 the player's from a session high-water mark caught reading "2320 / 2320" while
 `PlayerHp` was 3701. Both are on the wire now.
 
+## CLOSED 2026-09-06 (d) - attributes became a choice, and the power ledger
+
+**Attributes are spent, not dealt.** A level pays 7 points and the player places
+them (`CommandType.SpendAttributePoint`, Character screen). Seven is what a
+Human used to be dealt automatically, so the pacing model is unchanged; races
+keep their identity through passives rather than a one-point-a-level difference
+nothing surfaced. The migration backfills `7 * (level - 1)` minus what was
+already received - which is also the REPAIR for the levels the offline path
+never paid, so player 8 is owed about 595 points.
+
+**`PowerCeilingTests` is the ledger nobody had.** It prints every multiplicative
+lever with its documented maximum and asserts the total against the monster
+ladder rather than an invented number - currently 1,729x against a 750x ladder,
+2.3x headroom. Under the old linear codex curve it would have read 87,000x
+(116x headroom) and failed months before a player reported it. Three rules:
+headroom in band, no single lever bigger than all the others combined, and every
+uncapped lever must be a measurably diminishing curve.
+
+It found **uncapped crit chance** on its first run - five affix rolls on one
+region-5 Legendary weapon already exceed 100%, so crit was a flat multiplier and
+every further crit-chance roll was a dead affix. Clamped at 100%.
+
+Detail: `docs/attribute_points_2026_09_06.md`.
+
+**Open: the four attributes are thin.** STR is attack power, DEX accuracy and
+crit, CON health/armour/block, LCK loot and forge. Making them a choice is what
+makes that worth fixing - a player who can now see them will notice one is a
+strictly better buy.
+
 ## CLOSED 2026-09-06 (c) - the stats audit and two forge defects
 
 Asked for after the combat rework: audit the whole stats pipeline, not just what

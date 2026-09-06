@@ -113,6 +113,13 @@ namespace FolkIdle.Server.Domain.Combat
         // RaceMasteryResolver's Human vault bonus - the same 20 hydration has
         // always used, named once so the census fallback and hydration cannot
         // drift apart.
+        /// <summary>
+        /// The most a crit chance can ever be, in percent. A probability, so
+        /// there is nothing above 100 - see the clamp's own note at the crit
+        /// roll for why it had to be said out loud.
+        /// </summary>
+        public const float MaxCritChancePct = 100f;
+
         public const int DefaultBackpackCapacity = 20;
 
         // Modul: crafting as an assignable job. The 10Hz tick counts the time
@@ -2513,6 +2520,54 @@ namespace FolkIdle.Server.Domain.Combat
                             }
                         });
                     }
+                    else if (cmd.Command == CommandType.SpendAttributePoint)
+                    {
+                        // Modul: ENTIRELY ON THE TICK THREAD, no database at all.
+                        //
+                        // Both the balance and the four attributes live on the
+                        // payload, and the checkpoint already persists all five
+                        // (PlayerRecords.UnspentAttributePoints and the Base*
+                        // columns). So this is pure struct arithmetic - no scope,
+                        // no transaction, no queue - which is the cheapest thing
+                        // a command can be and is available precisely because
+                        // the state was already tick-owned.
+                        //
+                        // A menu choice out of range is REFUSED, not treated as
+                        // a protocol violation: the attribute id comes from a
+                        // dropdown and the amount from a button, and neither is
+                        // evidence of a tampered client. Same call the skill tree
+                        // makes just below.
+                        int attributeId = (int)cmd.TargetId;
+                        int requested = cmd.LimitPrice;
+
+                        if (attributeId < 0 || attributeId > 3 || requested <= 0)
+                        {
+                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
+                                (byte)Network.CommandResultCode.GenericValidationFailure);
+                        }
+                        else if (currentPayload.UnspentAttributePoints < requested)
+                        {
+                            // Says so, rather than silently doing nothing - this
+                            // server's favourite way to lie.
+                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
+                                (byte)Network.CommandResultCode.InsufficientMaterials);
+                        }
+                        else
+                        {
+                            currentPayload.UnspentAttributePoints -= requested;
+                            switch (attributeId)
+                            {
+                                case 0: currentPayload.STR += requested; break;
+                                case 1: currentPayload.DEX += requested; break;
+                                case 2: currentPayload.CON += requested; break;
+                                default: currentPayload.LCK += requested; break;
+                            }
+
+                            currentPayload.IsDirty = true;
+                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
+                                (byte)Network.CommandResultCode.Success);
+                        }
+                    }
                     else if (cmd.Command == CommandType.PurchaseSkillTreeLevel)
                     {
                         // Modul: skill tree. Same shape as the inheritance
@@ -3644,6 +3699,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 PendingUpgradeBuildingId = currentPayload.PendingUpgradeBuildingId,
                                 PendingUpgradeCompletesAtEpoch = currentPayload.PendingUpgradeCompletesAtEpoch,
                                 AvailableSkillPoints = currentPayload.AvailableSkillPoints,
+                                UnspentAttributePoints = currentPayload.UnspentAttributePoints,
                                 SkillTree_LootRarity = currentPayload.Skill_LootRarity,
                                 SkillTree_WorldBossDamage = currentPayload.Skill_WorldBossDamage,
                                 SkillTree_CritChance = currentPayload.Skill_CritChance,
@@ -5562,8 +5618,28 @@ namespace FolkIdle.Server.Domain.Combat
                     // applied here rather than inside StatsCalculator because
                     // the tree is a player-account bonus, not a property of the
                     // gear the stats are computed from.
-                    float treeCritChance = combatStats.CritChancePct
-                        + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance);
+                    // Modul: CRIT CHANCE HAD NO CEILING, found by
+                    // PowerCeilingTests on its first run, 2026-09-06.
+                    //
+                    // It sums from DEX, Vila mastery, five affix rolls, the
+                    // bred crit locus and this tree branch, and nothing clamped
+                    // the total - so `NextDouble() <= chance/100` was a
+                    // guaranteed crit forever past 100. Five crit_chance rolls
+                    // on one region-5 Legendary weapon already exceed it on
+                    // their own, which turned crit from variance into a flat
+                    // multiplier and made every further crit-chance roll a dead
+                    // affix nobody was told about.
+                    //
+                    // Clamped rather than rebalanced: 100% is the honest
+                    // ceiling for a probability, it takes nothing away from
+                    // anyone (you cannot crit more often than always), and it
+                    // makes the excess visible to the ledger instead of
+                    // silently wasted.
+                    float treeCritChance = Math.Clamp(
+                        combatStats.CritChancePct
+                            + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance),
+                        0f,
+                        MaxCritChancePct);
 
                     // Modul: and the client is told, so a crit can look like
                     // one. Cleared on every swing rather than only set, or a

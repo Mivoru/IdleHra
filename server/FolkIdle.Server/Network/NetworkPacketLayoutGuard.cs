@@ -178,7 +178,14 @@ namespace FolkIdle.Server.Network
         // WorldBossSessionEndsEpoch. A player has 300 seconds from their first
         // strike to spend the rest, and until now nothing said so - the attack
         // simply stopped working and never explained itself.
-        public const int ExpectedStateUpdateSize = 797;
+        //
+        // Modul: attribute points, 797 -> 801. One int,
+        // UnspentAttributePoints. Levelling used to allocate STR/DEX/CON/LCK by
+        // race with no say from the player, and the offline path forgot to do
+        // even that - the only account past level 1 reached level 86 holding a
+        // fresh registration's attributes. A level pays a pool now and the
+        // player places it, so the screen has to be able to see the balance.
+        public const int ExpectedStateUpdateSize = 801;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

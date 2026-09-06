@@ -628,6 +628,13 @@ namespace FolkIdle.Server.Network
         // branch levels. Bytes because the cap is 20. Nine bytes for a thing
         // the player reads on a screen and never has to press.
         public int AvailableSkillPoints;
+
+        /// <summary>
+        /// Attribute points earned by levelling and not yet placed. See
+        /// TickStatePayload.UnspentAttributePoints for why attributes stopped
+        /// being dealt automatically.
+        /// </summary>
+        public int UnspentAttributePoints;
         public byte SkillTree_LootRarity;
         public byte SkillTree_WorldBossDamage;
         public byte SkillTree_CritChance;

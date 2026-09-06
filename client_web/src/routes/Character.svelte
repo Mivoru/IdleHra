@@ -14,7 +14,7 @@
   import Bar from '../lib/ui/Bar.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
-  import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
+  import { assignCharacterActivity, EMPTY_GUID, ATTRIBUTES, spendAttributePoint } from '../lib/net/commands';
   import { locationName, nodeLocation } from '../lib/ui/locations';
   // EMPTY_GUID is the sentinel the roster filter below tests against.
   import { raceName } from '../lib/ui/races';
@@ -31,6 +31,26 @@
   });
 
   const snap = $derived($playerState);
+
+  // Modul: the attribute pool and the four values, straight off the wire -
+  // StateUpdatePacket carries STR/DEX/CON/LCK already and gained
+  // UnspentAttributePoints when levelling stopped allocating them.
+  const attributePoints = $derived(Number(snap?.UnspentAttributePoints ?? 0));
+
+  // Named rather than indexed: the four are real typed fields on the packet,
+  // and a string lookup would go stale silently if one were ever renamed.
+  function attributeValue(key: string): number {
+    if (!snap) return 0;
+    if (key === 'STR') return Number(snap.STR ?? 0);
+    if (key === 'DEX') return Number(snap.DEX ?? 0);
+    if (key === 'CON') return Number(snap.CON ?? 0);
+    return Number(snap.LCK ?? 0);
+  }
+
+  function spendPoint(attributeId: number, amount = 1) {
+    const outcome = spendAttributePoint(attributeId, amount, attributePoints);
+    if (!outcome.ok) pushLocalNotice(outcome.reason);
+  }
   const visual = $derived($visualState);
 
   // Equipment ids arrive on StateUpdate but their names, rarities and affixes
@@ -375,6 +395,45 @@
         <div><dt>Skill pts</dt><dd>{snap.AvailableSkillPoints}</dd></div>
       </dl>
 
+      <!-- Modul: ATTRIBUTES ARE PLACED BY THE PLAYER NOW.
+           Levelling used to allocate all four by race with no say in it, and
+           the offline path forgot to do even that - a level-86 account was
+           still holding a fresh registration's 50/50/50/25 and nothing on any
+           screen would have shown it. A pool the player spends is both a real
+           choice and a number they can check.
+
+           Each row says what the attribute BUYS, because until this panel
+           existed the four had never been explained anywhere in the game. -->
+      <h3>Attributes</h3>
+      <p class="dim tiny">
+        {#if attributePoints > 0}
+          <strong>{attributePoints}</strong> point{attributePoints === 1 ? '' : 's'} to spend. Each level pays 7.
+        {:else}
+          No points to spend. Each level pays 7.
+        {/if}
+      </p>
+      <dl class="stats attributes">
+        {#each ATTRIBUTES as attribute}
+          <div>
+            <dt title={attribute.effect}>{attribute.label}</dt>
+            <dd>
+              {attributeValue(attribute.key).toLocaleString()}
+              <button
+                class="spend"
+                disabled={attributePoints < 1}
+                title={attribute.effect}
+                onclick={() => spendPoint(attribute.id)}>+1</button>
+              {#if attributePoints >= 10}
+                <button class="spend" onclick={() => spendPoint(attribute.id, 10)}>+10</button>
+              {/if}
+            </dd>
+          </div>
+        {/each}
+      </dl>
+      {#each ATTRIBUTES as attribute}
+        <p class="dim tiny effect"><strong>{attribute.key}</strong> — {attribute.effect}</p>
+      {/each}
+
       {#if activeSets.length > 0}
         <h3>Active Set Bonuses</h3>
         <dl class="stats">
@@ -655,6 +714,24 @@
 {/if}
 
 <style>
+  /* Modul: the spend buttons sit inside a <dd> that is otherwise a number, so
+     they need to not inherit the dd's right alignment as a block. */
+  .attributes dd {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.3rem;
+  }
+  button.spend {
+    padding: 0 0.4rem;
+    min-width: 2rem;
+    font-size: 0.75rem;
+    line-height: 1.6;
+  }
+  p.effect {
+    margin: 0.1rem 0;
+  }
+
   .tools {
     display: grid;
     grid-template-columns: repeat(3, 1fr);

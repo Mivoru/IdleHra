@@ -1126,6 +1126,78 @@ await go('Character');
     lockedRows === 0 ? 'all slots open at Town Hall 5' : `${lockedRows} locked`,
   );
 
+  // Modul: ATTRIBUTES ARE SPENT, NOT DEALT.
+  //
+  // Levelling used to allocate STR/DEX/CON/LCK by race with no say from the
+  // player - and OfflineSimulationEngine.ApplyCombatXp never called that at
+  // all, so a level-86 live account was still holding a brand-new
+  // registration's 50/50/50/25 and no screen in the game would have shown it.
+  //
+  // This asserts the world CHANGED, which is the whole point of this script: a
+  // panel that renders four numbers and a button proves nothing if the button
+  // does not move them.
+  {
+    // Modul: THIS CHECK SPENDS FIXTURE STATE, one point a run, and attribute
+    // points are deliberately permanent - there is no unspend command to
+    // restore them with. The seeder grants
+    // DevFixtureSeeder.FixtureUnspentAttributePoints (25), so this survives
+    // twenty-five runs and then needs `--seed-dev`, which is idempotent.
+    // Written as a conditional rather than a hard failure so a drained pool
+    // reports itself instead of looking like a broken feature - the same shape
+    // the locked-slot check above uses.
+    const before = await page.evaluate(() => document.body.innerText);
+    const pointsBefore = Number(/(\d+)\s+points? to spend/.exec(before)?.[1] ?? 0);
+    record(
+      'the character screen offers attribute points',
+      pointsBefore > 0 || /No points to spend/.test(before),
+      pointsBefore > 0 ? `${pointsBefore} to spend` : 'pool spent - re-seed with --seed-dev',
+    );
+
+    if (pointsBefore > 0) {
+
+    const strBefore = await page
+      .locator('.attributes div', { hasText: 'Strength' })
+      .locator('dd')
+      .innerText();
+
+    await page.locator('.attributes div', { hasText: 'Strength' }).locator('button.spend').first().click();
+
+    // Modul: WAIT FOR THE CHANGE, not for a clock. The pool moves when the
+    // next StateUpdate lands, and a fixed sleep raced it - this check flaked
+    // on its first run for exactly that reason. Every other timing-sensitive
+    // assertion in this file that was written as a sleep has eventually done
+    // the same.
+    await page
+      .waitForFunction(
+        (expected) => new RegExp(`\b${expected}\b\s+points? to spend`).test(document.body.innerText),
+        pointsBefore - 1,
+        { timeout: 15000 },
+      )
+      .catch(() => {});
+
+    const after = await page.evaluate(() => document.body.innerText);
+    const pointsAfter = Number(/(\d+)\s+points? to spend/.exec(after)?.[1] ?? 0);
+    const strAfter = await page
+      .locator('.attributes div', { hasText: 'Strength' })
+      .locator('dd')
+      .innerText();
+
+    const spent = pointsAfter === pointsBefore - 1;
+    record('spending a point takes it out of the pool', spent, `${pointsBefore} -> ${pointsAfter}`);
+
+    const strengthRose = parseInt(strAfter.replace(/[^0-9]/g, ''), 10) > parseInt(strBefore.replace(/[^0-9]/g, ''), 10);
+    record('and puts it into the attribute', strengthRose, `STR ${strBefore.trim()} -> ${strAfter.trim()}`);
+
+    }
+
+    // The attributes had never been explained anywhere in the game before this
+    // panel; a player asked to allocate a stat has to be told what it buys.
+    // Outside the conditional above - the explanations must be there whether or
+    // not there is anything left to spend.
+    const panelText = await page.evaluate(() => document.body.innerText);
+    record('each attribute says what it buys', /accuracy/i.test(panelText) && /max health/i.test(panelText));
+  }
+
   // A gear slot is a button now; clicking one opens its picker.
   // Modul: tools are gear now - three slots of their own, rolled with a rarity
   // and gathering affixes, where they used to be stackable materials that

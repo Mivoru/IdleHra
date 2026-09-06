@@ -37,7 +37,7 @@ namespace FolkIdle.Server.Tests
         };
 
         [Fact]
-        public void KillingEnoughToLevelRaisesTheFourAttributes()
+        public void KillingEnoughToLevelPaysAttributePoints()
         {
             var payload = FreshLevelOne();
             int startingCon = payload.CON;
@@ -58,18 +58,51 @@ namespace FolkIdle.Server.Tests
                 activeGlobalEventId: 0,
                 activeRaceId: RaceIds.Human);
 
-            _o.WriteLine($"level {payload.CurrentLevel}, STR {payload.STR}, DEX {payload.DEX}, CON {payload.CON}, LCK {payload.LCK}");
+            _o.WriteLine($"level {payload.CurrentLevel}, {payload.UnspentAttributePoints} points, "
+                + $"STR {payload.STR}, DEX {payload.DEX}, CON {payload.CON}, LCK {payload.LCK}");
 
             Assert.True(payload.CurrentLevel > 1, "the character did not level at all.");
-            Assert.True(payload.CON > startingCon,
-                $"CON is still {payload.CON} after reaching level {payload.CurrentLevel} - attribute growth is not running.");
-            Assert.True(payload.DEX > startingDex,
-                $"DEX is still {payload.DEX} at level {payload.CurrentLevel}. DEX is AccuracyRating, and monsters have dodge now.");
 
-            // A Human gains 2 per level in STR/DEX/CON and 1 in LCK.
+            // Modul: a level pays a POOL now - the player places it. The four
+            // attributes must NOT move on their own, or the choice would be
+            // made twice.
             int levelsGained = payload.CurrentLevel - 1;
-            Assert.Equal(startingCon + 2 * levelsGained, payload.CON);
-            Assert.Equal(startingDex + 2 * levelsGained, payload.DEX);
+            Assert.Equal(RaceAttributeGrowth.AttributePointsPerLevel * levelsGained, payload.UnspentAttributePoints);
+            Assert.Equal(startingCon, payload.CON);
+            Assert.Equal(startingDex, payload.DEX);
+        }
+
+        [Fact]
+        public void PointsAreGrantedWhateverTheRaceIs()
+        {
+            // Modul: the OLD trap, kept as a test of the new behaviour.
+            //
+            // GetGrowthPerLevel's `default` arm returns 0/0/0/0, and
+            // activeRaceId is the low byte of the character's genetic vector -
+            // so a character with a missing lineage row levelled forever without
+            // gaining a point, and it would have looked exactly like the live
+            // account did. Points are race-independent now, which removes that
+            // failure mode entirely rather than guarding it.
+            var payload = FreshLevelOne();
+
+            long xpForFive = 0;
+            for (int level = 1; level <= 5; level++)
+            {
+                xpForFive += ProgressionEngine.GetRequiredXpForLevel(level);
+            }
+
+            ProgressionEngine.ProcessMonsterDeath(
+                ref payload,
+                baseExpReward: (int)System.Math.Min(int.MaxValue, xpForFive),
+                xpMultiplier: 100,
+                activeGlobalEventId: 0,
+                activeRaceId: 0);
+
+            _o.WriteLine($"race 0: level {payload.CurrentLevel}, {payload.UnspentAttributePoints} points");
+
+            Assert.True(payload.CurrentLevel > 1);
+            Assert.True(payload.UnspentAttributePoints > 0,
+                "a character with no resolvable race gained no attribute points - that is the old race-gated defect, back.");
         }
 
         [Fact]
@@ -127,34 +160,5 @@ namespace FolkIdle.Server.Tests
             return System.IO.File.ReadAllText(full);
         }
 
-        [Fact]
-        public void AnUnknownRaceGrowsNothing()
-        {
-            // Modul: the trap worth pinning. GetGrowthPerLevel's `default` arm
-            // returns 0/0/0/0, and activeRaceId comes from the low byte of the
-            // character's genetic vector - so a character whose lineage row is
-            // missing, or whose vector encodes a race id outside 1-6, levels
-            // forever without gaining a single point. It would look exactly like
-            // the live account does.
-            var payload = FreshLevelOne();
-
-            long xpForFive = 0;
-            for (int level = 1; level <= 5; level++)
-            {
-                xpForFive += ProgressionEngine.GetRequiredXpForLevel(level);
-            }
-
-            ProgressionEngine.ProcessMonsterDeath(
-                ref payload,
-                baseExpReward: (int)System.Math.Min(int.MaxValue, xpForFive),
-                xpMultiplier: 100,
-                activeGlobalEventId: 0,
-                activeRaceId: 0);
-
-            _o.WriteLine($"race 0: level {payload.CurrentLevel}, CON {payload.CON}");
-
-            Assert.True(payload.CurrentLevel > 1);
-            Assert.Equal(50, payload.CON);
-        }
     }
 }

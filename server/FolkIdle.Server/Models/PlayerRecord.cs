@@ -181,6 +181,12 @@ namespace FolkIdle.Server.Models
         // remaining, unspent balance).
         public int AvailableSkillPoints { get; set; }
 
+        // Modul: attribute points earned by levelling and not yet placed - see
+        // TickStatePayload.UnspentAttributePoints. Backfilled by migration for
+        // every character that levelled before the change, including the growth
+        // the offline path never granted.
+        public int UnspentAttributePoints { get; set; }
+
         // Modul: RESPEC, which the three-ring tree made compulsory rather than
         // convenient.
         //

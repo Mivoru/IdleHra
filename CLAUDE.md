@@ -183,6 +183,16 @@ the queue finally emptied. Take a BUDGET (the depth read once at the top of the
 cycle), coalesce what can be added up, and report every queue's depth in the
 heartbeat. `GatheringGrantStarvationTests` guards the shape.
 
+**Every multiplier declares a cap or a curve, and `PowerCeilingTests` is the
+ledger.** Nothing had ever computed what a maxed character multiplies up to, so
+two runaways (codex yield 71.9x, codex damage 142.8x) were both found by a
+player rather than by CI. The ledger prints every lever against its documented
+maximum and asserts three things: total headroom stays within 0.5x-10x of the
+monster ladder it has to climb, no single lever exceeds the product of all the
+others, and any lever without a hard cap is a measurably diminishing curve.
+Linear-and-uncapped is the one shape that is never allowed. It found uncapped
+crit chance on its first run.
+
 **An INDEX on the wire is a two-sources-of-truth surface.** Auto-reroll's
 "stop on stat" travels as a 1-based index into `AffixRegistry.Definitions`
 because `ClientCommandPacket` is fixed-layout, so the client's
