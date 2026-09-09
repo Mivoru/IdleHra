@@ -26,6 +26,8 @@
     sends "start", "door N" and "bank", and draws what comes back.
   */
   import { onMount } from 'svelte';
+  import Money from '../lib/ui/Money.svelte';
+  import { formatCompact } from '../lib/ui/format';
 
   /*
     Modul: SVG, NOT A GLYPH. This screen shipped with ◆ and ● in its markup,
@@ -111,7 +113,7 @@
         if (outcome.Result === 'Ok' && (outcome.DiamondsGranted > 0 || outcome.GoldReturned > 0)) {
           const parts: string[] = [];
           if (outcome.DiamondsGranted > 0) parts.push(`${outcome.DiamondsGranted} diamonds`);
-          if (outcome.GoldReturned > 0) parts.push(`${outcome.GoldReturned.toLocaleString()} gold`);
+          if (outcome.GoldReturned > 0) parts.push(`${formatCompact(outcome.GoldReturned)} gold`);
           notice = `You climb out with ${parts.join(' and ')}.`;
         }
       } else {
@@ -164,7 +166,7 @@
     <p class="muted">Reading the gate&hellip;</p>
   {:else}
     <section class="ledger">
-      <div><span class="k">Your gold</span><span class="v">{view.CurrentGold.toLocaleString()}</span></div>
+      <div><span class="k">Your gold</span><span class="v"><Money amount={view.CurrentGold} /></span></div>
       <div><span class="k">Diamonds this week</span><span class="v">{view.DiamondsEarnedThisWeek} / {view.WeeklyDiamondCeiling}</span></div>
       <div><span class="k">Deepest region reached</span><span class="v">{view.HighestRegionReached}</span></div>
     </section>
@@ -183,7 +185,7 @@
       <section class="gate">
         <h2>The gate</h2>
         <p>
-          A run costs <strong>{view.EntryFeeForNextRun.toLocaleString()} gold</strong> &mdash; about
+          A run costs <strong><Money amount={view.EntryFeeForNextRun} /></strong> &mdash; about
           forty minutes of what you earn in region {view.HighestRegionReached}.
         </p>
         <p class="muted small">
@@ -236,7 +238,7 @@
         <div class="decision">
           <button class="secondary" disabled={busy} onclick={() => act(bankDelve)}>
             Climb out with {view.DiamondsAfterCeiling}{@render Diamond()}{view.ConsolationGoldIfCapped > 0
-              ? ` + ${view.ConsolationGoldIfCapped.toLocaleString()}g`
+              ? ` + ${formatCompact(view.ConsolationGoldIfCapped)}g`
               : ''}
           </button>
           {#if !atBottom}

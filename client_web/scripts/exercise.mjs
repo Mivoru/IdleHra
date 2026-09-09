@@ -570,21 +570,36 @@ await go('Gathering');
   // silently matches nothing and the check then fails for a reason that has
   // nothing to do with the game. That happened on the first run of this very
   // check.
+  // Modul: READ THE PUBLISHED VALUE, DO NOT PARSE THE DISPLAY.
+  //
+  // This used to pull the XP back out of the rendered line, and it needed two
+  // rounds of comment to survive doing so: thousands are grouped with a
+  // NON-BREAKING SPACE in this locale, so a [\d,]+ pattern stopped at the space
+  // and reported the whole track as missing - intermittently, because it only
+  // bit once a number passed a thousand.
+  //
+  // Compaction is the same trap one order of magnitude up. Mastery XP is now
+  // written as "1.2M" past a million, which the old pattern would have read as
+  // 12 - a number that is not wrong in any way a test could notice, on a check
+  // that compares before against after. So the screen publishes `data-exact`
+  // and this reads that instead. A display format that a checker parses is a
+  // display format nobody can change afterwards.
   const readMastery = async (name) => {
-    const text = await page.evaluate(() => document.body.innerText);
-    const lines = text.split('\n').map((l) => l.trim());
-    const at = lines.indexOf(name);
-    if (at < 0 || at + 1 >= lines.length) return null;
-    // Thousands are grouped with a NON-BREAKING SPACE in this locale, so
-    // "2 415" is one number. A [\\d,]+ pattern stops at the space, fails to
-    // reach "xp", matches nothing, and reports the whole track as missing -
-    // intermittently, because it only bites once a number passes a thousand.
-    const hit = /level\s+(\d+)\s*\u00b7\s*([\d.,\s\u00a0\u202f]+?)\s*xp/i.exec(
-      lines[at + 1],
-    );
-    return hit
-      ? { level: Number(hit[1]), xp: Number(hit[2].replace(/[^0-9]/g, '')) }
-      : null;
+    const found = await page.evaluate((trackName) => {
+      const term = [...document.querySelectorAll('dt')].find(
+        (el) => el.textContent.trim() === trackName,
+      );
+      const detail = term?.nextElementSibling;
+      if (!detail) return null;
+
+      const exact = detail.querySelector('[data-exact]')?.getAttribute('data-exact');
+      const level = /level\s+(\d+)/i.exec(detail.textContent ?? '');
+      if (exact === null || exact === undefined || !level) return null;
+
+      return { level: Number(level[1]), xp: Number(exact) };
+    }, name);
+
+    return found && Number.isFinite(found.xp) && Number.isFinite(found.level) ? found : null;
   };
 
   const fishingBefore = await readMastery('Fishing');

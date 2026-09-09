@@ -1,5 +1,6 @@
 <script lang="ts">
   import { currencyIcon } from './sprites';
+  import { formatCompact, formatExact, isCompacted } from './format';
   // Modul: one way to render a currency amount.
   //
   // Gold and diamonds appear on nine screens and were formatted nine different
@@ -40,19 +41,57 @@
   const short = $derived(kind === 'gold' ? 'g' : '');
   const affordable = $derived(available === undefined || value <= available);
 
+  /*
+    Modul: COMPACTED FROM A MILLION, and the exact figure never goes away.
+
+    This is the most-read number in the game - it sits in the header on every
+    screen - and a live account's balance is seven digits. `5 042 484` has to be
+    counted in groups before it can be compared against a 250,000 gate; `5.04M`
+    does not. Below a million the separator is still doing its job, so nothing
+    changes there: a 17,000 fee and a 2,000 reroll stay comparable at a glance
+    and keep their real precision.
+
+    `data-exact` carries the RAW number, not the formatted one - the attribute
+    exists so a machine can read it, and Number("4 950 462") is NaN. The
+    grouped, human-readable figure goes in the title, which is the half a
+    person actually hovers for.
+
+    exercise.mjs reads numbers out of the DOM in
+    four places and one of its regexes already carries a comment about breaking
+    "once a number passes a thousand" - so the exact value is PUBLISHED as data
+    rather than left to be parsed back out of display text. A format that tests
+    parse is a format nobody can change afterwards.
+  */
+  const compacted = $derived(isCompacted(value));
+
   const formatted = $derived.by(() => {
-    const abs = Math.abs(value).toLocaleString();
+    const abs = formatCompact(Math.abs(value));
     if (!signed) return abs;
     return value < 0 ? `-${abs}` : `+${abs}`;
+  });
+
+  const exactText = $derived.by(() => {
+    const abs = formatExact(Math.abs(value));
+    if (!signed) return abs;
+    return value < 0 ? `-${abs}` : `+${abs}`;
+  });
+
+  /* Modul: the unaffordable warning wins the title, because it is the more
+     urgent of the two things a hover could say - and it carries its own exact
+     figure, so nothing is lost by preferring it. */
+  const hoverTitle = $derived.by(() => {
+    if (!affordable) return `You have ${formatExact(available ?? 0)}`;
+    return compacted ? `${exactText}${short}` : undefined;
   });
 </script>
 
 <span
   class="money"
   data-kind={kind}
+  data-exact={compacted ? value : undefined}
   class:short={affordable}
   class:unaffordable={!affordable}
-  title={affordable ? undefined : `You have ${(available ?? 0).toLocaleString()}`}
+  title={hoverTitle}
 >
   {#if iconUrl}
     <img src={iconUrl} alt="" loading="lazy" decoding="async" />

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatCompact } from '../lib/ui/format';
   // Modul: the village chest. Everything a character produces ends up here.
   //
   // It replaces the backpack, which capped at twenty shared slots and stopped
@@ -589,7 +590,7 @@
             <li>
               <ItemIcon baseItemId={stack.ItemId} name={prettifyBaseId(stack.ItemId)} size="sm" />
               <span class="name">{prettifyBaseId(stack.ItemId)}</span>
-              <span class="qty">{total.toLocaleString()}</span>
+              <span class="qty" data-exact={total} title={total.toLocaleString()}>{formatCompact(total)}</span>
 
               <button
                 class="tiny-btn"

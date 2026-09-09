@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatCompact } from '../lib/ui/format';
   import { onMount } from 'svelte';
   import { playerState, visualState, pushLocalNotice } from '../lib/stores/game';
   import { loadContent, type ContentRegistry, type GatheringNodeDefinition } from '../lib/net/content';
@@ -252,7 +253,13 @@
             <dt>{track.name}</dt>
             <dd>
               level {masteryLevelOf(track.id)} &middot;
-              {masteryXpOf(track.id).toLocaleString()} xp
+              <!-- Modul: the exact figure is PUBLISHED, not left to be parsed
+                   back out of the text. Mastery XP is the one number
+                   exercise.mjs reads from this DOM, and its regex is written
+                   against digits and separators - so a compacted "1.2M" would
+                   have been read as 12. data-exact is what makes the display
+                   free to change. -->
+              <span data-exact={masteryXpOf(track.id)}>{formatCompact(masteryXpOf(track.id))}</span> xp
             </dd>
           </div>
         {/each}
