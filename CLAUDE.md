@@ -156,8 +156,9 @@ It exists because the snapshot stream cannot describe a fast fight: measured,
 `CurrentMonsterHp` took *one* value across 27 consecutive snapshots, because a
 geared character kills an early monster between two samples. Anything that wants
 to show what happened in a fight reads the feed; do not add a second inference
-from a health difference. `stores/damage.ts` still infers the floating numbers
-and is the one place that should eventually stop.
+from a health difference. `stores/damage.ts` reads the feed too - its snapshot
+inference was deleted rather than kept as a fallback, because two sources for
+one truth is this codebase's dominant bug class.
 
 **A field on `StateUpdatePacket` must be loaded at login or declared
 runtime-only.** `WorldBossAttemptCount` was written by one notification and
@@ -182,8 +183,12 @@ never reproduced locally because the trigger was Supabase's session pooler
 refusing the sixteenth client (`EMAXCONNSESSION`, `pool_size: 15`) against
 Npgsql's default pool of 100. Isolate every dequeued item in its own try/catch,
 and bound the pool below the server's limit (`ConnectionStringDefaults
-.WithBoundedPool`) so back-pressure is a queue rather than a throw. Five other
-cron loops still have no catch at all - see
+.WithBoundedPool`) so back-pressure is a queue rather than a throw. `CodexEngine`
+had the same shape and is guarded now; `GuildMatchmakingEngine` is the last one
+whose loop body has no catch at all (a weekly job, so the blast radius is small).
+Checked 2026-09-09: the other eleven `StartCron` loops do wrap their bodies.
+A guard that starts AFTER `CreateScope`/`BeginTransactionAsync` is not a guard -
+that is where the connection is acquired and where the throw comes from. See
 `docs/drop_rates_investigation_2026_09_05.md`.
 
 **An unbounded drain in a worker loop is a starvation bug.** `CombatLootEngine`

@@ -159,278 +159,323 @@ namespace FolkIdle.Server.Engine
             });
         }
 
+        // Modul: ONE THROW USED TO END THE CODEX FOR THE WHOLE PROCESS.
+        //
+        // The cycle below had an inner try, but it began AFTER the three calls
+        // that acquire a database connection - CreateScope,
+        // GetRequiredService<FolkIdleDbContext> and BeginTransactionAsync. Any
+        // of those could throw straight through this loop, out of StartCron's
+        // bare Task.Run, and end the worker: no log, no restart, no other
+        // symptom, with kills piling up in KillEventQueue for the rest of the
+        // process's life. That is exactly how CombatLootEngine lost its drain
+        // and took every equipment drop on the live server with it - production
+        // runs against Supabase's session pooler, which refuses the sixteenth
+        // client outright, and a refused connection lands on whichever
+        // operation happened to ask for one.
+        //
+        // The blast radius here is quieter than loot's and just as total: no
+        // codex level, no yield or damage multiplier, no race unlock and no
+        // region-completion flag would ever be granted again, while kills, XP
+        // and drops all carried on looking healthy.
+        //
+        // The rollback in the inner catch is inside this guard too - rolling
+        // back over a connection that has just failed throws again, and that
+        // second throw escaped the catch that was handling the first.
         private async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                await Task.Delay(5000, stoppingToken);
-
-                var killsToProcess = new System.Collections.Generic.List<KillEvent>();
-                while (KillEventQueue.TryDequeue(out var killEvent))
-                {
-                    killsToProcess.Add(killEvent);
-                }
-
-                if (killsToProcess.Count == 0) continue;
-
-                using var scope = _serviceProvider.CreateScope();
-                var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
-                using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, stoppingToken);
                 try
                 {
-                    var playerIds = killsToProcess.Select(k => k.PlayerId).Distinct().ToList();
-
-                    var codexEntries = await dbContext.MonsterCodexEntries
-                        .Where(c => playerIds.Contains(c.PlayerId))
-                        .ToDictionaryAsync(c => new { c.PlayerId, c.MonsterId }, stoppingToken);
-
-                    var masteries = await dbContext.PlayerRaceMasteries
-                        .Where(m => playerIds.Contains(m.PlayerId))
-                        .ToDictionaryAsync(m => new { m.PlayerId, m.RaceId }, stoppingToken);
-
-                    var codexLeveledUpPlayerIds = new System.Collections.Generic.HashSet<long>();
-
-                    // Modul: race unlocks. A region boss's FIRST kill unlocks a
-                    // playable race. Detected here rather than in the combat
-                    // tick because this is the one place that already knows
-                    // whether a monster had ever been killed before - the codex
-                    // entry's prior KillCount. Recording it in the tick would
-                    // mean either a second per-kill DB read on the hot path or a
-                    // duplicate first-kill ledger.
-                    var newlyUnlockedRaces = new System.Collections.Generic.List<(long PlayerId, byte RaceId, int MonsterId)>();
-                    // Modul: race unlock feedback. Staged before the commit,
-                    // published after it - see the enqueue site below.
-                    var pendingUnlockNotifications = new System.Collections.Generic.List<RaceUnlockNotification>();
-
-                    foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.MonsterId }))
-                    {
-                        var key = new { group.Key.PlayerId, group.Key.MonsterId };
-                        int kills = group.Count();
-
-                        // Captured BEFORE the increment below: a boss whose
-                        // codex entry did not exist, or existed at zero, has
-                        // never been killed by this player.
-                        byte raceUnlockedByThisMonster = RaceUnlockRegistry.GetRaceUnlockedByBoss(key.MonsterId);
-                        if (raceUnlockedByThisMonster != 0)
-                        {
-                            bool everKilledBefore = codexEntries.TryGetValue(key, out var priorEntry) && priorEntry.KillCount > 0;
-                            if (!everKilledBefore)
-                            {
-                                newlyUnlockedRaces.Add((key.PlayerId, raceUnlockedByThisMonster, key.MonsterId));
-                            }
-                        }
-
-                        if (codexEntries.TryGetValue(key, out var entry))
-                        {
-                            entry.KillCount += kills;
-                        }
-                        else
-                        {
-                            entry = new MonsterCodexEntry
-                            {
-                                PlayerId = key.PlayerId,
-                                MonsterId = key.MonsterId,
-                                KillCount = kills,
-                                FirstDrawnRarity = 1
-                            };
-                            dbContext.MonsterCodexEntries.Add(entry);
-                            codexEntries[key] = entry;
-                        }
-
-                        int newLevel = CalculateLevelFromKillCount(entry.KillCount);
-                        if (newLevel > entry.Level)
-                        {
-                            entry.Level = newLevel;
-                            codexLeveledUpPlayerIds.Add(key.PlayerId);
-                        }
-                    }
-
-                    // Modul 13.4.3: region completion check. A region is 6
-                    // distinct monster ids (5 standard/elite + 1 regional boss -
-                    // same grouping formula StateCheckpointManager.LoadPlayerState
-                    // uses for the login-time CompletedAreaFlags recompute) with
-                    // every monster's KillCount >= 1000. Only newly-completed
-                    // regions (not already in PlayerRegionCompletions) grant the
-                    // permanent +1% Luck via CompletedAreaFlags; already-completed
-                    // regions are skipped so the bonus is never re-granted.
-                    var existingCompletions = await dbContext.PlayerRegionCompletions
-                        .Where(r => playerIds.Contains(r.PlayerId))
-                        .Select(r => new { r.PlayerId, r.RegionId })
-                        .ToListAsync(stoppingToken);
-                    var existingCompletionSet = new System.Collections.Generic.HashSet<(long PlayerId, int RegionId)>(
-                        existingCompletions.Select(e => (e.PlayerId, e.RegionId)));
-
-                    var newRegionFlagsByPlayer = new System.Collections.Generic.Dictionary<long, int>();
-
-                    foreach (long touchedPlayerId in playerIds)
-                    {
-                        for (int region = 1; region <= 10; region++)
-                        {
-                            if (existingCompletionSet.Contains((touchedPlayerId, region))) continue;
-
-                            var monstersInRegion = ContentRegistry.Monsters.ToArray().Where(m => ContentRegistry.GetMonsterRegionTier(m.Id) == region).ToList();
-                            if (monstersInRegion.Count == 0) continue;
-
-                            bool allKilled = true;
-                            for (int i = 0; i < monstersInRegion.Count; i++)
-                            {
-                                var lookupKey = new { PlayerId = touchedPlayerId, MonsterId = monstersInRegion[i].Id };
-                                if (!codexEntries.TryGetValue(lookupKey, out var regionEntry) || regionEntry.KillCount < 1000)
-                                {
-                                    allKilled = false;
-                                    break;
-                                }
-                            }
-
-                            if (!allKilled) continue;
-
-                            dbContext.PlayerRegionCompletions.Add(new PlayerRegionCompletion
-                            {
-                                PlayerId = touchedPlayerId,
-                                RegionId = region,
-                                CompletedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                            });
-
-                            newRegionFlagsByPlayer.TryGetValue(touchedPlayerId, out int existingFlags);
-                            newRegionFlagsByPlayer[touchedPlayerId] = existingFlags | (1 << region);
-                        }
-                    }
-
-                    // Modul: race unlocks. Persist the milestone and hand the
-                    // player an actual character of the race - an "unlock" that
-                    // grants nothing playable is just a line in a menu, and
-                    // there is no other way to obtain a non-Human character:
-                    // accounts are created Human and BreedingEngine refuses
-                    // cross-race pairs.
-                    if (newlyUnlockedRaces.Count > 0)
-                    {
-                        long unlockEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
-                        var unlockPlayerIds = newlyUnlockedRaces.Select(u => u.PlayerId).Distinct().ToList();
-                        var alreadyUnlocked = await dbContext.PlayerRaceUnlocks
-                            .Where(u => unlockPlayerIds.Contains(u.PlayerId))
-                            .Select(u => new { u.PlayerId, u.RaceId })
-                            .ToListAsync(stoppingToken);
-                        var alreadyUnlockedSet = new System.Collections.Generic.HashSet<(long, int)>(
-                            alreadyUnlocked.Select(u => (u.PlayerId, u.RaceId)));
-
-                        for (int i = 0; i < newlyUnlockedRaces.Count; i++)
-                        {
-                            (long unlockPlayerId, byte unlockRaceId, int unlockMonsterId) = newlyUnlockedRaces[i];
-
-                            // The codex-entry probe above says "never killed
-                            // before"; this says "never unlocked before". They
-                            // can disagree if a codex row was ever pruned, and
-                            // the composite primary key would throw on the
-                            // duplicate rather than silently skipping.
-                            if (!alreadyUnlockedSet.Add((unlockPlayerId, unlockRaceId)))
-                            {
-                                continue;
-                            }
-
-                            dbContext.PlayerRaceUnlocks.Add(new PlayerRaceUnlock
-                            {
-                                PlayerId = unlockPlayerId,
-                                RaceId = unlockRaceId,
-                                UnlockedAtEpoch = unlockEpoch,
-                                UnlockedByMonsterId = unlockMonsterId
-                            });
-
-                            // Modul: breeding pairs. A male AND a female, so the
-                            // unlocked race is a founding population rather than
-                            // a single character the player can never propagate.
-                            await CharacterGrantEngine.GrantRacePairAsync(dbContext, unlockPlayerId, unlockRaceId, stoppingToken);
-
-                            // Modul: race unlock feedback. Staged here, published
-                            // only after the transaction below commits - a player
-                            // must never be told they unlocked a race that a
-                            // rollback then took away. Same ordering rule
-                            // CombatLootEngine follows for loot drops.
-                            pendingUnlockNotifications.Add(new RaceUnlockNotification
-                            {
-                                PlayerId = unlockPlayerId,
-                                RaceId = unlockRaceId
-                            });
-                        }
-                    }
-
-                    foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.RaceId }))
-                    {
-                        if (group.Key.RaceId <= 0) continue;
-
-                        var key = new { group.Key.PlayerId, group.Key.RaceId };
-                        long totalXp = group.Sum(k => k.GainedXp);
-                        
-                        if (masteries.TryGetValue(key, out var mastery))
-                        {
-                            mastery.CumulativeXp += totalXp;
-                        }
-                        else
-                        {
-                            mastery = new PlayerRaceMastery
-                            {
-                                PlayerId = key.PlayerId,
-                                RaceId = key.RaceId,
-                                MasteryLevel = 1,
-                                CumulativeXp = totalXp
-                            };
-                            dbContext.PlayerRaceMasteries.Add(mastery);
-                            masteries[key] = mastery;
-                        }
-
-                        long requiredXp = GetRaceMasteryRequiredXp(mastery.MasteryLevel);
-                        bool leveledUp = false;
-                        while (mastery.CumulativeXp >= requiredXp)
-                        {
-                            mastery.CumulativeXp -= requiredXp;
-                            mastery.MasteryLevel++;
-                            leveledUp = true;
-                            requiredXp = GetRaceMasteryRequiredXp(mastery.MasteryLevel);
-                        }
-
-                        if (leveledUp)
-                        {
-                            _playerRegistry.MasteryUpdateQueue.Enqueue(new MasteryUpdateNotification
-                            {
-                                PlayerId = group.Key.PlayerId,
-                                RaceId = group.Key.RaceId,
-                                MasteryLevel = mastery.MasteryLevel
-                            });
-                        }
-                    }
-
-                    await dbContext.SaveChangesAsync(stoppingToken);
-                    await transaction.CommitAsync(stoppingToken);
-
-                    foreach (long leveledUpPlayerId in codexLeveledUpPlayerIds)
-                    {
-                        await RecalculateAndSyncMultipliersAsync(leveledUpPlayerId, dbContext, _playerRegistry);
-                    }
-
-                    foreach (var regionCompletionKvp in newRegionFlagsByPlayer)
-                    {
-                        _playerRegistry.RegionCompletionUpdateQueue.Enqueue(new RegionCompletionNotification
-                        {
-                            PlayerId = regionCompletionKvp.Key,
-                            CompletedRegionFlags = regionCompletionKvp.Value
-                        });
-                    }
-
-                    // Modul: race unlock feedback. Post-commit, so the client is
-                    // only ever told about a race that is durably granted.
-                    for (int i = 0; i < pendingUnlockNotifications.Count; i++)
-                    {
-                        _playerRegistry.RaceUnlockQueue.Enqueue(pendingUnlockNotifications[i]);
-                    }
+                    await Task.Delay(5000, stoppingToken);
+                    await ProcessKillBatchAsync(stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    // Shutdown, not a fault - the one clean way out of the loop.
+                    return;
                 }
                 catch (Exception ex)
                 {
-                    await transaction.RollbackAsync(stoppingToken);
-                    Console.WriteLine($"Failed to process Codex entries: {ex.Message}");
+                    // Modul: the delay is INSIDE the try, so a failure that
+                    // repeats cannot spin - the next cycle still waits its five
+                    // seconds before asking for a connection again.
+                    Console.WriteLine($"Codex worker cycle failed; the loop continues: {ex.Message}");
                 }
             }
         }
 
+        // Modul: a batch that fails is LOST - the kills are dequeued before the
+        // transaction opens and the rollback does not put them back. Bounded
+        // re-enqueue is written up in the backlog rather than done here,
+        // because a batch that always fails would then be retried every five
+        // seconds for the life of the process.
+        private async Task ProcessKillBatchAsync(CancellationToken stoppingToken)
+        {
+            var killsToProcess = new System.Collections.Generic.List<KillEvent>();
+            while (KillEventQueue.TryDequeue(out var killEvent))
+            {
+                killsToProcess.Add(killEvent);
+            }
+
+            if (killsToProcess.Count == 0) return;
+
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, stoppingToken);
+            try
+            {
+                var playerIds = killsToProcess.Select(k => k.PlayerId).Distinct().ToList();
+
+                var codexEntries = await dbContext.MonsterCodexEntries
+                    .Where(c => playerIds.Contains(c.PlayerId))
+                    .ToDictionaryAsync(c => new { c.PlayerId, c.MonsterId }, stoppingToken);
+
+                var masteries = await dbContext.PlayerRaceMasteries
+                    .Where(m => playerIds.Contains(m.PlayerId))
+                    .ToDictionaryAsync(m => new { m.PlayerId, m.RaceId }, stoppingToken);
+
+                var codexLeveledUpPlayerIds = new System.Collections.Generic.HashSet<long>();
+
+                // Modul: race unlocks. A region boss's FIRST kill unlocks a
+                // playable race. Detected here rather than in the combat
+                // tick because this is the one place that already knows
+                // whether a monster had ever been killed before - the codex
+                // entry's prior KillCount. Recording it in the tick would
+                // mean either a second per-kill DB read on the hot path or a
+                // duplicate first-kill ledger.
+                var newlyUnlockedRaces = new System.Collections.Generic.List<(long PlayerId, byte RaceId, int MonsterId)>();
+                // Modul: race unlock feedback. Staged before the commit,
+                // published after it - see the enqueue site below.
+                var pendingUnlockNotifications = new System.Collections.Generic.List<RaceUnlockNotification>();
+
+                foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.MonsterId }))
+                {
+                    var key = new { group.Key.PlayerId, group.Key.MonsterId };
+                    int kills = group.Count();
+
+                    // Captured BEFORE the increment below: a boss whose
+                    // codex entry did not exist, or existed at zero, has
+                    // never been killed by this player.
+                    byte raceUnlockedByThisMonster = RaceUnlockRegistry.GetRaceUnlockedByBoss(key.MonsterId);
+                    if (raceUnlockedByThisMonster != 0)
+                    {
+                        bool everKilledBefore = codexEntries.TryGetValue(key, out var priorEntry) && priorEntry.KillCount > 0;
+                        if (!everKilledBefore)
+                        {
+                            newlyUnlockedRaces.Add((key.PlayerId, raceUnlockedByThisMonster, key.MonsterId));
+                        }
+                    }
+
+                    if (codexEntries.TryGetValue(key, out var entry))
+                    {
+                        entry.KillCount += kills;
+                    }
+                    else
+                    {
+                        entry = new MonsterCodexEntry
+                        {
+                            PlayerId = key.PlayerId,
+                            MonsterId = key.MonsterId,
+                            KillCount = kills,
+                            FirstDrawnRarity = 1
+                        };
+                        dbContext.MonsterCodexEntries.Add(entry);
+                        codexEntries[key] = entry;
+                    }
+
+                    int newLevel = CalculateLevelFromKillCount(entry.KillCount);
+                    if (newLevel > entry.Level)
+                    {
+                        entry.Level = newLevel;
+                        codexLeveledUpPlayerIds.Add(key.PlayerId);
+                    }
+                }
+
+                // Modul 13.4.3: region completion check. A region is 6
+                // distinct monster ids (5 standard/elite + 1 regional boss -
+                // same grouping formula StateCheckpointManager.LoadPlayerState
+                // uses for the login-time CompletedAreaFlags recompute) with
+                // every monster's KillCount >= 1000. Only newly-completed
+                // regions (not already in PlayerRegionCompletions) grant the
+                // permanent +1% Luck via CompletedAreaFlags; already-completed
+                // regions are skipped so the bonus is never re-granted.
+                var existingCompletions = await dbContext.PlayerRegionCompletions
+                    .Where(r => playerIds.Contains(r.PlayerId))
+                    .Select(r => new { r.PlayerId, r.RegionId })
+                    .ToListAsync(stoppingToken);
+                var existingCompletionSet = new System.Collections.Generic.HashSet<(long PlayerId, int RegionId)>(
+                    existingCompletions.Select(e => (e.PlayerId, e.RegionId)));
+
+                var newRegionFlagsByPlayer = new System.Collections.Generic.Dictionary<long, int>();
+
+                foreach (long touchedPlayerId in playerIds)
+                {
+                    for (int region = 1; region <= 10; region++)
+                    {
+                        if (existingCompletionSet.Contains((touchedPlayerId, region))) continue;
+
+                        var monstersInRegion = ContentRegistry.Monsters.ToArray().Where(m => ContentRegistry.GetMonsterRegionTier(m.Id) == region).ToList();
+                        if (monstersInRegion.Count == 0) continue;
+
+                        bool allKilled = true;
+                        for (int i = 0; i < monstersInRegion.Count; i++)
+                        {
+                            var lookupKey = new { PlayerId = touchedPlayerId, MonsterId = monstersInRegion[i].Id };
+                            if (!codexEntries.TryGetValue(lookupKey, out var regionEntry) || regionEntry.KillCount < 1000)
+                            {
+                                allKilled = false;
+                                break;
+                            }
+                        }
+
+                        if (!allKilled) continue;
+
+                        dbContext.PlayerRegionCompletions.Add(new PlayerRegionCompletion
+                        {
+                            PlayerId = touchedPlayerId,
+                            RegionId = region,
+                            CompletedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                        });
+
+                        newRegionFlagsByPlayer.TryGetValue(touchedPlayerId, out int existingFlags);
+                        newRegionFlagsByPlayer[touchedPlayerId] = existingFlags | (1 << region);
+                    }
+                }
+
+                // Modul: race unlocks. Persist the milestone and hand the
+                // player an actual character of the race - an "unlock" that
+                // grants nothing playable is just a line in a menu, and
+                // there is no other way to obtain a non-Human character:
+                // accounts are created Human and BreedingEngine refuses
+                // cross-race pairs.
+                if (newlyUnlockedRaces.Count > 0)
+                {
+                    long unlockEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                    var unlockPlayerIds = newlyUnlockedRaces.Select(u => u.PlayerId).Distinct().ToList();
+                    var alreadyUnlocked = await dbContext.PlayerRaceUnlocks
+                        .Where(u => unlockPlayerIds.Contains(u.PlayerId))
+                        .Select(u => new { u.PlayerId, u.RaceId })
+                        .ToListAsync(stoppingToken);
+                    var alreadyUnlockedSet = new System.Collections.Generic.HashSet<(long, int)>(
+                        alreadyUnlocked.Select(u => (u.PlayerId, u.RaceId)));
+
+                    for (int i = 0; i < newlyUnlockedRaces.Count; i++)
+                    {
+                        (long unlockPlayerId, byte unlockRaceId, int unlockMonsterId) = newlyUnlockedRaces[i];
+
+                        // The codex-entry probe above says "never killed
+                        // before"; this says "never unlocked before". They
+                        // can disagree if a codex row was ever pruned, and
+                        // the composite primary key would throw on the
+                        // duplicate rather than silently skipping.
+                        if (!alreadyUnlockedSet.Add((unlockPlayerId, unlockRaceId)))
+                        {
+                            continue;
+                        }
+
+                        dbContext.PlayerRaceUnlocks.Add(new PlayerRaceUnlock
+                        {
+                            PlayerId = unlockPlayerId,
+                            RaceId = unlockRaceId,
+                            UnlockedAtEpoch = unlockEpoch,
+                            UnlockedByMonsterId = unlockMonsterId
+                        });
+
+                        // Modul: breeding pairs. A male AND a female, so the
+                        // unlocked race is a founding population rather than
+                        // a single character the player can never propagate.
+                        await CharacterGrantEngine.GrantRacePairAsync(dbContext, unlockPlayerId, unlockRaceId, stoppingToken);
+
+                        // Modul: race unlock feedback. Staged here, published
+                        // only after the transaction below commits - a player
+                        // must never be told they unlocked a race that a
+                        // rollback then took away. Same ordering rule
+                        // CombatLootEngine follows for loot drops.
+                        pendingUnlockNotifications.Add(new RaceUnlockNotification
+                        {
+                            PlayerId = unlockPlayerId,
+                            RaceId = unlockRaceId
+                        });
+                    }
+                }
+
+                foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.RaceId }))
+                {
+                    if (group.Key.RaceId <= 0) continue;
+
+                    var key = new { group.Key.PlayerId, group.Key.RaceId };
+                    long totalXp = group.Sum(k => k.GainedXp);
+                    
+                    if (masteries.TryGetValue(key, out var mastery))
+                    {
+                        mastery.CumulativeXp += totalXp;
+                    }
+                    else
+                    {
+                        mastery = new PlayerRaceMastery
+                        {
+                            PlayerId = key.PlayerId,
+                            RaceId = key.RaceId,
+                            MasteryLevel = 1,
+                            CumulativeXp = totalXp
+                        };
+                        dbContext.PlayerRaceMasteries.Add(mastery);
+                        masteries[key] = mastery;
+                    }
+
+                    long requiredXp = GetRaceMasteryRequiredXp(mastery.MasteryLevel);
+                    bool leveledUp = false;
+                    while (mastery.CumulativeXp >= requiredXp)
+                    {
+                        mastery.CumulativeXp -= requiredXp;
+                        mastery.MasteryLevel++;
+                        leveledUp = true;
+                        requiredXp = GetRaceMasteryRequiredXp(mastery.MasteryLevel);
+                    }
+
+                    if (leveledUp)
+                    {
+                        _playerRegistry.MasteryUpdateQueue.Enqueue(new MasteryUpdateNotification
+                        {
+                            PlayerId = group.Key.PlayerId,
+                            RaceId = group.Key.RaceId,
+                            MasteryLevel = mastery.MasteryLevel
+                        });
+                    }
+                }
+
+                await dbContext.SaveChangesAsync(stoppingToken);
+                await transaction.CommitAsync(stoppingToken);
+
+                foreach (long leveledUpPlayerId in codexLeveledUpPlayerIds)
+                {
+                    await RecalculateAndSyncMultipliersAsync(leveledUpPlayerId, dbContext, _playerRegistry);
+                }
+
+                foreach (var regionCompletionKvp in newRegionFlagsByPlayer)
+                {
+                    _playerRegistry.RegionCompletionUpdateQueue.Enqueue(new RegionCompletionNotification
+                    {
+                        PlayerId = regionCompletionKvp.Key,
+                        CompletedRegionFlags = regionCompletionKvp.Value
+                    });
+                }
+
+                // Modul: race unlock feedback. Post-commit, so the client is
+                // only ever told about a race that is durably granted.
+                for (int i = 0; i < pendingUnlockNotifications.Count; i++)
+                {
+                    _playerRegistry.RaceUnlockQueue.Enqueue(pendingUnlockNotifications[i]);
+                }
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync(stoppingToken);
+                Console.WriteLine($"Failed to process Codex entries: {ex.Message}");
+            }
+        }
     }
 }

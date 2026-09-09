@@ -13,7 +13,10 @@ Ordering for the closed set was 7 → 1 → 2 → 6 → 5 → 4 → 3, cheapest 
 visible first, riskiest last. **For the open set it is 8 → 9 → 10, and that is a
 dependency rather than a preference — see "Execution plan" below.**
 
-**Tasks 1-10 are all done.** The table below is kept as the record of what each one turned out to be:
+**Tasks 1-10 are all done.** The table below is kept as the record of what each one
+turned out to be. **Tasks 11 and 12 were added 2026-09-09 and are open** - a gold
+sink built as a minigame, and the tutorial past its first ten minutes. Both are at
+the bottom of this file, written against measured numbers.
 
 | # | Open task | Shape |
 |---|---|---|
@@ -586,7 +589,7 @@ diagnosis observable in the client instead of in a MutationObserver.
 
 ---
 
-## OPEN — 9. Rarity barely does anything, and the numbers agree
+## DONE — 9. Rarity barely does anything, and the numbers agree
 
 **Reported 2026-09-04, by the player:**
 
@@ -1128,7 +1131,7 @@ test that passes four times out of five is worse than one that fails.
 
 ---
 
-## OPEN — 10. World boss rework: make the fight a fight
+## DONE — 10. World boss rework: make the fight a fight
 
 **Requested 2026-09-04:** rework the world boss, possibly with minigames, to
 make it more engaging.
@@ -1728,6 +1731,201 @@ every piece of equipment within minutes.
 odds. Two new server tests print their tables (`RarityRollDistributionTests`,
 `EquipmentDropTableTests`), so the same question is answerable next time without
 re-deriving anything.
+
+---
+
+# OPEN — 11 and 12, added 2026-09-09
+
+Two requests, both from the same observation: the game has a lot of content, and
+neither the *economy* nor the *player* has anywhere to put it. Written against
+measured numbers rather than instinct — the income table below is printed by
+`GoldSinkAffordabilityTests`, which is where to re-derive it.
+
+---
+
+## OPEN — 11. Gold has nowhere to go, and the sink should be a game
+
+**Requested 2026-09-09:** a gold sink — "maybe some minigame where we pay the
+entrance with gold and have a chance to win diamonds", and it must be
+"detailed, about skill and luck, engaging and fun", not simple.
+
+### What is actually true today
+
+`GoldSinkAffordabilityTests` prints both sides. Income first, at a kill every
+twenty seconds against the strongest regular of the region:
+
+| Region | Gold / hour |
+|---|---|
+| 1 | 10,440 |
+| 2 | 25,560 |
+| 3 | 62,280 |
+| 4 | 152,100 |
+| 5 | **369,000** |
+
+And every sink the game has, in the same units:
+
+| Sink | Cost | Share of one hour in region 5 |
+|---|---|---|
+| Affix reroll (r2 → r5) | 2,000 → 10,000 | 2.7% |
+| Fusion fee (tier 1 → 10) | 270 → 4,022 | 1.1% |
+| Breeding, first child | 500 | 0.1% |
+| Village feast | ~275,000 | 74%, but one-off per villager |
+| Village upgrades | tiered | one-off |
+
+**Every recurring sink in the game is under 3% of an hour at the top.** Gold is
+not a currency there, it is a counter — which is the report. Note this is the
+*opposite* of the region-2 problem that produced these tests ("five rerolls took
+100,000 gold"), so whatever ships must scale with region rather than sit flat.
+
+### Why a pure casino is the wrong answer
+
+Two hard constraints, both learned here:
+
+1. **The server owns the simulation.** A minigame the client plays and reports a
+   score for is a diamond printer — precedent is on record: opcode 39 granted
+   diamonds from an unsigned client field. Every decision must be one command,
+   and every outcome rolled server-side against state the server holds.
+2. **Diamonds are a purchased currency.** They already have four in-game sources
+   (chronicle pass, day-7 login streak, and the two `AchievementEngine` paths).
+   A fifth with no ceiling converts the gold surplus into free premium currency
+   and undercuts the store. The payout needs a **hard periodic ceiling**, not a
+   soft rate.
+
+### The proposal: The Delve — push your luck, with your own character
+
+Pay gold at the gate, descend a generated crypt floor by floor, bank or push
+after every floor. Dying loses the run; walking out converts what you banked.
+
+- **The entry fee scales with the player's highest unlocked region** — about
+  forty minutes of that region's income, so ~5,000 in region 1 and ~250,000 in
+  region 5. That makes it the first sink whose weight survives to the end of the
+  game.
+- **Eight floors, three doors each.** Every door advertises the stat it wants —
+  *"a narrow crack"* (Finesse), *"a jammed slab"* (Might), *"a cold draught"*
+  (unknown). The unknown door is the luck, and **Fortune reduces how often a
+  door is unknown**, which finally gives LCK a second home outside the loot roll.
+- **Resolution is a stat check the server rolls** against the character's real
+  sheet — the attributes reworked on 2026-09-06 and the gear that now gates
+  them. A pass banks embers and opens the next floor; a fail costs one of three
+  lantern charges, and zero charges ends the run with nothing.
+- **Bank or push.** Leaving converts embers to diamonds at a published rate;
+  pushing raises the multiplier on everything already banked. This is where the
+  skill lives, and it is the tension Farkle and Greater Rifts both run on: the
+  arithmetic is public and the answer still depends on your own sheet.
+- **Skill vs luck, stated plainly.** Skill is reading a door against your own
+  attributes, knowing when the multiplier stops paying for the charge, and
+  building a character that covers more door types. Luck is the generation, the
+  rolls, and the rare shrine floor.
+
+### The guard rails, which are not optional
+
+- **A weekly diamond ceiling per account**, on the wire and *shown* — "90 of 150
+  earned this week". Past it a run still pays, in materials and gold-back, so
+  the sink keeps working while the tap does not.
+- **Run state lives in a table**, one row, server-owned. The client sends "I
+  choose door 2" and nothing else — never an outcome, a score or a reward.
+- **Every rejection must be visible.** Not enough gold, ceiling reached, run
+  already in progress. A silent rollback here would present as a dead button,
+  which is this server's favourite way to lie.
+
+### Done when
+
+- A run can be entered, played to eight floors and banked entirely through the
+  UI, with `exercise.mjs` asserting the world changed: **gold fell by the entry
+  fee**, and a banked run **raised the diamond balance** — both re-read after a
+  reload, not from the in-session packet.
+- The entry fee is measured against income in `GoldSinkAffordabilityTests`, in
+  minutes of play, per region, and asserted into a band. A number a test prints
+  is not a number a test checks.
+- The weekly ceiling is enforced server-side, and a test drives an account past
+  it and asserts the payout changes form rather than the request being refused
+  in silence.
+- No client-supplied value influences a reward. A test posts a tampered command
+  and asserts the server ignores it.
+- The run survives a checkpoint and a relogin — any wire field for it is
+  hydrated at login or on `RuntimeOnlyByDesign` with a reason.
+
+### Risk
+
+**High, and mostly in scope rather than difficulty.** The push-your-luck core is
+a few hundred lines and a table; the risk is that it grows a combat model of its
+own. It must reuse `StatsCalculator` and the attribute sheet, not a second one.
+
+The second risk is monetisation. Ship the ceiling in the first version, not the
+second — a tap is much harder to take away than to never open.
+
+---
+
+## OPEN — 12. The tutorial teaches the first ten minutes and then stops
+
+**Requested 2026-09-09:** guide players through the game with pop-ups and hints
+— "there is a lot of content and I want the player not to be lost".
+
+### What is actually true today — more than expected
+
+The third of these to turn out half-built. There are **two working tiers**, both
+documented in `docs/onboarding_steps.md` and both tested in
+`client_web/tests/tutorial.test.ts` and `exercise.mjs`:
+
+- **Tier one**, `tutorialSteps.ts` — three instructions: fill the larder, win a
+  fight, wear a drop. Ordered that way because a new player who fought first
+  **died to the first monster in the game** and the tutorial stalled forever.
+- **Tier two**, `tutorialDiscoveries.ts` — **seventeen** one-shot explanations
+  that fire the first time a player reaches a system: gathering, crafting,
+  tools, skills, village, region 2, market, forge, town hall, guild, breeding,
+  first child, world boss, deeds, ancestors, inheritance, a full backpack.
+
+Both rest on one rule worth keeping: **a moment is a predicate over the state
+packet.** Nothing is stored except which explanations have been read, so a
+player who unlocked something in a closed tab is still told about it.
+
+So this is not "write a tutorial". It is three specific gaps.
+
+### The gaps
+
+**1. Nothing sequences the game after minute ten.** Tier one ends at three
+steps; tier two is *reactive* — it explains a system once you have already found
+it and says nothing about one you have not. Between "wear a drop" and the world
+boss there is no answer to *what should I do now*, which is the actual report.
+
+*Proposal — tier three, the objective track.* One always-available panel naming
+the single highest-value next thing, derived the same way: a predicate over the
+packet, in priority order. *"You have 23 unspent attribute points"* → *"Region 2
+opens when you beat the region 1 boss"* → *"Your Town Hall caps your village at
+level 5"*. Re-derived every frame, so it is never stale, on the rule the two
+working tiers already prove.
+
+**2. Four systems are taught by nothing**, and the reasons are recorded in
+`docs/onboarding_steps.md` §5: chat, the mailbox, market listing and buying, and
+affix rerolls specifically. All four are REST-shaped, which is why they were
+skipped, and all four are reachable from the objective track without a wire
+change — a fetched fact rather than a packet field, the way `hasGuild` already
+is.
+
+**3. Teaching is per-device.** The read-set is `localStorage` keyed by player
+id, so signing in on a phone teaches everything again. Accepted at the time; it
+becomes worth fixing only once the track lands, because a track that repeats
+itself is worse than one that does not exist.
+
+### Done when
+
+- A brand-new account is never without a stated next objective, from
+  registration through the first region boss, asserted in `exercise.mjs`'s own
+  new-account browser context — **the fixture cannot verify this, by
+  construction**: it is level 40, geared and an admin.
+- The track's rules are a pure predicate table with a node-runner test per rule,
+  matching `tutorial.test.ts`.
+- Chat, mail, market and rerolls are each reachable from a stated objective.
+- The track never contradicts tier one: while an onboarding step is outstanding,
+  it *is* the objective.
+- `check:clipping` and `check:overlap` at 390 px — a persistent overlay is
+  exactly the shape that has buried controls before.
+
+### Risk
+
+**Low technically, medium in taste.** The failure mode is nagging: a permanent
+panel that always wants something is worse than silence. It needs a dismissed
+state that lasts, and it must say *why* a thing is worth doing, not just name it.
 
 ---
 
