@@ -187,6 +187,22 @@ namespace FolkIdle.Server.Models
         // the offline path never granted.
         public int UnspentAttributePoints { get; set; }
 
+        // Modul: THE DELVE'S WEEKLY DIAMOND CEILING, and the week it belongs to.
+        //
+        // Two columns rather than a ledger table because the only question ever
+        // asked is "how many this week" - a per-run history would be a second
+        // source for a number the run itself already reports, and this game's
+        // dominant bug class is two copies of one truth. The week key is
+        // ISO-week * 100 + year % 100 (see DelveEngine.CurrentWeekKey); when it
+        // does not match, the counter is zero and is rewritten, so no cron job
+        // has to remember to reset anything.
+        //
+        // Written ONLY by DelveEngine, off the tick. The checkpoint does not
+        // touch either column - one writer, the same rule the quarantine flags
+        // are under.
+        public int DelveDiamondsThisWeek { get; set; }
+        public int DelveWeekKey { get; set; }
+
         // Modul: RESPEC, which the three-ring tree made compulsory rather than
         // convenient.
         //

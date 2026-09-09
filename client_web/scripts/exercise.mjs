@@ -1108,6 +1108,115 @@ await go('World Boss');
   }
 }
 
+// --- the Delve: gold goes in, and the world has to change ---------------------
+//
+// Modul: A GOLD SINK IS ONLY A SINK IF THE GOLD ACTUALLY LEAVES.
+//
+// This is the exact shape this whole file exists to catch: a screen of doors
+// that render beautifully and resolve nothing. The assertions are therefore on
+// the SERVER's own view of the run, read back through /api/v1/delve, not on
+// what the page happens to be drawing - and the last one is read after a
+// reload, because a run that lives only in the tab is not a run.
+await go('The Delve');
+{
+  const before = await apiGet('/api/v1/delve');
+  record(
+    'the Delve prices a run against the region reached',
+    Boolean(before) && before.EntryFeeForNextRun > 0,
+    before ? `region ${before.HighestRegionReached}, ${before.EntryFeeForNextRun.toLocaleString()}g` : 'no view',
+  );
+
+  if (before && !before.Active && before.CurrentGold >= before.EntryFeeForNextRun) {
+    const goldBefore = before.CurrentGold;
+
+    await page.getByRole('button', { name: /Pay and descend/i }).first().click();
+    await page.waitForTimeout(1200);
+
+    const started = await apiGet('/api/v1/delve');
+    record(
+      'paying the gate opens a run and takes the gold',
+      Boolean(started?.Active) && started.CurrentGold === goldBefore - before.EntryFeeForNextRun,
+      started ? `${goldBefore.toLocaleString()} -> ${started.CurrentGold.toLocaleString()}g, floor ${started.CurrentFloor}` : 'no run',
+    );
+
+    record(
+      'a floor offers three doors and at least one says what it wants',
+      Boolean(started) && started.DoorDemands.length === 3 && started.DoorDemands.some((d) => d >= 0),
+      started ? started.DoorDemands.map((d) => (d < 0 ? '???' : ['Might', 'Finesse', 'Vigour', 'Fortune'][d])).join(' / ') : '',
+    );
+
+    // Modul: the odds for a HIDDEN door must not be published - they would give
+    // the demand away by inference and make Fortune worthless. Asserted here
+    // and in DelveEngineTests, because this one crosses the wire.
+    record(
+      'a door that has not shown itself publishes no odds',
+      Boolean(started) && started.DoorDemands.every((d, i) => (d < 0 ? started.DoorOdds[i] === -1 : started.DoorOdds[i] > 0)),
+    );
+
+    // Open a door. The outcome is the server's to decide, so this asserts that
+    // SOMETHING resolved - a floor cleared or a charge burned - rather than
+    // predicting which.
+    await page.locator('.door').first().click();
+    await page.waitForTimeout(1200);
+
+    const afterDoor = await apiGet('/api/v1/delve');
+    const resolved =
+      !afterDoor?.Active ||
+      afterDoor.FloorsCleared > started.FloorsCleared ||
+      afterDoor.ChargesRemaining < started.ChargesRemaining;
+    record(
+      'opening a door is resolved by the server',
+      resolved,
+      afterDoor?.Active
+        ? `floor ${afterDoor.CurrentFloor}, ${afterDoor.FloorsCleared} cleared, ${afterDoor.ChargesRemaining} charges`
+        : 'the run ended on that door',
+    );
+
+    if (afterDoor?.Active) {
+      await page.getByRole('button', { name: /Climb out/i }).first().click();
+      await page.waitForTimeout(1200);
+    }
+
+    // Modul: AFTER A RELOAD. The run row, the gold and the diamonds are all
+    // server state, and the only assertion that proves it is one made against
+    // a page that has thrown its memory away. The persistence defect this
+    // codebase shipped in September was invisible to every in-session check.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+    await dismissOfflineSummary(3000);
+
+    const settled = await apiGet('/api/v1/delve');
+    record(
+      'the run is closed out and does not survive a reload',
+      Boolean(settled) && !settled.Active,
+      settled?.Active ? `still on floor ${settled.CurrentFloor}` : 'no run in progress',
+    );
+
+    // The entry fee is at least twice the best consolation, so a completed run
+    // always costs gold on net however it went. That is what makes it a sink.
+    record(
+      'the gold actually left',
+      Boolean(settled) && settled.CurrentGold < goldBefore,
+      settled ? `${goldBefore.toLocaleString()} -> ${settled.CurrentGold.toLocaleString()}g` : '',
+    );
+
+    record(
+      'the weekly diamond ceiling is stated, not hidden',
+      Boolean(settled) && settled.WeeklyDiamondCeiling > 0 && settled.DiamondsEarnedThisWeek <= settled.WeeklyDiamondCeiling,
+      settled ? `${settled.DiamondsEarnedThisWeek} of ${settled.WeeklyDiamondCeiling} this week` : '',
+    );
+  } else {
+    // Written as a conditional rather than a hard failure, the same shape the
+    // attribute and locked-slot checks use: a fixture too poor for the gate
+    // reports itself instead of looking like a broken feature.
+    record(
+      'the Delve gate is reachable',
+      Boolean(before),
+      before?.Active ? 'a run is already in progress' : 'fixture cannot afford the gate - farm gold or re-seed',
+    );
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character

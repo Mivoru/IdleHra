@@ -20,6 +20,7 @@
   import Breeding from './routes/Breeding.svelte';
   import Ancestors from './routes/Ancestors.svelte';
   import Store from './routes/Store.svelte';
+  import Delve from './routes/Delve.svelte';
   import SkillsPanel from './lib/ui/SkillsPanel.svelte';
   import Inheritance from './routes/Inheritance.svelte';
   import Settings from './routes/Settings.svelte';
@@ -65,6 +66,7 @@
         { key: 'gathering', label: 'Gathering' },
         { key: 'worldboss', label: 'World Boss' },
         { key: 'boosts', label: 'Boosts' },
+        { key: 'delve', label: 'The Delve' },
       ],
     },
     {
@@ -329,6 +331,8 @@
       <Ancestors />
     {:else if screen === 'inheritance'}
       <Inheritance />
+    {:else if screen === 'delve'}
+      <Delve />
     {:else if screen === 'store'}
       <Store />
     {:else if screen === 'settings'}

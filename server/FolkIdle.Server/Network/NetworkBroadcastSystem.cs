@@ -1008,6 +1008,23 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // The Delve - a gold sink shaped like a game. REST rather
+                    // than opcodes on purpose: a run is a handful of requests
+                    // minutes apart, nothing in the 10 Hz tick reads any of it,
+                    // and the state packet is already near its 800-byte layout
+                    // guard. See DelveEngine.
+                    if (requestPath == "/api/v1/delve" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleDelveView(context);
+                        continue;
+                    }
+
+                    if (requestPath.StartsWith("/api/v1/delve/") && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleDelveAction(context, requestPath);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guild/shard-match" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGuildShardMatch(context);
@@ -2570,6 +2587,148 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Chest bulk action error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        /// <summary>
+        /// What the Delve screen draws: the run if there is one, and what a run
+        /// would cost if there is not.
+        /// </summary>
+        private async Task HandleDelveView(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var engine = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Economy.DelveEngine>();
+                var view = await engine.GetViewAsync(playerId);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, view);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Delve view error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        /// <summary>
+        /// start / door / bank.
+        ///
+        /// Modul: THE ONLY NUMBER THIS ACCEPTS FROM THE CLIENT IS A DOOR INDEX,
+        /// and it is bounds-checked in the engine. There is no field here that a
+        /// tampered client could make profitable - no floor, no depth, no score,
+        /// no reward. That is deliberate and it is the whole security design of
+        /// the feature: opcode 39 once granted diamonds straight out of an
+        /// unsigned client field, and a minigame is exactly the shape that
+        /// invites the same mistake a second time.
+        ///
+        /// Every refusal answers 200 with a Result the screen can read, not a
+        /// bare status code. A silent rollback here would present as a dead
+        /// button, which is this server's favourite way to lie.
+        /// </summary>
+        private async Task HandleDelveAction(HttpListenerContext context, string requestPath)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var engine = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Economy.DelveEngine>();
+                FolkIdle.Server.Domain.Economy.DelveActionOutcome outcome;
+
+                if (requestPath == "/api/v1/delve/start")
+                {
+                    outcome = await engine.StartRunAsync(playerId);
+                }
+                else if (requestPath == "/api/v1/delve/bank")
+                {
+                    outcome = await engine.BankAsync(playerId);
+                }
+                else if (requestPath == "/api/v1/delve/door")
+                {
+                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                    string body = await reader.ReadToEndAsync();
+
+                    int door;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(body);
+                        if (!parsed.RootElement.TryGetProperty("Door", out var doorElement)
+                            || doorElement.ValueKind != JsonValueKind.Number)
+                        {
+                            context.Response.StatusCode = 400;
+                            context.Response.Close();
+                            return;
+                        }
+                        door = doorElement.GetInt32();
+                    }
+                    catch (JsonException)
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+
+                    outcome = await engine.ChooseDoorAsync(playerId, door);
+                }
+                else
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                // Modul: gold and diamonds moved in the database, out of band
+                // from the live payload - so the session has to be told, or the
+                // header keeps showing the old balance until the player signs in
+                // again. Reported once already as "I have to press F5 for the
+                // gold to update"; ReloadState is the answer every other
+                // off-tick engine here uses.
+                bool changedBalances =
+                    outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.Ok
+                    && (requestPath == "/api/v1/delve/start" || requestPath == "/api/v1/delve/bank");
+
+                if (changedBalances)
+                {
+                    CommandQueue.Enqueue(new PlayerCommand
+                    {
+                        PlayerId = playerId,
+                        Packet = new ClientCommandPacket { Command = CommandType.ReloadState }
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new
+                {
+                    Result = outcome.Result.ToString(),
+                    outcome.DiamondsGranted,
+                    outcome.GoldReturned,
+                    outcome.View
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Delve action error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

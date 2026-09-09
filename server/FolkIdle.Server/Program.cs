@@ -388,6 +388,11 @@ serviceCollection.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexe
 serviceCollection.AddSingleton<RedisSessionCache>();
 serviceCollection.AddSingleton<RedisPlayerSessionLock>();
 
+// The Delve: a gold sink shaped like a game. Stateless apart from the run row
+// it reads and writes, so a singleton over the context factory is all it needs
+// - see FolkIdle.Server.Domain.Economy.DelveEngine.
+serviceCollection.AddSingleton<FolkIdle.Server.Domain.Economy.DelveEngine>();
+
 // Modul: registers IHttpClientFactory - required by
 // ProductionIapReceiptValidator's live store-verification calls
 // (Google Play Developer API / Apple App Store Server API) so those

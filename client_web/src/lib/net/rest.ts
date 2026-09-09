@@ -1268,3 +1268,75 @@ export interface GuildDepotByBaseId {
   [baseId: string]: number;
 }
 
+
+// ---------------------------------------------------------------------------
+// /api/v1/delve  -  The Delve
+// ---------------------------------------------------------------------------
+
+/**
+ * A run, as the SERVER sees it. Every number here is read; none is ever sent.
+ *
+ * Modul: the client's whole vocabulary is start / door N / bank. It does not
+ * know how deep it is allowed to go, what a floor is worth, or whether a check
+ * passed until the server says so - which is the point. Opcode 39 once granted
+ * diamonds out of an unsigned client field, and a minigame with a score is the
+ * shape that invites that mistake a second time.
+ */
+export interface DelveRunView {
+  Active: boolean;
+  CurrentFloor: number;
+  FloorsCleared: number;
+  ChargesRemaining: number;
+  EntryFeePaid: number;
+  /** Per door: the attribute id it wants, or -1 where the door has not shown it. */
+  DoorDemands: number[];
+  /** Per door: odds 0-1, or -1 for a door whose demand is hidden. */
+  DoorOdds: number[];
+  DiamondsIfBankedNow: number;
+  /** What clearing one more floor would make it - the temptation, as a number. */
+  DiamondsIfNextFloorCleared: number;
+  DiamondsAfterCeiling: number;
+  ConsolationGoldIfCapped: number;
+  DiamondsEarnedThisWeek: number;
+  WeeklyDiamondCeiling: number;
+  EntryFeeForNextRun: number;
+  HighestRegionReached: number;
+  CurrentGold: number;
+  Attributes: number[];
+}
+
+export type DelveResultCode =
+  | 'Ok'
+  | 'RunAlreadyInProgress'
+  | 'NotEnoughGold'
+  | 'NoRunInProgress'
+  | 'InvalidDoor'
+  | 'RunLost'
+  | 'FloorCleared'
+  | 'ChargeLost'
+  | 'AtTheBottom'
+  | 'PlayerNotFound';
+
+export interface DelveActionResponse {
+  Result: DelveResultCode;
+  DiamondsGranted: number;
+  GoldReturned: number;
+  View: DelveRunView;
+}
+
+export function fetchDelve(): Promise<DelveRunView> {
+  return authedGet<DelveRunView>('/api/v1/delve');
+}
+
+export function startDelve(): Promise<DelveActionResponse | null> {
+  return authedPost<DelveActionResponse>('/api/v1/delve/start', {});
+}
+
+/** The only number this feature ever accepts from the client, and the server bounds-checks it. */
+export function chooseDelveDoor(door: number): Promise<DelveActionResponse | null> {
+  return authedPost<DelveActionResponse>('/api/v1/delve/door', { Door: door });
+}
+
+export function bankDelve(): Promise<DelveActionResponse | null> {
+  return authedPost<DelveActionResponse>('/api/v1/delve/bank', {});
+}

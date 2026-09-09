@@ -45,6 +45,59 @@ namespace FolkIdle.Server.Tests
 
         private static double MinutesOfPlay(double cost, int region) => cost / GoldPerHour(region) * 60.0;
 
+        /// <summary>
+        /// THE DELVE, measured against the income that pays for it.
+        ///
+        /// Modul: this is the assertion the whole feature is built on. Every
+        /// recurring sink in this file costs under 3% of an hour at the top of
+        /// the game - a reroll 2.7%, a fusion fee 1.1% - which is why gold
+        /// stopped being a currency there. The Delve is priced at roughly forty
+        /// minutes of the player's OWN region, so it is the same weight for a
+        /// new player and a finished one, and it is the first sink whose share
+        /// does not collapse as income grows.
+        ///
+        /// Asserted, not printed. A number a test prints is not a number a test
+        /// checks, and this file exists because that distinction was learned
+        /// the expensive way.
+        /// </summary>
+        [Fact]
+        public void TheDelveCostsAboutAnEveningPerRegion()
+        {
+            double previousShare = -1;
+
+            for (int region = 1; region <= 5; region++)
+            {
+                long fee = DelveRegistry.EntryFeeForRegion(region);
+                double minutes = MinutesOfPlay(fee, region);
+                double share = fee / GoldPerHour(region);
+
+                _output.WriteLine($"region {region} Delve: {fee:N0}g = {minutes:F0} min of region-{region} play ({share:P0} of an hour)");
+
+                // Long enough to be felt, short enough that a run is an
+                // evening's decision rather than a week's saving.
+                Assert.InRange(minutes, 25.0, 55.0);
+
+                // Modul: THE SHARE MUST NOT COLLAPSE. That is the single defect
+                // every other sink in this file has - each one is a flat price
+                // against geometric income, so it is punishing in region 2 and
+                // decoration in region 5. Holding the share roughly level
+                // across regions is the whole point of a per-region fee table,
+                // and a hand-edited entry that broke it would otherwise be
+                // invisible until a player noticed.
+                if (previousShare >= 0)
+                {
+                    Assert.InRange(share / previousShare, 0.75, 1.35);
+                }
+                previousShare = share;
+            }
+
+            // And the top of the game specifically: the feast is the only
+            // existing sink with any weight there, and it is one-off per
+            // villager. This one repeats.
+            Assert.True(DelveRegistry.EntryFeeForRegion(5) > DelveRegistry.EntryFeeForRegion(1) * 20,
+                "the fee has to grow with income, or it becomes decoration exactly where it is needed");
+        }
+
         [Fact]
         public void ARerollIsMinutesOfPlay()
         {

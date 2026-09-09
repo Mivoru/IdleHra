@@ -91,6 +91,9 @@ namespace FolkIdle.Server.Models
         // because only born children carry forward.
         public DbSet<VillageNewcomer> VillageNewcomers { get; set; }
 
+        // The Delve: one live run per player. See DelveRunRecord.
+        public DbSet<DelveRunRecord> DelveRunRecords { get; set; }
+
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
         }

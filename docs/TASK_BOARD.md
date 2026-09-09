@@ -15,8 +15,9 @@ dependency rather than a preference — see "Execution plan" below.**
 
 **Tasks 1-10 are all done.** The table below is kept as the record of what each one
 turned out to be. **Tasks 11 and 12 were added 2026-09-09 and are open** - a gold
-sink built as a minigame, and the tutorial past its first ten minutes. Both are at
-the bottom of this file, written against measured numbers.
+sink built as a minigame (**11 is DONE - shipped as The Delve**), and the
+tutorial past its first ten minutes. Both are at the bottom of this file,
+written against measured numbers.
 
 | # | Open task | Shape |
 |---|---|---|
@@ -1743,7 +1744,57 @@ measured numbers rather than instinct — the income table below is printed by
 
 ---
 
-## OPEN — 11. Gold has nowhere to go, and the sink should be a game
+## DONE 2026-09-09 — 11. Gold has nowhere to go, and the sink should be a game
+
+**Shipped as The Delve.** What landed, against the design below:
+
+- `DelveRegistry` - the rules, no infrastructure. Eight floors asking 20 to 270,
+  pinned to the attribute milestone ladder (25/60/120/200/300) so the bottom
+  floor sits under the last rung and depth is bought with the BREADTH of a
+  sheet. Entry fee 7,000 to 250,000 by region reached, measured at **39-41
+  minutes of that region's own income at every tier** and asserted into a band
+  by `GoldSinkAffordabilityTests.TheDelveCostsAboutAnEveningPerRegion` - which
+  also asserts the share does not collapse across regions, the single defect
+  every other sink in that file has.
+- `DelveEngine` - off the tick, one Serializable transaction per action, gold
+  charged the way `BreedingEngine` charges it and a `ReloadState` afterwards.
+  The client's whole vocabulary is start / door N / bank; a tampered request has
+  nothing profitable to change, and `ADoorOutsideTheOfferedRangeIsRefusedAndChangesNothing`
+  pins it.
+- **The weekly ceiling shipped in v1**, at 60 diamonds - about 780 a season
+  against a 950-diamond premium pass. Past it a run still pays gold back, so the
+  sink keeps working after the tap shuts, and
+  `TheWeeklyCeilingCapsTheDiamondsAndPaysGoldForTheRest` asserts the return is
+  still less than the fee.
+- Fortune got its second home: `DoorRevealChance` is 55% bare, 77% at 100, and
+  reaches its 90% cap at about 253 - so a point is worth less the more you hold
+  and the reveal rate can never be certain.
+- A full clear pays 20 diamonds; banking at floor 5 pays 6.
+
+Verified on the running stack, not just in tests: `exercise.mjs` pays the gate,
+asserts the gold left **to the exact fee**, opens a door, asserts the SERVER
+resolved it, climbs out, **reloads**, and asserts the run is closed and the gold
+is still gone. 138/138, 635/635 server tests, clean at 390/900/1500 px.
+
+Two things the design got wrong and the build corrected:
+
+- `MaxSuccessChance` was 0.92 against a curve that asymptotes at 0.90 - a
+  constant that read like a rule and clamped nothing. The ceiling is the curve's
+  own asymptote now, and the test asserts it as an equality, which is what found
+  it.
+- The first diminishing-curve test compared par->x2 against x2->x10 and failed a
+  perfectly good curve. Equal doublings are the only honest interval.
+
+### The original design follows.
+
+### Still open
+
+- **The consolation payout is gold**, which is a smaller sink working against a
+  bigger one. Materials would be better and were scoped out of v1.
+- **Nothing teaches the Delve.** It has no tier-two discovery moment, which is
+  task 12's problem and is listed there.
+
+## The design as written, 2026-09-09
 
 **Requested 2026-09-09:** a gold sink — "maybe some minigame where we pay the
 entrance with gold and have a chance to win diamonds", and it must be
