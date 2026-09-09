@@ -556,6 +556,28 @@ namespace FolkIdle.Server.Domain.Combat
             _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = playerId, Packet = packet });
         }
 
+        /// <summary>
+        /// Commands the SERVER enqueues into its own command queue, which
+        /// therefore carry a zeroed ClientCommandPacket rather than a client's
+        /// synchronized one.
+        ///
+        /// Modul: LOGOUT BELONGS HERE AND WAS MISSING, WHICH COST EVERY PLAYER
+        /// UP TO FIVE MINUTES ON EVERY DISCONNECT.
+        ///
+        /// No client sends opcode 6 - grep the web client, it has no Logout at
+        /// all. Its only producer is NetworkBroadcastSystem's socket-closure
+        /// finally block, and that packet leaves LogicEpochCounter at its
+        /// default 0. Any payload past its fifth checkpoint is further from 0
+        /// than EpochDriftTolerance, so the epoch gate read the server's own
+        /// shutdown packet as a desynchronized client and answered with
+        /// TerminateSessionForSecurity - which drops the session WITHOUT the
+        /// flush the Logout handler exists to perform. Reported as attribute
+        /// points reverting after F5; it was never only the attributes, and the
+        /// telemetry it left behind said "split brain".
+        /// </summary>
+        public static bool IsServerInternalCommand(CommandType command)
+            => command == CommandType.ReloadState || command == CommandType.Logout;
+
         private void TerminateSessionForSecurity(long playerId)
         {
             // Modul: _liveSessionContexts/_playerRegistry cleanup now lives
@@ -1795,7 +1817,9 @@ namespace FolkIdle.Server.Domain.Combat
                         continue;
                     }
 
-                    bool isInternalCommand = cmd.Command == CommandType.ReloadState;
+                    // Server-generated packets carry no client epoch - see
+                    // IsServerInternalCommand for why Logout is one of them.
+                    bool isInternalCommand = IsServerInternalCommand(cmd.Command);
 
                     // Epoch interception gate: reject commands from desynchronized clients.
                     //
@@ -2564,6 +2588,16 @@ namespace FolkIdle.Server.Domain.Combat
                             }
 
                             currentPayload.IsDirty = true;
+
+                            // Modul: a placed point is a DECISION, not an
+                            // accumulating counter, so it does not wait out the
+                            // five-minute checkpoint window. Pulling the
+                            // boundary forward instead of flushing inline keeps
+                            // the synchronous database write off the click path
+                            // and coalesces a burst of clicks into one write on
+                            // the next tick.
+                            currentPayload.TicksSinceLastFlush = StateCheckpointManager.CheckpointBoundaryTicks;
+
                             _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
                                 (byte)Network.CommandResultCode.Success);
                         }
@@ -2614,6 +2648,10 @@ namespace FolkIdle.Server.Domain.Combat
                             currentPayload.LCK = AttributeRegistry.StartingValue(AttributeRegistry.Fortune);
                             currentPayload.UnspentAttributePoints += refunded;
                             currentPayload.IsDirty = true;
+
+                            // Same reason as the spend above: a respec that only
+                            // exists in memory is a respec the next reload undoes.
+                            currentPayload.TicksSinceLastFlush = StateCheckpointManager.CheckpointBoundaryTicks;
 
                             _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
                                 (byte)Network.CommandResultCode.Success);

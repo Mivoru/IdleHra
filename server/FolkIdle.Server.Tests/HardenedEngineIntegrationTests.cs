@@ -2639,6 +2639,111 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        /// <summary>
+        /// Modul: A REDIS FRAME IS NOT A CHECKPOINT.
+        ///
+        /// TrackState used to return the moment Redis accepted a session frame,
+        /// including at the checkpoint boundary itself - so with Redis
+        /// connected (it is, in dev and in production) FlushState was never
+        /// reached by the periodic path, and every column the frame does not
+        /// carry had no route to Postgres at all. The four attributes and the
+        /// unspent pool are those columns, which is why placing points and
+        /// pressing F5 put them all back.
+        ///
+        /// Every OTHER checkpoint test in this file runs the Redis-is-null path,
+        /// because the fixture's provider does not register a RedisSessionCache
+        /// - which is precisely how this survived. This one registers one.
+        /// </summary>
+        [Fact]
+        public async Task Test_StateCheckpointManager_RedisFrameDoesNotSubstituteForTheCheckpoint()
+        {
+            const long testPlayerId = 970000117L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid(),
+                    LogicEpochCounter = 3L,
+                    BaseStrength = 50,
+                    BaseDexterity = 50,
+                    BaseConstitution = 50,
+                    BaseLuck = 25,
+                    UnspentAttributePoints = 40
+                });
+                await db.SaveChangesAsync();
+            }
+
+            // Only the two services StateCheckpointManager actually resolves on
+            // this path. The multiplexer is borrowed rather than registered, so
+            // this provider cannot dispose the fixture's connection out from
+            // under the tests that run after it.
+            var multiplexer = _fixture.ServiceProvider.GetRequiredService<IConnectionMultiplexer>();
+            var services = new ServiceCollection();
+            services.AddSingleton(_fixture.RetryingOptions);
+            services.AddSingleton(new RedisSessionCache(multiplexer));
+            var provider = services.BuildServiceProvider();
+
+            Assert.True(provider.GetRequiredService<RedisSessionCache>().IsConnected,
+                "This test only proves anything against a connected Redis.");
+
+            var checkpointManager = new StateCheckpointManager(provider);
+
+            var state = new TickStatePayload
+            {
+                PlayerId = testPlayerId,
+                LogicEpochCounter = 3L,
+                TicksSinceLastFlush = StateCheckpointManager.CheckpointBoundaryTicks,
+                IsDirty = true,
+                InventorySpaceRemaining = 20,
+                CurrentLevel = 12,
+                STR = 71,
+                DEX = 52,
+                CON = 63,
+                LCK = 25,
+                UnspentAttributePoints = 9
+            };
+
+            checkpointManager.TrackState(ref state);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
+
+            Assert.Equal(71, player.BaseStrength);
+            Assert.Equal(52, player.BaseDexterity);
+            Assert.Equal(63, player.BaseConstitution);
+            Assert.Equal(25, player.BaseLuck);
+            Assert.Equal(9, player.UnspentAttributePoints);
+            Assert.Equal(12, player.CurrentLevel);
+        }
+
+        /// <summary>
+        /// Modul: the Logout the server sends itself must not be read as a
+        /// desynchronized client.
+        ///
+        /// NetworkBroadcastSystem's socket-closure finally block is the only
+        /// producer of opcode 6 - no client sends it - and it leaves
+        /// LogicEpochCounter at its default 0. The command loop's epoch gate
+        /// therefore answered a closed tab with TerminateSessionForSecurity,
+        /// which removes the player WITHOUT the flush the Logout handler exists
+        /// to perform, discarding everything since the last checkpoint.
+        /// </summary>
+        [Fact]
+        public void Test_EpochGate_AcceptsTheServersOwnLogoutPacket()
+        {
+            var payload = new TickStatePayload { PlayerId = 970000118L, LogicEpochCounter = 500L };
+            var logout = new ClientCommandPacket { Command = CommandType.Logout, TargetId = payload.PlayerId };
+
+            Assert.False(ClientCommandValidator.ValidateEpochSynchronization(ref payload, ref logout),
+                "Sanity: a zeroed epoch on a long-lived payload is exactly what the gate rejects - which is why Logout has to be exempt from it rather than made to pass it.");
+            Assert.True(SimulationEngine.IsServerInternalCommand(CommandType.Logout),
+                "Logout is server-generated and must bypass the epoch gate, or a closed tab is never flushed.");
+            Assert.True(SimulationEngine.IsServerInternalCommand(CommandType.ReloadState));
+            Assert.False(SimulationEngine.IsServerInternalCommand(CommandType.SpendAttributePoint));
+        }
+
         [Fact]
         public async Task Test_StateCheckpointManager_FlushFailure_RetainsDirtyFlagForNextCycle()
         {

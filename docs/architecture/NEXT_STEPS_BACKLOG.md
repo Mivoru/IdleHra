@@ -16,6 +16,79 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-09 - the checkpoint was not a checkpoint
+
+Reported as *"I distribute my attribute points and after F5 they are all back
+in the pool."* Exactly right, and it was never only the attributes: **two
+independent defects meant the durable half of a session had no reliable route
+to Postgres at all.**
+
+## 1. A Redis frame stood in for the checkpoint
+
+`StateCheckpointManager.TrackState` returned the moment `RedisSessionCache
+.TryStoreFrame` accepted a frame - **including at the checkpoint boundary
+itself.** Redis is up in dev (`run-dev.ps1`) and in production (`ops/oracle`
+runs a Redis beside the app), so the periodic path never reached `FlushState`
+on a normal session.
+
+The frame is **twelve fields**: player id, level, xp, lineage, logout stamp,
+time bank, epoch, quarantine, a gold snapshot and three counters. `FlushState`
+writes far more than that - `BaseStrength/Dexterity/Constitution/Luck`,
+`UnspentAttributePoints`, diamonds, skill points, the larder, potions, daily
+quests, the chronicle pass, lifetime statistics. **None of it had a periodic
+route to the database.** Level and XP survived precisely because they are among
+the twelve; that is why nobody noticed until a discrete, deliberate action was
+the thing being lost.
+
+Fixed: the frame is still written first (it is the session cache, and it is
+gold's durable path - see the delta note on `RedisPendingGoldDelta`), but it no
+longer short-circuits the boundary. `CheckpointBoundaryTicks` is now a named
+public constant because a command can pull the next checkpoint forward by
+setting `TicksSinceLastFlush` to it; `SpendAttributePoint` and
+`RespecAttributes` do, which coalesces a burst of clicks into one write on the
+next tick rather than a synchronous flush per click.
+
+## 2. The server's own Logout was read as a desynchronized client
+
+The safety net that should have caught defect 1 on an F5 was broken too. **No
+client sends opcode 6** - grep `client_web`, it has no Logout at all. The only
+producer is `NetworkBroadcastSystem`'s socket-closure `finally` block, which
+enqueues `new ClientCommandPacket { Command = Logout }` with
+`LogicEpochCounter` left at its default **0**. Any payload past its fifth
+checkpoint is further from 0 than `EpochDriftTolerance` (5), so the command
+loop's epoch gate answered the server's own shutdown packet with
+`TerminateSessionForSecurity` - which removes the player **without** the flush
+the Logout handler exists to perform, and wrote "split brain" telemetry while
+doing it.
+
+Fixed: `SimulationEngine.IsServerInternalCommand` now names both
+server-generated commands (`ReloadState`, `Logout`) and the gate exempts them.
+
+## Why the tests did not have this
+
+`PostgresTestFixture` registers an `IConnectionMultiplexer` but **never a
+`RedisSessionCache`**, so every existing checkpoint test ran the
+Redis-is-null path - the branch that was already correct.
+`Test_StateCheckpointManager_RedisFrameDoesNotSubstituteForTheCheckpoint`
+registers one, and fails on `BaseStrength` (50, not 71) without the fix.
+`Test_EpochGate_AcceptsTheServersOwnLogoutPacket` pins the second half.
+
+`exercise.mjs` asserted the spend in-session, which passed the whole time the
+placement was being thrown away - the command reached the tick, the payload
+moved, the packet carried it, the panel drew it, all in memory. It now spends,
+**reloads**, and asserts Might held. 130/130, and the server suite is 619/619.
+
+## Standing trap
+
+**A field that only `FlushState` writes is not persisted by a live session.**
+Anything added to `PlayerRecords` and written from the tick has to survive a
+checkpoint, and the checkpoint is the only writer of most of that row. If you
+add a field, ask which of the two paths carries it: the Redis frame (fast,
+twelve fields, gold) or `FlushState` (everything else, at the boundary). Adding
+to the frame alone is adding to a cache.
+
+---
+
 # HANDOFF 2026-09-05 - Tasks 8, 9 and 10 closed, and what closing them found
 
 `docs/TASK_BOARD.md` now reads 1-10 done. The detail lives there, phase by

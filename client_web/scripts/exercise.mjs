@@ -1196,6 +1196,39 @@ await go('Character');
       /next at \d+:/.test(trackText) || /track complete/.test(trackText),
     );
 
+    // Modul: AND THAT IT SURVIVES A RELOAD, which is the half that was broken.
+    //
+    // Everything above passed while the placement was being thrown away: the
+    // command reached the tick, the payload moved, the packet carried it and
+    // the panel drew it - all in memory. TrackState returned the moment Redis
+    // took the session frame, so the periodic checkpoint never reached
+    // FlushState, and the frame carries neither the four attributes nor the
+    // unspent pool. Reported as "I distribute my points, press F5, and they
+    // are all back". An in-session assertion cannot see that at all.
+    //
+    // Might only ever goes UP (a respec is the one exception, and this script
+    // never issues one), so this compares against the post-spend value rather
+    // than an exact pool figure the fixture's own levelling could move.
+    if (strengthRose) {
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1500);
+      await dismissOfflineSummary(3000);
+      await go('Character');
+
+      const strReloaded = await page
+        .locator('.attrpanel .card', { hasText: 'Might' })
+        .locator('.value')
+        .innerText()
+        .catch(() => '');
+      const reloadedNum = parseInt(strReloaded.replace(/[^0-9]/g, ''), 10);
+      const afterNum = parseInt(strAfter.replace(/[^0-9]/g, ''), 10);
+      record(
+        'a placed attribute point survives a reload',
+        Number.isFinite(reloadedNum) && reloadedNum >= afterNum,
+        `Might ${strAfter.trim()} -> ${strReloaded.trim() || 'not rendered'} after F5`,
+      );
+    }
+
     }
 
     // The attributes had never been explained anywhere in the game before this

@@ -110,6 +110,20 @@ again double-pays one checkpoint later, where nothing connects the two.
 `AutoSalvageQueue` does the first, `ChestSaleGoldQueue` the second; both say so
 at their struct.
 
+**A Redis frame is not a checkpoint, and the server's own Logout is not a
+client.** `TrackState` used to return whenever `RedisSessionCache.TryStoreFrame`
+took a frame - including at the boundary - so with Redis up (dev and production
+both) the periodic path never reached `FlushState`. The frame is twelve fields
+(level, xp, lineage, logout stamp, time bank, epoch, quarantine, gold, three
+counters); the checkpoint writes everything else on `PlayerRecords` - the four
+attributes, `UnspentAttributePoints`, diamonds, skill points, the larder,
+potions, quests, the chronicle pass. None of that was durable on a live session.
+The safety net was broken the same day: no client sends opcode 6, so the only
+`Logout` is the one `NetworkBroadcastSystem`'s socket-closure block enqueues with
+`LogicEpochCounter` at 0, and the epoch gate answered it with
+`TerminateSessionForSecurity` - a disconnect that skips the flush. Ask which of
+the two paths carries a new field; adding to the frame alone is adding to a cache.
+
 **A list of owned items must be windowed.** `EquipmentInstances` grows with
 playtime and had reached **17,836 rows on one live account**. `VirtualList`
 renders only what is visible; its `rowHeight` is a **contract**, not a hint —

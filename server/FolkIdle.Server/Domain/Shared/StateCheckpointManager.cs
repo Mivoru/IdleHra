@@ -55,18 +55,46 @@ namespace FolkIdle.Server.Domain.Shared
             _redisSessionCache = serviceProvider.GetService<RedisSessionCache>();
         }
 
+        /// <summary>
+        /// How far behind the database a live payload is allowed to fall.
+        /// 3000 ticks at 10 Hz is five minutes.
+        ///
+        /// Public because a command that commits something the player
+        /// DELIBERATELY placed - see CommandType.SpendAttributePoint - sets the
+        /// counter to this so the next tick checkpoints, instead of leaving the
+        /// choice sitting in memory for five minutes.
+        /// </summary>
+        public const int CheckpointBoundaryTicks = 3000;
+
         public void TrackState(ref TickStatePayload state)
         {
-            bool reachedCheckpointBoundary = state.TicksSinceLastFlush >= 3000 || state.InventorySpaceRemaining <= 0;
+            bool reachedCheckpointBoundary = state.TicksSinceLastFlush >= CheckpointBoundaryTicks || state.InventorySpaceRemaining <= 0;
             if (_redisSessionCache != null && (state.IsDirty || state.RequiresRedisFlush || reachedCheckpointBoundary))
             {
-                if (_redisSessionCache.TryStoreFrame(ref state))
+                // Modul: A REDIS FRAME IS NOT A CHECKPOINT, AND TREATING IT AS
+                // ONE THREW AWAY EVERY FIELD THE FRAME DOES NOT CARRY.
+                //
+                // This used to return here whenever Redis took the frame -
+                // INCLUDING at the checkpoint boundary - so with Redis up (it is
+                // up in dev and in production) the periodic path never reached
+                // FlushState at all. The frame is twelve fields: level, xp,
+                // lineage, the logout stamp, the time bank, the epoch, the
+                // quarantine flag, gold and three counters. FlushState writes
+                // far more than that - BaseStrength/Dexterity/Constitution/Luck,
+                // UnspentAttributePoints, diamonds, skill points, the larder,
+                // potions, daily quests, the chronicle pass, lifetime statistics
+                // - and none of it had any periodic route to Postgres.
+                //
+                // Reported as "I distribute my attribute points, press F5, and
+                // they are all back in the pool". Exactly right, and it was
+                // never only the attributes.
+                //
+                // The frame is still written first: it is the fast session cache
+                // and it is the durable path for gold (see the note below on why
+                // gold travels as a delta). It just no longer stands in for the
+                // checkpoint at the one moment the checkpoint is due.
+                if (_redisSessionCache.TryStoreFrame(ref state) && !reachedCheckpointBoundary)
                 {
-                    if (reachedCheckpointBoundary)
-                    {
-                        state.TicksSinceLastFlush = 0;
-                    }
-
                     state.IsDirty = false;
                     _dirtyStates[state.PlayerId] = state;
                     return;
