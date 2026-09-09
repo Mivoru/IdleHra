@@ -350,7 +350,11 @@ input {
   }
 
   /* Touch targets. 0.3rem of padding is a comfortable mouse target and a
-     frustrating thumb one. */
+     frustrating thumb one.
+     Modul: 2rem was this file's first attempt and it is 32px - eight short of
+     the floor the touch checker now enforces, which is why the real minimum
+     lives in one place at the bottom of this file rather than here. Kept as
+     the LOWER bound for anything that opts out of that floor. */
   nav button,
   .tiny-btn {
     min-height: 2rem;
@@ -384,7 +388,18 @@ input {
 }
 
 @media (max-width: 40rem) {
-  .panel *:not(img):not(svg):not(canvas) {
+  /* Modul: A CONTROL IS EXEMPT FROM THIS, and it was not until check:touch
+     said so.
+     This rule exists because a grid column that cannot shrink ran the
+     Character panel off the side of a phone - see the note above it. But
+     `min-width: 0 !important` on EVERYTHING inside a panel also flattened the
+     44px touch floor added below, and it did so invisibly: the Store's speed
+     buttons measured 42x44, tall enough and two pixels too narrow, with
+     nothing clipped and nothing covered for the other two checkers to find.
+     Text cells and containers are what need to shrink. A button is what a
+     thumb aims at, and if a label ever makes one too wide to fit,
+     check:clipping is the guard that says so. */
+  .panel *:not(img):not(svg):not(canvas):not(button):not([role='button']) {
     min-width: 0 !important;
   }
 
@@ -985,5 +1000,103 @@ h3:not(.place):not([style*='background-image'])::before {
 
   .folk-glow {
     animation-duration: 400ms;
+  }
+}
+
+/* --- touch targets ------------------------------------------------------- */
+
+/* Modul: MEASURED, NOT ASSUMED - 221 CONTROLS FAILED.
+ *
+ * A redesign brief claimed this client was not usable with a thumb. That was
+ * worth testing rather than agreeing with, so `npm run check:touch` was written
+ * first: it walks all 26 screens at 390x844 and measures every interactive
+ * element's own box against the 44px floor from Apple's HIG and WCAG 2.5.5.
+ *
+ * The brief was right and the assumption that "it looks fine" was wrong. The
+ * first run reported 221 undersized controls across all 26 screens, and the
+ * dominant offender was the chrome every screen shares: the header buttons and
+ * the chat dock toggle were all 37px tall - seven pixels short, everywhere,
+ * forever, and invisible to both existing checkers because nothing was clipped
+ * and nothing was covered.
+ *
+ * WHY A BLANKET RULE RATHER THAN PER-COMPONENT PADDING. Twenty-six screens
+ * wrote their own control sizes and would drift apart again the first time
+ * somebody added a screen without reading this. One floor, applied where the
+ * viewport is a phone, cannot be forgotten - and check:touch fails the build if
+ * it ever is.
+ *
+ * WHY ONLY ON A PHONE. 44px is a thumb, not a mouse. Applying it at 1500px
+ * would inflate every dense table in the game to no benefit; a cursor hits a
+ * 24px target perfectly well, which is why WCAG's AA figure is 24 rather than
+ * 44.
+ *
+ * Modul: min-height, NOT height - and this distinction is the whole reason the
+ * rule is safe. A fixed height on a control whose label wraps to two lines
+ * clips the second line, which is precisely what check:clipping exists to
+ * catch; a minimum grows and never truncates.
+ */
+/* Modul: `:not(.touch-exempt)` IS LOAD-BEARING, and not because anything uses
+ * that class yet.
+ *
+ * A bare `button` selector is specificity (0,0,1) and loses to every component
+ * rule that reaches a control through a container - including this file's own
+ * `.grid > *, .wrap > * { min-width: 0 }`, which exists to stop panels
+ * overflowing and which quietly cancelled the width floor on its first run:
+ * the measured buttons came back 42x44, tall enough and still too narrow.
+ * Source order cannot fix that, because specificity is decided first.
+ *
+ * The :not() raises this to (0,1,1) so it lands, and gives any control that
+ * genuinely must stay small a named way out - which is better than a component
+ * quietly winning by accident. */
+@media (max-width: 40rem) {
+  button:not(.touch-exempt),
+  [role='button']:not(.touch-exempt),
+  a.button:not(.touch-exempt),
+  select:not(.touch-exempt),
+  textarea:not(.touch-exempt),
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.touch-exempt) {
+    min-height: 44px;
+  }
+
+  /* Width only on the things a thumb aims AT rather than types into: a text
+     input is already full-width and forcing a minimum on one inside a tight
+     row is how a layout starts overflowing. */
+  button:not(.touch-exempt),
+  [role='button']:not(.touch-exempt) {
+    min-width: 44px;
+  }
+
+  /* Modul: A 13x13 CHECKBOX IS A TARGET NO THUMB CAN HIT, and the first
+     attempt to fix it did not work.
+     Padding was the obvious move and it is wrong twice over: a component's own
+     scoped rule outranks it, and on a replaced element the browser hit-tests
+     the border box regardless. Measured after that attempt: still 13x28 on
+     Settings and 28x28 across the Market's sixteen of them.
+     So the element IS the target. 44px looks large beside a desktop checkbox
+     and is unremarkable on a phone, where every native toggle is around this
+     size - and a control a player cannot reliably hit is worse than one that
+     takes up room. accent-color keeps it in the palette rather than the
+     browser's default blue. */
+  input[type='checkbox']:not(.touch-exempt),
+  input[type='radio']:not(.touch-exempt) {
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    accent-color: var(--accent);
+    /* Modul: and it STILL shrank to 13px without this. These sit in flex rows
+       inside a panel, where `.panel * { min-width: 0 !important }` lets a flex
+       item shrink below its own width - so the width was right and the used
+       size was not. flex-shrink is the property that actually holds it. */
+    flex: 0 0 44px;
+  }
+
+  /* Modul: the bottom of the glass. A control flush with the viewport edge is
+     one a player's thumb reaches past, and on a phone with a home indicator it
+     is one the OS may swallow outright. env(safe-area-inset-bottom) is 0 on a
+     desktop browser and real on a notched device, so this costs nothing where
+     it is not needed. */
+  body {
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
   }
 }

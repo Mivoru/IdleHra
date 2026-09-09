@@ -15,7 +15,31 @@ namespace FolkIdle.Server.Engine
             var mVec = new GeneticVector(maternalGenome);
             var cVec = new GeneticVector(0);
 
-            cVec.LocusRace = SpliceLocus(pVec.LocusRace, mVec.LocusRace, maxGeneration);
+            // Modul: RACE DOES NOT MUTATE, and letting it was a live defect.
+            //
+            // The mutation below flips the low five bits (^ 0x1F). On a quality
+            // locus that is the whole point - a jump of up to 31 in Speed, Crit
+            // or Yield. On RACE it produces a SPECIES THAT DOES NOT EXIST: a
+            // Human is race 1, and 1 ^ 0x1F is 30, against six real races. The
+            // child then has no mastery table, no innate passives and no
+            // artwork, and nothing anywhere logs it.
+            //
+            // It fires on about 1.5% of pairings at generation 0, which is why
+            // it presented as an intermittent test rather than a bug report -
+            // Test_HeroVillager_MarriesAndTheVillagerBecomesAnElder failed once
+            // in a full suite run with "expected 1, actual 30" and passed on a
+            // re-run.
+            //
+            // The intent was already written down one method below:
+            // ApplyInbreedingDegradation says "never LocusRace - a genetic
+            // defect changes the child's potential, not its species". The
+            // mutation path simply never got the same treatment, because it is
+            // applied uniformly inside SpliceLocus to all four loci.
+            //
+            // BreedingEngine already refuses to pair two different races, so a
+            // child's species is fully determined by its parents and there is
+            // nothing for a roll to decide.
+            cVec.LocusRace = SpliceLocus(pVec.LocusRace, mVec.LocusRace, maxGeneration, allowMutation: false);
             cVec.LocusSpeed = SpliceLocus(pVec.LocusSpeed, mVec.LocusSpeed, maxGeneration);
             cVec.LocusCrit = SpliceLocus(pVec.LocusCrit, mVec.LocusCrit, maxGeneration);
             cVec.LocusYield = SpliceLocus(pVec.LocusYield, mVec.LocusYield, maxGeneration);
@@ -71,7 +95,11 @@ namespace FolkIdle.Server.Engine
             };
         }
 
-        private static Locus SpliceLocus(Locus pLocus, Locus mLocus, int maxGeneration)
+        /// <param name="allowMutation">
+        /// False for LocusRace. See the call site: the mutation flips the low
+        /// five bits, which on a species id produces one that does not exist.
+        /// </param>
+        private static Locus SpliceLocus(Locus pLocus, Locus mLocus, int maxGeneration, bool allowMutation = true)
         {
             byte pAllele = Random.Shared.NextDouble() > 0.5 ? pLocus.Dominant : pLocus.Recessive;
             byte mAllele = Random.Shared.NextDouble() > 0.5 ? mLocus.Dominant : mLocus.Recessive;
@@ -89,7 +117,7 @@ namespace FolkIdle.Server.Engine
             }
 
             double pMut = Math.Max(0.001, 0.015 * Math.Pow(1.12, -maxGeneration));
-            if (Random.Shared.NextDouble() < pMut)
+            if (allowMutation && Random.Shared.NextDouble() < pMut)
             {
                 childLocus.Dominant = (byte)(childLocus.Dominant ^ 0x1F);
                 childLocus.Recessive = (byte)(childLocus.Recessive ^ 0x1F);

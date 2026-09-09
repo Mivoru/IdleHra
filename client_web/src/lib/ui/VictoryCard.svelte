@@ -202,7 +202,15 @@
   }
 
   .unlocks li::before {
-    content: '◆';
+    /* Modul: a drawn diamond, as a background rather than generated text.
+       `content: '◆'` puts a font glyph in the middle of a celebration card,
+       where a missing character shows as a hollow box on the one screen a
+       player is most likely to screenshot. */
+    content: '';
+    width: 0.5em;
+    height: 0.5em;
+    background-color: currentColor;
+    clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
     position: absolute;
     left: 0;
     color: var(--brass);

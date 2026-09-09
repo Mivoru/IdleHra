@@ -23,7 +23,18 @@
       <span class="sweep" aria-hidden="true"></span>
 
       <span class="seal" aria-hidden="true">
-        {#if toast.tierLabel}{toast.tierLabel}{:else}★{/if}
+        {#if toast.tierLabel}
+          {toast.tierLabel}
+        {:else}
+          <!-- Modul: the fallback when a tier has no label. It was a ★, which
+               is the one shape in this file most likely to render as a
+               different weight - or as a coloured emoji star - depending on
+               the platform's font stack. -->
+          <svg class="sealmark" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2 L14.9 8.6 L22 9.4 L16.7 14.2 L18.2 21.2 L12 17.6 L5.8 21.2 L7.3 14.2 L2 9.4 L9.1 8.6 Z"
+                  fill="currentColor" />
+          </svg>
+        {/if}
       </span>
 
       <span class="body">
@@ -190,5 +201,10 @@
     .sweep {
       display: none;
     }
+  }
+
+  .sealmark {
+    width: 1em;
+    height: 1em;
   }
 </style>

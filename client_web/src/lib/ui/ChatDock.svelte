@@ -60,7 +60,10 @@
   {/if}
 
   <button class="handle" onclick={toggle} aria-label={open ? 'Hide chat' : 'Show chat'}>
-    <span class="glyph">{open ? '▾' : '▴'}</span>
+    <svg class="caret" class:up={!open} viewBox="0 0 12 12" aria-hidden="true">
+      <path d="M2 4.5 L6 8.5 L10 4.5" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round" />
+    </svg>
     Chat
     {#if !open && unread > 0}
       <span class="dot" aria-label="{unread} unread">
@@ -198,11 +201,6 @@
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   }
 
-  .glyph {
-    opacity: 0.65;
-    font-size: 0.75rem;
-  }
-
   .dot {
     display: inline-flex;
     align-items: center;
@@ -216,5 +214,22 @@
     font-size: 0.7rem;
     font-weight: 700;
     line-height: 1;
+  }
+
+  /* Modul: a caret drawn rather than typed. A glyph is a font's opinion about
+     a shape - it differs by family, is not guaranteed to be present, and a
+     screen reader announces it as "black down-pointing small triangle" in the
+     middle of a label. `rotate` rather than `transform`, for the reason
+     app.css records on button:active: transform is one property holding a
+     whole list, so setting it here would replace whatever else used it. */
+  .caret {
+    width: 11px;
+    height: 11px;
+    flex: none;
+    transition: rotate 140ms ease;
+  }
+
+  .caret.up {
+    rotate: 180deg;
   }
 </style>

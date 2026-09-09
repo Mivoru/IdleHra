@@ -488,7 +488,15 @@
         <!-- The crown -->
         <div class="node crown" class:taken={limb.crown.level > 0}>
           <div class="node-text">
-            <strong>♦ {limb.crown.name}</strong>
+            <strong>
+              <!-- Modul: the crown mark, drawn. It sits next to a name and was
+                   a ♦ - a glyph whose weight and size vary by font family, on
+                   a panel already carrying its own art direction. -->
+              <svg class="crownmark" viewBox="0 0 12 12" aria-hidden="true">
+                <path d="M6 1 L11 6 L6 11 L1 6 Z" fill="currentColor" />
+              </svg>
+              {limb.crown.name}
+            </strong>
             <p class="dim tiny">{limb.crown.blurb}</p>
           </div>
           <button
@@ -861,4 +869,10 @@
 
 
 
+
+  .crownmark {
+    width: 0.7em;
+    height: 0.7em;
+    margin-right: 0.25em;
+  }
 </style>

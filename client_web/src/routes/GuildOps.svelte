@@ -644,7 +644,17 @@
             {@const isOpen = expandedBuff === buff.type}
             <div class="buff-block">
               <button class="buff-header" onclick={() => toggleBuff(buff.type)}>
-                <span class="buff-title">{isOpen ? '▼' : '▶'} {buff.label}</span>
+                <span class="buff-title">
+                  <!-- Modul: SVG rather than ▼/▶. A glyph is a font's opinion
+                       about a shape, differs by family, is not guaranteed to
+                       exist, and is announced by a screen reader as "black
+                       right-pointing triangle" in the middle of a buff name. -->
+                  <svg class="caret" class:open={isOpen} viewBox="0 0 12 12" aria-hidden="true">
+                    <path d="M4.5 2 L8.5 6 L4.5 10" fill="none" stroke="currentColor"
+                          stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                  {buff.label}
+                </span>
                 {#if active}
                   <span class="good-text tiny">Active T{active.Tier} until {new Date(active.ExpiresAtEpoch * 1000).toLocaleString()}</span>
                 {:else}
@@ -861,6 +871,17 @@
   }
   .buff-header:hover {
     background: color-mix(in srgb, var(--accent) 18%, transparent);
+  }
+
+  .caret {
+    width: 11px;
+    height: 11px;
+    transition: rotate 140ms ease;
+  }
+
+  /* rotate, not transform - see app.css on button:active for why. */
+  .caret.open {
+    rotate: 90deg;
   }
 
   .buff-title {

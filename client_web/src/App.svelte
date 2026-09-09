@@ -459,7 +459,12 @@
       display: inline-flex;
       align-items: center;
       gap: 0.3rem;
-      min-height: 2.2rem;
+      /* Modul: 44px, not 2.2rem. This is the single most-tapped control on a
+         phone - it is how every screen is reached - and it was 37px on all
+         twenty-six of them. A scoped component class outranks the global touch
+         floor in app.css, so the floor could not reach it; the number has to
+         be here. */
+      min-height: 44px;
       order: 1;
       margin-left: auto;
     }

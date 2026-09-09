@@ -118,7 +118,14 @@
             {#each chapter.Deeds as deed (deed.Id)}
               {@const isNext = upNext?.Id === deed.Id}
               <li class:done={deed.Done} class:next={isNext}>
-                <span class="mark" aria-hidden="true">{deed.Done ? '✓' : ''}</span>
+                <span class="mark" aria-hidden="true">
+                  {#if deed.Done}
+                    <svg class="tick" viewBox="0 0 12 12">
+                      <path d="M2 6.5 L4.8 9.2 L10 3.4" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  {/if}
+                </span>
 
                 <div class="text">
                   <strong>{deed.Title}</strong>
@@ -306,5 +313,12 @@
   .warn-line {
     color: var(--warn);
     font-size: 0.85rem;
+  }
+
+  /* A drawn tick rather than U+2713: the glyph is absent from some stacks and
+     falls back to a box, which on a finished deed reads as an error. */
+  .tick {
+    width: 0.9em;
+    height: 0.9em;
   }
 </style>

@@ -398,7 +398,18 @@
   .spend button {
     padding: 0.1rem 0.45rem;
     font-size: 0.75rem;
+    /* Modul: 2.2rem is 35px, and a scoped component rule outranks the global
+       44px touch floor in app.css - so these measured 35x44 on a phone,
+       tall enough and too narrow, which is exactly the gap check:touch was
+       written to find. Placing a point is the single most repeated tap in the
+       attribute panel; it does not get to be the smallest button on it. */
     min-width: 2.2rem;
+  }
+
+  @media (max-width: 40rem) {
+    .spend button {
+      min-width: 44px;
+    }
   }
   .spend button.tonext {
     border-color: var(--accent);

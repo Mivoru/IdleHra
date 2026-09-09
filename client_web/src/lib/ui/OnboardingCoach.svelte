@@ -155,7 +155,25 @@
 
 {#if cue}
   <div class="coach" bind:this={panel} role="status" data-onboarding-cue={cue.id} data-onboarding-kind={cue.kind}>
-    <div class="head">
+    <!-- Modul: THE WHOLE HEADER IS THE TOGGLE, and that is the third attempt.
+         A separate 19x18 caret button failed check:touch. Growing it to the
+         44px floor then failed check:overlap - a 44px box on a panel whose
+         collapsed height is one line of text reaches past the panel and lands
+         on whatever is underneath, which on the Character screen was the "+10"
+         attribute button. Pulling it back with negative margin fixed the row
+         height and not the box, because the box is what the browser
+         hit-tests.
+         So there is no small button any more. The header IS the control: full
+         width, one line tall, comfortably past 44px on a phone, and the caret
+         inside it is decoration with no hit area of its own. One target
+         instead of a target beside a target is also simply the better
+         disclosure pattern - it is what a native list row does. -->
+    <button
+      class="head"
+      aria-expanded={!collapsed}
+      title={collapsed ? 'Show this hint' : 'Hide this hint'}
+      onclick={() => (userToggled = !collapsed)}
+    >
       {#if cue.kind === 'step'}
         <span class="tag">Step {cue.index} / {cue.total}</span>
       {:else if cue.kind === 'objective'}
@@ -169,15 +187,11 @@
         <span class="tag new">New</span>
       {/if}
       <strong>{cue.title}</strong>
-      <button
-        class="fold"
-        aria-expanded={!collapsed}
-        title={collapsed ? 'Show this hint' : 'Hide this hint'}
-        onclick={() => (userToggled = !collapsed)}
-      >
-        {collapsed ? '▲' : '▼'}
-      </button>
-    </div>
+      <svg class="caret" class:up={collapsed} viewBox="0 0 12 12" aria-hidden="true">
+        <path d="M2 4.5 L6 8.5 L10 4.5" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </button>
     <!-- Modul: {#if}, not a `display` rule and not a <details>. An author
          display rule on a direct child defeats the UA rule that hides a closed
          panel, and engines disagree about whether that rule exists at all -
@@ -225,24 +239,39 @@
 
   .head {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.5rem;
     flex-wrap: wrap;
-  }
-
-  .fold {
-    margin-left: auto;
+    width: 100%;
+    text-align: left;
+    /* It is a button, and it must not look like one - the panel is already the
+       raised surface. */
     background: none;
     border: none;
-    color: var(--text-dim);
+    box-shadow: none;
+    padding: 0;
+    color: inherit;
     cursor: pointer;
-    font-size: 0.7rem;
-    line-height: 1;
-    padding: 0.2rem 0.3rem;
   }
 
-  .fold:hover {
+  .head:hover strong {
     color: var(--accent);
+  }
+
+
+
+  .caret {
+    width: 12px;
+    height: 12px;
+    display: block;
+    transition: rotate 140ms ease;
+  }
+
+  /* Modul: `rotate`, not `transform` - the same lesson app.css records about
+     button:active. `transform` is one property holding a whole list, so
+     setting it here would replace anything else the element used it for. */
+  .caret.up {
+    rotate: 180deg;
   }
 
   .tag {

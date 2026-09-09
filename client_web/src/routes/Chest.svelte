@@ -402,7 +402,11 @@
         aria-expanded={sweepOpen}
         onclick={() => (sweepOpen = !sweepOpen)}
       >
-        {sweepOpen ? '▾' : '▸'} Clear out the junk
+        <svg class="caret" class:right={!sweepOpen} viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M2 4.5 L6 8.5 L10 4.5" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Clear out the junk
       </button>
 
       {#if sweepOpen}
@@ -835,5 +839,22 @@
   .danger {
     border-color: var(--danger);
     color: var(--danger);
+  }
+
+  /* Modul: a caret drawn rather than typed. A glyph is a font's opinion about
+     a shape - it differs by family, is not guaranteed to be present, and a
+     screen reader announces it as "black down-pointing small triangle" in the
+     middle of a label. `rotate` rather than `transform`, for the reason
+     app.css records on button:active: transform is one property holding a
+     whole list, so setting it here would replace whatever else used it. */
+  .caret {
+    width: 11px;
+    height: 11px;
+    flex: none;
+    transition: rotate 140ms ease;
+  }
+
+  .caret.right {
+    rotate: -90deg;
   }
 </style>

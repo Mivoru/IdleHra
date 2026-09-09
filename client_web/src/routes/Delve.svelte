@@ -26,6 +26,14 @@
     sends "start", "door N" and "bank", and draws what comes back.
   */
   import { onMount } from 'svelte';
+
+  /*
+    Modul: SVG, NOT A GLYPH. This screen shipped with ◆ and ● in its markup,
+    which is a font's opinion rather than a drawing: the shapes differ by
+    family, are not guaranteed to exist, and a screen reader announces "black
+    diamond suit" in the middle of a diamond count. A path is the same
+    everywhere and can be hidden from the accessibility tree outright.
+  */
   import {
     fetchDelve,
     startDelve,
@@ -128,6 +136,18 @@
   }
 </script>
 
+<!-- Modul: RENDERED WITH {@render}, NOT AS A COMPONENT TAG.
+     The first version of this wrote <Diamond /> - component syntax for a
+     SNIPPET - and svelte-check passed it while the whole screen threw at
+     runtime, so the Delve rendered nothing at all and exercise.mjs timed out
+     hunting for a door. Same shape as the `derived` shadowing trap in
+     CLAUDE.md: legal-looking, type-checked, and only the browser knows. -->
+{#snippet Diamond()}
+  <svg class="gem" viewBox="0 0 12 12" aria-hidden="true">
+    <path d="M6 1 L11 6 L6 11 L1 6 Z" fill="currentColor" />
+  </svg>
+{/snippet}
+
 <div class="delve">
   <header>
     <h1>The Delve</h1>
@@ -183,12 +203,14 @@
           </div>
           <div class="charges" aria-label="{view.ChargesRemaining} lantern charges left">
             {#each Array(3) as _, i}
-              <span class="charge" class:spent={i >= view.ChargesRemaining}>&#9679;</span>
+              <span class="charge" class:spent={i >= view.ChargesRemaining} aria-hidden="true">
+                <svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="4.5" fill="currentColor" /></svg>
+              </span>
             {/each}
           </div>
           <div class="banked">
             <span class="k">Banked</span>
-            <span class="v">{view.DiamondsAfterCeiling} &#9670;</span>
+            <span class="v">{view.DiamondsAfterCeiling}{@render Diamond()}</span>
           </div>
         </div>
 
@@ -213,14 +235,14 @@
 
         <div class="decision">
           <button class="secondary" disabled={busy} onclick={() => act(bankDelve)}>
-            Climb out with {view.DiamondsAfterCeiling} &#9670;{view.ConsolationGoldIfCapped > 0
+            Climb out with {view.DiamondsAfterCeiling}{@render Diamond()}{view.ConsolationGoldIfCapped > 0
               ? ` + ${view.ConsolationGoldIfCapped.toLocaleString()}g`
               : ''}
           </button>
           {#if !atBottom}
             <p class="muted small">
               Clearing floor {Math.min(view.CurrentFloor, 8)} would make it
-              <strong>{view.DiamondsIfNextFloorCleared} &#9670;</strong>. Three failures and you
+              <strong>{view.DiamondsIfNextFloorCleared}{@render Diamond()}</strong>. Three failures and you
               carry nothing out.
             </p>
           {/if}
@@ -350,7 +372,19 @@
 
   .charge {
     color: #e0b74a;
-    font-size: 1.1rem;
+    display: inline-flex;
+  }
+
+  .charge svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  .gem {
+    width: 0.72em;
+    height: 0.72em;
+    margin-left: 0.28em;
+    vertical-align: -0.02em;
   }
 
   .charge.spent {
