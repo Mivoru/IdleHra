@@ -43,14 +43,15 @@ npm run check          # svelte-check
 npm run build          # regenerates protocol + sprites, then checks, then builds
 npm run exercise       # THE verification — see below
 npm run smoke:screens  # weaker: proves screens render
-npm run check:clipping # content cut off, 25 screens × 3 widths
+npm run check:clipping # content cut off, 26 screens × 3 widths
 npm run check:overlap  # controls buried under other controls
+npm run check:touch    # controls too small for a thumb, 390px
 ```
 
-All four read `FOLKIDLE_E2E_BASE`, but only **`smoke:screens` is safe to aim at
+All five read `FOLKIDLE_E2E_BASE`, but only **`smoke:screens` is safe to aim at
 production** — it signs in as a throwaway guest and only navigates. `exercise`
-*spends* (items, villagers, affix rerolls) and the two geometry checks sign in
-as the dev fixture, which does not exist in production; those three are dev-box
+*spends* (items, villagers, affix rerolls) and the three geometry checks sign
+in as the dev fixture, which does not exist in production; those four are dev-box
 tools. All four share the screen list in `client_web/scripts/screens.mjs` — add
 a destination there, once.
 
@@ -132,6 +133,28 @@ in overlaps its neighbour instead of pushing it down. `/api/v1/player/materials`
 exists so the screens that only want stacks (63 rows) stop pulling the 3.2 MB
 equipment blob; `invalidateOwnedItems` invalidates both keys, and a call site
 that remembers one is a stale screen.
+
+**A touch target is measured, not eyeballed — and 221 of them failed.** A
+redesign brief claimed the client was unusable with a thumb; `npm run check:touch`
+was written to find out rather than to agree, and the brief was right. Every
+screen's shared chrome sat at 37px against a 44px floor, invisible to the other
+two checkers because nothing was clipped and nothing was covered. The floor now
+lives in one `@media (max-width: 40rem)` block in `app.css`, and three things
+defeat it if you are not careful: a bare `button` selector is specificity
+`(0,0,1)` and loses to `.grid > * { min-width: 0 }`; `.panel * { min-width: 0
+!important }` (which exists so a grid column cannot run a phone off the side)
+flattens it entirely unless controls are exempted; and padding cannot enlarge a
+checkbox, because the browser hit-tests the border box. A control inside a flex
+row also needs `flex-shrink: 0`, or `min-width: 0` lets it shrink below its own
+width.
+
+**`<Snippet />` is not how you render a Svelte 5 snippet, and the compiler will
+not tell you.** A snippet is rendered with `{@render Snippet()}`; component-tag
+syntax type-checks clean and throws at RUNTIME, taking the whole screen with it.
+The Delve rendered nothing at all and `exercise.mjs` timed out hunting for a
+door it could see in the API response. Exactly the shape of the `derived`
+shadowing trap above — legal-looking, `svelte-check`-clean, and only the browser
+knows. Load the page.
 
 **Do not trust `<details>` to hide its own content.** An author `display` rule
 on a direct child defeats the UA rule that hides a closed panel, and engines

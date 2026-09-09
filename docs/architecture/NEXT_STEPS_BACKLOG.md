@@ -14,6 +14,82 @@ with acceptance criteria, written 2026-09-01 against what the code actually
 does. This file remains the record of what happened and why; the board is what
 to do next.
 
+
+---
+
+# HANDOFF 2026-09-09 (b) - two board tasks shipped, and four defects found building them
+
+Four commits. `docs/TASK_BOARD.md` now reads **1-12 done**.
+
+## What shipped
+
+**11. The Delve** - the game's first recurring gold sink, built as a game rather
+than a fee. Measured first: every existing recurring sink costs under 3% of an
+hour of region-5 income, so gold at the top had stopped being a currency. Eight
+floors, three doors each, bank-or-push after every one; the fee follows the
+region reached (7,000 to 250,000, landing at **39-41 minutes of that region's
+own income at every tier**) and the reward follows the attribute sheet, because
+floor requirements are absolute. Fortune finally does something visible: it
+decides how often a door admits what it wants.
+
+Two rules shipped in v1 rather than "later": the client's whole vocabulary is
+start / door N / bank, and the diamond tap has a **60-a-week ceiling** past
+which a run pays gold back so the sink keeps working after the tap shuts.
+
+**12. Tier three, the objective track** - nine objectives that fire when a player
+is READY for something and has not done it, which is the mirror of tier two
+firing once they have already arrived. Same rule as the working tiers: a pure
+predicate over the state packet.
+
+## The four defects, all found by measuring rather than reading
+
+**A mutation could invent a species.** `SpliceLocus` flips the low five bits and
+applied that to all four loci including race: a Human is 1, `1 ^ 0x1F` is 30,
+and about **one pairing in seventy** produced a child with no mastery table, no
+passives and no artwork. It surfaced as an intermittent test - the worst failure
+rate there is. `GeneticRaceStabilityTests` runs 20,000 pairings, and separately
+asserts the quality loci still mutate, because disabling the roll wholesale
+would have been a balance change wearing a bug fix's clothes.
+
+**CodexEngine and GuildMatchmakingEngine could die silently.** Both had an inner
+try that began AFTER `CreateScope`/`BeginTransactionAsync` - the calls that
+actually throw when the pooler refuses a client. All fourteen `StartCron` loops
+wrap their bodies now.
+
+**221 touch targets were under 44px.** A redesign brief asserted the client was
+unusable with a thumb. `npm run check:touch` was written to find out rather than
+to agree, and the brief was right: the chrome every screen shares sat at 37px,
+invisible to `check:clipping` and `check:overlap` because nothing was clipped
+and nothing was covered. 221 to 0. The traps are recorded in CLAUDE.md; the
+short version is that specificity, `min-width: 0 !important` and `flex-shrink`
+each defeat a touch floor independently.
+
+**`<Snippet />` throws at runtime.** Replacing the UI's text glyphs with drawn
+SVG introduced it: component-tag syntax for a Svelte 5 snippet type-checks clean
+and takes the whole screen down. `exercise.mjs` caught it timing out on a door
+it could see in the API response.
+
+## Standing traps this added
+
+- **A field only `FlushState` writes is not persisted by a live session** - see
+  the earlier handoff today. Still the most expensive lesson of the day.
+- **A checker that does not exist is a standard nobody keeps.** Three of the four
+  defects above were found by a script, and the fourth by a test that had been
+  failing intermittently for long enough to be dismissed. There is now a fourth
+  geometry checker; the next one worth writing is a NUMBER FORMATTING check -
+  the fixture holds five million gold and every screen prints it in full.
+
+## Left open on purpose
+
+- **The Delve's consolation payout is gold**, which is a smaller sink working
+  against a bigger one. Materials would be better and were scoped out of v1.
+- **Teaching is per-device** - the onboarding seen-set is `localStorage` keyed by
+  player id, so a phone re-teaches everything. More visible now that there is
+  more to re-teach.
+- **Chat has no objective and no discovery.** Nothing on the packet reflects chat
+  at all, and the fetched-fact route used for guild membership has no equivalent.
+- **The codex DAMAGE multiplier is still 142x and uncapped**, deliberately.
+
 ---
 
 # HANDOFF 2026-09-09 - the checkpoint was not a checkpoint

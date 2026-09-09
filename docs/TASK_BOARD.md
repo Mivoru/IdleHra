@@ -1791,8 +1791,11 @@ Two things the design got wrong and the build corrected:
 
 - **The consolation payout is gold**, which is a smaller sink working against a
   bigger one. Materials would be better and were scoped out of v1.
-- **Nothing teaches the Delve.** It has no tier-two discovery moment, which is
-  task 12's problem and is listed there.
+- ~~Nothing teaches the Delve.~~ **CLOSED by task 12** the same day: tier
+  three's `try_the_delve` objective fires once a player is holding three times
+  the cheapest gate fee. Tier two could never have done it - it fires on
+  REACHING a system, and nothing reaches a screen it has not heard of, which is
+  the clearest single argument for the tier existing.
 
 ## The design as written, 2026-09-09
 
