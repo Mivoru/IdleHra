@@ -959,11 +959,11 @@ namespace FolkIdle.Server.Domain.Combat
                         continue;
                     }
 
-                    // Modul: stamped for the anti-cheat challenge, which needs
-                    // to tell "this client will not answer" from "this client
-                    // is not running right now". See the miss branch in
-                    // ProcessAccountTick.
-                    currentPayload.LastClientCommandAtMs = Environment.TickCount64;
+                    // Modul: LastClientCommandAtMs used to be stamped here and
+                    // nowhere else, which made the anti-cheat's "was this client
+                    // talking" test answer for activity changes only. It is
+                    // stamped at the command routing site now - one writer, on
+                    // the path every client command actually takes.
 
                     int targetSlotIndex = ResolveSlotIndexForCharacter(ref currentPayload, activityChange.CharacterId);
                     if (targetSlotIndex < 0)
@@ -1820,6 +1820,35 @@ namespace FolkIdle.Server.Domain.Combat
                     // Server-generated packets carry no client epoch - see
                     // IsServerInternalCommand for why Logout is one of them.
                     bool isInternalCommand = IsServerInternalCommand(cmd.Command);
+
+                    // Modul: THE ANTI-CHEAT'S "WAS THIS CLIENT TALKING" STAMP,
+                    // AND IT WAS WRITTEN IN ONE PLACE THAT IS NOT THIS ONE.
+                    //
+                    // The challenge-miss branch in ProcessAccountTick only
+                    // counts a miss against a client that was otherwise sending
+                    // commands during the window - the whole point being that a
+                    // silent client is a BACKGROUNDED one, not a cheating one,
+                    // which this codebase learned by quarantining a real player
+                    // twice. That guard reads LastClientCommandAtMs.
+                    //
+                    // It was stamped only inside the activity-change drain. So
+                    // a player who equipped, spent, chatted, bought or fought
+                    // for ten minutes without changing activity read as SILENT,
+                    // and a player who changed activity once and then locked
+                    // their phone read as TALKING - the exact inversion of what
+                    // the guard is for. It failed open far more often than
+                    // closed, so nobody was banned by it; it simply was not the
+                    // check its own comment describes.
+                    //
+                    // Stamped here instead, where every genuine client command
+                    // arrives. Internal commands are excluded deliberately:
+                    // ReloadState and Logout are enqueued by the SERVER, and
+                    // counting them as the client talking would make a silent
+                    // client look busy at exactly the wrong moment.
+                    if (!isInternalCommand)
+                    {
+                        currentPayload.LastClientCommandAtMs = Environment.TickCount64;
+                    }
 
                     // Epoch interception gate: reject commands from desynchronized clients.
                     //

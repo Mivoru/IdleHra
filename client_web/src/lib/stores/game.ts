@@ -10,6 +10,7 @@
 
 import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
+import { watchAppLifecycle } from '../net/lifecycle';
 import {
   SnapshotInterpolator,
   extractInterpolated,
@@ -482,6 +483,12 @@ export function startSession(token: string): void {
   commandResults.set([]);
   visualState.set(null);
   playerState.set(null);
+
+  // Modul: started here rather than at module load, because it needs a session
+  // to be worth anything - resumeFromBackground returns immediately without a
+  // token. Idempotent by the debounce in lifecycle.ts, so a re-login that runs
+  // this a second time costs nothing.
+  watchAppLifecycle();
 
   connection.connect(token, {
     onStatus: (status) => {

@@ -96,6 +96,16 @@ export interface ConnectionHandlers {
 const MAX_RECONNECT_DELAY_MS = 15_000;
 const BASE_RECONNECT_DELAY_MS = 500;
 
+/**
+ * How long a socket may hear nothing before a resume treats it as dead.
+ *
+ * The server broadcasts a StateUpdate to every live session about once a
+ * second, so silence measured in tens of seconds is not a quiet moment - it is
+ * a connection that stopped existing while the screen was off. Generous enough
+ * that a brief switch to another app does not force a needless handshake.
+ */
+const STALE_SOCKET_MS = 20_000;
+
 function toBase64(text: string): string {
   // btoa is latin1-only; JWTs and chat text are not. Encode to UTF-8 bytes
   // first, which is what the server's base64 decode expects on the other side.
@@ -123,6 +133,16 @@ export class GameConnection {
   private closedByUs = false;
   private attempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /**
+   * When the server was last heard from, by wall clock.
+   *
+   * Modul: Date.now(), NOT performance.now() or TickCount - it has to survive
+   * the device being asleep, which is the whole case this exists for. A
+   * monotonic clock that pauses with the CPU cannot measure how long the CPU
+   * was paused.
+   */
+  private lastInboundAt = 0;
 
   // Modul: OBLIGATION 1. Every ClientCommand must carry the LogicEpochCounter
   // from the most recent StateUpdate. ValidateEpochSynchronization's "epoch
@@ -188,6 +208,7 @@ export class GameConnection {
     this.socket = socket;
 
     socket.onopen = () => {
+      this.lastInboundAt = Date.now();
       this.report('authenticating', '');
       const tokenBytes = new TextEncoder().encode(this.token).length;
       socket.send(
@@ -202,7 +223,10 @@ export class GameConnection {
       );
     };
 
-    socket.onmessage = (event) => this.receive(event);
+    socket.onmessage = (event) => {
+      this.lastInboundAt = Date.now();
+      this.receive(event);
+    };
 
     socket.onclose = (event) => {
       if (this.socket !== socket) return;
@@ -228,6 +252,62 @@ export class GameConnection {
       // onerror carries no useful detail in browsers by design; onclose
       // always follows it, so the reconnect is driven from there alone.
     };
+  }
+
+  /**
+   * The app came back to the foreground. Get a live socket NOW.
+   *
+   * Modul: A PHONE BACKGROUNDS CONSTANTLY AND A BROWSER TAB DOES NOT.
+   *
+   * Two things go wrong across a suspend, and the reconnect loop alone fixes
+   * neither:
+   *
+   *   1. THE BACKOFF IS WHERE THE SUSPEND LEFT IT. Backoff is the right
+   *      behaviour for a server that is down - it is exactly wrong for a
+   *      socket that closed because the OS froze the WebView. The player is
+   *      back, looking at the screen, and the retry is up to fifteen seconds
+   *      away. On mobile that reads as broken, and the whole promise of an
+   *      idle game is that you can leave and come back.
+   *
+   *   2. THE SOCKET CAN BE A ZOMBIE. readyState still says OPEN while the TCP
+   *      connection died in the player's pocket, because nothing has tried to
+   *      write to it. Trusting readyState here means a session that looks
+   *      connected and receives nothing, forever - which is worse than a
+   *      visible reconnect, because nothing on screen admits it.
+   *
+   * So: reset the attempt counter, and treat a socket that has heard nothing
+   * for longer than the server's own broadcast cadence as dead regardless of
+   * what it claims. Closing it routes through onclose, which reconnects
+   * immediately now that the backoff has been cleared.
+   */
+  resumeFromBackground(): void {
+    if (this.closedByUs || !this.token) return;
+
+    // The player is here. Whatever the retry schedule was, it is stale.
+    this.attempt = 0;
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      if (this.socket?.readyState === WebSocket.CONNECTING) return;
+      this.socket = null;
+      this.open();
+      return;
+    }
+
+    const silentFor = Date.now() - this.lastInboundAt;
+    if (silentFor > STALE_SOCKET_MS) {
+      // Modul: closed rather than probed. A ping would need a round trip to
+      // prove anything and the answer would arrive after the player had
+      // already decided the game was frozen; reconnecting costs one handshake
+      // and is indistinguishable from a normal resume.
+      const dead = this.socket;
+      this.socket = null;
+      dead.close();
+      this.open();
+    }
   }
 
   private scheduleReconnect(detail: string): void {
