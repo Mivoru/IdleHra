@@ -36,6 +36,7 @@ import {
   type DiscoveryMoment,
   type OnboardingFacts,
 } from './tutorialDiscoveries';
+import { nextObjective, type Objective } from './tutorialObjectives';
 import {
   adoptPlayer,
   markAllSeen,
@@ -151,7 +152,7 @@ derived([playerState, facts], ([snapshot, factValue]) => ({ snapshot, factValue 
  * the earliest unseen moment the player has reached.
  */
 export interface OnboardingCue {
-  kind: 'step' | 'discovery';
+  kind: 'step' | 'discovery' | 'objective';
   /** Stable id - a discovery id, or `step:<n>` for the first-session chain. */
   id: string;
   /** 1-based position in the first-session chain; 0 for a discovery. */
@@ -183,15 +184,35 @@ export const onboardingCue = derived(
 
     if (!snapshot || !factValue) return null;
     const moment: DiscoveryMoment | null = nextDiscovery(snapshot, factValue, seen);
-    if (!moment) return null;
+    if (moment) {
+      return {
+        kind: 'discovery',
+        id: moment.id,
+        index: 0,
+        total: 0,
+        screen: moment.screen,
+        title: moment.title,
+        body: moment.body,
+      };
+    }
+
+    // Modul: TIER THREE, and it is LAST on purpose.
+    //
+    // Tier two explains a system the player has already reached; this one names
+    // a system they have not. Running it ahead of tier two would point a player
+    // at the Delve while the screen they just opened for the first time went
+    // unexplained - the answer to "what is this" has to come before the answer
+    // to "what next".
+    const objective: Objective | null = nextObjective(snapshot, factValue, seen);
+    if (!objective) return null;
     return {
-      kind: 'discovery',
-      id: moment.id,
+      kind: 'objective',
+      id: objective.id,
       index: 0,
       total: 0,
-      screen: moment.screen,
-      title: moment.title,
-      body: moment.body,
+      screen: objective.screen,
+      title: objective.title,
+      body: objective.body,
     };
   },
 );
@@ -200,7 +221,11 @@ export const onboardingCue = derived(
  * by playing - so this only ever marks a discovery. */
 export function acknowledgeCue(): void {
   const cue = get(onboardingCue);
-  if (cue && cue.kind === 'discovery') markSeen(cue.id);
+  // Modul: steps cannot be acknowledged - they are done by PLAYING - but an
+  // objective can, exactly like a discovery. Every objective is a first-time
+  // act, so once the player has been told the system exists, telling them again
+  // is nagging; and a track that nags is worse than no track at all.
+  if (cue && (cue.kind === 'discovery' || cue.kind === 'objective')) markSeen(cue.id);
 }
 
 /**

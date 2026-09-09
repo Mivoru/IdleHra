@@ -15,9 +15,9 @@ dependency rather than a preference — see "Execution plan" below.**
 
 **Tasks 1-10 are all done.** The table below is kept as the record of what each one
 turned out to be. **Tasks 11 and 12 were added 2026-09-09 and are open** - a gold
-sink built as a minigame (**11 is DONE - shipped as The Delve**), and the
-tutorial past its first ten minutes. Both are at the bottom of this file,
-written against measured numbers.
+sink built as a minigame (**DONE - shipped as The Delve**) and the tutorial past
+its first ten minutes (**DONE - shipped as tier three, the objective track**).
+Both write-ups are at the bottom of this file.
 
 | # | Open task | Shape |
 |---|---|---|
@@ -1907,7 +1907,63 @@ second — a tap is much harder to take away than to never open.
 
 ---
 
-## OPEN — 12. The tutorial teaches the first ten minutes and then stops
+## DONE 2026-09-09 — 12. The tutorial teaches the first ten minutes and then stops
+
+**Shipped as tier three, the objective track** (`tutorialObjectives.ts`), on the
+same rule the two working tiers use: a predicate over the state packet, pure,
+node-testable, and never a stored copy of progress.
+
+Nine objectives, ordered by what is worth doing rather than by what unlocks
+first — unplaced attribute points lead, because that is power the player already
+owns. Each fires when the player is READY and has not done it, which is the
+exact mirror of tier two firing when they have already arrived. `nextObjective`
+hands over one at a time and goes quiet when everything due is acknowledged, and
+tier one still wins outright, then tier two, then this.
+
+Two of the three gaps are closed with it:
+
+- **The Delve had nothing teaching it at all** — task 11 shipped a whole screen
+  that tier two could never announce, because tier two fires on reaching a
+  system and nothing reaches a screen it has not heard of. `try_the_delve` is
+  the clearest single example of what tier three is for.
+- Market, mail and the Forge reroll now each have an objective, all without a
+  wire change: `sell_on_the_market` fires on a nearly-full bag,
+  `read_your_mail` on the level where payouts start arriving, `reroll_an_affix`
+  on owning a Forge and wearing something.
+
+Three things the build found that the design had not:
+
+- **The panel buried controls.** `exercise.mjs` timed out clicking Village's
+  "Marry" under the coach, and `check:overlap` then found **eleven** more pairs
+  at 390px — "Reroll" under "Got it", the auto-eat input under the panel
+  entirely. It had always been a fixed overlay; what changed is that an
+  objective stands there indefinitely on a mature account where a discovery
+  used to be dismissed and gone. The panel reserves its own measured height in
+  the body now AND folds to its title line under 560px.
+- **The fold read the viewport once per cue**, so a window narrowed after the
+  cue arrived kept an expanded panel — which is precisely what the checker
+  does, and it caught it. It is derived from a resize-tracked width now.
+- **The in-game Wiki has a coverage ledger** (`SCREEN_COVERAGE`) that fails the
+  suite when a screen has no row, and it duly failed on The Delve. That is the
+  guard working: the Delve now has a wiki section with its fee table, floor
+  ladder, what Fortune buys and the weekly ceiling.
+
+Verified: 16 new node tests (each rule asserted to fire AND not to fire, plus
+that every objective points at a real nav key and shares no id with a
+discovery), 331 client tests, and `exercise.mjs` works a mature account through
+the cue chain one "Got it" at a time until an OBJECTIVE appears, follows it, and
+asserts it retires. 136/136, clean at 390/900/1500 px.
+
+### Still open
+
+- **Teaching is still per-device.** The seen-set is `localStorage` keyed by
+  player id, so a phone re-teaches everything. Accepted at the time and now
+  more visible, because there is more to re-teach.
+- **Chat has no objective and no discovery.** Nothing on the packet reflects
+  chat at all, and the fetched-fact route used for guild membership has no
+  equivalent here.
+
+## The design as written, 2026-09-09
 
 **Requested 2026-09-09:** guide players through the game with pop-ups and hints
 — "there is a lot of content and I want the player not to be lost".

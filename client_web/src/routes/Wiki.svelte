@@ -1266,6 +1266,27 @@
             <li><strong>Affix rarity upgrades</strong> — one step, on one affix, from 5 diamonds at the bottom to 196 at the top.</li>
           </ul>
 
+          <h3 id="delve">The Delve</h3>
+          <p class="dim small">
+            The gold sink, and the only one that repeats. Pay at the gate,
+            descend eight floors, and decide after every floor whether to bank
+            what you are carrying or push for more. Three failures and you carry
+            nothing out.
+          </p>
+          <ul class="styled-list">
+            <li><strong>The fee follows the region you have reached</strong> — about forty minutes of that region's own income, from 7,000 gold at the start to 250,000 at the top. It is the same weight whenever you play it.</li>
+            <li><strong>The reward follows your sheet, not your region.</strong> Each floor asks for a fixed attribute value — 20 on the first, 270 on the eighth — so how deep you get is decided by the attributes you placed.</li>
+            <li><strong>Every door wants one attribute</strong>, and each floor offers three. A door that shows what it wants also shows your odds; a door that does not is the gamble.</li>
+            <li><strong>Fortune decides how often a door tells you.</strong> 55% with none, 77% at 100, and it never reaches certainty. This is the one place Fortune does something you can watch happen.</li>
+            <li><strong>Banking pays diamonds</strong> — a full clear is worth about 20, and walking out at floor five about 6. Pushing raises the multiplier on everything already banked, so a failure costs more the deeper it happens.</li>
+            <li><strong>There is a weekly ceiling of 60 diamonds</strong>, and the screen shows how much of it you have taken. Past it a run pays gold back from the gate instead — worth playing, and still a net cost.</li>
+          </ul>
+          <p class="dim small">
+            Nothing about a run is decided by your device: the odds, the doors
+            and every outcome are rolled by the server, which is why the numbers
+            on screen are the real ones.
+          </p>
+
         <!-- ================================================== EVENTS -->
         {:else if activeTab === 'events'}
           <h3 id="worldboss">The world boss</h3>

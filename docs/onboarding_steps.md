@@ -227,6 +227,50 @@ The consequence is exactly the right one in both directions:
 
 ---
 
+## 4b. Tier three - the objective track (added 2026-09-09)
+
+Tier two is REACTIVE by construction: it explains a system the first time the
+player reaches it, and can say nothing about one they have not found. So a
+mature account had no answer to the only question a large game keeps provoking -
+*what should I do now*. That is the reported gap, and tier three is its mirror
+image: it fires when a player is READY for something and has not done it.
+
+`src/lib/stores/tutorialObjectives.ts`, nine entries, same rule as the other two
+tiers - a predicate over the state packet, pure, node-testable, no stored
+progress. Ordered by what is worth doing rather than by what unlocks first;
+unplaced attribute points lead, because that is power the player already owns.
+
+Precedence is tier one, then tier two, then this. Answering "what is this"
+before "what next" is deliberate: running objectives first would point a player
+at the Delve while the screen they had just opened went unexplained.
+
+The Delve is the clearest case for the whole tier. It shipped as a complete
+screen that tier two could never announce - tier two fires on REACHING a system,
+and nothing reaches a screen it has never heard of.
+
+An objective is acknowledged exactly like a discovery and shares the same
+seen-set, because every entry is a first-time act.
+`tests/tutorialObjectives.test.ts` asserts no objective id collides with a
+discovery id: one seen-set keyed by id means a collision would silently dismiss
+the wrong thing, which is invisible until someone reports a panel that never
+appeared.
+
+**The panel had to change with it.** An objective stands on a mature account
+indefinitely, where a discovery used to be dismissed and gone, and
+`npm run check:overlap` immediately found ELEVEN controls buried under the fixed
+panel at 390px - "Reroll" under "Got it" on the Chest, the auto-eat threshold
+input under the panel entirely. The panel had always been capable of this; a
+short cue simply used to miss. It now reserves its own measured height in the
+body and folds to its title line under 560px.
+
+The fold is derived from a resize-tracked width, not sampled once per cue. The
+first version read `window.innerWidth` when a cue arrived, so a window narrowed
+afterwards kept an expanded panel - and that is exactly what the checker does,
+which is how it was caught. A layout rule that samples the viewport once is not
+a layout rule.
+
+---
+
 ## 5. What the packet cannot express
 
 Reported rather than solved. A wire change is expensive here — the packet is

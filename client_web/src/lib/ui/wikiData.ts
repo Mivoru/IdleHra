@@ -580,6 +580,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Market', label: 'Market', status: 'documented', tab: 'economy', note: 'Listings, the wealth-scaled seller fee and the region gate on buying.' },
   { screen: 'Mailbox', label: 'Mailbox', status: 'documented', tab: 'economy', note: 'Where world boss rewards and undeliverable market goods land.' },
   { screen: 'Store', label: 'Store', status: 'documented', tab: 'economy', note: 'Diamonds, and the two sinks worth spending them on.' },
+  { screen: 'Delve', label: 'The Delve', status: 'documented', tab: 'economy', note: 'The gold sink: the fee per region, the floor ladder, what Fortune buys and the weekly diamond ceiling.' },
   { screen: 'WorldBoss', label: 'World boss', status: 'documented', tab: 'events', note: 'The shared encounter, the three attempts and the percentile rewards.' },
 ];
 
@@ -668,6 +669,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'economy', anchor: 'market', title: 'The market', keywords: 'sell buy listing price fee bracket escrow region gate' },
   { tab: 'economy', anchor: 'mailbox', title: 'The mailbox', keywords: 'mail claim attachment full fifty lost reward' },
   { tab: 'economy', anchor: 'diamonds', title: 'Diamonds', keywords: 'premium currency store purchase inheritance hall slots affix rarity' },
+  { tab: 'economy', anchor: 'delve', title: 'The Delve', keywords: 'gold sink minigame doors floors lantern charges bank push diamonds ceiling fortune embers' },
 
   { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'perun avatar shared hp attempts percentile token reward' },
   { tab: 'events', anchor: 'daily', title: 'The daily bonus', keywords: 'login streak seven days gold diamonds utc midnight' },

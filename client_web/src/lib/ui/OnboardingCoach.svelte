@@ -50,6 +50,97 @@
 
   const cue = $derived($onboardingCue);
 
+  /*
+    Modul: THE PANEL RESERVES ITS OWN SPACE, because a fixed overlay that does
+    not is a control-burying bug wearing a hint's clothes.
+
+    Found by exercise.mjs the day tier three landed: the coach sat over the
+    Village screen's "Marry" button and the click timed out after thirty
+    seconds. It was always capable of this - it has been fixed to the bottom of
+    the viewport since it was written - but until an objective could stand
+    there indefinitely, the panel that happened to be showing was short enough
+    to miss the controls underneath. That is not a fix, that is luck.
+
+    Measured rather than hard-coded: the panel's height depends on how long the
+    body text is and on how many lines the action row wraps onto at 390px, so a
+    constant would be wrong at one width or the other - which is exactly the
+    class check:clipping exists to catch.
+  */
+  let panel = $state<HTMLElement | null>(null);
+
+  /*
+    Modul: COLLAPSIBLE, BECAUSE A HINT MAY NOT BURY A CONTROL.
+
+    check:overlap found eleven pairs the day tier three landed - "Reroll" under
+    "Got it" on the Chest, "Contribute gold" under "Skip onboarding" in the
+    Guild, the auto-eat threshold input under the panel entirely, all at 390px.
+    The panel had always been a fixed overlay; what changed is that an
+    objective can stand there indefinitely on a mature account, where a
+    discovery used to be dismissed and gone.
+
+    Reserving space in the body (above) fixes the screens that scroll the
+    document. It cannot fix a screen with its OWN scroll region, because the
+    content at the bottom of an inner scroller passes underneath a fixed
+    element whatever the body does. So the panel also has to be small enough to
+    get out of the way, and collapsing to its title line is what does that -
+    the player keeps the tag, the title and one tap to bring it back.
+
+    Collapsed state is deliberately NOT persisted: it is a per-glance
+    convenience, not a preference, and a hint that stays collapsed forever is a
+    hint that was never shown.
+  */
+  /*
+    Modul: FOLDED IS A FUNCTION OF THE VIEWPORT, not a one-off set when a cue
+    arrives - and the first version of this got that wrong in a way only
+    check:overlap could see. It read window.innerWidth once per new cue, so a
+    session that started wide and was then narrowed kept an expanded panel, and
+    the checker (which loads at 1500px and re-measures at 390px without
+    changing the cue) saw exactly that. A layout rule that samples the viewport
+    once is not a layout rule.
+
+    So: derived from a width that a resize listener keeps current, with the
+    player's own toggle taking precedence until the next cue replaces it.
+  */
+  let viewportWidth = $state(typeof window === 'undefined' ? 1024 : window.innerWidth);
+  let userToggled = $state<boolean | null>(null);
+
+  const collapsed = $derived(userToggled ?? viewportWidth < 560);
+
+  $effect(() => {
+    if (typeof window === 'undefined') return;
+    const onResize = () => (viewportWidth = window.innerWidth);
+    window.addEventListener('resize', onResize);
+    onResize();
+    return () => window.removeEventListener('resize', onResize);
+  });
+
+  // A new cue is a new thing to say, so it drops the player's fold choice and
+  // goes back to whatever the viewport says.
+  let lastCueId = $state('');
+  $effect(() => {
+    if (cue && cue.id !== lastCueId) {
+      lastCueId = cue.id;
+      userToggled = null;
+    }
+  });
+
+  $effect(() => {
+    // Read cue so this re-runs when the panel's content (and height) changes.
+    const showing = cue;
+    if (typeof document === 'undefined') return;
+
+    if (!showing || !panel) {
+      document.body.style.paddingBottom = '';
+      return;
+    }
+
+    document.body.style.paddingBottom = `${panel.offsetHeight + 24}px`;
+
+    return () => {
+      document.body.style.paddingBottom = '';
+    };
+  });
+
   function goThere() {
     if (!cue) return;
     // Modul: a discovery is acknowledged by ACTING on it as well as by "Got
@@ -57,29 +148,52 @@
     // player then dismiss a panel about a screen they are now looking at is
     // the kind of thing that gets a tutorial turned off.
     const target = cue.screen;
-    if (cue.kind === 'discovery') acknowledgeCue();
+    if (cue.kind !== 'step') acknowledgeCue();
     requestScreen(target);
   }
 </script>
 
 {#if cue}
-  <div class="coach" role="status" data-onboarding-cue={cue.id} data-onboarding-kind={cue.kind}>
+  <div class="coach" bind:this={panel} role="status" data-onboarding-cue={cue.id} data-onboarding-kind={cue.kind}>
     <div class="head">
       {#if cue.kind === 'step'}
         <span class="tag">Step {cue.index} / {cue.total}</span>
+      {:else if cue.kind === 'objective'}
+        <!-- Modul: an objective is labelled DO THIS NEXT rather than "New",
+             because it is not describing something the player has found - it
+             is naming something they have not. Tier two answers "what is
+             this"; this answers "what now", and the tag is the only thing on
+             screen that tells them apart. -->
+        <span class="tag next">Do this next</span>
       {:else}
         <span class="tag new">New</span>
       {/if}
       <strong>{cue.title}</strong>
+      <button
+        class="fold"
+        aria-expanded={!collapsed}
+        title={collapsed ? 'Show this hint' : 'Hide this hint'}
+        onclick={() => (userToggled = !collapsed)}
+      >
+        {collapsed ? '▲' : '▼'}
+      </button>
     </div>
-    <p>{cue.body}</p>
-    <div class="actions">
-      <button class="gilded" onclick={goThere}>Take me there</button>
-      {#if cue.kind === 'discovery'}
-        <button onclick={acknowledgeCue}>Got it</button>
-      {/if}
-      <button class="quiet" onclick={skipTutorial}>Skip onboarding</button>
-    </div>
+    <!-- Modul: {#if}, not a `display` rule and not a <details>. An author
+         display rule on a direct child defeats the UA rule that hides a closed
+         panel, and engines disagree about whether that rule exists at all -
+         the chest's collapsed sweep panel kept live, clickable buttons sitting
+         on top of the item list for exactly that reason. Absent is the only
+         state that cannot be clicked through. -->
+    {#if !collapsed}
+      <p>{cue.body}</p>
+      <div class="actions">
+        <button class="gilded" onclick={goThere}>Take me there</button>
+        {#if cue.kind !== 'step'}
+          <button onclick={acknowledgeCue}>Got it</button>
+        {/if}
+        <button class="quiet" onclick={skipTutorial}>Skip onboarding</button>
+      </div>
+    {/if}
   </div>
 {/if}
 
@@ -116,6 +230,21 @@
     flex-wrap: wrap;
   }
 
+  .fold {
+    margin-left: auto;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 0.7rem;
+    line-height: 1;
+    padding: 0.2rem 0.3rem;
+  }
+
+  .fold:hover {
+    color: var(--accent);
+  }
+
   .tag {
     font-size: 0.65rem;
     text-transform: uppercase;
@@ -127,6 +256,7 @@
     white-space: nowrap;
   }
 
+  .tag.next,
   .tag.new {
     color: var(--accent);
     border-color: var(--accent);

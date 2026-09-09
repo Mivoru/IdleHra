@@ -4,6 +4,7 @@
   import { volume, muted, unlockAudio, play, preloadAll, CLIPS, type ClipName } from '../lib/ui/audio';
   import { tutorialPrompt, skipTutorial, unskipTutorial, onboardingDismissed } from '../lib/stores/tutorial';
   import { DISCOVERY_MOMENTS } from '../lib/stores/tutorialDiscoveries';
+  import { ALL_OBJECTIVES } from '../lib/stores/tutorialObjectives';
   import { seenExplanations, forgetSeen, forgetAllSeen } from '../lib/stores/tutorialSeen';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
@@ -152,7 +153,14 @@
   // and then wanted it. Every explanation in the game is listed here with its
   // full text, so nothing is reachable exactly once.
   const explanations = $derived(
-    DISCOVERY_MOMENTS.map((moment) => ({ ...moment, seen: $seenExplanations.has(moment.id) })),
+    // Modul: BOTH reactive tiers. An objective the player dismissed is as
+    // unreachable afterwards as a discovery they dismissed, so leaving tier
+    // three out of this list would make it the one thing in the game that can
+    // be lost by clicking "Got it" once.
+    [...DISCOVERY_MOMENTS, ...ALL_OBJECTIVES].map((moment) => ({
+      ...moment,
+      seen: $seenExplanations.has(moment.id),
+    })),
   );
   const seenCount = $derived(explanations.filter((e) => e.seen).length);
 

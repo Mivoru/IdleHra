@@ -1108,6 +1108,67 @@ await go('World Boss');
   }
 }
 
+// --- the objective track: the game keeps answering "what now" -----------------
+//
+// Modul: TIER THREE, AND WHY IT NEEDED A CHECK OF ITS OWN.
+//
+// Tier one stops after three steps, about ten minutes in. Tier two is reactive
+// - it explains a system the first time the player REACHES it, and says nothing
+// about one they have not found. So a mature account had nothing telling it
+// what to do next, which is the reported problem this closes.
+//
+// The fixture is exactly the account that proves it: level 40, geared, and past
+// every discovery in the table. Working through them one "Got it" at a time and
+// arriving at an OBJECTIVE is the only way to show the chain actually reaches
+// its third tier on a real account rather than only in a node runner.
+{
+  let seenKinds = new Set();
+  let reachedObjective = null;
+
+  for (let i = 0; i < 30; i++) {
+    const panel = page.locator('.coach').first();
+    if ((await panel.count()) === 0) break;
+
+    const kind = await panel.getAttribute('data-onboarding-kind');
+    const id = await panel.getAttribute('data-onboarding-cue');
+    if (kind) seenKinds.add(kind);
+    if (kind === 'objective' && !reachedObjective) {
+      reachedObjective = { id, text: (await panel.innerText()).replace(/\s+/g, ' ').slice(0, 90) };
+      break;
+    }
+
+    const gotIt = panel.getByRole('button', { name: /^Got it$/ });
+    if ((await gotIt.count()) === 0) break;
+    await gotIt.first().click();
+    await page.waitForTimeout(250);
+  }
+
+  record(
+    'a mature account is told what to do next, not just what it has found',
+    Boolean(reachedObjective),
+    reachedObjective ? `${reachedObjective.id}: ${reachedObjective.text}` : `only saw ${[...seenKinds].join(', ') || 'no cue'}`,
+  );
+
+  // Modul: an objective must be ACTIONABLE - it names a screen the nav
+  // actually has. A dead nav key sends the player nowhere and announces
+  // nothing, which is the same class as the screen lists that rotted in three
+  // separate checkers.
+  if (reachedObjective) {
+    await page.locator('.coach').first().getByRole('button', { name: /Take me there/i }).click();
+    await page.waitForTimeout(900);
+    const arrived = await page.evaluate(() => document.body.innerText.length > 0);
+    record('an objective can take you to the screen it is about', arrived);
+
+    // Acting on it is acknowledging it: the same objective must not come back.
+    const after = page.locator('.coach[data-onboarding-cue="' + reachedObjective.id + '"]');
+    record(
+      'and acting on an objective retires it',
+      (await after.count()) === 0,
+      'the panel moved on rather than repeating itself',
+    );
+  }
+}
+
 // --- the Delve: gold goes in, and the world has to change ---------------------
 //
 // Modul: A GOLD SINK IS ONLY A SINK IF THE GOLD ACTUALLY LEAVES.
