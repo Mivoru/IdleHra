@@ -17,7 +17,9 @@ dependency rather than a preference — see "Execution plan" below.**
 turned out to be. **Tasks 11 and 12 were added 2026-09-09 and are open** - a gold
 sink built as a minigame (**DONE - shipped as The Delve**) and the tutorial past
 its first ten minutes (**DONE - shipped as tier three, the objective track**).
-Both write-ups are at the bottom of this file.
+Both write-ups are at the bottom of this file. **Task 13, added 2026-09-10, is
+the mobile app** - four phases, written against what is actually in the repo
+rather than what MOBILE.md claims.
 
 | # | Open task | Shape |
 |---|---|---|
@@ -2036,6 +2038,206 @@ itself is worse than one that does not exist.
 **Low technically, medium in taste.** The failure mode is nagging: a permanent
 panel that always wants something is worse than silence. It needs a dismissed
 state that lasts, and it must say *why* a thing is worth doing, not just name it.
+
+---
+
+# OPEN — 13. Ship the mobile app
+
+**Requested 2026-09-10:** what is missing for a fully working, complete mobile
+app, and a plan to get there.
+
+Written against what is actually in the repo, not against what MOBILE.md says -
+two of its claims are already stale, which is noted below and fixed as part of
+D5.
+
+## What is already true
+
+More than the docs admit.
+
+- **Capacitor 8.5 is installed and configured.** `capacitor.config.json` is
+  real, and both `android/` and `ios/` projects are generated (the Android
+  manifest, resources and Java sources exist; `App.xcodeproj` and `CapApp-SPM`
+  exist).
+- **The three things that differ on native are handled and documented** - the
+  server address, HTTPS-therefore-WSS, and token storage moving to Capacitor
+  Preferences. `configurationProblem()` detects the first two and says so on the
+  login screen rather than hanging.
+- **Push is done on the server.** `RegisterPushToken` is opcode 33 with a
+  handler in `SimulationEngine`, two validator paths, and
+  `PushNotificationTriggerEngine` behind it. Only the client half is missing.
+- **Purchases are wired end to end except the vendor SDK.** `lib/net/billing.ts`
+  exists, receipts go over REST to `/api/v1/billing/verify-receipt` (which
+  checks the signature) and never through opcode 39. `purchaseUnavailableReason()`
+  disables the Buy buttons and says why. **MOBILE.md's "in-app purchases: not
+  built" is out of date** - what is missing is one adapter.
+- **The mobile ergonomics pass landed 2026-09-09:** 221 undersized touch targets
+  to 0, enforced by `npm run check:touch`; nothing clipped or buried at 390px;
+  `env(safe-area-inset-bottom)` respected; big numbers compacted.
+- **App-resume handling landed 2026-09-09** (`lib/net/lifecycle.ts`).
+
+## What is missing, in the order it blocks things
+
+---
+
+### PHASE A — prove it runs on glass
+
+Nothing below this line is worth doing until this is done, because every
+estimate after it is a guess. **The web build has never been run on a phone.**
+
+**A1. Make a mobile build possible on a machine without the server.**
+
+`npm run sync` runs `npm run build`, which runs `generate:protocol` - and that
+shells out to the C# server's `--dump-protocol`. A Mac doing an iOS build will
+not have a working .NET server checked out, and the failure will look like a
+Capacitor problem rather than a missing toolchain.
+
+*Done when:* there is a `sync:web` path that builds and syncs from an
+already-generated protocol, `generate-protocol.mjs --check` still guards drift
+in CI, and MOBILE.md says which to use when.
+
+**A2. One recorded device session, against a written checklist.**
+
+Not "try it and see". The checklist is the deliverable, because the answers feed
+straight into B:
+
+- Suspend and resume after 30 seconds, 5 minutes, and 1 hour. Does the game come
+  back, and how fast? **This settles the zombie-socket question** that could not
+  be reproduced in Chromium - `resumeFromBackground`'s stale check is defensive
+  and unproven until a real suspend either triggers it or does not.
+- Lock the screen mid-combat. Does offline catch-up credit correctly on return?
+- Airplane mode on, then off. What does the player see in between?
+- Rotate. Open the keyboard over a text input (chat, market price, guild
+  donation) - does the input stay visible?
+- Android hardware back button on every screen. Today it will exit the app.
+- An hour of play: battery drain, heat, and whether the 10 Hz packet stream is
+  survivable on a mid-range phone.
+
+*Done when:* the checklist is answered in writing in MOBILE.md, with the device
+and OS version named.
+
+---
+
+### PHASE B — the things that make it an app rather than a bookmark
+
+**B1. Push notifications - the client half.**
+
+The server is finished. What is missing: `@capacitor/push-notifications`,
+requesting permission at a moment that earns it (not on first launch), obtaining
+the FCM/APNs token, and sending it through opcode 33 - whose field is 64 bytes,
+which an APNs token fits and an FCM token may not, so measure before assuming.
+
+This is most of the argument for having an app at all. An idle game's whole
+proposition is that it runs without you; a notification when the larder empties,
+a world boss spawns, or a village upgrade completes is the difference between an
+app and a bookmark.
+
+*Done when:* a real device receives a notification from
+`PushNotificationTriggerEngine`, tapping it opens the relevant screen, and
+declining permission leaves the game fully playable and never asks again in the
+same session.
+
+**B2. Session length. The 24-hour JWT has no refresh token.**
+
+In a browser tab you re-login occasionally. On a phone, "open the app tomorrow"
+means logged out, every day, in a game whose entire promise is that it runs while
+you are gone. This is a product decision about session length, not a defect, and
+it needs deciding before a store build rather than after the first review.
+
+Options, cheapest first: lengthen `TokenLifetimeSeconds` for native builds; add a
+refresh token; or a long-lived device token exchanged for short-lived JWTs. The
+third is correct and the most work.
+
+*Done when:* a device left overnight opens straight into the game, and a
+revoked or expired session still lands on the login screen rather than a hang.
+
+**B3. The Android back button.**
+
+Today it exits the app from any screen. Expected behaviour is: close the open
+modal, else go back a screen, else ask before exiting.
+
+*Done when:* back never exits from a nested screen, and exiting from the hub
+asks first.
+
+**B4. A no-network state that says something.**
+
+`connectionStatus` already carries the phase; what is missing is a mobile-shaped
+presentation of it. A phone loses signal constantly and a spinner is not an
+answer.
+
+*Done when:* losing signal shows what is happening and what the player can do,
+and regaining it clears itself without a manual reload.
+
+---
+
+### PHASE C — store readiness
+
+**C1. App identity.** `appId` is the placeholder `com.folkidle.game`; there are
+no icons, no splash screen, no adaptive icon. Decide the real bundle id FIRST -
+it cannot be changed after the first store upload, on either platform.
+
+**C2. Signing.** An upload keystore for Play (and a backup of it that is not on
+one laptop), certificates and provisioning profiles for iOS. This is the step
+that most often blocks a release by a week for reasons that have nothing to do
+with code.
+
+**C3. Store listings and compliance.** Screenshots at required sizes, a privacy
+policy URL that actually resolves, Play's Data Safety form, Apple's privacy
+nutrition labels, an age rating, and an account-deletion path - which the GDPR
+purge already implements and which Play now requires be reachable from outside
+the app too.
+
+**C4. In-app purchases: the store adapter.** The only missing piece of billing.
+Create the products in Play Console and App Store Connect with ids matching
+`GameBalanceConfig.json`'s `IapProductPrices` keys, implement the adapter behind
+`billing.ts`'s existing interface, and make the first real call to
+`/api/v1/billing/verify-receipt` - **an endpoint that has never been called by
+any client.** Test the refund and cancellation paths, not just the happy one.
+
+*Done when:* a sandbox purchase on both platforms credits diamonds exactly once,
+a duplicate receipt is refused, and a cancelled sheet is not reported as an
+error.
+
+---
+
+### PHASE D — the mobile quality bar
+
+**D1. Teaching is per-device.** The onboarding seen-set is `localStorage` keyed
+by player id, so a phone re-teaches everything a browser already taught. It was
+accepted deliberately when the cost was one wire field; with three tiers and
+twenty-six explanations it is now the difference between a returning player and
+an annoyed one.
+
+**D2. Performance on a mid-range device.** The client renders a 10 Hz packet
+stream and `VirtualList` windows an inventory that has reached 17,836 rows. Both
+are fine on a desktop. Neither has been measured on a phone.
+
+**D3. Background behaviour.** What does the app do when backgrounded for eight
+hours - hold a socket, drain a battery, or shut down cleanly and rely on offline
+catch-up? The last is correct and is probably already what happens, but nothing
+has confirmed it.
+
+**D4. A device lane in CI.** At minimum, `cap sync` and an Android assemble on
+every push, so the native project cannot rot silently the way three separate
+screen lists once did.
+
+**D5. Fix MOBILE.md.** Its "Not built yet" section lists purchases as unbuilt
+(they are, bar the adapter) and does not mention the touch checker or the
+lifecycle handler.
+
+---
+
+## The order, and why
+
+A is first because it is the only step that produces facts; everything after it
+is currently an estimate. B is what makes the app worth installing. C is what
+makes it publishable and contains the two items with external lead times
+(signing, store review) - start C1 and C2 in parallel with B, because they are
+waiting-on-other-people work rather than coding work. D is the difference
+between shipping it and being glad you did.
+
+**The single highest-value next action is A2** - one hour with the app on a real
+phone, against the checklist above. It will answer questions that a week of
+reasoning cannot, and it may well reorder everything below it.
 
 ---
 
