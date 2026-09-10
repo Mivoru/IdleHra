@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910070320_WidenPushDeviceTokenColumn")]
+    partial class WidenPushDeviceTokenColumn
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1654,41 +1657,6 @@ namespace FolkIdle.Server.Migrations
                         .IsUnique();
 
                     b.ToTable("PlayerRecords");
-                });
-
-            modelBuilder.Entity("FolkIdle.Server.Models.PlayerRefreshToken", b =>
-                {
-                    b.Property<long>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
-
-                    b.Property<Guid>("AccountId")
-                        .HasColumnType("uuid");
-
-                    b.Property<long>("ExpiresAtEpoch")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("IssuedEpoch")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("RevokedEpoch")
-                        .HasColumnType("bigint");
-
-                    b.Property<byte[]>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("bytea");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AccountId");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.ToTable("PlayerRefreshTokens");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerRegionCompletion", b =>

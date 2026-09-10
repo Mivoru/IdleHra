@@ -63,6 +63,27 @@ namespace FolkIdle.Server.Engine
                 // that has nothing to do.
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"MarketOrderRecords\" WHERE \"SellerId\" = {0}", new object[] { playerId }, timeout.Token);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PlayerDeviceRegistrations\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
+
+                // Modul: A PURGED ACCOUNT MUST NOT LEAVE A WORKING CREDENTIAL
+                // BEHIND, and a refresh token is one.
+                //
+                // Keyed on AccountId, not PlayerId - these are issued by the
+                // auth routes, which run before anything has resolved a
+                // PlayerRecord. RedeemRefreshTokenAsync does not check that the
+                // account still exists (it has no reason to; the row IS the
+                // authority), so a surviving row would go on minting valid JWTs
+                // for an account that had been erased. That is both a live
+                // session after a deletion request and, under GDPR, personal
+                // data that was supposed to be gone.
+                await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PlayerRefreshTokens\" WHERE \"AccountId\" = {0}", new object[] { player.PlayerGuid }, timeout.Token);
+
+                // Short-lived and useless once PlayerRecords is gone -
+                // CompleteResetAsync cannot find the player and refuses - but
+                // there is no reason to leave an hour of somebody's email
+                // address's shadow lying in a table after they asked for it to
+                // be erased.
+                await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PasswordResetTokens\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
+
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PlayerRecords\" WHERE \"Id\" = {0}", new object[] { playerId }, timeout.Token);
 
                 await transaction.CommitAsync(timeout.Token);

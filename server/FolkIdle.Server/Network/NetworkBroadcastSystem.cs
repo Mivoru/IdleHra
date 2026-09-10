@@ -263,6 +263,11 @@ namespace FolkIdle.Server.Network
         private AntiCheatTelemetryEngine? _antiCheatTelemetryEngine;
         private SimulationEngine? _simulationEngine;
         private BillingVerificationEngine? _billingVerificationEngine;
+
+        // Modul: registered rather than constructed here for the same reason
+        // the billing engine is - PushNotificationTriggerEngine is built in
+        // Program.cs after this system exists.
+        private PushNotificationTriggerEngine? _pushNotificationTriggerEngine;
         private PlayerSessionRegistry? _playerSessionRegistry;
         private readonly ChatEngine _chatEngine;
 
@@ -333,6 +338,11 @@ namespace FolkIdle.Server.Network
         public void RegisterBillingVerificationEngine(BillingVerificationEngine engine)
         {
             _billingVerificationEngine = engine;
+        }
+
+        public void RegisterPushNotificationTriggerEngine(PushNotificationTriggerEngine engine)
+        {
+            _pushNotificationTriggerEngine = engine;
         }
 
         // Modul: Play Mode audit fix. PlayerSessionRegistry is constructed
@@ -824,7 +834,8 @@ namespace FolkIdle.Server.Network
                         // server to spam a stranger; the completion side is a
                         // guess against a token.
                         || requestPath == "/api/v1/auth/request-password-reset"
-                        || requestPath == "/api/v1/auth/reset-password")
+                        || requestPath == "/api/v1/auth/reset-password"
+                        || requestPath == "/api/v1/auth/refresh")
                     {
                         if (!AuthThrottle.TryConsume(AuthThrottle.ResolveClientAddress(context.Request)))
                         {
@@ -880,6 +891,33 @@ namespace FolkIdle.Server.Network
                     if (requestPath == "/api/v1/auth/reset-password" && context.Request.HttpMethod == "POST")
                     {
                         _ = HandleResetPassword(context);
+                        continue;
+                    }
+
+                    // Modul: EXCHANGING A REFRESH TOKEN FOR A JWT, AND WHY IT
+                    // IS IN THE THROTTLE BUDGET.
+                    //
+                    // The body is a 256-bit secret, so guessing it is not a
+                    // realistic attack - but the route is unauthenticated by
+                    // construction (its whole job is to run when there is no
+                    // valid session) and every unauthenticated route on this
+                    // server that touches the database has to cost something,
+                    // or it is a way to spend the box from a laptop. The reset
+                    // endpoints are in this list for the same reason.
+                    if (requestPath == "/api/v1/auth/refresh" && context.Request.HttpMethod == "POST")
+                    {
+                        _ = HandleAuthRefresh(context);
+                        continue;
+                    }
+
+                    // Signing out. Unauthenticated on purpose: a player whose
+                    // JWT has already expired must still be able to invalidate
+                    // the refresh token sitting on the device, and requiring a
+                    // live session to do it would make that impossible in
+                    // exactly the case where it matters.
+                    if (requestPath == "/api/v1/auth/revoke" && context.Request.HttpMethod == "POST")
+                    {
+                        _ = HandleAuthRevoke(context);
                         continue;
                     }
 
@@ -1394,6 +1432,25 @@ namespace FolkIdle.Server.Network
                     if (requestPath == "/api/v1/player/email-consent")
                     {
                         await HandleEmailConsent(context);
+                        continue;
+                    }
+
+                    // Modul: THE DEVICE TOKEN GOES OVER REST, NOT OVER
+                    // OPCODE 33.
+                    //
+                    // `ClientCommandPacket.DeviceTokenBytes` is a fixed
+                    // `byte[64]`. An FCM registration token is around 160
+                    // characters, so Android push could never have travelled
+                    // that path and iOS push fitted it with nothing to spare.
+                    // The purchase receipt hit the same wall and took the same
+                    // answer, for the same reason - see HandleBillingVerify.
+                    //
+                    // Awaited rather than dispatched: this one writes a single
+                    // small row and the client is standing in Settings waiting
+                    // to be told whether its device is registered.
+                    if (requestPath == "/api/v1/player/push-token" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandlePushTokenRegistration(context);
                         continue;
                     }
 
@@ -3552,6 +3609,106 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Email consent error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        /// <summary>
+        /// Stores this device's push token against the signed-in player.
+        /// </summary>
+        /// <remarks>
+        /// Modul: EVERY REFUSAL HERE IS AUDIBLE, ON PURPOSE.
+        ///
+        /// The engine behind this used to be reachable only through opcode 33,
+        /// whose whole failure mode was silence: `RegisterDeviceAsync` returned
+        /// early on a bad length and the client - which had no reply channel
+        /// anyway - carried on believing it had registered. This route answers,
+        /// and the Settings screen repeats the answer to the player, because a
+        /// push feature that silently never fires is indistinguishable from one
+        /// the player turned off.
+        ///
+        ///   400  the body is not a token, or names a platform that is not
+        ///        ios/android
+        ///   401  no session
+        ///   503  the engine was never registered (a start-up fault, not the
+        ///        player's)
+        ///   500  the write failed
+        ///
+        /// The platform arrives as a WORD and is mapped to the stored 1/2 here,
+        /// once. A magic number crossing the wire would be that mapping written
+        /// down in two languages, which is how KNOWN_AFFIX_IDS drifted.
+        /// </remarks>
+        private async Task HandlePushTokenRegistration(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (_pushNotificationTriggerEngine == null)
+                {
+                    context.Response.StatusCode = 503;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string token;
+                string platform;
+                try
+                {
+                    using var parsed = JsonDocument.Parse(body);
+                    token = parsed.RootElement.TryGetProperty("Token", out var t) ? (t.GetString() ?? string.Empty) : string.Empty;
+                    platform = parsed.RootElement.TryGetProperty("Platform", out var pf) ? (pf.GetString() ?? string.Empty) : string.Empty;
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                byte platformFamily = platform.ToLowerInvariant() switch
+                {
+                    "android" => (byte)1,
+                    "ios" => (byte)2,
+                    _ => (byte)0
+                };
+
+                if (platformFamily == 0)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                // Bounds checked HERE as well as in the engine, so a token that
+                // is obviously not one is a 400 the client can explain rather
+                // than a 500 it cannot.
+                int tokenBytes = System.Text.Encoding.UTF8.GetByteCount(token.Trim());
+                if (tokenBytes < PushNotificationTriggerEngine.MinDeviceTokenBytes
+                    || tokenBytes > PushNotificationTriggerEngine.MaxDeviceTokenBytes)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                bool stored = await _pushNotificationTriggerEngine.RegisterDeviceTokenAsync(playerId, token, platformFamily);
+                context.Response.StatusCode = stored ? 200 : 500;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Push token registration error: {ex}");
                 context.Response.StatusCode = 500;
             }
 
@@ -7480,6 +7637,16 @@ namespace FolkIdle.Server.Network
         {
             public string Token { get; set; } = string.Empty;
             public long ExpiresAtEpoch { get; set; }
+
+            /// <summary>
+            /// The long-lived half, and the ONLY moment it is ever transmitted.
+            /// Empty is a valid value: issuing it is allowed to fail without
+            /// failing the login, because a player who is signed in now cares
+            /// far more about that than about tomorrow morning.
+            /// </summary>
+            public string RefreshToken { get; set; } = string.Empty;
+
+            public long RefreshExpiresAtEpoch { get; set; }
         }
 
         private sealed class RegisterErrorResponse
@@ -7568,6 +7735,174 @@ namespace FolkIdle.Server.Network
                 context.Response.StatusCode = 500;
                 context.Response.Close();
             }
+        }
+
+        /// <summary>
+        /// Issues the refresh half of a login, and never fails the login.
+        /// </summary>
+        /// <remarks>
+        /// Modul: A LOGIN THAT SUCCEEDED MUST NOT BE THROWN AWAY BECAUSE THE
+        /// SECOND HALF DID NOT. The JWT is already minted and valid for a day
+        /// by the time this runs; if the insert fails the player is signed in
+        /// exactly as they were before any of this existed, and finds out
+        /// tomorrow. Failing the whole login instead would turn a feature that
+        /// saves a password prompt into one that prevents a sign-in.
+        /// </remarks>
+        private async Task<(string Token, long ExpiresAtEpoch)> TryIssueRefreshTokenAsync(
+            RetryingDbContextOptions authOptions, Guid accountId)
+        {
+            try
+            {
+                return await AuthenticationEngine.IssueRefreshTokenAsync(authOptions, accountId);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Refresh token issue failed for account {accountId}: {ex.Message}");
+                return (string.Empty, 0L);
+            }
+        }
+
+        /// <summary>
+        /// Trades a refresh token for a fresh JWT, and rotates it.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THIS IS WHAT MAKES THE APP OPEN STRAIGHT INTO THE GAME.
+        ///
+        /// Before it, the 24-hour JWT meant a player who opened FolkIdle on
+        /// Tuesday morning after playing on Monday evening met the login form -
+        /// daily, in a game whose entire promise is that it runs while you are
+        /// gone.
+        ///
+        /// EVERY FAILURE IS 401, AND SAYS NOTHING ELSE. Unknown, expired and
+        /// replayed are one answer on the wire, because the difference between
+        /// them is information about somebody else's session. The client needs
+        /// only "this did not work, show the login form", which is precisely
+        /// the case B2 also asked to land on the login screen rather than hang.
+        /// The reason IS logged, because the replay case is the one anybody
+        /// investigating a stolen account will come looking for.
+        /// </remarks>
+        private async Task HandleAuthRefresh(HttpListenerContext context)
+        {
+            try
+            {
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string rawToken;
+                try
+                {
+                    using var parsed = JsonDocument.Parse(body);
+                    rawToken = parsed.RootElement.TryGetProperty("refreshToken", out var t)
+                        ? (t.GetString() ?? string.Empty)
+                        : string.Empty;
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                var result = await AuthenticationEngine.RedeemRefreshTokenAsync(authOptions, rawToken);
+                if (result.Outcome != AuthenticationEngine.RefreshOutcome.Rotated)
+                {
+                    if (result.Outcome == AuthenticationEngine.RefreshOutcome.Replayed)
+                    {
+                        // The only one worth a line in the log: a spent token
+                        // came back, so every session on that account was just
+                        // revoked. See RedeemRefreshTokenAsync for why.
+                        Console.WriteLine("Refresh token replay detected; all sessions for that account revoked.");
+                    }
+
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                // Modul: a fresh SessionNonce, exactly as a password login
+                // mints one. The nonce is what the Redis eviction check uses to
+                // kick a stale prior session for the same account, so reusing
+                // one here would let two devices hold the same session identity
+                // and neither would ever evict the other.
+                string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
+                string jwt = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
+
+                var response = new AuthLoginResponse
+                {
+                    Token = jwt,
+                    ExpiresAtEpoch = expiresAtEpoch,
+                    RefreshToken = result.Token,
+                    RefreshExpiresAtEpoch = result.ExpiresAtEpoch
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Auth refresh error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        /// <summary>
+        /// Signing out: invalidates the refresh token on this device.
+        /// </summary>
+        /// <remarks>
+        /// Answers 204 whatever happened, including for a token that never
+        /// existed. There is nothing a sign-out button would do differently on
+        /// being told the token was already gone, and distinguishing the cases
+        /// would confirm which tokens are live to anybody who can reach the
+        /// route.
+        ///
+        /// The JWT is untouched and stays valid for the rest of its day - it is
+        /// a bearer token this server does not store, which is exactly the
+        /// property that made a 60-day one unacceptable. The client discards
+        /// it; the refresh token is the half that had to be revocable.
+        /// </remarks>
+        private async Task HandleAuthRevoke(HttpListenerContext context)
+        {
+            try
+            {
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string rawToken = string.Empty;
+                try
+                {
+                    using var parsed = JsonDocument.Parse(body);
+                    if (parsed.RootElement.TryGetProperty("refreshToken", out var t))
+                    {
+                        rawToken = t.GetString() ?? string.Empty;
+                    }
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    // A malformed body is still a sign-out. Nothing to revoke.
+                }
+
+                await AuthenticationEngine.RevokeRefreshTokenAsync(authOptions, rawToken);
+                context.Response.StatusCode = 204;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Auth revoke error: {ex}");
+
+                // Still 204. A sign-out that reports a failure invites the
+                // player to press it again, and the local half - which is the
+                // half that stops this browser being signed in - has already
+                // happened by the time this is called.
+                context.Response.StatusCode = 204;
+            }
+
+            context.Response.Close();
         }
 
         // Modul: sole controlled entry point for account identity issuance.
@@ -7707,7 +8042,15 @@ namespace FolkIdle.Server.Network
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
                 string token = AuthenticationEngine.GenerateJwt(accountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
 
-                var response = new AuthLoginResponse { Token = token, ExpiresAtEpoch = expiresAtEpoch };
+                var refresh = await TryIssueRefreshTokenAsync(authOptions, accountId);
+
+                var response = new AuthLoginResponse
+                {
+                    Token = token,
+                    ExpiresAtEpoch = expiresAtEpoch,
+                    RefreshToken = refresh.Token,
+                    RefreshExpiresAtEpoch = refresh.ExpiresAtEpoch
+                };
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -7992,7 +8335,15 @@ namespace FolkIdle.Server.Network
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
                 string token = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
 
-                var response = new AuthLoginResponse { Token = token, ExpiresAtEpoch = expiresAtEpoch };
+                var refresh = await TryIssueRefreshTokenAsync(authOptions, result.AccountId);
+
+                var response = new AuthLoginResponse
+                {
+                    Token = token,
+                    ExpiresAtEpoch = expiresAtEpoch,
+                    RefreshToken = refresh.Token,
+                    RefreshExpiresAtEpoch = refresh.ExpiresAtEpoch
+                };
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
                 await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);

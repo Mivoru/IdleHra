@@ -11,6 +11,7 @@
 import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
 import { watchAppLifecycle } from '../net/lifecycle';
+import { refreshDeviceTokenIfPermitted, watchNotificationTaps } from '../net/push';
 import {
   SnapshotInterpolator,
   extractInterpolated,
@@ -489,6 +490,19 @@ export function startSession(token: string): void {
   // token. Idempotent by the debounce in lifecycle.ts, so a re-login that runs
   // this a second time costs nothing.
   watchAppLifecycle();
+
+  // Modul: silent, and only when permission was already granted. Push tokens
+  // ROTATE - a reinstall, a restore from backup, or the platform deciding to -
+  // and a player who enabled notifications months ago has no way to know they
+  // stopped arriving and no reason to go and press the button again. This never
+  // prompts; see push.ts.
+  void refreshDeviceTokenIfPermitted();
+
+  // Modul: separate from the refresh above, and NOT conditional on permission.
+  // A tap is how the app was launched, and the event that carries it fired
+  // before this line ran - Capacitor retains it until a listener consumes it,
+  // so attaching here is what makes the tap arrive at all. Idempotent.
+  watchNotificationTaps();
 
   connection.connect(token, {
     onStatus: (status) => {

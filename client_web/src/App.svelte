@@ -37,14 +37,35 @@
   import MailBadge from './lib/ui/MailBadge.svelte';
   import EventBanner from './lib/ui/EventBanner.svelte';
   import Money from './lib/ui/Money.svelte';
-  import { startSession, endSession, connectionStatus, playerState } from './lib/stores/game';
-  import { storedToken, clearToken } from './lib/net/auth';
+  import ConnectionNotice from './lib/ui/ConnectionNotice.svelte';
+  import {
+    startSession,
+    endSession,
+    connectionStatus,
+    playerState,
+    offlineSummary,
+    dismissOfflineSummary,
+    victorySummary,
+    dismissVictory,
+    deathSummary,
+    dismissDeath,
+  } from './lib/stores/game';
+  import { chatDockOpen } from './lib/stores/chatDock';
+  import { resolveBackPress, watchHardwareBack, exitApp } from './lib/net/backButton';
+  import {
+    storedToken,
+    clearToken,
+    storedRefreshToken,
+    refreshSession,
+    revokeRefreshToken,
+  } from './lib/net/auth';
   import { queryClient } from './lib/net/queryClient';
   import { HALT_REASON_SHORT } from './lib/ui/slots';
   import { initLanguage, loadTranslations } from './lib/ui/i18n';
   import { unlockAudio, play } from './lib/ui/audio';
   import OnboardingCoach from './lib/ui/OnboardingCoach.svelte';
   import { coachTargetScreen } from './lib/stores/tutorial';
+  import { untrack } from 'svelte';
 
   initLanguage();
   void loadTranslations();
@@ -52,6 +73,26 @@
   // 49 screens are modal panels, not URLs, so this is a screen store rather
   // than a router - closer to the existing design and one dependency fewer.
   let token = $state<string | null>(storedToken());
+
+  // Modul: OPENING THE APP TOMORROW USED TO MEAN THE LOGIN FORM.
+  //
+  // The JWT lasts a day. In a browser tab that is a mild annoyance; on a phone
+  // it is a password prompt every morning, in a game whose entire proposition
+  // is that it runs while you are gone. The server issues a refresh token
+  // beside the JWT now, and this is where it is spent.
+  //
+  // `restoring` exists so the login form does not FLASH. Without it, a launch
+  // with an expired JWT paints the sign-in screen, then replaces it half a
+  // second later - which reads as having been signed out and then rescued, and
+  // is the sort of thing a player reports as a bug.
+  let restoring = $state(token === null && storedRefreshToken() !== null);
+
+  if (restoring) {
+    void refreshSession().then((session) => {
+      if (session) token = session.token;
+      restoring = false;
+    });
+  }
 
   // Modul: grouped rather than a flat row. Twenty-one destinations in one line
   // wrapped into an unscannable block on any window narrower than a desktop,
@@ -133,6 +174,29 @@
   const ALL_SCREEN_KEYS = new Set<string>(GROUPS.flatMap((group) => group.screens.map((s) => s.key)));
 
   let navOpen = $state(false);
+
+  // Modul: THE ROUTE THE PLAYER TOOK, kept so the Android back button has
+  // something to walk. See lib/net/backButton.ts for why back needed to stop
+  // meaning "quit".
+  //
+  // A plain array rather than $state: nothing in the markup renders it, and a
+  // reactive proxy for a value only one function reads would put a dependency
+  // on every screen change for no benefit. Bounded because an idle session is
+  // measured in hours and a player who taps between two screens for an
+  // afternoon should not grow an unbounded list to prove it.
+  const MAX_SCREEN_HISTORY = 24;
+  let screenHistory: ScreenKey[] = [];
+
+  function goTo(next: ScreenKey): void {
+    // Modul: the same screen twice is not a step. Both the nav and a
+    // cross-screen request can ask for where the player already is, and
+    // recording those would make back a no-op the player has to press
+    // repeatedly - the single most common way a back stack goes wrong.
+    if (next === screen) return;
+    screenHistory.push(screen);
+    if (screenHistory.length > MAX_SCREEN_HISTORY) screenHistory.shift();
+    screen = next;
+  }
   // Modul: flattened through an explicit type. `GROUPS` is a readonly tuple OF
   // readonly tuples, and flatMap over that infers the union of the tuples
   // themselves rather than of their elements - so `item` came out as unknown
@@ -148,7 +212,10 @@
   $effect(() => {
     const request = $screenRequest;
     if (request && ALL_SCREEN_KEYS.has(request.screen)) {
-      screen = request.screen as ScreenKey;
+      // untrack because goTo READS `screen` to record it. Without this the
+      // effect would take a dependency on the very value it writes and re-run
+      // itself on every navigation.
+      untrack(() => goTo(request.screen as ScreenKey));
     }
   });
 
@@ -175,11 +242,94 @@
   function signOut() {
     endSession();
     clearToken();
+    // Modul: the refresh token is worth sixty days, so signing out has to end
+    // it on the SERVER as well as here. Deliberately not awaited - the local
+    // half above is what the player asked for and it has already happened.
+    revokeRefreshToken();
+    // The next session starts at the map, and it starts with nothing behind
+    // it - a back stack left over from the previous account would walk the new
+    // player through screens they never opened.
+    screen = 'hub';
+    screenHistory = [];
+    navOpen = false;
     // The cache is per-account. Leaving it populated would show the previous
     // player's inventory to the next one for as long as it stayed fresh.
     queryClient.clear();
     token = null;
   }
+
+  // Modul: THE ANDROID BACK BUTTON USED TO QUIT THE GAME FROM ANY SCREEN.
+  //
+  // Registering a listener for it is what disables Capacitor's own default, so
+  // from here on this handler owes the player an exit - which is what the
+  // confirmation below is for. The ORDER of the checks is the paint order of
+  // the layers and lives in backButton.ts, as a pure function, so it can be
+  // tested without a device; this is only the half that has to touch component
+  // state.
+  //
+  // WHY THE LAYERS ARE READ INDIVIDUALLY RATHER THAN FROM A REGISTRY. Every
+  // dismissable layer in this client already keeps its open state somewhere
+  // durable - three stores in stores/game.ts, one in stores/chatDock.ts, and
+  // the nav menu which App.svelte owns outright. A registry would be a fourth
+  // copy of state that already exists, kept in step by hand, and this codebase
+  // has shipped its worst defects to exactly that shape of duplication.
+  //
+  // NOT covered, deliberately: PlayerProfileModal (opened from Friends and
+  // chat) and the inline equipment picker on Character. The first is a real
+  // overlay whose open state is local to two routes; the second is not an
+  // overlay at all - it is a disclosure panel in the page flow with its own
+  // visible Close button, and consuming a back press for something that
+  // obscures nothing would make back feel like it had missed.
+  let exitPromptOpen = $state(false);
+
+  function handleBack(): void {
+    const outcome = resolveBackPress({
+      exitPromptOpen,
+      deathCardOpen: $deathSummary !== null,
+      victoryCardOpen: $victorySummary !== null,
+      offlineSummaryOpen: $offlineSummary !== null,
+      chatDockOpen: $chatDockOpen,
+      navOpen,
+      historyDepth: token ? screenHistory.length : 0,
+      // The login form is a root too: there is nothing behind it to go back to.
+      atRoot: !token || screen === 'hub',
+    });
+
+    switch (outcome) {
+      case 'close-exit-prompt':
+        exitPromptOpen = false;
+        break;
+      case 'close-death-card':
+        dismissDeath();
+        break;
+      case 'close-victory-card':
+        dismissVictory();
+        break;
+      case 'close-offline-summary':
+        dismissOfflineSummary();
+        break;
+      case 'close-chat-dock':
+        chatDockOpen.set(false);
+        break;
+      case 'close-nav':
+        navOpen = false;
+        break;
+      case 'previous-screen':
+        screen = screenHistory.pop() ?? 'hub';
+        break;
+      case 'root-screen':
+        screen = 'hub';
+        break;
+      case 'confirm-exit':
+        exitPromptOpen = true;
+        break;
+    }
+  }
+
+  // No dependencies: the handler reads current state when it fires rather than
+  // closing over a snapshot, so this attaches once and stays attached. A
+  // no-op in a browser, where there is no such button.
+  $effect(() => watchHardwareBack(handleBack));
 
   // Modul: A REJECTED TOKEN HAS TO REACH THE LOGIN FORM.
   //
@@ -187,10 +337,33 @@
   // (attempt 5)", which can never succeed and hides the only action that
   // would work. connection.ts reports 'signedout' for exactly that case;
   // this is what turns it into the login screen.
+  // Modul: ONE REFRESH ATTEMPT BEFORE THE LOGIN FORM, and only one.
+  //
+  // 'signedout' means the server rejected this JWT, which after a long
+  // suspend usually means nothing worse than "it expired while the phone was
+  // in a pocket" - the exact case the refresh token exists for. Retrying the
+  // refresh would be a loop, because a refused refresh token is discarded by
+  // `refreshSession` and the second attempt has nothing to send; the guard
+  // below is what keeps one rejection from starting a second attempt while
+  // the first is still in the air.
+  let refreshInFlight = false;
+
   $effect(() => {
-    if ($connectionStatus.phase === 'signedout' && token) {
-      signOut();
-    }
+    if ($connectionStatus.phase !== 'signedout' || !token || refreshInFlight) return;
+
+    refreshInFlight = true;
+    void refreshSession()
+      .then((session) => {
+        if (session) {
+          // Restarts the socket: the session effect above depends on `token`.
+          token = session.token;
+        } else {
+          signOut();
+        }
+      })
+      .finally(() => {
+        refreshInFlight = false;
+      });
   });
 
   const snap = $derived($playerState);
@@ -242,7 +415,7 @@
                   class:coachmark={$coachTargetScreen === item.key}
                   data-nav={item.key}
                   onclick={() => {
-                    screen = item.key;
+                    goTo(item.key);
                     navOpen = false;
                   }}
                 >
@@ -282,19 +455,17 @@
       <button onclick={signOut}>Sign out</button>
     </header>
 
-    <!-- Modul: offline/reconnect UI (port plan 4d). Unity showed connection
-         state weakly, and a browser tab can be frozen by the OS mid-session,
-         so the player is told plainly rather than left watching a frozen
-         screen. -->
-    {#if $connectionStatus.phase === 'reconnecting'}
-      <div class="banner">
-        Connection lost - reconnecting (attempt {$connectionStatus.attempt}).
-        {#if $connectionStatus.detail}<br /><span class="detail">{$connectionStatus.detail}</span>{/if}
-      </div>
-    {/if}
+    <!-- Modul: offline/reconnect UI. This was a one-line banner that printed
+         "reconnecting (attempt 4)" and nothing else - proportionate to a
+         browser tab, useless to a phone that loses signal several times an
+         hour. ConnectionNotice says whose fault it is, that the character is
+         still earning, and what the player can do about it, and it clears
+         itself when the phase goes back to live. Presentation only: the
+         reconnect loop it reports on is untouched. -->
+    <ConnectionNotice />
 
     {#if screen === 'hub'}
-      <Hub onNavigate={(next) => (screen = next)} />
+      <Hub onNavigate={(next) => goTo(next)} />
     {:else if screen === 'combat'}
       <Combat />
     {:else if screen === 'gathering'}
@@ -372,8 +543,45 @@
     <ChatDock />
     <Toasts />
     <AchievementToast />
+  {:else if restoring}
+    <!-- Modul: NOT A SPINNER PRETENDING TO BE THE GAME. This is the half
+         second in which a stored refresh token is exchanged for a session, and
+         it exists so the login form does not appear and then vanish - which
+         reads as having been signed out and rescued, and gets reported as a
+         bug. If the exchange fails, the form below arrives instead. -->
+    <div class="restoring">
+      <strong>FolkIdle</strong>
+      <p>Signing you back in&hellip;</p>
+    </div>
   {:else}
     <Login onAuthenticated={(newToken) => (token = newToken)} />
+  {/if}
+
+  <!-- Modul: ASKING BEFORE LEAVING, because back no longer leaves on its own.
+       Attaching a backButton listener disables Capacitor's default exit, so
+       this is the only way out of the app that is left - it has to exist, and
+       it has to work on the login screen as well as in the game.
+       Rendered outside the signed-in branch for that reason. -->
+  {#if exitPromptOpen}
+    <div class="exitbackdrop" role="dialog" aria-modal="true" aria-label="Leave FolkIdle">
+      <div class="exitcard">
+        <h2>Leave FolkIdle?</h2>
+        <p>
+          Your character keeps playing while the app is closed, and you are paid
+          for the time when you come back.
+        </p>
+        <div class="exitrow">
+          <button class="stay" onclick={() => (exitPromptOpen = false)}>Stay</button>
+          <button
+            class="leave"
+            onclick={() => {
+              exitPromptOpen = false;
+              exitApp();
+            }}>Leave</button
+          >
+        </div>
+      </div>
+    </div>
   {/if}
 </QueryClientProvider>
 
@@ -538,14 +746,75 @@
     }
   }
 
-  .banner {
-    padding: 0.6rem 1rem;
-    background: rgba(224, 85, 63, 0.15);
-    border-bottom: 1px solid var(--danger);
-    font-size: 0.85rem;
+  /* Modul: THE EXIT CONFIRMATION IS THE TOPMOST THING IN THE APP.
+     Above the death and victory cards (60) and above PlayerProfileModal
+     (1000), because it is the answer to a press the player made while looking
+     at one of them - a dialog that asks "leave?" from behind another panel is
+     a dialog nobody can answer. */
+  .restoring {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    min-height: 60vh;
+    color: var(--text-dim);
   }
 
-  .detail {
+  .restoring strong {
+    font-size: 1.3rem;
+    color: var(--text);
+  }
+
+  .exitbackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.62);
+  }
+
+  .exitcard {
+    width: min(22rem, 100%);
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 8px);
+    background: var(--bg-panel);
+  }
+
+  .exitcard h2 {
+    margin: 0 0 0.4rem;
+    font-size: 1.1rem;
+  }
+
+  .exitcard p {
+    margin: 0 0 0.9rem;
     color: var(--text-dim);
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+
+  .exitrow {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  /* Modul: 44px stated here rather than inherited from app.css. A scoped
+     component selector outranks that file's `button:not(.touch-exempt)` rule,
+     which is exactly how the header's menu button ended up 37px tall on all
+     twenty-six screens. Equal widths so neither answer is the accidental
+     default. */
+  .exitrow button {
+    flex: 1 1 0;
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .exitrow .leave {
+    border-color: var(--danger);
+    color: var(--danger);
   }
 </style>

@@ -494,6 +494,11 @@ IIapReceiptValidator iapReceiptValidator = isProductionForIap
 var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), serviceProvider.GetRequiredService<RedisSessionCache>(), playerRegistry, serviceProvider.GetRequiredService<RetryingDbContextOptions>(), iapReceiptValidator, networkSystem);
 networkSystem.RegisterBillingVerificationEngine(billingVerificationEngine);
 
+// Modul: without this, POST /api/v1/player/push-token answers 503 and the
+// Settings toggle reports that this build has no notification support - which
+// would be a start-up fault dressed up as a platform limitation.
+networkSystem.RegisterPushNotificationTriggerEngine(pushNotificationTriggerEngine);
+
 networkSystem.RegisterAntiCheatTelemetryEngine(antiCheatTelemetryEngine);
 
 var engine = new SimulationEngine(lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine, escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine, villageManagementEngine, guildWarEngine, legacyStoreEngine, guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, pushNotificationTriggerEngine, compliancePurgeEngine, billingVerificationEngine, redisMultiplexer, serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), guildRaidEngine, equipmentSlotEngine, relationshipEngine, larderEngine, inheritanceEngine, skillTreeEngine, hallOfAncestorsEngine);

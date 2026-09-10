@@ -2084,7 +2084,8 @@ More than the docs admit.
 Nothing below this line is worth doing until this is done, because every
 estimate after it is a guess. **The web build has never been run on a phone.**
 
-**A1. Make a mobile build possible on a machine without the server.**
+**A1. Make a mobile build possible on a machine without the server. — DONE
+2026-09-10.**
 
 `npm run sync` runs `npm run build`, which runs `generate:protocol` - and that
 shells out to the C# server's `--dump-protocol`. A Mac doing an iOS build will
@@ -2094,6 +2095,25 @@ Capacitor problem rather than a missing toolchain.
 *Done when:* there is a `sync:web` path that builds and syncs from an
 already-generated protocol, `generate-protocol.mjs --check` still guards drift
 in CI, and MOBILE.md says which to use when.
+
+*What landed:* `build:web` / `sync:web` / `build:android:web` in
+`client_web/package.json`, and a `--assume-committed` mode in
+`generate-protocol.mjs` that asserts the committed generated file is present
+and is really generator output, warns if it differs from the commit, and
+contacts nothing. `--check` is untouched and still runs in CI, because drift
+can only be detected by asking the server and that is exactly what the machine
+running `sync:web` cannot do. `generate:sprites` was CHECKED rather than
+assumed: it reads only `client/Assets/Images/SpritesWeb` (WebP, not LFS) and
+`server/GameData`, needs no .NET, and `sync:web` keeps it.
+
+*Found on the way, and it matters:* **`npm run build` does not currently
+succeed at all**, on any machine, and has not for as long as the four-error
+`svelte-check` baseline has existed. `svelte-check` exits 1 on any error, so
+`build` - and therefore `sync` and `build:android` - stops before Vite runs.
+Production deploys never noticed because they call `npx vite build` directly.
+`build:web` therefore does not chain `svelte-check`; type-checking stays
+`npm run check`, which CI ratchets. Fixing `build` itself means resolving the
+Guild War question, which is a product decision and out of this task's scope.
 
 **A2. One recorded device session, against a written checklist.**
 
@@ -2119,53 +2139,135 @@ and OS version named.
 
 ### PHASE B — the things that make it an app rather than a bookmark
 
-**B1. Push notifications - the client half.**
+**B1. Push notifications - the client half. — DONE 2026-09-10.**
 
 The server is finished. What is missing: `@capacitor/push-notifications`,
 requesting permission at a moment that earns it (not on first launch), obtaining
 the FCM/APNs token, and sending it through opcode 33 - whose field is 64 bytes,
 which an APNs token fits and an FCM token may not, so measure before assuming.
 
-This is most of the argument for having an app at all. An idle game's whole
-proposition is that it runs without you; a notification when the larder empties,
-a world boss spawns, or a village upgrade completes is the difference between an
-app and a bookmark.
+*Measured, and it does not fit.* An FCM registration token is around 160 ASCII
+characters against a `fixed byte DeviceTokenBytes[64]`, so **Android push could
+never have worked through opcode 33** and iOS fitted with nothing to spare.
+Worse, `RegisterDeviceAsync` refused anything whose length was not *exactly* 64
+and returned silently, so the failure would have been invisible. The token goes
+over REST instead - `POST /api/v1/player/push-token` - which is the same answer
+the purchase receipt reached for the same reason, and the bound is now a range
+(16-512 bytes) pinned by `PushTokenBoundsTests`.
 
-*Done when:* a real device receives a notification from
-`PushNotificationTriggerEngine`, tapping it opens the relevant screen, and
-declining permission leaves the game fully playable and never asks again in the
-same session.
+*"The server is finished" was wrong in three places, and none of them would have
+announced itself:*
 
-**B2. Session length. The 24-hour JWT has no refresh token.**
+1. **There was no REST route at all.** The client half was written against
+   `/api/v1/player/push-token` and the server has 91 routes, none of them that
+   one. Every registration would have been a 404 behind a Settings screen
+   saying "this device is registered". `HandlePushTokenRegistration` exists now
+   and answers 400/401/503/500 rather than dropping a token quietly.
+2. **The FCM message was data-only.** No `notification` block, which means FCM
+   delivers it to a *running* app and drops it on the floor of a backgrounded
+   one - so the single moment the whole feature exists for, a player who is not
+   looking at the game, arrived as silence, and there was nothing to tap. The
+   send is now `BuildFcmMessageJson`, a pure function, so
+   `PushMessageShapeTests` can stand between the trigger and the wire; it
+   asserts a displayable title and body, a named destination screen, and
+   `android.priority = high` so a dozing phone is woken.
+3. **`DeviceTokenRaw` was `HasMaxLength(64)`** - the width of the wire field
+   claimed as a property of the model. Now `MaxDeviceTokenBytes`, via an empty
+   migration (`WidenPushDeviceTokenColumn`) that exists purely so the snapshot
+   change does not ride along inside somebody's next unrelated migration.
+
+*Where the tap goes is decided on the SERVER*, in `DescribeTrigger`, and travels
+in `data.screen`. A switch in the client keyed on trigger codes would be that
+table written twice in two languages - the shape `KNOWN_AFFIX_IDS` had when ten
+of its twelve entries turned out to have drifted.
+
+*Still needed, and it is not code:* a Firebase project. `SendFcmV1Async` returns
+without sending unless `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL` and `FCM_PRIVATE_KEY`
+are set. iOS needs more than that - FCM v1 addresses a device by an FCM
+registration token issued by the Firebase iOS SDK, and Capacitor hands over the
+raw APNs token, which FCM will not accept. Android is complete once the project
+exists; iOS is a C-phase job. The `apns` block is declared and commented as
+inert.
+
+**B2. Session length. The 24-hour JWT has no refresh token. — DONE 2026-09-10.**
 
 In a browser tab you re-login occasionally. On a phone, "open the app tomorrow"
 means logged out, every day, in a game whose entire promise is that it runs while
-you are gone. This is a product decision about session length, not a defect, and
-it needs deciding before a store build rather than after the first review.
+you are gone.
 
-Options, cheapest first: lengthen `TokenLifetimeSeconds` for native builds; add a
-refresh token; or a long-lived device token exchanged for short-lived JWTs. The
-third is correct and the most work.
+*The third option was taken*, as the note here said it should be: a long-lived
+revocable credential exchanged for short JWTs. `PlayerRefreshToken` is 32 bytes
+of CSPRNG output stored as a SHA-256 hash, good for 60 **idle** days, rotated on
+every use. `POST /api/v1/auth/refresh` spends one; `POST /api/v1/auth/revoke`
+ends one; login and register issue one alongside the JWT.
 
-*Done when:* a device left overnight opens straight into the game, and a
-revoked or expired session still lands on the login screen rather than a hang.
+*Why not simply lengthen `TokenLifetimeSeconds`, which was the cheap option:* a
+JWT is a bearer credential this server does not store, so it cannot be revoked.
+A stolen 60-day JWT is valid for 60 days and nothing anybody does - not a
+password change, not a sign-out, not support - shortens that by a second. A
+refresh token is a row. **`TokenLifetimeSeconds` is unchanged at 24 hours**;
+nothing about a live session moved.
 
-**B3. The Android back button.**
+*Consequences that had to be handled, and are:*
+
+- A password reset now revokes every refresh token on the account. It already
+  cleared the remembered `DeviceId` for exactly this reason - somebody resetting
+  a password because another person has been in their account would otherwise
+  hand them back sixty days of access.
+- A replayed (already-spent) token revokes the **whole family**. The two causes -
+  a client that lost the reply and retried, and a stolen credential - cannot be
+  told apart from the server, and only one of the two readings is defensible.
+- The client therefore **discards** a refused token and **keeps** an unreachable
+  server's. Getting that backwards would mean a phone in a tunnel signs the
+  player out of every device they own on the next launch.
+- The login form no longer flashes on a cold start with an expired JWT; there is
+  a `restoring` state, because appearing to be signed out and then rescued reads
+  as a bug.
+
+*Guards:* `RefreshTokenTests` (13, against a real Postgres) and
+`tests/sessionRefresh.test.ts` (11).
+
+*Not done, and deliberately:* nothing lists or names a player's live sessions.
+"Sign out my other devices" needs a UI and a device label, and neither is
+required to stop the daily logout.
+
+**B3. The Android back button. — DONE 2026-09-10.**
 
 Today it exits the app from any screen. Expected behaviour is: close the open
 modal, else go back a screen, else ask before exiting.
 
-*Done when:* back never exits from a nested screen, and exiting from the hub
-asks first.
+*What landed:* `src/lib/net/backButton.ts`, whose decision is a **pure function**
+over the layers that are open - so the ordering is testable without a device
+(`tests/backButton.test.ts`). The order is the paint order, topmost first: exit
+prompt, death card, victory card, offline summary, chat dock, nav, screen
+history, map, exit confirmation. Get it wrong and back appears to skip a layer,
+closing something behind whatever is covering the screen while the player sees
+nothing happen.
 
-**B4. A no-network state that says something.**
+*The layers are read individually rather than from a registry*, because every
+one of them already keeps its open state somewhere durable and a registry would
+be a fourth copy of state that exists - the shape this codebase's worst defects
+have taken. `ChatDock`'s openness moved into `stores/chatDock.ts` for this.
 
-`connectionStatus` already carries the phase; what is missing is a mobile-shaped
-presentation of it. A phone loses signal constantly and a spinner is not an
-answer.
+*Registering the listener is what disables Capacitor's own exit*, so the handler
+owes the player a way out; the confirmation dialog is rendered outside the
+signed-in branch because it has to work on the login screen too.
 
-*Done when:* losing signal shows what is happening and what the player can do,
-and regaining it clears itself without a manual reload.
+*Not covered, deliberately:* `PlayerProfileModal` (local to two routes) and the
+inline equipment picker on Character, which is a disclosure panel in the page
+flow with its own Close button - consuming a back press for something that
+obscures nothing makes back feel like it missed.
+
+**B4. A no-network state that says something. — DONE 2026-09-10.**
+
+*What landed:* `ConnectionNotice`, replacing a one-line banner that read
+"Connection lost - reconnecting (attempt 4)" and nothing else - proportionate to
+a browser tab, useless to a phone that loses signal several times an hour. It
+says whose fault it is, that the character is still earning while the socket is
+down, and what the player can do; it clears itself when the phase returns to
+live. `connectionMessage.ts` holds the phrasing as a pure function.
+
+Presentation only: the reconnect loop it reports on is untouched.
 
 ---
 
@@ -2197,6 +2299,26 @@ any client.** Test the refund and cancellation paths, not just the happy one.
 a duplicate receipt is refused, and a cancelled sheet is not reported as an
 error.
 
+**C5. A Firebase project, and the iOS half of push.** B1 wired the client, the
+transport and the server, and none of it can send a byte without this.
+`SendFcmV1Async` returns early unless `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL` and
+`FCM_PRIVATE_KEY` are in the server's environment - a service account, through
+`SecretRotationManager` or the compose file the same way the IAP keys are, never
+the private key inline.
+
+iOS needs strictly more, and it is the reason B1 stopped where it did: FCM v1
+addresses a device by an **FCM registration token** issued by the Firebase iOS
+SDK, and what `@capacitor/push-notifications` hands over on iOS is the raw APNs
+token. FCM will not accept it. Either add the Firebase iOS SDK to the native
+project so Capacitor's `registration` event carries an FCM token, or send to
+APNs directly and give `SendFcmV1Async` a sibling. The `apns` block on the
+message is already declared and commented as inert.
+
+*Done when:* a real Android device receives a notification from
+`PushNotificationTriggerEngine` on a locked screen, tapping it opens the screen
+named in `data.screen`, and iOS either does the same or is deliberately shipped
+without push and says so in the store listing.
+
 ---
 
 ### PHASE D — the mobile quality bar
@@ -2216,13 +2338,60 @@ hours - hold a socket, drain a battery, or shut down cleanly and rely on offline
 catch-up? The last is correct and is probably already what happens, but nothing
 has confirmed it.
 
-**D4. A device lane in CI.** At minimum, `cap sync` and an Android assemble on
-every push, so the native project cannot rot silently the way three separate
-screen lists once did.
+**D4. A device lane in CI. — PARTIALLY DONE 2026-09-10: `cap sync`, no
+assemble.**
 
-**D5. Fix MOBILE.md.** Its "Not built yet" section lists purchases as unbuilt
-(they are, bar the adapter) and does not mention the touch checker or the
-lifecycle handler.
+At minimum, `cap sync` and an Android assemble on every push, so the native
+project cannot rot silently the way three separate screen lists once did.
+
+*What landed:* two steps at the end of the `client` job in
+`.github/workflows/deploy.yml` - `npx cap sync`, then
+`git diff --exit-code -- android ios`. The second is the ratchet: `cap sync`
+regenerates `capacitor.settings.gradle`, `app/capacitor.build.gradle` and the
+SPM manifest from the installed plugin set, and the copied web assets and
+generated configs are gitignored, so a dirty tree means a Capacitor plugin was
+added or removed without re-syncing. Both platforms sync on Linux because the
+iOS project is SPM (`ios/App/CapApp-SPM`), not CocoaPods - `cap update ios`
+never shells out to `pod`. Verified by running the same command on Windows,
+where no Apple toolchain exists.
+
+*What it does NOT prove, deliberately:* nothing is compiled. No Gradle, no
+manifest merge, no APK, no .ipa, no evidence the app launches. An
+`assembleDebug` needs the Android SDK plus a Gradle dependency download every
+run, and a release assemble needs the upload keystore - which is C2, is not a
+CI secret, and should not become one before C1 settles the real bundle id. An
+iOS build needs a macOS runner. The step comment in the workflow says the same
+thing, so a green tick cannot be read as more than it is.
+
+**D6. `check:touch` is at 5, not 0.** MOBILE.md claimed zero and it was written
+before the run that says otherwise; measured 2026-09-10, and confirmed
+pre-existing by running the same check against HEAD with PHASE B stashed.
+
+- Chest: `Reroll`, `Lock`, `Unequip` - **44x44 exactly**, so they pass the size
+  rule and fail the bottom-edge one. On a phone with gesture navigation the
+  system bar takes the press.
+- Wiki: `Gathering & tools`, 329x57, same bottom-edge cause.
+- Auto-Eat: a text input at 297x**32**. Padding cannot fix an input - the
+  browser hit-tests the border box - so this one needs a height.
+
+Small, and worth doing before a store build rather than after a review that
+mentions it.
+
+**D5. Fix MOBILE.md. — DONE 2026-09-10.** Its "Not built yet" section listed
+purchases as unbuilt (they are, bar the adapter) and did not mention the touch
+checker or the lifecycle handler.
+
+*What landed:* purchases rewritten to say what is actually missing (a
+`StoreAdapter` implementation behind the interface already declared in
+`billing.ts`, plus the store-side products) and why opcode 39 is refused;
+`lifecycle.ts` and `check:touch` added to "What is already done" with a new
+"Checking the phone build" section covering all four geometry checkers; "Not
+verified" now separates what is answered mechanically from what only a device
+can answer, and carries the A2 checklist to be filled in. Also corrected a
+third stale claim, this one in the task board above rather than in MOBILE.md:
+native token storage is `localStorage`, not Capacitor Preferences - Preferences
+is installed but `storedToken()` is synchronous and Preferences is async. The
+comment at `src/lib/net/platform.ts:13` still says Preferences and is wrong.
 
 ---
 

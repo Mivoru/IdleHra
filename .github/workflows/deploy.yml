@@ -150,6 +150,54 @@ jobs:
         working-directory: client_web
         run: npx vite build
 
+      # --- the native lane -------------------------------------------------
+      #
+      # The mobile app is this same bundle inside a WebView, and android/ and
+      # ios/ are committed - so they can rot exactly the way three separate
+      # screen lists once did, silently, until someone tries a build months
+      # later. `cap sync` is the cheapest thing that notices.
+      #
+      # WHAT THIS PROVES: capacitor.config.json parses, webDir points at
+      # something that exists, every installed Capacitor plugin resolves for
+      # both platforms, and the committed Gradle/Package.swift glue matches the
+      # plugin set in package.json.
+      #
+      # WHAT IT DOES NOT PROVE, and do not let the green tick suggest
+      # otherwise: nothing is compiled. No Java, no Kotlin, no Swift, no
+      # Gradle, no resource or manifest merge, no APK, no .ipa, and certainly
+      # no evidence that the app launches on a phone. A full `assembleDebug`
+      # would need the Android SDK plus a Gradle dependency download on every
+      # run (minutes and hundreds of megabytes); a release assemble would also
+      # need the upload keystore, which is not a CI secret and should not
+      # become one before the real bundle id is decided (TASK_BOARD C1/C2).
+      # An iOS build needs a macOS runner. When any of that changes, this is
+      # the step to extend.
+      #
+      # iOS IS synced here, and on Linux, because this project's iOS project is
+      # SPM (ios/App/CapApp-SPM) rather than CocoaPods - so `cap update ios`
+      # writes a Package.swift and never shells out to `pod`. Verified by the
+      # same command succeeding on a Windows dev box, where no Apple toolchain
+      # exists at all. If CocoaPods ever comes back, split this into
+      # `npx cap sync android` and drop the ios half of the check below.
+      - name: Sync the native projects
+        working-directory: client_web
+        run: npx cap sync
+
+      # The ratchet half. `cap sync` regenerates capacitor.settings.gradle,
+      # app/capacitor.build.gradle and the SPM manifest from the installed
+      # plugin set; the copied web assets and generated configs are gitignored,
+      # so a clean tree after a sync means the committed native projects and
+      # package.json agree. A dirty tree means someone added or removed a
+      # Capacitor plugin and did not re-sync - a build that works on their
+      # machine and fails on the next person's.
+      - name: Verify the committed native projects are not stale
+        working-directory: client_web
+        run: |
+          if ! git diff --exit-code -- android ios; then
+            echo "::error::android/ or ios/ is stale - run 'npm run sync:web' and commit the result"
+            exit 1
+          fi
+
   build-and-push:
     name: Build and Push Docker Image
     # Gated on the client checks too: a server image whose packet layout no

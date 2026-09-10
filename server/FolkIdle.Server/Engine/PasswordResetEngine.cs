@@ -168,6 +168,21 @@ namespace FolkIdle.Server.Engine
             row.UsedAtEpoch = nowEpoch;
 
             await db.SaveChangesAsync();
+
+            // Modul: AND SO IS EVERY REFRESH TOKEN, for exactly the reason the
+            // DeviceId above is cleared.
+            //
+            // A refresh token is sixty days of signing in without a password.
+            // Somebody resetting a password because another person has been in
+            // their account would otherwise change the password and leave that
+            // person a working key - which is the whole failure this endpoint
+            // exists to undo. The JWT already issued is untouched and expires
+            // within the day; the refresh half is the one that had to be
+            // revocable, and this is the moment that most needs it.
+            await db.PlayerRefreshTokens
+                .Where(t => t.AccountId == player.PlayerGuid && t.RevokedEpoch == 0L)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RevokedEpoch, nowEpoch));
+
             return PasswordResetOutcome.Success;
         }
 

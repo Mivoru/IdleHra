@@ -1,5 +1,6 @@
 <script lang="ts">
   import { chatLog, type ChatEntry } from '../stores/game';
+  import { chatDockOpen } from '../stores/chatDock';
   import Chat from '../../routes/Chat.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { fetchOnlineStats, queryKeys } from '../net/rest';
@@ -11,7 +12,11 @@
   //
   // So: a floating translucent window that slides out, and a red dot on the
   // handle when something arrived while it was shut.
-  let open = $state(false);
+  //
+  // Modul: the openness lives in a store rather than here, because the Android
+  // back button has to know whether a layer is covering the screen before it
+  // decides to navigate. See stores/chatDock.ts.
+  const open = $derived($chatDockOpen);
 
   // The newest message id the player has actually had on screen. chatLog is
   // newest-first and ids are a monotonic counter assigned on receipt, so one
@@ -29,8 +34,12 @@
   });
 
   function toggle() {
-    open = !open;
-    if (open) seenId = newestId;
+    // Modul: the next value is computed ONCE. `open` is a $derived over the
+    // store and Svelte updates it synchronously, so re-reading it after the
+    // set would read the value that was just written and invert the branch.
+    const next = !open;
+    chatDockOpen.set(next);
+    if (next) seenId = newestId;
   }
 
   const onlineStatsQuery = createQuery(() => ({

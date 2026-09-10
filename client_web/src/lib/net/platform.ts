@@ -10,7 +10,14 @@
 //      for a credential to die. A phone does not work that way: the OS
 //      suspends and kills apps on its own schedule, so the same rule would log
 //      the player out at unpredictable moments with no explanation. Native
-//      builds therefore persist through Capacitor Preferences instead.
+//      builds therefore use localStorage instead.
+//
+//      NOT Capacitor Preferences, which this comment claimed for a long time
+//      and which nothing has ever used: `storedToken()` is synchronous and is
+//      called on every authenticated request, and Preferences' API is async.
+//      The plugin is installed; the token does not go through it. Preferences'
+//      only advantage here is surviving a WebView data clear, which also
+//      destroys the device id and forces a fresh sign-in anyway.
 //
 //   2. The server address. `localhost` means the phone itself, not the
 //      development machine, so a native build pointed at the browser default

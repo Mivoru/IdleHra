@@ -10,6 +10,7 @@
   import { CommandType } from '../lib/net/protocol.generated';
   import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
   import { triggerGdprPurge } from '../lib/net/commands';
+  import { enablePushNotifications, pushUnavailableReason } from '../lib/net/push';
   import { submitSupportTicket, scrubTrace, fetchAdminStatus, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent, fetchChestSettings, saveChestSettings } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
   import { rarityName } from '../lib/ui/rarity';
@@ -30,6 +31,37 @@
   let emailAddressOnAccount = $state(false);
   let emailBusy = $state(false);
   let emailError = $state('');
+
+  /*
+    Modul: NOTIFICATIONS ARE ASKED FOR HERE AND NOWHERE ELSE.
+
+    The OS remembers a refusal. An app that prompts on first launch - before it
+    has shown the player anything worth being notified about - gets denied once
+    and never gets to ask again, on either platform. A control the player
+    deliberately pressed is the moment that earns the prompt.
+
+    Declining is a normal outcome and is reported as one. The game does not
+    change; nothing here asks a second time.
+  */
+  let pushBusy = $state(false);
+  let pushMessage = $state('');
+  const pushBlocked = $derived(pushUnavailableReason());
+
+  async function turnOnNotifications() {
+    pushBusy = true;
+    pushMessage = '';
+    try {
+      const outcome = await enablePushNotifications();
+      pushMessage =
+        outcome.kind === 'registered'
+          ? 'This device is registered. You will be told when your characters stop earning.'
+          : outcome.kind === 'denied'
+            ? 'Notifications are turned off for FolkIdle in your device settings. Turn them on there first - the app cannot ask again.'
+            : outcome.reason;
+    } finally {
+      pushBusy = false;
+    }
+  }
 
   async function loadEmailConsent() {
     try {
@@ -461,6 +493,26 @@
     </p>
     {#if salvageError}
       <p class="small" style="color: var(--bad)">{salvageError}</p>
+    {/if}
+
+    <h3>Notifications</h3>
+    <p class="dim small">
+      The same moment as the email below, but on the device: one notification
+      when your characters have stopped earning and there is progress waiting.
+    </p>
+    {#if pushBlocked}
+      <p class="dim small">{pushBlocked}</p>
+    {:else}
+      <button disabled={pushBusy} onclick={turnOnNotifications}>
+        {pushBusy ? 'Asking your device...' : 'Turn on notifications'}
+      </button>
+      <p class="dim small">
+        Your device asks once. If you say no, FolkIdle cannot ask again - you
+        would have to turn them on in your device settings.
+      </p>
+    {/if}
+    {#if pushMessage}
+      <p class="small">{pushMessage}</p>
     {/if}
 
     <h3>Email</h3>

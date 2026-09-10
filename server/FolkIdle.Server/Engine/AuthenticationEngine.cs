@@ -182,6 +182,246 @@ namespace FolkIdle.Server.Engine
             return Guid.NewGuid().ToString("N");
         }
 
+        // ------------------------------------------------------------------
+        // REFRESH TOKENS
+        //
+        // Modul: THE 24-HOUR JWT MEANT "LOGGED OUT EVERY MORNING" IN A GAME
+        // WHOSE ENTIRE PROPOSITION IS THAT IT RUNS WHILE YOU ARE AWAY.
+        //
+        // A browser tab absorbs that. A phone does not: it is a password prompt
+        // every day, on the app whose selling point is that you do not have to
+        // open it. The three answers were lengthening TokenLifetimeSeconds,
+        // adding a refresh token, or a device token exchanged for short JWTs.
+        //
+        // The first is the one NOT taken, and the reason is worth writing down:
+        // a JWT is a bearer credential that this server does not store, so
+        // there is no revocation. A stolen 60-day JWT is valid for 60 days and
+        // nothing anybody does - not a password change, not a sign-out, not
+        // support - shortens that by a second. Every refresh token below is a
+        // row, and a row can be deleted.
+        //
+        // TokenLifetimeSeconds IS DELIBERATELY UNCHANGED at 24 hours. Nothing
+        // about a live session moves; what is new is a way to get the NEXT JWT
+        // without a password.
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Sixty days of not being asked for a password.
+        /// </summary>
+        /// <remarks>
+        /// A number, not a principle - long enough that a player who opens the
+        /// game most weekends is never signed out, short enough that a device
+        /// left in a drawer stops being a way in. Every use rotates it and
+        /// extends it by another sixty days from that moment, so this is an
+        /// IDLE timeout: it measures time since the last time the game was
+        /// opened, not time since the password was typed.
+        /// </remarks>
+        public const long RefreshTokenLifetimeSeconds = 60L * 86400L;
+
+        /// <summary>
+        /// A fresh refresh token: 32 bytes of CSPRNG output, base64url.
+        /// </summary>
+        /// <remarks>
+        /// `RandomNumberGenerator`, never `Random` and never a Guid - a Guid is
+        /// 122 bits of which the version and variant are fixed, and some
+        /// implementations of it are not cryptographic at all. This is a
+        /// credential and is generated like one.
+        /// </remarks>
+        public static string GenerateRefreshToken()
+        {
+            byte[] raw = RandomNumberGenerator.GetBytes(32);
+            return Base64UrlEncode(raw);
+        }
+
+        /// <summary>The stored verifier for a raw token.</summary>
+        public static byte[] HashRefreshToken(string rawToken)
+        {
+            return SHA256.HashData(Encoding.UTF8.GetBytes(rawToken ?? string.Empty));
+        }
+
+        /// <summary>
+        /// Issues a refresh token for an account and returns the RAW value -
+        /// the only moment it exists anywhere outside the caller's device.
+        /// </summary>
+        public static async Task<(string Token, long ExpiresAtEpoch)> IssueRefreshTokenAsync(
+            RetryingDbContextOptions authOptions, Guid accountId)
+        {
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long expiresAt = now + RefreshTokenLifetimeSeconds;
+            string raw = GenerateRefreshToken();
+
+            db.PlayerRefreshTokens.Add(new PlayerRefreshToken
+            {
+                AccountId = accountId,
+                TokenHash = HashRefreshToken(raw),
+                IssuedEpoch = now,
+                ExpiresAtEpoch = expiresAt,
+                RevokedEpoch = 0L
+            });
+
+            await db.SaveChangesAsync();
+            return (raw, expiresAt);
+        }
+
+        public enum RefreshOutcome
+        {
+            /// <summary>Spent, and a successor was issued.</summary>
+            Rotated,
+            /// <summary>No such token, or it was never valid.</summary>
+            Unknown,
+            /// <summary>Past its expiry. The player signs in again.</summary>
+            Expired,
+            /// <summary>
+            /// Already spent or explicitly revoked. The whole family is gone by
+            /// the time this is returned - see the remarks on the method.
+            /// </summary>
+            Replayed
+        }
+
+        /// <summary>
+        /// Spends one refresh token and issues its successor.
+        /// </summary>
+        /// <remarks>
+        /// Modul: ROTATION, AND WHY A REPLAY TAKES THE WHOLE ACCOUNT DOWN WITH
+        /// IT.
+        ///
+        /// A refresh token is spent exactly once. Presenting a spent one has
+        /// two possible causes and this server cannot tell them apart: the
+        /// client lost the reply to its own last refresh and retried, or
+        /// somebody else has a copy. Treating it as the first leaves a stolen
+        /// credential working; treating it as the second signs one honest
+        /// player out once. The second is the only defensible choice, so every
+        /// live token for that account is revoked and the player signs in
+        /// again.
+        ///
+        /// The read and the write are one SERIALIZABLE transaction because two
+        /// simultaneous refreshes of the same token must not both succeed -
+        /// that is the race the whole rotation scheme exists to detect.
+        /// </remarks>
+        public static async Task<(RefreshOutcome Outcome, Guid AccountId, string Token, long ExpiresAtEpoch)>
+            RedeemRefreshTokenAsync(RetryingDbContextOptions authOptions, string rawToken)
+        {
+            if (string.IsNullOrWhiteSpace(rawToken))
+            {
+                return (RefreshOutcome.Unknown, Guid.Empty, string.Empty, 0L);
+            }
+
+            byte[] hash = HashRefreshToken(rawToken);
+
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+
+            // Modul: THE TRANSACTION HAS TO LIVE INSIDE THE EXECUTION STRATEGY,
+            // and finding that out cost a 500 on a running server rather than a
+            // red test.
+            //
+            // `authOptions` is the retry-configured options from Program.cs, and
+            // EF Core refuses a user-initiated transaction once a retrying
+            // strategy is registered - the whole unit has to be replayable,
+            // because the strategy replays the DELEGATE, not the statement.
+            // Every other explicit transaction in this file is already written
+            // this way; this one was not, and the unit tests never saw it
+            // because they build plain options with no strategy at all.
+            //
+            // Serializable is the isolation because two simultaneous refreshes
+            // of the same token must not both succeed - that is exactly the race
+            // the rotation scheme exists to detect, and 40001 here is a normal
+            // outcome to be retried rather than a fault.
+            var strategy = db.Database.CreateExecutionStrategy();
+            return await strategy.ExecuteAsync(async () =>
+            {
+                // A retried attempt may still hold entities tracked by the
+                // previous failed one against this same context.
+                db.ChangeTracker.Clear();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(
+                    System.Data.IsolationLevel.Serializable);
+
+                var row = await db.PlayerRefreshTokens.SingleOrDefaultAsync(r => r.TokenHash == hash);
+                if (row == null)
+                {
+                    await transaction.RollbackAsync();
+                    return (RefreshOutcome.Unknown, Guid.Empty, string.Empty, 0L);
+                }
+
+                long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                Guid accountId = row.AccountId;
+
+                if (row.RevokedEpoch != 0L)
+                {
+                    // The replay case. Everything this account holds goes.
+                    await db.PlayerRefreshTokens
+                        .Where(r => r.AccountId == accountId && r.RevokedEpoch == 0L)
+                        .ExecuteUpdateAsync(setters => setters.SetProperty(r => r.RevokedEpoch, now));
+                    await transaction.CommitAsync();
+                    return (RefreshOutcome.Replayed, Guid.Empty, string.Empty, 0L);
+                }
+
+                if (row.ExpiresAtEpoch <= now)
+                {
+                    row.RevokedEpoch = now;
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                    return (RefreshOutcome.Expired, Guid.Empty, string.Empty, 0L);
+                }
+
+                row.RevokedEpoch = now;
+
+                string successor = GenerateRefreshToken();
+                long expiresAt = now + RefreshTokenLifetimeSeconds;
+                db.PlayerRefreshTokens.Add(new PlayerRefreshToken
+                {
+                    AccountId = accountId,
+                    TokenHash = HashRefreshToken(successor),
+                    IssuedEpoch = now,
+                    ExpiresAtEpoch = expiresAt,
+                    RevokedEpoch = 0L
+                });
+
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                return (RefreshOutcome.Rotated, accountId, successor, expiresAt);
+            });
+        }
+
+        /// <summary>
+        /// Revokes one token, if it is still live. Signing out.
+        /// </summary>
+        /// <remarks>
+        /// Deliberately silent about whether anything was found: the caller is
+        /// a sign-out button and there is no answer it would act on
+        /// differently. Saying "no such token" would also confirm which tokens
+        /// exist to anyone who can reach the route.
+        /// </remarks>
+        public static async Task RevokeRefreshTokenAsync(RetryingDbContextOptions authOptions, string rawToken)
+        {
+            if (string.IsNullOrWhiteSpace(rawToken)) return;
+
+            byte[] hash = HashRefreshToken(rawToken);
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            await db.PlayerRefreshTokens
+                .Where(r => r.TokenHash == hash && r.RevokedEpoch == 0L)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(r => r.RevokedEpoch, now));
+        }
+
+        /// <summary>
+        /// Revokes everything an account holds. A password change, or a player
+        /// who says a device was stolen.
+        /// </summary>
+        public static async Task RevokeAllRefreshTokensAsync(RetryingDbContextOptions authOptions, Guid accountId)
+        {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            await db.PlayerRefreshTokens
+                .Where(r => r.AccountId == accountId && r.RevokedEpoch == 0L)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(r => r.RevokedEpoch, now));
+        }
+
         private static byte[] ComputeSignature(string signingInput, string secretKey)
         {
             using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(secretKey));

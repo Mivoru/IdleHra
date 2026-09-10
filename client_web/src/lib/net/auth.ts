@@ -68,6 +68,11 @@ export function storeToken(token: string): void {
   tokenStore().setItem(TOKEN_KEY, token);
 }
 
+/**
+ * Forgets the JWT. Does NOT touch the refresh token, on purpose: this is called
+ * when a JWT is rejected, and the whole point of the refresh half is that it
+ * outlives one. `revokeRefreshToken` below is the one that ends a session.
+ */
 export function clearToken(): void {
   // Cleared from BOTH, not just the active one. A build that switches
   // platforms - or a developer testing the native path in a browser - would
@@ -120,8 +125,108 @@ async function readSession(response: Response, context: string): Promise<AuthSes
   }
 
   storeToken(token);
+
+  // Modul: absence is NOT a failure. A login answers with an empty
+  // RefreshToken when issuing one did not work, and the server deliberately
+  // does not fail the login over it - the player is signed in for the day
+  // exactly as they were before any of this existed, and meets the login form
+  // tomorrow rather than now. Overwriting a good stored token with an empty
+  // string would turn that into a regression instead.
+  storeRefreshToken(parsed.RefreshToken ?? '');
+
   return { token, expiresAtEpoch: parsed.ExpiresAtEpoch ?? 0 };
 }
+
+/**
+ * The long-lived half of a session.
+ *
+ * Modul: THE 24-HOUR JWT MEANT "LOGGED OUT EVERY MORNING", WHICH IS AN ODD
+ * THING FOR A GAME WHOSE WHOLE PROMISE IS THAT IT RUNS WHILE YOU ARE GONE.
+ *
+ * A browser tab absorbs that. A phone does not - it is a password prompt every
+ * day on the app you were told you would not have to open. The server now
+ * issues a refresh token beside the JWT (see AuthenticationEngine), and this is
+ * where it lives.
+ *
+ * SAME STORE AS THE JWT, and that is the point rather than an oversight: on the
+ * web it lands in sessionStorage and dies with the tab, so a browser's session
+ * length does not change at all; under Capacitor it lands in localStorage and
+ * survives, which is the case this exists for. The security reasoning at the
+ * top of this file - that a browser origin is shared and a native shell's is
+ * not - applies unchanged to a credential worth sixty days.
+ */
+const REFRESH_KEY = 'folkidle.refresh';
+
+export function storedRefreshToken(): string | null {
+  return tokenStore().getItem(REFRESH_KEY);
+}
+
+function storeRefreshToken(token: string): void {
+  if (!token) return;
+  tokenStore().setItem(REFRESH_KEY, token);
+}
+
+function clearRefreshToken(): void {
+  // Both stores, for the same reason clearToken() clears both.
+  sessionStorage.removeItem(REFRESH_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+}
+
+/**
+ * Trades the stored refresh token for a fresh session.
+ *
+ * Modul: RESOLVES TO NULL RATHER THAN THROWING, for every failure there is.
+ * Its two callers are "the app is starting" and "the socket says this token is
+ * dead", and in both the only next move is the login form. A rejection would
+ * make each of them write the same try/catch to reach the same conclusion.
+ *
+ * A REFUSED TOKEN IS DISCARDED HERE. The server rotates on every use and treats
+ * a second presentation of a spent token as a theft, revoking the whole
+ * account; keeping a token the server has already refused would mean the next
+ * launch replays it and signs the player out of every device they own.
+ */
+export async function refreshSession(): Promise<AuthSession | null> {
+  const refreshToken = storedRefreshToken();
+  if (!refreshToken) return null;
+
+  let response: Response;
+  try {
+    response = await postJson('/api/v1/auth/refresh', { refreshToken });
+  } catch {
+    // Offline. The token is very probably still good, so it is kept - this is
+    // the one failure that must NOT discard it.
+    return null;
+  }
+
+  if (!response.ok) {
+    clearRefreshToken();
+    return null;
+  }
+
+  try {
+    return await readSession(response, 'Session refresh');
+  } catch {
+    clearRefreshToken();
+    return null;
+  }
+}
+
+/**
+ * Tells the server this device's refresh token is finished with.
+ *
+ * Modul: AWAITED BY NOBODY AND ALLOWED TO FAIL. Signing out is a local act -
+ * the token is gone from this device the moment `clearToken` runs, which is
+ * what the player asked for. This is the server-side half, and a network error
+ * on it must not leave somebody stuck on a screen they asked to leave.
+ */
+export function revokeRefreshToken(): void {
+  const refreshToken = storedRefreshToken();
+  clearRefreshToken();
+  if (!refreshToken) return;
+
+  void postJson('/api/v1/auth/revoke', { refreshToken }).catch(() => undefined);
+}
+
 
 /** Logs in, or auto-provisions a fresh anonymous account for this browser. */
 export async function loginWithDevice(): Promise<AuthSession> {

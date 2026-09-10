@@ -233,6 +233,73 @@ function generate(schema) {
   return lines.join('\n');
 }
 
+// Modul: THE NO-.NET PATH, for a machine that can build the app but cannot run
+// the server that defines the wire.
+//
+// An iOS build happens on a Mac, and a Mac with this repository checked out
+// does not necessarily have a working .NET SDK - so `npm run build`, which
+// shells out to --dump-protocol, dies there with a dotnet error in the middle
+// of what otherwise looks like a Capacitor problem. `npm run sync:web` runs
+// THIS instead.
+//
+// What it checks: the committed generated file is present, is structurally
+// generator output rather than a stub, and whether the working copy has been
+// modified since the commit.
+//
+// What it deliberately does NOT check: drift. Detecting drift means asking the
+// server what its structs look like, and asking the server is the exact thing
+// this machine cannot do. --check stays the only drift gate and CI stays the
+// place it is guaranteed to run. This mode buys a build on a machine without
+// the toolchain; it does not buy a weaker contract.
+//
+// Fails OPEN on anything git-related, for the same reason this repo's hooks do:
+// a guard with no workaround is worse than the trap it guards.
+if (process.argv.includes('--assume-committed')) {
+  if (!existsSync(outputPath)) {
+    console.error(`${outputPath} does not exist.`);
+    console.error('It is a COMMITTED generated file, so a missing one is a broken checkout,');
+    console.error('not a skipped build step. Restore it from git, or run');
+    console.error('`npm run generate:protocol` on a machine with the .NET SDK.');
+    process.exit(1);
+  }
+
+  const committed = readFileSync(outputPath, 'utf8');
+  // A truncated or hand-written stub is the failure this catches: the file
+  // exists, the build succeeds, and the client then reads fields at offsets
+  // the server never wrote. Two markers the generator always emits, neither of
+  // which a partial write leaves behind.
+  if (
+    !committed.includes('export const CommandType') ||
+    !committed.includes('export const PACKET_BYTE_SIZE')
+  ) {
+    console.error(`${outputPath} exists but does not look like generator output.`);
+    console.error('Regenerate it with `npm run generate:protocol` on a machine with .NET.');
+    process.exit(1);
+  }
+
+  let locallyModified = null;
+  try {
+    locallyModified =
+      execFileSync('git', ['status', '--porcelain', '--', outputPath], {
+        encoding: 'utf8',
+        cwd: repoRoot,
+      }).trim().length > 0;
+  } catch {
+    // No git, or not a checkout (a source tarball, a CI cache). Not a reason
+    // to refuse a build.
+  }
+
+  if (locallyModified) {
+    console.warn(`WARNING: ${outputPath} differs from the commit.`);
+    console.warn('  That is correct only if YOU regenerated it against the server this');
+    console.warn('  build will talk to. It is wrong if the file was hand-edited.');
+  }
+
+  console.log('protocol.generated.ts present and assumed current (no server was contacted).');
+  console.log('  Drift is caught by `node scripts/generate-protocol.mjs --check`, which CI runs.');
+  process.exit(0);
+}
+
 const raw = dumpSchema();
 let schema;
 try {

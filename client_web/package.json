@@ -21,8 +21,11 @@
     "check:clipping": "node scripts/clipping-check.mjs",
     "cap:add:android": "cap add android",
     "cap:add:ios": "cap add ios",
+    "build:web": "node scripts/generate-protocol.mjs --assume-committed && npm run generate:sprites && vite build",
     "sync": "npm run build && cap sync",
+    "sync:web": "npm run build:web && cap sync",
     "build:android": "npm run sync && cap build android",
+    "build:android:web": "npm run sync:web && cap build android",
     "open:android": "cap open android",
     "open:ios": "cap open ios"
   },

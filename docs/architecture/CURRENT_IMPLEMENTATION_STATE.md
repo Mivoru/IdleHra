@@ -94,6 +94,28 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 carry `[Table(...)]` overrides too, but to their default PascalCase names -
 those overrides exist for other EF reasons, not casing.)
 
+### Auth persistence: two tables hold credentials, and both are erasable
+
+`PasswordResetTokens` (keyed on `PlayerId`) and, since 2026-09-10,
+`PlayerRefreshTokens` (keyed on **`AccountId`**, i.e. `PlayerRecord.PlayerGuid`,
+because the auth routes run before anything has resolved a `PlayerRecord`).
+Both store a SHA-256 **hash** rather than the credential, so a dump of either
+lets nobody sign in as anybody.
+
+A refresh token is 60 idle days of signing in without a password, rotated on
+every use; `AuthenticationEngine.RedeemRefreshTokenAsync` spends one and issues
+its successor, and treats a second presentation of a spent one as theft by
+revoking every live token on the account. `TokenLifetimeSeconds` stays at 24
+hours deliberately - a JWT is a bearer credential this server does not store and
+therefore cannot revoke, which is the whole reason the long-lived half is a row.
+
+**Anything that erases an account has to erase these.** `CompliancePurgeEngine`
+deletes both, and `PasswordResetEngine.CompleteResetAsync` revokes the refresh
+tokens for the same reason it already clears the remembered `DeviceId`.
+`RedeemRefreshTokenAsync` does not check that the account still exists - the row
+IS the authority - so a row that outlives its account goes on minting valid
+JWTs.
+
 Season resets (`Engine/SeasonalRotationEngine.cs`) use
 `TRUNCATE TABLE ... RESTART IDENTITY CASCADE` for the three unconditional
 full-table wipes (`EquipmentInstances`, `BankEquipmentInstances`,

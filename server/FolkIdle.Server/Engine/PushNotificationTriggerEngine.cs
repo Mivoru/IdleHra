@@ -66,6 +66,61 @@ namespace FolkIdle.Server.Engine
             _ = Task.Run(async () => await RegisterDeviceAsync(playerId, deviceTokenRaw, platformFamily));
         }
 
+        /// <summary>
+        /// The shape the stores actually hand out: a STRING.
+        ///
+        /// Modul: 64 BYTES WAS NEVER GOING TO BE ENOUGH, AND NOTHING HAD EVER
+        /// TESTED IT.
+        ///
+        /// The wire field behind opcode 33 is `fixed byte DeviceTokenBytes[64]`
+        /// and RegisterDeviceAsync refused anything that was not exactly 64
+        /// long. Capacitor's Token.value is an APNS token on iOS and an FCM
+        /// token on Android - and an FCM registration token is roughly 160
+        /// ASCII characters, so Android push could never have worked through
+        /// that path. An APNS token as hex is 64 characters, which fits the
+        /// field exactly and leaves no room for anything else.
+        ///
+        /// No client has ever called opcode 33, so this was never observed. It
+        /// is the same problem the purchase receipt hit - see billing.ts, which
+        /// says outright that the receipt goes over REST "because it is far too
+        /// large for the fixed-layout command packet" - and it takes the same
+        /// answer, for the same reason.
+        ///
+        /// The token is stored as its UTF-8 bytes rather than decoded, because
+        /// the string is what FCM and APNS are addressed WITH. Decoding hex
+        /// here would mean re-encoding it at every send.
+        /// </summary>
+        /// <remarks>
+        /// AWAITABLE, AND IT ANSWERS. The byte[] overload above is
+        /// fire-and-forget because opcode 33 has no reply channel; this one is
+        /// reached from a REST route that does, and a route that answered 200
+        /// to a token it silently dropped would be this server's favourite
+        /// lie - the Settings screen would say "this device is registered"
+        /// about a device that will never be sent anything.
+        /// </remarks>
+        public Task<bool> RegisterDeviceTokenAsync(long playerId, string deviceToken, byte platformFamily)
+        {
+            if (string.IsNullOrWhiteSpace(deviceToken)) return Task.FromResult(false);
+            return RegisterDeviceAsync(playerId, System.Text.Encoding.UTF8.GetBytes(deviceToken.Trim()), platformFamily);
+        }
+
+        public void QueueDeviceRegistration(long playerId, string deviceToken, byte platformFamily)
+        {
+            if (string.IsNullOrWhiteSpace(deviceToken)) return;
+            QueueDeviceRegistration(playerId, System.Text.Encoding.UTF8.GetBytes(deviceToken.Trim()), platformFamily);
+        }
+
+        /// <summary>The bounds a device token has to fall inside to be stored at all.</summary>
+        public const int MinDeviceTokenBytes = 16;
+
+        /// <summary>
+        /// Generous on purpose: an FCM token is around 160 bytes today and
+        /// Google has lengthened it before without warning. The point of the
+        /// ceiling is to refuse a body that is obviously not a token, not to
+        /// predict a format.
+        /// </summary>
+        public const int MaxDeviceTokenBytes = 512;
+
         public async Task ScheduleTriggerAsync(long playerId, long targetEpochTimestamp, byte triggerType, string payloadCode)
         {
             if (!_redis.IsConnected || playerId <= 0)
@@ -96,11 +151,20 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        private async Task RegisterDeviceAsync(long playerId, byte[] deviceTokenRaw, byte platformFamily)
+        private async Task<bool> RegisterDeviceAsync(long playerId, byte[] deviceTokenRaw, byte platformFamily)
         {
-            if (playerId <= 0 || deviceTokenRaw.Length != 64 || platformFamily == 0 || platformFamily > 2)
+            // Modul: a RANGE, not an equality. This read `!= 64`, which is the
+            // width of the fixed wire field rather than the width of a device
+            // token - see the string overload above for why that made Android
+            // push impossible and iOS push exactly one byte from impossible.
+            if (playerId <= 0
+                || deviceTokenRaw == null
+                || deviceTokenRaw.Length < MinDeviceTokenBytes
+                || deviceTokenRaw.Length > MaxDeviceTokenBytes
+                || platformFamily == 0
+                || platformFamily > 2)
             {
-                return;
+                return false;
             }
 
             using var scope = _serviceProvider.CreateScope();
@@ -139,11 +203,14 @@ namespace FolkIdle.Server.Engine
                     string tokenKey = Convert.ToHexString(deviceTokenRaw);
                     await _redis.GetDatabase().HashSetAsync(PushTokenCacheKey(playerId), tokenKey, (int)platformFamily);
                 }
+
+                return true;
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Push device registration failed for player {playerId}: {ex.Message}");
+                return false;
             }
         }
 
@@ -248,6 +315,35 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        internal readonly record struct TriggerCopy(string Title, string Body, string Screen);
+
+        /// <summary>
+        /// What a trigger says on a lock screen, and where tapping it goes.
+        ///
+        /// Modul: ONE TABLE, ON THE SERVER. The alternative is a switch in the
+        /// client keyed on the same payload codes - the ordered-list-across-
+        /// the-wire trap that KNOWN_AFFIX_IDS fell into, where ten of twelve
+        /// entries had quietly drifted. The screen key is the client's own
+        /// (`App.svelte`'s nav keys); an unknown code lands on the map rather
+        /// than nowhere, because a notification that opens a blank screen is
+        /// worse than one that opens the wrong one.
+        /// </summary>
+        internal static TriggerCopy DescribeTrigger(string payloadCode) => payloadCode switch
+        {
+            "world_boss_window_open" => new TriggerCopy(
+                "A world boss has surfaced",
+                "The event window is open. Your attempts reset with it.",
+                "worldboss"),
+            "daily_quest_reset" => new TriggerCopy(
+                "New daily quests",
+                "Today's quests and your daily login reward are waiting.",
+                "progression"),
+            _ => new TriggerCopy(
+                "FolkIdle",
+                "Something is waiting for you.",
+                "hub")
+        };
+
         private async Task SendFcmV1Async(OutboundPushRequest request)
         {
             string? accessToken = await GetAccessTokenAsync();
@@ -258,25 +354,12 @@ namespace FolkIdle.Server.Engine
             }
 
             string endpoint = $"https://fcm.googleapis.com/v1/projects/{projectId}/messages:send";
-            var body = new
-            {
-                message = new
-                {
-                    token = request.DeviceToken,
-                    data = new Dictionary<string, string>
-                    {
-                        ["trigger_type"] = request.TriggerType.ToString(),
-                        ["payload"] = request.PayloadCode,
-                        ["player_id"] = request.PlayerId.ToString()
-                    }
-                }
-            };
 
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, endpoint)
             {
                 Version = HttpVersion.Version20,
                 VersionPolicy = HttpVersionPolicy.RequestVersionOrHigher,
-                Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json")
+                Content = new StringContent(BuildFcmMessageJson(request), Encoding.UTF8, "application/json")
             };
             httpRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 
@@ -285,6 +368,71 @@ namespace FolkIdle.Server.Engine
             {
                 Console.WriteLine($"FCM send failed for player {request.PlayerId}: {(int)response.StatusCode}");
             }
+        }
+
+        /// <summary>
+        /// The exact JSON one trigger becomes.
+        ///
+        /// Modul: SPLIT OUT SO IT CAN BE ASSERTED ON. What this used to send was
+        /// `data` and nothing else, and a data-only FCM message is delivered to
+        /// a RUNNING app and dropped on the floor of a backgrounded one - so the
+        /// one moment the feature exists for, a player who is not looking at the
+        /// game, arrived as silence. That defect is invisible from inside the
+        /// server: the send succeeds, FCM answers 200, and nothing anywhere is
+        /// wrong except that no phone rang. A pure function is the only way to
+        /// put a test between the trigger and the wire.
+        /// </summary>
+        internal static string BuildFcmMessageJson(OutboundPushRequest request)
+        {
+            var copy = DescribeTrigger(request.PayloadCode);
+            var body = new
+            {
+                message = new
+                {
+                    token = request.DeviceToken,
+
+                    // Modul: A DATA-ONLY MESSAGE DISPLAYS NOTHING AND CANNOT BE
+                    // TAPPED. This block was `data` alone, which FCM delivers to
+                    // a RUNNING app and drops on the floor of a backgrounded
+                    // one - so the single moment this feature exists for, the
+                    // player who is not looking at the game, saw nothing at all.
+                    // The whole argument for having an app rather than a
+                    // bookmark was arriving as silence.
+                    notification = new { title = copy.Title, body = copy.Body },
+
+                    // The data rides ALONGSIDE it, and carries the destination.
+                    // The client does not map a payload code to a screen -
+                    // that would be this ordering written down twice, in two
+                    // languages, and that is this codebase's dominant bug
+                    // class. The server says where the tap goes.
+                    data = new Dictionary<string, string>
+                    {
+                        ["trigger_type"] = request.TriggerType.ToString(),
+                        ["payload"] = request.PayloadCode,
+                        ["player_id"] = request.PlayerId.ToString(),
+                        ["screen"] = copy.Screen
+                    },
+
+                    // Modul: "high" so a doze-mode phone is woken. An idle
+                    // game's notification is worth nothing an hour late - the
+                    // boss window it announces may have closed.
+                    android = new { priority = "high" },
+
+                    // The APNS half is declared for completeness and does not
+                    // work yet: FCM v1 addresses iOS through an FCM
+                    // registration token issued by the Firebase iOS SDK, and
+                    // the client currently hands over the RAW APNS token
+                    // Capacitor returns. See MOBILE.md - that is a C-phase
+                    // job, alongside the Firebase project itself.
+                    apns = new
+                    {
+                        headers = new Dictionary<string, string> { ["apns-priority"] = "10" },
+                        payload = new { aps = new { sound = "default" } }
+                    }
+                }
+            };
+
+            return JsonSerializer.Serialize(body);
         }
 
         private async Task<string?> GetAccessTokenAsync()
@@ -406,7 +554,7 @@ namespace FolkIdle.Server.Engine
 
         private readonly record struct DeviceTokenDescriptor(string Token, byte PlatformFamily);
 
-        private sealed class OutboundPushRequest
+        internal sealed class OutboundPushRequest
         {
             public long PlayerId;
             public string DeviceToken = string.Empty;

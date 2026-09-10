@@ -56,6 +56,7 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerWorldBossAttempt> PlayerWorldBossAttempts { get; set; }
         public DbSet<LiveOpsEventRotation> LiveOpsEventRotations { get; set; }
         public DbSet<PlayerDeviceRegistration> PlayerDeviceRegistrations { get; set; }
+        public DbSet<PlayerRefreshToken> PlayerRefreshTokens { get; set; }
         public DbSet<EquipmentAffixMatrix> EquipmentAffixMatrices { get; set; }
         public DbSet<PlayerCraftingSlot> PlayerCraftingSlots { get; set; }
         public DbSet<PlayerLifetimeAchievement> PlayerLifetimeAchievements { get; set; }
@@ -339,11 +340,32 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<PlayerDeviceRegistration>()
                 .HasKey(d => new { d.PlayerId, d.DeviceTokenRaw });
+            // Modul: 64 WAS THE WIDTH OF A WIRE FIELD, NOT OF A DEVICE TOKEN.
+            // An FCM registration token is around 160 characters and Google has
+            // lengthened it before. The bound is the engine's own
+            // MaxDeviceTokenBytes so the two cannot drift; bytea ignores a
+            // length in Postgres, so this is the model telling the truth rather
+            // than a constraint doing work.
             modelBuilder.Entity<PlayerDeviceRegistration>()
                 .Property(d => d.DeviceTokenRaw)
-                .HasMaxLength(64);
+                .HasMaxLength(FolkIdle.Server.Engine.PushNotificationTriggerEngine.MaxDeviceTokenBytes);
             modelBuilder.Entity<PlayerDeviceRegistration>()
                 .HasIndex(d => d.PlayerId);
+
+            // Modul: the HASH is the lookup key and it is unique - a refresh
+            // token is found by presenting it, never by knowing whose it is.
+            // The AccountId index exists for the other direction only: revoking
+            // a whole family when one token is replayed, and signing out.
+            modelBuilder.Entity<PlayerRefreshToken>()
+                .HasKey(r => r.Id);
+            modelBuilder.Entity<PlayerRefreshToken>()
+                .Property(r => r.TokenHash)
+                .HasMaxLength(32);
+            modelBuilder.Entity<PlayerRefreshToken>()
+                .HasIndex(r => r.TokenHash)
+                .IsUnique();
+            modelBuilder.Entity<PlayerRefreshToken>()
+                .HasIndex(r => r.AccountId);
 
             modelBuilder.Entity<PlayerCraftingSlot>()
                 .HasKey(p => new { p.PlayerId, p.SlotIndex });
