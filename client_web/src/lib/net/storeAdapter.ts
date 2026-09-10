@@ -235,11 +235,3 @@ export function createStoreAdapter(productIds: readonly string[]): StoreAdapter 
 export function storePluginPresent(): boolean {
   return isNativePlatform() && cdv() !== null;
 }
-
-/** Test seam - the module holds the plugin's init state for a page's lifetime. */
-export function resetForTests(): void {
-  initialized = false;
-  initializing = null;
-  lastApproved = null;
-  approvalWaiters.length = 0;
-}

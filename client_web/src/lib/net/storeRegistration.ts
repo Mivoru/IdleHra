@@ -46,9 +46,3 @@ export async function registerPlatformStore(): Promise<void> {
     // shows its own error for the same request.
   }
 }
-
-/** Test seam. */
-export function resetForTests(): void {
-  registered = false;
-  registerStoreAdapter(null);
-}

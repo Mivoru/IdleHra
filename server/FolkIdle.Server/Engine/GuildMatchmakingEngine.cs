@@ -30,19 +30,71 @@ namespace FolkIdle.Server.Engine
             _ = Task.Run(() => ExecuteAsync(_cts.Token));
         }
 
+        /// <summary>
+        /// The last StartCron loop with no catch in its body - and now it has
+        /// one.
+        /// </summary>
+        /// <remarks>
+        /// Modul: every StartCron loop in this server runs in a bare
+        /// `Task.Run`, so an exception anywhere in the loop ENDS THE TASK - no
+        /// log, no restart, no other symptom. CombatLootEngine lost its entire
+        /// drain that way and equipment stopped dropping for every player on the
+        /// live server while kills, XP, gold, the codex and gathering all kept
+        /// working. The trigger was not a code fault: Supabase's session pooler
+        /// refused the sixteenth client, thrown from `CreateDbContext`.
+        ///
+        /// WHICH IS WHY THE CATCH IS HERE AND NOT ONLY INSIDE THE CYCLE.
+        /// `ExecutePairingCycleAsync` does have a try, and it opens three lines
+        /// too late - after `CreateScope`, `CreateDbContextAsync` and
+        /// `BeginTransactionAsync`, which is precisely where the connection is
+        /// acquired and where the throw comes from. Wrapping the CALL is what
+        /// makes the difference.
+        ///
+        /// A weekly job, so the blast radius is one missed pairing round rather
+        /// than a game-wide outage. Guarded anyway, because a small blast radius
+        /// is how this class of defect survives being noticed: nobody reports
+        /// the guild pairings that quietly stopped happening in March.
+        /// </remarks>
         private async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                DateTime now = DateTime.UtcNow;
-                if (now.DayOfWeek == DayOfWeek.Sunday && now.Hour == 23 && now.Minute == 30)
+                try
                 {
-                    await ExecutePairingCycleAsync(stoppingToken);
-                    await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
-                    continue;
-                }
+                    DateTime now = DateTime.UtcNow;
+                    if (now.DayOfWeek == DayOfWeek.Sunday && now.Hour == 23 && now.Minute == 30)
+                    {
+                        await ExecutePairingCycleAsync(stoppingToken);
+                        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+                        continue;
+                    }
 
-                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    // Shutdown is the one exception that is supposed to end this
+                    // loop.
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Guild matchmaking cycle failed: {ex.Message}");
+
+                    // Modul: a DELAY inside the catch. A failure that repeats
+                    // instantly becomes a hot loop hammering a database that is
+                    // already refusing connections, which is how a recovery
+                    // turns into an outage. Thirty seconds matches the idle poll
+                    // above.
+                    try
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
+                }
             }
         }
 

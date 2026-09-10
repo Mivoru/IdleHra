@@ -2079,6 +2079,71 @@ More than the docs admit.
 
 ---
 
+### AUDIT PASS, 2026-09-10: four things that were unfinished and did not know it
+
+Written after PHASE B, C and D landed, by looking for what was half-built rather
+than by working down a list. All four are done.
+
+**A1a. `GuildMatchmakingEngine` was still unguarded, and the fix did not land
+the first time.**
+
+CLAUDE.md named it as the last `StartCron` loop with no catch in its body. It
+was, and its `ExecutePairingCycleAsync` acquires the scope, the DbContext and
+the transaction OUTSIDE its own try - which is the exact shape that took loot
+down for every player on the live server, because that is where a pool
+exhaustion throws.
+
+Guarded now, at the loop, with a thirty-second delay inside the catch so a
+failure that repeats instantly cannot become a hot loop hammering a database
+that is already refusing connections.
+
+*And the count in CLAUDE.md was wrong.* It said "the other eleven StartCron
+loops do wrap their bodies, checked 2026-09-09" - a manual audit with a date on
+it, which is a guard that expires the moment somebody adds the twelfth. There
+are **fourteen**. Seven had never appeared in any audit; all seven turned out to
+be guarded, which was luck rather than process. `CronWorkerGuardTests` is that
+sentence made mechanical, and it caught something on its first run that no
+human review would have: **the guard above had not actually been applied** - the
+stale-build hook had blocked the shell command that was supposed to write it,
+and the build afterwards passed because the OLD code compiles too.
+
+**A1b. `npm run build` had been broken on every machine for months, and so had
+`npm run sync` and `npm run build:android`.**
+
+`build` chained raw `svelte-check`, which exits 1 whenever there is any error -
+and this repository has a documented baseline of four. So the documented build
+command had never completed, and neither had the two commands MOBILE.md tells
+you to run to package the app.
+
+Nobody noticed because production calls `npx vite build` directly and CI
+reimplemented the ratchet as a shell block inside `deploy.yml` - one rule,
+written twice, in the one place a developer cannot run it.
+
+`client_web/scripts/typecheck-ratchet.mjs` is now the single implementation;
+`npm run build` and CI both call it. It prints every error every time rather
+than only on failure (a number nobody reads is how the baseline silently turned
+over from one 9 into a different 9), says so when the count is BELOW the
+baseline so the slack cannot be spent quietly, and treats a svelte-check that
+could not run at all as a failure rather than as zero errors.
+
+`npm run build` completes.
+
+**A1c. `exercise.mjs` covered none of the new server round-trips.**
+
+The onboarding seen-set moved to the server in D1, and the unit tests exercise
+it against a STUB. A route that silently 404s looks exactly like a working
+feature from inside the browser - which is precisely how the push token spent a
+day posting into nothing.
+
+Two checks added, inside the brand-new-account context where a silent failure
+would hurt most: that the seen-set reaches the server at all, and that the
+browser and the server agree about it. 137/137.
+
+**A1d. Two dead `resetForTests` exports** in `storeAdapter.ts` and
+`storeRegistration.ts` - test seams nothing used. Removed. The recurring
+"computed but never consumed" trap, in its smallest form.
+
+---
 ### PHASE A — prove it runs on glass
 
 Nothing below this line is worth doing until this is done, because every

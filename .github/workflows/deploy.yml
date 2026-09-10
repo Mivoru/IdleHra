@@ -120,31 +120,24 @@ jobs:
         working-directory: client_web
         run: node scripts/generate-sprites.mjs --check
 
-      # svelte-check is NOT a hard gate yet. Four errors remain, all in
-      # GuildOps.svelte and all the same thing: defend, attackShard, takeTurn
-      # and damageDelta are the handlers of the Guild War UI, which was hidden
-      # rather than removed. They are dead only for as long as that feature
-      # stays hidden, and docs/FUTURE_PLANS.md lists Guild Wars as planned - so
-      # deleting them is a product decision, not a cleanup.
+      # Modul: THE RATCHET USED TO LIVE HERE, IN YAML, AND ONLY HERE.
       #
-      # This step fails only if the count GROWS. Resolve the Guild War question
-      # and this becomes a plain `npm run check`.
+      # svelte-check is not a hard gate: four errors remain, all in
+      # GuildOps.svelte, all the handlers of the Guild War UI that was hidden
+      # rather than removed - deleting them is a product decision, not a
+      # cleanup. So the rule is "fail only if the count grows".
       #
-      # A count is a weak guard and known to be weak: the baseline sat at 9 for
-      # a long time and silently turned over into an entirely different 9.
-      # Prefer fixing to raising the number.
-      - name: Type-check the client (baseline 4 errors)
+      # That rule was implemented as a shell block in this file, which meant no
+      # developer could run it - and so `npm run build` chained raw
+      # `svelte-check` instead, exited 1 on the baseline, and had been broken on
+      # every machine for months, taking `npm run sync` and
+      # `npm run build:android` down with it. One rule, written twice, in a
+      # place only one of the two callers could reach.
+      #
+      # It is now scripts/typecheck-ratchet.mjs, and both call it.
+      - name: Type-check the client (ratcheted baseline)
         working-directory: client_web
-        run: |
-          set -o pipefail
-          npm run check 2>&1 | tee /tmp/svelte-check.log || true
-          count=$(grep -c ' ERROR ' /tmp/svelte-check.log || true)
-          echo "svelte-check errors: $count (baseline 4)"
-          if [ "$count" -gt 4 ]; then
-            echo "::error::svelte-check regressed: $count errors, baseline is 4"
-            grep ' ERROR ' /tmp/svelte-check.log
-            exit 1
-          fi
+        run: npm run check:ratchet
 
       - name: Build the client bundle
         working-directory: client_web

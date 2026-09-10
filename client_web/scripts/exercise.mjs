@@ -2355,6 +2355,57 @@ await go('Ancestors');
       offerable && restored !== null,
       offerable ? (restored ? `back at ${restored.id}` : 'the switch was there but nothing came back') : 'no way back offered',
     );
+
+    // 6. WHAT THE SERVER KEPT, which is the half no unit test can see.
+    //
+    // Modul: the seen-set moved off localStorage on 2026-09-10 so a returning
+    // player is not taught the whole game again on a second device. The unit
+    // tests exercise that against a STUB server; this is the only place the
+    // real round trip runs, and a route that silently 404s would look exactly
+    // like a working feature from inside the browser - which is precisely how
+    // the push token spent a day posting into nothing.
+    const freshToken = await fresh.evaluate(
+      () => sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token'),
+    );
+
+    let serverSeen = null;
+    if (freshToken) {
+      const res = await fetch(`${API_BASE}/api/v1/player/onboarding-seen`, {
+        headers: { Authorization: `Bearer ${freshToken}` },
+      });
+      serverSeen = res.ok ? await res.json() : null;
+    }
+
+    record(
+      'the onboarding seen-set reaches the SERVER, not just this browser',
+      serverSeen !== null && serverSeen.HasRecord === true,
+      serverSeen === null
+        ? 'the endpoint did not answer'
+        : `HasRecord=${serverSeen.HasRecord}, ${serverSeen.Seen.length} id(s)`,
+    );
+
+    // Modul: and it agrees with what the BROWSER thinks. Two stores holding
+    // one truth is this codebase's dominant bug class, and the failure here is
+    // quiet in both directions - a server that is behind re-teaches, a server
+    // that is ahead buries.
+    const localSeen = await fresh.evaluate(() => {
+      const playerId = Object.keys(localStorage)
+        .find((key) => key.startsWith('folkidle.onboardingSeen.'));
+      return playerId ? JSON.parse(localStorage.getItem(playerId) ?? '[]') : null;
+    });
+
+    const agree =
+      Array.isArray(localSeen) &&
+      serverSeen !== null &&
+      localSeen.every((id) => serverSeen.Seen.includes(id));
+
+    record(
+      'the browser and the server agree on what has been shown',
+      agree,
+      localSeen === null
+        ? 'nothing stored locally'
+        : `local ${localSeen.length}, server ${serverSeen ? serverSeen.Seen.length : 0}`,
+    );
   }
 
   await context.close();

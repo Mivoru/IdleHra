@@ -5,9 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "npm run generate:protocol && npm run generate:sprites && svelte-check --tsconfig ./tsconfig.json && vite build",
+    "build": "npm run generate:protocol && npm run generate:sprites && npm run check:ratchet && vite build",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check:ratchet": "node scripts/typecheck-ratchet.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "generate:protocol": "node scripts/generate-protocol.mjs",

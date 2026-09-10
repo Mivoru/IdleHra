@@ -39,13 +39,16 @@ dotnet test  server/FolkIdle.Server.Tests/FolkIdle.Server.Tests.csproj   # needs
 
 # Client
 cd client_web
-npm run check          # svelte-check
-npm run build          # regenerates protocol + sprites, then checks, then builds
+npm run check          # svelte-check, raw — exits 1 on the 4-error baseline
+npm run check:ratchet  # the same, failing only if the count GROWS
+npm run build          # protocol + sprites, ratcheted check, then builds
 npm run exercise       # THE verification — see below
 npm run smoke:screens  # weaker: proves screens render
 npm run check:clipping # content cut off, 26 screens × 3 widths
 npm run check:overlap  # controls buried under other controls
 npm run check:touch    # controls too small for a thumb, 390px
+npm run check:perf     # main-thread cost with the CPU throttled 4x
+npm run generate:icons # rasterise the app icons from resources/*.svg
 ```
 
 All five read `FOLKIDLE_E2E_BASE`, but only **`smoke:screens` is safe to aim at
@@ -207,9 +210,18 @@ refusing the sixteenth client (`EMAXCONNSESSION`, `pool_size: 15`) against
 Npgsql's default pool of 100. Isolate every dequeued item in its own try/catch,
 and bound the pool below the server's limit (`ConnectionStringDefaults
 .WithBoundedPool`) so back-pressure is a queue rather than a throw. `CodexEngine`
-had the same shape and is guarded now; `GuildMatchmakingEngine` is the last one
-whose loop body has no catch at all (a weekly job, so the blast radius is small).
-Checked 2026-09-09: the other eleven `StartCron` loops do wrap their bodies.
+had the same shape and is guarded now, and `GuildMatchmakingEngine` - the last
+unguarded one - was guarded on 2026-09-10.
+
+**That count was wrong, and counting it by hand is what made it wrong.** This
+paragraph used to say "the other eleven `StartCron` loops do wrap their bodies,
+checked 2026-09-09". There are **fourteen**, and seven of them had never
+appeared in any audit. All seven turned out to be guarded, which was luck rather
+than process. `CronWorkerGuardTests` is that audit made mechanical: it finds
+every `StartCron` in the tree, fails on any that is not in a named inventory,
+and fails on any with no `catch (Exception` at all. A new background loop cannot
+now be added without somebody deciding about it.
+
 A guard that starts AFTER `CreateScope`/`BeginTransactionAsync` is not a guard -
 that is where the connection is acquired and where the throw comes from. See
 `docs/drop_rates_investigation_2026_09_05.md`.
@@ -337,7 +349,12 @@ the values — retune freely, but the ladder may never descend.
   handlers of the Guild War UI that was hidden rather than removed. Deleting
   them is a product decision (Guild Wars is on the roadmap), not a cleanup.
   Treat the count as a weak guard: it sat at 9 for a long time and silently
-  turned over into a different 9. CI fails only when it grows.
+  turned over into a different 9. The ratchet lives in
+  `client_web/scripts/typecheck-ratchet.mjs`, and CI and `npm run build` both
+  call it — it used to be a shell block inside `deploy.yml` and nowhere else,
+  which is why `npm run build` chained raw `svelte-check`, exited 1 on the
+  baseline, and had been BROKEN ON EVERY MACHINE for months, taking
+  `npm run sync` and `npm run build:android` down with it.
 - Prose in the repo is English. `docs/CHANGELOG_ANTIGRAVITY.md` and
   `docs/guild_buffs_and_donations.md` are Czech and written by a different
   tool; the Czech changelog lags git and is not authoritative.
