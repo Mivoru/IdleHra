@@ -91,16 +91,23 @@ Sprite generation (`generate:sprites`) reads only the repository - the WebP
 tree under `client/Assets/Images/SpritesWeb` and `server/GameData/items.json` -
 so it needs no .NET and `sync:web` keeps it.
 
-**`build:web` deliberately does not run `svelte-check`, and `npm run build`
-does - which is why `npm run build` currently fails.** There is a known
-baseline of four `svelte-check` errors (the hidden Guild War handlers in
-`GuildOps.svelte`; see the repo's CLAUDE.md), `svelte-check` exits 1 whenever
-there is any error at all, and so every script that chains it - `build`, and
-therefore `sync` and `build:android` - stops before Vite ever runs. Production
-deploys sidestep it by calling `npx vite build` directly. Packaging an app is
-not the place to discover a months-old type-check baseline, so `build:web`
-does not chain it. Type-checking is `npm run check`, and CI enforces the
-baseline as a ratchet that fails only if the count grows.
+**`npm run build` works again as of 2026-09-10, and it had not for months.**
+
+There is a known baseline of four `svelte-check` errors - the hidden Guild War
+handlers in `GuildOps.svelte`, see the repo's CLAUDE.md - and `svelte-check`
+exits 1 whenever there is any error at all. So every script that chained it
+stopped before Vite ever ran: `build`, and therefore `sync` and
+`build:android`, which are the two commands this document tells you to use.
+
+Nobody noticed because production calls `npx vite build` directly and CI
+reimplemented the "fail only if the count grows" ratchet as a shell block
+inside `deploy.yml` - one rule, written twice, in the one place a developer
+cannot run it. It now lives in `scripts/typecheck-ratchet.mjs` and both call it.
+
+`build:web` still does not chain a type-check, deliberately: packaging an app is
+not the place to discover a months-old baseline, and the machine running
+`sync:web` is usually not a full checkout. Type-checking is `npm run check`
+(raw, exits 1 on the baseline) or `npm run check:ratchet` (the gate).
 
 ## Why native differs, in exactly three places
 
