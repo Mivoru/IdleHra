@@ -208,6 +208,31 @@ export function setEmailConsent(consented: boolean): Promise<EmailConsent | null
 }
 
 // ---------------------------------------------------------------------------
+// /api/v1/player/onboarding-seen
+// ---------------------------------------------------------------------------
+
+export interface OnboardingSeenState {
+  Seen: string[];
+  /**
+   * False for an account that has never been baselined on ANY device. Empty
+   * and absent are different answers: empty means "teach everything as it
+   * arrives", absent means "this player may have been at it for weeks, mark
+   * what is already true as read". See stores/tutorialSeen.ts.
+   */
+  HasRecord: boolean;
+}
+
+export function fetchOnboardingSeen(): Promise<OnboardingSeenState> {
+  return authedGet<OnboardingSeenState>('/api/v1/player/onboarding-seen');
+}
+
+/** Replaces the whole set. The client is the only thing that merges - see the
+ *  handler's own note on why there is no append. */
+export function saveOnboardingSeen(seen: readonly string[]): Promise<OnboardingSeenState | null> {
+  return authedPost<OnboardingSeenState>('/api/v1/player/onboarding-seen', { Seen: [...seen] });
+}
+
+// ---------------------------------------------------------------------------
 // /api/v1/player/statistics
 // ---------------------------------------------------------------------------
 

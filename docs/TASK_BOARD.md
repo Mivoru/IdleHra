@@ -2273,38 +2273,155 @@ Presentation only: the reconnect loop it reports on is untouched.
 
 ### PHASE C — store readiness
 
-**C1. App identity.** `appId` is the placeholder `com.folkidle.game`; there are
-no icons, no splash screen, no adaptive icon. Decide the real bundle id FIRST -
-it cannot be changed after the first store upload, on either platform.
+**C1. App identity. — DONE 2026-09-10.**
 
-**C2. Signing.** An upload keystore for Play (and a backup of it that is not on
-one laptop), certificates and provisioning profiles for iOS. This is the step
-that most often blocks a release by a week for reasons that have nothing to do
-with code.
+*The bundle id is decided: `com.folkidle.game`*, which was the placeholder and
+is now the answer. It cannot change after the first store upload on either
+platform, so it is written here rather than left as a thing somebody remembers.
 
-**C3. Store listings and compliance.** Screenshots at required sizes, a privacy
-policy URL that actually resolves, Play's Data Safety form, Apple's privacy
-nutrition labels, an age rating, and an account-deletion path - which the GDPR
-purge already implements and which Play now requires be reachable from outside
-the app too.
+*What landed:* `resources/icon.svg` and `resources/splash.svg` in the game's own
+palette (charred oak, brass), and `npm run generate:icons`, which rasterises
+them into all thirty files Android and iOS want. What shipped before was
+Capacitor's placeholder - a blue asterisk on white - which nobody had looked at.
 
-**C4. In-app purchases: the store adapter.** The only missing piece of billing.
-Create the products in Play Console and App Store Connect with ids matching
-`GameBalanceConfig.json`'s `IapProductPrices` keys, implement the adapter behind
-`billing.ts`'s existing interface, and make the first real call to
-`/api/v1/billing/verify-receipt` - **an endpoint that has never been called by
-any client.** Test the refund and cancellation paths, not just the happy one.
+The icon is drawn for the MASK: Android crops an adaptive icon to whatever
+shape the launcher fancies and only the middle 66% is guaranteed, so everything
+that carries meaning is inside that circle and the corners hold only background.
+`ic_launcher_background.xml` went from `#FFFFFF` to `#100D0A` in the same step -
+left white, a circular mask draws a white ring around dark artwork.
 
-*Done when:* a sandbox purchase on both platforms credits diamonds exactly once,
-a duplicate receipt is refused, and a cancelled sheet is not reported as an
-error.
+*Not @capacitor/assets,* which does the same job and pulls in `sharp`, a native
+binary that has to match the platform. Playwright is already a devDependency
+(five checkers use it) and rasterises an SVG the way a browser would. The
+outputs are committed, because the CI device lane runs `cap sync` and then fails
+on a dirty tree.
 
-**C5. A Firebase project, and the iOS half of push.** B1 wired the client, the
-transport and the server, and none of it can send a byte without this.
-`SendFcmV1Async` returns early unless `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL` and
-`FCM_PRIVATE_KEY` are in the server's environment - a service account, through
-`SecretRotationManager` or the compose file the same way the IAP keys are, never
-the private key inline.
+**C2. Signing. — CODE SIDE DONE 2026-09-10. The key itself is yours to make.**
+
+*What landed:* `android/app/build.gradle` now has a `signingConfigs.release`
+that reads `keystore.properties` (gitignored) or, failing that, the environment
+variables `FOLKIDLE_KEYSTORE_PATH`, `FOLKIDLE_KEYSTORE_PASSWORD`,
+`FOLKIDLE_KEY_ALIAS`, `FOLKIDLE_KEY_PASSWORD`. `android/.gitignore` refuses
+`keystore.properties`, `*.jks` and `*.keystore`.
+
+It FAILS OPEN: with nothing configured, `signingConfig` stays null and a release
+build produces an unsigned apk rather than an error. That keeps every machine
+without the key building - which is every machine except one - and an unsigned
+artefact announces itself the moment anybody tries to upload it.
+
+*What is still yours, and cannot be anybody else's:*
+
+```
+keytool -genkey -v -keystore folkidle-upload.jks -keyalg RSA -keysize 2048 \
+        -validity 10000 -alias folkidle
+```
+
+**Back it up somewhere that is not the laptop it was made on.** Play signs every
+release with this key and it cannot be replaced: lose it and the listing can
+never be updated again, by anybody, and the only remedy is a new listing with no
+installs and no reviews.
+
+**C3. Store listings and compliance. — MOSTLY DONE 2026-09-10.**
+
+*Screenshots:* `npm run screenshots:store` writes eighteen, at the sizes the
+stores actually demand - 1080x1920 for Play, and Apple's 6.7" (1290x2796) and
+6.5" (1242x2688), which are the two sets a new submission is rejected without.
+Six frames each, ordered as an argument rather than as a tour.
+
+Two things had to be pinned after the first run got them wrong, and both are now
+commented in the script: `colorScheme: 'dark'`, because the client follows the
+system and Playwright's default light theme produced parchment screenshots
+beside a dark app icon; and `locale: 'en-GB'`, because `initLanguage` reads
+`navigator.language` and a Czech dev box produced an English UI with three Czech
+words in the header.
+
+*It also found a real defect.* The onboarding coach and the chat handle are both
+`position: fixed` at the bottom at `z-index: 40`, so DOM order decided and the
+dock won - the handle sat on the last two words of every coach instruction on a
+phone. `check:overlap` never saw it because it compares CONTROL pairs and the
+thing being covered was text. Fixed by lifting the coach to the same 4.25rem
+clearance ChatDock already reserves for its own handle.
+
+*Privacy policy and account deletion:* `public/privacy.html` and
+`public/delete-account.html`, served as real files by Caddy's static handle
+(`try_files {path} /index.html` then `file_server`, so only unmatched paths fall
+through to the SPA). Play now requires the deletion route to be reachable
+**without the app**, for somebody who has already uninstalled - an in-app path
+alone is a rejection. Every claim in the policy was checked against the server
+rather than copied from a template.
+
+*The one thing left, and it is thirty seconds of work:* both pages say
+`CONTACT_EMAIL`. Replace it before submitting; a reviewer checks, and should.
+
+*Still outstanding and unavoidably manual:* Play's Data Safety form, Apple's
+privacy nutrition labels, and an age rating. All three are questionnaires in the
+consoles, and the privacy policy is the document to answer them from - the table
+under "What is stored" maps to Data Safety's categories almost line for line.
+
+**C4. In-app purchases: the store adapter. — CODE SIDE DONE 2026-09-10, and it
+turned out to be much more than an adapter.**
+
+*The receipt path could never have verified a real receipt.*
+`ProductionIapReceiptValidator.Validate` checks an envelope of
+`{provider, payload, signature}` with an RSA signature over the payload, and NO
+STORE PRODUCES THAT. Google hands a client a purchase token, Apple hands it a
+transaction id, and neither hands over anything signed with a key this server
+holds - a client could not manufacture one either, because signing it needs a
+private key a client must never have. The scheme was satisfiable only by the
+test that invented it, and nothing noticed because
+`/api/v1/billing/verify-receipt` had never been called by any client.
+
+The two REAL verification calls already existed and were wired to nothing -
+`VerifyViaGooglePlayDeveloperApiAsync` and
+`VerifyViaAppleAppStoreServerApiAsync` - and that file's own comment said a
+deployment moving off the JWS scheme "would call these directly from
+BillingVerificationEngine.VerifyReceiptAsync". `StoreApiReceiptVerifier` is that
+call. Asking the store whether somebody paid is strictly stronger than checking
+a signature over bytes the client chose.
+
+*What landed:*
+
+- `cordova-plugin-purchase` (no revenue share beyond the stores' own cut), read
+  off the injected global so it never enters the web bundle - the same pattern
+  as `push.ts` and `lifecycle.ts`.
+- `storeAdapter.ts` implements `billing.ts`'s existing interface and sends
+  `{provider, productId, transactionId, purchaseToken}`, base64. It signs
+  nothing, and the absence of a signature is the server's discriminator between
+  the two schemes.
+- `storeRegistration.ts` registers it with the product ids from
+  `/api/v1/store/catalog` - the same `IapProductPrices` the server pays out
+  against, so the mapping is not written down twice.
+- `VerifyReceiptAsync` tries the store path first and falls back to the legacy
+  envelope untouched. It FAILS CLOSED: an envelope naming a store with no
+  credentials configured is refused rather than handed to a validator that would
+  evaluate a missing signature.
+- A refusal after the store has charged somebody is LOGGED, because it is the
+  one failure in this system that costs a player money.
+
+*Done when* still needs a sandbox purchase on both platforms, which needs the
+products created in Play Console and App Store Connect with ids matching
+`GameBalanceConfig.json`, and the credentials of C5's shape:
+`FOLKIDLE_IAP_GOOGLE_SERVICE_ACCOUNT_PATH`,
+`FOLKIDLE_IAP_APPLE_PRIVATE_KEY_PATH`, `FOLKIDLE_IAP_APPLE_KEY_ID`,
+`FOLKIDLE_IAP_APPLE_ISSUER_ID`.
+
+**C5. A Firebase project, and the iOS half of push. — PARTLY PREPARED
+2026-09-10; the project itself needs a Google account.**
+
+*What landed:* `PushNotificationTriggerEngine` now says at start-up whether it
+can send anything, naming the missing variables:
+
+```
+Push: NOT CONFIGURED - missing FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY.
+Device tokens will be stored and triggers scheduled, but NOTHING WILL BE SENT.
+```
+
+Without that line the failure is perfectly silent - triggers schedule, the queue
+drains, no phone rings - and a deployment can believe push works for months.
+
+*Still needed, and nobody else can do it:* a Firebase project and a service
+account, then those three variables in the server's environment. iOS needs
+strictly more; see the original note below.
 
 iOS needs strictly more, and it is the reason B1 stopped where it did: FCM v1
 addresses a device by an **FCM registration token** issued by the Firebase iOS
@@ -2323,59 +2440,162 @@ without push and says so in the store listing.
 
 ### PHASE D — the mobile quality bar
 
-**D1. Teaching is per-device.** The onboarding seen-set is `localStorage` keyed
-by player id, so a phone re-teaches everything a browser already taught. It was
-accepted deliberately when the cost was one wire field; with three tiers and
-twenty-six explanations it is now the difference between a returning player and
-an annoyed one.
+**D1. Teaching is per-device. — DONE 2026-09-10.**
 
-**D2. Performance on a mid-range device.** The client renders a 10 Hz packet
-stream and `VirtualList` windows an inventory that has reached 17,836 rows. Both
-are fine on a desktop. Neither has been measured on a phone.
+The onboarding seen-set was `localStorage` keyed by player id, so a phone
+re-taught everything a browser already taught. It was accepted deliberately when
+the cost was one wire field; with three tiers and twenty-six explanations it is
+the difference between a returning player and an annoyed one.
 
-**D3. Background behaviour.** What does the app do when backgrounded for eight
-hours - hold a socket, drain a battery, or shut down cleanly and rely on offline
-catch-up? The last is correct and is probably already what happens, but nothing
-has confirmed it.
+*What landed:* `PlayerRecord.OnboardingSeenIds`, a nullable JSON array, behind
+`GET/PUT /api/v1/player/onboarding-seen`. The server is the truth and
+`localStorage` is now a cache in front of it - which cannot be removed, because
+`adoptPlayer` and the derived cue run on every packet and must answer
+synchronously.
 
-**D4. A device lane in CI. — PARTIALLY DONE 2026-09-10: `cap sync`, no
-assemble.**
+*NULL IS NOT AN EMPTY SET,* and the whole design turns on it. Empty-and-present
+means "taught nothing yet, teach everything as it arrives". Absent means "never
+baselined anywhere", which is the signal to mark everything ALREADY TRUE as
+read - the thing that stops seventeen explanations queueing at somebody who has
+been playing for weeks. A `defaultValue: '[]'` on the migration would have
+buried exactly the player the baseline protects.
+
+*Adoption became two-phase,* and that is a safety property rather than a
+detail. The first call attaches the account and asks the server; it can never
+baseline, because doing so on the strength of an empty local cache would write
+over a returning player's real set. The signal comes on the first call after the
+answer arrives.
+
+*The merge is a UNION and never a subtraction* - a set that is behind shows one
+explanation twice, a set that over-forgets buries somebody - and a server that
+cannot be reached changes nothing at all, so an offline phone behaves exactly as
+this did before.
+
+Guarded by six new tests in `tests/tutorial.test.ts`, including the case the
+feature exists for: an account with a record on the server and nothing in this
+browser.
+
+**D2. Performance on a mid-range device. — MEASURED 2026-09-10, as far as a
+desktop honestly can.**
+
+*What landed:* `npm run check:perf`. Chromium's CDP throttles the main thread
+4x - the usual stand-in for a mid-range Android phone - and a
+`PerformanceObserver` inside the page counts long tasks, total blocking time,
+main-thread busy ratio and heap growth over twelve seconds per screen. It
+ASSERTS budgets rather than printing numbers, because a measurement a test only
+prints is decoration and this repo has the scar.
+
+*First run, throttled 4x:*
+
+| Screen | long tasks | longest | busy | heap |
+|---|---|---|---|---|
+| Combat (10 Hz stream, interpolating health bar) | 0 | 0ms | 0.0% | +0.0MB |
+| Chest (VirtualList, standing still) | 0 | 0ms | 0.0% | +0.0MB |
+| Chest, scrolling | 19 | 129ms | - | - |
+| Village (densest static layout) | 0 | 0ms | 0.0% | +0.0MB |
+
+So the 10 Hz stream is nearly free even at a quarter speed, and the only place
+with any cost is scrolling a windowed list - which is what you would predict and
+is now a number rather than a belief. The heap figure is real: `performance
+.memory` was checked to exist rather than assumed, and the script reports `n/a`
+where it does not, so a missing API cannot masquerade as a passing measurement.
+
+*What this does NOT model, and the script says so:* GPU, memory pressure, radio
+wake-ups, battery, and thermal behaviour after twenty minutes. Also the Chest
+measured is the FIXTURE's, not the 17,836-row account - `VirtualList` is
+supposed to be flat in the row count, and a few hundred rows cannot prove it.
+
+**D3. Background behaviour. — ANSWERED, AND IT WAS THE WRONG ANSWER. Fixed
+2026-09-10.**
+
+The question was whether a backgrounded app holds a socket and drains a battery
+or shuts down cleanly and relies on offline catch-up, with a guess that "the
+last is correct and is probably already what happens".
+
+*It was not.* Nothing closed anything. `lifecycle.ts` listened for the app
+coming BACK and had no notion of it going away, so the socket survived until the
+OS froze the WebView - minutes on Android - and for those minutes a pocketed
+phone went on receiving and decoding a 10 Hz packet stream. The behaviour was
+the operating system's to decide and differed per platform.
+
+*What landed:* `connection.suspendForBackground()`, called from both the
+`visibilitychange` and Capacitor `appStateChange` paths. It closes the socket
+deliberately and does NOT set `closedByUs` - this is a suspension, not a
+sign-out, and setting it would make the app return to a permanently dead socket,
+which is far worse than the battery it saves.
+
+*NATIVE ONLY, and that is the care taken.* A hidden desktop tab is a legitimate
+way to leave an idle game running - the player switched tabs, they did not
+leave - and closing there costs the live view and any chat in it for no battery
+saved on a machine that is plugged in. The platform separates the two, not the
+visibility state, which is identical in both.
+
+Closing is free here because the SIMULATION IS ON THE SERVER: a disconnected
+client is one that is not watching, and offline catch-up pays for the gap - the
+same mechanism somebody who closes the app entirely already relies on. Five new
+tests in `tests/lifecycle.test.ts`, including that a desktop tab is left alone
+and that an app-switcher round trip inside the 400ms debounce still reconnects.
+
+**D4. A device lane in CI. — DONE 2026-09-10.**
 
 At minimum, `cap sync` and an Android assemble on every push, so the native
 project cannot rot silently the way three separate screen lists once did.
 
-*What landed:* two steps at the end of the `client` job in
-`.github/workflows/deploy.yml` - `npx cap sync`, then
-`git diff --exit-code -- android ios`. The second is the ratchet: `cap sync`
-regenerates `capacitor.settings.gradle`, `app/capacitor.build.gradle` and the
-SPM manifest from the installed plugin set, and the copied web assets and
-generated configs are gitignored, so a dirty tree means a Capacitor plugin was
-added or removed without re-syncing. Both platforms sync on Linux because the
-iOS project is SPM (`ios/App/CapApp-SPM`), not CocoaPods - `cap update ios`
-never shells out to `pod`. Verified by running the same command on Windows,
-where no Apple toolchain exists.
+*What landed, in two passes.* First `npx cap sync` plus
+`git diff --exit-code -- android ios` as a ratchet: `cap sync` regenerates the
+Gradle and SPM glue from the installed plugin set, so a dirty tree means
+somebody added or removed a Capacitor plugin without re-syncing. Both platforms
+sync on Linux because the iOS project is SPM (`ios/App/CapApp-SPM`), not
+CocoaPods - `cap update ios` never shells out to `pod`.
 
-*What it does NOT prove, deliberately:* nothing is compiled. No Gradle, no
-manifest merge, no APK, no .ipa, no evidence the app launches. An
-`assembleDebug` needs the Android SDK plus a Gradle dependency download every
-run, and a release assemble needs the upload keystore - which is C2, is not a
-CI secret, and should not become one before C1 settles the real bundle id. An
-iOS build needs a macOS runner. The step comment in the workflow says the same
-thing, so a green tick cannot be read as more than it is.
+Then the half that was deferred and is now done: a JDK, the Android SDK, a
+Gradle cache keyed on the build files, `./gradlew assembleDebug`, and the APK
+kept as an artefact for fourteen days. That catches everything `cap sync`
+cannot see - a plugin whose minSdk is above ours, two plugins pulling
+incompatible AndroidX versions, a manifest merge conflict - and each of those is
+otherwise a wall somebody hits on a Friday.
 
-**D6. `check:touch` is at 5, not 0.** MOBILE.md claimed zero and it was written
-before the run that says otherwise; measured 2026-09-10, and confirmed
-pre-existing by running the same check against HEAD with PHASE B stashed.
+DEBUG rather than release, because a release assemble needs the upload keystore,
+which is not a CI secret and should not become one. `app/build.gradle` produces
+an unsigned release build when no key is configured, so adding the secret later
+is the only change needed.
 
-- Chest: `Reroll`, `Lock`, `Unequip` - **44x44 exactly**, so they pass the size
-  rule and fail the bottom-edge one. On a phone with gesture navigation the
-  system bar takes the press.
-- Wiki: `Gathering & tools`, 329x57, same bottom-edge cause.
-- Auto-Eat: a text input at 297x**32**. Padding cannot fix an input - the
-  browser hit-tests the border box - so this one needs a height.
+*Still not proven:* that the app LAUNCHES. That needs an emulator or a device -
+A2 - and no amount of compiling substitutes for it. The kept APK is the shortest
+path there: it can be installed on a phone by somebody with no toolchain at all.
 
-Small, and worth doing before a store build rather than after a review that
-mentions it.
+**D6. `check:touch` is at 5, not 0. — DONE 2026-09-10, and four of the five were
+the checker's fault.**
+
+*Measured, not argued.* Scrolling the page moved every "on the bottom edge"
+failure except one, and at the true document end nothing was flagged at all. The
+rule fired on whatever happened to be sitting at the fold when the page was
+measured at `scrollY=0` - three buttons on Chest and one on Wiki that a player
+reaches by scrolling, exactly as they already scroll to see them.
+
+*Two fixes to the checker, and both widen what it covers:*
+
+1. **It only ever measured the first viewport.** `rect.top > window.innerHeight`
+   skipped everything below the fold, so on a 3147px Wiki it was checking the
+   top 844px and reporting as though it had checked the screen. It now measures
+   in overlapping passes down the page - which immediately found a real failure
+   on Settings that had never been visible.
+2. **Crowding is now decided empirically.** `position: fixed/sticky` was tried
+   as the test and is not one: the Wiki's sidebar is `sticky` and at 390px the
+   layout stacks so it never actually sticks. A control counts as crowding only
+   if it sat at the bottom edge in EVERY pass that saw it, across at least two -
+   scrolling is what tells pinned apart from coincidental.
+
+*The genuine failures were both `input[type="range"]`,* on Auto-Eat and
+Settings, at 32px tall. Ranges sat in the `:not()` list beside checkbox and
+radio - which belong there, being fixed 44x44 squares further down - and a
+slider is the one control on a phone that is nothing but a thumb target. Given
+an explicit 44px height with a drawn track and a 28px thumb, because a minimum
+leaves the browser free to render a 32px track inside a 44px box and it
+hit-tests what it drew.
+
+**Now 0 across all 26 screens, with the whole page measured rather than the top
+of it.**
 
 **D5. Fix MOBILE.md. — DONE 2026-09-10.** Its "Not built yet" section listed
 purchases as unbuilt (they are, bar the adapter) and did not mention the touch

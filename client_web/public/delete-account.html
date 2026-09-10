@@ -1,0 +1,161 @@
+<!doctype html>
+<!--
+  Modul: PLAY REQUIRES THIS TO BE REACHABLE WITHOUT THE APP.
+
+  The in-app deletion has existed for a long time - Settings, a typed
+  confirmation phrase, CompliancePurgeEngine. What Play added is a separate
+  requirement: a URL, on the open web, that somebody who has ALREADY
+  UNINSTALLED can use to ask for their account and data to be deleted. An
+  in-app path alone is a rejected submission.
+
+  So this page is the out-of-app half, and it is deliberately honest about the
+  two routes having different speeds: the in-app one is immediate and
+  irreversible, this one is a request somebody has to act on.
+
+  BEFORE STORE SUBMISSION: fill in CONTACT_EMAIL. The page is useless without
+  it and a reviewer checks.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FolkIdle - Delete your account</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #100d0a;
+        --panel: #191309;
+        --text: #ece0cc;
+        --dim: #a2907a;
+        --accent: #c9a227;
+        --danger: #e0553f;
+        --border: #4a3a26;
+      }
+      @media (prefers-color-scheme: light) {
+        :root {
+          --bg: #e8dcc0;
+          --panel: #f3ead4;
+          --text: #2e2317;
+          --dim: #5f5140;
+          --accent: #8a6a1f;
+          --danger: #a5301c;
+          --border: #c4ab7f;
+        }
+      }
+      body {
+        margin: 0;
+        padding: 2rem 1rem 4rem;
+        background: var(--bg);
+        color: var(--text);
+        font: 16px/1.6 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      main {
+        max-width: 40rem;
+        margin: 0 auto;
+      }
+      h1,
+      h2 {
+        font-family: Georgia, 'Times New Roman', serif;
+        color: var(--accent);
+        line-height: 1.25;
+      }
+      h1 {
+        font-size: 1.9rem;
+      }
+      h2 {
+        font-size: 1.15rem;
+        margin-top: 2rem;
+      }
+      a {
+        color: var(--accent);
+      }
+      .route {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: 0.6rem;
+        padding: 1rem 1.1rem;
+        margin: 1.2rem 0;
+      }
+      .route.primary {
+        border-color: var(--accent);
+      }
+      .warn {
+        color: var(--danger);
+        font-weight: 600;
+      }
+      ol {
+        padding-left: 1.2rem;
+      }
+      code {
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 0.25rem;
+        padding: 0.1rem 0.35rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Delete your FolkIdle account</h1>
+
+      <p>
+        There are two ways. The first is immediate and does the whole thing
+        yourself; the second exists for people who no longer have the game
+        installed.
+      </p>
+
+      <div class="route primary">
+        <h2 style="margin-top: 0">1. In the game - immediate</h2>
+        <ol>
+          <li>Sign in.</li>
+          <li>Open <strong>Settings</strong> from the menu.</li>
+          <li>Scroll to the account deletion section at the bottom.</li>
+          <li>Type the confirmation phrase it asks for, and confirm.</li>
+        </ol>
+        <p class="warn">This cannot be undone and there is no recovery period.</p>
+      </div>
+
+      <div class="route">
+        <h2 style="margin-top: 0">2. By email - if you have uninstalled</h2>
+        <p>
+          Write to <strong>CONTACT_EMAIL</strong> from the email address on the
+          account, with the subject <code>Delete my account</code>. If the
+          account was a guest account with no email address on it, include your
+          in-game display name instead and we will confirm before deleting
+          anything.
+        </p>
+        <p>
+          Requests are actioned within 30 days, and normally much sooner. You
+          will get a reply confirming it is done.
+        </p>
+      </div>
+
+      <h2>What is deleted</h2>
+      <ul>
+        <li>Your account record, including your email address and password.</li>
+        <li>Every character, and everything they own.</li>
+        <li>Your village and everyone in it.</li>
+        <li>Any market listings you had open.</li>
+        <li>Registered notification devices.</li>
+        <li>Your saved onboarding progress and preferences.</li>
+      </ul>
+
+      <h2>What is kept, and why</h2>
+      <p>
+        Purchase records - the store's transaction identifier, the product, and
+        the date - are kept where tax and consumer-refund law requires it. They
+        no longer point at an account, because the account is gone.
+      </p>
+      <p>
+        Messages you sent to other players may remain in those players' inboxes,
+        in the same way an email you sent stays in the recipient's mailbox.
+      </p>
+
+      <h2>Anything else</h2>
+      <p>
+        See the <a href="/privacy.html">privacy policy</a> for what is stored in
+        the first place.
+      </p>
+    </main>
+  </body>
+</html>

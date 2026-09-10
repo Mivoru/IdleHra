@@ -16,11 +16,15 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 */
 
 const resumeFromBackground = vi.fn();
+const suspendForBackground = vi.fn();
 
 vi.mock('../src/lib/net/connection', () => ({
   connection: {
     get resumeFromBackground() {
       return resumeFromBackground;
+    },
+    get suspendForBackground() {
+      return suspendForBackground;
     },
   },
 }));
@@ -76,6 +80,7 @@ let testIndex = 0;
 
 beforeEach(() => {
   resumeFromBackground.mockClear();
+  suspendForBackground.mockClear();
   visibility = 'hidden';
   installDom();
   vi.useFakeTimers();
@@ -109,8 +114,8 @@ describe('the app coming back to the foreground', () => {
 
     setVisibility('hidden');
 
-    // Going away is not an event the connection can act on - the socket is
-    // about to be frozen whatever it does.
+    // Going away is never a RESUME. What it is on a phone - a reason to put
+    // the socket down - is the next describe block.
     expect(resumeFromBackground).not.toHaveBeenCalled();
   });
 
@@ -193,5 +198,101 @@ describe('the app coming back to the foreground', () => {
     setVisibility('visible');
 
     expect(resumeFromBackground).not.toHaveBeenCalled();
+  });
+});
+
+/*
+  GOING TO THE BACKGROUND, WHICH NOTHING USED TO NOTICE.
+
+  TASK_BOARD D3 asked what the app does when backgrounded for eight hours -
+  hold a socket and drain a battery, or shut down cleanly and rely on offline
+  catch-up - and guessed the second was "probably already what happens".
+
+  It was not. Nothing closed anything. The socket survived until the OS froze
+  the WebView, which on Android is minutes, and for those minutes a pocketed
+  phone went on receiving and decoding a 10 Hz packet stream. The behaviour was
+  the operating system's to decide and it differed per platform.
+
+  Closing costs nothing here because the SIMULATION IS ON THE SERVER: a
+  disconnected client is one that is not watching, and offline catch-up pays
+  for the gap - the same mechanism somebody who closes the app entirely already
+  relies on.
+*/
+describe('going to the background', () => {
+  function installNativeShell(): Record<string, (state: { isActive: boolean }) => void> {
+    const handlers: Record<string, (state: { isActive: boolean }) => void> = {};
+    (globalThis as { Capacitor?: unknown }).Capacitor = {
+      isNativePlatform: () => true,
+      Plugins: {
+        App: {
+          addListener: (event: string, handler: (state: { isActive: boolean }) => void) => {
+            handlers[event] = handler;
+            return { remove: () => {} };
+          },
+        },
+      },
+    };
+    return handlers;
+  }
+
+  it('puts the socket down when a PHONE goes to the background', () => {
+    const handlers = installNativeShell();
+    stopWatching = watchAppLifecycle();
+
+    handlers.appStateChange({ isActive: false });
+
+    expect(suspendForBackground).toHaveBeenCalledTimes(1);
+  });
+
+  it('does the same on visibilitychange, because the two sources cover different platforms', () => {
+    installNativeShell();
+    stopWatching = watchAppLifecycle();
+
+    setVisibility('hidden');
+
+    expect(suspendForBackground).toHaveBeenCalledTimes(1);
+  });
+
+  it('LEAVES A DESKTOP TAB ALONE', () => {
+    // Modul: the case this must not break. A hidden browser tab is a
+    // legitimate way to leave an idle game running - the player switched tabs,
+    // they did not leave - and closing the socket there costs them the live
+    // view and any chat arriving in it, for no battery saved on a machine that
+    // is plugged in. The platform is what separates the two, not the
+    // visibility state, which is identical in both.
+    stopWatching = watchAppLifecycle();
+
+    setVisibility('hidden');
+
+    expect(suspendForBackground).not.toHaveBeenCalled();
+  });
+
+  it('comes back when the app does', () => {
+    const handlers = installNativeShell();
+    stopWatching = watchAppLifecycle();
+
+    handlers.appStateChange({ isActive: false });
+    vi.setSystemTime(new Date(Date.now() + 60_000));
+    handlers.appStateChange({ isActive: true });
+
+    expect(suspendForBackground).toHaveBeenCalledTimes(1);
+    expect(resumeFromBackground).toHaveBeenCalledTimes(1);
+  });
+
+  it('a suspend clears the resume debounce, so an immediate return still reconnects', () => {
+    // Modul: the app-switcher case. Backgrounding and returning inside the
+    // 400ms debounce window is one gesture on a phone, and the resume must not
+    // be swallowed as a duplicate of the one before the suspend - that would
+    // leave the game on a socket it deliberately closed.
+    const handlers = installNativeShell();
+    stopWatching = watchAppLifecycle();
+
+    handlers.appStateChange({ isActive: true });
+    expect(resumeFromBackground).toHaveBeenCalledTimes(1);
+
+    handlers.appStateChange({ isActive: false });
+    handlers.appStateChange({ isActive: true });
+
+    expect(resumeFromBackground).toHaveBeenCalledTimes(2);
   });
 });

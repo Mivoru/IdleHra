@@ -1,0 +1,59 @@
+<!--
+  Modul: THE APP ICON, and the reason there is a file rather than a download.
+
+  What shipped in android/ and ios/ was Capacitor's own placeholder - a blue
+  asterisk on white, in nobody's palette, on a game whose entire look is
+  "charred oak, candle-lit parchment, brass". A store listing led by a
+  framework logo reads as a template.
+
+  It is an SVG so it is the SOURCE rather than one of the outputs: every PNG
+  Android and iOS want is rasterised from this by scripts/generate-icons.mjs,
+  so a change is made once and lands in all fourteen sizes. The palette tokens
+  are app.css's, written as literals here because an SVG cannot read them.
+
+  DESIGNED FOR THE MASK. Android crops an adaptive icon to whatever shape the
+  launcher fancies - circle, squircle, rounded square - and only the middle
+  66% is guaranteed to survive. Everything that carries meaning sits inside
+  that safe circle; the corners hold nothing but background.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <defs>
+    <!-- Candle-light from above, dark at the edges - the same trick app.css
+         uses on the page body. -->
+    <radialGradient id="glow" cx="50%" cy="34%" r="72%">
+      <stop offset="0%" stop-color="#3a2c1c" />
+      <stop offset="62%" stop-color="#1d1610" />
+      <stop offset="100%" stop-color="#100d0a" />
+    </radialGradient>
+
+    <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8c13a" />
+      <stop offset="55%" stop-color="#c9a227" />
+      <stop offset="100%" stop-color="#8a6a1f" />
+    </linearGradient>
+  </defs>
+
+  <rect width="108" height="108" fill="url(#glow)" />
+
+  <!-- The safe circle is r=36 around (54,54). Nothing below leaves it. -->
+  <g transform="translate(54 54)">
+    <!-- A shield: the plainest possible read at 48px, and the one shape an
+         idle RPG can wear without explaining itself. -->
+    <path
+      d="M0 -30 L23 -21 V2 C23 16 12 25 0 30 C-12 25 -23 16 -23 2 V-21 Z"
+      fill="#191309"
+      stroke="url(#brass)"
+      stroke-width="3.4"
+      stroke-linejoin="round"
+    />
+
+    <!-- An F, cut as a notch rather than drawn as a letter: at mdpi the icon
+         is 48px across and a glyph would be four grey pixels. A thick mark
+         survives the size. -->
+    <g fill="url(#brass)">
+      <rect x="-9.5" y="-16" width="19" height="5.4" rx="1.2" />
+      <rect x="-9.5" y="-16" width="5.6" height="30" rx="1.2" />
+      <rect x="-9.5" y="-3.4" width="14" height="5.2" rx="1.2" />
+    </g>
+  </g>
+</svg>

@@ -306,6 +306,67 @@ describe('the table itself', () => {
 // Seen-state: survives a reload, survives a season, does not bury a veteran
 // ---------------------------------------------------------------------------
 
+/*
+  Modul: THE SEEN-SET NOW HAS A SERVER BEHIND IT, so these tests need one.
+
+  `tutorialSeen` reads PlayerRecord.OnboardingSeenIds at sign-in and writes it
+  back debounced. The point of the change is that a returning player is not
+  taught the whole game again on a second device, and the point of this stub is
+  that the tests can say what the server knew - including the case that matters
+  most, an account with a record on the server and nothing in this browser.
+
+  `HasRecord` is deliberately separate from an empty `Seen`: absent means
+  "never baselined anywhere", empty means "baselined, taught nothing yet".
+*/
+const stubServer = {
+  seen: [] as string[],
+  hasRecord: false,
+  reachable: true,
+  writes: 0,
+};
+
+vi.mock('../src/lib/net/rest', () => ({
+  fetchOnboardingSeen: async () => {
+    if (!stubServer.reachable) throw new Error('offline');
+    return { Seen: [...stubServer.seen], HasRecord: stubServer.hasRecord };
+  },
+  saveOnboardingSeen: async (ids: readonly string[]) => {
+    if (!stubServer.reachable) throw new Error('offline');
+    stubServer.writes += 1;
+    stubServer.seen = [...ids];
+    stubServer.hasRecord = true;
+    return { Seen: [...stubServer.seen], HasRecord: true };
+  },
+}));
+
+function resetStubServer() {
+  stubServer.seen = [];
+  stubServer.hasRecord = false;
+  stubServer.reachable = true;
+  stubServer.writes = 0;
+}
+
+/** Let the hydration round trip resolve. */
+async function settle() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
+ * Adopt, wait for the server, and return the baseline signal.
+ *
+ * Modul: ADOPTION IS TWO PHASES NOW, and that is the whole safety property.
+ * The first call attaches the account and asks the server; it can never
+ * baseline, because baselining marks everything already true as read and doing
+ * that on the strength of an empty local cache would write over a returning
+ * player's real set. The signal comes on the first call AFTER the answer.
+ */
+async function adoptAndSettle(seen: any, playerId: number): Promise<boolean> {
+  expect(seen.adoptPlayer(playerId)).toBe(false);
+  await settle();
+  return seen.adoptPlayer(playerId);
+}
+
 /** A localStorage good enough for the three things the module does with it. */
 function installStorage(): Map<string, string> {
   const backing = new Map<string, string>();
@@ -317,13 +378,25 @@ function installStorage(): Map<string, string> {
   return backing;
 }
 
+let liveSeenModule: any = null;
+
 async function freshSeenModule() {
+  // Modul: THE PREVIOUS INSTANCE IS SHUT DOWN FIRST, and it has to be.
+  //
+  // The remote write is debounced by 800ms, and `vi.resetModules()` does not
+  // reach into the module it is discarding - so an instance from an earlier
+  // test kept a live timer that fired mid-way through a later one and told the
+  // stub server it had a record. That is what made the veteran baseline test
+  // fail: not the code under test, a timer from three tests ago.
+  liveSeenModule?.resetForTests();
+
   // A fresh module instance per call: the module holds the active account and
   // its seen-set for the lifetime of a page, which is correct in a browser and
   // would leak between tests here. resetModules is also how a RELOAD is
   // simulated below - same storage, brand-new module state.
   vi.resetModules();
-  return await import('../src/lib/stores/tutorialSeen');
+  liveSeenModule = await import('../src/lib/stores/tutorialSeen');
+  return liveSeenModule;
 }
 
 describe('which explanations have been shown', () => {
@@ -331,24 +404,25 @@ describe('which explanations have been shown', () => {
 
   beforeEach(() => {
     backing = installStorage();
+    resetStubServer();
   });
 
   it('reports a first-ever adoption, and only the first time', async () => {
     const seen = await freshSeenModule();
-    expect(seen.adoptPlayer(1234)).toBe(true);
+    expect(await adoptAndSettle(seen, 1234)).toBe(true);
     expect(seen.adoptPlayer(1234)).toBe(false);
   });
 
   it('persists a mark under the player id and reads it back', async () => {
     const first = await freshSeenModule();
-    first.adoptPlayer(1234);
+    await adoptAndSettle(first, 1234);
     first.markAllSeen([]);
     first.markSeen('forge');
 
     // A reload: storage already holds the key, so this is not a first-ever
     // adoption and nothing is baselined over the top of it.
     const reload = await freshSeenModule();
-    expect(reload.adoptPlayer(1234)).toBe(false);
+    expect(await adoptAndSettle(reload, 1234)).toBe(false);
     expect(backing.has('folkidle.onboardingSeen.1234')).toBe(true);
     expect(JSON.parse(backing.get('folkidle.onboardingSeen.1234')!)).toContain('forge');
   });
@@ -359,19 +433,19 @@ describe('which explanations have been shown', () => {
   // explained. This is the assertion that pins that.
   it('writes an empty baseline so it cannot happen twice', async () => {
     const seen = await freshSeenModule();
-    expect(seen.adoptPlayer(77)).toBe(true);
+    expect(await adoptAndSettle(seen, 77)).toBe(true);
     seen.markAllSeen([]);
     expect(backing.get('folkidle.onboardingSeen.77')).toBe('[]');
 
     const reload = await freshSeenModule();
-    expect(reload.adoptPlayer(77)).toBe(false);
+    expect(await adoptAndSettle(reload, 77)).toBe(false);
   });
 
   it('keeps two accounts on one browser apart', async () => {
     const seen = await freshSeenModule();
-    seen.adoptPlayer(1);
+    await adoptAndSettle(seen, 1);
     seen.markSeen('forge');
-    expect(seen.adoptPlayer(2)).toBe(true);
+    expect(await adoptAndSettle(seen, 2)).toBe(true);
     seen.markAllSeen([]);
     expect(JSON.parse(backing.get('folkidle.onboardingSeen.2')!)).toEqual([]);
     expect(JSON.parse(backing.get('folkidle.onboardingSeen.1')!)).toEqual(['forge']);
@@ -379,7 +453,7 @@ describe('which explanations have been shown', () => {
 
   it('forgets one, and forgets all', async () => {
     const seen = await freshSeenModule();
-    seen.adoptPlayer(9);
+    await adoptAndSettle(seen, 9);
     seen.markAllSeen(['forge', 'market', 'deeds']);
     seen.forgetSeen('market');
     expect(JSON.parse(backing.get('folkidle.onboardingSeen.9')!).sort()).toEqual([
@@ -405,14 +479,110 @@ describe('which explanations have been shown', () => {
     const seen = await freshSeenModule();
     // Reads as "nothing stored", which re-teaches at worst - the harmless
     // direction to fail.
-    expect(seen.adoptPlayer(5)).toBe(true);
+    expect(await adoptAndSettle(seen, 5)).toBe(true);
     expect(() => seen.markSeen('forge')).not.toThrow();
+  });
+});
+
+describe('the same account on a second device', () => {
+  let backing: Map<string, string>;
+
+  beforeEach(() => {
+    backing = installStorage();
+    resetStubServer();
+  });
+
+  it('is not taught again what the first device already taught', async () => {
+    // Modul: THE WHOLE REASON THIS STOPPED BEING localStorage-ONLY.
+    //
+    // A player signs in on a phone. The browser knows nothing; the account
+    // knows plenty. Before the seen-set had a server behind it, this was
+    // twenty-six explanations delivered to somebody who had read them all.
+    stubServer.seen = ['forge', 'market', 'deeds'];
+    stubServer.hasRecord = true;
+
+    const seen = await freshSeenModule();
+
+    // Not a first-ever adoption: the ACCOUNT has a record even though this
+    // device does not.
+    expect(await adoptAndSettle(seen, 4242)).toBe(false);
+
+    const stored: Set<string> = new Set(
+      JSON.parse(backing.get('folkidle.onboardingSeen.4242')!),
+    );
+    expect([...stored].sort()).toEqual(['deeds', 'forge', 'market']);
+  });
+
+  it('unions rather than replaces, so a mark made before the answer survives', async () => {
+    // The local copy answers synchronously and the server answers when it
+    // answers. A mark made in between is real, and replacing the local set
+    // with the server's would drop it.
+    stubServer.seen = ['market'];
+    stubServer.hasRecord = true;
+
+    const seen = await freshSeenModule();
+    seen.adoptPlayer(51);
+    seen.markSeen('forge');
+    await settle();
+
+    const stored: Set<string> = new Set(JSON.parse(backing.get('folkidle.onboardingSeen.51')!));
+    expect([...stored].sort()).toEqual(['forge', 'market']);
+  });
+
+  it('still baselines when the account has a record NOWHERE', async () => {
+    // Empty-and-present would be a different answer; this is absent.
+    stubServer.seen = [];
+    stubServer.hasRecord = false;
+
+    const seen = await freshSeenModule();
+    expect(await adoptAndSettle(seen, 7)).toBe(true);
+  });
+
+  it('does NOT baseline over an account the server has a record for', async () => {
+    // Modul: the destructive case, and the reason adoption waits for the
+    // server. Baselining marks everything already true as read; doing it to a
+    // returning player would then be written back over their real set, and the
+    // explanations they had not reached yet would be silently swallowed.
+    stubServer.seen = ['forge'];
+    stubServer.hasRecord = true;
+
+    const seen = await freshSeenModule();
+    expect(await adoptAndSettle(seen, 99)).toBe(false);
+  });
+
+  it('behaves exactly as it used to when the server cannot be reached', async () => {
+    // The floor: local-only, which is the behaviour this replaced. An offline
+    // phone still gets a working tutorial.
+    stubServer.reachable = false;
+
+    const seen = await freshSeenModule();
+    expect(await adoptAndSettle(seen, 3)).toBe(true);
+    expect(() => seen.markSeen('forge')).not.toThrow();
+    expect(JSON.parse(backing.get('folkidle.onboardingSeen.3')!)).toContain('forge');
+  });
+
+  it('writes the set back, once, after a burst of marks', async () => {
+    const seen = await freshSeenModule();
+    await adoptAndSettle(seen, 12);
+
+    seen.markSeen('forge');
+    seen.markSeen('market');
+    seen.markSeen('deeds');
+
+    // Debounced: nothing has gone yet.
+    expect(stubServer.writes).toBe(0);
+
+    await new Promise((resolve) => setTimeout(resolve, 900));
+
+    expect(stubServer.writes).toBe(1);
+    expect([...stubServer.seen].sort()).toEqual(['deeds', 'forge', 'market']);
   });
 });
 
 describe('a veteran is not buried, and a season reset does not re-teach', () => {
   beforeEach(() => {
     installStorage();
+    resetStubServer();
   });
 
   // Modul: the naive rule - "true and unseen" with no baseline - queues every
@@ -431,7 +601,7 @@ describe('a veteran is not buried, and a season reset does not re-teach', () => 
       TownHallLevel: 3,
       AchievementTierTotal: 30,
     });
-    expect(seen.adoptPlayer(4242)).toBe(true);
+    expect(await adoptAndSettle(seen, 4242)).toBe(true);
     seen.markAllSeen(reachedDiscoveries(veteran, { hasGuild: true }));
 
     // Nothing left to say about anything they have already done...
@@ -451,7 +621,7 @@ describe('a veteran is not buried, and a season reset does not re-teach', () => 
   // twice - which is the whole reason it stores "seen" and not "progress".
   it('says nothing a second time when a season resets the world', async () => {
     const seen = await freshSeenModule();
-    seen.adoptPlayer(808);
+    await adoptAndSettle(seen, 808);
     seen.markAllSeen([]);
 
     const seasonOne = blank({ HighestUnlockedRegion: 3, ForgeLevel: 2, Gold: 40_000 });

@@ -116,6 +116,47 @@ tokens for the same reason it already clears the remembered `DeviceId`.
 IS the authority - so a row that outlives its account goes on minting valid
 JWTs.
 
+### Onboarding progress is per-ACCOUNT (2026-09-10)
+
+`PlayerRecord.OnboardingSeenIds` is a **nullable** JSON array of explanation ids,
+read and replaced through `GET/PUT /api/v1/player/onboarding-seen`. It was
+`localStorage` alone until 2026-09-10, which re-taught the whole game to a
+returning player on a second device.
+
+**Null is not an empty set, and the column must stay nullable.** Absent means
+"never baselined anywhere" - the signal the client uses to mark everything
+already true as read, rather than queueing seventeen explanations at somebody
+who has played for weeks. Empty-and-present means the opposite: teach everything
+as it arrives. A `defaultValue: '[]'` on the migration would bury exactly the
+player the baseline protects. (Compare the `defaultValue:` trap recorded in
+LONG_GAME_SPEC, where EF backfilled 0 over a C# default of 4 for months.)
+
+The client keeps a `localStorage` cache in front of it and MERGES BY UNION, never
+by replacement - it is read synchronously on every packet, so it cannot be
+removed, and a set that is behind shows one explanation twice while a set that
+over-forgets buries somebody.
+
+### Receipts are verified with the STORE now (2026-09-10)
+
+`ProductionIapReceiptValidator.Validate` checks a bespoke
+`{provider, payload, signature}` envelope that **no real store produces** -
+Google hands a client a purchase token, Apple a transaction id, and neither
+signs anything with a key this server holds. It was satisfiable only by the test
+that invented the format, and nothing noticed because
+`/api/v1/billing/verify-receipt` had never been called by a client.
+
+`StoreApiReceiptVerifier` (new) reads a `{provider, productId, transactionId,
+purchaseToken}` envelope - no signature, because a client cannot produce a
+truthful one - and calls `VerifyViaGooglePlayDeveloperApiAsync` or
+`VerifyViaAppleAppStoreServerApiAsync`, which already existed and were wired to
+nothing. `BillingVerificationEngine.VerifyReceiptAsync` tries it first and falls
+back to the legacy path untouched.
+
+**It fails closed.** An envelope naming a store with no credentials configured is
+refused rather than handed back to the legacy validator, where "no signature
+present" must never resolve to "granted". The absence of a `signature` field is
+the discriminator between the two schemes.
+
 Season resets (`Engine/SeasonalRotationEngine.cs`) use
 `TRUNCATE TABLE ... RESTART IDENTITY CASCADE` for the three unconditional
 full-table wipes (`EquipmentInstances`, `BankEquipmentInstances`,

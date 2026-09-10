@@ -99,3 +99,13 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# Modul: THE UPLOAD KEY AND ITS PASSWORDS, WHICH MUST NEVER BE COMMITTED.
+#
+# Play signs every release with a key that cannot be replaced - lose it and
+# the listing can never be updated again, by anybody - and publishing it lets
+# somebody else ship an update to your users. app/build.gradle reads these
+# when they exist and produces an unsigned build when they do not.
+keystore.properties
+*.jks
+*.keystore

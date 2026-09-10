@@ -37,6 +37,31 @@ function onResume(): void {
   connection.resumeFromBackground();
 }
 
+/**
+ * Whether this shell is one whose socket is worth putting down.
+ *
+ * Modul: NATIVE ONLY, AND THAT IS THE WHOLE CARE TAKEN HERE.
+ *
+ * On a phone, backgrounding means the OS is about to freeze the WebView anyway
+ * and the minutes before it does are a 10 Hz stream into somebody's pocket. On
+ * a DESKTOP, a hidden tab is a legitimate way to leave an idle game running -
+ * the player switched tabs, they did not leave - and closing the socket there
+ * would cost them the live view and any chat arriving in it for no benefit at
+ * all. Reading the platform rather than the visibility state is what keeps
+ * those two cases apart.
+ */
+function isNativeShell(): boolean {
+  const capacitor = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
+  return typeof capacitor?.isNativePlatform === 'function' ? capacitor.isNativePlatform() : false;
+}
+
+function onBackground(): void {
+  if (!isNativeShell()) return;
+  // Any resume debounce in flight is meaningless now.
+  lastResumeAt = 0;
+  connection.suspendForBackground();
+}
+
 interface CapacitorAppPlugin {
   addListener?: (
     event: 'appStateChange',
@@ -56,6 +81,7 @@ export function watchAppLifecycle(): Unsubscribe {
 
   const visibility = () => {
     if (document.visibilityState === 'visible') onResume();
+    else onBackground();
   };
   document.addEventListener('visibilitychange', visibility);
   cleanups.push(() => document.removeEventListener('visibilitychange', visibility));
@@ -82,6 +108,7 @@ export function watchAppLifecycle(): Unsubscribe {
     try {
       const handle = nativeApp.addListener('appStateChange', ({ isActive }) => {
         if (isActive) onResume();
+        else onBackground();
       });
       Promise.resolve(handle)
         .then((h) => {

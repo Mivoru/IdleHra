@@ -42,6 +42,15 @@ const HIDDEN_EPSILON = 1.5;
  * control in the last few pixels underneath them is one a player cannot press
  * even when nothing is technically covering it. check:overlap catches the
  * covering; this catches the crowding.
+ *
+ * AND IT ONLY COUNTS WHERE SCROLLING CANNOT CURE IT. This rule used to fire on
+ * whatever happened to be sitting at the fold when the page was measured at
+ * scrollY=0, which reported five failures that all disappeared after a 120px
+ * scroll - three buttons on Chest, one on Wiki. They were never unreachable;
+ * the player scrolls to them exactly as they already scroll to see them. The
+ * rule now requires the control to be PINNED (fixed or sticky, so no amount of
+ * scrolling moves it off the edge) or the scroller to be at its end. Those are
+ * the two cases the paragraph above is actually describing.
  */
 const SAFE_BOTTOM = 8;
 
@@ -51,62 +60,146 @@ await signIn(page);
 const navCheck = await assertMatchesNav(page);
 if (navCheck.missing.length > 0) console.log(`FAIL nav has no button for: ${navCheck.missing.join(', ')}`);
 
-const measure = () =>
-  page.evaluate(
-    ({ minTouch, hiddenEpsilon, safeBottom }) => {
-      const results = [];
-      const controls = document.querySelectorAll(
-        'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])',
-      );
+const measure = async () => {
+  // Modul: MEASURED IN PASSES DOWN THE PAGE, not once at the top.
+  //
+  // This used to `continue` past anything outside the first viewport, which on
+  // a 390px phone means it only ever saw the top 844px. The Wiki is 3147px
+  // long: three quarters of it had never been measured at all, on a checker
+  // whose report read as if it covered the screen. Scrolling the page and
+  // measuring again is the whole fix, and it is why the results are collected
+  // into a map keyed on the control rather than a list - one control seen in
+  // two overlapping passes is one control.
+  const seen = new Map();
 
-      for (const el of controls) {
-        const style = getComputedStyle(el);
-        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue;
-        if (el.disabled) continue;
+  // Modul: how many passes each control was VISIBLE in, and in how many of
+  // those it sat at the bottom of the glass. Crowding is only a defect when
+  // scrolling never cures it, and the only honest way to know that is to move
+  // the page and look again.
+  const visible = new Map();
+  const crowded = new Map();
 
-        const rect = el.getBoundingClientRect();
-        if (rect.width < hiddenEpsilon || rect.height < hiddenEpsilon) continue;
+  const pageHeight = await page.evaluate(() => document.documentElement.scrollHeight);
+  const viewport = await page.evaluate(() => window.innerHeight);
 
-        // Off the top or bottom of its own scroller, or off the viewport: not
-        // a control the player is being offered right now.
-        if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
+  // Overlapping by a third, so a control straddling a boundary is fully
+  // visible in at least one pass.
+  const step = Math.floor(viewport * 0.66);
+  const stops = [];
+  for (let y = 0; y < pageHeight; y += step) stops.push(y);
+  // The end is always measured, because it is the one position where a control
+  // near the bottom of the glass genuinely cannot be scrolled clear of it.
+  stops.push(pageHeight);
 
-        // A control inside a horizontally scrolling strip is allowed to be
-        // narrow - the strip is what the thumb is aiming at.
-        let inHorizontalStrip = false;
-        for (let parent = el.parentElement; parent; parent = parent.parentElement) {
-          const parentStyle = getComputedStyle(parent);
-          if (parentStyle.overflowX === 'auto' || parentStyle.overflowX === 'scroll') {
-            inHorizontalStrip = true;
-            break;
+  for (const y of stops) {
+    await page.evaluate((to) => window.scrollTo(0, to), y);
+    await page.waitForTimeout(90);
+
+    const pass = await page.evaluate(
+      ({ minTouch, hiddenEpsilon, safeBottom }) => {
+        const results = [];
+
+        // Every control this pass could see, flagged or not - the denominator
+        // the crowding rule is judged against.
+        const visibleKeys = [];
+        const controls = document.querySelectorAll(
+          'button, a[href], input:not([type="hidden"]), select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])',
+        );
+
+        for (const el of controls) {
+          const style = getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue;
+          if (el.disabled) continue;
+
+          const rect = el.getBoundingClientRect();
+          if (rect.width < hiddenEpsilon || rect.height < hiddenEpsilon) continue;
+          if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
+
+          // A control inside a horizontally scrolling strip is allowed to be
+          // narrow - the strip is what the thumb is aiming at.
+          let inHorizontalStrip = false;
+          for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+            const parentStyle = getComputedStyle(parent);
+            if (parentStyle.overflowX === 'auto' || parentStyle.overflowX === 'scroll') {
+              inHorizontalStrip = true;
+              break;
+            }
+          }
+
+          const label = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('placeholder') || el.tagName)
+            .trim()
+            .replace(/\s+/g, ' ')
+            .slice(0, 34);
+
+          const tooShort = rect.height + 0.5 < minTouch;
+          const tooNarrow = !inHorizontalStrip && rect.width + 0.5 < minTouch;
+
+          // Keyed on what the control IS, so the same button found in two
+          // overlapping passes is one control rather than two.
+          const key = `${el.tagName}|${label}|${Math.round(rect.width)}x${Math.round(rect.height)}`;
+          visibleKeys.push(key);
+
+          // Modul: REPORTED, NOT JUDGED. Whether sitting at the bottom of the
+          // glass is a defect cannot be decided from one scroll position -
+          // that is exactly the mistake this checker used to make. The caller
+          // aggregates across passes; see the note there.
+          //
+          // `position: fixed/sticky` was tried as the test and is not one: the
+          // Wiki's sidebar is `sticky` and at 390px the layout stacks so it
+          // never actually sticks, and a button inside it was flagged for a
+          // pinning that does not happen. Computed style says what was asked
+          // for; only moving the page says what occurs.
+          const atBottomOfGlass =
+            window.innerHeight - rect.bottom < safeBottom && rect.bottom <= window.innerHeight;
+
+          if (tooShort || tooNarrow || atBottomOfGlass) {
+            results.push({
+              key,
+              label,
+              tag: el.tagName.toLowerCase(),
+              width: Math.round(rect.width),
+              height: Math.round(rect.height),
+              tooShort,
+              tooNarrow,
+              atBottomOfGlass,
+            });
           }
         }
+        return { results, visibleKeys };
+      },
+      { minTouch: MIN_TOUCH, hiddenEpsilon: HIDDEN_EPSILON, safeBottom: SAFE_BOTTOM },
+    );
 
-        const label = (el.getAttribute('aria-label') || el.textContent || el.getAttribute('placeholder') || el.tagName)
-          .trim()
-          .replace(/\s+/g, ' ')
-          .slice(0, 34);
+    const { results: found, visibleKeys } = pass;
 
-        const tooShort = rect.height + 0.5 < minTouch;
-        const tooNarrow = !inHorizontalStrip && rect.width + 0.5 < minTouch;
-        const crowdsBottom = window.innerHeight - rect.bottom < safeBottom && rect.bottom <= window.innerHeight;
+    for (const item of found) {
+      if (!seen.has(item.key)) seen.set(item.key, item);
+      if (item.atBottomOfGlass) crowded.set(item.key, (crowded.get(item.key) ?? 0) + 1);
+    }
 
-        if (tooShort || tooNarrow || crowdsBottom) {
-          results.push({
-            label,
-            tag: el.tagName.toLowerCase(),
-            width: Math.round(rect.width),
-            height: Math.round(rect.height),
-            tooShort,
-            tooNarrow,
-            crowdsBottom,
-          });
-        }
-      }
-      return results;
-    },
-    { minTouch: MIN_TOUCH, hiddenEpsilon: HIDDEN_EPSILON, safeBottom: SAFE_BOTTOM },
-  );
+    // Counted separately from `found`, because a control that is fine in this
+    // pass still has to count as "seen here" - otherwise a button that crowds
+    // in one pass and is perfectly placed in three would look like it crowded
+    // in every pass it appeared in.
+    for (const key of visibleKeys) visible.set(key, (visible.get(key) ?? 0) + 1);
+  }
+
+  await page.evaluate(() => window.scrollTo(0, 0));
+
+  const results = [];
+  for (const [key, item] of seen) {
+    // Crowding survives only if the control was at the bottom edge in EVERY
+    // pass that saw it, across at least two passes. One pass is a coincidence
+    // of where the fold fell; every pass is a control pinned to the glass.
+    const passes = visible.get(key) ?? 1;
+    const crowdsBottom = (crowded.get(key) ?? 0) === passes && passes >= 2;
+
+    if (item.tooShort || item.tooNarrow || crowdsBottom) {
+      results.push({ ...item, crowdsBottom });
+    }
+  }
+  return results;
+};
 
 let offenders = 0;
 let screensWithProblems = 0;

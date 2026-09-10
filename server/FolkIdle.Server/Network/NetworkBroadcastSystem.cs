@@ -1454,6 +1454,17 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: which explanations this player has already read.
+                    // Was localStorage only, which taught a returning player
+                    // the whole game again on a second device - see
+                    // PlayerRecord.OnboardingSeenIds for why that trade stopped
+                    // being worth it.
+                    if (requestPath == "/api/v1/player/onboarding-seen")
+                    {
+                        await HandleOnboardingSeen(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/achievements/state" && context.Request.HttpMethod == "GET")
                     {
                         await HandleAchievementsState(context);
@@ -3713,6 +3724,169 @@ namespace FolkIdle.Server.Network
             }
 
             context.Response.Close();
+        }
+
+        private sealed class OnboardingSeenResponse
+        {
+            /// <summary>
+            /// Empty when nothing has been recorded. `HasRecord` is what
+            /// distinguishes that from "never taught".
+            /// </summary>
+            public string[] Seen { get; set; } = System.Array.Empty<string>();
+
+            /// <summary>
+            /// False for an account that has never been baselined on any
+            /// device. The client uses it to decide whether to mark everything
+            /// already true as seen instead of queueing every explanation at a
+            /// player who has been at this for weeks.
+            /// </summary>
+            public bool HasRecord { get; set; }
+        }
+
+        /// <summary>The most ids one account may store.</summary>
+        /// <remarks>
+        /// There are twenty-six explanations. The ceiling is generous because
+        /// the point is to refuse a body that is plainly not a seen-set - a
+        /// client looping a bug into the column - rather than to predict how
+        /// many explanations this game will end up with.
+        /// </remarks>
+        private const int MaxOnboardingSeenIds = 256;
+
+        /// <summary>Longest a single explanation id may be.</summary>
+        private const int MaxOnboardingIdLength = 64;
+
+        /// <summary>
+        /// Reads (GET) or replaces (PUT) the set of onboarding explanations
+        /// this player has been shown.
+        /// </summary>
+        /// <remarks>
+        /// Modul: REPLACE, NOT APPEND, and the client is the one that merges.
+        ///
+        /// An append endpoint looks safer and is not: the client already holds
+        /// a local copy for synchronous reads, it unions that with whatever the
+        /// server returns at sign-in, and it is the only place that knows about
+        /// "forget this one" and "forget all". Two merge strategies for one set
+        /// - one here and one there - is the two-sources-of-truth shape this
+        /// codebase keeps getting bitten by. So: the server stores, the client
+        /// decides.
+        ///
+        /// NULL SURVIVES. A PUT is what creates the record, and until one
+        /// arrives the column stays null and `HasRecord` stays false. That is
+        /// load-bearing - see PlayerRecord.OnboardingSeenIds.
+        /// </remarks>
+        private async Task HandleOnboardingSeen(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var player = await db.PlayerRecords.SingleOrDefaultAsync(p => p.Id == playerId);
+                if (player == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (context.Request.HttpMethod == "PUT" || context.Request.HttpMethod == "POST")
+                {
+                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                    string body = await reader.ReadToEndAsync();
+
+                    string[] ids;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(body);
+                        if (!parsed.RootElement.TryGetProperty("Seen", out var seenElement)
+                            || seenElement.ValueKind != JsonValueKind.Array)
+                        {
+                            context.Response.StatusCode = 400;
+                            context.Response.Close();
+                            return;
+                        }
+
+                        var collected = new List<string>();
+                        foreach (var entry in seenElement.EnumerateArray())
+                        {
+                            if (entry.ValueKind != JsonValueKind.String) continue;
+                            string id = entry.GetString() ?? string.Empty;
+
+                            // Modul: silently DROPPED rather than refused. An id
+                            // this client no longer recognises is what a rolled
+                            // back deploy looks like, and rejecting the whole
+                            // body over one would lose the other twenty-five.
+                            if (id.Length == 0 || id.Length > MaxOnboardingIdLength) continue;
+                            if (!collected.Contains(id)) collected.Add(id);
+                        }
+
+                        if (collected.Count > MaxOnboardingSeenIds)
+                        {
+                            context.Response.StatusCode = 400;
+                            context.Response.Close();
+                            return;
+                        }
+
+                        ids = collected.ToArray();
+                    }
+                    catch (System.Text.Json.JsonException)
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+
+                    player.OnboardingSeenIds = JsonSerializer.Serialize(ids);
+                    await db.SaveChangesAsync();
+                }
+
+                var response = new OnboardingSeenResponse
+                {
+                    HasRecord = player.OnboardingSeenIds != null,
+                    Seen = ParseOnboardingSeen(player.OnboardingSeenIds)
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Onboarding seen error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        /// <summary>
+        /// Reads the stored column back, treating anything unreadable as empty.
+        /// </summary>
+        /// <remarks>
+        /// A column that will not parse must not 500 a sign-in. The worst
+        /// outcome of treating it as empty is that the player is taught
+        /// something again; the worst outcome of throwing is that they cannot
+        /// play.
+        /// </remarks>
+        private static string[] ParseOnboardingSeen(string? stored)
+        {
+            if (string.IsNullOrWhiteSpace(stored)) return System.Array.Empty<string>();
+            try
+            {
+                return JsonSerializer.Deserialize<string[]>(stored) ?? System.Array.Empty<string>();
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                return System.Array.Empty<string>();
+            }
         }
 
         private sealed class AchievementsStateResponse

@@ -237,6 +237,28 @@
     z-index: 40;
   }
 
+  /* Modul: THE CHAT HANDLE WAS SITTING ON THE END OF THE SENTENCE.
+     Found in a store screenshot, not by a checker: ChatDock is
+     `position: fixed; right: 1rem; bottom: 1rem` at z-index 40, this panel is
+     fixed at bottom 0.75rem at z-index 40, and equal z-index means DOM order
+     decides - the dock wins. On a 360px phone this panel is nearly full width,
+     so the handle covered the last two words of every coach instruction. The
+     player reading "You have points wait" is a new player, which is the worst
+     possible audience for a truncated sentence.
+
+     check:overlap did not catch it because it compares CONTROL pairs, and the
+     thing being covered here is text.
+
+     4.25rem is not a new number - it is the same clearance ChatDock already
+     reserves for its own handle further down this stylesheet, so the two
+     cannot drift apart. Only on a phone: at desktop widths the centred panel
+     never reaches the corner. */
+  @media (max-width: 40rem) {
+    .coach {
+      bottom: 4.25rem;
+    }
+  }
+
   .head {
     display: flex;
     align-items: center;

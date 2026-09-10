@@ -491,7 +491,35 @@ IIapReceiptValidator iapReceiptValidator = isProductionForIap
         new SecretRotationManager("FOLKIDLE_IAP_APPLE_PUBLIC_KEY_PATH"),
         serviceProvider.GetRequiredService<IHttpClientFactory>())
     : new MockIapReceiptValidator();
-var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), serviceProvider.GetRequiredService<RedisSessionCache>(), playerRegistry, serviceProvider.GetRequiredService<RetryingDbContextOptions>(), iapReceiptValidator, networkSystem);
+
+// Modul: ASKING THE STORE, which is the only check a real receipt can pass.
+//
+// The validator above verifies a bespoke signed envelope that neither Google
+// nor Apple produces - see StoreApiReceiptVerifier for the full account. This
+// is the path a receipt from an actual purchase takes, and it is null unless
+// the deployment has store credentials, because a server that cannot ask the
+// store must not pretend it did.
+//
+// Credentials by PATH, never inline, exactly as the public keys above are -
+// SecretRotationManager reads the file and fails closed when the variable is
+// unset. The package name and bundle id are plain identifiers rather than
+// secrets, so they are ordinary environment variables.
+IStoreApiReceiptVerifier? storeApiVerifier = null;
+if (isProductionForIap)
+{
+    storeApiVerifier = new StoreApiReceiptVerifier(
+        new ProductionIapReceiptValidator(
+            new SecretRotationManager("FOLKIDLE_IAP_GOOGLE_PUBLIC_KEY_PATH"),
+            new SecretRotationManager("FOLKIDLE_IAP_APPLE_PUBLIC_KEY_PATH"),
+            serviceProvider.GetRequiredService<IHttpClientFactory>()),
+        new SecretRotationManager("FOLKIDLE_IAP_GOOGLE_SERVICE_ACCOUNT_PATH"),
+        new SecretRotationManager("FOLKIDLE_IAP_APPLE_PRIVATE_KEY_PATH"),
+        Environment.GetEnvironmentVariable("FOLKIDLE_ANDROID_PACKAGE") ?? "com.folkidle.game",
+        Environment.GetEnvironmentVariable("FOLKIDLE_IOS_BUNDLE_ID") ?? "com.folkidle.game",
+        Environment.GetEnvironmentVariable("FOLKIDLE_IAP_APPLE_KEY_ID") ?? string.Empty,
+        Environment.GetEnvironmentVariable("FOLKIDLE_IAP_APPLE_ISSUER_ID") ?? string.Empty);
+}
+var billingVerificationEngine = new BillingVerificationEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), serviceProvider.GetRequiredService<RedisSessionCache>(), playerRegistry, serviceProvider.GetRequiredService<RetryingDbContextOptions>(), iapReceiptValidator, networkSystem, storeApiVerifier);
 networkSystem.RegisterBillingVerificationEngine(billingVerificationEngine);
 
 // Modul: without this, POST /api/v1/player/push-token answers 503 and the

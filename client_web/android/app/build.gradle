@@ -16,10 +16,57 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    // Modul: THE UPLOAD KEY IS NEVER IN THIS REPOSITORY, and this block is what
+    // makes that possible rather than merely intended.
+    //
+    // Play signs every release with a key that CANNOT be replaced: lose it and
+    // the listing cannot be updated, ever, by anybody. So it lives in exactly
+    // two places - the developer's own machine and an offline backup - and it
+    // reaches Gradle through `keystore.properties`, which is gitignored, or
+    // through environment variables for a CI runner that has it as a secret.
+    //
+    // FAILS OPEN, DELIBERATELY. With nothing configured, `signingConfig` stays
+    // null and a release build produces an UNSIGNED apk instead of failing.
+    // That keeps `assembleDebug` and any local release build working on a
+    // machine that has no key, which is every machine except one - and an
+    // unsigned artefact is obvious the moment anybody tries to upload it,
+    // whereas a build that refuses to run is a wall in front of the people who
+    // are not shipping.
+    //
+    // See MOBILE.md for the keytool command; it is not run from here, because
+    // generating a signing key needs a password nobody should type into a
+    // script.
+    signingConfigs {
+        release {
+            def propsFile = rootProject.file('keystore.properties')
+            def props = new Properties()
+            if (propsFile.exists()) {
+                propsFile.withInputStream { props.load(it) }
+            }
+
+            def resolvedStoreFile = props.getProperty('storeFile') ?: System.getenv('FOLKIDLE_KEYSTORE_PATH')
+            def resolvedStorePassword = props.getProperty('storePassword') ?: System.getenv('FOLKIDLE_KEYSTORE_PASSWORD')
+            def resolvedKeyAlias = props.getProperty('keyAlias') ?: System.getenv('FOLKIDLE_KEY_ALIAS')
+            def resolvedKeyPassword = props.getProperty('keyPassword') ?: System.getenv('FOLKIDLE_KEY_PASSWORD')
+
+            if (resolvedStoreFile != null && file(resolvedStoreFile).exists()) {
+                storeFile file(resolvedStoreFile)
+                storePassword resolvedStorePassword
+                keyAlias resolvedKeyAlias
+                keyPassword resolvedKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+
+            // Null when nothing was configured - see signingConfigs above for
+            // why that produces an unsigned build rather than an error.
+            signingConfig signingConfigs.release.storeFile != null ? signingConfigs.release : null
         }
     }
 }

@@ -1058,6 +1058,57 @@ h3:not(.place):not([style*='background-image'])::before {
     min-height: 44px;
   }
 
+  /* Modul: A SLIDER WAS EXCLUDED FROM THE FLOOR, and it is the one control on
+     a phone that is nothing BUT a thumb target.
+     `[type='range']` sat in the :not() list above beside the checkbox and
+     radio - which belong there, because they are fixed 44x44 squares further
+     down. A range is not: it is a full-width control you DRAG, and both of the
+     ones in this client measured 32px tall. They were invisible to the checker
+     until it started measuring the whole page instead of the first viewport.
+     Height rather than min-height, and an explicit `appearance`, because a
+     range is a replaced element: a minimum leaves the browser free to keep
+     rendering a 32px track inside a 44px box, and the browser hit-tests what
+     it drew. */
+  input[type='range']:not(.touch-exempt) {
+    appearance: none;
+    -webkit-appearance: none;
+    height: 44px;
+    background: transparent;
+  }
+
+  /* The track and the thumb have to be drawn once appearance is off, or the
+     control becomes an invisible 44px strip. Sized so the grab target is the
+     full height while the track still reads as a track. */
+  input[type='range']:not(.touch-exempt)::-webkit-slider-runnable-track {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+  }
+
+  input[type='range']:not(.touch-exempt)::-moz-range-track {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border);
+  }
+
+  input[type='range']:not(.touch-exempt)::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 28px;
+    height: 28px;
+    margin-top: -11px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  input[type='range']:not(.touch-exempt)::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
   /* Width only on the things a thumb aims AT rather than types into: a text
      input is already full-width and forcing a minimum on one inside a tight
      row is how a layout starts overflowing. */

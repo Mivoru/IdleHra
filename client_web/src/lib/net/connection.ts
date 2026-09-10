@@ -280,6 +280,51 @@ export class GameConnection {
    * what it claims. Closing it routes through onclose, which reconnects
    * immediately now that the backoff has been cleared.
    */
+  /**
+   * The app went to the background. Put the socket down on purpose.
+   *
+   * Modul: NOTHING USED TO DO THIS, AND THE BEHAVIOUR WAS THE OS'S TO DECIDE.
+   *
+   * TASK_BOARD D3 asked what the app does when backgrounded for eight hours -
+   * hold a socket and drain a battery, or shut down cleanly and rely on offline
+   * catch-up - and guessed the second was "probably already what happens". It
+   * was not. Nothing closed anything; the socket simply survived until the OS
+   * froze the WebView, which on Android is minutes rather than seconds. For
+   * those minutes a pocketed phone went on receiving a 10 Hz packet stream and
+   * decoding every frame.
+   *
+   * Closing is free here in a way it would not be in most apps, because the
+   * SIMULATION IS ON THE SERVER. A disconnected client is not a paused game -
+   * it is a client that is not watching - and offline catch-up pays for the
+   * gap on return. That is the same mechanism a player who closes the app
+   * entirely already relies on.
+   *
+   * `closedByUs` is deliberately NOT set: this is a suspension, not a sign-out,
+   * and `resumeFromBackground` has to be allowed to reopen it. Setting it would
+   * make the app come back to a permanently dead socket, which is a far worse
+   * bug than the battery it saves.
+   */
+  suspendForBackground(): void {
+    if (this.closedByUs || !this.token) return;
+
+    if (this.reconnectTimer !== null) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    const going = this.socket;
+    this.socket = null;
+    going?.close();
+
+    // Modul: reported as 'idle' rather than 'reconnecting'. Nothing is wrong
+    // and nobody is looking, but the phase is what ConnectionNotice reads - and
+    // a player who reopens the app during the half second before the socket is
+    // back must not be met with a red "connection lost" card describing
+    // something the app did to itself.
+    this.attempt = 0;
+    this.report('idle', '');
+  }
+
   resumeFromBackground(): void {
     if (this.closedByUs || !this.token) return;
 

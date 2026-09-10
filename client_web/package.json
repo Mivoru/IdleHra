@@ -19,6 +19,9 @@
     "check:overlap": "node scripts/overlap-check.mjs",
     "check:touch": "node scripts/touch-check.mjs",
     "check:clipping": "node scripts/clipping-check.mjs",
+    "check:perf": "node scripts/perf-check.mjs",
+    "generate:icons": "node scripts/generate-icons.mjs",
+    "screenshots:store": "node scripts/store-screenshots.mjs",
     "cap:add:android": "cap add android",
     "cap:add:ios": "cap add ios",
     "build:web": "node scripts/generate-protocol.mjs --assume-committed && npm run generate:sprites && vite build",
@@ -46,6 +49,7 @@
   "dependencies": {
     "@capacitor/core": "^8.5.0",
     "@capacitor/preferences": "^8.0.1",
-    "@tanstack/svelte-query": "^6.1.38"
+    "@tanstack/svelte-query": "^6.1.38",
+    "cordova-plugin-purchase": "^13.18.0"
   }
 }

@@ -1,0 +1,58 @@
+<!--
+  Modul: THE SPLASH, which is on screen for a fraction of a second and is still
+  the first thing anybody sees of this game.
+
+  Square on purpose. Both platforms want ONE square image and then centre-crop
+  it to whatever shape the device is - 2732x2732 for iOS, and the same asset
+  reused across Android's twelve portrait/landscape density buckets. Anything
+  that must survive lives well inside the middle, because on a tall phone the
+  left and right thirds are cropped away and on a tablet the top and bottom
+  are.
+
+  Same palette and the same shield as icon.svg, drawn larger and with room
+  around it. Rasterised by scripts/generate-icons.mjs.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="68%">
+      <stop offset="0%" stop-color="#332618" />
+      <stop offset="58%" stop-color="#1a140e" />
+      <stop offset="100%" stop-color="#100d0a" />
+    </radialGradient>
+
+    <linearGradient id="brass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#e8c13a" />
+      <stop offset="55%" stop-color="#c9a227" />
+      <stop offset="100%" stop-color="#8a6a1f" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" fill="url(#glow)" />
+
+  <!-- Kept inside a 420px radius of centre: that is what is left of a square
+       after a 19.5:9 phone has cropped it. -->
+  <g transform="translate(512 470) scale(5.4)">
+    <path
+      d="M0 -30 L23 -21 V2 C23 16 12 25 0 30 C-12 25 -23 16 -23 2 V-21 Z"
+      fill="#191309"
+      stroke="url(#brass)"
+      stroke-width="3"
+      stroke-linejoin="round"
+    />
+    <g fill="url(#brass)">
+      <rect x="-9.5" y="-16" width="19" height="5.4" rx="1.2" />
+      <rect x="-9.5" y="-16" width="5.6" height="30" rx="1.2" />
+      <rect x="-9.5" y="-3.4" width="14" height="5.2" rx="1.2" />
+    </g>
+  </g>
+
+  <text
+    x="512"
+    y="812"
+    text-anchor="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="76"
+    letter-spacing="6"
+    fill="#ece0cc"
+  >FolkIdle</text>
+</svg>

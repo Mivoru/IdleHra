@@ -73,6 +73,38 @@ namespace FolkIdle.Server.Models
         // notification we decided to send.
         public bool EmailNotificationsConsented { get; set; }
 
+        /// <summary>
+        /// Which onboarding explanations this player has already been shown.
+        /// A JSON array of string ids, or NULL for an account that has never
+        /// been taught anything on any device.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THIS USED TO LIVE ONLY IN localStorage, AND THE PRICE OF THAT
+        /// WENT UP.
+        ///
+        /// `tutorialSeen.ts` says outright that the server was rejected on
+        /// price: one wire field and a migration to carry "has this person read
+        /// a sentence", whose worst failure is being told something you already
+        /// know, once. That was a fair trade when onboarding was three steps.
+        /// It is now three tiers and twenty-six explanations, and the failure is
+        /// no longer "once" - it is a returning player picking up a phone and
+        /// being taught the whole game again.
+        ///
+        /// NULL IS NOT AN EMPTY SET, and the distinction is the whole reason
+        /// this is nullable. Empty means "taught nothing yet, teach everything
+        /// as it arrives"; null means "never baselined", which is the signal the
+        /// client uses to mark everything ALREADY TRUE as seen rather than
+        /// queueing seventeen explanations at a veteran. Defaulting this to
+        /// '[]' would bury exactly the player it is meant to protect.
+        ///
+        /// A column rather than a table: it is one small list per account, read
+        /// once at sign-in and written rarely, and a row per explanation would
+        /// be twenty-six rows to answer one question. A column rather than a
+        /// StateUpdatePacket field for the same reason /api/v1/player/metadata
+        /// exists - this does not need a place in a 10 Hz packet.
+        /// </remarks>
+        public string? OnboardingSeenIds { get; set; }
+
         // The epoch second of the last "your offline progress has stopped"
         // mail. Compared against LastLogoutTimestamp rather than against now,
         // so each new absence is eligible exactly once and a player who stays

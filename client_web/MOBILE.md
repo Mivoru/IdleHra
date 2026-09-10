@@ -24,6 +24,15 @@ second client and no separate codebase - Capacitor wraps `dist/`.
   project.
 - **A session that survives the night** (2026-09-10). A rotating refresh token;
   see "Session length" below.
+- **Real icons and a splash** (2026-09-10), generated from two SVGs - see "App
+  identity". What shipped before was Capacitor's blue placeholder.
+- **A store adapter and a receipt path that could actually verify a receipt**
+  (2026-09-10). See "In-app purchases"; the second half was a genuine defect.
+- **Release signing wired from a gitignored key file** (2026-09-10).
+- **Onboarding remembered per ACCOUNT** rather than per device (2026-09-10).
+- **A deliberate suspend when the app is backgrounded** (2026-09-10).
+- **`npm run check:perf`** (2026-09-10), which measures the client on a
+  4x-throttled main thread and asserts budgets.
 - **The hardware back button** (2026-09-10) and **a no-network state that says
   something** (2026-09-10). See their own sections below.
 - npm scripts: `sync`, `sync:web`, `build:android`, `build:android:web`,
@@ -153,8 +162,8 @@ in the store that is no longer being read.
 
 ## Checking the phone build
 
-Four Playwright checkers cover the geometry a phone exposes. None of them needs
-a device; all of them need a running local stack, and all sign in as the dev
+Five Playwright checkers cover what a phone exposes. None of them needs a
+device; all of them need a running local stack, and all sign in as the dev
 fixture, so **do not aim them at production**.
 
 ```bash
@@ -162,7 +171,15 @@ npm run check:mobile     # horizontal overflow at 320 / 360 / 414
 npm run check:clipping   # content cut off, 26 screens x 3 widths
 npm run check:overlap    # controls buried under other controls
 npm run check:touch      # controls too small for a thumb, 44px floor at 390px
+npm run check:perf       # main-thread cost with the CPU throttled 4x
 ```
+
+`check:perf` is the newest (2026-09-10) and the only one that is not about
+geometry. It slows the main thread to a quarter and watches long tasks, total
+blocking time and heap growth for twelve seconds per screen, then **asserts
+budgets** - a measurement a script only prints is decoration. It reports `n/a`
+rather than `+0.0MB` where `performance.memory` is absent, so a missing API
+cannot masquerade as a passing measurement.
 
 `check:touch` is the newest (2026-09-09) and the one written specifically for
 this app. The floor is 44px from Apple's HIG and WCAG 2.5.5, measured on the
@@ -170,48 +187,187 @@ control's own box rather than on the text inside it, and it also fails a
 control sitting too close to the bottom edge to be pressed. It found **221**
 undersized targets on its first run - every screen's shared chrome sat at 37px.
 
-**It is at 5, not 0**, measured 2026-09-10. The chrome fix took it from 221 to a
-handful and the "now 0" claim that stood here was written before this run. What
-is left is three controls on Chest and one on Wiki that are large enough but sit
-in the bottom band of the viewport (where a gesture-navigation bar takes the
-press), and one text input on Auto-Eat at 32px tall - the browser hit-tests an
-input's border box, so padding cannot fix that one either. All five predate
-PHASE B; they are tracked as D6.
+It read 5 on 2026-09-10, and **four of those five were the checker's own fault**
+- fixed the same day, along with two things that made it measure less than it
+claimed:
+
+- It only ever measured the **first viewport**. Anything below the fold was
+  skipped, so on a 3147px Wiki it checked the top 844px and reported as though
+  it had checked the screen. It now measures in overlapping passes down the
+  page, which immediately found a real failure on Settings that had never been
+  visible.
+- **Crowding is decided by scrolling now**, not by computed style. A control
+  counts as sitting on the bottom edge only if it did so in every pass that saw
+  it - `position: sticky` was tried as the test and is not one, because the
+  Wiki's sidebar is sticky and at 390px the layout stacks so it never sticks.
+
+The two genuine failures were both `input[type="range"]` at 32px tall, on
+Auto-Eat and Settings. Ranges had been excluded from the 44px floor beside
+checkbox and radio, which is backwards: a slider is the one control on a phone
+that is nothing but a thumb target. **Now 0 across all 26 screens.**
 
 ## Not built yet
 
-- **In-app purchases: one store adapter.** Everything else is built.
-  `src/lib/net/billing.ts` runs the purchase, and the signed receipt goes over
-  REST to `/api/v1/billing/verify-receipt`, which verifies the store signature
-  and is idempotent on the transaction id. It deliberately does **not** use
-  opcode 39, which grants diamonds on an unsigned transaction id and a hashed
-  product id and would be a "type any string, receive diamonds" path in a
-  shipped build. `purchaseUnavailableReason()` disables the Buy buttons and
-  says why.
+Two things, and neither is code.
 
-  What is missing is an implementation of the `StoreAdapter` interface already
-  declared in that file (`listProducts` and `purchase`, returning the store's
-  signed receipt unmodified), registered at startup - plus the products
-  themselves created in Play Console and App Store Connect with ids matching
-  `GameBalanceConfig.json`'s `IapProductPrices` keys. Choosing the vendor
-  (RevenueCat, cordova-plugin-purchase, a first-party bridge) is a commercial
-  decision about fees, not a technical one, which is why the file does not make
-  it.
+- **A Firebase project.** Push is wired end to end (see "Notifications") and
+  cannot send a byte without `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL` and
+  `FCM_PRIVATE_KEY` in the server's environment. The server now says so at
+  start-up rather than failing silently:
 
-  **`/api/v1/billing/verify-receipt` has never been called by any client.**
-  Worth knowing before shipping a paid build: test the refund and cancellation
-  paths, not only the happy one.
-- **A Firebase project, and the iOS half of push.** The client, the transport
-  and the server are wired (see "Notifications" below), but the send path needs
-  `FCM_PROJECT_ID`, `FCM_CLIENT_EMAIL` and `FCM_PRIVATE_KEY` in the server's
-  environment or it returns without sending. iOS additionally needs the
-  Firebase iOS SDK: FCM v1 addresses a device through an FCM registration
-  token, and what Capacitor hands over on iOS is the **raw APNs token**, which
-  FCM will not accept. Android works end to end once the project exists.
-- **Icons, splash screens, app IDs and signing keys.** `appId` in
-  `capacitor.config.json` is a placeholder (`com.folkidle.game`). Decide the
-  real bundle id before the first store upload - it cannot be changed
-  afterwards on either platform.
+  ```
+  Push: NOT CONFIGURED - missing FCM_PROJECT_ID, FCM_CLIENT_EMAIL, FCM_PRIVATE_KEY.
+  Device tokens will be stored and triggers scheduled, but NOTHING WILL BE SENT.
+  ```
+
+  iOS needs strictly more: FCM v1 addresses a device by an FCM registration
+  token issued by the Firebase iOS SDK, and what Capacitor hands over on iOS is
+  the raw APNs token, which FCM will not accept. Android works once the project
+  exists.
+
+- **An upload keystore, and the store consoles.** See "Signing" below. Creating
+  products in Play Console and App Store Connect, filling in Data Safety and the
+  privacy nutrition labels, and getting an age rating are all console work.
+
+## App identity, icons and the splash
+
+The bundle id is **`com.folkidle.game`** on both platforms. It cannot be changed
+after the first store upload, so it is decided rather than pending.
+
+`resources/icon.svg` and `resources/splash.svg` are the SOURCES; every PNG the
+two platforms want is rasterised from them:
+
+```bash
+npm run generate:icons     # 30 files, Android mipmaps + iOS + both splashes
+```
+
+The outputs are committed, because CI runs `cap sync` and then fails on a dirty
+tree, and a build machine should not need a browser to produce an icon. Run it
+when the artwork changes and commit what it writes.
+
+The icon is drawn for the **mask**: Android crops an adaptive icon to whatever
+shape the launcher fancies and only the middle 66% survives, so everything that
+carries meaning sits inside that circle. `ic_launcher_background.xml` is
+`#100D0A` rather than Capacitor's white - a circular mask on a white background
+draws a white ring around dark artwork.
+
+It does NOT use `@capacitor/assets`, which would pull in `sharp`, a native
+binary that has to match the platform. Playwright is already here.
+
+## Signing
+
+`android/app/build.gradle` reads a release key from `keystore.properties` in
+`android/` (gitignored), or failing that from `FOLKIDLE_KEYSTORE_PATH`,
+`FOLKIDLE_KEYSTORE_PASSWORD`, `FOLKIDLE_KEY_ALIAS` and `FOLKIDLE_KEY_PASSWORD`.
+
+With nothing configured it produces an **unsigned** release build rather than
+failing - so every machine without the key still builds, and an unsigned
+artefact announces itself the moment anybody tries to upload it.
+
+Making the key is yours, because it needs a password nobody should type into a
+script:
+
+```bash
+keytool -genkey -v -keystore folkidle-upload.jks -keyalg RSA -keysize 2048 \
+        -validity 10000 -alias folkidle
+```
+
+**Back it up somewhere that is not the laptop it was made on.** Play signs every
+release with this key and it cannot be replaced. Lose it and the listing can
+never be updated again, by anybody; the only remedy is a new listing with no
+installs and no reviews.
+
+## Store listing assets
+
+```bash
+npm run screenshots:store   # 18 shots, dev box only
+```
+
+Writes `resources/store-screenshots/` at the sizes the stores actually demand:
+1080x1920 for Play, and Apple's 6.7" (1290x2796) and 6.5" (1242x2688), which are
+the two sets a new submission is rejected without.
+
+Two things are pinned in that script and both were wrong on the first run:
+`colorScheme: 'dark'`, because the client follows the system and Playwright
+defaults to light - producing parchment screenshots beside a dark app icon; and
+`locale: 'en-GB'`, because `initLanguage` reads `navigator.language` and a Czech
+dev box produced an English UI with three Czech words in the header.
+
+**`public/privacy.html`** and **`public/delete-account.html`** are served as real
+files by Caddy's static handle. Play requires the deletion route to work
+**without the app**, for somebody who has already uninstalled - an in-app path
+alone is a rejection.
+
+> **Before submitting:** both pages say `CONTACT_EMAIL`. Replace it. A reviewer
+> checks, and should.
+
+## In-app purchases
+
+The vendor is **cordova-plugin-purchase** - no revenue share beyond the stores'
+own cut, one API for both platforms. It is read off the injected global, exactly
+as `push.ts` reads its plugin, so it never enters the web bundle.
+
+`storeAdapter.ts` implements the `StoreAdapter` interface `billing.ts` has always
+declared, and `storeRegistration.ts` registers it with the product ids from
+`/api/v1/store/catalog` - the same `IapProductPrices` the server pays out
+against, so the mapping is not written down twice.
+
+**The receipt path could never have verified a real receipt, and that is the
+bigger half of this.** The server checked a bespoke `{provider, payload,
+signature}` envelope that no store produces and no client could manufacture -
+signing it needs a key a client must never hold. It was satisfiable only by the
+test that invented it, and nothing noticed because
+`/api/v1/billing/verify-receipt` had never been called.
+
+The client now sends what the store actually gave it, and the server ASKS the
+store:
+
+```
+Google Play : { provider, productId, transactionId, purchaseToken }
+App Store   : { provider, productId, transactionId }
+```
+
+No signature - the absence of one is the server's discriminator between the new
+scheme and the legacy envelope. `StoreApiReceiptVerifier` fails closed: an
+envelope naming a store with no credentials configured is refused, never passed
+to a validator that would evaluate a signature that was never there.
+
+Still needed: the products in both consoles, and
+`FOLKIDLE_IAP_GOOGLE_SERVICE_ACCOUNT_PATH`,
+`FOLKIDLE_IAP_APPLE_PRIVATE_KEY_PATH`, `FOLKIDLE_IAP_APPLE_KEY_ID`,
+`FOLKIDLE_IAP_APPLE_ISSUER_ID` in the server's environment. Test the refund and
+cancellation paths, not only the happy one.
+
+## What the app does when you put it away
+
+It **puts the socket down on purpose**, on native only.
+
+Nothing used to. `lifecycle.ts` listened for the app coming back and had no
+notion of it going away, so the socket survived until the OS froze the WebView -
+minutes on Android - and for those minutes a pocketed phone went on receiving
+and decoding a 10 Hz packet stream.
+
+Closing is free because the **simulation is on the server**: a disconnected
+client is one that is not watching, and offline catch-up pays for the gap - the
+same mechanism somebody who closes the app entirely already relies on.
+
+A hidden **desktop** tab is deliberately left alone. It is a legitimate way to
+leave an idle game running, and closing there would cost the live view and any
+chat in it for no battery saved on a machine that is plugged in. The platform
+separates the two, not the visibility state, which is identical in both.
+
+## Onboarding is per-account now, not per-device
+
+The seen-set used to be `localStorage` keyed by player id, so a phone re-taught
+everything a browser already taught. `PlayerRecord.OnboardingSeenIds` is the
+truth now, behind `GET/PUT /api/v1/player/onboarding-seen`, with `localStorage`
+kept in front as a cache - which cannot be removed, because the cue is derived
+on every packet and must answer synchronously.
+
+**Null is not an empty set.** Absent means "never baselined anywhere", which is
+the signal to mark everything already true as read rather than queueing
+seventeen explanations at somebody who has played for weeks. Empty-and-present
+means the opposite.
 
 ## Notifications
 
@@ -313,8 +469,13 @@ biggest gap, and everything estimated below a device session is a guess.
 
 What is now answered mechanically, without a device:
 
-- Touch target size and bottom-edge reachability - `check:touch`, **5
-  failures** on 3 screens, all pre-existing. See "Checking the phone build".
+- Touch target size and bottom-edge reachability - `check:touch`, 0 failures,
+  now measuring the whole page rather than the first viewport.
+- Main-thread cost at a quarter speed - `check:perf`. The 10 Hz stream produced
+  ZERO long tasks on Combat, Chest and Village; scrolling the chest was the only
+  thing with any cost (19 tasks, longest 129ms).
+- That the Android project still COMPILES - CI assembles a debug APK on every
+  push and keeps it as an artefact.
 - Content clipped at phone widths - `check:clipping`.
 - Controls buried under other controls - `check:overlap`.
 - Horizontal overflow at 320/360/414 - `check:mobile`.

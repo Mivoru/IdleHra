@@ -58,7 +58,48 @@ namespace FolkIdle.Server.Engine
             }
 
             _isRunning = true;
+
+            // Modul: SAID ONCE, LOUDLY, AT START-UP - because the alternative
+            // is a feature that fails silently forever.
+            //
+            // SendFcmV1Async returns without sending when FCM_PROJECT_ID or the
+            // service-account credentials are missing. That is the correct
+            // behaviour and it is invisible: triggers are scheduled, the queue
+            // drains, nothing is logged, and no phone rings. A deployment can
+            // run for months believing push works. This is the one line that
+            // makes "there is no Firebase project" a fact somebody can read.
+            ReportSendConfiguration();
+
             _ = Task.Run(RunAsync);
+        }
+
+        /// <summary>Whether this deployment can actually send anything.</summary>
+        public static bool IsSendConfigured()
+        {
+            return !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FCM_PROJECT_ID"))
+                && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FCM_CLIENT_EMAIL"))
+                && !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FCM_PRIVATE_KEY"));
+        }
+
+        private static void ReportSendConfiguration()
+        {
+            if (IsSendConfigured())
+            {
+                Console.WriteLine("Push: FCM configured; notifications will be delivered.");
+                return;
+            }
+
+            // Named individually: "something is missing" sends somebody looking
+            // through three variables one at a time.
+            var missing = new List<string>();
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FCM_PROJECT_ID"))) missing.Add("FCM_PROJECT_ID");
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FCM_CLIENT_EMAIL"))) missing.Add("FCM_CLIENT_EMAIL");
+            if (string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FCM_PRIVATE_KEY"))) missing.Add("FCM_PRIVATE_KEY");
+
+            Console.WriteLine(
+                $"Push: NOT CONFIGURED - missing {string.Join(", ", missing)}. " +
+                "Device tokens will be stored and triggers scheduled, but NOTHING WILL BE SENT. " +
+                "See TASK_BOARD C5.");
         }
 
         public void QueueDeviceRegistration(long playerId, byte[] deviceTokenRaw, byte platformFamily)

@@ -2,3 +2,12 @@ node_modules/
 dist/
 *.local
 smoke-*.png
+
+# Modul: STORE SCREENSHOTS ARE REGENERATED, NOT KEPT.
+#
+# `npm run screenshots:store` writes eighteen full-resolution PNGs - tens of
+# megabytes that change whenever any screen does. Unlike the app icons, nothing
+# in the build or in CI reads them: they are uploaded to a store console by
+# hand, once per release. The SOURCES that matter (resources/icon.svg and
+# resources/splash.svg) are committed; these are output.
+resources/store-screenshots/

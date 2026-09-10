@@ -25,7 +25,8 @@ namespace FolkIdle.Server.Engine
             PlayerSessionRegistry playerRegistry,
             RetryingDbContextOptions retryingDbOptions,
             IIapReceiptValidator receiptValidator,
-            FolkIdle.Server.Network.NetworkBroadcastSystem? networkSystem = null)
+            FolkIdle.Server.Network.NetworkBroadcastSystem? networkSystem = null,
+            IStoreApiReceiptVerifier? storeApiVerifier = null)
         {
             _contextFactory = contextFactory;
             _redisCache = redisCache;
@@ -33,7 +34,15 @@ namespace FolkIdle.Server.Engine
             _retryingDbOptions = retryingDbOptions;
             _receiptValidator = receiptValidator;
             _networkSystem = networkSystem;
+            _storeApiVerifier = storeApiVerifier;
         }
+
+        /// <summary>
+        /// Asks the STORE whether a purchase happened. Null in a deployment
+        /// that has not configured store credentials, in which case only the
+        /// legacy signed envelope is accepted - see VerifyReceiptAsync.
+        /// </summary>
+        private readonly IStoreApiReceiptVerifier? _storeApiVerifier;
 
         // Modul: server-side product catalog - the ONLY source of truth for
         // how many diamonds a given ProductId is worth. Neither the
@@ -140,26 +149,66 @@ namespace FolkIdle.Server.Engine
         // identically every time).
         public async Task<bool> VerifyReceiptAsync(long playerId, string base64Receipt)
         {
-            IapReceiptValidationResult receipt = _receiptValidator.Validate(base64Receipt);
-            if (!receipt.IsValid)
+            string verifiedTransactionId;
+            string verifiedProductId;
+
+            // Modul: TWO SCHEMES, AND THE REAL ONE GOES FIRST.
+            //
+            // The path below this used to be the only one, and it verifies a
+            // bespoke envelope - {provider, payload, signature} with an RSA
+            // signature over the payload - that NO ACTUAL STORE PRODUCES.
+            // Google hands a client a purchase token; Apple hands it a
+            // transaction id; neither hands over anything signed with a key
+            // this server holds. It was verifiable only by the test harness
+            // that created it, and nothing noticed because no client had ever
+            // called this endpoint.
+            //
+            // A store-API envelope is answered by asking Google or Apple
+            // whether the purchase happened, which is strictly stronger than
+            // any signature check we could perform on bytes a client chose.
+            // See StoreApiReceiptVerifier.
+            if (_storeApiVerifier != null && _storeApiVerifier.CanHandle(base64Receipt))
             {
-                return false;
+                StoreApiVerification storeOutcome = await _storeApiVerifier.VerifyAsync(base64Receipt);
+                if (!storeOutcome.IsVerified)
+                {
+                    // Logged rather than silent: a player has been CHARGED by
+                    // the store at this point, and a refusal here is the one
+                    // failure in this system that costs somebody money. If this
+                    // line appears, the purchase needs reconciling by hand.
+                    Console.WriteLine($"Store verification refused a receipt - PlayerId {playerId}: {storeOutcome.ErrorMessage}");
+                    return false;
+                }
+
+                verifiedTransactionId = storeOutcome.TransactionId;
+                verifiedProductId = storeOutcome.ProductId;
+            }
+            else
+            {
+                IapReceiptValidationResult receipt = _receiptValidator.Validate(base64Receipt);
+                if (!receipt.IsValid)
+                {
+                    return false;
+                }
+
+                // Modul: mandatory signature-verification gate - checked
+                // explicitly and separately from IsValid so this requirement is
+                // visible at the call site that grants currency, rather than
+                // trusting whichever IIapReceiptValidator happens to be
+                // registered to have enforced it internally. No premium
+                // currency is granted, and no ledger row is written, unless the
+                // receipt's signature verified against a configured store
+                // public key.
+                if (!receipt.SignatureVerified)
+                {
+                    return false;
+                }
+
+                verifiedTransactionId = receipt.TransactionId;
+                verifiedProductId = receipt.ProductId;
             }
 
-            // Modul: mandatory signature-verification gate - checked
-            // explicitly and separately from IsValid so this requirement is
-            // visible at the call site that grants currency, rather than
-            // trusting whichever IIapReceiptValidator happens to be
-            // registered to have enforced it internally. No premium
-            // currency is granted, and no ledger row is written, unless the
-            // receipt's signature verified against a configured store
-            // public key.
-            if (!receipt.SignatureVerified)
-            {
-                return false;
-            }
-
-            int premiumAmount = ResolvePremiumDiamondsForProduct(receipt.ProductId);
+            int premiumAmount = ResolvePremiumDiamondsForProduct(verifiedProductId);
             if (premiumAmount <= 0)
             {
                 return false;
@@ -188,9 +237,9 @@ namespace FolkIdle.Server.Engine
 
                         bool markedProcessed = await TransactionDedupEngine.TryMarkProcessedAsync(context, new ProcessedTransaction
                         {
-                            TransactionId = receipt.TransactionId,
+                            TransactionId = verifiedTransactionId,
                             PlayerId = playerId,
-                            ProductId = receipt.ProductId,
+                            ProductId = verifiedProductId,
                             PremiumDiamondsGranted = premiumAmount,
                             ProcessedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                         });
@@ -210,16 +259,16 @@ namespace FolkIdle.Server.Engine
 
                         context.PrimaryPurchaseLedgers.Add(new PrimaryPurchaseLedger
                         {
-                            TransactionId = receipt.TransactionId,
+                            TransactionId = verifiedTransactionId,
                             PlayerId = playerId,
-                            ProductId = receipt.ProductId,
+                            ProductId = verifiedProductId,
                             PurchaseState = 1,
                             TimestampProcessed = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                         });
 
                         context.EventHorizonPremiumLedgers.Add(new EventHorizonPremiumLedger
                         {
-                            TransactionId = receipt.TransactionId,
+                            TransactionId = verifiedTransactionId,
                             PlayerId = playerId,
                             PreviousBalance = previousBalance,
                             NewBalance = profile.PremiumDiamonds,

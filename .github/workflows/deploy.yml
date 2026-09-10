@@ -198,6 +198,66 @@ jobs:
             exit 1
           fi
 
+      # --- and now it is COMPILED ---------------------------------------
+      #
+      # `cap sync` above proves the configuration parses and the plugins
+      # resolve. It compiles nothing, which the previous version of this file
+      # said outright: no Java, no Kotlin, no manifest merge, no APK. A green
+      # tick meant "the JSON is valid".
+      #
+      # assembleDebug is the cheapest thing that proves the app BUILDS. It
+      # catches the failures cap sync cannot see - a plugin whose minSdk is
+      # above ours, two plugins pulling incompatible AndroidX versions, a
+      # manifest merge conflict, a Gradle plugin that needs a newer Gradle -
+      # and every one of those is a wall somebody hits on a Friday otherwise.
+      #
+      # DEBUG, not release, and that is deliberate: a release assemble needs
+      # the upload keystore, which is not a CI secret and should not become one
+      # (TASK_BOARD C2). app/build.gradle produces an unsigned release build
+      # when no key is configured rather than failing, so adding the secret
+      # later is the only change needed.
+      #
+      # Still not proven: that the app LAUNCHES. That needs an emulator or a
+      # device, which is A2, and no amount of compiling substitutes for it.
+      - name: Set up the JDK for Gradle
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up the Android SDK
+        uses: android-actions/setup-android@v3
+
+      # Modul: Gradle's dependency cache, keyed on the build files that decide
+      # what it downloads. Without it every run re-fetches the Android Gradle
+      # plugin and the AndroidX tree - minutes, and hundreds of megabytes,
+      # which was the stated reason this step did not exist.
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('client_web/android/**/*.gradle*', 'client_web/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Assemble the Android debug APK
+        working-directory: client_web/android
+        run: ./gradlew --no-daemon assembleDebug
+
+      # Modul: KEPT, because "it built" is worth less than something anybody
+      # can install. A reviewer, a tester, or the developer's own phone can
+      # take this artefact without a local toolchain - which is the shortest
+      # path to A2, the device session everything else in the mobile plan is
+      # waiting on.
+      - name: Keep the APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: folkidle-debug-apk
+          path: client_web/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
   build-and-push:
     name: Build and Push Docker Image
     # Gated on the client checks too: a server image whose packet layout no

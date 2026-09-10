@@ -12,6 +12,7 @@ import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
 import { watchAppLifecycle } from '../net/lifecycle';
 import { refreshDeviceTokenIfPermitted, watchNotificationTaps } from '../net/push';
+import { registerPlatformStore } from '../net/storeRegistration';
 import {
   SnapshotInterpolator,
   extractInterpolated,
@@ -503,6 +504,12 @@ export function startSession(token: string): void {
   // before this line ran - Capacitor retains it until a listener consumes it,
   // so attaching here is what makes the tap arrive at all. Idempotent.
   watchNotificationTaps();
+
+  // Modul: the store adapter, and only on a device that has one. A browser
+  // finds no plugin and registers nothing, which is exactly the state
+  // `purchaseUnavailableReason()` already reports - so the Buy buttons stay
+  // disabled with a reason rather than becoming a purchase that cannot work.
+  void registerPlatformStore();
 
   connection.connect(token, {
     onStatus: (status) => {
