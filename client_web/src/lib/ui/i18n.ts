@@ -32,15 +32,37 @@ export type LanguageCode = (typeof LANGUAGES)[number]['code'];
 
 const STORAGE_KEY = 'folkidle.language';
 
+/**
+ * Modul: THE DEVICE'S LANGUAGE IS NOT ASKED, AND THAT IS THE FIX.
+ *
+ * This used to read `navigator.language` and switch to Czech, German or Polish
+ * for anyone whose device said so, "without touching a setting". The intention
+ * was hospitality; the result was a broken-looking game.
+ *
+ * MEASURED: `localizations.json` holds 28 rows, 25 of which are genuinely
+ * translated. The client renders over 500 user-visible English strings that
+ * are not in that table at all. So auto-selecting Czech does not produce a
+ * Czech game - it produces an ENGLISH game with about five per cent of its
+ * words in Czech, scattered: the header's event banner reading
+ * "Aktivní event: Zlatá sklizeň" in the middle of an otherwise English screen.
+ *
+ * Reported from a phone exactly that way - "why is everything in English and
+ * then this one line in Czech". A partial translation reads as a bug, because
+ * it is indistinguishable from one.
+ *
+ * An EXPLICIT choice is still honoured and still persisted: Settings has the
+ * picker, and someone who chooses Čeština has asked for the 25 strings and
+ * knows what they are getting. What is gone is guessing on their behalf.
+ *
+ * Put the auto-detection back when the table actually covers the interface -
+ * the test is the number above, not an opinion. Until then English is the only
+ * language this client can render completely, so it is the only honest default.
+ */
 function initialLanguage(): LanguageCode {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored && LANGUAGES.some((l) => l.code === stored)) return stored as LanguageCode;
 
-  // Fall back to the browser's own preference before English, so a Czech
-  // browser gets Czech without touching a setting.
-  const preferred = navigator.language?.slice(0, 2).toLowerCase();
-  const matched = LANGUAGES.find((l) => l.code.toLowerCase() === preferred);
-  return matched?.code ?? 'En';
+  return 'En';
 }
 
 export const language = writable<LanguageCode>('En');

@@ -428,6 +428,74 @@
     </section>
   {/key}
 
+  <!-- Modul: SECOND, DIRECTLY UNDER THE FIGHT - and on a phone that is the
+       whole difference between a working screen and a frozen-looking one.
+
+       This panel used to be LAST, after the drop table and after twenty-five
+       monster rows. `.layout` is repeat(auto-fit, minmax(20rem, 1fr)), so on a
+       wide screen that merely put it in the right-hand column - but a phone
+       has ONE column, and one column means DOM order IS reading order. What
+       you had just picked up sat thousands of pixels below the monster you
+       picked it up from.
+
+       Reported from a phone as "combat is frozen, nothing is added to loot
+       drops". It was not frozen: the account behind that report has 162,000
+       kills and 12,791 items. At level 87 an early monster dies BETWEEN TWO
+       SNAPSHOTS - the health bar cannot render a fight that is over before the
+       next packet arrives, which is the measured reason the combat EVENT feed
+       exists at all - so the only evidence the player has that anything is
+       happening is the loot landing. Putting that evidence off the bottom of
+       the screen is what made a working game look dead.
+
+       The order is now: the fight, what it just gave you, what this monster
+       can give you, and last the map of where other monsters are. -->
+  <section class="panel">
+    <SessionLoot {registry} />
+  </section>
+
+  <section class="panel">
+    <h2>Drops</h2>
+    {#if dropPreviewFor > 0}
+      <h3>{monsterName(registry, dropPreviewFor)} drop table</h3>
+      {#if dropPreview.length === 0}
+        <p class="dim">No drop data.</p>
+      {:else}
+        {#if materialDrops.length > 0}
+          <h4>Materials</h4>
+          <ul class="drops">
+            {#each materialDrops as entry}
+              <li>
+                <span class="drop-name">
+                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
+                  {dropEntryName(entry)}
+                </span>
+                <span class="dim">
+                  {entry.ChancePct.toFixed(2)}% &middot; {entry.MinQuantity}-{entry.MaxQuantity}
+                </span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        {#if equipmentDrops.length > 0}
+          <h4>Equipment</h4>
+          <ul class="drops">
+            {#each equipmentDrops as entry}
+              <li>
+                <span class="drop-name">
+                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
+                  {dropEntryName(entry)}
+                </span>
+                <span class="dim">{entry.ChancePct.toFixed(2)}%</span>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      {/if}
+    {/if}
+
+  </section>
+
   <section class="panel">
     <h2>Monsters</h2>
     {#if registry}
@@ -492,57 +560,6 @@
     {:else if !contentError}
       <p class="dim">Loading content...</p>
     {/if}
-  </section>
-
-  <section class="panel">
-    <h2>Drops</h2>
-    {#if dropPreviewFor > 0}
-      <h3>{monsterName(registry, dropPreviewFor)} drop table</h3>
-      {#if dropPreview.length === 0}
-        <p class="dim">No drop data.</p>
-      {:else}
-        {#if materialDrops.length > 0}
-          <h4>Materials</h4>
-          <ul class="drops">
-            {#each materialDrops as entry}
-              <li>
-                <span class="drop-name">
-                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
-                  {dropEntryName(entry)}
-                </span>
-                <span class="dim">
-                  {entry.ChancePct.toFixed(2)}% &middot; {entry.MinQuantity}-{entry.MaxQuantity}
-                </span>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-
-        {#if equipmentDrops.length > 0}
-          <h4>Equipment</h4>
-          <ul class="drops">
-            {#each equipmentDrops as entry}
-              <li>
-                <span class="drop-name">
-                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
-                  {dropEntryName(entry)}
-                </span>
-                <span class="dim">{entry.ChancePct.toFixed(2)}%</span>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      {/if}
-    {/if}
-
-  </section>
-
-  <!-- Modul: its own panel, so the grid gives it a column of its own instead of
-       burying it below twenty-five monster rows. `.layout` is
-       repeat(auto-fit, minmax(20rem, 1fr)), so this sits to the RIGHT on a wide
-       screen and stacks on a narrow one with no breakpoint of its own. -->
-  <section class="panel">
-    <SessionLoot {registry} />
   </section>
 </div>
 
