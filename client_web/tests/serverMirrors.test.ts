@@ -6,6 +6,13 @@ import {
 } from '../src/lib/net/commands';
 import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
 import { TIER_STYLES } from '../src/lib/ui/leaderboardTiers';
+import { BOSS_WINDOW_DAYS, isBossWindowDay, nextBossWindow } from '../src/lib/net/commands';
+import {
+  VILLAGE_UPGRADE_BASE_SECONDS,
+  VILLAGE_UPGRADE_GROWTH,
+  VILLAGE_UPGRADE_MAX_SECONDS,
+  villageUpgradeDurationSeconds,
+} from '../src/lib/net/commands';
 import { ATTRIBUTE_MILESTONES, ATTRIBUTE_THRESHOLDS, ATTRIBUTE_CURVES, EQUIP_REQUIREMENT_PER_REGION_TIER, equipRequirement } from '../src/lib/net/commands';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -579,5 +586,98 @@ describe('the leaderboard tier ladder', () => {
       expect(TIER_STYLES[i].glow, `tier ${i} glows harder than ${i - 1}`)
         .toBeLessThanOrEqual(TIER_STYLES[i - 1].glow);
     }
+  });
+});
+
+// Modul: THE WORLD BOSS WINDOW CALENDAR.
+//
+// LiveOpsTickEngine decides when the boss is awake: days 1-7 and 15-22 of each
+// month, UTC. The client mirrors that purely so the screen can say WHEN the
+// boss returns instead of "the next scheduled window" - which is not an answer
+// anybody can plan around, and which is why a correct "0 attempts" was reported
+// as a broken feature on the 11th.
+//
+// A calendar rule written down twice is the same drift risk as any other, so
+// the two are compared here rather than trusted.
+describe('the world boss window calendar', () => {
+  const server = read(serverRoot, 'Engine', 'LiveOpsTickEngine.cs');
+
+  it('agrees with the server on which days a window is open', () => {
+    // `bool inWindowA = day >= 1 && day <= 7;`
+    const windows = [...server.matchAll(/day\s*>=\s*(\d+)\s*&&\s*day\s*<=\s*(\d+)/g)].map((m) => [
+      Number(m[1]),
+      Number(m[2]),
+    ]);
+
+    expect(windows.length, 'could not find the window conditions - the pattern needs updating').toBeGreaterThan(0);
+    expect(BOSS_WINDOW_DAYS.map((w) => [...w])).toEqual(windows);
+  });
+
+  it('answers "is today a window day" the same way the server would', () => {
+    for (let day = 1; day <= 31; day++) {
+      const serverSays = (day >= 1 && day <= 7) || (day >= 15 && day <= 22);
+      expect(isBossWindowDay(day), `day ${day}`).toBe(serverSays);
+    }
+  });
+
+  it('names the next window from any day of the month', () => {
+    const at = (day: number) => nextBossWindow(new Date(Date.UTC(2026, 8, day)));
+
+    // Inside a window there is nothing to wait for.
+    expect(at(3)).toBeNull();
+    expect(at(20)).toBeNull();
+
+    // Between the two windows - the 11th, which is the day this was reported.
+    expect(at(11)).toEqual({ day: 15, nextMonth: false });
+
+    // Past the last window, it rolls into next month.
+    expect(at(28)).toEqual({ day: 1, nextMonth: true });
+  });
+});
+
+// Modul: THE VILLAGE UPGRADE DURATION CURVE.
+//
+// The wire carries only the COMPLETION epoch, so the screen's progress bar has
+// to derive the start as `completesAt - duration(level)`. That makes the curve
+// a second copy of a server rule, which is exactly the thing this file exists
+// to hold together - a bar describing a different curve from the one being
+// waited on would creep at the wrong speed and finish at the wrong moment.
+describe('the village upgrade duration curve', () => {
+  const server = read(serverRoot, 'Domain', 'Progression', 'VillageManagementEngine.cs');
+
+  it('agrees on the base, the growth and the ceiling', () => {
+    expect(num(server, /MinUpgradeDurationSeconds\s*=\s*(\d+)L/, 'base duration')).toBe(
+      VILLAGE_UPGRADE_BASE_SECONDS,
+    );
+    expect(num(server, /UpgradeDurationGrowth\s*=\s*([\d.]+)/, 'duration growth')).toBe(
+      VILLAGE_UPGRADE_GROWTH,
+    );
+    // `6L * 60L * 60L`
+    const cap = server.match(/MaxUpgradeDurationSeconds\s*=\s*(\d+)L\s*\*\s*(\d+)L\s*\*\s*(\d+)L/);
+    expect(cap, 'could not find the duration cap').not.toBeNull();
+    expect(Number(cap![1]) * Number(cap![2]) * Number(cap![3])).toBe(VILLAGE_UPGRADE_MAX_SECONDS);
+  });
+
+  it('produces the same seconds the server would, level by level', () => {
+    // The C# is `max(base, ceil(base * growth^level))`, clamped at the cap.
+    for (let level = 0; level <= 20; level++) {
+      const scaled = VILLAGE_UPGRADE_BASE_SECONDS * Math.pow(VILLAGE_UPGRADE_GROWTH, level);
+      const expected =
+        scaled >= VILLAGE_UPGRADE_MAX_SECONDS
+          ? VILLAGE_UPGRADE_MAX_SECONDS
+          : Math.max(VILLAGE_UPGRADE_BASE_SECONDS, Math.ceil(scaled));
+      expect(villageUpgradeDurationSeconds(level), `level ${level}`).toBe(expected);
+    }
+  });
+
+  it('never shortens as the level rises - the defect this replaced', () => {
+    // The old formula took the COST, which resets on `level % 5`, so a
+    // twelfth-level upgrade finished as fast as the first.
+    for (let level = 1; level <= 20; level++) {
+      expect(villageUpgradeDurationSeconds(level)).toBeGreaterThanOrEqual(
+        villageUpgradeDurationSeconds(level - 1),
+      );
+    }
+    expect(villageUpgradeDurationSeconds(10)).toBeGreaterThan(villageUpgradeDurationSeconds(5));
   });
 });

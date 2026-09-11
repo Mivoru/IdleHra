@@ -403,15 +403,32 @@
     margin-right: auto;
   }
   
+  /* Modul: THE NAME SITS IN THE CORNER OF AN INVISIBLE 44px BOX.
+     Reported from a phone as "the name is not in the center of it".
+
+     This is styled as bare text - no border, no background, `padding: 0` - but
+     it is still a <button>, so below 40rem app.css's touch floor gives it
+     `min-height: 44px` and `min-width: 44px`. A short name like "rajus" is
+     about 35px wide, so the control is larger than its label in BOTH axes, and
+     `text-align: left` with no padding pinned that label to the top-left of the
+     empty space around it.
+
+     The floor is right and stays - it is why the name is tappable with a thumb
+     at all. What was wrong is that nothing centred the label inside the box the
+     floor created. inline-flex does it on both axes at once, and the padding
+     means a short name fills the 44px rather than rattling around inside it. */
   .name-btn {
     font-weight: 600;
     margin-right: auto;
     background: none;
     border: none;
     color: var(--text);
-    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.4rem;
     cursor: pointer;
-    text-align: left;
+    text-align: center;
     font-family: inherit;
     font-size: inherit;
   }

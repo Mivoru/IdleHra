@@ -975,13 +975,17 @@ namespace FolkIdle.Server.Tests
                 .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == VillageManagementEngine.GetTierMaterials(0).Ore);
 
             long expectedCost = VillageManagementEngine.CalculateProductionUpgradeCost(0);
+            // The building was at level 0 when the upgrade was ordered - the
+            // duration is a function of THAT, not of the price. See
+            // CalculateUpgradeDurationSeconds for why it stopped being the cost.
+            const int levelBeforeUpgrade = 0;
 
             // Upgrades are timed, not instant: cost is deducted immediately,
             // but CurrentLevel only advances once ResolveMaturedUpgradesAsync
             // observes UpgradeCompletesAtEpoch has passed.
             Assert.Equal(0, infrastructure.CurrentLevel);
             Assert.Equal(1, infrastructure.UpgradeTargetLevel);
-            Assert.True(infrastructure.UpgradeCompletesAtEpoch >= beforeUpgradeEpoch + VillageManagementEngine.CalculateUpgradeDurationSeconds(expectedCost));
+            Assert.True(infrastructure.UpgradeCompletesAtEpoch >= beforeUpgradeEpoch + VillageManagementEngine.CalculateUpgradeDurationSeconds(levelBeforeUpgrade));
             Assert.Equal(10000L - expectedCost, updatedWood.Quantity);
             Assert.Equal(10000L - expectedCost, updatedStone.Quantity);
         }

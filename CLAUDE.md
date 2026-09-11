@@ -381,6 +381,28 @@ it, and **pinned by scrolling and looking, never by `position: sticky`** — the
 Wiki's sidebar is declared sticky and at 390px never sticks. `check:touch`
 recorded that lesson first and it still had to be learned twice.
 
+**`export let` in a Svelte 5 project is a different reactivity system, not old
+syntax.** A component is in runes mode only if it uses a rune, so `export let`
+compiles cleanly and puts that one file back on the compiler's invalidation -
+which then silently disagrees with any rune-based library it touches.
+`PlayerProfileModal` did both: legacy props plus `createQuery`, so the template
+read `isPending` once at mount and never heard the request finish. It showed
+"Fetching profile data..." for ever, and worked on the *second* open only
+because the query cache was warm by then and the first render already had data.
+`svelte-check` is silent on all of it. `tests/runesMode.test.ts` greps for it.
+
+**Scroll anchoring hides whatever you insert at the top of a list.** The browser
+keeps a node near the top of the view fixed by adjusting scrollTop, so rows
+prepended above it push the newest content out of sight - and the loot list is
+sorted by rarity descending, meaning the thing hidden is always the *best* drop.
+It also nudges the page on every insert. `overflow-anchor: none` on a list whose
+new rows arrive at the top.
+
+**A `{@const}` must be an immediate child of `{#each}`/`{#if}`/etc**, not of an
+element inside them - it is a compile error, not a runtime surprise, but it
+means a per-row derived value is declared beside the loop rather than beside the
+control that uses it.
+
 **A control squeezed to ZERO width is invisible to every geometry checker.**
 The Chest's equipment row at 360px: five 44px buttons that may not shrink (the
 touch floor is deliberate) left nothing for the item name, so flex took it —

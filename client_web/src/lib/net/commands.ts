@@ -177,7 +177,143 @@ export function claimMailItem(mailId: number): CommandOutcome {
 export const ACTIVE_BOSS_INSTANCE_ID = 1;
 
 /** WorldBossEngine.MaxAttemptsPerEncounter. */
+/**
+ * How long a village upgrade of a building AT THIS LEVEL takes, mirroring
+ * `VillageManagementEngine.CalculateUpgradeDurationSeconds`.
+ *
+ * Modul: MIRRORED SO THE SCREEN CAN DRAW A PROGRESS BAR. The wire carries only
+ * the COMPLETION epoch, and a bar needs a start - which is
+ * `completesAt - duration`. Putting a second timestamp on StateUpdatePacket
+ * would be the honest alternative, but that struct is fixed-layout and close
+ * to its documented ceiling, and this is a pure function of a number the
+ * client already has.
+ *
+ * serverMirrors.test.ts compares the constants against the C# so the bar
+ * cannot quietly start describing a different curve from the one being waited
+ * on.
+ */
+/**
+ * The village's two level ceilings, mirroring VillageManagementEngine.
+ *
+ * Modul: MIRRORED SO THE BUTTON CAN REFUSE BEFORE THE SERVER DOES.
+ *
+ * Clicking Upgrade on a capped building sent a command the server rolled back
+ * with `MaxTierReached` or `TownHallCeilingReached` - and the player saw
+ * NOTHING. The button was enabled, the click did nothing, no message appeared.
+ * That is the shape this repository calls its favourite way to lie: when a
+ * handler rolls back, ask what the player sees, and if the answer is nothing
+ * then that is the defect rather than the rollback.
+ *
+ * Reproduced on the dev fixture, whose Town Hall and Crafting Workshop both
+ * sit at the hard structural cap of 5 - every click on either was silently
+ * discarded.
+ *
+ * The server still enforces both; this only lets the screen say so first.
+ */
+export const TOWN_HALL_BUILDING_ID = 9;
+export const CRAFTING_WORKSHOP_BUILDING_ID = 10;
+export const MAX_STRUCTURAL_BUILDING_LEVEL = 5;
+
+/** `2 + townHallLevel * 2` - the ceiling every non-structural building shares. */
+export function maxBuildingLevelCeiling(townHallLevel: number): number {
+  return 2 + Math.max(0, Math.floor(townHallLevel)) * 2;
+}
+
+/**
+ * Why this building cannot be upgraded right now, or null if it can.
+ *
+ * Returned as a SENTENCE because it goes straight onto the disabled button's
+ * tooltip - a reason a player can act on beats a code they cannot.
+ */
+export function villageUpgradeBlockedReason(
+  buildingId: number,
+  currentLevel: number,
+  townHallLevel: number,
+): string | null {
+  const isStructural =
+    buildingId === TOWN_HALL_BUILDING_ID || buildingId === CRAFTING_WORKSHOP_BUILDING_ID;
+
+  if (isStructural) {
+    return currentLevel >= MAX_STRUCTURAL_BUILDING_LEVEL
+      ? `Level ${MAX_STRUCTURAL_BUILDING_LEVEL} is as high as this one goes.`
+      : null;
+  }
+
+  const ceiling = maxBuildingLevelCeiling(townHallLevel);
+  return currentLevel + 1 > ceiling
+    ? `The Town Hall caps this at level ${ceiling}. Raise the Town Hall first.`
+    : null;
+}
+
+export const VILLAGE_UPGRADE_BASE_SECONDS = 45;
+export const VILLAGE_UPGRADE_GROWTH = 1.6;
+export const VILLAGE_UPGRADE_MAX_SECONDS = 6 * 60 * 60;
+
+export function villageUpgradeDurationSeconds(currentLevel: number): number {
+  const level = Math.max(0, Math.floor(currentLevel));
+  const scaled = VILLAGE_UPGRADE_BASE_SECONDS * Math.pow(VILLAGE_UPGRADE_GROWTH, level);
+  if (scaled >= VILLAGE_UPGRADE_MAX_SECONDS) return VILLAGE_UPGRADE_MAX_SECONDS;
+  return Math.max(VILLAGE_UPGRADE_BASE_SECONDS, Math.ceil(scaled));
+}
+
+/** "3h31", "12m35", "45s" - a duration a player reads at a glance. */
+export function formatDuration(totalSeconds: number): string {
+  const s = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(s / 3600);
+  const minutes = Math.floor((s % 3600) / 60);
+  const seconds = s % 60;
+  if (hours > 0) return `${hours}h${String(minutes).padStart(2, '0')}`;
+  if (minutes > 0) return `${minutes}m${String(seconds).padStart(2, '0')}`;
+  return `${seconds}s`;
+}
+
 export const MAX_BOSS_ATTEMPTS = 3;
+
+/**
+ * The days of each month a world boss window is open, from
+ * `LiveOpsTickEngine.EvaluateWorldBossEventWindowAsync`.
+ *
+ * Modul: MIRRORED SO THE SCREEN CAN SAY *WHEN*, and guarded by
+ * serverMirrors.test.ts because a calendar rule written down twice is exactly
+ * the drift this repository keeps paying for.
+ *
+ * It is here because of a real report: "world boss attempts are always on 0 and
+ * I didn't fight him yet". Checked against the live database, the player HAD
+ * fought - three attempts, 3,000 damage, during the window that closed on the
+ * 7th - and the day of the report was the 11th, between windows. The number was
+ * right and the screen could not say why, because it only knew "there is no
+ * encounter", not when the next one is. "The next scheduled window" is not an
+ * answer a player can plan around.
+ *
+ * Attempts are PER WINDOW: the server deletes every row in
+ * player_world_boss_attempts when it opens a new one, so a spent counter
+ * between windows is stale by design rather than a debt being carried.
+ */
+export const BOSS_WINDOW_DAYS: ReadonlyArray<readonly [number, number]> = [
+  [1, 7],
+  [15, 22],
+];
+
+/** Whether a day of the month falls inside a boss window. */
+export function isBossWindowDay(day: number): boolean {
+  return BOSS_WINDOW_DAYS.some(([from, to]) => day >= from && day <= to);
+}
+
+/**
+ * The day the next window opens, and whether it is in this month or the next.
+ *
+ * Returns null while a window is open - there is nothing to wait for.
+ */
+export function nextBossWindow(now: Date): { day: number; nextMonth: boolean } | null {
+  const day = now.getUTCDate();
+  if (isBossWindowDay(day)) return null;
+
+  for (const [from] of BOSS_WINDOW_DAYS) {
+    if (day < from) return { day: from, nextMonth: false };
+  }
+  // Past the last window of the month - the first window of the next one.
+  return { day: BOSS_WINDOW_DAYS[0][0], nextMonth: true };
+}
 
 /** StateUpdatePacket.WorldBossEventState. */
 export const BossEventState = { Dormant: 0, Active: 1, Concluded: 2 } as const;

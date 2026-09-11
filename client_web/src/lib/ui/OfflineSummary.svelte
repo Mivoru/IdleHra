@@ -243,16 +243,33 @@
     margin: 0 0 1.25rem;
   }
 
+  /* Modul: THE NUMBER HAS SOMEWHERE TO GO WHEN IT IS HUGE.
+     Reported as "when the amounts are too high the text overflows".
+
+     This was a flex row with a FIXED 1.5rem gap and no `min-width: 0` on
+     either child, which is three separate reasons it could not cope: a flex
+     item will not shrink below its content unless told to, the gap is spent
+     before either child gets a pixel, and nothing was allowed to wrap. An
+     idle game's summary is exactly where a nine-digit figure shows up - this
+     account earns 412,811 gold an hour - so "+123 456 789" beside its label
+     simply ran off the card.
+
+     `flex-wrap` is the part that actually guarantees it: if the pair cannot
+     share a line the value takes its own, right-aligned, still exact. The
+     summary is the one screen where the precise number is the point, so it is
+     never compacted or truncated - it is given room instead. */
   dl div {
     display: flex;
     justify-content: space-between;
-    gap: 1.5rem;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.3rem;
   }
 
   dt {
     color: var(--text-dim);
+    min-width: 0;
   }
 
   .idle {
@@ -262,7 +279,9 @@
   }
 
   dd {
-    margin: 0;
+    margin: 0 0 0 auto;
+    min-width: 0;
+    text-align: right;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     color: var(--good);

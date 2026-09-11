@@ -461,7 +461,7 @@ namespace FolkIdle.Server.Domain.Progression
                 }
 
                 infrastructure.UpgradeTargetLevel = infrastructure.CurrentLevel + 1;
-                infrastructure.UpgradeCompletesAtEpoch = nowEpoch + CalculateUpgradeDurationSeconds(cost);
+                infrastructure.UpgradeCompletesAtEpoch = nowEpoch + CalculateUpgradeDurationSeconds(infrastructure.CurrentLevel);
 
                 await db.SaveChangesAsync();
                 var notification = await BuildInfrastructureNotificationAsync(db, playerId);
@@ -505,14 +505,58 @@ namespace FolkIdle.Server.Domain.Progression
             await db.SaveChangesAsync();
         }
 
-        private const long MinUpgradeDurationSeconds = 30L;
+        private const long MinUpgradeDurationSeconds = 45L;
 
-        // Modul 16: upgrade duration scales with the same cost curve the gold/
-        // wood/stone price already uses (cost/10), floored so an early, cheap
-        // upgrade is never effectively instant.
-        public static long CalculateUpgradeDurationSeconds(long cost)
+        /// <summary>
+        /// How long an upgrade of a building AT THIS LEVEL takes.
+        ///
+        /// Modul: THIS USED TO TAKE THE COST, AND THE COST RESETS EVERY FIVE
+        /// LEVELS - so the duration never grew, at any level, for ever.
+        ///
+        /// It was `max(30, cost / 10)` fed from
+        /// <see cref="CalculateProductionUpgradeCost"/>, whose curve is
+        /// `100 * 1.5^(level % 5)`. That modulo is correct for the PRICE - the
+        /// tier materials change every five levels, so the gold cost restarts
+        /// within each tier - and it is nonsense for TIME. Worked through:
+        /// levels 0-2 cost 100-225, which is 10-22 seconds, floored to 30;
+        /// level 3 is 33s, level 4 is 50s, and level 5 drops back to 30
+        /// because the cost does. A twelfth-level upgrade finished as fast as
+        /// the first one.
+        ///
+        /// Reported as "it's like always around 30-40s, that's ridiculous",
+        /// which is exactly what the arithmetic says.
+        ///
+        /// Worse, the caller passed the PRODUCTION cost for every building,
+        /// including the service buildings that pay
+        /// <see cref="CalculateUpgradeCost"/> instead - so a 57,665-gold
+        /// level-10 Inn also finished in thirty seconds.
+        ///
+        /// It takes the LEVEL now, which is the thing that actually describes
+        /// how far along a player is, and cannot reset.
+        ///
+        /// THE CURVE: 45 seconds at level 0, x1.6 per level, capped at six
+        /// hours. That is 45s / 1m12 / 1m55 / 3m / 5m / 8m / 13m / 21m / 33m /
+        /// 53m / 1h25 / 2h16 / 3h37 across levels 0-12, and 12 is the ceiling a
+        /// maxed Town Hall allows. The first few are still a coffee, the last
+        /// few are something to come back to - which is what an idle game's
+        /// build timer is for, and what a flat 30 seconds could never be.
+        ///
+        /// The cap exists because the ceiling is a balance decision and not an
+        /// accident of the exponent: if the level ceiling ever rises, the
+        /// longest upgrade stays six hours until somebody chooses otherwise.
+        /// VillageUpgradeDurationTests prints the whole table.
+        /// </summary>
+        private const double UpgradeDurationGrowth = 1.6;
+        private const long MaxUpgradeDurationSeconds = 6L * 60L * 60L;
+
+        public static long CalculateUpgradeDurationSeconds(int currentLevel)
         {
-            long duration = cost / 10L;
+            if (currentLevel < 0) currentLevel = 0;
+
+            double scaled = MinUpgradeDurationSeconds * Math.Pow(UpgradeDurationGrowth, currentLevel);
+            if (scaled >= MaxUpgradeDurationSeconds) return MaxUpgradeDurationSeconds;
+
+            long duration = (long)Math.Ceiling(scaled);
             return duration < MinUpgradeDurationSeconds ? MinUpgradeDurationSeconds : duration;
         }
 

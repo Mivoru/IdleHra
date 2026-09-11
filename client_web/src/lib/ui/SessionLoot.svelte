@@ -217,6 +217,29 @@
        defect the split buffers fixed. */
     max-height: 16rem;
     overflow-y: auto;
+
+    /* Modul: SCROLL ANCHORING HID THE BEST DROP, and nudged the page on every
+       kill. Both reported from a phone, and both are this one line.
+
+       Rows are sorted by RARITY DESCENDING, so a better piece is INSERTED AT
+       THE TOP. Scroll anchoring exists to stop content shifting under your
+       eyes: the browser picks a node near the top of the view and, when
+       something is inserted above it, raises scrollTop by exactly that height
+       so the node does not move. That is the right instinct and precisely the
+       wrong outcome here - the thing being pushed out of sight is the new best
+       item, which is the one thing worth looking at. Screenshotted: an Ancient
+       pendant sliced in half at the top edge of the list.
+
+       The same mechanism explains the page nudging "a little with every action
+       in combat". These lists grow a row at a time while they fill, and if the
+       document's anchor happens to sit inside one, the page's own scroll is
+       adjusted to compensate.
+
+       `overflow-anchor: none` takes this subtree out of anchor selection, so
+       nothing is "kept in place" here - the list simply shows its top, which
+       is its best row. The browser then anchors the page to something that is
+       not moving. */
+    overflow-anchor: none;
   }
 
   li {

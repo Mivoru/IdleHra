@@ -104,6 +104,25 @@ namespace FolkIdle.Server.Models
             player.BaseLuck = lck * (PlayerLevel - 1);
             player.CurrentXp = 0;
             player.PremiumDiamonds = Diamonds;
+
+            // Modul: THE ONBOARDING SEEN-SET IS CLEARED, because seeding means
+            // "put this account back in a known state" and this was the one
+            // field that survived it.
+            //
+            // OnboardingSeenIds moved from localStorage to the player row so a
+            // second device would not re-teach the whole game. That is right for
+            // a player and it quietly broke the fixture: exercise.mjs walks the
+            // coach dismissing cues with "Got it", the set is durable now, and
+            // the tier-three check could only pass ONCE per fixture lifetime -
+            // re-seeding did not help, because nothing here reset it. Observed
+            // as "only saw no cue" against 216 characters of dismissed ids.
+            //
+            // NULL, not "[]", and the difference is load-bearing: absent means
+            // "never baselined anywhere", which is the signal to mark what is
+            // already true as read rather than queue seventeen explanations.
+            // Empty-and-present means the opposite - see the handler for
+            // /api/v1/player/onboarding-seen.
+            player.OnboardingSeenIds = null;
             player.AvailableSkillPoints = PlayerLevel;
 
             // Modul: and some UNSPENT attribute points, because attributes are

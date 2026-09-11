@@ -609,6 +609,17 @@
     width: auto;
   }
 
+  /* Modul: EACH FILTER BLOCK TAKES ITS OWN ROW, which is what lets the grid
+     inside it have columns at all.
+     As a bare flex item a fieldset sizes to its CONTENT, and a grid of
+     `auto-fill minmax(8rem, 1fr)` inside a content-sized box has nothing to
+     divide - it collapsed to a single column measured at 412px, wedged to the
+     right of the search field. Given a full row it has a real width, and the
+     column count follows the panel the way it should. */
+  .filters .checks {
+    flex: 1 1 100%;
+  }
+
   .range {
     display: inline-flex;
     align-items: center;
@@ -756,11 +767,32 @@
   /* Checkbox groups. A fieldset because that is what a set of related
      checkboxes is - the legend names the axis, and a screen reader reads the
      group rather than eleven loose boxes. */
+  /* Modul: A GRID, so the boxes line up in columns.
+     Reported as "the structure or the spacing in market filters feels wrong,
+     it's chaosy".
+
+     It was `flex-wrap`, which packs each line by CONTENT width and then starts
+     a new one - so "Weapon / Helmet / Chest" and "Amulet / Ring / Axe" began
+     at different x positions, and the checkbox column zig-zagged down the
+     panel. Harmless on a desktop where the labels are short relative to the
+     row; on a phone the touch floor makes every checkbox a 44px square, which
+     magnifies the raggedness until the block reads as noise rather than as a
+     list of options.
+
+     auto-fill with a minmax track gives real columns at every width - the
+     count changes with the panel, the alignment does not. */
   .checks {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    /* Modul: 10.5rem, and the number is measured rather than chosen.
+       A track has to hold a 44px checkbox plus the longest label - "Scorched
+       Wasteland" - on one line. At 8rem it did not, and since
+       `.panel * { min-width: 0 !important }` lets a flex item shrink below its
+       own basis, the thing that gave way was the CHECKBOX: check:touch caught
+       two at 36x44 and 43x44 against the 44px floor. Widening the track fixes
+       it at the cause instead of fighting that !important with another one. */
+    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
     align-items: center;
-    gap: 0.1rem 0.7rem;
+    gap: 0.15rem 0.6rem;
     margin: 0;
     padding: 0.35rem 0.6rem 0.45rem;
     border: 1px solid var(--border);

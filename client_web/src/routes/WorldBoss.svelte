@@ -11,6 +11,7 @@
   import {
     attackWorldBoss,
     BossEventState,
+    nextBossWindow,
     MAX_BOSS_ATTEMPTS,
     BOSS_PLATE_COUNT,
     BOSS_WEAK_PLATE_HIDDEN,
@@ -37,6 +38,20 @@
   );
 
   const attemptsLeft = $derived(Math.max(0, MAX_BOSS_ATTEMPTS - attempts));
+
+  // Modul: WHEN, not "at some point". See BOSS_WINDOW_DAYS for why this is
+  // mirrored from the server rather than guessed, and for the report that
+  // caused it - a player reading a correct "0 attempts" as a broken feature,
+  // because nothing on the screen connected it to a closed window.
+  const upcoming = $derived(nextBossWindow(new Date()));
+  const returnsLabel = $derived.by(() => {
+    if (upcoming === null) return '';
+    const ordinal = (n: number) => {
+      const suffix = n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th';
+      return `${n}${suffix}`;
+    };
+    return `Returns on the ${ordinal(upcoming.day)}${upcoming.nextMonth ? ' of next month' : ''}.`;
+  });
 
   // Modul: THE ARMOUR, and it is the whole interaction now.
   //
@@ -169,11 +184,11 @@
       </p>
     {:else if eventState === BossEventState.Concluded}
       <p class="dim">
-        This encounter is over. The boss returns on the next scheduled window -
-        there is nothing to do here until then.
+        This encounter is over. {returnsLabel} There is nothing to do here until
+        then.
       </p>
     {:else}
-      <p class="dim">No encounter is running. This screen wakes up when one starts.</p>
+      <p class="dim">No encounter is running. {returnsLabel}</p>
     {/if}
 
     <h3>Your attempts</h3>
@@ -183,6 +198,16 @@
       {/each}
       <span class="dim tiny">{attemptsLeft} of {MAX_BOSS_ATTEMPTS} left</span>
     </div>
+    {#if eventState !== BossEventState.Active}
+      <!-- Modul: without this line a spent counter between windows reads as
+           "you have none", which is how a correct 0 got reported as a bug.
+           Attempts are per ENCOUNTER - the server deletes every attempt row
+           when it opens a window - so what the player needs to know is that
+           these come back, not how many are left right now. -->
+      <p class="dim tiny">
+        Attempts refill when the next encounter opens.
+      </p>
+    {/if}
 
     {#if larderEmpty}
       <!-- The single most important sentence on this screen. With an empty

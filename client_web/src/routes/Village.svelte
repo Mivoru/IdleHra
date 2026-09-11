@@ -2,7 +2,7 @@
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { queryKeys, fetchStatistics } from '../lib/net/rest';
-  import { BUILDINGS, upgradeBuilding, villageCostLabel } from '../lib/net/commands';
+  import { BUILDINGS, upgradeBuilding, villageCostLabel, villageUpgradeDurationSeconds, formatDuration, villageUpgradeBlockedReason, TOWN_HALL_BUILDING_ID } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import type { StateUpdate } from '../lib/net/protocol.generated';
   import VillageFolk from '../lib/ui/VillageFolk.svelte';
@@ -34,6 +34,27 @@
   });
 
   const pendingRemaining = $derived(Math.max(0, pendingUntil - nowSeconds));
+
+  // Modul: THE BAR NEEDS A START, AND THE WIRE ONLY CARRIES THE END.
+  //
+  // The duration is a pure function of the level the building is being
+  // upgraded FROM - and while an upgrade is in flight the snapshot still
+  // reports that level, because CurrentLevel only advances when the server
+  // resolves it. So the start is `completesAt - duration(levelNow)`, with no
+  // second timestamp on a packet that has no room for one. The formula is
+  // mirrored in commands.ts and guarded by serverMirrors.test.ts.
+  const townHallLevel = $derived.by(() => {
+    const hall = BUILDINGS.find((b) => b.id === TOWN_HALL_BUILDING_ID);
+    return hall && snap ? levelOf(snap, hall.stateField) : 0;
+  });
+
+  const pendingBuilding = $derived(BUILDINGS.find((b) => b.id === pendingId) ?? null);
+  const pendingTotal = $derived(
+    pendingBuilding && snap ? villageUpgradeDurationSeconds(levelOf(snap, pendingBuilding.stateField)) : 0,
+  );
+  const pendingProgress = $derived(
+    pendingTotal > 0 ? Math.max(0, Math.min(1, (pendingTotal - pendingRemaining) / pendingTotal)) : 0,
+  );
 
   function upgrade(buildingId: number) {
     const outcome = upgradeBuilding(buildingId);
@@ -76,17 +97,63 @@
       </dl>
 
       {#if pendingId !== 0}
-        <p class="pending">
-          Upgrading {BUILDINGS.find((b) => b.id === pendingId)?.name ?? `building ${pendingId}`}
-          &middot; {pendingRemaining > 0 ? `${pendingRemaining}s left` : 'finishing...'}
-        </p>
+        <!-- Modul: A BUILD TIMER HAS TO LOOK LIKE ONE.
+             This was a line of text and a raw second count, which was almost
+             readable while every upgrade took thirty seconds and is not now
+             that the top one takes three and a half hours - "12667s left" is
+             not a time anybody reads. A stopwatch, a real duration and a bar
+             that visibly fills are what say "this is running, come back". -->
+        <div class="pending" role="status">
+          <p class="pending-line">
+            <span class="stopwatch" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="13" r="8" />
+                <path d="M12 9v4l2.5 2.5M9 2h6M12 2v3" stroke-linecap="round" />
+              </svg>
+            </span>
+            Upgrading <strong>{pendingBuilding?.name ?? `building ${pendingId}`}</strong>
+            &middot; {pendingRemaining > 0 ? `${formatDuration(pendingRemaining)} left` : 'finishing...'}
+          </p>
+          <div
+            class="progress"
+            role="progressbar"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            aria-valuenow={Math.round(pendingProgress * 100)}
+          >
+            <div class="progress-fill" style="width: {pendingProgress * 100}%"></div>
+          </div>
+        </div>
       {/if}
 
       <ul class="buildings">
         {#each BUILDINGS as building}
           {@const level = levelOf(snap, building.stateField)}
-          <li>
+          <!-- Modul: THE BUTTON REFUSES BEFORE THE SERVER DOES.
+               A capped building's Upgrade click used to travel, get rolled back
+               with MaxTierReached or TownHallCeilingReached, and show the player
+               nothing at all - an enabled button that did nothing and said
+               nothing. The ceilings are mirrored in commands.ts so the reason
+               can be stated here instead of discovered by pressing. The server
+               still enforces both.
+
+               `{@const}` has to be an immediate child of the `{#each}`, which
+               is why it sits here rather than beside the button it feeds. -->
+          {@const blocked = villageUpgradeBlockedReason(building.id, level, townHallLevel)}
+          <li class:upgrading={building.id === pendingId}>
             <span class="name">
+              <!-- Modul: the stopwatch marks WHICH building is busy. Greying
+                   every button said "something is happening"; it did not say
+                   what, and the row that was actually being worked on looked
+                   exactly like the eleven that were not. -->
+              {#if building.id === pendingId}
+                <span class="stopwatch" aria-label="Upgrade in progress">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="13" r="8" />
+                    <path d="M12 9v4l2.5 2.5M9 2h6M12 2v3" stroke-linecap="round" />
+                  </svg>
+                </span>
+              {/if}
               {building.name}
               <!-- Modul: WHAT IT DOES AND WHAT IT COSTS.
                    The village listed a name, a level and an Upgrade button, so
@@ -99,13 +166,15 @@
             <span class="cost dim tiny">{villageCostLabel(building.costKind, level)}</span>
             <button
               class="tiny-btn"
-              disabled={pendingId !== 0}
-              title={pendingId !== 0
-                ? 'Another upgrade is already in progress'
-                : `Next level costs ${villageCostLabel(building.costKind, level)}`}
+              disabled={pendingId !== 0 || blocked !== null}
+              title={blocked !== null
+                ? blocked
+                : pendingId !== 0
+                  ? 'Another upgrade is already in progress'
+                  : `Next level costs ${villageCostLabel(building.costKind, level)}`}
               onclick={() => upgrade(building.id)}
             >
-              Upgrade
+              {building.id === pendingId ? formatDuration(pendingRemaining) : blocked !== null ? 'Maxed' : 'Upgrade'}
             </button>
           </li>
         {/each}
@@ -177,6 +246,65 @@
 {/if}
 
 <style>
+  /* Modul: the build timer's own furniture. See the markup for why a line of
+     text and a raw second count stopped being enough. */
+  .pending {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0 0 0.6rem;
+  }
+
+  .pending-line {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+
+  .stopwatch {
+    display: inline-flex;
+    align-items: center;
+    color: var(--accent);
+    flex: none;
+  }
+
+  /* A stopwatch that does not move is a picture of a stopwatch. */
+  .stopwatch svg {
+    animation: tick 2s steps(8, end) infinite;
+    transform-origin: 50% 54%;
+  }
+
+  @keyframes tick {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stopwatch svg {
+      animation: none;
+    }
+  }
+
+  .progress {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--bg-sunken, rgba(0, 0, 0, 0.25));
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--accent);
+    /* Matches the 1s ticker, so the bar creeps rather than stepping. */
+    transition: width 1s linear;
+  }
+
+  li.upgrading {
+    border-left: 2px solid var(--accent);
+    padding-left: 0.4rem;
+  }
   .what {
     display: block;
     max-width: 34ch;

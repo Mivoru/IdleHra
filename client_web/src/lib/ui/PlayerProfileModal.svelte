@@ -3,8 +3,30 @@
   import { authedGet } from '../net/auth';
   import ItemIcon from './ItemIcon.svelte';
 
-  export let playerId: number;
-  export let onClose: () => void;
+  // Modul: `$props()`, NOT `export let`, AND THAT IS THE WHOLE BUG FIX.
+  //
+  // Reported as "I click show profile, it says fetching data, and I have to
+  // close it and click again".
+  //
+  // A Svelte 5 component is in RUNES mode only if it uses a rune. This file
+  // used `export let`, which is the Svelte 4 form, so the component compiled
+  // as LEGACY - and legacy components track reactivity through the compiler's
+  // own invalidation, not through signals. `createQuery` from
+  // @tanstack/svelte-query builds its result out of runes, so the template
+  // read `profile.isPending` exactly once, at mount, and never heard that the
+  // request had finished. The spinner was not waiting on the network; it had
+  // stopped listening.
+  //
+  // The second click worked because by then the query cache was WARM: the
+  // fresh component's very first render already had the data, so a template
+  // that only renders once was enough. That is why it looked intermittent
+  // rather than broken.
+  //
+  // Nothing else in the file had to change - which is the dangerous part.
+  // `export let` is not deprecated syntax that warns, it is a different
+  // reactivity system that compiles cleanly and silently disagrees with any
+  // rune-based library it is handed.
+  const { playerId, onClose }: { playerId: number; onClose: () => void } = $props();
 
   interface ProfileEquipment {
     Id: number;
