@@ -251,8 +251,22 @@ jobs:
           distribution: temurin
           java-version: '21'
 
+      # Modul: THE SDK PACKAGES ARE NAMED, not left to auto-download.
+      #
+      # setup-android's default `packages` is `tools platform-tools` - no
+      # platform and no build-tools at all - which leaves AGP to fetch
+      # `platforms;android-36` and `build-tools;36.0.0` itself at build time.
+      # That works until it does not, and when it does not the failure is a
+      # Gradle resolution error a long way from its cause.
+      #
+      # The versions come from variables.gradle (compileSdkVersion 36) and from
+      # what a successful local assemble actually pulled down, checked by
+      # listing the SDK afterwards. Naming them also makes the build
+      # reproducible and lets the cache key mean something.
       - name: Set up the Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: 'tools platform-tools platforms;android-36 build-tools;36.0.0'
 
       # Modul: Gradle's dependency cache, keyed on the build files that decide
       # what it downloads. Without it every run re-fetches the Android Gradle
@@ -267,9 +281,15 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('client_web/android/**/*.gradle*', 'client_web/android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # `--stacktrace`, because the Actions log for this repository needs admin
+      # rights to download - so when this step fails, the run page's own
+      # rendering is the only diagnosis available and it had better carry the
+      # cause. This step had NEVER run before 2026-09-11: the sprite check and
+      # then the Capacitor/Node mismatch failed earlier in the job every time,
+      # so its first execution was also its first failure.
       - name: Assemble the Android debug APK
         working-directory: client_web/android
-        run: ./gradlew --no-daemon assembleDebug
+        run: ./gradlew --no-daemon --stacktrace assembleDebug
 
       # Modul: KEPT, because "it built" is worth less than something anybody
       # can install. A reviewer, a tester, or the developer's own phone can
