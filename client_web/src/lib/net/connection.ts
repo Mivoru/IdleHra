@@ -106,6 +106,34 @@ const BASE_RECONNECT_DELAY_MS = 500;
  */
 const STALE_SOCKET_MS = 20_000;
 
+/**
+ * How long `new WebSocket()` may sit in CONNECTING before we give up on it.
+ *
+ * Modul: A HANDSHAKE THAT HANGS HAD NO WAY OUT AT ALL, and on a phone that is
+ * the normal failure rather than the exotic one.
+ *
+ * `open()` waits for `onopen` or `onclose` and nothing else. A refused
+ * connection closes, which is fine - `scheduleReconnect` takes it. But a
+ * network that BLACKHOLES the packets rather than refusing them (a captive
+ * portal, a carrier NAT dropping an idle SYN, mobile data handing over between
+ * cells) leaves the socket in CONNECTING, where neither handler ever fires.
+ * The client then reports 'connecting' for ever: no retry, no timeout, no
+ * message, and a player looking at a spinner that will never resolve.
+ *
+ * It was worse than merely stuck. `resumeFromBackground` - the one mechanism
+ * written to rescue a phone - opens with
+ * `if (readyState === CONNECTING) return`, so bringing the app back to the
+ * foreground deliberately stepped AROUND the case. Closing and reopening the
+ * app was the only cure, and that is exactly the "silent rollback" shape this
+ * codebase keeps finding: ask what the player sees, and the answer was nothing.
+ *
+ * Twelve seconds because a real handshake over a slow mobile link is a second
+ * or two, this only has to be longer than a bad one, and a player staring at a
+ * spinner is the thing being minimised. A timeout closes the socket, which
+ * routes into the ordinary backoff rather than inventing a second retry path.
+ */
+const CONNECT_TIMEOUT_MS = 12_000;
+
 function toBase64(text: string): string {
   // btoa is latin1-only; JWTs and chat text are not. Encode to UTF-8 bytes
   // first, which is what the server's base64 decode expects on the other side.
@@ -133,6 +161,9 @@ export class GameConnection {
   private closedByUs = false;
   private attempt = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+  /** Armed while a socket is in CONNECTING - see CONNECT_TIMEOUT_MS. */
+  private connectTimer: ReturnType<typeof setTimeout> | null = null;
 
   /**
    * When the server was last heard from, by wall clock.
@@ -188,6 +219,7 @@ export class GameConnection {
 
   disconnect(): void {
     this.closedByUs = true;
+    this.clearConnectTimer();
     if (this.reconnectTimer !== null) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -201,13 +233,35 @@ export class GameConnection {
     this.handlers.onStatus?.({ phase, detail, attempt: this.attempt });
   }
 
+  private clearConnectTimer(): void {
+    if (this.connectTimer === null) return;
+    clearTimeout(this.connectTimer);
+    this.connectTimer = null;
+  }
+
   private open(): void {
     this.report(this.attempt === 0 ? 'connecting' : 'reconnecting', '');
 
     const socket = new WebSocket(WS_URL);
     this.socket = socket;
 
+    // Modul: the watchdog is armed BEFORE any handler, and every exit from
+    // CONNECTING clears it - open, close, and the timeout itself.
+    this.clearConnectTimer();
+    this.connectTimer = setTimeout(() => {
+      this.connectTimer = null;
+      if (this.socket !== socket || socket.readyState !== WebSocket.CONNECTING) return;
+
+      // Closing a CONNECTING socket fires `onclose`, which is where the
+      // backoff already lives - so this adds a way OUT of the hang without
+      // adding a second retry path beside the one that works.
+      this.socket = null;
+      socket.close();
+      this.scheduleReconnect('the server did not answer');
+    }, CONNECT_TIMEOUT_MS);
+
     socket.onopen = () => {
+      this.clearConnectTimer();
       this.lastInboundAt = Date.now();
       this.report('authenticating', '');
       const tokenBytes = new TextEncoder().encode(this.token).length;
@@ -229,6 +283,7 @@ export class GameConnection {
     };
 
     socket.onclose = (event) => {
+      this.clearConnectTimer();
       if (this.socket !== socket) return;
       this.socket = null;
 
@@ -307,6 +362,9 @@ export class GameConnection {
   suspendForBackground(): void {
     if (this.closedByUs || !this.token) return;
 
+    // A handshake in flight is abandoned with the socket; leaving the watchdog
+    // armed would fire a reconnect into an app nobody is looking at.
+    this.clearConnectTimer();
     if (this.reconnectTimer !== null) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -336,7 +394,15 @@ export class GameConnection {
     }
 
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
-      if (this.socket?.readyState === WebSocket.CONNECTING) return;
+      // Modul: a CONNECTING socket is left alone ONLY because the watchdog
+      // armed in open() is now guaranteed to end it either way.
+      //
+      // This used to be a bare `return`, which made the foreground the one
+      // moment a hung handshake could NOT be rescued - the app came back,
+      // looked at a socket that had been stuck for minutes, and deliberately
+      // did nothing about it. Restarting the app was the only cure.
+      if (this.socket?.readyState === WebSocket.CONNECTING && this.connectTimer !== null) return;
+      this.clearConnectTimer();
       this.socket = null;
       this.open();
       return;
