@@ -167,7 +167,15 @@ is exempt from LFS (see **Git LFS** above).
     cd ~/folkidle/ops/oracle
     cp .env.example .env        # if it does not exist yet
     $EDITOR .env                # DB connection string, JWT_SECRET_KEY, mail
-    FOLKIDLE_BUNDLE_VERSION="1.0.$(git -C ~/folkidle rev-list --count HEAD)" docker compose up -d --build
+    # Stamp the over-the-air bundle for this deploy. Both go in .env, which
+    # compose reads for BOTH variable substitution (the caddy build arg) and
+    # the app container's own environment - one place, both halves.
+    V="1.0.$(git -C ~/folkidle rev-list --count HEAD)"
+    sed -i '/^FOLKIDLE_BUNDLE_/d' .env
+    echo "FOLKIDLE_BUNDLE_VERSION=$V" >> .env
+    echo "FOLKIDLE_BUNDLE_URL=https://folkidle.duckdns.org/updates/$V.zip" >> .env
+
+    docker compose up -d --build
 
 The first build takes a while — a .NET publish and an npm install on 2 vCPU.
 
