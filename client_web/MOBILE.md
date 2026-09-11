@@ -51,6 +51,55 @@ second client and no separate codebase - Capacitor wraps `dist/`.
   is a platform rule, not a limitation of this stack.
 - **A reachable server over HTTPS.** See below.
 
+## Getting it onto your own phone, today
+
+Two routes. The first needs nothing installed.
+
+### 1. Take the APK CI already built (Android, no toolchain)
+
+Every push to `main` assembles a debug APK and keeps it for 14 days.
+
+1. Open the repository's **Actions** tab, click the newest green
+   *Build, Test, and Deploy* run.
+2. Scroll to **Artifacts** and download **`folkidle-debug-apk`**. It arrives as
+   a zip; unzip it to get the `.apk`.
+3. Put the file on the phone (USB, Drive, or email it to yourself).
+4. Tap it. Android will say the app came from an unknown source — allow the
+   installing app (your browser or Files) to install unknown apps, then tap
+   Install again.
+
+**It points at `https://folkidle.duckdns.org`**, the live server, so it plays
+the real game against your real account. That was only true from 2026-09-11: the
+step that builds the bundle had no `VITE_FOLKIDLE_SERVER`, so every APK before
+that inlined `http://localhost:8080` — which on a phone means the phone — and
+could not reach anything. It failed *politely*, saying what was wrong on the
+login screen, which is why the artefact looked fine until somebody tried to
+sign in.
+
+It is a **debug** build: unsigned for the store, slightly slower, and Android
+marks it as such. That is the right trade for a test install and the wrong one
+for anybody else.
+
+### 2. Build it yourself (Android)
+
+Needs **JDK 21** — not 17. `capacitor.build.gradle` sets
+`sourceCompatibility JavaVersion.VERSION_21`, so Gradle on 17 fails with a
+class-version error that does not mention the JDK — and the Android SDK, which
+Android Studio installs.
+
+```bash
+VITE_FOLKIDLE_SERVER=https://folkidle.duckdns.org npm run build:android:web
+```
+
+The APK lands in `android/app/build/outputs/apk/`. Omit that environment
+variable and you get the localhost build described above.
+
+### iOS
+
+A Mac with Xcode, and an Apple Developer account to put it on a physical
+device. That is a platform rule, not a limitation of this stack. Run
+`npm run sync:web` then `npm run open:ios` there.
+
 ## First run
 
 ```bash

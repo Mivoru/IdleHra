@@ -139,8 +139,28 @@ jobs:
         working-directory: client_web
         run: npm run check:ratchet
 
+      # Modul: THE APK THIS JOB KEEPS HAS TO BE ABLE TO REACH A SERVER.
+      #
+      # This step ran as a bare `npx vite build`, and Vite INLINES the server
+      # address - so with nothing set it baked in config.ts's development
+      # default, http://localhost:8080. On a phone `localhost` means the phone,
+      # so the debug APK uploaded below - the artefact whose own comment calls
+      # it "the shortest path to A2, the device session" - could never have
+      # talked to anything. It would have reached the login screen,
+      # configurationProblem() would have explained itself, and that is as far
+      # as any tester could have got.
+      #
+      # It fails POLITELY, which is why nobody found out: the client says what
+      # is wrong rather than hanging, so the artefact looks like a working app
+      # right up until somebody tries to sign in.
+      #
+      # Production does NOT come from here - ops/oracle/web.Dockerfile builds
+      # its own bundle with this same value as a build arg - so this address is
+      # only ever the one the test artefact points at.
       - name: Build the client bundle
         working-directory: client_web
+        env:
+          VITE_FOLKIDLE_SERVER: https://folkidle.duckdns.org
         run: npx vite build
 
       # --- the native lane -------------------------------------------------
