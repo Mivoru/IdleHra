@@ -93,10 +93,19 @@
   });
 
   // Modul: the virtual list needs one number in pixels, and the rows are two
-  // sizes. Kept next to the CSS that produces them - a mismatch here does not
-  // error, it silently overlaps or gaps the rows, which is the kind of bug
-  // that gets reported as "the list looks weird sometimes".
-  const rowHeight = $derived(compact ? 34 : 44);
+  // sizes. MUST MATCH the `.row` heights in this file's styles - a mismatch
+  // here does not error, it silently overlaps the rows, which is the kind of
+  // bug that gets reported as "the list looks weird".
+  //
+  // It WAS mismatched: 44 normally and 34 compact, against a row that draws two
+  // lines of text and needs about 49. Reported from a phone as item names lying
+  // across the row beneath them. See the long note beside `.row`.
+  //
+  // ONE NUMBER, NOT TWO. The first fix raised them to 52 and 44 and measuring
+  // said 44 was still four pixels short - because `compact` only ever shrank
+  // the ICON, and the two lines of text are identical in both modes. It never
+  // had a claim to a shorter row.
+  const ROW_HEIGHT = 52;
 </script>
 
 <div class="browser" class:compact>
@@ -144,7 +153,7 @@
          one live account. See VirtualList. -->
     <VirtualList
       items={shown}
-      {rowHeight}
+      rowHeight={ROW_HEIGHT}
       maxHeight={compact ? '14rem' : '22rem'}
       label="Your items"
     >
@@ -217,17 +226,33 @@
     margin: 0;
   }
 
-  /* Modul: these two heights ARE the `rowHeight` the virtual list is given -
-     44px normally, 34px compact - because it positions rows arithmetically
-     rather than by measuring them. Change one and change the other, or the
-     rows overlap. box-sizing is load-bearing for the same reason: the padding
-     has to be inside the number. */
+  /* Modul: these two heights ARE the `rowHeight` the virtual list is given,
+     because it positions rows arithmetically rather than by measuring them.
+     Change one and change the other, or the rows overlap.
+
+     AND THEY DID OVERLAP, on a real phone, in the Forge's item picker - the
+     name of one item sitting across the row below it. The comment above was
+     right and the numbers under it were wrong: `.text` is a two-row grid, and
+     at the client's own 14px/1.5 that is a 21px name plus a ~17px meta line
+     plus the 0.1rem gap plus 0.6rem of vertical padding - about 49px of
+     content in a box declared as 44. It was over by five pixels before a
+     single Android font-scale setting was involved, and 34px "compact" was
+     over by fifteen.
+
+     So the heights are raised to fit what is actually drawn, AND `overflow:
+     hidden` is added as the structural guarantee. The height is an arithmetic
+     promise to VirtualList that this row cannot keep on its own - a bigger
+     system font, a longer rarity name, a future third line - and clipping is
+     the one answer that stays true whatever the content does. A clipped row
+     looks tight; an overflowing one looks broken, because it lands on its
+     neighbour. */
   .row {
     display: flex;
     align-items: center;
     gap: 0.5rem;
     width: 100%;
-    height: 44px;
+    height: 52px;
+    overflow: hidden;
     box-sizing: border-box;
     padding: 0.3rem 0.4rem;
     background: transparent;
@@ -239,9 +264,9 @@
     font: inherit;
   }
 
-  .compact .row {
-    height: 34px;
-  }
+  /* Modul: NO compact override any more. `compact` shrinks the icon and the
+     list's maxHeight; it does not shrink the text, so it never had a claim to a
+     shorter row. It was 34, then 44, and both clipped - measured. */
 
   .row:hover {
     border-color: currentColor;
@@ -259,6 +284,15 @@
   }
 
   .name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Modul: the meta line needs the same treatment as the name. It had none, so
+     a long "slot - rarity" pair could WRAP to a second line and push the row's
+     content past its declared height - the same overlap by a different route. */
+  .meta {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

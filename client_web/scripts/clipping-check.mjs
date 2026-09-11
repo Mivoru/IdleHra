@@ -53,6 +53,38 @@ for (const width of WIDTHS) {
 
     const clipped = await page.evaluate((tolerance) => {
       const out = [];
+      // Modul: A VIRTUALISED ROW TALLER THAN ITS SLOT LANDS ON ITS NEIGHBOUR,
+      // and that was invisible to all five checkers.
+      //
+      // VirtualList positions every row by arithmetic - `top: index * stride`
+      // - so `rowHeight` is a PROMISE about how tall the row will draw. Break
+      // it and nothing errors, nothing is clipped, nothing overlaps in the
+      // sense check:overlap means (it hunts controls covering controls), and
+      // the page does not overflow. The rows simply draw on top of each other.
+      //
+      // Found on a real phone in the Forge's item picker: `.row` declared 44px
+      // around a two-line grid needing about 49, so every item name lay across
+      // the row beneath it. The file's own comment said "change one and change
+      // the other, or the rows overlap" - it was right, and the numbers under
+      // it were still wrong, which is the whole argument for measuring instead
+      // of asserting in prose.
+      for (const slot of document.querySelectorAll('li.slot')) {
+        const slotH = slot.getBoundingClientRect().height;
+        if (slotH < 1) continue;
+        for (const child of slot.children) {
+          const need = Math.max(child.scrollHeight, child.getBoundingClientRect().height);
+          if (need - slotH > tolerance) {
+            out.push({
+              tag: child.tagName.toLowerCase(),
+              cls: 'virtuallist-row-taller-than-its-slot',
+              over: Math.round(need - slotH),
+              width: Math.round(slotH),
+              text: (child.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 60),
+            });
+          }
+        }
+      }
+
       for (const el of document.querySelectorAll('body *')) {
         // Modul: SVG IS NOT LAID OUT LIKE HTML, so it is skipped HERE and
         // measured differently BELOW - it is no longer skipped outright.
