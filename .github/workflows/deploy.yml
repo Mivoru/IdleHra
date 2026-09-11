@@ -85,7 +85,20 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          # Modul: 22 BECAUSE THE CAPACITOR CLI REFUSES ANYTHING OLDER.
+          #
+          # `@capacitor/cli` v8 declares `engines: { node: ">=22.0.0" }` and
+          # enforces it itself - `npx cap sync` exits with
+          # "The Capacitor CLI requires NodeJS >=22.0.0" and does nothing. This
+          # was pinned at 20, so the whole native lane below had been dead
+          # since Capacitor was bumped to v8, and NOBODY SAW IT: the sprite
+          # check fails earlier in the same job, so that is the failure the run
+          # reported. One broken step was hiding another.
+          #
+          # Reproduced by running the job's own commands in a `node:20`
+          # container rather than by reading the log, which needs admin on the
+          # repository. `node:22` gets past it.
+          node-version: "22"
           cache: npm
           cache-dependency-path: client_web/package-lock.json
 

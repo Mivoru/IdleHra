@@ -81,6 +81,26 @@ walk and getting the same bytes.
 is a ratchet that fails open: the gate was red for four commits and the signal
 it produced was indistinguishable from the noise of nobody looking.
 
+### 2b. And behind it, a second dead step nobody could see
+
+Fixing the sprite gate did not turn CI green - it moved the failure to
+`Sync the native projects`, which turned out to have been dead far longer:
+**`@capacitor/cli` v8 declares `engines: { node: ">=22.0.0" }` and enforces it
+itself**, while the workflow pinned `node-version: "20"`. `npx cap sync` exits
+with `The Capacitor CLI requires NodeJS >=22.0.0` and does nothing, so the
+entire native lane - the sync, the staleness check and the APK assemble - had
+been inert since Capacitor was bumped to v8.
+
+**One broken step was hiding another**, which is the part worth remembering: a
+job reports its FIRST failure, so a red pipeline tells you about one defect no
+matter how many it has. Fixing the visible one is how you find out.
+
+Diagnosed without the log, which needs admin on the repository, by running the
+job's own commands in a `node:20` container. The same reproduction on `node:22`
+then proved the rest of the lane: `cap sync` succeeds, the Android tree is
+unchanged, and **Package.swift comes out byte-identical to the committed one** -
+so the normaliser in finding 3 produces exactly what the Linux runner would.
+
 ## 3. `cap sync` on Windows writes a Package.swift that Swift cannot parse
 
 The CLI interpolates a `path.relative` result into a Swift string literal, and
