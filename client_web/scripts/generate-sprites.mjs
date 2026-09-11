@@ -283,9 +283,28 @@ function readJson(name) {
   return JSON.parse(readFileSync(join(gameData, name), 'utf8').replace(/^\uFEFF/, ''));
 }
 
+// Modul: SORTED, AND THAT IS A CORRECTNESS FIX RATHER THAN TIDINESS.
+//
+// `readdirSync` returns DIRECTORY order, which is not a defined order: NTFS
+// hands back a case-insensitive alphabetical listing and ext4 hands back hash
+// order. So this generator emitted a different file on Windows than on Linux
+// from the same art - and `--check`, which byte-compares the committed file
+// against a fresh generation, therefore FAILED ON EVERY CI RUN with nothing
+// wrong. It had been red since the sprite gate was added; the four commits
+// before this one all show `Client Checks: failure`, and because
+// `build-and-push` is gated on that job, no image was pushed for any of them.
+//
+// The second half is worse than the flake. Where two files reduce to the same
+// lookup key, the LAST one walked wins - so which picture an item gets was
+// decided by directory order too. That is the "wrong picture on an item" the
+// alias table's own comment calls a lie the player cannot detect, arriving
+// through the back door.
+//
+// `.sort()` compares UTF-16 code units, which is locale- and
+// platform-independent. Deliberately not `localeCompare`, which is neither.
 function walk(dir) {
   const out = [];
-  for (const entry of readdirSync(dir)) {
+  for (const entry of readdirSync(dir).sort()) {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) out.push(...walk(full));
     else if (extname(entry).toLowerCase() === '.webp') out.push(full);

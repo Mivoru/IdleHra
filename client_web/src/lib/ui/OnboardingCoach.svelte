@@ -221,7 +221,9 @@
   .coach {
     position: fixed;
     left: 50%;
-    bottom: 0.75rem;
+    /* Fixed to the viewport. The coach carries buttons, so landing it under
+       the gesture bar would make the tutorial itself unpressable. */
+    bottom: calc(0.75rem + var(--sa-bottom));
     transform: translateX(-50%);
     width: max-content;
     max-width: min(38rem, calc(100vw - 1.5rem));

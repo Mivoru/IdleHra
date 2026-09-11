@@ -170,12 +170,53 @@
   box-sizing: border-box;
 }
 
+/* Modul: THE STATUS BAR SITS ON TOP OF THE GAME, AND NOTHING WAS MOVING OUT
+   OF ITS WAY.
+
+   index.html asks for `viewport-fit=cover`, and Capacitor's SystemBars reads
+   that meta tag as consent: on a WebView from 140 onwards it stops padding the
+   view and hands the insets through to CSS instead, so the page is drawn
+   EDGE TO EDGE - underneath the clock, the battery icon and the gesture bar.
+   Android 15 removed the opt-out for anything targeting SDK 35, and this app
+   targets 36, so that is not a mode it can decline.
+
+   The client handled exactly one of the four insets (the bottom, added with
+   the touch-target work) and none of the other three. The header is the first
+   thing on every screen and carries the menu button, which is the single most
+   pressed control in the game - it was going to render under the status bar on
+   every modern phone.
+
+   WHY A VARIABLE AND NOT env() DIRECTLY. Android's WebView does not implement
+   `env(safe-area-inset-*)` reliably, so Capacitor injects the same four
+   numbers as `--safe-area-inset-*` custom properties on the root element - in
+   BOTH of its branches, as zeroes when it padded the view itself. iOS gets
+   nothing injected and WKWebView implements env() properly. So the chain below
+   is "whatever the native shell measured, else what the engine knows, else
+   nothing", and it is correct on all three platforms without asking which one
+   it is on.
+
+   It also makes the whole thing TESTABLE WITHOUT A DEVICE: a checker can set
+   those four properties exactly as the native layer does and measure what
+   moves. That is scripts/safearea-check.mjs, and it is the only reason this
+   is knowable before a phone is in the room. */
+:root {
+  --sa-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --sa-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --sa-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --sa-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+}
+
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
   font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* The top and the sides. The bottom is set further down, where it has to be
+     combined with the chat dock's clearance rather than replace it. */
+  padding-top: var(--sa-top);
+  padding-left: var(--sa-left);
+  padding-right: var(--sa-right);
 }
 
 button {
@@ -438,7 +479,17 @@ body {
    that case impossible rather than accidental. Sized to the handle (about
    2rem) plus its 1rem offset plus a thumb's worth of margin. */
 body {
-  padding-bottom: 4.5rem;
+  /* Modul: PLUS the home indicator, not INSTEAD of it.
+
+     The phone block near the end of this file used to set
+     `padding-bottom: max(8px, env(safe-area-inset-bottom))` on body, which is
+     the same selector at the same specificity and later in the file - so below
+     40rem it REPLACED the 4.5rem above rather than adding to it, and a phone
+     lost the whole chat-dock clearance the paragraph above exists to
+     guarantee. That is the width where the dock is most in the way.
+
+     One rule, both concerns, added together. */
+  padding-bottom: calc(4.5rem + var(--sa-bottom));
 }
 
 img,
@@ -1142,12 +1193,15 @@ h3:not(.place):not([style*='background-image'])::before {
     flex: 0 0 44px;
   }
 
-  /* Modul: the bottom of the glass. A control flush with the viewport edge is
-     one a player's thumb reaches past, and on a phone with a home indicator it
-     is one the OS may swallow outright. env(safe-area-inset-bottom) is 0 on a
-     desktop browser and real on a notched device, so this costs nothing where
-     it is not needed. */
-  body {
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
-  }
+  /* Modul: THE BOTTOM INSET MOVED OUT OF THIS BLOCK, and had to.
+
+     It used to be `body { padding-bottom: max(8px, env(safe-area-inset-bottom)) }`
+     here, which is the same selector and the same specificity as the 4.5rem
+     chat-dock clearance set far above - and later in the file, so below 40rem
+     it WON, and the clearance the dock's own comment calls the difference
+     between a reachable control and a permanently covered one simply stopped
+     existing on phones.
+
+     The single rule up there is `calc(4.5rem + var(--sa-bottom))`, which is
+     both, everywhere. Nothing bottom-related belongs in this block. */
 }

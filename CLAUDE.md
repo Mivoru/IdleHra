@@ -48,15 +48,16 @@ npm run check:clipping # content cut off, 26 screens × 3 widths
 npm run check:overlap  # controls buried under other controls
 npm run check:touch    # controls too small for a thumb, 390px
 npm run check:perf     # main-thread cost with the CPU throttled 4x
+npm run check:safearea # anything under a phone's status bar or gesture bar
 npm run generate:icons # rasterise the app icons from resources/*.svg
 ```
 
-All five read `FOLKIDLE_E2E_BASE`, but only **`smoke:screens` is safe to aim at
+They all read `FOLKIDLE_E2E_BASE`, but only **`smoke:screens` is safe to aim at
 production** — it signs in as a throwaway guest and only navigates. `exercise`
-*spends* (items, villagers, affix rerolls) and the three geometry checks sign
-in as the dev fixture, which does not exist in production; those four are dev-box
-tools. All four share the screen list in `client_web/scripts/screens.mjs` — add
-a destination there, once.
+*spends* (items, villagers, affix rerolls) and the geometry checks sign in as
+the dev fixture, which does not exist in production; those are dev-box tools.
+They share the screen list in `client_web/scripts/screens.mjs` — add a
+destination there, once.
 
 Dev fixture login: `dev@folkidle.local` / `FolkIdleDev123!`. If never seeded:
 
@@ -332,6 +333,53 @@ marked a flag nothing clears, re-equipped the item already worn, or consumed the
 last villager a later step needed. Make a check round-trip and restore what it
 touched. The villager pool refills only on an explicit `--seed-dev`, which is
 idempotent — re-seed when the breeding or village steps report a spent pool.
+
+**A Capacitor plugin read off the global still has to be INSTALLED.**
+`push.ts`, `lifecycle.ts` and `backButton.ts` read `Capacitor.Plugins.X` instead
+of importing it, each with a correct paragraph about keeping a native-only
+module out of the browser bundle — and `@capacitor/app` and
+`@capacitor/push-notifications` were in nobody's `package.json`, so `cap sync`
+linked neither and the shell injected neither. Every access is guarded, so both
+degraded in silence: **the hardware back button exited the game from any
+screen** (the exact bug `backButton.ts` exists to fix, inert) and push was dead
+regardless of Firebase. "Not imported" and "not installed" are identical in a
+browser and opposite on a phone. `tests/nativeProjects.test.ts` pins each read
+to a dependency and to both native projects. Related: the push plugin *requests*
+`POST_NOTIFICATIONS` and does not *declare* it, and Android 13+ refuses an
+undeclared runtime request silently — no dialog, an instant "denied" — while
+the OS remembers a refusal for ever.
+
+**`readdirSync` order is not an order, and it had CI red for four commits.**
+`generate-sprites.mjs` walked the art tree unsorted, so it emitted different
+bytes on NTFS (case-insensitive alphabetical) than on ext4 (hash order) from
+identical art — and `--check` byte-compares. `Client Checks` failed on every
+push and `build-and-push` was skipped on all of them, silently. The second half
+is worse: where two files reduce to one lookup key the LAST one walked wins, so
+which picture an item got was decided by directory order. Sort any directory
+walk whose output is committed, and prove it by generating under a reversed
+walk. The wider rule: **a ratchet nobody watches fails open.**
+
+**`cap sync` on Windows writes a Package.swift Swift cannot parse.** The CLI
+interpolates `path.relative` into a Swift string literal, so Windows yields
+`..\..\..\node_modules\@capacitor\app` — where `\.` and `\@` are invalid escapes
+and `\n` is a newline. The iOS project could not be built on a Mac, and CI's
+`git diff --exit-code -- android ios` can never be clean, because the Linux
+runner regenerates forward slashes. `npm run sync`/`sync:web` run
+`scripts/normalize-native.mjs` afterwards; a guard alone would leave every
+Windows sync needing hand-repair, which is how it got that way.
+
+**The phone draws under the status bar, and the app cannot decline.**
+`viewport-fit=cover` is consent, Capacitor's `SystemBars` honours it from
+WebView 140, and Android 15 removed the opt-out for targetSdk 35+ (this app
+targets 36). Read insets as `var(--safe-area-inset-*, env(safe-area-inset-*,
+0px))` — Android's WebView does not implement `env()` reliably and Capacitor
+injects those four custom properties itself, which is also what lets
+`npm run check:safearea` simulate a notch without a device. A `position: fixed`
+overlay needs its own inset; body's padding never reaches it. And judge the
+bands differently: the top at rest, the bottom only where scrolling cannot cure
+it, and **pinned by scrolling and looking, never by `position: sticky`** — the
+Wiki's sidebar is declared sticky and at 390px never sticks. `check:touch`
+recorded that lesson first and it still had to be learned twice.
 
 **Don't touch the monster ladder or the balance curve casually.** Both are
 measured by tests that print their tables (`ProgressionRateTests`,

@@ -26,12 +26,14 @@
     "cap:add:android": "cap add android",
     "cap:add:ios": "cap add ios",
     "build:web": "node scripts/generate-protocol.mjs --assume-committed && npm run generate:sprites && vite build",
-    "sync": "npm run build && cap sync",
-    "sync:web": "npm run build:web && cap sync",
+    "sync": "npm run build && cap sync && npm run normalize:native",
+    "sync:web": "npm run build:web && cap sync && npm run normalize:native",
     "build:android": "npm run sync && cap build android",
     "build:android:web": "npm run sync:web && cap build android",
     "open:android": "cap open android",
-    "open:ios": "cap open ios"
+    "open:ios": "cap open ios",
+    "normalize:native": "node scripts/normalize-native.mjs",
+    "check:safearea": "node scripts/safearea-check.mjs"
   },
   "devDependencies": {
     "@capacitor/android": "^8.5.0",
@@ -48,8 +50,10 @@
     "vitest": "^3.0.5"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.1",
     "@capacitor/core": "^8.5.0",
     "@capacitor/preferences": "^8.0.1",
+    "@capacitor/push-notifications": "^8.1.2",
     "@tanstack/svelte-query": "^6.1.38",
     "cordova-plugin-purchase": "^13.18.0"
   }

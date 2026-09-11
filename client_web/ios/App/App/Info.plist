@@ -24,6 +24,16 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- Modul: ANSWERED HERE SO THE UPLOAD DOES NOT STOP TO ASK.
+
+	     Without this key App Store Connect holds every single build and puts
+	     the export-compliance question to a human before it can go to
+	     TestFlight or review. The answer never changes: this app's only
+	     cryptography is the HTTPS/WSS it talks to its own server over, which
+	     is exempt, and it implements none of its own. Declaring it once turns
+	     a recurring manual gate into nothing. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

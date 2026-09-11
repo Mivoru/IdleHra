@@ -15,8 +15,9 @@
 <style>
   .toasts {
     position: fixed;
-    right: 1rem;
-    bottom: 1rem;
+    /* Fixed to the viewport, so body's safe-area padding does not reach it. */
+    right: calc(1rem + var(--sa-right));
+    bottom: calc(1rem + var(--sa-bottom));
     display: grid;
     gap: 0.4rem;
     z-index: 60;

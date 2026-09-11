@@ -1,8 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- Modul: allowBackup - THE REFRESH TOKEN IS THE ONLY THING IN HERE, AND
+         IT SHOULD NOT BE IN A CLOUD BACKUP.
+
+         Capacitor's template says true, which enrols the app in Android Auto
+         Backup: the WebView's localStorage is copied to the user's Google
+         Drive and restored onto any device they sign into. That store holds
+         the 60-day refresh token - deliberately, because a phone that signs
+         the player out every morning is the problem the token was added to
+         solve - and a bearer credential travelling through a backup to a
+         device the player may not still own is a copy nobody can revoke
+         because nobody knows it was made.
+
+         Nothing is lost by declining. The simulation is on the server, so a
+         restored install has nothing local worth carrying: the player signs
+         in once and their character is exactly where they left it. That is
+         the whole proposition of the game. -->
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -38,4 +54,21 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Modul: THE PUSH PLUGIN ASKS FOR THIS AND DOES NOT DECLARE IT.
+
+         PushNotificationsPlugin carries
+         `@Permission(strings = { Manifest.permission.POST_NOTIFICATIONS })`,
+         so it requests the permission at runtime - but its own
+         AndroidManifest.xml contributes only the MessagingService, and from
+         Android 13 the platform REFUSES a runtime request for a permission the
+         merged manifest does not declare. It refuses it silently: no system
+         dialog appears and the callback returns "denied" immediately, which is
+         indistinguishable from a player who said no.
+
+         Settings asks for permission from a control the player pressed, and
+         the OS remembers a refusal permanently - so without this line the one
+         ask the app ever gets would be spent on a request that was never
+         shown. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

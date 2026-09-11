@@ -35,8 +35,13 @@ second client and no separate codebase - Capacitor wraps `dist/`.
   4x-throttled main thread and asserts budgets.
 - **The hardware back button** (2026-09-10) and **a no-network state that says
   something** (2026-09-10). See their own sections below.
+- **The native plugins are actually installed** (2026-09-11). They were not,
+  and three modules had been reading plugins that were never going to be there
+  — see "The plugins were missing" below. This is the one that mattered.
+- **The status bar no longer sits on top of the game** (2026-09-11), plus
+  `npm run check:safearea`. See "Edge-to-edge" below.
 - npm scripts: `sync`, `sync:web`, `build:android`, `build:android:web`,
-  `open:android`, `open:ios`.
+  `open:android`, `open:ios`, `normalize:native`.
 
 ## What you still need (and nobody can do for you)
 
@@ -109,6 +114,107 @@ not the place to discover a months-old baseline, and the machine running
 `sync:web` is usually not a full checkout. Type-checking is `npm run check`
 (raw, exits 1 on the baseline) or `npm run check:ratchet` (the gate).
 
+## The plugins were missing, and that is why none of this could have worked
+
+Found 2026-09-11, by reading `node_modules` instead of the source.
+
+`push.ts`, `lifecycle.ts` and `backButton.ts` all read their plugin off the
+runtime-injected `Capacitor.Plugins` object rather than importing it. Each one
+says why, at length, and each reason is correct: an import would drag a
+native-only module into every browser bundle.
+
+**But `@capacitor/app` and `@capacitor/push-notifications` were not installed at
+all.** Only `core`, `preferences`, `android`, `ios` and the Cordova purchase
+plugin were, and `android/capacitor.settings.gradle` linked exactly what
+package.json declared — which is to say, neither of them. So on a real device:
+
+- `Capacitor.Plugins.App` was `undefined`, and every access is guarded, so it
+  degraded silently. **The hardware back button fell through to Capacitor's
+  default — exit the app from any screen** — which is precisely the bug
+  `backButton.ts` was written to fix, with its fix inert. `appStateChange`
+  never fired either; the deliberate suspend ran on `visibilitychange` alone.
+- `Capacitor.Plugins.PushNotifications` was `undefined`, so push was dead on
+  arrival regardless of Firebase. "Not built yet: a Firebase project" understated
+  it by one whole layer.
+
+**The rule, because the shape recurs: reading a plugin off the global is about
+the WEB BUNDLE, not about installation.** `cap sync` links what package.json
+declares, and the native shell injects only what was linked. "Not imported" and
+"not installed" look identical in a browser and are opposites on a phone.
+`tests/nativeProjects.test.ts` now pins every plugin the client reads to a
+dependency and to both native projects.
+
+Two things came with them:
+
+- **`POST_NOTIFICATIONS` is declared in the app manifest.** The push plugin
+  requests it via `@Permission` but contributes only its `MessagingService` to
+  the manifest merge, and from Android 13 the platform refuses a runtime request
+  for an undeclared permission *silently* — no dialog, an immediate "denied",
+  indistinguishable from a player saying no. Settings only gets one ask.
+- **`android:allowBackup` is now `false`.** Capacitor's template says true,
+  which copies the WebView's `localStorage` — and therefore the 60-day refresh
+  token — into Google Drive and restores it onto any device the account signs
+  into. Nothing is lost by declining: the simulation is on the server, so a
+  restored install needs one sign-in and nothing else.
+
+## `cap sync` on Windows writes a Package.swift that Swift cannot parse
+
+Also 2026-09-11, and the reason CI's native lane was going to fail next.
+
+The Capacitor CLI interpolates a `path.relative` result straight into a Swift
+string literal. On Windows that is `..\..\..\node_modules\@capacitor\app`, and
+a backslash in a Swift literal is an **escape introducer**: `\.` and `\@` are
+invalid escapes and `\n` is a newline. The manifest does not compile, so the
+committed iOS project could not be built on a Mac — invisible here, because
+this project's only Apple toolchain is hypothetical.
+
+`npm run sync` and `npm run sync:web` now run `scripts/normalize-native.mjs`
+after `cap sync`, so the separator is right by construction rather than by
+somebody remembering. `tests/nativeProjects.test.ts` is the guard for a sync run
+without it.
+
+`ITSAppUsesNonExemptEncryption` is in `Info.plist` too, answered `false` — the
+app's only cryptography is the HTTPS it talks to its own server over. Without
+the key App Store Connect stops every build to ask a human.
+
+## Edge-to-edge: the status bar was sitting on top of the game
+
+`index.html` asks for `viewport-fit=cover`, and Capacitor's `SystemBars` reads
+that as consent: on a WebView from version 140 it stops padding the view and
+passes the insets to CSS instead, so the page draws **under the status bar and
+the gesture bar**. Android 15 removed the opt-out for anything targeting SDK 35
+and this app targets 36, so it is not a mode the app can decline.
+
+The client handled one of the four insets. The header — which carries the menu
+button, the most-pressed control in the game — was going to render under the
+clock on every modern phone.
+
+`app.css` now defines `--sa-top/right/bottom/left` as
+`var(--safe-area-inset-*, env(safe-area-inset-*, 0px))`. That chain is correct
+on all three platforms without asking which one it is on: **Android's WebView
+does not implement `env()` reliably, so Capacitor injects those four custom
+properties itself** (as zeroes in the branch where it padded the view), while
+iOS injects nothing and WKWebView implements `env()` properly.
+
+Two things fell out of fixing it:
+
+- **The phone block was replacing the chat-dock clearance, not adding to it.**
+  `body { padding-bottom: max(8px, env(safe-area-inset-bottom)) }` sat below
+  `body { padding-bottom: 4.5rem }` at the same specificity, so under 40rem the
+  4.5rem simply stopped existing — at the width where the dock is most in the
+  way. It is one rule now, `calc(4.5rem + var(--sa-bottom))`.
+- **ChatDock was setting `:global(body) { padding-bottom: 4.25rem }` as well**,
+  a third copy of the same number in a third place. Removed.
+
+The four bottom-anchored fixed overlays (chat dock, toasts, achievement toasts,
+onboarding coach) carry `var(--sa-bottom)` in their own offsets, because a
+fixed element is positioned against the viewport and body's padding never
+reaches it.
+
+**This is checkable without a phone**, which is the whole point of routing it
+through a custom property: `npm run check:safearea` sets those four properties
+exactly as the native layer does and measures what moves.
+
 ## Why native differs, in exactly three places
 
 Everything else is byte-identical to the browser build. These three are not,
@@ -169,7 +275,7 @@ in the store that is no longer being read.
 
 ## Checking the phone build
 
-Five Playwright checkers cover what a phone exposes. None of them needs a
+Six Playwright checkers cover what a phone exposes. None of them needs a
 device; all of them need a running local stack, and all sign in as the dev
 fixture, so **do not aim them at production**.
 
@@ -179,7 +285,33 @@ npm run check:clipping   # content cut off, 26 screens x 3 widths
 npm run check:overlap    # controls buried under other controls
 npm run check:touch      # controls too small for a thumb, 44px floor at 390px
 npm run check:perf       # main-thread cost with the CPU throttled 4x
+npm run check:safearea   # anything under the status bar or the gesture bar
 ```
+
+`check:safearea` is the newest (2026-09-11) and the only one that measures the
+page against hardware rather than against its own viewport. It walks all 26
+screens in **both orientations** — 52 pairs — with a representative notch
+(48/24 portrait, 44/21 sides in landscape) applied the way the native layer
+applies it.
+
+Three rules it encodes, each learned by getting it wrong on the first run, which
+reported **45 failures on a correct layout**:
+
+- **The top band is judged at rest.** Content sliding under the status bar as
+  you scroll is what edge-to-edge means; every native app does it. What must
+  never be under the clock is what greets somebody opening the game.
+- **The bottom band is judged only where scrolling cannot cure it** — something
+  genuinely pinned, or the very end of the document. This is the same
+  conclusion `check:touch` reached, for the same reason.
+- **Pinned is decided by scrolling, not by `position: sticky`.** The Wiki's
+  sidebar is declared sticky and at 390px the layout stacks so it never sticks;
+  reading the computed style produced the last two false findings. The checker
+  scrolls the page and sees what moved. `check:touch`'s note says the same
+  thing, and it still had to be learned twice.
+
+It also asserts the layout **responds** — the header must move down by the full
+inset — because every other assertion in the file passes trivially on a page
+that ignores the properties entirely.
 
 `check:perf` is the newest (2026-09-10) and the only one that is not about
 geometry. It slows the main thread to a quarter and watches long tasks, total
@@ -305,8 +437,12 @@ files by Caddy's static handle. Play requires the deletion route to work
 **without the app**, for somebody who has already uninstalled - an in-app path
 alone is a rejection.
 
-> **Before submitting:** both pages say `CONTACT_EMAIL`. Replace it. A reviewer
-> checks, and should.
+Both pages quote **folkidle.support@gmail.com** (set 2026-09-11). Until then
+they carried the literal string `CONTACT_EMAIL`, on the one page Play requires
+to work for somebody who has already uninstalled — which made it decorative.
+**That mailbox has to exist and be read**; a deletion request sent into nothing
+is the same rejection with extra steps. `tests/storeCompliance.test.ts` fails
+if the placeholder returns or if the two pages ever disagree.
 
 ## In-app purchases
 
@@ -469,10 +605,32 @@ earning while the socket is down, and what the player can do - and clears itself
 when the phase returns to live. The reconnect loop it reports on is untouched;
 this is presentation only.
 
+## Known, diagnosed, not fixed
+
+**The Chest row does not fit a 320px screen.** `npm run check:mobile` fails one
+of its 78 checks: `button.tiny-btn` overflows by 11px on Chest at 320px. It is
+not a CSS slip — measured, the row has already collapsed the item NAME and the
+rarity label to **zero width** and still holds five 44px buttons (Equip, Reroll,
+Lock, Sell, Bin) that cannot shrink, because the 44px touch floor is deliberate.
+
+Fixing it properly means deciding which actions deserve a phone row, and the
+obvious move — wrapping — is barred: `.row`'s height is a **contract** with
+`VirtualList` (`rowHeight={34}`), and a row that renders taller overlaps its
+neighbour instead of pushing it down. That is a product decision about the
+Chest, not a cleanup, so it is written down rather than guessed at.
+
+360px and 414px are clean, as are all 26 screens under the other five checkers.
+320px is iPhone-SE-2016 class hardware.
+
 ## Not verified
 
 **The web build has never been run on a real phone.** That is still the single
 biggest gap, and everything estimated below a device session is a guess.
+
+It is worth saying what changed on 2026-09-11: three of the items on the device
+checklist below — the back button, resume/suspend, and push — could not have
+passed on any device before that date, because the plugins behind them were not
+installed. The checklist was measuring a build that had no native half.
 
 What is now answered mechanically, without a device:
 
@@ -485,7 +643,13 @@ What is now answered mechanically, without a device:
   push and keeps it as an artefact.
 - Content clipped at phone widths - `check:clipping`.
 - Controls buried under other controls - `check:overlap`.
-- Horizontal overflow at 320/360/414 - `check:mobile`.
+- Horizontal overflow at 320/360/414 - `check:mobile` (one known failure, above).
+- Nothing under the status bar or the gesture bar, in either orientation -
+  `check:safearea`, 0 findings across 52 screen/orientation pairs.
+- That every plugin the client reads off `Capacitor.Plugins` is installed and
+  linked into both native projects - `tests/nativeProjects.test.ts`.
+- That the privacy and deletion pages name a real, matching contact address -
+  `tests/storeCompliance.test.ts`.
 - What one back press does in every layer combination -
   `tests/backButton.test.ts`, against the pure resolver.
 - That a push message is displayable and tappable, and names a real screen -

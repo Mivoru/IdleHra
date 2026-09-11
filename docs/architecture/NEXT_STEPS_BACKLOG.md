@@ -17,6 +17,137 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-11 - the mobile app had no native half, and CI had been red for four commits
+
+An audit rather than a feature: "what is missing before this is a real phone
+app, and what of that can be answered without a phone." Everything below was
+found by reading what is on disk rather than what the documents claim, and
+every fix carries a mechanical guard, because five of the six findings were
+invisible to every check that existed.
+
+## 1. The two plugins the app is built around were never installed
+
+`push.ts`, `lifecycle.ts` and `backButton.ts` each read their plugin off the
+runtime-injected `Capacitor.Plugins` object rather than importing it, and each
+explains at length why: an import would drag a native-only module into every
+browser bundle. The reasoning is right. **But `@capacitor/app` and
+`@capacitor/push-notifications` were not in package.json**, so `cap sync` linked
+neither, so the native shell injected neither, so on a device both objects were
+`undefined` - and every access is defensively guarded, so both degraded in
+silence.
+
+- **The hardware back button exited the game from any screen.** That is the
+  exact bug `backButton.ts` was written to fix, shipped one commit earlier with
+  its fix inert. A store reviewer reads it as a crash.
+- **Push was dead regardless of Firebase.** MOBILE.md's "not built yet: a
+  Firebase project" understated it by a whole layer.
+
+**The rule: reading a plugin off the global is a statement about the WEB
+BUNDLE, not about installation.** "Not imported" and "not installed" are
+indistinguishable in a browser and opposite on a phone.
+`tests/nativeProjects.test.ts` pins every plugin the client reads to a
+dependency AND to both native projects.
+
+Two things travelled with it: `POST_NOTIFICATIONS` is declared in the app
+manifest (the plugin requests it and does not declare it; Android 13+ refuses an
+undeclared runtime request *silently*, and Settings only ever gets one ask), and
+`android:allowBackup` is now `false` (Capacitor's template copies the WebView's
+localStorage - and so the 60-day refresh token - into Google Drive; nothing is
+lost by declining, because the simulation is on the server).
+
+## 2. CI had been failing on every push since the sprite gate was added
+
+`Client Checks` is red on the last four commits, `build-and-push` skipped on all
+four, and nobody knew. The cause is two lines away from the ratchet its own
+comment is so careful about:
+
+**`generate-sprites.mjs` walked the art tree in `readdirSync` order, which is
+not an order.** NTFS returns case-insensitive alphabetical; ext4 returns hash
+order. So the generator emitted a different file on Windows than on Linux from
+identical art, and `--check` - which byte-compares the committed file against a
+fresh generation - failed on every CI run with nothing wrong.
+
+Worse than the flake: where two files reduce to the same lookup key, **the last
+one walked wins**, so which picture an item got was decided by directory order
+too. That is the "wrong picture on an item" the alias table's own comment calls
+a lie the player cannot detect, arriving through the back door. (It had not
+actually bitten - the regenerated file is a pure reordering, no mapping
+changed.)
+
+`.sort()` on the entries, and the fix is proven by generating under a reversed
+walk and getting the same bytes.
+
+**The lesson is not "sort your readdir".** It is that a ratchet nobody watches
+is a ratchet that fails open: the gate was red for four commits and the signal
+it produced was indistinguishable from the noise of nobody looking.
+
+## 3. `cap sync` on Windows writes a Package.swift that Swift cannot parse
+
+The CLI interpolates a `path.relative` result into a Swift string literal, and
+on Windows that is `..\..\..\node_modules\@capacitor\app`. A backslash there is
+an **escape introducer**: `\.` and `\@` are invalid escapes, `\n` is a newline.
+The committed iOS project could not have been built on a Mac at all - invisible
+because this project's only Apple toolchain is hypothetical.
+
+It was also the next thing CI would have failed on, once the sprite step let it
+through: the Linux runner regenerates forward slashes and `git diff
+--exit-code -- android ios` is never empty.
+
+`scripts/normalize-native.mjs` runs after `cap sync` in both sync scripts, so
+the separator is right by construction. A guard alone would have made every
+Windows sync produce a tree needing hand-repair, which is how it got this way.
+
+## 4. The status bar was sitting on top of the game
+
+`index.html` asks for `viewport-fit=cover`; Capacitor's `SystemBars` reads that
+as consent and, on a WebView from 140, stops padding the view and passes insets
+to CSS. Android 15 removed the opt-out for targetSdk 35+ and this app targets
+36. **The client handled one of the four insets.** The header - which carries
+the menu button - was going to render under the clock on every modern phone.
+
+Fixed through `--sa-*` custom properties rather than bare `env()`, because
+Android's WebView does not implement `env()` reliably and Capacitor injects
+`--safe-area-inset-*` itself. That indirection is also what makes the whole
+thing **testable without a device**, which is the point:
+`npm run check:safearea` sets those four properties exactly as the native layer
+does, across 26 screens in both orientations, and asserts both that nothing
+lands in a reserved band and that the layout actually MOVES.
+
+Two smaller defects fell out of it. `body`'s phone-width rule was *replacing*
+the 4.5rem chat-dock clearance rather than adding to it (same selector, same
+specificity, later in the file) - so under 40rem the clearance stopped existing,
+at the width where the dock is most in the way. And ChatDock was setting
+`:global(body) { padding-bottom: 4.25rem }`, a third copy of the same number.
+
+## 5 and 6, smaller
+
+`privacy.html` and `delete-account.html` both said the literal string
+`CONTACT_EMAIL` - on the one page Play requires to work for somebody who has
+already uninstalled. Now folkidle.support@gmail.com, guarded by
+`tests/storeCompliance.test.ts`. **That mailbox has to exist and be read.**
+`ITSAppUsesNonExemptEncryption` is answered in Info.plist, so App Store Connect
+stops asking a human on every upload.
+
+## What was measured, and what it said
+
+Server suite **681 passed / 0 failed**. Client suite **446 passed** (was 431;
+the 15 are the new guards). `exercise.mjs` **137/137**, including the
+new-account path. `check:touch`, `check:overlap`, `check:clipping` and the new
+`check:safearea` all **0**. `check:ratchet` at its baseline of 4.
+
+## Left open, deliberately
+
+- **The Chest row does not fit 320px** and the fix is a product decision.
+  Measured: the item name and rarity have already collapsed to zero width and
+  five 44px buttons remain, which cannot shrink because the touch floor is
+  deliberate. Wrapping is barred - `.row`'s height is a contract with
+  `VirtualList`. 360px and 414px are clean.
+- **Nothing here has been on a phone.** Six of the findings above could not have
+  been found on one either, but the converse holds: the device checklist in
+  MOBILE.md was, until today, measuring a build with no native half.
+
+---
+
 # HANDOFF 2026-09-09 (b) - two board tasks shipped, and four defects found building them
 
 Four commits. `docs/TASK_BOARD.md` now reads **1-12 done**.

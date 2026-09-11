@@ -93,14 +93,22 @@
      The reservation is declared HERE rather than on the app shell, so the
      component that occupies the corner is the one that books the space and
      the two cannot drift apart when either changes. */
-  :global(body) {
-    padding-bottom: 4.25rem;
-  }
+  /* Modul: THE BODY CLEARANCE LIVES IN app.css, ONCE.
+
+     This block used to set `:global(body) { padding-bottom: 4.25rem }` while
+     app.css set 4.5rem for the same reason, on the same element - two copies
+     of one number, and whichever the bundler emitted last won. It mattered
+     once the clearance had to carry the home-indicator inset too: a stray
+     4.25rem here would have quietly dropped `var(--sa-bottom)` back off.
+
+     app.css is the one that knows about both concerns. */
 
   .dock {
     position: fixed;
-    right: 1rem;
-    bottom: 1rem;
+    right: calc(1rem + var(--sa-right));
+    /* Fixed to the VIEWPORT, so body's padding does not move it - the handle
+       would sit under the gesture bar on its own. */
+    bottom: calc(1rem + var(--sa-bottom));
     z-index: 40;
     display: flex;
     flex-direction: column;

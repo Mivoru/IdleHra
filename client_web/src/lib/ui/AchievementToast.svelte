@@ -55,9 +55,10 @@
 <style>
   .deeds {
     position: fixed;
-    right: 1rem;
-    /* Clear of Toasts.svelte, which owns the bottom-right corner. */
-    bottom: 5.5rem;
+    right: calc(1rem + var(--sa-right));
+    /* Clear of Toasts.svelte, which owns the bottom-right corner - and both
+       stack on top of the home indicator, so both carry the same inset. */
+    bottom: calc(5.5rem + var(--sa-bottom));
     display: grid;
     gap: 0.5rem;
     z-index: 61;
