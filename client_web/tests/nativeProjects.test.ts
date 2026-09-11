@@ -26,6 +26,7 @@
 // web build and are opposites on a phone.
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -84,6 +85,30 @@ describe('the committed native projects', () => {
     for (const p of paths) {
       expect(p, `${p} - run: npm run normalize:native`).not.toContain('\\');
     }
+  });
+
+  it('keeps gradlew executable in the git index, or Linux cannot run it', () => {
+    // Modul: `./gradlew: Permission denied`, exit code 126 - the real reason
+    // CI's APK step failed, after three other failures had been stacked in
+    // front of it.
+    //
+    // Windows has no executable bit, so a file added from this machine is
+    // committed 100644 and the Linux runner cannot exec it. It has to be 100755
+    // in the INDEX; the working-tree mode is meaningless here and checking it
+    // would pass on Windows forever.
+    //
+    // It also survived a careful Docker reproduction of the whole CI job, which
+    // is the lesson worth keeping: the repo was copied in over a Windows bind
+    // mount, and those present every file as 0777. A reproduction can be
+    // faithful in every respect except the one that matters.
+    const mode = execFileSync('git', ['ls-files', '-s', '--', 'android/gradlew'], {
+      cwd: root,
+      encoding: 'utf8',
+    })
+      .trim()
+      .split(/\s+/)[0];
+
+    expect(mode, 'run: git update-index --chmod=+x client_web/android/gradlew').toBe('100755');
   });
 
   it('declares POST_NOTIFICATIONS, which the push plugin requests but does not declare', () => {
