@@ -51,6 +51,80 @@ second client and no separate codebase - Capacitor wraps `dist/`.
   is a platform rule, not a limitation of this stack.
 - **A reachable server over HTTPS.** See below.
 
+## The app updates itself
+
+The shape modern games use: the install is a SHELL, and the content arrives over
+the air. Here the shell is the APK — Java, the Capacitor plugins, the
+permissions — and the content is everything in `dist/`. So a gameplay change
+reaches a player when they open the app, not when they remember to reinstall.
+
+`@capgo/capacitor-updater` does the download and the swap (MPL-2.0, self-hosted
+— `statsUrl` and `channelUrl` are set to `""` so nothing is reported to anyone
+else). `autoUpdate` is `onLaunch`: it checks when the app is brought up from a
+killed state and applies immediately, which is the moment a player expects to
+wait a second.
+
+**What it cannot carry: anything native.** A new plugin, a new permission, a
+Gradle change — none of that is in `dist/`, so none of it travels this way. Those
+still need a real APK.
+
+### `notifyAppReady` is the most important line in the feature
+
+Over-the-air updates introduce a failure mode nothing else here has: **a bundle
+that cannot boot**. A syntax error, a bad import, a Svelte snippet rendered with
+component-tag syntax — this repo has shipped that last one, and it took the whole
+screen down at runtime while `svelte-check` passed. In an APK the fix is another
+APK. Over the air, without a rollback, every phone that took the update is
+bricked until the player uninstalls — and the update system is *inside* the
+broken bundle, so it cannot heal them.
+
+The plugin's answer is a dead-man's switch: after applying a bundle it waits for
+`notifyAppReady()`, and if the app never calls it the previous bundle is restored
+on the next launch, permanently.
+
+So the call is the assertion "I booted", and it is made **after the Svelte mount**
+(`src/main.ts`), never at import time — an import-time call would confirm a bundle
+whose entire UI throws. It deliberately does not wait for the server: a phone in a
+tunnel is not a broken bundle.
+
+### How a release reaches a phone
+
+1. `docker compose up -d --build` with `FOLKIDLE_BUNDLE_VERSION` set — see
+   `ops/oracle/README.md`. The web image builds `dist` once and zips the same
+   `dist` into `/srv/updates/<version>.zip`, so the site and the bundle can
+   never be different builds.
+2. Caddy serves `/updates/*` as immutable static files.
+3. `POST /api/v1/app/bundle` on the server answers with `{version, url}`.
+4. The phone downloads it on next cold start and applies it.
+
+**The endpoint fails closed.** With `FOLKIDLE_BUNDLE_VERSION` or
+`FOLKIDLE_BUNDLE_URL` unset it answers `{"message":"no bundle configured"}` and
+nothing updates. A wrong answer to an update check is not a failed request — it
+is every phone applying something broken — so silence is the only safe default.
+
+### Known and deliberate: the whole bundle travels
+
+A typical update is ~17 MB, of which about 16.9 MB is artwork that did not
+change; the app code is ~720 KB. The plugin *does* support differential
+downloads — `getLatest` may return a `manifest` of
+`{file_name, file_hash, download_url}` and it fetches only what differs, which
+would cut an update by roughly 25x.
+
+It is not used yet because the hash format has to match the plugin's own byte
+for byte, and getting it wrong does not fail loudly: it silently re-downloads
+everything, or decides nothing changed. **That needs a device to verify and
+there has not been one.** Correct and slow first.
+
+### Not verified on hardware
+
+Everything above is reasoned from the plugin's source and tested at the seams
+(the endpoint answers correctly in both states; the plugin is linked into both
+native projects). **No update has ever been watched landing on a real phone.**
+The first device session should install an old APK, deploy, and confirm the app
+picks the bundle up on a cold start — and then deliberately ship a broken bundle
+to a test device to confirm the rollback works, because a rollback nobody has
+seen is a rollback nobody has.
+
 ## Getting it onto your own phone, today
 
 Two routes. The first needs nothing installed.

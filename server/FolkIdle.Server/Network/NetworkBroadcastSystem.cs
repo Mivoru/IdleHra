@@ -1454,6 +1454,21 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: WHICH WEB BUNDLE A PHONE SHOULD BE RUNNING.
+                    //
+                    // The live-update plugin POSTs here on a cold start with
+                    // the bundle it currently has, and this answers with the
+                    // one it should have. UNAUTHENTICATED on purpose: it is
+                    // asked before anybody signs in - that is the whole point,
+                    // the player opens the app and the update is already
+                    // arriving - and it reveals nothing but a version number
+                    // and a URL that serves a public static file anyway.
+                    if (requestPath == "/api/v1/app/bundle" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleLiveBundleManifest(context);
+                        continue;
+                    }
+
                     // Modul: which explanations this player has already read.
                     // Was localStorage only, which taught a returning player
                     // the whole game again on a second device - see
@@ -3685,6 +3700,62 @@ namespace FolkIdle.Server.Network
         /// once. A magic number crossing the wire would be that mapping written
         /// down in two languages, which is how KNOWN_AFFIX_IDS drifted.
         /// </remarks>
+        /// <summary>
+        /// Tells a phone which web bundle it should be running.
+        ///
+        /// Modul: FAILS SAFE, and that is the most important property here.
+        ///
+        /// With no bundle configured this answers "you are up to date". It does
+        /// not guess a version, it does not 500, and it does not hand back a URL
+        /// that might not exist - because the consequence of getting this wrong
+        /// is not a failed request, it is every phone downloading and applying
+        /// something broken. Silence is always a safe answer for an update
+        /// check; a wrong answer never is.
+        ///
+        /// So the feature is INERT until FOLKIDLE_BUNDLE_VERSION and
+        /// FOLKIDLE_BUNDLE_URL are both set. Deploying this code without them
+        /// changes nothing for anybody, which is the state it should stay in
+        /// until somebody has watched an update land on a real device.
+        ///
+        /// The bundle itself is a static file served by Caddy - see
+        /// ops/oracle/caddy/Caddyfile. This endpoint only ever names it.
+        /// </summary>
+        private async Task HandleLiveBundleManifest(HttpListenerContext context)
+        {
+            try
+            {
+                string version = Environment.GetEnvironmentVariable("FOLKIDLE_BUNDLE_VERSION") ?? string.Empty;
+                string url = Environment.GetEnvironmentVariable("FOLKIDLE_BUNDLE_URL") ?? string.Empty;
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+
+                // The plugin treats a reply carrying no `url` as "nothing to do".
+                string payload = (string.IsNullOrWhiteSpace(version) || string.IsNullOrWhiteSpace(url))
+                    ? "{\"message\":\"no bundle configured\"}"
+                    : "{\"version\":\"" + JsonEscape(version) + "\",\"url\":\"" + JsonEscape(url) + "\"}";
+
+                byte[] bytes = System.Text.Encoding.UTF8.GetBytes(payload);
+                context.Response.ContentLength64 = bytes.Length;
+                await context.Response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"HandleLiveBundleManifest failed: {ex.Message}");
+                try
+                {
+                    context.Response.StatusCode = 500;
+                    context.Response.Close();
+                }
+                catch { }
+            }
+        }
+
+        /// <summary>Minimal JSON string escaping for the two values above.</summary>
+        private static string JsonEscape(string value)
+            => value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
         private async Task HandlePushTokenRegistration(HttpListenerContext context)
         {
             try

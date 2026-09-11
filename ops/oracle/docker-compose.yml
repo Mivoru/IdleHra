@@ -75,6 +75,12 @@ services:
         # ends up talking to the address worth sharing - and so that the day
         # this machine changes IP, only DNS has to move.
         VITE_FOLKIDLE_SERVER: "https://folkidle.duckdns.org"
+        # Modul: names the over-the-air bundle this image will carry. Computed
+        # on the HOST at deploy time, because the build context has no git
+        # history - see ops/oracle/README.md. Left empty it still builds; the
+        # bundle is then versioned from nothing and the app's manifest endpoint
+        # stays inert, which is the safe state.
+        FOLKIDLE_BUNDLE_VERSION: "${FOLKIDLE_BUNDLE_VERSION:-}"
     restart: unless-stopped
     ports:
       - "80:80"

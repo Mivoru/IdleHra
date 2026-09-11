@@ -11,3 +11,9 @@ smoke-*.png
 # hand, once per release. The SOURCES that matter (resources/icon.svg and
 # resources/splash.svg) are committed; these are output.
 resources/store-screenshots/
+
+# Modul: the packaged over-the-air bundle - a ~17 MB build artefact produced by
+# scripts/package-bundle.mjs. It is rebuilt from dist/ on every deploy inside
+# the web image, so a copy in git would be 17 MB of duplicate that can only go
+# stale.
+ota/

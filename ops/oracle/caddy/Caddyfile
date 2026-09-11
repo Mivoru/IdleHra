@@ -105,6 +105,26 @@ folkidle.duckdns.org, 92-5-0-94.sslip.io {
 		}
 	}
 
+	# Modul: THE OVER-THE-AIR BUNDLES, served as plain static files.
+	#
+	# A phone's live-update plugin is told the URL of one of these by
+	# /api/v1/app/bundle on the app, and downloads it instead of the player
+	# reinstalling the APK. They are content-addressed by version in the
+	# filename, so like /assets/* they can be cached for ever: a different
+	# bundle is a different URL and a cached one can never be wrong.
+	#
+	# BEFORE the @api block, because that block proxies /api/* to the app and
+	# this must not be; and before the SPA fallback, which would otherwise
+	# answer a missing bundle with index.html and 200 - the plugin would then
+	# unzip a web page and brick itself. A 404 is the answer that lets it give
+	# up quietly.
+	@updates path /updates/*
+	handle @updates {
+		root * /srv
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
 	# Everything the server owns. /gamedata and /audio are here because the
 	# client fetches both from the API (see config.ts GAMEDATA_BASE and
 	# audio.ts) - they are NOT part of the static bundle, and letting them fall

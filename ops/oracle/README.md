@@ -167,9 +167,32 @@ is exempt from LFS (see **Git LFS** above).
     cd ~/folkidle/ops/oracle
     cp .env.example .env        # if it does not exist yet
     $EDITOR .env                # DB connection string, JWT_SECRET_KEY, mail
-    docker compose up -d --build
+    FOLKIDLE_BUNDLE_VERSION="1.0.$(git -C ~/folkidle rev-list --count HEAD)" docker compose up -d --build
 
 The first build takes a while — a .NET publish and an npm install on 2 vCPU.
+
+### Why the deploy carries a bundle version
+
+The phone app updates itself over the air: it asks `/api/v1/app/bundle` which
+web bundle it should be running, and downloads a zip rather than making the
+player reinstall the APK. `FOLKIDLE_BUNDLE_VERSION` is what stamps that zip and
+what the endpoint answers with.
+
+It is computed **on the host** because the web image's build context has no
+`.git` — asking the packaging script to count commits inside the image would
+answer with whatever a throwaway repo said, which is both wrong and not
+monotonic across deploys. The commit count is monotonic, reproducible from the
+checkout, and sorts above the APK's own `versionName` of `1.0` under semver,
+which is what a freshly installed app compares against.
+
+**Forgetting it is safe.** With the variable unset the image still builds, and
+the app's endpoint answers "no bundle configured" — nothing updates, nothing
+breaks. That is deliberate: a wrong answer to an update check is not a failed
+request, it is every phone applying something broken, so the endpoint fails
+closed. See `HandleLiveBundleManifest`.
+
+For the app half — the plugin, the rollback guard, and why `notifyAppReady` is
+the most important line in it — see `client_web/MOBILE.md`.
 
     docker compose logs -f app        # watch the migration, then "Listening"
     docker compose logs -f caddy      # watch the certificate being obtained

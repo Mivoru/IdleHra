@@ -54,6 +54,7 @@
     "@capacitor/core": "^8.5.0",
     "@capacitor/preferences": "^8.0.1",
     "@capacitor/push-notifications": "^8.1.2",
+    "@capgo/capacitor-updater": "^8.51.15",
     "@tanstack/svelte-query": "^6.1.38",
     "cordova-plugin-purchase": "^13.18.0"
   }

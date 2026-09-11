@@ -49,6 +49,11 @@ const REQUIRED_PLUGINS = [
     global: 'PushNotifications',
     usedBy: 'push.ts',
   },
+  {
+    pkg: '@capgo/capacitor-updater',
+    global: 'CapacitorUpdater',
+    usedBy: 'liveUpdate.ts',
+  },
 ] as const;
 
 describe('the committed native projects', () => {
@@ -65,7 +70,10 @@ describe('the committed native projects', () => {
     it(`links ${name} into the Android project`, () => {
       // capacitor.settings.gradle is what `cap sync` writes; a plugin absent
       // from it is one the native shell will never inject.
-      expect(read('android', 'capacitor.settings.gradle')).toContain(name.replace('@capacitor/', 'capacitor-'));
+      // `@capacitor/x` links as `capacitor-x`; `@capgo/x` as `capgo-x`.
+      expect(read('android', 'capacitor.settings.gradle')).toContain(
+        name.replace('@', '').replace('/', '-'),
+      );
     });
 
     it(`links ${name} into the iOS project`, () => {
