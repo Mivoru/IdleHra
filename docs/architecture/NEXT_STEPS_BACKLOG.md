@@ -17,6 +17,101 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-12 - the app updates itself, and nine more device findings
+
+Two blocks of work, both driven by a phone rather than by a test.
+
+## The app updates itself now
+
+Asked for as "like some game when the player logs in and the game downloads the
+update". That is the standard shape and it is what was built: the install is a
+SHELL (the APK - Java, plugins, permissions) and the CONTENT is `dist/`, which
+arrives over the air. `@capgo/capacitor-updater`, self-hosted - `statsUrl` and
+`channelUrl` are `""` so nothing reports to a third party.
+
+**`notifyAppReady` is the whole feature.** Over-the-air updates introduce a
+failure mode nothing else here has: a bundle that cannot boot. This repository
+has shipped exactly that (`<Snippet />` instead of `{@render Snippet()}`,
+svelte-check clean, screen dead). In an APK the fix is another APK; over the
+air, without a rollback, every phone that took it is bricked - and the updater
+is INSIDE the broken bundle. The plugin's dead-man's switch restores the
+previous bundle unless the app confirms it booted, so the call is made AFTER the
+Svelte mount, never at import time, and deliberately does not wait for the
+server.
+
+**The endpoint fails closed.** `/api/v1/app/bundle` answers "no bundle
+configured" unless both `FOLKIDLE_BUNDLE_VERSION` and `FOLKIDLE_BUNDLE_URL` are
+set. A wrong answer to an update check is not a failed request - it is every
+phone applying something broken.
+
+Version is the commit count as `1.0.<n>`: monotonic, reproducible, and above the
+APK's `versionName` of "1.0" under semver so a fresh install does not ignore
+every bundle for ever. Computed on the HOST, because the image's build context
+has no `.git`. One `dist` feeds both the site and the zip in one image build.
+
+Verified against production: the endpoint names 1.0.462, that URL serves
+18,035,100 bytes of `application/zip`, and the archive opens with `index.html`
+AT THE ROOT - the one structural property that decides whether an applied bundle
+is the game or a blank page.
+
+Known and deliberate: the whole bundle travels, ~17 MB of which ~16.9 MB is
+artwork that did not change. The plugin supports differential downloads via a
+file manifest (~25x smaller), but the hash format must match byte for byte and
+getting it wrong fails SILENTLY. Needs a device.
+
+**Not verified on hardware.** No update has been watched landing on a phone. The
+first device session should install an old APK, deploy, and confirm the cold
+start picks it up - then deliberately ship a BROKEN bundle to a test device,
+because a rollback nobody has seen is a rollback nobody has.
+
+## Nine more findings, and two pairs shared a cause
+
+- **`export let` is a different reactivity system, not old syntax.**
+  PlayerProfileModal was the last legacy component; paired with rune-based
+  `createQuery` its template read `isPending` once and never updated. "Fetching
+  profile data" for ever, working on the second click only because the cache was
+  warm. `tests/runesMode.test.ts` greps for it now.
+- **Scroll anchoring hid the best drop AND nudged the page** - one cause. Loot
+  is sorted rarity-descending so better pieces are inserted at the TOP, and
+  anchoring pushes scroll down by exactly the inserted height.
+  `overflow-anchor: none`.
+- **Village upgrades were 30-40s at every level, for ever.** Duration was
+  `max(30, cost/10)` fed from a cost curve that does `level % 5` - it reset
+  every five levels, and it used the PRODUCTION cost even for service buildings.
+  Now keyed to level: 45s at 0, x1.6, capped at six hours (3h31 at the level-12
+  ceiling). `VillageUpgradeDurationTests` prints the table and asserts the shape.
+- **World boss "always 0" was correct data.** The account had spent three
+  attempts during the window that closed on the 7th; the report came on the
+  11th, between windows (1st-7th and 15th-22nd). The screen knew "no encounter"
+  and could not say WHEN - it names the next window now.
+- **A silent refusal, found on the way.** Upgrade was enabled on capped
+  buildings, the command travelled, the server rolled it back, and the player
+  saw nothing. Both ceilings are mirrored so the button refuses first.
+- Plus the friend name in the corner of its 44px touch box, the offline
+  summary's unshrinkable rows, and the market filters' flex-wrap raggedness.
+
+**A check that could only pass once.** `exercise.mjs` dismisses onboarding cues,
+`OnboardingSeenIds` became durable server-side, and `--seed-dev` did not clear
+it - so the tier-three check failed on a working game against 216 characters of
+dismissed ids. The seeder resets it to NULL now (not `"[]"` - absent and empty
+mean opposite things there).
+
+**The character portrait is NOT a CSS bug.** Measured across all twelve files:
+the male artwork's bright centroid sits +4.7% to +11.6% right of its canvas
+while every female one is within 2%. The frame centres the image correctly and
+the art is not symmetric. Left alone deliberately - compensating in CSS for
+asymmetric artwork is a decision somebody should make on purpose.
+
+## Open
+
+- **The gold stockpile still has no sink.** 119M and climbing on the live
+  account. The Delve is a RECURRING sink and cannot drain a stockpile; that is a
+  separate design problem and deliberately not solved by inflating the Delve.
+- **`RarityRollDistributionTests` is flaky** - failed once, passed alone and in
+  two full re-runs. A sampling test that wants a seed rather than a shrug.
+
+---
+
 # HANDOFF 2026-09-11 (b) - nine things a player found in an hour on a phone
 
 The first real device session produced a list, and almost all of it was real.
