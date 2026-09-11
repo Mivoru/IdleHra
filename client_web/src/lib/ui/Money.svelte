@@ -38,7 +38,24 @@
   const iconUrl = $derived(icon ? currencyIcon(kind) : null);
 
   const value = $derived(Number(amount));
-  const short = $derived(kind === 'gold' ? 'g' : '');
+
+  // Modul: THE UNIT SPELLS ITSELF OUT ONCE THE NUMBER IS COMPACTED.
+  //
+  // "g" beside a plain figure is unambiguous - 84,915,755g is obviously gold.
+  // Beside a COMPACTED figure it is not, because the compactor's own suffix is
+  // already a letter: 5,110,000 became "5.11M" + "g" = "5.11Mg", which a
+  // player read as a unit in its own right and asked whether "Mg" was this
+  // game's shortcut for a million.
+  //
+  // Separating them visually was the first attempt and it is not enough on its
+  // own - measured, the gap between the M and the g is five pixels, which is a
+  // gap you can see and still not a boundary you read. Two adjacent letters
+  // are a word. So when the magnitude suffix is present the unit becomes a
+  // word too, and "5.11M gold" cannot be misread as anything.
+  //
+  // Small numbers keep the terse form, because that is where terseness is
+  // worth something - a column of prices in a market list.
+  const short = $derived(kind === 'gold' ? (isCompacted(value) ? 'gold' : 'g') : '');
   const affordable = $derived(available === undefined || value <= available);
 
   /*
@@ -96,7 +113,20 @@
   {#if iconUrl}
     <img src={iconUrl} alt="" loading="lazy" decoding="async" />
   {/if}
-  {formatted}{short}
+  <!-- Modul: THE UNIT IS ITS OWN ELEMENT, and that is what stops "Mg".
+
+       This was `{formatted}{short}` - two adjacent text nodes - so once the
+       compactor started shortening at a million, 5,042,484 gold rendered as
+       "5.04Mg". Reported from a phone as "is Mg the right shortcut for a
+       million", which is exactly the confusion: M is the magnitude and g is
+       the currency, and glued together they read as a milligram.
+
+       `.money` is already an inline-flex with `gap: 0.25em`, but a gap only
+       separates FLEX ITEMS and a bare text node is not one. Making the unit a
+       span makes it one, so the separation comes from the rule that is already
+       there rather than from a space character that would also be wrong when
+       the number is not compacted. Diamonds already did it this way. -->
+  {formatted}{#if short}<span class="unit">{short}</span>{/if}
   {#if kind === 'diamond'}<span class="unit">diamonds</span>{/if}
 </span>
 
@@ -137,6 +167,10 @@
   .unit {
     font-size: 0.85em;
     opacity: 0.85;
-    margin-left: 0.15em;
+    /* Modul: 0.15em measured out at five pixels, which is a gap you can see
+       and still not a boundary you read - "5.11M g" was the first attempt at
+       un-sticking "5.11Mg" and it did not land. The unit is a whole word now
+       (see `short` above) and a word wants a word's worth of space. */
+    margin-left: 0.3em;
   }
 </style>

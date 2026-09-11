@@ -238,7 +238,7 @@
         <div class="decision">
           <button class="secondary" disabled={busy} onclick={() => act(bankDelve)}>
             Climb out with {view.DiamondsAfterCeiling}{@render Diamond()}{view.ConsolationGoldIfCapped > 0
-              ? ` + ${formatCompact(view.ConsolationGoldIfCapped)}g`
+              ? ` + ${formatCompact(view.ConsolationGoldIfCapped)} gold`
               : ''}
           </button>
           {#if !atBottom}

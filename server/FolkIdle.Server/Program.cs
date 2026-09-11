@@ -474,6 +474,10 @@ var pushNotificationTriggerEngine = new PushNotificationTriggerEngine(servicePro
 var liveOpsTickEngine = new LiveOpsTickEngine(serviceProvider, playerRegistry, worldBossEngine, pushNotificationTriggerEngine);
 var compliancePurgeEngine = new CompliancePurgeEngine(serviceProvider, redisMultiplexer);
 var leaderboardCronEngine = new LeaderboardCronEngine(serviceProvider, redisMultiplexer);
+// Modul: reads the ZSET leaderboardCronEngine publishes, so the payout and the
+// board a player looked at cannot disagree. Idempotent per ISO week off the
+// player row - see LeaderboardPayoutEngine.
+var leaderboardPayoutEngine = new LeaderboardPayoutEngine(serviceProvider, redisMultiplexer);
 var guildManagementEngine = new GuildManagementEngine(serviceProvider.GetRequiredService<RetryingDbContextOptions>(), playerRegistry);
 // Modul: MockIapReceiptValidator performs no cryptographic verification -
 // see its own doc comment. Production instead uses
@@ -573,6 +577,7 @@ FolkIdle.Server.Engine.PlayerNameResolver.ContextFactory =
     serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
 
 leaderboardCronEngine.StartCron();
+leaderboardPayoutEngine.StartCron();
 
 AppDomain.CurrentDomain.ProcessExit += (s, e) => 
 {

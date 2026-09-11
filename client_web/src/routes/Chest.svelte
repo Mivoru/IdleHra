@@ -41,6 +41,28 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { requestScreen, setPendingFocusEquipment } from '../lib/stores/navigation';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import { isNarrow } from '../lib/ui/media';
+
+  // Modul: TWO NUMBERS FOR ONE CONTRACT, because the row has two shapes.
+  //
+  // VirtualList positions rows by arithmetic, so whatever `.row` actually
+  // renders as, this has to match it. Below 40rem the action buttons take a
+  // line of their own (see the .actions wrapper in the markup and the 40rem
+  // media block in this file's styles), which is one 44px touch row plus the
+  // name line plus the gaps between them.
+  //
+  // Modul: do NOT write a literal style or script tag in a comment here. The
+  // Svelte parser scans this block as raw text looking for its closing tag,
+  // and an angle-bracketed one in a comment made it report
+  // "`<script>` was left open" pointing at the LAST line of the file, which
+  // says nothing about where the problem is.
+  //
+  // Kept beside each other rather than derived from a CSS variable: the CSS
+  // and this number have to agree, and two literals a reader can compare are
+  // easier to keep honest than one indirection they have to resolve.
+  const ROW_H_WIDE = 34;
+  const ROW_H_NARROW = 78;
+  const equipmentRowHeight = $derived($isNarrow ? ROW_H_NARROW : ROW_H_WIDE);
 
   const client = useQueryClient();
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
@@ -489,7 +511,7 @@
              player owns, inside a box 26rem tall - 17,836 rows on the
              worst-affected account, each one an icon and six buttons, roughly
              180,000 DOM nodes to display about twenty. See ui/VirtualList. -->
-        <VirtualList items={sortedEquipment} rowHeight={34} label="Equipment in the chest">
+        <VirtualList items={sortedEquipment} rowHeight={equipmentRowHeight} label="Equipment in the chest">
           {#snippet row(item: InventoryEquipment)}
             <div class="row">
               <ItemIcon
@@ -507,6 +529,26 @@
               </span>
               <span class="dim tiny">{rarityName(item.QualityTier)}</span>
 
+              <!-- Modul: THE ACTIONS ARE A GROUP, so a phone can put them on
+                   their own line instead of crushing the name to nothing.
+
+                   Measured at 360px before this wrapper existed: the name span
+                   was 0 wide (scrollWidth 99 - the item had a name, there was
+                   simply no room for it) and the rarity label was 0 wide and
+                   121 TALL, wrapped to six lines inside a row pinned to 34px.
+                   Five 44px buttons that may not shrink - the touch floor is
+                   deliberate - plus an icon is already wider than the row, so
+                   flex took every pixel from the only two children that could
+                   give any. The player saw a nameless row and a column of
+                   single letters.
+
+                   Wrapping cannot be done by letting `.row` wrap freely,
+                   because VirtualList positions by arithmetic and a taller row
+                   overlaps its neighbour. So the break is explicit (this group
+                   takes the full width below 40rem) and the height it implies
+                   is passed to the list as `rowHeight`. One number, both
+                   halves. -->
+              <div class="actions">
               {#if item.IsEquipped}
                 <button class="tiny-btn" onclick={() => unequip(item.BaseItemId)}>Unequip</button>
               {:else}
@@ -577,6 +619,7 @@
                   Bin
                 </button>
               {/if}
+              </div>
             </div>
           {/snippet}
         </VirtualList>
@@ -749,12 +792,69 @@
   }
 
   /* Modul: the virtual list positions rows by arithmetic, so this has to be
-     exactly the rowHeight passed to it (34px) - box-sizing included, since the
+     exactly the rowHeight passed to it - box-sizing included, since the
      padding above is inside it. A row that renders taller overlaps its
-     neighbour instead of pushing it down. */
+     neighbour instead of pushing it down. `height: 100%` takes whichever of
+     ROW_H_WIDE / ROW_H_NARROW the script handed the list. */
   .row {
     box-sizing: border-box;
     height: 100%;
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  /* Modul: THE SECOND LINE. See the .actions wrapper in the markup for the
+     measurements that forced this.
+
+     `flex-basis: 100%` on a flex item forces it onto its own line, which is
+     the whole mechanism - the row still does not wrap arbitrarily, it wraps in
+     exactly one place, so the height stays predictable and ROW_H_NARROW can
+     match it.
+
+     The name then gets the first line to itself and is given an ellipsis
+     rather than being allowed to collapse: `min-width: 0` lets a flex item
+     shrink below its content, which is what produced a 0-wide name in the
+     first place, so the overflow has to be handled deliberately. */
+  @media (max-width: 40rem) {
+    .row {
+      flex-wrap: wrap;
+      align-content: center;
+      row-gap: 0.3rem;
+    }
+
+    .row .name {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .actions {
+      flex-basis: 100%;
+      justify-content: flex-start;
+    }
+
+    /* The materials list has the same squeeze - icon, name, quantity and two
+       buttons - but it is a plain <ul>, not the VirtualList, so nothing is
+       positioned by arithmetic and it may simply wrap where it likes. No
+       height to keep in step, so no wrapper and no constant. */
+    .rows li {
+      flex-wrap: wrap;
+      row-gap: 0.3rem;
+    }
+
+    .rows li .name {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 
   .sweep {

@@ -1898,6 +1898,22 @@ namespace FolkIdle.Server.Network
             public int HardestMonsterId { get; set; }
             public string HardestMonsterName { get; set; } = string.Empty;
             public int KillsOfHardest { get; set; }
+
+            // Modul: THE TIER TRAVELS WITH THE ROW, rather than the client
+            // deriving it from Rank.
+            //
+            // It is the same information, but deriving it client-side would be
+            // LeaderboardTierRegistry's thresholds written down a second time
+            // in a second language - and an ordered table that crosses the wire
+            // is precisely the shape that drifted in KNOWN_AFFIX_IDS, where ten
+            // of twelve entries were wrong and the feature looked dead. The
+            // client needs a COLOUR per tier and nothing else, so only the id
+            // and the name cross.
+            //
+            // -1 means no tier: ranked, but below the bottom rung.
+            public int TierId { get; set; }
+            public string TierName { get; set; } = string.Empty;
+            public int WeeklyDiamonds { get; set; }
         }
 
         private sealed class MarketListingResponse
@@ -2302,6 +2318,13 @@ namespace FolkIdle.Server.Network
                     var dbRedis = _serviceProvider.GetRequiredService<StackExchange.Redis.IConnectionMultiplexer>().GetDatabase();
                     var redisEntries = await dbRedis.SortedSetRangeByRankWithScoresAsync("leaderboard:mastery", skip, skip + take - 1, StackExchange.Redis.Order.Descending);
 
+                    // How many players are ranked in total, which is what
+                    // decides whether a tier pays anything at all - see the
+                    // population floor in LeaderboardTierRegistry. Read here so
+                    // the board can show an HONEST reward next to each rank
+                    // instead of a headline figure the payout would refuse.
+                    long rankedPopulation = await dbRedis.SortedSetLengthAsync("leaderboard:mastery");
+
                     var playerIds = redisEntries.Select(e => (long)e.Element).ToList();
                     
                     var players = await db.PlayerRecords
@@ -2356,7 +2379,18 @@ namespace FolkIdle.Server.Network
                                 HardestMonsterName = progressByPlayer.TryGetValue(p.Id, out var named) && named.Hardest > 0
                                     ? ContentRegistry.GetMonsterName(named.Hardest)
                                     : string.Empty,
-                                KillsOfHardest = progressByPlayer.TryGetValue(p.Id, out var killed) ? killed.Kills : 0
+                                KillsOfHardest = progressByPlayer.TryGetValue(p.Id, out var killed) ? killed.Kills : 0,
+
+                                // Resolved from the ONE table that also decides
+                                // the payout, so the colour a player sees and
+                                // the diamonds they receive come from the same
+                                // place. WeeklyDiamonds is what this rank earns
+                                // AT THE CURRENT POPULATION - so on a small
+                                // server it honestly reads 0 rather than
+                                // advertising a prize the floor will refuse.
+                                TierId = LeaderboardTierRegistry.TierIdForRank(skip + i + 1),
+                                TierName = LeaderboardTierRegistry.TierForRank(skip + i + 1)?.Name ?? string.Empty,
+                                WeeklyDiamonds = LeaderboardTierRegistry.WeeklyDiamondsFor(skip + i + 1, (int)rankedPopulation)
                             });
                         }
                     }

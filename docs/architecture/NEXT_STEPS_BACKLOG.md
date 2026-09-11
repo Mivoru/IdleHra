@@ -17,6 +17,107 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-11 (b) - nine things a player found in an hour on a phone
+
+The first real device session produced a list, and almost all of it was real.
+Two items on that list turned out to be the same defect wearing different
+clothes, and one of them explains why the game LOOKED broken when it was not.
+
+## The screen was working and could not say so
+
+Reported as "combat does nothing, it looks frozen, nothing is added to loot
+drops". Checked against the live database: that account has **162,258 codex
+kills and 12,791 equipment rows**, is not quarantined, and its larder is full,
+while the server log was reporting `tick saw 12 kills` every second.
+
+At level 87 an early monster dies BETWEEN TWO SNAPSHOTS - the health bar cannot
+render a fight that is over before the next packet, which is the measured reason
+`ResponseCombatEventPacket` exists at all. So the only evidence a player has is
+the loot arriving, and `SessionLoot` was the LAST panel on the screen, after the
+drop table and twenty-five monster rows. On a desktop the auto-fit grid merely
+put it in the right-hand column; **a phone has one column, and one column means
+DOM order is reading order.**
+
+Reordered to: the fight, what it just gave you, what this monster can give you,
+then where the other monsters are.
+
+## Two checkers were blind in ways that had already cost us
+
+**A control squeezed to ZERO width is invisible to all five scripts.** The
+Chest's row at 360px: five 44px buttons that may not shrink left nothing for the
+name, so flex took it - the name measured 0 wide with a scrollWidth of 99, and
+the rarity label 0 wide and **121 tall**, wrapped to six lines inside a row
+pinned to 34px by `VirtualList`'s contract. Nothing was clipped, overlapping,
+undersized or off-screen. It simply was not there. The line that hid it was
+`if (el.clientWidth === 0) continue`, added because *inline* elements
+legitimately report 0 - so the check uses `getBoundingClientRect` now.
+
+**`check:clipping` skipped SVG entirely** because `clientWidth` is meaningless
+on an SVG child. True, and it was generalised into "SVG cannot be wrong": the
+Skill Tree's "Fortune" label ran off the left edge of the phone at `left=-6px`,
+found by a player. `getBoundingClientRect` is viewport pixels for every element,
+so SVG is measured against the viewport now.
+
+## The rest
+
+- **Race portraits were pinned left.** `object-position: left center`, justified
+  by a comment about "sheets with two figures side by side". Measured, every one
+  of the twelve files is a single portrait figure (`Human_Male` 451x512), so
+  `contain` letterboxed them and `left` jammed them against the edge. The
+  comment described the master sheets, not what is served.
+- **"5.11Mg"** - the compactor's magnitude suffix glued to the currency letter.
+  A 5px gap was measured and was not enough; two adjacent letters are a word. The
+  unit spells itself out once a number is compacted.
+- **The Forge rendered every owned item as an `<option>`**, 12,791 of them,
+  across three selects. Fusion needs three matching pieces and `fusableSets`
+  already knew which those were, so the dropdown was not merely slow - most of
+  what it offered could never complete.
+- **A partial translation reads as a bug.** `navigator.language` switched the
+  whole client to Czech on a Czech device against a table of 28 rows, 25
+  translated, versus 516+ inline English strings. Under five per cent. The
+  device is no longer asked; the Settings picker still is.
+
+## Leaderboard ranks and rewards
+
+Built, and deliberately paying nothing yet.
+
+`LeaderboardTierRegistry` is the one table: eight rungs (#1, #2, #3, top 10, 50,
+100, 500, 1000), each with a name, a weekly diamond payout and - on the client -
+a colour and a glow. `serverMirrors.test.ts` compares the two element by element,
+because an ordered table crossing the wire by index is exactly how
+`KNOWN_AFFIX_IDS` drifted into ten wrong entries out of twelve.
+
+**The population floor is the load-bearing part.** Measured live: 29 registered
+accounts, ONE above level 5, and the board carried `exercise######` throwaways
+left by the end-to-end suite. Paying by rank against that would have been an
+uncapped diamond tap handed to the only person playing. So a tier pays nothing
+unless the RANKED population clears `MinimumRankedPopulation` (20) and is at
+least as large as the tier itself - "top 100 of 40" is the bottom half - and
+`MinimumRankedLevel` (10) keeps throwaways off the board to begin with.
+
+First place is 60 a week, which is exactly the Delve's own ceiling;
+`LeaderboardRewardTests` asserts that against `DelveRegistry.MaxDiamondsPerWeek`
+rather than trusting the comment. The payout is idempotent per ISO week off a
+new column pair on `PlayerRecord`, reusing `DelveEngine.CurrentWeekKey` rather
+than defining a second week key.
+
+**Today this ladder pays zero**, and that is the correct answer rather than a
+broken one. The first test in the file asserts it.
+
+## Open
+
+- **The equipment-slot text overlap could not be reproduced.** Probed at 360,
+  390 and 414px on the dev fixture: no element spills its parent, no text
+  intersects a slot box it does not belong to. Needs a screenshot from the
+  device that saw it, or the account's own longer item names.
+- **The gold stockpile has no sink.** One live account holds 84,915,755 gold -
+  230 hours of region-5 income. The Delve's fee is correctly sized at ~40
+  minutes of that region's income per run, which is a RECURRING sink and can
+  never drain a stockpile. That is a separate design problem and is deliberately
+  not solved by inflating the Delve.
+
+---
+
 # HANDOFF 2026-09-11 - the mobile app had no native half, and CI had been red for four commits
 
 An audit rather than a feature: "what is missing before this is a real phone

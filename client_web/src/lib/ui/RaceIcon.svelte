@@ -52,9 +52,20 @@
     border-radius: var(--radius);
     background: var(--bg);
     object-fit: contain;
-    /* The race sheets are wide (two figures side by side), so they are shown
-       in a landscape frame rather than squeezed into a square. */
-    object-position: left center;
+    /* Modul: CENTRED, because the premise of the old rule was not true.
+       It said `object-position: left center` with "the race sheets are wide
+       (two figures side by side), so they are shown in a landscape frame" -
+       which described the MASTER sheets, not what is actually served. The
+       cleaned per-sex WebP files are single portrait figures: measured,
+       Human_Male 451x512, Bes_Female 475x512, and every one of the twelve is
+       taller than it is wide.
+       So `contain` letterboxes them horizontally inside these landscape
+       frames, and `left` then jammed every character against the left edge
+       with the empty space piled on the right. Reported as exactly that, from
+       a phone, about every race. `center` is also the CSS default, so this
+       line now only exists to stop somebody re-deriving the old reasoning from
+       the old comment. */
+    object-position: center;
   }
 
   .race[data-size='sm'] img,

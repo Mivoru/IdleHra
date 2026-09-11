@@ -830,6 +830,23 @@ export interface LeaderboardEntry {
   HardestMonsterId: number;
   HardestMonsterName: string;
   KillsOfHardest: number;
+
+  // Which rung of LeaderboardTierRegistry this rank sits on, resolved SERVER
+  // SIDE. -1 means ranked but below the bottom rung.
+  //
+  // Modul: the thresholds are deliberately not re-derived here from Rank. They
+  // are the same table that decides the payout, and an ordered table written
+  // down twice in two languages is exactly how KNOWN_AFFIX_IDS drifted into
+  // ten wrong entries out of twelve. Only the COLOUR is the client's business
+  // - see lib/ui/leaderboardTiers.ts, whose names are compared against the
+  // server's in serverMirrors.test.ts.
+  TierId: number;
+  TierName: string;
+
+  // What this rank earns per week AT THE CURRENT RANKED POPULATION - so a
+  // small server honestly shows 0 rather than advertising a prize the payout's
+  // population floor would refuse.
+  WeeklyDiamonds: number;
 }
 
 export function fetchLeaderboard(): Promise<LeaderboardEntry[]> {

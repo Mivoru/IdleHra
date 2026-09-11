@@ -98,13 +98,13 @@
       : [],
   );
 
-  const targetChoices = $derived(owned.filter((i) => i.Id !== fusionSacOne && i.Id !== fusionSacTwo));
-  const sacOneChoices = $derived(twins.filter((i) => i.Id !== fusionSacTwo));
-  const sacTwoChoices = $derived(twins.filter((i) => i.Id !== fusionSacOne));
-
   // Sets the player can actually fuse right now: three or more of the same
   // item at the same rarity. Without this the screen is a puzzle - three
   // dropdowns and no way to tell whether any legal combination exists.
+  //
+  // Modul: DECLARED BEFORE targetChoices, and that ordering is deliberate -
+  // the dropdown below is built from this, so moving it back down would leave
+  // a $derived reading a const declared after it.
   const fusableSets = $derived.by(() => {
     const groups = new Map<string, { base: string; tier: number; count: number }>();
     for (const item of owned) {
@@ -118,6 +118,38 @@
       .filter((g) => g.count >= 3)
       .sort((a, b) => b.tier - a.tier || a.base.localeCompare(b.base));
   });
+
+  // Modul: ONLY ITEMS THAT CAN ACTUALLY BE FUSED, which is both the fix for
+  // the lag and the fix for a dropdown that was lying.
+  //
+  // This was `owned.filter(...)` - EVERY owned item, as an <option>. A live
+  // account holds 12,791 of them, and this screen has three selects, so the
+  // Forge built tens of thousands of DOM nodes and rebuilt them whenever the
+  // state changed. Reported from a phone as "forge is lagging a lot because of
+  // many items"; that is exactly what it was. Same rule the Chest already
+  // learned the hard way - a list of owned items must be windowed - except a
+  // <select> cannot be windowed, so the list has to be SHORTER instead.
+  //
+  // And it can be, because fusion needs THREE of the same item at the same
+  // rarity. `fusableSets` already computes precisely which (base, tier) groups
+  // qualify, and the panel above already shows the player that list. Any other
+  // item in this dropdown was an option that could never complete: the screen
+  // offered twelve thousand choices of which a handful worked, and answered
+  // the rest with "You only have 1 of this item".
+  //
+  // So the long list was not merely slow - it was why the screen read as a
+  // puzzle.
+  const fusableKeys = $derived(new Set(fusableSets.map((g) => `${g.base}#${g.tier}`)));
+  const targetChoices = $derived(
+    owned.filter(
+      (i) =>
+        i.Id !== fusionSacOne &&
+        i.Id !== fusionSacTwo &&
+        fusableKeys.has(`${i.BaseItemId}#${i.QualityTier}`),
+    ),
+  );
+  const sacOneChoices = $derived(twins.filter((i) => i.Id !== fusionSacTwo));
+  const sacTwoChoices = $derived(twins.filter((i) => i.Id !== fusionSacOne));
 
   // ForgeSplicingEngine: BaseGoldCost * 1.5^currentTier, rounded up. Luck and
   // the Diamond Star event take up to 25% off server-side, so this is the

@@ -5,6 +5,7 @@ import {
   APTITUDE_VILLAGE_CEILING,
 } from '../src/lib/net/commands';
 import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
+import { TIER_STYLES } from '../src/lib/ui/leaderboardTiers';
 import { ATTRIBUTE_MILESTONES, ATTRIBUTE_THRESHOLDS, ATTRIBUTE_CURVES, EQUIP_REQUIREMENT_PER_REGION_TIER, equipRequirement } from '../src/lib/net/commands';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
@@ -520,6 +521,63 @@ describe('the numbers the client mirrors still match the server', () => {
         1 << num(packet, new RegExp(`${serverName} = 1 << (\\d+)`), `server ${serverName}`),
       );
       expect(num(packet, new RegExp(`${serverName} = 1 << (\\d+)`), `server ${serverName}`)).toBe(shift);
+    }
+  });
+});
+
+// Modul: THE LEADERBOARD TIER LADDER, which the client mirrors BY INDEX.
+//
+// LeaderboardTierRegistry.Tiers is the server's table: rank threshold, name and
+// weekly diamond payout. The client carries only the colours - but it carries
+// them in an array indexed by TierId, and the server sends TierId down with
+// every board row. So a rung inserted, removed or reordered on one side
+// recolours the whole board on the other, silently and plausibly.
+//
+// That is precisely how KNOWN_AFFIX_IDS drifted into ten wrong entries out of
+// twelve, which is asserted a few blocks above this one. Same shape, same
+// guard.
+describe('the leaderboard tier ladder', () => {
+  const server = read(serverRoot, 'Engine', 'LeaderboardTierRegistry.cs');
+
+  /** Every `new Tier { Id = N, Name = "...", MaxRank = N, WeeklyDiamonds = N }`. */
+  const serverTiers = [...server.matchAll(
+    /new Tier\s*\{\s*Id\s*=\s*(\d+),\s*Name\s*=\s*"([^"]+)",\s*MaxRank\s*=\s*([\d_]+),\s*WeeklyDiamonds\s*=\s*(\d+)\s*\}/g,
+  )].map((m) => ({
+    id: Number(m[1]),
+    name: m[2],
+    maxRank: Number(m[3].replace(/_/g, '')),
+    diamonds: Number(m[4]),
+  }));
+
+  it('is parsed at all - a zero-length mirror proves nothing', () => {
+    expect(serverTiers.length).toBeGreaterThan(0);
+  });
+
+  it('has the same number of rungs on both sides', () => {
+    expect(TIER_STYLES.length).toBe(serverTiers.length);
+  });
+
+  it('agrees rung by rung, on id and on name', () => {
+    for (let i = 0; i < serverTiers.length; i++) {
+      expect(TIER_STYLES[i].id, `tier ${i} id`).toBe(serverTiers[i].id);
+      expect(TIER_STYLES[i].name, `tier ${i} name`).toBe(serverTiers[i].name);
+    }
+  });
+
+  it('keeps ids positional, because the client indexes by them', () => {
+    for (let i = 0; i < TIER_STYLES.length; i++) expect(TIER_STYLES[i].id).toBe(i);
+  });
+
+  it('gives every rung a distinct colour', () => {
+    // Two rungs the same colour is a ladder that does not rank anything.
+    const colors = new Set(TIER_STYLES.map((t) => t.color.toLowerCase()));
+    expect(colors.size).toBe(TIER_STYLES.length);
+  });
+
+  it('dims the glow as the rungs widen', () => {
+    for (let i = 1; i < TIER_STYLES.length; i++) {
+      expect(TIER_STYLES[i].glow, `tier ${i} glows harder than ${i - 1}`)
+        .toBeLessThanOrEqual(TIER_STYLES[i - 1].glow);
     }
   });
 });

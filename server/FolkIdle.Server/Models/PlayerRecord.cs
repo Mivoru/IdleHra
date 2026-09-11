@@ -235,6 +235,29 @@ namespace FolkIdle.Server.Models
         public int DelveDiamondsThisWeek { get; set; }
         public int DelveWeekKey { get; set; }
 
+        // Modul: THE LEADERBOARD PAYOUT'S IDEMPOTENCY, in the same shape as the
+        // Delve's two columns directly above - deliberately, because it is the
+        // same problem and a second mechanism would be a second thing to get
+        // wrong.
+        //
+        // LeaderboardPayoutWeekKey is DelveEngine.CurrentWeekKey for the week
+        // this player was last paid for. The payout cron runs every few
+        // minutes; what stops it paying the whole board over and over is that
+        // this already equals the current week. It has to be a DURABLE column
+        // and not a Redis marker: production runs Redis with `--save ""
+        // --appendonly no`, so a marker there would vanish on every deploy and
+        // the board would be paid again on the next tick.
+        //
+        // LeaderboardPayoutRank is kept so the mail the player receives can say
+        // what they were paid FOR, and so a support question about a payout has
+        // an answer that is not "read the logs".
+        //
+        // Written ONLY by LeaderboardPayoutEngine, off the tick - the same
+        // single-writer rule the Delve columns and the quarantine flags are
+        // under. The checkpoint does not touch either.
+        public int LeaderboardPayoutWeekKey { get; set; }
+        public int LeaderboardPayoutRank { get; set; }
+
         // Modul: RESPEC, which the three-ring tree made compulsory rather than
         // convenient.
         //

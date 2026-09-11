@@ -381,6 +381,39 @@ it, and **pinned by scrolling and looking, never by `position: sticky`** — the
 Wiki's sidebar is declared sticky and at 390px never sticks. `check:touch`
 recorded that lesson first and it still had to be learned twice.
 
+**A control squeezed to ZERO width is invisible to every geometry checker.**
+The Chest's equipment row at 360px: five 44px buttons that may not shrink (the
+touch floor is deliberate) left nothing for the item name, so flex took it —
+the name measured **0 wide with a scrollWidth of 99**, and the rarity label
+0 wide and **121 tall**, wrapped to six lines inside a row pinned to 34px.
+Nothing was clipped (the box has no width), nothing overlapped, nothing was
+undersized, nothing left the viewport. Five scripts, all green, on a row with no
+name. `clipping-check.mjs` looks for this now, using `getBoundingClientRect`
+rather than `clientWidth` — the old `if (el.clientWidth === 0) continue` was
+added because *inline* elements legitimately report 0, and it hid the case
+where a flex child had been crushed.
+
+**`check:clipping` used to skip SVG entirely, and a real defect lived there.**
+The exclusion was right that `clientWidth` is meaningless on an SVG child and
+wrong that SVG therefore cannot be clipped: the Skill Tree's "Fortune" label ran
+off the **left edge of the phone**, measured at `left = -6px`, reported by a
+player. `getBoundingClientRect` is viewport pixels for every element, SVG
+included, so SVG is now measured against the *viewport* rather than its own box.
+Widen a `viewBox` rather than special-casing one label — `PAD_TOP`/`PAD_X` in
+`SkillsPanel.svelte` are that pattern.
+
+**A leaderboard that pays diamonds needs a population floor, and the ranked
+count is not the registered count.** Measured live: 29 registered accounts, one
+above level 5, and the board carried `exercise######` throwaways left by
+`exercise.mjs`. `LeaderboardTierRegistry` therefore gates twice — a tier pays
+nothing unless the *ranked* population clears `MinimumRankedPopulation` **and**
+is at least as large as the tier itself, because "top 100 of 40" is the bottom
+half. `MinimumRankedLevel` keeps the throwaways off the board in the first
+place. First place is capped at the Delve's own 60-a-week ceiling so the
+leaderboard cannot quietly demote the game's calibrated diamond tap;
+`LeaderboardRewardTests` asserts that against `DelveRegistry.MaxDiamondsPerWeek`
+rather than trusting the comment.
+
 **Don't touch the monster ladder or the balance curve casually.** Both are
 measured by tests that print their tables (`ProgressionRateTests`,
 `GatheringShareTests`, `MonsterLadderTests`), and the reasoning behind every

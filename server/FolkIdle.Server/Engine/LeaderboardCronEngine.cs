@@ -136,6 +136,17 @@ namespace FolkIdle.Server.Engine
                 // player has a kill for, and its kill count" is one index seek
                 // per player, and the LINQ shape for it is a group-by followed
                 // by a self-join that reads worse and plans worse.
+                //
+                // Modul: AND A LEVEL BAR, because rank is about to be worth
+                // DIAMONDS. `exercise.mjs` registers a throwaway account on
+                // every run and abandons it at level 1, and the live board was
+                // carrying them - `exercise260549`, `exercise499579` and
+                // others were visible on it. Ranking is a leaderboard's only
+                // job and paying for rank makes the noise expensive, so the
+                // bar sits in LeaderboardTierRegistry beside the payouts it
+                // protects. A level threshold beats filtering by name: it also
+                // drops abandoned real accounts, and nothing can rename its
+                // way past it.
                 var topPlayers = await dbContext.Database
                     .SqlQueryRaw<LeaderboardRow>(@"
                         SELECT p.""Id"" AS ""PlayerId"",
@@ -151,10 +162,12 @@ namespace FolkIdle.Server.Engine
                             LIMIT 1
                         ) m ON TRUE
                         WHERE NOT p.""IsQuarantined"" AND NOT p.""Quarantine_Active""
+                          AND p.""CurrentLevel"" >= @minLevel
                         ORDER BY p.""CurrentLevel"" DESC,
                                  COALESCE(m.""MonsterId"", 0) DESC,
                                  COALESCE(m.""KillCount"", 0) DESC
-                        LIMIT 10000")
+                        LIMIT 10000",
+                        new Npgsql.NpgsqlParameter("minLevel", LeaderboardTierRegistry.MinimumRankedLevel))
                     .ToListAsync();
 
                 await transaction.CommitAsync();

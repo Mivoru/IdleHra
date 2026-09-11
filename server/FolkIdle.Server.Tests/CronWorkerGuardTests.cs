@@ -53,6 +53,7 @@ namespace FolkIdle.Server.Tests
                 ["PushNotificationTriggerEngine"] = "polls delayed push triggers and drains the outbound queue",
                 ["LiveOpsTickEngine"] = "world boss windows and the daily reset boundary",
                 ["LeaderboardCronEngine"] = "periodic leaderboard snapshots",
+                ["LeaderboardPayoutEngine"] = "weekly diamond payout for a place on the board - polls, so a missed week settles on the next tick; the catch wraps PayCurrentWeekAsync, which is where CreateScope lives",
                 ["RedisWriteBehindEngine"] = "flushes dirty players from Redis to Postgres",
                 ["AchievementEngine"] = "periodic achievement evaluation",
                 ["EcoTelemetryEngine"] = "ten-minute economy audit",

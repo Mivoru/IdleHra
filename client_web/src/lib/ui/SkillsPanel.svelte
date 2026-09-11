@@ -162,6 +162,28 @@
   // it differently from the other four, which is the thing being fixed.
   const PAD_TOP = 34;
 
+  // Modul: THE SAME PROBLEM SIDEWAYS, and it shipped because the checker that
+  // would have caught it excludes SVG.
+  //
+  // The outer limbs place their labels at `forkX + outX * 52` with a matching
+  // text-anchor, so the leftmost one reads LEFTWARD from a fork that is
+  // already near x=0. The viewBox started at exactly 0, so "Fortune" ran off
+  // the left edge and was clipped by the viewport itself - measured at
+  // left=-6px on a 390px phone, with the word unreadable.
+  //
+  // Why nothing caught it: clipping-check.mjs skips SVG on purpose, because
+  // an SVG element reports clientWidth in its own coordinate system and that
+  // produced nonsense like "91px overflowing a 29px box". The exclusion was
+  // right about clientWidth and too broad about SVG - a VIEWPORT-relative
+  // measurement is perfectly valid on an SVG node. The checker is fixed
+  // alongside this; see scripts/clipping-check.mjs.
+  //
+  // Same remedy as PAD_TOP: widen the viewBox rather than special-case one
+  // label. The image still starts at x=0 and is not scaled or cropped - the
+  // drawing simply gains margin either side. 34 matches PAD_TOP, and the
+  // widest label ("PRECISION") needs about 30 beyond its anchor.
+  const PAD_X = 34;
+
   // Where the trunk divides in the painting. Every connector starts here.
   const ORIGIN_X = VIEW_W / 2;
   const ORIGIN_Y = 196;
@@ -285,7 +307,7 @@
   <div class="treewrap">
   <svg
     class="tree"
-    viewBox={`0 ${-PAD_TOP} ${VIEW_W} ${VIEW_H + PAD_TOP}`}
+    viewBox={`${-PAD_X} ${-PAD_TOP} ${VIEW_W + PAD_X * 2} ${VIEW_H + PAD_TOP}`}
     role="img"
     aria-label="Your skill tree: five limbs, each forking into two branches with a crown above"
   >
