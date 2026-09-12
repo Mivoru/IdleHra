@@ -346,20 +346,20 @@ namespace FolkIdle.Server.Engine
             stats.SetBurnApplicationActive = setBonus.BurnApplicationActive;
             stats.SetDamageCapActive = setBonus.DamageCapActive;
 
-            // Age penalties: 0=Child, 1=Adult, 2=Senior, 3=Old
-            if (activeAgePhase == 2)
+            // Modul: age penalties. The two multipliers used to be written out
+            // here as 0.9f and 0.8f - a third copy of a design decision that
+            // also lived as literals in the live and offline aging paths. One
+            // curve owns all of it now, and halved the cost at the same time:
+            // the timeline it applies to was stretched from three hours to
+            // eighty, so the penalty no longer has to be the thing that drives
+            // a player to breed.
+            float agePenalty = AgePhaseCurve.PenaltyMultiplier(activeAgePhase);
+            if (agePenalty < 1.0f)
             {
-                stats.FlatMeleeDamage = (int)(stats.FlatMeleeDamage * 0.9f);
-                stats.FlatRangedDamage = (int)(stats.FlatRangedDamage * 0.9f);
-                stats.MaxHp = (int)(stats.MaxHp * 0.9f);
-                stats.AttackSpeedPct *= 0.9f;
-            }
-            else if (activeAgePhase == 3)
-            {
-                stats.FlatMeleeDamage = (int)(stats.FlatMeleeDamage * 0.8f);
-                stats.FlatRangedDamage = (int)(stats.FlatRangedDamage * 0.8f);
-                stats.MaxHp = (int)(stats.MaxHp * 0.8f);
-                stats.AttackSpeedPct *= 0.8f;
+                stats.FlatMeleeDamage = (int)(stats.FlatMeleeDamage * agePenalty);
+                stats.FlatRangedDamage = (int)(stats.FlatRangedDamage * agePenalty);
+                stats.MaxHp = (int)(stats.MaxHp * agePenalty);
+                stats.AttackSpeedPct *= agePenalty;
             }
 
             return stats;

@@ -169,21 +169,21 @@ namespace FolkIdle.Server.Engine
                 earningSeconds = (long)(elapsedSeconds * (1f + bonus));
             }
 
-            // Modul: active (Slot1) character aging for the offline period,
-            // mirroring SimulationEngine.ProcessAgeSlot's exact thresholds
-            // (36000/72000/108000 AgeTicks) and its 10-AgeTicks-per-real-second
-            // rate (the live tick increments AgeTicks by 1 on every 10 Hz tick).
-            // Gated on ActiveActivityId > 0, matching ProcessSubTick's own
-            // early-return when no activity was active. Computed as O(1) math
-            // rather than a per-tick loop since aging is a pure threshold check
-            // on accumulated ticks.
+            // Modul: active (Slot1) character aging for the offline period, at
+            // the live tick's 10-AgeTicks-per-real-second rate (the tick adds 1
+            // on every 10 Hz pass). Gated on ActiveActivityId > 0, matching
+            // ProcessSubTick's own early-return when no activity was active.
+            // Computed as O(1) math rather than a per-tick loop since aging is
+            // a pure threshold check on accumulated ticks.
+            //
+            // The thresholds themselves used to be repeated here as literals,
+            // under a comment claiming they mirrored ProcessAgeSlot's exactly.
+            // They are AgePhaseCurve's now, so the claim is structural instead
+            // of aspirational.
             if (payload.ActiveActivityId > 0 && payload.Slot1_CharacterId != Guid.Empty)
             {
                 payload.Slot1_AgeTicks += elapsedSeconds * 10L;
-                if (payload.Slot1_AgeTicks >= 108000L) payload.Slot1_AgePhase = 3;
-                else if (payload.Slot1_AgeTicks >= 72000L) payload.Slot1_AgePhase = 2;
-                else if (payload.Slot1_AgeTicks >= 36000L) payload.Slot1_AgePhase = 1;
-                else payload.Slot1_AgePhase = 0;
+                payload.Slot1_AgePhase = AgePhaseCurve.PhaseFor(payload.Slot1_AgeTicks);
             }
 
             await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds);

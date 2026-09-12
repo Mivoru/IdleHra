@@ -4798,12 +4798,10 @@ namespace FolkIdle.Server.Domain.Combat
             if (characterId == System.Guid.Empty) return false;
             
             ageTicks++;
-            int newPhase = agePhase;
-            // E.g., 36000 ticks = 1 hour real-time at 10Hz
-            if (ageTicks >= 108000) newPhase = 3;
-            else if (ageTicks >= 72000) newPhase = 2;
-            else if (ageTicks >= 36000) newPhase = 1;
-            else newPhase = 0;
+            // Modul: the thresholds live in AgePhaseCurve now. They used to be
+            // four literals here and four more in OfflineSimulationEngine,
+            // under a comment promising the two would stay identical.
+            int newPhase = AgePhaseCurve.PhaseFor(ageTicks);
 
             if (newPhase != agePhase)
             {
