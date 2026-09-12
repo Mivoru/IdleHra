@@ -446,7 +446,12 @@ namespace FolkIdle.Server.Models
                     Id = fixtureId,
                     PlayerId = playerId,
                     Name = FolkNameRegistry.For(fixtureId, fixtureIsFemale),
-                    AgePhase = 1,
+                    // Adult, and the AgeTicks agree with it - ProcessAgeSlot
+                    // derives the phase from the ticks every tick, so a
+                    // character seeded at phase 1 with 0 ticks is a CHILD the
+                    // moment it is fielded and cannot breed for an hour.
+                    AgePhase = AgePhaseCurve.Adult,
+                    AgeTicks = AgePhaseCurve.ChildEndTicks,
                     SlotIndex = slotIndex,
                     IsFemale = fixtureIsFemale
                 });
@@ -469,7 +474,14 @@ namespace FolkIdle.Server.Models
             {
                 if (character.SlotIndex >= CharacterSlotEngine.MaxCharacterSlots) continue;
 
-                character.AgePhase = 1;
+                character.AgePhase = AgePhaseCurve.Adult;
+                // A fixture seeded before this was understood carries 0 ticks
+                // against an adult phase, so the tick demotes it to a child and
+                // the whole roster stops being able to breed.
+                if (character.AgeTicks < AgePhaseCurve.ChildEndTicks)
+                {
+                    character.AgeTicks = AgePhaseCurve.ChildEndTicks;
+                }
                 character.IsFemale = character.SlotIndex != 0;
                 // A fixture seeded before names existed has empty ones, and an
                 // empty name is exactly the unreadable roster this replaced.
@@ -503,7 +515,8 @@ namespace FolkIdle.Server.Models
                     Id = playerGuid,
                     PlayerId = playerId,
                     Name = FolkNameRegistry.For(playerGuid, isFemale: false),
-                    AgePhase = 1,
+                    AgePhase = AgePhaseCurve.Adult,
+                    AgeTicks = AgePhaseCurve.ChildEndTicks,
                     SlotIndex = 0,
                     IsFemale = false
                 });

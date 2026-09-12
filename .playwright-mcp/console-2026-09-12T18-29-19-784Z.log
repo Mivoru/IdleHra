@@ -1,0 +1,70 @@
+[  876085ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  879184ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  882689ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  888841ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  895120ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[  895973ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  898482ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[  908925ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  919113ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  934436ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  946496ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  955147ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/player/statistics:0
+[  958503ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/player/statistics:0
+[  958769ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[  960512ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  960821ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[  975066ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  987203ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[  999850ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1014846ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1023174ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1026447ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1026524ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1037549ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1053112ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1063806ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1080390ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1080838ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/player/statistics:0
+[ 1084185ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/player/statistics:0
+[ 1088863ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1092211ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1094705ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1105221ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1117567ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1131377ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1145084ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1154576ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1157940ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1158218ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1173477ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1191341ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1206532ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/player/statistics:0
+[ 1209881ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/player/statistics:0
+[ 1210189ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1220294ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1223640ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1226223ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1240987ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1252191ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1265697ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1276238ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1285987ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1289343ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1292826ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1303841ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1320954ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1332245ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/player/statistics:0
+[ 1333949ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1335608ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/player/statistics:0
+[ 1351661ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1351721ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1355089ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1364159ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1381140ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1398138ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1411199ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1417446ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1420777ms] [ERROR] Failed to load resource: net::ERR_CONNECTION_REFUSED @ http://localhost:8080/api/v1/mailbox/list:0
+[ 1423191ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119
+[ 1435555ms] [ERROR] WebSocket connection to 'ws://localhost:8080/' failed: Error in connection establishment: net::ERR_CONNECTION_REFUSED @ http://localhost:5173/src/lib/net/connection.ts:119

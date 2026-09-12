@@ -1893,7 +1893,27 @@ await go('Village');
 await go('Breeding');
 {
   const text = await page.evaluate(() => document.body.innerText);
-  record('the breeding lab offers both pairings', /Marry the village/i.test(text) && /Cross your own/i.test(text));
+
+  // Modul: ONE QUESTION, NOT TWO TABS. This used to assert both tab labels
+  // were present; the tabs are gone because asking a player to understand the
+  // difference between the two pairings before they may begin is what made the
+  // screen unusable. The partner list carries both, grouped.
+  const groups = await page.locator('select').nth(1).evaluate((select) =>
+    [...select.querySelectorAll('optgroup')].map((g) => g.label),
+  );
+  record(
+    'one partner list carries both the village and your own line',
+    groups.some((g) => /village/i.test(g)) && groups.some((g) => /own line/i.test(g)),
+    groups.join(' | ') || 'no groups',
+  );
+
+  // The screen has to say what the Inn and the Grounds each buy, or the two
+  // levers are invisible and a player cannot tell why their line has stalled.
+  record(
+    'the screen explains what raises a bloodline',
+    /Marrying the\s+village is what raises a bloodline/i.test(text.replace(/\s+/g, ' ')) ||
+      /raises a bloodline/i.test(text),
+  );
 
   const heroSelect = page.locator('select').first();
   const villagerSelect = page.locator('select').nth(1);
@@ -1914,12 +1934,16 @@ await go('Breeding');
   let refusals = [];
   let heroesTried = 0;
   for (let heroIndex = 1; heroIndex < heroCount && marriable === null; heroIndex++) {
-    // Skip the heroes the screen has already said cannot: a level-1 child from
-    // an earlier run ("needs 50") and anybody inside the cooldown a previous
-    // marriage started ("resting"). Both are honest states rather than
-    // failures, and picking one turns this step into a test of the refusal.
+    // Skip the heroes the screen has already said cannot: a child from an
+    // earlier run, and anybody inside the cooldown a previous marriage
+    // started. Both are honest states rather than failures, and picking one
+    // turns this step into a test of the refusal.
+    //
+    // "needs 50" used to be on this list. It is gone because the gate it came
+    // from is gone - it read a per-character level column that nothing in the
+    // server ever wrote, so it refused every real player on every attempt.
     const heroText = await heroSelect.locator('option').nth(heroIndex).innerText();
-    if (/needs 50|resting|still a child/.test(heroText)) continue;
+    if (/resting|still a child/.test(heroText)) continue;
 
     heroesTried++;
     await heroSelect.selectOption({ index: heroIndex });
@@ -1929,12 +1953,18 @@ await go('Breeding');
     // Playwright's editability check is defined for inputs and selects, and
     // answers "not disabled" for an <option> whatever its attribute says - so
     // the loop below happily picked a villager the screen had greyed out.
+    // VILLAGERS ONLY. The partner list also carries the player's own line now,
+    // and a run that married a cousin would pass this step while proving
+    // nothing about the gene pool - which is the half that was visible and
+    // inert for a whole release. The 'v:' prefix is the screen's own marker.
     const options = await villagerSelect.evaluate((select) =>
-      [...select.options].slice(1).map((o) => ({
-        value: o.value,
-        label: o.textContent.trim(),
-        disabled: o.disabled,
-      })),
+      [...select.options]
+        .filter((o) => o.value.startsWith('v:'))
+        .map((o) => ({
+          value: o.value,
+          label: o.textContent.trim(),
+          disabled: o.disabled,
+        })),
     );
     villagerTotal = options.length;
     refusals = options.filter((o) => o.disabled).map((o) => o.label);
@@ -2000,8 +2030,37 @@ await go('Breeding');
         : (await page.locator('.panel .warn').allInnerTexts()).join(' | ') || 'no reason shown',
     );
 
+    // Modul: THE BREEDING GROUNDS' FIRST REAL EFFECT. Its level was read in
+    // four places on the server and every one tested `<= 0`, so every upgrade
+    // past the first changed no number in the game. The fixture's Grounds is
+    // seeded above the level that buys a selection precisely so this can be
+    // clicked; if the checkbox is not here, the feature is inert again.
+    const aptBoxes = page.locator('.apt-choice input');
+    const aptCount = await aptBoxes.count();
+    record(
+      'the Breeding Grounds offers an aptitude to breed for',
+      aptCount === 4,
+      `${aptCount} aptitude checkboxes`,
+    );
+
+    if (aptCount === 4) {
+      await aptBoxes.first().check();
+      await page.waitForTimeout(200);
+      const checked = await page.locator('.apt-choice input:checked').count();
+      // Capped at what the Grounds permits - checking a second must SWAP
+      // rather than silently do nothing, which is the worse of the two.
+      await aptBoxes.nth(1).check();
+      await page.waitForTimeout(200);
+      const afterSecond = await page.locator('.apt-choice input:checked').count();
+      record(
+        'the selection is capped at what the Grounds permits',
+        checked >= 1 && afterSecond === checked,
+        `${checked} selected, still ${afterSecond} after checking another`,
+      );
+    }
+
     await dismissToasts();
-    const marryButton = page.getByRole('button', { name: 'Marry', exact: true });
+    const marryButton = page.getByRole('button', { name: 'Breed', exact: true });
     const blocked = await marryButton.isDisabled();
     record('the fixture can afford to marry', !blocked);
 

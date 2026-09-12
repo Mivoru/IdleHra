@@ -125,6 +125,44 @@ namespace FolkIdle.Server.Tests
             Assert.True(AgePhaseCurve.PenaltyMultiplier(2) > 0.80f);
         }
 
+        /// <summary>
+        /// A GRANTED ADULT MUST DERIVE AS AN ADULT.
+        ///
+        /// CharacterGrantEngine wrote `AgePhase = 1, AgeTicks = 0` - two fields
+        /// that disagreed, on a phase that ProcessAgeSlot recomputes from the
+        /// ticks on every single tick. So a new account's founder, and the
+        /// male/female pair a region boss grants, were demoted to CHILD the
+        /// instant they were fielded and could not breed for an hour, with
+        /// nothing on any screen saying why.
+        ///
+        /// The stored AgeTicks is the durable half; the phase beside it is a
+        /// cache. This asserts the two cannot disagree again.
+        /// </summary>
+        [Fact]
+        public void AGrantedAdultIsStillAnAdultOnTheNextTick()
+        {
+            Assert.Equal(AgePhaseCurve.Adult, AgePhaseCurve.PhaseFor(AgePhaseCurve.ChildEndTicks));
+
+            string grant = File.ReadAllText(LocateSource("Engine", "CharacterGrantEngine.cs"));
+            Assert.Contains("AgeTicks = AgePhaseCurve.ChildEndTicks", grant);
+            Assert.DoesNotContain("AgeTicks = 0L,", grant);
+
+            string fixture = File.ReadAllText(LocateSource("Models", "DevFixtureSeeder.cs"));
+            Assert.Contains("AgeTicks = AgePhaseCurve.ChildEndTicks", fixture);
+        }
+
+        /// <summary>
+        /// And a BRED child genuinely starts at zero - it is supposed to grow up.
+        /// </summary>
+        [Fact]
+        public void ANewbornStillStartsAsAChild()
+        {
+            Assert.Equal(AgePhaseCurve.Child, AgePhaseCurve.PhaseFor(0));
+
+            string breeding = File.ReadAllText(LocateSource("Engine", "BreedingEngine.cs"));
+            Assert.Contains("AgePhase = 0,", breeding);
+        }
+
         private static int LegacyPhaseFor(long ageTicks)
             => ageTicks >= 108_000L ? 3 : ageTicks >= 72_000L ? 2 : ageTicks >= 36_000L ? 1 : 0;
 

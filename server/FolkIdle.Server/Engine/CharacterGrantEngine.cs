@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using FolkIdle.Server.Models;
+using FolkIdle.Server.Domain.Progression;
 
 namespace FolkIdle.Server.Engine
 {
@@ -94,8 +95,20 @@ namespace FolkIdle.Server.Engine
                 Id = characterId,
                 PlayerId = playerId,
                 Name = FolkNameRegistry.For(characterId, isFemale),
-                AgePhase = 1,
-                AgeTicks = 0L,
+                // Modul: AN ADULT, AND THE TICK HAS TO AGREE.
+                //
+                // These two fields disagreed: AgePhase said adult and AgeTicks
+                // said newborn, and ProcessAgeSlot recomputes the phase from
+                // AgeTicks on EVERY tick - so a granted character was demoted
+                // to Child the moment it was fielded and stayed one for an
+                // hour. That is a founder who cannot breed on their first
+                // evening, and a boss's race-pair reward that cannot breed
+                // either, neither of which says anything about why.
+                //
+                // A bred child legitimately starts at 0. A granted adult does
+                // not, so it starts where adulthood starts.
+                AgePhase = AgePhaseCurve.Adult,
+                AgeTicks = AgePhaseCurve.ChildEndTicks,
                 SlotIndex = slotIndex,
                 ActiveActivityId = 0L,
                 IsFemale = isFemale
