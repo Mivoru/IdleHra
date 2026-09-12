@@ -324,5 +324,26 @@ namespace FolkIdle.Server.Network
         // An index rather than a string because the packet is fixed-layout, and
         // the registry order is the same authority on both sides.
         public byte RerollStopAffixIndex;
+
+        // Modul: WHICH APTITUDES THE PLAYER IS BREEDING FOR. A bitmask over the
+        // four - bit 0 Strength, 1 Skill, 2 Endurance, 3 Fortune - and a
+        // selected one takes the better parent's value outright instead of
+        // InheritOne's weighted coin.
+        //
+        // ITS OWN FIELD, not a reused one. TargetVillagerSlot was the obvious
+        // candidate to smuggle this through and it would have given one field
+        // two unrelated meanings, which is a trap already recorded in this repo
+        // twice over - LogicEpochCounter means two things, and the reroll block
+        // just above exists because the same shortcut through LimitPrice caused
+        // several identity bugs.
+        //
+        // ONE BYTE, deliberately. Four bits are needed and packets here are
+        // demultiplexed by exact byte size, so a uint would have cost three
+        // bytes for nothing and moved the packet closer to another packet's
+        // size. The server clamps this to what the Breeding Grounds level
+        // permits (BreedingAptitudes.ClampSelection) and never refuses an
+        // overreaching mask - the count is a server truth and the client's copy
+        // of the table is a hint for drawing checkboxes.
+        public byte BreedingSelectionMask;
     }
 }

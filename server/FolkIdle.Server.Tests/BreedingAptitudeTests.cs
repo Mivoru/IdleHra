@@ -116,7 +116,7 @@ namespace FolkIdle.Server.Tests
             const int trials = 5000;
             for (int i = 0; i < trials; i++)
             {
-                int[] child = BreedingAptitudes.Breed(fighter, gatherer, isInbred: false, isEpic: false, rng);
+                int[] child = BreedingAptitudes.Breed(fighter, gatherer, isInbred: false, isEpic: false, selectionMask: 0, groundsLevel: 0, rng: rng);
                 if (child[BreedingAptitudes.Strength] >= 11 && child[BreedingAptitudes.Skill] >= 11) strongBoth++;
             }
 
@@ -140,7 +140,7 @@ namespace FolkIdle.Server.Tests
             bool everExceeded = false;
             for (int i = 0; i < 500 && !everExceeded; i++)
             {
-                int[] child = BreedingAptitudes.Breed(parent, parent, isInbred: false, isEpic: false, rng);
+                int[] child = BreedingAptitudes.Breed(parent, parent, isInbred: false, isEpic: false, selectionMask: 0, groundsLevel: 0, rng: rng);
                 for (int a = 0; a < BreedingAptitudes.Count; a++)
                 {
                     if (child[a] > 10) everExceeded = true;
@@ -179,7 +179,7 @@ namespace FolkIdle.Server.Tests
                 int[] line = { start, start, start, start };
                 for (int gen = 0; gen < generations; gen++)
                 {
-                    line = BreedingAptitudes.Breed(line, line, isInbred: false, isEpic: false, rng);
+                    line = BreedingAptitudes.Breed(line, line, isInbred: false, isEpic: false, selectionMask: 0, groundsLevel: 0, rng: rng);
                 }
                 foreach (int value in line)
                 {
@@ -251,8 +251,8 @@ namespace FolkIdle.Server.Tests
             var rng = Seeded();
             int[] parent = { 20, 20, 20, 20 };
 
-            int[] plain = BreedingAptitudes.Breed(parent, parent, false, isEpic: false, new Random(7));
-            int[] epic = BreedingAptitudes.Breed(parent, parent, false, isEpic: true, new Random(7));
+            int[] plain = BreedingAptitudes.Breed(parent, parent, false, isEpic: false, selectionMask: 0, groundsLevel: 0, rng: new Random(7));
+            int[] epic = BreedingAptitudes.Breed(parent, parent, false, isEpic: true, selectionMask: 0, groundsLevel: 0, rng: new Random(7));
 
             for (int a = 0; a < BreedingAptitudes.Count; a++)
             {
@@ -270,7 +270,7 @@ namespace FolkIdle.Server.Tests
 
             for (int i = 0; i < 2000; i++)
             {
-                int[] child = BreedingAptitudes.Breed(maxed, maxed, false, isEpic: true, rng);
+                int[] child = BreedingAptitudes.Breed(maxed, maxed, false, isEpic: true, selectionMask: 0, groundsLevel: 0, rng: rng);
                 foreach (int value in child) Assert.InRange(value, 0, BreedingAptitudes.MaxValue);
             }
         }
@@ -342,7 +342,7 @@ namespace FolkIdle.Server.Tests
             int seenHigh = int.MinValue;
             for (int trial = 0; trial < 4000; trial++)
             {
-                foreach (int value in BreedingAptitudes.Breed(father, mother, false, false, rng))
+                foreach (int value in BreedingAptitudes.Breed(father, mother, false, false, selectionMask: 0, groundsLevel: 0, rng: rng))
                 {
                     Assert.InRange(value, min, max);
                     if (value < seenLow) seenLow = value;
@@ -374,7 +374,7 @@ namespace FolkIdle.Server.Tests
             for (int trial = 0; trial < 200 && !exceeded; trial++)
             {
                 var epicChild = BreedingAptitudes.Breed(
-                    new[] { 10, 10, 10, 10 }, new[] { 10, 10, 10, 10 }, false, true, rng);
+                    new[] { 10, 10, 10, 10 }, new[] { 10, 10, 10, 10 }, false, true, selectionMask: 0, groundsLevel: 0, rng: rng);
                 exceeded = Array.Exists(epicChild, v => v > max);
             }
 

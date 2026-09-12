@@ -27,7 +27,12 @@ namespace FolkIdle.Server.Network
         // client used to compute about itself. ClientPredictedDamage stays
         // because the guild war shard attack still posts one; AttackWorldBoss
         // now requires it to be zero.
-        public const int ExpectedClientCommandSize = 340;
+        // Modul: breeding selection, 340 -> 341. One byte,
+        // BreedingSelectionMask - a four-bit mask naming which aptitudes the
+        // player is breeding for. A byte rather than a uint because packets are
+        // demultiplexed by exact size and four bits do not need four bytes; 341
+        // collides with none of the other pinned sizes below.
+        public const int ExpectedClientCommandSize = 341;
 
         // Modul: Full-Stack Expansion, Part 1. 680 -> 689: the Leggings
         // equipment slot added EquippedLeggingsId (8 bytes) +

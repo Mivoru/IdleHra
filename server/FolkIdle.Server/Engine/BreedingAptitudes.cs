@@ -152,10 +152,17 @@ namespace FolkIdle.Server.Engine
         /// convenient, but no strategy can be built on it, and fresh village
         /// blood stays valuable permanently.
         /// </summary>
-        public static int Mutate(int value, bool isInbred, Random rng)
+        public static int Mutate(int value, bool isInbred, Random rng, int groundsLevel = 0)
         {
-            int up = isInbred ? MutationDownPercent : MutationUpPercent;
-            int down = isInbred ? MutationUpPercent : MutationDownPercent;
+            // Modul: the Breeding Grounds raises the UP chance only, and an
+            // inbred pairing swaps the two - so building the Grounds makes a
+            // related pairing worse, not better. Without that a player could
+            // build their way out of ever needing the village, which is the one
+            // strategy the inversion exists to prevent.
+            int upPercent = UpMutationPercentFor(groundsLevel);
+
+            int up = isInbred ? MutationDownPercent : upPercent;
+            int down = isInbred ? upPercent : MutationDownPercent;
 
             int roll = rng.Next(100);
             if (roll < up) value++;
@@ -163,6 +170,16 @@ namespace FolkIdle.Server.Engine
 
             return Math.Clamp(value, 0, MaxValue);
         }
+
+        /// <summary>
+        /// The chance of a +1, given the Breeding Grounds level.
+        ///
+        /// The building used to do NOTHING above level 1 - it was read in four
+        /// places and every one tested `&lt;= 0`. This is half of its job; the
+        /// other half is selection, below.
+        /// </summary>
+        public static int UpMutationPercentFor(int groundsLevel)
+            => MutationUpPercent + Math.Max(0, groundsLevel);
 
         /// <summary>Epic mutation chance, as a percentage.</summary>
         public const int EpicChancePercent = 5;
@@ -186,19 +203,83 @@ namespace FolkIdle.Server.Engine
         /// rolling it, because the same flag is stored on the lineage row and
         /// rolling it twice would let the record and the stats disagree.
         /// </summary>
-        public static int[] Breed(int[] father, int[] mother, bool isInbred, bool isEpic, Random rng)
+        public static int[] Breed(
+            int[] father,
+            int[] mother,
+            bool isInbred,
+            bool isEpic,
+            int selectionMask,
+            int groundsLevel,
+            Random rng)
         {
             if (father is null || father.Length < Count) throw new ArgumentException("father vector", nameof(father));
             if (mother is null || mother.Length < Count) throw new ArgumentException("mother vector", nameof(mother));
 
+            // Trimmed to what the building actually permits, never refused. The
+            // count is a server truth and the client's copy of the table is a
+            // hint for drawing checkboxes; a hint that has drifted must not cost
+            // a player their gold.
+            int selection = ClampSelection(selectionMask, groundsLevel);
+
             var child = new int[Count];
             for (int i = 0; i < Count; i++)
             {
-                int inherited = InheritOne(father[i], mother[i], rng);
-                child[i] = Mutate(inherited, isInbred, rng);
+                bool isSelected = (selection & (1 << i)) != 0;
+
+                // A SELECTED aptitude takes the better parent outright. The
+                // weighted coin is what made the climb feel like a slot machine:
+                // a 4 against a villager's 6 takes the 6 only 60% of the time,
+                // so a bloodline regularly lost ground on the exact stat the
+                // player was trying to raise, and had no way to say which one
+                // that was.
+                int inherited = isSelected
+                    ? Math.Max(father[i], mother[i])
+                    : InheritOne(father[i], mother[i], rng);
+
+                child[i] = Mutate(inherited, isInbred, rng, groundsLevel);
                 if (isEpic) child[i] = Math.Min(MaxValue, child[i] + EpicBonus);
             }
             return child;
+        }
+
+        // --- selection ---------------------------------------------------------
+
+        /// <summary>
+        /// How many aptitudes the Breeding Grounds lets the player choose.
+        ///
+        /// NEVER ALL FOUR. Selecting every aptitude would delete inheritance
+        /// from the game and replace it with "take the max of both parents",
+        /// which makes the choice of partner - the entire point of the village -
+        /// irrelevant. Three is the most the maxed building can buy.
+        /// </summary>
+        public static int SelectableCount(int groundsLevel)
+        {
+            if (groundsLevel >= 10) return 3;
+            if (groundsLevel >= 7) return 2;
+            if (groundsLevel >= 4) return 1;
+            return 0;
+        }
+
+        /// <summary>
+        /// Trims a requested selection to what the Grounds permits, keeping the
+        /// lowest set bits, and drops anything that is not one of the four
+        /// aptitudes - the mask arrives over the wire as a uint and bits above
+        /// three are not aptitudes.
+        /// </summary>
+        public static int ClampSelection(int selectionMask, int groundsLevel)
+        {
+            int allowed = SelectableCount(groundsLevel);
+            if (allowed <= 0) return 0;
+
+            int kept = 0;
+            int taken = 0;
+            for (int i = 0; i < Count && taken < allowed; i++)
+            {
+                if ((selectionMask & (1 << i)) == 0) continue;
+                kept |= 1 << i;
+                taken++;
+            }
+            return kept;
         }
 
         /// <summary>A fresh, unbred character's vector.</summary>
@@ -212,13 +293,23 @@ namespace FolkIdle.Server.Engine
         /// <summary>
         /// A villager's, rolled against the Inn.
         ///
-        /// `2 + random(0..innLevel)`, never above the villager ceiling - so a
-        /// well-built Inn is what gets a bloodline to twenty, and nothing in
-        /// the village gets it past that.
+        /// `2 + random(0..innLevel * 3/2)`, never above the villager ceiling.
+        ///
+        /// THE MULTIPLIER IS NOT DECORATION. This used to be `rand(0..innLevel)`
+        /// and the Inn cannot exceed level 12 - the Town Hall maxes at 5 and
+        /// every other building is capped at 2 + TownHallLevel*2 - so villagers
+        /// could never roll above 14 and the VillagerCeiling of 20 just below
+        /// was a number the game was incapable of producing. The comment on it
+        /// promised "0 to 20 is village-driven"; five sixths of that was true.
+        ///
+        /// Measured against the report that found this: at Inn 5 the old roll
+        /// gave 2-7, and the reporting player's ten newcomers held a best
+        /// aptitude of exactly 6. He was reading the game correctly when he
+        /// said his line could not climb - it could not.
         /// </summary>
         public static int[] RollVillager(int innLevel, Random rng)
         {
-            int reach = Math.Max(0, innLevel);
+            int reach = Math.Max(0, innLevel) * 3 / 2;
             var v = new int[Count];
             for (int i = 0; i < Count; i++)
             {

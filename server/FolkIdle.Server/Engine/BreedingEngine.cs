@@ -60,7 +60,7 @@ namespace FolkIdle.Server.Engine
             BreedingCooldownEndEpoch = character.BreedingCooldownEndEpoch,
         };
 
-        public async Task ExecuteBreedingAsync(long playerId, Guid paternalId, Guid maternalId)
+        public async Task ExecuteBreedingAsync(long playerId, Guid paternalId, Guid maternalId, int selectionMask = 0)
         {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -188,6 +188,8 @@ namespace FolkIdle.Server.Engine
                     mLineage.AptitudeVector(),
                     isInbred,
                     isEpicMutation,
+                    selectionMask,
+                    breedingLevel,
                     Random.Shared);
 
                 pChar.IsBreedingActive = true;
@@ -266,7 +268,7 @@ namespace FolkIdle.Server.Engine
         /// mean levelling two characters to fifty for one roll of the dice,
         /// which is double the grind for the same child.
         /// </summary>
-        public async Task ExecuteHeroVillagerBreedingAsync(long playerId, Guid heroId, long newcomerId)
+        public async Task ExecuteHeroVillagerBreedingAsync(long playerId, Guid heroId, long newcomerId, int selectionMask = 0)
         {
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -394,8 +396,8 @@ namespace FolkIdle.Server.Engine
                     : GeneticSplicingEngine.Breed(villagerGenome, heroGenome, maxGen);
 
                 int[] childAptitudes = heroIsFather
-                    ? BreedingAptitudes.Breed(heroAptitudes, villagerAptitudes, isInbred, isEpicMutation, Random.Shared)
-                    : BreedingAptitudes.Breed(villagerAptitudes, heroAptitudes, isInbred, isEpicMutation, Random.Shared);
+                    ? BreedingAptitudes.Breed(heroAptitudes, villagerAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared)
+                    : BreedingAptitudes.Breed(villagerAptitudes, heroAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared);
 
                 hero.IsBreedingActive = true;
                 hero.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;

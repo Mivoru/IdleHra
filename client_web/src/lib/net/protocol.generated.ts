@@ -33,7 +33,7 @@ export interface AuthHandshake {
   PlatformSignature: number;
 }
 
-/** ClientCommandPacket - 340 bytes on the binary wire. */
+/** ClientCommandPacket - 341 bytes on the binary wire. */
 export interface ClientCommand {
   readonly type: typeof PacketType.ClientCommand;
   Command: number;
@@ -87,6 +87,7 @@ export interface ClientCommand {
   RerollAutoMaxAttempts: number;
   RerollStopMinRarity: number;
   RerollStopAffixIndex: number;
+  BreedingSelectionMask: number;
 }
 
 /** StateUpdatePacket - 801 bytes on the binary wire. */
@@ -441,7 +442,7 @@ export type CommandTypeName = keyof typeof CommandType;
 /** Binary wire sizes, kept for tests that assert the binary path is untouched. */
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
-  ClientCommand: 340,
+  ClientCommand: 341,
   StateUpdate: 801,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,

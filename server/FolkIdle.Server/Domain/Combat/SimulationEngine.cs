@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -2266,9 +2266,10 @@ namespace FolkIdle.Server.Domain.Combat
                         long pId = currentPayload.PlayerId;
                         var patId = cmd.TargetGuid;
                         var matId = cmd.SecondaryGuid;
+                        int selectionMask = cmd.BreedingSelectionMask;
 
                         SafeDispatchAsync("Breeding.Execute", pId, async () => {
-                            await _breedingEngine.ExecuteBreedingAsync(pId, patId, matId);
+                            await _breedingEngine.ExecuteBreedingAsync(pId, patId, matId, selectionMask);
                         });
                     }
                     // Modul: hero x villager - THE standard pair. The gene pool
@@ -2287,9 +2288,10 @@ namespace FolkIdle.Server.Domain.Combat
                         long pId = currentPayload.PlayerId;
                         var heroId = cmd.TargetGuid;
                         long newcomerId = cmd.TargetId;
+                        int villagerSelectionMask = cmd.BreedingSelectionMask;
 
                         SafeDispatchAsync("Breeding.ExecuteVillager", pId, async () => {
-                            await _breedingEngine.ExecuteHeroVillagerBreedingAsync(pId, heroId, newcomerId);
+                            await _breedingEngine.ExecuteHeroVillagerBreedingAsync(pId, heroId, newcomerId, villagerSelectionMask);
                         });
                     }
                     else if (cmd.Command == CommandType.InitializeCrafting)

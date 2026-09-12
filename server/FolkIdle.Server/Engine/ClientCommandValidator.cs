@@ -615,6 +615,13 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
+            // Modul: BreedingSelectionMask is deliberately absent from this
+            // list. Every other field must be zero and a stray one DISCONNECTS
+            // the player, so a new field that belongs to this command has to be
+            // exempted here or shipping it would have made breeding a
+            // disconnect. Its value is not validated: the server clamps it to
+            // what the Breeding Grounds permits rather than refusing it, so
+            // there is no bad value a client can send.
             if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 15, Value2 = 3, Timestamp = Environment.TickCount64 });
@@ -655,6 +662,8 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
+            // BreedingSelectionMask is exempt here for the same reason as the
+            // roster pairing above - see ValidateBreedingRequest.
             if (packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 69, Value2 = 3, Timestamp = Environment.TickCount64 });
