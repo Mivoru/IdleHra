@@ -1470,6 +1470,67 @@ export const APTITUDES: readonly {
 ];
 
 /**
+ * BreedingAptitudes.SelectableCount - how many aptitudes the Breeding Grounds
+ * lets you breed FOR, by its level.
+ *
+ * A selected aptitude takes the better parent's value outright instead of the
+ * weighted coin, where a 4 against a 6 takes the 6 only 60% of the time. Never
+ * all four: selecting everything would delete inheritance and make the choice
+ * of partner irrelevant.
+ *
+ * MIRRORED BY HAND, and pinned to the server element by element in
+ * serverMirrors.test.ts. The screen has to draw the right number of checkboxes
+ * before the command is sent, so the table exists twice - and the server
+ * CLAMPS rather than refuses, so a drifted copy costs a player a checkbox
+ * rather than their gold.
+ */
+export function selectableAptitudeCount(groundsLevel: number): number {
+  if (groundsLevel >= 10) return 3;
+  if (groundsLevel >= 7) return 2;
+  if (groundsLevel >= 4) return 1;
+  return 0;
+}
+
+/** The Grounds level at which each extra selection arrives, for the UI to quote. */
+export const SELECTION_UNLOCK_LEVELS: readonly number[] = [4, 7, 10];
+
+/**
+ * BreedingAptitudes.ClampSelection - keep the lowest set bits, up to what the
+ * Grounds permits, and drop anything that is not one of the four aptitudes.
+ */
+export function clampSelectionMask(selectionMask: number, groundsLevel: number): number {
+  const allowed = selectableAptitudeCount(groundsLevel);
+  if (allowed <= 0) return 0;
+
+  let kept = 0;
+  let taken = 0;
+  for (let i = 0; i < APTITUDES.length && taken < allowed; i++) {
+    if ((selectionMask & (1 << i)) === 0) continue;
+    kept |= 1 << i;
+    taken++;
+  }
+  return kept;
+}
+
+/**
+ * BreedingAptitudes.UpMutationPercentFor - the Grounds also raises the chance
+ * of a +1 on every aptitude, selected or not.
+ */
+export function upMutationPercent(groundsLevel: number): number {
+  return 25 + Math.max(0, groundsLevel);
+}
+
+/**
+ * BreedingAptitudes.RollVillager's reach. A villager rolls
+ * `2 + random(0..InnLevel * 3/2)`, capped at the village ceiling - so this is
+ * the best aptitude an Inn of a given level can produce, which is the number
+ * that decides whether marrying out is still worth doing.
+ */
+export function bestVillagerAptitudeFor(innLevel: number): number {
+  return Math.min(APTITUDE_VILLAGE_CEILING, 2 + Math.floor(Math.max(0, innLevel) * 3 / 2));
+}
+
+/**
  * BreedingAptitudes.BonusPercentFor - three diminishing bands.
  *
  * Flat 1.5% to a cap of 50 would be +75% in one domain, which would make a
@@ -1783,6 +1844,7 @@ export function executeBreeding(
   paternalId: string,
   maternalId: string,
   breedingLevel: number,
+  selectionMask = 0,
 ): CommandOutcome {
   if (breedingLevel <= 0) return refuse('Build Breeding Grounds in your village first.');
   if (!paternalId || !maternalId) return refuse('Choose two parents.');
@@ -1792,6 +1854,7 @@ export function executeBreeding(
     Command: CommandType.ExecuteBreeding,
     TargetGuid: paternalId,
     SecondaryGuid: maternalId,
+    BreedingSelectionMask: clampSelectionMask(selectionMask, breedingLevel),
   });
   return OK;
 }
@@ -1809,6 +1872,7 @@ export function executeVillagerBreeding(
   heroId: string,
   newcomerId: number,
   breedingLevel: number,
+  selectionMask = 0,
 ): CommandOutcome {
   if (breedingLevel <= 0) return refuse('Build Breeding Grounds in your village first.');
   if (!heroId) return refuse('Choose one of your characters.');
@@ -1818,6 +1882,7 @@ export function executeVillagerBreeding(
     Command: CommandType.ExecuteVillagerBreeding,
     TargetGuid: heroId,
     TargetId: newcomerId,
+    BreedingSelectionMask: clampSelectionMask(selectionMask, breedingLevel),
   });
   return OK;
 }

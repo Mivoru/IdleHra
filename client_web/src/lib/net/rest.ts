@@ -918,7 +918,8 @@ export function fetchMetadata(): Promise<PlayerMetadata> {
 
 export interface BreedingCandidate {
   CharacterId: string;
-  Level: number;
+  /** Modul: a person, not a GUID prefix. See FolkNameRegistry. */
+  Name: string;
   AgePhase: number;
   GenerationIndex: number;
   IsBreedingActive: boolean;
@@ -951,7 +952,7 @@ export function fetchBreedingRoster(): Promise<BreedingCandidate[]> {
  */
 export interface HallMember {
   CharacterId: string;
-  Level: number;
+  Name: string;
   AgePhase: number;
   IsFemale: boolean;
   SlotIndex: number;

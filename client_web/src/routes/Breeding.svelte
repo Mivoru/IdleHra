@@ -16,6 +16,13 @@
     executeVillagerBreeding,
     claimBattlePassMilestone,
     purchaseBattlePass,
+    APTITUDES,
+    selectableAptitudeCount,
+    clampSelectionMask,
+    upMutationPercent,
+    bestVillagerAptitudeFor,
+    SELECTION_UNLOCK_LEVELS,
+    APTITUDE_VILLAGE_CEILING,
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import { agePhaseName } from '../lib/ui/slots';
@@ -36,30 +43,39 @@
   const breedingLevel = $derived(snap?.BreedingLevel ?? 0);
   const quarantined = $derived(snap ? snap.Quarantine_Active !== 0 : false);
 
-  // Modul: TWO PAIRINGS, and the village one first.
+  // Modul: ONE QUESTION, NOT TWO TABS.
   //
-  // A child COPIES each aptitude whole from one parent and can only beat the
-  // better of the two by one, on a drift or epic roll - so crossing your own
-  // characters converges on what you already have, at about +0.15 a generation.
-  // The village is the only thing that puts a genuinely new number into a
-  // bloodline, which is why it is the default tab.
-  let mode = $state<'village' | 'roster'>('village');
+  // This screen used to open on a tab choice - "Marry the village" against
+  // "Cross your own" - which asks a player to understand the difference before
+  // they are allowed to begin. The player who reported this could not work out
+  // which one he wanted, and he was right that nothing on the screen told him.
+  //
+  // It is one hero and one partner now, with the partner list grouped. The two
+  // engine methods still exist; which one gets called falls out of what was
+  // picked, and a player never has to learn there were two systems.
+  //
+  // The grouping is not cosmetic: a child copies each aptitude whole from one
+  // parent, so crossing your own line converges on what you already have. The
+  // village is the only thing that puts a genuinely new number into a
+  // bloodline, which is why it is listed first.
 
-  // --- breeding -------------------------------------------------------------
-  let paternalId = $state('');
-  let maternalId = $state('');
+  // --- who is breeding ------------------------------------------------------
 
-  // Modul: ValidateBreedingRequest DISCONNECTS when both parents are the same
-  // character, so each list excludes the other's pick - the same shape as the
-  // fusion dropdowns, and for the same reason.
-  const paternalChoices = $derived((roster.data ?? []).filter((c) => c.CharacterId !== maternalId));
-  const maternalChoices = $derived((roster.data ?? []).filter((c) => c.CharacterId !== paternalId));
+  let heroId = $state('');
 
-  const preview = createQuery(() => ({
-    queryKey: queryKeys.breedingPreview(paternalId, maternalId),
-    queryFn: () => fetchBreedingPreview(paternalId, maternalId),
-    enabled: paternalId !== '' && maternalId !== '' && paternalId !== maternalId,
-  }));
+  /** '' when nobody is chosen; 'v:<id>' for a villager, 'c:<guid>' for one of your own. */
+  let partnerKey = $state('');
+
+  const candidates = $derived(roster.data ?? []);
+  const newcomers = $derived(village.data?.Newcomers ?? []);
+  const innLevel = $derived(village.data?.InnLevel ?? 0);
+
+  const hero = $derived(candidates.find((c) => c.CharacterId === heroId));
+
+  const partnerIsVillager = $derived(partnerKey.startsWith('v:'));
+  const partnerVillagerId = $derived(partnerIsVillager ? Number(partnerKey.slice(2)) : 0);
+  const partnerCharacterId = $derived(partnerKey.startsWith('c:') ? partnerKey.slice(2) : '');
+  const partnerCharacter = $derived(candidates.find((c) => c.CharacterId === partnerCharacterId));
 
   let nowSeconds = $state(Math.floor(connection.serverNowMs() / 1000));
   $effect(() => {
@@ -69,126 +85,189 @@
     return () => clearInterval(timer);
   });
 
-  function label(candidate: BreedingCandidate): string {
-    const cooling = candidate.BreedingCooldownEndEpoch > nowSeconds;
+  const aptitudesOf = (c: BreedingCandidate) =>
+    c.AptitudeStrength + '/' + c.AptitudeSkill + '/' + c.AptitudeEndurance + '/' + c.AptitudeFortune;
+
+  const villagerAptitudes = (p: VillageNewcomer) =>
+    p.AptitudeStrength + '/' + p.AptitudeSkill + '/' + p.AptitudeEndurance + '/' + p.AptitudeFortune;
+
+  /**
+   * Modul: A NAME FIRST. This label used to lead with eight hex digits of the
+   * character's Guid - "Human man b6b704ca - lv 1, Elder, gen 0, needs 50" -
+   * and the player who reported this could not find his own main character in
+   * a list of ten. Correctly: nothing in the list referred to it.
+   *
+   * There is no level here any more either. It quoted a characters.Level column
+   * that nothing in the server ever wrote, so every row read "lv 1, needs 50"
+   * and the screen was telling every player to go and find a character that
+   * could not exist.
+   */
+  function heroLabel(candidate: BreedingCandidate): string {
     const marks = [
-      `lv ${candidate.Level}`,
+      raceName(candidate.LocusRaceDominant) + ' ' + (candidate.IsFemale ? 'woman' : 'man'),
       agePhaseName(candidate.AgePhase),
-      `gen ${candidate.GenerationIndex}`,
+      aptitudesOf(candidate),
     ];
-    if (candidate.Level < 50) marks.push('needs 50');
     if (candidate.AgePhase < 1) marks.push('still a child');
     if (candidate.IsEpicMutation) marks.push('epic');
     if (candidate.IsInbred) marks.push('inbred');
-    if (cooling) marks.push(`resting ${candidate.BreedingCooldownEndEpoch - nowSeconds}s`);
-    // Modul: SEX AND RACE, which this label never carried.
-    //
-    // The engine refuses a same-sex pair and a mixed-race pair, but the roster
-    // preview endpoint checks only the race - so choosing a woman as the
-    // paternal parent produced an ELIGIBLE preview, a priced button, and a
-    // transaction the server rolled back in silence. The label now says which
-    // is which, and the warning below catches the pairing before it is sent.
-    const who = `${raceName(candidate.LocusRaceDominant)} ${candidate.IsFemale ? 'woman' : 'man'}`;
-    return `${who} ${candidate.CharacterId.slice(0, 8)} - ${marks.join(', ')}`;
+    if (candidate.BreedingCooldownEndEpoch > nowSeconds) {
+      marks.push('resting ' + (candidate.BreedingCooldownEndEpoch - nowSeconds) + 's');
+    }
+    const who = candidate.Name || candidate.CharacterId.slice(0, 8);
+    return who + ' - ' + marks.join(', ');
   }
 
-  const paternalPick = $derived((roster.data ?? []).find((c) => c.CharacterId === paternalId));
-  const maternalPick = $derived((roster.data ?? []).find((c) => c.CharacterId === maternalId));
-
   /**
-   * The one refusal the roster preview does not make for us. Mirrors
-   * ExecuteBreedingAsync's `if (pChar.IsFemale || !mChar.IsFemale)`.
-   */
-  const rosterSexProblem = $derived(
-    paternalPick && paternalPick.IsFemale
-      ? 'The paternal parent has to be a man.'
-      : maternalPick && !maternalPick.IsFemale
-        ? 'The maternal parent has to be a woman.'
-        : '',
-  );
-
-  /** What the price is charged against: the higher of the two generations. */
-  const rosterGeneration = $derived(
-    paternalPick && maternalPick
-      ? Math.max(paternalPick.GenerationIndex, maternalPick.GenerationIndex)
-      : null,
-  );
-
-  function breed() {
-    const outcome = executeBreeding(paternalId, maternalId, breedingLevel);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.breedingRoster }), 900);
-  }
-
-  // --- hero x villager: the standard pair -----------------------------------
-  let heroId = $state('');
-  let villagerId = $state(0);
-
-  const hero = $derived((roster.data ?? []).find((c) => c.CharacterId === heroId));
-  const newcomers = $derived(village.data?.Newcomers ?? []);
-
-  /**
-   * Why a given villager cannot marry the chosen hero, or null if they can.
+   * Why a villager cannot pair with the chosen hero, or null.
    *
-   * The server refuses these by rolling the transaction back in silence, so
-   * every one of them has to be visible here or a player learns nothing from
-   * pressing the button. Mirrors ExecuteHeroVillagerBreedingAsync's own order.
+   * Mirrors BreedingGateRules.CheckVillagerPair. The server answers every
+   * refusal with a command result now rather than rolling back in silence, but
+   * a reason shown BEFORE the button is pressed is worth more than one after.
+   *
+   * "Has already married" is IsElder on the server - a word that means SPENT,
+   * not old, and which collided on this very screen with the Elder age phase.
+   * That collision was the first thing the reporting player got wrong, so the
+   * word does not appear here at all.
    */
   function villagerBlockedReason(person: VillageNewcomer): string | null {
     if (person.IsElder) return 'has already married in';
     if (!hero) return null;
-    if (hero.IsFemale === person.IsFemale) return `both ${person.IsFemale ? 'women' : 'men'}`;
-    if (hero.LocusRaceDominant !== person.RaceId) return `not ${raceName(hero.LocusRaceDominant)}`;
+    if (hero.IsFemale === person.IsFemale) return 'both ' + (person.IsFemale ? 'women' : 'men');
+    if (hero.LocusRaceDominant !== person.RaceId) return 'not ' + raceName(hero.LocusRaceDominant);
     return null;
   }
 
-  function villagerLabel(person: VillageNewcomer): string {
-    const apt = [
-      person.AptitudeStrength,
-      person.AptitudeSkill,
-      person.AptitudeEndurance,
-      person.AptitudeFortune,
-    ].join('/');
-    const blocked = villagerBlockedReason(person);
-    const who = `${raceName(person.RaceId)} ${person.IsFemale ? 'woman' : 'man'}`;
-    return blocked ? `${who} - ${apt} (${blocked})` : `${who} - ${apt}`;
+  /** The same question asked of one of your own characters. */
+  function characterBlockedReason(candidate: BreedingCandidate): string | null {
+    if (!hero) return null;
+    if (candidate.CharacterId === hero.CharacterId) return 'that is the hero';
+    if (hero.IsFemale === candidate.IsFemale) return 'both ' + (candidate.IsFemale ? 'women' : 'men');
+    if (hero.LocusRaceDominant !== candidate.LocusRaceDominant) {
+      return 'not ' + raceName(hero.LocusRaceDominant);
+    }
+    if (candidate.AgePhase < 1) return 'still a child';
+    if (candidate.BreedingCooldownEndEpoch > nowSeconds) return 'resting';
+    return null;
   }
 
-  function heroLabel(candidate: BreedingCandidate): string {
-    const apt = [
-      candidate.AptitudeStrength,
-      candidate.AptitudeSkill,
-      candidate.AptitudeEndurance,
-      candidate.AptitudeFortune,
-    ].join('/');
-    const who = `${raceName(candidate.LocusRaceDominant)} ${candidate.IsFemale ? 'woman' : 'man'}`;
-    const marks = [`lv ${candidate.Level}`, apt];
-    if (candidate.Level < 50) marks.push('needs 50');
-    // Modul: BOTH halves of the gate. The engine wants level 50 AND an adult,
-    // and this label only ever mentioned the level - so a character who was
-    // old enough on paper and still a child in AgePhase read as eligible and
-    // was refused with no visible reason.
-    if (candidate.AgePhase < 1) marks.push('still a child');
-    if (candidate.BreedingCooldownEndEpoch > nowSeconds) {
-      marks.push(`resting ${candidate.BreedingCooldownEndEpoch - nowSeconds}s`);
-    }
-    return `${who} - ${marks.join(', ')}`;
+  function partnerLabel(candidate: BreedingCandidate): string {
+    const blocked = characterBlockedReason(candidate);
+    const who = candidate.Name || candidate.CharacterId.slice(0, 8);
+    const base = who + ' - ' + raceName(candidate.LocusRaceDominant) + ' ' +
+      (candidate.IsFemale ? 'woman' : 'man') + ', ' + aptitudesOf(candidate);
+    return blocked ? base + ' (' + blocked + ')' : base;
   }
+
+  function villagerLabel(person: VillageNewcomer): string {
+    const blocked = villagerBlockedReason(person);
+    const base = raceName(person.RaceId) + ' ' + (person.IsFemale ? 'woman' : 'man') +
+      ' - ' + villagerAptitudes(person);
+    return blocked ? base + ' (' + blocked + ')' : base;
+  }
+
+  // --- what you are breeding FOR --------------------------------------------
+
+  /**
+   * Modul: THE BREEDING GROUNDS FINALLY DOES SOMETHING.
+   *
+   * Its level was read in four places on the server and every one of them
+   * tested `<= 0`, so every upgrade past the first changed no number anywhere
+   * in the game. It buys SELECTION now: a chosen aptitude takes the better
+   * parent's value outright instead of the weighted coin, where a 4 against a 6
+   * takes the 6 only 60% of the time - which is why a bloodline kept losing
+   * ground on the exact stat the player was trying to raise.
+   */
+  const selectableCount = $derived(selectableAptitudeCount(breedingLevel));
+  let selectionMask = $state(0);
+
+  /** Trimmed the way the server trims it, so the screen cannot promise more than it sends. */
+  const effectiveMask = $derived(clampSelectionMask(selectionMask, breedingLevel));
+  const selectedCount = $derived(APTITUDES.filter((_, i) => (effectiveMask & (1 << i)) !== 0).length);
+
+  function toggleAptitude(index: number) {
+    const bit = 1 << index;
+    if ((selectionMask & bit) !== 0) {
+      selectionMask &= ~bit;
+      return;
+    }
+    // Drop the oldest choice rather than refusing the new one - a checkbox that
+    // silently does nothing is worse than one that swaps.
+    if (selectedCount >= selectableCount) {
+      for (let i = 0; i < APTITUDES.length; i++) {
+        if ((selectionMask & (1 << i)) !== 0) {
+          selectionMask &= ~(1 << i);
+          break;
+        }
+      }
+    }
+    selectionMask |= bit;
+  }
+
+  const nextSelectionLevel = $derived(
+    SELECTION_UNLOCK_LEVELS.find((level) => level > breedingLevel) ?? null,
+  );
+
+  // --- the preview -----------------------------------------------------------
+
+  const villagePreview = createQuery(() => ({
+    queryKey: queryKeys.villagerBreedingPreview(heroId, partnerVillagerId),
+    queryFn: () => fetchVillagerBreedingPreview(heroId, partnerVillagerId),
+    enabled: heroId !== '' && partnerVillagerId > 0,
+  }));
+
+  /**
+   * Modul: the roster pairing is ORDERED - the paternal side has to be the man -
+   * and the player is no longer asked which is which. Whichever of the two is
+   * male goes in first, which is exactly what the engine already does for a
+   * village pairing. The old screen made the player get this right and refused
+   * them in silence when they did not.
+   */
+  const paternalId = $derived(
+    hero && partnerCharacter
+      ? hero.IsFemale
+        ? partnerCharacter.CharacterId
+        : hero.CharacterId
+      : '',
+  );
+  const maternalId = $derived(
+    hero && partnerCharacter
+      ? hero.IsFemale
+        ? hero.CharacterId
+        : partnerCharacter.CharacterId
+      : '',
+  );
+
+  const rosterPreview = createQuery(() => ({
+    queryKey: queryKeys.breedingPreview(paternalId, maternalId),
+    queryFn: () => fetchBreedingPreview(paternalId, maternalId),
+    enabled: paternalId !== '' && maternalId !== '' && paternalId !== maternalId,
+  }));
+
+  const preview = $derived(partnerIsVillager ? villagePreview.data : rosterPreview.data);
+
+  const generation = $derived(
+    !hero
+      ? null
+      : partnerIsVillager
+        ? hero.GenerationIndex
+        : partnerCharacter
+          ? Math.max(hero.GenerationIndex, partnerCharacter.GenerationIndex)
+          : null,
+  );
 
   /**
    * Modul: the preview answered in SERVER CODES - "parent_on_cooldown" was
    * rendered to the player verbatim. A refusal nobody can read is a refusal
-   * that teaches nothing, which is the same failure as a deed with no counter.
+   * that teaches nothing.
    *
-   * Covers both endpoints' reasons; an unknown code falls through to the raw
-   * string rather than a shrug, so a new one is visible rather than swallowed.
+   * An unknown code falls through to the raw string rather than a shrug, so a
+   * new one is visible rather than swallowed.
    */
   function refusal(code: string): string {
     switch (code) {
-      case 'hero_not_mature':
-        return 'Your hero has to be an adult at level 50.';
-      case 'parent_not_mature':
-        return 'Both parents have to be adults at level 50.';
+      case 'parent_not_adult':
+        return 'A parent has to be a grown adult. A child matures an hour after you field it.';
       case 'parent_locked_in_escrow':
         return 'That character is locked in a trade.';
       case 'parent_on_cooldown':
@@ -206,22 +285,27 @@
     }
   }
 
-  const villagePreview = createQuery(() => ({
-    queryKey: queryKeys.villagerBreedingPreview(heroId, villagerId),
-    queryFn: () => fetchVillagerBreedingPreview(heroId, villagerId),
-    enabled: heroId !== '' && villagerId > 0,
-  }));
+  function breed() {
+    const outcome = partnerIsVillager
+      ? executeVillagerBreeding(heroId, partnerVillagerId, breedingLevel, effectiveMask)
+      : executeBreeding(paternalId, maternalId, breedingLevel, effectiveMask);
 
-  function marry() {
-    const outcome = executeVillagerBreeding(heroId, villagerId, breedingLevel);
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    // The villager becomes an elder and the child joins the roster, so both
-    // lists are stale the moment this lands.
+
+    // The villager is spent and the child joins the roster, so both lists are
+    // stale the moment this lands.
     setTimeout(() => {
       client.invalidateQueries({ queryKey: queryKeys.breedingRoster });
       client.invalidateQueries({ queryKey: queryKeys.villageNewcomers });
     }, 900);
   }
+
+  const canBreed = $derived(
+    breedingLevel > 0 &&
+      heroId !== '' &&
+      partnerKey !== '' &&
+      (preview ? preview.IsEligible && preview.HasSufficientGold : false),
+  );
 
   // --- season pass ----------------------------------------------------------
   // Modul: ClaimedMilestonesBitmask was REMOVED from StateUpdatePacket along
@@ -258,11 +342,11 @@
     <!-- Modul: WHERE THIS SITS. Breeding interlocks with four other systems and
          none of them were named here, so a player could work the screen without
          ever learning that the Inn stocks the partner list or that a child has
-         to be fielded from the Hall before it can grow up. Three sentences,
-         because the alternative is a help page nobody opens. -->
+         to be fielded from the Hall before it can grow up. -->
     <p class="interlocks dim tiny">
       The <strong>Inn</strong> stocks your village with newcomers to marry, and
-      sets how good they are. A child joins the
+      sets how good they are. The <strong>Breeding Grounds</strong> lets you
+      choose which aptitude to breed for. A child joins the
       <strong>Hall of Ancestors</strong>, where you field it and mark whether it
       carries. When the season turns, levels, gear, gold and the whole village
       are taken back &mdash; the Hall and the <strong>aptitudes</strong> bred
@@ -271,163 +355,146 @@
 
     {#if breedingLevel === 0}
       <p class="warn">
-        You have no Breeding Grounds. The server rejects breeding without them
-        by disconnecting, so this screen will not send it.
+        You have no <strong>Breeding Grounds</strong>. Build it in your village
+        and any grown adult can marry &mdash; there is no level requirement.
       </p>
     {/if}
 
-    <div class="tabs" role="tablist">
-      <button
-        role="tab"
-        class:on={mode === 'village'}
-        aria-selected={mode === 'village'}
-        onclick={() => (mode = 'village')}
-      >
-        Marry the village
-      </button>
-      <button
-        role="tab"
-        class:on={mode === 'roster'}
-        aria-selected={mode === 'roster'}
-        onclick={() => (mode = 'roster')}
-      >
-        Cross your own
-      </button>
-    </div>
+    <!-- Modul: ONE QUESTION. A hero and a partner. The two tabs this replaced
+         asked the player to understand the difference between crossing their
+         own line and marrying the village before they were allowed to begin. -->
+    <label>
+      Your hero
+      <select bind:value={heroId}>
+        <option value="">Choose...</option>
+        {#each candidates as candidate (candidate.CharacterId)}
+          <option value={candidate.CharacterId}>{heroLabel(candidate)}</option>
+        {/each}
+      </select>
+    </label>
 
-    {#if mode === 'village'}
-      <!-- Modul: THE STANDARD PAIR. A child copies each aptitude whole from one
-           parent and can only beat the better of them by one, on a lucky roll -
-           so marrying outside is what actually raises a bloodline. -->
-      <p class="dim small">
-        A hero of yours and a <strong>newcomer</strong> from the village. Only
-        the hero needs to be an adult at level 50. A newcomer brings nothing but
-        their race, their sex and their four aptitudes &mdash; and they marry
-        <strong>once</strong>, becoming an elder, so spend a good one carefully.
-      </p>
-
-      <label>
-        Your hero
-        <select bind:value={heroId}>
-          <option value="">Choose...</option>
-          {#each roster.data ?? [] as candidate (candidate.CharacterId)}
-            <option value={candidate.CharacterId}>{heroLabel(candidate)}</option>
-          {/each}
-        </select>
-      </label>
-
-      <label>
-        From the village
-        <select bind:value={villagerId}>
-          <option value={0}>Choose...</option>
+    <label>
+      Partner
+      <select bind:value={partnerKey}>
+        <option value="">Choose...</option>
+        <optgroup label="From the village - new blood">
           {#each newcomers as person (person.Id)}
-            <option value={person.Id} disabled={villagerBlockedReason(person) !== null}>
+            <option value={'v:' + person.Id} disabled={villagerBlockedReason(person) !== null}>
               {villagerLabel(person)}
             </option>
           {/each}
-        </select>
-      </label>
+        </optgroup>
+        <optgroup label="Your own line - refines what you have">
+          {#each candidates as candidate (candidate.CharacterId)}
+            <option
+              value={'c:' + candidate.CharacterId}
+              disabled={characterBlockedReason(candidate) !== null}
+            >
+              {partnerLabel(candidate)}
+            </option>
+          {/each}
+        </optgroup>
+      </select>
+    </label>
 
-      {#if village.data && newcomers.length === 0}
+    <!-- Modul: WHICH LIST TO PICK FROM, stated rather than implied. A child
+         copies each aptitude whole from one parent, so crossing your own line
+         converges on what you already have; the village is the only thing that
+         puts a number into a bloodline that was not already in it. -->
+    <p class="dim tiny">
+      Marrying the <strong>village</strong> is what raises a bloodline &mdash;
+      only outside blood brings a number you do not already have. Your Inn is
+      level {innLevel}, so a newcomer can roll up to
+      <strong>{bestVillagerAptitudeFor(innLevel)}</strong> in an aptitude
+      (the village can never exceed {APTITUDE_VILLAGE_CEILING}; past that it is
+      selection and luck alone). Crossing <strong>your own</strong> refines what
+      you have and never exceeds it by more than a lucky point.
+    </p>
+
+    {#if newcomers.length === 0 && village.data}
+      <p class="dim tiny">
+        Nobody has settled in your village yet. Somebody turns up every
+        {Math.round(village.data.IntervalSeconds / 3600)}h while there is room.
+      </p>
+    {/if}
+
+    <!-- Modul: BREED FOR SOMETHING. The Breeding Grounds level was read in four
+         places on the server and every one tested `<= 0`, so every upgrade past
+         the first changed no number in the game. This is what it buys. -->
+    <fieldset class="selection">
+      <legend>Breed for</legend>
+
+      {#if selectableCount === 0}
         <p class="dim tiny">
-          Nobody has settled in your village yet. Somebody turns up every
-          {Math.round(village.data.IntervalSeconds / 3600)}h while there is room.
+          Your <strong>Breeding Grounds</strong> is level {breedingLevel}. At
+          level {SELECTION_UNLOCK_LEVELS[0]} you can choose one aptitude to breed
+          for, and a chosen one always keeps the better parent's value instead of
+          leaving it to chance.
+        </p>
+      {:else}
+        <p class="dim tiny">
+          Choose up to <strong>{selectableCount}</strong>. A chosen aptitude
+          takes the <strong>better parent's value outright</strong>; the rest are
+          a weighted roll, so a 4 against a 6 keeps the 6 only about 60% of the
+          time. Your Grounds also gives every aptitude a
+          <strong>{upMutationPercent(breedingLevel)}%</strong> chance of +1.
+        </p>
+
+        <div class="apt-choices">
+          {#each APTITUDES as aptitude, index (aptitude.field)}
+            {@const on = (effectiveMask & (1 << index)) !== 0}
+            <label class="apt-choice" class:on>
+              <input
+                type="checkbox"
+                checked={on}
+                onchange={() => toggleAptitude(index)}
+              />
+              <span>
+                <strong>{aptitude.name}</strong>
+                <span class="dim tiny">{aptitude.blurb}</span>
+              </span>
+            </label>
+          {/each}
+        </div>
+
+        {#if nextSelectionLevel !== null}
+          <p class="dim tiny">
+            Breeding Grounds level {nextSelectionLevel} buys another choice.
+          </p>
+        {/if}
+      {/if}
+    </fieldset>
+
+    {#if preview}
+      {@const p = preview}
+      {#if !p.IsEligible}
+        <p class="warn">{p.IneligibleReason ? refusal(p.IneligibleReason) : 'These two cannot pair.'}</p>
+      {:else}
+        <p class="cost" class:short={!p.HasSufficientGold}>
+          Costs {p.BreedingCostGold.toLocaleString()}g
+          {#if !p.HasSufficientGold}&middot; not enough gold{/if}
+          {#if p.IsInbredRisk}&middot; <span class="risk">related pair</span>{/if}
         </p>
       {/if}
 
-      {#if villagePreview.data}
-        {@const p = villagePreview.data}
-        {#if !p.IsEligible}
-          <p class="warn">{p.IneligibleReason ? refusal(p.IneligibleReason) : 'These two cannot marry.'}</p>
-        {:else}
-          <p class="cost" class:short={!p.HasSufficientGold}>
-            Costs {p.BreedingCostGold.toLocaleString()}g
-            {#if !p.HasSufficientGold}&middot; not enough gold{/if}
-          </p>
-        {/if}
-
-        <ChildPreview
-          preview={p}
-          mode="village"
-          generation={hero ? hero.GenerationIndex : null}
-        />
-      {/if}
-
-      <button
-        onclick={marry}
-        disabled={breedingLevel === 0 ||
-          heroId === '' ||
-          villagerId === 0 ||
-          (villagePreview.data
-            ? !villagePreview.data.IsEligible || !villagePreview.data.HasSufficientGold
-            : false)}
-      >
-        Marry
-      </button>
-    {:else}
-      <!-- Modul: THIS BLURB USED TO BE WRONG, and wrong in the direction that
-           makes the mechanic look pointless. It said a child "cannot beat a
-           number the pair does not already have" - but the drift roll adds +1 a
-           quarter of the time and an epic adds another, which is the entire
-           reason a bloodline climbs at all. What is true is that the climb is
-           SLOW, about +0.15 a generation, which is why the village exists. -->
-      <p class="dim small">
-        Two of your own characters produce a third. A child copies each aptitude
-        whole from one parent and can only beat the better of them by one, on a
-        lucky roll &mdash; so crossing your own line refines it, and marrying
-        the village is what raises it. Close relatives are allowed but degraded.
-      </p>
-
-      <label>
-        Paternal
-        <select bind:value={paternalId}>
-          <option value="">Choose...</option>
-          {#each paternalChoices as candidate (candidate.CharacterId)}
-            <option value={candidate.CharacterId}>{label(candidate)}</option>
-          {/each}
-        </select>
-      </label>
-
-      <label>
-        Maternal
-        <select bind:value={maternalId}>
-          <option value="">Choose...</option>
-          {#each maternalChoices as candidate (candidate.CharacterId)}
-            <option value={candidate.CharacterId}>{label(candidate)}</option>
-          {/each}
-        </select>
-      </label>
-
-      {#if rosterSexProblem}
-        <p class="warn">{rosterSexProblem}</p>
-      {/if}
-
-      {#if preview.data}
-        {@const p = preview.data}
-        {#if !p.IsEligible}
-          <p class="warn">{p.IneligibleReason ? refusal(p.IneligibleReason) : 'These two cannot breed.'}</p>
-        {:else}
-          <p class="cost" class:short={!p.HasSufficientGold}>
-            Costs {p.BreedingCostGold.toLocaleString()}g
-            {#if !p.HasSufficientGold}&middot; not enough gold{/if}
-            {#if p.IsInbredRisk}&middot; <span class="risk">related pair</span>{/if}
-          </p>
-        {/if}
-
-        <ChildPreview preview={p} mode="roster" generation={rosterGeneration} />
-      {/if}
-
-      <button
-        onclick={breed}
-        disabled={breedingLevel === 0 ||
-          paternalId === '' ||
-          maternalId === '' ||
-          rosterSexProblem !== '' ||
-          (preview.data ? !preview.data.IsEligible || !preview.data.HasSufficientGold : false)}
-      >
-        Breed
-      </button>
+      <ChildPreview
+        preview={p}
+        mode={partnerIsVillager ? 'village' : 'roster'}
+        {generation}
+      />
     {/if}
+
+    <button onclick={breed} disabled={!canBreed}>Breed</button>
+
+    <!-- Modul: WHAT HAPPENS NEXT, which the screen never said. A child is not
+         playable where it lands, and a villager is spent for ever - two facts a
+         player could only discover by doing it. -->
+    <p class="dim tiny">
+      The child is born into the <strong>Hall of Ancestors</strong>. Field it
+      into one of your slots and it grows from a child into an adult after an
+      hour. A villager who marries in is <strong>spent for ever</strong> &mdash;
+      everybody marries once &mdash; so spend a good one deliberately.
+    </p>
   </section>
 
   <section class="panel">
@@ -499,10 +566,6 @@
   .dim {
     color: var(--text-dim);
   }
-  .small {
-    font-size: 0.8rem;
-    margin: 0 0 0.7rem;
-  }
   .tiny {
     font-size: 0.72rem;
     margin: 0.35rem 0 0;
@@ -555,32 +618,67 @@
     gap: 0.4rem;
   }
 
-  .tabs {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.3rem;
-    margin: 0 0 0.7rem;
+  /* Modul: the aptitude and gene lists moved into ui/ChildPreview.svelte with
+     their styles, so the preview is explained from one place. What is left
+     here is the frame around it, and the .tabs rules that used to sit here
+     went with the tabs themselves - one hero, one partner, no mode to pick. */
+
+  .selection {
+    margin: 0.6rem 0;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
   }
 
-  .tabs button {
-    font: inherit;
-    font-size: 0.8rem;
-    padding: 0.35rem 0.4rem;
+  .selection legend {
+    padding: 0 0.35rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
     color: var(--text-dim);
-    background: var(--bg);
+  }
+
+  .apt-choices {
+    display: grid;
+    gap: 0.3rem;
+    margin-top: 0.4rem;
+  }
+
+  /* Modul: the whole row is the target, not the box. Padding cannot enlarge a
+     checkbox - the browser hit-tests its border box - so the LABEL carries the
+     44px floor and the input rides inside it. That is the lesson check:touch
+     was written to record. */
+  .apt-choice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.3rem 0.45rem;
     border: 1px solid var(--border);
     border-radius: var(--radius);
     cursor: pointer;
   }
 
-  .tabs button.on {
-    color: inherit;
+  .apt-choice.on {
     border-color: var(--brass, var(--border));
   }
 
-  /* Modul: the aptitude and gene lists moved into ui/ChildPreview.svelte with
-     their styles, so both tabs get the same explained preview from one place.
-     What is left here is the frame around it. */
+  .apt-choice input {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+  }
+
+  .apt-choice span {
+    display: grid;
+    gap: 0.1rem;
+    min-width: 0;
+  }
+
+  .apt-choice .tiny {
+    margin: 0;
+    display: block;
+  }
 
   .interlocks {
     margin: 0 0 0.7rem;

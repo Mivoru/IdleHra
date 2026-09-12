@@ -168,11 +168,11 @@
 
               <div class="who">
                 <strong>
-                  {raceName(m.RaceId)} {m.IsFemale ? 'woman' : 'man'}
+                  {m.Name || `${raceName(m.RaceId)} ${m.IsFemale ? 'woman' : 'man'}`}
                   {#if m.IsEpicMutation}<span class="epic" title="Epic mutation">&#9733;</span>{/if}
                 </strong>
                 <span class="dim tiny">
-                  lv {m.Level} &middot; {parentage(m)}
+                  {raceName(m.RaceId)} {m.IsFemale ? 'woman' : 'man'} &middot; {parentage(m)}
                   {#if m.IsInbred} &middot; <span class="risk">inbred</span>{/if}
                 </span>
               </div>

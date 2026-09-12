@@ -253,7 +253,15 @@ namespace FolkIdle.Server.Models
             await UpsertBuildingAsync(db, playerId, VillageManagementEngine.ForgeBuildingId, ForgeLevel);
             await UpsertBuildingAsync(db, playerId, VillageManagementEngine.InnBuildingId, 5);
             await UpsertBuildingAsync(db, playerId, VillageManagementEngine.MentorshipAcademyBuildingId, 2);
-            await UpsertBuildingAsync(db, playerId, VillageManagementEngine.BreedingGroundsBuildingId, 1);
+            // Modul: level 4, not 1. The Breeding Grounds level buys APTITUDE
+            // SELECTION and the first choice arrives at 4, so a fixture at 1
+            // cannot drive the feature at all - the screen would only ever show
+            // the "at level 4 you can choose" notice and exercise.mjs could not
+            // click a checkbox that is never drawn. The fixture exists to drive
+            // the client by hand; a building below its own first threshold is
+            // the same kind of gap as the missing building, lineage row and
+            // sexes it has silently lacked before.
+            await UpsertBuildingAsync(db, playerId, VillageManagementEngine.BreedingGroundsBuildingId, 4);
 
             await EnsureCharactersAsync(db, playerId);
             await EnsureLineagesAsync(db, playerId);

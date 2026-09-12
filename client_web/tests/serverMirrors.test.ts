@@ -19,6 +19,14 @@ import {
   villageUpgradeDurationSeconds,
 } from '../src/lib/net/commands';
 import { ATTRIBUTE_MILESTONES, ATTRIBUTE_THRESHOLDS, ATTRIBUTE_CURVES, EQUIP_REQUIREMENT_PER_REGION_TIER, equipRequirement } from '../src/lib/net/commands';
+import {
+  selectableAptitudeCount,
+  clampSelectionMask,
+  upMutationPercent,
+  bestVillagerAptitudeFor,
+  SELECTION_UNLOCK_LEVELS,
+  APTITUDES,
+} from '../src/lib/net/commands';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -717,5 +725,89 @@ describe('the village upgrade duration curve', () => {
       );
     }
     expect(villageUpgradeDurationSeconds(10)).toBeGreaterThan(villageUpgradeDurationSeconds(5));
+  });
+});
+
+// Modul: BREEDING SELECTION, the Breeding Grounds' first real job.
+//
+// The building was read in four places and every one tested `<= 0`, so
+// upgrading it past level 1 changed no number in the game. It buys SELECTION
+// now - the player names an aptitude and a selected one takes the better
+// parent outright rather than InheritOne's weighted coin - and the screen has
+// to draw the right number of checkboxes before any command is sent, so the
+// table exists on both sides.
+//
+// The server CLAMPS an overreaching mask rather than refusing it, so drift
+// here costs a player a checkbox rather than their gold. That is deliberate,
+// and it is not a reason to skip the guard: the same reasoning applied to
+// auto-reroll's affix index, where ten of twelve entries had drifted and the
+// whole feature looked dead.
+describe('the breeding selection table', () => {
+  const server = read(serverRoot, 'Engine', 'BreedingAptitudes.cs');
+
+  it('unlocks each extra selection at the level the server says', () => {
+    const block = after(server, 'public static int SelectableCount', 'the selection table');
+    const three = num(block, /groundsLevel >= (\d+)\) return 3/, 'the third selection level');
+    const two = num(block, /groundsLevel >= (\d+)\) return 2/, 'the second selection level');
+    const one = num(block, /groundsLevel >= (\d+)\) return 1/, 'the first selection level');
+
+    expect([one, two, three]).toEqual([...SELECTION_UNLOCK_LEVELS]);
+  });
+
+  it('agrees with the server level by level', () => {
+    for (let level = 0; level <= 20; level++) {
+      const expected = level >= 10 ? 3 : level >= 7 ? 2 : level >= 4 ? 1 : 0;
+      expect(selectableAptitudeCount(level), `Grounds ${level}`).toBe(expected);
+    }
+  });
+
+  it('never lets a player select every aptitude', () => {
+    // Selecting all four would delete inheritance from the game and replace it
+    // with "take the max of both parents", which makes the choice of partner -
+    // the entire point of the village - irrelevant.
+    for (let level = 0; level <= 100; level++) {
+      expect(selectableAptitudeCount(level)).toBeLessThan(APTITUDES.length);
+    }
+  });
+
+  it('clamps a greedy mask the way ClampSelection does - lowest bits first', () => {
+    expect(clampSelectionMask(0b1111, 3)).toBe(0b0000);
+    expect(clampSelectionMask(0b1111, 4)).toBe(0b0001);
+    expect(clampSelectionMask(0b1111, 7)).toBe(0b0011);
+    expect(clampSelectionMask(0b1111, 12)).toBe(0b0111);
+
+    // And keeps the bits that were actually asked for, not the first N.
+    expect(clampSelectionMask(0b1000, 4)).toBe(0b1000);
+    expect(clampSelectionMask(0b1100, 4)).toBe(0b0100);
+  });
+
+  it('quotes the same up-mutation chance the server rolls', () => {
+    const block = after(server, 'public static int UpMutationPercentFor', 'the up-mutation formula');
+    expect(block).toContain('MutationUpPercent + Math.Max(0, groundsLevel)');
+
+    const base = num(server, /MutationUpPercent = (\d+)/, 'the base up-mutation chance');
+    for (let level = 0; level <= 12; level++) {
+      expect(upMutationPercent(level), `Grounds ${level}`).toBe(base + level);
+    }
+  });
+
+  it('quotes the villager band the Inn actually rolls', () => {
+    // `2 + rng.Next(reach + 1)` where reach is `innLevel * 3 / 2`. This used to
+    // be plain innLevel, which capped villagers at 14 against a documented
+    // ceiling of 20 the game could not produce.
+    const block = after(server, 'public static int[] RollVillager', 'the villager roll');
+    expect(block).toContain('Math.Max(0, innLevel) * 3 / 2');
+
+    expect(bestVillagerAptitudeFor(0)).toBe(2);
+    expect(bestVillagerAptitudeFor(5)).toBe(9);
+    expect(bestVillagerAptitudeFor(12)).toBe(APTITUDE_VILLAGE_CEILING);
+  });
+
+  it('has a village ceiling the maxed Inn can actually reach', () => {
+    // The Town Hall maxes at 5 and every other building is capped at
+    // 2 + TownHallLevel*2, so the Inn's own ceiling is 12. If the reach
+    // formula ever stops reaching the aptitude ceiling at that level, the
+    // second half of the climb becomes unreachable again.
+    expect(bestVillagerAptitudeFor(12)).toBeGreaterThanOrEqual(APTITUDE_VILLAGE_CEILING);
   });
 });

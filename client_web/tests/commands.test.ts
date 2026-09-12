@@ -257,7 +257,27 @@ describe('hero x villager pairing', () => {
       Command: CommandType.ExecuteVillagerBreeding,
       TargetGuid: 'a-hero-guid',
       TargetId: 42,
+      // A level-1 Breeding Grounds buys no selection, so the mask is zero -
+      // which is also what the field has to be for a client that never sets it.
+      BreedingSelectionMask: 0,
     });
+  });
+
+  it('carries the chosen aptitudes, clamped to what the Grounds permits', () => {
+    // The server clamps too, and never refuses an overreaching mask - the count
+    // is a server truth and this copy is a hint for drawing checkboxes. Sending
+    // all four from a level-4 Grounds must arrive as one, not as a disconnect.
+    expect(executeVillagerBreeding('a-hero-guid', 42, 4, 0b1111).ok).toBe(true);
+    expect(sent[0].BreedingSelectionMask).toBe(0b0001);
+
+    sent.length = 0;
+    expect(executeVillagerBreeding('a-hero-guid', 42, 10, 0b1010).ok).toBe(true);
+    expect(sent[0].BreedingSelectionMask).toBe(0b1010);
+  });
+
+  it('sends no selection at all from a Breeding Grounds too low to buy one', () => {
+    expect(executeVillagerBreeding('a-hero-guid', 42, 3, 0b1111).ok).toBe(true);
+    expect(sent[0].BreedingSelectionMask).toBe(0);
   });
 
   it('refuses without Breeding Grounds, which the server answers by disconnecting', () => {

@@ -69,6 +69,20 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   23: 'Auto-reroll stopped - your stop condition was met.',
   24: 'Auto-reroll used every attempt without matching your stop condition.',
   25: 'That stat can never appear on this item, so nothing was rolled or charged.',
+
+  // Modul: BREEDING, which used to answer nothing at all. The engine had twenty
+  // rollbacks and not one command result between them, so every refusal left
+  // the button enabled and the screen blank.
+  26: 'Build the Breeding Grounds in your village first.',
+  27: 'A parent has to be a grown adult. A child matures an hour after you field it.',
+  28: 'That character is still resting after its last child.',
+  29: 'That character is locked in a trade.',
+  30: 'A pair needs one of each - two men or two women cannot breed.',
+  31: 'Swap them over - the paternal side has to be the man.',
+  32: 'Those two are of different races.',
+  33: 'They have already married into your line. Everybody marries once.',
+  34: 'Not enough gold for this pairing.',
+  35: 'A child was born - find it in the Hall of Ancestors.',
 };
 
 export const COMMAND_RESULT_SUCCESS = 0;
@@ -84,6 +98,9 @@ export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
   COMMAND_RESULT_SUCCESS,
   23,
   24,
+  // A birth is the best news this screen has; it must not arrive in the
+  // failure colour.
+  35,
 ]);
 
 export interface CommandResultEntry {

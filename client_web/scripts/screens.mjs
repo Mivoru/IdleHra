@@ -130,7 +130,13 @@ export async function assertMatchesNav(page) {
  * is what stopped the first narrow-width sweep dead.
  */
 export async function go(page, label) {
-  const target = page.locator('header').getByRole('button', { name: label, exact: true }).first();
+  // Modul: a destination's button may carry a BADGE. Mail renders as "Mail 3"
+  // when something is unclaimed, so `exact: true` matched it on an empty
+  // mailbox and timed out the moment the fixture had a message waiting - which
+  // took every geometry check down with it, on a client with nothing wrong.
+  // Anchored at both ends so "Guild" still cannot match "Guild Ops".
+  const badged = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s+\\d+)?$`);
+  const target = page.locator('header').getByRole('button', { name: badged }).first();
   if (!(await target.isVisible().catch(() => false))) {
     const menu = page.locator('header').getByRole('button', { name: /^Menu( ·|$)/ }).first();
     if ((await menu.count()) > 0) {
