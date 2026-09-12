@@ -61,6 +61,7 @@ if (args.Length > 0 && args[0] == "--migrate")
     await using (var migrationContext = new FolkIdleDbContext(migrationOptions))
     {
         await migrationContext.Database.MigrateAsync();
+        await FolkIdle.Server.Engine.CharacterNameBackfill.RunAsync(migrationContext);
     }
     Console.WriteLine("Database migrations applied successfully.");
     return;

@@ -4253,6 +4253,7 @@ namespace FolkIdle.Server.Network
         private sealed class BreedingRosterEntryResponse
         {
             public string CharacterId { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
             public int AgePhase { get; set; }
             public int GenerationIndex { get; set; }
             public bool IsBreedingActive { get; set; }
@@ -4583,6 +4584,7 @@ namespace FolkIdle.Server.Network
                         return new
                         {
                             CharacterId = c.Id.ToString(),
+                            c.Name,
                             c.AgePhase,
                             c.IsFemale,
                             c.SlotIndex,
@@ -4674,6 +4676,7 @@ namespace FolkIdle.Server.Network
                     response.Add(new BreedingRosterEntryResponse
                     {
                         CharacterId = character.Id.ToString(),
+                        Name = character.Name,
                         AgePhase = character.AgePhase,
                         GenerationIndex = lineage.GenerationIndex,
                         IsBreedingActive = character.IsBreedingActive,

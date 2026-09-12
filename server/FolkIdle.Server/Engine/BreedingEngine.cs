@@ -198,22 +198,27 @@ namespace FolkIdle.Server.Engine
                 mChar.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;
 
                 var childId = Guid.NewGuid();
+
+                // Modul: breeding pairs. A coin flip. Without a sex of its own
+                // every child would default to male and a lineage would be
+                // unable to breed past its founding pair. Hoisted out of the
+                // initialiser because the name is drawn from the sex.
+                bool childIsFemale = Random.Shared.Next(2) == 1;
+
                 var newChar = new CharacterRecord
                 {
                     Id = childId,
                     PlayerId = playerId,
+                    Name = FolkNameRegistry.For(childId, childIsFemale),
                     AgePhase = 0,
                     IsLockedInEscrow = false,
                     // Modul: a newborn goes to the END of the roster. It used to
                     // take SlotIndex's default of 0 - the main character's slot -
                     // and StateCheckpointManager orders by SlotIndex then Id, so
-                    // a level-1 child could sort ahead of its own parent and
-                    // become the character whose gear hydrates the register.
+                    // a newborn could sort ahead of its own parent and become
+                    // the character whose gear hydrates the register.
                     SlotIndex = await CharacterGrantEngine.NextFreeSlotIndexAsync(dbContext, playerId),
-                    // Modul: breeding pairs. A coin flip. Without a sex of its
-                    // own every child would default to male and a lineage would
-                    // be unable to breed past its founding pair.
-                    IsFemale = Random.Shared.Next(2) == 1
+                    IsFemale = childIsFemale
                 };
 
                 var newLineage = new CharacterLineageRegistry
@@ -404,14 +409,17 @@ namespace FolkIdle.Server.Engine
                 newcomer.IsElder = true;
 
                 var childId = Guid.NewGuid();
+                bool childIsFemale = Random.Shared.Next(2) == 1;
+
                 dbContext.CharacterRecords.Add(new CharacterRecord
                 {
                     Id = childId,
                     PlayerId = playerId,
+                    Name = FolkNameRegistry.For(childId, childIsFemale),
                     AgePhase = 0,
                     IsLockedInEscrow = false,
                     SlotIndex = await CharacterGrantEngine.NextFreeSlotIndexAsync(dbContext, playerId),
-                    IsFemale = Random.Shared.Next(2) == 1
+                    IsFemale = childIsFemale
                 });
 
                 var newLineage = new CharacterLineageRegistry

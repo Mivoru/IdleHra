@@ -427,16 +427,20 @@ namespace FolkIdle.Server.Models
             {
                 if (existing.Any(c => c.SlotIndex == slotIndex)) continue;
 
+                var fixtureId = slotIndex == 0 ? playerGuid : Guid.NewGuid();
+                // One male and two females, so BOTH pairings can be driven by
+                // hand: hero x villager, and the roster crossing that needs one
+                // of each sex.
+                bool fixtureIsFemale = slotIndex != 0;
+
                 db.CharacterRecords.Add(new CharacterRecord
                 {
-                    Id = slotIndex == 0 ? playerGuid : Guid.NewGuid(),
+                    Id = fixtureId,
                     PlayerId = playerId,
+                    Name = FolkNameRegistry.For(fixtureId, fixtureIsFemale),
                     AgePhase = 1,
                     SlotIndex = slotIndex,
-                    // One male and two females, so BOTH pairings can be driven
-                    // by hand: hero x villager, and the roster crossing that
-                    // needs one of each sex.
-                    IsFemale = slotIndex != 0
+                    IsFemale = fixtureIsFemale
                 });
             }
 
@@ -459,6 +463,12 @@ namespace FolkIdle.Server.Models
 
                 character.AgePhase = 1;
                 character.IsFemale = character.SlotIndex != 0;
+                // A fixture seeded before names existed has empty ones, and an
+                // empty name is exactly the unreadable roster this replaced.
+                if (string.IsNullOrWhiteSpace(character.Name))
+                {
+                    character.Name = FolkNameRegistry.For(character.Id, character.IsFemale);
+                }
             }
 
             // Repairs a fixture seeded before this was fixed. The seeder is
@@ -484,6 +494,7 @@ namespace FolkIdle.Server.Models
                 {
                     Id = playerGuid,
                     PlayerId = playerId,
+                    Name = FolkNameRegistry.For(playerGuid, isFemale: false),
                     AgePhase = 1,
                     SlotIndex = 0,
                     IsFemale = false

@@ -17,6 +17,17 @@ namespace FolkIdle.Server.Models
         
         public long PlayerId { get; set; }
 
+        // Modul: WHO THIS IS. Rolled from FolkNameRegistry at birth, seeded by
+        // the character's own id, so nobody has to type one and the migration
+        // can name the characters that already exist without a second pass.
+        // Renameable later; the roll is a starting point, not an identity.
+        //
+        // Before this, every screen that listed a character showed the first
+        // eight hex digits of its Guid. A player could not find his own main in
+        // a roster of ten.
+        [MaxLength(24)]
+        public string Name { get; set; } = string.Empty;
+
         // Modul: THERE IS NO CHARACTER LEVEL, and there never was one.
         //
         // A `Level` column lived here and nothing in the server ever wrote it

@@ -93,6 +93,7 @@ namespace FolkIdle.Server.Engine
             {
                 Id = characterId,
                 PlayerId = playerId,
+                Name = FolkNameRegistry.For(characterId, isFemale),
                 AgePhase = 1,
                 AgeTicks = 0L,
                 SlotIndex = slotIndex,
