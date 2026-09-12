@@ -2,6 +2,14 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { cpSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { stamp } from './scripts/stamp-version.mjs';
+
+// Modul: ONE STAMP PER BUILD, taken here and handed to both halves - the
+// compile-time constants below and public/version.json, which stamp() writes.
+// Taking it twice would let the bundle and the file it compares itself against
+// disagree by however long the build takes, which is precisely the false
+// "you are out of date" nobody could reproduce.
+const build = stamp();
 
 // Modul: the artwork lives OUTSIDE this package, in client/Assets/Images/
 // SpritesWeb, and is deliberately not duplicated into the repo - the server
@@ -36,6 +44,13 @@ function copySprites() {
 
 export default defineConfig({
   plugins: [svelte(), copySprites()],
+  define: {
+    // Compile-time constants, so a stale tab keeps the value it was BUILT with
+    // rather than picking up whatever is current - which is the whole basis of
+    // the staleness check. See scripts/stamp-version.mjs.
+    __APP_VERSION__: JSON.stringify(build.version),
+    __BUILD_ID__: JSON.stringify(build.buildId),
+  },
   server: {
     // Pinned, not left to Vite's "first free port" default: the server's CORS
     // allow-list is an exact-match list of origins (FOLKIDLE_WEB_ORIGINS), so

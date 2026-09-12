@@ -17,3 +17,7 @@ resources/store-screenshots/
 # the web image, so a copy in git would be 17 MB of duplicate that can only go
 # stale.
 ota/
+
+# Stamped at build time by scripts/stamp-version.mjs - never committed, or the
+# build id in the repo would disagree with the one in the deployed bundle.
+public/version.json

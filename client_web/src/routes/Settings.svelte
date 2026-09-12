@@ -1,6 +1,16 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { language, setLanguage, translations, loadTranslations, coverage, LANGUAGES, t } from '../lib/ui/i18n';
+  import { APP_VERSION, BUILD_ID, pendingNotes } from '../lib/stores/version';
+  import { RELEASE_NOTES } from '../lib/ui/releaseNotes';
+
+  // Modul: reading the notes again on purpose. Sets the SAME store the
+  // start-up path fills, so there is one window rather than a second copy of
+  // it living on this screen - and dismissing it re-records the version, which
+  // is already what the player wanted.
+  function showNotesAgain() {
+    pendingNotes.set([RELEASE_NOTES[0]]);
+  }
   import { volume, muted, unlockAudio, play, preloadAll, CLIPS, type ClipName } from '../lib/ui/audio';
   import { tutorialPrompt, skipTutorial, unskipTutorial, onboardingDismissed } from '../lib/stores/tutorial';
   import { DISCOVERY_MOMENTS } from '../lib/stores/tutorialDiscoveries';
@@ -681,9 +691,37 @@
       way to find out which happened.
     </p>
   </section>
+
+  <!-- Modul: WHICH BUILD IS THIS. There was no version anywhere in the client,
+       which made a bug report untraceable to a release and made "what's new"
+       impossible to key off. The build id is the second half: it changes on
+       every deploy even when the version does not, so it is what tells a
+       support conversation whether somebody is on a stale tab. -->
+  <section class="panel">
+    <header class="head">
+      <h2>About</h2>
+    </header>
+    <p class="version">
+      FolkIdle <strong>{APP_VERSION}</strong>
+      <span class="dim tiny">build {BUILD_ID}</span>
+    </p>
+    <p class="dim tiny">
+      Quote both of these in a bug report &mdash; they say exactly which version
+      you were playing.
+    </p>
+    <button onclick={showNotesAgain}>What&rsquo;s new in this version</button>
+  </section>
 </div>
 
 <style>
+  .version {
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));

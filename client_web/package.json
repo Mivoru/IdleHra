@@ -1,11 +1,12 @@
 {
   "name": "folkidle-web",
   "private": true,
-  "version": "0.0.1",
+  "version": "1.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "npm run generate:protocol && npm run generate:sprites && npm run check:ratchet && vite build",
+    "stamp:version": "node scripts/stamp-version.mjs",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "check:ratchet": "node scripts/typecheck-ratchet.mjs",

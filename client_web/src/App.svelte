@@ -64,6 +64,8 @@
   import { initLanguage, loadTranslations } from './lib/ui/i18n';
   import { unlockAudio, play } from './lib/ui/audio';
   import OnboardingCoach from './lib/ui/OnboardingCoach.svelte';
+  import WhatsNew from './lib/ui/WhatsNew.svelte';
+  import { resolveNotesOnStartup, startUpdatePolling } from './lib/stores/version';
   import { coachTargetScreen } from './lib/stores/tutorial';
   import { untrack } from 'svelte';
 
@@ -331,6 +333,15 @@
   // no-op in a browser, where there is no such button.
   $effect(() => watchHardwareBack(handleBack));
 
+  // Modul: what build this is, and what the player has not seen yet. Runs once
+  // and needs no dependencies - the version is a compile-time constant and the
+  // stored one is read at the moment this fires. A brand-new player is recorded
+  // silently and shown nothing; see resolveNotesOnStartup.
+  $effect(() => {
+    resolveNotesOnStartup();
+    startUpdatePolling();
+  });
+
   // Modul: A REJECTED TOKEN HAS TO REACH THE LOGIN FORM.
   //
   // The socket used to retry an expired JWT forever behind "reconnecting
@@ -533,6 +544,12 @@
          second, differently-shaped hint box would teach the player that hints
          come in kinds. -->
     <OnboardingCoach />
+
+    <!-- Modul: what changed since the player was last here, and whether the
+         bundle this tab is running has been replaced since it loaded. Both
+         live in one component - see WhatsNew.svelte for why the second waits
+         for the first. -->
+    <WhatsNew />
 
     <OfflineSummary />
     <!-- Modul: the two moments the game never marked - a first boss

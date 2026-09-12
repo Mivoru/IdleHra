@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { reserveBottom, releaseBottom } from '../stores/bottomInset';
+
+  const BOTTOM_INSET_KEY = 'onboarding-coach';
   // Modul: THE ONE TEACHING SURFACE, for both tiers.
   //
   // The task board offered three options and said coach-marks on the real
@@ -130,7 +133,7 @@
     if (typeof document === 'undefined') return;
 
     if (!showing || !panel) {
-      document.body.style.paddingBottom = '';
+      releaseBottom(BOTTOM_INSET_KEY);
       return;
     }
 
@@ -146,10 +149,15 @@
     // reservation and the offset cannot drift apart the way they just did -
     // the media query can move and this follows it.
     const bottomOffset = Number.parseFloat(getComputedStyle(panel).bottom) || 0;
-    document.body.style.paddingBottom = `${panel.offsetHeight + bottomOffset + 12}px`;
+
+    // Modul: SHARED, not written straight onto the body. The update prompt also
+    // pins itself to the bottom; whichever of the two unmounted first used to
+    // clear the padding while the other was still on screen. See
+    // stores/bottomInset.ts.
+    reserveBottom(BOTTOM_INSET_KEY, panel.offsetHeight + bottomOffset + 12);
 
     return () => {
-      document.body.style.paddingBottom = '';
+      releaseBottom(BOTTOM_INSET_KEY);
     };
   });
 
