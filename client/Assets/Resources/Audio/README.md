@@ -26,6 +26,11 @@ browser's own 404. Dropping a file in starts playing it with no code change.
 The miss is remembered per session, so an absent clip is fetched once rather
 than on every swing.
 
+**What is still MISSING, and how to make it:** see
+`docs/AUDIO_REQUIREMENTS.md` - every clip the code already calls and does not
+get, the ones worth adding, the music the game has none of, and a sound-design
+brief for each so they can be generated and dropped straight in here.
+
 ## What exists, and when it plays
 
 | File | Raised when |
