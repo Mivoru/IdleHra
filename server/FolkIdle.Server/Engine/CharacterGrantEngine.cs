@@ -93,7 +93,6 @@ namespace FolkIdle.Server.Engine
             {
                 Id = characterId,
                 PlayerId = playerId,
-                Level = 1,
                 AgePhase = 1,
                 AgeTicks = 0L,
                 SlotIndex = slotIndex,

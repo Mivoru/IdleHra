@@ -57,10 +57,12 @@ namespace FolkIdle.Server.Models
         // specifically for driving the client by hand therefore had a dead
         // Breeding screen.
         //
-        // Characters are seeded at 50 rather than at PlayerLevel, because 50 is
-        // the gate the standard pair is built around - a fixture that stops one
-        // level short exercises the refusal and nothing else.
-        private const int CharacterLevel = 50;
+        // THE FIXTURE USED TO WRITE A CHARACTER LEVEL, and it was the only
+        // writer of that column anywhere in the server. Breeding gated on it
+        // reaching 50, so the fixture passed and every real account - where the
+        // column sat at its default forever - was refused in silence since
+        // launch. The column is gone and so is this constant; see
+        // CharacterRecord and BreedingGateRules.
 
         public static async Task<long> SeedAsync(FolkIdleDbContext db)
         {
@@ -429,7 +431,6 @@ namespace FolkIdle.Server.Models
                 {
                     Id = slotIndex == 0 ? playerGuid : Guid.NewGuid(),
                     PlayerId = playerId,
-                    Level = CharacterLevel,
                     AgePhase = 1,
                     SlotIndex = slotIndex,
                     // One male and two females, so BOTH pairings can be driven
@@ -456,7 +457,6 @@ namespace FolkIdle.Server.Models
             {
                 if (character.SlotIndex >= CharacterSlotEngine.MaxCharacterSlots) continue;
 
-                if (character.Level < CharacterLevel) character.Level = CharacterLevel;
                 character.AgePhase = 1;
                 character.IsFemale = character.SlotIndex != 0;
             }
@@ -484,7 +484,6 @@ namespace FolkIdle.Server.Models
                 {
                     Id = playerGuid,
                     PlayerId = playerId,
-                    Level = CharacterLevel,
                     AgePhase = 1,
                     SlotIndex = 0,
                     IsFemale = false

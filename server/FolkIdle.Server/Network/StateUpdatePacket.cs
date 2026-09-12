@@ -203,7 +203,32 @@ namespace FolkIdle.Server.Network
         // before anything is spent, and its own code because
         // GenericValidationFailure renders as "the server rejected that", which
         // is how this feature came to look dead.
-        AutoRerollConditionImpossible = 25
+        AutoRerollConditionImpossible = 25,
+
+        // Modul: BREEDING, which had TWENTY rollbacks and not one result.
+        //
+        // Every refusal below was a transaction that rolled back in silence -
+        // the button stayed enabled, nothing appeared, and the player was left
+        // to guess. That is the shape this codebase keeps finding at the bottom
+        // of "the feature does nothing", and breeding was its single largest
+        // concentration. One code per reason, none of them shared, mapped in
+        // BreedingGateRules.ResultCodeFor and asserted distinct by
+        // BreedingGateTests.
+        //
+        // There is deliberately no "parent not level 50" here. That gate read
+        // a characters.Level column whose only writer was the dev fixture, so
+        // it refused every real player on every attempt since launch; it is
+        // deleted rather than given a message.
+        BreedingNoGrounds = 26,
+        BreedingParentNotAdult = 27,
+        BreedingParentResting = 28,
+        BreedingParentInEscrow = 29,
+        BreedingSameSex = 30,
+        BreedingSexRolesSwapped = 31,
+        BreedingRaceMismatch = 32,
+        BreedingPartnerAlreadyMarried = 33,
+        BreedingInsufficientGold = 34,
+        BreedingSucceeded = 35
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

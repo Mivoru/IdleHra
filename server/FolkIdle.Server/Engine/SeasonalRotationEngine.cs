@@ -134,11 +134,21 @@ namespace FolkIdle.Server.Engine
 
             try
             {
-                var playerIds = await db.PlayerRecords
+                // Modul: the level comes off PlayerRecords, which is where a
+                // player's level has always actually lived. This block used to
+                // sum level-squared across CharacterRecords - a column nothing
+                // in the server ever wrote outside the dev fixture - so on the
+                // live box every term was 1 and the season's whole level
+                // component was a COUNT OF CHARACTERS. A level-88 account and a
+                // fresh one with the same roster size earned identical shards.
+                var players = await db.PlayerRecords
                     .AsNoTracking()
                     .OrderBy(p => p.Id)
-                    .Select(p => p.Id)
+                    .Select(p => new { p.Id, p.CurrentLevel })
                     .ToListAsync(stoppingToken);
+
+                var levelByPlayer = players.ToDictionary(p => p.Id, p => p.CurrentLevel);
+                var playerIds = players.Select(p => p.Id).ToList();
 
                 var newLedgers = new System.Collections.Concurrent.ConcurrentBag<PlayerLegacyLedger>();
 
@@ -150,12 +160,6 @@ namespace FolkIdle.Server.Engine
                         .AsNoTracking()
                         .Where(c => chunkIds.Contains(c.PlayerId) && c.ItemId == "gold")
                         .ToDictionaryAsync(c => c.PlayerId, c => c.Quantity, stoppingToken);
-                        
-                    var charsByPlayer = await db.CharacterRecords
-                        .AsNoTracking()
-                        .Where(c => chunkIds.Contains(c.PlayerId))
-                        .GroupBy(c => c.PlayerId)
-                        .ToDictionaryAsync(g => g.Key, g => g.ToList(), stoppingToken);
                         
                     var eqByPlayer = await db.EquipmentInstances
                         .AsNoTracking()
@@ -175,15 +179,10 @@ namespace FolkIdle.Server.Engine
 
                     foreach (var playerId in chunk)
                     {
-                        long levelSquareSum = 0L;
-                        if (charsByPlayer.TryGetValue(playerId, out var characters))
-                        {
-                            foreach (var ch in characters)
-                            {
-                                long level = Math.Max(1, ch.Level);
-                                levelSquareSum += level * level;
-                            }
-                        }
+                        // Squared, as before, so the reward stays superlinear
+                        // in how far the season was actually pushed.
+                        long playerLevel = Math.Max(1, levelByPlayer.GetValueOrDefault(playerId, 1));
+                        long levelSquareSum = playerLevel * playerLevel;
 
                         var eq = eqByPlayer.GetValueOrDefault(playerId, new List<EquipmentInstance>());
                         var mEq = marketByPlayer.GetValueOrDefault(playerId, new List<MarketEquipmentInstance>());
@@ -321,7 +320,12 @@ namespace FolkIdle.Server.Engine
                 // truncating it earlier would leave those queries with nothing
                 // to match against.
                 await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"MarketEquipmentInstances\" RESTART IDENTITY CASCADE", stoppingToken);
-                await db.Database.ExecuteSqlRawAsync("UPDATE characters SET \"Level\" = 1, \"AgeTicks\" = 0, \"AgePhase\" = 1", stoppingToken);
+                // A season returns every character to a fresh adult. The
+                // statement used to reset a "Level" column too; that column is
+                // gone - nothing but the dev fixture ever wrote it, and
+                // breeding gated on it - so resetting it here was resetting a
+                // constant.
+                await db.Database.ExecuteSqlRawAsync("UPDATE characters SET \"AgeTicks\" = 0, \"AgePhase\" = 1", stoppingToken);
                 // Modul: WHAT A SEASON LEAVES BEHIND.
                 //
                 // The village and race mastery used to be wiped with everything

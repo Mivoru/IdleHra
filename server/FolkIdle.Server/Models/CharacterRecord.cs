@@ -16,7 +16,20 @@ namespace FolkIdle.Server.Models
         public Guid Id { get; set; }
         
         public long PlayerId { get; set; }
-        public int Level { get; set; }
+
+        // Modul: THERE IS NO CHARACTER LEVEL, and there never was one.
+        //
+        // A `Level` column lived here and nothing in the server ever wrote it
+        // except DevFixtureSeeder. A player's level is
+        // PlayerRecords.CurrentLevel - one level for the account, shared by
+        // every character in it - so this column sat at 1 for all 80 characters
+        // on the live box while breeding gated on it reaching 50. That made the
+        // whole feature unreachable for every player since launch, and reachable
+        // on the dev fixture, which is exactly why it survived so long.
+        //
+        // Do not add it back. If a per-character level is ever wanted it needs
+        // a writer on all three progression paths (a kill, a warp and an
+        // offline catch-up) before anything is allowed to read it.
 
         // Modul: Architecture Overhaul, Part 2. Multi-character slots.
         // SlotIndex 0 is the main character (always unlocked); 1 and 2

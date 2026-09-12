@@ -37,6 +37,29 @@ namespace FolkIdle.Server.Engine
             _playerRegistry = playerRegistry;
         }
 
+        /// <summary>
+        /// Modul: SAY SOMETHING. This class had twenty RollbackAsync calls and
+        /// zero command results, so every refusal left the button enabled and
+        /// the screen blank - the exact shape the tick's own notes call "this
+        /// server's favourite way to lie". Every rollback goes through here now.
+        /// </summary>
+        private void Refuse(long playerId, FolkIdle.Server.Network.CommandResultCode code)
+            => _playerRegistry?.EnqueueCommandResult(playerId, (byte)code);
+
+        private void Refuse(long playerId, BreedingRefusal refusal)
+            => Refuse(playerId, BreedingGateRules.ResultCodeFor(refusal));
+
+        /// <summary>Reads the gate's view of a character row.</summary>
+        private static BreedingGateRules.Parent AsParent(CharacterRecord character, long geneticVector) => new()
+        {
+            AgePhase = character.AgePhase,
+            IsFemale = character.IsFemale,
+            RaceId = new GeneticVector(geneticVector).LocusRace.Dominant,
+            IsLockedInEscrow = character.IsLockedInEscrow,
+            IsBreedingActive = character.IsBreedingActive,
+            BreedingCooldownEndEpoch = character.BreedingCooldownEndEpoch,
+        };
+
         public async Task ExecuteBreedingAsync(long playerId, Guid paternalId, Guid maternalId)
         {
             using var scope = _serviceProvider.CreateScope();
@@ -54,6 +77,7 @@ namespace FolkIdle.Server.Engine
                 if (breedingLevel <= 0)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 15, Value2 = 4, Timestamp = Environment.TickCount64 });
+                    Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingNoGrounds);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -77,24 +101,14 @@ namespace FolkIdle.Server.Engine
 
                 if (pChar == null || mChar == null || pLineage == null || mLineage == null)
                 {
+                    Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     await transaction.RollbackAsync();
                     return;
                 }
 
                 if (pChar.PlayerId != playerId || mChar.PlayerId != playerId)
                 {
-                    await transaction.RollbackAsync();
-                    return;
-                }
-
-                if (pChar.AgePhase < 1 || mChar.AgePhase < 1 || pChar.Level < 50 || mChar.Level < 50)
-                {
-                    await transaction.RollbackAsync();
-                    return;
-                }
-
-                if (pChar.IsLockedInEscrow || mChar.IsLockedInEscrow)
-                {
+                    Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -106,28 +120,22 @@ namespace FolkIdle.Server.Engine
                 if (pChar.IsBreedingActive && pChar.BreedingCooldownEndEpoch <= nowEpoch) pChar.IsBreedingActive = false;
                 if (mChar.IsBreedingActive && mChar.BreedingCooldownEndEpoch <= nowEpoch) mChar.IsBreedingActive = false;
 
-                if (pChar.IsBreedingActive || mChar.IsBreedingActive)
-                {
-                    await transaction.RollbackAsync();
-                    return;
-                }
-
-                // Modul: breeding pairs. The paternal/maternal labels used to be
-                // positional only - any two characters could breed, including
-                // two of the same sex, because no sex existed. Now that every
-                // race arrives as a male/female pair, the labels have to mean
-                // what they say or the pair is not a pair.
-                if (pChar.IsFemale || !mChar.IsFemale)
-                {
-                    await transaction.RollbackAsync();
-                    return;
-                }
-
                 var pVec = new GeneticVector(pLineage.GeneticVector);
                 var mVec = new GeneticVector(mLineage.GeneticVector);
 
-                if (pVec.LocusRace.Dominant != mVec.LocusRace.Dominant)
+                // Modul: ONE GATE, shared with both preview endpoints. The rules
+                // used to be written out here and again in each preview, and had
+                // already drifted - the roster preview checked race but not sex,
+                // so a woman picked as the paternal parent priced an eligible
+                // pairing the engine then refused in silence.
+                var refusal = BreedingGateRules.CheckPair(
+                    AsParent(pChar, pLineage.GeneticVector),
+                    AsParent(mChar, mLineage.GeneticVector),
+                    nowEpoch);
+
+                if (refusal != BreedingRefusal.None)
                 {
+                    Refuse(playerId, refusal);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -142,6 +150,7 @@ namespace FolkIdle.Server.Engine
                 if (goldRecord == null || goldRecord.Quantity < breedingCost)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 15, Value2 = 5, Timestamp = Environment.TickCount64 });
+                    Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingInsufficientGold);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -191,7 +200,6 @@ namespace FolkIdle.Server.Engine
                 {
                     Id = childId,
                     PlayerId = playerId,
-                    Level = 1,
                     AgePhase = 0,
                     IsLockedInEscrow = false,
                     // Modul: a newborn goes to the END of the roster. It used to
@@ -222,6 +230,11 @@ namespace FolkIdle.Server.Engine
                 dbContext.CharacterLineages.Add(newLineage);
                 await dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // Modul: the one result that is not a refusal. A breeding that
+                // WORKED said nothing either - the roster simply had one more
+                // row in it the next time the screen was opened.
+                Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingSucceeded);
 
                 _playerRegistry.BirthNotificationQueue.Enqueue(new BirthNotification
                 {
@@ -270,6 +283,7 @@ namespace FolkIdle.Server.Engine
                 if (breedingLevel <= 0)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = 1, Timestamp = Environment.TickCount64 });
+                    Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingNoGrounds);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -292,31 +306,14 @@ namespace FolkIdle.Server.Engine
 
                 if (hero == null || newcomer == null || heroLineage == null)
                 {
+                    Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     await transaction.RollbackAsync();
                     return;
                 }
 
                 if (hero.PlayerId != playerId || newcomer.PlayerId != playerId)
                 {
-                    await transaction.RollbackAsync();
-                    return;
-                }
-
-                if (hero.AgePhase < 1 || hero.Level < 50 || hero.IsLockedInEscrow)
-                {
-                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = 2, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
-                    return;
-                }
-
-                // ONE CHILD PER VILLAGER, FOREVER. Without this a single lucky
-                // twenty fathers the whole roster and the gene pool collapses
-                // back onto one ancestor - the exact opposite of what a pool is
-                // for. An elder stays on the roster as a record of the blood
-                // that came in; they simply cannot marry again.
-                if (newcomer.IsElder)
-                {
-                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = 3, Timestamp = Environment.TickCount64 });
+                    Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -325,24 +322,27 @@ namespace FolkIdle.Server.Engine
 
                 if (hero.IsBreedingActive && hero.BreedingCooldownEndEpoch <= nowEpoch) hero.IsBreedingActive = false;
 
-                if (hero.IsBreedingActive)
-                {
-                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = 4, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
-                    return;
-                }
-
-                if (hero.IsFemale == newcomer.IsFemale)
-                {
-                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = 5, Timestamp = Environment.TickCount64 });
-                    await transaction.RollbackAsync();
-                    return;
-                }
-
                 var heroVec = new GeneticVector(heroLineage.GeneticVector);
-                if (heroVec.LocusRace.Dominant != newcomer.RaceId)
+
+                // Modul: ONE GATE, the same one the roster pairing and both
+                // preview endpoints use. `newcomer.IsElder` means "has already
+                // married in" rather than anything about age - one child per
+                // villager, forever, or a single lucky twenty fathers the whole
+                // roster and the pool collapses back onto one ancestor. The
+                // player-facing wording avoids the word entirely; it collided
+                // with the Elder AGE PHASE on the same screen and was the first
+                // thing the reporting player got wrong.
+                var refusal = BreedingGateRules.CheckVillagerPair(
+                    AsParent(hero, heroLineage.GeneticVector),
+                    newcomer.IsFemale,
+                    (byte)newcomer.RaceId,
+                    newcomer.IsElder,
+                    nowEpoch);
+
+                if (refusal != BreedingRefusal.None)
                 {
-                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = 6, Timestamp = Environment.TickCount64 });
+                    TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = (int)refusal, Timestamp = Environment.TickCount64 });
+                    Refuse(playerId, refusal);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -360,6 +360,7 @@ namespace FolkIdle.Server.Engine
                 if (goldRecord == null || goldRecord.Quantity < breedingCost)
                 {
                     TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = playerId, EventType = 3, Value1 = 69, Value2 = 7, Timestamp = Environment.TickCount64 });
+                    Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingInsufficientGold);
                     await transaction.RollbackAsync();
                     return;
                 }
@@ -405,7 +406,6 @@ namespace FolkIdle.Server.Engine
                 {
                     Id = childId,
                     PlayerId = playerId,
-                    Level = 1,
                     AgePhase = 0,
                     IsLockedInEscrow = false,
                     SlotIndex = await CharacterGrantEngine.NextFreeSlotIndexAsync(dbContext, playerId),
@@ -432,6 +432,11 @@ namespace FolkIdle.Server.Engine
                 dbContext.CharacterLineages.Add(newLineage);
                 await dbContext.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // Modul: the one result that is not a refusal. A breeding that
+                // WORKED said nothing either - the roster simply had one more
+                // row in it the next time the screen was opened.
+                Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingSucceeded);
 
                 _playerRegistry.BirthNotificationQueue.Enqueue(new BirthNotification
                 {

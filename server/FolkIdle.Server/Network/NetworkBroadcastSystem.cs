@@ -4235,10 +4235,24 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
+        /// <summary>
+        /// A character row as BreedingGateRules wants to see it. The endpoints
+        /// and the engine build the same struct from the same columns, so the
+        /// preview and the command cannot disagree about who may pair.
+        /// </summary>
+        private static Engine.BreedingGateRules.Parent ToGateParent(Models.CharacterRecord character, long geneticVector) => new()
+        {
+            AgePhase = character.AgePhase,
+            IsFemale = character.IsFemale,
+            RaceId = new GeneticVector(geneticVector).LocusRace.Dominant,
+            IsLockedInEscrow = character.IsLockedInEscrow,
+            IsBreedingActive = character.IsBreedingActive,
+            BreedingCooldownEndEpoch = character.BreedingCooldownEndEpoch,
+        };
+
         private sealed class BreedingRosterEntryResponse
         {
             public string CharacterId { get; set; } = string.Empty;
-            public int Level { get; set; }
             public int AgePhase { get; set; }
             public int GenerationIndex { get; set; }
             public bool IsBreedingActive { get; set; }
@@ -4269,8 +4283,8 @@ namespace FolkIdle.Server.Network
 
         // Modul 13.4.3: the player's own bred/breedable character roster, for
         // the Breeding Lab's parent-selection slots. BreedingEngine.
-        // ExecuteBreedingAsync's own eligibility rules (AgePhase >= 1,
-        // Level >= 50, not already IsBreedingActive, not IsLockedInEscrow) are
+        // BreedingGateRules' own eligibility rules (AgePhase >= 1, not
+        // already IsBreedingActive, not IsLockedInEscrow) are
         // intentionally NOT filtered out here - the client shows every owned
         // character and lets the preview/execute round trip surface exactly
         // why an ineligible pairing was rejected, rather than this endpoint
@@ -4569,7 +4583,6 @@ namespace FolkIdle.Server.Network
                         return new
                         {
                             CharacterId = c.Id.ToString(),
-                            c.Level,
                             c.AgePhase,
                             c.IsFemale,
                             c.SlotIndex,
@@ -4661,7 +4674,6 @@ namespace FolkIdle.Server.Network
                     response.Add(new BreedingRosterEntryResponse
                     {
                         CharacterId = character.Id.ToString(),
-                        Level = character.Level,
                         AgePhase = character.AgePhase,
                         GenerationIndex = lineage.GenerationIndex,
                         IsBreedingActive = character.IsBreedingActive,
@@ -4803,47 +4815,26 @@ namespace FolkIdle.Server.Network
                 var response = new BreedingPreviewResponse();
 
                 long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                bool pOnCooldown = pChar.IsBreedingActive && pChar.BreedingCooldownEndEpoch > nowEpoch;
-                bool mOnCooldown = mChar.IsBreedingActive && mChar.BreedingCooldownEndEpoch > nowEpoch;
 
                 var pVec = new GeneticVector(pLineage.GeneticVector);
                 var mVec = new GeneticVector(mLineage.GeneticVector);
 
-                if (pChar.AgePhase < 1 || mChar.AgePhase < 1 || pChar.Level < 50 || mChar.Level < 50)
-                {
-                    response.IneligibleReason = "parent_not_mature";
-                }
-                else if (pChar.IsLockedInEscrow || mChar.IsLockedInEscrow)
-                {
-                    response.IneligibleReason = "parent_locked_in_escrow";
-                }
-                else if (pOnCooldown || mOnCooldown)
-                {
-                    response.IneligibleReason = "parent_on_cooldown";
-                }
-                // Modul: BreedingEngine refuses `pChar.IsFemale || !mChar.IsFemale`,
-                // which is stricter than "not the same sex" - it also refuses an
-                // opposite-sex pair whose ROLES are swapped. The preview used to
-                // check race but not sex at all, so picking a woman as Paternal
-                // returned an eligible, priced preview and then silently rolled
-                // back server-side. Mirror the engine's condition exactly; the
-                // two must refuse the same pairs or the preview lies again.
-                else if (pChar.IsFemale == mChar.IsFemale)
-                {
-                    response.IneligibleReason = "same_sex";
-                }
-                else if (pChar.IsFemale)
-                {
-                    response.IneligibleReason = "sex_roles_swapped";
-                }
-                else if (pVec.LocusRace.Dominant != mVec.LocusRace.Dominant)
-                {
-                    response.IneligibleReason = "race_mismatch";
-                }
-                else
-                {
-                    response.IsEligible = true;
-                }
+                // Modul: THE SAME GATE THE ENGINE USES. This block used to be a
+                // hand-copied second version of the engine's rules, and a
+                // comment beside it said the two "must refuse the same pairs or
+                // the preview lies again" - which is a thing to enforce, not to
+                // write down. It had already drifted once: race was checked and
+                // sex was not, so a woman chosen as the paternal parent priced
+                // an ELIGIBLE pairing that the engine then rolled back without
+                // a word. One call now, and BreedingGateTests fails if either
+                // side grows a rule of its own.
+                var previewRefusal = Engine.BreedingGateRules.CheckPair(
+                    ToGateParent(pChar, pLineage.GeneticVector),
+                    ToGateParent(mChar, mLineage.GeneticVector),
+                    nowEpoch);
+
+                response.IsEligible = previewRefusal == Engine.BreedingRefusal.None;
+                response.IneligibleReason = Engine.BreedingGateRules.ReasonSlugFor(previewRefusal);
 
                 response.IsInbredRisk = paternalId == mLineage.ParentPaternalId || paternalId == mLineage.ParentMaternalId
                     || maternalId == pLineage.ParentPaternalId || maternalId == pLineage.ParentMaternalId
@@ -4924,41 +4915,21 @@ namespace FolkIdle.Server.Network
                 var response = new BreedingPreviewResponse();
 
                 long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                bool heroOnCooldown = hero.IsBreedingActive && hero.BreedingCooldownEndEpoch > nowEpoch;
 
                 var heroVec = new GeneticVector(heroLineage.GeneticVector);
                 var villagerVec = new GeneticVector(newcomer.Genome());
 
-                // Only the hero needs the level gate - see the engine. The
-                // villager only has to exist and not already be an elder.
-                if (hero.AgePhase < 1 || hero.Level < 50)
-                {
-                    response.IneligibleReason = "hero_not_mature";
-                }
-                else if (hero.IsLockedInEscrow)
-                {
-                    response.IneligibleReason = "parent_locked_in_escrow";
-                }
-                else if (heroOnCooldown)
-                {
-                    response.IneligibleReason = "parent_on_cooldown";
-                }
-                else if (newcomer.IsElder)
-                {
-                    response.IneligibleReason = "villager_already_married";
-                }
-                else if (hero.IsFemale == newcomer.IsFemale)
-                {
-                    response.IneligibleReason = "same_sex";
-                }
-                else if (heroVec.LocusRace.Dominant != newcomer.RaceId)
-                {
-                    response.IneligibleReason = "race_mismatch";
-                }
-                else
-                {
-                    response.IsEligible = true;
-                }
+                // The same gate the engine uses - see the roster preview above
+                // for why this is a call rather than a second copy of the rules.
+                var previewRefusal = Engine.BreedingGateRules.CheckVillagerPair(
+                    ToGateParent(hero, heroLineage.GeneticVector),
+                    newcomer.IsFemale,
+                    (byte)newcomer.RaceId,
+                    newcomer.IsElder,
+                    nowEpoch);
+
+                response.IsEligible = previewRefusal == Engine.BreedingRefusal.None;
+                response.IneligibleReason = Engine.BreedingGateRules.ReasonSlugFor(previewRefusal);
 
                 // Never. A villager has no parents here and marries once.
                 response.IsInbredRisk = false;

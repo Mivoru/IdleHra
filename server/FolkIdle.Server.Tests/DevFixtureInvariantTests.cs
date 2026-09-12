@@ -120,8 +120,12 @@ namespace FolkIdle.Server.Tests
                 .OrderBy(c => c.SlotIndex)
                 .ToListAsync();
 
-            // The hero gate for the standard pair.
-            Assert.All(characters, c => Assert.True(c.Level >= 50, $"slot {c.SlotIndex} is level {c.Level}, below the breeding gate"));
+            // The hero gate for the standard pair. It used to be "level 50",
+            // against a column only this seeder ever wrote - so the fixture was
+            // the one account in the world that could pass it. Adulthood is the
+            // gate now, and the fixture has to look like a real account rather
+            // than manufacture a shape no gameplay path can reach.
+            Assert.All(characters, c => Assert.True(c.AgePhase >= 1, $"slot {c.SlotIndex} is age phase {c.AgePhase}, not an adult"));
             Assert.Contains(characters, c => !c.IsFemale);
             Assert.Contains(characters, c => c.IsFemale);
 
@@ -195,7 +199,6 @@ namespace FolkIdle.Server.Tests
             {
                 Id = Guid.NewGuid(),
                 PlayerId = playerId,
-                Level = 40,
                 AgePhase = 1,
                 SlotIndex = 0,
             });

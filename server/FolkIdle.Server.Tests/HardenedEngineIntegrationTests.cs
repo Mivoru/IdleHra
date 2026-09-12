@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics.Tracing;
 using System.IO;
 using System.Linq;
@@ -703,8 +703,8 @@ namespace FolkIdle.Server.Tests
                 });
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
                 db.CharacterRecords.AddRange(
-                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
+                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
@@ -723,7 +723,6 @@ namespace FolkIdle.Server.Tests
                 .SingleAsync(c => c.Id == childLineage.CharacterId);
 
             Assert.Equal(testPlayerId, childCharacter.PlayerId);
-            Assert.Equal(1, childCharacter.Level);
             Assert.Equal(0, childCharacter.AgePhase);
             Assert.Equal(1, childLineage.GenerationIndex);
 
@@ -762,8 +761,8 @@ namespace FolkIdle.Server.Tests
                 });
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1L });
                 db.CharacterRecords.AddRange(
-                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
+                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
@@ -811,8 +810,8 @@ namespace FolkIdle.Server.Tests
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = attackerPlayerId, ItemId = "gold", Quantity = 10000L });
                 // Both parents belong to testPlayerId, not the attacker attempting to breed them.
                 db.CharacterRecords.AddRange(
-                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
+                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
@@ -861,8 +860,8 @@ namespace FolkIdle.Server.Tests
                 });
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
                 db.CharacterRecords.AddRange(
-                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsBreedingActive = true, BreedingCooldownEndEpoch = futureCooldownEpoch },
-                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
+                    new CharacterRecord { Id = parentAId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false, IsBreedingActive = true, BreedingCooldownEndEpoch = futureCooldownEpoch },
+                    new CharacterRecord { Id = parentBId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = parentAId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = parentBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue });
@@ -1314,8 +1313,8 @@ namespace FolkIdle.Server.Tests
                 // relative to the prospective grandchild), the classic inbreeding
                 // case within 2 generations.
                 db.CharacterRecords.AddRange(
-                    new CharacterRecord { Id = siblingAId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = siblingBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
+                    new CharacterRecord { Id = siblingAId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = siblingBId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = siblingAId, ParentPaternalId = grandparentId, GenerationIndex = 1, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = siblingBId, ParentPaternalId = grandparentId, GenerationIndex = 1, GeneticVector = sharedGenome.RawValue });
@@ -1371,9 +1370,9 @@ namespace FolkIdle.Server.Tests
                 });
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
                 db.CharacterRecords.AddRange(
-                    new CharacterRecord { Id = sharedParentId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false },
-                    new CharacterRecord { Id = candidateBId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true },
-                    new CharacterRecord { Id = candidateCId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
+                    new CharacterRecord { Id = sharedParentId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false },
+                    new CharacterRecord { Id = candidateBId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true },
+                    new CharacterRecord { Id = candidateCId, PlayerId = testPlayerId, AgePhase = 1, IsLockedInEscrow = false, IsFemale = true });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = sharedParentId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = candidateBId, GenerationIndex = 0, GeneticVector = sharedGenome.RawValue },
@@ -1443,7 +1442,6 @@ namespace FolkIdle.Server.Tests
                 {
                     Id = marketMainCharacterId,
                     PlayerId = testPlayerId,
-                    Level = 1,
                     AgePhase = 1,
                     SlotIndex = 0,
                     EquippedWeaponId = targetId
@@ -2935,7 +2933,6 @@ namespace FolkIdle.Server.Tests
                 {
                     Id = seasonalMainCharacterId,
                     PlayerId = testPlayerId,
-                    Level = 10,
                     AgePhase = 1,
                     SlotIndex = 0,
                     EquippedWeaponId = originalWeaponId
@@ -3041,7 +3038,6 @@ namespace FolkIdle.Server.Tests
                 {
                     Id = mainCharacterId,
                     PlayerId = playerId,
-                    Level = 42,
                     AgePhase = 1,
                     SlotIndex = 0
                 });
@@ -3812,7 +3808,6 @@ namespace FolkIdle.Server.Tests
                 {
                     Id = guildMainCharacterId,
                     PlayerId = testPlayerId,
-                    Level = 1,
                     AgePhase = 1,
                     SlotIndex = 0,
                     EquippedWeaponId = equipmentId
@@ -7766,7 +7761,7 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = leggingsMainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
                 // Modul: per-character equipment. Gear hangs off a character
                 // now, so a player without one has nowhere to put it.
-                db.CharacterRecords.Add(new CharacterRecord { Id = leggingsMainCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = leggingsMainCharacterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
                 var leggings = new EquipmentInstance
                 {
                     PlayerId = testPlayerId,
@@ -9477,7 +9472,7 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100,
                     BaseStrength = 100, BaseDexterity = 100, BaseConstitution = 100, BaseLuck = 100 });
                 SeedAllRegionBossKills(db, testPlayerId);
-                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
 
                 // Real BaseIds out of items.json: tier 1 AP 12, tier 5 AP 972.
                 var tierOneWeapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_steel_claymore_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}" };
@@ -9557,8 +9552,8 @@ namespace FolkIdle.Server.Tests
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
                 SeedAllRegionBossKills(db, testPlayerId);
-                db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
-                db.CharacterRecords.Add(new CharacterRecord { Id = secondCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 1 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = secondCharacterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 1 });
 
                 var mainWeapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "bronze_dagger_melee_weapon_slot_base", QualityTier = 0, AffixPayload = "{}" };
                 var secondBoots = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_iron_sabatons_boots_armor_slot_base", QualityTier = 0, AffixPayload = "{}" };
@@ -9985,7 +9980,7 @@ namespace FolkIdle.Server.Tests
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
                 SeedAllRegionBossKills(db, testPlayerId);
-                db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, Level = 100, AgePhase = 1, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = mainCharacterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
 
                 foreach (string baseId in baseIds)
                 {
@@ -10069,12 +10064,13 @@ namespace FolkIdle.Server.Tests
                 maleId = pair.Single(c => !c.IsFemale).Id;
                 femaleId = pair.Single(c => c.IsFemale).Id;
 
-                // BreedingEngine's own pre-existing gates, unrelated to sex: a
-                // built Breeding Lab and both parents at level 50. A granted
-                // pair arrives at level 1 on purpose - the race is a founding
-                // population you still have to raise, not an instant dynasty.
+                // BreedingEngine's own pre-existing gate, unrelated to sex: a
+                // built Breeding Lab. There used to be a second gate here -
+                // both parents at level 50 - and this test satisfied it by
+                // writing the column itself, which is the same thing the dev
+                // fixture did and the reason nobody noticed that no real
+                // account could ever pass it.
                 db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 1 });
-                foreach (var character in pair) character.Level = 50;
                 await db.SaveChangesAsync();
             }
 
@@ -10132,7 +10128,7 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
                 db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = testPlayerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 1 });
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
-                db.CharacterRecords.Add(new CharacterRecord { Id = heroId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, SlotIndex = 0, IsFemale = false });
+                db.CharacterRecords.Add(new CharacterRecord { Id = heroId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0, IsFemale = false });
 
                 var heroLineage = new CharacterLineageRegistry { CharacterId = heroId, GenerationIndex = 0, GeneticVector = heroGenome.RawValue };
                 heroLineage.SetAptitudeVector(new[] { 4, 4, 4, 4 });
@@ -10165,7 +10161,6 @@ namespace FolkIdle.Server.Tests
 
                 var child = roster.Single(c => c.Id != heroId);
                 childId = child.Id;
-                Assert.Equal(1, child.Level);
                 Assert.Equal(0, child.AgePhase);
 
                 // A newborn goes to the END of the roster. At SlotIndex 0 it
@@ -10234,7 +10229,7 @@ namespace FolkIdle.Server.Tests
         // must cost NOTHING - a rollback that spends the gold anyway is the
         // shape of bug this engine's Serializable transaction exists to stop.
         [Fact]
-        public async Task Test_HeroVillager_RefusesWrongRaceSameSexAndUnderlevelledHero()
+        public async Task Test_HeroVillager_RefusesWrongRaceSameSexAndAChildHero()
         {
             const long testPlayerId = 970004611L;
             Guid maleHumanId = Guid.NewGuid();
@@ -10253,8 +10248,12 @@ namespace FolkIdle.Server.Tests
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 10000L });
 
                 db.CharacterRecords.AddRange(
-                    new CharacterRecord { Id = maleHumanId, PlayerId = testPlayerId, Level = 50, AgePhase = 1, SlotIndex = 0, IsFemale = false },
-                    new CharacterRecord { Id = youngHumanId, PlayerId = testPlayerId, Level = 49, AgePhase = 1, SlotIndex = 1, IsFemale = false });
+                    new CharacterRecord { Id = maleHumanId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0, IsFemale = false },
+                    // A CHILD. This used to be an "underlevelled" hero, which
+                    // was a refusal against a column nothing ever wrote - so
+                    // the case it covered could not happen and the case it
+                    // missed (a child) was the only real one.
+                    new CharacterRecord { Id = youngHumanId, PlayerId = testPlayerId, AgePhase = 0, SlotIndex = 1, IsFemale = false });
                 db.CharacterLineages.AddRange(
                     new CharacterLineageRegistry { CharacterId = maleHumanId, GenerationIndex = 0, GeneticVector = humanGenome.RawValue },
                     new CharacterLineageRegistry { CharacterId = youngHumanId, GenerationIndex = 0, GeneticVector = humanGenome.RawValue });
@@ -10276,7 +10275,8 @@ namespace FolkIdle.Server.Tests
             await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, maleHumanId, vilaWomanId);
             // Two men is not a pair.
             await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, maleHumanId, humanManId);
-            // Only the HERO needs level 50, but they do need it.
+            // A child cannot marry. Only the hero's own age is checked - the
+            // villager has no age here at all.
             await breedingEngine.ExecuteHeroVillagerBreedingAsync(testPlayerId, youngHumanId, humanWomanId);
 
             await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
@@ -10354,8 +10354,8 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = mainId, AuthenticatorToken = Guid.NewGuid() });
                 // Town Hall 0: slot 1 is open, slots 2 and 3 are not.
                 db.CharacterRecords.AddRange(
-                    new CharacterRecord { Id = mainId, PlayerId = testPlayerId, Level = 40, AgePhase = 1, SlotIndex = 0, ActiveActivityId = 55L },
-                    new CharacterRecord { Id = benchedId, PlayerId = testPlayerId, Level = 1, AgePhase = 0, SlotIndex = 7 });
+                    new CharacterRecord { Id = mainId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0, ActiveActivityId = 55L },
+                    new CharacterRecord { Id = benchedId, PlayerId = testPlayerId, AgePhase = 0, SlotIndex = 7 });
                 await db.SaveChangesAsync();
             }
 
@@ -10433,13 +10433,13 @@ namespace FolkIdle.Server.Tests
 
                 // The main character, deliberately the WEAKEST on the roster so
                 // that surviving proves the invariant rather than the ranking.
-                db.CharacterRecords.Add(new CharacterRecord { Id = mainId, PlayerId = testPlayerId, Level = 1, AgePhase = 1, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = mainId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
                 var mainLineage = new CharacterLineageRegistry { CharacterId = mainId, GenerationIndex = 0, GeneticVector = 0L };
                 mainLineage.SetAptitudeVector(new[] { 1, 1, 1, 1 });
                 db.CharacterLineages.Add(mainLineage);
 
                 // Marked, and also weak - the mark has to beat the numbers.
-                db.CharacterRecords.Add(new CharacterRecord { Id = markedWeakId, PlayerId = testPlayerId, Level = 1, AgePhase = 1, SlotIndex = 1 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = markedWeakId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 1 });
                 var markedLineage = new CharacterLineageRegistry { CharacterId = markedWeakId, GenerationIndex = 1, GeneticVector = 0L, IsKeptAtRollover = true };
                 markedLineage.SetAptitudeVector(new[] { 2, 2, 2, 2 });
                 db.CharacterLineages.Add(markedLineage);
@@ -10449,7 +10449,7 @@ namespace FolkIdle.Server.Tests
                 for (int i = 0; i < 16; i++)
                 {
                     var id = Guid.NewGuid();
-                    db.CharacterRecords.Add(new CharacterRecord { Id = id, PlayerId = testPlayerId, Level = 1, AgePhase = 1, SlotIndex = 2 + i });
+                    db.CharacterRecords.Add(new CharacterRecord { Id = id, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 2 + i });
                     var lineage = new CharacterLineageRegistry { CharacterId = id, GenerationIndex = 2, GeneticVector = 0L };
                     lineage.SetAptitudeVector(new[] { 10 + i, 10, 10, 10 });
                     db.CharacterLineages.Add(lineage);
@@ -11212,7 +11212,7 @@ namespace FolkIdle.Server.Tests
             {
                 var censusMainCharacterId = Guid.NewGuid();
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = censusMainCharacterId, AuthenticatorToken = Guid.NewGuid() });
-                db.CharacterRecords.Add(new CharacterRecord { Id = censusMainCharacterId, PlayerId = testPlayerId, Level = 1, AgePhase = 1, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = censusMainCharacterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
 
                 // Three material types, one of them holding a thousand units -
                 // a stack is one slot, not one slot per unit.
@@ -11512,7 +11512,7 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 25 });
-                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 1, SlotIndex = 0, ActiveActivityId = 0L });
+                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, SlotIndex = 0, ActiveActivityId = 0L });
                 await db.SaveChangesAsync();
             }
 
@@ -11905,7 +11905,7 @@ namespace FolkIdle.Server.Tests
                 var setBonusMainCharacterId = Guid.NewGuid();
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = setBonusMainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
                 SeedAllRegionBossKills(db, testPlayerId);
-                db.CharacterRecords.Add(new CharacterRecord { Id = setBonusMainCharacterId, PlayerId = testPlayerId, Level = 60, AgePhase = 1, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = setBonusMainCharacterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
                 var weapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "bronze_dagger_melee_weapon_slot_base", QualityTier = 4, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
                 var armor = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "iron_breastplate_chest_armor_slot_base", QualityTier = 4, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
                 db.EquipmentInstances.Add(weapon);
@@ -11981,7 +11981,7 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60,
                     BaseStrength = 100, BaseDexterity = 100, BaseConstitution = 100, BaseLuck = 100 });
                 SeedAllRegionBossKills(db, testPlayerId);
-                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, Level = 60, AgePhase = 1, SlotIndex = 0 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
 
                 for (int i = 0; i < pieces.Length; i++)
                 {
