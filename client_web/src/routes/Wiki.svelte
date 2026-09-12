@@ -54,6 +54,9 @@
     APTITUDE_MAX,
     APTITUDE_VILLAGE_CEILING,
     aptitudeBonusPercent,
+    selectableAptitudeCount,
+    upMutationPercent,
+    bestVillagerAptitudeFor,
   } from '../lib/net/commands';
   import {
     REROLL_GOLD_BY_REGION,
@@ -922,11 +925,18 @@
 
           <h3 id="requirements">What you need</h3>
           <ul class="styled-list">
-            <li>A <strong>Breeding Grounds</strong> at level 1 or better.</li>
-            <li>A hero who is <strong>level 50 and an Adult</strong>. Both, not either.</li>
+            <li>A <strong>Breeding Grounds</strong> at level 1 or better. That is the unlock.</li>
+            <li>A hero who is an <strong>Adult</strong> — a child matures an hour after you field it.</li>
+            <li>One of each sex, and both of the <strong>same race</strong>.</li>
             <li><strong>500 gold × (highest parent generation + 1)</strong>. A founder costs 500; a generation-3 parent costs 2,000.</li>
             <li>No breeding cooldown, and not locked in a market trade.</li>
           </ul>
+          <p class="dim tiny">
+            <strong>There is no level requirement.</strong> There used to be one —
+            "level 50" — against a per-character level that nothing in the game ever
+            raised, so it refused every player on every attempt. Characters share
+            one account level; they do not have levels of their own.
+          </p>
           <p class="dim tiny">
             Both parents rest for one hour afterwards. There is no gestation — the
             child exists the instant the pairing is confirmed.
@@ -937,20 +947,22 @@
             <div class="card">
               <strong>Hero × newcomer — the standard pair</strong>
               <p class="dim small">
-                Only the hero needs level 50 and adulthood. The newcomer only has to
-                be of the opposite sex and the same race. This pairing is
+                Only the hero needs to be an adult. The newcomer only has to be of
+                the opposite sex and the same race. This pairing is
                 <strong>never inbred</strong> — a newcomer has no parents in this
-                world. They marry exactly once and become an elder.
+                world. They marry exactly once and are spent for ever afterwards.
+                <strong>This is the pairing that raises a bloodline.</strong>
               </p>
             </div>
             <div class="card">
               <strong>Hero × hero — crossing your own</strong>
               <p class="dim small">
-                Both parents need level 50 and adulthood. It <em>can</em> be inbred:
-                sharing a parent, or one being the other's parent. That is allowed
-                but degraded — drift inverts to 10% up and 25% down, epic mutation
-                falls from 5% to 1%, and the Speed, Crit and Yield genes each lose
-                a quarter of both copies.
+                Both parents must be adults. It <em>can</em> be inbred: sharing a
+                parent, or one being the other's parent. That is allowed but
+                degraded — the drift inverts so the down-chance becomes the
+                up-chance, epic mutation falls from 5% to 1%, and the Speed, Crit
+                and Yield genes each lose a quarter of both copies. Crossing your
+                own <strong>refines</strong> a line; it does not raise it.
               </p>
             </div>
           </div>
@@ -958,11 +970,43 @@
           <h3 id="inherits">What a child inherits</h3>
           <p class="dim small">For each aptitude, independently:</p>
           <ol class="steps">
-            <li><strong>One parent's exact value is copied</strong>, weighted by who is stronger in it — a parent at 12 against a parent at 4 gives a 75% chance of the 12.</li>
-            <li><strong>A drift roll</strong>: 25% +1, 10% −1, 65% unchanged.</li>
+            <li>
+              <strong>One parent's exact value is copied.</strong> If you
+              <em>selected</em> that aptitude, the better parent's value is taken
+              outright. Otherwise it is weighted by who is stronger — a parent at 12
+              against a parent at 4 gives a 75% chance of the 12, which also means a
+              <strong>25% chance of the 4</strong>.
+            </li>
+            <li><strong>A drift roll</strong>: {upMutationPercent(0)}% +1 and 10% −1 with no Breeding Grounds bonus, rising to {upMutationPercent(12)}% +1 at a maxed Grounds.</li>
             <li><strong>An epic mutation</strong>, 5% of the time, adds +1 to all four and marks the child.</li>
             <li>Clamped to 0…{APTITUDE_MAX}.</li>
           </ol>
+
+          <h4>Breeding for something — what the Grounds buys</h4>
+          <p class="dim small">
+            The Breeding Grounds level decides how many aptitudes you may
+            <strong>choose</strong> before a pairing. A chosen aptitude skips the
+            weighted coin entirely and keeps the better parent's value, so a line
+            stops losing ground on the exact number you were trying to raise. You
+            can never select all four — that would delete inheritance and make the
+            choice of partner meaningless.
+          </p>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th class="num">Grounds level</th><th class="num">Aptitudes you may choose</th><th class="num">Chance of +1</th></tr>
+              </thead>
+              <tbody>
+                {#each [1, 4, 7, 10, 12] as level (level)}
+                  <tr>
+                    <td class="num">{level}</td>
+                    <td class="num">{selectableAptitudeCount(level)}</td>
+                    <td class="num">{upMutationPercent(level)}%</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
           <p class="dim small">
             <strong>The consequence that is the whole design:</strong> each aptitude
             independently favours whichever parent is better at it. Cross a fighter
@@ -1014,11 +1058,11 @@
           <h3 id="genepool">The Inn and the gene pool</h3>
           <p class="dim small">
             A newcomer contributes one race, one sex and four aptitudes — nothing
-            else. Their aptitudes roll <strong>2 + up to the Inn's level</strong>,
-            capped at {APTITUDE_VILLAGE_CEILING}. That is the whole two-phase climb:
-            0 → {APTITUDE_VILLAGE_CEILING} is village-driven, and above
-            {APTITUDE_VILLAGE_CEILING} only drift and selection across seasons can
-            reach.
+            else. Their aptitudes roll <strong>2 + up to half again the Inn's
+            level</strong>, capped at {APTITUDE_VILLAGE_CEILING}. That is the whole
+            two-phase climb: 0 → {APTITUDE_VILLAGE_CEILING} is village-driven, and
+            above {APTITUDE_VILLAGE_CEILING} only drift and selection across seasons
+            can reach.
           </p>
           <div class="scroll">
             <table>
@@ -1026,13 +1070,47 @@
                 <tr><th class="num">Inn level</th><th>Somebody arrives every</th><th class="num">Village holds</th><th>Aptitudes roll</th></tr>
               </thead>
               <tbody>
-                <tr><td class="num">0</td><td>48h</td><td class="num">6</td><td>2</td></tr>
-                <tr><td class="num">1</td><td>46h</td><td class="num">7</td><td>2–3</td></tr>
-                <tr><td class="num">5</td><td>38h</td><td class="num">11</td><td>2–7</td></tr>
-                <tr><td class="num">12+</td><td>24h (the floor)</td><td class="num">16 (the ceiling)</td><td>2–20 (the ceiling)</td></tr>
+                <tr><td class="num">0</td><td>48h</td><td class="num">6</td><td>2–{bestVillagerAptitudeFor(0)}</td></tr>
+                <tr><td class="num">1</td><td>46h</td><td class="num">7</td><td>2–{bestVillagerAptitudeFor(1)}</td></tr>
+                <tr><td class="num">5</td><td>38h</td><td class="num">11</td><td>2–{bestVillagerAptitudeFor(5)}</td></tr>
+                <tr><td class="num">12+</td><td>24h (the floor)</td><td class="num">16 (the ceiling)</td><td>2–{bestVillagerAptitudeFor(12)} (the ceiling)</td></tr>
               </tbody>
             </table>
           </div>
+          <p class="dim tiny">
+            <strong>Once your line passes what the Inn can roll, the village stops
+            raising it</strong> and only brings unrelated blood. That is when the
+            Breeding Grounds becomes the lever instead: at a level-1 Grounds a line
+            fed by a level-5 Inn stalls around 11, and with one aptitude selected
+            the same line reaches {APTITUDE_VILLAGE_CEILING}.
+          </p>
+          <h3 id="aging">Ageing, and why you replace a hero</h3>
+          <p class="dim small">
+            A character only ages while it is <strong>fielded</strong> in one of
+            your slots. A benched ancestor does not get older. The phases are the
+            reason to keep a bloodline going at all: a hero you have played for a
+            week is past its best, and the child you bred is how you replace it.
+          </p>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Phase</th><th class="num">Fielded for</th><th>Effect</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><strong>Child</strong></td><td class="num">0–1h</td><td class="dim">Cannot breed yet. No penalty.</td></tr>
+                <tr><td><strong>Adult</strong></td><td class="num">1–40h</td><td class="dim">Its prime. No penalty.</td></tr>
+                <tr><td><strong>Veteran</strong></td><td class="num">40–80h</td><td class="dim">−5% damage, health and attack speed.</td></tr>
+                <tr><td><strong>Elder</strong></td><td class="num">80h+</td><td class="dim">−10% damage, health and attack speed. It stops there.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="dim tiny">
+            An <strong>Elder character</strong> and an <strong>elder newcomer</strong>
+            are unrelated things that happen to share a word. The first is an age;
+            the second means a villager has already married and is spent. An Elder
+            character breeds perfectly well.
+          </p>
+
           <p class="dim tiny">
             <strong>A full village stops the clock entirely.</strong> Nothing is
             banked against a slot freeing up later, so a mediocre newcomer sitting
