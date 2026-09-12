@@ -320,12 +320,23 @@ namespace FolkIdle.Server.Engine
                 // truncating it earlier would leave those queries with nothing
                 // to match against.
                 await db.Database.ExecuteSqlRawAsync("TRUNCATE TABLE \"MarketEquipmentInstances\" RESTART IDENTITY CASCADE", stoppingToken);
-                // A season returns every character to a fresh adult. The
-                // statement used to reset a "Level" column too; that column is
-                // gone - nothing but the dev fixture ever wrote it, and
+                // A season returns every character to a fresh adult.
+                //
+                // THE TICKS ARE THE ADULT THRESHOLD, NOT ZERO. This used to set
+                // `AgeTicks = 0, AgePhase = 1`, which reads as "everybody starts
+                // the new season grown" and did the opposite: ProcessAgeSlot
+                // derives the phase from the ticks, and zero ticks is a CHILD.
+                // The Wiki's promise that "the whole roster is breeding-age on
+                // day one" would have been a roster of children for the first
+                // hour of every season, on every account.
+                //
+                // The statement used to reset a "Level" column too; that column
+                // is gone - nothing but the dev fixture ever wrote it, and
                 // breeding gated on it - so resetting it here was resetting a
                 // constant.
-                await db.Database.ExecuteSqlRawAsync("UPDATE characters SET \"AgeTicks\" = 0, \"AgePhase\" = 1", stoppingToken);
+                await db.Database.ExecuteSqlRawAsync(
+                    $"UPDATE characters SET \"AgeTicks\" = {AgePhaseCurve.ChildEndTicks}, \"AgePhase\" = {AgePhaseCurve.Adult}",
+                    stoppingToken);
                 // Modul: WHAT A SEASON LEAVES BEHIND.
                 //
                 // The village and race mastery used to be wiped with everything

@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using FolkIdle.Server.Domain.Progression;
+using FolkIdle.Server.Engine;
 using Xunit;
 
 namespace FolkIdle.Server.Tests
@@ -161,6 +162,59 @@ namespace FolkIdle.Server.Tests
 
             string breeding = File.ReadAllText(LocateSource("Engine", "BreedingEngine.cs"));
             Assert.Contains("AgePhase = 0,", breeding);
+        }
+
+        /// <summary>
+        /// THE SAME DISAGREEMENT, IN A THIRD PLACE. The season rollover ran
+        /// `UPDATE characters SET "AgeTicks" = 0, "AgePhase" = 1` - which reads
+        /// as "everybody starts the new season as a fresh adult" and does the
+        /// opposite, because ProcessAgeSlot derives the phase from the ticks and
+        /// zero ticks is a CHILD.
+        ///
+        /// The Wiki promises "the whole roster is breeding-age on day one". It
+        /// would have been a roster of children for the first hour of every
+        /// season, on every account, for ever.
+        /// </summary>
+        [Fact]
+        public void TheSeasonRolloverDoesNotTurnEverybodyIntoAChild()
+        {
+            string rollover = File.ReadAllText(LocateSource("Engine", "SeasonalRotationEngine.cs"));
+
+            Assert.DoesNotContain("\"AgeTicks\" = 0", rollover);
+            Assert.Contains("AgePhaseCurve.ChildEndTicks", rollover);
+        }
+
+        /// <summary>
+        /// And the accounts that already carry the disagreement are repaired.
+        ///
+        /// Only where the two fields contradict each other: an adult phase with
+        /// zero ticks. A BRED CHILD is phase 0 with zero ticks and is left
+        /// exactly alone - it is supposed to grow up.
+        /// </summary>
+        [Theory]
+        // A granted adult that has never been fielded, or a post-rollover
+        // roster - the contradiction this repairs.
+        [InlineData(1, 0L, true)]
+        [InlineData(2, 0L, true)]
+        [InlineData(3, 0L, true)]
+        // A newborn. Phase and ticks agree; it grows up the ordinary way.
+        [InlineData(0, 0L, false)]
+        // Anything that has actually been fielded already derives correctly.
+        [InlineData(1, 1L, false)]
+        [InlineData(0, 500L, false)]
+        [InlineData(3, 2_900_000L, false)]
+        public void OnlyAContradictionIsRepaired(int agePhase, long ageTicks, bool expected)
+        {
+            Assert.Equal(expected, CharacterAgeBackfill.NeedsPromotion(agePhase, ageTicks));
+        }
+
+        [Fact]
+        public void TheRepairLandsExactlyOnAdulthood()
+        {
+            // Not one tick more: a repaired character starts its life at the
+            // beginning of adulthood, not part-way through it.
+            Assert.Equal(AgePhaseCurve.Adult, AgePhaseCurve.PhaseFor(CharacterAgeBackfill.PromotedTicks));
+            Assert.Equal(AgePhaseCurve.Child, AgePhaseCurve.PhaseFor(CharacterAgeBackfill.PromotedTicks - 1));
         }
 
         private static int LegacyPhaseFor(long ageTicks)

@@ -1136,6 +1136,15 @@ await go('World Boss');
 // every discovery in the table. Working through them one "Got it" at a time and
 // arriving at an OBJECTIVE is the only way to show the chain actually reaches
 // its third tier on a real account rather than only in a node runner.
+//
+// Modul: THIS CHECK SPENDS FIXTURE STATE, and only `--seed-dev` gives it back.
+// Walking to the objective tier means clicking "Got it" on everything in front
+// of it, and an acknowledgement is persisted on the PLAYER ROW
+// (OnboardingSeenIds) rather than in the browser - so the second run of this
+// script in a row finds no cue at all and reports "only saw no cue". That is
+// the repo's own "a check that spends fixture state passes once and fails
+// forever" trap, and it cannot be made to round-trip from here: the acknowledge
+// is the only way to advance the chain. Re-seed before believing a failure.
 {
   let seenKinds = new Set();
   let reachedObjective = null;

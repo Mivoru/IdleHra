@@ -62,6 +62,7 @@ if (args.Length > 0 && args[0] == "--migrate")
     {
         await migrationContext.Database.MigrateAsync();
         await FolkIdle.Server.Engine.CharacterNameBackfill.RunAsync(migrationContext);
+        await FolkIdle.Server.Engine.CharacterAgeBackfill.RunAsync(migrationContext);
     }
     Console.WriteLine("Database migrations applied successfully.");
     return;
