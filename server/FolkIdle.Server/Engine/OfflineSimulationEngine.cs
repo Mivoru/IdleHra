@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Threading.Tasks;
@@ -509,10 +509,19 @@ namespace FolkIdle.Server.Engine
             // routing).
             if (BossFirstClearRules.IsFirstClearPending(payload.DefeatedRegionBossMask, fallbackId))
             {
+                // Modul: THROUGH MaxHpFor / AttackPowerFor, not the constants.
+                //
+                // This multiplied by the flat constants directly, which made it
+                // the one path that ignored First Blood relief AND the one path
+                // that would have kept a flat 5x after the wall became
+                // per-region - a boss whose health changes depending on whether
+                // you were online for the fight.
                 activeMonster.MaxHp = (int)Math.Min(
-                    int.MaxValue, (long)activeMonster.MaxHp * BossFirstClearRules.FirstClearHpMultiplier);
+                    int.MaxValue,
+                    BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, fallbackId, payload.Skill_FirstBlood));
                 activeMonster.AttackPower = (int)Math.Min(
-                    int.MaxValue, (long)activeMonster.AttackPower * BossFirstClearRules.FirstClearAttackMultiplier);
+                    int.MaxValue,
+                    BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, fallbackId));
             }
 
             int lineageId = payload.SelectedLineageId;

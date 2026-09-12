@@ -17,8 +17,9 @@
   import {
     unlocksFor,
     formatFightDuration,
-    FIRST_CLEAR_HP_MULTIPLIER,
-    FIRST_CLEAR_ATTACK_MULTIPLIER,
+    firstClearHpMultiplier,
+    firstClearAttackMultiplier,
+    bossRegionOf,
   } from './victories';
   import { requestScreen } from '../stores/navigation';
   import Burst from './Burst.svelte';
@@ -38,6 +39,11 @@
 
   const victory = $derived($victorySummary);
   const unlocks = $derived(victory ? unlocksFor(victory.monsterId) : null);
+
+  // Modul: a $derived rather than a {@const} in the markup. A {@const} must be
+  // the immediate child of a control block, and this one sat inside a plain
+  // element - a compile error, and the reason it is computed here instead.
+  const bossRegion = $derived(victory ? bossRegionOf(victory.monsterId) : 0);
 </script>
 
 {#if victory && unlocks}
@@ -54,10 +60,15 @@
       <!-- Saying WHICH monster they fought. The farmed version is a different
            creature from the one they just beat, and that is worth knowing
            before they go back expecting the same fight. -->
+      <!-- Modul: the figures are the REGION'S now. A flat "5x health and 2x
+           attack" was true of every boss until 2026-09-12 and is true of none of
+           them since - Malakor's first clear carries fourteen times its health
+           and twenty-one times its attack, and a card quoting 5x/2x would be
+           understating the thing the player just did by a wide margin. -->
       <p class="dim small">
-        That was the {FIRST_CLEAR_HP_MULTIPLIER}x health and
-        {FIRST_CLEAR_ATTACK_MULTIPLIER}x attack version. Every time from now on
-        it fights at its ordinary strength.
+        That was the {firstClearHpMultiplier(bossRegion)}x health and
+        {firstClearAttackMultiplier(bossRegion)}x attack version. Every time from
+        now on it fights at its ordinary strength.
       </p>
 
       <dl class="stats">

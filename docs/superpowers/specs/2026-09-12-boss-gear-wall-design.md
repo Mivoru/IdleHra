@@ -1,7 +1,7 @@
 # Boss gear wall — design
 
 Date: 2026-09-12
-Status: approved, not yet implemented
+Status: IMPLEMENTED 2026-09-12. Two things changed during calibration - see "What the measurement changed" at the end.
 
 ## The defect
 
@@ -43,7 +43,7 @@ cannot out-damage resets to full and the character is halted with
   | boss | gear RegionTier | QualityTier | affixes |
   |---|---|---|---|
   | region 1 | 1 | >= 4 | any |
-  | region 2 | 2 | >= 6 | any |
+  | region 2 | 2 | >= 7 | any |
   | region 3 | 3 | >= 8 | Rare+ |
   | region 4 | 4 | >= 10 | Epic+ |
   | region 5 (Malakor) | 5 | >= 11 | all Legendary |
@@ -185,3 +185,87 @@ player on the server.
 - A tier-14 trophy from the region-1 boss is a strong early item. The benchmark
   includes one trophy piece in the reference build for the next boss up, so the
   ladder is calibrated with it rather than around it.
+
+
+## What the measurement changed
+
+Two parts of the design above did not survive contact with the projection, and
+both changes are recorded here rather than quietly applied.
+
+### Region 2 asks for quality 7, not 6
+
+Affix COUNT steps at quality 4, 7, 10 and 13 (`RarityTier.GetAffixCount`), and
+tiers 4 and 6 both carry two - so "quality 6 wins, quality 4 loses" was a 4%
+tuning window between two mechanically identical sets. That is a coin flip
+dressed as a requirement, and it would have flaked the first time anything
+touched armour, food or the HP curve. Seven is the first tier carrying a third
+affix. Every other row of the ladder already crossed a step.
+
+### The wall is calibrated per region AT THE TOP OF ITS OWN LEVEL BAND
+
+The spec said "the reference character is level 100 because the wall is about
+gear". Measured, that is wrong in both directions:
+
+- At level 100 a character's health bar is ~611,000 and **gear contributes under
+  1% of it** (624,491 in region-4 T14 against 630,648 in region-5 T11). Survival
+  at the cap is a function of the level curve, not of gear.
+- Auto-eat restores 12% of max HP per food tier every 2.5 s, so a level-100
+  character with region-5 food sustains about **147,000 HP/s** against a boss
+  dealing 34,000/s. Nothing could kill it. This is the trap already written into
+  the tick: *"nothing could kill a player who owned fish, so a boss was a check
+  on inventory rather than on equipment, and every attempt to make gear the gate
+  failed against it."*
+- And calibrating the EARLY bosses at level 100 would have been worse than
+  useless: the region-1 boss needs about 4,000x its authored attack to threaten a
+  level-100 character, and would then one-shot every real new player who meets it
+  at level 20.
+
+So the reference level is the top of each region's own band - twenty levels a
+region, the design's own pacing and the same mapping `ProgressionRateTests` uses
+(`region = (level - 1) / 20 + 1`). Region 5's band top is level 100, which is
+where Malakor is actually fought and why the wall has to hold at the cap. The
+live account that went after Malakor in region-4 gear was level 88: inside region
+5's band, a region behind on gear - exactly the case the wall now refuses.
+
+### What makes the wall work, since health does not
+
+**Mitigation.** Incoming DPS across the three region-5 candidates is 33,991 /
+21,695 / 15,940 - a 2.1x spread driven by armour and block, which DO come from
+the gear's region and rarity. The attack multipliers are set so sustain covers
+the required set and not the ones below it, and the windows were found by
+bisection rather than chosen:
+
+| boss | lethal for two-below | lethal for region-behind | lethal for REQUIRED | picked |
+|---|---|---|---|---|
+| region 1 | 3.2 | 3.2 | 4.3 | 3.7 |
+| region 2 | 2.5 | 1.9 | 2.7 | 2.6 |
+| region 3 | 5.4 | 3.9 | 5.9 | 5.7 |
+| region 4 | 10.0 | 6.4 | 13.0 | 11.4 |
+| region 5 | 18.3 | 11.6 | 25.0 | 21.4 |
+
+Health multipliers (3 / 4 / 6 / 9 / 14) set the LENGTH of the fight rather than
+its outcome: 194 s, 346 s, 592 s, 815 s and 1,190 s for the required set. A
+three-to-twenty-minute boss fight is an event; it is not a chore.
+
+### One more thing this required
+
+`SimulationEngine`'s incoming-damage path saturated `rawDamage` at `int.MaxValue`.
+That was a correct overflow fix and an invisible CEILING on the wall - 2.147e9
+milli-damage is about twelve times Malakor's authored attack, and region 5 needs
+twenty-one. The path is `long` now, with the subtraction onto the `int` PlayerHp
+clamped. Without this the table above would have been silently truncated and the
+wall would have looked tuned while being capped.
+
+### Measured outcome
+
+| boss | required set | two tiers below | a full set one region behind |
+|---|---|---|---|
+| Alpha Wolf | wins in 194 s | dies in 40 s | - |
+| Shadow Lynx | wins in 346 s | dies in 66 s | dies in 2 s at every tier 1-14 |
+| Magma Wyrm | wins in 592 s | dies in 32 s | dies in 2 s at every tier 1-14 |
+| Frost Titan | wins in 815 s | dies in 6 s | dies in 2 s at every tier 1-14 |
+| Malakor | wins in 1,190 s | dies in 16 s | dies in 2 s at every tier 1-14 |
+
+The bottom-right column is the defect this work existed to fix: a full set of
+region-4 gear, at ANY quality tier including Transcendent, now dies to Malakor in
+about two seconds.

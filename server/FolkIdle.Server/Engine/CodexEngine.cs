@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Data;
 using System.Linq;
@@ -259,13 +259,47 @@ namespace FolkIdle.Server.Engine
                     // codex entry did not exist, or existed at zero, has
                     // never been killed by this player.
                     byte raceUnlockedByThisMonster = RaceUnlockRegistry.GetRaceUnlockedByBoss(key.MonsterId);
-                    if (raceUnlockedByThisMonster != 0)
+                    bool firstKillOfThisMonster =
+                        !codexEntries.TryGetValue(key, out var priorEntry) || priorEntry.KillCount == 0;
+
+                    if (raceUnlockedByThisMonster != 0 && firstKillOfThisMonster)
                     {
-                        bool everKilledBefore = codexEntries.TryGetValue(key, out var priorEntry) && priorEntry.KillCount > 0;
-                        if (!everKilledBefore)
+                        newlyUnlockedRaces.Add((key.PlayerId, raceUnlockedByThisMonster, key.MonsterId));
+                    }
+
+                    // Modul: THE FIRST-CLEAR TROPHY, 2026-09-12. One Transcendent
+                    // piece of the boss's own gear, once per region boss, ever.
+                    //
+                    // Granted HERE for the same reason the race unlock above is:
+                    // this is the one place that already knows whether a monster
+                    // had ever been killed before, and it knows it from a durable
+                    // row inside the transaction that changes it. The payload's
+                    // DefeatedRegionBossMask would have been the easy signal and
+                    // the wrong one - it is a cache a reconnecting session
+                    // re-presents, so granting from it pays a trophy per relogin.
+                    //
+                    // Written as a row in THIS transaction rather than handed to
+                    // the loot worker: a queue can lose the grant if the process
+                    // dies between the commit and the drain, and a trophy you can
+                    // only earn once is not something to make best-effort.
+                    if (firstKillOfThisMonster
+                        && Domain.Combat.BossFirstClearTrophy.TryChooseItemId(
+                            key.MonsterId, System.Random.Shared.Next(), out int trophyItemId))
+                    {
+                        int trophyRegion = ContentRegistry.GetMonsterRegionTier(key.MonsterId);
+                        string trophyBaseId = ContentRegistry.GetItemBaseId(trophyItemId);
+
+                        dbContext.EquipmentInstances.Add(new Models.EquipmentInstance
                         {
-                            newlyUnlockedRaces.Add((key.PlayerId, raceUnlockedByThisMonster, key.MonsterId));
-                        }
+                            PlayerId = key.PlayerId,
+                            BaseItemId = trophyBaseId,
+                            QualityTier = Domain.Combat.BossFirstClearTrophy.QualityTier,
+                            AffixPayload = Domain.Combat.BossFirstClearTrophy.BuildAffixPayload(trophyItemId, trophyRegion),
+                            IsAffixLocked = false
+                        });
+
+                        Console.WriteLine(
+                            $"First-clear trophy: player {key.PlayerId} earned a Transcendent {trophyBaseId} for beating monster {key.MonsterId}.");
                     }
 
                     if (codexEntries.TryGetValue(key, out var entry))

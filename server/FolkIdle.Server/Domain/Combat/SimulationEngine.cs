@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -59,6 +59,14 @@ namespace FolkIdle.Server.Domain.Combat
         // auto-eat larder the window it needs to respond, without making the
         // wearer immortal against sustained damage.
         private const float SetDamageCapMaxHpFraction = 0.20f;
+
+        // Modul: the floor a clamped health subtraction lands on. PlayerHp is an
+        // int in milli-HP and incoming damage is a long since the boss wall went
+        // per-region, so a lethal hit can exceed the whole int range. Anything at
+        // or below zero is death, so the exact depth is irrelevant - what matters
+        // is that it cannot wrap round into a positive bar, which is how the
+        // deadliest monster in the game once dealt 1 HP a hit.
+        private const int MinimumRepresentableHp = int.MinValue / 2;
         private const double TickIntervalSeconds = TickIntervalMs / 1000.0;
         private readonly LootTableEngine _lootEngine;
         private readonly InheritanceEngine? _inheritanceEngine;
@@ -6037,8 +6045,20 @@ namespace FolkIdle.Server.Domain.Combat
                     // floor below caught it, and the deadliest monster in the
                     // game dealt exactly 1 HP per hit - the inverse of the
                     // spawn-already-dead bug on the HP side.
-                    long rawDamageLong = (long)(BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId) * 1000L * monsterCritMult);
-                    int rawDamage = rawDamageLong >= int.MaxValue ? int.MaxValue : (int)rawDamageLong;
+                    // Modul: AND IT STAYS A LONG, 2026-09-12.
+                    //
+                    // Saturating at int.MaxValue was a correct fix for the
+                    // overflow described above and a CEILING on the boss wall
+                    // nobody had noticed: 2.147e9 milli-damage is about twelve
+                    // times Malakor's authored attack, and the per-region wall
+                    // needs more than that to out-pace a level-100 larder. The
+                    // saturation would have silently eaten the difference and
+                    // the wall would have looked tuned while being capped.
+                    //
+                    // Nothing downstream needs an int: Mitigate already takes a
+                    // long, and the only int in the chain is PlayerHp, which is
+                    // assigned through a clamped subtraction below.
+                    long rawDamage = (long)(BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId) * 1000L * monsterCritMult);
 
                     // Step 3+4 (Armor then Block, combined): armor subtracts
                     // flat milli-damage, BlockStrengthPct (CON-derived, see
@@ -6057,7 +6077,7 @@ namespace FolkIdle.Server.Domain.Combat
                         rawDamage,
                         combatStats.FlatPhysicalArmor,
                         CombatDamageModel.PlayerArmourHalvingConstant(monsterRegionTier));
-                    int finalDamage = Math.Max(1000, (int)(armorMitigatedDamage * (1f - blockStrengthFraction)));
+                    long finalDamage = Math.Max(1000L, (long)(armorMitigatedDamage * (1f - blockStrengthFraction)));
 
                     // Modul: set effect rework. The Eternal Dreadnought 4-piece
                     // caps any single hit at a share of max HP.
@@ -6076,14 +6096,22 @@ namespace FolkIdle.Server.Domain.Combat
                     // the set cannot turn its own defence into extra offence.
                     if (combatStats.SetDamageCapActive)
                     {
-                        int damageCeiling = (int)(effectiveMaxHp * SetDamageCapMaxHpFraction);
+                        long damageCeiling = (long)(effectiveMaxHp * SetDamageCapMaxHpFraction);
                         if (damageCeiling > 0 && finalDamage > damageCeiling)
                         {
                             finalDamage = damageCeiling;
                         }
                     }
 
-                    payload.PlayerHp -= finalDamage;
+                    // Modul: clamped, because finalDamage is a long now and
+                    // PlayerHp is an int. Any value at or below zero is death, so
+                    // flooring the result costs nothing and an unclamped cast
+                    // could wrap a lethal hit into a positive health bar - the
+                    // exact shape of the overflow bug this block already records.
+                    long playerHpAfterHit = payload.PlayerHp - finalDamage;
+                    payload.PlayerHp = playerHpAfterHit < MinimumRepresentableHp
+                        ? MinimumRepresentableHp
+                        : (int)playerHpAfterHit;
 
                     // Modul: set bonuses made real. Thorns - the Eternal
                     // Dreadnought 4-piece. Reflects a fraction of what actually
@@ -6095,10 +6123,10 @@ namespace FolkIdle.Server.Domain.Combat
                     // Only reflects while a monster is actually alive, so the
                     // final blow cannot reflect into an already-dead target and
                     // drive CurrentMonsterHp further negative.
-                    int thornsReflected = 0;
+                    long thornsReflected = 0;
                     if (combatStats.SetThornsReflectionActive && payload.CurrentMonsterHp > 0)
                     {
-                        int reflectedDamage = (int)(finalDamage * ThornsReflectionFraction);
+                        long reflectedDamage = (long)(finalDamage * ThornsReflectionFraction);
                         if (reflectedDamage > 0)
                         {
                             payload.CurrentMonsterHp -= reflectedDamage;
@@ -6119,7 +6147,7 @@ namespace FolkIdle.Server.Domain.Combat
                         payload.PlayerId,
                         payload.CurrentMonsterId,
                         Network.ResponseCombatEventPacket.KindMonsterHit,
-                        finalDamage / 1000,
+                        (int)Math.Min(int.MaxValue, finalDamage / 1000),
                         (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
                         (byte)((monsterCritMult > 1.0f ? Network.ResponseCombatEventPacket.FlagCrit : 0)
                              | (blockStrengthFraction > 0f ? Network.ResponseCombatEventPacket.FlagBlocked : 0)));
@@ -6130,7 +6158,7 @@ namespace FolkIdle.Server.Domain.Combat
                             payload.PlayerId,
                             payload.CurrentMonsterId,
                             Network.ResponseCombatEventPacket.KindPlayerHit,
-                            thornsReflected / 1000,
+                            (int)Math.Min(int.MaxValue, thornsReflected / 1000),
                             (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
                             Network.ResponseCombatEventPacket.FlagThorns);
                     }

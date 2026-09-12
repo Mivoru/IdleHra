@@ -9,6 +9,7 @@ import {
   KNOWN_AFFIX_IDS,
   describeStopCondition,
 } from '../src/lib/ui/affixes';
+import { describeBossGearRequirement } from '../src/lib/ui/victories';
 
 // Modul: this file exists because the first version was wrong in production
 // and the browser caught it. Real payload keys arrive as "crit_dmg_pct@2" -
@@ -213,5 +214,43 @@ describe('describeStopCondition', () => {
   it('is satisfied by a rarity floor alone once one is set', () => {
     expect(describeStopCondition(3, 0)).toContain('Rare or better');
     expect(describeStopCondition(3, 0)).not.toContain('first roll');
+  });
+});
+
+// Modul: TWO RARITY SCALES, ONE SET OF WORDS.
+//
+// The 14 GDD quality tiers and the 5 affix rarities share names - "Legendary" is
+// quality tier 7 AND affix rarity 5 - and this project has conflated them
+// before, which is why rarity.ts and affixes.ts are separate files with that
+// warning at the top of each.
+//
+// The first-clear tooltip managed to print both in one breath: "region-2 gear at
+// Legendary or better with Common affixes", where "Legendary" was quality tier 7
+// and "Common" was affix rarity 1. Both correct, and together unreadable.
+describe('describeBossGearRequirement', () => {
+  it('names the quality tier as a tier, not just a word', () => {
+    const text = describeBossGearRequirement(2);
+    expect(text).toContain('region-2');
+    expect(text).toMatch(/rarity 7|tier 7/);
+    expect(text).toContain('Legendary');
+  });
+
+  it('says nothing about affixes when any affix will do', () => {
+    // Regions 1 and 2 ask for Common, which every affix already is.
+    expect(describeBossGearRequirement(1).toLowerCase()).not.toContain('affix');
+    expect(describeBossGearRequirement(2).toLowerCase()).not.toContain('affix');
+  });
+
+  it('states the affix rarity once it is a real requirement', () => {
+    expect(describeBossGearRequirement(3)).toContain('Rare');
+    expect(describeBossGearRequirement(4)).toContain('Epic');
+    // Region 5's quality tier is 11 (Demonic), so the only "Legendary" in its
+    // sentence is the affix clause - which is the point being asserted.
+    expect(describeBossGearRequirement(5)).toContain('Legendary');
+    expect(describeBossGearRequirement(5)).toContain('affixes');
+  });
+
+  it('warns that the previous region is not enough, which is the whole wall', () => {
+    expect(describeBossGearRequirement(5).toLowerCase()).toContain('previous region');
   });
 });

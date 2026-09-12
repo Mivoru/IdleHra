@@ -5,6 +5,11 @@ import {
   APTITUDE_VILLAGE_CEILING,
 } from '../src/lib/net/commands';
 import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
+import {
+  FIRST_CLEAR_HP_MULTIPLIERS,
+  FIRST_CLEAR_ATTACK_MULTIPLIERS,
+  BOSS_REQUIRED_QUALITY_TIER,
+} from '../src/lib/ui/victories';
 import { TIER_STYLES } from '../src/lib/ui/leaderboardTiers';
 import { BOSS_WINDOW_DAYS, isBossWindowDay, nextBossWindow } from '../src/lib/net/commands';
 import {
@@ -66,6 +71,22 @@ function table(source: string, pattern: RegExp): Map<number, number> {
   for (const m of source.matchAll(pattern)) out.set(Number(m[1]), Number(m[2]));
   if (out.size === 0) throw new Error('matched no table rows - the pattern needs updating, not deleting');
   return out;
+}
+
+/**
+ * The numbers out of a C# array initialiser - `{ 3.0f, 4.0f, ... }` - so a
+ * client table can be compared element by element against the server's own
+ * source. Same reasoning as `num` above: a regex over a one-line initialiser
+ * needs no build step, and a test that needs one gets skipped.
+ */
+function floatArray(source: string, pattern: RegExp, label: string): number[] {
+  const match = source.match(pattern);
+  if (!match) throw new Error(`${label}: no match for ${pattern}`);
+  return match[1]
+    .split(',')
+    .map((part) => part.trim().replace(/f$/, ''))
+    .filter((part) => part.length > 0)
+    .map((part) => Number(part));
 }
 
 describe('the numbers the client mirrors still match the server', () => {
@@ -397,13 +418,30 @@ describe('the numbers the client mirrors still match the server', () => {
     }
   });
 
-  it('combat: the first-clear boss multiplier', () => {
+  // Modul: THE WALL IS A TABLE NOW, and this test used to compare against a
+  // constant that had stopped deciding anything.
+  //
+  // It read `FirstClearHpMultiplier = (\d+)`, which was the flat 5x every boss
+  // carried. That flat figure is why a full set of region-4 gear could beat
+  // Malakor, and when the wall became per-region the constant stayed behind as a
+  // vestigial fallback - so this assertion would have gone on passing while
+  // comparing the client's table to a number nothing reads. A mirror test
+  // pointed at a retired constant is worse than no mirror test: it reports
+  // agreement it never checked.
+  it('combat: the per-region first-clear boss multipliers', () => {
     const rules = read(serverRoot, 'Domain', 'Combat', 'BossFirstClearRules.cs');
-    const combat = read(clientRoot, 'routes', 'Combat.svelte');
 
-    expect(num(combat, /FIRST_CLEAR_HP = (\d+)/, 'client first-clear hp')).toBe(
-      num(rules, /FirstClearHpMultiplier = (\d+)/, 'server first-clear hp'),
-    );
+    const serverHp = floatArray(rules, /_hpMultiplierByRegion\s*=\s*\{([^}]*)\}/, 'server first-clear hp');
+    const serverAttack = floatArray(rules, /_attackMultiplierByRegion\s*=\s*\{([^}]*)\}/, 'server first-clear attack');
+    const serverRequired = floatArray(rules, /_requiredQualityTierByRegion\s*=\s*\{([^}]*)\}/, 'server required quality');
+
+    expect(serverHp).toHaveLength(5);
+    expect(serverAttack).toHaveLength(5);
+    expect(serverRequired).toHaveLength(5);
+
+    expect(FIRST_CLEAR_HP_MULTIPLIERS).toEqual(serverHp);
+    expect(FIRST_CLEAR_ATTACK_MULTIPLIERS).toEqual(serverAttack);
+    expect(BOSS_REQUIRED_QUALITY_TIER).toEqual(serverRequired);
   });
 
   // Modul: the world boss rework of 2026-09-05 added SIX hand-mirrored numbers

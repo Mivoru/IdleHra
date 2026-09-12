@@ -1,4 +1,4 @@
-using FolkIdle.Server.Domain.Combat;
+﻿using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Engine;
 using Xunit;
 using Xunit.Abstractions;
@@ -27,7 +27,7 @@ namespace FolkIdle.Server.Tests
         private static int BossOf(int region) => RaceUnlockRegistry.GetRegionBossMonsterId(region);
 
         [Fact]
-        public void AnUnbeatenBossIsFiveTimesTheHealthAndTwiceTheAttack()
+        public void AnUnbeatenBossCarriesItsRegionsWall()
         {
             for (int region = 1; region <= 5; region++)
             {
@@ -43,8 +43,23 @@ namespace FolkIdle.Server.Tests
                     $"{authoredHp} HP / {authoredAttack} atk farmed, " +
                     $"{firstClearHp} / {firstClearAttack} on the first clear");
 
-                Assert.Equal(authoredHp * 5, firstClearHp);
-                Assert.Equal(authoredAttack * 2, firstClearAttack);
+                // Modul: the wall is PER-REGION since 2026-09-12. This asserted
+                // a flat 5x / 2x, which is what let a full set of region-4 gear
+                // beat Malakor. The multipliers themselves are calibrated by
+                // BossWallTests against a projected reference character; what
+                // this test pins is that MaxHpFor and AttackPowerFor apply the
+                // region's own entry and apply it to every boss.
+                Assert.Equal(
+                    (long)(authoredHp * BossFirstClearRules.HpMultiplierFor(region)),
+                    firstClearHp);
+                Assert.Equal(
+                    (long)(authoredAttack * BossFirstClearRules.AttackMultiplierFor(region)),
+                    firstClearAttack);
+
+                // A wall that is not a wall would pass the two lines above by
+                // carrying a multiplier of one.
+                Assert.True(firstClearHp > authoredHp);
+                Assert.True(firstClearAttack > authoredAttack);
             }
         }
 
@@ -60,7 +75,9 @@ namespace FolkIdle.Server.Tests
 
             // Beating one boss says nothing about any other.
             Assert.True(BossFirstClearRules.IsFirstClearPending(mask, BossOf(3)));
-            Assert.Equal(ContentRegistry.GetScaledMonsterMaxHp(BossOf(3)) * 5, BossFirstClearRules.MaxHpFor(mask, BossOf(3)));
+            Assert.Equal(
+                (long)(ContentRegistry.GetScaledMonsterMaxHp(BossOf(3)) * BossFirstClearRules.HpMultiplierFor(3)),
+                BossFirstClearRules.MaxHpFor(mask, BossOf(3)));
         }
 
         /// <summary>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Data;
@@ -793,7 +793,12 @@ namespace FolkIdle.Server.Domain.Combat
         // (see ForgeSplicingEngine), so this parses defensively via JsonNode
         // rather than a typed Dictionary<string,int> that would throw on the
         // mixed-type payload.
-        private static void AddAffixTotals(string affixPayload, ref EquippedAffixTotals totals)
+        // Modul: public so BossGearBenchmark can fold a synthetic loadout's
+        // affixes through the SAME mapping the equip path uses. A benchmark with
+        // its own copy of this switch would drift from it, and the whole point
+        // of projecting the boss ladder is that the projection agrees with the
+        // tick.
+        public static void AddAffixTotals(string affixPayload, ref EquippedAffixTotals totals)
         {
             if (string.IsNullOrWhiteSpace(affixPayload) || JsonNode.Parse(affixPayload) is not JsonObject affixObject)
             {

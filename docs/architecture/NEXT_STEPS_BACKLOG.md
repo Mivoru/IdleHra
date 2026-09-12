@@ -17,6 +17,113 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-12c - the boss wall, and why health could not be the gate
+
+Reported by the developer playing his own game: "today I have beaten the tier 4
+boss, so out of curiosity and as dev I tried to beat Malakor too, and to my
+surprise if I didn't stop he would be dead with just all tier 4 gear".
+
+Measured from the live database, the set doing it was eight pieces of
+**RegionTier 4** at quality tiers 8-12 with **every affix Legendary**. Malakor is
+the last monster in the game.
+
+## The cause
+
+`BossFirstClearRules` carried a flat 5x health / 2x attack for all five region
+bosses. One pair of numbers cannot be a real fight at level 10 and at level 100
+against gear that has grown by two orders of magnitude in between.
+
+It is a per-region table now (3/4/6/9/14 health, 3.7/2.6/5.7/11.4/21.4 attack),
+and the numbers are SOLVED rather than chosen - see below.
+
+## The measurement that changed the design, and is the real lesson
+
+The first attempt calibrated everything against a level-100 character, on the
+reasoning that "the wall is about gear". Three things came out of the projection:
+
+1. **Gear is under 1% of the health bar at level 100.** 624,491 HP in region-4
+   T14 against 630,648 in region-5 T11. `ProgressionEngine.BaseMilliHpForLevel`
+   is the bar; gear is noise beside it.
+2. **Nothing can kill a fed character.** Auto-eat restores 12% of max HP per food
+   tier every 2.5 s, so a level-100 character with region-5 food sustains about
+   **147,000 HP/s** against a boss dealing 34,000/s. The larder out-healed
+   Malakor more than fourfold. This is the trap the tick already records:
+   *"nothing could kill a player who owned fish, so a boss was a check on
+   inventory rather than on equipment, and every attempt to make gear the gate
+   failed against it."*
+3. **Calibrating the early bosses at the cap would have been catastrophic.** The
+   region-1 boss needs roughly 4,000x its authored attack to threaten a level-100
+   character - and would then one-shot every real new player meeting it at level
+   20.
+
+So the reference level is the top of each region's own band: **twenty levels a
+region**, the design's own pacing and the same mapping `ProgressionRateTests`
+uses. Region 5's band top is level 100, which is where Malakor is actually fought
+and why the wall must hold at the cap. The live account was level 88 - inside
+region 5's band, one region behind on gear, exactly the case now refused.
+
+**What makes the wall work is MITIGATION, not health.** Incoming DPS across the
+three region-5 candidates is 33,991 / 21,695 / 15,940 - a 2.1x spread, all of it
+armour and block from the gear's own region and rarity. The attack multipliers are
+set so the larder covers the required set and not the sets below it, and the
+windows were found by bisection.
+
+## An invisible ceiling this uncovered
+
+`SimulationEngine` saturated incoming `rawDamage` at `int.MaxValue`. That was a
+correct overflow fix (a 5.3M-attack monster overflowed int and dealt 1 HP a hit)
+and also a CEILING on any future wall: 2.147e9 milli-damage is about twelve times
+Malakor's authored attack, and region 5 needs twenty-one. The path is `long` now,
+with the subtraction onto the `int` PlayerHp clamped (`MinimumRepresentableHp`).
+Without it the tuning table would have been silently truncated and the wall would
+have looked tuned while being capped.
+
+## Measured outcome
+
+| boss | required set | two tiers below | a full set one region behind |
+|---|---|---|---|
+| Alpha Wolf | wins in 194 s | dies in 40 s | - |
+| Shadow Lynx | wins in 346 s | dies in 66 s | dies in 2 s at EVERY tier 1-14 |
+| Magma Wyrm | wins in 592 s | dies in 32 s | dies in 2 s at EVERY tier 1-14 |
+| Frost Titan | wins in 815 s | dies in 6 s | dies in 2 s at EVERY tier 1-14 |
+| Malakor | wins in 1,190 s | dies in 16 s | dies in 2 s at EVERY tier 1-14 |
+
+The required ladder is quality 4 / 7 / 8 / 10 / 11 in the boss's OWN region, with
+Rare / Epic / Legendary affixes for regions 3 / 4 / 5. Region 2 asks for 7 rather
+than the 6 first sketched: affix count steps at 4, 7, 10 and 13, and tiers 4 and 6
+both carry two, so "6 wins, 4 loses" was a 4% window between two mechanically
+identical sets.
+
+## The Transcendent trophy
+
+The first clear of each region boss now grants one QualityTier-14 piece of that
+boss's own gear - five per account, ever, and the game's only reliable source of
+tier 13-14 (fusion stops at the Forge ceiling of 12 and the drop weight is 0.0001
+against 196.7). Granted inside the codex transaction that moves the boss's
+KillCount off zero, which is the same durable first-kill transition the race
+unlocks hang off. NOT from `DefeatedRegionBossMask`, which is a payload cache a
+reconnecting session re-presents - granting from that pays a trophy per relogin.
+Affix rarity rolls normally: the trophy is the best item FRAME, not a finished
+item, and the reroll economy is how a player finishes it.
+
+## Standing traps this added
+
+- **A wall tuned against the level cap is not a wall, it is a level gate.** Health
+  scales with level and gear does not, so "gear decides survival" is false at the
+  cap in both directions. Calibrate at the top of the region's own band.
+- **The larder is the real boss-fight ceiling.** Any future attempt to make a
+  fight harder by raising attack has to clear ~147,000 HP/s of sustain at level
+  100 first, or it changes nothing at all.
+- **An int saturation is a silent balance ceiling.** It was introduced as an
+  overflow guard and became a cap on content nobody could see; the guard was
+  right and the type was wrong.
+- **`BossWallTests` is the ledger.** It projects the reference character and
+  asserts where the break-even falls. Retune freely; that test says what you did.
+  `BossGearBenchmark` calls the LIVE damage model rather than a copy, so a change
+  to armour, crit or attack speed moves the projection with the game.
+
+---
+
 # HANDOFF 2026-09-12b - auto-reroll tells the truth once
 
 Driven by a player report in two halves: "when I try to do like 50 rerolls I

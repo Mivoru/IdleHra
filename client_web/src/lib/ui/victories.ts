@@ -1,3 +1,5 @@
+import { rarityName } from './rarity';
+import { AFFIX_RARITY_NAMES } from './affixes';
 // Modul: what a first boss clear actually GAVE you.
 //
 // The rewards are on the wire; the UNLOCKS are not, and they are the
@@ -86,13 +88,86 @@ export function unlocksFor(monsterId: number): VictoryUnlocks {
 /**
  * What the first clear cost extra, for saying so out loud.
  *
- * Mirrors BossFirstClearRules: until a boss is put down once it carries FIVE
- * times its health and TWICE its attack. A player who just did that fought a
- * different monster from the one they will farm afterwards, and the card
- * should say which.
+ * Mirrors BossFirstClearRules, which is a TABLE and not a pair of constants
+ * since 2026-09-12: a flat 5x health and 2x attack for every boss is what let a
+ * full set of region-4 gear beat Malakor, the last monster in the game. Indexed
+ * by region, 1-based - entry 0 is unused so a region can index directly.
+ *
+ * serverMirrors.test.ts parses the C# arrays and compares these element by
+ * element. Do not edit one side alone.
  */
-export const FIRST_CLEAR_HP_MULTIPLIER = 5;
-export const FIRST_CLEAR_ATTACK_MULTIPLIER = 2;
+export const FIRST_CLEAR_HP_MULTIPLIERS: readonly number[] = [3, 4, 6, 9, 14];
+export const FIRST_CLEAR_ATTACK_MULTIPLIERS: readonly number[] = [3.7, 2.6, 5.7, 11.4, 21.4];
+
+/**
+ * The gear each boss is calibrated to need, as QualityTier, in the boss's OWN
+ * region - mirrors BossFirstClearRules._requiredQualityTierByRegion.
+ *
+ * The screen says this out loud because the wall is brutal by design: a full set
+ * one region behind dies to its boss in about two seconds. A death that fast
+ * with no explanation is indistinguishable from a bug, which is how the
+ * ORIGINAL defect here got reported.
+ */
+export const BOSS_REQUIRED_QUALITY_TIER: readonly number[] = [4, 7, 8, 10, 11];
+
+/** Affix rarity each boss expects, as AffixRarity (1 Common .. 5 Legendary). */
+export const BOSS_REQUIRED_AFFIX_RARITY: readonly number[] = [1, 1, 3, 4, 5];
+
+/**
+ * The region a monster is the boss OF, or 0 when it is not a region boss.
+ *
+ * Mirrors RaceUnlockRegistry: the canonical 25 run from monster id 91 and every
+ * fifth one is its region's boss. Lives here rather than in a screen because
+ * both the Combat list and the victory card index the tables below by it, and a
+ * second copy of this arithmetic is how the "every fifth monster" convention has
+ * mis-classified content before.
+ */
+export function bossRegionOf(monsterId: number): number {
+  const offset = monsterId - 91;
+  if (offset < 0 || offset >= 25) return 0;
+  return offset % 5 === 4 ? Math.floor(offset / 5) + 1 : 0;
+}
+
+/**
+ * What a boss asks for, in one sentence a player can act on.
+ *
+ * Modul: TWO RARITY SCALES SHARE THEIR WORDS. The 14 quality tiers and the 5
+ * affix rarities both have a "Legendary", and the first version of this tooltip
+ * printed "region-2 gear at Legendary or better with Common affixes" - quality
+ * tier 7 and affix rarity 1, both correct and together unreadable. The tier is
+ * named AS a tier here, and the affix clause is dropped entirely when the
+ * requirement is Common, which every affix already is.
+ *
+ * Said out loud at all because the wall is brutal by design: a full set one
+ * region behind dies to its boss in about two seconds. A death that fast with no
+ * explanation is indistinguishable from a bug - which is how the defect that
+ * started this work got reported in the first place.
+ */
+export function describeBossGearRequirement(region: number): string {
+  const tier = BOSS_REQUIRED_QUALITY_TIER[region - 1] ?? BOSS_REQUIRED_QUALITY_TIER[0];
+  const affixRarity = BOSS_REQUIRED_AFFIX_RARITY[region - 1] ?? BOSS_REQUIRED_AFFIX_RARITY[0];
+
+  let text =
+    `Bring a full set of region-${region} gear at rarity ${tier} (${rarityName(tier)}) or better` +
+    ` - gear from the previous region will not survive it.`;
+
+  if (affixRarity > 1) {
+    text += ` Its affixes want to be ${AFFIX_RARITY_NAMES[affixRarity]}` +
+      `${affixRarity < 5 ? ' or better' : ''}, too.`;
+  }
+
+  return text;
+}
+
+/** The first-clear health multiplier for a boss's region, 1-based. */
+export function firstClearHpMultiplier(region: number): number {
+  return FIRST_CLEAR_HP_MULTIPLIERS[region - 1] ?? FIRST_CLEAR_HP_MULTIPLIERS[0];
+}
+
+/** The first-clear attack multiplier for a boss's region, 1-based. */
+export function firstClearAttackMultiplier(region: number): number {
+  return FIRST_CLEAR_ATTACK_MULTIPLIERS[region - 1] ?? FIRST_CLEAR_ATTACK_MULTIPLIERS[0];
+}
 
 export function formatFightDuration(seconds: number): string {
   if (seconds <= 0) return 'moments';

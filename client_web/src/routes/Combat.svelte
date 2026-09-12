@@ -1,5 +1,11 @@
 <script lang="ts">
   import { locationName } from '../lib/ui/locations';
+  import {
+    firstClearHpMultiplier,
+    firstClearAttackMultiplier,
+    describeBossGearRequirement,
+    bossRegionOf,
+  } from '../lib/ui/victories';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
   import { onMount } from 'svelte';
@@ -105,14 +111,12 @@
     return () => clearTimeout(handle);
   });
 
-  const FIRST_CLEAR_HP = 5;
+  // Modul: was a local `const FIRST_CLEAR_HP = 5` - a hand-copy of a server
+  // constant that no longer exists. The wall is per-region now
+  // (BossFirstClearRules), and victories.ts is the one client-side home for the
+  // table; serverMirrors.test.ts compares it to the C# element by element.
   const defeatedMask = $derived(snap?.DefeatedRegionBossMask ?? 0);
 
-  function bossRegionOf(monsterId: number): number {
-    const offset = monsterId - 91;
-    if (offset < 0 || offset >= 25) return 0;
-    return offset % 5 === 4 ? Math.floor(offset / 5) + 1 : 0;
-  }
 
   function isFirstClearPending(monsterId: number): boolean {
     const region = bossRegionOf(monsterId);
@@ -134,7 +138,9 @@
   const serverMonsterMaxHp = $derived(snap?.CurrentMonsterMaxHp ?? 0);
 
   function shownMaxHp(monster: { Id: number; MaxHp: number }): number {
-    return isFirstClearPending(monster.Id) ? monster.MaxHp * FIRST_CLEAR_HP : monster.MaxHp;
+    return isFirstClearPending(monster.Id)
+      ? Math.round(monster.MaxHp * firstClearHpMultiplier(bossRegionOf(monster.Id)))
+      : monster.MaxHp;
   }
 
   /** The active monster's true maximum, from the server, with the local rule
@@ -540,9 +546,10 @@
                 </span>
                 <span class="dim">{monster.BaseXpReward.toLocaleString()} XP</span>
                 {#if isFirstClearPending(monster.Id)}
+                  {@const bossRegion = bossRegionOf(monster.Id)}
                   <span
                     class="firstclear tiny"
-                    title="Never beaten: {FIRST_CLEAR_HP}x health and double damage until it falls once. It drops to its normal stats afterwards."
+                    title="Never beaten: {firstClearHpMultiplier(bossRegion)}x health and {firstClearAttackMultiplier(bossRegion)}x damage until it falls once, then it drops to its normal stats for good. {describeBossGearRequirement(bossRegion)}"
                   >first clear</span>
                 {/if}
               </button>
