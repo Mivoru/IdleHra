@@ -17,6 +17,132 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-12d - breeding was sealed at both ends
+
+Reported by the developer playing his own game: "I was thinking of trying it but
+man it was confusing, first I need to choose a hero that's level 50, I mainly use
+one combat character that is level 88 but elder so I think because he is elder I
+can't use him... and when I tried to breed the level 88 I couldn't even choose
+him."
+
+He was not confused. Measured against the live database:
+
+```sql
+SELECT count(*), count(*) FILTER (WHERE "Level" >= 50), max("Level") FROM characters;
+-- 80, 0, 1
+```
+
+**Breeding has been impossible for every player since launch.** Both pairings
+gated on `characters.Level >= 50`, and the only writer of that column anywhere
+in the server was `DevFixtureSeeder`. A player's 88 is `PlayerRecords
+.CurrentLevel` - the ACCOUNT level. Characters have never had one of their own.
+It worked on the dev fixture, which writes the column by hand, and that is
+exactly why it survived. The repo's own `grep for a WRITER as well as a reader`
+trap, with the fixture doing the hiding.
+
+Both of his other theories were wrong in the way the UI invited:
+
+- **Elder never blocked anything.** The gate was `AgePhase < 1` - a child.
+- **`IsElder` on a villager is a different word entirely.** It means "already
+  married, spent", not old, and it sat on the same screen as the Elder age
+  phase.
+
+## Three more defects underneath it
+
+1. **Ageing was a three-hour treadmill whose only exit was breeding.** Senior at
+   two hours (-10%), Old at three (-20%), permanently, for any fielded
+   character. The designed remedy is to breed a successor - the half that had
+   never worked. His main carried 2,137,634 age ticks, about 59 hours fielded,
+   all of it at -20%.
+2. **The Breeding Grounds level did nothing.** Read in four places, every one a
+   `<= 0` test. His was level 4; those three upgrades changed no number.
+3. **`VillagerCeiling = 20` was unreachable.** Villagers rolled
+   `2 + rand(0..InnLevel)` against an Inn capped at 12 by the Town Hall, so the
+   real cap was 14. The file's own comment described numbers the game could not
+   produce.
+
+And `BreedingEngine` had **twenty `RollbackAsync` calls and zero
+`EnqueueCommandResult` calls** - every refusal silent.
+
+## What shipped
+
+- **The gate is the building.** No level anywhere. `BreedingGateRules` is one
+  pure copy called by the engine AND both preview endpoints - they were three
+  hand-written copies that had already drifted (the roster preview checked race
+  but not sex, so a woman chosen as the paternal parent priced an ELIGIBLE
+  pairing the engine then refused in silence). `characters.Level` is dropped.
+- **`AgePhaseCurve`** - one object, replacing four literals in `ProcessAgeSlot`,
+  four more in `OfflineSimulationEngine` and a third copy of the penalty in
+  `StatsCalculator`. Retuned to 1/40/80 hours at -5%/-10%. **No migration**: the
+  phase is derived from `AgeTicks` every tick, so every live character
+  re-derives on the first tick after deploy and gets its power back.
+- **Two levers, one per phase of the climb.** The Inn's reach is
+  `innLevel * 3 / 2`, so a maxed Inn actually reaches 20. The Breeding Grounds
+  buys SELECTION - a chosen aptitude takes the better parent outright instead of
+  the weighted coin (a 4 against a 6 keeps the 6 only 60% of the time) - 1 at
+  level 4, 2 at 7, 3 at 10, never all four, plus `25 + level`% up-mutation.
+- **Names.** `FolkNameRegistry` draws a Czech/Slavic name deterministically from
+  the character id. The backfill is C# on the `--migrate` entrypoint, not SQL in
+  the migration; see `CharacterNameBackfill` for why.
+- **One flow instead of two tabs**, a `Breed for` panel that states what each
+  building buys, and a Wiki page whose Inn and Grounds tables are DERIVED rather
+  than hand-written.
+- **Nine command result codes**, one per refusal, asserted distinct.
+
+## Measured, printed and asserted (`BreedingClimbTests`)
+
+| | Grounds 1 (no selection) | Grounds 4 | Grounds 12 |
+|---|---|---|---|
+| Inn 1 | stalls at 5 | 20 in 69 gens | 20 in 43 gens |
+| Inn 5 | stalls at 11 | 20 in 51 gens | 20 in 39 gens |
+| Inn 12 | 20 in 10 gens | 20 in 14 gens | 20 in 11 gens |
+
+Past the village's reach the drift goes +0.210 to +0.326 a generation, so 25 to
+the cap of 50 falls from 119 generations to 77. The Grounds-1 rows are the
+reported complaint, reproduced.
+
+## Three defects found by doing the work rather than by looking for them
+
+- **The season payout was counting heads.** `SeasonalRotationEngine` summed
+  `level²` across `CharacterRecords` for the end-of-season legacy shards, so
+  with every character stuck at 1 the whole level component was a count of
+  characters - a level-88 account and a fresh one earned the same. It reads
+  `PlayerRecords.CurrentLevel` now.
+- **A granted adult was demoted to a child.** `CharacterGrantEngine` wrote
+  `AgePhase = 1, AgeTicks = 0`, and the tick derives the phase from the ticks -
+  so a new account's founder and every boss race-pair reward became CHILDREN the
+  instant they were fielded and could not breed for an hour.
+- **`BreedingGateTests`' own source assertions searched the file PATH** rather
+  than its contents, so "there is no `Level < 50` in the engine" could never
+  have failed.
+
+## Standing traps this added
+
+- **A column with no writer is not a field, it is a trap.** Before gating
+  anything on a stored value, grep for what writes it. `characters.Level` had a
+  reader in five places and a writer only in the dev fixture.
+- **A fixture that can do something no real account can is worse than no
+  fixture.** This one wrote the gate's own column, so the single account
+  anybody tested on was the single account that could pass. It has now also
+  been caught seeding a Breeding Grounds BELOW the level that buys a selection,
+  which made the new feature undriveable by hand.
+- **Two fields describing one fact will disagree.** `AgePhase` beside
+  `AgeTicks`, where one is derived from the other every tick. Store the durable
+  one; derive the cache.
+- **When a word means two things on one screen, the player will pick the wrong
+  one.** "Elder" was an age phase and also a spent villager. The second is not
+  called that anywhere a player can see any more.
+- **`exercise.mjs` needs the browser closed.** A Playwright session left signed
+  in as the fixture disables every Fight button, and the script reports it as
+  "every Fight button is disabled" rather than as a session conflict.
+- **Two of `exercise.mjs`'s combat checks are timing-flaky** - the monster
+  health bar's distinct-width count and the loot panel's row count both sample
+  an async result on a fixture geared to kill between samples. A clean run is
+  134/134; a run that fails one of those two and nothing else is not a
+  regression.
+
+---
+
 # HANDOFF 2026-09-12c - the boss wall, and why health could not be the gate
 
 Reported by the developer playing his own game: "today I have beaten the tier 4

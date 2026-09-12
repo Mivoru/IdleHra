@@ -406,6 +406,21 @@ at once. Slot 2 unlocks at Town Hall level 3, slot 3 at level 5 - the Town
 Hall is raised only with `raw_log` and `copper_ore`, which puts extra
 characters on the gathering critical path rather than on a level timer.
 
+**There is no per-character level.** A player has ONE level,
+`PlayerRecords.CurrentLevel`, shared by every character on the account. A
+`characters.Level` column existed until 2026-09-12 and was written by nothing
+except the dev fixture; anything that reads a character's "level" is reading
+the account's. Adding one back needs a writer on all three progression paths
+(a kill, a warp and an offline catch-up) BEFORE anything is allowed to read it.
+
+**Age is derived, not stored.** `characters.AgeTicks` is the durable value and
+increments once per 10 Hz tick while the character is FIELDED; `AgePhase` is a
+cache that `SimulationEngine.ProcessAgeSlot` recomputes from it every tick.
+`AgePhaseCurve` owns the thresholds and the stat penalty - Child 0-1h, Adult
+1-40h, Senior 40-80h (-5%), Elder 80h+ (-10%) - so retuning any of them needs
+no migration and no backfill. A character granted as an adult must be seeded at
+`AgePhaseCurve.ChildEndTicks`, not at 0, or the tick demotes it to a child.
+
 `TickStatePayload`'s flat activity fields (`ActiveActivityId`, `PlayerHp`,
 `CurrentMonsterId`, the `Slot1_*` identity fields, equipment, cached affix
 totals) double as the tick's **active-character register**. Each tick,
@@ -614,9 +629,15 @@ reintroduce a local copy.
 ## 18. Development Fixture
 
 `--seed-dev` provisions a repeatable playtest account
-(`dev@folkidle.local` / `FolkIdleDev123!`): three level-50 characters, all
-equip slots filled on the main one, Town Hall 5, materials, gold, and a
-stocked larder. It is double-guarded - the flag alone does nothing unless
+(`dev@folkidle.local` / `FolkIdleDev123!`): three adult characters, all
+equip slots filled on the main one, Town Hall 5, Inn 5, Breeding Grounds 4,
+materials, gold, and a stocked larder.
+
+It used to seed "three level-50 characters", against a `characters.Level`
+column that NOTHING else in the server ever wrote - and breeding gated on
+that column reaching 50. The fixture was therefore the only account in the
+world that could breed, and the feature was dead for every real player from
+launch until 2026-09-12. The column is dropped; see §12.2. It is double-guarded - the flag alone does nothing unless
 `FOLKIDLE_ALLOW_DEV_SEED=1` is also set - because unlike the other operator
 flags it writes a known password.
 
