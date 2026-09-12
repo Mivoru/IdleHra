@@ -184,7 +184,26 @@ namespace FolkIdle.Server.Network
         // boss that opens this region", the other says "put points into Might".
         // A refusal that cannot say what to DO is the shape this codebase keeps
         // finding at the bottom of "the button does nothing".
-        AttributeRequirementNotMet = 22
+        AttributeRequirementNotMet = 22,
+
+        // Modul: an auto-reroll RUN is one event with three honest endings, and
+        // it used to report Success once per attempt - fifty toasts for a
+        // fifty-attempt run, reported from a phone. One message now, and it has
+        // to say which ending it was: "Done" is true of a run that met the
+        // condition and misleading about one that spent every attempt and found
+        // nothing.
+        //
+        // Neither of the first two is a failure, so the client styles them like
+        // Success rather than red - see COMMAND_RESULT_OK_CODES.
+        AutoRerollConditionMet = 23,
+        AutoRerollAttemptsSpent = 24,
+
+        // The stop condition cannot be met on this item at all - a chest asked
+        // for crit chance, which only a weapon or a helmet can roll. Refused
+        // before anything is spent, and its own code because
+        // GenericValidationFailure renders as "the server rejected that", which
+        // is how this feature came to look dead.
+        AutoRerollConditionImpossible = 25
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

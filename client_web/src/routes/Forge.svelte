@@ -9,7 +9,13 @@
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
 
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
-  import { toDisplayAffixes, AFFIX_RARITY_NAMES, KNOWN_AFFIX_IDS } from '../lib/ui/affixes';
+  import {
+    toDisplayAffixes,
+    AFFIX_RARITY_NAMES,
+    KNOWN_AFFIX_IDS,
+    affixLabel,
+    describeStopCondition,
+  } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
 
   import { takePendingFocusEquipment } from '../lib/stores/navigation';
@@ -610,15 +616,26 @@ ${scope}`)) return;
                 <!-- 1-BASED index into AffixRegistry.Definitions; 0 means
                      "any stat". Sent as an index rather than a string because
                      the packet is fixed-layout, and the registry order is the
-                     same authority on both sides. -->
-                <option value={index + 1}>{id}</option>
+                     same authority on both sides.
+
+                     The VALUE is the index and the LABEL is a readable name:
+                     the list used to render raw ids like "crit_chance_pct",
+                     which is the id this file has to send, not a thing to show
+                     a player. -->
+                <option value={index + 1}>{affixLabel(id)}</option>
               {/each}
             </select>
           </label>
         </div>
+        <!-- Modul: SAY WHAT THE RUN WILL DO. The two conditions combine with
+             AND and nothing on screen said so, so a player could not tell
+             whether "Legendary" plus "Flat HP" meant a Legendary of any stat.
+             It never did. The panel simply never claimed it. -->
+        <p class="dim tiny hint">{describeStopCondition(stopMinRarity, stopAffixIndex)}</p>
         <p class="dim tiny hint">
-          The attempt count is a request, not a limit - the server clamps it, so
-          a large number here cannot drain more than it allows in one go.
+          You pay per roll actually made, so a run that stops on its fifth
+          attempt costs five. The attempt count is a request, not a limit - the
+          server clamps it.
         </p>
       {/if}
 

@@ -947,6 +947,29 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     if (_activePlayers.ContainsKey(reloadedPayload.PlayerId))
                     {
+                        // Modul: THE RELOAD USED TO ERASE THE ANSWER TO THE
+                        // COMMAND THAT CAUSED IT.
+                        //
+                        // A reroll, a fusion, a market trade, a village upgrade
+                        // and a craft all end by enqueuing ReloadState, and this
+                        // replaces the live payload with one built from the
+                        // database. The command result ring lives on the payload
+                        // and in no table, and the player is suspended until the
+                        // reload lands - so the server's reply was written into
+                        // the ring, never broadcast, and then overwritten with
+                        // zeros.
+                        //
+                        // Measured in a browser: a reroll changed the affix, took
+                        // the gold, and produced no message of any kind - not for
+                        // a single reroll, not for a fifty-attempt run, and not
+                        // even for a stop condition the server refused outright.
+                        ref var livePayload = ref System.Runtime.InteropServices.CollectionsMarshal
+                            .GetValueRefOrNullRef(_activePlayers, reloadedPayload.PlayerId);
+                        if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref livePayload))
+                        {
+                            StateReloadMerge.CarryLiveOnlyFields(in livePayload, ref reloadedPayload);
+                        }
+
                         AddActivePlayer(reloadedPayload);
                     }
                 }

@@ -7,6 +7,7 @@ import {
   toDisplayAffixes,
   LEGACY_AFFIX_RARITY,
   KNOWN_AFFIX_IDS,
+  describeStopCondition,
 } from '../src/lib/ui/affixes';
 
 // Modul: this file exists because the first version was wrong in production
@@ -164,5 +165,53 @@ describe('toDisplayAffixes membership matches the server', () => {
 
     expect(rows).toHaveLength(1);
     expect(rows[0].key).toBe('flat_armor@1');
+  });
+});
+
+// Modul: THE AUTO-REROLL PANEL DID NOT SAY WHAT IT WOULD DO.
+//
+// Its two controls - "stop at rarity" and "stop on stat" - combine with AND on
+// the server, and nothing on the screen said so. A player who had set Legendary
+// and Flat HP could not tell whether the run would stop on a Legendary of any
+// stat, and reported exactly that doubt: "I need it to only stop at legendary hp
+// stat, not anything else". It already did. The defect was that the panel never
+// claimed it.
+//
+// The stat list was also raw ids - "crit_chance_pct" - and offered stats the
+// selected item can never roll, which the server then refuses before spending
+// anything. A refusal the panel could have predicted is a refusal the panel
+// should have prevented.
+describe('describeStopCondition', () => {
+  const flatHp = KNOWN_AFFIX_IDS.indexOf('flat_hp') + 1;
+  const critChance = KNOWN_AFFIX_IDS.indexOf('crit_chance_pct') + 1;
+
+  it('names the stat when one is required, and says the match is exclusive', () => {
+    const text = describeStopCondition(5, flatHp);
+    expect(text).toContain('Legendary');
+    expect(text).toContain('Hp');
+    expect(text).toContain('only');
+  });
+
+  it('treats the rarity as a floor below the top of the scale', () => {
+    expect(describeStopCondition(4, critChance)).toContain('Epic or better');
+    expect(describeStopCondition(4, critChance)).toContain('Crit Chance');
+  });
+
+  it('does not promise a stat when any stat will do', () => {
+    const text = describeStopCondition(5, 0);
+    expect(text).toContain('Legendary');
+    expect(text).toContain('any stat');
+  });
+
+  it('warns about the condition the server refuses instead of letting it be sent', () => {
+    // Rarity 1 is "any", and no stat constraint - so it would accept the very
+    // first roll, and AutoRerollPlanner.IsTriviallySatisfied rejects it rather
+    // than charge for a guaranteed outcome.
+    expect(describeStopCondition(1, 0)).toContain('first roll');
+  });
+
+  it('is satisfied by a rarity floor alone once one is set', () => {
+    expect(describeStopCondition(3, 0)).toContain('Rare or better');
+    expect(describeStopCondition(3, 0)).not.toContain('first roll');
   });
 });

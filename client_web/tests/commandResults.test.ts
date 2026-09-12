@@ -4,6 +4,32 @@ import {
   readResultSlots,
   COMMAND_RESULT_MESSAGES,
 } from '../src/lib/stores/commandResults';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * The body of a C# enum declared in the packet definitions, so a test can
+ * compare a client mirror against the server's own source. Same approach as
+ * serverMirrors.test.ts and for the same reason: a regex over a one-line-per-
+ * member enum needs no build step, and a test that needs one gets skipped.
+ */
+function readServerEnum(name: string): string {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const source = readFileSync(
+    join(here, '..', '..', 'server', 'FolkIdle.Server', 'Network', 'StateUpdatePacket.cs'),
+    'utf8',
+  );
+
+  const start = source.indexOf(`enum ${name}`);
+  if (start < 0) throw new Error(`enum ${name} not found in StateUpdatePacket.cs`);
+
+  const open = source.indexOf('{', start);
+  const close = source.indexOf('}', open);
+  if (open < 0 || close < 0) throw new Error(`enum ${name} has no body`);
+
+  return source.slice(open + 1, close);
+}
 
 // Modul: the result ring buffer turns a silently-rejected command into an
 // explanation. Getting the edge detection wrong reintroduces the exact silence
@@ -84,10 +110,26 @@ describe('CommandResultFeed', () => {
   });
 
   it('names every code the server can send', () => {
-    // CommandResultCode runs 0-15. An unmapped code would render as a bare
-    // number, which tells the player nothing.
-    for (let code = 0; code <= 15; code++) {
-      expect(COMMAND_RESULT_MESSAGES[code], `code ${code} has no message`).toBeTruthy();
+    // Modul: THIS TEST SAID "0-15" AND THE ENUM HAD REACHED 22.
+    //
+    // It was a hand-written upper bound, so it went stale the first time a code
+    // was added and then sat there passing - seven codes were added after it
+    // and it checked none of them. Codes 16 and 17 did in fact ship with
+    // nothing to render them, and the player saw a bare number; this test was
+    // supposed to be what stopped that.
+    //
+    // It reads the enum now. A ratchet nobody watches fails open, and the only
+    // bound that cannot go stale is the server's own source.
+    const enumBlock = readServerEnum('CommandResultCode');
+    const codes = [...enumBlock.matchAll(/^\s*([A-Za-z]\w*)\s*=\s*(\d+)\s*,?\s*$/gm)];
+
+    expect(codes.length).toBeGreaterThan(20);
+
+    for (const [, name, value] of codes) {
+      expect(
+        COMMAND_RESULT_MESSAGES[Number(value)],
+        `CommandResultCode.${name} = ${value} has no message, so it renders as a bare number`,
+      ).toBeTruthy();
     }
   });
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Text.Json.Nodes;
@@ -43,21 +43,27 @@ namespace FolkIdle.Server.Engine
 
     public class AffixRerollEngine
     {
-        // Result of the most recent successful reroll, so the pass-2
-        // announcement layer can broadcast an Epic or Legendary outcome
-        // without re-reading the row.
-        public AffixRarity LastRerollResultRarity { get; private set; }
-        public string LastRerollResultAffixId { get; private set; } = string.Empty;
-
-        // Held between the mutation and the commit so a rolled-back reroll is
-        // never announced. Not thread-shared: one engine instance handles one
-        // request at a time.
-        private string? _pendingAnnouncement;
-
-        // Staged like _pendingAnnouncement and for the same reason: the payload
-        // must not be told about a balance the transaction then rolls back.
-        // -1 means "no diamond spend in this attempt".
-        private int _pendingDiamondBalance = -1;
+        // Modul: THIS CLASS HOLDS NO PER-REQUEST STATE, 2026-09-12.
+        //
+        // It used to hold four such fields - LastRerollResultRarity,
+        // LastRerollResultAffixId, _pendingAnnouncement and
+        // _pendingDiamondBalance - under a comment claiming "not thread-shared:
+        // one engine instance handles one request at a time". That was false:
+        // Program.cs constructs ONE AffixRerollEngine for the whole server and
+        // SimulationEngine dispatches reroll commands through SafeDispatchAsync,
+        // which is concurrent. Two players rerolling in the same moment shared
+        // all four.
+        //
+        // The two result fields were worse than shared, they were premature:
+        // they were assigned BEFORE SaveChangesAsync and never cleared on a
+        // rollback, and the auto-reroll loop made its stop decision from them.
+        // A Serializable conflict therefore left the loop looking at a roll that
+        // had been rolled back, which is how a run could stop on a Legendary the
+        // player never received.
+        //
+        // An attempt now RETURNS what it committed (RerollAttemptOutcome,
+        // assigned after CommitAsync), and everything staged across the commit
+        // is a local. Nothing here is reachable from another request.
 
         // "Player 4711 rerolled Critical Damage to LEGENDARY (+18.5%)".
         // Deliberately carries no player NAME - PlayerRecord has no display
@@ -126,7 +132,7 @@ namespace FolkIdle.Server.Engine
         // (shield-only) or asking a Value reroll to raise rarity are both
         // conditions that can never be met, and the naive loop would happily
         // spend the entire budget finding that out.
-        public async Task<AutoRerollStopReason> ExecuteAutoRerollAsync(
+        public async Task<AutoRerollRunResult> ExecuteAutoRerollAsync(
             long playerId,
             long targetItemGuid,
             int affixIndex,
@@ -138,8 +144,9 @@ namespace FolkIdle.Server.Engine
             {
                 // Would accept the very first roll, so the player would pay for
                 // a reroll whose outcome was guaranteed acceptable anyway.
-                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
-                return AutoRerollStopReason.RejectedTrivialCondition;
+                return ReportRun(playerId, AutoRerollRunResult.Refused(
+                    AutoRerollStopReason.RejectedTrivialCondition,
+                    (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure));
             }
 
             maxAttempts = AutoRerollPlanner.ClampAttempts(maxAttempts);
@@ -147,15 +154,17 @@ namespace FolkIdle.Server.Engine
             (string currentAffixId, AffixRarity currentRarity, string baseItemId, bool found) = await ReadAffixStateAsync(playerId, targetItemGuid, affixIndex);
             if (!found)
             {
-                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
-                return AutoRerollStopReason.RejectedUnreachableCondition;
+                return ReportRun(playerId, AutoRerollRunResult.Refused(
+                    AutoRerollStopReason.RejectedUnreachableCondition,
+                    (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound));
             }
 
             if (!AutoRerollPlanner.IsConditionReachable(stopCondition, baseItemId, operation, currentAffixId)
                 || !AutoRerollPlanner.IsRarityTargetReachable(stopCondition, operation, currentRarity))
             {
-                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
-                return AutoRerollStopReason.RejectedUnreachableCondition;
+                return ReportRun(playerId, AutoRerollRunResult.Refused(
+                    AutoRerollStopReason.RejectedUnreachableCondition,
+                    (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure));
             }
 
             // Modul: THE "ALREADY GOOD ENOUGH" EARLY-OUT IS GONE, 2026-09-06.
@@ -180,27 +189,57 @@ namespace FolkIdle.Server.Engine
             // condition that can never fail would charge for a guaranteed
             // outcome, and it reports itself.
 
-            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            // Modul: the loop itself lives in AutoRerollRunner, which is pure and
+            // therefore unit-testable without a Postgres fixture. Every reroll
+            // path needs Testcontainers, which is why bugs in them have
+            // historically been found in production rather than in CI - and the
+            // bug this shape fixes was exactly that.
+            //
+            // `reportResult: false` is the end of the toast storm: an attempt no
+            // longer announces itself, so a run of fifty is one message instead
+            // of fifty. Reported from a phone as "every reroll it's popping next
+            // notification".
+            AutoRerollRunResult run = await AutoRerollRunner.RunAsync(
+                stopCondition,
+                maxAttempts,
+                attempt => ExecuteRerollAsync(
+                    playerId, targetItemGuid, affixIndex, operation, attempt, reportResult: false));
+
+            return ReportRun(playerId, run);
+        }
+
+        // The ONE message a run is allowed to send, and it names which of the
+        // endings happened. A run that met its condition and a run that spent
+        // fifty attempts on nothing are both "not a failure" and are not the
+        // same news, and neither of them is the bare Success a single reroll
+        // reports.
+        private AutoRerollRunResult ReportRun(long playerId, AutoRerollRunResult run)
+        {
+            var code = run.Reason switch
             {
-                LastRerollResultAffixId = string.Empty;
+                AutoRerollStopReason.ConditionMet
+                    => FolkIdle.Server.Network.CommandResultCode.AutoRerollConditionMet,
 
-                await ExecuteRerollAsync(playerId, targetItemGuid, affixIndex, operation, attempt);
+                AutoRerollStopReason.AttemptLimitReached
+                    => FolkIdle.Server.Network.CommandResultCode.AutoRerollAttemptsSpent,
 
-                if (string.IsNullOrEmpty(LastRerollResultAffixId))
-                {
-                    // The attempt did not commit - insufficient currency, a
-                    // locked item, or a validation rejection. Stop rather than
-                    // hammering the same failing transaction to the limit.
-                    return AutoRerollStopReason.BudgetExhausted;
-                }
+                // Both rejection reasons are "this run could never work": a
+                // condition that cannot fail, and one that cannot be met. The
+                // player has to change the condition either way.
+                AutoRerollStopReason.RejectedTrivialCondition or AutoRerollStopReason.RejectedUnreachableCondition
+                    => FolkIdle.Server.Network.CommandResultCode.AutoRerollConditionImpossible,
 
-                if (AutoRerollPlanner.IsSatisfied(stopCondition, LastRerollResultRarity, LastRerollResultAffixId))
-                {
-                    return AutoRerollStopReason.ConditionMet;
-                }
-            }
+                // BudgetExhausted - an attempt refused or aborted mid-run. The
+                // attempt knows why (not enough gold, the item was locked, the
+                // transaction lost a race), so its own code is the honest one.
+                _ => run.FailureCode != 0
+                    ? (FolkIdle.Server.Network.CommandResultCode)run.FailureCode
+                    : FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure
+            };
 
-            return AutoRerollStopReason.AttemptLimitReached;
+            _playerRegistry?.EnqueueCommandResult(playerId, (byte)code);
+
+            return run;
         }
 
         // Reads the current stat and rarity of one affix without mutating it,
@@ -239,7 +278,7 @@ namespace FolkIdle.Server.Engine
             return (string.Empty, AffixRarity.Common, string.Empty, false);
         }
 
-        public async Task ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex, RerollOperation operation = RerollOperation.Full, int consecutiveAttempts = 0)
+        public async Task<RerollAttemptOutcome> ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex, RerollOperation operation = RerollOperation.Full, int consecutiveAttempts = 0, bool reportResult = true)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -253,22 +292,22 @@ namespace FolkIdle.Server.Engine
                 if (targetItem == null || targetItem.PlayerId != playerId)
                 {
                     Console.WriteLine("Reroll failed: Item not found or ownership mismatch.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
-                    return;
+                    if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
+                    return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                 }
 
                 if (string.IsNullOrWhiteSpace(targetItem.AffixPayload))
                 {
                     Console.WriteLine("Reroll failed: Item has no affixes.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
-                    return;
+                    if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                    return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                 }
 
                 if (targetItem.IsAffixLocked || targetItem.AffixPayload.Contains("\"is_affix_locked\":true", StringComparison.OrdinalIgnoreCase))
                 {
                     Console.WriteLine("Reroll failed: Item affixes are locked.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
-                    return;
+                    if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                    return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                 }
 
                 JsonObject affixPayload = JsonNode.Parse(targetItem.AffixPayload) as JsonObject ?? new JsonObject();
@@ -284,8 +323,8 @@ namespace FolkIdle.Server.Engine
                 if (rerollableKeys.Count <= affixIndex || affixIndex < 0)
                 {
                     Console.WriteLine("Reroll failed: Affix index out of bounds.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
-                    return;
+                    if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                    return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                 }
 
                 string affixKeyToReroll = rerollableKeys[affixIndex];
@@ -296,9 +335,9 @@ namespace FolkIdle.Server.Engine
                 if (!AffixRegistry.TryGetDefinition(affixIdToReroll, out var currentDefinition))
                 {
                     Console.WriteLine("Reroll failed: affix id is not in the registry.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                     await transaction.RollbackAsync();
-                    return;
+                    if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                    return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                 }
 
                 // Modul: a Legendary affix used to be REFUSED here, because the
@@ -326,9 +365,9 @@ namespace FolkIdle.Server.Engine
                 if (AffixRegistry.GetLegalAffixIndices(AffixRegistry.ResolveSlot(targetItem.BaseItemId), legalProbe) == 0)
                 {
                     Console.WriteLine("Reroll failed: item slot is unrecognisable, so it has no legal affix pool.");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                     await transaction.RollbackAsync();
-                    return;
+                    if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
+                    return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                 }
 
                 int regionTier = ResolveRegionTier(targetItem.BaseItemId);
@@ -359,9 +398,9 @@ namespace FolkIdle.Server.Engine
                 if (currencyRecord == null || currencyRecord.Quantity < cost)
                 {
                     Console.WriteLine($"Reroll failed: insufficient gold (need {cost}).");
-                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
                     await transaction.RollbackAsync();
-                    return;
+                    if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
+                    return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
                 }
 
                 currencyRecord.Quantity -= cost;
@@ -438,9 +477,6 @@ namespace FolkIdle.Server.Engine
 
                 targetItem.AffixPayload = affixPayload.ToJsonString();
 
-                LastRerollResultRarity = resultRarity;
-                LastRerollResultAffixId = resultDefinition.Id;
-
                 // Modul: high-rarity announcements. Epic and above only - the
                 // same threshold UiRarityPalette uses to decide what glows, so
                 // "it glowed" and "it was announced" never disagree.
@@ -451,10 +487,9 @@ namespace FolkIdle.Server.Engine
                 // global chat that nothing could retract. The commit follows
                 // immediately below, and a failure there throws past this point
                 // without the dispatch worker having anything to send yet.
-                if (resultRarity >= AffixRarity.Epic)
-                {
-                    _pendingAnnouncement = FormatRarityAnnouncement(playerId, resultRarity, resultDefinition.Id, resultMagnitude);
-                }
+                string? pendingAnnouncement = resultRarity >= AffixRarity.Epic
+                    ? FormatRarityAnnouncement(playerId, resultRarity, resultDefinition.Id, resultMagnitude)
+                    : null;
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -464,37 +499,36 @@ namespace FolkIdle.Server.Engine
                 // announcing before the commit could put a claim in global chat
                 // that a rollback then silently contradicts - and nothing can
                 // retract a chat line.
-                if (!string.IsNullOrEmpty(_pendingAnnouncement))
+                //
+                // A LOCAL, not a field: staged across the commit of THIS attempt
+                // and nothing else. As a field it was shared with every other
+                // player rerolling at the same moment, and the catch below had to
+                // clear it to stop one player's rolled-back Legendary being
+                // announced under the next caller's name.
+                if (!string.IsNullOrEmpty(pendingAnnouncement))
                 {
-                    Domain.Social.ChatEngine.EnqueueSystemAnnouncement(_pendingAnnouncement);
-                    _pendingAnnouncement = null;
-                }
-
-                if (_pendingDiamondBalance >= 0)
-                {
-                    _playerRegistry?.BillingSyncQueue.Enqueue(new BillingSyncNotification
-                    {
-                        PlayerId = playerId,
-                        PremiumDiamondsBalance = _pendingDiamondBalance
-                    });
-                    _pendingDiamondBalance = -1;
+                    Domain.Social.ChatEngine.EnqueueSystemAnnouncement(pendingAnnouncement);
                 }
 
                 Console.WriteLine($"Reroll success: {affixKeyToReroll} -> {newAffixKey} ({resultRarity})");
-                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
+                if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
+
+                // The outcome is built HERE, after the commit returned, which is
+                // the whole point of returning one: everything above this line
+                // can still be rolled back.
+                return RerollAttemptOutcome.Committed(resultRarity, resultDefinition.Id, cost);
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-
-                // Discard any announcement staged before the failure. The
-                // engine instance is reused across an auto-reroll run, so a
-                // leftover here would be broadcast by the NEXT attempt and
-                // credit the player with a roll that never committed.
-                _pendingAnnouncement = null;
-                _pendingDiamondBalance = -1;
-
                 Console.WriteLine($"Reroll transaction aborted: {ex.Message}");
+
+                // Modul: an aborted attempt used to report NOTHING - no result
+                // code, no log the player could see - and the auto-reroll loop
+                // could not tell it apart from a refusal either. It is a refusal
+                // now, and the run reports it once.
+                if (reportResult) _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
+                return RerollAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
             }
         }
     }

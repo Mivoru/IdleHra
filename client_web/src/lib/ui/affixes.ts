@@ -135,6 +135,44 @@ export function affixRarityName(rarity: number): string {
   return AFFIX_RARITY_NAMES[rarity] ?? `Rarity ${rarity}`;
 }
 
+/** The top of the affix rarity scale, so "or better" can be left off it. */
+const TOP_AFFIX_RARITY = AFFIX_RARITY_NAMES.length - 1;
+
+/**
+ * What an auto-reroll run will actually stop on, in one sentence.
+ *
+ * Modul: THE TWO CONDITIONS COMBINE WITH AND, and the panel never said so. The
+ * rarity is a FLOOR and the stat is an exact match, so "Legendary + Flat HP"
+ * stops only on a Legendary Flat HP and keeps rolling through a Legendary crit -
+ * which is what the player wanted and could not tell from the screen. Doubt
+ * about what a gold-spending button will do is the same defect as the button
+ * doing the wrong thing.
+ *
+ * `affixIndex` is the 1-BASED index into KNOWN_AFFIX_IDS that goes on the wire;
+ * 0 means "any stat". `minRarity` is 1-5, where 1 means "any".
+ */
+export function describeStopCondition(minRarity: number, affixIndex: number): string {
+  const hasRarity = minRarity > 1;
+  const statId = affixIndex > 0 ? KNOWN_AFFIX_IDS[affixIndex - 1] : undefined;
+
+  // The server refuses this one outright rather than charge for an outcome that
+  // cannot fail - AutoRerollPlanner.IsTriviallySatisfied. Saying so here means
+  // the refusal never happens.
+  if (!hasRarity && !statId) {
+    return 'This would stop on the first roll, so it will be refused. Pick a rarity, a stat, or both.';
+  }
+
+  const rarity = hasRarity
+    ? minRarity >= TOP_AFFIX_RARITY
+      ? affixRarityName(minRarity)
+      : `${affixRarityName(minRarity)} or better`
+    : 'any rarity';
+
+  return statId
+    ? `Stops only on ${rarity} ${affixLabel(statId)} - it keeps rolling through every other stat.`
+    : `Stops on ${rarity}, any stat.`;
+}
+
 export interface DisplayAffix {
   key: string;
   label: string;

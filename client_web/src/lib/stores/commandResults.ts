@@ -61,9 +61,30 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   // sentences - "beat a boss" and "spend points" are not the same instruction,
   // and the item card names the exact attribute and number beside this.
   22: 'That piece needs more of one attribute - check its requirement on the item.',
+
+  // Modul: an auto-reroll run is ONE event. It used to report Success once per
+  // attempt, so a fifty-attempt run stacked fifty toasts - reported from a
+  // phone as "every reroll it's popping next notification". These three are the
+  // run's endings, and the first two are not failures.
+  23: 'Auto-reroll stopped - your stop condition was met.',
+  24: 'Auto-reroll used every attempt without matching your stop condition.',
+  25: 'That stat can never appear on this item, so nothing was rolled or charged.',
 };
 
 export const COMMAND_RESULT_SUCCESS = 0;
+
+/**
+ * Codes that are news rather than refusals, so the toast is not painted red.
+ *
+ * "Your stop condition was met" in the failure colour reads as something having
+ * gone wrong, and so does "the run used every attempt" - which is the ordinary
+ * outcome of chasing a Legendary, not an error.
+ */
+export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
+  COMMAND_RESULT_SUCCESS,
+  23,
+  24,
+]);
 
 export interface CommandResultEntry {
   id: number;
