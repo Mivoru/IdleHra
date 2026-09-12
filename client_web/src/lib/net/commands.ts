@@ -1663,7 +1663,7 @@ export const BUILDINGS: readonly {
     costKind: 'service',
     // Breeding refuses a mixed-race pair outright, so it cannot make a race
     // rarer - the old blurb promised something the engine forbids.
-    what: 'Required to breed at all. Pairs a level-50 adult hero with a newcomer or with another of your own.',
+    what: 'Required to breed at all, and its level decides how many aptitudes you may breed FOR - one at 4, two at 7, three at 10.',
   },
   {
     id: 5,

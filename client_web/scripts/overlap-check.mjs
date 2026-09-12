@@ -1,5 +1,15 @@
 // Modul: finds controls that physically sit on top of each other.
 //
+// THIS CHECK IS FIXTURE-STATE DEPENDENT, and that cost an attribution mistake
+// once. The onboarding coach is `position: fixed` at the viewport bottom, so
+// whatever happens to sit there is covered - and WHICH control that is depends
+// on which cue is currently showing, how tall it is, and how far the fixture
+// has progressed. Two runs of identical code gave "1 overlapping pair" and
+// then "0", so a single red run is not proof of a regression and a single
+// green run is not proof of its absence. Run it twice before blaming a diff,
+// and measure the specific pair by hand (scroll to 0 and compare rects) rather
+// than trusting the count.
+//
 // A button overlapping a select is not something a structural query or a type
 // check can see - both elements exist, both are "visible", and the DOM is
 // perfectly well formed. Only the geometry is wrong. This walks every screen

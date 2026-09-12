@@ -108,7 +108,10 @@
             <span class="stopwatch" aria-hidden="true">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                 <circle cx="12" cy="13" r="8" />
-                <path d="M12 9v4l2.5 2.5M9 2h6M12 2v3" stroke-linecap="round" />
+                <!-- The crown and the bow, which do not move. -->
+                <path d="M9 2h6M12 2v3" stroke-linecap="round" />
+                <!-- The hands, and only these turn. -->
+                <path class="hand" d="M12 9v4l2.5 2.5" stroke-linecap="round" />
               </svg>
             </span>
             Upgrading <strong>{pendingBuilding?.name ?? `building ${pendingId}`}</strong>
@@ -150,7 +153,8 @@
                 <span class="stopwatch" aria-label="Upgrade in progress">
                   <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2">
                     <circle cx="12" cy="13" r="8" />
-                    <path d="M12 9v4l2.5 2.5M9 2h6M12 2v3" stroke-linecap="round" />
+                    <path d="M9 2h6M12 2v3" stroke-linecap="round" />
+                    <path class="hand" d="M12 9v4l2.5 2.5" stroke-linecap="round" />
                   </svg>
                 </span>
               {/if}
@@ -269,10 +273,21 @@
     flex: none;
   }
 
-  /* A stopwatch that does not move is a picture of a stopwatch. */
-  .stopwatch svg {
+  /* A stopwatch that does not move is a picture of a stopwatch.
+
+     Modul: THE HANDS TURN, NOT THE WATCH. This used to animate the whole
+     <svg>, so the case, the crown and the bow rotated with the hands and the
+     thing spun like a dropped coin. The hands and the crown were also a single
+     <path>, so there was nothing to animate separately until they were split.
+
+     transform-box: view-box makes transform-origin resolve against the
+     viewBox's own coordinates rather than the path's bounding box - so the
+     hands turn about the DIAL centre (12, 13) instead of about the middle of
+     their own stroke, which is what makes it read as a clock. */
+  .stopwatch .hand {
     animation: tick 2s steps(8, end) infinite;
-    transform-origin: 50% 54%;
+    transform-box: view-box;
+    transform-origin: 12px 13px;
   }
 
   @keyframes tick {
@@ -282,7 +297,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .stopwatch svg {
+    .stopwatch .hand {
       animation: none;
     }
   }

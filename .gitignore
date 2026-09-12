@@ -65,3 +65,7 @@ TestResults/
 # Python bytecode - ops/, server/ and .claude/hooks/ all carry .py files.
 __pycache__/
 *.pyc
+
+# Playwright MCP scratch output - snapshots and console logs from driving the
+# client by hand. Never part of the build.
+.playwright-mcp/

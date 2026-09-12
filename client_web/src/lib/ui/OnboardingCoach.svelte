@@ -134,7 +134,19 @@
       return;
     }
 
-    document.body.style.paddingBottom = `${panel.offsetHeight + 24}px`;
+    // Modul: THE HEIGHT IS NOT THE WHOLE RESERVATION, and this was 68px short
+    // on every phone. The panel's own height was reserved, but at
+    // max-width: 40rem the coach also sits 4.25rem higher than at desktop - it
+    // lifts itself to clear the chat handle - and nothing added that offset
+    // back. So at 390px the bottom 4.25rem of the page stayed reachable-looking
+    // and was not: check:overlap found an Upgrade button on the Village screen
+    // covered by "Got it".
+    //
+    // Reading the COMPUTED bottom rather than repeating 4.25rem means the
+    // reservation and the offset cannot drift apart the way they just did -
+    // the media query can move and this follows it.
+    const bottomOffset = Number.parseFloat(getComputedStyle(panel).bottom) || 0;
+    document.body.style.paddingBottom = `${panel.offsetHeight + bottomOffset + 12}px`;
 
     return () => {
       document.body.style.paddingBottom = '';

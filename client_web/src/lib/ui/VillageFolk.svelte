@@ -88,10 +88,10 @@
          Breeding screen and needs the Breeding Grounds; this panel is where a
          player looks at a 4/3/9/2 and has to decide. -->
     <p class="dim tiny">
-      Marry one in on the Breeding screen: a level-50 adult hero of the same
-      race and the opposite sex. Everybody marries <strong>once</strong> and is
-      then an <strong>elder</strong>. None of them survives the season, so blood
-      you do not marry in is blood you lose.
+      Marry one in on the Breeding screen: any grown adult of the same race
+      and the opposite sex &mdash; there is no level requirement. Everybody
+      marries <strong>once</strong> and is then spent. None of them survives the
+      season, so blood you do not marry in is blood you lose.
     </p>
 
     {#if data.Newcomers.length === 0}

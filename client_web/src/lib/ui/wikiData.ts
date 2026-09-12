@@ -649,7 +649,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'village', anchor: 'costs', title: 'Upgrade costs, level by level', keywords: 'cost gold materials price upgrade time duration' },
 
   { tab: 'breeding', anchor: 'words', title: 'The words breeding uses', keywords: 'aptitude bloodline gene copy ancestor cull elder gene pool fielding terminology' },
-  { tab: 'breeding', anchor: 'requirements', title: 'What you need to breed', keywords: 'level 50 adult breeding grounds gold cooldown' },
+  { tab: 'breeding', anchor: 'requirements', title: 'What you need to breed', keywords: 'adult breeding grounds gold cooldown race sex no level requirement' },
   { tab: 'breeding', anchor: 'pairings', title: 'The two pairings', keywords: 'hero newcomer villager inbred related sibling' },
   { tab: 'breeding', anchor: 'inherits', title: 'What a child inherits', keywords: 'aptitude drift epic mutation genes dominant recessive band preview' },
   { tab: 'breeding', anchor: 'genepool', title: 'The Inn and the gene pool', keywords: 'newcomer arrival interval capacity feast elder marry' },

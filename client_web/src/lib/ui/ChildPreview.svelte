@@ -164,11 +164,11 @@
 
 <h3>And what it will be</h3>
 <p class="dim tiny arrival">
-  <strong>Level 1, a child</strong>, one of the two sexes at random, generation
+  <strong>A child</strong>, one of the two sexes at random, generation
   {generation === null ? '+1' : generation + 1}, at the end of your roster.
   It does not grow up on the bench: <strong>field it</strong> in the Hall of
-  Ancestors and give it about an hour of play to reach Adult, then level 50
-  before it can be a parent itself.
+  Ancestors and give it about an hour of play to reach Adult, which is all it
+  needs before it can be a parent itself.
 </p>
 <p class="dim tiny arrival">
   {#if mode === 'village'}

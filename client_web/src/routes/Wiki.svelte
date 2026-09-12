@@ -1144,9 +1144,10 @@
             </div>
           </div>
           <p class="dim tiny">
-            The rollover sets every surviving ancestor to level 1 and Adult, so the
-            whole roster is breeding-age on day one — and nobody can actually breed
-            until somebody is back at level 50.
+            The rollover sets every surviving ancestor back to Adult with its age
+            reset, so the whole roster is breeding-age on day one and you can
+            start crossing immediately &mdash; the aptitudes they carry are
+            exactly what you spent the last season building.
           </p>
 
           <h3 id="deeds">The Book of Deeds, and Seals</h3>

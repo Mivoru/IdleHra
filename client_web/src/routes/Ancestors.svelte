@@ -150,13 +150,14 @@
       <!-- Modul: FIELDING IS ALSO HOW A CHILD GROWS UP, and nothing said so.
            ProcessAgeSlot only ages the three played slots and a newborn is put
            at the END of the roster, so a bred child sits at AgePhase 0 forever
-           until it is fielded here - and "level 50 and an Adult" is two gates,
-           not one. This is the single most surprising thing in the system. -->
+           until it is fielded here. This is the single most surprising thing in
+           the system. It used to say "then level 50" as well, against a gate
+           that read a column nothing ever wrote. -->
       <p class="dim tiny">
         Fielding is also how a bred child grows up: only the played slots age,
         so a child on the bench stays a child. Give a fielded one about an hour
-        of play to reach Adult, then level 50, and it can be a parent itself.
-        How many slots you may use is set by the Town Hall.
+        of play to reach Adult and it can be a parent itself &mdash; that is the
+        only gate. How many slots you may use is set by the Town Hall.
       </p>
 
       {#each generations as generation (generation)}

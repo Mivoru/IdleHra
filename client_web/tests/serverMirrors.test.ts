@@ -811,3 +811,60 @@ describe('the breeding selection table', () => {
     expect(bestVillagerAptitudeFor(12)).toBeGreaterThanOrEqual(APTITUDE_VILLAGE_CEILING);
   });
 });
+
+// Modul: NO SCREEN MAY ASK FOR A LEVEL TO BREED.
+//
+// The gate was `characters.Level >= 50` against a column whose only writer was
+// the dev fixture, so it refused every real player on every attempt since
+// launch. Deleting the gate was the easy half; SIX separate pieces of player-
+// facing copy went on telling people to go and find a level-50 hero, and they
+// were spread across the Village panel, the child preview, the Hall, the Wiki,
+// a building description and the Wiki's own search keywords.
+//
+// The reporting player did exactly what the screen told him and could not find
+// such a character, because none could exist. This fails if any of it returns.
+describe('no screen asks for a level to breed', () => {
+  const sources = [
+    ['commands.ts', join(clientRoot, 'lib', 'net', 'commands.ts')],
+    ['ChildPreview.svelte', join(clientRoot, 'lib', 'ui', 'ChildPreview.svelte')],
+    ['VillageFolk.svelte', join(clientRoot, 'lib', 'ui', 'VillageFolk.svelte')],
+    ['wikiData.ts', join(clientRoot, 'lib', 'ui', 'wikiData.ts')],
+    ['Ancestors.svelte', join(clientRoot, 'routes', 'Ancestors.svelte')],
+    ['Breeding.svelte', join(clientRoot, 'routes', 'Breeding.svelte')],
+  ] as const;
+
+  // COMMENTS ARE EXEMPT, and deliberately. Several of these files carry a
+  // paragraph explaining that the gate is gone and why, which is exactly the
+  // history this codebase keeps - a guard that forbade the explanation would
+  // push the next reader into deleting the record instead. What a PLAYER sees
+  // is the thing being guarded, so the comments come out before matching.
+  const withoutComments = (text: string) =>
+    text
+      .replace(/<!--[\s\S]*?-->/g, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+  it.each(sources)('%s never quotes a breeding level', (_label, path) => {
+    const text = withoutComments(read(path));
+    expect(text).not.toMatch(/level[\s-]?50/i);
+    expect(text).not.toMatch(/needs 50/i);
+  });
+
+  // The Wiki is allowed ONE mention, and only the one that explains the gate is
+  // gone. Anything else there is the old instruction coming back.
+  it('the Wiki mentions level 50 only to say it no longer applies', () => {
+    const wiki = withoutComments(read(join(clientRoot, 'routes', 'Wiki.svelte')));
+    const hits = wiki.match(/level[\s-]?50/gi) ?? [];
+    expect(hits).toHaveLength(1);
+    expect(wiki).toMatch(/There is no level requirement/i);
+  });
+
+  // And the server carries no such gate either - BreedingGateTests asserts the
+  // same thing from the other side, but this is the half a client dev reads.
+  it('the gate the client mirrors has no level in it', () => {
+    // The C# doc comment records the deleted gate, so strip it the same way.
+    const gate = withoutComments(read(join(serverRoot, 'Engine', 'BreedingGateRules.cs')))
+      .replace(/^\s*\/\/\/.*$/gm, '');
+    expect(gate).not.toMatch(/Level\s*[<>=]/);
+  });
+});
