@@ -17,6 +17,93 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-12b - auto-reroll tells the truth once
+
+Driven by a player report in two halves: "when I try to do like 50 rerolls I
+think it sometimes skips the legendary", and "on mobile I get many notifications
+(green done) when I do rerolls, because every reroll it's popping next
+notification".
+
+Both were real, and a third defect sat underneath them that nobody had reported
+because its symptom is silence.
+
+## What was wrong
+
+1. **The loop decided on uncommitted state.** `AffixRerollEngine` held
+   `LastRerollResultRarity` / `LastRerollResultAffixId` as INSTANCE fields,
+   assigned before `SaveChangesAsync` and never cleared on a rollback - and
+   `Program.cs` constructs ONE engine for the whole server while
+   `SimulationEngine` dispatches reroll commands through `SafeDispatchAsync`,
+   which is concurrent. A Serializable conflict therefore left the loop reading a
+   roll that had been rolled back, so a run could stop on a Legendary the player
+   never received. The file's own comment claimed "not thread-shared: one engine
+   instance handles one request at a time", which was false.
+2. **Every attempt reported itself.** `ExecuteRerollAsync` ended with
+   `EnqueueCommandResult(Success)` inside the attempt, so a fifty-attempt run was
+   fifty toasts.
+3. **No reroll said anything at all.** Measured in a browser on the dev fixture:
+   a single reroll, a fifty-attempt run and a deliberately impossible stop
+   condition produced NO message of any kind. The affix changed and the gold was
+   deducted, so the command worked - only the answer was missing.
+
+## Why (3) happened, and what it means beyond rerolls
+
+The reroll path sets `IsSuspended = true`, so the per-player broadcast loop skips
+that player; and it finishes by enqueuing `ReloadState`, whose drain replaces the
+live payload with one `LoadPlayerState` built from the database. The command
+result ring (`CommandResultSlot0-3`) and `CommandResultTickCounter` live on the
+payload and in no table, so the server's reply was written into the ring, never
+broadcast, and then overwritten with zeros.
+
+**Fusion, the market, the village and crafting all end with `ReloadState` too**,
+so all of them lost their result messages the same way.
+
+`StateReloadMerge.CarryLiveOnlyFields` now carries that ring across a reload.
+
+**The open half of this, deliberately not fixed here:** the ring is one member of
+a whole family of runtime-only payload fields, and a mid-session `ReloadState`
+zeroes all of them. The inventory is
+`StateUpdatePacketFieldCoverageTests.RuntimeOnlyByDesign` - the victory and death
+cards, the offline summary, `CurrentMonsterId`/`CurrentMonsterHp`,
+`GatheringProgressTicks`. Each is a separate judgement about what a mid-command
+reload should mean (rerolling mid-fight currently discards the damage done to the
+current monster), and carrying them over blind would trade a known defect for an
+unknown one. Whoever picks this up: decide them one at a time, and extend
+`StateReloadCarryTests`.
+
+## What the player sees now
+
+One message per run, naming which ending happened - `AutoRerollConditionMet`
+(23), `AutoRerollAttemptsSpent` (24), `AutoRerollConditionImpossible` (25). The
+first two are not failures and are styled like Success (`COMMAND_RESULT_OK_CODES`);
+the third replaces "the server rejected that" for a target the item can never
+roll, which is how the feature came to look dead. The panel also states its own
+rule - "Stops only on Legendary Hp - it keeps rolling through every other stat" -
+because the rarity floor and the stat constraint combine with AND and nothing on
+screen had ever said so.
+
+The cost was already correct: `RerollGoldStreakGrowth` is 1.0 and the charge
+happens per attempt performed, so a run that stops on its fifth attempt bills
+five. That is now pinned by a test and stated on the panel.
+
+## Standing traps this added
+
+- **A result written while a player is suspended is a result nobody will see.**
+  The broadcast loop skips suspended players, so anything written into the ring
+  during a suspended window depends entirely on surviving the reload that ends
+  it.
+- **`client_web/tests/commandResults.test.ts` used to check codes 0-15 with a
+  hand-written bound, while the enum had reached 22.** Seven codes were added
+  after it and it checked none of them; codes 16 and 17 did ship with nothing to
+  render them. It parses `CommandResultCode` out of the C# now. A ratchet nobody
+  watches fails open - the same lesson as the sprite walk and the typecheck
+  ratchet.
+- **The auto-reroll loop is pure now (`AutoRerollRunner`) and its tests need no
+  Docker.** Every earlier reroll bug was found in production because every reroll
+  path needed Testcontainers. Keep new decisions on that side of the line.
+
+---
+
 # HANDOFF 2026-09-12 - the app updates itself, and nine more device findings
 
 Two blocks of work, both driven by a phone rather than by a test.
