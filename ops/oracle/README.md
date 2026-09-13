@@ -150,12 +150,15 @@ answering until a new build ships. Adding a name is smaller than swapping one:
 3. `docker compose up -d` (the Caddyfile directory is bind-mounted, so no image
    rebuild) and watch `docker compose logs -f caddy` for the certificate.
 
-`VITE_FOLKIDLE_SERVER` can stay on the duckdns name, but understand what that
-means: a page served from `folkidle.cz` then calls the API and opens its socket
-on `folkidle.duckdns.org` - a CROSS-origin request, which works only because
-step 2 puts `https://folkidle.cz` in `FOLKIDLE_WEB_ORIGINS`. Same box, not the
-same origin. Moving the bundle to `folkidle.cz` makes it same-origin again; that
-is a separate, later rebuild - and a new APK.
+**A web page talks to its own origin** (`resolveHttpBase` in
+`client_web/src/lib/net/config.ts`, since 2026-09-13), so a page served from
+`folkidle.cz` calls the API and opens its socket on `folkidle.cz`, and
+`VITE_FOLKIDLE_SERVER` only decides where a NATIVE build connects. It used to
+decide for the web too: a page from `folkidle.cz` then talked to
+`folkidle.duckdns.org`, and in the owner's browser every WebSocket to that name
+failed while headless Chromium on the same machine connected - a browser-side
+block on a dynamic-DNS domain. Keep the new origins in `FOLKIDLE_WEB_ORIGINS`
+anyway: the reset-link builder reads that list too.
 
 ## Getting the code onto the box
 
