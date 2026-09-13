@@ -101,10 +101,12 @@
         {#each data.Newcomers as person (person.Id)}
           <li class:elder={person.IsElder}>
             <RaceIcon raceId={person.RaceId} />
+            <!-- Modul: a person, with a name. This read "Human / woman" - the
+                 one screen that asks you to marry somebody did not say who. -->
             <div class="who">
-              <strong>{raceName(person.RaceId)}</strong>
+              <strong>{person.Name || raceName(person.RaceId)}</strong>
               <span class="dim tiny">
-                {person.IsFemale ? 'woman' : 'man'}{#if person.IsElder} · has married in{/if}
+                {raceName(person.RaceId)} {person.IsFemale ? 'woman' : 'man'}{#if person.IsElder} · has married in{/if}
               </span>
             </div>
             <span class="apts">

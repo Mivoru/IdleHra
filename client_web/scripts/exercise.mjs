@@ -50,8 +50,15 @@ const go = async (label) => {
 // A toast is how this client reports both server results and its own refusals,
 // so reading them is how a click's outcome becomes observable at all.
 const toasts = async () => page.locator('.toast').allInnerTexts();
+// Modul: DISMISS, NEVER RELOAD. This clicked the FIRST button of every `.toast`,
+// and the "FolkIdle has been updated" prompt (WhatsNew.svelte) is also a
+// `.toast` whose first button is Reload. Any client edit during a dev session
+// makes Vite serve a new build, the prompt appears, and this reloaded the page
+// back to the map mid-step - the Friends step then waited thirty seconds for an
+// "Add" button on a screen it was no longer on. Three runs red for that alone.
+// Only the command toasts' × (aria-label Dismiss) and the prompt's "Later".
 const dismissToasts = async () => {
-  const buttons = page.locator('.toast button');
+  const buttons = page.locator('.toast button[aria-label="Dismiss"], .toast button.ghost');
   for (let i = await buttons.count(); i > 0; i--) {
     await buttons.first().click().catch(() => {});
   }
@@ -951,6 +958,11 @@ await page.waitForTimeout(600);
       await page.reload({ waitUntil: 'networkidle' });
       await page.waitForTimeout(1500);
       await dismissOfflineSummary(3000);
+      // The "FolkIdle has been updated" prompt sits in the same bottom-right
+      // corner as the chat handle, and a reload does not clear it on a dev
+      // server whose bundle changed during the session. dismissToasts presses
+      // its "Later" now, never its "Reload".
+      await dismissToasts();
       await page.getByRole('button', { name: /Show chat/i }).first().click();
       await page.waitForTimeout(600);
       await page.getByRole('button', { name: 'Whispers', exact: true }).first().click();
@@ -1903,13 +1915,60 @@ await go('Breeding');
 {
   const text = await page.evaluate(() => document.body.innerText);
 
-  // Modul: ONE QUESTION, NOT TWO TABS. This used to assert both tab labels
-  // were present; the tabs are gone because asking a player to understand the
-  // difference between the two pairings before they may begin is what made the
-  // screen unusable. The partner list carries both, grouped.
-  const groups = await page.locator('select').nth(1).evaluate((select) =>
-    [...select.querySelectorAll('optgroup')].map((g) => g.label),
-  );
+  // Modul: NOT <select>s ANY MORE. Both pickers were native selects whose
+  // options counted down every second, which on Android's WebView closes the
+  // open dialog or drops the choice. They are PersonPicker now: a trigger
+  // button, and a list of option buttons that exists only while it is open.
+  // These helpers open one, read it, and close it again.
+  const heroPicker = page.getByTestId('hero-picker');
+  const partnerPicker = page.getByTestId('partner-picker');
+
+  // The open list is found by `data-picker`, not inside the picker element: on
+  // a phone it is portalled to <body> so no stacking context can bury it.
+  const listOf = (picker) =>
+    page.locator(`[role="listbox"][data-picker="${picker === heroPicker ? 'hero-picker' : 'partner-picker'}"]`);
+
+  async function openPicker(picker) {
+    if ((await listOf(picker).count()) === 0) {
+      await picker.locator('.trigger').click();
+      await page.waitForTimeout(150);
+    }
+  }
+
+  async function closePicker(picker) {
+    if ((await listOf(picker).count()) > 0) {
+      await listOf(picker).locator('.close').click();
+      await page.waitForTimeout(100);
+    }
+  }
+
+  // Every option, with the refusal it carries. `disabled` is read off the DOM
+  // rather than through isDisabled(), which is the habit the old <option>
+  // reading taught this script.
+  async function readOptions(picker) {
+    await openPicker(picker);
+    const options = await listOf(picker).locator('[role="option"]').evaluateAll((nodes) =>
+      nodes.map((n) => ({
+        key: n.getAttribute('data-key') ?? '',
+        label: n.textContent.replace(/\s+/g, ' ').trim(),
+        reason: (n.querySelector('.reason')?.textContent ?? '').trim(),
+        disabled: n.disabled,
+      })),
+    );
+    await closePicker(picker);
+    return options;
+  }
+
+  // Modul: ONE QUESTION, NOT TWO TABS. The partner list carries both the
+  // village and the player's own line, grouped.
+  await page.waitForTimeout(800);
+  await openPicker(heroPicker);
+  const firstHero = listOf(heroPicker).locator('[role="option"]:not([disabled])').first();
+  if ((await firstHero.count()) > 0) await firstHero.click();
+  await closePicker(heroPicker);
+  await openPicker(partnerPicker);
+  const groups = await listOf(partnerPicker).locator('.group h4').allInnerTexts();
+  await closePicker(partnerPicker);
   record(
     'one partner list carries both the village and your own line',
     groups.some((g) => /village/i.test(g)) && groups.some((g) => /own line/i.test(g)),
@@ -1924,14 +1983,21 @@ await go('Breeding');
       /raises a bloodline/i.test(text),
   );
 
-  const heroSelect = page.locator('select').first();
-  const villagerSelect = page.locator('select').nth(1);
-
-  const heroCount = await heroSelect.locator('option').count();
+  const heroOptions = await readOptions(heroPicker);
+  const heroCount = heroOptions.length;
   // Every character the fixture owns needs a lineage row to appear here at
   // all - the roster endpoint skips a character that has none, which is what
   // made this list silently empty.
-  record('the hero list is populated', heroCount > 1, `${heroCount - 1} characters`);
+  record('the hero list is populated', heroCount > 0, `${heroCount} characters`);
+
+  // THE ANDROID DEFECT, asserted where it lived: nothing inside a picker may
+  // tick by the second. Two reads a little over a second apart must agree.
+  {
+    const first = heroOptions.map((o) => o.label).join('|');
+    await page.waitForTimeout(1300);
+    const second = (await readOptions(heroPicker)).map((o) => o.label).join('|');
+    record('picker labels do not tick every second', first === second);
+  }
 
   // THE HERO FIRST, and this order is the whole point rather than tidiness:
   // who a villager can marry depends on which hero is chosen (same race,
@@ -1942,45 +2008,29 @@ await go('Breeding');
   let villagerTotal = 0;
   let refusals = [];
   let heroesTried = 0;
-  for (let heroIndex = 1; heroIndex < heroCount && marriable === null; heroIndex++) {
-    // Skip the heroes the screen has already said cannot: a child from an
-    // earlier run, and anybody inside the cooldown a previous marriage
-    // started. Both are honest states rather than failures, and picking one
-    // turns this step into a test of the refusal.
-    //
-    // "needs 50" used to be on this list. It is gone because the gate it came
-    // from is gone - it read a per-character level column that nothing in the
-    // server ever wrote, so it refused every real player on every attempt.
-    const heroText = await heroSelect.locator('option').nth(heroIndex).innerText();
-    if (/resting|still a child/.test(heroText)) continue;
+  for (const heroOption of heroOptions) {
+    if (marriable !== null) break;
+    // Skip the heroes the screen has already refused: a child from an earlier
+    // run, and anybody inside the cooldown a previous marriage started. Both
+    // are honest states rather than failures, and the picker will not let
+    // them be chosen anyway.
+    if (heroOption.disabled) continue;
 
     heroesTried++;
-    await heroSelect.selectOption({ index: heroIndex });
+    await openPicker(heroPicker);
+    await listOf(heroPicker).locator(`[role="option"][data-key="${heroOption.key}"]`).click();
     await page.waitForTimeout(250);
 
-    // Read the disabled flag off the DOM rather than through isDisabled():
-    // Playwright's editability check is defined for inputs and selects, and
-    // answers "not disabled" for an <option> whatever its attribute says - so
-    // the loop below happily picked a villager the screen had greyed out.
-    // VILLAGERS ONLY. The partner list also carries the player's own line now,
+    // VILLAGERS ONLY. The partner list also carries the player's own line,
     // and a run that married a cousin would pass this step while proving
-    // nothing about the gene pool - which is the half that was visible and
-    // inert for a whole release. The 'v:' prefix is the screen's own marker.
-    const options = await villagerSelect.evaluate((select) =>
-      [...select.options]
-        .filter((o) => o.value.startsWith('v:'))
-        .map((o) => ({
-          value: o.value,
-          label: o.textContent.trim(),
-          disabled: o.disabled,
-        })),
-    );
+    // nothing about the gene pool. The 'v:' key prefix is the screen's own marker.
+    const options = (await readOptions(partnerPicker)).filter((o) => o.key.startsWith('v:'));
     villagerTotal = options.length;
-    refusals = options.filter((o) => o.disabled).map((o) => o.label);
+    refusals = options.filter((o) => o.disabled);
 
     const open = options.find((o) => !o.disabled);
     if (open) {
-      marriable = open.value;
+      marriable = open.key;
       marriableLabel = open.label;
     }
   }
@@ -1995,12 +2045,11 @@ await go('Breeding');
   // how the one script that verifies gameplay ends up crying wolf.
   //
   // What must NEVER pass is an option greyed out for no stated reason. Every
-  // refusal the screen renders carries its cause in parentheses - "(has already
-  // married in)", "(both women)" - so the assertion is that a refusal is
-  // explained, not that it is one of a list of causes I happened to enumerate.
-  // The first version of this check listed them and failed on "(both women)".
+  // refused card carries its cause in a `.reason` line - "has already married
+  // in", "both women" - so the assertion is that a refusal is explained, not
+  // that it is one of a list of causes I happened to enumerate.
   const spent = villagerTotal > 0 && refusals.length === villagerTotal;
-  const allExplained = refusals.every((label) => /\(.+\)\s*$/.test(label));
+  const allExplained = refusals.every((o) => o.reason.length > 0);
   const noHeroFree = heroesTried === 0;
   record(
     'the village offers somebody marriable',
@@ -2011,12 +2060,13 @@ await go('Breeding');
         ? 'every hero is resting or still a child - nobody free to marry this run'
         : spent && allExplained
           ? `${villagerTotal} in the village, every one refused with a reason - pool spent`
-          : `${villagerTotal} in the village, ${refusals.filter((l) => !/\(.+\)\s*$/.test(l)).length} refused without a reason`,
+          : `${villagerTotal} in the village, ${refusals.filter((o) => !o.reason).length} refused without a reason`,
   );
 
-  if (heroCount > 1 && marriable !== null) {
+  if (heroCount > 0 && marriable !== null) {
     const before = heroCount;
-    await villagerSelect.selectOption(marriable);
+    await openPicker(partnerPicker);
+    await listOf(partnerPicker).locator(`[role="option"][data-key="${marriable}"]`).click();
     await page.waitForTimeout(1200);
 
     const preview = await page.evaluate(() => document.body.innerText);
@@ -2079,16 +2129,16 @@ await go('Breeding');
 
       // A child on the roster is the whole claim. The villager list shrinking
       // would not prove it - a dismissal does that too.
-      const after = await heroSelect.locator('option').count();
-      record('marrying the village produces a child', after > before, `${before - 1} -> ${after - 1} characters`);
+      const after = (await readOptions(heroPicker)).length;
+      record('marrying the village produces a child', after > before, `${before} -> ${after} characters`);
 
       // ONE CHILD PER VILLAGER, forever. Without this a single lucky twenty
       // fathers the whole roster and the pool collapses onto one ancestor.
-      const elderText = await page.evaluate(() => document.body.innerText);
+      const spentVillager = (await readOptions(partnerPicker)).find((o) => o.key === marriable);
       record(
         'the villager who married is spent',
-        /already married in/i.test(elderText),
-        (elderText.match(/[^\n]*already married in[^\n]*/) ?? [''])[0].trim().slice(0, 60),
+        spentVillager !== undefined && /already married in/i.test(spentVillager.reason),
+        spentVillager ? `${spentVillager.label.slice(0, 40)} - ${spentVillager.reason || 'no reason'}` : 'villager gone from the list',
       );
       await dismissToasts();
     }
@@ -2151,10 +2201,11 @@ await go('Ancestors');
   const rows = page.locator('.panel li');
   record('the Hall lists the roster', (await rows.count()) > 0, `${await rows.count()} members`);
 
-  // The pedigree: everybody came from somewhere, and a founder says so.
+  // The pedigree: everybody came from somewhere, and a founder says so. By
+  // NAME - it printed eight hex digits of each parent's Guid until 2026-09-13.
   record(
     'every member names where they came from',
-    /a founder of the line|somebody from the village| x /i.test(text),
+    /a founder of the line|child of /i.test(text) && !/\b[0-9a-f]{8} x [0-9a-f]{8}\b/.test(text),
   );
 
   // Marking. The whole reason the cap is a decision rather than a surprise.
@@ -2173,9 +2224,9 @@ await go('Ancestors');
   // stops matching and silently slides to the NEXT row's button - which reads
   // "Kept" again and looks exactly like a click that did nothing. The rows do
   // not reorder on a mark, so an index is the stable handle. (The main
-  // character renders a span, not a button, so every `.acts button` is one of
-  // these toggles.)
-  const toggle = page.locator('.acts button');
+  // character renders a span, not a button.) `.keep`, because the slot buttons
+  // that replaced the Field select sit in the same row.
+  const toggle = page.locator('.acts button.keep');
   if ((await toggle.count()) > 0) {
     await dismissToasts();
     const button = toggle.first();
@@ -2202,7 +2253,8 @@ await go('Ancestors');
 
   // FIELDING - the missing door. A benched child picks a slot and the roster
   // has to actually change, not just the dropdown.
-  const bench = page.locator('.acts select');
+  // Slot BUTTONS since 2026-09-13 - the select was a native Android dialog.
+  const bench = page.locator('.acts .field');
   const benched = await bench.count();
   record('benched members can be fielded', benched > 0, `${benched} on the bench`);
 
@@ -2210,10 +2262,10 @@ await go('Ancestors');
     // A SWAP, so counting fielded members proves nothing - one leaves as one
     // arrives. Identify the row being fielded and check THAT row ends up with
     // a slot badge.
-    const row = page.locator('.panel li').filter({ has: page.locator('.acts select') }).first();
+    const row = page.locator('.panel li').filter({ has: page.locator('.acts .field') }).first();
     const fingerprint = (await row.locator('.apts').innerText()).replace(/\s+/g, ' ').trim();
 
-    await row.locator('select').selectOption('0');
+    await row.locator('.field-slot').first().click();
     await page.waitForTimeout(3000);
 
     const nowFielded = await page.locator('.panel li').filter({ hasText: /slot \d/ }).allInnerTexts();

@@ -168,6 +168,16 @@ on top of the item list; `npm run check:overlap` found it and measuring
 confirmed a 93x35 box on a panel reporting `open === false`. Use `{#if}` so the
 controls are genuinely absent.
 
+**A native `<select>` whose options change while it is open is broken on
+Android.** The WebView draws it as a system dialog, and re-rendering the
+options underneath - a countdown in a label, a `disabled` flag off a ticking
+clock - closes that dialog or drops the choice. Reported from the APK as "the
+breeding pickers glitch and sometimes do not work"; desktop Chromium never shows
+it. The Breeding and Ancestors pickers are buttons now (`PersonPicker.svelte`,
+logic in `breedingPicker.ts`), and time on them is rounded to minutes. Anything
+that ticks does not belong inside a control, and a list of people is not a
+`<select>` - that dialog also cuts every option to one line.
+
 **Check which material namespace a feature needs before writing code.** Several
 string spaces share one `CommodityRecords` table: gathering slugs (`raw_log`,
 `wood`) with no `items.json` entry, catalogued items, and a `*_crafting_material`

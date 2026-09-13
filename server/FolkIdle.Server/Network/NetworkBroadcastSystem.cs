@@ -4356,6 +4356,8 @@ namespace FolkIdle.Server.Network
                     Newcomers = rows.ConvertAll(v => new
                     {
                         v.Id,
+                        // Derived from the id, not stored - see FolkNameRegistry.ForNewcomer.
+                        Name = Engine.FolkNameRegistry.ForNewcomer(v.Id, v.IsFemale),
                         v.RaceId,
                         v.IsFemale,
                         v.AptitudeStrength,
@@ -4581,6 +4583,13 @@ namespace FolkIdle.Server.Network
                         lineageById.TryGetValue(c.Id, out var lineage);
                         var genes = new GeneticVector(lineage?.GeneticVector ?? 0L);
 
+                        // Modul: the pedigree read "b6b704ca x 0214b4e9" - Guid
+                        // prefixes, a day after characters got names. A parent
+                        // culled at a rollover is no longer in the roster, so
+                        // an empty name means "not here any more", not unknown.
+                        string NameOf(Guid? id) =>
+                            id is { } value && characters.Find(x => x.Id == value) is { } parent ? parent.Name : string.Empty;
+
                         return new
                         {
                             CharacterId = c.Id.ToString(),
@@ -4608,6 +4617,8 @@ namespace FolkIdle.Server.Network
                             // both have one, and neither is an error.
                             ParentPaternalId = lineage?.ParentPaternalId?.ToString() ?? string.Empty,
                             ParentMaternalId = lineage?.ParentMaternalId?.ToString() ?? string.Empty,
+                            ParentPaternalName = NameOf(lineage?.ParentPaternalId),
+                            ParentMaternalName = NameOf(lineage?.ParentMaternalId),
                         };
                     }),
                 };
@@ -4839,10 +4850,9 @@ namespace FolkIdle.Server.Network
                 response.IsEligible = previewRefusal == Engine.BreedingRefusal.None;
                 response.IneligibleReason = Engine.BreedingGateRules.ReasonSlugFor(previewRefusal);
 
-                response.IsInbredRisk = paternalId == mLineage.ParentPaternalId || paternalId == mLineage.ParentMaternalId
-                    || maternalId == pLineage.ParentPaternalId || maternalId == pLineage.ParentMaternalId
-                    || (pLineage.ParentPaternalId.HasValue && (pLineage.ParentPaternalId == mLineage.ParentPaternalId || pLineage.ParentPaternalId == mLineage.ParentMaternalId))
-                    || (pLineage.ParentMaternalId.HasValue && (pLineage.ParentMaternalId == mLineage.ParentPaternalId || pLineage.ParentMaternalId == mLineage.ParentMaternalId));
+                // The same relatedness check the engine runs - it used to be a
+                // hand-copied expression here too, and both copies missed cousins.
+                response.IsInbredRisk = await Engine.BreedingRelatedness.AreRelatedAsync(db, pLineage, mLineage);
 
                 int maxGen = Math.Max(pLineage.GenerationIndex, mLineage.GenerationIndex);
                 response.BreedingCostGold = Engine.BreedingEngine.CostFor(maxGen);

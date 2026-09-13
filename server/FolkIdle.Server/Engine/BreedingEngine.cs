@@ -157,15 +157,12 @@ namespace FolkIdle.Server.Engine
 
                 goldRecord.Quantity -= breedingCost;
 
-                // Modul 13.4.3: inbreeding check within 2 generations of the
-                // prospective child, using data already loaded above (no extra
-                // query needed) - a direct parent-child pairing (one candidate
-                // parent is literally the other's own parent), or full/half
-                // siblings sharing a common parent of their own.
-                bool isInbred = paternalId == mLineage.ParentPaternalId || paternalId == mLineage.ParentMaternalId
-                    || maternalId == pLineage.ParentPaternalId || maternalId == pLineage.ParentMaternalId
-                    || (pLineage.ParentPaternalId.HasValue && (pLineage.ParentPaternalId == mLineage.ParentPaternalId || pLineage.ParentPaternalId == mLineage.ParentMaternalId))
-                    || (pLineage.ParentMaternalId.HasValue && (pLineage.ParentMaternalId == mLineage.ParentPaternalId || pLineage.ParentMaternalId == mLineage.ParentMaternalId));
+                // Modul: RELATEDNESS, two generations deep and from ONE place.
+                // This was an inline nine-clause copy that stopped at siblings,
+                // duplicated in the preview endpoint, so cousins, an uncle and
+                // his niece, or a grandparent and grandchild all bred at full
+                // odds. See BreedingRelatedness.
+                bool isInbred = await BreedingRelatedness.AreRelatedAsync(dbContext, pLineage, mLineage);
 
                 long childGenome = GeneticSplicingEngine.Breed(pLineage.GeneticVector, mLineage.GeneticVector, maxGen);
                 if (isInbred)
@@ -247,13 +244,18 @@ namespace FolkIdle.Server.Engine
                 {
                     PlayerId = playerId,
                     ChildCharacterId = childId,
-                    GeneticVector = childGenome
+                    GeneticVector = childGenome,
+                    GoldSpent = breedingCost
                 });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                Console.WriteLine($"Breeding failed: {ex.Message}");
+                Console.WriteLine($"Breeding failed: {ex}");
+                // Modul: a Serializable transaction is EXPECTED to fail under
+                // contention, and this catch used to swallow it - the button
+                // did nothing and said nothing. Rolled back, so nothing was spent.
+                Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingFailed);
             }
         }
 
@@ -452,13 +454,15 @@ namespace FolkIdle.Server.Engine
                 {
                     PlayerId = playerId,
                     ChildCharacterId = childId,
-                    GeneticVector = childGenome
+                    GeneticVector = childGenome,
+                    GoldSpent = breedingCost
                 });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                Console.WriteLine($"Hero-villager breeding failed: {ex.Message}");
+                Console.WriteLine($"Hero-villager breeding failed: {ex}");
+                Refuse(playerId, FolkIdle.Server.Network.CommandResultCode.BreedingFailed);
             }
         }
     }

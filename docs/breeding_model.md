@@ -43,8 +43,9 @@ the same screen. It is now **Work slots**.
 
 - **A Breeding Grounds** in the village, level 1 or better. Without it the
   server rejects the command; the screen refuses to send it.
-- **A hero at level 50 who is an Adult.** Both, not either. `AgePhase >= 1` and
-  `Level >= 50`.
+- **A hero who is an Adult** (`AgePhase >= 1`). There is no level requirement:
+  the old `Level >= 50` gate read a column only the dev fixture ever wrote and
+  was deleted on 2026-09-12.
 - **Gold**: `500 × (highest parent generation + 1)`. A generation-0 founder
   costs 500; a generation-3 parent costs 2,000.
 - The hero must not be on a breeding cooldown and must not be locked in a
@@ -54,8 +55,11 @@ the same screen. It is now **Work slots**.
 
 ### Hero × newcomer — the standard pair
 
-Only the **hero** needs level 50 and adulthood. The newcomer only has to exist,
-be of the **opposite sex**, and be of the **same race**.
+Only the **hero** needs adulthood. The newcomer only has to exist, be of the
+**opposite sex**, and be of the **same race**.
+
+Newcomers have **names** (Old Celtic, the same tables as characters), derived
+from their row id by `FolkNameRegistry.ForNewcomer` - never stored.
 
 A newcomer **marries exactly once**. Afterwards they are an elder: they stay on
 the roster as a record of the blood that came in, and can never marry again.
@@ -69,12 +73,16 @@ rollover anyway.
 
 ### Hero × hero — crossing your own
 
-**Both** parents need level 50 and adulthood, one of each sex, and the same
-race. Both go on cooldown afterwards.
+**Both** parents need adulthood, one of each sex, and the same race. Both go on
+cooldown afterwards.
 
-This pairing **can be inbred**, and the check is: the two share a parent, or one
-is the other's parent. Grandparents are *not* checked (see the disagreements
-section). An inbred pairing is allowed — it is degraded, not forbidden:
+This pairing **can be inbred**. The check (`BreedingRelatedness`, shared by the
+engine and the preview since 2026-09-13) takes each parent, their parents and
+their grandparents, and calls the pair related when the two sets overlap:
+parent and child, grandparent and grandchild, full or half siblings, an aunt or
+uncle with a niece or nephew, and cousins. A grandparent already culled at a
+rollover can no longer be read, so the check sees less of that pedigree. An
+inbred pairing is allowed — it is degraded, not forbidden:
 
 - Aptitude mutation **inverts**: 10% up, 25% down instead of 25% up, 10% down.
 - Epic mutation drops from **5% to 1%**.
@@ -270,12 +278,11 @@ describes the code.
    offline, "conceive in the evening, meet the child at the morning login". The
    engine inserts the `CharacterRecord` inside the same transaction as the
    payment. The child exists immediately.
-3. **The inbreeding check is two levels shallower than specified.**
-   `BreedingAptitudes.AreRelated` implements the spec's "shares a parent **or a
-   grandparent**" and takes grandparent arrays — but `BreedingEngine` never
-   calls it. Both the engine and the preview use an inline expression covering
-   parent-child and full/half siblings only. Cousins breed at full mutation
-   rates and 5% epic.
+3. ~~**The inbreeding check is two levels shallower than specified.**~~ Fixed
+   2026-09-13: both inline copies were replaced by `BreedingRelatedness`, which
+   feeds grandparents into `BreedingAptitudes.AreRelated`. That method's own
+   grandparent comparison also missed the aunt/uncle and grandparent cases it
+   claimed; it now compares the two whole two-generation sets.
 4. **Breeding costs gold and the spec never mentions a price.** §3's "this is
    why it costs nothing" is about the level-1 child landing where everything
    resets, not about the ledger — but `500 × (generation + 1)` gold is a real

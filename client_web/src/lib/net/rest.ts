@@ -767,6 +767,8 @@ export interface AchievementEntry {
  */
 export interface VillageNewcomer {
   Id: number;
+  /** Derived from the row id on the server (FolkNameRegistry.ForNewcomer) - stable, never stored. */
+  Name: string;
   RaceId: number;
   IsFemale: boolean;
   AptitudeStrength: number;
@@ -985,6 +987,11 @@ export interface HallMember {
    * one, and neither is an error. */
   ParentPaternalId: string;
   ParentMaternalId: string;
+
+  /** The parents' names. "" when the id is empty OR when that parent is no
+   * longer in the Hall - culled at a rollover. */
+  ParentPaternalName: string;
+  ParentMaternalName: string;
 }
 
 export interface HallSnapshot {

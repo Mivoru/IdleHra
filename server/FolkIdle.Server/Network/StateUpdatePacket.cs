@@ -228,7 +228,12 @@ namespace FolkIdle.Server.Network
         BreedingRaceMismatch = 32,
         BreedingPartnerAlreadyMarried = 33,
         BreedingInsufficientGold = 34,
-        BreedingSucceeded = 35
+        BreedingSucceeded = 35,
+
+        // The transaction threw - under Serializable isolation a concurrent
+        // write is an ordinary cause - and was rolled back, so nothing was spent.
+        // It used to be caught and printed to the server console only.
+        BreedingFailed = 36
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

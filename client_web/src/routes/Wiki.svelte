@@ -231,12 +231,15 @@
     return Array.from(grouped.entries()).sort((a, b) => a[0] - b[0]);
   });
 
+  // Modul: the race column read "Kobold" and "Moosleute" - the server's internal
+  // identifiers - beside "Vila" and "Vodnik". Named from races.ts now, the one
+  // table every other screen already reads.
   const REGION_BOSS_RACE: readonly { region: number; boss: string; race: string }[] = [
-    { region: 1, boss: 'Alpha Wolf', race: 'Vila' },
-    { region: 2, boss: 'Shadow Lynx', race: 'Draugr' },
-    { region: 3, boss: 'Magma Wyrm', race: 'Kobold' },
-    { region: 4, boss: 'Frost Titan', race: 'Vodnik' },
-    { region: 5, boss: 'Malakor', race: 'Moosleute' },
+    { region: 1, boss: 'Alpha Wolf', race: RACE_NAMES[2] },
+    { region: 2, boss: 'Shadow Lynx', race: RACE_NAMES[3] },
+    { region: 3, boss: 'Magma Wyrm', race: RACE_NAMES[4] },
+    { region: 4, boss: 'Frost Titan', race: RACE_NAMES[5] },
+    { region: 5, boss: 'Malakor', race: RACE_NAMES[6] },
   ];
 
   const rootNodes = SKILL_TREE_NODES.filter((n) => n.ring === 'root');

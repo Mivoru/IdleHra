@@ -98,6 +98,50 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
+        /// Modul: THE BACKFILL'S WHOLE SAFETY ARGUMENT. It renames names the
+        /// retired Czech tables could produce and runs on every deploy, so if a
+        /// Celtic name were also a legacy name the pass would rename it again
+        /// forever - and a legacy name that is not recognised would never go.
+        /// </summary>
+        [Fact]
+        public void NoCurrentNameIsALegacyName()
+        {
+            foreach (string name in FolkNameRegistry.AllMaleNames.Concat(FolkNameRegistry.AllFemaleNames))
+            {
+                Assert.False(FolkNameRegistry.IsLegacyName(name), $"{name} is in both the Celtic and the retired Czech tables");
+            }
+
+            Assert.True(FolkNameRegistry.IsLegacyName("Vojtěch"));
+            Assert.True(FolkNameRegistry.IsLegacyName("Libuše"));
+            Assert.False(FolkNameRegistry.IsLegacyName(""));
+            Assert.False(FolkNameRegistry.IsLegacyName("Somebody Else"));
+        }
+
+        [Fact]
+        public void TheTwoTablesShareNoNameAndHaveNoDuplicates()
+        {
+            Assert.Empty(FolkNameRegistry.AllMaleNames.Intersect(FolkNameRegistry.AllFemaleNames));
+            Assert.Equal(FolkNameRegistry.MaleNameCount, FolkNameRegistry.AllMaleNames.Distinct().Count());
+            Assert.Equal(FolkNameRegistry.FemaleNameCount, FolkNameRegistry.AllFemaleNames.Distinct().Count());
+        }
+
+        /// <summary>
+        /// A newcomer's name is derived from the row id on every read, so it has
+        /// to be the same name on every read, and a woman's name for a woman.
+        /// </summary>
+        [Fact]
+        public void ANewcomerKeepsTheirNameAndItMatchesTheirSex()
+        {
+            for (long id = 1; id < 400; id++)
+            {
+                string female = FolkNameRegistry.ForNewcomer(id, isFemale: true);
+                Assert.Equal(female, FolkNameRegistry.ForNewcomer(id, isFemale: true));
+                Assert.Contains(female, FolkNameRegistry.AllFemaleNames);
+                Assert.Contains(FolkNameRegistry.ForNewcomer(id, isFemale: false), FolkNameRegistry.AllMaleNames);
+            }
+        }
+
+        /// <summary>
         /// Not Guid.GetHashCode(), which is randomised per process on some
         /// runtimes. This asserts a value rather than a property, so a change of
         /// hash - which would silently rename every character in the database -

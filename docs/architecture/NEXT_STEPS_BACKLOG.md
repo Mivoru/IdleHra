@@ -17,6 +17,68 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-13 - breeding round 1 of 3: the pickers, the audit, the names
+
+The owner asked for three things in order: fix what is broken in breeding
+(round 1, this), then redesign breeding and mutations (round 2), then translate
+the whole game into EN/ES/FR/DE/PL/CS (round 3). Rounds 2 and 3 are not started.
+
+**The APK pickers.** Reported: "the selections glitch on mobile and sometimes do
+not work". Both Breeding pickers were native `<select>`s whose option text
+counted down every second (`resting 3421s`) with `disabled` off the same clock;
+Android's WebView draws a select as a system dialog and a re-render under it
+closes the dialog or drops the choice. Replaced by `PersonPicker.svelte`
+(buttons; a bottom sheet on phones) with the rules in `breedingPicker.ts`, time
+rounded to minutes. The Ancestors "Field..." select became slot buttons for the
+same reason. Changing the hero now clears a partner who can no longer pair.
+**Not verified on a device** - Chromium at 390px only.
+
+**Defects found by auditing the engine:**
+- Gold spent on a pairing never reached the live session, so the header showed
+  the old balance until relogin. `BirthNotification.GoldSpent` moves
+  `CurrentGold` only (the row is already debited). Login reads the DB row, not
+  the Redis frame, so this was a stale display, not a dupe.
+  **STILL OPEN elsewhere:** the Village upgrade and the feast debit
+  `CommodityRecords["gold"]` the same way and move nothing on the session.
+- A birth incremented `VillagePopulation` (work slots). Removed.
+- `catch (Exception)` in both pairings reported nothing - a Serializable
+  conflict (`40001`, which the concurrency test produces) looked like a dead
+  button. New `CommandResultCode.BreedingFailed = 36`.
+- Relatedness: engine and preview each carried an inline copy that stopped at
+  siblings, and `AreRelated` (called by nothing) compared grandparents only to
+  grandparents, so it missed the uncle/niece and grandparent cases it claimed.
+  One `BreedingRelatedness`, two-generation set overlap. Cousins are inbred now.
+- The Hall printed parents as Guid prefixes; it uses names.
+- The Chronicle pass sat at the bottom of the Breeding screen. Moved to Progress.
+
+**Names and races.** Character names are Old Celtic (Irish/Welsh/Gaulish), 40+40.
+`CharacterNameBackfill` renames any name from the retired Czech tables once, on
+`--migrate`. Newcomers get names from their row id (no column). Race display
+names are English: Fairy (Vila), Vodyanoy (Vodnik), Bies (Bes); server
+`GetRaceName` also stopped answering "Kobold"/"Moosleute".
+
+**Two harness defects found on the way, both fail only in a live dev session:**
+`exercise.mjs`'s `dismissToasts` clicked the FIRST button of every `.toast`, and
+the "FolkIdle has been updated" prompt is a `.toast` whose first button is
+Reload - so any client edit while Vite runs reloaded the page mid-script (three
+runs died on Friends and then on the chat handle). It presses only × and
+"Later" now. And `screens.mjs`'s `assertMatchesNav` read "Mail 6" as a missing
+"Mail". Also: on a phone the first picker sheet was buried under the onboarding
+coach and chat (z 40) despite z 1401 - an ancestor stacking context - so the
+sheet is portalled to `<body>`, and the hardware back button closes it.
+Final exercise 141/142, the one failure the known loot-panel timing flake.
+
+**Round 2 material, observed but deliberately untouched:** a newcomer's genome
+has zero Speed/Crit/Yield, so marrying the village (the recommended strategy)
+dilutes genes; gene "mutation" XORs the low five bits, so it can turn 31 into 0;
+its rate shrinks per generation; the epic mutation is +1 to four numbers.
+
+**Round 3 material:** `localizations.json` holds 28 keys, its Czech has no
+diacritics ("Aktivni", "Zadny" - wrong, not stylistic), ES/FR are absent, and
+`ValidateLanguageSwitchRequest` rejects wire ids above 4.
+
+---
+
 # HANDOFF 2026-09-12d - breeding was sealed at both ends
 
 Reported by the developer playing his own game: "I was thinking of trying it but

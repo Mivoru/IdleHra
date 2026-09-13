@@ -22,6 +22,7 @@ import {
 */
 
 const CLOSED: BackPressState = {
+  sheetOpen: false,
   exitPromptOpen: false,
   deathCardOpen: false,
   victoryCardOpen: false,
@@ -76,6 +77,7 @@ describe('what one back press means', () => {
       deathCardOpen: true,
       victoryCardOpen: true,
       offlineSummaryOpen: true,
+      sheetOpen: false,
       chatDockOpen: true,
       navOpen: true,
       historyDepth: 4,
@@ -110,6 +112,15 @@ describe('what one back press means', () => {
 
     // And only once every layer is gone does it start navigating.
     expect(resolveBackPress(state)).toBe('previous-screen');
+  });
+
+  // Modul: the breeding picker on a phone is a sheet over the whole screen.
+  // Back used to walk to the previous screen underneath it, taking the
+  // half-made choice with it.
+  it('closes an open picker sheet before anything else, and before navigating', () => {
+    const nested = { ...CLOSED, atRoot: false, historyDepth: 2 };
+    expect(resolveBackPress({ ...nested, sheetOpen: true })).toBe('close-sheet');
+    expect(resolveBackPress({ ...nested, sheetOpen: true, chatDockOpen: true, navOpen: true })).toBe('close-sheet');
   });
 
   it('closes the exit prompt rather than opening a second one', () => {

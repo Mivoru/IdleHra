@@ -62,6 +62,11 @@ function nativeApp(): CapacitorAppPlugin | undefined {
  * nothing happen at all.
  */
 export interface BackPressState {
+  /**
+   * A picker sheet (PersonPicker on a phone), portalled to <body> at z-index
+   * 1401 - the topmost layer this client draws, so it is closed first.
+   */
+  sheetOpen: boolean;
   /** The "leave the game?" dialog this module's own last press opened. */
   exitPromptOpen: boolean;
   deathCardOpen: boolean;
@@ -77,6 +82,7 @@ export interface BackPressState {
 }
 
 export type BackOutcome =
+  | 'close-sheet'
   | 'close-exit-prompt'
   | 'close-death-card'
   | 'close-victory-card'
@@ -88,6 +94,7 @@ export type BackOutcome =
   | 'confirm-exit';
 
 export function resolveBackPress(state: BackPressState): BackOutcome {
+  if (state.sheetOpen) return 'close-sheet';
   if (state.exitPromptOpen) return 'close-exit-prompt';
   if (state.deathCardOpen) return 'close-death-card';
   if (state.victoryCardOpen) return 'close-victory-card';

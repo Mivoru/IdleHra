@@ -806,7 +806,14 @@ namespace FolkIdle.Server.Domain.Combat
                     ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, birthNotification.PlayerId);
                     if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                     {
-                        currentPayload.VillagePopulation++;
+                        // Modul: a birth used to bump VillagePopulation - the
+                        // village's WORK slots, which the infrastructure update
+                        // overwrites from the buildings - so a child read as a
+                        // worker until the next village change. What a birth
+                        // does move is the gold the engine spent on it: the row
+                        // is already debited, so the live balance follows it and
+                        // the pending delta is left alone.
+                        currentPayload.CurrentGold = Math.Max(0L, currentPayload.CurrentGold - birthNotification.GoldSpent);
                         currentPayload.IsDirty = true;
                     }
                 }

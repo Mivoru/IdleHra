@@ -8,9 +8,10 @@
     fetchLoginBonus,
     fetchRaceMastery,
     fetchStatistics,
+    fetchMetadata,
     type AchievementEntry,
   } from '../lib/net/rest';
-  import { claimAchievement } from '../lib/net/commands';
+  import { claimAchievement, claimBattlePassMilestone, purchaseBattlePass } from '../lib/net/commands';
   import Bar from '../lib/ui/Bar.svelte';
   import Money from '../lib/ui/Money.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
@@ -65,6 +66,33 @@
   const claimable = $derived(
     (achievements.data ?? []).filter((a) => !a.IsClaimed && a.CompletedTier > 0),
   );
+
+  // --- season pass ----------------------------------------------------------
+  // Modul: MOVED HERE FROM THE BREEDING SCREEN (2026-09-13), where it sat under
+  // the Breed button with nothing to do with breeding - a player looking for
+  // how to marry somebody met "claim milestone by index 0-49" instead.
+  //
+  // ClaimedMilestonesBitmask was REMOVED from StateUpdatePacket along with the
+  // pass level and seasonal XP, so which milestones are already claimed is not
+  // readable anywhere this client can reach. Milestones are therefore offered
+  // without a claimed/unclaimed mark, and a repeat claim is the server's to
+  // reject - stating that rather than inventing a checkmark that would be a guess.
+  const metadata = createQuery(() => ({ queryKey: queryKeys.metadata, queryFn: fetchMetadata }));
+  const passLevel = $derived(metadata.data?.ChroniclePassLevel ?? 0);
+  const seasonalXp = $derived(metadata.data?.AccumulatedSeasonalXp ?? 0);
+
+  let milestone = $state(0);
+
+  function claimMilestone() {
+    const outcome = claimBattlePassMilestone(milestone, quarantined);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.metadata }), 900);
+  }
+
+  function buyPass() {
+    purchaseBattlePass();
+    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.metadata }), 900);
+  }
 
   function duration(seconds: number): string {
     const hours = Math.floor(seconds / 3600);
@@ -256,9 +284,60 @@
       <Skeleton />
     {/if}
   </section>
+
+  <section class="panel">
+    <h2>Chronicle pass</h2>
+
+    {#if metadata.isPending}
+      <Skeleton />
+    {:else}
+      <dl class="stats">
+        <div><dt>Pass level</dt><dd>{passLevel}</dd></div>
+        <div><dt>Seasonal XP</dt><dd>{seasonalXp.toLocaleString()}</dd></div>
+        <div><dt>Transactions</dt><dd>{metadata.data?.EventHorizonTransactionCount ?? 0}</dd></div>
+      </dl>
+
+      <button class="pass-btn" onclick={buyPass}>Unlock premium track</button>
+      <p class="dim tiny">
+        Spends PremiumDiamonds server-side - no real-money purchase is involved
+        in unlocking the track.
+      </p>
+
+      <h3>Claim a milestone</h3>
+      <div class="pass-row">
+        <input type="number" min="0" max="49" bind:value={milestone} />
+        <button disabled={quarantined} onclick={claimMilestone}>Claim</button>
+      </div>
+      <p class="dim tiny">
+        Which milestones you have already claimed is not exposed by any endpoint,
+        so they are claimed by index and a repeat is the server's to refuse.
+        Indices run 0-49.
+      </p>
+    {/if}
+  </section>
 </div>
 
 <style>
+  .pass-btn {
+    margin-top: 0.7rem;
+  }
+
+  .pass-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.4rem;
+  }
+
+  .pass-row input {
+    font: inherit;
+    color: inherit;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.4rem 0.5rem;
+    width: 100%;
+  }
+
   .progress {
     text-align: right;
     white-space: nowrap;

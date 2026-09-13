@@ -51,6 +51,7 @@
     dismissDeath,
   } from './lib/stores/game';
   import { chatDockOpen } from './lib/stores/chatDock';
+  import { openSheetCloser } from './lib/stores/sheet';
   import { resolveBackPress, watchHardwareBack, exitApp } from './lib/net/backButton';
   import {
     storedToken,
@@ -286,6 +287,7 @@
 
   function handleBack(): void {
     const outcome = resolveBackPress({
+      sheetOpen: $openSheetCloser !== null,
       exitPromptOpen,
       deathCardOpen: $deathSummary !== null,
       victoryCardOpen: $victorySummary !== null,
@@ -312,6 +314,9 @@
         break;
       case 'close-chat-dock':
         chatDockOpen.set(false);
+        break;
+      case 'close-sheet':
+        $openSheetCloser?.();
         break;
       case 'close-nav':
         navOpen = false;

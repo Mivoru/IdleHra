@@ -60,18 +60,25 @@
     refresh();
   }
 
-  const short = (id: string) => id.slice(0, 8);
-
   // The pedigree, as the data actually supports it: who each member came from.
   // A villager parent is not a character and is deliberately not stored, so
   // half a parentage is the honest answer rather than an invented name.
+  //
+  // Modul: BY NAME. This printed eight hex digits of each parent's Guid -
+  // "b6b704ca x 0214b4e9" - a day after characters were given names. A parent
+  // id with no name is somebody the cull has since let go.
+  function parentName(id: string, name: string): string {
+    if (!id) return '';
+    return name || 'an ancestor since let go';
+  }
+
   function parentage(m: HallMember): string {
-    const father = m.ParentPaternalId ? short(m.ParentPaternalId) : '';
-    const mother = m.ParentMaternalId ? short(m.ParentMaternalId) : '';
+    const father = parentName(m.ParentPaternalId, m.ParentPaternalName);
+    const mother = parentName(m.ParentMaternalId, m.ParentMaternalName);
 
     if (!father && !mother) return 'a founder of the line';
-    if (father && mother) return `${father} x ${mother}`;
-    return `${father || mother} and somebody from the village`;
+    if (father && mother) return `child of ${father} and ${mother}`;
+    return `child of ${father || mother} and somebody from the village`;
   }
 
   // Generations, oldest first. This IS the family tree the spec asks for, laid
@@ -189,23 +196,21 @@
               <div class="acts">
                 <!-- Fielding. The whole point of breeding a child at the end
                      of a season is to begin the next one as them, and until
-                     this button existed there was no way to do it. -->
+                     this button existed there was no way to do it.
+
+                     Modul: BUTTONS, not a <select>. At most three slots, and a
+                     native select on Android is a dialog that loses its choice
+                     when the list re-renders under it - the same defect that
+                     made the Breeding pickers unreliable in the APK. -->
                 {#if m.PlayableSlot >= 0}
                   <span class="fielded">slot {m.PlayableSlot + 1}</span>
                 {:else}
-                  <select
-                    aria-label="Field this ancestor"
-                    onchange={(e) => {
-                      const slot = Number((e.currentTarget as HTMLSelectElement).value);
-                      (e.currentTarget as HTMLSelectElement).value = '';
-                      if (!Number.isNaN(slot) && slot >= 0) field(m, slot);
-                    }}
-                  >
-                    <option value="">Field...</option>
-                    {#each Array(data.PlayableSlots) as _, slot}
-                      <option value={slot}>into slot {slot + 1}</option>
+                  <span class="field" role="group" aria-label="Field {m.Name || 'this ancestor'} into a slot">
+                    <span class="dim field-label">Field into</span>
+                    {#each Array(data.PlayableSlots) as _, slot (slot)}
+                      <button class="field-slot" onclick={() => field(m, slot)}>{slot + 1}</button>
                     {/each}
-                  </select>
+                  </span>
                 {/if}
 
                 <!-- The main character's id IS the account's own id, so they
@@ -214,7 +219,7 @@
                 {#if m.IsMainCharacter}
                   <span class="pin" title="Your first character always carries">always</span>
                 {:else}
-                  <button class:on={m.IsKept} onclick={() => mark(m)}>
+                  <button class="keep" class:on={m.IsKept} onclick={() => mark(m)}>
                     {m.IsKept ? 'Kept' : 'Keep'}
                   </button>
                 {/if}
@@ -402,19 +407,43 @@
 
   .acts {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: flex-end;
     gap: 0.3rem;
     flex: none;
   }
 
-  .acts select {
-    font: inherit;
-    font-size: 0.8rem;
-    color: inherit;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.25rem;
+  .field {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .field-label {
+    font-size: 0.72rem;
+  }
+
+  /* 44px both ways: a slot number is a one-character button, and the phone
+     block in app.css only floors HEIGHT - check:touch caught these at 35px wide. */
+  .acts .field-slot {
+    min-width: 44px;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* A phone row cannot hold portrait, name, four aptitudes and five controls
+     side by side, and a flex row that tries crushes the name to zero width
+     (CLAUDE.md, the Chest at 360px). The row wraps and the controls take a
+     line of their own. */
+  @media (max-width: 40rem) {
+    li {
+      flex-wrap: wrap;
+    }
+
+    .acts {
+      flex: 1 1 100%;
+    }
   }
 
   .fielded,

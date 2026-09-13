@@ -109,9 +109,13 @@ export async function signIn(page) {
  * directions. Returns { missing, unvisited }.
  */
 export async function assertMatchesNav(page) {
+  // Modul: THE BADGE, again. go() below learned that "Mail" renders as "Mail 3"
+  // with something unclaimed; this read the raw text, so every geometry check
+  // printed "FAIL nav has no button for: Mail" and then "ok Mail" on the next
+  // line - whenever a previous exercise run had left the fixture a message.
   const navLabels = await page.evaluate(() =>
     [...document.querySelectorAll('header button')]
-      .map((b) => b.textContent.trim())
+      .map((b) => b.textContent.trim().replace(/\s*\d+$/, ''))
       .filter((t) => t.length > 0),
   );
   return {

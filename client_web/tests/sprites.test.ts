@@ -86,7 +86,11 @@ describe('races', () => {
     // change from fixing what a player reads, and only the second one was a
     // bug (see races.ts). This assertion had been pinning the internal name to
     // the display layer and failing ever since.
-    expect(raceName(6)).toBe('Bes');
+    //
+    // And the display names are English now (2026-09-13): Fairy, Vodyanoy, Bies.
+    expect(raceName(2)).toBe('Fairy');
+    expect(raceName(5)).toBe('Vodyanoy');
+    expect(raceName(6)).toBe('Bies');
   });
 
   it('reads the unlock bitmask from bit (raceId - 1)', () => {

@@ -83,6 +83,7 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   33: 'They have already married into your line. Everybody marries once.',
   34: 'Not enough gold for this pairing.',
   35: 'A child was born - find it in the Hall of Ancestors.',
+  36: 'The pairing could not be completed - nothing was spent. Try again.',
 };
 
 export const COMMAND_RESULT_SUCCESS = 0;

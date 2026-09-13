@@ -435,5 +435,40 @@ namespace FolkIdle.Server.Tests
                 new[] { Guid.Empty, Guid.Empty },
                 new[] { Guid.Empty, Guid.Empty }));
         }
+
+        /// <summary>
+        /// Modul: the case the old comment CLAIMED and the code missed. An
+        /// uncle's parents are his niece's grandparents, so comparing
+        /// grandparents with grandparents never finds them.
+        /// </summary>
+        [Fact]
+        public void AnUncleAndHisNieceAreRelated()
+        {
+            var grandfather = Guid.NewGuid();
+            var grandmother = Guid.NewGuid();
+            var uncle = Guid.NewGuid();
+            var sibling = Guid.NewGuid();   // the niece's father, the uncle's brother
+            var niece = Guid.NewGuid();
+
+            Assert.True(BreedingAptitudes.AreRelated(
+                uncle, grandfather, grandmother,
+                niece, sibling, null,
+                new[] { Guid.NewGuid(), Guid.NewGuid() },
+                new[] { grandfather, grandmother }));
+        }
+
+        [Fact]
+        public void AGrandparentAndGrandchildAreRelated()
+        {
+            var grandmother = Guid.NewGuid();
+            var father = Guid.NewGuid();
+            var grandchild = Guid.NewGuid();
+
+            Assert.True(BreedingAptitudes.AreRelated(
+                grandmother, null, null,
+                grandchild, father, null,
+                null,
+                new[] { grandmother, Guid.Empty }));
+        }
     }
 }

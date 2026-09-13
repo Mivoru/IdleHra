@@ -73,16 +73,22 @@ namespace FolkIdle.Server.Engine
         public static bool IsPlayableRace(byte raceId) => raceId >= RaceIds.Human && raceId <= RaceIds.Moosleute;
 
         // Display name for the unlock notification and the roster UI.
+        //
+        // Modul: ENGLISH NAMES, matching client_web/src/lib/ui/races.ts. This
+        // used to answer "Kobold" and "Moosleute" - the internal identifiers,
+        // which no piece of art or design document calls these races - and the
+        // Czech spellings Vila and Vodnik. The identifiers stay; only what a
+        // player reads changed (2026-09-13).
         public static string GetRaceName(byte raceId)
         {
             return raceId switch
             {
                 RaceIds.Human => "Human",
-                RaceIds.Vila => "Vila",
+                RaceIds.Vila => "Fairy",
                 RaceIds.Draugr => "Draugr",
-                RaceIds.Kobold => "Kobold",
-                RaceIds.Vodnik => "Vodnik",
-                RaceIds.Moosleute => "Moosleute",
+                RaceIds.Kobold => "Leshy",
+                RaceIds.Vodnik => "Vodyanoy",
+                RaceIds.Moosleute => "Bies",
                 _ => "Unknown"
             };
         }

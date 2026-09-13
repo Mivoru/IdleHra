@@ -230,6 +230,15 @@ namespace FolkIdle.Server.Engine
         public long PlayerId;
         public System.Guid ChildCharacterId;
         public long GeneticVector;
+
+        /// <summary>
+        /// The price BreedingEngine already debited from CommodityRecords["gold"].
+        /// The tick moves the session's CurrentGold by this and NOT the pending
+        /// delta - the row is already right, and banking it again would charge
+        /// twice (CLAUDE.md, "two gold paths"). Without it the header kept
+        /// showing the pre-breeding balance for the rest of the session.
+        /// </summary>
+        public long GoldSpent;
     }
 
     public struct WorldBossAttemptUpdateNotification

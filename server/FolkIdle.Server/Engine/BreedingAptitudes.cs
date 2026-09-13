@@ -350,8 +350,20 @@ namespace FolkIdle.Server.Engine
 
         /// <summary>
         /// Whether two candidates are close enough to count as inbreeding:
-        /// they share a parent, or one is the other's parent, or they share a
-        /// grandparent.
+        /// anybody within two generations appears on both sides.
+        ///
+        /// Each side is the person, their parents and their grandparents, and
+        /// the pair is related when the two sets overlap. That one rule covers
+        /// parent and child, grandparent and grandchild, full and half
+        /// siblings, an aunt or uncle with a niece or nephew, and cousins.
+        ///
+        /// Modul: THE OLD VERSION CLAIMED THE AUNT/UNCLE CASE AND MISSED IT. It
+        /// compared grandparents only with grandparents - but an uncle's
+        /// PARENTS are his niece's GRANDPARENTS, so the two lists never share an
+        /// id and the pair read as strangers. A grandparent and grandchild slipped
+        /// through the same gap. And nothing called this at all: the engine and
+        /// the preview each carried an inline copy that stopped at siblings, so
+        /// cousins bred at full mutation odds. See BreedingRelatedness.
         ///
         /// Two levels and no further. A deeper walk would need the whole
         /// pedigree loaded per pairing, and at fourteen roster slots almost
@@ -364,34 +376,30 @@ namespace FolkIdle.Server.Engine
             Guid[]? aGrandparents = null,
             Guid[]? bGrandparents = null)
         {
-            // Parent and child.
-            if (aFather == bId || aMother == bId) return true;
-            if (bFather == aId || bMother == aId) return true;
-
-            // Full or half siblings.
-            if (SharesA(aFather, bFather, bMother)) return true;
-            if (SharesA(aMother, bFather, bMother)) return true;
-
-            // A shared grandparent - cousins, and an aunt or uncle pairing.
-            if (aGrandparents is not null && bGrandparents is not null)
-            {
-                foreach (Guid g in aGrandparents)
-                {
-                    if (g == Guid.Empty) continue;
-                    foreach (Guid h in bGrandparents)
-                    {
-                        if (g == h) return true;
-                    }
-                }
-            }
-
-            return false;
+            var aSide = Kin(aId, aFather, aMother, aGrandparents);
+            var bSide = Kin(bId, bFather, bMother, bGrandparents);
+            return aSide.Overlaps(bSide);
         }
 
-        private static bool SharesA(Guid? candidate, Guid? otherFather, Guid? otherMother)
+        private static System.Collections.Generic.HashSet<Guid> Kin(Guid self, Guid? father, Guid? mother, Guid[]? grandparents)
         {
-            if (candidate is null || candidate == Guid.Empty) return false;
-            return candidate == otherFather || candidate == otherMother;
+            var kin = new System.Collections.Generic.HashSet<Guid>();
+
+            // An empty id is an unknown slot in the pedigree, never an ancestor
+            // two strangers happen to share.
+            void Add(Guid? id)
+            {
+                if (id is { } value && value != Guid.Empty) kin.Add(value);
+            }
+
+            Add(self);
+            Add(father);
+            Add(mother);
+            if (grandparents is not null)
+            {
+                foreach (Guid g in grandparents) Add(g);
+            }
+            return kin;
         }
     }
 }
