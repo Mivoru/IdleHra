@@ -259,9 +259,21 @@ export async function register(
  * indistinguishable, because any difference rebuilds the account enumeration
  * oracle that /api/v1/auth/check-email was deleted for. The server answers 200
  * regardless for the same reason.
+ *
+ * Modul: RESOLVES TO WHETHER THE SERVER CAN SEND MAIL AT ALL - a fact about the
+ * server, identical for every address, so still no oracle. Production ran
+ * without a mail provider and this screen promised every player a link that
+ * could never arrive. Unknown (an old server, a network failure) reads as
+ * "can send", so this never invents an outage.
  */
-export async function requestPasswordReset(email: string): Promise<void> {
-  await postJson('/api/v1/auth/request-password-reset', { email }).catch(() => undefined);
+export async function requestPasswordReset(email: string): Promise<boolean> {
+  try {
+    const response = await postJson('/api/v1/auth/request-password-reset', { email });
+    const body = (await response.json().catch(() => null)) as { EmailDelivery?: boolean } | null;
+    return body?.EmailDelivery !== false;
+  } catch {
+    return true;
+  }
 }
 
 /**

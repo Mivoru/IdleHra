@@ -52,10 +52,13 @@
   async function askForLink() {
     busy = true;
     error = '';
-    await requestPasswordReset(email);
+    const canSend = await requestPasswordReset(email);
     busy = false;
-    notice =
-      'If that address has an account, a reset link is on its way. It is good for one hour.';
+    // The server says whether it can send mail at ALL - the same answer for
+    // every address - so telling the truth here reveals nothing about accounts.
+    notice = canSend
+      ? 'If that address has an account, a reset link is on its way. It is good for one hour.'
+      : 'Password reset by email is not available on this server yet, so no link was sent. Contact the game admin to recover your account.';
   }
 
   async function applyNewPassword() {

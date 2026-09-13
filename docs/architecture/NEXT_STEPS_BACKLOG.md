@@ -68,7 +68,29 @@ coach and chat (z 40) despite z 1401 - an ancestor stacking context - so the
 sheet is portalled to `<body>`, and the hardware back button closes it.
 Final exercise 141/142, the one failure the known loot-panel timing flake.
 
-**Round 2 material, observed but deliberately untouched:** a newcomer's genome
+**DEPLOYED 2026-09-13** (b181837). Backup first: `~/backups/pre-celtic-names-20260913T173954Z.sql`.
+Live `--migrate` renamed 92 characters; production smoke 26/26.
+
+**Found in the production log the same evening - EMAIL:**
+- **A guest could never register on the same device.** The client sends its
+  stored deviceId, which "Play as guest" had already bound to an anonymous
+  account; `IX_PlayerRecords_DeviceId` collided and registration answered 500
+  (three attempts in eight seconds, 18:36). The new account is now created
+  without a device binding when the device belongs to someone else - the guest
+  keeps it, because it is that account's only credential.
+  `EmailRegistrationDeviceTests` failed first, then passed.
+- **Password reset cannot send mail in production.** `FOLKIDLE_RESEND_API_KEY`
+  and `FOLKIDLE_MAIL_FROM` are not in `ops/oracle/.env`, so `DisabledEmailSender`
+  refuses every send while the screen promised "a reset link is on its way".
+  The request endpoint now answers `{ EmailDelivery }` - a fact about the server,
+  identical for every address, so no enumeration oracle - and the screen says
+  plainly when no link was sent. **Still needs the owner:** a Resend account and
+  a verified sending domain, then the two values in `.env` and a restart.
+
+**Round 2 material, observed but deliberately untouched:** `IsInbred` also
+multiplies attribute growth by 0.75 for the character's whole life
+(`RaceAttributeGrowth`), which neither the preview nor docs/breeding_model.md
+mentions - and round 1 made cousins count as inbred. A newcomer's genome
 has zero Speed/Crit/Yield, so marrying the village (the recommended strategy)
 dilutes genes; gene "mutation" XORs the low five bits, so it can turn 31 into 0;
 its rate shrinks per generation; the epic mutation is +1 to four numbers.

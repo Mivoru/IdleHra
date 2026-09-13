@@ -8361,6 +8361,15 @@ namespace FolkIdle.Server.Network
         /// </summary>
         private async Task HandleRequestPasswordReset(HttpListenerContext context)
         {
+            // Modul: WHETHER THIS SERVER CAN SEND MAIL AT ALL, told to the client.
+            //
+            // Production ran for weeks with no provider configured, and the
+            // screen told every player "a reset link is on its way" - a promise
+            // nothing could keep. This answers a question about the SERVER, not
+            // about the address: it is the same value for every request, known
+            // and unknown accounts alike, so it rebuilds no enumeration oracle.
+            bool emailDelivery = _serviceProvider.GetService<Engine.IEmailSender>() is not (null or Engine.DisabledEmailSender);
+
             try
             {
                 string email = string.Empty;
@@ -8408,20 +8417,33 @@ namespace FolkIdle.Server.Network
                     }
                 }
 
-                context.Response.StatusCode = 200;
-                context.Response.Close();
+                await WriteResetRequestAnswerAsync(context, emailDelivery);
             }
             catch (Exception ex)
             {
                 // Logged without the address, for the same reason the provider
                 // failure path does not log it.
                 Console.WriteLine("Password reset request error: " + ex.Message);
-                // STILL 200. An exception that answered 500 for known addresses
-                // and 200 for unknown ones would be the oracle again, wearing a
-                // status code.
-                context.Response.StatusCode = 200;
-                context.Response.Close();
+                // STILL 200, with the same body. An exception that answered 500
+                // for known addresses and 200 for unknown ones would be the
+                // oracle again, wearing a status code.
+                try
+                {
+                    await WriteResetRequestAnswerAsync(context, emailDelivery);
+                }
+                catch
+                {
+                    context.Response.Close();
+                }
             }
+        }
+
+        private static async Task WriteResetRequestAnswerAsync(HttpListenerContext context, bool emailDelivery)
+        {
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            await JsonSerializer.SerializeAsync(context.Response.OutputStream, new { EmailDelivery = emailDelivery });
+            context.Response.Close();
         }
 
         /// <summary>

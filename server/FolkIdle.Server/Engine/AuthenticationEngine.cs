@@ -723,13 +723,29 @@ namespace FolkIdle.Server.Engine
                 {
                     Guid characterId = Guid.NewGuid();
 
+                    // Modul: A DEVICE THAT ALREADY BELONGS TO SOMEBODY IS NOT BOUND.
+                    //
+                    // The client sends its stored deviceId, and "Play as guest"
+                    // provisioned an anonymous account against that very id - so
+                    // every player who tried the game before making an account hit
+                    // IX_PlayerRecords_DeviceId and got a 500, found live on
+                    // 2026-09-13 (EmailRegistrationDeviceTests). The guest keeps the
+                    // device, because it is that account's only credential; the new
+                    // account is reached by its email, password and session token.
+                    // LoginWithEmailAsync already skips a rebind the same way.
+                    string? boundDeviceId = string.IsNullOrWhiteSpace(deviceId) ? null : deviceId;
+                    if (boundDeviceId != null && await db.PlayerRecords.AnyAsync(p => p.DeviceId == boundDeviceId))
+                    {
+                        boundDeviceId = null;
+                    }
+
                     var player = new PlayerRecord
                     {
                         CurrentLevel = 1,
                         CurrentXp = 0L,
                         SelectedLineageId = 1,
                         PlayerGuid = characterId,
-                        DeviceId = string.IsNullOrWhiteSpace(deviceId) ? null : deviceId,
+                        DeviceId = boundDeviceId,
                         Email = normalizedEmail,
                         Username = trimmedUsername,
                         PasswordHash = passwordHash,
@@ -781,7 +797,10 @@ namespace FolkIdle.Server.Engine
                         return (EmailRegisterOutcome.UsernameInUse, 0L, Guid.Empty);
                     }
 
-                    Console.WriteLine($"Email registration failed: {ex.Message}");
+                    // Named, so a collision the check above cannot explain (two
+                    // registrations racing for one device) is not "saving the
+                    // entity changes" again with nothing to say which index.
+                    Console.WriteLine($"Email registration failed on unique index '{constraintName}': {ex.Message}");
                     return (EmailRegisterOutcome.Failed, 0L, Guid.Empty);
                 }
             });
