@@ -131,6 +131,32 @@ the `VITE_FOLKIDLE_SERVER` build arg in `docker-compose.yml`, and
 server address into the bundle**. A static build has no runtime configuration;
 changing the hostname is a rebuild, not a restart.
 
+**`folkidle.cz` (registered 2026-09-13 at WEDOS) is served BESIDE the old names,
+not instead of them.** It was bought for mail - Resend verifies a domain you
+control, which duckdns.org and sslip.io are not - and the installed APK has
+`folkidle.duckdns.org` compiled into its bundle, so that name has to keep
+answering until a new build ships. Adding a name is smaller than swapping one:
+
+1. At WEDOS, the `@` and `www` **A** records point at `92.5.0.94`, and the
+   **AAAA** records WEDOS creates by default are **deleted** - this box has no
+   IPv6, and a leftover AAAA sends IPv6 players to WEDOS's parking page.
+2. Only once `Resolve-DnsName folkidle.cz -Server 8.8.8.8` answers `92.5.0.94`:
+   the site address in `caddy/Caddyfile` lists the new names (failed HTTP-01
+   challenges against a name still parked elsewhere count toward Let's
+   Encrypt's per-hostname limit, so never add it early), and
+   `FOLKIDLE_WEB_ORIGINS` in `.env` gains `https://folkidle.cz` and
+   `https://www.folkidle.cz` - without them sign-in from the new address fails
+   CORS and looks like a dead server.
+3. `docker compose up -d` (the Caddyfile directory is bind-mounted, so no image
+   rebuild) and watch `docker compose logs -f caddy` for the certificate.
+
+`VITE_FOLKIDLE_SERVER` can stay on the duckdns name, but understand what that
+means: a page served from `folkidle.cz` then calls the API and opens its socket
+on `folkidle.duckdns.org` - a CROSS-origin request, which works only because
+step 2 puts `https://folkidle.cz` in `FOLKIDLE_WEB_ORIGINS`. Same box, not the
+same origin. Moving the bundle to `folkidle.cz` makes it same-origin again; that
+is a separate, later rebuild - and a new APK.
+
 ## Getting the code onto the box
 
 **`git pull` on the box does not work, and has not since it was re-provisioned.**

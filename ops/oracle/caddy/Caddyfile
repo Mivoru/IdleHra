@@ -19,8 +19,18 @@
 # Certificate issuance needs port 80 reachable from the internet for the HTTP-01
 # challenge - BOTH the instance iptables and the Oracle Security List. Opening
 # one and not the other looks exactly like a dead server.
+#
+# Modul: folkidle.cz, 2026-09-13 - the game's own domain, bought for mail (Resend
+# will not verify a duckdns.org or sslip.io name) and served here BESIDE the two
+# old names rather than instead of them: the installed APK has
+# folkidle.duckdns.org compiled into its bundle, and dropping that name would
+# strand every phone until a new build shipped. ADD THIS NAME ONLY ONCE ITS A
+# RECORD POINTS AT THIS BOX - Caddy asks Let's Encrypt for a certificate on
+# reload, and failed HTTP-01 challenges against a name still parked elsewhere
+# count toward the per-hostname failure limit. `www` is served, not redirected,
+# for the same no-surprises reason.
 
-folkidle.duckdns.org, 92-5-0-94.sslip.io {
+folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	encode gzip
 
 	# THESE ARE `handle` BLOCKS, AND THAT IS LOAD-BEARING.
