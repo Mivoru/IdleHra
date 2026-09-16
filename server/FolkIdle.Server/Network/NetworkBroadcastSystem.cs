@@ -1099,6 +1099,14 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: the trait catalogue. Served, never copied: the client
+                    // renders what this says, so a new trait is a server change only.
+                    if (requestPath == "/api/v1/breeding/traits" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleBreedingTraits(context);
+                        continue;
+                    }
+
                     // Modul: the Book of Deeds. Five chapters, their live
                     // counters, and the Seals - which are BANKED on this read,
                     // because a Seal grants permanent skill points and a client
@@ -4361,6 +4369,7 @@ namespace FolkIdle.Server.Network
                         v.AptitudeFortune,
                         v.ArrivedAtEpoch,
                         v.IsElder,
+                        v.TraitMask,
                     }),
                 };
 
@@ -4600,6 +4609,7 @@ namespace FolkIdle.Server.Network
                             GenerationIndex = lineage?.GenerationIndex ?? 0,
                             IsEpicMutation = lineage?.IsEpicMutation ?? false,
                             IsInbred = lineage?.IsInbred ?? false,
+                            TraitMask = lineage?.TraitMask ?? 0L,
                             IsKept = lineage?.IsKeptAtRollover ?? false,
                             WouldCarry = carried.Contains(c.Id),
                             IsMainCharacter = c.Id == player.PlayerGuid,
@@ -4713,6 +4723,34 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
+        private async Task HandleBreedingTraits(HttpListenerContext context)
+        {
+            try
+            {
+                var catalogue = Engine.TraitRegistry.All.Select(t => new
+                {
+                    Id = t.Bit,
+                    t.Key,
+                    t.Name,
+                    t.Description,
+                    Rarity = t.Rarity.ToString(),
+                    Effect = t.Effect.ToString(),
+                    t.Value,
+                }).ToList();
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, catalogue);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Breeding traits error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
         private sealed class GenePreviewLocusResponse
         {
             public string LocusName { get; set; } = string.Empty;
@@ -4738,6 +4776,13 @@ namespace FolkIdle.Server.Network
             public int PredictedMax { get; set; }
         }
 
+        private sealed class TraitOddsResponse
+        {
+            public int TraitId { get; set; }
+            public int ChancePct { get; set; }
+            public string Source { get; set; } = string.Empty;
+        }
+
         private sealed class BreedingPreviewResponse
         {
             public bool IsEligible { get; set; }
@@ -4747,6 +4792,9 @@ namespace FolkIdle.Server.Network
             public bool HasSufficientGold { get; set; }
             public System.Collections.Generic.List<GenePreviewLocusResponse> Loci { get; set; } = new();
             public System.Collections.Generic.List<AptitudePreviewResponse> Aptitudes { get; set; } = new();
+            public System.Collections.Generic.List<TraitOddsResponse> TraitOdds { get; set; } = new();
+            public int MutationChancePct { get; set; }
+            public int FlawChancePct { get; set; }
         }
 
         private static void AddAptitudePreviews(
@@ -4765,6 +4813,23 @@ namespace FolkIdle.Server.Network
                 });
             }
         }
+
+        private static void AddTraitPreviews(BreedingPreviewResponse response, long heroMask, long partnerMask, int groundsLevel)
+        {
+            foreach (var odds in Engine.BreedingTraits.PreviewOdds(heroMask, partnerMask))
+            {
+                response.TraitOdds.Add(new TraitOddsResponse { TraitId = odds.Bit, ChancePct = odds.ChancePct, Source = odds.Source });
+            }
+            response.MutationChancePct = Engine.BreedingTraits.MutationPercentFor(groundsLevel);
+            response.FlawChancePct = Engine.BreedingTraits.FlawPercentFor(response.IsInbredRisk);
+        }
+
+        private static async Task<int> BreedingGroundsLevelAsync(FolkIdleDbContext db, long playerId)
+            => await db.VillageInfrastructures
+                .AsNoTracking()
+                .Where(v => v.PlayerId == playerId && v.BuildingId == Domain.Progression.VillageManagementEngine.BreedingGroundsBuildingId)
+                .Select(v => (int?)v.CurrentLevel)
+                .SingleOrDefaultAsync() ?? 0;
 
         // Modul 13.4.3: read-only preview of ExecuteBreedingAsync's outcome -
         // never writes to the DB. Mirrors that engine's own ownership,
@@ -4854,6 +4919,7 @@ namespace FolkIdle.Server.Network
 
                 AddLocusPreview(response.Loci, "Race", pVec.LocusRace, mVec.LocusRace, maxGen);
                 AddAptitudePreviews(response.Aptitudes, pLineage.AptitudeVector(), mLineage.AptitudeVector());
+                AddTraitPreviews(response, pLineage.TraitMask, mLineage.TraitMask, await BreedingGroundsLevelAsync(db, playerId));
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
@@ -4944,6 +5010,7 @@ namespace FolkIdle.Server.Network
 
                 AddLocusPreview(response.Loci, "Race", heroVec.LocusRace, villagerVec.LocusRace, maxGen);
                 AddAptitudePreviews(response.Aptitudes, heroLineage.AptitudeVector(), newcomer.AptitudeVector());
+                AddTraitPreviews(response, heroLineage.TraitMask, newcomer.TraitMask, await BreedingGroundsLevelAsync(db, playerId));
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
