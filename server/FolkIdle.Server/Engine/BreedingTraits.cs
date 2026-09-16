@@ -124,6 +124,14 @@ namespace FolkIdle.Server.Engine
             long mask = 0L;
             int count = 0;
 
+            // Modul: every Flaw candidate is added before the cap check below
+            // even runs, with no cap of its own on this loop. Safe only because
+            // TraitRegistry.OfRarity(Flaw).Count == TraitRegistry.MaxTraitsPerCharacter
+            // (3 == 3) - a child can never actually be offered more flaw
+            // candidates than the cap allows, since there are only three flaws
+            // in existence. Adding a fourth Flaw trait to the registry would
+            // silently break that; TraitRegistryTests/NoChildEverCarriesMoreThanThree
+            // would catch the resulting overshoot, but this loop would not.
             foreach (var c in candidates.Where(c => TraitRegistry.IsFlaw(c.Bit)))
             {
                 mask |= 1L << c.Bit;

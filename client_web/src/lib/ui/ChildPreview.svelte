@@ -7,10 +7,12 @@
   // partners - so the explanation belongs where the choice is made, attached to
   // the actual numbers of the actual pair.
   //
-  // Every figure below is either sent by the preview endpoint or computed from
-  // two numbers it already sent. NOTHING NEW IS ASKED OF THE WIRE - see
-  // ui/breeding.ts, which mirrors the server's own constants the same way
-  // net/commands.ts already mirrors BonusPercentFor.
+  // Every aptitude figure below is either sent by the preview endpoint or
+  // computed from two numbers it already sent - see ui/breeding.ts, which
+  // mirrors the server's own constants the same way net/commands.ts already
+  // mirrors BonusPercentFor. The traits section below DID ask for something
+  // new on the wire, 2026-09-13: TraitOdds, MutationChancePct and
+  // FlawChancePct are all preview-endpoint additions, not derived client-side.
   //
   // Shared by both tabs. The two pairings differ in what a partner IS and in
   // what the pairing costs afterwards, not in how a child is made, and having
@@ -19,7 +21,8 @@
   // the drift roll and the epic roll both can, by one).
   //
   // Vocabulary is docs/breeding_model.md section 0: APTITUDE, BLOODLINE, GENE
-  // (never "locus"), COPY (never "allele"), NEWCOMER then ELDER.
+  // (never "locus", and there is only one gene left - Race), COPY (never
+  // "allele"), TRAIT (never "gene" or "stat"), NEWCOMER then ELDER.
   import type { BreedingPreview, TraitDefinition } from '../net/rest';
   import { APTITUDE_MAX, aptitudeBonusPercent } from '../net/commands';
   import { breedingCostFor, driftOdds, epicChancePercent, inheritChancePercent } from './breeding';

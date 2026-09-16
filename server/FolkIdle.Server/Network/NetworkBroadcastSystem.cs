@@ -4727,6 +4727,20 @@ namespace FolkIdle.Server.Network
         {
             try
             {
+                // Modul: static content, not per-player data - same convention
+                // as HandleStoreCatalog/HandleCodexRegionsSnapshot. Nothing
+                // player-specific is returned, but every sibling handler still
+                // 401s an unauthenticated request rather than serving anyone
+                // who can reach the port, and the client always calls this
+                // through authedGet anyway.
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
                 var catalogue = Engine.TraitRegistry.All.Select(t => new
                 {
                     Id = t.Bit,
