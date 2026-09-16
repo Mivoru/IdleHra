@@ -49,9 +49,15 @@ Two defects retired along with the genes:
 Task 13 (this plan's final task) added `exercise.mjs` assertions that the
 Breeding preview names the traits a child can inherit and states the mutation
 chance, and confirmed the string "And its genes" no longer appears anywhere on
-that screen. **Not yet deployed** - see the plan's Step 5, which needs the
-owner's go-ahead and a backup of `characters`, `character_lineage_registry` and
-`village_newcomers` first.
+that screen.
+
+**DEPLOYED 2026-09-16** (14bc2a3, PR #1). Backup first:
+`~/backups/pre-breeding-traits-round2-20260916T213836Z.sql` on the box
+(`characters`, `character_lineage_registry`, `village_newcomers` via a
+`postgres:17` throwaway container - the box has no `pg_dump`, and `postgres:16`
+refuses a 17.6 server). App log confirmed `Database migrations applied
+successfully.` and a clean cold-boot reconstruction of 43 sessions; production
+smoke 26/26, including Breeding, Ancestors and Village.
 
 ## Standing traps this added
 
