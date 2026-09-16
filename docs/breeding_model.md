@@ -157,8 +157,9 @@ ceiling — can add one more random trait, weighted 70% common / 25% rare / 5%
 legendary. An **epic** birth instead guarantees one new trait weighted 80%
 rare / 20% legendary — never a common, never a flaw. Every flaw rolled always
 survives to the child; among the rest, the highest-rarity traits fill the
-remaining slots up to the cap of **three**, ties broken toward a newly-rolled
-trait and then at random.
+remaining slots up to the cap of **three** — at equal rarity an inherited
+trait always beats a newly-rolled one, and only a tie between two candidates
+of the same origin (both inherited, or both new) is broken at random.
 
 **What a newcomer brings:** a newcomer rolls **zero or one** trait, at a
 chance of `20% + 3% per Inn level`, capped at **50%**. Of that roll, **15%**

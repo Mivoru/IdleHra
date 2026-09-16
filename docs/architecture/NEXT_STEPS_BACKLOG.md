@@ -50,6 +50,22 @@ that screen. **Not yet deployed** - see the plan's Step 5, which needs the
 owner's go-ahead and a backup of `characters`, `character_lineage_registry` and
 `village_newcomers` first.
 
+## Standing traps this added
+
+- **A `check:overlap` finding is not evidence against whatever you just
+  touched.** Task 13 saw `Village: button:"Upgrade" is covered by
+  button:"Got it"` at 1500px and the first suspect was this plan's own trait
+  badges, added one task earlier to `VillageFolk.svelte`'s newcomer list.
+  Measurement said otherwise: `Village.svelte`'s `.grid` lays the newcomer list
+  and the buildings `<section>` out as independent sibling columns
+  (`grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr))`), not a
+  stacked flow, so the buildings column's "Upgrade" button sat at the same
+  pixel whether the newcomer list measured 448px or 5709px tall. The real
+  cause is the buildings column's own ~566px height coincidentally landing
+  inside `OnboardingCoach.svelte`'s currently-queued fixed band - a
+  pre-existing, fixture-state-dependent flake the checker's own header comment
+  already warns about, unrelated to breeding and not fixed here.
+
 ---
 
 # HANDOFF 2026-09-13 - breeding round 1 of 3: the pickers, the audit, the names
