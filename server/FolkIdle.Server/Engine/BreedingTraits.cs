@@ -130,7 +130,7 @@ namespace FolkIdle.Server.Engine
             // (3 == 3) - a child can never actually be offered more flaw
             // candidates than the cap allows, since there are only three flaws
             // in existence. Adding a fourth Flaw trait to the registry would
-            // silently break that; TraitRegistryTests/NoChildEverCarriesMoreThanThree
+            // silently break that; BreedingTraitsTests/NoChildEverCarriesMoreThanThree
             // would catch the resulting overshoot, but this loop would not.
             foreach (var c in candidates.Where(c => TraitRegistry.IsFlaw(c.Bit)))
             {
