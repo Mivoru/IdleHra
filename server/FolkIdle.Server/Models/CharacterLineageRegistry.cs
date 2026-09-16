@@ -37,6 +37,11 @@ namespace FolkIdle.Server.Models
         // apply a -25% level-up growth penalty for this character's lifetime.
         public bool IsInbred { get; set; }
 
+        // Modul: HERITABLE TRAITS, one bit each - see TraitRegistry for the
+        // table, which is a persisted format and never renumbered. Zero for
+        // every character that existed before traits; nothing is backfilled.
+        public long TraitMask { get; set; }
+
         // Modul: APTITUDES. Four values a lineage carries and improves across
         // generations - Strength (combat), Skill (gathering and crafting),
         // Endurance (health and armour), Fortune (luck). See

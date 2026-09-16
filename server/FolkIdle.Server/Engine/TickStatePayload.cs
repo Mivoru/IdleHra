@@ -111,6 +111,11 @@ namespace FolkIdle.Server.Engine
         // access from StatsCalculator/gathering every tick - never re-derived
         // from GeneticVector on the hot path.
         public bool IsEpicMutation;
+
+        // Modul: the active character's trait bits, hydrated beside the
+        // aptitudes and read through TraitTotals.From on the tick - never from
+        // the database on the hot path.
+        public long TraitMask;
         public int LocusSpeed;
         public int LocusCrit;
         public int LocusYield;

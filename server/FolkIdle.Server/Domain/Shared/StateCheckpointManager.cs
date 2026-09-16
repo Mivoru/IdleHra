@@ -1167,6 +1167,7 @@ namespace FolkIdle.Server.Domain.Shared
                     payload.LocusYield = slot1GeneVec.LocusYield.Dominant;
                     payload.IsEpicMutation = slot1Lineage.IsEpicMutation;
                     payload.IsInbred = slot1Lineage.IsInbred;
+                    payload.TraitMask = slot1Lineage.TraitMask;
                 }
             }
             if (characters.Count > 1)
