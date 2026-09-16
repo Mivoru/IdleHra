@@ -59,6 +59,18 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        [Fact]
+        public void GrowthNoLongerReadsGenesOrTheHiddenInbreedingPenalty()
+        {
+            string growth = SourceOf("Engine/RaceAttributeGrowth.cs");
+            Assert.DoesNotContain("LocusSpeed", growth);
+            Assert.DoesNotContain("IsInbred", growth);
+
+            string payload = SourceOf("Engine/TickStatePayload.cs");
+            Assert.DoesNotContain("public int LocusSpeed", payload);
+            Assert.DoesNotContain("public bool IsInbred", payload);
+        }
+
         private static string SourceOf(string relativePath)
         {
             var dir = new DirectoryInfo(Directory.GetCurrentDirectory());

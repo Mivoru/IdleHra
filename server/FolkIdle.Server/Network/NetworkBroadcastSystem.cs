@@ -4274,12 +4274,7 @@ namespace FolkIdle.Server.Network
             public int AptitudeFortune { get; set; }
             public int LocusRaceDominant { get; set; }
             public int LocusRaceRecessive { get; set; }
-            public int LocusSpeedDominant { get; set; }
-            public int LocusSpeedRecessive { get; set; }
-            public int LocusCritDominant { get; set; }
-            public int LocusCritRecessive { get; set; }
-            public int LocusYieldDominant { get; set; }
-            public int LocusYieldRecessive { get; set; }
+            public long TraitMask { get; set; }
         }
 
         // Modul 13.4.3: the player's own bred/breedable character roster, for
@@ -4701,12 +4696,7 @@ namespace FolkIdle.Server.Network
                         AptitudeFortune = lineage.AptitudeFortune,
                         LocusRaceDominant = geneVec.LocusRace.Dominant,
                         LocusRaceRecessive = geneVec.LocusRace.Recessive,
-                        LocusSpeedDominant = geneVec.LocusSpeed.Dominant,
-                        LocusSpeedRecessive = geneVec.LocusSpeed.Recessive,
-                        LocusCritDominant = geneVec.LocusCrit.Dominant,
-                        LocusCritRecessive = geneVec.LocusCrit.Recessive,
-                        LocusYieldDominant = geneVec.LocusYield.Dominant,
-                        LocusYieldRecessive = geneVec.LocusYield.Recessive
+                        TraitMask = lineage.TraitMask
                     });
                 }
 
@@ -4863,9 +4853,6 @@ namespace FolkIdle.Server.Network
                 response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
 
                 AddLocusPreview(response.Loci, "Race", pVec.LocusRace, mVec.LocusRace, maxGen);
-                AddLocusPreview(response.Loci, "Speed", pVec.LocusSpeed, mVec.LocusSpeed, maxGen);
-                AddLocusPreview(response.Loci, "Crit", pVec.LocusCrit, mVec.LocusCrit, maxGen);
-                AddLocusPreview(response.Loci, "Yield", pVec.LocusYield, mVec.LocusYield, maxGen);
                 AddAptitudePreviews(response.Aptitudes, pLineage.AptitudeVector(), mLineage.AptitudeVector());
 
                 context.Response.StatusCode = 200;
@@ -4956,9 +4943,6 @@ namespace FolkIdle.Server.Network
                 response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
 
                 AddLocusPreview(response.Loci, "Race", heroVec.LocusRace, villagerVec.LocusRace, maxGen);
-                AddLocusPreview(response.Loci, "Speed", heroVec.LocusSpeed, villagerVec.LocusSpeed, maxGen);
-                AddLocusPreview(response.Loci, "Crit", heroVec.LocusCrit, villagerVec.LocusCrit, maxGen);
-                AddLocusPreview(response.Loci, "Yield", heroVec.LocusYield, villagerVec.LocusYield, maxGen);
                 AddAptitudePreviews(response.Aptitudes, heroLineage.AptitudeVector(), newcomer.AptitudeVector());
 
                 context.Response.StatusCode = 200;
