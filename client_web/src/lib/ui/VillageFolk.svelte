@@ -195,12 +195,27 @@
     color: var(--warn);
   }
 
+  /* Modul: capped, not just gappy. An unbounded list here grows with the
+     village (and, since Task 12, with per-row trait badges) - it had reached
+     94 rows / ~5700px on the dev fixture. Bounding it keeps this panel's own
+     DOM sane and matches PersonPicker.svelte's 28rem for the same kind of
+     per-row-with-badges list. NOTE: this does NOT, on its own, resolve the
+     check:overlap finding where Village's "Upgrade" sits under the coach's
+     "Got it" at 1500px - re-verified directly that the buildings section's
+     button positions are IDENTICAL capped or not, because Village.svelte's
+     `.grid` lays this panel and the buildings section out as independent,
+     `align-items: start` grid columns, not a single stacked flow, at that
+     width. That overlap is the buildings list's own height coinciding with
+     OnboardingCoach's fixed band; see the Task 13 overlap-fix report. */
   ul {
     display: grid;
     gap: 0.3rem;
     margin: 0;
     padding: 0;
     list-style: none;
+    max-height: 28rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   li {
