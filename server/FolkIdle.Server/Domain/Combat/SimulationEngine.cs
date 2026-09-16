@@ -5082,13 +5082,10 @@ namespace FolkIdle.Server.Domain.Combat
                 effective += (effective * legacyCombatSpeedBonusPct) / 100;
             }
 
-            // Modul: Strength, the bloodline's combat aptitude. On the
-            // pre-armour figure, alongside the inheritance bonus that
-            // ComputeEffectiveMilliAttack already folded in.
-            if (payload.Aptitude_Strength > 0)
-            {
-                effective += (long)(effective * BreedingAptitudes.BonusPercentFor(payload.Aptitude_Strength) / 100f);
-            }
+            // Modul: the bloodline - the Strength aptitude, then attack traits -
+            // on the pre-armour figure. Shared with the offline projection, which
+            // used to skip Strength entirely: see BloodlineBonuses.
+            effective = BloodlineBonuses.ApplyAttack(effective, payload.Aptitude_Strength, TraitTotals.From(payload.TraitMask));
 
             return effective;
         }
@@ -5470,7 +5467,7 @@ namespace FolkIdle.Server.Domain.Combat
                 int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct
                     + SkillTreeRegistry.GetBonusTenthsOfPercent(
                         SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
-                    + (int)BreedingAptitudes.BonusPercentFor(payload.Aptitude_Skill));
+                    + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask)));
                 payload.RequiredProgressTicks = requiredTicks;
                 payload.GatheringProgressTicks++;
 
@@ -5533,18 +5530,17 @@ namespace FolkIdle.Server.Domain.Combat
                             additionalYieldBonus += 20;
                         }
 
-                        // Modul 13.4.3: LocusYield (bred genetic trait, see
-                        // GeneticSplicingEngine/BreedingEngine) adds +4 percentage
-                        // points of extra harvest roll count per point, same units
-                        // as the race-mastery bonuses above.
-                        additionalYieldBonus += payload.LocusYield * 4;
+                        // Modul: yield traits, which replaced the Yield gene on
+                        // 2026-09-13 - percentage points of extra harvest rolls, the
+                        // same units as the race-mastery bonuses above.
+                        additionalYieldBonus += BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask));
 
                         // Modul: LootLuckPct no longer multiplies the roll COUNT
                         // (which previously inflated absolute yield of every
                         // table entry, common trash and rare drops alike, in
                         // fixed proportion - a placebo that never actually
                         // shifted rarity odds). Roll count now stays driven only
-                        // by monolith/race/event/LocusYield bonuses; luck
+                        // by monolith/race/event/trait bonuses; luck
                         // instead adds a flat weight bonus to every entry below,
                         // which mathematically favors low-weight (rare) entries
                         // far more than high-weight (common/trash) ones, since a
@@ -5647,13 +5643,10 @@ namespace FolkIdle.Server.Domain.Combat
             effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
                 SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
 
-            // Modul: Endurance, the bloodline's health aptitude. Layered the
-            // same additive-percent way as inheritance and the tree above it,
-            // and diminishing at the high end - see BreedingAptitudes for why
-            // a flat rate to a cap of fifty would make the leaderboard a
-            // function of account age.
-            effectiveMilliHp += (long)(effectiveMilliHp
-                * BreedingAptitudes.BonusPercentFor(payload.Aptitude_Endurance) / 100f);
+            // Modul: the bloodline's health - Endurance, then health traits -
+            // layered the same additive-percent way as inheritance and the tree
+            // above. Shared with the offline projection: see BloodlineBonuses.
+            effectiveMilliHp = BloodlineBonuses.ApplyMaxHp(effectiveMilliHp, payload.Aptitude_Endurance, TraitTotals.From(payload.TraitMask));
             int effectiveMaxHp = (int)effectiveMilliHp;
 
             // Modul: and the client is told what the bar's maximum IS. Every
