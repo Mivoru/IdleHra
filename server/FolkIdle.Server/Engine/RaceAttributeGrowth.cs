@@ -45,21 +45,14 @@ namespace FolkIdle.Server.Engine
             // a seeded account looks like a played one).
 
             // Modul 13.4.3: an Epic-mutated lineage grants +5% growth per level,
-            // matching StatsCalculator's flat attribute bonus. Positive genetic
-            // loci (bred via GeneticSplicingEngine) add a small further bonus
-            // scaled by their combined magnitude, so a well-bred lineage grows
-            // faster in addition to starting with a higher base line.
-            float geneticMultiplier = 1.0f;
-            if (payload.IsEpicMutation) geneticMultiplier += 0.05f;
-
-            int lociSum = payload.LocusSpeed + payload.LocusCrit + payload.LocusYield;
-            if (lociSum > 0) geneticMultiplier += lociSum * 0.001f;
-
-            // Modul 13.4.3: an inbred lineage (see BreedingEngine's ancestor
-            // check) locks growth down by a heavy -25%, composed multiplicatively
-            // with the epic/loci bonus above so a character can never fully
-            // offset the defect through good breeding luck alone.
-            if (payload.IsInbred) geneticMultiplier *= 0.75f;
+            // matching StatsCalculator's flat attribute bonus.
+            //
+            // Modul: TWO TERMS WENT, 2026-09-13. The Speed/Crit/Yield genes that
+            // added a sliver here were replaced by traits, and the -25% for an
+            // inbred lineage was a lifetime penalty no screen ever mentioned - a
+            // related pair now shows a 60% chance of a visible flaw instead
+            // (BreedingTraits).
+            float geneticMultiplier = payload.IsEpicMutation ? 1.05f : 1.0f;
 
             // Modul: THE POINTS ARE GRANTED, NOT PLACED, 2026-09-06.
             //

@@ -458,7 +458,7 @@ namespace FolkIdle.Server.Engine
                 payload.ToolGatherSpeedPct
                 + SkillTreeRegistry.GetBonusTenthsOfPercent(
                     SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
-                + (int)BreedingAptitudes.BonusPercentFor(payload.Aptitude_Skill));
+                + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask)));
 
             double actionIntervalSeconds = requiredTicks / 10.0;
             double totalActionsDouble = elapsedSeconds / actionIntervalSeconds;
@@ -469,7 +469,7 @@ namespace FolkIdle.Server.Engine
             long masteryXpGained = allowedActions * node.BaseMasteryXpReward;
             ApplyGatheringMasteryXp(ref payload, node.ProfessionType, masteryXpGained);
 
-            // Modul: LocusYield (+4% harvest rolls per point) still scales roll
+            // Modul: yield traits (BloodlineBonuses) still scale roll
             // COUNT. LootLuckPct no longer does - it now shifts per-item weight
             // distribution toward rare entries inside GrantAnalyticalLootAsync,
             // instead of inflating the absolute volume of every entry
@@ -481,10 +481,10 @@ namespace FolkIdle.Server.Engine
                 gatherProjectionAgePhase = payload.Slot1_AgePhase;
                 gatherProjectionRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
-            CombatStats gatherProjectionStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherProjectionAgePhase, payload.CompletedAreaFlags, gatherProjectionRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
-            double locusYieldFactor = 1.0 + (payload.LocusYield * 0.04);
+            CombatStats gatherProjectionStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherProjectionAgePhase, payload.CompletedAreaFlags, gatherProjectionRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
+            double traitYieldFactor = 1.0 + BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask)) / 100.0;
 
-            int lootRolls = (int)(allowedActions * payload.CachedCodexYieldMultiplier * locusYieldFactor);
+            int lootRolls = (int)(allowedActions * payload.CachedCodexYieldMultiplier * traitYieldFactor);
             return new LootProjection(true, node.ActivityId, lootRolls, 0, gatherProjectionStats.LootLuckPct);
         }
 
@@ -536,7 +536,7 @@ namespace FolkIdle.Server.Engine
                 activeRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
 
-            CombatStats combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
+            CombatStats combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
 
             // Analytical projection intentionally uses expected (average) damage
             // per hit rather than replaying per-swing hit/crit RNG - but the
@@ -549,7 +549,7 @@ namespace FolkIdle.Server.Engine
             // of live combat on region 1 and worse further in, where armour is
             // five times higher. See CombatDamageModel for the other two models
             // this replaces.
-            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
+            long effectiveMilliAttack = EffectiveMilliAttackFor(ref payload, in combatStats, lineage.DamageScalePerLevelPct);
             double secondsPerKillEstimate = CombatDamageModel.ExpectedSecondsPerKill(in combatStats, in activeMonster, effectiveMilliAttack, payload.CachedCodexDamageMultiplier);
 
             if (double.IsInfinity(secondsPerKillEstimate) || secondsPerKillEstimate <= 0.0 || activeMonster.MaxHp <= 0)
@@ -596,12 +596,10 @@ namespace FolkIdle.Server.Engine
             effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
                 SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
 
-            // Modul: Endurance offline as well as live. The two health formulas
-            // diverging is a bug this codebase has already shipped once, in
-            // gathering - the offline path used a stale private formula for
-            // months while the live one moved on.
-            effectiveMilliHp += (long)(effectiveMilliHp
-                * BreedingAptitudes.BonusPercentFor(payload.Aptitude_Endurance) / 100f);
+            // Modul: the same bloodline health formula as the live tick - see
+            // BloodlineBonuses. The two health formulas diverging is a bug this
+            // codebase has already shipped once, in gathering.
+            effectiveMilliHp = BloodlineBonuses.ApplyMaxHp(effectiveMilliHp, payload.Aptitude_Endurance, TraitTotals.From(payload.TraitMask));
 
             double effectiveElapsedSeconds = elapsedSeconds;
             if (expectedIncomingMilliDps > 0.0)
@@ -713,6 +711,24 @@ namespace FolkIdle.Server.Engine
             // reported as a drop. The summary counts what this method actually
             // granted; the gear arrives in the chest either way.
             return new LootProjection(true, activeMonster.LootTableId, lootRolls, 0, combatStats.LootLuckPct);
+        }
+
+        // Modul: extracted out of CalculateCombatProjection, 2026-09-16, to
+        // mirror SimulationEngine.EffectiveMilliAttackFor exactly - same name,
+        // same shape, same two calls in the same order (aptitude, then trait).
+        // THE STRENGTH APTITUDE WAS MISSING HERE until 2026-09-13: the live
+        // tick added it and this projection did not, so a bred line killed
+        // more slowly while away (the third instance of "three paths grow a
+        // level" - see BloodlineBonuses and BloodlineBonusesTests). Splitting
+        // this into its own method - rather than leaving the two lines inline -
+        // is what lets a test drive the exact code path with reflection instead
+        // of grepping the source text for the right function names, which can
+        // never catch a wrong argument or a swapped order.
+        private static long EffectiveMilliAttackFor(ref TickStatePayload payload, in CombatStats combatStats, int damageScalePerLevelPct)
+        {
+            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, damageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
+            effectiveMilliAttack = BloodlineBonuses.ApplyAttack(effectiveMilliAttack, payload.Aptitude_Strength, TraitTotals.From(payload.TraitMask));
+            return effectiveMilliAttack;
         }
 
         // Modul: drains Food1-3 in a fixed order (mirrors the live tick's

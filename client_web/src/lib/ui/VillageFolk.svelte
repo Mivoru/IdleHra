@@ -10,11 +10,13 @@
   // somebody arrives at 4/3/9/2, and a full village means keeping them or
   // turning them away for a better roll later.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { queryKeys, fetchVillageNewcomers, type VillageNewcomer } from '../net/rest';
+  import { queryKeys, fetchVillageNewcomers, fetchTraits, type VillageNewcomer } from '../net/rest';
   import { APTITUDE_VILLAGE_CEILING, recruitVillager, dismissNewcomer } from '../net/commands';
   import { pushLocalNotice } from '../stores/game';
   import RaceIcon from './RaceIcon.svelte';
+  import TraitBadge from './TraitBadge.svelte';
   import { raceName } from './races';
+  import { traitsOf } from './traits';
   import Skeleton from './Skeleton.svelte';
 
   const client = useQueryClient();
@@ -22,6 +24,7 @@
     queryKey: queryKeys.villageNewcomers,
     queryFn: fetchVillageNewcomers,
   }));
+  const traitCatalogue = createQuery(() => ({ queryKey: queryKeys.traits, queryFn: fetchTraits, staleTime: Infinity }));
 
   const data = $derived(folk.data);
 
@@ -108,6 +111,11 @@
               <span class="dim tiny">
                 {raceName(person.RaceId)} {person.IsFemale ? 'woman' : 'man'}{#if person.IsElder} · has married in{/if}
               </span>
+              {#if person.TraitMask > 0 && traitCatalogue.data}
+                <span class="traits">
+                  {#each traitsOf(person.TraitMask, traitCatalogue.data) as trait (trait.Id)}<TraitBadge {trait} />{/each}
+                </span>
+              {/if}
             </div>
             <span class="apts">
               <span title="Strength">{person.AptitudeStrength}</span>
@@ -187,12 +195,27 @@
     color: var(--warn);
   }
 
+  /* Modul: capped, not just gappy. An unbounded list here grows with the
+     village (and, since Task 12, with per-row trait badges) - it had reached
+     94 rows / ~5700px on the dev fixture. Bounding it keeps this panel's own
+     DOM sane and matches PersonPicker.svelte's 28rem for the same kind of
+     per-row-with-badges list. NOTE: this does NOT, on its own, resolve the
+     check:overlap finding where Village's "Upgrade" sits under the coach's
+     "Got it" at 1500px - re-verified directly that the buildings section's
+     button positions are IDENTICAL capped or not, because Village.svelte's
+     `.grid` lays this panel and the buildings section out as independent,
+     `align-items: start` grid columns, not a single stacked flow, at that
+     width. That overlap is the buildings list's own height coinciding with
+     OnboardingCoach's fixed band; see the Task 13 overlap-fix report. */
   ul {
     display: grid;
     gap: 0.3rem;
     margin: 0;
     padding: 0;
     list-style: none;
+    max-height: 28rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   li {
@@ -214,6 +237,13 @@
     display: grid;
     gap: 0.05rem;
     min-width: 0;
+  }
+
+  .traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 0.15rem;
   }
 
   .apts {

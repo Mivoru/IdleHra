@@ -270,7 +270,7 @@ namespace FolkIdle.Server.Tests
         {
             var payload = FreshPayload(monsterId);
             var lineage = ProgressionEngine.Lineages[payload.SelectedLineageId];
-            var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, payload.CachedAffixTotals, false, 0, 0, payload.CachedSetIds);
+            var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, payload.CachedAffixTotals, false, default, payload.CachedSetIds);
             long rawMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
 
             var monster = ContentRegistry.Monsters[monsterId - 1];
@@ -358,7 +358,7 @@ namespace FolkIdle.Server.Tests
                 // against a real 116. The fixture, not the game.
                 RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId: 1, levelsGained: startLevel - 1);
 
-                var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, payload.CachedAffixTotals, false, 0, 0, payload.CachedSetIds);
+                var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, payload.CachedAffixTotals, false, default, payload.CachedSetIds);
                 var lineage = ProgressionEngine.Lineages[payload.SelectedLineageId];
                 long raw = StatsCalculator.ComputeEffectiveMilliAttack(in stats, lineage.DamageScalePerLevelPct, payload.CurrentLevel);
 
@@ -397,7 +397,7 @@ namespace FolkIdle.Server.Tests
                 // pays at 15 HP a point, so a character has to be walked up to
                 // its level for the number to mean anything.
                 RaceAttributeGrowth.ApplyLevelUpGrowth(ref poolPayload, activeRaceId: 1, levelsGained: startLevel - 1);
-                var poolStats = StatsCalculator.Calculate(poolPayload.STR, poolPayload.DEX, poolPayload.CON, poolPayload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, poolPayload.CachedAffixTotals, false, 0, 0, poolPayload.CachedSetIds);
+                var poolStats = StatsCalculator.Calculate(poolPayload.STR, poolPayload.DEX, poolPayload.CON, poolPayload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, poolPayload.CachedAffixTotals, false, default, poolPayload.CachedSetIds);
                 var poolLineage = ProgressionEngine.Lineages[poolPayload.SelectedLineageId];
                 long baseMilliHp = ProgressionEngine.BaseMilliHpForLevel(poolPayload.CurrentLevel);
                 long effectiveMilliHp = baseMilliHp
@@ -546,7 +546,7 @@ namespace FolkIdle.Server.Tests
         public void TheProjectionPaysForArmour(int monsterId)
         {
             var payload = FreshPayload(monsterId);
-            var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, payload.CachedAffixTotals, false, 0, 0, payload.CachedSetIds);
+            var stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0, payload.CachedAffixTotals, false, default, payload.CachedSetIds);
             long rawMilliAttack = 200_000L; // a mid-game weapon, so armour matters but does not floor the hit
 
             var armoured = ContentRegistry.Monsters[monsterId - 1];

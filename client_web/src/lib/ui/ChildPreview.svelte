@@ -7,10 +7,12 @@
   // partners - so the explanation belongs where the choice is made, attached to
   // the actual numbers of the actual pair.
   //
-  // Every figure below is either sent by the preview endpoint or computed from
-  // two numbers it already sent. NOTHING NEW IS ASKED OF THE WIRE - see
-  // ui/breeding.ts, which mirrors the server's own constants the same way
-  // net/commands.ts already mirrors BonusPercentFor.
+  // Every aptitude figure below is either sent by the preview endpoint or
+  // computed from two numbers it already sent - see ui/breeding.ts, which
+  // mirrors the server's own constants the same way net/commands.ts already
+  // mirrors BonusPercentFor. The traits section below DID ask for something
+  // new on the wire, 2026-09-13: TraitOdds, MutationChancePct and
+  // FlawChancePct are all preview-endpoint additions, not derived client-side.
   //
   // Shared by both tabs. The two pairings differ in what a partner IS and in
   // what the pairing costs afterwards, not in how a child is made, and having
@@ -19,16 +21,13 @@
   // the drift roll and the epic roll both can, by one).
   //
   // Vocabulary is docs/breeding_model.md section 0: APTITUDE, BLOODLINE, GENE
-  // (never "locus"), COPY (never "allele"), NEWCOMER then ELDER.
-  import type { BreedingPreview } from '../net/rest';
+  // (never "locus", and there is only one gene left - Race), COPY (never
+  // "allele"), TRAIT (never "gene" or "stat"), NEWCOMER then ELDER.
+  import type { BreedingPreview, TraitDefinition } from '../net/rest';
   import { APTITUDE_MAX, aptitudeBonusPercent } from '../net/commands';
-  import {
-    breedingCostFor,
-    driftOdds,
-    epicChancePercent,
-    geneBlurb,
-    inheritChancePercent,
-  } from './breeding';
+  import { breedingCostFor, driftOdds, epicChancePercent, inheritChancePercent } from './breeding';
+  import { oddsSourceLabel } from './traits';
+  import TraitBadge from './TraitBadge.svelte';
 
   interface Props {
     preview: BreedingPreview;
@@ -42,9 +41,10 @@
      * guessed at.
      */
     generation: number | null;
+    catalogue: readonly TraitDefinition[];
   }
 
-  const { preview, mode, generation }: Props = $props();
+  const { preview, mode, generation, catalogue }: Props = $props();
 
   const inbred = $derived(preview.IsInbredRisk);
   const drift = $derived(driftOdds(inbred));
@@ -52,11 +52,6 @@
 
   const firstParent = $derived(mode === 'village' ? 'you' : 'the father');
   const secondParent = $derived(mode === 'village' ? 'them' : 'the mother');
-
-  /** The named genes, in the order the endpoint sends them, minus Race - which
-   *  is a hard requirement rather than an outcome and is already explained by
-   *  the refusal when it does not match. */
-  const genes = $derived(preview.Loci.filter((g) => g.LocusName !== 'Race'));
 
   /** What the top of a band would be worth, so the bloodline panel's percentage
    *  and this screen's raw points are the same currency. */
@@ -118,7 +113,7 @@
     <p class="warn-line tiny">
       These two are related, so the drift is <strong>inverted</strong>: it is
       more likely to lose a point than gain one, and the epic roll falls from
-      5% to {epic}%. Related pairs also lose a quarter of every gene below.
+      5% to {epic}%. Related pairs also risk a flaw - see the traits below.
     </p>
   {/if}
   <p class="dim tiny">
@@ -133,32 +128,30 @@
   </p>
 </div>
 
-{#if genes.length > 0}
-  <h3>And its genes</h3>
-  <ul class="genes">
-    {#each genes as gene (gene.LocusName)}
+<h3>Traits the child can inherit</h3>
+{#if preview.TraitOdds.length === 0}
+  <p class="dim tiny">Neither parent carries a trait.</p>
+{:else}
+  <ul class="apts">
+    {#each preview.TraitOdds as odds (odds.TraitId)}
+      {@const trait = catalogue.find((t) => t.Id === odds.TraitId)}
       <li>
         <div class="head">
-          <span class="name">{gene.LocusName}</span>
-          <span class="band">{gene.PredictedMinDominant}&ndash;{gene.PredictedMaxDominant}</span>
+          {#if trait}<TraitBadge {trait} />{:else}<span class="name">Trait {odds.TraitId}</span>{/if}
+          <span class="band">{odds.ChancePct}%</span>
         </div>
-        <p class="why dim tiny">
-          {geneBlurb(gene.LocusName)}
-          {#if geneBlurb(gene.LocusName)}&middot;{/if}
-          {firstParent} {gene.ParentPaternalDominant} &middot; {secondParent}
-          {gene.ParentMaternalDominant}
-          {#if gene.MutationChancePct > 0}
-            &middot; {gene.MutationChancePct.toFixed(1)}% chance of a mutation
-          {/if}
-        </p>
+        <p class="why dim tiny">from {oddsSourceLabel(odds.Source, mode)}</p>
       </li>
     {/each}
   </ul>
-  <p class="dim tiny">
-    Every gene has two copies. Each parent passes one of theirs at random and
-    the higher of the two becomes the child's, so a strong recessive copy can
-    surface a generation later. Mutations get rarer with every generation, which
-    is why genes drift slowly where aptitudes climb.
+{/if}
+<p class="dim tiny arrival">
+  <strong>{preview.MutationChancePct}%</strong> chance of a new trait from the Breeding Grounds.
+  A child keeps at most three; flaws are never lost to that limit.
+</p>
+{#if preview.FlawChancePct > 0}
+  <p class="warn-line tiny">
+    These two are related: <strong>{preview.FlawChancePct}% chance of a flaw</strong>.
   </p>
 {/if}
 

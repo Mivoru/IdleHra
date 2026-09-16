@@ -202,6 +202,9 @@ namespace FolkIdle.Server.Engine
             };
 
             newcomer.SetAptitudeVector(BreedingAptitudes.RollVillager(innLevel, Random.Shared));
+            // Modul: outside blood brings traits as well as numbers - a better
+            // Inn, a better chance and a rarer trait. See BreedingTraits.
+            newcomer.TraitMask = BreedingTraits.RollNewcomerTrait(innLevel, Random.Shared);
             return newcomer;
         }
     }

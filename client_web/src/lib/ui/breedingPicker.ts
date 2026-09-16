@@ -17,9 +17,10 @@
 // refuses on its own and answers with a command result; a reason shown BEFORE
 // the tap is worth more than one after it.
 
-import type { BreedingCandidate, VillageNewcomer } from '../net/rest';
+import type { BreedingCandidate, TraitDefinition, VillageNewcomer } from '../net/rest';
 import { raceName } from './races';
 import { agePhaseName } from './slots';
+import { traitsOf } from './traits';
 
 export interface PickerPerson {
   /** 'c:<guid>' for one of the player's characters, 'v:<id>' for a newcomer. */
@@ -33,6 +34,8 @@ export interface PickerPerson {
   detail: string;
   /** Short badges: epic, inbred. */
   marks: readonly string[];
+  /** Heritable traits, resolved against the served catalogue. */
+  traits: readonly TraitDefinition[];
   /** Why this person cannot be chosen right now, or null. */
   blocked: string | null;
 }
@@ -93,7 +96,10 @@ function characterMarks(candidate: BreedingCandidate): string[] {
   return marks;
 }
 
-function characterBase(candidate: BreedingCandidate): Omit<PickerPerson, 'blocked'> {
+function characterBase(
+  candidate: BreedingCandidate,
+  catalogue: readonly TraitDefinition[],
+): Omit<PickerPerson, 'blocked'> {
   const race = raceName(candidate.LocusRaceDominant);
   return {
     key: 'c:' + candidate.CharacterId,
@@ -108,22 +114,35 @@ function characterBase(candidate: BreedingCandidate): Omit<PickerPerson, 'blocke
     ],
     detail: `${race} ${sexWord(candidate.IsFemale)} · ${agePhaseName(candidate.AgePhase)} · gen ${candidate.GenerationIndex}`,
     marks: characterMarks(candidate),
+    traits: traitsOf(candidate.TraitMask, catalogue),
   };
 }
 
-export function heroPerson(candidate: BreedingCandidate, nowSeconds: number): PickerPerson {
-  return { ...characterBase(candidate), blocked: heroBlockedReason(candidate, nowSeconds) };
+export function heroPerson(
+  candidate: BreedingCandidate,
+  nowSeconds: number,
+  catalogue: readonly TraitDefinition[] = [],
+): PickerPerson {
+  return { ...characterBase(candidate, catalogue), blocked: heroBlockedReason(candidate, nowSeconds) };
 }
 
 export function partnerCharacterPerson(
   hero: BreedingCandidate | undefined,
   candidate: BreedingCandidate,
   nowSeconds: number,
+  catalogue: readonly TraitDefinition[] = [],
 ): PickerPerson {
-  return { ...characterBase(candidate), blocked: characterPartnerBlockedReason(hero, candidate, nowSeconds) };
+  return {
+    ...characterBase(candidate, catalogue),
+    blocked: characterPartnerBlockedReason(hero, candidate, nowSeconds),
+  };
 }
 
-export function villagerPerson(hero: BreedingCandidate | undefined, person: VillageNewcomer): PickerPerson {
+export function villagerPerson(
+  hero: BreedingCandidate | undefined,
+  person: VillageNewcomer,
+  catalogue: readonly TraitDefinition[] = [],
+): PickerPerson {
   const race = raceName(person.RaceId);
   return {
     key: 'v:' + person.Id,
@@ -133,6 +152,7 @@ export function villagerPerson(hero: BreedingCandidate | undefined, person: Vill
     aptitudes: [person.AptitudeStrength, person.AptitudeSkill, person.AptitudeEndurance, person.AptitudeFortune],
     detail: `${race} ${sexWord(person.IsFemale)} · newcomer`,
     marks: [],
+    traits: traitsOf(person.TraitMask, catalogue),
     blocked: villagerBlockedReason(hero, person),
   };
 }

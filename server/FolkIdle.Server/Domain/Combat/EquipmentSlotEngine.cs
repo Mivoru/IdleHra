@@ -754,16 +754,13 @@ namespace FolkIdle.Server.Domain.Combat
             int activeAgePhase = character.AgePhase;
             int activeRaceId = 0;
             bool isEpicMutation = false;
-            int locusSpeed = 0;
-            int locusCrit = 0;
+            TraitTotals traits = default;
 
             if (character.Lineage != null)
             {
                 activeRaceId = (int)(character.Lineage.GeneticVector & 0xFF);
                 isEpicMutation = character.Lineage.IsEpicMutation;
-                var geneVec = new GeneticVector(character.Lineage.GeneticVector);
-                locusSpeed = geneVec.LocusSpeed.Dominant;
-                locusCrit = geneVec.LocusCrit.Dominant;
+                traits = TraitTotals.From(character.Lineage.TraitMask);
             }
 
             (EquippedAffixTotals totals, EquippedSetIds setIds) = await ComputeEquippedTotalsAsync(db, character);
@@ -773,7 +770,7 @@ namespace FolkIdle.Server.Domain.Combat
                 player.ActiveOffensivePotionId, player.ActiveDefensivePotionId,
                 activeAgePhase, completedAreaFlags, activeRaceId,
                 humanMastery, vilaMastery, draugrMastery,
-                totals, isEpicMutation, locusSpeed, locusCrit, setIds);
+                totals, isEpicMutation, traits, setIds);
         }
 
         // Modul: Affix System Unification. Reads GDD affix ids

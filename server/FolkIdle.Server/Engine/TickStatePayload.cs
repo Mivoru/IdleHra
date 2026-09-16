@@ -105,20 +105,16 @@ namespace FolkIdle.Server.Engine
         public int CON;
         public int LCK;
 
-        // Modul 13.4.3: cached inherited genetic loci, hydrated at login from
-        // the active character's CharacterLineages row (see
-        // StateCheckpointManager.LoadPlayerState). Read as plain O(1) field
-        // access from StatsCalculator/gathering every tick - never re-derived
-        // from GeneticVector on the hot path.
+        // Modul 13.4.3: cached lineage flags, hydrated at login from the active
+        // character's CharacterLineages row (see StateCheckpointManager.
+        // LoadPlayerState). The Speed/Crit/Yield loci and IsInbred that lived
+        // here were retired on 2026-09-13 - traits replaced both.
         public bool IsEpicMutation;
-        public int LocusSpeed;
-        public int LocusCrit;
-        public int LocusYield;
 
-        // Modul 13.4.3: set when the active character's lineage was flagged
-        // IsInbred at breeding time (see BreedingEngine). Consumed by
-        // RaceAttributeGrowth to apply a -25% level-up growth penalty.
-        public bool IsInbred;
+        // Modul: the active character's trait bits, hydrated beside the
+        // aptitudes and read through TraitTotals.From on the tick - never from
+        // the database on the hot path.
+        public long TraitMask;
 
         // Modul 13.4.3: unix-epoch-seconds until which character XP generation
         // is reduced by 20 percent (see MentorshipEngine.ExecuteTerminateMentorshipAsync).

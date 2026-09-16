@@ -135,6 +135,21 @@ namespace FolkIdle.Server.Tests
             levers.Add(new Lever("armour penetration", withPen / withoutPen,
                 $"{maxed.FlatArmorPenetration} penetration against Malakor's {malakor.Armor} armour"));
 
+            // 9. Traits. Every positive attack trait at once. There are only
+            //    two - Keen Edge (+4%) and Blood of Kings (+10%), summing to
+            //    +14% - so this is fully reachable within the three-trait cap,
+            //    not an overshoot; TraitTotals.PositiveCap (20) is not even
+            //    approached yet, only recorded here so this number moves if
+            //    a future attack trait is added.
+            long everyPositive = 0L;
+            foreach (var t in TraitRegistry.All)
+            {
+                if (t.Rarity != TraitRarity.Flaw) everyPositive |= 1L << t.Bit;
+            }
+            var bestTraits = TraitTotals.From(everyPositive);
+            levers.Add(new Lever("traits: attack", 1.0 + bestTraits.AttackPct / 100.0,
+                $"every attack trait, capped at {TraitTotals.PositiveCap}"));
+
             double product = 1.0;
             _o.WriteLine("lever                        multiplier   running   source");
             foreach (var lever in levers)
@@ -206,6 +221,9 @@ namespace FolkIdle.Server.Tests
                 new("village production",
                     1.0 + 12 * GatheringToolEngine.VillageYieldBonusPctPerLevel / 100.0,
                     "a level-12 Lumberjack or Mine"),
+                new("traits: gathering yield",
+                    1.0 + TraitTotals.From(TraitRegistry.MaskOf(TraitRegistry.GreenThumb)).GatherYieldPct / 100.0,
+                    "Green Thumb, the only yield trait"),
             };
 
             double product = 1.0;

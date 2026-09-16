@@ -60,6 +60,13 @@ namespace FolkIdle.Server.Models
         /// </summary>
         public bool IsElder { get; set; }
 
+        /// <summary>
+        /// Zero or one trait, rolled on arrival against the Inn - see
+        /// BreedingTraits.RollNewcomerTrait. It passes to a child like any
+        /// parent's, which is what makes outside blood a source of traits.
+        /// </summary>
+        public long TraitMask { get; set; }
+
         public int[] AptitudeVector() => new[]
         {
             AptitudeStrength, AptitudeSkill, AptitudeEndurance, AptitudeFortune,

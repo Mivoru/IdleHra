@@ -33,9 +33,22 @@ namespace FolkIdle.Server.Models
 
         // Modul 13.4.3: set by BreedingEngine when both candidate parents share
         // a common ancestor within 2 generations (parent-child pairing, or full/
-        // half siblings sharing a parent). Consumed by RaceAttributeGrowth to
-        // apply a -25% level-up growth penalty for this character's lifetime.
+        // half siblings sharing a parent).
+        //
+        // Modul: NO LONGER A GROWTH PENALTY, 2026-09-13. The old -25% level-up
+        // growth penalty this used to drive is gone - RaceAttributeGrowth does
+        // not read this field at all now (BloodlineBonusesTests pins that). The
+        // inbreeding cost is visible instead: an inbred pairing gets a 60%
+        // chance to add a flaw trait to the child (see BreedingTraits.Inherit),
+        // and this flag is purely a display marker after birth - the roster's
+        // "inbred" badge (breedingPicker.ts) and the Ancestors screen's "inbred"
+        // risk label (Ancestors.svelte) both read it directly.
         public bool IsInbred { get; set; }
+
+        // Modul: HERITABLE TRAITS, one bit each - see TraitRegistry for the
+        // table, which is a persisted format and never renumbered. Zero for
+        // every character that existed before traits; nothing is backfilled.
+        public long TraitMask { get; set; }
 
         // Modul: APTITUDES. Four values a lineage carries and improves across
         // generations - Strength (combat), Skill (gathering and crafting),

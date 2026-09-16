@@ -579,8 +579,41 @@ namespace FolkIdle.Server.Models
                 };
                 newcomer.SetAptitudeVector(new[] { 10, 10, 10, 10 });
                 db.VillageNewcomers.Add(newcomer);
+                // Tracked here, before SaveChanges, so the trait pass below
+                // can see brand-new rows too - EF fills in .Id once saved.
+                existing.Add(newcomer);
                 }
             }
+
+            await db.SaveChangesAsync();
+
+            // Modul: AT LEAST ONE NEWCOMER OF EACH SEX CARRIES A REAL TRAIT,
+            // 2026-09-16. Every newcomer used to arrive with TraitMask 0 -
+            // migration AddBreedingTraits is additive with no backfill, and
+            // this seeder never set the column either - so the Village Folk
+            // screen and the Wiki's newcomer previews had never once shown a
+            // TraitBadge on the account that exists specifically to drive the
+            // client by hand. `person.TraitMask > 0` gates the badge in
+            // VillageFolk.svelte; a fixture that is traitless by construction
+            // cannot exercise the half of the feature that draws on screen.
+            //
+            // Set unconditionally (not "if zero") on the same two newcomers
+            // every time, ordered by Id so a re-seed lands on the same rows -
+            // the whole point of this seeder is returning to a known state,
+            // not layering more traits on with every run.
+            //
+            // ONE OF THE TWO SHARES A TRAIT WITH THE HERO ON PURPOSE (Hawk
+            // Eye - see EnsureLineagesAsync). Inheritance is 90% per trait when
+            // BOTH parents carry it and only 50% when one does, so a hero x
+            // newcomer pairing that shares zero traits leaves exercise.mjs's
+            // "the bred child shows a trait" check to independent 50% coin
+            // flips - passable, but flaky. Overlapping one trait pushes the
+            // odds of the child inheriting at least one trait from ~75% to
+            // ~95% without touching the inheritance FORMULA itself.
+            var firstFemale = existing.Where(v => v.IsFemale).OrderBy(v => v.Id).FirstOrDefault();
+            var firstMale = existing.Where(v => !v.IsFemale).OrderBy(v => v.Id).FirstOrDefault();
+            if (firstFemale != null) firstFemale.TraitMask = TraitRegistry.MaskOf(TraitRegistry.HawkEye, TraitRegistry.GreenThumb);
+            if (firstMale != null) firstMale.TraitMask = TraitRegistry.MaskOf(TraitRegistry.HawkEye, TraitRegistry.QuickHands);
 
             await db.SaveChangesAsync();
         }
@@ -626,6 +659,38 @@ namespace FolkIdle.Server.Models
                 };
                 lineage.SetAptitudeVector(BreedingAptitudes.Starting());
                 db.CharacterLineages.Add(lineage);
+            }
+
+            await db.SaveChangesAsync();
+
+            // Modul: THE HERO CARRIES REAL TRAITS, 2026-09-16. Migration
+            // AddBreedingTraits is additive with no backfill, so every
+            // ancestor this seeder had already written - and every one it
+            // writes above - reads as traitless. That made the fixture
+            // provably unable to show what round 2 built: no TraitBadge could
+            // ever render on Ancestors (gated on `m.TraitMask > 0`), and every
+            // Breeding preview involving the fixture's own characters came
+            // back with an empty TraitOdds array - satisfied in
+            // exercise.mjs's Task 13 assertion by the heading and "Neither
+            // parent carries a trait." alone, never by an actual badge.
+            //
+            // One common and one rare, on the account's own main character
+            // (Id == PlayerRecords.PlayerGuid, slot 0) specifically - that
+            // character is a parent in EVERY breeding preview the fixture can
+            // drive (roster pairing or village pairing), so giving it traits
+            // is what makes TraitOdds non-empty everywhere rather than only in
+            // one specific pairing. Two different rarities so the preview and
+            // the roster both demonstrate the badge's rarity styling, not just
+            // its existence.
+            Guid playerGuid = await db.PlayerRecords.AsNoTracking()
+                .Where(p => p.Id == playerId)
+                .Select(p => p.PlayerGuid)
+                .FirstAsync();
+
+            var heroLineage = await db.CharacterLineages.FirstOrDefaultAsync(l => l.CharacterId == playerGuid);
+            if (heroLineage != null)
+            {
+                heroLineage.TraitMask = TraitRegistry.MaskOf(TraitRegistry.StoutHeart, TraitRegistry.HawkEye);
             }
 
             await db.SaveChangesAsync();

@@ -171,8 +171,7 @@ namespace FolkIdle.Server.Engine
             int activeAgePhase = 1;
             int activeRaceId = 0;
             bool isEpicMutation = false;
-            int locusSpeed = 0;
-            int locusCrit = 0;
+            TraitTotals traits = default;
 
             if (character != null)
             {
@@ -181,9 +180,7 @@ namespace FolkIdle.Server.Engine
                 {
                     activeRaceId = (int)(character.Lineage.GeneticVector & 0xFF);
                     isEpicMutation = character.Lineage.IsEpicMutation;
-                    var geneVec = new GeneticVector(character.Lineage.GeneticVector);
-                    locusSpeed = geneVec.LocusSpeed.Dominant;
-                    locusCrit = geneVec.LocusCrit.Dominant;
+                    traits = TraitTotals.From(character.Lineage.TraitMask);
                 }
             }
 
@@ -234,7 +231,7 @@ namespace FolkIdle.Server.Engine
                 activeAgePhase, completedAreaFlags, activeRaceId,
                 humanMastery, vilaMastery, draugrMastery,
                 equippedAffixTotals,
-                isEpicMutation, locusSpeed, locusCrit, equippedSetIds);
+                isEpicMutation, traits, equippedSetIds);
 
             int lineageIndex = player.SelectedLineageId;
             if (lineageIndex < 0 || lineageIndex >= ProgressionEngine.Lineages.Length) lineageIndex = 0;
