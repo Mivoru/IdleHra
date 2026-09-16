@@ -135,9 +135,12 @@ namespace FolkIdle.Server.Tests
             levers.Add(new Lever("armour penetration", withPen / withoutPen,
                 $"{maxed.FlatArmorPenetration} penetration against Malakor's {malakor.Armor} armour"));
 
-            // 9. Traits. Every positive attack trait at once - more than the
-            //    three-trait cap allows, so a pessimistic reading - clamped by
-            //    TraitTotals.PositiveCap.
+            // 9. Traits. Every positive attack trait at once. There are only
+            //    two - Keen Edge (+4%) and Blood of Kings (+10%), summing to
+            //    +14% - so this is fully reachable within the three-trait cap,
+            //    not an overshoot; TraitTotals.PositiveCap (20) is not even
+            //    approached yet, only recorded here so this number moves if
+            //    a future attack trait is added.
             long everyPositive = 0L;
             foreach (var t in TraitRegistry.All)
             {

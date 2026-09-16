@@ -549,11 +549,7 @@ namespace FolkIdle.Server.Engine
             // of live combat on region 1 and worse further in, where armour is
             // five times higher. See CombatDamageModel for the other two models
             // this replaces.
-            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, lineage.DamageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
-            // Modul: THE STRENGTH APTITUDE WAS MISSING HERE until 2026-09-13 -
-            // the live tick added it and this projection did not, so a bred line
-            // killed more slowly while away. Attack traits ride along.
-            effectiveMilliAttack = BloodlineBonuses.ApplyAttack(effectiveMilliAttack, payload.Aptitude_Strength, TraitTotals.From(payload.TraitMask));
+            long effectiveMilliAttack = EffectiveMilliAttackFor(ref payload, in combatStats, lineage.DamageScalePerLevelPct);
             double secondsPerKillEstimate = CombatDamageModel.ExpectedSecondsPerKill(in combatStats, in activeMonster, effectiveMilliAttack, payload.CachedCodexDamageMultiplier);
 
             if (double.IsInfinity(secondsPerKillEstimate) || secondsPerKillEstimate <= 0.0 || activeMonster.MaxHp <= 0)
@@ -715,6 +711,24 @@ namespace FolkIdle.Server.Engine
             // reported as a drop. The summary counts what this method actually
             // granted; the gear arrives in the chest either way.
             return new LootProjection(true, activeMonster.LootTableId, lootRolls, 0, combatStats.LootLuckPct);
+        }
+
+        // Modul: extracted out of CalculateCombatProjection, 2026-09-16, to
+        // mirror SimulationEngine.EffectiveMilliAttackFor exactly - same name,
+        // same shape, same two calls in the same order (aptitude, then trait).
+        // THE STRENGTH APTITUDE WAS MISSING HERE until 2026-09-13: the live
+        // tick added it and this projection did not, so a bred line killed
+        // more slowly while away (the third instance of "three paths grow a
+        // level" - see BloodlineBonuses and BloodlineBonusesTests). Splitting
+        // this into its own method - rather than leaving the two lines inline -
+        // is what lets a test drive the exact code path with reflection instead
+        // of grepping the source text for the right function names, which can
+        // never catch a wrong argument or a swapped order.
+        private static long EffectiveMilliAttackFor(ref TickStatePayload payload, in CombatStats combatStats, int damageScalePerLevelPct)
+        {
+            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, damageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
+            effectiveMilliAttack = BloodlineBonuses.ApplyAttack(effectiveMilliAttack, payload.Aptitude_Strength, TraitTotals.From(payload.TraitMask));
+            return effectiveMilliAttack;
         }
 
         // Modul: drains Food1-3 in a fixed order (mirrors the live tick's
