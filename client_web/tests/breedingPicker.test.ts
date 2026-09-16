@@ -122,3 +122,15 @@ describe('breeding picker', () => {
     expect(toggleSelection([], 2, 0)).toEqual([]);
   });
 });
+
+describe('picker traits', () => {
+  const catalogue = [
+    { Id: 4, Key: 'iron_blood', Name: 'Iron Blood', Description: '+8% max HP', Rarity: 'Rare' as const, Effect: 'MaxHpPct', Value: 8 },
+  ];
+
+  it('carries a person\'s traits from the catalogue', () => {
+    expect(heroPerson(candidate({ TraitMask: 2 ** 4 }), 0, catalogue).traits.map((t) => t.Name)).toEqual(['Iron Blood']);
+    expect(villagerPerson(undefined, newcomer({ TraitMask: 2 ** 4 }), catalogue).traits).toHaveLength(1);
+    expect(heroPerson(candidate(), 0).traits).toEqual([]);
+  });
+});

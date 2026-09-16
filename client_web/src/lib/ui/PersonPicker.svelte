@@ -15,6 +15,7 @@
   // `{#if open}`, not <details>: a closed <details> can leave live buttons on
   // top of the page (CLAUDE.md, the chest sweep panel).
   import RaceIcon from './RaceIcon.svelte';
+  import TraitBadge from './TraitBadge.svelte';
   import type { PickerPerson } from './breedingPicker';
   import { openSheetCloser } from '../stores/sheet';
 
@@ -117,6 +118,11 @@
         {#each person.marks as mark (mark)}<span class="mark">{mark}</span>{/each}
       </span>
       <span class="detail">{person.detail}</span>
+      {#if person.traits.length > 0}
+        <span class="traits">
+          {#each person.traits as trait (trait.Id)}<TraitBadge {trait} interactive={false} />{/each}
+        </span>
+      {/if}
     </span>
     <span class="apts">
       {#each person.aptitudes as value, index (index)}
@@ -292,6 +298,13 @@
   .detail {
     font-size: 0.72rem;
     color: var(--text-dim);
+  }
+
+  .traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 0.15rem;
   }
 
   .apts {

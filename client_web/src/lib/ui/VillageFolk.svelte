@@ -10,11 +10,13 @@
   // somebody arrives at 4/3/9/2, and a full village means keeping them or
   // turning them away for a better roll later.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { queryKeys, fetchVillageNewcomers, type VillageNewcomer } from '../net/rest';
+  import { queryKeys, fetchVillageNewcomers, fetchTraits, type VillageNewcomer } from '../net/rest';
   import { APTITUDE_VILLAGE_CEILING, recruitVillager, dismissNewcomer } from '../net/commands';
   import { pushLocalNotice } from '../stores/game';
   import RaceIcon from './RaceIcon.svelte';
+  import TraitBadge from './TraitBadge.svelte';
   import { raceName } from './races';
+  import { traitsOf } from './traits';
   import Skeleton from './Skeleton.svelte';
 
   const client = useQueryClient();
@@ -22,6 +24,7 @@
     queryKey: queryKeys.villageNewcomers,
     queryFn: fetchVillageNewcomers,
   }));
+  const traitCatalogue = createQuery(() => ({ queryKey: queryKeys.traits, queryFn: fetchTraits, staleTime: Infinity }));
 
   const data = $derived(folk.data);
 
@@ -108,6 +111,11 @@
               <span class="dim tiny">
                 {raceName(person.RaceId)} {person.IsFemale ? 'woman' : 'man'}{#if person.IsElder} · has married in{/if}
               </span>
+              {#if person.TraitMask > 0 && traitCatalogue.data}
+                <span class="traits">
+                  {#each traitsOf(person.TraitMask, traitCatalogue.data) as trait (trait.Id)}<TraitBadge {trait} />{/each}
+                </span>
+              {/if}
             </div>
             <span class="apts">
               <span title="Strength">{person.AptitudeStrength}</span>
@@ -214,6 +222,13 @@
     display: grid;
     gap: 0.05rem;
     min-width: 0;
+  }
+
+  .traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 0.15rem;
   }
 
   .apts {

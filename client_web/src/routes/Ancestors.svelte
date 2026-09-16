@@ -13,7 +13,7 @@
   //   - read the pedigree.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { pushLocalNotice } from '../lib/stores/game';
-  import { queryKeys, fetchAncestorsHall, type HallMember } from '../lib/net/rest';
+  import { queryKeys, fetchAncestorsHall, fetchTraits, type HallMember } from '../lib/net/rest';
   import {
     purchaseAncestorSlot,
     setAncestorKept,
@@ -21,11 +21,14 @@
     APTITUDE_MAX,
   } from '../lib/net/commands';
   import { raceName } from '../lib/ui/races';
+  import { traitsOf } from '../lib/ui/traits';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
+  import TraitBadge from '../lib/ui/TraitBadge.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
 
   const client = useQueryClient();
   const hall = createQuery(() => ({ queryKey: queryKeys.ancestorsHall, queryFn: fetchAncestorsHall }));
+  const traitCatalogue = createQuery(() => ({ queryKey: queryKeys.traits, queryFn: fetchTraits, staleTime: Infinity }));
 
   const data = $derived(hall.data);
   const members = $derived(data?.Members ?? []);
@@ -183,6 +186,11 @@
                   {raceName(m.RaceId)} {m.IsFemale ? 'woman' : 'man'} &middot; {parentage(m)}
                   {#if m.IsInbred} &middot; <span class="risk">inbred</span>{/if}
                 </span>
+                {#if m.TraitMask > 0 && traitCatalogue.data}
+                  <span class="traits">
+                    {#each traitsOf(m.TraitMask, traitCatalogue.data) as trait (trait.Id)}<TraitBadge {trait} />{/each}
+                  </span>
+                {/if}
               </div>
 
               <span class="apts" title="Strength / Skill / Endurance / Fortune">
@@ -381,6 +389,13 @@
 
   .risk {
     color: var(--danger);
+  }
+
+  .traits {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem;
+    margin-top: 0.15rem;
   }
 
   .apts {

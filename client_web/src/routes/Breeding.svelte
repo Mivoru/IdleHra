@@ -7,6 +7,7 @@
     fetchBreedingPreview,
     fetchVillagerBreedingPreview,
     fetchVillageNewcomers,
+    fetchTraits,
   } from '../lib/net/rest';
   import {
     executeBreeding,
@@ -40,6 +41,8 @@
     queryKey: queryKeys.villageNewcomers,
     queryFn: fetchVillageNewcomers,
   }));
+  const traitCatalogue = createQuery(() => ({ queryKey: queryKeys.traits, queryFn: fetchTraits, staleTime: Infinity }));
+  const catalogue = $derived(traitCatalogue.data ?? []);
 
   const snap = $derived($playerState);
   const breedingLevel = $derived(snap?.BreedingLevel ?? 0);
@@ -91,7 +94,7 @@
     {
       title: 'Your line',
       hint: 'Any grown adult who is not resting. There is no level requirement.',
-      people: sortForPicker(candidates.map((c) => heroPerson(c, nowSeconds))),
+      people: sortForPicker(candidates.map((c) => heroPerson(c, nowSeconds, catalogue))),
     },
   ]);
 
@@ -102,11 +105,11 @@
     {
       title: 'From the village - new blood',
       hint: 'Only outside blood brings a number your line does not already have.',
-      people: sortForPicker(newcomers.map((p) => villagerPerson(hero, p))),
+      people: sortForPicker(newcomers.map((p) => villagerPerson(hero, p, catalogue))),
     },
     {
       title: 'Your own line - refines what you have',
-      people: sortForPicker(candidates.map((c) => partnerCharacterPerson(hero, c, nowSeconds))),
+      people: sortForPicker(candidates.map((c) => partnerCharacterPerson(hero, c, nowSeconds, catalogue))),
     },
   ]);
 
@@ -371,7 +374,7 @@
         </p>
       {/if}
 
-      <ChildPreview preview={p} mode={partnerIsVillager ? 'village' : 'roster'} {generation} />
+      <ChildPreview preview={p} mode={partnerIsVillager ? 'village' : 'roster'} {generation} {catalogue} />
     {/if}
 
     <button class="breed" onclick={breed} disabled={!canBreed}>Breed</button>

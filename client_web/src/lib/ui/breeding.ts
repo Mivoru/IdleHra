@@ -78,23 +78,3 @@ export function driftOdds(isInbred: boolean): { up: number; down: number; same: 
 export function epicChancePercent(isInbred: boolean): number {
   return isInbred ? EPIC_CHANCE_PERCENT_INBRED : EPIC_CHANCE_PERCENT;
 }
-
-/**
- * What each gene actually does, keyed by the LocusName the preview endpoints
- * send ("Race", "Speed", "Crit", "Yield").
- *
- * Genes were the half of the preview with numbers and no meaning: four rows of
- * dominant values against a mutation percentage, describing bonuses the screen
- * never named. Consumed by StatsCalculator (Speed, Crit) and by both the live
- * and offline gathering paths (Yield, +4% a point).
- */
-export const GENE_BLURBS: Record<string, string> = {
-  Race: 'Which folk the child is. A pair of different races cannot breed at all.',
-  Speed: 'Attack speed.',
-  Crit: 'Crit chance.',
-  Yield: '+4% gathering yield per point, online and away.',
-};
-
-export function geneBlurb(geneName: string): string {
-  return GENE_BLURBS[geneName] ?? '';
-}

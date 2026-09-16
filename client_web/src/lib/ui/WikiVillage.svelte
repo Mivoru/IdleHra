@@ -13,8 +13,11 @@
   // and the label did not follow. Reusing it here would have spread one wrong
   // answer to a second screen.
 
+  import { createQuery } from '@tanstack/svelte-query';
   import ItemIcon from './ItemIcon.svelte';
+  import TraitBadge from './TraitBadge.svelte';
   import { prettifyBaseId } from '../net/content';
+  import { queryKeys, fetchTraits } from '../net/rest';
   import {
     VILLAGE_BUILDINGS,
     VILLAGE_TIER_MATERIALS,
@@ -26,6 +29,8 @@
   } from './wikiData';
 
   let costKind = $state<VillageCostKind>('service');
+
+  const traitCatalogue = createQuery(() => ({ queryKey: queryKeys.traits, queryFn: fetchTraits, staleTime: Infinity }));
 
   const LEVELS = 20;
 
@@ -198,6 +203,28 @@
   three levels is under the thirty-second floor, so each takes exactly it. The
   same three levels of the Forge additionally cost 500 + 700 + 980 = 2,180 gold.
 </p>
+
+<h3 id="traits">Heritable traits</h3>
+<p class="dim small">
+  A character carries at most three. Each parent's trait passes to a child half the
+  time, nine times in ten when both parents carry it. A newcomer may bring one - a
+  better Inn brings rarer ones, and Legendary traits only from Inn level 6. The
+  Breeding Grounds adds a chance of a new trait at birth, an epic child always gets a
+  Rare or Legendary one, and a related pair risks a flaw. Flaws are never dropped by
+  the limit of three; the way out is marrying clean blood.
+</p>
+{#if traitCatalogue.data}
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Trait</th><th>Rarity</th><th>Effect</th></tr></thead>
+      <tbody>
+        {#each traitCatalogue.data as trait (trait.Id)}
+          <tr><td><TraitBadge {trait} interactive={false} /></td><td>{trait.Rarity}</td><td>{trait.Description}</td></tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
+{/if}
 
 <style>
   h3 {
