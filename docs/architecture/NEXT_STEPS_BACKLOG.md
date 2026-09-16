@@ -17,6 +17,41 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-16 - breeding round 2: heritable traits replace the genes
+
+The owner's round 2 ("redesign breeding and mutations") is done: the four
+invisible genes (Race, Speed, Crit, Yield) are retired outright and replaced by
+**fourteen named, heritable traits** (11 helpful, 3 flaws), each a permanent
+modifier a player can see on the Breeding, Ancestors, Village and Wiki screens
+and that the combat/gathering engines demonstrably read - see the new
+"### Traits" section of `docs/breeding_model.md` for the full catalogue and the
+inheritance/mutation/newcomer math. `TraitRegistry` pins every trait to a bit
+in `character_lineage_registry.TraitMask`; migration `AddBreedingTraits`
+(`20260916113501`) only adds that column and `village_newcomers.TraitMask` -
+**additive, no backfill**, so every existing ancestor and newcomer simply reads
+as traitless until bred or arriving again.
+
+Two defects retired along with the genes:
+- **The hidden -25% inbreeding growth penalty.** The old genes silently lost
+  25% of both copies on an inbred pairing with nothing on the wire or the
+  screen to say so - a real cost with no visible cause. The inbreeding penalty
+  is now the same 60%-chance-of-a-flaw roll every other trait uses, so an
+  inbred pairing's risk is visible in the preview like everything else.
+- **Offline kills did not apply the Strength aptitude.** Fixed in `cf96adc`
+  through one shared bloodline-bonus formula (`BloodlineBonuses.cs`) that
+  online combat, offline combat and gathering all call now, instead of three
+  separate reimplementations that had already diverged once (see the
+  "Three paths grow a level" trap in `CLAUDE.md`).
+
+Task 13 (this plan's final task) added `exercise.mjs` assertions that the
+Breeding preview names the traits a child can inherit and states the mutation
+chance, and confirmed the string "And its genes" no longer appears anywhere on
+that screen. **Not yet deployed** - see the plan's Step 5, which needs the
+owner's go-ahead and a backup of `characters`, `character_lineage_registry` and
+`village_newcomers` first.
+
+---
+
 # HANDOFF 2026-09-13 - breeding round 1 of 3: the pickers, the audit, the names
 
 The owner asked for three things in order: fix what is broken in breeding

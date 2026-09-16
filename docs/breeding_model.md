@@ -86,7 +86,7 @@ inbred pairing is allowed — it is degraded, not forbidden:
 
 - Aptitude mutation **inverts**: 10% up, 25% down instead of 25% up, 10% down.
 - Epic mutation drops from **5% to 1%**.
-- The Speed, Crit and Yield genes each lose **25%** of both copies.
+- A **60% chance the child carries a flaw.**
 
 ## 3. What a child inherits
 
@@ -122,23 +122,53 @@ Outside blood is the only thing that puts a new number into a bloodline.
 mark on the child. The preview's bands deliberately **exclude** it — widening
 every band by one to describe a 1-in-20 event would make the common case a lie.
 
-### The four genes
+### Traits
 
-Race, Speed, Crit and Yield. Each is a pair of numbers, a dominant copy and a
-recessive one.
+Traits replaced the four genes on 2026-09-13. A character carries **up to
+three**, each a permanent, visible modifier with a name and a description —
+not a hidden number nobody could see. Race is no longer a gene; a pair whose
+races differ still cannot breed at all, but that check now reads the
+character's own race field.
 
-- Each parent passes **one of its two copies at random**, 50/50.
-- The **higher** of the two received copies becomes the child's dominant, the
-  lower its recessive.
-- Per gene, a mutation chance of `max(0.1%, 1.5% × 1.12^−generation)` flips the
-  low bits of both copies. It **shrinks** every generation: 1.5% at generation
-  0, about 0.85% at generation 5, and it bottoms out at 0.1%.
+Fourteen traits exist, eleven helpful and three flaws:
 
-What they do: **Speed** and **Crit** feed attack speed and crit chance;
-**Yield** adds `+4% gathering yield per point`, online and offline; **Race** is
-the race, and a pair whose Race dominants differ cannot breed at all.
+| Trait | Rarity | Effect |
+|---|---|---|
+| Stout Heart | Common | +5% max HP |
+| Keen Edge | Common | +4% attack damage |
+| Quick Hands | Common | +5% gathering speed |
+| Green Thumb | Common | +5% gathering yield |
+| Iron Blood | Rare | +8% max HP |
+| Hawk Eye | Rare | +3 crit chance |
+| Swift Blood | Rare | +6% attack speed |
+| Nimble | Rare | +4 dodge |
+| Blood of Kings | Legendary | +10% attack damage |
+| Wolf's Hunger | Legendary | +3% lifesteal |
+| Fae Touched | Legendary | +4 chance a drop is a rarity higher |
+| Thin Blood | Flaw | −6% max HP |
+| Faint Heart | Flaw | −5% attack damage |
+| Clumsy Hands | Flaw | −6% gathering speed |
 
-Genes are a slow curiosity. Aptitudes are the axis a season leaves standing.
+**Inheriting from a hero × hero pairing:** each trait either parent carries is
+rolled independently — **90%** if both parents have it, **50%** if only one
+does. A related pair then has a **60%** chance to add a random flaw on top
+(see above). A **mutation** — chance `4% + 1% per Breeding Grounds level`, no
+ceiling — can add one more random trait, weighted 70% common / 25% rare / 5%
+legendary. An **epic** birth instead guarantees one new trait weighted 80%
+rare / 20% legendary — never a common, never a flaw. Every flaw rolled always
+survives to the child; among the rest, the highest-rarity traits fill the
+remaining slots up to the cap of **three**, ties broken toward a newly-rolled
+trait and then at random.
+
+**What a newcomer brings:** a newcomer rolls **zero or one** trait, at a
+chance of `20% + 3% per Inn level`, capped at **50%**. Of that roll, **15%**
+is a flaw; otherwise it is common/rare, or — only once the Inn is **level 6**
+or higher — common/rare/legendary.
+
+Traits are the axis a season leaves standing alongside the aptitudes: unlike
+the old genes, every one of them is a number the combat and gathering engines
+demonstrably read, and the Breeding, Ancestors, Village and Wiki screens all
+show them by name.
 
 ### What the child is, on arrival
 
@@ -210,7 +240,7 @@ what you built and what you marked.
 **Carries:**
 
 - The **Hall of Ancestors roster** — up to the cap — with each ancestor's
-  aptitudes, genes, generation, epic mark, and recorded parents.
+  aptitudes, traits, generation, epic mark, and recorded parents.
 - Village **buildings** (including the Inn and the Breeding Grounds).
 - Race masteries, unlocked races, diamonds, purchased **Inheritance** levels,
   purchased Hall slots, Seals and the permanent skill points they pay, your best
@@ -306,14 +336,12 @@ Mostly no — the aptitude half is a genuinely clean design and one paragraph
 explains it. Three parts resisted, and each is a design question rather than a
 UI one:
 
-1. **The genes are a second, parallel inheritance system that no player can act
-   on.** Aptitudes are chosen, weighted, previewable and consumed by four
-   systems. Genes are rolled 50/50 from copies nobody can see, mutate at a rate
-   that *shrinks* the longer you play, and pay out as small unnamed bonuses to
-   attack speed, crit and gathering yield. Explaining them honestly means
-   writing four paragraphs about a mechanic whose correct player response is
-   "ignore it". They are the part of the model that could be cut with the least
-   loss and they are why the preview needs two sections instead of one.
+1. ~~**The genes are a second, parallel inheritance system that no player can
+   act on.**~~ Resolved 2026-09-13: the four genes were retired outright and
+   replaced by the fourteen traits described above — named, rarity-ranked, and
+   consumed by the same combat and gathering systems the aptitudes feed. The
+   preview still needs two sections, but both are now things a player can act
+   on.
 2. **Ageing is invisible and gates everything.** "Level 50 and an Adult" reads
    like one requirement and is two, one of which is satisfied by playing and the
    other only by fielding the character into a Town-Hall-gated slot and leaving

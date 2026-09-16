@@ -2089,6 +2089,19 @@ await go('Breeding');
         : (await page.locator('.panel .warn').allInnerTexts()).join(' | ') || 'no reason shown',
     );
 
+    // Modul: TRAITS replaced the genes (2026-09-13). The section renders for
+    // every pair - "Neither parent carries a trait." is an honest answer - and
+    // the mutation chance comes from the Breeding Grounds, so both must be here.
+    // Case-insensitive like the sibling check above: every <h3> in
+    // ChildPreview.svelte is `text-transform: uppercase`, and innerText
+    // reflects the rendered (upper-cased) text, not the source markup.
+    const traitsText = await page.evaluate(() => document.body.innerText);
+    record(
+      'the preview explains traits and the mutation chance',
+      /Traits the child can inherit/i.test(traitsText) && /chance of a new trait/i.test(traitsText),
+    );
+    record('the preview no longer lists genes', !/And its genes/i.test(traitsText));
+
     // Modul: THE BREEDING GROUNDS' FIRST REAL EFFECT. Its level was read in
     // four places on the server and every one tested `<= 0`, so every upgrade
     // past the first changed no number in the game. The fixture's Grounds is
