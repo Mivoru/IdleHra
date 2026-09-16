@@ -35,10 +35,28 @@ export const BASE = process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/';
 export const DEV_EMAIL = 'dev@folkidle.local';
 export const DEV_PASSWORD = 'FolkIdleDev123!';
 
+/**
+ * Which language to boot the browser into. Unset (the default) means
+ * English, i18n.ts's own default - set FOLKIDLE_E2E_LANG to one of En, Cs,
+ * De, Pl, Es, Fr to sweep the geometry checkers in another language, since
+ * none of clipping-check.mjs / overlap-check.mjs / touch-check.mjs are
+ * language-aware on their own and German/Polish text tends to run longer
+ * than English.
+ */
+export const E2E_LANG = process.env.FOLKIDLE_E2E_LANG || null;
+
 /** A browser and a page, with console/pageerror collection wired up. */
 export async function open({ width = 1500, height = 1000 } = {}) {
   const browser = await chromium.launch();
   const page = await browser.newPage({ viewport: { width, height } });
+  if (E2E_LANG) {
+    // Modul: i18n.ts's initLanguage() runs at App.svelte's component-script
+    // top level, before any onMount - so setting localStorage AFTER
+    // page.goto (e.g. via page.evaluate) would run after the app already
+    // read it and defaulted to English. addInitScript runs before every
+    // script on the page, including the first one the bundle runs.
+    await page.addInitScript((lang) => localStorage.setItem('folkidle.language', lang), E2E_LANG);
+  }
   const errors = [];
   page.on('console', (m) => {
     // A 403 is the server saying no CORRECTLY: every client asks
