@@ -189,6 +189,12 @@ namespace FolkIdle.Server.Engine
                     breedingLevel,
                     Random.Shared);
 
+                // Modul: TRAITS, from the same pairing and the same dice - see
+                // BreedingTraits. A related pair risks a visible flaw here, which
+                // replaced the -25% growth penalty nobody could see.
+                long childTraits = BreedingTraits.Inherit(
+                    pLineage.TraitMask, mLineage.TraitMask, isInbred, isEpicMutation, breedingLevel, Random.Shared);
+
                 pChar.IsBreedingActive = true;
                 pChar.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;
                 mChar.IsBreedingActive = true;
@@ -226,7 +232,8 @@ namespace FolkIdle.Server.Engine
                     GenerationIndex = maxGen + 1,
                     GeneticVector = childGenome,
                     IsEpicMutation = isEpicMutation,
-                    IsInbred = isInbred
+                    IsInbred = isInbred,
+                    TraitMask = childTraits
                 };
                 newLineage.SetAptitudeVector(childAptitudes);
 
@@ -406,6 +413,10 @@ namespace FolkIdle.Server.Engine
                     ? BreedingAptitudes.Breed(heroAptitudes, villagerAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared)
                     : BreedingAptitudes.Breed(villagerAptitudes, heroAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared);
 
+                long childTraits = heroIsFather
+                    ? BreedingTraits.Inherit(heroLineage.TraitMask, newcomer.TraitMask, isInbred, isEpicMutation, breedingLevel, Random.Shared)
+                    : BreedingTraits.Inherit(newcomer.TraitMask, heroLineage.TraitMask, isInbred, isEpicMutation, breedingLevel, Random.Shared);
+
                 hero.IsBreedingActive = true;
                 hero.BreedingCooldownEndEpoch = nowEpoch + BreedingCooldownSeconds;
                 newcomer.IsElder = true;
@@ -437,7 +448,8 @@ namespace FolkIdle.Server.Engine
                     GenerationIndex = maxGen + 1,
                     GeneticVector = childGenome,
                     IsEpicMutation = isEpicMutation,
-                    IsInbred = isInbred
+                    IsInbred = isInbred,
+                    TraitMask = childTraits
                 };
                 newLineage.SetAptitudeVector(childAptitudes);
 
