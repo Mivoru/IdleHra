@@ -75,5 +75,38 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0L, TraitRegistry.KnownBitsMask & (1L << 11));
             Assert.Equal(4, TraitRegistry.OfRarity(TraitRarity.Rare).Count);
         }
+
+        [Fact]
+        public void TotalsSumAndCap()
+        {
+            Assert.Equal(0, TraitTotals.From(0L).MaxHpPct);
+
+            var hp = TraitTotals.From(TraitRegistry.MaskOf(TraitRegistry.StoutHeart, TraitRegistry.IronBlood));
+            Assert.Equal(13, hp.MaxHpPct);
+
+            var mixed = TraitTotals.From(TraitRegistry.MaskOf(TraitRegistry.IronBlood, TraitRegistry.ThinBlood));
+            Assert.Equal(2, mixed.MaxHpPct);
+
+            var attack = TraitTotals.From(TraitRegistry.MaskOf(TraitRegistry.KeenEdge, TraitRegistry.BloodOfKings));
+            Assert.Equal(14, attack.AttackPct);
+            Assert.InRange(attack.AttackPct, TraitTotals.NegativeFloor, TraitTotals.PositiveCap);
+
+            var others = TraitTotals.From(TraitRegistry.MaskOf(
+                TraitRegistry.HawkEye, TraitRegistry.SwiftBlood, TraitRegistry.Nimble,
+                TraitRegistry.WolfsHunger, TraitRegistry.FaeTouched, TraitRegistry.GreenThumb, TraitRegistry.ClumsyHands));
+            Assert.Equal(3, others.CritChancePoints);
+            Assert.Equal(6, others.AttackSpeedPct);
+            Assert.Equal(4, others.DodgePoints);
+            Assert.Equal(3, others.LifestealPct);
+            Assert.Equal(4, others.RarityElevationPoints);
+            Assert.Equal(5, others.GatherYieldPct);
+            Assert.Equal(-6, others.GatherSpeedPct);
+        }
+
+        [Fact]
+        public void UnknownBitsAreIgnored()
+        {
+            Assert.Equal(0, TraitTotals.From(1L << 40).MaxHpPct);
+        }
     }
 }
