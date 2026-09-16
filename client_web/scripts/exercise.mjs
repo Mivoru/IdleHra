@@ -1911,6 +1911,13 @@ await go('Village');
 // the gene pool was VISIBLE and INERT for a whole release, filling up every
 // season with people nothing in the game could marry. So this reads the roster
 // back and asserts it GREW.
+//
+// Declared out here, not inside the block below, so the Hall of Ancestors
+// section further down (a separate block) can read which child was born and
+// whether the server actually rolled it a trait - server truth, not a guess
+// from the DOM alone.
+let bredChildName = null;
+let bredChildHadTrait = null;
 await go('Breeding');
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -1945,6 +1952,12 @@ await go('Breeding');
   // Every option, with the refusal it carries. `disabled` is read off the DOM
   // rather than through isDisabled(), which is the habit the old <option>
   // reading taught this script.
+  //
+  // Modul: `hasTrait`, 2026-09-16. PersonPicker.svelte renders a TraitBadge
+  // per option whenever `person.traits.length > 0` - so whether an option's
+  // card contains a `.trait` element is a direct, RNG-free read of whether
+  // THAT candidate carries a trait, without needing to cross-reference a
+  // separate roster/newcomer fetch by key.
   async function readOptions(picker) {
     await openPicker(picker);
     const options = await listOf(picker).locator('[role="option"]').evaluateAll((nodes) =>
@@ -1953,6 +1966,7 @@ await go('Breeding');
         label: n.textContent.replace(/\s+/g, ' ').trim(),
         reason: (n.querySelector('.reason')?.textContent ?? '').trim(),
         disabled: n.disabled,
+        hasTrait: n.querySelector('.trait') !== null,
       })),
     );
     await closePicker(picker);
@@ -2008,6 +2022,11 @@ await go('Breeding');
   let villagerTotal = 0;
   let refusals = [];
   let heroesTried = 0;
+  // Modul: whether the PICKED hero and PICKED partner each carry a trait -
+  // read off the picker cards themselves (see readOptions' hasTrait), so the
+  // preview assertion below can say what it should show instead of guessing.
+  let chosenHeroHasTrait = false;
+  let chosenPartnerHasTrait = false;
   for (const heroOption of heroOptions) {
     if (marriable !== null) break;
     // Skip the heroes the screen has already refused: a child from an earlier
@@ -2032,6 +2051,8 @@ await go('Breeding');
     if (open) {
       marriable = open.key;
       marriableLabel = open.label;
+      chosenHeroHasTrait = heroOption.hasTrait;
+      chosenPartnerHasTrait = open.hasTrait;
     }
   }
 
@@ -2102,6 +2123,51 @@ await go('Breeding');
     );
     record('the preview no longer lists genes', !/And its genes/i.test(traitsText));
 
+    // Modul: THE HEADING RENDERING IS NOT THE CLAIM. Task 13's own capture of
+    // this screen showed TraitOdds: [] - the assertion above passed on the
+    // heading and "Neither parent carries a trait." alone, and the
+    // `{#each preview.TraitOdds}` branch (TraitBadge, the odds row) had never
+    // once been exercised. `chosenHeroHasTrait`/`chosenPartnerHasTrait` come
+    // from the picker cards themselves (PersonPicker renders a TraitBadge per
+    // candidate whenever it carries one), which is a deterministic read - no
+    // RNG is involved in whether the ODDS list is non-empty, only in what a
+    // bred child actually gets. So this asserts the *rendering*, both ways:
+    // a real percentage when the pair carries a trait, and the honest empty
+    // message when it does not - never one where the other belongs.
+    const traitOddsSection = await page.evaluate(() => {
+      const heading = Array.from(document.querySelectorAll('h3'))
+        .find((h) => /Traits the child can inherit/i.test(h.textContent ?? ''));
+      if (!heading) return { found: false };
+      let sibling = heading.nextElementSibling;
+      let sawEmptyMessage = false;
+      const badges = [];
+      while (sibling && sibling.tagName !== 'H3') {
+        if (/Neither parent carries a trait/i.test(sibling.textContent ?? '')) sawEmptyMessage = true;
+        sibling.querySelectorAll('li').forEach((li) => {
+          const name = li.querySelector('.trait')?.textContent?.trim()
+            ?? li.querySelector('.name')?.textContent?.trim() ?? '';
+          const pct = li.querySelector('.band')?.textContent?.trim() ?? '';
+          if (name) badges.push({ name, pct });
+        });
+        sibling = sibling.nextElementSibling;
+      }
+      return { found: true, sawEmptyMessage, badges };
+    });
+
+    const expectTraitOdds = chosenHeroHasTrait || chosenPartnerHasTrait;
+    const gotTraitOdds = traitOddsSection.found
+      && traitOddsSection.badges.length > 0
+      && traitOddsSection.badges.every((b) => /%/.test(b.pct));
+    record(
+      'the preview lists a named trait with a percentage when the pair carries one',
+      traitOddsSection.found && (expectTraitOdds ? gotTraitOdds : traitOddsSection.sawEmptyMessage),
+      expectTraitOdds
+        ? (gotTraitOdds
+          ? traitOddsSection.badges.map((b) => `${b.name} ${b.pct}`).join(', ')
+          : `expected odds (hero trait ${chosenHeroHasTrait}, partner trait ${chosenPartnerHasTrait}) but got none`)
+        : 'neither picked candidate carries a trait this run - honestly empty',
+    );
+
     // Modul: THE BREEDING GROUNDS' FIRST REAL EFFECT. Its level was read in
     // four places on the server and every one tested `<= 0`, so every upgrade
     // past the first changed no number in the game. The fixture's Grounds is
@@ -2137,6 +2203,11 @@ await go('Breeding');
     record('the fixture can afford to marry', !blocked);
 
     if (!blocked) {
+      // Modul: SERVER TRUTH, fetched before the click, so the child can be
+      // identified afterwards by which CharacterId is new - not by DOM
+      // position, which readOptions' own ordering makes no guarantee about.
+      const rosterBefore = await apiGet('/api/v1/breeding/roster');
+
       await marryButton.click();
       await page.waitForTimeout(2500);
 
@@ -2144,6 +2215,22 @@ await go('Breeding');
       // would not prove it - a dismissal does that too.
       const after = (await readOptions(heroPicker)).length;
       record('marrying the village produces a child', after > before, `${before} -> ${after} characters`);
+
+      // Modul: WHAT THE CHILD ACTUALLY GOT, read from the roster endpoint
+      // rather than guessed from the parents' odds - inheritance is rolled
+      // server-side, so this is the one place in the script that can say
+      // whether the trait system produced a real, persisted result rather
+      // than only a plausible-looking preview. Held for the Hall of Ancestors
+      // section further down, which is where a player actually SEES it.
+      if (Array.isArray(rosterBefore) && after > before) {
+        const rosterAfter = await apiGet('/api/v1/breeding/roster');
+        const beforeIds = new Set(rosterBefore.map((c) => c.CharacterId));
+        const child = (rosterAfter ?? []).find((c) => !beforeIds.has(c.CharacterId));
+        if (child) {
+          bredChildName = child.Name;
+          bredChildHadTrait = Number(child.TraitMask) !== 0;
+        }
+      }
 
       // ONE CHILD PER VILLAGER, forever. Without this a single lucky twenty
       // fathers the whole roster and the pool collapses onto one ancestor.
@@ -2213,6 +2300,34 @@ await go('Ancestors');
 
   const rows = page.locator('.panel li');
   record('the Hall lists the roster', (await rows.count()) > 0, `${await rows.count()} members`);
+
+  // Modul: THE BRED CHILD'S OWN ROW, not just the preview that promised it.
+  // `bredChildHadTrait` came from GET /api/v1/breeding/roster right after the
+  // Breed click - server truth, rolled server-side - so this is checking that
+  // what the server actually granted the child is what the player can see on
+  // the one screen that shows a roster member's traits after birth
+  // (`m.TraitMask > 0` gates TraitBadge in Ancestors.svelte). A pass here with
+  // no badge rendered would be exactly the "output side was never wired" shape
+  // this project keeps shipping - Task 13's own preview assertion could not
+  // catch it because it never got past the empty-pair case.
+  if (bredChildName === null) {
+    record('a bred child with a trait shows it on the Hall', true, 'no child identified this run - skipped');
+  } else if (bredChildHadTrait === false) {
+    record(
+      'a bred child with a trait shows it on the Hall',
+      true,
+      `${bredChildName} inherited no trait this roll (RNG) - odds were still asserted on the preview above`,
+    );
+  } else {
+    const childRow = page.locator('.panel li').filter({ hasText: bredChildName }).first();
+    const rowExists = (await childRow.count()) > 0;
+    const badgeCount = rowExists ? await childRow.locator('.trait').count() : 0;
+    record(
+      'a bred child with a trait shows it on the Hall',
+      rowExists && badgeCount > 0,
+      rowExists ? `${bredChildName}: ${badgeCount} trait badge(s)` : `${bredChildName} not found in the Hall`,
+    );
+  }
 
   // The pedigree: everybody came from somewhere, and a founder says so. By
   // NAME - it printed eight hex digits of each parent's Guid until 2026-09-13.
