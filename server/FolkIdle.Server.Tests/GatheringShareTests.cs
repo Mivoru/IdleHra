@@ -320,7 +320,7 @@ namespace FolkIdle.Server.Tests
 
             var stats = StatsCalculator.Calculate(
                 payload.STR, payload.DEX, payload.CON, payload.LCK, 0, 0, 1, 0, 0, 0, 0, 0,
-                payload.CachedAffixTotals, false, 0, 0, payload.CachedSetIds);
+                payload.CachedAffixTotals, false, default, payload.CachedSetIds);
 
             var lineage = ProgressionEngine.Lineages[payload.SelectedLineageId];
 

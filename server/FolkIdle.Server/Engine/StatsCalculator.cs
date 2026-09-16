@@ -108,7 +108,7 @@ namespace FolkIdle.Server.Engine
 
     public static class StatsCalculator
     {
-        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, EquippedAffixTotals equippedAffixTotals = default, bool isEpicMutation = false, int locusSpeed = 0, int locusCrit = 0, EquippedSetIds equippedSetIds = default)
+        public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, EquippedAffixTotals equippedAffixTotals = default, bool isEpicMutation = false, TraitTotals traits = default, EquippedSetIds equippedSetIds = default)
         {
             var stats = new CombatStats();
 
@@ -313,14 +313,15 @@ namespace FolkIdle.Server.Engine
             // fresh chances at this codebase's most expensive recurring defect.
             ApplyAttributeMilestones(ref stats, str, dex, con, lck);
 
-            // Modul 13.4.3: inherited genetic loci (see GeneticSplicingEngine/
-            // BreedingEngine). LocusCrit scales Crit Chance directly; LocusSpeed
-            // reduces the effective attack interval by adding to AttackSpeedPct
-            // (a higher AttackSpeedPct shortens the interval between attacks in
-            // the combat tick loop). Same additive block as equipped gear, before
-            // the age-phase falloff below.
-            stats.CritChancePct += locusCrit * 0.05f;
-            stats.AttackSpeedPct += locusSpeed * 0.05f;
+            // Modul: HERITABLE TRAITS, which replaced the Speed and Crit genes on
+            // 2026-09-13. Points and percents on the same 0-100 scale as the
+            // stats they join, in the same additive block as equipped gear and
+            // before the age-phase falloff below. Already capped by TraitTotals.
+            stats.CritChancePct += traits.CritChancePoints;
+            stats.AttackSpeedPct += traits.AttackSpeedPct;
+            stats.DodgeChancePct += traits.DodgePoints;
+            stats.LifestealPct += traits.LifestealPct;
+            stats.RarityElevationPct += traits.RarityElevationPoints;
 
             // Modul: Architecture Overhaul, Part 4. Equipment set bonuses -
             // applied after individual-item affix totals (equippedFlatAttack

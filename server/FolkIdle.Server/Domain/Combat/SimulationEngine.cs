@@ -3610,7 +3610,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 broadcastActiveAgePhase = currentPayload.Slot1_AgePhase;
                                 broadcastActiveRaceId = (int)(currentPayload.Slot1_GeneticVector & 0xFF);
                             }
-                            var broadcastCombatStats = StatsCalculator.Calculate(currentPayload.STR, currentPayload.DEX, currentPayload.CON, currentPayload.LCK, currentPayload.ActiveOffensivePotionId, currentPayload.ActiveDefensivePotionId, broadcastActiveAgePhase, currentPayload.CompletedAreaFlags, broadcastActiveRaceId, currentPayload.HumanMasteryLevel, currentPayload.VilaMasteryLevel, currentPayload.DraugrMasteryLevel, currentPayload.CachedAffixTotals, currentPayload.IsEpicMutation, currentPayload.LocusSpeed, currentPayload.LocusCrit, currentPayload.CachedSetIds);
+                            var broadcastCombatStats = StatsCalculator.Calculate(currentPayload.STR, currentPayload.DEX, currentPayload.CON, currentPayload.LCK, currentPayload.ActiveOffensivePotionId, currentPayload.ActiveDefensivePotionId, broadcastActiveAgePhase, currentPayload.CompletedAreaFlags, broadcastActiveRaceId, currentPayload.HumanMasteryLevel, currentPayload.VilaMasteryLevel, currentPayload.DraugrMasteryLevel, currentPayload.CachedAffixTotals, currentPayload.IsEpicMutation, TraitTotals.From(currentPayload.TraitMask), currentPayload.CachedSetIds);
 
                             // Modul: onboarding signal - true only while the
                             // account's first character exists but has never
@@ -4986,7 +4986,7 @@ namespace FolkIdle.Server.Domain.Combat
                     regenAgePhase, payload.CompletedAreaFlags,
                     regenRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel,
                     payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation,
-                    payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
+                    TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
 
                 int regenMaxHp = 100000 + (regenStats.MaxHp * 1000);
                 if (payload.PlayerHp < regenMaxHp)
@@ -5494,7 +5494,7 @@ namespace FolkIdle.Server.Domain.Combat
                             gatherActiveAgePhase = payload.Slot1_AgePhase;
                             gatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
                         }
-                        var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
+                        var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
 
                         int monolithLevel = gatheringNode.ProfessionType switch
                         {
@@ -5630,7 +5630,7 @@ namespace FolkIdle.Server.Domain.Combat
                 activeRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
             }
 
-            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, payload.LocusSpeed, payload.LocusCrit, payload.CachedSetIds);
+            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
             
             // Modul: the base pool is a CURVE now, not a constant - see
             // ProgressionEngine.BaseMilliHpForLevel. A flat 100 against monster

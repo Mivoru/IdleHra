@@ -1158,13 +1158,24 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void Test_StatsCalculator_GeneticLociScaleCritAndAttackSpeed()
+        public void Test_StatsCalculator_TraitsReachCombatStats()
         {
+            // Modul: genes were replaced by traits (2026-09-13). The same five
+            // combat stats the genes used to touch - and three they never did -
+            // must move by exactly the trait's value.
             CombatStats baseline = StatsCalculator.Calculate(str: 50, dex: 50, con: 50, lck: 50);
-            CombatStats withLoci = StatsCalculator.Calculate(str: 50, dex: 50, con: 50, lck: 50, locusSpeed: 10, locusCrit: 10);
+            var traits = TraitTotals.From(TraitRegistry.MaskOf(
+                TraitRegistry.HawkEye, TraitRegistry.SwiftBlood, TraitRegistry.Nimble));
+            CombatStats withTraits = StatsCalculator.Calculate(str: 50, dex: 50, con: 50, lck: 50, traits: traits);
 
-            Assert.True(withLoci.CritChancePct > baseline.CritChancePct);
-            Assert.True(withLoci.AttackSpeedPct > baseline.AttackSpeedPct);
+            Assert.Equal(baseline.CritChancePct + 3f, withTraits.CritChancePct, 3);
+            Assert.Equal(baseline.AttackSpeedPct + 6f, withTraits.AttackSpeedPct, 3);
+            Assert.Equal(baseline.DodgeChancePct + 4f, withTraits.DodgeChancePct, 3);
+
+            var legendary = TraitTotals.From(TraitRegistry.MaskOf(TraitRegistry.WolfsHunger, TraitRegistry.FaeTouched));
+            CombatStats withLegendary = StatsCalculator.Calculate(str: 50, dex: 50, con: 50, lck: 50, traits: legendary);
+            Assert.Equal(baseline.LifestealPct + 3f, withLegendary.LifestealPct, 3);
+            Assert.Equal(baseline.RarityElevationPct + 4f, withLegendary.RarityElevationPct, 3);
         }
 
         [Fact]
