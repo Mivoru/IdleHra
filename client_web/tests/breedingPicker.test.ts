@@ -22,6 +22,7 @@ function candidate(overrides: Partial<BreedingCandidate> = {}): BreedingCandidat
     BreedingCooldownEndEpoch: 0,
     IsEpicMutation: false,
     IsInbred: false,
+    TraitMask: 0,
     IsFemale: false,
     AptitudeStrength: 4,
     AptitudeSkill: 4,
@@ -45,6 +46,7 @@ function newcomer(overrides: Partial<VillageNewcomer> = {}): VillageNewcomer {
     AptitudeFortune: 6,
     ArrivedAtEpoch: 0,
     IsElder: false,
+    TraitMask: 0,
     ...overrides,
   };
 }

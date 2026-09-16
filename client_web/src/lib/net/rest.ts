@@ -36,6 +36,7 @@ export const queryKeys = {
   codex: ['meta', 'codex'] as const,
   metadata: ['meta', 'metadata'] as const,
   breedingRoster: ['meta', 'breeding'] as const,
+  traits: ['meta', 'traits'] as const,
   ancestorsHall: ['meta', 'ancestors'] as const,
   deeds: ['meta', 'deeds'] as const,
   breedingPreview: (a: string, b: string) => ['meta', 'breeding', 'preview', a, b] as const,
@@ -777,6 +778,7 @@ export interface VillageNewcomer {
   AptitudeFortune: number;
   ArrivedAtEpoch: number;
   IsElder: boolean;
+  TraitMask: number;
 }
 
 export interface VillageNewcomersSnapshot {
@@ -928,6 +930,7 @@ export interface BreedingCandidate {
   BreedingCooldownEndEpoch: number;
   IsEpicMutation: boolean;
   IsInbred: boolean;
+  TraitMask: number;
 
   // Modul: hero x villager. A pair needs one of each and the same race, and
   // the aptitudes are what the pairing is chosen FOR - all three were missing
@@ -945,6 +948,23 @@ export interface BreedingCandidate {
 
 export function fetchBreedingRoster(): Promise<BreedingCandidate[]> {
   return authedGet<BreedingCandidate[]>('/api/v1/breeding/roster');
+}
+
+export type TraitRarity = 'Common' | 'Rare' | 'Legendary' | 'Flaw';
+
+/** One heritable trait, as GET /api/v1/breeding/traits describes it. The client never keeps its own copy. */
+export interface TraitDefinition {
+  Id: number;
+  Key: string;
+  Name: string;
+  Description: string;
+  Rarity: TraitRarity;
+  Effect: string;
+  Value: number;
+}
+
+export function fetchTraits(): Promise<TraitDefinition[]> {
+  return authedGet<TraitDefinition[]>('/api/v1/breeding/traits');
 }
 
 /**
@@ -966,6 +986,7 @@ export interface HallMember {
   GenerationIndex: number;
   IsEpicMutation: boolean;
   IsInbred: boolean;
+  TraitMask: number;
 
   /** Marked by the player to carry through the rollover. */
   IsKept: boolean;
@@ -1078,6 +1099,12 @@ export interface AptitudePreview {
   PredictedMax: number;
 }
 
+export interface TraitOddsEntry {
+  TraitId: number;
+  ChancePct: number;
+  Source: 'hero' | 'partner' | 'both';
+}
+
 export interface BreedingPreview {
   IsEligible: boolean;
   IneligibleReason: string;
@@ -1086,6 +1113,9 @@ export interface BreedingPreview {
   HasSufficientGold: boolean;
   Loci: GeneLocusPreview[];
   Aptitudes: AptitudePreview[];
+  TraitOdds: TraitOddsEntry[];
+  MutationChancePct: number;
+  FlawChancePct: number;
 }
 
 export function fetchBreedingPreview(paternalId: string, maternalId: string): Promise<BreedingPreview> {
