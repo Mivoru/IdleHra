@@ -1120,7 +1120,7 @@ namespace FolkIdle.Server.Engine
                 return true;
             }
 
-            if (packet.TargetLanguageId == 0 || packet.TargetLanguageId > 4)
+            if (packet.TargetLanguageId == 0 || packet.TargetLanguageId > 6)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 35, Value2 = 1, Timestamp = Environment.TickCount64 });
                 return false;

@@ -7023,6 +7023,31 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: untested before this - ValidateLanguageSwitchRequest had no
+        // dedicated test at all. Six languages now, so ids 5 and 6 must pass
+        // and 0 and 7 must still be refused.
+        [Fact]
+        public void Test_ValidateLanguageSwitchRequest_AcceptsAllSixLanguagesAndRejectsOutOfRange()
+        {
+            for (byte id = 1; id <= 6; id++)
+            {
+                var payload = new TickStatePayload { PlayerId = 970003000L + id };
+                var packet = new ClientCommandPacket { Command = CommandType.SwitchLanguage, TargetLanguageId = id };
+                Assert.True(ClientCommandValidator.ValidateLanguageSwitchRequest(ref payload, ref packet),
+                    $"Language id {id} should be accepted - six languages are supported now.");
+            }
+
+            var zeroPayload = new TickStatePayload { PlayerId = 970003100L };
+            var zeroPacket = new ClientCommandPacket { Command = CommandType.SwitchLanguage, TargetLanguageId = 0 };
+            Assert.False(ClientCommandValidator.ValidateLanguageSwitchRequest(ref zeroPayload, ref zeroPacket),
+                "0 is not a language, it is 'no field set'.");
+
+            var sevenPayload = new TickStatePayload { PlayerId = 970003101L };
+            var sevenPacket = new ClientCommandPacket { Command = CommandType.SwitchLanguage, TargetLanguageId = 7 };
+            Assert.False(ClientCommandValidator.ValidateLanguageSwitchRequest(ref sevenPayload, ref sevenPacket),
+                "7 is one past the sixth language and must still be refused.");
+        }
+
         // Modul: removed with ApplyStatusSynergy. Chilled and Vulnerable no
         // longer have anything that applies them - the bits survive only
         // because Burning shares the same byte and removing two of three would
