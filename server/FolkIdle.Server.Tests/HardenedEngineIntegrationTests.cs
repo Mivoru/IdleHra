@@ -6909,13 +6909,13 @@ namespace FolkIdle.Server.Tests
             Assert.Equal("Boss LP: ", deValue);
 
             Assert.True(ContentRegistry.TryGetLocalization("ActiveEventPrefix", "cs", out string csValue));
-            Assert.Equal("Aktivni event: ", csValue);
+            Assert.Equal("Aktivní event: ", csValue);
 
             bool resolvedMissingKey = ContentRegistry.TryGetLocalization("ThisKeyDoesNotExist", "de", out string missingKeyValue);
             Assert.False(resolvedMissingKey);
             Assert.Equal(string.Empty, missingKeyValue);
 
-            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "fr", out string fallbackValue));
+            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "it", out string fallbackValue));
             Assert.Equal("None", fallbackValue);
         }
 
@@ -6962,6 +6962,65 @@ namespace FolkIdle.Server.Tests
 
             Assert.True(ContentRegistry.TryGetLocalization("ErrorMaxTierReached", "pl", out string maxTierPl));
             Assert.Equal("Osiagnieto maksymalny poziom", maxTierPl);
+        }
+
+        // Modul: added when Es/Fr joined the schema. "it" (Italian) stands in
+        // for "any language this client still does not support" now that fr
+        // is a real, resolved language rather than a stand-in for that case -
+        // the test above this one used to make that point with "fr" itself.
+        [Fact]
+        public void Test_ContentRegistry_LocalizationLookup_ResolvesSpanishAndFrench()
+        {
+            Assert.True(ContentRegistry.TryGetLocalization("BossHpPrefix", "es", out string esValue));
+            Assert.Equal("PV del Jefe: ", esValue);
+
+            Assert.True(ContentRegistry.TryGetLocalization("BossHpPrefix", "fr", out string frValue));
+            Assert.Equal("PV du Boss : ", frValue);
+
+            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "es", out string esNone));
+            Assert.Equal("Ninguno", esNone);
+
+            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "fr", out string frNone));
+            Assert.Equal("Aucun", frNone);
+
+            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "it", out string fallbackValue));
+            Assert.Equal("None", fallbackValue);
+        }
+
+        // Modul: the row that ships with one missing column is the one nobody
+        // notices in review - this proves the boot gate catches exactly one
+        // missing language as reliably as it catches all six, mirroring
+        // Test_ContentPipeline_MissingOrMalformedJson_FailsFast's temp-dir
+        // pattern rather than touching the real, shared GameData directory.
+        [Fact]
+        public void Test_ContentPipeline_LocalizationMissingATranslation_FailsFast()
+        {
+            string tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "folkidle_content_test_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Modul: items.json and gathering_nodes.json each need at
+                // least one entry here - ReadAndValidateJsonFile rejects an
+                // empty list before Initialize ever reaches the
+                // localization check below, which would make this test pass
+                // for the wrong reason (or not at all, once Step 4 lands)
+                // regardless of what localizations.json contains.
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "monsters.json"),
+                    "[{\"Id\":1,\"MaxHp\":100,\"AttackPower\":1,\"BaseGoldReward\":1,\"BaseXpReward\":1,\"AttackIntervalMs\":1000,\"LootTableId\":1,\"Name\":\"X\",\"EnemyId\":\"x\"}]");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "items.json"),
+                    "[{\"Id\":1,\"RegionTier\":1,\"BaseValueGold\":1,\"FlatAttackPower\":0,\"FlatDefenseRating\":0,\"BaseId\":\"x\"}]");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "gathering_nodes.json"),
+                    "[{\"ActivityId\":1,\"ProfessionType\":1,\"BaseTickThreshold\":1,\"BaseMasteryXpReward\":1}]");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "localizations.json"),
+                    "[{\"Key\":\"X\",\"En\":\"x\",\"Cs\":\"x\",\"De\":\"x\",\"Pl\":\"x\",\"Es\":\"x\",\"Fr\":\"\"}]");
+
+                Assert.Throws<InvalidOperationException>(() => ContentRegistry.Initialize(tempDir));
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
         }
 
         // Modul: removed with ApplyStatusSynergy. Chilled and Vulnerable no

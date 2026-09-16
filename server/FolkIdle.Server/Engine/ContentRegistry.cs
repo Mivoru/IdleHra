@@ -260,15 +260,15 @@ namespace FolkIdle.Server.Engine
         // within it) changes no behavior.
         public static GameBalanceDefinition Balance => _balance;
 
-        // Modul: Production Release Hardening, Part 3. Keyed by the same
-        // Key string localizations.json uses (matches client
-        // LocalizationMatrix's LocalizationKey enum member names) mapped
-        // to each of the four supported language codes. Server-side
-        // exposure exists for content-QA/testability, not because any
-        // gameplay logic reads localized text at runtime (nothing does -
-        // this is client-rendering-only data); see TryGetLocalization for
-        // the fallback-safe (default to "en", never throws) lookup this
-        // whole registry exists to prove correct.
+        // Modul: Production Release Hardening, Part 3, widened 2026-09-17 to
+        // six languages. Keyed by the same Key string localizations.json
+        // uses (matches client LocalizationMatrix's LocalizationKey enum
+        // member names) mapped to each of the six supported language codes.
+        // Server-side exposure exists for content-QA/testability, not
+        // because any gameplay logic reads localized text at runtime
+        // (nothing does - this is client-rendering-only data); see
+        // TryGetLocalization for the fallback-safe (default to "en", never
+        // throws) lookup this whole registry exists to prove correct.
         private static Dictionary<string, LocalizationJson> _localizations = new Dictionary<string, LocalizationJson>();
 
         public static bool TryGetLocalization(string key, string languageCode, out string value)
@@ -285,6 +285,8 @@ namespace FolkIdle.Server.Engine
                 "cs" => entry.Cs,
                 "de" => entry.De,
                 "pl" => entry.Pl,
+                "es" => entry.Es,
+                "fr" => entry.Fr,
                 _ => entry.En
             };
 
@@ -1202,8 +1204,9 @@ namespace FolkIdle.Server.Engine
             public int BaseMasteryXpReward { get; set; }
         }
 
-        // Modul: Production Release Hardening, Part 3. Flat localization
-        // schema - Key mapped directly to each of the four supported
+        // Modul: Production Release Hardening, Part 3, widened 2026-09-17 to
+        // six languages (round 3: EN/ES/FR/DE/PL/CS). Flat localization
+        // schema - Key mapped directly to each of the six supported
         // languages, one entry per translatable string. Mirrors client
         // LocalizationMatrix.cs's own DTO exactly (Key matches that side's
         // LocalizationKey enum member names, validated there via
@@ -1217,6 +1220,8 @@ namespace FolkIdle.Server.Engine
             public string Cs { get; set; } = string.Empty;
             public string De { get; set; } = string.Empty;
             public string Pl { get; set; } = string.Empty;
+            public string Es { get; set; } = string.Empty;
+            public string Fr { get; set; } = string.Empty;
         }
 
         // Modul: parses server/GameData/*.json into the flat struct arrays
@@ -1256,9 +1261,9 @@ namespace FolkIdle.Server.Engine
                 {
                     throw new InvalidOperationException($"ContentRegistry.Initialize: 'localizations.json' entry at index {i} has an empty Key.");
                 }
-                if (string.IsNullOrEmpty(entry.En) || string.IsNullOrEmpty(entry.Cs) || string.IsNullOrEmpty(entry.De) || string.IsNullOrEmpty(entry.Pl))
+                if (string.IsNullOrEmpty(entry.En) || string.IsNullOrEmpty(entry.Cs) || string.IsNullOrEmpty(entry.De) || string.IsNullOrEmpty(entry.Pl) || string.IsNullOrEmpty(entry.Es) || string.IsNullOrEmpty(entry.Fr))
                 {
-                    throw new InvalidOperationException($"ContentRegistry.Initialize: 'localizations.json' entry Key='{entry.Key}' is missing a translation for one or more of En/Cs/De/Pl.");
+                    throw new InvalidOperationException($"ContentRegistry.Initialize: 'localizations.json' entry Key='{entry.Key}' is missing a translation for one or more of En/Cs/De/Pl/Es/Fr.");
                 }
             }
 

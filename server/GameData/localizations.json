@@ -2,197 +2,253 @@
   {
     "Key": "ActiveEventPrefix",
     "En": "Active Event: ",
-    "Cs": "Aktivni event: ",
+    "Cs": "Aktivní event: ",
     "De": "Aktives Ereignis: ",
-    "Pl": "Aktywne wydarzenie: "
+    "Pl": "Aktywne wydarzenie: ",
+    "Es": "Evento activo: ",
+    "Fr": "Événement actif : "
   },
   {
     "Key": "EventNone",
     "En": "None",
-    "Cs": "Zadny",
+    "Cs": "Žádný",
     "De": "Keins",
-    "Pl": "Brak"
+    "Pl": "Brak",
+    "Es": "Ninguno",
+    "Fr": "Aucun"
   },
   {
     "Key": "EventGoldenHarvest",
     "En": "Golden Harvest",
-    "Cs": "Zlata sklizen",
+    "Cs": "Zlatá sklizeň",
     "De": "Goldene Ernte",
-    "Pl": "Zlote zniwa"
+    "Pl": "Zlote zniwa",
+    "Es": "Cosecha Dorada",
+    "Fr": "Récolte Dorée"
   },
   {
     "Key": "EventBloodMoon",
     "En": "Blood Moon",
-    "Cs": "Krvavy mesic",
+    "Cs": "Krvavý měsíc",
     "De": "Blutmond",
-    "Pl": "Krwawy ksiezyc"
+    "Pl": "Krwawy ksiezyc",
+    "Es": "Luna de Sangre",
+    "Fr": "Lune de Sang"
   },
   {
     "Key": "EventMasterArtisan",
     "En": "Master Artisan",
-    "Cs": "Mistr remesel",
+    "Cs": "Mistr řemesel",
     "De": "Meister Handwerk",
-    "Pl": "Mistrz rzemiosla"
+    "Pl": "Mistrz rzemiosla",
+    "Es": "Maestro Artesano",
+    "Fr": "Maître Artisan"
   },
   {
     "Key": "EventDiamondStar",
     "En": "Diamond Star",
-    "Cs": "Diamantova hvezda",
+    "Cs": "Diamantová hvězda",
     "De": "Diamantstern",
-    "Pl": "Diamentowa gwiazda"
+    "Pl": "Diamentowa gwiazda",
+    "Es": "Estrella de Diamante",
+    "Fr": "Étoile de Diamant"
   },
   {
     "Key": "PushQueuePrefix",
     "En": "Push Queue: ",
-    "Cs": "Push Fronta: ",
+    "Cs": "Push fronta: ",
     "De": "Push Warten: ",
-    "Pl": "Kolejka Push: "
+    "Pl": "Kolejka Push: ",
+    "Es": "Cola de notificaciones: ",
+    "Fr": "File d'attente push : "
   },
   {
     "Key": "BossHpPrefix",
     "En": "Boss HP: ",
     "Cs": "Boss HP: ",
     "De": "Boss LP: ",
-    "Pl": "Boss PZ: "
+    "Pl": "Boss PZ: ",
+    "Es": "PV del Jefe: ",
+    "Fr": "PV du Boss : "
   },
   {
     "Key": "HeaderMailbox",
     "En": "Mailbox",
-    "Cs": "Postovni schranka",
+    "Cs": "Poštovní schránka",
     "De": "Postfach",
-    "Pl": "Skrzynka pocztowa"
+    "Pl": "Skrzynka pocztowa",
+    "Es": "Buzón",
+    "Fr": "Boîte aux lettres"
   },
   {
     "Key": "HeaderBankVault",
     "En": "Bank Vault",
-    "Cs": "Bankovni trezor",
+    "Cs": "Bankovní trezor",
     "De": "Banktresor",
-    "Pl": "Skarbiec bankowy"
+    "Pl": "Skarbiec bankowy",
+    "Es": "Bóveda del Banco",
+    "Fr": "Coffre-fort"
   },
   {
     "Key": "HeaderStore",
     "En": "Store",
     "Cs": "Obchod",
     "De": "Shop",
-    "Pl": "Sklep"
+    "Pl": "Sklep",
+    "Es": "Tienda",
+    "Fr": "Boutique"
   },
   {
     "Key": "HeaderSeasonPass",
     "En": "Season Pass",
-    "Cs": "Sezonni propustka",
+    "Cs": "Sezónní propustka",
     "De": "Season-Pass",
-    "Pl": "Przepustka sezonowa"
+    "Pl": "Przepustka sezonowa",
+    "Es": "Pase de Temporada",
+    "Fr": "Passe Saisonnier"
   },
   {
     "Key": "HeaderGuildRoster",
     "En": "Guild Roster",
-    "Cs": "Seznam clenu gildy",
+    "Cs": "Seznam členů gildy",
     "De": "Gildenliste",
-    "Pl": "Lista gildii"
+    "Pl": "Lista gildii",
+    "Es": "Lista del Gremio",
+    "Fr": "Liste de la Guilde"
   },
   {
     "Key": "HeaderOfflineSummary",
     "En": "Offline Summary",
     "Cs": "Souhrn offline",
     "De": "Offline-Zusammenfassung",
-    "Pl": "Podsumowanie offline"
+    "Pl": "Podsumowanie offline",
+    "Es": "Resumen sin conexión",
+    "Fr": "Résumé hors ligne"
   },
   {
     "Key": "ErrorTransactionPending",
     "En": "Transaction pending",
-    "Cs": "Transakce probiha",
+    "Cs": "Transakce probíhá",
     "De": "Transaktion ausstehend",
-    "Pl": "Transakcja w toku"
+    "Pl": "Transakcja w toku",
+    "Es": "Transacción pendiente",
+    "Fr": "Transaction en cours"
   },
   {
     "Key": "ErrorMaxTierReached",
     "En": "Max tier reached",
-    "Cs": "Maximalni uroven dosazena",
+    "Cs": "Maximální úroveň dosažena",
     "De": "Maximale Stufe erreicht",
-    "Pl": "Osiagnieto maksymalny poziom"
+    "Pl": "Osiagnieto maksymalny poziom",
+    "Es": "Nivel máximo alcanzado",
+    "Fr": "Niveau maximum atteint"
   },
   {
     "Key": "ErrorInsufficientFunds",
     "En": "Insufficient funds",
-    "Cs": "Nedostatek prostredku",
+    "Cs": "Nedostatek prostředků",
     "De": "Unzureichendes Guthaben",
-    "Pl": "Niewystarczajace srodki"
+    "Pl": "Niewystarczajace srodki",
+    "Es": "Fondos insuficientes",
+    "Fr": "Fonds insuffisants"
   },
   {
     "Key": "ErrorInventoryFull",
     "En": "Inventory full",
-    "Cs": "Inventar je plny",
+    "Cs": "Inventář je plný",
     "De": "Inventar voll",
-    "Pl": "Ekwipunek jest pelny"
+    "Pl": "Ekwipunek jest pelny",
+    "Es": "Inventario lleno",
+    "Fr": "Inventaire plein"
   },
   {
     "Key": "StateLevelUp",
     "En": "Level Up!",
-    "Cs": "Postup na uroven!",
+    "Cs": "Postup na úroveň!",
     "De": "Stufenaufstieg!",
-    "Pl": "Nowy poziom!"
+    "Pl": "Nowy poziom!",
+    "Es": "¡Subida de nivel!",
+    "Fr": "Niveau supérieur !"
   },
   {
     "Key": "StateAllProgressSaved",
     "En": "All progress saved",
-    "Cs": "Veskery postup ulozen",
+    "Cs": "Veškerý postup uložen",
     "De": "Gesamter Fortschritt gespeichert",
-    "Pl": "Caly postep zapisany"
+    "Pl": "Caly postep zapisany",
+    "Es": "Todo el progreso guardado",
+    "Fr": "Toute la progression enregistrée"
   },
   {
     "Key": "StateSavedPrefix",
     "En": "Saved ",
-    "Cs": "Ulozeno pred ",
+    "Cs": "Uloženo před ",
     "De": "Gespeichert vor ",
-    "Pl": "Zapisano "
+    "Pl": "Zapisano ",
+    "Es": "Guardado hace ",
+    "Fr": "Enregistré il y a "
   },
   {
     "Key": "StateMinutesAgoSuffix",
     "En": "m ago",
     "Cs": " min",
     "De": " Min.",
-    "Pl": " min temu"
+    "Pl": " min temu",
+    "Es": " min",
+    "Fr": " min"
   },
   {
     "Key": "StateHoursAgoSuffix",
     "En": "h ago",
     "Cs": " hod",
     "De": " Std.",
-    "Pl": " godz temu"
+    "Pl": " godz temu",
+    "Es": " h",
+    "Fr": " h"
   },
   {
     "Key": "OfflineAwayForPrefix",
     "En": "Away for ",
-    "Cs": "Nepritomen ",
+    "Cs": "Nepřítomen ",
     "De": "Abwesend seit ",
-    "Pl": "Nieobecny przez "
+    "Pl": "Nieobecny przez ",
+    "Es": "Ausente durante ",
+    "Fr": "Absent depuis "
   },
   {
     "Key": "OfflineHoursSuffix",
     "En": "h ",
     "Cs": "h ",
     "De": "Std. ",
-    "Pl": "godz "
+    "Pl": "godz ",
+    "Es": "h ",
+    "Fr": "h "
   },
   {
     "Key": "OfflineMinutesSuffix",
     "En": "m",
     "Cs": "m",
     "De": "Min.",
-    "Pl": "min"
+    "Pl": "min",
+    "Es": "m",
+    "Fr": "m"
   },
   {
     "Key": "GuildWarStatusActive",
     "En": "War Active",
-    "Cs": "Valka probiha",
+    "Cs": "Válka probíhá",
     "De": "Krieg aktiv",
-    "Pl": "Wojna trwa"
+    "Pl": "Wojna trwa",
+    "Es": "Guerra Activa",
+    "Fr": "Guerre Active"
   },
   {
     "Key": "GuildWarStatusInactive",
     "En": "No Active War",
-    "Cs": "Zadna aktivni valka",
+    "Cs": "Žádná aktivní válka",
     "De": "Kein aktiver Krieg",
-    "Pl": "Brak aktywnej wojny"
+    "Pl": "Brak aktywnej wojny",
+    "Es": "Sin Guerra Activa",
+    "Fr": "Aucune Guerre Active"
   }
 ]
