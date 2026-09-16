@@ -20,10 +20,11 @@ nothing else.
 
 | Concept | Canonical word | Do not call it |
 |---|---|---|
-| One of the four bred numbers: Strength, Skill, Endurance, Fortune | **aptitude** | trait, stat, gene |
+| One of the four bred numbers: Strength, Skill, Endurance, Fortune | **aptitude** | stat, gene |
 | The four aptitudes your line carries, collectively | **bloodline** | legacy, lineage |
-| One of the four dominant/recessive pairs: Race, Speed, Crit, Yield | **gene** | locus, loci (server-side names only) |
+| The one dominant/recessive pair left in the genome: Race | **gene** | locus, loci (server-side names only) |
 | One half of a gene | **copy** — the *dominant* copy and the *recessive* copy | allele |
+| One of up to three permanent, named modifiers a character carries (see [Traits](#traits) below) | **trait** | gene, stat |
 | A person on the Hall of Ancestors roster | **ancestor** | lineage member |
 | The end-of-season deletion down to the Hall's cap | **the cull**; who survives it **carries** | reset, wipe |
 | Somebody who arrives at the Inn and has not married | **newcomer** | resident, villager slot |
@@ -124,11 +125,13 @@ every band by one to describe a 1-in-20 event would make the common case a lie.
 
 ### Traits
 
-Traits replaced the four genes on 2026-09-13. A character carries **up to
-three**, each a permanent, visible modifier with a name and a description —
-not a hidden number nobody could see. Race is no longer a gene; a pair whose
-races differ still cannot breed at all, but that check now reads the
-character's own race field.
+Traits replaced three of the four genes on 2026-09-13 — Speed, Crit and Yield.
+A character carries **up to three** traits, each a permanent, visible modifier
+with a name and a description — not a hidden number nobody could see. Race was
+never one of the retired genes: it is still the genome's one live dominant/
+recessive locus, still spliced on every birth, and a pair whose races differ
+still cannot breed at all because that check still reads the genetic vector,
+same as before.
 
 Fourteen traits exist, eleven helpful and three flaws:
 
@@ -338,11 +341,12 @@ explains it. Three parts resisted, and each is a design question rather than a
 UI one:
 
 1. ~~**The genes are a second, parallel inheritance system that no player can
-   act on.**~~ Resolved 2026-09-13: the four genes were retired outright and
-   replaced by the fourteen traits described above — named, rarity-ranked, and
-   consumed by the same combat and gathering systems the aptitudes feed. The
-   preview still needs two sections, but both are now things a player can act
-   on.
+   act on.**~~ Resolved 2026-09-13 for three of the four: Speed, Crit and Yield
+   were retired outright and replaced by the fourteen traits described above —
+   named, rarity-ranked, and consumed by the same combat and gathering systems
+   the aptitudes feed. Race stayed; it still gates a pairing and still shows
+   as the preview's one remaining gene section, which a player still cannot
+   act on beyond choosing a same-race partner.
 2. **Ageing is invisible and gates everything.** "Level 50 and an Adult" reads
    like one requirement and is two, one of which is satisfied by playing and the
    other only by fielding the character into a Town-Hall-gated slot and leaving

@@ -19,8 +19,8 @@ to do next.
 
 # HANDOFF 2026-09-16 - breeding round 2: heritable traits replace the genes
 
-The owner's round 2 ("redesign breeding and mutations") is done: the four
-invisible genes (Race, Speed, Crit, Yield) are retired outright and replaced by
+The owner's round 2 ("redesign breeding and mutations") is done: the three
+invisible genes (Speed, Crit, Yield) are retired outright and replaced by
 **fourteen named, heritable traits** (11 helpful, 3 flaws), each a permanent
 modifier a player can see on the Breeding, Ancestors, Village and Wiki screens
 and that the combat/gathering engines demonstrably read - see the new
@@ -29,7 +29,10 @@ inheritance/mutation/newcomer math. `TraitRegistry` pins every trait to a bit
 in `character_lineage_registry.TraitMask`; migration `AddBreedingTraits`
 (`20260916113501`) only adds that column and `village_newcomers.TraitMask` -
 **additive, no backfill**, so every existing ancestor and newcomer simply reads
-as traitless until bred or arriving again.
+as traitless until bred or arriving again. Race was not one of the retired
+genes and was never invisible - it stays the genome's one live dominant/
+recessive locus (`GeneticVector.LocusRace`) and still gates a pairing outright
+in `BreedingGateRules`.
 
 Two defects retired along with the genes:
 - **The hidden -25% inbreeding growth penalty.** The old genes silently lost

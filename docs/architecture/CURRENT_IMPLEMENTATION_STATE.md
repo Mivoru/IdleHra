@@ -369,6 +369,17 @@ that has served `Up()`.
   `ContentRegistry.GetItemBaseId`), never a numeric string, so this parse
   always fails and `regionTier` silently defaults to 1 for every forge
   affix roll. See `NEXT_STEPS_BACKLOG.md` item 7.
+- `Engine/GeneticSplicingEngine.cs` still splices `LocusSpeed`/`LocusCrit`/
+  `LocusYield` on every birth, and `BreedingEngine.cs` (~line 170) still calls
+  `ApplyInbreedingDegradation` against those same loci - both deliberate now,
+  2026-09-13. Traits replaced Speed/Crit/Yield as what the game actually reads
+  (`BloodlineBonuses` consumes `TraitTotals`, not these loci), but the loci
+  themselves were left in `GeneticVector` and still get spliced/degraded on
+  every child; no code reads the result. `LocusRace` is not part of this -
+  it's the one locus still live, still gating a pairing. Left in rather than
+  ripped out because `GeneticVector` is a packed `long` shared across several
+  call sites and removing three of its four fields mid-migration was judged
+  higher-risk than an inert splice.
 
 ## 10. Explicitly Deferred This Pass
 
