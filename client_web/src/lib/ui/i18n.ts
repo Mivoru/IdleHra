@@ -1,13 +1,14 @@
 // Modul: localisation. The descendant of LocalizationMatrix, reading the very
-// same `localizations.json` the Unity client does - served over /gamedata, so
+// same `localizations.json` the Unity client did - served over /gamedata, so
 // there is one table and not two.
 //
 // THE LANGUAGE INDEX AND THE WIRE ID ARE DIFFERENT NUMBERS, and that is the
-// one trap here. LocalizationMatrix uses 0-based array indices (En 0, Cs 1,
-// De 2, Pl 3), while `SwitchLanguage`'s `TargetLanguageId` is 1-4 and
+// one trap here. LocalizationMatrix uses 0-based array indices, while
+// `SwitchLanguage`'s `TargetLanguageId` is 1-based and
 // ValidateLanguageSwitchRequest rejects 0 outright. Sending the index would
 // therefore switch to the wrong language at best and be refused at worst, so
-// the two are named separately below rather than left as "the language number".
+// the two are named separately below rather than left as "the language
+// number".
 
 import { writable, derived, get } from 'svelte/store';
 import { GAMEDATA_BASE } from '../net/config';
@@ -18,6 +19,8 @@ export interface LocalizationRow {
   Cs: string;
   De: string;
   Pl: string;
+  Es: string;
+  Fr: string;
 }
 
 /** Index is LocalizationMatrix's 0-based ordering; wireId is what the command takes. */
@@ -26,6 +29,8 @@ export const LANGUAGES = [
   { index: 1, wireId: 2, code: 'Cs' as const, name: 'Čeština' },
   { index: 2, wireId: 3, code: 'De' as const, name: 'Deutsch' },
   { index: 3, wireId: 4, code: 'Pl' as const, name: 'Polski' },
+  { index: 4, wireId: 5, code: 'Es' as const, name: 'Español' },
+  { index: 5, wireId: 6, code: 'Fr' as const, name: 'Français' },
 ];
 
 export type LanguageCode = (typeof LANGUAGES)[number]['code'];

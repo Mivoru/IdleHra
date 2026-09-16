@@ -67,3 +67,16 @@ describe('the translation table itself', () => {
     expect(rows.length).toBeLessThan(200);
   });
 });
+
+describe('the six supported languages', () => {
+  it('lists all six, with the wire ids the server actually accepts', async () => {
+    const { LANGUAGES } = await import('../src/lib/ui/i18n');
+
+    expect(LANGUAGES.map((l) => l.code)).toEqual(['En', 'Cs', 'De', 'Pl', 'Es', 'Fr']);
+    expect(LANGUAGES.map((l) => l.wireId)).toEqual([1, 2, 3, 4, 5, 6]);
+
+    // The index is LocalizationMatrix's 0-based ordering, one less than the
+    // wire id - i18n.ts's own header comment calls this "the one trap here".
+    LANGUAGES.forEach((l) => expect(l.index).toBe(l.wireId - 1));
+  });
+});
