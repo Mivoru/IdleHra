@@ -1854,12 +1854,27 @@ await go('Village');
 
   if (offered && !(await feastButton.first().isDisabled())) {
     const askedBefore = await price();
+    // Modul: the header's gold is a separate wire from the database debit - a
+    // feast pays out of a notification that tells the LIVE session what it
+    // cost, and a unit test proving that notification is enqueued is not
+    // proof it ever reaches this element. `data-exact` is the same
+    // machine-readable attribute Money.svelte documents for exactly this.
+    const headerGold = page.locator('header span.money[data-kind="gold"]');
+    const readHeaderGold = async () => Number(await headerGold.getAttribute('data-exact'));
+    const goldBefore = await readHeaderGold();
     await dismissToasts();
     await feastButton.first().click();
     await page.waitForTimeout(2500);
 
     const after = await tally();
     record('paying for a feast brings somebody in', after > before, `${before} -> ${after}`);
+
+    const goldAfter = await readHeaderGold();
+    record(
+      'the header gold drops live for a feast, no reload',
+      goldAfter < goldBefore,
+      `${goldBefore.toLocaleString()} -> ${goldAfter.toLocaleString()}g`,
+    );
 
     // The escalation is what stops this being a slot machine: a flat price
     // would hand a player forty rolls at a twenty in one sitting, and the

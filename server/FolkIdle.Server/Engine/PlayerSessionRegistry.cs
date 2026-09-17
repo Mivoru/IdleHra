@@ -310,11 +310,35 @@ namespace FolkIdle.Server.Engine
         // VillageManagementEngine.ExecuteUpgradeBuildingAsync).
         public byte PendingUpgradeBuildingId;
         public long PendingUpgradeCompletesAtEpoch;
+
+        /// <summary>
+        /// The gold BuildingId's upgrade already debited from
+        /// CommodityRecords["gold"], or 0 for a structural building (which
+        /// pays in materials only). The tick moves the session's CurrentGold
+        /// by this and NOT the pending delta - the row is already right, and
+        /// banking it again would charge twice (CLAUDE.md, "two gold paths").
+        /// Mirrors BirthNotification.GoldSpent exactly.
+        /// </summary>
+        public long GoldSpent;
     }
 
     public struct MentorshipUpdateNotification
     {
         public long PlayerId;
+    }
+
+    /// <summary>
+    /// The gold ExecuteRecruitVillagerAsync already debited from
+    /// CommodityRecords["gold"] for "the feast" - paying gold for an
+    /// immediate villager rather than waiting for the Inn's free arrival
+    /// clock. Mirrors BirthNotification.GoldSpent; this path previously
+    /// enqueued nothing at all, so the live session never learned it had
+    /// spent anything until relogin.
+    /// </summary>
+    public struct VillagerRecruitmentNotification
+    {
+        public long PlayerId;
+        public long GoldSpent;
     }
 
     // Modul 13.4.3: newly-completed regions from this Codex processing batch
@@ -461,6 +485,7 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<CraftingCompletionNotification> CraftingCompletionQueue { get; } = new();
         public ConcurrentQueue<InfrastructureUpdateNotification> InfrastructureUpdateQueue { get; } = new();
         public ConcurrentQueue<MentorshipUpdateNotification> MentorshipUpdateQueue { get; } = new();
+        public ConcurrentQueue<VillagerRecruitmentNotification> VillagerRecruitmentUpdateQueue { get; } = new();
         public ConcurrentQueue<QuarantineNotification> QuarantineNotificationQueue { get; } = new();
         public ConcurrentQueue<ShardAttackResultNotification> ShardAttackResultQueue { get; } = new();
         public ConcurrentQueue<LegacyStoreUpdateNotification> LegacyStoreUpdateQueue { get; } = new();

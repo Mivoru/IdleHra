@@ -90,17 +90,20 @@ namespace FolkIdle.Server.Engine
         /// priced in gold because the top of the economy has no sink that is
         /// not the Forge. See VillagerArrivalRules, which owns every number.
         ///
-        /// Returns the refusal, or null on success - a reason rather than a
-        /// bool because both refusals are things the player can act on ("the
-        /// village is full" and "that costs more than you have"), and a command
-        /// that fails in silence is how the last four features looked broken.
+        /// Returns the refusal (or null on success) alongside what it cost -
+        /// a reason rather than a bool because both refusals are things the
+        /// player can act on ("the village is full" and "that costs more
+        /// than you have"), and a command that fails in silence is how the
+        /// last four features looked broken. GoldSpent is 0 on refusal and
+        /// lets the caller tell the live session what it spent without a
+        /// second query back to the row it just debited.
         ///
         /// DOES NOT TOUCH THE ARRIVAL CLOCK. Paying for somebody is not the
         /// same as waiting for them, and folding the recruit into the clock
         /// would mean gold could postpone the free arrival it was meant to
         /// pre-empt.
         /// </summary>
-        public static async Task<string?> RecruitAsync(
+        public static async Task<(string? Refusal, long GoldSpent)> RecruitAsync(
             FolkIdleDbContext db, PlayerRecord player, int innLevel, long nowEpoch)
         {
             int population = await db.VillageNewcomers.CountAsync(v => v.PlayerId == player.Id);
@@ -112,7 +115,7 @@ namespace FolkIdle.Server.Engine
             string? refusal = VillagerArrivalRules.RecruitBlockedReason(
                 innLevel, population, held, player.VillagerRecruitmentsThisSeason);
 
-            if (refusal != null) return refusal;
+            if (refusal != null) return (refusal, 0L);
 
             // Read the price back from the same function that just approved it
             // rather than recomputing it from a different argument list.
@@ -124,7 +127,7 @@ namespace FolkIdle.Server.Engine
             db.VillageNewcomers.Add(Roll(player.Id, innLevel, nowEpoch, races));
 
             await db.SaveChangesAsync();
-            return null;
+            return (null, cost);
         }
 
         /// <summary>

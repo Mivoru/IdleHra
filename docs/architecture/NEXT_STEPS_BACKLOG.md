@@ -17,6 +17,25 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-17 - round 3's foundation deployed, and a Market checkbox fix
+
+`docs/superpowers/plans/2026-09-17-round-3-translation-foundation.md`'s five
+tasks (six languages agreeing end to end across server schema, wire bound,
+and client schema, plus the two guardrail tools) landed via PR #2, and a
+real Market bug found the same day - filter checkboxes stretching to
+272-288px and shifting position row to row, because `.filters input` also
+matched every checkbox nested inside the fieldset - landed via PR #4.
+**DEPLOYED 2026-09-17** (8352a2d). No migration - both changes are content
+and code, not schema. Verified live: `/gamedata/localizations.json` serves
+real Es/Fr text and corrected Cs diacritics, the app log shows a clean
+44-session cold-boot reconstruction, and production smoke is 26/26.
+
+Round 3 is still only its foundation - see `docs/TASK_BOARD.md`'s note on
+task ordering; the ~27 screens' actual UI-chrome strings are unmigrated,
+per-screen follow-up work.
+
+---
+
 # HANDOFF 2026-09-17 - a GitHub Copilot audit, verified claim by claim
 
 The owner ran GitHub Copilot's repo-analysis tool against this codebase

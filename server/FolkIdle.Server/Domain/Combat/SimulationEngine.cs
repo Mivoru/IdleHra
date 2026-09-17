@@ -1454,6 +1454,23 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.CraftingWorkshopLevel = updateNotif.CraftingWorkshopLevel;
                         currentPayload.PendingUpgradeBuildingId = updateNotif.PendingUpgradeBuildingId;
                         currentPayload.PendingUpgradeCompletesAtEpoch = updateNotif.PendingUpgradeCompletesAtEpoch;
+                        // Modul: the row is already debited (VillageManagementEngine),
+                        // so the live balance follows it and the pending delta is left
+                        // alone - the same reasoning as BirthNotification.GoldSpent.
+                        currentPayload.CurrentGold = Math.Max(0L, currentPayload.CurrentGold - updateNotif.GoldSpent);
+                        currentPayload.IsDirty = true;
+                    }
+                }
+
+                while (_playerRegistry.VillagerRecruitmentUpdateQueue.TryDequeue(out var recruitmentNotif))
+                {
+                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, recruitmentNotif.PlayerId);
+                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
+                    {
+                        // Modul: the row is already debited (VillageArrivalEngine.RecruitAsync),
+                        // so the live balance follows it and the pending delta is left
+                        // alone - the same reasoning as BirthNotification.GoldSpent.
+                        currentPayload.CurrentGold = Math.Max(0L, currentPayload.CurrentGold - recruitmentNotif.GoldSpent);
                         currentPayload.IsDirty = true;
                     }
                 }

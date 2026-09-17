@@ -216,7 +216,7 @@ namespace FolkIdle.Server.Domain.Progression
                     .Select(v => v.CurrentLevel)
                     .FirstOrDefaultAsync();
 
-                string? refusal = await Engine.VillageArrivalEngine.RecruitAsync(
+                (string? refusal, long goldSpent) = await VillageArrivalEngine.RecruitAsync(
                     db, player, innLevel, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
                 if (refusal != null)
@@ -227,6 +227,12 @@ namespace FolkIdle.Server.Domain.Progression
                 }
 
                 await transaction.CommitAsync();
+
+                _playerRegistry.VillagerRecruitmentUpdateQueue.Enqueue(new VillagerRecruitmentNotification
+                {
+                    PlayerId = playerId,
+                    GoldSpent = goldSpent
+                });
             }
             catch (Exception ex)
             {
@@ -444,6 +450,7 @@ namespace FolkIdle.Server.Domain.Progression
                 // instead; they are the ones the whole village is gated behind
                 // and doubling their price would deepen the very wall this
                 // change exists to remove.
+                long goldSpent = 0L;
                 if (!isStructuralBuilding)
                 {
                     long goldCost = CalculateUpgradeCost(infrastructure.CurrentLevel);
@@ -458,6 +465,7 @@ namespace FolkIdle.Server.Domain.Progression
                         return;
                     }
                     goldRecord.Quantity -= goldCost;
+                    goldSpent = goldCost;
                 }
 
                 infrastructure.UpgradeTargetLevel = infrastructure.CurrentLevel + 1;
@@ -465,6 +473,7 @@ namespace FolkIdle.Server.Domain.Progression
 
                 await db.SaveChangesAsync();
                 var notification = await BuildInfrastructureNotificationAsync(db, playerId);
+                notification.GoldSpent = goldSpent;
                 await transaction.CommitAsync();
 
                 _playerRegistry.InfrastructureUpdateQueue.Enqueue(notification);

@@ -102,7 +102,8 @@ namespace FolkIdle.Server.Tests
             {
                 await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
                 var player = await db.PlayerRecords.SingleAsync(p => p.Id == playerId);
-                Assert.Null(await VillageArrivalEngine.RecruitAsync(db, player, innLevel: 10, nowEpoch: 1_800_000_000L + i));
+                var (refusal, _) = await VillageArrivalEngine.RecruitAsync(db, player, innLevel: 10, nowEpoch: 1_800_000_000L + i);
+                Assert.Null(refusal);
             }
 
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
