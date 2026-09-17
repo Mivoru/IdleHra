@@ -17,6 +17,40 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-17 - a GitHub Copilot audit, verified claim by claim
+
+The owner ran GitHub Copilot's repo-analysis tool against this codebase
+(`docs/github_analysis.md`, outside this worktree at the main checkout) and
+asked every claim to be checked against real code before anything from it
+was trusted - the password-reset "still needs the owner" note earlier this
+same day had just turned out to be stale, which is exactly the failure mode
+an AI-written audit can repeat at scale if believed uncritically.
+
+Four parallel read-only investigations checked all six sections against real
+files, line numbers, and measured values. **One claim was false and mattered
+more than a wrong line number:** the audit (echoing `CLAUDE.md`'s own text)
+described the codex DAMAGE multiplier as "142x and deliberately still open."
+It was fixed 2026-09-06 - `CodexEngine.DamageMultiplierFor` is
+`1 + 0.04 * sqrt(levelSum)`, a diminishing curve, 5.76x on the account the old
+142.8x figure was measured against. `CLAUDE.md` is corrected. Everything else
+checked out: five quantitative claims matched exactly (the 1500ms shutdown
+drain, the 200,000 offline-burst caps, the 25,000/5,000/200 browser caps),
+two security gaps are real and now scoped (device-bearer login, access-token
+revocation), and the Village/feast gold gap this file already tracked above
+was independently reconfirmed by the same pass.
+
+**Ten confirmed findings are now on the board** as tasks 14-23 in
+`docs/TASK_BOARD.md`, each with file:line evidence and enough implementation
+detail to be picked up directly - two of the cheapest and most concrete
+(the Village/feast gold gap, task 16) already have a full implementation plan
+at `docs/superpowers/plans/2026-09-17-village-gold-sync.md`. One item -
+whether the 12-hour offline cap being per-login-gap rather than a rolling
+daily budget is an exploit worth closing or acceptable idle-game design - is
+recorded as a decision for the owner, not a task, since "fix" isn't obviously
+the right answer.
+
+---
+
 # OPEN BACKLOG ITEM, added 2026-09-17 - retire the Unity project
 
 The owner wants `client/` (the Unity project) deleted, since the web client is
@@ -138,8 +172,11 @@ same reason. Changing the hero now clears a partner who can no longer pair.
   the old balance until relogin. `BirthNotification.GoldSpent` moves
   `CurrentGold` only (the row is already debited). Login reads the DB row, not
   the Redis frame, so this was a stale display, not a dupe.
-  **STILL OPEN elsewhere:** the Village upgrade and the feast debit
-  `CommodityRecords["gold"]` the same way and move nothing on the session.
+  **STILL OPEN elsewhere, now planned:** the Village upgrade and the feast
+  debit `CommodityRecords["gold"]` the same way and move nothing on the
+  session — confirmed still true 2026-09-17 against current code (not just
+  this note). Plan: `docs/superpowers/plans/2026-09-17-village-gold-sync.md`.
+  Task: `docs/TASK_BOARD.md`, task 16.
 - A birth incremented `VillagePopulation` (work slots). Removed.
 - `catch (Exception)` in both pairings reported nothing - a Serializable
   conflict (`40001`, which the concurrency test produces) looked like a dead

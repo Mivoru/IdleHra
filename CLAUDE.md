@@ -308,10 +308,13 @@ on it or it is decoration.
 is +0.5% per codex level, a codex level is ten kills, and nothing bounded the
 sum - it reached 71.9x and made one character out-earn the entire material sink
 of the game twice an hour. It is capped at 2.0x now
-(`CodexEngine.MaxYieldMultiplier`); the DAMAGE multiplier beside it is the same
-formula, is at 142x, and is deliberately still open. `GatheringEconomyTests`
-prints supply and every sink in the same units - read it before touching a yield
-or speed curve.
+(`CodexEngine.MaxYieldMultiplier`). The DAMAGE multiplier beside it was the same
+linear formula and reached 142.8x on the reporting account - fixed 2026-09-06
+(`CodexEngine.DamageMultiplierFor`) to `1 + 0.04 * sqrt(levelSum)`, a curve
+rather than a hard cap, because unlike yield it feeds a monster ladder that
+keeps climbing rather than an economy with fixed sinks. That account now reads
+5.76x. `GatheringEconomyTests` prints supply and every sink in the same units -
+read it before touching a yield or speed curve.
 
 **Grep for a WRITER as well as a reader.** The recurring "computed but never
 consumed" trap has an inverse that is just as bad: `IsAffixLocked` was read in
