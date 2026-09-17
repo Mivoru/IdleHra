@@ -6909,13 +6909,13 @@ namespace FolkIdle.Server.Tests
             Assert.Equal("Boss LP: ", deValue);
 
             Assert.True(ContentRegistry.TryGetLocalization("ActiveEventPrefix", "cs", out string csValue));
-            Assert.Equal("Aktivni event: ", csValue);
+            Assert.Equal("Aktivní event: ", csValue);
 
             bool resolvedMissingKey = ContentRegistry.TryGetLocalization("ThisKeyDoesNotExist", "de", out string missingKeyValue);
             Assert.False(resolvedMissingKey);
             Assert.Equal(string.Empty, missingKeyValue);
 
-            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "fr", out string fallbackValue));
+            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "it", out string fallbackValue));
             Assert.Equal("None", fallbackValue);
         }
 
@@ -6945,7 +6945,7 @@ namespace FolkIdle.Server.Tests
                 "OfflineAwayForPrefix", "OfflineHoursSuffix", "OfflineMinutesSuffix",
                 "GuildWarStatusActive", "GuildWarStatusInactive"
             };
-            string[] languageCodes = { "en", "cs", "de", "pl" };
+            string[] languageCodes = { "en", "cs", "de", "pl", "es", "fr" };
 
             foreach (string key in keys)
             {
@@ -6962,6 +6962,90 @@ namespace FolkIdle.Server.Tests
 
             Assert.True(ContentRegistry.TryGetLocalization("ErrorMaxTierReached", "pl", out string maxTierPl));
             Assert.Equal("Osiagnieto maksymalny poziom", maxTierPl);
+        }
+
+        // Modul: added when Es/Fr joined the schema. "it" (Italian) stands in
+        // for "any language this client still does not support" now that fr
+        // is a real, resolved language rather than a stand-in for that case -
+        // the test above this one used to make that point with "fr" itself.
+        [Fact]
+        public void Test_ContentRegistry_LocalizationLookup_ResolvesSpanishAndFrench()
+        {
+            Assert.True(ContentRegistry.TryGetLocalization("BossHpPrefix", "es", out string esValue));
+            Assert.Equal("PV del Jefe: ", esValue);
+
+            Assert.True(ContentRegistry.TryGetLocalization("BossHpPrefix", "fr", out string frValue));
+            Assert.Equal("PV du Boss : ", frValue);
+
+            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "es", out string esNone));
+            Assert.Equal("Ninguno", esNone);
+
+            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "fr", out string frNone));
+            Assert.Equal("Aucun", frNone);
+
+            Assert.True(ContentRegistry.TryGetLocalization("EventNone", "it", out string fallbackValue));
+            Assert.Equal("None", fallbackValue);
+        }
+
+        // Modul: the row that ships with one missing column is the one nobody
+        // notices in review - this proves the boot gate catches exactly one
+        // missing language as reliably as it catches all six, mirroring
+        // Test_ContentPipeline_MissingOrMalformedJson_FailsFast's temp-dir
+        // pattern rather than touching the real, shared GameData directory.
+        [Fact]
+        public void Test_ContentPipeline_LocalizationMissingATranslation_FailsFast()
+        {
+            string tempDir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "folkidle_content_test_" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(tempDir);
+
+            try
+            {
+                // Modul: items.json and gathering_nodes.json each need at
+                // least one entry here - ReadAndValidateJsonFile rejects an
+                // empty list before Initialize ever reaches the
+                // localization check below, which would make this test pass
+                // for the wrong reason (or not at all, once Step 4 lands)
+                // regardless of what localizations.json contains.
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "monsters.json"),
+                    "[{\"Id\":1,\"MaxHp\":100,\"AttackPower\":1,\"BaseGoldReward\":1,\"BaseXpReward\":1,\"AttackIntervalMs\":1000,\"LootTableId\":1,\"Name\":\"X\",\"EnemyId\":\"x\"}]");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "items.json"),
+                    "[{\"Id\":1,\"RegionTier\":1,\"BaseValueGold\":1,\"FlatAttackPower\":0,\"FlatDefenseRating\":0,\"BaseId\":\"x\"}]");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "gathering_nodes.json"),
+                    "[{\"ActivityId\":1,\"ProfessionType\":1,\"BaseTickThreshold\":1,\"BaseMasteryXpReward\":1}]");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(tempDir, "localizations.json"),
+                    "[{\"Key\":\"X\",\"En\":\"x\",\"Cs\":\"x\",\"De\":\"x\",\"Pl\":\"x\",\"Es\":\"x\",\"Fr\":\"\"}]");
+
+                Assert.Throws<InvalidOperationException>(() => ContentRegistry.Initialize(tempDir));
+            }
+            finally
+            {
+                System.IO.Directory.Delete(tempDir, true);
+            }
+        }
+
+        // Modul: untested before this - ValidateLanguageSwitchRequest had no
+        // dedicated test at all. Six languages now, so ids 5 and 6 must pass
+        // and 0 and 7 must still be refused.
+        [Fact]
+        public void Test_ValidateLanguageSwitchRequest_AcceptsAllSixLanguagesAndRejectsOutOfRange()
+        {
+            for (byte id = 1; id <= 6; id++)
+            {
+                var payload = new TickStatePayload { PlayerId = 970003000L + id };
+                var packet = new ClientCommandPacket { Command = CommandType.SwitchLanguage, TargetLanguageId = id };
+                Assert.True(ClientCommandValidator.ValidateLanguageSwitchRequest(ref payload, ref packet),
+                    $"Language id {id} should be accepted - six languages are supported now.");
+            }
+
+            var zeroPayload = new TickStatePayload { PlayerId = 970003100L };
+            var zeroPacket = new ClientCommandPacket { Command = CommandType.SwitchLanguage, TargetLanguageId = 0 };
+            Assert.False(ClientCommandValidator.ValidateLanguageSwitchRequest(ref zeroPayload, ref zeroPacket),
+                "0 is not a language, it is 'no field set'.");
+
+            var sevenPayload = new TickStatePayload { PlayerId = 970003101L };
+            var sevenPacket = new ClientCommandPacket { Command = CommandType.SwitchLanguage, TargetLanguageId = 7 };
+            Assert.False(ClientCommandValidator.ValidateLanguageSwitchRequest(ref sevenPayload, ref sevenPacket),
+                "7 is one past the sixth language and must still be refused.");
         }
 
         // Modul: removed with ApplyStatusSynergy. Chilled and Vulnerable no

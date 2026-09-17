@@ -17,6 +17,46 @@ to do next.
 
 ---
 
+# OPEN BACKLOG ITEM, added 2026-09-17 - retire the Unity project
+
+The owner wants `client/` (the Unity project) deleted, since the web client is
+the only one that ships (`client_web/`, per this file's own header table -
+Unity is "retired... kept only for artwork/audio the web client fetches from
+the server"). **Not started.** The explicit instruction is to be careful: this
+is not a clean removal, because live infrastructure reads out of
+`client/Assets` today.
+
+Checked before writing this down, so the caution is concrete rather than
+generic - `client/Assets` is a load-bearing SOURCE directory for at least:
+
+- `client_web/scripts/generate-sprites.mjs` and `ops/tools/generate_sprites.py`
+  read raw art out of it to produce `client_web/src/lib/ui/sprites.generated.ts`
+  and the `SpritesWeb` tree.
+- `ops/oracle/web.Dockerfile` `COPY`s `client/Assets/Images/SpritesWeb` directly
+  into the production image build.
+- `ops/validate_audio.py` and `client_web/src/lib/ui/audio.ts` read clips out
+  of `client/Assets` (this is the file behind the "Audio: N real clips in the
+  publish output" build-time check CLAUDE.md's deploy log shows).
+- `server/FolkIdle.Server.csproj` and `server/FolkIdle.Server.Tests.csproj`
+  both reference paths under `client/Assets`.
+- `.github/workflows/unity_client.yml` still triggers a Unity CI job on every
+  push touching `client/**` - gated behind a `UNITY_LICENSE` secret so it
+  likely no-ops today, but it is a live workflow, not dead YAML, and deleting
+  `client/` without also retiring this file leaves a workflow with nothing to
+  build.
+
+So the task is not "delete `client/`" - it is "separate the raw art/audio
+SOURCE assets (which several pipelines still read) from the Unity PROJECT
+around them (scenes, `.meta` files, `ProjectSettings/`, `Packages/`,
+C# scripts under `Assets/Scripts` or similar, anything Unity-specific), keep
+the former somewhere the existing pipelines can still find it (in place, or
+moved with every reader above updated to match), and only then delete the
+latter, plus `.github/workflows/unity_client.yml` if nothing still needs it."
+Scoping and estimating this is future work; this entry exists so it is not
+forgotten and not attempted as a single `rm -rf client/`.
+
+---
+
 # HANDOFF 2026-09-16 - breeding round 2: heritable traits replace the genes
 
 The owner's round 2 ("redesign breeding and mutations") is done: the three
