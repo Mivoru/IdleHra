@@ -184,8 +184,14 @@ Live `--migrate` renamed 92 characters; production smoke 26/26.
   refuses every send while the screen promised "a reset link is on its way".
   The request endpoint now answers `{ EmailDelivery }` - a fact about the server,
   identical for every address, so no enumeration oracle - and the screen says
-  plainly when no link was sent. **Still needs the owner:** a Resend account and
-  a verified sending domain, then the two values in `.env` and a restart.
+  plainly when no link was sent.
+  **RESOLVED, undated in this doc until now.** The owner registered
+  `folkidle.cz`, verified it with Resend, and set both values on the box
+  (`FOLKIDLE_MAIL_FROM=FolkIdle <noreply@folkidle.cz>`). Confirmed live
+  2026-09-17 by calling the endpoint directly: `curl -X POST
+  https://folkidle.duckdns.org/api/v1/auth/request-password-reset -d
+  '{"email":"...invalid"}'` answers `{"EmailDelivery":true}` - the server is
+  actively running `ResendEmailSender`, not the disabled fallback.
 
 **Round 2 material, observed but deliberately untouched:** `IsInbred` also
 multiplies attribute growth by 0.75 for the character's whole life
