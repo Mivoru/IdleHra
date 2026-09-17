@@ -600,7 +600,19 @@
     margin: 0.6rem 0 0.8rem;
   }
 
-  .filters input {
+  /* Modul: `>` IS LOAD-BEARING. A bare `.filters input` also matched every
+     checkbox nested inside `.checks fieldset label input` several levels
+     down, overriding app.css's touch-floor `flex: 0 0 44px` with this rule's
+     `flex: 1 1 12rem; min-width: 0` - so each checkbox grew to fill whatever
+     space its row's label text left over (measured: 272-288px wide, height
+     still 44px), varying row to row with the label length. Reported as
+     "each checkbox is positioned slightly differently" - which is exactly
+     what a flex-grow width that depends on neighbouring text produces.
+     `check:touch` never caught it: both dimensions still exceeded 44px, so
+     the floor it measures was technically met. The search input is this
+     element's only direct child; every checkbox is a grandchild or deeper,
+     so `>` reaches the one input this rule was ever meant for. */
+  .filters > input {
     flex: 1 1 12rem;
     min-width: 0;
   }
