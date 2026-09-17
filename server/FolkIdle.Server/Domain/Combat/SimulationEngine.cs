@@ -1454,6 +1454,10 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.CraftingWorkshopLevel = updateNotif.CraftingWorkshopLevel;
                         currentPayload.PendingUpgradeBuildingId = updateNotif.PendingUpgradeBuildingId;
                         currentPayload.PendingUpgradeCompletesAtEpoch = updateNotif.PendingUpgradeCompletesAtEpoch;
+                        // Modul: the row is already debited (VillageManagementEngine),
+                        // so the live balance follows it and the pending delta is left
+                        // alone - the same reasoning as BirthNotification.GoldSpent.
+                        currentPayload.CurrentGold = Math.Max(0L, currentPayload.CurrentGold - updateNotif.GoldSpent);
                         currentPayload.IsDirty = true;
                     }
                 }

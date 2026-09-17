@@ -990,6 +990,91 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task Test_VillageUpgrade_TellsTheLiveSessionWhatItCost()
+        {
+            const long testPlayerId = 950000108L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.LumberjackBuildingId,
+                    CurrentLevel = 0
+                });
+                var tier0 = VillageManagementEngine.GetTierMaterials(0);
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Log, Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Ore, Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1_000_000L });
+                await db.SaveChangesAsync();
+            }
+
+            var registry = new PlayerSessionRegistry();
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, registry);
+            await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.LumberjackBuildingId);
+
+            long expectedCost = VillageManagementEngine.CalculateUpgradeCost(0);
+
+            Assert.True(registry.InfrastructureUpdateQueue.TryDequeue(out var notif));
+            Assert.Equal(testPlayerId, notif.PlayerId);
+            Assert.Equal(expectedCost, notif.GoldSpent);
+
+            // And the row the notification describes really was debited by the
+            // same amount - the tick moves the live balance, never the row again.
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var gold = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+            Assert.Equal(1_000_000L - expectedCost, gold.Quantity);
+        }
+
+        [Fact]
+        public async Task Test_VillageUpgrade_StructuralBuildingReportsZeroGoldSpent()
+        {
+            // Modul: structural buildings (Town Hall etc.) charge no gold at
+            // all - GoldSpent must read 0 for them, not the non-structural
+            // cost formula, or a structural upgrade would falsely debit the
+            // live session's displayed balance for a row that was never
+            // touched.
+            const long testPlayerId = 950000109L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.TownHallBuildingId,
+                    CurrentLevel = 0
+                });
+                var tier0 = VillageManagementEngine.GetTierMaterials(0);
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Log, Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.Ore, Quantity = 10000L },
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = tier0.RareLog, Quantity = 10000L });
+                await db.SaveChangesAsync();
+            }
+
+            var registry = new PlayerSessionRegistry();
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, registry);
+            await villageManagementEngine.ExecuteUpgradeBuildingAsync(testPlayerId, VillageManagementEngine.TownHallBuildingId);
+
+            Assert.True(registry.InfrastructureUpdateQueue.TryDequeue(out var notif));
+            Assert.Equal(0L, notif.GoldSpent);
+        }
+
+        [Fact]
         public async Task Test_VillageUpgrade_RejectsSecondUpgradeWhileQueueOccupied()
         {
             const long testPlayerId = 950000107L;

@@ -444,6 +444,7 @@ namespace FolkIdle.Server.Domain.Progression
                 // instead; they are the ones the whole village is gated behind
                 // and doubling their price would deepen the very wall this
                 // change exists to remove.
+                long goldSpent = 0L;
                 if (!isStructuralBuilding)
                 {
                     long goldCost = CalculateUpgradeCost(infrastructure.CurrentLevel);
@@ -458,6 +459,7 @@ namespace FolkIdle.Server.Domain.Progression
                         return;
                     }
                     goldRecord.Quantity -= goldCost;
+                    goldSpent = goldCost;
                 }
 
                 infrastructure.UpgradeTargetLevel = infrastructure.CurrentLevel + 1;
@@ -465,6 +467,7 @@ namespace FolkIdle.Server.Domain.Progression
 
                 await db.SaveChangesAsync();
                 var notification = await BuildInfrastructureNotificationAsync(db, playerId);
+                notification.GoldSpent = goldSpent;
                 await transaction.CommitAsync();
 
                 _playerRegistry.InfrastructureUpdateQueue.Enqueue(notification);

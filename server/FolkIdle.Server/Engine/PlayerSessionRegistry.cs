@@ -310,6 +310,16 @@ namespace FolkIdle.Server.Engine
         // VillageManagementEngine.ExecuteUpgradeBuildingAsync).
         public byte PendingUpgradeBuildingId;
         public long PendingUpgradeCompletesAtEpoch;
+
+        /// <summary>
+        /// The gold BuildingId's upgrade already debited from
+        /// CommodityRecords["gold"], or 0 for a structural building (which
+        /// pays in materials only). The tick moves the session's CurrentGold
+        /// by this and NOT the pending delta - the row is already right, and
+        /// banking it again would charge twice (CLAUDE.md, "two gold paths").
+        /// Mirrors BirthNotification.GoldSpent exactly.
+        /// </summary>
+        public long GoldSpent;
     }
 
     public struct MentorshipUpdateNotification
