@@ -35,7 +35,10 @@ export const LANGUAGES = [
 
 export type LanguageCode = (typeof LANGUAGES)[number]['code'];
 
-const STORAGE_KEY = 'folkidle.language';
+// Exported so `scripts/screens.mjs` (a plain .mjs the geometry checkers run
+// with `node`, not through Vite) can set the SAME localStorage key it reads,
+// rather than a hand-typed literal drifting the way STORAGE_KEY once did.
+export const STORAGE_KEY = 'folkidle.language';
 
 /**
  * Modul: THE DEVICE'S LANGUAGE IS NOT ASKED, AND THAT IS THE FIX.

@@ -6945,7 +6945,7 @@ namespace FolkIdle.Server.Tests
                 "OfflineAwayForPrefix", "OfflineHoursSuffix", "OfflineMinutesSuffix",
                 "GuildWarStatusActive", "GuildWarStatusInactive"
             };
-            string[] languageCodes = { "en", "cs", "de", "pl" };
+            string[] languageCodes = { "en", "cs", "de", "pl", "es", "fr" };
 
             foreach (string key in keys)
             {

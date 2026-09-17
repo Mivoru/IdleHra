@@ -13,6 +13,40 @@
 // them were going unchecked. So the list lives once, and `assertMatchesNav`
 // makes the nav itself the authority rather than this file.
 import { chromium } from 'playwright';
+import { readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Modul: THIS FILE CANNOT `import` i18n.ts DIRECTLY.
+//
+// screens.mjs runs under plain `node`, not Vite - and Node 24's native loader
+// does strip TypeScript syntax, but it still enforces real ESM resolution,
+// which refuses i18n.ts's own extensionless relative import
+// (`from '../net/config'`) that only a bundler resolves. Confirmed by hand:
+// `node -e "import('./src/lib/ui/i18n.ts')"` throws
+// "Cannot find module '...\\net\\config'" before it ever reaches this file.
+//
+// So LANGUAGES' codes and STORAGE_KEY are pulled out of the real source with
+// a regex instead of retyped by hand - the same reasoning
+// tests/serverMirrors.test.ts uses to read C# source without importing it. A
+// second hand-typed copy of either constant is exactly how FOLKIDLE_E2E_LANG
+// would go on silently no-op-ing after the next rename.
+const i18nSource = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), '..', 'src', 'lib', 'ui', 'i18n.ts'),
+  'utf8',
+);
+
+const STORAGE_KEY_MATCH = i18nSource.match(/export const STORAGE_KEY = '([^']+)'/);
+if (!STORAGE_KEY_MATCH) {
+  throw new Error('could not find STORAGE_KEY in i18n.ts - the regex needs updating, not deleting');
+}
+/** Mirrors i18n.ts's own STORAGE_KEY, read from source rather than retyped. */
+export const STORAGE_KEY = STORAGE_KEY_MATCH[1];
+
+const LANGUAGE_CODES = [...i18nSource.matchAll(/code: '([A-Za-z]+)' as const/g)].map((m) => m[1]);
+if (LANGUAGE_CODES.length === 0) {
+  throw new Error('could not find any LANGUAGES codes in i18n.ts - the regex needs updating, not deleting');
+}
 
 /** Every navigable destination, in the header's own order and grouping. */
 export const SCREENS = [
@@ -44,6 +78,18 @@ export const DEV_PASSWORD = 'FolkIdleDev123!';
  * than English.
  */
 export const E2E_LANG = process.env.FOLKIDLE_E2E_LANG || null;
+// Modul: an unvalidated FOLKIDLE_E2E_LANG silently no-ops. i18n.ts's
+// initialLanguage() only recognises an exact match against LANGUAGES' `code`
+// values ('En', 'Cs', ...), and the server's OWN resolver spells the same
+// languages lowercase ("es", "fr" in ContentRegistry.cs) - so
+// `FOLKIDLE_E2E_LANG=de` is the natural typo, and it used to fall through to
+// English with the geometry checker reporting a clean sweep of a language it
+// never actually rendered.
+if (E2E_LANG && !LANGUAGE_CODES.includes(E2E_LANG)) {
+  throw new Error(
+    `FOLKIDLE_E2E_LANG='${E2E_LANG}' is not one of: ${LANGUAGE_CODES.join(', ')}`,
+  );
+}
 
 /** A browser and a page, with console/pageerror collection wired up. */
 export async function open({ width = 1500, height = 1000 } = {}) {
@@ -55,7 +101,13 @@ export async function open({ width = 1500, height = 1000 } = {}) {
     // page.goto (e.g. via page.evaluate) would run after the app already
     // read it and defaulted to English. addInitScript runs before every
     // script on the page, including the first one the bundle runs.
-    await page.addInitScript((lang) => localStorage.setItem('folkidle.language', lang), E2E_LANG);
+    // Modul: addInitScript takes exactly ONE arg - passing STORAGE_KEY and
+    // E2E_LANG as two positional arguments would silently pass `undefined`
+    // as the second, so both travel together in one object instead.
+    await page.addInitScript(
+      ({ key, lang }) => localStorage.setItem(key, lang),
+      { key: STORAGE_KEY, lang: E2E_LANG },
+    );
   }
   const errors = [];
   page.on('console', (m) => {

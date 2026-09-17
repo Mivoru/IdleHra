@@ -5,6 +5,7 @@ import {
   APTITUDE_VILLAGE_CEILING,
 } from '../src/lib/net/commands';
 import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
+import { LANGUAGES } from '../src/lib/ui/i18n';
 import {
   FIRST_CLEAR_HP_MULTIPLIERS,
   FIRST_CLEAR_ATTACK_MULTIPLIERS,
@@ -575,6 +576,29 @@ describe('the numbers the client mirrors still match the server', () => {
       );
       expect(num(packet, new RegExp(`${serverName} = 1 << (\\d+)`), `server ${serverName}`)).toBe(shift);
     }
+  });
+
+  // Modul: THE WIRE LANGUAGE BOUND HAD NO CROSS-CHECK.
+  //
+  // language.test.ts asserted LANGUAGES' wireIds are [1..6] under a comment
+  // claiming those are "the wire ids the server actually accepts" - but it
+  // never read the server, and HardenedEngineIntegrationTests separately
+  // pinned ValidateLanguageSwitchRequest to 1-6 without ever reading the
+  // client. Two guards that never look at each other are not a guard against
+  // drift between them, and this one is not cosmetic: SimulationEngine calls
+  // TerminateSessionForSecurity when ValidateLanguageSwitchRequest returns
+  // false, so a client sending a wire id past the server's bound gets
+  // forcibly disconnected rather than shown an error.
+  it('language: the wire bound the server actually enforces', () => {
+    const validator = read(serverRoot, 'Engine', 'ClientCommandValidator.cs');
+
+    expect(
+      num(
+        validator,
+        /TargetLanguageId == 0 \|\| packet\.TargetLanguageId > (\d+)/,
+        'server language bound',
+      ),
+    ).toBe(Math.max(...LANGUAGES.map((l) => l.wireId)));
   });
 });
 
