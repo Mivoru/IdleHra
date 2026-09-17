@@ -216,7 +216,7 @@ namespace FolkIdle.Server.Domain.Progression
                     .Select(v => v.CurrentLevel)
                     .FirstOrDefaultAsync();
 
-                string? refusal = await Engine.VillageArrivalEngine.RecruitAsync(
+                (string? refusal, long goldSpent) = await VillageArrivalEngine.RecruitAsync(
                     db, player, innLevel, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
                 if (refusal != null)
@@ -227,6 +227,12 @@ namespace FolkIdle.Server.Domain.Progression
                 }
 
                 await transaction.CommitAsync();
+
+                _playerRegistry.VillagerRecruitmentUpdateQueue.Enqueue(new VillagerRecruitmentNotification
+                {
+                    PlayerId = playerId,
+                    GoldSpent = goldSpent
+                });
             }
             catch (Exception ex)
             {

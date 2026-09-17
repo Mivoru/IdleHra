@@ -1075,6 +1075,81 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task Test_RecruitVillager_TellsTheLiveSessionWhatItCost()
+        {
+            const long testPlayerId = 950000110L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.InnBuildingId,
+                    CurrentLevel = 5
+                });
+                db.CommodityRecords.Add(
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 1_000_000L });
+                await db.SaveChangesAsync();
+            }
+
+            var registry = new PlayerSessionRegistry();
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, registry);
+            await villageManagementEngine.ExecuteRecruitVillagerAsync(testPlayerId);
+
+            long expectedCost = FolkIdle.Server.Engine.VillagerArrivalRules.RecruitCostGold(0);
+
+            Assert.True(registry.VillagerRecruitmentUpdateQueue.TryDequeue(out var notif));
+            Assert.Equal(testPlayerId, notif.PlayerId);
+            Assert.Equal(expectedCost, notif.GoldSpent);
+
+            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var gold = await verifyDb.CommodityRecords.AsNoTracking()
+                .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == "gold");
+            Assert.Equal(1_000_000L - expectedCost, gold.Quantity);
+        }
+
+        [Fact]
+        public async Task Test_RecruitVillager_RefusalEnqueuesNoNotification()
+        {
+            // Modul: a refused recruit (too poor, village full) must not tell
+            // the live session it spent anything - RecruitAsync's tuple return
+            // makes "did it commit" and "what did it cost" one fact instead of
+            // two, so a refusal cannot accidentally produce a GoldSpent notif.
+            const long testPlayerId = 950000111L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = testPlayerId,
+                    PlayerGuid = Guid.NewGuid(),
+                    AuthenticatorToken = Guid.NewGuid()
+                });
+                db.VillageInfrastructures.Add(new VillageInfrastructure
+                {
+                    PlayerId = testPlayerId,
+                    BuildingId = VillageManagementEngine.InnBuildingId,
+                    CurrentLevel = 5
+                });
+                db.CommodityRecords.Add(
+                    new CommodityRecord { PlayerId = testPlayerId, ItemId = "gold", Quantity = 0L });
+                await db.SaveChangesAsync();
+            }
+
+            var registry = new PlayerSessionRegistry();
+            var villageManagementEngine = new VillageManagementEngine(_fixture.ServiceProvider, registry);
+            await villageManagementEngine.ExecuteRecruitVillagerAsync(testPlayerId);
+
+            Assert.False(registry.VillagerRecruitmentUpdateQueue.TryDequeue(out _));
+        }
+
+        [Fact]
         public async Task Test_VillageUpgrade_RejectsSecondUpgradeWhileQueueOccupied()
         {
             const long testPlayerId = 950000107L;

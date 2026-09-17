@@ -327,6 +327,20 @@ namespace FolkIdle.Server.Engine
         public long PlayerId;
     }
 
+    /// <summary>
+    /// The gold ExecuteRecruitVillagerAsync already debited from
+    /// CommodityRecords["gold"] for "the feast" - paying gold for an
+    /// immediate villager rather than waiting for the Inn's free arrival
+    /// clock. Mirrors BirthNotification.GoldSpent; this path previously
+    /// enqueued nothing at all, so the live session never learned it had
+    /// spent anything until relogin.
+    /// </summary>
+    public struct VillagerRecruitmentNotification
+    {
+        public long PlayerId;
+        public long GoldSpent;
+    }
+
     // Modul 13.4.3: newly-completed regions from this Codex processing batch
     // only (see CodexEngine.ExecuteAsync) - CompletedRegionFlags is OR'd into
     // TickStatePayload.CompletedAreaFlags on drain, never assigned outright, so
@@ -471,6 +485,7 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<CraftingCompletionNotification> CraftingCompletionQueue { get; } = new();
         public ConcurrentQueue<InfrastructureUpdateNotification> InfrastructureUpdateQueue { get; } = new();
         public ConcurrentQueue<MentorshipUpdateNotification> MentorshipUpdateQueue { get; } = new();
+        public ConcurrentQueue<VillagerRecruitmentNotification> VillagerRecruitmentUpdateQueue { get; } = new();
         public ConcurrentQueue<QuarantineNotification> QuarantineNotificationQueue { get; } = new();
         public ConcurrentQueue<ShardAttackResultNotification> ShardAttackResultQueue { get; } = new();
         public ConcurrentQueue<LegacyStoreUpdateNotification> LegacyStoreUpdateQueue { get; } = new();
