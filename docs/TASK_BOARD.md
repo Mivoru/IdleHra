@@ -2706,3 +2706,320 @@ reasoning cannot, and it may well reorder everything below it.
   same shape as several of these: a system that renders correctly while doing
   nothing. Prefer `exercise.mjs` assertions over screenshots when closing any of
   these out.
+
+---
+
+# OPEN — 14 through 23, added 2026-09-17: a GitHub Copilot audit, verified claim by claim
+
+The owner ran GitHub Copilot's repo-analysis tool and asked for every claim to
+be checked against the actual code before anything from it landed here — the
+password-reset handoff earlier this same day had just turned out to be stale,
+which is exactly the failure mode a AI-written audit can repeat at scale if
+trusted uncritically. Four parallel read-only investigations checked every
+claim in the six sections of the audit against real files, line numbers, and
+where possible real measured values, rather than the audit's own prose.
+
+**One claim was found FALSE, and it is worth stating first because it means
+`CLAUDE.md` itself was stale, not just the audit:** the codex DAMAGE
+multiplier, described everywhere (including `CLAUDE.md`'s own "A multiplier
+with no ceiling" section, now corrected) as "142x and deliberately still
+open," was fixed 2026-09-06. `CodexEngine.DamageMultiplierFor` is
+`1 + 0.04 * sqrt(levelSum)`, a diminishing curve; the reporting account reads
+5.76x today, not 142.8x. No task needed — it's done, the doc just hadn't
+caught up.
+
+Everything below this line **was** confirmed against real code, with file:line
+evidence. Severity follows the audit's own P0/P1/security-MEDIUM labels where
+it gave one; each task says which.
+
+---
+
+## 14. Access tokens survive logout and password reset (security, was P0)
+
+**Confirmed.** `AuthenticationEngine.cs:76` sets `TokenLifetimeSeconds = 86400L`
+(24h). `AuthenticationEngine.ValidateJwt` (`:130-178`) checks only the HMAC
+signature and `exp` — no session/deny-list lookup. `HandleAuthRevoke`
+(`NetworkBroadcastSystem.cs:8196-8224`) calls only `RevokeRefreshTokenAsync`,
+which stops future token *refreshes* but does nothing to a still-live access
+token. Logout does not touch the access token at all. A stolen bearer token
+stays fully usable for up to 24 hours after the player logs out, resets their
+password, or reports the theft.
+
+**A cheap fix exists that needs no new subsystem.** The JWT and the refresh
+token both already carry a session nonce (grep `SessionNonce` in
+`AuthenticationEngine.cs` and wherever `RefreshTokenRow` is defined). Store the
+CURRENT nonce per account (a column on `PlayerRecords`, or a small keyed
+Redis/DB table) and bump it on logout, password reset, and confirmed
+refresh-token-theft detection; have `ValidateJwt` reject any token whose
+embedded nonce doesn't match the account's current one. This is one extra
+lookup per validated request (cacheable) rather than a full session-store
+build-out.
+
+**Done when:** a token issued before a logout/reset/theft-revocation event is
+rejected by `ValidateJwt` immediately after that event, not merely blocked
+from refreshing. A test that logs in, captures the access token, triggers
+logout, and replays the old token against an authenticated endpoint expecting
+a 401 is the shape.
+
+**Risk:** medium to implement (touches the hot validation path on every
+request), low to get wrong in a way that's dangerous (fail-closed is the safe
+failure mode here, same as the rest of this auth stack).
+
+---
+
+## 15. DeviceId is a bearer credential with no proof of possession (security, was P0)
+
+**Confirmed.** `AuthenticationEngine.TryLoginByDeviceIdAsync` (`:666-676`) is a
+bare `WHERE DeviceId == deviceId` lookup — no password, no device attestation,
+no expiry, no rotation, no revocation path. The client generates it with
+`crypto.randomUUID()` (`auth.ts:90-97`, not guessable), so the realistic attack
+is anyone who can *read* that `localStorage` value — XSS, a synced browser
+profile, a compromised device — not brute force. A comment near
+`AuthenticationEngine.cs:814` already says "DeviceId is a convenience
+shortcut here, not a security boundary," which is a documented tradeoff, not
+an oversight — but it currently backs full silent login with no password,
+which is a bigger promise than "convenience shortcut" implies.
+
+**Fix shape:** stop treating the client-persisted UUID as sufficient alone.
+Options, cheapest first: (a) require the remembered-device flow to also
+re-verify a short-lived secondary signal (e.g. a device-bound refresh token
+issued at first login, rotated on each use, rather than the bare DeviceId
+column value itself carrying authority); (b) cap what a device-only login can
+do — e.g. still require step-up (password) before sensitive actions (email
+change, purchase, account deletion) even when auto-logged-in by device.
+(b) is far cheaper and may be the pragmatic v1: audit every
+`RequireAuthenticated`-gated sensitive command and add a "was this session
+established by password or by device-bearer" flag, gating the riskiest
+commands on the former.
+
+**Done when:** a device-bearer session cannot perform at least
+password-change, email-change, and purchase/redemption commands without a
+fresh password check — and that gate has a test. Full credential-lifecycle
+rework (rotation, revocation) is a larger follow-up, not required for v1.
+
+**Risk:** medium — this changes the login UX contract (CLAUDE.md's whole
+"remembered device" flow), so scope the step-up list with the owner before
+building it.
+
+---
+
+## 16. Village upgrade and villager recruitment don't update the live session's gold (economy bug, was P1)
+
+**Confirmed, and now fully scoped — see the separate implementation plan at
+`docs/superpowers/plans/2026-09-17-village-gold-sync.md`.** Same bug shape as
+the breeding gold fix from round 1 (`BirthNotification.GoldSpent`,
+`PlayerSessionRegistry.cs:235-241`, consumed at `SimulationEngine.cs:816`):
+`VillageManagementEngine.cs:460` (`goldRecord.Quantity -= goldCost;`, building
+upgrades) and `VillageArrivalEngine.cs:120` (`gold!.Quantity -= cost;`,
+recruiting a villager for gold — the "feast" path) both debit the database row
+directly and never touch `CurrentGold`/`RedisPendingGoldDelta`, so the header
+shows the pre-spend balance until relogin. The recruit path is worse than the
+upgrade path: it enqueues **no notification of any kind** back to the live
+session today (confirmed at `VillageManagementEngine.cs:195-234`,
+`ExecuteRecruitVillagerAsync` — commits and returns, nothing enqueued), so
+fixing it needs a new lightweight notification, not just a new field on an
+existing one.
+
+**Risk:** low — this is a narrow, well-precedented mirror of an already-shipped
+fix. See the plan for exact steps.
+
+---
+
+## 17. Offline village production fails silently on a database error (reliability, was P0)
+
+**Confirmed.** `OfflineSimulationEngine.cs:396-399`:
+`catch { await transaction.RollbackAsync(); }` — no log line, no failure
+counter, nothing. Compare `CombatLootEngine.cs:571-576` and `:680-685`, which
+log every failure (`Console.WriteLine($"Loot: ... failed: {ex.Message}")`)
+after the "cron worker silent death" fix from 2026-09-06 — this specific path
+was never given the same treatment. A player can log in, see their offline
+summary, and have village production silently vanish underneath a transient
+database error with **no signal anywhere** — not in the log, not in the
+summary, not in a counter a dashboard could alert on.
+
+**Fix shape (phase 1, cheap):** add the same log-and-count pattern
+`CombatLootEngine` already uses — a `Console.WriteLine` naming the player and
+the failure, plus a counter surfaced the way `Loot: tick saw N kills...`
+already reports at heartbeat. This alone turns an invisible failure into a
+debuggable one. **Phase 2 (durable retry) is task 18** — don't block phase 1
+on it.
+
+**Done when:** a forced database failure during
+`GrantVillagePassiveProductionAsync` produces a log line naming the player and
+the lost production, and a test asserts the log/counter fires (mirroring
+whatever `CombatLootEngine`'s existing failure-counter test already asserts).
+
+**Risk:** very low. This is a few lines, additive, no behavior change beyond
+visibility.
+
+---
+
+## 18. No durable retry for loot, gathering, or offline production grants (reliability, was P0)
+
+**Confirmed missing.** Repo-wide grep for "outbox", "retry_queue", "DeadLetter"
+across `server/`: zero matches. `CombatLootEngine`'s per-item try/catch (the
+2026-09-06 fix) gives fault *isolation* — the worker survives a bad item — not
+fault *recovery*: a failed grant is logged and gone. Same for offline
+production (task 17) once it starts logging. A transient Supabase pooler
+hiccup (the exact failure mode that caused the original starvation incident)
+can permanently cost a player a real reward with nothing to replay it.
+
+**This is the biggest item on this list and needs its own planning pass, not
+a paragraph here.** Shape to scope, at minimum: what's the persistence
+mechanism (a `PendingGrants` table works with the existing Postgres, no new
+infra); what's the idempotency key (player + source event + a monotonic
+counter, so a retried grant can't double-apply); what drains it (a
+`StartCron` worker, guarded per `CronWorkerGuardTests`' existing convention);
+what's the backoff/give-up policy. Loot, gathering, and offline production
+all want the same mechanism — build it once, wire it to all three.
+
+**Done when:** a forced database failure during any of the three grant paths
+results in the reward being delivered on retry rather than lost, with a test
+that kills the DB connection mid-grant and asserts the reward eventually
+lands.
+
+**Risk:** high effort, low risk to existing systems if built as a genuinely
+separate outbox table rather than woven into the hot paths — plan it as an
+addition, not a rewrite.
+
+---
+
+## 19. Village passive production discards overflow with no record (reliability, cheap)
+
+**Confirmed.** `OfflineSimulationEngine.cs:333-334` and `:402-413` clamp
+granted production to warehouse capacity twice (once against the theoretical
+max, once against live current storage) — correct, prevents unbounded growth
+— but the clamped-away amount is never computed or stored anywhere. The
+player's offline summary only ever sees what was actually granted; a full
+warehouse silently eats the rest, which reads exactly like a broken building
+(CLAUDE.md already documents this class of bug: "a system that renders
+correctly while doing nothing").
+
+**Fix shape:** compute `requested - granted` at the clamp site, sum it per
+resource, and add a "lost to a full warehouse" line to whatever struct the
+offline summary is already built from (check what feeds the client's offline
+summary screen — likely the same notification path `GrantVillagePassiveProductionAsync`
+already populates).
+
+**Done when:** logging in with a full warehouse and pending production shows
+the player how much was discarded, not just how much was kept.
+
+**Risk:** very low.
+
+---
+
+## 20. The wire's field-coverage guard only covers one of four state layers (testing infra, was P1)
+
+**Confirmed, but narrower in scope than the audit's "build a manifest"
+framing.** `StateUpdatePacketFieldCoverageTests` is real and mechanical — it
+already guards the exact "field is read but never written or written but
+never loaded" class of bug this whole board keeps re-finding — but it is
+scoped to precisely one hop: payload-to-packet copy coverage. It says nothing
+about whether a field also survives a Redis frame, a DB checkpoint, or a REST
+cache invalidation key, which are the other three layers CLAUDE.md's own
+"A Redis frame is not a checkpoint" trap describes.
+
+**Fix shape: extend the existing pattern, don't build a new one.** The
+narrower, honest task is three more coverage tests shaped like the existing
+one — one for Redis-frame inclusion, one for checkpoint persistence, one for
+REST-cache invalidation-key coverage — each with its own `RuntimeOnlyByDesign`-
+style escape hatch for fields that genuinely don't need that layer, exactly
+like the existing test already does for the wire.
+
+**Done when:** all four layers have a mechanical coverage test, and adding a
+new field to `TickStatePayload` forces a decision on all four rather than just
+the wire.
+
+**Risk:** low — this is test-only work, no production code path changes.
+
+---
+
+## 21. `SimulationEngine.cs` is a single 6,650-line file spanning every subsystem (architecture, was P1)
+
+**Confirmed exactly.** `wc -l` = 6,650. It contains material touching Guild,
+Breeding, WorldBoss, Market, Village, Gathering, and Crafting concerns (280
+keyword hits across those seven areas alone), plus persistence, anti-cheat
+telemetry, and notification-queue draining. This is not a new observation —
+CLAUDE.md's own conventions describe reading it carefully — but nobody has
+scoped splitting it.
+
+**This needs its own dedicated planning session, the same as task 18** — a
+paragraph here would either be too vague to act on or presumptuous about a
+decomposition the owner hasn't weighed in on. The one constraint worth
+recording now: the single-writer tick invariant (`SimulationEngine` is the
+only thing that mutates `TickStatePayload`) has to survive any split, or every
+concurrency guarantee in this codebase's design goes with it. Scope this as
+"bounded domain coordinators with explicit state ownership and adapters for
+tick mutation, persistence, and notifications" (the audit's own phrasing is
+accurate) — not a rewrite.
+
+**Risk:** high if rushed, and explicitly NOT a task to start without a
+dedicated brainstorming/spec pass first.
+
+---
+
+## 22. No sustained-load test combining the systems that actually interact in production (testing infra, was P1)
+
+**Confirmed missing.** `E2EGameLoopTest.cs` is real but single-player,
+real-Postgres, with some protocol-level flood loops — no scenario combines
+concurrent combat, gathering, offline catch-up, checkpoints, market
+contention, reconnects, and a Supabase-pooler-like connection limit, which is
+the exact combination that caused the loot-starvation incident CLAUDE.md
+documents at length. Unit and structural tests cannot expose queue-age/pool-
+starvation interactions; only a scenario like this can.
+
+**Fix shape:** a new test class that spins up N simulated concurrent sessions
+(reuse whatever harness `E2EGameLoopTest` already has for one), has them
+combat/gather/checkpoint/reconnect on overlapping schedules, and bounds the
+connection pool artificially low (mirroring the real `EMAXCONNSESSION`
+incident) to force contention on purpose. Assert on symptoms already measured
+once for real: no dropped loot, no starved queue, checkpoint age stays
+bounded.
+
+**Risk:** medium effort, high value — this is the test that would have caught
+the loot-starvation incident before a player did.
+
+---
+
+## 23. Market (and similar REST+WebSocket screens) can apply a stale REST result over newer WebSocket state (correctness, unconfirmed in the wild)
+
+**Confirmed as a real, unguarded mechanism — not confirmed as an observed
+bug.** `Market.svelte`'s `listings`/`inventory`/`statistics`/`history` are all
+`createQuery` REST caches; the only invalidation after a command is a bare
+`setTimeout(() => invalidateOwnedItems(client), 600-700)` with no sequence or
+epoch check against whatever the WebSocket has delivered in that window. A WS
+update landing inside that 600-700ms gap and then getting overwritten by the
+delayed REST refetch is a genuine race as written. Screens named by the audit
+along the same lines (Mailbox, Character, Larder) were not individually
+re-checked — Market was the spot-check.
+
+**Fix shape:** the wire already has `LogicEpochCounter` for exactly this class
+of ordering problem (per CLAUDE.md, "LogicEpochCounter means TWO things") —
+either stamp REST responses with the epoch they were computed at and discard
+a REST result older than the newest WS-observed epoch, or simplify by making
+the relevant REST invalidations synchronous with the command's own
+acknowledgment instead of a fixed timeout.
+
+**Done when:** a WS update arriving during the invalidation window is not
+clobbered by the delayed REST refetch — the shape of test is a client
+integration test that fires a command, injects a WS update inside the
+600-700ms gap, lets the REST refetch land, and asserts the WS-delivered value
+survived.
+
+**Risk:** low to medium — likely a small, local fix per screen once the
+pattern is chosen, but there may be more than one screen affected; audit the
+others named before calling this done.
+
+---
+
+**Not a task — a decision the owner should make, not something to silently
+"fix":** offline catch-up is capped at 12 hours per login gap
+(`OfflineSimulationEngine.cs:22`, `MaxOfflineSeconds = 43200L`), but the cap is
+per-gap, not a rolling daily budget — confirmed by reading
+`elapsedSeconds = Math.Min(effectiveMaxOfflineSeconds, rawDeltaSeconds)`
+against `rawDeltaSeconds = T_current - T_last_checkpoint`. Logging in every
+4 hours six times a day legitimately nets ~24h of simulated production, each
+individual gap staying under the cap. Whether that is a real exploit worth
+closing (a rolling per-day budget) or acceptable/intended (rewards engagement,
+which many idle games do on purpose) is a design call, not a bug — record the
+decision here once made, either way.
