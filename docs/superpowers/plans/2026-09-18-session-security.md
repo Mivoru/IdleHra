@@ -1476,7 +1476,86 @@ Check this class's field name for the context factory (`_contextFactory` was use
         }
 ```
 
-- [ ] **Step 3: Gate `HandleOAuthLink`** the same way - replace its `long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);` with the tuple form, and insert the same step-up block after the request body is parsed (it already reads `oauthProviderToken` from the body - add the `password` check alongside it, before calling `LinkOAuthAccountAsync`).
+- [ ] **Step 3: Gate `HandleOAuthLink`**
+
+This handler parses its body with `JsonDocument.Parse`, not `JsonSerializer.Deserialize<JsonElement>` like `HandleBillingVerify` - read `password` inside the SAME `using var document = ...` block that already reads `oauthProviderToken`, since `document` is disposed at the end of that block:
+
+```csharp
+        private async Task HandleOAuthLink(HttpListenerContext context)
+        {
+            try
+            {
+                var (playerId, authMethod) = await TryResolveAuthenticatedPlayerWithMethodAsync(context.Request);
+                if (playerId == 0L)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                Guid accountId = await ResolveAccountIdAsync(playerId);
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string oauthProviderToken;
+                string suppliedPassword;
+                try
+                {
+                    using var document = System.Text.Json.JsonDocument.Parse(body);
+                    if (!document.RootElement.TryGetProperty("oauthProviderToken", out var tokenElement))
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+                    oauthProviderToken = tokenElement.GetString() ?? string.Empty;
+                    suppliedPassword = document.RootElement.TryGetProperty("password", out var pwElement)
+                        ? (pwElement.GetString() ?? string.Empty)
+                        : string.Empty;
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (await RequiresPasswordStepUpAsync(playerId, authMethod))
+                {
+                    await using var stepUpDb = await _contextFactory.CreateDbContextAsync();
+                    if (suppliedPassword.Length == 0 || !await VerifyStepUpPasswordAsync(stepUpDb, playerId, suppliedPassword))
+                    {
+                        WriteStepUpRequired(context);
+                        context.Response.Close();
+                        return;
+                    }
+                }
+
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+                var validator = _serviceProvider.GetRequiredService<IOAuthTokenValidator>();
+                OAuthLinkOutcome outcome = await AuthenticationEngine.LinkOAuthAccountAsync(authOptions, accountId, oauthProviderToken, validator);
+
+                context.Response.StatusCode = outcome switch
+                {
+                    OAuthLinkOutcome.Success => 200,
+                    OAuthLinkOutcome.InvalidToken => 400,
+                    OAuthLinkOutcome.AccountNotFound => 404,
+                    OAuthLinkOutcome.AlreadyLinked => 409,
+                    OAuthLinkOutcome.ExternalIdentityInUse => 409,
+                    _ => 500
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"OAuth link error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            context.Response.Close();
+        }
+```
+
+(The trailing `catch`/`context.Response.Close()` were already there - shown here only so the whole method reads as one piece; do not duplicate them.)
 
 - [ ] **Step 4: Write and run the tests**
 
