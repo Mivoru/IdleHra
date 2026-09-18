@@ -96,6 +96,15 @@ a hand-constructed device-bearer session before this ships to players.
 columns), take a Supabase backup first anyway per this project's own
 precedent.
 
+**Follow-up, found by the final review, deliberately not taken here:** the
+WebSocket handshake's `"Unknown account"` close reason (a resolved,
+non-revoked JWT whose account no longer exists) has the same shape as the
+bug this handoff just fixed - it does not contain "token", so
+`interpretClose` treats it as a transient drop and loop-reconnects rather
+than showing the login screen. Pre-existing, not introduced by this plan,
+narrow (requires an account to vanish out from under a still-valid token);
+parked rather than folded into this fix wave.
+
 ---
 
 # HANDOFF 2026-09-18b - an unauthenticated free-diamonds route was live
