@@ -114,16 +114,27 @@ current connection if one exists (resolve `playerId` the same way
    `RevokeAllRefreshTokensAsync(authOptions, accountId)` (`:415`) already
    takes the `accountId` directly, but **has zero callers anywhere in the
    server today** - its doc comment describes a password change and a
-   player-reported stolen device, neither of which currently calls it. A
-   password reset today revokes nothing: not the refresh tokens, not (until
-   this plan) the access token. Section 3's next bullet gives this method
-   its first caller.
-2. **Password reset completes.** `PasswordResetEngine.CompleteResetAsync`
-   succeeding (`NetworkBroadcastSystem.cs:8561`) now also calls
-   `RevokeAllRefreshTokensAsync` (finally exercised) and bumps the nonce for
-   the account whose password just changed - closing both the access-token
-   gap this task targets and the pre-existing refresh-token gap next to it,
-   in one change since both fire from the same event.
+   player-reported stolen device, neither of which currently calls *this
+   method specifically* (see the correction below: password reset already
+   revokes refresh tokens, just via inline duplicate logic). Out of scope
+   here - nothing in this plan needs to give it a caller, and it is noted
+   only so it is not mistaken for the reset path's revoke logic.
+2. **Password reset completes.** Corrected from an earlier draft:
+   `PasswordResetEngine.CompleteResetAsync` (`:134-187`) already clears the
+   `DeviceId` anchor and revokes every refresh token for the account
+   in-line (`:182-184`, inside the same `db` context as the password
+   change) - the only thing left untouched is the access token, exactly
+   the audit's finding. `CompleteResetAsync` gains one line right after the
+   existing revoke block: set `player.CurrentSessionNonce` to a fresh
+   nonce on the already-tracked `player` entity (one more field on the
+   `SaveChangesAsync` that already runs), and its return type widens from
+   `Task<PasswordResetOutcome>` to `Task<(PasswordResetOutcome Outcome,
+   Guid AccountId)>` (`AccountId` = `player.PlayerGuid` on success,
+   `Guid.Empty` otherwise) so its caller, `HandleResetPassword`
+   (`NetworkBroadcastSystem.cs:8522`), can `ForceDisconnect` that account's
+   live session - the same shape as bullet 1, and for the same reason
+   (the nonce/disconnect logic needs the network layer, which
+   `PasswordResetEngine` does not have).
 3. **Refresh-token replay detected.** `RedeemRefreshTokenAsync`'s
    `RefreshOutcome.Replayed` branch (`AuthenticationEngine.cs:351-359`)
    already revokes every refresh token for the account inside its existing
