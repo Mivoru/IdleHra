@@ -791,6 +791,15 @@ namespace FolkIdle.Server.Network
         public int OfflineSlot3Drops;
         public long OfflineXpEarned;
         public int OfflineMaterialDropsGranted;
+
+        // Modul: the previous two clamps (theoretical window ceiling, then
+        // live warehouse room - see OfflineSimulationEngine.
+        // GrantSingleCommodityProductionAsync) silently dropped whatever a
+        // full warehouse couldn't hold. This is that discarded amount, made
+        // visible - set once, at login, same contract as
+        // OfflineMaterialDropsGranted right above it: exactly what THIS
+        // catch-up discarded, never a running total.
+        public long OfflineMaterialsLostToFullWarehouse;
         public byte OfflineSummaryTick;
 
         // Modul: THE TWO MOMENTS THE GAME NEVER MARKED.

@@ -275,6 +275,10 @@ export interface OfflineSummary {
   goldEarned: number;
   xpEarned: number;
   materialDropsGranted: number;
+  /** Modul: what a full warehouse silently discarded from THIS catch-up's
+   *  village passive production - see OfflineSimulationEngine.
+   *  GrantSingleCommodityProductionAsync. Zero when nothing was clamped. */
+  materialsLostToFullWarehouse: number;
   /** True when the catch-up granted nothing at all - see the note below. */
   earnedNothing: boolean;
   /** One row per character that exists, so an idle worker is visible as a
@@ -754,6 +758,7 @@ export function startSession(token: string): void {
             goldEarned: packet.OfflineGoldEarned,
             xpEarned: packet.OfflineXpEarned,
             materialDropsGranted: packet.OfflineMaterialDropsGranted,
+            materialsLostToFullWarehouse: packet.OfflineMaterialsLostToFullWarehouse,
             earnedNothing,
             perCharacter,
           });

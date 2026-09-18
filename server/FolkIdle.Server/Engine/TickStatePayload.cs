@@ -436,6 +436,15 @@ namespace FolkIdle.Server.Engine
         public int OfflineSlot3Drops;
         public long OfflineXpEarned;
         public int OfflineMaterialDropsGranted;
+
+        // Modul: the previous two clamps (theoretical window ceiling, then
+        // live warehouse room) silently dropped whatever a full warehouse
+        // couldn't hold - a system that renders correctly while doing
+        // nothing, CLAUDE.md's own recurring shape. This is that discarded
+        // amount, made visible. Populated once, at login, same as its
+        // siblings above - the exact amount THIS catch-up discarded, never a
+        // running total.
+        public long OfflineMaterialsLostToFullWarehouse;
         public byte OfflineSummaryTick;
 
         // Modul: THE TWO MOMENTS THE GAME NEVER MARKED.

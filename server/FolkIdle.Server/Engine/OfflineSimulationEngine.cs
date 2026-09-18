@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -186,7 +187,7 @@ namespace FolkIdle.Server.Engine
                 payload.Slot1_AgePhase = AgePhaseCurve.PhaseFor(payload.Slot1_AgeTicks);
             }
 
-            await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds);
+            payload.OfflineMaterialsLostToFullWarehouse = await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds);
 
             // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
             // "Welcome Back" flow). Captured before the projection branches
@@ -293,14 +294,42 @@ namespace FolkIdle.Server.Engine
             return await GrantAnalyticalLootAsync(db, playerId, lootTable, projection.LootRolls, availableInventorySpace, projection.LootLuckPct);
         }
 
+        // Modul: THIS PATH HAD NO OBSERVABILITY AT ALL - the exact shape
+        // CombatLootEngine's loot path had before its 2026-09-06 fix. A
+        // transient database error here (a dropped Supabase pooler
+        // connection, a serialization failure) rolled back silently, and a
+        // player's earned wood/ore/gold simply vanished: not in the log, not
+        // in the offline summary, not in a counter a dashboard could alert
+        // on. Mirrors CombatLootEngine's _requestsFailed exactly (audit #17,
+        // phase 1 - durable retry is a separate effort, audit #18).
+        private static long _villageProductionFailures;
+
+        /// <summary>
+        /// How many offline village production grants have rolled back since
+        /// the process started. Phase 1 (audit #17) stops at "visible and
+        /// countable" - a dashboard/heartbeat integration the way
+        /// <c>CombatLootEngine.ReportLootThroughput</c> reports its own
+        /// counters is future work, not required by this task's Done-when.
+        /// </summary>
+        public static long VillageProductionFailures => Interlocked.Read(ref _villageProductionFailures);
+
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
         // Grants offline wood/stone/iron_ore analytically, independent of
         // whatever gathering/combat activity was active while offline.
-        private static async Task GrantVillagePassiveProductionAsync(FolkIdleDbContext db, long playerId, int lumberjackLevel, int mineLevel, int warehouseLevel, int townHallLevel, long elapsedSeconds)
+        // Modul: returns the total materials (across all four Log/Ore/RareLog/
+        // RareOre grants) that a full warehouse discarded this call - see
+        // GrantSingleCommodityProductionAsync's own comment. 0L on every early
+        // return, since nothing was clamped when nothing was attempted.
+        // internal rather than private: OfflineVillageProductionOverflowTests
+        // drives this directly rather than through the full
+        // ExtrapolateOfflineProgressAsync (which needs a whole populated
+        // slot/character payload just to reach it) - the same seam
+        // GrantAnalyticalLootAsync already uses for the same reason.
+        internal static async Task<long> GrantVillagePassiveProductionAsync(FolkIdleDbContext db, long playerId, int lumberjackLevel, int mineLevel, int warehouseLevel, int townHallLevel, long elapsedSeconds)
         {
             if (elapsedSeconds <= 0)
             {
-                return;
+                return 0L;
             }
 
             long goldRatePerHour = VillageManagementEngine.GetTownHallGoldRatePerHour(townHallLevel);
@@ -354,27 +383,39 @@ namespace FolkIdle.Server.Engine
             bool anyMaterialProduction = woodEarned > 0 || oreEarned > 0 || rareWood > 0 || rareOre > 0;
             if (!anyMaterialProduction && goldEarned <= 0)
             {
-                return;
+                return 0L;
             }
+
+            // Modul: summed inside the transaction, before commit - if the
+            // transaction rolls back (see the catch below, which this task
+            // does not touch - that failure path is task #17's own
+            // counter/log), nothing was actually granted OR clamped, so
+            // reporting a nonzero figure in that case would misattribute a
+            // transient DB failure as "your warehouse was full". `committed`
+            // gates the return on the same success path the catch's absence
+            // of a rethrow already implies, without needing to read anything
+            // out of the catch block itself.
+            long materialsLostToFullWarehouse = 0L;
+            bool committed = false;
 
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 if (woodEarned > 0)
                 {
-                    await GrantSingleCommodityProductionAsync(db, playerId, lumberjackMats.Log, woodEarned, maxStoragePerItem);
+                    materialsLostToFullWarehouse += await GrantSingleCommodityProductionAsync(db, playerId, lumberjackMats.Log, woodEarned, maxStoragePerItem);
                 }
                 if (oreEarned > 0)
                 {
-                    await GrantSingleCommodityProductionAsync(db, playerId, mineMats.Ore, oreEarned, maxStoragePerItem);
+                    materialsLostToFullWarehouse += await GrantSingleCommodityProductionAsync(db, playerId, mineMats.Ore, oreEarned, maxStoragePerItem);
                 }
                 if (rareWood > 0)
                 {
-                    await GrantSingleCommodityProductionAsync(db, playerId, lumberjackMats.RareLog, rareWood, maxStoragePerItem);
+                    materialsLostToFullWarehouse += await GrantSingleCommodityProductionAsync(db, playerId, lumberjackMats.RareLog, rareWood, maxStoragePerItem);
                 }
                 if (rareOre > 0)
                 {
-                    await GrantSingleCommodityProductionAsync(db, playerId, mineMats.RareOre, rareOre, maxStoragePerItem);
+                    materialsLostToFullWarehouse += await GrantSingleCommodityProductionAsync(db, playerId, mineMats.RareOre, rareOre, maxStoragePerItem);
                 }
 
                 if (goldEarned > 0)
@@ -392,16 +433,31 @@ namespace FolkIdle.Server.Engine
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
+                committed = true;
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                Interlocked.Increment(ref _villageProductionFailures);
+                Console.WriteLine(
+                    $"Village: offline production for player {playerId} failed and was rolled back - "
+                    + $"lost {goldEarned} gold, {woodEarned}+{rareWood} wood, {oreEarned}+{rareOre} ore: {ex.Message}");
             }
+
+            return committed ? materialsLostToFullWarehouse : 0L;
         }
 
-        private static async Task GrantSingleCommodityProductionAsync(FolkIdleDbContext db, long playerId, string itemId, long amountToGrant, long maxStorage)
+        // Modul: returns what this call could NOT grant. This is the clamp
+        // that matters to the player - the caller's own window-ceiling clamp
+        // (elapsedSeconds * rate / 3600, capped at maxStoragePerItem) is a
+        // theoretical bound that rarely binds; THIS one reflects what the
+        // warehouse actually had room for, against live storage, at grant
+        // time. The caller sums this across all four materials into
+        // TickStatePayload.OfflineMaterialsLostToFullWarehouse, so a full
+        // warehouse stops silently discarding production with no record.
+        private static async Task<long> GrantSingleCommodityProductionAsync(FolkIdleDbContext db, long playerId, string itemId, long amountToGrant, long maxStorage)
         {
-            if (amountToGrant <= 0) return;
+            if (amountToGrant <= 0) return 0L;
 
             var commodity = await db.CommodityRecords
                 .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, itemId)
@@ -409,9 +465,10 @@ namespace FolkIdle.Server.Engine
 
             long currentStorage = commodity?.Quantity ?? 0L;
             long grantedAmount = Math.Min(amountToGrant, Math.Max(0L, maxStorage - currentStorage));
+            long overflow = amountToGrant - grantedAmount;
             if (grantedAmount <= 0)
             {
-                return;
+                return overflow;
             }
 
             if (commodity == null)
@@ -422,6 +479,8 @@ namespace FolkIdle.Server.Engine
             {
                 commodity.Quantity += grantedAmount;
             }
+
+            return overflow;
         }
 
         private static LootProjection CalculateGatheringProjection(ref TickStatePayload payload, GatheringNodeDefinition node, long elapsedSeconds)

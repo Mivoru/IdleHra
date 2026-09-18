@@ -190,7 +190,12 @@ namespace FolkIdle.Server.Network
         // even that - the only account past level 1 reached level 86 holding a
         // fresh registration's attributes. A level pays a pool now and the
         // player places it, so the screen has to be able to see the balance.
-        public const int ExpectedStateUpdateSize = 801;
+        //
+        // Modul: warehouse overflow visibility, 801 -> 809. One long,
+        // OfflineMaterialsLostToFullWarehouse - the village passive-production
+        // clamps (window ceiling, then live warehouse room) discarded whatever
+        // a full warehouse could not hold and told nobody; this is that amount.
+        public const int ExpectedStateUpdateSize = 809;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper
