@@ -35,10 +35,25 @@ Npgsql pool this plan's worker must not bypass).
 and a log line to `GrantVillagePassiveProductionAsync`'s existing `catch`
 block — pure visibility, no persistence. This plan's Task 1 extends that
 *same* catch block one layer further: after counting and logging, it also
-persists the already-computed grant so it can be replayed. **Land #17
-first.** If it has not landed when Task 1 starts, check the catch block's
-current shape before editing — do not duplicate the counter, and do not
-remove it.
+persists the already-computed grant so it can be replayed. **#17 and #19
+have both landed** (PR #9, 2026-09-19) — the catch block now also carries
+#19's `committed`-flag/`return` shape. See Task 1 Step 5 below for the
+now-current version of that block; the version originally sketched here is
+stale.
+
+**Re-validated 2026-09-19, before implementation, per the owner's brainstorm
+gate.** Every method this plan targets was re-read against current
+`main` (`GrantGatheredMaterialsAsync`, `DrainGatheringGrantsAsync`,
+`ProcessMonsterLootDropAsync`, `GrantMaterialDropAsync`, `TryRollEquipment`)
+— all match this plan's description structurally, with only line-number
+drift. The pool size (12) and cron-worker count (14, confirmed via
+`CronWorkerGuardTests.KnownCronEngines` — this task's worker is genuinely
+the 15th) are both still accurate. **One gap found and closed by adding a
+step to Task 4 below:** the drain worker as originally planned writes
+straight to the database with no way to tell an online player their retry
+just landed — they would not see it until their next relogin. Fixed by
+reusing two mechanisms that already exist rather than inventing a new one
+— see Task 4 Step 1b.
 
 ## Global Constraints
 
@@ -482,7 +497,9 @@ namespace FolkIdle.Server.Engine
 
 - [ ] **Step 5: wire `GrantVillagePassiveProductionAsync`**
 
-Current shape (post-#17, assuming that task has landed):
+Current shape, now that #17 and #19 have both landed (`OfflineSimulationEngine.cs`,
+inside `GrantVillagePassiveProductionAsync` — note the method now returns
+`Task<long>` and closes over a `committed` flag; do not disturb either):
 
 ```csharp
             catch (Exception ex)
@@ -490,11 +507,17 @@ Current shape (post-#17, assuming that task has landed):
                 await transaction.RollbackAsync();
                 Interlocked.Increment(ref _villageProductionFailures);
                 Console.WriteLine(
-                    $"Offline village production for player {playerId} failed: {ex.Message}");
+                    $"Village: offline production for player {playerId} failed and was rolled back - "
+                    + $"lost {goldEarned} gold, {woodEarned}+{rareWood} wood, {oreEarned}+{rareOre} ore: {ex.Message}");
             }
+
+            return committed ? materialsLostToFullWarehouse : 0L;
 ```
 
-Change to also enqueue the already-computed deltas:
+Add the enqueue call inside that same `catch`, after the existing log line
+(nothing else in the block changes — `committed` stays `false`, so the
+`return` after the block still correctly reports `0L`, since #19's overflow
+accounting has nothing to report on a rolled-back grant either):
 
 ```csharp
             catch (Exception ex)
@@ -502,7 +525,8 @@ Change to also enqueue the already-computed deltas:
                 await transaction.RollbackAsync();
                 Interlocked.Increment(ref _villageProductionFailures);
                 Console.WriteLine(
-                    $"Offline village production for player {playerId} failed: {ex.Message} - queued for retry.");
+                    $"Village: offline production for player {playerId} failed and was rolled back - "
+                    + $"lost {goldEarned} gold, {woodEarned}+{rareWood} wood, {oreEarned}+{rareOre} ore: {ex.Message} - queued for retry.");
 
                 var deltas = new Dictionary<string, long>();
                 if (woodEarned > 0) deltas[lumberjackMats.Log] = woodEarned;
@@ -514,6 +538,8 @@ Change to also enqueue the already-computed deltas:
                 await PendingGrantOutbox.EnqueueCommodityDeltasAsync(
                     db, playerId, PendingGrantSourceType.OfflineVillageProduction, deltas);
             }
+
+            return committed ? materialsLostToFullWarehouse : 0L;
 ```
 
 (All five locals — `woodEarned`, `oreEarned`, `rareWood`, `rareOre`,
@@ -872,6 +898,7 @@ namespace FolkIdle.Server.Engine
     public class PendingGrantDrainEngine
     {
         private readonly IServiceProvider _serviceProvider;
+        private readonly PlayerSessionRegistry _playerSessionRegistry;
         private CancellationTokenSource _cts = new();
 
         // Modul: A BUDGET, NOT "EVERY ELIGIBLE ROW" - see CombatLootEngine's
@@ -890,9 +917,10 @@ namespace FolkIdle.Server.Engine
         private static long _deadLettered;
         private long _lastReportMs;
 
-        public PendingGrantDrainEngine(IServiceProvider serviceProvider)
+        public PendingGrantDrainEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerSessionRegistry)
         {
             _serviceProvider = serviceProvider;
+            _playerSessionRegistry = playerSessionRegistry;
         }
 
         public void StartCron()
@@ -1023,13 +1051,78 @@ namespace FolkIdle.Server.Engine
 }
 ```
 
+- [ ] **Step 1b: tell a live session its retry landed (added 2026-09-19,
+owner's brainstorm gate)**
+
+Without this, a player who is online when a delayed grant applies sees
+nothing until their next relogin — the drain worker writes straight to the
+database with no signal to a live `TickStatePayload`. Fixed by reusing two
+mechanisms that already exist, rather than adding a new notification type
+or a new wire field:
+
+- **Gold:** `ChestSaleGoldQueue` / `ChestSaleGoldNotification { PlayerId,
+  GoldGained }` already exist for exactly this shape — "the database row is
+  already correct (a chest sale wrote it directly), the live session's
+  *displayed* total is what's behind." Its consumer in `SimulationEngine`
+  calls `AddGold` on the payload WITHOUT touching `RedisPendingGoldDelta`,
+  which is precisely correct here too: `PendingGrantOutbox` already wrote
+  `CommodityRecords["gold"]` directly, so only the display needs to catch up,
+  never a second bank of the same amount.
+- **Materials and equipment:** `PlayerSessionRegistry.EnqueueCommandResult`
+  already exists and is exactly what PR #10 (task 23) wired every screen's
+  cache invalidation through — enqueuing a `Success` result for the player
+  causes `processCommandResults` client-side to invalidate every REST cache
+  globally, the same as any other successful command. No new queue, no new
+  wire field: the client refetches its owned-items/materials view on its
+  own.
+
+`PendingGrantDrainEngine` needs a `PlayerSessionRegistry` reference (new
+constructor parameter, same pattern `CombatLootEngine` already takes) to
+call `IsPlayerOnline` and both queues above. Add this in
+`DrainOneCycleAsync`, right after a row is successfully applied and removed
+(inside the `try`, after `Interlocked.Increment(ref _applied)`):
+
+```csharp
+                    if (_playerSessionRegistry.IsPlayerOnline(row.PlayerId))
+                    {
+                        if (row.PayloadKind == PendingGrantPayloadKind.CommodityDeltas)
+                        {
+                            var deltas = JsonSerializer.Deserialize<Dictionary<string, long>>(row.PayloadJson)!;
+                            if (deltas.TryGetValue("gold", out long goldGained) && goldGained > 0L)
+                            {
+                                _playerSessionRegistry.ChestSaleGoldQueue.Enqueue(
+                                    new ChestSaleGoldNotification { PlayerId = row.PlayerId, GoldGained = goldGained });
+                            }
+                        }
+
+                        _playerSessionRegistry.EnqueueCommandResult(
+                            row.PlayerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
+                    }
+```
+
+(Deserializing `PayloadJson` a second time here, after `TryApplyOneAsync`
+already did once internally, is a small duplicated cost accepted for
+keeping `TryApplyOneAsync`'s signature simple — it returns only `bool`, on
+purpose, since Task 1's own tests call it directly without a
+`PlayerSessionRegistry` in hand. Revisit only if this becomes a measured
+hot path, which a near-zero-steady-state outbox should never be.)
+
+**Test:** extend Task 4 Step 4's test list with **7. A live session sees a
+retried gold grant without relogging in** — register the player as online
+(`PlayerSessionRegistry.RegisterPlayer`) before running the drain cycle in
+test 1 (offline production, end-to-end), and additionally assert
+`ChestSaleGoldQueue` and `CommandResultQueue` each received exactly one
+entry for that player. A parallel assertion for materials-only (no gold)
+should confirm `CommandResultQueue` still gets an entry with no
+`ChestSaleGoldQueue` entry.
+
 - [ ] **Step 2: `Program.cs`**
 
 Beside `var combatLootEngine = new CombatLootEngine(serviceProvider,
 playerRegistry);` (line 473):
 
 ```csharp
-var pendingGrantDrainEngine = new PendingGrantDrainEngine(serviceProvider);
+var pendingGrantDrainEngine = new PendingGrantDrainEngine(serviceProvider, playerRegistry);
 ```
 
 Beside `combatLootEngine.StartCron();` (line 566):
