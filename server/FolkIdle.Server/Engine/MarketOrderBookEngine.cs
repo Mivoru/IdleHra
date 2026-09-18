@@ -284,6 +284,7 @@ namespace FolkIdle.Server.Engine
                     if (!buyRollingAveragePrice.HasValue)
                     {
                         await transaction.RollbackAsync();
+                        _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                         Console.WriteLine($"BUY Order rejected: no price baseline for {baseItemId} - not in the catalogue and never traded.");
                         return;
                     }
@@ -294,6 +295,7 @@ namespace FolkIdle.Server.Engine
                         if (price < buyMinPrice || price > buyMaxPrice)
                         {
                             await transaction.RollbackAsync();
+                            _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
                             Console.WriteLine($"BUY Order rejected: price {price} outside volatility corridor [{buyMinPrice}, {buyMaxPrice}] for {baseItemId} T{qualityTier}.");
                             return;
                         }
@@ -305,6 +307,7 @@ namespace FolkIdle.Server.Engine
                     if (goldRecord == null || goldRecord.Quantity < price)
                     {
                         await transaction.RollbackAsync();
+                        _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InsufficientGold);
                         Console.WriteLine("BUY Order failed: Insufficient gold.");
                         return;
                     }
@@ -335,6 +338,7 @@ namespace FolkIdle.Server.Engine
                     if (equip == null || equip.PlayerId != playerId || equip.IsLockedInEscrow)
                     {
                         await transaction.RollbackAsync();
+                        _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.TargetNotFound);
                         Console.WriteLine("SELL Order failed: Item unavailable or already locked.");
                         return;
                     }
@@ -357,6 +361,7 @@ namespace FolkIdle.Server.Engine
                         if (price < sellMinPrice || price > sellMaxPrice)
                         {
                             await transaction.RollbackAsync();
+                            _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
                             Console.WriteLine($"SELL Order rejected: price {price} outside volatility corridor [{sellMinPrice}, {sellMaxPrice}] for {baseItemId} T{qualityTier}.");
                             return;
                         }
@@ -383,6 +388,7 @@ namespace FolkIdle.Server.Engine
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
                 Console.WriteLine($"Order placed: {(isBuy ? "BUY" : "SELL")} {baseItemId} T{qualityTier} @ {price}g");
 
                 _ = MatchOrdersAsync(baseItemId, qualityTier);
@@ -390,6 +396,7 @@ namespace FolkIdle.Server.Engine
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                 Console.WriteLine($"Order placement failed: {ex.Message}");
             }
         }

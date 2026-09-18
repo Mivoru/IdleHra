@@ -3095,38 +3095,40 @@ the loot-starvation incident before a player did.
 
 ## 23. Market (and similar REST+WebSocket screens) can apply a stale REST result over newer WebSocket state (correctness, unconfirmed in the wild)
 
-**Not started. Fully scoped — see the separate implementation plan at
-`docs/superpowers/plans/2026-09-17-market-stale-rest-race.md`.** Found
-while scoping: the "simplify" fix direction is already half-shipped, and
-the remaining work is coverage gaps in four engines rather than a new
-mechanism.
+**Done, 2026-09-19.** Implemented per
+`docs/superpowers/plans/2026-09-17-market-stale-rest-race.md`'s Task 1: the
+"simplify" direction (route through the existing `CommandResult` ring-buffer
+ack), not epoch-stamping. All four engines the plan named as needing a
+per-engine coverage check were re-confirmed against live source before
+fixing, and all four confirmations held:
 
-**Confirmed as a real, unguarded mechanism — not confirmed as an observed
-bug.** `Market.svelte`'s `listings`/`inventory`/`statistics`/`history` are all
-`createQuery` REST caches; the only invalidation after a command is a bare
-`setTimeout(() => invalidateOwnedItems(client), 600-700)` with no sequence or
-epoch check against whatever the WebSocket has delivered in that window. A WS
-update landing inside that 600-700ms gap and then getting overwritten by the
-delayed REST refetch is a genuine race as written. Screens named by the audit
-along the same lines (Mailbox, Character, Larder) were not individually
-re-checked — Market was the spot-check.
+- `MarketOrderBookEngine.PlaceLimitOrderAsync` had zero
+  `EnqueueCommandResult` calls on any of its 7 exit paths — added all 7.
+- `EquipmentSlotEngine.EquipAttemptOutcome.Success` hardcoded `ResultCode`
+  to `null` — now reports `Success`, covering Character's equip/unequip.
+- `MailboxAndBankEngine.CommitMailClaimAsync`'s `isSuccess` branch never
+  enqueued anything — added, covering Mailbox's claim/claimAll.
+- `LarderEngine` already enqueued unconditionally on every deposit/
+  withdraw — Larder's `setTimeout` was pure dead weight, deleted with no
+  server change needed.
 
-**Fix shape:** the wire already has `LogicEpochCounter` for exactly this class
-of ordering problem (per CLAUDE.md, "LogicEpochCounter means TWO things") —
-either stamp REST responses with the epoch they were computed at and discard
-a REST result older than the newest WS-observed epoch, or simplify by making
-the relevant REST invalidations synchronous with the command's own
-acknowledgment instead of a fixed timeout.
+`game.ts`'s inline `CommandResult` handling was extracted into an exported
+`processCommandResults()`, and the now-redundant `setTimeout` invalidations
+in Market/Larder/Character/Mailbox `.svelte` were deleted. Equip/unequip and
+mail-claim/claimAll now surface a "Done." toast on success — an accepted,
+named UX change, not a regression (`claimAll()` keeps its own internal
+command-staggering `setTimeout`, unrelated to cache invalidation).
 
-**Done when:** a WS update arriving during the invalidation window is not
-clobbered by the delayed REST refetch — the shape of test is a client
-integration test that fires a command, injects a WS update inside the
-600-700ms gap, lets the REST refetch land, and asserts the WS-delivered value
-survived.
-
-**Risk:** low to medium — likely a small, local fix per screen once the
-pattern is chosen, but there may be more than one screen affected; audit the
-others named before calling this done.
+Tests: 4 new server tests (one per engine) proving the success/rejection
+path now enqueues a `CommandResult`; 2 new client tests
+(`commandAckInvalidation.test.ts`) proving one ack produces exactly one
+refetch with nothing left to race a redundant timer; a source-scan test
+(`restInvalidationTiming.test.ts`) pinning all four screens against the
+`setTimeout` pattern reappearing. Full client suite: 0 new failures;
+`check:ratchet` unchanged at 4 (all pre-existing, `GuildOps.svelte`). Full
+server suite: 866/868 passed, the 2 failures pre-existing and unrelated (a
+port-8081 conflict in `E2EGameLoopTest`, and a Python content-validator
+environment issue) — neither touches any file this fix changed.
 
 ---
 

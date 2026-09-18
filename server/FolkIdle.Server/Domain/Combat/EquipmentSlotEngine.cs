@@ -335,7 +335,18 @@ namespace FolkIdle.Server.Domain.Combat
             // nothing at all because nothing appeared to happen.
             public static EquipAttemptOutcome Rejected(byte? resultCode = null) =>
                 new(false, resultCode ?? (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure, default);
-            public static EquipAttemptOutcome Success(EquipmentSlotUpdateNotification notification) => new(true, null, notification);
+
+            // Modul: this used to report ResultCode = null on purpose - only
+            // rejections were meant to say anything, back when nothing
+            // downstream cared about a SUCCESSFUL equip's timing. Now
+            // Character.svelte's cache invalidation is driven by this same
+            // CommandResult ring buffer (game.ts's processCommandResults)
+            // instead of a guessed-delay setTimeout, so a successful equip or
+            // unequip has to report too, or the client never hears the
+            // command resolved and falls back to the stale timer this fix
+            // removes.
+            public static EquipAttemptOutcome Success(EquipmentSlotUpdateNotification notification) =>
+                new(true, (byte)FolkIdle.Server.Network.CommandResultCode.Success, notification);
         }
 
         // Modul: retryable equip. Equipping several pieces in quick succession

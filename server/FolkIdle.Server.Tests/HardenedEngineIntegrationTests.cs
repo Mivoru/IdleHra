@@ -453,6 +453,126 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task Test_MarketOrderBook_LimitOrderSuccessTellsTheLiveSession()
+        {
+            // Modul: PlaceLimitOrderAsync's success path used to log
+            // "Order placed" to the server console and nothing else -
+            // Market.svelte's placeOrder() had no signal to react to besides
+            // its own guessed 700ms timer. This is the fix: the same
+            // CommandResultQueue signal every other market command already
+            // sends (MarketEscrowEngine.cs:487, LarderEngine.cs:172).
+            var registry = new PlayerSessionRegistry();
+            var marketEngine = new MarketOrderBookEngine(_fixture.ServiceProvider, registry);
+            const long sellerId = 950000120L;
+            const string baseItemId = "eq_monolith_crown_helmet_armor_slot_base";
+
+            long equipmentId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = sellerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                var equipment = new MarketEquipmentInstance { PlayerId = sellerId, BaseItemId = baseItemId, QualityTier = 1 };
+                db.MarketEquipmentInstances.Add(equipment);
+                await db.SaveChangesAsync();
+                equipmentId = equipment.Id;
+            }
+
+            await marketEngine.PlaceLimitOrderAsync(sellerId, false, equipmentId, 5000L, baseItemId, 1);
+
+            Assert.True(registry.CommandResultQueue.TryDequeue(out var notif));
+            Assert.Equal(sellerId, notif.PlayerId);
+            Assert.Equal((byte)CommandResultCode.Success, notif.ResultCode);
+        }
+
+        [Fact]
+        public async Task Test_MarketOrderBook_LimitOrderRejectionTellsTheLiveSession()
+        {
+            // Modul: a SELL order on an item the player does not own (or that
+            // is already locked) used to roll back silently - Console.WriteLine
+            // only, nothing on the wire. CLAUDE.md's "silent rollback is this
+            // server's favourite way to lie" trap, previously unrecorded for
+            // this engine.
+            var registry = new PlayerSessionRegistry();
+            var marketEngine = new MarketOrderBookEngine(_fixture.ServiceProvider, registry);
+            const long sellerId = 950000121L;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = sellerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            // No MarketEquipmentInstance exists for this id at all.
+            await marketEngine.PlaceLimitOrderAsync(sellerId, false, 999999999L, 5000L, "eq_monolith_crown_helmet_armor_slot_base", 1);
+
+            Assert.True(registry.CommandResultQueue.TryDequeue(out var notif));
+            Assert.Equal(sellerId, notif.PlayerId);
+            Assert.Equal((byte)CommandResultCode.TargetNotFound, notif.ResultCode);
+        }
+
+        [Fact]
+        public async Task Test_EquipItem_SuccessTellsTheLiveSession()
+        {
+            // Modul: EquipAttemptOutcome.Success used to set ResultCode to
+            // null on purpose - only rejections were meant to report
+            // anything - so Character.svelte's equipInstance() had no signal
+            // besides its own guessed 700ms timer. This is that signal.
+            var registry = new PlayerSessionRegistry();
+            var slotEngine = new EquipmentSlotEngine(_fixture.ServiceProvider, registry);
+            const long testPlayerId = 950000130L;
+
+            long instanceId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var characterId = Guid.NewGuid();
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = characterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 100 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = characterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
+                var leggings = new EquipmentInstance
+                {
+                    PlayerId = testPlayerId,
+                    BaseItemId = "eq_steel_greaves_leggings_armor_slot_base",
+                    QualityTier = 0,
+                    AffixPayload = "{\"1\":0,\"2\":45,\"3\":0,\"4\":0}"
+                };
+                db.EquipmentInstances.Add(leggings);
+                await db.SaveChangesAsync();
+                instanceId = leggings.Id;
+            }
+
+            await slotEngine.EquipItemAsync(testPlayerId, instanceId);
+
+            Assert.True(registry.CommandResultQueue.TryDequeue(out var notif));
+            Assert.Equal(testPlayerId, notif.PlayerId);
+            Assert.Equal((byte)CommandResultCode.Success, notif.ResultCode);
+        }
+
+        [Fact]
+        public async Task Test_MailClaim_CommitTellsTheLiveSession()
+        {
+            // Modul: CommitMailClaimAsync's success branch never called
+            // EnqueueCommandResult, so Mailbox.svelte's claim()/claimAll()
+            // had no signal besides their own guessed-delay setTimeouts.
+            var registry = new PlayerSessionRegistry();
+            var engine = new MailboxAndBankEngine(_fixture.ServiceProvider, registry);
+            const long testPlayerId = 950000140L;
+            long mailId;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                var mail = new MailboxInstance { PlayerId = testPlayerId, GoldAttachment = 100L };
+                db.MailboxInstances.Add(mail);
+                await db.SaveChangesAsync();
+                mailId = mail.Id;
+            }
+
+            await engine.CommitMailClaimAsync(testPlayerId, mailId, true);
+
+            Assert.True(registry.CommandResultQueue.TryDequeue(out var notif));
+            Assert.Equal(testPlayerId, notif.PlayerId);
+            Assert.Equal((byte)CommandResultCode.Success, notif.ResultCode);
+        }
+
+        [Fact]
         public async Task Test_WorldBoss_AttemptLimitingAndScaling()
         {
             var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);

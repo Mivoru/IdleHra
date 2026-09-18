@@ -1,6 +1,5 @@
 <script lang="ts">
-  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { invalidateOwnedItems } from '../lib/net/queryClient';
+  import { createQuery } from '@tanstack/svelte-query';
   import {
     queryKeys,
     fetchInventory,
@@ -21,7 +20,6 @@
   import { pushLocalNotice } from '../lib/stores/game';
   import { requestScreen } from '../lib/stores/navigation';
 
-  const client = useQueryClient();
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
 
   // Modul: trading requires an active guild membership - MarketEscrowEngine
@@ -172,7 +170,6 @@
       return;
     }
     sellInstanceId = 0;
-    setTimeout(() => invalidateOwnedItems(client), 600);
   }
 
   function buy(orderId: number) {
@@ -181,10 +178,6 @@
       pushLocalNotice(outcome.reason);
       return;
     }
-    setTimeout(() => {
-      invalidateOwnedItems(client);
-      listings.refetch();
-    }, 600);
   }
 
   // --- limit orders ---------------------------------------------------------
@@ -235,7 +228,6 @@
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
 
     pushLocalNotice('Order placed. It rests until something matches it.', 'info');
-    setTimeout(() => invalidateOwnedItems(client), 700);
   }
 </script>
 

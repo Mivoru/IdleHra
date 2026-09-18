@@ -336,7 +336,6 @@
       TargetGuid: selected.id,
     });
     pickerSlot = -1;
-    setTimeout(() => inventory.refetch(), 700);
   }
 
   // Modul: UnequipItem's TargetId is a SLOT INDEX (0 Weapon, 1 Helmet,
@@ -353,10 +352,6 @@
       TargetId: slotIndex,
       TargetGuid: selected?.id ?? EMPTY_GUID,
     });
-    // The command resolves on the tick thread, so the REST snapshot is stale
-    // for a moment. Refetching immediately would race it and read the old
-    // rows back; one tick of slack is enough and is still imperceptible.
-    setTimeout(() => inventory.refetch(), 400);
   }
 </script>
 
