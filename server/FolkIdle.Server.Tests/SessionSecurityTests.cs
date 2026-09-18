@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
+using FolkIdle.Server.Engine;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -15,6 +16,8 @@ namespace FolkIdle.Server.Tests
         {
             _fixture = fixture;
         }
+
+        private const string TestSecret = "test-secret-key-for-jwt-signing-only";
 
         [Fact]
         public async Task Migration_AddsSessionNonceAndAuthMethodColumns()
@@ -60,6 +63,55 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRefreshTokens.Add(token);
                 await db.SaveChangesAsync();
             }
+        }
+
+        [Fact]
+        public void GenerateJwt_RoundTripsAuthMethod()
+        {
+            string jwt = AuthenticationEngine.GenerateJwt(Guid.NewGuid(), "nonce1", "dev", TestSecret, out _);
+            var result = AuthenticationEngine.ValidateJwt(jwt, TestSecret);
+
+            Assert.True(result.IsValid);
+            Assert.Equal("dev", result.AuthMethod);
+        }
+
+        [Fact]
+        public void GenerateJwt_PasswordMethodRoundTrips()
+        {
+            string jwt = AuthenticationEngine.GenerateJwt(Guid.NewGuid(), "nonce2", "pw", TestSecret, out _);
+            var result = AuthenticationEngine.ValidateJwt(jwt, TestSecret);
+
+            Assert.Equal("pw", result.AuthMethod);
+        }
+
+        [Fact]
+        public void ValidateJwt_TreatsAMissingMethodClaimAsPasswordAuthenticated()
+        {
+            // Hand-build a token the way a pre-this-plan server would have -
+            // no "m" claim at all - to prove an in-flight token at deploy
+            // time is not treated as the device-bearer case (which would
+            // wrongly demand a step-up it never needed).
+            Guid accountId = Guid.NewGuid();
+            string oldStyleJwt = BuildLegacyJwtWithNoMethodClaim(accountId, "nonce3", TestSecret);
+            var result = AuthenticationEngine.ValidateJwt(oldStyleJwt, TestSecret);
+
+            Assert.True(result.IsValid);
+            Assert.Equal("pw", result.AuthMethod);
+        }
+
+        private static string BuildLegacyJwtWithNoMethodClaim(Guid accountId, string nonce, string secretKey)
+        {
+            long exp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 86400L;
+            string header = System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes("{\"alg\":\"HS256\",\"typ\":\"JWT\"}"))
+                .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            string payloadJson = "{\"aid\":\"" + accountId.ToString("N") + "\",\"nonce\":\"" + nonce + "\",\"exp\":" + exp + "}";
+            string payload = System.Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(payloadJson))
+                .TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            string signingInput = header + "." + payload;
+            using var hmac = new System.Security.Cryptography.HMACSHA256(System.Text.Encoding.UTF8.GetBytes(secretKey));
+            byte[] sig = hmac.ComputeHash(System.Text.Encoding.UTF8.GetBytes(signingInput));
+            string sigSegment = System.Convert.ToBase64String(sig).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+            return signingInput + "." + sigSegment;
         }
     }
 }

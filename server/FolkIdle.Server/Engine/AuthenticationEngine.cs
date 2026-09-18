@@ -18,16 +18,18 @@ namespace FolkIdle.Server.Engine
         public readonly Guid AccountId;
         public readonly string SessionNonce;
         public readonly long ExpirationEpoch;
+        public readonly string AuthMethod;
 
-        public JwtValidationResult(bool isValid, Guid accountId, string sessionNonce, long expirationEpoch)
+        public JwtValidationResult(bool isValid, Guid accountId, string sessionNonce, long expirationEpoch, string authMethod)
         {
             IsValid = isValid;
             AccountId = accountId;
             SessionNonce = sessionNonce;
             ExpirationEpoch = expirationEpoch;
+            AuthMethod = authMethod;
         }
 
-        public static readonly JwtValidationResult Invalid = new JwtValidationResult(false, Guid.Empty, string.Empty, 0L);
+        public static readonly JwtValidationResult Invalid = new JwtValidationResult(false, Guid.Empty, string.Empty, 0L, string.Empty);
     }
 
     public enum OAuthLinkOutcome
@@ -77,12 +79,12 @@ namespace FolkIdle.Server.Engine
 
         private const string HeaderJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
 
-        public static string GenerateJwt(Guid accountId, string sessionNonce, string secretKey, out long expirationEpoch)
+        public static string GenerateJwt(Guid accountId, string sessionNonce, string authMethod, string secretKey, out long expirationEpoch)
         {
             expirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + TokenLifetimeSeconds;
 
             string headerSegment = Base64UrlEncode(Encoding.UTF8.GetBytes(HeaderJson));
-            string payloadJson = "{\"aid\":\"" + accountId.ToString("N") + "\",\"nonce\":\"" + sessionNonce + "\",\"exp\":" + expirationEpoch.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}";
+            string payloadJson = "{\"aid\":\"" + accountId.ToString("N") + "\",\"nonce\":\"" + sessionNonce + "\",\"m\":\"" + authMethod + "\",\"exp\":" + expirationEpoch.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}";
             string payloadSegment = Base64UrlEncode(Encoding.UTF8.GetBytes(payloadJson));
 
             string signingInput = headerSegment + "." + payloadSegment;
@@ -163,6 +165,17 @@ namespace FolkIdle.Server.Engine
                     return JwtValidationResult.Invalid;
                 }
 
+                // Modul: "m" is OPTIONAL, unlike aid/nonce/exp above. A token
+                // minted before this claim existed has none, and treating
+                // that as invalid would sign out every live session at
+                // deploy time. Missing defaults to "pw" - the safer
+                // direction, since it only skips a step-up this token never
+                // needed rather than wrongly demanding one from a real
+                // password session.
+                string authMethod = document.RootElement.TryGetProperty("m", out var methodElement)
+                    ? (methodElement.GetString() ?? "pw")
+                    : "pw";
+
                 if (expElement.ValueKind != System.Text.Json.JsonValueKind.Number || !expElement.TryGetInt64(out long expirationEpoch))
                 {
                     return JwtValidationResult.Invalid;
@@ -173,7 +186,7 @@ namespace FolkIdle.Server.Engine
                     return JwtValidationResult.Invalid;
                 }
 
-                return new JwtValidationResult(true, accountId, sessionNonce, expirationEpoch);
+                return new JwtValidationResult(true, accountId, sessionNonce, expirationEpoch, authMethod);
             }
         }
 
