@@ -2,11 +2,22 @@
 //
 // THE SERVER HAS TWO PURCHASE PATHS AND ONLY ONE OF THEM IS SAFE.
 //
-//   REST /api/v1/billing/verify-receipt  -> VerifyReceiptAsync
+//   REST /api/v1/billing/verify  -> VerifyReceiptAsync
 //     Takes the platform's signed receipt, validates the SIGNATURE against a
 //     configured store public key, resolves the product from the verified
 //     payload, and only then grants diamonds. Idempotent on the transaction
 //     id. This is the path a real purchase must take.
+//
+//     THIS FILE USED TO POST TO /api/v1/billing/verify-receipt INSTEAD - a
+//     same-looking, differently-wired URL that reaches HandleVerifyReceipt,
+//     the REST wrapper around VerifyPurchaseAsync below, which trusts a
+//     client-supplied AccountId/TransactionId/ProductId with no signature at
+//     all. It went unnoticed because the mismatched request body (this file
+//     sent `{receipt}`; that handler reads `AccountId`) made every real
+//     purchase 500 rather than succeed - but the same URL, called correctly
+//     shaped by hand, granted free diamonds to anyone who knew their own
+//     AccountId. Fixed 2026-09-18; the vulnerable route no longer exists on
+//     the server.
 //
 //   Opcode 39 SubmitPurchaseReceipt      -> VerifyPurchaseAsync
 //     Takes a 64-byte transaction id and an FNV-1a hash of the product id,
@@ -130,7 +141,7 @@ export async function purchase(productIdentifier: string): Promise<PurchaseOutco
  */
 export async function submitReceipt(base64Receipt: string): Promise<PurchaseOutcome> {
   try {
-    await authedPost('/api/v1/billing/verify-receipt', { receipt: base64Receipt });
+    await authedPost('/api/v1/billing/verify', { receipt: base64Receipt });
   } catch (err) {
     // The endpoint answers 409 for a receipt that failed validation or was
     // already redeemed. Both mean "no diamonds from this", and neither is a

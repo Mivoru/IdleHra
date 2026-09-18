@@ -79,7 +79,7 @@ describe('a completed purchase', () => {
     const outcome = await purchase('diamonds_small');
     expect(outcome.kind).toBe('granted');
     expect(posted).toHaveLength(1);
-    expect(posted[0].path).toBe('/api/v1/billing/verify-receipt');
+    expect(posted[0].path).toBe('/api/v1/billing/verify');
     // Re-encoding or unwrapping would break the signature the server verifies
     // over exactly these bytes.
     expect(posted[0].body).toEqual({ receipt: 'BASE64RECEIPT' });

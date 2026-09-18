@@ -970,20 +970,22 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
-                    if (requestPath == "/api/v1/billing/verify-receipt" && context.Request.HttpMethod == "POST")
-                    {
-                        // Modul: dispatched fire-and-forget, matching the
-                        // auth-login branch above - both handlers wrap
-                        // their entire body in a try/catch and always close
-                        // the response, and both may now retry a
-                        // Serializable conflict (see BillingVerificationEngine),
-                        // so awaiting inline here would serialize every
-                        // other connection behind a slow purchase
-                        // verification the same way it would for login.
-                        _ = HandleVerifyReceipt(context);
-                        continue;
-                    }
-
+                    // Modul: `/api/v1/billing/verify-receipt` USED TO ROUTE HERE TO
+                    // HandleVerifyReceipt, which trusted a client-supplied
+                    // AccountId/TransactionId/ProductId out of the request body and
+                    // credited diamonds with NO signature check at all - the REST
+                    // wrapper around VerifyPurchaseAsync, the method the doc comment
+                    // on that engine method calls "the legacy in-session notification
+                    // path" for the internal WebSocket opcode 39 handler, never meant
+                    // to be reachable over public HTTP. The web client's own billing.ts
+                    // had always POSTed to this exact URL believing it was the
+                    // signature-checking endpoint (its header comment said so), so no
+                    // real purchase ever verified anything; anyone who knew their own
+                    // AccountId could grant themselves unlimited free diamonds by
+                    // hand. Route and handler removed 2026-09-18. The only REST
+                    // purchase path now is /api/v1/billing/verify below, which
+                    // resolves the player from the caller's own bearer JWT and checks
+                    // the store's signature before granting anything.
                     if (requestPath == "/api/v1/billing/verify" && context.Request.HttpMethod == "POST")
                     {
                         _ = HandleBillingVerify(context);
@@ -7565,54 +7567,12 @@ namespace FolkIdle.Server.Network
             return player.Id;
         }
 
-        // Modul: legacy webhook-style verification path - identifies the
-        // player by AccountId (not a session Bearer token, matching a
-        // platform-webhook caller rather than the game client itself).
-        // Previously inserted a PrimaryPurchaseLedger row with PlayerId = 0
-        // and returned 200 even when the account could not be resolved (the
-        // purchase was silently lost with the TransactionId marked
-        // processed, unrecoverable), and credited a hardcoded 100 diamonds
-        // regardless of ProductId/CostCents. Both fixed here by delegating
-        // to BillingVerificationEngine.VerifyPurchaseAsync, which resolves
-        // the actual reward from ProductId server-side and never writes a
-        // ledger row for an unresolved account.
-        private async Task HandleVerifyReceipt(HttpListenerContext context)
-        {
-            try
-            {
-                if (_billingVerificationEngine == null)
-                {
-                    context.Response.StatusCode = 503;
-                    context.Response.Close();
-                    return;
-                }
-
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
-                var payload = JsonSerializer.Deserialize<JsonElement>(body);
-
-                var accountId = payload.GetProperty("AccountId").GetGuid();
-                var transactionId = payload.GetProperty("TransactionId").GetString() ?? string.Empty;
-                var productId = payload.GetProperty("ProductId").GetString() ?? string.Empty;
-
-                long playerId = await ResolvePlayerIdFromAccountIdAsync(accountId);
-                if (playerId == 0L)
-                {
-                    context.Response.StatusCode = 404;
-                    context.Response.Close();
-                    return;
-                }
-
-                bool success = await _billingVerificationEngine.VerifyPurchaseAsync(playerId, transactionId, productId);
-                context.Response.StatusCode = success ? 200 : 409;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Verify receipt error: {ex}");
-                context.Response.StatusCode = 500;
-            }
-            context.Response.Close();
-        }
+        // Modul: HandleVerifyReceipt REMOVED 2026-09-18 - it was the REST
+        // wrapper around VerifyPurchaseAsync (an unauthenticated
+        // AccountId/TransactionId/ProductId out of the request body, no
+        // signature check) exposed at what the client believed was the
+        // hardened URL. See the routing comment above where
+        // /api/v1/billing/verify-receipt used to be registered.
 
         // Modul: the real, hardened IAP verification endpoint. Identifies
         // the player from the caller's own session Bearer JWT (see

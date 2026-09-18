@@ -736,5 +736,78 @@ namespace FolkIdle.Server.Tests
                 networkSystem.Stop();
             }
         }
+
+        // Modul: Production Release Hardening. /api/v1/billing/verify-receipt
+        // used to route to a handler that trusted a client-supplied
+        // AccountId/TransactionId/ProductId out of the request body and
+        // credited diamonds with no signature check at all - the client
+        // believed (its own header comment said so) that this exact URL was
+        // the signature-checking endpoint, so a real purchase never verified
+        // anything, and anyone who knew their own AccountId could grant
+        // themselves free diamonds by POSTing it directly. Pins both halves
+        // of the fix: the vulnerable route is gone, and the real endpoint it
+        // was confused with resolves the caller from their own bearer JWT
+        // rather than a body field, so it refuses an unauthenticated request
+        // instead of trusting one.
+        [Fact]
+        public async Task Test_E2E_Billing_UnsafeVerifyReceiptRouteIsGone()
+        {
+            if (!_dockerAvailable || _dbContainer == null)
+            {
+                Console.WriteLine("WARNING: Skipping billing route E2E verification because Docker is unavailable. CI must provide Docker for mandatory database coverage.");
+                return;
+            }
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options =>
+                options.UseNpgsql(_dbContainer.GetConnectionString()));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+
+            var serviceProvider = services.BuildServiceProvider();
+            var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                await db.Database.MigrateAsync();
+            }
+
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8084/");
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+
+            try
+            {
+                Guid attackerAccountId = Guid.NewGuid();
+                var forgedBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new
+                    {
+                        AccountId = attackerAccountId,
+                        TransactionId = Guid.NewGuid().ToString("N"),
+                        ProductId = "gems_pack_large"
+                    }),
+                    System.Text.Encoding.UTF8, "application/json");
+
+                // Modul: this server has no 404 handler - every unmatched path
+                // falls through to the same 400 an unmatched route always gets,
+                // so BadRequest here is "the route doesn't exist", not a
+                // validation failure of a route that does.
+                var goneResponse = await httpClient.PostAsync("http://localhost:8084/api/v1/billing/verify-receipt", forgedBody);
+                Assert.Equal(System.Net.HttpStatusCode.BadRequest, goneResponse.StatusCode);
+
+                var unauthedBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { receipt = "Zm9ycmVhbA==" }),
+                    System.Text.Encoding.UTF8, "application/json");
+
+                var unauthedResponse = await httpClient.PostAsync("http://localhost:8084/api/v1/billing/verify", unauthedBody);
+                Assert.Equal(System.Net.HttpStatusCode.Unauthorized, unauthedResponse.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
     }
 }
