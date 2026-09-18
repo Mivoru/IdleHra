@@ -99,6 +99,87 @@ namespace FolkIdle.Server.Tests
             Assert.Equal("pw", result.AuthMethod);
         }
 
+        [Fact]
+        public async Task NoncePersistence_SetThenGetRoundTrips()
+        {
+            Guid accountId = Guid.NewGuid();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+            }
+
+            string? beforeSet = await AuthenticationEngine.GetCurrentSessionNonceAsync(_fixture.RetryingOptions, accountId);
+            Assert.Null(beforeSet);
+
+            await AuthenticationEngine.SetCurrentSessionNonceAsync(_fixture.RetryingOptions, accountId, "n-abc");
+            string? afterSet = await AuthenticationEngine.GetCurrentSessionNonceAsync(_fixture.RetryingOptions, accountId);
+            Assert.Equal("n-abc", afterSet);
+        }
+
+        [Fact]
+        public async Task BumpSessionNonceAsync_ProducesADifferentStoredValue()
+        {
+            Guid accountId = Guid.NewGuid();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid(), CurrentSessionNonce = "old" });
+                await db.SaveChangesAsync();
+            }
+
+            string bumped = await AuthenticationEngine.BumpSessionNonceAsync(_fixture.RetryingOptions, accountId);
+
+            Assert.NotEqual("old", bumped);
+            string? stored = await AuthenticationEngine.GetCurrentSessionNonceAsync(_fixture.RetryingOptions, accountId);
+            Assert.Equal(bumped, stored);
+        }
+
+        [Fact]
+        public async Task RevokeRefreshTokenAsync_ReturnsTheAccountIdItRevoked()
+        {
+            Guid accountId = Guid.NewGuid();
+            var (rawToken, _) = await AuthenticationEngine.IssueRefreshTokenAsync(_fixture.RetryingOptions, accountId, "pw");
+
+            Guid revokedAccountId = await AuthenticationEngine.RevokeRefreshTokenAsync(_fixture.RetryingOptions, rawToken);
+
+            Assert.Equal(accountId, revokedAccountId);
+        }
+
+        [Fact]
+        public async Task RevokeRefreshTokenAsync_UnknownTokenReturnsEmptyGuid()
+        {
+            Guid revokedAccountId = await AuthenticationEngine.RevokeRefreshTokenAsync(_fixture.RetryingOptions, "not-a-real-token");
+            Assert.Equal(Guid.Empty, revokedAccountId);
+        }
+
+        [Fact]
+        public async Task RedeemRefreshTokenAsync_CarriesAuthMethodThroughRotation()
+        {
+            Guid accountId = Guid.NewGuid();
+            var (rawToken, _) = await AuthenticationEngine.IssueRefreshTokenAsync(_fixture.RetryingOptions, accountId, "dev");
+
+            var result = await AuthenticationEngine.RedeemRefreshTokenAsync(_fixture.RetryingOptions, rawToken);
+
+            Assert.Equal(AuthenticationEngine.RefreshOutcome.Rotated, result.Outcome);
+            Assert.Equal("dev", result.AuthMethod);
+        }
+
+        [Fact]
+        public async Task RedeemRefreshTokenAsync_ReplayReturnsTheRealAccountId()
+        {
+            Guid accountId = Guid.NewGuid();
+            var (rawToken, _) = await AuthenticationEngine.IssueRefreshTokenAsync(_fixture.RetryingOptions, accountId, "pw");
+
+            var first = await AuthenticationEngine.RedeemRefreshTokenAsync(_fixture.RetryingOptions, rawToken);
+            Assert.Equal(AuthenticationEngine.RefreshOutcome.Rotated, first.Outcome);
+
+            // Presenting the SAME (now-spent) token again is the replay case.
+            var replay = await AuthenticationEngine.RedeemRefreshTokenAsync(_fixture.RetryingOptions, rawToken);
+
+            Assert.Equal(AuthenticationEngine.RefreshOutcome.Replayed, replay.Outcome);
+            Assert.Equal(accountId, replay.AccountId);
+        }
+
         private static string BuildLegacyJwtWithNoMethodClaim(Guid accountId, string nonce, string secretKey)
         {
             long exp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + 86400L;

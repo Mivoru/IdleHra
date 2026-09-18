@@ -94,7 +94,7 @@ namespace FolkIdle.Server.Tests
             // password - so what is stored is a hash and the raw value exists
             // only in the reply the player's device received.
             var accountId = Guid.NewGuid();
-            var issued = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
+            var issued = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
 
             await using var db = NewContext();
             var row = await db.PlayerRefreshTokens.SingleAsync(t => t.AccountId == accountId);
@@ -139,7 +139,7 @@ namespace FolkIdle.Server.Tests
         public async Task RedeemingReturnsTheAccountAndRotatesTheToken()
         {
             var accountId = Guid.NewGuid();
-            var issued = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
+            var issued = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
 
             var result = await AuthenticationEngine.RedeemRefreshTokenAsync(_authOptions, issued.Token);
 
@@ -157,7 +157,7 @@ namespace FolkIdle.Server.Tests
         public async Task TheSuccessorWorksAndTheSpentOneDoesNot()
         {
             var accountId = Guid.NewGuid();
-            var first = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
+            var first = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
 
             var second = await AuthenticationEngine.RedeemRefreshTokenAsync(_authOptions, first.Token);
             var third = await AuthenticationEngine.RedeemRefreshTokenAsync(_authOptions, second.Token);
@@ -178,7 +178,7 @@ namespace FolkIdle.Server.Tests
             // the second signs one honest player out once. Only the second is
             // defensible.
             var accountId = Guid.NewGuid();
-            var first = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
+            var first = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
             var second = await AuthenticationEngine.RedeemRefreshTokenAsync(_authOptions, first.Token);
 
             Assert.Equal(1, await LiveTokenCountAsync(accountId));
@@ -186,7 +186,11 @@ namespace FolkIdle.Server.Tests
             var replay = await AuthenticationEngine.RedeemRefreshTokenAsync(_authOptions, first.Token);
 
             Assert.Equal(AuthenticationEngine.RefreshOutcome.Replayed, replay.Outcome);
-            Assert.Equal(Guid.Empty, replay.AccountId);
+            // Modul: the replay case now carries the REAL AccountId (it used
+            // to return Guid.Empty) so a caller can bump that account's
+            // session nonce and force-disconnect its live socket - see
+            // AuthenticationEngine.RedeemRefreshTokenAsync's remarks.
+            Assert.Equal(accountId, replay.AccountId);
 
             // The successor the thief did NOT have is gone too. That is the
             // whole point - the account is locked to a fresh sign-in.
@@ -200,7 +204,7 @@ namespace FolkIdle.Server.Tests
         public async Task AnExpiredTokenIsRefusedAndRetired()
         {
             var accountId = Guid.NewGuid();
-            var issued = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
+            var issued = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
 
             // Hoisted into a local: ExecuteUpdate translates the setter to SQL,
             // and DateTimeOffset.ToUnixTimeSeconds has no translation. The
@@ -242,8 +246,8 @@ namespace FolkIdle.Server.Tests
         public async Task SigningOutEndsThatDeviceAndLeavesTheOthers()
         {
             var accountId = Guid.NewGuid();
-            var phone = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
-            await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
+            var phone = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
+            await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
 
             await AuthenticationEngine.RevokeRefreshTokenAsync(_authOptions, phone.Token);
 
@@ -263,8 +267,8 @@ namespace FolkIdle.Server.Tests
         public async Task SigningOutOnOneDeviceLeavesTheOtherWorking()
         {
             var accountId = Guid.NewGuid();
-            var phone = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
-            var tablet = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
+            var phone = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
+            var tablet = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
 
             await AuthenticationEngine.RevokeRefreshTokenAsync(_authOptions, phone.Token);
 
@@ -276,9 +280,9 @@ namespace FolkIdle.Server.Tests
         public async Task RevokingEverythingClearsEveryDevice()
         {
             var accountId = Guid.NewGuid();
-            await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
-            var second = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
-            await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
+            await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
+            var second = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
+            await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
 
             await AuthenticationEngine.RevokeAllRefreshTokensAsync(_authOptions, accountId);
 
@@ -293,8 +297,8 @@ namespace FolkIdle.Server.Tests
         {
             var mine = Guid.NewGuid();
             var theirs = Guid.NewGuid();
-            await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, mine);
-            var theirToken = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, theirs);
+            await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, mine, "pw");
+            var theirToken = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, theirs, "pw");
 
             await AuthenticationEngine.RevokeAllRefreshTokensAsync(_authOptions, mine);
 
@@ -335,7 +339,7 @@ namespace FolkIdle.Server.Tests
                 playerId = player.Id;
             }
 
-            var stolen = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId);
+            var stolen = await AuthenticationEngine.IssueRefreshTokenAsync(_authOptions, accountId, "pw");
             Assert.Equal(1, await LiveTokenCountAsync(accountId));
 
             string? resetToken;
