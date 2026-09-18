@@ -294,6 +294,19 @@ nothing. Both are derived from a monster's rank in its region now
 (`MonsterDefenceCurve`, applied in `ContentRegistry.Initialize`), and
 `CombatIdentityTests` fails if the canon ever goes flat again.
 
+**`ProcessSubTick`'s three activity branches must each end in their own
+`return`, or the next branch runs too.** The crafting branch had none, unlike
+gathering right below it — so a character assigned to craft fell through into
+full combat resolution against `fallbackId` (always 1, since every crafting
+`ActivityId` lives in `ActivityIdBands.CraftingBand`, 5000+, always past
+`ContentRegistry.Monsters.Length`). The craft completed correctly and gave no
+sign anything else was happening; the character was also silently fighting
+monster 1 every tick — real damage, XP, gold, loot, kills — for as long as it
+had ever been assigned a crafting job. Found reading the file for an unrelated
+refactor, not from a symptom, and live in production for an unknown length of
+time before the fix (PR #7). `ProcessSubTickDispatchTests` pins the
+exclusivity now.
+
 **A number a test PRINTS is not a number a test CHECKS.**
 `ProgressionRateTests` had been printing "the strongest regular takes 104% of
 the geared health bar per second" in region 5 for months. Player HP was linear

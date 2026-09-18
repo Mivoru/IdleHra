@@ -9,11 +9,65 @@ commit messages/PRs).
 Most sections below predate the web client and describe Unity work. The
 dated handoff immediately following is the live one.
 
-**For the NEXT block of work, see `docs/TASK_BOARD.md`** - seven scoped tasks
-with acceptance criteria, written 2026-09-01 against what the code actually
-does. This file remains the record of what happened and why; the board is what
-to do next.
+**For the NEXT block of work, see `docs/TASK_BOARD.md`** - tasks with
+acceptance criteria. Tasks 1-13 (written 2026-09-01 through 2026-09-10) are
+closed. **Tasks 14-23 (added 2026-09-17 from a GitHub Copilot audit) are the
+current front of the board** - see that section's own status line for which
+are done, which are ready to pick up, and which need a planning pass first.
+This file remains the record of what happened and why; the board is what to
+do next.
 
+---
+
+# HANDOFF 2026-09-19 - where things actually stand, read this first
+
+Written after the owner asked "is everything done" following the
+2026-09-18c handoff below, which needed a real worktree sweep to answer
+honestly rather than a yes. **Anyone picking this up should read this
+entry, then `docs/TASK_BOARD.md`'s tasks 14-23 status line, before touching
+code.**
+
+**Shipped and merged into `main` since 2026-09-18c:**
+- PR #6 - session revocation + password step-up (tasks 14, 15). See
+  2026-09-18c below for the full record.
+- PR #7 - a crafting character no longer silently fights monster 1 every
+  tick (`SimulationEngine.cs`'s `ProcessSubTick`, missing `return` in the
+  crafting branch). Found 2026-09-17 while scoping task 21, fixed and
+  tested the same day, but left uncommitted on an abandoned worktree until
+  recovered and merged 2026-09-18. CLAUDE.md has the trap entry now.
+- Docs: all nine 2026-09-17 audit implementation plans (previously stranded
+  on the `audit-fixes-14-17-19-20` worktree branch, never merged) are now
+  under `docs/superpowers/plans/2026-09-17-*.md` on `main`, and
+  `docs/TASK_BOARD.md` tasks 17-23 plus the Unity retirement entry below now
+  point at them.
+
+**Found and discarded, not shipped:** the `audit-fixes-14-17-19-20` worktree
+also held an uncommitted, half-finished, EARLIER attempt at task 14 (its own
+`CurrentSessionNonce` column and helper methods, dated 2026-09-17) - the same
+feature PR #6 shipped properly two days later with review and tests. Stale
+and superseded; discarded rather than merged. The worktree itself
+(`.claude/worktrees/audit-fixes`) still exists but has no unique content left
+in it worth recovering - everything real that was in it is now either merged
+or discarded.
+
+**What is genuinely still open, in the order `docs/TASK_BOARD.md` states it:**
+17, 19, 20, 22, 23 each have a concrete plan and no unresolved owner decision
+- pick any one up directly. 18 (durable grant retry) and 21 (the
+`SimulationEngine.cs` split) both have plans too, but both explicitly ask for
+a fresh planning/brainstorming confirmation before code starts - the plans
+are two days old, untouched, and never validated against a real
+implementation attempt. Unity retirement has a plan and is low-risk by
+design (three independently-revertible steps) but is explicitly gated on the
+owner's go-ahead since the last step touches the live prod Docker build and
+CI. The offline-catch-up-cap question (bottom of the tasks 14-23 section) is
+a design decision for the owner, not a task - do not "fix" it without being
+asked.
+
+**Lesson recorded here on purpose:** "is everything done" is a worktree-sweep
+question (`git worktree list`, then `git status --porcelain -uall` and
+`git log main..HEAD` in each one), not a single-PR question. A worktree can
+sit for two days holding both a superseded duplicate of shipped work and a
+live, tested, unmerged bug fix at the same time.
 
 ---
 
@@ -226,9 +280,17 @@ the right answer.
 The owner wants `client/` (the Unity project) deleted, since the web client is
 the only one that ships (`client_web/`, per this file's own header table -
 Unity is "retired... kept only for artwork/audio the web client fetches from
-the server"). **Not started.** The explicit instruction is to be careful: this
-is not a clean removal, because live infrastructure reads out of
-`client/Assets` today.
+the server"). **Not started. Has its own plan — see
+`docs/superpowers/plans/2026-09-17-retire-unity-project.md`** (3 conservative,
+independently-revertible tasks: confirm every reader, build a keep/delete
+manifest and verify all six readers pass locally, then the actual deletion,
+**explicitly gated on a separate human go-ahead** since it touches the live
+prod Docker build and CI). Recommends leaving `client/Assets` in place rather
+than renaming it. Found one reader the note below missed:
+`server/FolkIdle.Server.Tests.csproj` compiles a shared tutorial state machine
+that lives inside the Unity tree despite not being Unity-specific. The
+explicit instruction is to be careful: this is not a clean removal, because
+live infrastructure reads out of `client/Assets` today.
 
 Checked before writing this down, so the caution is concrete rather than
 generic - `client/Assets` is a load-bearing SOURCE directory for at least:

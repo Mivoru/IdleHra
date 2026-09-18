@@ -19,7 +19,11 @@ sink built as a minigame (**DONE - shipped as The Delve**) and the tutorial past
 its first ten minutes (**DONE - shipped as tier three, the objective track**).
 Both write-ups are at the bottom of this file. **Task 13, added 2026-09-10, is
 the mobile app** - four phases, written against what is actually in the repo
-rather than what MOBILE.md claims.
+rather than what MOBILE.md claims. **Tasks 14-23, added 2026-09-17 from a
+GitHub Copilot audit, are the current front of the board — 14/15/16 done,
+17/19/20/22/23 scoped and ready, 18/21 need a fresh planning pass before
+coding, Unity retirement gated on the owner. See that section's own status
+line, below the mobile-app write-up.**
 
 | # | Open task | Shape |
 |---|---|---|
@@ -2709,7 +2713,21 @@ reasoning cannot, and it may well reorder everything below it.
 
 ---
 
-# OPEN — 14 through 23, added 2026-09-17: a GitHub Copilot audit, verified claim by claim
+# 14 through 23, added 2026-09-17: a GitHub Copilot audit, verified claim by claim
+
+**Status as of 2026-09-19: 14, 15, 16 DONE and merged; 17, 19, 20, 22, 23 are
+fully scoped with a written implementation plan and ready to pick up directly;
+18 and 21 have plans too but are explicitly flagged (both here and in their
+own plans) as needing a fresh planning/brainstorming confirmation with the
+owner before coding starts, not a rubber stamp on a 2-day-old plan; Unity
+retirement (tracked in `docs/architecture/NEXT_STEPS_BACKLOG.md`, not
+numbered here) is scoped but gated on an explicit human go-ahead since it
+touches the live prod Docker build and CI.** A live, unrelated gameplay bug
+(a crafting character silently fighting monster 1 every tick) was found while
+scoping task 21 and shipped separately as PR #7 — see the CLAUDE.md trap
+entry next to `CombatIdentityTests`. All nine implementation plans live under
+`docs/superpowers/plans/2026-09-17-*.md`; each numbered task below links its
+own.
 
 The owner ran GitHub Copilot's repo-analysis tool and asked for every claim to
 be checked against the actual code before anything from it landed here — the
@@ -2873,6 +2891,9 @@ fix. See the plan for exact steps.
 
 ## 17. Offline village production fails silently on a database error (reliability, was P0)
 
+**Not started. Fully scoped — see the separate implementation plan at
+`docs/superpowers/plans/2026-09-17-audit-fixes-14-17-19-20.md` (Task 2).**
+
 **Confirmed.** `OfflineSimulationEngine.cs:396-399`:
 `catch { await transaction.RollbackAsync(); }` — no log line, no failure
 counter, nothing. Compare `CombatLootEngine.cs:571-576` and `:680-685`, which
@@ -2901,6 +2922,17 @@ visibility.
 ---
 
 ## 18. No durable retry for loot, gathering, or offline production grants (reliability, was P0)
+
+**Not started. Has its own planning pass — see
+`docs/superpowers/plans/2026-09-17-durable-grant-retry.md`.** 4 tasks: a
+`pending_grants` table storing the already-resolved outcome (never "redo
+this roll," since combat loot rolls randomness before the write that can
+fail) keyed by `(PlayerId, SourceType, SourceSequence)`, proven on offline
+village production first, then wired to gathering and combat loot, then a
+budgeted `SELECT ... FOR UPDATE SKIP LOCKED` drain worker with backoff to
+a dead-letter after 10 attempts. **Still, per the note below, treat this as
+needing a dedicated planning/brainstorming pass before coding — the linked
+plan is a strong starting point, not a rubber stamp.**
 
 **Confirmed missing.** Repo-wide grep for "outbox", "retry_queue", "DeadLetter"
 across `server/`: zero matches. `CombatLootEngine`'s per-item try/catch (the
@@ -2932,6 +2964,13 @@ addition, not a rewrite.
 
 ## 19. Village passive production discards overflow with no record (reliability, cheap)
 
+**Not started. Fully scoped — see the separate implementation plan at
+`docs/superpowers/plans/2026-09-17-audit-fixes-14-17-19-20.md` (Task 3).**
+Bigger than "cheap": this is a wire change (`TickStatePayload`/
+`StateUpdatePacket` both need the new field, plus `generate:protocol` and
+a client display line), not just a backend log line — the plan corrects
+the audit's own risk label.
+
 **Confirmed.** `OfflineSimulationEngine.cs:333-334` and `:402-413` clamp
 granted production to warehouse capacity twice (once against the theoretical
 max, once against live current storage) — correct, prevents unbounded growth
@@ -2955,6 +2994,9 @@ the player how much was discarded, not just how much was kept.
 ---
 
 ## 20. The wire's field-coverage guard only covers one of four state layers (testing infra, was P1)
+
+**Not started. Fully scoped — see the separate implementation plan at
+`docs/superpowers/plans/2026-09-17-audit-fixes-14-17-19-20.md` (Task 4).**
 
 **Confirmed, but narrower in scope than the audit's "build a manifest"
 framing.** `StateUpdatePacketFieldCoverageTests` is real and mechanical — it
@@ -2982,6 +3024,23 @@ the wire.
 
 ## 21. `SimulationEngine.cs` is a single 6,650-line file spanning every subsystem (architecture, was P1)
 
+**Not started. Has its own planning pass, in two parts — see
+`docs/superpowers/plans/2026-09-17-simulationengine-split-scoping.md`**
+(the scoping document: what the file actually contains, the full
+`TickStatePayload` shared-state analysis, three candidate decomposition
+options with honest tradeoffs, and documented landmines) **and
+`docs/superpowers/plans/2026-09-17-simulationengine-split-plan.md`** (the
+resulting 46-task executable plan across three phases — drain-plane
+extraction, command-dispatch coordinators, then `ProcessSubTick`'s three
+branch bodies — decided with the owner 2026-09-17). **A live bug was found
+and fixed independently while scoping this** (`ProcessSubTick`'s crafting
+branch had no `return`, so a crafting character silently fought monster 1
+every tick) — shipped as PR #7, unrelated to this task, see CLAUDE.md.
+Despite the existing 46-task plan, treat this as needing a fresh
+brainstorming/spec confirmation with the owner before starting, per the
+risk note below — the plan is 2 days old and nothing has executed against
+it yet.
+
 **Confirmed exactly.** `wc -l` = 6,650. It contains material touching Guild,
 Breeding, WorldBoss, Market, Village, Gathering, and Crafting concerns (280
 keyword hits across those seven areas alone), plus persistence, anti-cheat
@@ -3006,6 +3065,13 @@ dedicated brainstorming/spec pass first.
 
 ## 22. No sustained-load test combining the systems that actually interact in production (testing infra, was P1)
 
+**Not started. Has its own planning pass — see
+`docs/superpowers/plans/2026-09-17-sustained-load-test.md`.** Found while
+scoping: neither existing E2E test starts the loot worker at all, so
+neither has ever actually observed a granted item end to end — the plan's
+Task 1 fixes that as a prerequisite before the sustained-load scenario
+itself.
+
 **Confirmed missing.** `E2EGameLoopTest.cs` is real but single-player,
 real-Postgres, with some protocol-level flood loops — no scenario combines
 concurrent combat, gathering, offline catch-up, checkpoints, market
@@ -3028,6 +3094,12 @@ the loot-starvation incident before a player did.
 ---
 
 ## 23. Market (and similar REST+WebSocket screens) can apply a stale REST result over newer WebSocket state (correctness, unconfirmed in the wild)
+
+**Not started. Fully scoped — see the separate implementation plan at
+`docs/superpowers/plans/2026-09-17-market-stale-rest-race.md`.** Found
+while scoping: the "simplify" fix direction is already half-shipped, and
+the remaining work is coverage gaps in four engines rather than a new
+mechanism.
 
 **Confirmed as a real, unguarded mechanism — not confirmed as an observed
 bug.** `Market.svelte`'s `listings`/`inventory`/`statistics`/`history` are all
