@@ -107,6 +107,7 @@ namespace FolkIdle.Server.Tests
             ["OfflineGoldEarned"] = "offline summary, computed at login",
             ["OfflineXpEarned"] = "offline summary, computed at login",
             ["OfflineMaterialDropsGranted"] = "offline summary, computed at login",
+            ["OfflineMaterialsLostToFullWarehouse"] = "offline summary, computed at login",
             ["OfflineSlot1Xp"] = "offline summary, computed at login",
             ["OfflineSlot1Gold"] = "offline summary, computed at login",
             ["OfflineSlot1Drops"] = "offline summary, computed at login",

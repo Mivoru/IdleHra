@@ -3923,6 +3923,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 OfflineSlot3Drops = currentPayload.OfflineSlot3Drops,
                                 OfflineXpEarned = currentPayload.OfflineXpEarned,
                                 OfflineMaterialDropsGranted = currentPayload.OfflineMaterialDropsGranted,
+                                OfflineMaterialsLostToFullWarehouse = currentPayload.OfflineMaterialsLostToFullWarehouse,
                                 OfflineSummaryTick = currentPayload.OfflineSummaryTick,
                                 // Modul: the victory and death cards. Copied
                                 // straight across like the offline summary

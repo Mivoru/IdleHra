@@ -78,6 +78,18 @@
           <div><dt>Materials</dt><dd>+{summary.materialDropsGranted.toLocaleString()}</dd></div>
         </dl>
 
+        {#if summary.materialsLostToFullWarehouse > 0}
+          <!-- Modul: a full warehouse used to eat this silently - the player
+               saw only what was granted and a stalled Warehouse read exactly
+               like a broken one. Shown as a warning, not a stat: it is telling
+               the player what to fix, not celebrating a number. -->
+          <p class="warn-line lost">
+            Your warehouse was full - {summary.materialsLostToFullWarehouse.toLocaleString()}
+            more material{summary.materialsLostToFullWarehouse === 1 ? '' : 's'} were produced but had nowhere
+            to go. Upgrade the Warehouse or spend down your stock.
+          </p>
+        {/if}
+
         {#if perHour}
           <p class="rate dim small">
             That is <strong>{perHour.gold.toLocaleString()} gold</strong> and
@@ -170,6 +182,12 @@
     margin: 0;
     color: var(--warn);
     font-size: 0.85rem;
+  }
+
+  .warn-line.lost {
+    text-align: left;
+    margin: 0 0 0.75rem;
+    line-height: 1.4;
   }
 
   .crew {
