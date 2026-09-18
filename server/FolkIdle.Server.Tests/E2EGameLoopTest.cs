@@ -1248,5 +1248,114 @@ namespace FolkIdle.Server.Tests
                 networkSystem.Stop();
             }
         }
+
+        // Modul: Task 8 - CompleteResetAsync used to change the password and
+        // revoke refresh tokens but leave the access token a compromised
+        // session was already holding valid for up to 24 more hours, because
+        // nothing bumped the session nonce a JWT is checked against. This
+        // proves the whole chain against the real HTTP endpoint: register
+        // with email+password, mint a real reset token the same way
+        // PasswordResetTests does (PasswordResetEngine.BeginResetAsync
+        // directly against the database, since the request side never
+        // returns the token to a caller - see BeginResetAsync's own doc
+        // comment on why), complete the reset through
+        // /api/v1/auth/reset-password, then confirm the OLD access token now
+        // 401s on an authenticated REST call rather than riding out its
+        // remaining lifetime.
+        [Fact]
+        public async Task Test_E2E_SessionSecurity_PasswordResetRevokesTheLiveAccessToken()
+        {
+            if (!_dockerAvailable || _dbContainer == null)
+            {
+                Console.WriteLine("WARNING: Skipping password-reset-revokes-access-token E2E verification because Docker is unavailable. CI must provide Docker for mandatory database coverage.");
+                return;
+            }
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options =>
+                options.UseNpgsql(_dbContainer.GetConnectionString()));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+
+            var retryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(retryOptions));
+
+            var serviceProvider = services.BuildServiceProvider();
+            var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                await db.Database.MigrateAsync();
+            }
+
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8089/");
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+
+            try
+            {
+                const string email = "session_security_reset_e2e@example.com";
+                const string oldPassword = "the old password";
+                const string newPassword = "the new password";
+
+                var registerBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { email, username = "ResetE2ESubject", password = oldPassword }),
+                    System.Text.Encoding.UTF8, "application/json");
+                var registerResponse = await httpClient.PostAsync("http://localhost:8089/api/v1/auth/register", registerBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, registerResponse.StatusCode);
+
+                string registerResponseBody = await registerResponse.Content.ReadAsStringAsync();
+                var registerParsed = System.Text.Json.JsonSerializer.Deserialize<AuthLoginResponseTestDto>(registerResponseBody);
+                Assert.NotNull(registerParsed);
+                Assert.False(string.IsNullOrEmpty(registerParsed!.Token));
+
+                string accessToken = registerParsed.Token;
+
+                // Confirm the fresh token authenticates BEFORE the reset, so
+                // the later 401 is provably caused by the reset rather than a
+                // token that never worked.
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                var accepted = await httpClient.GetAsync("http://localhost:8089/api/v1/market/listings?pageIndex=0&pageSize=10");
+                Assert.Equal(System.Net.HttpStatusCode.OK, accepted.StatusCode);
+
+                string resetToken;
+                await using (var db = await contextFactory.CreateDbContextAsync())
+                {
+                    string? issued = await PasswordResetEngine.BeginResetAsync(db, email, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    Assert.NotNull(issued);
+                    resetToken = issued!;
+                }
+
+                var resetBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { token = resetToken, password = newPassword }),
+                    System.Text.Encoding.UTF8, "application/json");
+                var resetResponse = await httpClient.PostAsync("http://localhost:8089/api/v1/auth/reset-password", resetBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, resetResponse.StatusCode);
+
+                // The OLD access token must now fail an authenticated REST
+                // call - the nonce it carries no longer matches the account's
+                // current one, exactly like the revoke case above, except the
+                // eviction here is triggered by a password reset instead of a
+                // client-issued logout.
+                var rejected = await httpClient.GetAsync("http://localhost:8089/api/v1/market/listings?pageIndex=0&pageSize=10");
+                Assert.Equal(System.Net.HttpStatusCode.Unauthorized, rejected.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
     }
 }

@@ -352,9 +352,9 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = NewContext())
             {
-                var outcome = await PasswordResetEngine.CompleteResetAsync(
+                var result = await PasswordResetEngine.CompleteResetAsync(
                     db, resetToken!, "the new password", DateTimeOffset.UtcNow.ToUnixTimeSeconds());
-                Assert.Equal(PasswordResetOutcome.Success, outcome);
+                Assert.Equal(PasswordResetOutcome.Success, result.Outcome);
             }
 
             Assert.Equal(0, await LiveTokenCountAsync(accountId));

@@ -8598,7 +8598,15 @@ namespace FolkIdle.Server.Network
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
                 long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                var outcome = await Engine.PasswordResetEngine.CompleteResetAsync(db, token, newPassword, nowEpoch);
+                var (outcome, accountId, newNonce) = await Engine.PasswordResetEngine.CompleteResetAsync(db, token, newPassword, nowEpoch);
+
+                if (outcome == Engine.PasswordResetOutcome.Success)
+                {
+                    // Modul: the nonce is already persisted - CompleteResetAsync
+                    // wrote it in the same save as the password hash. This is
+                    // cache-plus-disconnect only, no second DB write.
+                    await EvictAccountSessionAsync(accountId, newNonce);
+                }
 
                 context.Response.StatusCode = outcome switch
                 {
