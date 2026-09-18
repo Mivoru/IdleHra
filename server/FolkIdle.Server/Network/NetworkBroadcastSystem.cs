@@ -7581,29 +7581,15 @@ namespace FolkIdle.Server.Network
             }
         }
 
+        // Modul: final-review Finding 3 - this used to duplicate
+        // TryResolveAuthenticatedPlayerWithMethodAsync almost line-for-line
+        // (bearer-prefix parsing, ValidateJwt, the nonce check, player-id
+        // resolution), differing only in what it returned. Delegating keeps
+        // there being exactly one place that decides what makes a bearer
+        // token authenticated; every existing caller here only ever wanted
+        // the PlayerId half of that tuple.
         private async Task<long> TryResolveAuthenticatedPlayerAsync(HttpListenerRequest request)
-        {
-            const string bearerPrefix = "Bearer ";
-            string bearerHeader = request.Headers["Authorization"] ?? string.Empty;
-            if (bearerHeader.Length <= bearerPrefix.Length || !bearerHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
-            {
-                return 0L;
-            }
-
-            string token = bearerHeader.Substring(bearerPrefix.Length);
-            JwtValidationResult result = AuthenticationEngine.ValidateJwt(token, _jwtSecretKey);
-            if (!result.IsValid)
-            {
-                return 0L;
-            }
-
-            if (!await IsNonceCurrentAsync(result.AccountId, result.SessionNonce))
-            {
-                return 0L;
-            }
-
-            return await ResolvePlayerIdFromAccountIdAsync(result.AccountId);
-        }
+            => (await TryResolveAuthenticatedPlayerWithMethodAsync(request)).PlayerId;
 
         private async Task<long> ResolvePlayerIdFromAccountIdAsync(Guid accountId)
         {
@@ -9097,7 +9083,13 @@ namespace FolkIdle.Server.Network
 
                     if (!await IsNonceCurrentAsync(validation.AccountId, validation.SessionNonce))
                     {
-                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Session revoked", CancellationToken.None);
+                        // Modul: must contain "token" (case-insensitive) - the
+                        // client's interpretClose (connection.ts) classifies a
+                        // 1008 close as a dead session only when the reason
+                        // matches /token/i. Without that word here, a revoked
+                        // token reads as a transient drop and the client
+                        // reconnects with the same (still-revoked) token forever.
+                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Session revoked - token no longer valid", CancellationToken.None);
                         return;
                     }
 
@@ -9453,7 +9445,16 @@ namespace FolkIdle.Server.Network
                     _ = _redisSessionLock.ReleaseAsync(playerId, session.RedisLockToken);
                 }
 
-                session.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Violent termination", CancellationToken.None)
+                // Modul: the close reason must satisfy the client's /token/i
+                // check (connection.ts's interpretClose) or the client reads
+                // this as a transient drop and reconnects with the very same
+                // token forever, showing a misleading "stale LogicEpochCounter"
+                // message instead of the login screen. EVERY caller of
+                // ForceDisconnect - blacklist, anti-cheat, epoch violations,
+                // cross-pod "superseded by a new login", and the new session
+                // revocation path - wants the same outcome: stop, don't retry
+                // with this token. Keep the word "token" in this string.
+                session.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Violent termination - token no longer valid", CancellationToken.None)
                     .ContinueWith(_logSendFault, playerId, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
             }
         }

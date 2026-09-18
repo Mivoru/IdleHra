@@ -92,6 +92,36 @@ namespace FolkIdle.Server.Tests
             return condition();
         }
 
+        // Modul: final-review Finding 5 - every E2E fixture that spins up a
+        // real NetworkBroadcastSystem against Testcontainers Postgres needs
+        // this exact registration, because the engines it calls
+        // (IsNonceCurrentAsync, RevokeRefreshTokenAsync,
+        // BumpSessionNonceAsync, ...) resolve RetryingDbContextOptions off
+        // the service provider they are handed, and this repo runs without
+        // one registered means a resolve failure, not a slow-but-working
+        // fallback. This block used to be hand-copied at every call site
+        // (~15-20 identical lines each) - one fixture,
+        // Test_E2E_Billing_UnsafeVerifyReceiptRouteIsGone, was missing it
+        // entirely, harmlessly today only because neither of its two HTTP
+        // calls reaches code that needs the service. One shared helper now;
+        // that fixture gets a call too, closing the gap rather than leaving
+        // it for whoever edits that test next to rediscover.
+        private static void RegisterRetryingDbContextOptions(ServiceCollection services, string connectionString)
+        {
+            var retryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(connectionString, npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(retryOptions));
+        }
+
         private static string MintTestJwt(Guid accountId)
         {
             return AuthenticationEngine.GenerateJwt(accountId, AuthenticationEngine.GenerateSessionNonce(), "pw", AuthenticationDefaults.LocalDevelopmentFallback, out _);
@@ -137,18 +167,7 @@ namespace FolkIdle.Server.Tests
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
-            var e2eRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
-                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 6,
-                        maxRetryDelay: TimeSpan.FromSeconds(8),
-                        errorCodesToAdd: new[]
-                        {
-                            Npgsql.PostgresErrorCodes.SerializationFailure,
-                            Npgsql.PostgresErrorCodes.DeadlockDetected
-                        }))
-                .Options;
-            services.AddSingleton(new RetryingDbContextOptions(e2eRetryOptions));
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
 
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
@@ -453,18 +472,7 @@ namespace FolkIdle.Server.Tests
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
-            var e2eRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
-                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 6,
-                        maxRetryDelay: TimeSpan.FromSeconds(8),
-                        errorCodesToAdd: new[]
-                        {
-                            Npgsql.PostgresErrorCodes.SerializationFailure,
-                            Npgsql.PostgresErrorCodes.DeadlockDetected
-                        }))
-                .Options;
-            services.AddSingleton(new RetryingDbContextOptions(e2eRetryOptions));
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
 
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
@@ -646,18 +654,7 @@ namespace FolkIdle.Server.Tests
             // provider - this test predates that gate and never needed it, so
             // it 500'd the instant the tree could actually compile and run.
             // See the other E2E fixtures in this file for the same registration.
-            var marketBrowserRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
-                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 6,
-                        maxRetryDelay: TimeSpan.FromSeconds(8),
-                        errorCodesToAdd: new[]
-                        {
-                            Npgsql.PostgresErrorCodes.SerializationFailure,
-                            Npgsql.PostgresErrorCodes.DeadlockDetected
-                        }))
-                .Options;
-            services.AddSingleton(new RetryingDbContextOptions(marketBrowserRetryOptions));
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
 
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
@@ -782,6 +779,14 @@ namespace FolkIdle.Server.Tests
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
+            // Modul: final-review Finding 5 - this fixture used to be the one
+            // place in the file missing this registration. Harmless today
+            // because neither call below reaches code that resolves
+            // RetryingDbContextOptions, but a latent trap for whoever adds an
+            // authenticated call to this test next - register it like every
+            // other fixture that builds a real NetworkBroadcastSystem.
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
+
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
 
@@ -845,20 +850,8 @@ namespace FolkIdle.Server.Tests
 
             // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
             // off the service provider it is handed (IsNonceCurrentAsync does
-            // this too) - see the other E2E fixtures in this file for the
-            // same registration.
-            var sessionSecurityRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
-                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 6,
-                        maxRetryDelay: TimeSpan.FromSeconds(8),
-                        errorCodesToAdd: new[]
-                        {
-                            Npgsql.PostgresErrorCodes.SerializationFailure,
-                            Npgsql.PostgresErrorCodes.DeadlockDetected
-                        }))
-                .Options;
-            services.AddSingleton(new RetryingDbContextOptions(sessionSecurityRetryOptions));
+            // this too).
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
 
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
@@ -942,20 +935,8 @@ namespace FolkIdle.Server.Tests
             // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
             // off the service provider it is handed (HandleAuthLogin's own
             // SetCurrentSessionNonceAsync/IssueRefreshTokenAsync calls do this
-            // too) - see the other E2E fixtures in this file for the same
-            // registration.
-            var loginRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
-                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 6,
-                        maxRetryDelay: TimeSpan.FromSeconds(8),
-                        errorCodesToAdd: new[]
-                        {
-                            Npgsql.PostgresErrorCodes.SerializationFailure,
-                            Npgsql.PostgresErrorCodes.DeadlockDetected
-                        }))
-                .Options;
-            services.AddSingleton(new RetryingDbContextOptions(loginRetryOptions));
+            // too).
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
 
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
@@ -1027,20 +1008,8 @@ namespace FolkIdle.Server.Tests
             // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
             // off the service provider it is handed (HandleAuthRefresh's own
             // RedeemRefreshTokenAsync/SetCurrentSessionNonceAsync calls do
-            // this too) - see the other E2E fixtures in this file for the
-            // same registration.
-            var refreshRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
-                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 6,
-                        maxRetryDelay: TimeSpan.FromSeconds(8),
-                        errorCodesToAdd: new[]
-                        {
-                            Npgsql.PostgresErrorCodes.SerializationFailure,
-                            Npgsql.PostgresErrorCodes.DeadlockDetected
-                        }))
-                .Options;
-            services.AddSingleton(new RetryingDbContextOptions(refreshRetryOptions));
+            // this too).
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
 
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
@@ -1125,20 +1094,8 @@ namespace FolkIdle.Server.Tests
             // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
             // off the service provider it is handed (HandleAuthRevoke's own
             // RevokeRefreshTokenAsync/BumpSessionNonceAsync calls do this
-            // too) - see the other E2E fixtures in this file for the same
-            // registration.
-            var revokeRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
-                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 6,
-                        maxRetryDelay: TimeSpan.FromSeconds(8),
-                        errorCodesToAdd: new[]
-                        {
-                            Npgsql.PostgresErrorCodes.SerializationFailure,
-                            Npgsql.PostgresErrorCodes.DeadlockDetected
-                        }))
-                .Options;
-            services.AddSingleton(new RetryingDbContextOptions(revokeRetryOptions));
+            // too).
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
 
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
@@ -1240,6 +1197,19 @@ namespace FolkIdle.Server.Tests
                 Assert.True(
                     clientSocket.State == WebSocketState.Closed || clientSocket.State == WebSocketState.CloseReceived || clientSocket.State == WebSocketState.Aborted,
                     $"Expected the WebSocket to be closed/aborted after revoke, got {clientSocket.State}.");
+
+                // Modul: final-review Finding 1 - a close code alone does not
+                // tell the client anything; connection.ts's interpretClose
+                // decides "dead session, show the login screen" purely by
+                // testing the close REASON string against /token/i. This
+                // asserts the actual contract: whatever ForceDisconnect (or
+                // the WS handshake's own nonce check) sends as a reason for a
+                // revoked session must contain "token", case-insensitively,
+                // or a real client would reconnect with this same dead token
+                // forever instead of ever showing a login form.
+                string? closeReason = clientSocket.CloseStatusDescription;
+                Assert.False(string.IsNullOrEmpty(closeReason));
+                Assert.Matches("(?i)token", closeReason!);
             }
             finally
             {
@@ -1276,18 +1246,7 @@ namespace FolkIdle.Server.Tests
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
-            var retryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
-                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 6,
-                        maxRetryDelay: TimeSpan.FromSeconds(8),
-                        errorCodesToAdd: new[]
-                        {
-                            Npgsql.PostgresErrorCodes.SerializationFailure,
-                            Npgsql.PostgresErrorCodes.DeadlockDetected
-                        }))
-                .Options;
-            services.AddSingleton(new RetryingDbContextOptions(retryOptions));
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
 
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
@@ -1385,20 +1344,8 @@ namespace FolkIdle.Server.Tests
             // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
             // off the service provider it is handed (HandleAuthRefresh's own
             // RedeemRefreshTokenAsync/BumpSessionNonceAsync calls do this
-            // too) - see the other E2E fixtures in this file for the same
-            // registration.
-            var replayRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
-                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
-                    npgsqlOptions.EnableRetryOnFailure(
-                        maxRetryCount: 6,
-                        maxRetryDelay: TimeSpan.FromSeconds(8),
-                        errorCodesToAdd: new[]
-                        {
-                            Npgsql.PostgresErrorCodes.SerializationFailure,
-                            Npgsql.PostgresErrorCodes.DeadlockDetected
-                        }))
-                .Options;
-            services.AddSingleton(new RetryingDbContextOptions(replayRetryOptions));
+            // too).
+            RegisterRetryingDbContextOptions(services, _dbContainer.GetConnectionString());
 
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();

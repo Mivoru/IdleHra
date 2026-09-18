@@ -43,4 +43,22 @@ describe('interpretClose', () => {
     // its exact casing.
     expect(interpretClose(1008, 'invalid or expired TOKEN').reconnect).toBe(false);
   });
+
+  // Modul: session-security final-review Finding 1 - ForceDisconnect
+  // (blacklist, anti-cheat, epoch violations, cross-pod eviction, and now
+  // session revocation) and the WS handshake's nonce-rejection path both
+  // used to close with a reason that did NOT contain "token"
+  // ("Violent termination" / "Session revoked"), so a revoked session read
+  // as a transient drop and this client reconnected with the same dead
+  // token forever instead of ever showing the login form. Pins the fixed
+  // wording so a future edit cannot silently drop the word again.
+  it('treats a forced disconnect as a sign-out once its reason names the token', () => {
+    const forceDisconnect = interpretClose(1008, 'Violent termination - token no longer valid');
+    expect(forceDisconnect.phase).toBe('signedout');
+    expect(forceDisconnect.reconnect).toBe(false);
+
+    const nonceRejected = interpretClose(1008, 'Session revoked - token no longer valid');
+    expect(nonceRejected.phase).toBe('signedout');
+    expect(nonceRejected.reconnect).toBe(false);
+  });
 });

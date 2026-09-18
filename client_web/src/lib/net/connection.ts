@@ -178,10 +178,10 @@ export class GameConnection {
   // Modul: OBLIGATION 1. Every ClientCommand must carry the LogicEpochCounter
   // from the most recent StateUpdate. ValidateEpochSynchronization's "epoch
   // interception gate" calls TerminateSessionForSecurity otherwise - the
-  // socket closes with 1008 "Violent termination" and the server logs
-  // absolutely nothing. A brand new account hides this bug, because its
-  // counter is still 0 and 0 is exactly what an unaware client sends; a
-  // played-in account is killed on its first command.
+  // socket closes with 1008 "Violent termination - token no longer valid"
+  // and the server logs absolutely nothing. A brand new account hides this
+  // bug, because its counter is still 0 and 0 is exactly what an unaware
+  // client sends; a played-in account is killed on its first command.
   private epoch = 0;
 
   // Modul: OBLIGATION 2. The seed most recently answered, so each challenge is

@@ -57,6 +57,16 @@ REST, trusted a client-supplied AccountId with no signature check -
 anyone who knew their own AccountId could grant themselves free diamonds.
 Fixed and deployed the same day as its own handoff (2026-09-18b, above).
 
+**A final-review finding on Task 15's own migration, fixed before merge**:
+`AuthMethod`'s C# default backfills every pre-existing `PlayerRefreshTokens`
+row to `""`, which is not `"dev"` - so `RequiresPasswordStepUpAsync` would
+have silently and permanently skipped the step-up check for every
+device-bearer session that existed before this deploy. `AddSessionSecurity`'s
+`Up()` (unshipped, edited in place rather than patched by a second migration)
+now backfills those `""` rows to `"dev"` explicitly, the safe direction: a
+legacy token on a password-holding account gets one satisfiable step-up
+prompt instead of the gate never applying to it at all.
+
 **A finding from Task 10's own review, fixed before merge**: the new
 password check on `/api/v1/billing/verify` was not initially covered by
 `AuthThrottle` (the rate-limiter every other password check in this server

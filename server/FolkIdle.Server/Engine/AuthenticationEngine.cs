@@ -84,6 +84,18 @@ namespace FolkIdle.Server.Engine
             expirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + TokenLifetimeSeconds;
 
             string headerSegment = Base64UrlEncode(Encoding.UTF8.GetBytes(HeaderJson));
+            // Modul: this payload is built by hand-concatenation with NO
+            // quote-escaping - accountId.ToString("N") and expirationEpoch
+            // are safe because they are hex/digits by construction, but
+            // sessionNonce and authMethod are string parameters and MUST
+            // never be allowed to carry attacker-influenced or arbitrary
+            // text (a literal `"` or `\` would break the JSON, and worse
+            // is unauditable). Every caller today passes a literal
+            // ("pw"/"dev") or a value already re-derived server-side
+            // (HandleAuthRefresh forwards result.AuthMethod, which is a
+            // database column, not request input) - keep it that way. If a
+            // future caller ever wants to pass something dynamic here,
+            // escape it or switch to a real JSON writer first.
             string payloadJson = "{\"aid\":\"" + accountId.ToString("N") + "\",\"nonce\":\"" + sessionNonce + "\",\"m\":\"" + authMethod + "\",\"exp\":" + expirationEpoch.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}";
             string payloadSegment = Base64UrlEncode(Encoding.UTF8.GetBytes(payloadJson));
 
