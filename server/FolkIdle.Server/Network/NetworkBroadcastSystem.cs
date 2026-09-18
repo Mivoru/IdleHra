@@ -8191,7 +8191,8 @@ namespace FolkIdle.Server.Network
         }
 
         /// <summary>
-        /// Signing out: invalidates the refresh token on this device.
+        /// Signing out: invalidates the refresh token on this device, AND the
+        /// live access token, AND any open WebSocket for the account.
         /// </summary>
         /// <remarks>
         /// Answers 204 whatever happened, including for a token that never
@@ -8200,10 +8201,13 @@ namespace FolkIdle.Server.Network
         /// would confirm which tokens are live to anybody who can reach the
         /// route.
         ///
-        /// The JWT is untouched and stays valid for the rest of its day - it is
-        /// a bearer token this server does not store, which is exactly the
-        /// property that made a 60-day one unacceptable. The client discards
-        /// it; the refresh token is the half that had to be revocable.
+        /// The JWT used to be untouched and stay valid for the rest of its day
+        /// - a bearer token this server does not store, so nothing checked it
+        /// again on the way in. That is fixed by bumping the account's session
+        /// nonce (signed into every JWT at login) and evicting the cached
+        /// nonce + any live WebSocket, so a request bearing the old token now
+        /// fails the nonce check and a connected session is disconnected
+        /// immediately, not just prevented from silently refreshing.
         /// </remarks>
         private async Task HandleAuthRevoke(HttpListenerContext context)
         {
@@ -8228,7 +8232,19 @@ namespace FolkIdle.Server.Network
                     // A malformed body is still a sign-out. Nothing to revoke.
                 }
 
-                await AuthenticationEngine.RevokeRefreshTokenAsync(authOptions, rawToken);
+                Guid revokedAccountId = await AuthenticationEngine.RevokeRefreshTokenAsync(authOptions, rawToken);
+                if (revokedAccountId != Guid.Empty)
+                {
+                    // Modul: the refresh token being gone was already true.
+                    // What was missing is this: the ACCESS token this device
+                    // is still holding stays valid for up to 24 more hours
+                    // unless something invalidates it too. Bump and evict so
+                    // "sign out" actually ends the session everywhere, not
+                    // just the ability to silently get a new one.
+                    string newNonce = await AuthenticationEngine.BumpSessionNonceAsync(authOptions, revokedAccountId);
+                    await EvictAccountSessionAsync(revokedAccountId, newNonce);
+                }
+
                 context.Response.StatusCode = 204;
             }
             catch (Exception ex)

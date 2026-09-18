@@ -1098,5 +1098,155 @@ namespace FolkIdle.Server.Tests
                 networkSystem.Stop();
             }
         }
+
+        // Modul: Task 7 - HandleAuthRevoke used to touch only the refresh
+        // token, so the access token a device already held stayed valid for
+        // up to 24 more hours after "sign out", and any open WebSocket for
+        // that account was untouched. This proves the whole chain: a live
+        // WebSocket authenticated with the access token is still open right
+        // before revoke, POSTing the refresh token to /api/v1/auth/revoke
+        // both (a) makes that same access token fail a subsequent REST call
+        // with 401 and (b) gets the WebSocket disconnected - not merely
+        // prevents a future silent refresh.
+        [Fact]
+        public async Task Test_E2E_SessionSecurity_LogoutRevokesTheLiveAccessToken()
+        {
+            if (!_dockerAvailable || _dbContainer == null)
+            {
+                Console.WriteLine("WARNING: Skipping logout-revokes-access-token E2E verification because Docker is unavailable. CI must provide Docker for mandatory database coverage.");
+                return;
+            }
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options =>
+                options.UseNpgsql(_dbContainer.GetConnectionString()));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+
+            // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
+            // off the service provider it is handed (HandleAuthRevoke's own
+            // RevokeRefreshTokenAsync/BumpSessionNonceAsync calls do this
+            // too) - see the other E2E fixtures in this file for the same
+            // registration.
+            var revokeRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(revokeRetryOptions));
+
+            var serviceProvider = services.BuildServiceProvider();
+            var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                await db.Database.MigrateAsync();
+            }
+
+            // Modul: no SimulationEngine here - the WebSocket handshake
+            // registers the connection in _connectedClients (and the socket
+            // reports WebSocketState.Open) before the Login command it
+            // enqueues is ever drained, so proving the socket opens and later
+            // gets force-disconnected needs only NetworkBroadcastSystem.
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8088/");
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+            ClientWebSocket? clientSocket = null;
+
+            try
+            {
+                string freshDeviceId = Guid.NewGuid().ToString("N");
+                var loginBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { deviceId = freshDeviceId }),
+                    System.Text.Encoding.UTF8, "application/json");
+
+                var loginResponse = await httpClient.PostAsync("http://localhost:8088/api/v1/auth/login", loginBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, loginResponse.StatusCode);
+
+                string loginResponseBody = await loginResponse.Content.ReadAsStringAsync();
+                var loginParsed = System.Text.Json.JsonSerializer.Deserialize<AuthLoginResponseTestDto>(loginResponseBody);
+                Assert.NotNull(loginParsed);
+                Assert.False(string.IsNullOrEmpty(loginParsed!.Token));
+                Assert.False(string.IsNullOrEmpty(loginParsed.RefreshToken));
+
+                string accessToken = loginParsed.Token;
+                string refreshToken = loginParsed.RefreshToken;
+
+                clientSocket = new ClientWebSocket();
+                await clientSocket.ConnectAsync(new Uri("ws://localhost:8088/"), CancellationToken.None);
+
+                byte[] authBuffer = BuildAuthHandshakeBuffer(accessToken);
+                await clientSocket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
+
+                // Modul: a background receive loop is required to observe the
+                // transition to CloseReceived/Closed at all - ClientWebSocket
+                // only processes an incoming close frame (and updates State)
+                // while a ReceiveAsync call is in flight, exactly like the
+                // stress test above.
+                var socketReceiveDone = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+                var receiveCts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+                var socketReceiveTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        var recvBuffer = new byte[1024];
+                        while (clientSocket.State == WebSocketState.Open)
+                        {
+                            var r = await clientSocket.ReceiveAsync(new ArraySegment<byte>(recvBuffer), receiveCts.Token);
+                            if (r.MessageType == WebSocketMessageType.Close) break;
+                        }
+                    }
+                    catch
+                    {
+                        // Expected once the socket is torn down mid-receive.
+                    }
+                    finally
+                    {
+                        socketReceiveDone.TrySetResult();
+                    }
+                });
+
+                // Confirm the handshake actually landed and the socket is a
+                // live, open connection before revoking anything.
+                await Task.Delay(500);
+                Assert.Equal(WebSocketState.Open, clientSocket.State);
+
+                var revokeBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { refreshToken }),
+                    System.Text.Encoding.UTF8, "application/json");
+                var revokeResponse = await httpClient.PostAsync("http://localhost:8088/api/v1/auth/revoke", revokeBody);
+                Assert.Equal(System.Net.HttpStatusCode.NoContent, revokeResponse.StatusCode);
+
+                // (a) The OLD access token must now fail an authenticated
+                // REST call - the nonce it carries no longer matches the
+                // account's current one.
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+                var rejected = await httpClient.GetAsync("http://localhost:8088/api/v1/market/listings?pageIndex=0&pageSize=10");
+                Assert.Equal(System.Net.HttpStatusCode.Unauthorized, rejected.StatusCode);
+
+                // (b) The live WebSocket must be force-disconnected, not left
+                // open for the rest of the JWT's natural lifetime.
+                bool socketClosed = await WaitForConditionAsync(
+                    () => socketReceiveTask.IsCompleted && clientSocket.State != WebSocketState.Open,
+                    timeoutMs: 10000);
+                Assert.True(socketClosed, $"Expected the WebSocket to be disconnected after revoke; final state was {clientSocket.State}.");
+                Assert.True(
+                    clientSocket.State == WebSocketState.Closed || clientSocket.State == WebSocketState.CloseReceived || clientSocket.State == WebSocketState.Aborted,
+                    $"Expected the WebSocket to be closed/aborted after revoke, got {clientSocket.State}.");
+            }
+            finally
+            {
+                clientSocket?.Dispose();
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
     }
 }
