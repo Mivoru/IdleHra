@@ -2736,6 +2736,23 @@ it gave one; each task says which.
 
 ## 14. Access tokens survive logout and password reset (security, was P0)
 
+**DONE 2026-09-18.** A per-account `PlayerRecord.CurrentSessionNonce`
+(additive migration, `null` = bootstrap/no-op) is now checked against the
+JWT's `nonce` claim on every REST request and WebSocket handshake
+(`NetworkBroadcastSystem.IsNonceCurrentAsync`, cached the same way
+`_accountIdToPlayerIdCache` is). Bumped - and the account's live WebSocket
+force-disconnected via `EvictAccountSessionAsync` - on logout
+(`HandleAuthRevoke`), password reset completing (`PasswordResetEngine
+.CompleteResetAsync`), and a detected refresh-token replay
+(`RedeemRefreshTokenAsync`'s `Replayed` branch, which also had to stop
+returning `Guid.Empty` for the account it was revoking). Along the way,
+`RevokeAllRefreshTokensAsync` was confirmed to still be genuinely dead code
+(zero callers) - `CompleteResetAsync`'s inline revoke already covered that
+half. Two stale comments claiming the nonce fed the (separate)
+`RedisPlayerSessionLock` eviction mechanism were corrected. Full spec:
+`docs/superpowers/specs/2026-09-18-session-security-design.md`; plan:
+`docs/superpowers/plans/2026-09-18-session-security.md`.
+
 **Confirmed.** `AuthenticationEngine.cs:76` sets `TokenLifetimeSeconds = 86400L`
 (24h). `AuthenticationEngine.ValidateJwt` (`:130-178`) checks only the HMAC
 signature and `exp` — no session/deny-list lookup. `HandleAuthRevoke`
@@ -2768,6 +2785,28 @@ failure mode here, same as the rest of this auth stack).
 ---
 
 ## 15. DeviceId is a bearer credential with no proof of possession (security, was P0)
+
+**DONE 2026-09-18, option (b).** Checked against live code rather than this
+task's own prose: this game has no password-change/email-change/account-
+deletion command at all, so the only two authenticated actions worth gating
+today are completing a purchase and linking an OAuth identity - and,
+separately and unrelated to this task, `HandleVerifyReceipt` (a THIRD,
+REST-reachable purchase path that trusted a client-supplied AccountId with
+no signature check at all) was found and removed the same day; see
+`docs/architecture/NEXT_STEPS_BACKLOG.md`'s 2026-09-18b handoff. Every JWT
+now carries an `m` claim (`"pw"`/`"dev"`), threaded through refresh-token
+rotation via a new `PlayerRefreshToken.AuthMethod` column so a refreshed
+session keeps the method it was born with. `HandleBillingVerify` and
+`HandleOAuthLink` require a `password` field, verified against
+`PlayerRecord.PasswordHash`, whenever the session is `"dev"` **and** the
+account actually has a password (a pure guest has nothing to step up to) -
+`403 {"StepUpRequired":true}` otherwise, never `401`. Caught in review
+before shipping: the new password check on `/api/v1/billing/verify` was not
+initially covered by `AuthThrottle`, which would have made it an
+unthrottled, unlogged, 210,000-iteration-PBKDF2-per-guess password oracle
+for anyone holding a stolen DeviceId - fixed. Full credential-lifecycle
+rework (DeviceId rotation/revocation) remains a larger follow-up, as noted
+below. Spec/plan: same as task 14.
 
 **Confirmed.** `AuthenticationEngine.TryLoginByDeviceIdAsync` (`:666-676`) is a
 bare `WHERE DeviceId == deviceId` lookup — no password, no device attestation,
