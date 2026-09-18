@@ -47,6 +47,15 @@ namespace FolkIdle.Server.Models
         // password. Null for device-only/OAuth-only accounts.
         public string? PasswordHash { get; set; }
 
+        // Modul: the JWT's `nonce` claim is checked against this on every
+        // authenticated request. Null means no revocation event has ever
+        // happened for this account - every token validates as it did before
+        // this column existed, so deploying this migration does not force
+        // every already-logged-in player to sign in again. See
+        // AuthenticationEngine.BumpSessionNonceAsync and
+        // NetworkBroadcastSystem.IsNonceCurrentAsync.
+        public string? CurrentSessionNonce { get; set; }
+
         // Modul: OAuth account binding. ProviderType 0 means "not linked to
         // any external provider" - ExternalProviderId is null in that case,
         // matching DeviceId's existing convention for this same unique-
