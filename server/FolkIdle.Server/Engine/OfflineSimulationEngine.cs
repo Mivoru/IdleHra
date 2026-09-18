@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -293,6 +294,25 @@ namespace FolkIdle.Server.Engine
             return await GrantAnalyticalLootAsync(db, playerId, lootTable, projection.LootRolls, availableInventorySpace, projection.LootLuckPct);
         }
 
+        // Modul: THIS PATH HAD NO OBSERVABILITY AT ALL - the exact shape
+        // CombatLootEngine's loot path had before its 2026-09-06 fix. A
+        // transient database error here (a dropped Supabase pooler
+        // connection, a serialization failure) rolled back silently, and a
+        // player's earned wood/ore/gold simply vanished: not in the log, not
+        // in the offline summary, not in a counter a dashboard could alert
+        // on. Mirrors CombatLootEngine's _requestsFailed exactly (audit #17,
+        // phase 1 - durable retry is a separate effort, audit #18).
+        private static long _villageProductionFailures;
+
+        /// <summary>
+        /// How many offline village production grants have rolled back since
+        /// the process started. Phase 1 (audit #17) stops at "visible and
+        /// countable" - a dashboard/heartbeat integration the way
+        /// <c>CombatLootEngine.ReportLootThroughput</c> reports its own
+        /// counters is future work, not required by this task's Done-when.
+        /// </summary>
+        public static long VillageProductionFailures => Interlocked.Read(ref _villageProductionFailures);
+
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.
         // Grants offline wood/stone/iron_ore analytically, independent of
         // whatever gathering/combat activity was active while offline.
@@ -393,9 +413,13 @@ namespace FolkIdle.Server.Engine
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
             }
-            catch
+            catch (Exception ex)
             {
                 await transaction.RollbackAsync();
+                Interlocked.Increment(ref _villageProductionFailures);
+                Console.WriteLine(
+                    $"Village: offline production for player {playerId} failed and was rolled back - "
+                    + $"lost {goldEarned} gold, {woodEarned}+{rareWood} wood, {oreEarned}+{rareOre} ore: {ex.Message}");
             }
         }
 
