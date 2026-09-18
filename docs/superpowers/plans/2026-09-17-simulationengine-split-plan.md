@@ -1115,31 +1115,44 @@ These are additional to the plan-wide constraints and specific to this region.
 
 ### Task 3.1: Extract the crafting-progress body
 
-The smallest and safest of the three: 26 lines (5427-5452), reading only
-`payload`, the `craftingRecipe` out-var, the constant `MinCraftTicks`
-(line 150) and the static `CraftingTickQueue` (line 137). No shared locals with
-either other branch.
+**Corrected 2026-09-19, before Phase 3 starts.** This task's original text
+(below the line) was written around a bug that no longer exists: the
+crafting branch used to have no `return`, falling through into combat
+against `fallbackId` 1 every tick — real damage, XP, gold, loot, kills,
+silently, alongside a craft completing correctly. That was fixed
+independently, outside this refactor, as its own bugfix: PR #7, merged
+2026-09-18, which added exactly the `return;` this task's original plan
+explicitly said to omit. **Extract the branch AS IT NOW STANDS, WITH its
+`return;`** — do not omit it to match this document's original text, and
+do not treat its presence as something this refactor changed. Anyone
+running this plan should diff the live file against Step 1's snippet below
+before touching it, not trust line numbers or "current shape" blindly, per
+the same lesson task 18's plan already had to learn once this same week.
 
-**Files:** `server/FolkIdle.Server/Domain/Combat/SimulationEngine.cs:5427-5452`
+The smallest and safest of the three: still small, though the exact range
+shifted by PR #7's own comment block (+13 lines, all inside this branch)
+and one unrelated line elsewhere (task 19) — re-locate by searching for
+`ContentRegistry.TryGetRecipeByActivityId` rather than trusting a line
+number. Reads only `payload`, the `craftingRecipe` out-var, the constant
+`MinCraftTicks` (line 150) and the static `CraftingTickQueue` (line 137).
+No shared locals with either other branch.
+
+**Files:** `server/FolkIdle.Server/Domain/Combat/SimulationEngine.cs` — the
+crafting branch of `ProcessSubTick`, located by searching for
+`ContentRegistry.TryGetRecipeByActivityId`.
 
 - [ ] **Step 1:** Add a private static method beside `ProcessSubTick`:
 
 ```csharp
         /// <summary>
         /// Crafting-as-a-job progress for one tick. Extracted verbatim from
-        /// ProcessSubTick's first activity branch.
-        ///
-        /// Modul: THIS METHOD DOES NOT RETURN OUT OF ProcessSubTick, AND THAT
-        /// IS DELIBERATE. The crafting branch has never had a `return` - after
-        /// counting a craft tick, control falls through into the combat block
-        /// below, where a crafting activity id resolves to fallbackId 1. That
-        /// is what the game does today; this extraction preserves it rather
-        /// than tidying it into a symmetric three-way dispatch, which would be
-        /// a live behaviour change wearing a refactor's clothes.
+        /// ProcessSubTick's first activity branch, INCLUDING its `return;` -
+        /// see CLAUDE.md's trap entry next to CombatIdentityTests and PR #7
+        /// for why that return exists and must not be dropped.
         /// </summary>
         private static void RunCraftingProgressTick(ref TickStatePayload payload, in RecipeDefinition craftingRecipe)
         {
-            // ... lines 5429-5451 verbatim, comments included ...
+            // ... verbatim, comments included, ending in the branch's own return; ...
         }
 ```
 
@@ -1147,13 +1160,15 @@ Confirm `RecipeDefinition` is the actual out-var type of
 `ContentRegistry.TryGetRecipeByActivityId` (`ContentRegistry.cs:697`) and that
 it can be passed by `in` — if it is a class, drop the `in`.
 
-- [ ] **Step 2:** Replace the branch body with the call, keeping the `if` and
-      keeping the absence of a `return`:
+- [ ] **Step 2:** Replace the branch body with the call, keeping the `if` AND
+      the branch's `return` immediately after the call (the opposite of this
+      task's original instruction, which predates PR #7):
 
 ```csharp
             if (ContentRegistry.TryGetRecipeByActivityId(payload.ActiveActivityId, out var craftingRecipe))
             {
                 RunCraftingProgressTick(ref payload, in craftingRecipe);
+                return;
             }
             else if (...)
 ```
@@ -1325,11 +1340,13 @@ browser.
 
 - [ ] **Step 4:** Confirm a gathering job and a crafting job each still produce
       output, since Tasks 3.1 and 3.2 moved their bodies. For crafting,
-      specifically note whether the fall-through into combat is still
-      observable (the character should still be engaging monster 1 while
-      crafting, exactly as before this plan) — that is the confirmation that
-      the asymmetric dispatch was preserved, and it belongs in the report as a
-      question for the owner, not as a fix.
+      **corrected 2026-09-19:** confirm the OPPOSITE of this step's original
+      text — the character assigned to craft should NOT be engaging monster 1
+      at all (PR #7 fixed the fall-through on 2026-09-18; this plan's Task 3.1
+      now preserves that fix, not the bug). Seeing any combat activity on a
+      pure crafting character here is a regression this extraction introduced
+      and must be fixed before continuing, not a preserved behaviour to note
+      for the owner.
 
 - [ ] **Step 5:** `superpowers:requesting-code-review` on the Phase 3 diff.
 
@@ -1357,6 +1374,7 @@ browser.
   reduce it — they take what they need as method parameters. Shrinking the
   constructor is the instantiated-coordinator design the owner explicitly did
   not choose.
-- **Whether the crafting branch's fall-through into combat is a bug.** Found
-  while confirming line numbers for Phase 3; recorded, deliberately not acted
-  on. It is a gameplay question for the owner.
+- **Whether the crafting branch's fall-through into combat is a bug.**
+  Answered since this plan was written: yes — fixed as PR #7, merged
+  2026-09-18, independently of this refactor. Task 3.1 above is corrected
+  to extract the branch with its fix intact, not the original bug.
