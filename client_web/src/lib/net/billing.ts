@@ -84,6 +84,7 @@ export type PurchaseOutcome =
   | { kind: 'granted' }
   | { kind: 'unavailable'; reason: string }
   | { kind: 'cancelled' }
+  | { kind: 'stepUpRequired' }
   | { kind: 'rejected'; reason: string };
 
 /**
@@ -110,7 +111,7 @@ export function purchaseUnavailableReason(): string | null {
  * large for the fixed-layout command packet, and because REST is the only path
  * whose server side checks the signature.
  */
-export async function purchase(productIdentifier: string): Promise<PurchaseOutcome> {
+export async function purchase(productIdentifier: string): Promise<PurchaseOutcome & { receipt?: string }> {
   const unavailable = purchaseUnavailableReason();
   if (unavailable !== null) return { kind: 'unavailable', reason: unavailable };
 
@@ -128,7 +129,11 @@ export async function purchase(productIdentifier: string): Promise<PurchaseOutco
 
   if (!receipt) return { kind: 'rejected', reason: 'The store returned an empty receipt.' };
 
-  return submitReceipt(receipt);
+  const outcome = await submitReceipt(receipt);
+  // stepUpRequired needs the raw receipt handed back up to the UI so it can
+  // retry once it has a password - this file never prompts for anything
+  // itself, so the receipt has to survive the round trip through Store.svelte.
+  return outcome.kind === 'stepUpRequired' ? { ...outcome, receipt } : outcome;
 }
 
 /**
@@ -139,15 +144,21 @@ export async function purchase(productIdentifier: string): Promise<PurchaseOutco
  * server is idempotent on the transaction id, and re-sending is therefore safe
  * and is the correct recovery.
  */
-export async function submitReceipt(base64Receipt: string): Promise<PurchaseOutcome> {
+export async function submitReceipt(base64Receipt: string, password?: string): Promise<PurchaseOutcome> {
   try {
-    await authedPost('/api/v1/billing/verify', { receipt: base64Receipt });
+    const body: { receipt: string; password?: string } = { receipt: base64Receipt };
+    if (password) body.password = password;
+    await authedPost('/api/v1/billing/verify', body);
   } catch (err) {
     // The endpoint answers 409 for a receipt that failed validation or was
-    // already redeemed. Both mean "no diamonds from this", and neither is a
-    // transport failure, so they are reported as a rejection rather than an
-    // outage.
+    // already redeemed, and 403 for a device-bearer session that has never
+    // proved the account's password - both mean "no diamonds from this yet",
+    // and neither is a transport failure, so they are reported as a decision
+    // rather than an outage.
     const status = (err as { status?: number }).status;
+    if (status === 403) {
+      return { kind: 'stepUpRequired' };
+    }
     if (status === 409) {
       return { kind: 'rejected', reason: 'The store receipt was not accepted. It may already have been used.' };
     }
@@ -162,6 +173,15 @@ export async function submitReceipt(base64Receipt: string): Promise<PurchaseOutc
   // an unchanged number.
   syncBillingStatus();
   return { kind: 'granted' };
+}
+
+/**
+ * Retries a purchase that came back stepUpRequired, this time with the
+ * account's password. Separate from `purchase()` because only the UI layer
+ * has anywhere to ask for a password - this file never prompts for anything.
+ */
+export async function retryReceiptWithPassword(base64Receipt: string, password: string): Promise<PurchaseOutcome> {
+  return submitReceipt(base64Receipt, password);
 }
 
 /** Opcode 40. A read-back with no payload; safe to send at any time. */

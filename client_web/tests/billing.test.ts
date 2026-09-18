@@ -36,8 +36,14 @@ vi.mock('../src/lib/net/platform', () => ({
   CAPACITOR_ORIGINS: ['https://localhost', 'capacitor://localhost'],
 }));
 
-const { purchase, submitReceipt, purchaseUnavailableReason, registerStoreAdapter, syncBillingStatus } =
-  await import('../src/lib/net/billing');
+const {
+  purchase,
+  submitReceipt,
+  purchaseUnavailableReason,
+  registerStoreAdapter,
+  syncBillingStatus,
+  retryReceiptWithPassword,
+} = await import('../src/lib/net/billing');
 const { CommandType } = await import('../src/lib/net/protocol.generated');
 
 beforeEach(() => {
@@ -148,6 +154,30 @@ describe('resubmission', () => {
     await submitReceipt('BASE64');
     await submitReceipt('BASE64');
     expect(posted).toHaveLength(2);
+  });
+});
+
+describe('step-up', () => {
+  beforeEach(() => {
+    native = true;
+    registerStoreAdapter({
+      name: 'test',
+      listProducts: async () => ['diamonds_small'],
+      purchase: async () => 'BASE64RECEIPT',
+    });
+  });
+
+  it('surfaces a step-up prompt distinctly from an ordinary rejection', async () => {
+    postStatus = 403;
+    const outcome = await purchase('diamonds_small');
+    expect(outcome.kind).toBe('stepUpRequired');
+  });
+
+  it('retries with a password and can succeed', async () => {
+    postStatus = null;
+    const outcome = await retryReceiptWithPassword('BASE64RECEIPT', 'correct-horse-battery-staple');
+    expect(outcome.kind).toBe('granted');
+    expect(posted[posted.length - 1].body).toEqual({ receipt: 'BASE64RECEIPT', password: 'correct-horse-battery-staple' });
   });
 });
 

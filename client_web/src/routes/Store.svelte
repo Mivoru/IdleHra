@@ -7,7 +7,7 @@
     setSimulationSpeed,
   } from '../lib/net/commands';
   import { prettifyBaseId } from '../lib/net/content';
-  import { purchase, purchaseUnavailableReason } from '../lib/net/billing';
+  import { purchase, purchaseUnavailableReason, retryReceiptWithPassword } from '../lib/net/billing';
   import { play } from '../lib/ui/audio';
   import Skeleton from '../lib/ui/Skeleton.svelte';
 
@@ -33,6 +33,16 @@
 
   let buying = $state<string | null>(null);
 
+  // Modul: step-up. A device-bearer session (auto-relogin off a remembered
+  // device id, never a typed password) is refused a real-money purchase with
+  // 403 {StepUpRequired:true} rather than a plain rejection - the session is
+  // still valid, the server just wants proof of the password before it moves
+  // money. `stepUpPending` holds the receipt the store already produced so
+  // confirming does not re-run the platform purchase sheet a second time.
+  let stepUpPending = $state<{ productIdentifier: string; receipt: string } | null>(null);
+  let stepUpPassword = $state('');
+  let stepUpError = $state<string | null>(null);
+
   async function buy(productIdentifier: string) {
     buying = productIdentifier;
     try {
@@ -44,11 +54,32 @@
         // Deliberately silent. Changing your mind is not an event worth a
         // notification, and telling someone about it every time reads as a
         // complaint.
+      } else if (outcome.kind === 'stepUpRequired') {
+        if (outcome.receipt) {
+          stepUpPending = { productIdentifier, receipt: outcome.receipt };
+          stepUpPassword = '';
+          stepUpError = null;
+        }
       } else {
         pushLocalNotice(outcome.reason);
       }
     } finally {
       buying = null;
+    }
+  }
+
+  async function confirmStepUp() {
+    if (!stepUpPending) return;
+    const { receipt } = stepUpPending;
+    const outcome = await retryReceiptWithPassword(receipt, stepUpPassword);
+    if (outcome.kind === 'granted') {
+      play('levelUp');
+      pushLocalNotice('Purchase confirmed - your diamonds are on the way.', 'info');
+      stepUpPending = null;
+    } else if (outcome.kind === 'stepUpRequired') {
+      stepUpError = 'Wrong password. Try again.';
+    } else if (outcome.kind === 'rejected') {
+      stepUpError = outcome.reason;
     }
   }
 
@@ -153,6 +184,28 @@
           players. These listings are chosen for your account specifically and
           may differ from another player's.
         </p>
+      {/if}
+
+      {#if stepUpPending}
+        <div class="step-up">
+          <p class="dim tiny">
+            This session was signed in automatically. Confirm your password to
+            finish this purchase.
+          </p>
+          <input
+            type="password"
+            bind:value={stepUpPassword}
+            placeholder="Password"
+            onkeydown={(e) => { if (e.key === 'Enter') confirmStepUp(); }}
+          />
+          {#if stepUpError}
+            <p class="err tiny">{stepUpError}</p>
+          {/if}
+          <div class="step-up-actions">
+            <button class="tiny-btn" onclick={confirmStepUp}>Confirm</button>
+            <button class="tiny-btn" onclick={() => (stepUpPending = null)}>Cancel</button>
+          </div>
+        </div>
       {/if}
     </section>
 
@@ -303,5 +356,23 @@
   .tiny-btn {
     font-size: 0.72rem;
     padding: 0.2rem 0.45rem;
+  }
+
+  .step-up {
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .step-up input {
+    font-size: 0.85rem;
+    padding: 0.35rem 0.5rem;
+  }
+
+  .step-up-actions {
+    display: flex;
+    gap: 0.4rem;
   }
 </style>
