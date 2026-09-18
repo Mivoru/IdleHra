@@ -19,6 +19,95 @@ do next.
 
 ---
 
+# HANDOFF 2026-09-19b - two background agents in flight, session paused near
+its usage limit before reviewing either
+
+**Read this before anything else if picking up this session's work.** Two
+background agents were dispatched and were STILL RUNNING when this session
+paused. Neither has been reviewed, verified, or merged. Do not assume either
+is correct - every prior task this session merged (17/19/20/23) needed real
+fixes found only by reading the actual diff, not by trusting the agent's own
+self-report (see 2026-09-19 handoff above for two concrete examples of that).
+
+**Agent 1 - task 18 (durable grant retry outbox).** Implementing
+`docs/superpowers/plans/2026-09-17-durable-grant-retry.md`, which was
+re-validated against current code and updated in a brainstorming pass just
+before dispatch (see that plan file's own "Re-validated 2026-09-19" note and
+git history, commit `af2ffda`) - including a NEW Step 1b added during that
+brainstorm: when the drain worker applies a row for an online player, notify
+their live session (`ChestSaleGoldQueue` for gold, `EnqueueCommandResult` for
+materials/equipment) instead of leaving them to find out at next relogin.
+Building all 4 of the plan's tasks in order (table+outbox proven on offline
+production; gathering; combat loot incl. the hard multi-kill accumulator;
+the drain worker). Dispatched in its own git worktree (`isolation: worktree`
+via the Agent tool) on a fresh branch off `main` at commit `af2ffda`.
+
+**Agent 2 - task 22 (sustained-load test).** Implementing
+`docs/superpowers/plans/2026-09-17-sustained-load-test.md` - a test proving
+neither existing E2E test starts the loot worker (its own Task 1
+prerequisite), then a scenario combining concurrent combat/gathering/
+offline-catchup/checkpoints/reconnects against an artificially bounded
+connection pool, the same shape as the 2026-09-06 loot-starvation incident.
+Asked to prove the test actually catches a reintroduced version of that bug
+before reporting done. Dispatched in its own git worktree, started before
+the task-18 agent.
+
+**When either finishes, the review checklist is the same one this session
+used four times already:**
+1. Read the actual diff (`git show --stat <commit>`, then the substantive
+   files) - do not act on the agent's summary alone.
+2. Spot-check the riskiest parts by hand (task 18: the Task 3 accumulator's
+   interaction with auto-salvage gold and the two-gold-paths rule; the live-
+   notify step actually enqueuing to both queues; task 22: whether it really
+   proved the test catches a reintroduced bug, or only asserted the happy
+   path).
+3. Cherry-pick (or take the branch directly) onto a FRESH branch off current
+   `main` - `main` has moved since either agent's worktree was forked.
+4. Rebuild, run the FULL server suite (and client suite/`check:ratchet` if
+   touched) on that clean branch - never trust the agent's own suite numbers,
+   which are relative to a stale baseline in its own worktree (this bit two
+   different agents this session, in two different ways - see the
+   `task-17-offline-production-failure-visibility` PR's description for one
+   of them).
+5. Push and open a PR against `main`. Do not merge without the owner's own
+   look, per how every PR this session got merged.
+6. Clean up the worktree and its branch once merged (`git worktree list`,
+   remove what's fully landed) - this session left three stray worktrees
+   post-merge once already and had to sweep for them.
+
+**Task 21 (SimulationEngine.cs split) - brainstormed, corrected, NOT
+started.** Session paused here deliberately (approaching a usage limit) -
+the owner explicitly said not to start coding it this session. What's
+settled:
+- Decisions already on record (2026-09-17, re-confirmed 2026-09-19): Option
+  A (drains) then B (command dispatch) then the safer half of C
+  (`ProcessSubTick`'s three branch BODIES only, dispatch stays put); static-
+  class coordinators taking `ref TickStatePayload`, no DI; phase-gated -
+  Phase 2 does not start until Phase 1 is committed and green, Phase 3 not
+  until both are.
+- **A real correctness bug in the plan itself was found and fixed** (commit
+  `4b55377`): Task 3.1 was written around the crafting-fallthrough-to-combat
+  bug and explicitly said to PRESERVE it (omit the `return`) - that bug was
+  independently fixed by PR #7 two days after this plan was written. Running
+  Task 3.1 as originally written would have silently reverted a live
+  production bugfix. Corrected; Phase 3's manual-verification step now
+  expects the opposite of what it originally said.
+- Phase 1 (the drain plane, `SimulationEngine.cs:748-1657`) was re-verified
+  against current code and is completely unaffected by any drift since
+  2026-09-17 (both the crafting-fix's +13 lines and task 19's +1 line land
+  well after Phase 1's range) - **it is ready to dispatch exactly as written,
+  the next time someone picks this up.**
+- Owner chose to checkpoint after Phase 1 rather than commit to all three
+  phases in one sitting - dispatch Phase 1 alone first, verify the full
+  suite is green with ZERO test changes (the plan's own proof-of-correctness
+  standard for a pure refactor), and only then come back for a fresh
+  decision on Phase 2/3, not a continuation on autopilot.
+- Phase 3's line numbers beyond Task 3.1 (Task 3.2's gathering extraction,
+  etc.) were NOT re-verified - out of scope for a docs-only correction pass,
+  needed before Phase 3 actually starts, not before Phase 1.
+
+---
+
 # HANDOFF 2026-09-19 - tasks 17/19/20/23 shipped, only 18/21/22 and Unity retirement remain
 
 Written after the owner asked "is everything done" following the
