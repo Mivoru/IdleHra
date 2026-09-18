@@ -7614,6 +7614,63 @@ namespace FolkIdle.Server.Network
             return player.Id;
         }
 
+        // Modul: sibling of TryResolveAuthenticatedPlayerAsync that also
+        // hands back the token's AuthMethod ("pw"/"dev") - added for the
+        // step-up gate (RequiresPasswordStepUpAsync below) rather than
+        // changing the original, which has seven-plus callers that only
+        // ever needed the playerId.
+        private async Task<(long PlayerId, string AuthMethod)> TryResolveAuthenticatedPlayerWithMethodAsync(HttpListenerRequest request)
+        {
+            const string bearerPrefix = "Bearer ";
+            string bearerHeader = request.Headers["Authorization"] ?? string.Empty;
+            if (bearerHeader.Length <= bearerPrefix.Length || !bearerHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return (0L, string.Empty);
+            }
+
+            string token = bearerHeader.Substring(bearerPrefix.Length);
+            JwtValidationResult result = AuthenticationEngine.ValidateJwt(token, _jwtSecretKey);
+            if (!result.IsValid || !await IsNonceCurrentAsync(result.AccountId, result.SessionNonce))
+            {
+                return (0L, string.Empty);
+            }
+
+            long playerId = await ResolvePlayerIdFromAccountIdAsync(result.AccountId);
+            return (playerId, result.AuthMethod);
+        }
+
+        /// <summary>
+        /// True if this session was established by a real password/OAuth
+        /// login (or the JWT predates the "m" claim, defaulted safe) and
+        /// therefore never needs a step-up; false only for a device-bearer
+        /// session, and even then only when the account has a password to
+        /// step up TO. A pure guest (PasswordHash still null) has nothing to
+        /// step up to, so a stolen DeviceId on a guest account gains nothing
+        /// extra from this gate - it is exactly as exposed as it always was.
+        /// </summary>
+        private async Task<bool> RequiresPasswordStepUpAsync(long playerId, string authMethod)
+        {
+            if (authMethod != "dev") return false;
+
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            var player = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId);
+            return player?.PasswordHash != null;
+        }
+
+        private static async Task<bool> VerifyStepUpPasswordAsync(FolkIdleDbContext db, long playerId, string suppliedPassword)
+        {
+            var player = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId);
+            return player != null && PasswordHasher.Verify(suppliedPassword, player.PasswordHash);
+        }
+
+        private static void WriteStepUpRequired(HttpListenerContext context)
+        {
+            context.Response.StatusCode = 403;
+            context.Response.ContentType = "application/json";
+            var bytes = Encoding.UTF8.GetBytes("{\"StepUpRequired\":true}");
+            context.Response.OutputStream.Write(bytes, 0, bytes.Length);
+        }
+
         // Modul: HandleVerifyReceipt REMOVED 2026-09-18 - it was the REST
         // wrapper around VerifyPurchaseAsync (an unauthenticated
         // AccountId/TransactionId/ProductId out of the request body, no
@@ -7633,7 +7690,7 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                var (playerId, authMethod) = await TryResolveAuthenticatedPlayerWithMethodAsync(context.Request);
                 if (playerId == 0L)
                 {
                     context.Response.StatusCode = 401;
@@ -7651,6 +7708,23 @@ namespace FolkIdle.Server.Network
                 using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
                 var body = await reader.ReadToEndAsync();
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                // Modul: step-up gate, Task 10. A device-bearer session on an
+                // account that already has a password proves only "held the
+                // DeviceId", not "is the account owner" - a real-money
+                // purchase requires re-proving the password in this same
+                // request body before VerifyReceiptAsync runs.
+                if (await RequiresPasswordStepUpAsync(playerId, authMethod))
+                {
+                    string suppliedPassword = payload.TryGetProperty("password", out var pwElement) ? (pwElement.GetString() ?? string.Empty) : string.Empty;
+                    await using var stepUpDb = await _contextFactory.CreateDbContextAsync();
+                    if (suppliedPassword.Length == 0 || !await VerifyStepUpPasswordAsync(stepUpDb, playerId, suppliedPassword))
+                    {
+                        WriteStepUpRequired(context);
+                        context.Response.Close();
+                        return;
+                    }
+                }
 
                 if (!payload.TryGetProperty("receipt", out var receiptElement))
                 {
@@ -8775,7 +8849,7 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                var (playerId, authMethod) = await TryResolveAuthenticatedPlayerWithMethodAsync(context.Request);
                 if (playerId == 0L)
                 {
                     context.Response.StatusCode = 401;
@@ -8789,6 +8863,7 @@ namespace FolkIdle.Server.Network
                 string body = await reader.ReadToEndAsync();
 
                 string oauthProviderToken;
+                string suppliedPassword;
                 try
                 {
                     using var document = System.Text.Json.JsonDocument.Parse(body);
@@ -8799,12 +8874,31 @@ namespace FolkIdle.Server.Network
                         return;
                     }
                     oauthProviderToken = tokenElement.GetString() ?? string.Empty;
+                    suppliedPassword = document.RootElement.TryGetProperty("password", out var pwElement)
+                        ? (pwElement.GetString() ?? string.Empty)
+                        : string.Empty;
                 }
                 catch (System.Text.Json.JsonException)
                 {
                     context.Response.StatusCode = 400;
                     context.Response.Close();
                     return;
+                }
+
+                // Modul: step-up gate, Task 10 - see HandleBillingVerify's
+                // identical block. Linking an external identity is just as
+                // irreversible/account-changing as a purchase, so a
+                // device-bearer session on a password-holding account must
+                // re-prove the password before LinkOAuthAccountAsync runs.
+                if (await RequiresPasswordStepUpAsync(playerId, authMethod))
+                {
+                    await using var stepUpDb = await _contextFactory.CreateDbContextAsync();
+                    if (suppliedPassword.Length == 0 || !await VerifyStepUpPasswordAsync(stepUpDb, playerId, suppliedPassword))
+                    {
+                        WriteStepUpRequired(context);
+                        context.Response.Close();
+                        return;
+                    }
                 }
 
                 var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();

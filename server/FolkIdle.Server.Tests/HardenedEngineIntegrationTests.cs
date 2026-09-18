@@ -12286,6 +12286,355 @@ namespace FolkIdle.Server.Tests
             Assert.True(result.FireDamageMultiplierPct > 0f);
             Assert.Equal(2, SetBonusEngine.TierOf(4));
         }
+
+        // Modul: shape-only mirror of AuthLoginResponse (a private nested
+        // class of NetworkBroadcastSystem) for the step-up tests below -
+        // same pattern as AuthLoginResponseTestDto in E2EGameLoopTest.cs.
+        private sealed class StepUpAuthResponseTestDto
+        {
+            public string Token { get; set; } = string.Empty;
+            public long ExpiresAtEpoch { get; set; }
+            public string RefreshToken { get; set; } = string.Empty;
+            public long RefreshExpiresAtEpoch { get; set; }
+        }
+
+        private const string StepUpTestPassword = "CorrectHorse123!";
+
+        // Modul: Task 10 - registers a REAL email+password account over HTTP
+        // (so PasswordHash is set AND HandleAuthRegister's own
+        // SetCurrentSessionNonceAsync call makes CurrentSessionNonce
+        // non-null, not the null "bootstrap state" a brand-new row would
+        // otherwise have), then mints a SEPARATE "dev"-tagged JWT against
+        // that same current nonce. That combination - a device-bearer token
+        // for an account that has a password - is exactly the "silent
+        // DeviceId login on an account that could also log in with a
+        // password" scenario the step-up gate exists for, and it is not
+        // producible any other way in a test without a full device-login
+        // round trip plus a manual password-set afterward.
+        private async Task<(Guid AccountId, long PlayerId, string DeviceBearerToken)> RegisterPasswordAccountAndMintDeviceBearerJwtAsync(
+            System.Net.Http.HttpClient httpClient, string baseUrl)
+        {
+            string email = $"stepup_{Guid.NewGuid():N}@example.com";
+            string username = "su" + Guid.NewGuid().ToString("N").Substring(0, 12);
+            var registerBody = new System.Net.Http.StringContent(
+                System.Text.Json.JsonSerializer.Serialize(new { email, username, password = StepUpTestPassword }),
+                Encoding.UTF8, "application/json");
+            var registerResponse = await httpClient.PostAsync($"{baseUrl}/api/v1/auth/register", registerBody);
+            Assert.Equal(System.Net.HttpStatusCode.OK, registerResponse.StatusCode);
+
+            string responseBody = await registerResponse.Content.ReadAsStringAsync();
+            var parsed = System.Text.Json.JsonSerializer.Deserialize<StepUpAuthResponseTestDto>(responseBody);
+            Assert.NotNull(parsed);
+
+            var pwValidation = AuthenticationEngine.ValidateJwt(parsed!.Token, AuthenticationDefaults.LocalDevelopmentFallback);
+            Assert.True(pwValidation.IsValid);
+            Guid accountId = pwValidation.AccountId;
+
+            long playerId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.PlayerGuid == accountId);
+                playerId = player.Id;
+                Assert.NotNull(player.PasswordHash);
+            }
+
+            string? currentNonce = await AuthenticationEngine.GetCurrentSessionNonceAsync(_fixture.RetryingOptions, accountId);
+            Assert.NotNull(currentNonce);
+
+            string deviceBearerToken = AuthenticationEngine.GenerateJwt(accountId, currentNonce!, "dev", AuthenticationDefaults.LocalDevelopmentFallback, out _);
+            return (accountId, playerId, deviceBearerToken);
+        }
+
+        private static System.Net.Http.StringContent BuildBillingVerifyBody(string? password)
+        {
+            string receiptJson = "{\"transactionId\":\"" + Guid.NewGuid().ToString("N") + "\",\"productId\":\"gems_pack_small\"}";
+            string base64Receipt = Convert.ToBase64String(Encoding.UTF8.GetBytes(receiptJson));
+
+            object payload = password == null
+                ? new { receipt = base64Receipt }
+                : new { receipt = base64Receipt, password };
+
+            return new System.Net.Http.StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+        }
+
+        // Modul: Task 10 - a device-bearer session on a password-holding
+        // account, submitting no password field at all, must be refused
+        // with the step-up sentinel rather than being allowed to reach
+        // BillingVerificationEngine.VerifyReceiptAsync.
+        [Fact]
+        public async Task Test_StepUp_BillingVerify_DeviceBearerWithPassword_NoPasswordField_Returns403()
+        {
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8110/");
+            using var offlineRedis = CreateOfflineRedisMultiplexer();
+            var redisCache = new RedisSessionCache(offlineRedis);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
+            networkSystem.RegisterBillingVerificationEngine(billingEngine);
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+            try
+            {
+                var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8110");
+
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", deviceBearerToken);
+                var response = await httpClient.PostAsync("http://localhost:8110/api/v1/billing/verify", BuildBillingVerifyBody(password: null));
+
+                Assert.Equal(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+                string body = await response.Content.ReadAsStringAsync();
+                Assert.Contains("\"StepUpRequired\":true", body);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        [Fact]
+        public async Task Test_StepUp_BillingVerify_DeviceBearerWithPassword_WrongPassword_Returns403()
+        {
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8111/");
+            using var offlineRedis = CreateOfflineRedisMultiplexer();
+            var redisCache = new RedisSessionCache(offlineRedis);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
+            networkSystem.RegisterBillingVerificationEngine(billingEngine);
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+            try
+            {
+                var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8111");
+
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", deviceBearerToken);
+                var response = await httpClient.PostAsync("http://localhost:8111/api/v1/billing/verify", BuildBillingVerifyBody(password: "DefinitelyWrongPassword!"));
+
+                Assert.Equal(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+                string body = await response.Content.ReadAsStringAsync();
+                Assert.Contains("\"StepUpRequired\":true", body);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: the correct password satisfies the gate and the request
+        // proceeds all the way to BillingVerificationEngine.VerifyReceiptAsync
+        // - a brand-new, well-formed receipt for a real product succeeds
+        // (200), proving the gate does not swallow the request on success.
+        [Fact]
+        public async Task Test_StepUp_BillingVerify_DeviceBearerWithPassword_CorrectPassword_ProceedsNormally()
+        {
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8112/");
+            using var offlineRedis = CreateOfflineRedisMultiplexer();
+            var redisCache = new RedisSessionCache(offlineRedis);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
+            networkSystem.RegisterBillingVerificationEngine(billingEngine);
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+            try
+            {
+                var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8112");
+
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", deviceBearerToken);
+                var response = await httpClient.PostAsync("http://localhost:8112/api/v1/billing/verify", BuildBillingVerifyBody(password: StepUpTestPassword));
+
+                Assert.NotEqual(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+                Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: a PURE GUEST (no password ever set) has nothing to step up
+        // to - RequiresPasswordStepUpAsync must read a null PasswordHash and
+        // let a real device-bearer login through with no password field at
+        // all, exactly as it always worked.
+        [Fact]
+        public async Task Test_StepUp_BillingVerify_PasswordlessGuestDeviceBearer_SucceedsWithoutPasswordField()
+        {
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8113/");
+            using var offlineRedis = CreateOfflineRedisMultiplexer();
+            var redisCache = new RedisSessionCache(offlineRedis);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
+            networkSystem.RegisterBillingVerificationEngine(billingEngine);
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+            try
+            {
+                string freshDeviceId = Guid.NewGuid().ToString("N");
+                var loginBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { deviceId = freshDeviceId }),
+                    Encoding.UTF8, "application/json");
+                var loginResponse = await httpClient.PostAsync("http://localhost:8113/api/v1/auth/login", loginBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, loginResponse.StatusCode);
+
+                string loginResponseBody = await loginResponse.Content.ReadAsStringAsync();
+                var parsed = System.Text.Json.JsonSerializer.Deserialize<StepUpAuthResponseTestDto>(loginResponseBody);
+                Assert.NotNull(parsed);
+
+                var validation = AuthenticationEngine.ValidateJwt(parsed!.Token, AuthenticationDefaults.LocalDevelopmentFallback);
+                Assert.True(validation.IsValid);
+                Assert.Equal("dev", validation.AuthMethod);
+
+                await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    var guest = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.PlayerGuid == validation.AccountId);
+                    Assert.Null(guest.PasswordHash);
+                }
+
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", parsed.Token);
+                var response = await httpClient.PostAsync("http://localhost:8113/api/v1/billing/verify", BuildBillingVerifyBody(password: null));
+
+                Assert.NotEqual(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+                Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: a session established by a REAL password login never needs
+        // a step-up, even on an account that has a password - RequiresPasswordStepUpAsync
+        // short-circuits on AuthMethod != "dev" before it ever looks at
+        // PasswordHash.
+        [Fact]
+        public async Task Test_StepUp_BillingVerify_PasswordAuthenticatedSession_SucceedsWithoutPasswordField()
+        {
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8114/");
+            using var offlineRedis = CreateOfflineRedisMultiplexer();
+            var redisCache = new RedisSessionCache(offlineRedis);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
+            networkSystem.RegisterBillingVerificationEngine(billingEngine);
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+            try
+            {
+                string email = $"stepup_pw_{Guid.NewGuid():N}@example.com";
+                string username = "supw" + Guid.NewGuid().ToString("N").Substring(0, 10);
+                var registerBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { email, username, password = StepUpTestPassword }),
+                    Encoding.UTF8, "application/json");
+                var registerResponse = await httpClient.PostAsync("http://localhost:8114/api/v1/auth/register", registerBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, registerResponse.StatusCode);
+
+                string registerResponseBody = await registerResponse.Content.ReadAsStringAsync();
+                var parsed = System.Text.Json.JsonSerializer.Deserialize<StepUpAuthResponseTestDto>(registerResponseBody);
+                Assert.NotNull(parsed);
+
+                var pwValidation = AuthenticationEngine.ValidateJwt(parsed!.Token, AuthenticationDefaults.LocalDevelopmentFallback);
+                Assert.Equal("pw", pwValidation.AuthMethod);
+
+                // This account DOES have a password (it just registered with
+                // one) - the point of this test is that a "pw" token still
+                // needs no step-up.
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", parsed!.Token);
+                var response = await httpClient.PostAsync("http://localhost:8114/api/v1/billing/verify", BuildBillingVerifyBody(password: null));
+
+                Assert.NotEqual(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+                Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: Task 10, Step 3 coverage - HandleOAuthLink parses its body
+        // with JsonDocument.Parse rather than HandleBillingVerify's
+        // JsonSerializer.Deserialize<JsonElement>, so it is its own
+        // regression surface. A device-bearer session on a password-holding
+        // account gets the same 403 sentinel when it omits the password.
+        [Fact]
+        public async Task Test_StepUp_OAuthLink_DeviceBearerWithPassword_NoPasswordField_Returns403()
+        {
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options => options.UseNpgsql(_fixture.ConnectionString));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+            services.AddSingleton(_fixture.RetryingOptions);
+            services.AddSingleton<IOAuthTokenValidator>(new MockOAuthTokenValidator());
+            var serviceProvider = services.BuildServiceProvider();
+
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8115/");
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+            try
+            {
+                var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8115");
+
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", deviceBearerToken);
+                var body = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { oauthProviderToken = "mock:Google:" + Guid.NewGuid().ToString("N") }),
+                    Encoding.UTF8, "application/json");
+                var response = await httpClient.PostAsync("http://localhost:8115/api/v1/auth/oauth-link", body);
+
+                Assert.Equal(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+                string responseBody = await response.Content.ReadAsStringAsync();
+                Assert.Contains("\"StepUpRequired\":true", responseBody);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: the correct password satisfies HandleOAuthLink's gate too,
+        // and the request proceeds to AuthenticationEngine.LinkOAuthAccountAsync
+        // (a fresh mock provider token on a not-yet-linked account succeeds).
+        [Fact]
+        public async Task Test_StepUp_OAuthLink_DeviceBearerWithPassword_CorrectPassword_ProceedsNormally()
+        {
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options => options.UseNpgsql(_fixture.ConnectionString));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+            services.AddSingleton(_fixture.RetryingOptions);
+            services.AddSingleton<IOAuthTokenValidator>(new MockOAuthTokenValidator());
+            var serviceProvider = services.BuildServiceProvider();
+
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8116/");
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+            try
+            {
+                var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8116");
+
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", deviceBearerToken);
+                var body = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { oauthProviderToken = "mock:Google:" + Guid.NewGuid().ToString("N"), password = StepUpTestPassword }),
+                    Encoding.UTF8, "application/json");
+                var response = await httpClient.PostAsync("http://localhost:8116/api/v1/auth/oauth-link", body);
+
+                Assert.NotEqual(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
+                Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
     }
 }
 
