@@ -209,6 +209,15 @@ namespace FolkIdle.Server.Engine
                         }
                         gold.Quantity += mail.GoldAttachment;
                     }
+
+                    // Modul: this path never told the live session anything -
+                    // isSuccess is hardcoded true at this method's one call
+                    // site, so a claim always lands here, and Mailbox.svelte's
+                    // claim()/claimAll() had no signal besides their own
+                    // guessed-delay setTimeout. Routes through the same
+                    // CommandResult ring buffer every other engine's success
+                    // path already uses.
+                    _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
                 }
                 else
                 {
@@ -224,6 +233,12 @@ namespace FolkIdle.Server.Engine
             }
             catch (Exception)
             {
+                // Modul: a known, deliberately out-of-scope gap (2026-09-19
+                // REST-race plan) - this and the `mail == null` early return
+                // above still report nothing to the client. Both are
+                // unreachable from CommitMailClaimAsync's one real call site
+                // today (isSuccess is hardcoded true), so closing them is
+                // scoped out rather than missed.
                 await transaction.RollbackAsync();
             }
             finally

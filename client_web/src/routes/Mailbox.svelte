@@ -5,8 +5,7 @@
   // into a full backpack. Rewards that overflowed were not lost, they were
   // sitting somewhere the player had no way to look.
 
-  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { invalidateOwnedItems } from '../lib/net/queryClient';
+  import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchMailbox, type MailboxEntry } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
   import { claimMailItem } from '../lib/net/commands';
@@ -16,7 +15,6 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
 
-  const client = useQueryClient();
   const mailbox = createQuery(() => ({ queryKey: queryKeys.mailbox, queryFn: fetchMailbox }));
 
   const snap = $derived($playerState);
@@ -37,14 +35,6 @@
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
 
     play('lootDropped');
-    // The mailbox row disappears server-side and the inventory grows, so both
-    // are refreshed. The delay matches the other screens: the command travels
-    // by WebSocket and the list by HTTP, so an immediate refetch races the
-    // simulation tick that applies it.
-    setTimeout(() => {
-      client.invalidateQueries({ queryKey: queryKeys.mailbox });
-      invalidateOwnedItems(client);
-    }, 600);
   }
 
   function claimAll() {
@@ -59,10 +49,6 @@
       setTimeout(() => claimMailItem(entry.Id), index * 250);
     });
     play('lootDropped');
-    setTimeout(() => {
-      client.invalidateQueries({ queryKey: queryKeys.mailbox });
-      invalidateOwnedItems(client);
-    }, claimable.length * 250 + 800);
   }
 
   function received(epochSeconds: number): string {

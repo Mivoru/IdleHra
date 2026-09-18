@@ -69,11 +69,6 @@
     return item ? prettifyBaseId(item.BaseId) : `Item #${itemId}`;
   }
 
-  function refetchSoon() {
-    setTimeout(() => inventory.refetch(), 400);
-  }
-
-
   // Modul: ADD to a slot rather than only filling an empty one.
   //
   // The server has always summed into an occupied slot when the food matches -
@@ -92,7 +87,6 @@
       TargetSlotIndex: slotIndex,
       DepositQuantity: Math.min(amount, food.quantity, SLOT_CAPACITY),
     });
-    refetchSoon();
   }
 
   // Modul: take SOME back out, which had no expression at all.
@@ -106,7 +100,6 @@
       TargetSlotIndex: slotIndex,
       DepositQuantity: Math.max(1, Math.min(amount, SLOT_CAPACITY)),
     });
-    refetchSoon();
   }
 
   function unload(slotIndex: number) {
@@ -116,7 +109,6 @@
       TargetSlotIndex: slotIndex,
       DepositQuantity: 0,
     });
-    refetchSoon();
   }
 
   let threshold = $state(0);

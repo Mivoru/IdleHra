@@ -22,6 +22,7 @@ import { DamageFeed, type DamageEvent } from './damage';
 import { pushCombatEvent, resetCombatLog, CombatEventKind, CombatEventFlag } from './combatLog';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
+import type { QueryClient } from '@tanstack/svelte-query';
 import { play, playHit, playWithFallback } from '../ui/audio';
 import { fetchAchievements, type AchievementEntry } from '../net/rest';
 import {
@@ -224,6 +225,39 @@ const COMMAND_RESULT_LIFETIME_MS = 6000;
 
 export function dismissCommandResult(id: number): void {
   commandResults.update((entries) => entries.filter((e) => e.id !== id));
+}
+
+/**
+ * The synchronous half of the command-acknowledgment cache bust. Pulled out
+ * of startSession's onStateUpdate closure into its own function so it can be
+ * exercised directly by a test (tests/commandAckInvalidation.test.ts) without
+ * standing up a whole WebSocket session. Behaviour is unchanged - this is a
+ * pure extraction, not a rewrite.
+ *
+ * Modul: A COMMAND RESULT IS THE SERVER SAYING "THAT IS DONE", so it is the
+ * moment every screen's data is stale. Nine screens each guessed at this with
+ * a setTimeout - 400ms here, 700 there, 900 in Breeding - which is a guess
+ * about how long a Serializable transaction plus a state reload takes. Too
+ * short and the refetch reads the OLD rows; too long and it feels broken.
+ * Invalidated globally rather than per screen because the results ring does
+ * not say WHICH command it is answering, and a command a player just issued
+ * can change gold, inventory, equipment and the village at once.
+ */
+export function processCommandResults(
+  packet: Record<string, unknown>,
+  arrivedAtMs: number,
+  feed: CommandResultFeed,
+  client: Pick<QueryClient, 'invalidateQueries'>,
+): CommandResultEntry[] {
+  const results = feed.accept(packet, arrivedAtMs);
+  if (results.length > 0) {
+    commandResults.update((entries) => [...entries, ...results]);
+    // One cue per batch, not per result: the ring buffer can deliver four
+    // at once and four overlapping error tones is a noise, not a signal.
+    if (results.some((r) => r.code !== COMMAND_RESULT_SUCCESS)) play('error');
+    client.invalidateQueries();
+  }
+  return results;
 }
 
 let localNoticeSequence = -1;
@@ -564,34 +598,12 @@ export function startSession(token: string): void {
       // this the player presses a button, nothing happens, and nothing
       // anywhere says why - which is the exact state the server's result ring
       // buffer was added to end.
-      const results = commandResultFeed.accept(
+      processCommandResults(
         packet as unknown as Record<string, unknown>,
         arrivedAtMs,
+        commandResultFeed,
+        queryClient,
       );
-      if (results.length > 0) {
-        commandResults.update((entries) => [...entries, ...results]);
-        // One cue per batch, not per result: the ring buffer can deliver four
-        // at once and four overlapping error tones is a noise, not a signal.
-        if (results.some((r) => r.code !== COMMAND_RESULT_SUCCESS)) play('error');
-
-        // Modul: A COMMAND RESULT IS THE SERVER SAYING "THAT IS DONE", so it is
-        // the moment every screen's data is stale.
-        //
-        // Nine screens each guessed at this with a setTimeout - 400ms here,
-        // 700 there, 900 in Breeding - which is a guess about how long a
-        // Serializable transaction plus a state reload takes. Too short and
-        // the refetch reads the OLD rows and the screen looks unchanged; too
-        // long and it feels broken. Reported as "I have to press F5 to see the
-        // gold update".
-        //
-        // Invalidated globally rather than per screen because the results ring
-        // does not say WHICH command it is answering - and a command a player
-        // just issued can change gold, inventory, equipment and the village at
-        // once. TanStack only refetches what is actually mounted and observed,
-        // so the cost of the broad brush is small and the cost of missing one
-        // is a screen that lies.
-        queryClient.invalidateQueries();
-      }
 
       // Modul: the tutorial arms from IsFreshAccount - the server's own signal
       // that this account's first character has never aged - which is the same
