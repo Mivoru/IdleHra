@@ -8084,11 +8084,11 @@ namespace FolkIdle.Server.Network
         /// saves a password prompt into one that prevents a sign-in.
         /// </remarks>
         private async Task<(string Token, long ExpiresAtEpoch)> TryIssueRefreshTokenAsync(
-            RetryingDbContextOptions authOptions, Guid accountId)
+            RetryingDbContextOptions authOptions, Guid accountId, string authMethod)
         {
             try
             {
-                return await AuthenticationEngine.IssueRefreshTokenAsync(authOptions, accountId);
+                return await AuthenticationEngine.IssueRefreshTokenAsync(authOptions, accountId, authMethod);
             }
             catch (Exception ex)
             {
@@ -8156,11 +8156,14 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                // Modul: a fresh SessionNonce, exactly as a password login
-                // mints one. The nonce is what the Redis eviction check uses to
-                // kick a stale prior session for the same account, so reusing
-                // one here would let two devices hold the same session identity
-                // and neither would ever evict the other.
+                // Modul: THE NONCE DOES NOT FEED SESSION EVICTION - that is a
+                // SEPARATE mechanism (RedisPlayerSessionLock, its own
+                // per-connection RedisLockToken, see SubscribeToSessionEviction
+                // and the WebSocket handshake's ForceAcquireAndEvictAsync
+                // call). An earlier comment here claimed otherwise; it was
+                // wrong. This nonce exists so a logout/reset/replay event -
+                // none of which are a new login - can invalidate an access
+                // token nothing else touches. See IsNonceCurrentAsync.
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
                 string jwt = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
 
@@ -8244,10 +8247,15 @@ namespace FolkIdle.Server.Network
         // DeviceId is a client-persisted GUID (see UiLoginWindow on the
         // client) - looked up or auto-provisioned via AuthenticationEngine.
         // LoginOrProvisionAsync, then a fresh SessionNonce is minted and
-        // signed into a JWT. That SessionNonce round-trips through the
-        // WebSocket AuthHandshakePacket at connect time and is what the
-        // Redis eviction check in HandleClientLoopAsync uses to detect and
-        // kick a stale prior session for the same account.
+        // signed into a JWT. THE NONCE DOES NOT FEED SESSION EVICTION - that
+        // is a separate mechanism (RedisPlayerSessionLock, its own
+        // per-connection RedisLockToken, see SubscribeToSessionEviction and
+        // the WebSocket handshake's ForceAcquireAndEvictAsync call). An
+        // earlier comment here claimed the nonce was what the Redis eviction
+        // check used to detect and kick a stale prior session; it was wrong.
+        // This nonce exists so a logout/reset/replay event - none of which
+        // are a new login - can invalidate an access token nothing else
+        // touches. See IsNonceCurrentAsync.
         // Modul: accepts either deviceId (existing login-or-provision flow,
         // unchanged) or oauthProviderToken (OAuth recovery login, Part 1 of
         // this task). oauthProviderToken is a validated PROOF-OF-OWNERSHIP
@@ -8318,6 +8326,7 @@ namespace FolkIdle.Server.Network
 
                 var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
                 Guid accountId;
+                string authMethod;
 
                 if (!string.IsNullOrWhiteSpace(oauthProviderToken))
                 {
@@ -8330,6 +8339,7 @@ namespace FolkIdle.Server.Network
                         return;
                     }
                     accountId = oauthResult.AccountId;
+                    authMethod = "pw";
                 }
                 else if (!string.IsNullOrWhiteSpace(email) && !string.IsNullOrEmpty(password))
                 {
@@ -8341,6 +8351,7 @@ namespace FolkIdle.Server.Network
                         return;
                     }
                     accountId = emailResult.AccountId;
+                    authMethod = "pw";
                 }
                 else if (!string.IsNullOrWhiteSpace(rememberedDeviceId) && rememberedDeviceId.Length <= 128)
                 {
@@ -8352,10 +8363,12 @@ namespace FolkIdle.Server.Network
                         return;
                     }
                     accountId = rememberedResult.AccountId;
+                    authMethod = "dev";
                 }
                 else if (!string.IsNullOrWhiteSpace(deviceId) && deviceId.Length <= 128)
                 {
                     (_, accountId) = await AuthenticationEngine.LoginOrProvisionAsync(authOptions, deviceId);
+                    authMethod = "dev";
                 }
                 else
                 {
@@ -8375,9 +8388,11 @@ namespace FolkIdle.Server.Network
                 await DailyLoginRewardEngine.TryGrantLoginRewardAsync(authOptions, accountId);
 
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
-                string token = AuthenticationEngine.GenerateJwt(accountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
+                await AuthenticationEngine.SetCurrentSessionNonceAsync(authOptions, accountId, sessionNonce);
+                _accountCurrentNonce[accountId] = sessionNonce;
+                string token = AuthenticationEngine.GenerateJwt(accountId, sessionNonce, authMethod, _jwtSecretKey, out long expiresAtEpoch);
 
-                var refresh = await TryIssueRefreshTokenAsync(authOptions, accountId);
+                var refresh = await TryIssueRefreshTokenAsync(authOptions, accountId, authMethod);
 
                 var response = new AuthLoginResponse
                 {
@@ -8690,9 +8705,11 @@ namespace FolkIdle.Server.Network
                 await DailyLoginRewardEngine.TryGrantLoginRewardAsync(authOptions, result.AccountId);
 
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
-                string token = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
+                await AuthenticationEngine.SetCurrentSessionNonceAsync(authOptions, result.AccountId, sessionNonce);
+                _accountCurrentNonce[result.AccountId] = sessionNonce;
+                string token = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, "pw", _jwtSecretKey, out long expiresAtEpoch);
 
-                var refresh = await TryIssueRefreshTokenAsync(authOptions, result.AccountId);
+                var refresh = await TryIssueRefreshTokenAsync(authOptions, result.AccountId, "pw");
 
                 var response = new AuthLoginResponse
                 {

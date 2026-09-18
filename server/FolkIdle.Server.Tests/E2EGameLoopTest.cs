@@ -885,5 +885,102 @@ namespace FolkIdle.Server.Tests
                 networkSystem.Stop();
             }
         }
+
+        // Modul: AuthLoginResponse itself is a private nested class of
+        // NetworkBroadcastSystem, so a test outside that class deserializes
+        // into its own shape-only mirror - same pattern as
+        // MarketBrowsePageTestDto above.
+        private sealed class AuthLoginResponseTestDto
+        {
+            public string Token { get; set; } = string.Empty;
+            public long ExpiresAtEpoch { get; set; }
+            public string RefreshToken { get; set; } = string.Empty;
+            public long RefreshExpiresAtEpoch { get; set; }
+        }
+
+        // Modul: Task 5 - proves HandleAuthLogin's device-login branch
+        // durably persists the nonce it embeds in the JWT it hands back,
+        // rather than minting one that lives only in the token. Without
+        // SetCurrentSessionNonceAsync in the handler, GetCurrentSessionNonceAsync
+        // would read back null (or a stale value from a previous session) and
+        // every subsequent request on this brand-new login would be rejected
+        // by the nonce gate Task 4 wired into the REST/WebSocket auth checks -
+        // a fresh login that could authenticate exactly once.
+        [Fact]
+        public async Task Test_E2E_SessionSecurity_LoginPersistsNonceDurably()
+        {
+            if (!_dockerAvailable || _dbContainer == null)
+            {
+                Console.WriteLine("WARNING: Skipping login nonce persistence E2E verification because Docker is unavailable. CI must provide Docker for mandatory database coverage.");
+                return;
+            }
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options =>
+                options.UseNpgsql(_dbContainer.GetConnectionString()));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+
+            // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
+            // off the service provider it is handed (HandleAuthLogin's own
+            // SetCurrentSessionNonceAsync/IssueRefreshTokenAsync calls do this
+            // too) - see the other E2E fixtures in this file for the same
+            // registration.
+            var loginRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(loginRetryOptions));
+
+            var serviceProvider = services.BuildServiceProvider();
+            var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+            var retryingOptions = serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                await db.Database.MigrateAsync();
+            }
+
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8086/");
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+
+            try
+            {
+                string freshDeviceId = Guid.NewGuid().ToString("N");
+                var loginBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { deviceId = freshDeviceId }),
+                    System.Text.Encoding.UTF8, "application/json");
+
+                var loginResponse = await httpClient.PostAsync("http://localhost:8086/api/v1/auth/login", loginBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, loginResponse.StatusCode);
+
+                string responseBody = await loginResponse.Content.ReadAsStringAsync();
+                var parsed = System.Text.Json.JsonSerializer.Deserialize<AuthLoginResponseTestDto>(responseBody);
+                Assert.NotNull(parsed);
+                Assert.False(string.IsNullOrEmpty(parsed!.Token));
+
+                var decoded = AuthenticationEngine.ValidateJwt(parsed.Token, AuthenticationDefaults.LocalDevelopmentFallback);
+                Assert.True(decoded.IsValid);
+                Assert.False(string.IsNullOrEmpty(decoded.SessionNonce));
+
+                string? storedNonce = await AuthenticationEngine.GetCurrentSessionNonceAsync(retryingOptions, decoded.AccountId);
+                Assert.NotNull(storedNonce);
+                Assert.Equal(decoded.SessionNonce, storedNonce);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
     }
 }
