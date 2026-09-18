@@ -8149,6 +8149,14 @@ namespace FolkIdle.Server.Network
                         // came back, so every session on that account was just
                         // revoked. See RedeemRefreshTokenAsync for why.
                         Console.WriteLine("Refresh token replay detected; all sessions for that account revoked.");
+
+                        // Modul: "all sessions" used to mean only the refresh
+                        // half - RedeemRefreshTokenAsync already revoked every
+                        // refresh token for this account before returning
+                        // Replayed. The access token survived that, for up to
+                        // 24 more hours, until this bump.
+                        string newNonce = await AuthenticationEngine.BumpSessionNonceAsync(authOptions, result.AccountId);
+                        await EvictAccountSessionAsync(result.AccountId, newNonce);
                     }
 
                     context.Response.StatusCode = 401;

@@ -1357,5 +1357,112 @@ namespace FolkIdle.Server.Tests
                 networkSystem.Stop();
             }
         }
+
+        // Modul: Task 9 - a replayed (already-spent) refresh token was
+        // already treated as a theft signal - RedeemRefreshTokenAsync revoked
+        // every refresh token on the account - but the access token that
+        // device already held rode out its remaining lifetime, exactly the
+        // gap logout (Task 7) and password reset (Task 8) closed. This proves
+        // the whole chain against the real HTTP endpoint: log in, redeem the
+        // refresh token once (a legitimate rotation, yielding a successor),
+        // then present the ORIGINAL now-spent refresh token again - the
+        // replay - and confirm the access token captured at login (still well
+        // within its 24h life) now 401s on an authenticated REST call too.
+        [Fact]
+        public async Task Test_E2E_SessionSecurity_RefreshReplayRevokesTheLiveAccessToken()
+        {
+            if (!_dockerAvailable || _dbContainer == null)
+            {
+                Console.WriteLine("WARNING: Skipping refresh-replay-revokes-access-token E2E verification because Docker is unavailable. CI must provide Docker for mandatory database coverage.");
+                return;
+            }
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options =>
+                options.UseNpgsql(_dbContainer.GetConnectionString()));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+
+            // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
+            // off the service provider it is handed (HandleAuthRefresh's own
+            // RedeemRefreshTokenAsync/BumpSessionNonceAsync calls do this
+            // too) - see the other E2E fixtures in this file for the same
+            // registration.
+            var replayRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(replayRetryOptions));
+
+            var serviceProvider = services.BuildServiceProvider();
+            var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                await db.Database.MigrateAsync();
+            }
+
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8090/");
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+
+            try
+            {
+                string freshDeviceId = Guid.NewGuid().ToString("N");
+                var loginBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { deviceId = freshDeviceId }),
+                    System.Text.Encoding.UTF8, "application/json");
+
+                var loginResponse = await httpClient.PostAsync("http://localhost:8090/api/v1/auth/login", loginBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, loginResponse.StatusCode);
+
+                string loginResponseBody = await loginResponse.Content.ReadAsStringAsync();
+                var loginParsed = System.Text.Json.JsonSerializer.Deserialize<AuthLoginResponseTestDto>(loginResponseBody);
+                Assert.NotNull(loginParsed);
+                Assert.False(string.IsNullOrEmpty(loginParsed!.Token));
+                Assert.False(string.IsNullOrEmpty(loginParsed.RefreshToken));
+
+                string originalAccessToken = loginParsed.Token;
+                string originalRefreshToken = loginParsed.RefreshToken;
+
+                // A legitimate rotation first, so the token being replayed
+                // next is genuinely spent rather than merely unused.
+                var firstRefreshBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { refreshToken = originalRefreshToken }),
+                    System.Text.Encoding.UTF8, "application/json");
+                var firstRefreshResponse = await httpClient.PostAsync("http://localhost:8090/api/v1/auth/refresh", firstRefreshBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, firstRefreshResponse.StatusCode);
+
+                // Presenting the SAME (now-spent) refresh token again is the
+                // replay case - the server treats it as a theft signal.
+                var replayBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { refreshToken = originalRefreshToken }),
+                    System.Text.Encoding.UTF8, "application/json");
+                var replayResponse = await httpClient.PostAsync("http://localhost:8090/api/v1/auth/refresh", replayBody);
+                Assert.Equal(System.Net.HttpStatusCode.Unauthorized, replayResponse.StatusCode);
+
+                // The FIRST access token, captured at login and still well
+                // within its 24h life, must now also fail an authenticated
+                // REST call - the replay must have bumped the account's
+                // session nonce and evicted the live session, not merely
+                // refused to hand out a new refresh token.
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", originalAccessToken);
+                var rejected = await httpClient.GetAsync("http://localhost:8090/api/v1/market/listings?pageIndex=0&pageSize=10");
+                Assert.Equal(System.Net.HttpStatusCode.Unauthorized, rejected.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
     }
 }
