@@ -68,29 +68,11 @@ namespace FolkIdle.Server.Tests
             }
         }
 
-        // Modul: Phase 5, Part 1. Active, deterministic polling replacing
-        // rigid wall-clock Task.Delay waits, which assume the server's
-        // 10Hz tick loop keeps pace with real time - a false assumption
-        // under CI's CPU/IO scheduling pressure, where a starved test
-        // host can cause the tick loop itself to fall behind real time,
-        // so waiting a fixed number of real-world seconds does not
-        // guarantee a fixed number of simulated ticks actually ran.
-        // Polling the real observed state directly (received packets, live
-        // metrics) decouples verification from the runner's wall-clock
-        // scheduling entirely - the test now waits exactly as long as
-        // needed, up to a generous safety-net timeout, rather than a
-        // single fixed guess that must be long enough for the worst case
-        // yet short enough not to needlessly slow every passing run.
-        private static async Task<bool> WaitForConditionAsync(Func<bool> condition, int timeoutMs, int pollIntervalMs = 100)
-        {
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            while (stopwatch.ElapsedMilliseconds < timeoutMs)
-            {
-                if (condition()) return true;
-                await Task.Delay(pollIntervalMs);
-            }
-            return condition();
-        }
+        // Modul: Phase 5, Part 1's WaitForConditionAsync, and this file's own
+        // MintTestJwt/BuildAuthHandshakeBuffer, now live in E2ETestHarness -
+        // extracted alongside the engine-graph bootstrap below (see
+        // E2ETestHarness.BuildEngineGraph) so the sustained-load scenario
+        // (docs/TASK_BOARD.md #22) does not need a third copy of any of them.
 
         // Modul: final-review Finding 5 - every E2E fixture that spins up a
         // real NetworkBroadcastSystem against Testcontainers Postgres needs
@@ -122,36 +104,6 @@ namespace FolkIdle.Server.Tests
             services.AddSingleton(new RetryingDbContextOptions(retryOptions));
         }
 
-        private static string MintTestJwt(Guid accountId)
-        {
-            return AuthenticationEngine.GenerateJwt(accountId, AuthenticationEngine.GenerateSessionNonce(), "pw", AuthenticationDefaults.LocalDevelopmentFallback, out _);
-        }
-
-        // Mirrors WebSocketClient.SendAuthHandshakeAsync's fixed-buffer write
-        // pattern - MemoryMarshal.Write needs the JwtToken bytes already
-        // placed inside the struct's fixed buffer before it can blit the
-        // whole AuthHandshakePacket into a wire-ready byte array.
-        private static unsafe byte[] BuildAuthHandshakeBuffer(string jwt)
-        {
-            byte[] jwtBytes = System.Text.Encoding.UTF8.GetBytes(jwt);
-            var packet = new AuthHandshakePacket
-            {
-                JwtTokenLength = (ushort)jwtBytes.Length,
-                AssetHash = 0,
-                PlatformSignature = 0
-            };
-
-            byte* target = packet.JwtToken;
-            for (int i = 0; i < AuthHandshakePacket.JwtTokenCapacity; i++)
-            {
-                target[i] = i < jwtBytes.Length ? jwtBytes[i] : (byte)0;
-            }
-
-            byte[] buffer = new byte[Marshal.SizeOf<AuthHandshakePacket>()];
-            MemoryMarshal.Write(new Span<byte>(buffer), packet);
-            return buffer;
-        }
-
         [Fact]
         public async Task Test_E2E_ClosedLoopVerification()
         {
@@ -178,42 +130,23 @@ namespace FolkIdle.Server.Tests
                 await db.Database.MigrateAsync();
             }
 
-            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8081/");
-            var lootEngine = new LootTableEngine();
-            var checkpointManager = new StateCheckpointManager(serviceProvider);
-            var forgeEngine = new ForgeSplicingEngine(serviceProvider);
-            var playerRegistry = new PlayerSessionRegistry();
-            var marketEngine = new MarketOrderBookEngine(serviceProvider, playerRegistry);
-            var guildEngine = new GuildContributionEngine(serviceProvider);
-            var escrowEngine = new MarketEscrowEngine(serviceProvider, playerRegistry);
-            var mailboxEngine = new MailboxAndBankEngine(serviceProvider, playerRegistry);
-            var rerollEngine = new AffixRerollEngine(serviceProvider);
-            var breedingEngine = new BreedingEngine(serviceProvider, playerRegistry);
-            var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
-            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, retryingDbOptions);
-            var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
-            var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
-            var guildWarEngine = new GuildWarEngine(serviceProvider);
-            var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
-            var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(serviceProvider, playerRegistry);
-            var guildCombatSimulationEngine = new GuildCombatSimulationEngine(serviceProvider, playerRegistry);
+            var graph = E2ETestHarness.BuildEngineGraph(serviceProvider, contextFactory, retryingDbOptions, "http://localhost:8081/");
+            var networkSystem = graph.NetworkSystem;
+            var simulationEngine = graph.SimulationEngine;
+            var playerRegistry = graph.PlayerRegistry;
 
             // AntiCheatTelemetryEngine.RecordCommand/RequestShadowBan (the only
             // methods reachable from this test's live 10.5s tick loop) never
-            // dereference the redis multiplexer, so redis: null! is safe here -
-            // unlike Push/Compliance/Billing below, this dependency cannot stay
-            // null! because SimulationEngine.EngineLoop calls it unconditionally
-            // (it is a required, always-injected dependency in production).
+            // dereference the redis multiplexer, so redis: null! is safe here.
+            // BuildEngineGraph wires SimulationEngine's own AntiCheatTelemetryEngine
+            // parameter as null! (matching StressTestConcurrentMultiplexing's
+            // shape) - harmless, since every read of that field inside
+            // SimulationEngine is null-conditional (RequestShadowBan/ForgetPlayer).
+            // Registering a real instance on the NETWORK system separately is
+            // still worth doing so NetworkBroadcastSystem's own RecordCommand
+            // telemetry call fires as it did before this extraction.
             var antiCheatTelemetryEngine = new AntiCheatTelemetryEngine(serviceProvider, null!, playerRegistry, networkSystem);
             networkSystem.RegisterAntiCheatTelemetryEngine(antiCheatTelemetryEngine);
-
-            // Push/Compliance/Billing require Redis and are not exercised by
-            // this test's scenario, so they stay null! for things we don't use.
-            var simulationEngine = new SimulationEngine(
-                lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
-                escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageManagementEngine, guildWarEngine, legacyStoreEngine,
-                guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, null!, null!, null!, null!, contextFactory);
 
             // Spin up headless loop. This test drives the network gateway
             // directly without running ColdRecoveryCoordinator (there is no
@@ -260,7 +193,7 @@ namespace FolkIdle.Server.Tests
             await clientSocket.ConnectAsync(new Uri("ws://localhost:8081/"), CancellationToken.None);
 
             // Send Handshake Auth Packet
-            byte[] authBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
+            byte[] authBuffer = E2ETestHarness.BuildAuthHandshakeBuffer(E2ETestHarness.MintTestJwt(accountId));
             await clientSocket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
 
             // 3. Simulate execution. The receive loop starts before any gameplay
@@ -355,7 +288,7 @@ namespace FolkIdle.Server.Tests
             // starts it non-zero, so it would be trivially true
             // immediately) but is still verified separately below via
             // lastState, matching this test's original assertion.
-            bool leveledUp = await WaitForConditionAsync(
+            bool leveledUp = await E2ETestHarness.WaitForConditionAsync(
                 () => receivedPackets.Any(p => p.ActiveActivityId == 55 && p.CurrentLevel >= 1),
                 timeoutMs: 90000);
             Assert.True(leveledUp, "Player never leveled up within the timeout - combat loop did not resolve.");
@@ -395,7 +328,7 @@ namespace FolkIdle.Server.Tests
                     using var floodCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                     await floodSocket.ConnectAsync(new Uri("ws://localhost:8081/"), floodCts.Token);
 
-                    byte[] floodAuthBuffer = BuildAuthHandshakeBuffer(MintTestJwt(floodAccountId));
+                    byte[] floodAuthBuffer = E2ETestHarness.BuildAuthHandshakeBuffer(E2ETestHarness.MintTestJwt(floodAccountId));
                     await floodSocket.SendAsync(new ArraySegment<byte>(floodAuthBuffer), WebSocketMessageType.Binary, true, floodCts.Token);
 
                     var floodCmd = new ClientCommandPacket { Command = CommandType.ChangeActivity, TargetId = 1 };
@@ -424,7 +357,7 @@ namespace FolkIdle.Server.Tests
             // always covers it, for the same reason the combat-resolve wait
             // above was converted (a starved tick loop can fall behind real
             // time under CI scheduling pressure).
-            await WaitForConditionAsync(() => simulationEngine.GetMetrics().ThrottledPacketsDropped >= 5, timeoutMs: 5000);
+            await E2ETestHarness.WaitForConditionAsync(() => simulationEngine.GetMetrics().ThrottledPacketsDropped >= 5, timeoutMs: 5000);
 
             simulationEngine.Stop();
             networkSystem.Stop();
@@ -483,31 +416,9 @@ namespace FolkIdle.Server.Tests
                 await db.Database.MigrateAsync();
             }
 
-            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8082/");
-            var lootEngine = new LootTableEngine();
-            var checkpointManager = new StateCheckpointManager(serviceProvider);
-            var forgeEngine = new ForgeSplicingEngine(serviceProvider);
-            var playerRegistry = new PlayerSessionRegistry();
-            var marketEngine = new MarketOrderBookEngine(serviceProvider, playerRegistry);
-            var guildEngine = new GuildContributionEngine(serviceProvider);
-            var escrowEngine = new MarketEscrowEngine(serviceProvider, playerRegistry);
-            var mailboxEngine = new MailboxAndBankEngine(serviceProvider, playerRegistry);
-            var rerollEngine = new AffixRerollEngine(serviceProvider);
-            var breedingEngine = new BreedingEngine(serviceProvider, playerRegistry);
-            var guildLogisticsEngine = new GuildLogisticsEngine(serviceProvider, playerRegistry);
-            var craftingEngine = new CraftingEngine(contextFactory, playerRegistry, retryingDbOptions);
-            var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
-            var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
-            var guildWarEngine = new GuildWarEngine(serviceProvider);
-            var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);
-            var guildLogisticsDepotEngine = new GuildLogisticsDepotEngine(serviceProvider, playerRegistry);
-            var guildCombatSimulationEngine = new GuildCombatSimulationEngine(serviceProvider, playerRegistry);
-            
-            var simulationEngine = new SimulationEngine(
-                lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine,
-                escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine,
-                villageManagementEngine, guildWarEngine, legacyStoreEngine,
-                guildLogisticsDepotEngine, guildCombatSimulationEngine, null!, null!, null!, null!, null!, contextFactory);
+            var graph = E2ETestHarness.BuildEngineGraph(serviceProvider, contextFactory, retryingDbOptions, "http://localhost:8082/");
+            var networkSystem = graph.NetworkSystem;
+            var simulationEngine = graph.SimulationEngine;
 
             networkSystem.Start();
             simulationEngine.Start();
@@ -548,7 +459,7 @@ namespace FolkIdle.Server.Tests
                         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
                         await ws.ConnectAsync(uri, cts.Token);
 
-                        byte[] authBuffer = BuildAuthHandshakeBuffer(MintTestJwt(accountId));
+                        byte[] authBuffer = E2ETestHarness.BuildAuthHandshakeBuffer(E2ETestHarness.MintTestJwt(accountId));
                         await ws.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
 
                         // Send login
@@ -689,7 +600,7 @@ namespace FolkIdle.Server.Tests
             GlobalEngineState.IsColdBootRecoveryComplete = true;
             networkSystem.Start();
 
-            string jwt = MintTestJwt(testAccountId);
+            string jwt = E2ETestHarness.MintTestJwt(testAccountId);
 
             using var httpClient = new System.Net.Http.HttpClient();
             httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", jwt);
@@ -1139,7 +1050,7 @@ namespace FolkIdle.Server.Tests
                 clientSocket = new ClientWebSocket();
                 await clientSocket.ConnectAsync(new Uri("ws://localhost:8088/"), CancellationToken.None);
 
-                byte[] authBuffer = BuildAuthHandshakeBuffer(accessToken);
+                byte[] authBuffer = E2ETestHarness.BuildAuthHandshakeBuffer(accessToken);
                 await clientSocket.SendAsync(new ArraySegment<byte>(authBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
 
                 // Modul: a background receive loop is required to observe the
@@ -1190,7 +1101,7 @@ namespace FolkIdle.Server.Tests
 
                 // (b) The live WebSocket must be force-disconnected, not left
                 // open for the rest of the JWT's natural lifetime.
-                bool socketClosed = await WaitForConditionAsync(
+                bool socketClosed = await E2ETestHarness.WaitForConditionAsync(
                     () => socketReceiveTask.IsCompleted && clientSocket.State != WebSocketState.Open,
                     timeoutMs: 10000);
                 Assert.True(socketClosed, $"Expected the WebSocket to be disconnected after revoke; final state was {clientSocket.State}.");
