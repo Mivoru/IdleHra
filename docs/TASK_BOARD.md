@@ -20,9 +20,10 @@ its first ten minutes (**DONE - shipped as tier three, the objective track**).
 Both write-ups are at the bottom of this file. **Task 13, added 2026-09-10, is
 the mobile app** - four phases, written against what is actually in the repo
 rather than what MOBILE.md claims. **Tasks 14-23, added 2026-09-17 from a
-GitHub Copilot audit, are the current front of the board — 14/15/16 done,
-17/19/20/22/23 scoped and ready, 18/21 need a fresh planning pass before
-coding, Unity retirement gated on the owner. See that section's own status
+GitHub Copilot audit, are the current front of the board — 14/15/16/17/19/20/23
+done and merged, only 18/21/22 open (18/21 need a fresh planning pass before
+coding, 22 is ready to pick up directly), Unity retirement gated on the owner.
+See that section's own status
 line, below the mobile-app write-up.**
 
 | # | Open task | Shape |
@@ -2715,19 +2716,28 @@ reasoning cannot, and it may well reorder everything below it.
 
 # 14 through 23, added 2026-09-17: a GitHub Copilot audit, verified claim by claim
 
-**Status as of 2026-09-19: 14, 15, 16 DONE and merged; 17, 19, 20, 22, 23 are
-fully scoped with a written implementation plan and ready to pick up directly;
-18 and 21 have plans too but are explicitly flagged (both here and in their
-own plans) as needing a fresh planning/brainstorming confirmation with the
-owner before coding starts, not a rubber stamp on a 2-day-old plan; Unity
-retirement (tracked in `docs/architecture/NEXT_STEPS_BACKLOG.md`, not
-numbered here) is scoped but gated on an explicit human go-ahead since it
-touches the live prod Docker build and CI.** A live, unrelated gameplay bug
-(a crafting character silently fighting monster 1 every tick) was found while
-scoping task 21 and shipped separately as PR #7 — see the CLAUDE.md trap
-entry next to `CombatIdentityTests`. All nine implementation plans live under
-`docs/superpowers/plans/2026-09-17-*.md`; each numbered task below links its
-own.
+**Status as of 2026-09-19: 14, 15, 16, 17, 19, 20, 23 are DONE and merged to
+main.** Only **18, 21, and 22** remain open. 18 (durable grant retry) and 21
+(the `SimulationEngine.cs` split) both have plans but are explicitly flagged
+(both here and in their own plans) as needing a fresh planning/brainstorming
+confirmation with the owner before coding starts, not a rubber stamp on a
+few-days-old plan. **22 (sustained-load test) has a written plan and is ready
+to pick up directly** - it is the only item left in the "ready, no further
+decision needed" bucket. Unity retirement (tracked in
+`docs/architecture/NEXT_STEPS_BACKLOG.md`, not numbered here) is scoped but
+gated on an explicit human go-ahead since it touches the live prod Docker
+build and CI.
+
+17/19/20/23 were each implemented in an isolated worktree (three of them via
+parallel agents dispatched at once, since the plans themselves said they were
+independent), independently re-verified against a clean branch off `main`
+before merging - see PR #8 (20), #9 (17+19, combined because both edit
+`GrantVillagePassiveProductionAsync`), #10 (23). A live, unrelated gameplay
+bug (a crafting character silently fighting monster 1 every tick) was found
+while scoping task 21 and shipped separately as PR #7 - see the CLAUDE.md
+trap entry next to `CombatIdentityTests`. All nine implementation plans live
+under `docs/superpowers/plans/2026-09-17-*.md`; each numbered task below
+links its own.
 
 The owner ran GitHub Copilot's repo-analysis tool and asked for every claim to
 be checked against the actual code before anything from it landed here — the

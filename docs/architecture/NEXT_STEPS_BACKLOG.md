@@ -19,15 +19,16 @@ do next.
 
 ---
 
-# HANDOFF 2026-09-19 - where things actually stand, read this first
+# HANDOFF 2026-09-19 - tasks 17/19/20/23 shipped, only 18/21/22 and Unity retirement remain
 
 Written after the owner asked "is everything done" following the
 2026-09-18c handoff below, which needed a real worktree sweep to answer
-honestly rather than a yes. **Anyone picking this up should read this
-entry, then `docs/TASK_BOARD.md`'s tasks 14-23 status line, before touching
-code.**
+honestly rather than a yes - and then, once that sweep surfaced tasks
+17/19/20/23 as genuinely open, they were implemented and merged the same
+session. **Anyone picking this up should read this entry, then
+`docs/TASK_BOARD.md`'s tasks 14-23 status line, before touching code.**
 
-**Shipped and merged into `main` since 2026-09-18c:**
+**Shipped and merged into `main`:**
 - PR #6 - session revocation + password step-up (tasks 14, 15). See
   2026-09-18c below for the full record.
 - PR #7 - a crafting character no longer silently fights monster 1 every
@@ -40,34 +41,64 @@ code.**
   under `docs/superpowers/plans/2026-09-17-*.md` on `main`, and
   `docs/TASK_BOARD.md` tasks 17-23 plus the Unity retirement entry below now
   point at them.
+- **PR #8 (task 20)** - the wire's field-coverage guard extended to the
+  Redis frame, checkpoint, and REST-cache-invalidation layers. Three new
+  source-scan tests, each shaped to its own site rather than a copy-paste
+  of the existing wire test.
+- **PR #9 (tasks 17 + 19, combined)** - a failed offline production grant is
+  now logged and counted (17), and a full warehouse now reports what it
+  discarded, as a new wire field (19). Combined into one PR because both
+  independently-dispatched agents edited the same method
+  (`GrantVillagePassiveProductionAsync`); the two diffs auto-merged cleanly
+  and were re-verified together before pushing.
+- **PR #10 (task 23)** - Market/Larder/Character/Mailbox stop racing a
+  guessed-delay REST refetch against the WebSocket. Not a new mechanism:
+  three engines' success paths never called `EnqueueCommandResult`, so
+  those screens fell back to a timer instead of the existing
+  synchronous command-ack cache bust.
+
+Tasks 17, 19, and 23 were implemented by three agents dispatched in
+parallel (`superpowers:dispatching-parallel-agents`), each in its own git
+worktree, since the plans themselves stated they were independent with no
+shared state. Every agent's diff was read and independently re-verified
+(full server + client suites, `check:ratchet`) on a clean branch off `main`
+before merging - not just trusted from the agent's own self-reported
+numbers, which in two cases (task 17's baseline arithmetic, task 23's
+transient port conflict) needed a second look to explain correctly.
 
 **Found and discarded, not shipped:** the `audit-fixes-14-17-19-20` worktree
 also held an uncommitted, half-finished, EARLIER attempt at task 14 (its own
 `CurrentSessionNonce` column and helper methods, dated 2026-09-17) - the same
 feature PR #6 shipped properly two days later with review and tests. Stale
-and superseded; discarded rather than merged. The worktree itself
-(`.claude/worktrees/audit-fixes`) still exists but has no unique content left
-in it worth recovering - everything real that was in it is now either merged
-or discarded.
+and superseded; discarded rather than merged.
 
-**What is genuinely still open, in the order `docs/TASK_BOARD.md` states it:**
-17, 19, 20, 22, 23 each have a concrete plan and no unresolved owner decision
-- pick any one up directly. 18 (durable grant retry) and 21 (the
-`SimulationEngine.cs` split) both have plans too, but both explicitly ask for
-a fresh planning/brainstorming confirmation before code starts - the plans
-are two days old, untouched, and never validated against a real
-implementation attempt. Unity retirement has a plan and is low-risk by
-design (three independently-revertible steps) but is explicitly gated on the
-owner's go-ahead since the last step touches the live prod Docker build and
-CI. The offline-catch-up-cap question (bottom of the tasks 14-23 section) is
-a design decision for the owner, not a task - do not "fix" it without being
+**Cleaned up post-merge:** all worktrees and branches from this handoff
+(`audit-fixes`, `session-security`, the three per-task agent worktrees, and
+their branches, local and remote) have been removed - everything real that
+was in any of them is now on `main`.
+
+**What is genuinely still open:** 18 (durable grant retry) and 21 (the
+`SimulationEngine.cs` split) both have plans, but both explicitly ask for a
+fresh planning/brainstorming confirmation before code starts - the plans
+are a few days old, untouched, and never validated against a real
+implementation attempt. **22 (sustained-load test) has a plan and no
+unresolved decision - it is the only item left in the "pick up directly"
+bucket.** Unity retirement has a plan and is low-risk by design (three
+independently-revertible steps) but is explicitly gated on the owner's
+go-ahead since the last step touches the live prod Docker build and CI. The
+offline-catch-up-cap question (bottom of the tasks 14-23 section) is a
+design decision for the owner, not a task - do not "fix" it without being
 asked.
 
 **Lesson recorded here on purpose:** "is everything done" is a worktree-sweep
 question (`git worktree list`, then `git status --porcelain -uall` and
 `git log main..HEAD` in each one), not a single-PR question. A worktree can
 sit for two days holding both a superseded duplicate of shipped work and a
-live, tested, unmerged bug fix at the same time.
+live, tested, unmerged bug fix at the same time. Separately: independent
+tasks with a written plan and no shared state are exactly what
+`dispatching-parallel-agents` is for - doing them one at a time serially,
+as this session initially did with task 20 before correcting course, wastes
+wall-clock for no quality benefit.
 
 ---
 
