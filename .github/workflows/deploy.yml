@@ -263,10 +263,18 @@ jobs:
       # what a successful local assemble actually pulled down, checked by
       # listing the SDK afterwards. Naming them also makes the build
       # reproducible and lets the cache key mean something.
+      #
+      # `tools` (the legacy standalone Android SDK Tools package) is gone from
+      # Google's repository - sdkmanager resolves packages in order and aborts
+      # on the first miss, so listing it here failed EVERY run since
+      # 2026-09-16 before platform-tools/platforms/build-tools ever installed,
+      # which cascaded into skipping the Docker build, migrations and deploy
+      # for five merges straight. Gradle needs platform-tools and the named
+      # platform/build-tools only; it was never needed.
       - name: Set up the Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'tools platform-tools platforms;android-36 build-tools;36.0.0'
+          packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
       # Modul: Gradle's dependency cache, keyed on the build files that decide
       # what it downloads. Without it every run re-fetches the Android Gradle
