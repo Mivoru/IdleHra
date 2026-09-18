@@ -171,6 +171,9 @@ describe('step-up', () => {
     postStatus = 403;
     const outcome = await purchase('diamonds_small');
     expect(outcome.kind).toBe('stepUpRequired');
+    // The UI has nothing else to retry with - purchase() must thread the
+    // store's receipt back out, not just the outcome kind.
+    expect((outcome as { receipt?: string }).receipt).toBe('BASE64RECEIPT');
   });
 
   it('retries with a password and can succeed', async () => {

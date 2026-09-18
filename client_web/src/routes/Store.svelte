@@ -80,6 +80,8 @@
       stepUpError = 'Wrong password. Try again.';
     } else if (outcome.kind === 'rejected') {
       stepUpError = outcome.reason;
+    } else if (outcome.kind === 'unavailable') {
+      stepUpError = outcome.reason;
     }
   }
 
