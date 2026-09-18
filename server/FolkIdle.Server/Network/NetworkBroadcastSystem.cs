@@ -835,7 +835,16 @@ namespace FolkIdle.Server.Network
                         // guess against a token.
                         || requestPath == "/api/v1/auth/request-password-reset"
                         || requestPath == "/api/v1/auth/reset-password"
-                        || requestPath == "/api/v1/auth/refresh")
+                        || requestPath == "/api/v1/auth/refresh"
+                        // Modul: Task 10's step-up gate made this endpoint
+                        // verify a password too (HandleBillingVerify, for a
+                        // device-bearer session on a password-holding
+                        // account) - without this it would be an unthrottled
+                        // oracle for guessing that one account's password at
+                        // full PBKDF2 cost, with no email enumeration even
+                        // needed since the bearer token already identifies
+                        // the account.
+                        || requestPath == "/api/v1/billing/verify")
                     {
                         if (!AuthThrottle.TryConsume(AuthThrottle.ResolveClientAddress(context.Request)))
                         {
@@ -7640,13 +7649,15 @@ namespace FolkIdle.Server.Network
         }
 
         /// <summary>
-        /// True if this session was established by a real password/OAuth
-        /// login (or the JWT predates the "m" claim, defaulted safe) and
-        /// therefore never needs a step-up; false only for a device-bearer
-        /// session, and even then only when the account has a password to
-        /// step up TO. A pure guest (PasswordHash still null) has nothing to
-        /// step up to, so a stolen DeviceId on a guest account gains nothing
-        /// extra from this gate - it is exactly as exposed as it always was.
+        /// True only when this session was established by a silent
+        /// device-bearer login AND the account actually has a password to
+        /// step up TO - the one case that proves nothing about who is
+        /// holding the device. False for a real password/OAuth login (or a
+        /// JWT that predates the "m" claim, defaulted safe), which never
+        /// needs a step-up. A pure guest (PasswordHash still null) has
+        /// nothing to step up to, so a stolen DeviceId on a guest account
+        /// gains nothing extra from this gate - it is exactly as exposed as
+        /// it always was.
         /// </summary>
         private async Task<bool> RequiresPasswordStepUpAsync(long playerId, string authMethod)
         {
@@ -7720,6 +7731,14 @@ namespace FolkIdle.Server.Network
                     await using var stepUpDb = await _contextFactory.CreateDbContextAsync();
                     if (suppliedPassword.Length == 0 || !await VerifyStepUpPasswordAsync(stepUpDb, playerId, suppliedPassword))
                     {
+                        // Modul: this endpoint is now in the AuthThrottle
+                        // budget (see the allowlist above) precisely because
+                        // it verifies a password - the request-count throttle
+                        // bounds the guess rate, and this line leaves a trace
+                        // in the server's own log of which player a
+                        // brute-force attempt targeted, which the throttle
+                        // alone would not record anywhere.
+                        Console.WriteLine($"Step-up rejected: player {playerId} presented a device-bearer session with a missing or incorrect password on billing/verify.");
                         WriteStepUpRequired(context);
                         context.Response.Close();
                         return;
@@ -8895,6 +8914,13 @@ namespace FolkIdle.Server.Network
                     await using var stepUpDb = await _contextFactory.CreateDbContextAsync();
                     if (suppliedPassword.Length == 0 || !await VerifyStepUpPasswordAsync(stepUpDb, playerId, suppliedPassword))
                     {
+                        // Modul: matches HandleBillingVerify's own log line -
+                        // this route is already in the AuthThrottle allowlist
+                        // (it verified a password for recovery-login purposes
+                        // long before this gate existed), but the throttle
+                        // alone leaves no record of which player a
+                        // brute-force attempt targeted.
+                        Console.WriteLine($"Step-up rejected: player {playerId} presented a device-bearer session with a missing or incorrect password on oauth-link.");
                         WriteStepUpRequired(context);
                         context.Response.Close();
                         return;

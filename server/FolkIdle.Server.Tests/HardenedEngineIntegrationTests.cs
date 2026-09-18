@@ -12300,6 +12300,22 @@ namespace FolkIdle.Server.Tests
 
         private const string StepUpTestPassword = "CorrectHorse123!";
 
+        // Modul: Task 10 follow-up (code review) - HandleBillingVerify was
+        // added to AuthThrottle's allowlist because it now verifies a
+        // password too, which means it shares that per-address 15-requests-
+        // per-minute budget with every OTHER auth/billing/oauth-link test in
+        // this assembly that never set X-Forwarded-For (they all land in the
+        // same real-loopback bucket). Each step-up test below gets its OWN
+        // synthetic address via this helper so it cannot be pushed into 429
+        // by test order, parallel test-class timing, or how many other
+        // tests happened to hit an auth endpoint in the last minute.
+        private static System.Net.Http.HttpClient CreateIsolatedAuthThrottleHttpClient()
+        {
+            var client = new System.Net.Http.HttpClient();
+            client.DefaultRequestHeaders.Add("X-Forwarded-For", "stepup-test-" + Guid.NewGuid().ToString("N"));
+            return client;
+        }
+
         // Modul: Task 10 - registers a REAL email+password account over HTTP
         // (so PasswordHash is set AND HandleAuthRegister's own
         // SetCurrentSessionNonceAsync call makes CurrentSessionNonce
@@ -12372,7 +12388,7 @@ namespace FolkIdle.Server.Tests
             networkSystem.RegisterBillingVerificationEngine(billingEngine);
             networkSystem.Start();
 
-            using var httpClient = new System.Net.Http.HttpClient();
+            using var httpClient = CreateIsolatedAuthThrottleHttpClient();
             try
             {
                 var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8110");
@@ -12402,7 +12418,7 @@ namespace FolkIdle.Server.Tests
             networkSystem.RegisterBillingVerificationEngine(billingEngine);
             networkSystem.Start();
 
-            using var httpClient = new System.Net.Http.HttpClient();
+            using var httpClient = CreateIsolatedAuthThrottleHttpClient();
             try
             {
                 var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8111");
@@ -12436,7 +12452,7 @@ namespace FolkIdle.Server.Tests
             networkSystem.RegisterBillingVerificationEngine(billingEngine);
             networkSystem.Start();
 
-            using var httpClient = new System.Net.Http.HttpClient();
+            using var httpClient = CreateIsolatedAuthThrottleHttpClient();
             try
             {
                 var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8112");
@@ -12469,7 +12485,7 @@ namespace FolkIdle.Server.Tests
             networkSystem.RegisterBillingVerificationEngine(billingEngine);
             networkSystem.Start();
 
-            using var httpClient = new System.Net.Http.HttpClient();
+            using var httpClient = CreateIsolatedAuthThrottleHttpClient();
             try
             {
                 string freshDeviceId = Guid.NewGuid().ToString("N");
@@ -12521,7 +12537,7 @@ namespace FolkIdle.Server.Tests
             networkSystem.RegisterBillingVerificationEngine(billingEngine);
             networkSystem.Start();
 
-            using var httpClient = new System.Net.Http.HttpClient();
+            using var httpClient = CreateIsolatedAuthThrottleHttpClient();
             try
             {
                 string email = $"stepup_pw_{Guid.NewGuid():N}@example.com";
@@ -12575,7 +12591,7 @@ namespace FolkIdle.Server.Tests
             var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8115/");
             networkSystem.Start();
 
-            using var httpClient = new System.Net.Http.HttpClient();
+            using var httpClient = CreateIsolatedAuthThrottleHttpClient();
             try
             {
                 var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8115");
@@ -12615,7 +12631,7 @@ namespace FolkIdle.Server.Tests
             var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8116/");
             networkSystem.Start();
 
-            using var httpClient = new System.Net.Http.HttpClient();
+            using var httpClient = CreateIsolatedAuthThrottleHttpClient();
             try
             {
                 var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8116");
@@ -12628,6 +12644,57 @@ namespace FolkIdle.Server.Tests
 
                 Assert.NotEqual(System.Net.HttpStatusCode.Forbidden, response.StatusCode);
                 Assert.Equal(System.Net.HttpStatusCode.OK, response.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: Task 10 follow-up (code review) - HandleBillingVerify now
+        // verifies a password for a device-bearer session on a
+        // password-holding account, which without an AuthThrottle entry
+        // would make this endpoint an UNTHROTTLED password oracle at full
+        // 210,000-iteration PBKDF2 cost against the one account the bearer
+        // token already identifies - no email enumeration even needed. This
+        // pins that /api/v1/billing/verify is in the same request budget as
+        // every other password-checking endpoint: MaxRequestsPerWindow
+        // requests from one address succeed (each individually a legitimate
+        // 403 - wrong password, not what this test is about), and the next
+        // one is refused with 429 before the step-up check even runs.
+        [Fact]
+        public async Task Test_StepUp_BillingVerify_StepUpEndpointIsThrottled()
+        {
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            var networkSystem = new NetworkBroadcastSystem(_fixture.ServiceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8117/");
+            using var offlineRedis = CreateOfflineRedisMultiplexer();
+            var redisCache = new RedisSessionCache(offlineRedis);
+            var billingEngine = new BillingVerificationEngine(_fixture.DbContextFactory, redisCache, _fixture.PlayerRegistry, _fixture.RetryingOptions, new MockIapReceiptValidator());
+            networkSystem.RegisterBillingVerificationEngine(billingEngine);
+            networkSystem.Start();
+
+            using var httpClient = CreateIsolatedAuthThrottleHttpClient();
+            try
+            {
+                // The registration call below also spends one slot of this
+                // client's (synthetic) address budget, since
+                // /api/v1/auth/register is in the same allowlist.
+                var (_, _, deviceBearerToken) = await RegisterPasswordAccountAndMintDeviceBearerJwtAsync(httpClient, "http://localhost:8117");
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", deviceBearerToken);
+
+                System.Net.Http.HttpResponseMessage? lastAllowedResponse = null;
+                int remainingBudget = AuthThrottle.MaxRequestsPerWindow - 1;
+                for (int i = 0; i < remainingBudget; i++)
+                {
+                    lastAllowedResponse = await httpClient.PostAsync("http://localhost:8117/api/v1/billing/verify", BuildBillingVerifyBody(password: "StillWrongPassword!"));
+                }
+
+                Assert.NotNull(lastAllowedResponse);
+                Assert.Equal(System.Net.HttpStatusCode.Forbidden, lastAllowedResponse!.StatusCode);
+
+                var throttledResponse = await httpClient.PostAsync("http://localhost:8117/api/v1/billing/verify", BuildBillingVerifyBody(password: "StillWrongPassword!"));
+                Assert.Equal((System.Net.HttpStatusCode)429, throttledResponse.StatusCode);
             }
             finally
             {
