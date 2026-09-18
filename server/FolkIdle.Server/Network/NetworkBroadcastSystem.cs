@@ -8165,7 +8165,9 @@ namespace FolkIdle.Server.Network
                 // none of which are a new login - can invalidate an access
                 // token nothing else touches. See IsNonceCurrentAsync.
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
-                string jwt = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
+                await AuthenticationEngine.SetCurrentSessionNonceAsync(authOptions, result.AccountId, sessionNonce);
+                _accountCurrentNonce[result.AccountId] = sessionNonce;
+                string jwt = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, result.AuthMethod, _jwtSecretKey, out long expiresAtEpoch);
 
                 var response = new AuthLoginResponse
                 {

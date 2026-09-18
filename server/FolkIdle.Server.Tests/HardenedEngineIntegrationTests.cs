@@ -2457,7 +2457,7 @@ namespace FolkIdle.Server.Tests
 
         private static string MintTestJwt(Guid accountId)
         {
-            return AuthenticationEngine.GenerateJwt(accountId, AuthenticationEngine.GenerateSessionNonce(), AuthenticationDefaults.LocalDevelopmentFallback, out _);
+            return AuthenticationEngine.GenerateJwt(accountId, AuthenticationEngine.GenerateSessionNonce(), "pw", AuthenticationDefaults.LocalDevelopmentFallback, out _);
         }
 
         // Mirrors WebSocketClient.SendAuthHandshakeAsync's fixed-buffer write

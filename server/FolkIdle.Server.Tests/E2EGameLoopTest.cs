@@ -94,7 +94,7 @@ namespace FolkIdle.Server.Tests
 
         private static string MintTestJwt(Guid accountId)
         {
-            return AuthenticationEngine.GenerateJwt(accountId, AuthenticationEngine.GenerateSessionNonce(), AuthenticationDefaults.LocalDevelopmentFallback, out _);
+            return AuthenticationEngine.GenerateJwt(accountId, AuthenticationEngine.GenerateSessionNonce(), "pw", AuthenticationDefaults.LocalDevelopmentFallback, out _);
         }
 
         // Mirrors WebSocketClient.SendAuthHandshakeAsync's fixed-buffer write
@@ -640,6 +640,25 @@ namespace FolkIdle.Server.Tests
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
             services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
 
+            // Modul: Task 4's nonce gate put IsNonceCurrentAsync on every
+            // authenticated REST request's path (TryResolveAuthenticatedPlayerAsync),
+            // and that call resolves RetryingDbContextOptions off this service
+            // provider - this test predates that gate and never needed it, so
+            // it 500'd the instant the tree could actually compile and run.
+            // See the other E2E fixtures in this file for the same registration.
+            var marketBrowserRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(marketBrowserRetryOptions));
+
             var serviceProvider = services.BuildServiceProvider();
             var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
 
@@ -975,6 +994,103 @@ namespace FolkIdle.Server.Tests
                 string? storedNonce = await AuthenticationEngine.GetCurrentSessionNonceAsync(retryingOptions, decoded.AccountId);
                 Assert.NotNull(storedNonce);
                 Assert.Equal(decoded.SessionNonce, storedNonce);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
+
+        // Modul: Task 6 - HandleAuthRefresh used to re-mint the access token
+        // with the old 3-argument GenerateJwt (no authMethod claim at all),
+        // so a device-authenticated player who refreshed would come back
+        // password-authenticated - silently, since nothing on the wire says
+        // which method a token carries except the token itself. This proves
+        // the method survives the login -> refresh round trip: a device
+        // login yields "dev", and the rotated access token handed back by
+        // /api/v1/auth/refresh must still say "dev", not fall back to "pw".
+        [Fact]
+        public async Task Test_E2E_SessionSecurity_RefreshCarriesAuthMethod()
+        {
+            if (!_dockerAvailable || _dbContainer == null)
+            {
+                Console.WriteLine("WARNING: Skipping refresh auth-method E2E verification because Docker is unavailable. CI must provide Docker for mandatory database coverage.");
+                return;
+            }
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options =>
+                options.UseNpgsql(_dbContainer.GetConnectionString()));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+
+            // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
+            // off the service provider it is handed (HandleAuthRefresh's own
+            // RedeemRefreshTokenAsync/SetCurrentSessionNonceAsync calls do
+            // this too) - see the other E2E fixtures in this file for the
+            // same registration.
+            var refreshRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(refreshRetryOptions));
+
+            var serviceProvider = services.BuildServiceProvider();
+            var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                await db.Database.MigrateAsync();
+            }
+
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8087/");
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+
+            try
+            {
+                string freshDeviceId = Guid.NewGuid().ToString("N");
+                var loginBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { deviceId = freshDeviceId }),
+                    System.Text.Encoding.UTF8, "application/json");
+
+                var loginResponse = await httpClient.PostAsync("http://localhost:8087/api/v1/auth/login", loginBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, loginResponse.StatusCode);
+
+                string loginResponseBody = await loginResponse.Content.ReadAsStringAsync();
+                var loginParsed = System.Text.Json.JsonSerializer.Deserialize<AuthLoginResponseTestDto>(loginResponseBody);
+                Assert.NotNull(loginParsed);
+                Assert.False(string.IsNullOrEmpty(loginParsed!.Token));
+                Assert.False(string.IsNullOrEmpty(loginParsed.RefreshToken));
+
+                var loginDecoded = AuthenticationEngine.ValidateJwt(loginParsed.Token, AuthenticationDefaults.LocalDevelopmentFallback);
+                Assert.True(loginDecoded.IsValid);
+                Assert.Equal("dev", loginDecoded.AuthMethod);
+
+                var refreshBody = new System.Net.Http.StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new { refreshToken = loginParsed.RefreshToken }),
+                    System.Text.Encoding.UTF8, "application/json");
+
+                var refreshResponse = await httpClient.PostAsync("http://localhost:8087/api/v1/auth/refresh", refreshBody);
+                Assert.Equal(System.Net.HttpStatusCode.OK, refreshResponse.StatusCode);
+
+                string refreshResponseBody = await refreshResponse.Content.ReadAsStringAsync();
+                var refreshParsed = System.Text.Json.JsonSerializer.Deserialize<AuthLoginResponseTestDto>(refreshResponseBody);
+                Assert.NotNull(refreshParsed);
+                Assert.False(string.IsNullOrEmpty(refreshParsed!.Token));
+
+                var refreshDecoded = AuthenticationEngine.ValidateJwt(refreshParsed.Token, AuthenticationDefaults.LocalDevelopmentFallback);
+                Assert.True(refreshDecoded.IsValid);
+                Assert.Equal("dev", refreshDecoded.AuthMethod);
             }
             finally
             {
