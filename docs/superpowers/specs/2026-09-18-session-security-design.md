@@ -156,23 +156,62 @@ unchanged except for the added nonce bump.
 
 ## 4. Task 15: step-up for device-bearer sessions
 
+### Corrected from the first draft, twice
+
+1. **`HandleVerifyReceipt` no longer exists.** It was removed 2026-09-18 as
+   its own, unrelated, more severe finding made while implementing this very
+   plan: it was the REST wrapper around `VerifyPurchaseAsync`, reachable at
+   what the web client believed was the hardened purchase URL, and it
+   trusted a client-supplied `AccountId` with no signature check at all -
+   anyone who knew their own AccountId could grant themselves free diamonds.
+   See `docs/architecture/NEXT_STEPS_BACKLOG.md`'s 2026-09-18b handoff. The
+   endpoint this task gates is now `HandleBillingVerify` (`:7625` before
+   that removal shifted line numbers - re-locate by name), the only REST
+   purchase path, already resolving the player from the caller's own bearer
+   JWT.
+2. **There are not three `GenerateJwt` call sites, one per method - there
+   are three call sites and FOUR methods**, because `HandleAuthLogin` is one
+   handler with one shared `GenerateJwt` call serving four branches:
+   `TryLoginByOAuthAsync`, `LoginWithEmailAsync`, `TryLoginByDeviceIdAsync`
+   (remembered device), and `LoginOrProvisionAsync` (fresh anonymous
+   device). A local `string authMethod` set per-branch (`"pw"` for OAuth and
+   email; `"dev"` for both device paths) travels into the shared
+   `GenerateJwt` call, rather than the claim being fixed per call site.
+   `HandleAuthRegister`'s call site is unconditionally `"pw"` - registration
+   is always a fresh password.
+
 ### Tagging how a session was established
 
-Add one more minimal JWT claim, `m` (method): `"pw"` for
-`LoginWithEmailAsync`/`RegisterWithEmailAsync`, `"dev"` for
-`TryLoginByDeviceIdAsync`. Set at all three `GenerateJwt` call sites (the
-same three as section 3), read back into `JwtValidationResult` alongside
-`SessionNonce`. No new session-registry state - the token already carries
-everything needed, consistent with the existing "hand-rolled minimal JWT"
-design (`AuthenticationEngine.cs:63-71`).
+The harder part is the refresh endpoint (`HandleAuthRefresh`, section 3's
+first `GenerateJwt` call site): a refresh reissues a JWT from a refresh
+token alone, with no login branch to read a method off of. The method has
+to be carried by the refresh token itself:
+
+- `PlayerRefreshToken` gains `AuthMethod` (`string`, e.g. `"pw"`/`"dev"`) -
+  part of the same additive migration as `CurrentSessionNonce`.
+- `IssueRefreshTokenAsync` (`:246`) takes one more parameter, `authMethod`,
+  stored on the new row. Its caller, `TryIssueRefreshTokenAsync` (`:8039`),
+  and both its callers (`HandleAuthLogin`, `HandleAuthRegister`) pass the
+  same `authMethod` value used for that request's `GenerateJwt` call.
+- `RedeemRefreshTokenAsync`'s rotation (`:369-380`) copies `AuthMethod` onto
+  the successor row - the method a session was established with does not
+  change just because the token rotated. Its return tuple widens to include
+  `AuthMethod` so `HandleAuthRefresh` can pass it into its own `GenerateJwt`
+  call.
+
+One more JWT claim, `m` (method), carries the value into
+`JwtValidationResult` alongside `SessionNonce` - no new session-registry
+state, consistent with the existing "hand-rolled minimal JWT" design
+(`AuthenticationEngine.cs:63-71`).
 
 ### The gate
 
-In `HandleVerifyReceipt` (`:7579`) and `HandleOAuthLink` (`:8716`), after
-resolving the authenticated player: if the token's method is `"dev"` **and**
-the account has a password set (`PlayerRecord.PasswordHash != null` - a pure
-guest has none, so there is nothing to step up to, and the exposure the
-audit describes is specifically about an upgraded account being
+In `HandleBillingVerify` and `HandleOAuthLink` (`:8676` before the removal
+above shifted line numbers), after resolving the authenticated player: if
+the token's method is `"dev"` **and** the account has a password set
+(`PlayerRecord.PasswordHash != null` - a pure guest has none, so there is
+nothing to step up to, and the exposure the audit describes is specifically
+about an upgraded account being
 silently re-entered), require the request body to carry a `Password` field
 and verify it with the existing `PasswordHasher.Verify` before proceeding.
 
@@ -189,9 +228,15 @@ and verify it with the existing `PasswordHasher.Verify` before proceeding.
 
 ### Client
 
-- `billing.ts`'s purchase flow and the OAuth-link flow both gain a small
-  "confirm your password" prompt, shown only on the `StepUpRequired`
-  response, which retries the same request with `Password` included.
+- `billing.ts`'s purchase flow gains a small "confirm your password" prompt,
+  shown only on the `StepUpRequired` response, which retries the same
+  request with `Password` included.
+- **No client code calls `HandleOAuthLink` today** - checked, nothing under
+  `client_web/src` references it. The server-side gate still applies to it
+  (defense in depth for a durable, security-relevant action reachable
+  directly over HTTP even with no UI), but there is no client flow to add a
+  step-up prompt to; that arrives with whatever future work actually builds
+  OAuth linking into a screen.
 - No change for a password-authenticated session or a passwordless guest -
   the new field is simply never required for them.
 
@@ -206,7 +251,7 @@ and verify it with the existing `PasswordHasher.Verify` before proceeding.
   password reset and for a manufactured refresh-token replay. A connected
   WebSocket is actually closed when its account's nonce is bumped.
   Step-up: a device-bearer session with a password set is refused on
-  `HandleVerifyReceipt`/`HandleOAuthLink` without `Password`, accepted with
+  `HandleBillingVerify`/`HandleOAuthLink` without `Password`, accepted with
   the correct one, rejected with the wrong one; a passwordless guest and a
   password-authenticated session both proceed unconditionally.
 - **`StateUpdatePacketFieldCoverageTests`-style guard:** not applicable -
