@@ -5449,6 +5449,19 @@ namespace FolkIdle.Server.Domain.Combat
                         ResultItemId = craftingRecipe.ResultItemId
                     });
                 }
+
+                // Modul: dispatch exclusivity, 2026-09-17. This branch had no
+                // return, unlike the gathering branch immediately below it -
+                // so a crafting character fell through into full combat
+                // resolution every tick, against fallbackId 1 (every crafting
+                // ActivityId lives in ActivityIdBands.CraftingBand, 5000+,
+                // always above ContentRegistry.Monsters.Length). The craft
+                // itself completed correctly; a whole silent second combat
+                // session ran alongside it - real damage, XP, gold, loot,
+                // kills - for every character ever assigned to a crafting
+                // job. See ProcessSubTickDispatchTests for the regression
+                // guard.
+                return;
             }
             else if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out var gatheringNode))
             {
