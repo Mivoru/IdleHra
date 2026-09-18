@@ -18,16 +18,18 @@ namespace FolkIdle.Server.Engine
         public readonly Guid AccountId;
         public readonly string SessionNonce;
         public readonly long ExpirationEpoch;
+        public readonly string AuthMethod;
 
-        public JwtValidationResult(bool isValid, Guid accountId, string sessionNonce, long expirationEpoch)
+        public JwtValidationResult(bool isValid, Guid accountId, string sessionNonce, long expirationEpoch, string authMethod)
         {
             IsValid = isValid;
             AccountId = accountId;
             SessionNonce = sessionNonce;
             ExpirationEpoch = expirationEpoch;
+            AuthMethod = authMethod;
         }
 
-        public static readonly JwtValidationResult Invalid = new JwtValidationResult(false, Guid.Empty, string.Empty, 0L);
+        public static readonly JwtValidationResult Invalid = new JwtValidationResult(false, Guid.Empty, string.Empty, 0L, string.Empty);
     }
 
     public enum OAuthLinkOutcome
@@ -77,12 +79,24 @@ namespace FolkIdle.Server.Engine
 
         private const string HeaderJson = "{\"alg\":\"HS256\",\"typ\":\"JWT\"}";
 
-        public static string GenerateJwt(Guid accountId, string sessionNonce, string secretKey, out long expirationEpoch)
+        public static string GenerateJwt(Guid accountId, string sessionNonce, string authMethod, string secretKey, out long expirationEpoch)
         {
             expirationEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds() + TokenLifetimeSeconds;
 
             string headerSegment = Base64UrlEncode(Encoding.UTF8.GetBytes(HeaderJson));
-            string payloadJson = "{\"aid\":\"" + accountId.ToString("N") + "\",\"nonce\":\"" + sessionNonce + "\",\"exp\":" + expirationEpoch.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}";
+            // Modul: this payload is built by hand-concatenation with NO
+            // quote-escaping - accountId.ToString("N") and expirationEpoch
+            // are safe because they are hex/digits by construction, but
+            // sessionNonce and authMethod are string parameters and MUST
+            // never be allowed to carry attacker-influenced or arbitrary
+            // text (a literal `"` or `\` would break the JSON, and worse
+            // is unauditable). Every caller today passes a literal
+            // ("pw"/"dev") or a value already re-derived server-side
+            // (HandleAuthRefresh forwards result.AuthMethod, which is a
+            // database column, not request input) - keep it that way. If a
+            // future caller ever wants to pass something dynamic here,
+            // escape it or switch to a real JSON writer first.
+            string payloadJson = "{\"aid\":\"" + accountId.ToString("N") + "\",\"nonce\":\"" + sessionNonce + "\",\"m\":\"" + authMethod + "\",\"exp\":" + expirationEpoch.ToString(System.Globalization.CultureInfo.InvariantCulture) + "}";
             string payloadSegment = Base64UrlEncode(Encoding.UTF8.GetBytes(payloadJson));
 
             string signingInput = headerSegment + "." + payloadSegment;
@@ -163,6 +177,17 @@ namespace FolkIdle.Server.Engine
                     return JwtValidationResult.Invalid;
                 }
 
+                // Modul: "m" is OPTIONAL, unlike aid/nonce/exp above. A token
+                // minted before this claim existed has none, and treating
+                // that as invalid would sign out every live session at
+                // deploy time. Missing defaults to "pw" - the safer
+                // direction, since it only skips a step-up this token never
+                // needed rather than wrongly demanding one from a real
+                // password session.
+                string authMethod = document.RootElement.TryGetProperty("m", out var methodElement)
+                    ? (methodElement.GetString() ?? "pw")
+                    : "pw";
+
                 if (expElement.ValueKind != System.Text.Json.JsonValueKind.Number || !expElement.TryGetInt64(out long expirationEpoch))
                 {
                     return JwtValidationResult.Invalid;
@@ -173,13 +198,56 @@ namespace FolkIdle.Server.Engine
                     return JwtValidationResult.Invalid;
                 }
 
-                return new JwtValidationResult(true, accountId, sessionNonce, expirationEpoch);
+                return new JwtValidationResult(true, accountId, sessionNonce, expirationEpoch, authMethod);
             }
         }
 
         public static string GenerateSessionNonce()
         {
             return Guid.NewGuid().ToString("N");
+        }
+
+        /// <summary>
+        /// Sets an already-generated nonce as the account's current one.
+        /// Used at every point a JWT is issued (login, register, refresh) -
+        /// the caller already minted the nonce for the token it is about to
+        /// hand back, and this is what makes that value the one
+        /// NetworkBroadcastSystem.IsNonceCurrentAsync checks future requests
+        /// against.
+        /// </summary>
+        public static async Task SetCurrentSessionNonceAsync(RetryingDbContextOptions authOptions, Guid accountId, string nonce)
+        {
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            await db.PlayerRecords
+                .Where(p => p.PlayerGuid == accountId)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(p => p.CurrentSessionNonce, nonce));
+        }
+
+        /// <summary>
+        /// Generates a fresh nonce nobody has been issued yet and makes it
+        /// the account's current one - so every token minted before this
+        /// call now fails the next check. Used by logout, password reset,
+        /// and refresh-token replay detection: the three revocation events
+        /// that have no already-generated nonce to reuse the way a login
+        /// does.
+        /// </summary>
+        public static async Task<string> BumpSessionNonceAsync(RetryingDbContextOptions authOptions, Guid accountId)
+        {
+            string nonce = GenerateSessionNonce();
+            await SetCurrentSessionNonceAsync(authOptions, accountId, nonce);
+            return nonce;
+        }
+
+        /// <summary>
+        /// Cold-path lookup for NetworkBroadcastSystem's in-memory cache on a
+        /// miss. Null if the account does not exist or has never had a
+        /// revocation event (see the column's own doc comment).
+        /// </summary>
+        public static async Task<string?> GetCurrentSessionNonceAsync(RetryingDbContextOptions authOptions, Guid accountId)
+        {
+            await using var db = new FolkIdleDbContext(authOptions.Options);
+            var player = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.PlayerGuid == accountId);
+            return player?.CurrentSessionNonce;
         }
 
         // ------------------------------------------------------------------
@@ -244,7 +312,7 @@ namespace FolkIdle.Server.Engine
         /// the only moment it exists anywhere outside the caller's device.
         /// </summary>
         public static async Task<(string Token, long ExpiresAtEpoch)> IssueRefreshTokenAsync(
-            RetryingDbContextOptions authOptions, Guid accountId)
+            RetryingDbContextOptions authOptions, Guid accountId, string authMethod)
         {
             await using var db = new FolkIdleDbContext(authOptions.Options);
 
@@ -258,7 +326,8 @@ namespace FolkIdle.Server.Engine
                 TokenHash = HashRefreshToken(raw),
                 IssuedEpoch = now,
                 ExpiresAtEpoch = expiresAt,
-                RevokedEpoch = 0L
+                RevokedEpoch = 0L,
+                AuthMethod = authMethod
             });
 
             await db.SaveChangesAsync();
@@ -300,12 +369,12 @@ namespace FolkIdle.Server.Engine
         /// simultaneous refreshes of the same token must not both succeed -
         /// that is the race the whole rotation scheme exists to detect.
         /// </remarks>
-        public static async Task<(RefreshOutcome Outcome, Guid AccountId, string Token, long ExpiresAtEpoch)>
+        public static async Task<(RefreshOutcome Outcome, Guid AccountId, string Token, long ExpiresAtEpoch, string AuthMethod)>
             RedeemRefreshTokenAsync(RetryingDbContextOptions authOptions, string rawToken)
         {
             if (string.IsNullOrWhiteSpace(rawToken))
             {
-                return (RefreshOutcome.Unknown, Guid.Empty, string.Empty, 0L);
+                return (RefreshOutcome.Unknown, Guid.Empty, string.Empty, 0L, string.Empty);
             }
 
             byte[] hash = HashRefreshToken(rawToken);
@@ -342,20 +411,26 @@ namespace FolkIdle.Server.Engine
                 if (row == null)
                 {
                     await transaction.RollbackAsync();
-                    return (RefreshOutcome.Unknown, Guid.Empty, string.Empty, 0L);
+                    return (RefreshOutcome.Unknown, Guid.Empty, string.Empty, 0L, string.Empty);
                 }
 
                 long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 Guid accountId = row.AccountId;
+                string authMethod = row.AuthMethod;
 
                 if (row.RevokedEpoch != 0L)
                 {
-                    // The replay case. Everything this account holds goes.
+                    // Modul: the replay case now returns the REAL AccountId
+                    // (it used to return Guid.Empty) so the caller -
+                    // HandleAuthRefresh - can bump that account's session
+                    // nonce and force-disconnect its live socket, not just
+                    // revoke future refreshes. See the session-security spec,
+                    // section 3.
                     await db.PlayerRefreshTokens
                         .Where(r => r.AccountId == accountId && r.RevokedEpoch == 0L)
                         .ExecuteUpdateAsync(setters => setters.SetProperty(r => r.RevokedEpoch, now));
                     await transaction.CommitAsync();
-                    return (RefreshOutcome.Replayed, Guid.Empty, string.Empty, 0L);
+                    return (RefreshOutcome.Replayed, accountId, string.Empty, 0L, string.Empty);
                 }
 
                 if (row.ExpiresAtEpoch <= now)
@@ -363,7 +438,7 @@ namespace FolkIdle.Server.Engine
                     row.RevokedEpoch = now;
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
-                    return (RefreshOutcome.Expired, Guid.Empty, string.Empty, 0L);
+                    return (RefreshOutcome.Expired, Guid.Empty, string.Empty, 0L, string.Empty);
                 }
 
                 row.RevokedEpoch = now;
@@ -376,13 +451,14 @@ namespace FolkIdle.Server.Engine
                     TokenHash = HashRefreshToken(successor),
                     IssuedEpoch = now,
                     ExpiresAtEpoch = expiresAt,
-                    RevokedEpoch = 0L
+                    RevokedEpoch = 0L,
+                    AuthMethod = authMethod
                 });
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                return (RefreshOutcome.Rotated, accountId, successor, expiresAt);
+                return (RefreshOutcome.Rotated, accountId, successor, expiresAt, authMethod);
             });
         }
 
@@ -390,22 +466,32 @@ namespace FolkIdle.Server.Engine
         /// Revokes one token, if it is still live. Signing out.
         /// </summary>
         /// <remarks>
-        /// Deliberately silent about whether anything was found: the caller is
-        /// a sign-out button and there is no answer it would act on
-        /// differently. Saying "no such token" would also confirm which tokens
-        /// exist to anyone who can reach the route.
+        /// Returns the token's AccountId (or Guid.Empty if not found/already
+        /// revoked) so the caller - a sign-out route - can also bump that
+        /// account's session nonce and force-disconnect its live socket, not
+        /// just stop the NEXT refresh from working. Deliberately silent about
+        /// this to the CLIENT though: the caller is a sign-out button and
+        /// there is no answer it would act on differently, and saying "no
+        /// such token" over the wire would confirm which tokens exist to
+        /// anyone who can reach the route.
         /// </remarks>
-        public static async Task RevokeRefreshTokenAsync(RetryingDbContextOptions authOptions, string rawToken)
+        public static async Task<Guid> RevokeRefreshTokenAsync(RetryingDbContextOptions authOptions, string rawToken)
         {
-            if (string.IsNullOrWhiteSpace(rawToken)) return;
+            if (string.IsNullOrWhiteSpace(rawToken)) return Guid.Empty;
 
             byte[] hash = HashRefreshToken(rawToken);
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
             await using var db = new FolkIdleDbContext(authOptions.Options);
-            await db.PlayerRefreshTokens
-                .Where(r => r.TokenHash == hash && r.RevokedEpoch == 0L)
-                .ExecuteUpdateAsync(setters => setters.SetProperty(r => r.RevokedEpoch, now));
+            var row = await db.PlayerRefreshTokens.FirstOrDefaultAsync(r => r.TokenHash == hash && r.RevokedEpoch == 0L);
+            if (row == null)
+            {
+                return Guid.Empty;
+            }
+
+            row.RevokedEpoch = now;
+            await db.SaveChangesAsync();
+            return row.AccountId;
         }
 
         /// <summary>

@@ -17,6 +17,96 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-18c - sessions became revocable, and device logins step up
+
+Closes tasks 14 and 15 from `docs/TASK_BOARD.md` (both P0, from the
+2026-09-17 Copilot audit). Full spec and 12-task implementation plan:
+`docs/superpowers/specs/2026-09-18-session-security-design.md` and
+`docs/superpowers/plans/2026-09-18-session-security.md`.
+
+**Task 14 - a logout/reset/theft-detection event now actually ends the
+session**, not just future refreshes. A per-account `CurrentSessionNonce`
+(nullable, additive migration - `null` means no revocation has ever
+happened, so nothing already logged in was force-signed-out by the
+migration itself) is checked against the JWT's `nonce` claim on every REST
+call and WebSocket handshake, cached the same way the existing
+AccountId->PlayerId lookup is. Bumping it - on `HandleAuthRevoke`, on
+`PasswordResetEngine.CompleteResetAsync` succeeding, and on
+`RedeemRefreshTokenAsync`'s replay-detected branch (which had to stop
+returning `Guid.Empty` for the very account it was revoking, a bug in its
+own right) - both fails the next validation and immediately force-closes
+any live WebSocket for that account, reusing the existing
+`ForceDisconnect(playerId)` this server already had for other security
+evictions.
+
+**Task 15 - a device-bearer session now has to prove a password before
+completing a purchase or linking an OAuth identity**, if the account
+actually has one. Every JWT carries a second claim, `m` (`"pw"`/`"dev"`),
+threaded through refresh-token rotation via a new
+`PlayerRefreshToken.AuthMethod` column. `HandleBillingVerify` and
+`HandleOAuthLink` answer `403 {"StepUpRequired":true}` (never `401` - the
+session is valid, this is a request for proof) when the session is `"dev"`
+and `PlayerRecord.PasswordHash` is not null; a pure guest has nothing to
+step up to and is unaffected. Scoped down from the audit's original list
+once checked against live code: this game has no password-change,
+email-change, or account-deletion command to gate at all.
+
+**A separate, more severe finding surfaced while scoping this work**:
+`HandleVerifyReceipt`, a third purchase-verification path reachable over
+REST, trusted a client-supplied AccountId with no signature check -
+anyone who knew their own AccountId could grant themselves free diamonds.
+Fixed and deployed the same day as its own handoff (2026-09-18b, above).
+
+**A final-review finding on Task 15's own migration, fixed before merge**:
+`AuthMethod`'s C# default backfills every pre-existing `PlayerRefreshTokens`
+row to `""`, which is not `"dev"` - so `RequiresPasswordStepUpAsync` would
+have silently and permanently skipped the step-up check for every
+device-bearer session that existed before this deploy. `AddSessionSecurity`'s
+`Up()` (unshipped, edited in place rather than patched by a second migration)
+now backfills those `""` rows to `"dev"` explicitly, the safe direction: a
+legacy token on a password-holding account gets one satisfiable step-up
+prompt instead of the gate never applying to it at all.
+
+**A finding from Task 10's own review, fixed before merge**: the new
+password check on `/api/v1/billing/verify` was not initially covered by
+`AuthThrottle` (the rate-limiter every other password check in this server
+goes through), which would have made it an unthrottled, 210,000-iteration-
+PBKDF2-per-guess password oracle - exactly the kind of exposure this task
+exists to close, reopened by the fix itself. Caught in review, fixed before
+merge.
+
+**Verified:** full server suite 860/861 (the one failure is a pre-existing,
+unrelated local Python environment defect - `ModuleNotFoundError: No module
+named 'encodings'`, a corrupted `PYTHONHOME`); full client suite 532/535 (3
+pre-existing skips); `check:ratchet` at the pre-existing 4-error
+`GuildOps.svelte` baseline; `npm run exercise` 148/149 (the one failure is
+a probabilistic breeding-trait check unrelated to this work - trait
+inheritance is a 50-90% chance, not guaranteed, and this plan never touched
+the breeding engine).
+
+**Not verified in a real browser**: the client-side password-prompt UI
+(`Store.svelte`). It is structurally unreachable in an ordinary dev
+session - purchases refuse to even attempt on a non-native platform before
+any network call fires, and the 403 case specifically requires a
+device-bearer session on a password-holding account, which the dev fixture
+doesn't produce. A human should click through it once on a native build or
+a hand-constructed device-bearer session before this ships to players.
+
+**Deploy note:** the migration is additive (two nullable/defaulted
+columns), take a Supabase backup first anyway per this project's own
+precedent.
+
+**Follow-up, found by the final review, deliberately not taken here:** the
+WebSocket handshake's `"Unknown account"` close reason (a resolved,
+non-revoked JWT whose account no longer exists) has the same shape as the
+bug this handoff just fixed - it does not contain "token", so
+`interpretClose` treats it as a transient drop and loop-reconnects rather
+than showing the login screen. Pre-existing, not introduced by this plan,
+narrow (requires an account to vanish out from under a still-valid token);
+parked rather than folded into this fix wave.
+
+---
+
 # HANDOFF 2026-09-18b - an unauthenticated free-diamonds route was live
 
 Found while scoping the session-security work below, not from the Copilot

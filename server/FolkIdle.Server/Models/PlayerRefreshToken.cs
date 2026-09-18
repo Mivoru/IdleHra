@@ -53,5 +53,15 @@ namespace FolkIdle.Server.Models
         /// question anyone investigating a stolen session will ask.
         /// </summary>
         public long RevokedEpoch { get; set; }
+
+        /// <summary>
+        /// How the login that first issued this token's family proved who it
+        /// was: "pw" for a password or OAuth login, "dev" for a silent
+        /// DeviceId auto-login. Carried onto the successor row on every
+        /// rotation (see AuthenticationEngine.RedeemRefreshTokenAsync) - the
+        /// method a session was established with does not change just
+        /// because the token rotated.
+        /// </summary>
+        public string AuthMethod { get; set; } = string.Empty;
     }
 }

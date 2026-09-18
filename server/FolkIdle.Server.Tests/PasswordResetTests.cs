@@ -105,8 +105,8 @@ namespace FolkIdle.Server.Tests
 
             await using (var db = NewContext())
             {
-                var outcome = await PasswordResetEngine.CompleteResetAsync(db, token!, NewPassword, Now());
-                Assert.Equal(PasswordResetOutcome.Success, outcome);
+                var result = await PasswordResetEngine.CompleteResetAsync(db, token!, NewPassword, Now());
+                Assert.Equal(PasswordResetOutcome.Success, result.Outcome);
             }
 
             await using (var verify = NewContext())
@@ -162,13 +162,13 @@ namespace FolkIdle.Server.Tests
             await using (var db = NewContext())
             {
                 Assert.Equal(PasswordResetOutcome.Success,
-                    await PasswordResetEngine.CompleteResetAsync(db, token!, NewPassword, Now()));
+                    (await PasswordResetEngine.CompleteResetAsync(db, token!, NewPassword, Now())).Outcome);
             }
 
             await using (var db = NewContext())
             {
                 Assert.Equal(PasswordResetOutcome.AlreadyUsed,
-                    await PasswordResetEngine.CompleteResetAsync(db, token!, "another password", Now()));
+                    (await PasswordResetEngine.CompleteResetAsync(db, token!, "another password", Now())).Outcome);
             }
         }
 
@@ -188,7 +188,7 @@ namespace FolkIdle.Server.Tests
             {
                 long justPastExpiry = issuedAt + PasswordResetEngine.TokenLifetimeSeconds + 1;
                 Assert.Equal(PasswordResetOutcome.Expired,
-                    await PasswordResetEngine.CompleteResetAsync(db, token!, NewPassword, justPastExpiry));
+                    (await PasswordResetEngine.CompleteResetAsync(db, token!, NewPassword, justPastExpiry)).Outcome);
             }
         }
 
@@ -216,13 +216,13 @@ namespace FolkIdle.Server.Tests
             await using (var db = NewContext())
             {
                 Assert.Equal(PasswordResetOutcome.AlreadyUsed,
-                    await PasswordResetEngine.CompleteResetAsync(db, first!, NewPassword, Now()));
+                    (await PasswordResetEngine.CompleteResetAsync(db, first!, NewPassword, Now())).Outcome);
             }
 
             await using (var db = NewContext())
             {
                 Assert.Equal(PasswordResetOutcome.Success,
-                    await PasswordResetEngine.CompleteResetAsync(db, second!, NewPassword, Now()));
+                    (await PasswordResetEngine.CompleteResetAsync(db, second!, NewPassword, Now())).Outcome);
             }
         }
 
@@ -233,9 +233,9 @@ namespace FolkIdle.Server.Tests
 
             await using var db = NewContext();
             Assert.Equal(PasswordResetOutcome.InvalidToken,
-                await PasswordResetEngine.CompleteResetAsync(db, PasswordResetEngine.GenerateToken(), NewPassword, Now()));
+                (await PasswordResetEngine.CompleteResetAsync(db, PasswordResetEngine.GenerateToken(), NewPassword, Now())).Outcome);
             Assert.Equal(PasswordResetOutcome.InvalidToken,
-                await PasswordResetEngine.CompleteResetAsync(db, string.Empty, NewPassword, Now()));
+                (await PasswordResetEngine.CompleteResetAsync(db, string.Empty, NewPassword, Now())).Outcome);
         }
 
         /// <summary>
@@ -257,13 +257,13 @@ namespace FolkIdle.Server.Tests
             await using (var db = NewContext())
             {
                 Assert.Equal(PasswordResetOutcome.InvalidPassword,
-                    await PasswordResetEngine.CompleteResetAsync(db, token!, "short", Now()));
+                    (await PasswordResetEngine.CompleteResetAsync(db, token!, "short", Now())).Outcome);
             }
 
             await using (var db = NewContext())
             {
                 Assert.Equal(PasswordResetOutcome.Success,
-                    await PasswordResetEngine.CompleteResetAsync(db, token!, NewPassword, Now()));
+                    (await PasswordResetEngine.CompleteResetAsync(db, token!, NewPassword, Now())).Outcome);
             }
         }
 

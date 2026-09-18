@@ -38,7 +38,8 @@
 
 **Modify (tests)**
 - `server/FolkIdle.Server.Tests/RefreshTokenTests.cs` - two callers of the now `Task<Guid>` `RevokeRefreshTokenAsync`.
-- `server/FolkIdle.Server.Tests/E2EGameLoopTest.cs` - new E2E cases.
+- `server/FolkIdle.Server.Tests/E2EGameLoopTest.cs` - new E2E cases; also its `MintTestJwt` helper (stale `GenerateJwt` call site, found during Task 2's review - fixed in Task 6).
+- `server/FolkIdle.Server.Tests/HardenedEngineIntegrationTests.cs` - its own `MintTestJwt`-shaped helper has the same stale call site (Task 6).
 - New: `server/FolkIdle.Server.Tests/SessionSecurityTests.cs` (pure + integration).
 - `client_web/tests/billing.test.ts` - the new outcome kind.
 
@@ -1054,10 +1055,17 @@ git commit -F <message file>
 
 ---
 
-### Task 6: Refresh reissuance carries the nonce and the method forward
+### Task 6: Refresh reissuance carries the nonce and the method forward, and the build is verified for real
+
+**This is also the task that restores the FIRST fully-compiling, fully-testable
+state since Task 2** - Tasks 2-5 could not run `dotnet test` at all (the test
+project references the main project, which did not compile). Their reports'
+test claims are unverified until this task's Step 4.
 
 **Files:**
 - Modify: `server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs`
+- Modify: `server/FolkIdle.Server.Tests/E2EGameLoopTest.cs` (a stale `GenerateJwt` call site found during Task 2's review)
+- Modify: `server/FolkIdle.Server.Tests/HardenedEngineIntegrationTests.cs` (same)
 
 **Interfaces:**
 - Consumes: Task 3's widened `RedeemRefreshTokenAsync` (now returns `AuthMethod`), `SetCurrentSessionNonceAsync`.
@@ -1081,16 +1089,37 @@ Find the `Rotated`-only success path (after the `if (result.Outcome != Authentic
                 };
 ```
 
-- [ ] **Step 2: Build**
+- [ ] **Step 2: Fix the two remaining stale `GenerateJwt` call sites - test JWT-minting helpers**
+
+Task 2's own review found these: `E2EGameLoopTest.cs:97` and `HardenedEngineIntegrationTests.cs:2460` each have a `MintTestJwt` helper calling the OLD 4-argument `GenerateJwt(accountId, sessionNonce, secretKey, out _)` - once Step 1 above compiles, these become the last two `GenerateJwt` call sites anywhere in the tree with the wrong argument count (confirm with `grep -rn "GenerateJwt(" server/` before and after this step - the count of matches on the OLD 3-positional-value shape should go from 2 to 0). Both are generic "give me a valid authenticated test token" helpers with no reason to be device-bearer; pass `"pw"`:
+
+```csharp
+            return AuthenticationEngine.GenerateJwt(accountId, AuthenticationEngine.GenerateSessionNonce(), "pw", AuthenticationDefaults.LocalDevelopmentFallback, out _);
+```
+
+Apply this exact change at both locations.
+
+- [ ] **Step 3: Full build, confined-errors check**
 
 ```powershell
 Get-Process FolkIdle.Server -ErrorAction SilentlyContinue | Stop-Process -Force
-dotnet build server/FolkIdle.Server/FolkIdle.Server.csproj 2>&1 | Select-String "error"
+dotnet build server/FolkIdle.Server/FolkIdle.Server.csproj server/FolkIdle.Server.Tests/FolkIdle.Server.Tests.csproj 2>&1 | Select-String "error"
 ```
 
-Remaining errors confined to `HandleAuthRevoke`/`HandleResetPassword`/`HandleBillingVerify`/`HandleOAuthLink` (none should exist there yet - it is fine if there are zero errors left; Tasks 7-10 do not require prior errors to exist, they add new behavior).
+This is the FIRST point in this plan the whole tree - server and tests both - can compile. Remaining errors, if any, must be confined to `HandleAuthRevoke`/`HandleResetPassword`/`HandleBillingVerify`/`HandleOAuthLink` (Tasks 7-10's territory; it is fine if there are zero errors left). Any error anywhere else is a regression introduced somewhere in Tasks 1-6 and must be fixed before proceeding, however inconvenient - do not defer it further.
 
-- [ ] **Step 3: Write and run the carries-method-through-rotation E2E test**
+- [ ] **Step 4: Real, first-ever test-suite verification of Tasks 2, 3, and 4's tests**
+
+Tasks 2, 3, and 4 each wrote tests and reported them passing, but **none of those reports are trustworthy evidence**: `dotnet test` cannot execute anything in `FolkIdle.Server.Tests` while `FolkIdle.Server` fails to compile (a `ProjectReference`), and it has not compiled since Task 2 landed until Step 3 above. Whatever those tasks' reports claimed, this is the first REAL run.
+
+```powershell
+Get-Process FolkIdle.Server -ErrorAction SilentlyContinue | Stop-Process -Force
+dotnet test server/FolkIdle.Server.Tests/FolkIdle.Server.Tests.csproj --filter "FullyQualifiedName~SessionSecurityTests|FullyQualifiedName~Test_E2E_SessionSecurity"
+```
+
+Every test from Tasks 2, 3, and 4 (`GenerateJwt_RoundTripsAuthMethod`, `GenerateJwt_PasswordMethodRoundTrips`, `ValidateJwt_TreatsAMissingMethodClaimAsPasswordAuthenticated`, `NoncePersistence_SetThenGetRoundTrips`, `BumpSessionNonceAsync_ProducesADifferentStoredValue`, `RevokeRefreshTokenAsync_ReturnsTheAccountIdItRevoked`, `RevokeRefreshTokenAsync_UnknownTokenReturnsEmptyGuid`, `RedeemRefreshTokenAsync_CarriesAuthMethodThroughRotation`, `RedeemRefreshTokenAsync_ReplayReturnsTheRealAccountId`, `Test_E2E_SessionSecurity_TamperedNonceIsRejected`) must genuinely PASS here. If even one fails, that is a real defect in an earlier task, surfacing for the first time now that it is actually checkable - fix it here rather than assuming an earlier task's unverifiable report was correct.
+
+- [ ] **Step 5: Write and run the carries-method-through-rotation E2E test**
 
 Add `Test_E2E_SessionSecurity_RefreshCarriesAuthMethod` to `E2EGameLoopTest.cs`: log in with a fresh `deviceId` (yields `"dev"`), capture the refresh token, POST it to `/api/v1/auth/refresh`, decode the NEW access token, assert its `AuthMethod` (via `ValidateJwt`) is still `"dev"`.
 
@@ -1099,12 +1128,12 @@ Get-Process FolkIdle.Server -ErrorAction SilentlyContinue | Stop-Process -Force
 dotnet test server/FolkIdle.Server.Tests/FolkIdle.Server.Tests.csproj --filter "FullyQualifiedName~SessionSecurity"
 ```
 
-Expected: all session-security tests so far PASS.
+Expected: all session-security tests so far PASS - this run supersedes Step 4's, so it is fine (expected) if Step 4 was already green and this repeats it.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs server/FolkIdle.Server.Tests/E2EGameLoopTest.cs
+git add server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs server/FolkIdle.Server.Tests/E2EGameLoopTest.cs server/FolkIdle.Server.Tests/HardenedEngineIntegrationTests.cs
 git commit -F <message file>
 ```
 
@@ -1476,7 +1505,86 @@ Check this class's field name for the context factory (`_contextFactory` was use
         }
 ```
 
-- [ ] **Step 3: Gate `HandleOAuthLink`** the same way - replace its `long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);` with the tuple form, and insert the same step-up block after the request body is parsed (it already reads `oauthProviderToken` from the body - add the `password` check alongside it, before calling `LinkOAuthAccountAsync`).
+- [ ] **Step 3: Gate `HandleOAuthLink`**
+
+This handler parses its body with `JsonDocument.Parse`, not `JsonSerializer.Deserialize<JsonElement>` like `HandleBillingVerify` - read `password` inside the SAME `using var document = ...` block that already reads `oauthProviderToken`, since `document` is disposed at the end of that block:
+
+```csharp
+        private async Task HandleOAuthLink(HttpListenerContext context)
+        {
+            try
+            {
+                var (playerId, authMethod) = await TryResolveAuthenticatedPlayerWithMethodAsync(context.Request);
+                if (playerId == 0L)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                Guid accountId = await ResolveAccountIdAsync(playerId);
+
+                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                string body = await reader.ReadToEndAsync();
+
+                string oauthProviderToken;
+                string suppliedPassword;
+                try
+                {
+                    using var document = System.Text.Json.JsonDocument.Parse(body);
+                    if (!document.RootElement.TryGetProperty("oauthProviderToken", out var tokenElement))
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+                    oauthProviderToken = tokenElement.GetString() ?? string.Empty;
+                    suppliedPassword = document.RootElement.TryGetProperty("password", out var pwElement)
+                        ? (pwElement.GetString() ?? string.Empty)
+                        : string.Empty;
+                }
+                catch (System.Text.Json.JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (await RequiresPasswordStepUpAsync(playerId, authMethod))
+                {
+                    await using var stepUpDb = await _contextFactory.CreateDbContextAsync();
+                    if (suppliedPassword.Length == 0 || !await VerifyStepUpPasswordAsync(stepUpDb, playerId, suppliedPassword))
+                    {
+                        WriteStepUpRequired(context);
+                        context.Response.Close();
+                        return;
+                    }
+                }
+
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+                var validator = _serviceProvider.GetRequiredService<IOAuthTokenValidator>();
+                OAuthLinkOutcome outcome = await AuthenticationEngine.LinkOAuthAccountAsync(authOptions, accountId, oauthProviderToken, validator);
+
+                context.Response.StatusCode = outcome switch
+                {
+                    OAuthLinkOutcome.Success => 200,
+                    OAuthLinkOutcome.InvalidToken => 400,
+                    OAuthLinkOutcome.AccountNotFound => 404,
+                    OAuthLinkOutcome.AlreadyLinked => 409,
+                    OAuthLinkOutcome.ExternalIdentityInUse => 409,
+                    _ => 500
+                };
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"OAuth link error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            context.Response.Close();
+        }
+```
+
+(The trailing `catch`/`context.Response.Close()` were already there - shown here only so the whole method reads as one piece; do not duplicate them.)
 
 - [ ] **Step 4: Write and run the tests**
 

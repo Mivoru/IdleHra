@@ -40,14 +40,12 @@ namespace FolkIdle.Server.Engine
     ///    clicks "send it again" three times does not leave three live keys
     ///    lying in three inboxes.
     ///
-    /// KNOWN LIMIT, stated rather than hidden: a successful reset does NOT end
-    /// sessions that are already signed in. This server issues self-contained
-    /// 24-hour JWTs and has no revocation list of any kind - PlayerRecord.
-    /// AuthenticatorToken exists but is read by nothing. So an attacker who
-    /// already had the old password keeps their session until the token
-    /// expires. Closing that means a revocation check on every authenticated
-    /// request, which is a separate piece of work; it is recorded in the
-    /// backlog rather than half-done here.
+    /// A successful reset also ends any session already signed in: it bumps
+    /// PlayerRecord.CurrentSessionNonce, and the caller (HandleResetPassword)
+    /// uses the returned account id and nonce to update the in-memory nonce
+    /// cache and force-disconnect the live socket, so a JWT already issued
+    /// stops validating on its very next authenticated request rather than
+    /// riding out its remaining 24-hour lifetime.
     /// </summary>
     public static class PasswordResetEngine
     {
@@ -131,14 +129,14 @@ namespace FolkIdle.Server.Engine
         /// could not already infer, and telling them nothing would strand a
         /// player in front of a form that refuses them without saying why.
         /// </summary>
-        public static async Task<PasswordResetOutcome> CompleteResetAsync(
+        public static async Task<(PasswordResetOutcome Outcome, Guid AccountId, string NewNonce)> CompleteResetAsync(
             FolkIdleDbContext db, string token, string newPassword, long nowEpoch)
         {
-            if (string.IsNullOrEmpty(token)) return PasswordResetOutcome.InvalidToken;
+            if (string.IsNullOrEmpty(token)) return (PasswordResetOutcome.InvalidToken, Guid.Empty, string.Empty);
 
             // Checked BEFORE the token is spent, so a player who fumbles the
             // new password does not also lose their link.
-            if (!PasswordPolicy.IsAcceptable(newPassword)) return PasswordResetOutcome.InvalidPassword;
+            if (!PasswordPolicy.IsAcceptable(newPassword)) return (PasswordResetOutcome.InvalidPassword, Guid.Empty, string.Empty);
 
             string hash = HashToken(token);
 
@@ -146,13 +144,13 @@ namespace FolkIdle.Server.Engine
             // there is no timing signal worth defending against here the way
             // there is on a password compare.
             var row = await db.PasswordResetTokens.FirstOrDefaultAsync(t => t.TokenHash == hash);
-            if (row == null) return PasswordResetOutcome.InvalidToken;
+            if (row == null) return (PasswordResetOutcome.InvalidToken, Guid.Empty, string.Empty);
 
-            if (row.UsedAtEpoch != 0L) return PasswordResetOutcome.AlreadyUsed;
-            if (row.ExpiresAtEpoch <= nowEpoch) return PasswordResetOutcome.Expired;
+            if (row.UsedAtEpoch != 0L) return (PasswordResetOutcome.AlreadyUsed, Guid.Empty, string.Empty);
+            if (row.ExpiresAtEpoch <= nowEpoch) return (PasswordResetOutcome.Expired, Guid.Empty, string.Empty);
 
             var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == row.PlayerId);
-            if (player == null) return PasswordResetOutcome.InvalidToken;
+            if (player == null) return (PasswordResetOutcome.InvalidToken, Guid.Empty, string.Empty);
 
             player.PasswordHash = PasswordHasher.Hash(newPassword);
 
@@ -165,6 +163,19 @@ namespace FolkIdle.Server.Engine
             // anchor in place would hand the account straight back.
             player.DeviceId = null;
 
+            // Modul: THE ACCESS TOKEN IS CUT LOOSE TOO, not only the device
+            // anchor and the refresh tokens below - a JWT already issued used
+            // to outlive a password reset it invalidated, for up to 24 more
+            // hours. Same nonce mechanism as logout and refresh-token replay
+            // (AuthenticationEngine.BumpSessionNonceAsync); done inline here,
+            // on the already-tracked `player` entity, so it rides the same
+            // SaveChangesAsync as the password hash change rather than
+            // costing a second round trip. The caller needs the value back
+            // (rather than re-reading it) to update its own in-memory cache
+            // and evict the live socket without a second DB round trip.
+            string newNonce = AuthenticationEngine.GenerateSessionNonce();
+            player.CurrentSessionNonce = newNonce;
+
             row.UsedAtEpoch = nowEpoch;
 
             await db.SaveChangesAsync();
@@ -176,14 +187,14 @@ namespace FolkIdle.Server.Engine
             // Somebody resetting a password because another person has been in
             // their account would otherwise change the password and leave that
             // person a working key - which is the whole failure this endpoint
-            // exists to undo. The JWT already issued is untouched and expires
-            // within the day; the refresh half is the one that had to be
-            // revocable, and this is the moment that most needs it.
+            // exists to undo. The JWT already issued is now cut loose above via
+            // the session nonce; the refresh half is revoked here the same way
+            // it always was.
             await db.PlayerRefreshTokens
                 .Where(t => t.AccountId == player.PlayerGuid && t.RevokedEpoch == 0L)
                 .ExecuteUpdateAsync(setters => setters.SetProperty(t => t.RevokedEpoch, nowEpoch));
 
-            return PasswordResetOutcome.Success;
+            return (PasswordResetOutcome.Success, player.PlayerGuid, newNonce);
         }
 
         /// <summary>

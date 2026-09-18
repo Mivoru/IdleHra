@@ -835,7 +835,16 @@ namespace FolkIdle.Server.Network
                         // guess against a token.
                         || requestPath == "/api/v1/auth/request-password-reset"
                         || requestPath == "/api/v1/auth/reset-password"
-                        || requestPath == "/api/v1/auth/refresh")
+                        || requestPath == "/api/v1/auth/refresh"
+                        // Modul: Task 10's step-up gate made this endpoint
+                        // verify a password too (HandleBillingVerify, for a
+                        // device-bearer session on a password-holding
+                        // account) - without this it would be an unthrottled
+                        // oracle for guessing that one account's password at
+                        // full PBKDF2 cost, with no email enumeration even
+                        // needed since the bearer token already identifies
+                        // the account.
+                        || requestPath == "/api/v1/billing/verify")
                     {
                         if (!AuthThrottle.TryConsume(AuthThrottle.ResolveClientAddress(context.Request)))
                         {
@@ -7530,24 +7539,57 @@ namespace FolkIdle.Server.Network
         // invalidation or expiry.
         private readonly ConcurrentDictionary<Guid, long> _accountIdToPlayerIdCache = new();
 
-        private async Task<long> TryResolveAuthenticatedPlayerAsync(HttpListenerRequest request)
+        // Modul: mirrors _accountIdToPlayerIdCache immediately above - avoid a
+        // DB round trip on every authenticated request. Unlike that cache,
+        // this one DOES need invalidation: a revocation event (logout,
+        // password reset, refresh-token replay) writes a new value here at
+        // the moment it bumps the DB column, so this server's own writes
+        // never go stale. A miss (this pod just started, or the account has
+        // never been looked up here) falls through to the DB and populates
+        // the cache either way, including with null.
+        private readonly ConcurrentDictionary<Guid, string?> _accountCurrentNonce = new();
+
+        private async Task<bool> IsNonceCurrentAsync(Guid accountId, string presentedNonce)
         {
-            const string bearerPrefix = "Bearer ";
-            string bearerHeader = request.Headers["Authorization"] ?? string.Empty;
-            if (bearerHeader.Length <= bearerPrefix.Length || !bearerHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+            if (!_accountCurrentNonce.TryGetValue(accountId, out string? currentNonce))
             {
-                return 0L;
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+                currentNonce = await AuthenticationEngine.GetCurrentSessionNonceAsync(authOptions, accountId);
+                _accountCurrentNonce[accountId] = currentNonce;
             }
 
-            string token = bearerHeader.Substring(bearerPrefix.Length);
-            JwtValidationResult result = AuthenticationEngine.ValidateJwt(token, _jwtSecretKey);
-            if (!result.IsValid)
-            {
-                return 0L;
-            }
-
-            return await ResolvePlayerIdFromAccountIdAsync(result.AccountId);
+            // Modul: null is the bootstrap state (see PlayerRecord.
+            // CurrentSessionNonce's own doc comment) - no revocation event
+            // has ever happened for this account, so every token validates
+            // exactly as it did before this column existed.
+            return currentNonce == null || currentNonce == presentedNonce;
         }
+
+        /// <summary>
+        /// Writes a just-bumped nonce into the cache and immediately
+        /// disconnects this account's live WebSocket, if it has one - so a
+        /// stolen access token stops working on its very next use rather
+        /// than only once its normal 24-hour clock runs out.
+        /// </summary>
+        private async Task EvictAccountSessionAsync(Guid accountId, string newNonce)
+        {
+            _accountCurrentNonce[accountId] = newNonce;
+            long playerId = await ResolvePlayerIdFromAccountIdAsync(accountId);
+            if (playerId > 0L)
+            {
+                ForceDisconnect(playerId);
+            }
+        }
+
+        // Modul: final-review Finding 3 - this used to duplicate
+        // TryResolveAuthenticatedPlayerWithMethodAsync almost line-for-line
+        // (bearer-prefix parsing, ValidateJwt, the nonce check, player-id
+        // resolution), differing only in what it returned. Delegating keeps
+        // there being exactly one place that decides what makes a bearer
+        // token authenticated; every existing caller here only ever wanted
+        // the PlayerId half of that tuple.
+        private async Task<long> TryResolveAuthenticatedPlayerAsync(HttpListenerRequest request)
+            => (await TryResolveAuthenticatedPlayerWithMethodAsync(request)).PlayerId;
 
         private async Task<long> ResolvePlayerIdFromAccountIdAsync(Guid accountId)
         {
@@ -7565,6 +7607,65 @@ namespace FolkIdle.Server.Network
 
             _accountIdToPlayerIdCache[accountId] = player.Id;
             return player.Id;
+        }
+
+        // Modul: sibling of TryResolveAuthenticatedPlayerAsync that also
+        // hands back the token's AuthMethod ("pw"/"dev") - added for the
+        // step-up gate (RequiresPasswordStepUpAsync below) rather than
+        // changing the original, which has seven-plus callers that only
+        // ever needed the playerId.
+        private async Task<(long PlayerId, string AuthMethod)> TryResolveAuthenticatedPlayerWithMethodAsync(HttpListenerRequest request)
+        {
+            const string bearerPrefix = "Bearer ";
+            string bearerHeader = request.Headers["Authorization"] ?? string.Empty;
+            if (bearerHeader.Length <= bearerPrefix.Length || !bearerHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return (0L, string.Empty);
+            }
+
+            string token = bearerHeader.Substring(bearerPrefix.Length);
+            JwtValidationResult result = AuthenticationEngine.ValidateJwt(token, _jwtSecretKey);
+            if (!result.IsValid || !await IsNonceCurrentAsync(result.AccountId, result.SessionNonce))
+            {
+                return (0L, string.Empty);
+            }
+
+            long playerId = await ResolvePlayerIdFromAccountIdAsync(result.AccountId);
+            return (playerId, result.AuthMethod);
+        }
+
+        /// <summary>
+        /// True only when this session was established by a silent
+        /// device-bearer login AND the account actually has a password to
+        /// step up TO - the one case that proves nothing about who is
+        /// holding the device. False for a real password/OAuth login (or a
+        /// JWT that predates the "m" claim, defaulted safe), which never
+        /// needs a step-up. A pure guest (PasswordHash still null) has
+        /// nothing to step up to, so a stolen DeviceId on a guest account
+        /// gains nothing extra from this gate - it is exactly as exposed as
+        /// it always was.
+        /// </summary>
+        private async Task<bool> RequiresPasswordStepUpAsync(long playerId, string authMethod)
+        {
+            if (authMethod != "dev") return false;
+
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            var player = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId);
+            return player?.PasswordHash != null;
+        }
+
+        private static async Task<bool> VerifyStepUpPasswordAsync(FolkIdleDbContext db, long playerId, string suppliedPassword)
+        {
+            var player = await db.PlayerRecords.AsNoTracking().FirstOrDefaultAsync(p => p.Id == playerId);
+            return player != null && PasswordHasher.Verify(suppliedPassword, player.PasswordHash);
+        }
+
+        private static void WriteStepUpRequired(HttpListenerContext context)
+        {
+            context.Response.StatusCode = 403;
+            context.Response.ContentType = "application/json";
+            var bytes = Encoding.UTF8.GetBytes("{\"StepUpRequired\":true}");
+            context.Response.OutputStream.Write(bytes, 0, bytes.Length);
         }
 
         // Modul: HandleVerifyReceipt REMOVED 2026-09-18 - it was the REST
@@ -7586,7 +7687,7 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                var (playerId, authMethod) = await TryResolveAuthenticatedPlayerWithMethodAsync(context.Request);
                 if (playerId == 0L)
                 {
                     context.Response.StatusCode = 401;
@@ -7604,6 +7705,31 @@ namespace FolkIdle.Server.Network
                 using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
                 var body = await reader.ReadToEndAsync();
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
+
+                // Modul: step-up gate, Task 10. A device-bearer session on an
+                // account that already has a password proves only "held the
+                // DeviceId", not "is the account owner" - a real-money
+                // purchase requires re-proving the password in this same
+                // request body before VerifyReceiptAsync runs.
+                if (await RequiresPasswordStepUpAsync(playerId, authMethod))
+                {
+                    string suppliedPassword = payload.TryGetProperty("password", out var pwElement) ? (pwElement.GetString() ?? string.Empty) : string.Empty;
+                    await using var stepUpDb = await _contextFactory.CreateDbContextAsync();
+                    if (suppliedPassword.Length == 0 || !await VerifyStepUpPasswordAsync(stepUpDb, playerId, suppliedPassword))
+                    {
+                        // Modul: this endpoint is now in the AuthThrottle
+                        // budget (see the allowlist above) precisely because
+                        // it verifies a password - the request-count throttle
+                        // bounds the guess rate, and this line leaves a trace
+                        // in the server's own log of which player a
+                        // brute-force attempt targeted, which the throttle
+                        // alone would not record anywhere.
+                        Console.WriteLine($"Step-up rejected: player {playerId} presented a device-bearer session with a missing or incorrect password on billing/verify.");
+                        WriteStepUpRequired(context);
+                        context.Response.Close();
+                        return;
+                    }
+                }
 
                 if (!payload.TryGetProperty("receipt", out var receiptElement))
                 {
@@ -8037,11 +8163,11 @@ namespace FolkIdle.Server.Network
         /// saves a password prompt into one that prevents a sign-in.
         /// </remarks>
         private async Task<(string Token, long ExpiresAtEpoch)> TryIssueRefreshTokenAsync(
-            RetryingDbContextOptions authOptions, Guid accountId)
+            RetryingDbContextOptions authOptions, Guid accountId, string authMethod)
         {
             try
             {
-                return await AuthenticationEngine.IssueRefreshTokenAsync(authOptions, accountId);
+                return await AuthenticationEngine.IssueRefreshTokenAsync(authOptions, accountId, authMethod);
             }
             catch (Exception ex)
             {
@@ -8102,6 +8228,14 @@ namespace FolkIdle.Server.Network
                         // came back, so every session on that account was just
                         // revoked. See RedeemRefreshTokenAsync for why.
                         Console.WriteLine("Refresh token replay detected; all sessions for that account revoked.");
+
+                        // Modul: "all sessions" used to mean only the refresh
+                        // half - RedeemRefreshTokenAsync already revoked every
+                        // refresh token for this account before returning
+                        // Replayed. The access token survived that, for up to
+                        // 24 more hours, until this bump.
+                        string newNonce = await AuthenticationEngine.BumpSessionNonceAsync(authOptions, result.AccountId);
+                        await EvictAccountSessionAsync(result.AccountId, newNonce);
                     }
 
                     context.Response.StatusCode = 401;
@@ -8109,13 +8243,18 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                // Modul: a fresh SessionNonce, exactly as a password login
-                // mints one. The nonce is what the Redis eviction check uses to
-                // kick a stale prior session for the same account, so reusing
-                // one here would let two devices hold the same session identity
-                // and neither would ever evict the other.
+                // Modul: THE NONCE DOES NOT FEED SESSION EVICTION - that is a
+                // SEPARATE mechanism (RedisPlayerSessionLock, its own
+                // per-connection RedisLockToken, see SubscribeToSessionEviction
+                // and the WebSocket handshake's ForceAcquireAndEvictAsync
+                // call). An earlier comment here claimed otherwise; it was
+                // wrong. This nonce exists so a logout/reset/replay event -
+                // none of which are a new login - can invalidate an access
+                // token nothing else touches. See IsNonceCurrentAsync.
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
-                string jwt = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
+                await AuthenticationEngine.SetCurrentSessionNonceAsync(authOptions, result.AccountId, sessionNonce);
+                _accountCurrentNonce[result.AccountId] = sessionNonce;
+                string jwt = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, result.AuthMethod, _jwtSecretKey, out long expiresAtEpoch);
 
                 var response = new AuthLoginResponse
                 {
@@ -8139,7 +8278,8 @@ namespace FolkIdle.Server.Network
         }
 
         /// <summary>
-        /// Signing out: invalidates the refresh token on this device.
+        /// Signing out: invalidates the refresh token on this device, AND the
+        /// live access token, AND any open WebSocket for the account.
         /// </summary>
         /// <remarks>
         /// Answers 204 whatever happened, including for a token that never
@@ -8148,10 +8288,13 @@ namespace FolkIdle.Server.Network
         /// would confirm which tokens are live to anybody who can reach the
         /// route.
         ///
-        /// The JWT is untouched and stays valid for the rest of its day - it is
-        /// a bearer token this server does not store, which is exactly the
-        /// property that made a 60-day one unacceptable. The client discards
-        /// it; the refresh token is the half that had to be revocable.
+        /// The JWT used to be untouched and stay valid for the rest of its day
+        /// - a bearer token this server does not store, so nothing checked it
+        /// again on the way in. That is fixed by bumping the account's session
+        /// nonce (signed into every JWT at login) and evicting the cached
+        /// nonce + any live WebSocket, so a request bearing the old token now
+        /// fails the nonce check and a connected session is disconnected
+        /// immediately, not just prevented from silently refreshing.
         /// </remarks>
         private async Task HandleAuthRevoke(HttpListenerContext context)
         {
@@ -8176,7 +8319,19 @@ namespace FolkIdle.Server.Network
                     // A malformed body is still a sign-out. Nothing to revoke.
                 }
 
-                await AuthenticationEngine.RevokeRefreshTokenAsync(authOptions, rawToken);
+                Guid revokedAccountId = await AuthenticationEngine.RevokeRefreshTokenAsync(authOptions, rawToken);
+                if (revokedAccountId != Guid.Empty)
+                {
+                    // Modul: the refresh token being gone was already true.
+                    // What was missing is this: the ACCESS token this device
+                    // is still holding stays valid for up to 24 more hours
+                    // unless something invalidates it too. Bump and evict so
+                    // "sign out" actually ends the session everywhere, not
+                    // just the ability to silently get a new one.
+                    string newNonce = await AuthenticationEngine.BumpSessionNonceAsync(authOptions, revokedAccountId);
+                    await EvictAccountSessionAsync(revokedAccountId, newNonce);
+                }
+
                 context.Response.StatusCode = 204;
             }
             catch (Exception ex)
@@ -8197,10 +8352,15 @@ namespace FolkIdle.Server.Network
         // DeviceId is a client-persisted GUID (see UiLoginWindow on the
         // client) - looked up or auto-provisioned via AuthenticationEngine.
         // LoginOrProvisionAsync, then a fresh SessionNonce is minted and
-        // signed into a JWT. That SessionNonce round-trips through the
-        // WebSocket AuthHandshakePacket at connect time and is what the
-        // Redis eviction check in HandleClientLoopAsync uses to detect and
-        // kick a stale prior session for the same account.
+        // signed into a JWT. THE NONCE DOES NOT FEED SESSION EVICTION - that
+        // is a separate mechanism (RedisPlayerSessionLock, its own
+        // per-connection RedisLockToken, see SubscribeToSessionEviction and
+        // the WebSocket handshake's ForceAcquireAndEvictAsync call). An
+        // earlier comment here claimed the nonce was what the Redis eviction
+        // check used to detect and kick a stale prior session; it was wrong.
+        // This nonce exists so a logout/reset/replay event - none of which
+        // are a new login - can invalidate an access token nothing else
+        // touches. See IsNonceCurrentAsync.
         // Modul: accepts either deviceId (existing login-or-provision flow,
         // unchanged) or oauthProviderToken (OAuth recovery login, Part 1 of
         // this task). oauthProviderToken is a validated PROOF-OF-OWNERSHIP
@@ -8271,6 +8431,7 @@ namespace FolkIdle.Server.Network
 
                 var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
                 Guid accountId;
+                string authMethod;
 
                 if (!string.IsNullOrWhiteSpace(oauthProviderToken))
                 {
@@ -8283,6 +8444,7 @@ namespace FolkIdle.Server.Network
                         return;
                     }
                     accountId = oauthResult.AccountId;
+                    authMethod = "pw";
                 }
                 else if (!string.IsNullOrWhiteSpace(email) && !string.IsNullOrEmpty(password))
                 {
@@ -8294,6 +8456,7 @@ namespace FolkIdle.Server.Network
                         return;
                     }
                     accountId = emailResult.AccountId;
+                    authMethod = "pw";
                 }
                 else if (!string.IsNullOrWhiteSpace(rememberedDeviceId) && rememberedDeviceId.Length <= 128)
                 {
@@ -8305,10 +8468,12 @@ namespace FolkIdle.Server.Network
                         return;
                     }
                     accountId = rememberedResult.AccountId;
+                    authMethod = "dev";
                 }
                 else if (!string.IsNullOrWhiteSpace(deviceId) && deviceId.Length <= 128)
                 {
                     (_, accountId) = await AuthenticationEngine.LoginOrProvisionAsync(authOptions, deviceId);
+                    authMethod = "dev";
                 }
                 else
                 {
@@ -8328,9 +8493,11 @@ namespace FolkIdle.Server.Network
                 await DailyLoginRewardEngine.TryGrantLoginRewardAsync(authOptions, accountId);
 
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
-                string token = AuthenticationEngine.GenerateJwt(accountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
+                await AuthenticationEngine.SetCurrentSessionNonceAsync(authOptions, accountId, sessionNonce);
+                _accountCurrentNonce[accountId] = sessionNonce;
+                string token = AuthenticationEngine.GenerateJwt(accountId, sessionNonce, authMethod, _jwtSecretKey, out long expiresAtEpoch);
 
-                var refresh = await TryIssueRefreshTokenAsync(authOptions, accountId);
+                var refresh = await TryIssueRefreshTokenAsync(authOptions, accountId, authMethod);
 
                 var response = new AuthLoginResponse
                 {
@@ -8518,7 +8685,15 @@ namespace FolkIdle.Server.Network
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
                 long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                var outcome = await Engine.PasswordResetEngine.CompleteResetAsync(db, token, newPassword, nowEpoch);
+                var (outcome, accountId, newNonce) = await Engine.PasswordResetEngine.CompleteResetAsync(db, token, newPassword, nowEpoch);
+
+                if (outcome == Engine.PasswordResetOutcome.Success)
+                {
+                    // Modul: the nonce is already persisted - CompleteResetAsync
+                    // wrote it in the same save as the password hash. This is
+                    // cache-plus-disconnect only, no second DB write.
+                    await EvictAccountSessionAsync(accountId, newNonce);
+                }
 
                 context.Response.StatusCode = outcome switch
                 {
@@ -8643,9 +8818,11 @@ namespace FolkIdle.Server.Network
                 await DailyLoginRewardEngine.TryGrantLoginRewardAsync(authOptions, result.AccountId);
 
                 string sessionNonce = AuthenticationEngine.GenerateSessionNonce();
-                string token = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, _jwtSecretKey, out long expiresAtEpoch);
+                await AuthenticationEngine.SetCurrentSessionNonceAsync(authOptions, result.AccountId, sessionNonce);
+                _accountCurrentNonce[result.AccountId] = sessionNonce;
+                string token = AuthenticationEngine.GenerateJwt(result.AccountId, sessionNonce, "pw", _jwtSecretKey, out long expiresAtEpoch);
 
-                var refresh = await TryIssueRefreshTokenAsync(authOptions, result.AccountId);
+                var refresh = await TryIssueRefreshTokenAsync(authOptions, result.AccountId, "pw");
 
                 var response = new AuthLoginResponse
                 {
@@ -8677,7 +8854,7 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                var (playerId, authMethod) = await TryResolveAuthenticatedPlayerWithMethodAsync(context.Request);
                 if (playerId == 0L)
                 {
                     context.Response.StatusCode = 401;
@@ -8691,6 +8868,7 @@ namespace FolkIdle.Server.Network
                 string body = await reader.ReadToEndAsync();
 
                 string oauthProviderToken;
+                string suppliedPassword;
                 try
                 {
                     using var document = System.Text.Json.JsonDocument.Parse(body);
@@ -8701,12 +8879,38 @@ namespace FolkIdle.Server.Network
                         return;
                     }
                     oauthProviderToken = tokenElement.GetString() ?? string.Empty;
+                    suppliedPassword = document.RootElement.TryGetProperty("password", out var pwElement)
+                        ? (pwElement.GetString() ?? string.Empty)
+                        : string.Empty;
                 }
                 catch (System.Text.Json.JsonException)
                 {
                     context.Response.StatusCode = 400;
                     context.Response.Close();
                     return;
+                }
+
+                // Modul: step-up gate, Task 10 - see HandleBillingVerify's
+                // identical block. Linking an external identity is just as
+                // irreversible/account-changing as a purchase, so a
+                // device-bearer session on a password-holding account must
+                // re-prove the password before LinkOAuthAccountAsync runs.
+                if (await RequiresPasswordStepUpAsync(playerId, authMethod))
+                {
+                    await using var stepUpDb = await _contextFactory.CreateDbContextAsync();
+                    if (suppliedPassword.Length == 0 || !await VerifyStepUpPasswordAsync(stepUpDb, playerId, suppliedPassword))
+                    {
+                        // Modul: matches HandleBillingVerify's own log line -
+                        // this route is already in the AuthThrottle allowlist
+                        // (it verified a password for recovery-login purposes
+                        // long before this gate existed), but the throttle
+                        // alone leaves no record of which player a
+                        // brute-force attempt targeted.
+                        Console.WriteLine($"Step-up rejected: player {playerId} presented a device-bearer session with a missing or incorrect password on oauth-link.");
+                        WriteStepUpRequired(context);
+                        context.Response.Close();
+                        return;
+                    }
                 }
 
                 var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
@@ -8874,6 +9078,18 @@ namespace FolkIdle.Server.Network
                     if (!validation.IsValid)
                     {
                         await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Invalid or expired token", CancellationToken.None);
+                        return;
+                    }
+
+                    if (!await IsNonceCurrentAsync(validation.AccountId, validation.SessionNonce))
+                    {
+                        // Modul: must contain "token" (case-insensitive) - the
+                        // client's interpretClose (connection.ts) classifies a
+                        // 1008 close as a dead session only when the reason
+                        // matches /token/i. Without that word here, a revoked
+                        // token reads as a transient drop and the client
+                        // reconnects with the same (still-revoked) token forever.
+                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Session revoked - token no longer valid", CancellationToken.None);
                         return;
                     }
 
@@ -9229,7 +9445,16 @@ namespace FolkIdle.Server.Network
                     _ = _redisSessionLock.ReleaseAsync(playerId, session.RedisLockToken);
                 }
 
-                session.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Violent termination", CancellationToken.None)
+                // Modul: the close reason must satisfy the client's /token/i
+                // check (connection.ts's interpretClose) or the client reads
+                // this as a transient drop and reconnects with the very same
+                // token forever, showing a misleading "stale LogicEpochCounter"
+                // message instead of the login screen. EVERY caller of
+                // ForceDisconnect - blacklist, anti-cheat, epoch violations,
+                // cross-pod "superseded by a new login", and the new session
+                // revocation path - wants the same outcome: stop, don't retry
+                // with this token. Keep the word "token" in this string.
+                session.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Violent termination - token no longer valid", CancellationToken.None)
                     .ContinueWith(_logSendFault, playerId, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
             }
         }
