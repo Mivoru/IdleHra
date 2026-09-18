@@ -17,6 +17,38 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-18 - the deploy pipeline was dead, and PR #5 went live
+
+Picked up mid-stream: the breeding-traits plan, round 3's foundation, the
+Market fix and the Copilot audit (below) had all already been implemented and
+merged to `main` across PRs #1-#5 by earlier sessions, but the local `main`
+checkout was 38 commits behind its own remote and nobody had noticed.
+
+**The CI/CD pipeline had been dead since 2026-09-16.** `Build, Test, and
+Deploy` failed on every one of the last five pushes to `main` (PRs #1, #2,
+#4, #5, and one direct push) - not from anything in those changes, but
+because `.github/workflows/deploy.yml`'s "Set up the Android SDK" step asked
+for the legacy `tools` package. Google has removed it from the SDK
+repository; `sdkmanager` resolves its package list in order and aborts on
+the first miss, so it never reached `platform-tools`/`platforms;android-36`
+/`build-tools;36.0.0`, and everything gated behind that job - the Docker
+build, migrations, deploy - was silently skipped every time. Fixed by
+dropping `tools` from the packages list (`d0c548a`); confirmed green on the
+next push (`Build and Test`, `Client Checks`, `Build and Push Docker Image`
+all pass). Note this workflow's `migrate`/`deploy` jobs are gated on
+`vars.KUBE_DEPLOY_ENABLED`, which is unset - they are a dormant Kubernetes
+path, not this project's real deploy mechanism, which stays the manual SSH
+push described in `ops/oracle/README.md`.
+
+**DEPLOYED 2026-09-18** (`d0c548a`, manual SSH push + `docker compose up -d
+--build`). This carried PR #5 (the village/feast gold-sync fix, task 16
+below) live for the first time - production had only had round 3's
+foundation and the Market fix until now. No new migration in this range (the
+breeding-traits migration already applied 2026-09-16); cold-boot
+reconstruction: 45 sessions, gateway open; production smoke 26/26.
+
+---
+
 # HANDOFF 2026-09-17 - round 3's foundation deployed, and a Market checkbox fix
 
 `docs/superpowers/plans/2026-09-17-round-3-translation-foundation.md`'s five

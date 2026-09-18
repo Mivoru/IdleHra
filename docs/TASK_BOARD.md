@@ -2805,6 +2805,13 @@ building it.
 
 ## 16. Village upgrade and villager recruitment don't update the live session's gold (economy bug, was P1)
 
+**DONE 2026-09-17, deployed 2026-09-18 (`f7b8cf8`, `6ebe4cd`, `d0c548a`).**
+Both paths now mirror `BirthNotification.GoldSpent`; `RecruitAsync` changed
+signature to also return `GoldSpent`, which surfaced a caller in
+`BreedingTraitsIntegrationTests.cs` the plan's own grep had missed. Covered
+by new `HardenedEngineIntegrationTests` cases and an `exercise.mjs` assertion
+that the header updates live for a feast.
+
 **Confirmed, and now fully scoped — see the separate implementation plan at
 `docs/superpowers/plans/2026-09-17-village-gold-sync.md`.** Same bug shape as
 the breeding gold fix from round 1 (`BirthNotification.GoldSpent`,
