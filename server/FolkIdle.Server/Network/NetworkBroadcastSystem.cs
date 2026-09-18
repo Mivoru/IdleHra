@@ -7530,6 +7530,48 @@ namespace FolkIdle.Server.Network
         // invalidation or expiry.
         private readonly ConcurrentDictionary<Guid, long> _accountIdToPlayerIdCache = new();
 
+        // Modul: mirrors _accountIdToPlayerIdCache immediately above - avoid a
+        // DB round trip on every authenticated request. Unlike that cache,
+        // this one DOES need invalidation: a revocation event (logout,
+        // password reset, refresh-token replay) writes a new value here at
+        // the moment it bumps the DB column, so this server's own writes
+        // never go stale. A miss (this pod just started, or the account has
+        // never been looked up here) falls through to the DB and populates
+        // the cache either way, including with null.
+        private readonly ConcurrentDictionary<Guid, string?> _accountCurrentNonce = new();
+
+        private async Task<bool> IsNonceCurrentAsync(Guid accountId, string presentedNonce)
+        {
+            if (!_accountCurrentNonce.TryGetValue(accountId, out string? currentNonce))
+            {
+                var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+                currentNonce = await AuthenticationEngine.GetCurrentSessionNonceAsync(authOptions, accountId);
+                _accountCurrentNonce[accountId] = currentNonce;
+            }
+
+            // Modul: null is the bootstrap state (see PlayerRecord.
+            // CurrentSessionNonce's own doc comment) - no revocation event
+            // has ever happened for this account, so every token validates
+            // exactly as it did before this column existed.
+            return currentNonce == null || currentNonce == presentedNonce;
+        }
+
+        /// <summary>
+        /// Writes a just-bumped nonce into the cache and immediately
+        /// disconnects this account's live WebSocket, if it has one - so a
+        /// stolen access token stops working on its very next use rather
+        /// than only once its normal 24-hour clock runs out.
+        /// </summary>
+        private async Task EvictAccountSessionAsync(Guid accountId, string newNonce)
+        {
+            _accountCurrentNonce[accountId] = newNonce;
+            long playerId = await ResolvePlayerIdFromAccountIdAsync(accountId);
+            if (playerId > 0L)
+            {
+                ForceDisconnect(playerId);
+            }
+        }
+
         private async Task<long> TryResolveAuthenticatedPlayerAsync(HttpListenerRequest request)
         {
             const string bearerPrefix = "Bearer ";
@@ -7542,6 +7584,11 @@ namespace FolkIdle.Server.Network
             string token = bearerHeader.Substring(bearerPrefix.Length);
             JwtValidationResult result = AuthenticationEngine.ValidateJwt(token, _jwtSecretKey);
             if (!result.IsValid)
+            {
+                return 0L;
+            }
+
+            if (!await IsNonceCurrentAsync(result.AccountId, result.SessionNonce))
             {
                 return 0L;
             }
@@ -8874,6 +8921,12 @@ namespace FolkIdle.Server.Network
                     if (!validation.IsValid)
                     {
                         await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Invalid or expired token", CancellationToken.None);
+                        return;
+                    }
+
+                    if (!await IsNonceCurrentAsync(validation.AccountId, validation.SessionNonce))
+                    {
+                        await socket.CloseAsync(WebSocketCloseStatus.PolicyViolation, "Session revoked", CancellationToken.None);
                         return;
                     }
 

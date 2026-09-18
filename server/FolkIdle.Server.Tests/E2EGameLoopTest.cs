@@ -809,5 +809,81 @@ namespace FolkIdle.Server.Tests
                 networkSystem.Stop();
             }
         }
+
+        [Fact]
+        public async Task Test_E2E_SessionSecurity_TamperedNonceIsRejected()
+        {
+            if (!_dockerAvailable || _dbContainer == null)
+            {
+                Console.WriteLine("WARNING: Skipping session security E2E verification because Docker is unavailable. CI must provide Docker for mandatory database coverage.");
+                return;
+            }
+
+            var services = new ServiceCollection();
+            services.AddDbContextFactory<FolkIdleDbContext>(options =>
+                options.UseNpgsql(_dbContainer.GetConnectionString()));
+            services.AddScoped(sp => sp.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContext());
+
+            // Modul: NetworkBroadcastSystem resolves RetryingDbContextOptions
+            // off the service provider it is handed (IsNonceCurrentAsync does
+            // this too) - see the other E2E fixtures in this file for the
+            // same registration.
+            var sessionSecurityRetryOptions = new DbContextOptionsBuilder<FolkIdleDbContext>()
+                .UseNpgsql(_dbContainer.GetConnectionString(), npgsqlOptions =>
+                    npgsqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 6,
+                        maxRetryDelay: TimeSpan.FromSeconds(8),
+                        errorCodesToAdd: new[]
+                        {
+                            Npgsql.PostgresErrorCodes.SerializationFailure,
+                            Npgsql.PostgresErrorCodes.DeadlockDetected
+                        }))
+                .Options;
+            services.AddSingleton(new RetryingDbContextOptions(sessionSecurityRetryOptions));
+
+            var serviceProvider = services.BuildServiceProvider();
+            var contextFactory = serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
+            var retryingOptions = serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                await db.Database.MigrateAsync();
+            }
+
+            Guid accountId = Guid.NewGuid();
+            await using (var db = await contextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { PlayerGuid = accountId, AuthenticatorToken = Guid.NewGuid(), CurrentSessionNonce = "the-real-nonce" });
+                await db.SaveChangesAsync();
+            }
+
+            // A token whose embedded nonce does not match the stored value -
+            // exactly what a token issued before a revocation event looks
+            // like from the validator's point of view.
+            string mismatchedJwt = AuthenticationEngine.GenerateJwt(accountId, "a-different-nonce", "pw", AuthenticationDefaults.LocalDevelopmentFallback, out _);
+            string matchingJwt = AuthenticationEngine.GenerateJwt(accountId, "the-real-nonce", "pw", AuthenticationDefaults.LocalDevelopmentFallback, out _);
+
+            var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8085/");
+            GlobalEngineState.IsColdBootRecoveryComplete = true;
+            networkSystem.Start();
+
+            using var httpClient = new System.Net.Http.HttpClient();
+
+            try
+            {
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", mismatchedJwt);
+                var rejected = await httpClient.GetAsync("http://localhost:8085/api/v1/market/listings?pageIndex=0&pageSize=10");
+                Assert.Equal(System.Net.HttpStatusCode.Unauthorized, rejected.StatusCode);
+
+                httpClient.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", matchingJwt);
+                var accepted = await httpClient.GetAsync("http://localhost:8085/api/v1/market/listings?pageIndex=0&pageSize=10");
+                Assert.Equal(System.Net.HttpStatusCode.OK, accepted.StatusCode);
+            }
+            finally
+            {
+                GlobalEngineState.IsColdBootRecoveryComplete = false;
+                networkSystem.Stop();
+            }
+        }
     }
 }
