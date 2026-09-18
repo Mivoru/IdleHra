@@ -17,6 +17,35 @@ to do next.
 
 ---
 
+# HANDOFF 2026-09-18b - an unauthenticated free-diamonds route was live
+
+Found while scoping the session-security work below, not from the Copilot
+audit: `/api/v1/billing/verify-receipt` routed to `HandleVerifyReceipt`,
+which trusted a client-supplied `AccountId`/`TransactionId`/`ProductId` out
+of the request body and credited diamonds with no signature check - the REST
+wrapper around `VerifyPurchaseAsync`, documented as the legacy path for the
+internal WebSocket opcode 39 handler, never meant to be reachable over
+public HTTP. The web client's own `billing.ts` believed this exact URL was
+the hardened, signature-checking endpoint (its own header comment said so)
+and had always posted there; the real hardened endpoint (`VerifyReceiptAsync`,
+which checks the store's signature) sits at `/api/v1/billing/verify`
+instead - a naming trap, not a missing feature. Net effect before the fix:
+every real purchase 500'd (mismatched request body), while anyone who knew
+their own AccountId could grant themselves unlimited free diamonds by hand
+against the same URL, no purchase or signature required.
+
+Fixed by removing the vulnerable route and its dead handler and repointing
+the client at `/api/v1/billing/verify`. `Test_E2E_Billing_
+UnsafeVerifyReceiptRouteIsGone` pins both halves: the old route is gone, and
+the real one refuses an unauthenticated request rather than trusting one.
+
+**DEPLOYED 2026-09-18** (`84fe16c`). No migration. Verified live: the old
+route now answers this server's generic 400 for any unmatched path (not a
+diamond grant), the real endpoint answers 401 with no bearer token,
+production smoke 26/26.
+
+---
+
 # HANDOFF 2026-09-18 - the deploy pipeline was dead, and PR #5 went live
 
 Picked up mid-stream: the breeding-traits plan, round 3's foundation, the
