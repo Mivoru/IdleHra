@@ -1496,15 +1496,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 LegacyStoreTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.InheritanceSyncQueue.TryDequeue(out var inheritNotif))
-                {
-                    ref var inheritPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, inheritNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref inheritPayload))
-                    {
-                        SetInheritanceLevel(ref inheritPayload, inheritNotif.StatId, inheritNotif.NewLevel);
-                        inheritPayload.IsDirty = true;
-                    }
-                }
+                InheritanceTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.SkillTreeSyncQueue.TryDequeue(out var treeNotif))
                 {
@@ -5319,7 +5311,9 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
-        private static void SetInheritanceLevel(ref TickStatePayload payload, int statId, byte level)
+        // Modul: widened from private to internal so InheritanceTickCoordinator
+        // (Domain.Progression) can call this. No behaviour change.
+        internal static void SetInheritanceLevel(ref TickStatePayload payload, int statId, byte level)
         {
             switch (statId)
             {
