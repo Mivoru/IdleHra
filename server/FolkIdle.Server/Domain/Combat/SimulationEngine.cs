@@ -951,54 +951,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                // Modul: Guild War scoreboard sync. Fans one authoritative
-                // per-guild snapshot out to every online member of that guild
-                // via the tick-thread-owned guild index, so a scoreboard costs
-                // one query per warring guild rather than one per member.
-                while (_playerRegistry.GuildWarScoreboardQueue.TryDequeue(out var warScoreboard))
-                {
-                    if (!_guildMembersIndex.TryGetValue(warScoreboard.GuildId, out var warMembers))
-                    {
-                        continue;
-                    }
-
-                    for (int memberIndex = 0; memberIndex < warMembers.Count; memberIndex++)
-                    {
-                        ref var memberPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, warMembers[memberIndex]);
-                        if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref memberPayload))
-                        {
-                            continue;
-                        }
-
-                        // Modul: Guild War scoreboard sync. A concluded war
-                        // clears rather than freezing its final score on screen.
-                        // The client decides "a war is on" from
-                        // ActiveGuildWarId > 0, so that has to go to zero too or
-                        // the panel keeps rendering a finished match as live.
-                        if (warScoreboard.WarEnded)
-                        {
-                            memberPayload.ActiveGuildWarId = 0L;
-                            memberPayload.GuildCombatVanguardPoints = 0;
-                            memberPayload.GuildProductionLogisticsPoints = 0;
-                            memberPayload.GuildGatheringSupplyChainPoints = 0;
-                            memberPayload.EnemyCombatVanguardPoints = 0;
-                            memberPayload.EnemyProductionLogisticsPoints = 0;
-                            memberPayload.EnemyGatheringSupplyChainPoints = 0;
-                            memberPayload.CachedWarMultiplier = 0f;
-                            memberPayload.IsDirty = true;
-                            continue;
-                        }
-
-                        memberPayload.GuildCombatVanguardPoints = warScoreboard.OurCombatVanguardPoints;
-                        memberPayload.GuildProductionLogisticsPoints = warScoreboard.OurProductionLogisticsPoints;
-                        memberPayload.GuildGatheringSupplyChainPoints = warScoreboard.OurGatheringSupplyChainPoints;
-                        memberPayload.EnemyCombatVanguardPoints = warScoreboard.EnemyCombatVanguardPoints;
-                        memberPayload.EnemyProductionLogisticsPoints = warScoreboard.EnemyProductionLogisticsPoints;
-                        memberPayload.EnemyGatheringSupplyChainPoints = warScoreboard.EnemyGatheringSupplyChainPoints;
-                        memberPayload.CachedWarMultiplier = warScoreboard.ScoreShare;
-                        memberPayload.IsDirty = true;
-                    }
-                }
+                GuildFanoutTickCoordinator.DrainWarScoreboard(_playerRegistry, _activePlayers, _guildMembersIndex);
 
                 InventoryCensusTickCoordinator.DrainCensus(_playerRegistry, _activePlayers);
 
@@ -1113,30 +1066,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 CommandResultTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.GuildUpdateQueue.TryDequeue(out var guildUpdate))
-                {
-                    // Real-time updates for guild members - O(guild_size)
-                    // via _guildMembersIndex instead of O(active_player_count).
-                    if (_guildMembersIndex.TryGetValue(guildUpdate.GuildId, out var guildUpdateMembers))
-                    {
-                        foreach (long memberId in guildUpdateMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                if (guildUpdate.IsMining)
-                                {
-                                    currentPayload.CachedMiningMonolithLevel = guildUpdate.NewLevel;
-                                }
-                                else
-                                {
-                                    currentPayload.CachedWoodcuttingMonolithLevel = guildUpdate.NewLevel;
-                                }
-                                currentPayload.IsDirty = true;
-                            }
-                        }
-                    }
-                }
+                GuildFanoutTickCoordinator.DrainGuildUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
                 VillageTickCoordinator.DrainInfrastructureUpdates(_playerRegistry, _activePlayers);
 
@@ -1162,75 +1092,11 @@ namespace FolkIdle.Server.Domain.Combat
 
                 BillingTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.GuildLogisticsDepotUpdateQueue.TryDequeue(out var depotNotif))
-                {
-                    if (_guildMembersIndex.TryGetValue(depotNotif.GuildId, out var depotMembers))
-                    {
-                        foreach (long memberId in depotMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                currentPayload.GuildLogisticsCurrentStock = depotNotif.CurrentStock;
-                                currentPayload.GuildLogisticsTargetRequirement = depotNotif.TargetRequirement;
-                                currentPayload.CachedGuildLogisticsLevel = depotNotif.Level;
-                            }
-                        }
-                    }
-                }
+                GuildFanoutTickCoordinator.DrainLogisticsDepotUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
-                while (_playerRegistry.GuildCombatSimulationUpdateQueue.TryDequeue(out var combatNotif))
-                {
-                    // Two guilds are in this match - a player's fixed
-                    // per-session GuildId can only ever match one of them,
-                    // so no dedup is needed when both index lookups happen
-                    // to return non-empty lists.
-                    if (_guildMembersIndex.TryGetValue(combatNotif.AttackingGuildId, out var attackingMembers))
-                    {
-                        foreach (long memberId in attackingMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                currentPayload.CombatSimulationMatchId = combatNotif.MatchId;
-                                currentPayload.CombatSimulationTurnCounter = combatNotif.TurnCounter;
-                                currentPayload.CombatSimulationDamageDelta = combatNotif.DamageDelta;
-                            }
-                        }
-                    }
+                GuildFanoutTickCoordinator.DrainCombatSimulationUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
-                    if (combatNotif.DefendingGuildId != combatNotif.AttackingGuildId &&
-                        _guildMembersIndex.TryGetValue(combatNotif.DefendingGuildId, out var defendingMembers))
-                    {
-                        foreach (long memberId in defendingMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                currentPayload.CombatSimulationMatchId = combatNotif.MatchId;
-                                currentPayload.CombatSimulationTurnCounter = combatNotif.TurnCounter;
-                                currentPayload.CombatSimulationDamageDelta = combatNotif.DamageDelta;
-                            }
-                        }
-                    }
-                }
-
-                while (_playerRegistry.GuildRaidBossUpdateQueue.TryDequeue(out var raidNotif))
-                {
-                    if (_guildMembersIndex.TryGetValue(raidNotif.GuildId, out var raidMembers))
-                    {
-                        foreach (long memberId in raidMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                currentPayload.CachedGuildRaidTier = raidNotif.RaidTier;
-                                currentPayload.CachedGuildRaidBossCurrentHp = raidNotif.RaidBossCurrentHp;
-                                currentPayload.CachedGuildRaidBossMaxHp = raidNotif.RaidBossMaxHp;
-                            }
-                        }
-                    }
-                }
+                GuildFanoutTickCoordinator.DrainRaidBossUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
                 MentorshipTickCoordinator.DrainContractUpdates(_playerRegistry, _activePlayers);
 
