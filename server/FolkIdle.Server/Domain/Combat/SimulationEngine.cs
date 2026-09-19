@@ -820,24 +820,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 WorldBossTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.MasteryUpdateQueue.TryDequeue(out var masteryUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, masteryUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        // Modul 13 fix: was gated on raw literals (1, 3, 4) that predate
-                        // RaceIds and never matched it - Vila updates (RaceId=2) were
-                        // silently dropped entirely, and RaceId 3/4 mislabeled Draugr's
-                        // and Kobold's levels as Vila's/Draugr's respectively.
-                        if (masteryUpdate.RaceId == RaceIds.Human) currentPayload.HumanMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Vila) currentPayload.VilaMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Draugr) currentPayload.DraugrMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Kobold) currentPayload.KoboldMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Vodnik) currentPayload.VodnikMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Moosleute) currentPayload.MoosleuteMasteryLevel = masteryUpdate.MasteryLevel;
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                RaceProgressionTickCoordinator.DrainMasteryUpdates(_playerRegistry, _activePlayers);
 
                 ForgeTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
@@ -897,23 +880,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                // Modul: race unlock feedback. ORs the newly granted race into
-                // the live mask so the next outbound packet carries it and the
-                // client can announce it. An offline player needs nothing here:
-                // the row is already committed and login hydrates the mask from
-                // it.
-                while (_playerRegistry.RaceUnlockQueue.TryDequeue(out var raceUnlock))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, raceUnlock.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        if (raceUnlock.RaceId >= 1 && raceUnlock.RaceId <= 8)
-                        {
-                            currentPayload.UnlockedRaceBitmask |= (byte)(1 << (raceUnlock.RaceId - 1));
-                            currentPayload.IsDirty = true;
-                        }
-                    }
-                }
+                RaceProgressionTickCoordinator.DrainRaceUnlocks(_playerRegistry, _activePlayers);
 
                 // Modul: Deploy activation fix, generalised for multi-slot.
                 // Applies a committed activity change to the live payload.
