@@ -1310,36 +1310,52 @@ namespace FolkIdle.Server.Engine
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             var strategy = dbContext.Database.CreateExecutionStrategy();
 
-            await strategy.ExecuteAsync(async () =>
+            try
             {
-                dbContext.ChangeTracker.Clear();
-                using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
-
-                var existingRows = await dbContext.CommodityRecords
-                    .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = ANY({materialIds}) FOR UPDATE")
-                    .ToListAsync();
-
-                foreach (var material in byMaterial)
+                await strategy.ExecuteAsync(async () =>
                 {
-                    var row = existingRows.FirstOrDefault(r => r.ItemId == material.Key);
-                    if (row == null)
-                    {
-                        dbContext.CommodityRecords.Add(new CommodityRecord
-                        {
-                            PlayerId = playerId,
-                            ItemId = material.Key,
-                            Quantity = material.Value.Quantity
-                        });
-                    }
-                    else
-                    {
-                        row.Quantity += material.Value.Quantity;
-                    }
-                }
+                    dbContext.ChangeTracker.Clear();
+                    using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
 
-                await dbContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-            });
+                    var existingRows = await dbContext.CommodityRecords
+                        .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = ANY({materialIds}) FOR UPDATE")
+                        .ToListAsync();
+
+                    foreach (var material in byMaterial)
+                    {
+                        var row = existingRows.FirstOrDefault(r => r.ItemId == material.Key);
+                        if (row == null)
+                        {
+                            dbContext.CommodityRecords.Add(new CommodityRecord
+                            {
+                                PlayerId = playerId,
+                                ItemId = material.Key,
+                                Quantity = material.Value.Quantity
+                            });
+                        }
+                        else
+                        {
+                            row.Quantity += material.Value.Quantity;
+                        }
+                    }
+
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+            }
+            catch (Exception)
+            {
+                // Modul: THE DURABLE RETRY OUTBOX (audit #18). byMaterial is
+                // already resolved (coalesced quantities per BaseId) before
+                // this write is even attempted - a retry replays these exact
+                // amounts rather than re-coalescing the queue, which has
+                // already moved on. Re-thrown so DrainGatheringGrantsAsync's
+                // existing catch still counts and logs this exactly as before.
+                var deltas = byMaterial.ToDictionary(m => m.Key, m => (long)m.Value.Quantity);
+                await PendingGrantOutbox.EnqueueCommodityDeltasAsync(
+                    dbContext, playerId, PendingGrantSourceType.Gathering, deltas);
+                throw;
+            }
 
             foreach (var material in byMaterial)
             {
