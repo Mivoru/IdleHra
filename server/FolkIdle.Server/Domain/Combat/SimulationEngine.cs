@@ -1058,18 +1058,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 MentorshipTickCoordinator.DrainContractUpdates(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.MailClaimRequestQueue.TryDequeue(out var req))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, req.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        {
-                            currentPayload.AddGold(req.GoldAttachment);
-                            currentPayload.IsDirty = true;
-                            SafeDispatchAsync("MailClaim.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.PlayerId, req.MailId, true); });
-                        }
-                    }
-                }
+                MailTickCoordinator.DrainClaimRequests(_playerRegistry, _activePlayers, _safeDispatch, _mailboxEngine);
 
                 while (_networkSystem.CommandQueue.TryDequeue(out var cmdWrapper))
                 {
