@@ -1494,19 +1494,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.LegacyStoreUpdateQueue.TryDequeue(out var legacyNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, legacyNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.SetLegacyShards(legacyNotif.LegacyShardBalance);
-                        currentPayload.CitizenMultiSlotsUnlocked = legacyNotif.CitizenMultiSlotsUnlocked;
-                        if (legacyNotif.HasLegacyPerksUpdate)
-                        {
-                            currentPayload.CachedLegacyPerks = legacyNotif.LegacyPerks;
-                        }
-                    }
-                }
+                LegacyStoreTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.InheritanceSyncQueue.TryDequeue(out var inheritNotif))
                 {
