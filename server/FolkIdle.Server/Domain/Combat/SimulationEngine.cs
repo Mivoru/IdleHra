@@ -1498,31 +1498,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 InheritanceTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.SkillTreeSyncQueue.TryDequeue(out var treeNotif))
-                {
-                    ref var treePayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, treeNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref treePayload))
-                    {
-                        SetSkillTreeLevel(ref treePayload, treeNotif.BranchId, treeNotif.NewLevel);
-                        // The points were spent inside the same transaction the
-                        // level was written in, so the payload must take the
-                        // balance the engine reports rather than decrementing
-                        // its own copy - two subtractions of one purchase is
-                        // exactly how a counter drifts.
-                        treePayload.AvailableSkillPoints = treeNotif.RemainingSkillPoints;
-
-                        // Modul: and the respec counters, which a respec also
-                        // moves. Without this the levels cleared and the points
-                        // came back, but the button went on offering a free
-                        // respec the player had already spent - it only
-                        // corrected itself at the next full hydration. The same
-                        // "the output side was never wired" shape this codebase
-                        // keeps finding; the write happened, nothing carried it.
-                        treePayload.FreeRespecUsed = treeNotif.FreeRespecUsed;
-                        treePayload.PaidRespecGrants = treeNotif.PaidRespecGrants;
-                        treePayload.IsDirty = true;
-                    }
-                }
+                SkillTreeTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.BillingSyncQueue.TryDequeue(out var billingSyncNotif))
                 {
@@ -5284,7 +5260,11 @@ namespace FolkIdle.Server.Domain.Combat
                 SkillTreeRegistry.CrownThunderer, payload.Skill_Thunderer) / 100f;
         }
 
-        private static void SetSkillTreeLevel(ref TickStatePayload payload, int branchId, byte level)
+        // Modul: widened from private to internal so the Progression-domain
+        // tick coordinators (InheritanceTickCoordinator, SkillTreeTickCoordinator)
+        // can call this without duplicating the switch. No behaviour change -
+        // same assembly, same tick-thread-only call graph.
+        internal static void SetSkillTreeLevel(ref TickStatePayload payload, int branchId, byte level)
         {
             switch (branchId)
             {
