@@ -898,14 +898,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // other cross-engine queue, so a finished craft costs the tick
                 // one dequeue and CraftingEngine does the rest off the hot
                 // path.
-                while (CraftingTickQueue.TryDequeue(out var craftCompletion))
-                {
-                    long craftPlayerId = craftCompletion.PlayerId;
-                    int craftResultItemId = craftCompletion.ResultItemId;
-                    SafeDispatchAsync("Crafting.Job", craftPlayerId, async () => {
-                        await _craftingEngine.ExecuteCraftingAsync(craftPlayerId, craftResultItemId);
-                    });
-                }
+                CraftingTickCoordinator.DrainCraftingTicks(_safeDispatch, _craftingEngine);
 
                 LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
@@ -956,36 +949,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.CraftingCompletionQueue.TryDequeue(out var craftCompletion))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, craftCompletion.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        QuestEngine.IncrementProgress(ref currentPayload, QuestEngine.QuestTypeCraftItems, 1);
-
-                        // Mirrors the increment CraftingEngine already committed
-                        // to PlayerRecords, so the wire counter tracks the craft
-                        // instead of standing at its login value all session.
-                        currentPayload.LifetimeItemsCrafted += craftCompletion.Quantity;
-
-                        if (currentPayload.ActiveGuildWarId > 0 && ContentRegistry.ItemDefinitions.Length >= craftCompletion.CraftedItemId)
-                        {
-                            var def = ContentRegistry.ItemDefinitions[craftCompletion.CraftedItemId - 1];
-                            if (def.RegionTier >= 5)
-                            {
-                                int wp = 50 * def.RegionTier;
-                                _guildWarEngine.GuildWarPointQueue.Enqueue(new GuildWarPointEvent
-                                {
-                                    MatchId = currentPayload.ActiveGuildWarId,
-                                    GuildId = currentPayload.GuildId,
-                                    Front = 1,
-                                    Points = wp
-                                });
-                            }
-                        }
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                CraftingTickCoordinator.DrainCraftingCompletions(_playerRegistry, _activePlayers, _guildWarEngine.GuildWarPointQueue);
 
                 while (_playerRegistry.GuildMembershipChangeQueue.TryDequeue(out var membershipChange))
                 {
