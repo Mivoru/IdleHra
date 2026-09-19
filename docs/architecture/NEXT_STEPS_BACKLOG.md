@@ -19,6 +19,60 @@ do next.
 
 ---
 
+# HANDOFF 2026-09-19d - task 21 Phase 1 dispatched, IN PROGRESS, unreviewed
+
+Continuation of 2026-09-19c immediately below, same session. With 18 and 22
+both at the PR stage (owner to merge), this session moved on to the last of
+the three tasks named at the top of this handoff chain: task 21
+(`SimulationEngine.cs` split). Per the owner's own 2026-09-19 checkpoint
+decision (see 2026-09-19b below), **only Phase 1 (the notification-drain
+plane, Tasks 1.1-1.21 of `docs/superpowers/plans/
+2026-09-17-simulationengine-split-plan.md`) was dispatched — Phase 2 and 3
+are explicitly out of scope for this agent, regardless of how smoothly
+Phase 1 goes.**
+
+**Dispatched to a background agent, its own fresh worktree** (isolation:
+worktree via the Agent tool, NOT one of the existing worktrees) at
+`.claude/worktrees/agent-ab3d7ddeb74716528`, branch
+`worktree-agent-ab3d7ddeb74716528`, forked from `main` at `cd0207e` (i.e.
+after PRs #11/#12 were opened and today's docs commit landed — this
+worktree already has the current state of everything above).
+
+**What Phase 1 is doing:** extracting 36 inline notification-drain blocks
+out of `EngineLoop` (`SimulationEngine.cs`, roughly lines 748-1656) into
+static per-domain coordinator classes under `Domain/Combat`, `Domain/
+Economy`, `Domain/Progression`, `Domain/Social`, `Domain/Shared` — smallest/
+safest first, ending at Task 1.21's review gate. Six queues are explicitly
+excluded from Phase 1 by the plan itself (they mutate `_activePlayers`/
+`_guildMembersIndex` or touch session-lifecycle/register-swap concerns) —
+the agent was told explicitly not to "finish the job" by moving those
+anyway.
+
+**This is pure refactoring, not a feature — the proof standard is
+different from every other task in this chain.** Per the plan's own Global
+Constraints: the existing suite must pass with ZERO test changes. If any
+existing test needed to change to keep passing, the extraction changed
+behaviour and must be treated as a bug in the refactor, not patched away.
+The agent was briefed on this explicitly and told to stop and report
+rather than push through if it happens.
+
+**When it finishes, review it the same way as tasks 18/22 (see the
+6-step checklist in 2026-09-19b below), with one Phase-1-specific addition
+to step 2:** confirm the single-writer invariant held (no coordinator
+introduced its own `Task.Run`/`Timer`/independent scheduling — every
+extracted drain is still a callee of the tick thread) and confirm no
+coordinator mutates `_activePlayers`/`_guildMembersIndex` directly (a
+`ref` into `_activePlayers` is fine; `_guildMembersIndex` must only be
+read, as `IReadOnlyDictionary`). These are exactly the properties no test
+in this repo can see if violated — CLAUDE.md's own words for this class of
+bug: "the failure mode is a torn struct read at 10Hz."
+
+**Do not merge without the owner's own look**, same as PRs #11/#12 — this
+one especially, since a mistake here is architecture-wide rather than
+contained to one engine.
+
+---
+
 # HANDOFF 2026-09-19c - tasks 18 and 22 built, tested, and opened as PRs
 #11/#12; NOT merged; task 22 found a new real bug (task 24)
 
