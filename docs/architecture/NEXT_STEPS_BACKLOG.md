@@ -19,6 +19,72 @@ do next.
 
 ---
 
+# HANDOFF 2026-09-19c - tasks 18 and 22 built, tested, and opened as PRs
+#11/#12; NOT merged; task 22 found a new real bug (task 24)
+
+Continuation of 2026-09-19b immediately below: this session resumed both
+background agents (in their SAME worktrees, not fresh ones), reviewed their
+work, rebased both branches onto current `main`, rebuilt and ran the full
+suite fresh on each, pushed, and opened PRs. **Neither PR is merged.** The
+owner said they will do the merge themselves after their own read — do not
+merge either without that.
+
+**PR #11 — task 18 (durable grant retry outbox).** All 4 plan tasks
+committed (`7f8ef13`, `f03020e`, `b34894d`, `ab73367`, rebased onto `main`
+at `a44fadd`). The agent resuming this worktree found a real defect left by
+whichever agent did the original Task 1 pass: the enqueue call in
+`GrantVillagePassiveProductionAsync`'s catch block had been left commented
+out behind a `TEMP-DISABLED-FOR-RED-CHECK` marker from an earlier TDD
+red/green cycle — it logged "queued for retry" but never actually queued
+anything. Fixed. Also found the plan's own poison-row test assumption was
+wrong: neither `CommodityRecords` nor `EquipmentInstances` actually
+declares an FK to `PlayerRecords` in this schema (verified by grep and by
+inspecting the EF model), so a missing-`PlayerRecords`-row trick produces
+zero failures, not a foreign-key violation. Tasks 2-4's tests use a
+test-local Postgres `BEFORE INSERT OR UPDATE` trigger instead (a genuine
+forced write failure, cleaned up in `finally`, no schema/production
+change). Full suite, fresh rebuild on the rebased branch: **886/888**, the
+2 failures both pre-existing/environmental (the DaVinci-Resolve
+`PYTHONHOME` content-validator issue, and an `E2EGameLoopTest` port-8081
+collision self-inflicted by running this suite concurrently with PR #12's
+verification run on the same machine — confirmed clean in isolation).
+
+**PR #12 — task 22 (sustained-load test).** Task 1 (harness extraction) was
+already committed; Task 2 (`SustainedLoadTests.cs`) is now committed
+(`dd9d5b2`, rebased onto `main`). The pre-existing draft was further along
+than expected and already had two corrections beyond the plan's literal
+snippet (seeding `GuildId` for the market escrow gate, excluding `"gold"`
+from the materials sum so combat gold alone can't mask a dead loot worker).
+The resuming agent fixed two harness bugs: epoch was never echoed on
+outgoing commands (real epoch drift from checkpoint-triggered bumps blew
+past the 5-tick tolerance and got every session security-terminated within
+~32s), and cancelling a pending `ReceiveAsync` aborts a `ClientWebSocket`
+rather than closing it gracefully (wrapped in try/catch for the reconnect
+leg). **The test is genuinely red, on purpose, per the plan's own
+instruction to report a real finding rather than patch it green — see task
+24 in `docs/TASK_BOARD.md` for the bug it found** (a `ReloadState` from
+any market/guild/crafting/breeding command silently drops the legacy
+single-character path back to idle, losing an in-progress fight; NOT a
+pool-contention artifact — reproduces regardless of the pool bound). Full
+suite, fresh rebuild on the rebased branch: **875/877**, the only failures
+the documented `SustainedLoadTests` finding plus the same pre-existing
+content-validator issue as PR #11.
+
+**Both PRs' branches live in the SAME worktrees as before** —
+`.claude/worktrees/agent-a06d113ef8bcf772f` (PR #11) and
+`.claude/worktrees/agent-a92b136ad4b9d307b` (PR #12) — pushed to
+`task-18-durable-grant-retry` and `task-22-sustained-load-test` on
+`origin`. Clean those worktrees up once each PR is merged
+(`git worktree remove`), same as every prior round.
+
+**What's still open, unchanged from 2026-09-19b:** task 21 (SimulationEngine
+split) remains brainstormed, corrected, and deliberately not started —
+nothing in this round touched it. Task 24 (the newly-found `ReloadState`
+bug) needs its own scoping/fix pass, not a same-session patch — see its
+board entry for the two candidate fix shapes.
+
+---
+
 # HANDOFF 2026-09-19b - two background agents in flight, session paused near
 its usage limit before reviewing either
 

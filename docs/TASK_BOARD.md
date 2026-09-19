@@ -20,13 +20,14 @@ its first ten minutes (**DONE - shipped as tier three, the objective track**).
 Both write-ups are at the bottom of this file. **Task 13, added 2026-09-10, is
 the mobile app** - four phases, written against what is actually in the repo
 rather than what MOBILE.md claims. **Tasks 14-23, added 2026-09-17 from a
-GitHub Copilot audit, are the current front of the board — 14/15/16/17/19/20/23
-done and merged; 18 and 22 dispatched to background agents mid-session,
-UNREVIEWED when the session paused; 21 brainstormed and corrected but
-deliberately not started; Unity retirement gated on the owner. Read
-`docs/architecture/NEXT_STEPS_BACKLOG.md`'s 2026-09-19b handoff before
-touching any of the three. See that section's own status
-line, below the mobile-app write-up.**
+GitHub Copilot audit — 14/15/16/17/19/20/23 done and merged; 18 (PR #11) and
+22 (PR #12) built, tested green on a fresh rebase onto `main`, and PRs opened
+2026-09-19 — NOT YET MERGED, need the owner's own read; 21 brainstormed and
+corrected but deliberately not started; Unity retirement gated on the owner.
+Task 22's own test found a new, real, unfixed bug — see task 24 below,
+added 2026-09-19.** Read `docs/architecture/NEXT_STEPS_BACKLOG.md`'s
+2026-09-19c handoff before touching any of 18/21/22/24. See that section's
+own status line, below the mobile-app write-up.**
 
 | # | Open task | Shape |
 |---|---|---|
@@ -2938,16 +2939,28 @@ visibility.
 
 ## 18. No durable retry for loot, gathering, or offline production grants (reliability, was P0)
 
-**Not started. Has its own planning pass — see
-`docs/superpowers/plans/2026-09-17-durable-grant-retry.md`.** 4 tasks: a
-`pending_grants` table storing the already-resolved outcome (never "redo
-this roll," since combat loot rolls randomness before the write that can
-fail) keyed by `(PlayerId, SourceType, SourceSequence)`, proven on offline
-village production first, then wired to gathering and combat loot, then a
-budgeted `SELECT ... FOR UPDATE SKIP LOCKED` drain worker with backoff to
-a dead-letter after 10 attempts. **Still, per the note below, treat this as
-needing a dedicated planning/brainstorming pass before coding — the linked
-plan is a strong starting point, not a rubber stamp.**
+**Built, PR #11 open against `main`, NOT YET MERGED — see
+`docs/superpowers/plans/2026-09-17-durable-grant-retry.md`, all 4 tasks
+committed.** A `pending_grants` table stores the already-resolved outcome
+(never "redo this roll," since combat loot rolls randomness before the
+write that can fail) keyed by `(PlayerId, SourceType, SourceSequence)`,
+proven on offline village production first, then wired to gathering and
+combat loot (including auto-salvage gold), then a budgeted
+`SELECT ... FOR UPDATE SKIP LOCKED` drain worker (`PendingGrantDrainEngine`,
+guarded per `CronWorkerGuardTests`, the 15th `StartCron` consumer of the
+bounded pool) with exponential backoff to a dead-letter after 10 attempts,
+plus a live-session-notify step so an online player sees a landed retry
+immediately rather than at next relogin. Full server suite on a fresh
+rebase onto current `main`: 886/888, the 2 failures both pre-existing/
+environmental (see the PR description). Built by a background agent that
+also found and fixed a real defect left by an earlier attempt (the actual
+enqueue call had been left commented out behind a
+`TEMP-DISABLED-FOR-RED-CHECK` marker) and one false plan assumption
+(neither `CommodityRecords` nor `EquipmentInstances` actually has an FK to
+`PlayerRecords` in this schema — the poison-row test technique was adjusted
+accordingly, see the PR). **Needs the owner's own read before merging** —
+this is reliability-critical, DB-schema-changing code that has not had
+human eyes on it yet.
 
 **Confirmed missing.** Repo-wide grep for "outbox", "retry_queue", "DeadLetter"
 across `server/`: zero matches. `CombatLootEngine`'s per-item try/catch (the
@@ -3080,31 +3093,37 @@ dedicated brainstorming/spec pass first.
 
 ## 22. No sustained-load test combining the systems that actually interact in production (testing infra, was P1)
 
-**Not started. Has its own planning pass — see
-`docs/superpowers/plans/2026-09-17-sustained-load-test.md`.** Found while
-scoping: neither existing E2E test starts the loot worker at all, so
-neither has ever actually observed a granted item end to end — the plan's
-Task 1 fixes that as a prerequisite before the sustained-load scenario
-itself.
+**Built, PR #12 open against `main`, NOT YET MERGED — see
+`docs/superpowers/plans/2026-09-17-sustained-load-test.md`, both tasks
+committed.** Task 1 extracted a shared `E2ETestHarness` out of
+`E2EGameLoopTest.cs`'s two duplicated engine-graph blocks, adding
+`CombatLootEngine` to the constructed graph (neither pre-existing E2E test
+had ever started it, so neither had ever actually observed a granted item
+end to end). Task 2 is `SustainedLoadTests.cs`: 40 concurrent sessions,
+half fighting half gathering, against a connection pool bounded to 5,
+combined with checkpoint-forcing and market-listing traffic on a
+reconnect schedule.
 
-**Confirmed missing.** `E2EGameLoopTest.cs` is real but single-player,
-real-Postgres, with some protocol-level flood loops — no scenario combines
-concurrent combat, gathering, offline catch-up, checkpoints, market
-contention, reconnects, and a Supabase-pooler-like connection limit, which is
-the exact combination that caused the loot-starvation incident CLAUDE.md
-documents at length. Unit and structural tests cannot expose queue-age/pool-
-starvation interactions; only a scenario like this can.
-
-**Fix shape:** a new test class that spins up N simulated concurrent sessions
-(reuse whatever harness `E2EGameLoopTest` already has for one), has them
-combat/gather/checkpoint/reconnect on overlapping schedules, and bounds the
-connection pool artificially low (mirroring the real `EMAXCONNSESSION`
-incident) to force contention on purpose. Assert on symptoms already measured
-once for real: no dropped loot, no starved queue, checkpoint age stays
-bounded.
-
-**Risk:** medium effort, high value — this is the test that would have caught
-the loot-starvation incident before a player did.
+**This PR ships the test DELIBERATELY RED, per the plan's own instruction
+to report a real finding rather than patch it green — and it found one.**
+Queue drain and checkpoint age (the symptoms this test was originally
+built to catch, matching the 2026-09-06 loot-starvation incident) are both
+fine. Instead: **all 20 fighter sessions land zero kills** while all 20
+gatherer sessions succeed. Root cause, traced to source (NOT fixed here,
+out of scope by the plan's own "Not in this plan" section — **this needs
+its own follow-up task, see #24 below**): `MarketListItem`/`MarketBuyItem`
+(and by the same mechanism guild/crafting/breeding commands) trigger a
+`ReloadState`, which replaces the live `TickStatePayload` from the DB.
+`StateReloadMerge.CarryLiveOnlyFields` only preserves the command-result
+ring buffer across that reload, not `ActiveActivityId` — and the legacy
+single-character path (`TargetGuid == Guid.Empty`, still live production
+traffic) never persists activity changes to the `characters` row, so any
+such player fighting while also touching market/guild/crafting/breeding
+screens is silently kicked back to idle. Full suite on a fresh rebase onto
+current `main`: 875/877, the only failures the documented
+`SustainedLoadTests` finding plus the same pre-existing environmental
+issue as PR #11. **Needs the owner's own read before merging** — merging a
+red test on purpose is an unusual thing to wave through without a look.
 
 ---
 
@@ -3144,6 +3163,56 @@ refetch with nothing left to race a redundant timer; a source-scan test
 server suite: 866/868 passed, the 2 failures pre-existing and unrelated (a
 port-8081 conflict in `E2EGameLoopTest`, and a Python content-validator
 environment issue) — neither touches any file this fix changed.
+
+---
+
+## 24. A `ReloadState` silently discards the legacy path's live activity, dropping a fighting player back to idle (correctness, found 2026-09-19)
+
+**Not started. Found by task 22's sustained-load test (PR #12), not fixed
+there on purpose — its plan explicitly scopes out engine fixes.**
+
+**Confirmed, traced to source.** `CommandType.MarketListItem`/
+`MarketBuyItem` (and, by the same mechanism, guild/crafting/breeding
+commands — anything that ends by enqueueing `CommandType.ReloadState`)
+replace the live in-memory `TickStatePayload` wholesale with one loaded
+fresh from the database (`StateCheckpointManager.LoadPlayerState`).
+`StateReloadMerge.CarryLiveOnlyFields` (`server/FolkIdle.Server/Engine/
+StateReloadMerge.cs:41-49`) only carries the command-result ring buffer
+across that replacement. For the legacy single-character path
+(`TargetGuid == Guid.Empty`, confirmed still live production traffic —
+`SimulationEngine.cs` around line 2111, `ApplyActivityChangeToPayload`),
+`ActiveActivityId` is mutated only in memory and never persisted to the
+`characters` row anywhere in `StateCheckpointManager.cs`'s flush path. So
+every `ReloadState` silently resets that player to idle — measured via 40
+concurrent sessions in PR #12: every fighter who also touched the market
+every ~4s got reset to idle before landing a single kill, while gatherers
+survived only because one harvest cycle (30 ticks) fit inside the window
+before the first reset.
+
+**This is not a load/contention bug** — it reproduces with a single
+player and no pool pressure at all. It affects any legacy-path player who
+fights while also using market, guild, crafting, or breeding screens —
+plausibly a real, currently-live defect, not just a test artifact.
+
+**Fix shape (to scope properly before coding, not a rubber stamp):**
+either persist `ActiveActivityId` to the `characters` row on every change
+(matching how `AgeTicks`/`AgePhase` are already written back) so a reload
+picks up the truth rather than a stale row, or extend
+`StateReloadMerge.CarryLiveOnlyFields` to also carry the live
+`ActiveActivityId`/combat-progress fields across a reload. The first is
+probably more correct (the DB should not lie about what a player is
+doing) but touches the checkpoint flush path; the second is narrower but
+only patches the symptom for this one field — check whether other
+live-only fields have the same gap while in the file.
+
+**Done when:** a player who fights while issuing a `MarketListItem`/
+`MarketBuyItem`/guild/crafting/breeding command mid-fight does not lose
+their activity, verified by re-enabling/re-running PR #12's
+`SustainedLoadTests` assertion C and confirming fighters now land kills.
+
+**Risk:** medium — touches either the checkpoint persistence path or the
+reload-merge path, both load-bearing and shared across every screen that
+triggers a `ReloadState`.
 
 ---
 
