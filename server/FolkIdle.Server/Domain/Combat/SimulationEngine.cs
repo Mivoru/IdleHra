@@ -885,15 +885,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.CodexMultiplierUpdateQueue.TryDequeue(out var codexMultiplierUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, codexMultiplierUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.CachedCodexYieldMultiplier = codexMultiplierUpdate.YieldMultiplier;
-                        currentPayload.CachedCodexDamageMultiplier = codexMultiplierUpdate.DamageMultiplier;
-                    }
-                }
+                CodexTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.RegionCompletionUpdateQueue.TryDequeue(out var regionCompletionUpdate))
                 {
