@@ -818,16 +818,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.WorldBossAttemptUpdateQueue.TryDequeue(out var worldBossAttemptUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, worldBossAttemptUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.WorldBossAttemptCount = worldBossAttemptUpdate.AttemptCount;
-                        currentPayload.WorldBossSessionEndsEpoch = worldBossAttemptUpdate.SessionEndsEpoch;
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                WorldBossTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.MasteryUpdateQueue.TryDequeue(out var masteryUpdate))
                 {
