@@ -441,7 +441,22 @@ namespace FolkIdle.Server.Engine
                 Interlocked.Increment(ref _villageProductionFailures);
                 Console.WriteLine(
                     $"Village: offline production for player {playerId} failed and was rolled back - "
-                    + $"lost {goldEarned} gold, {woodEarned}+{rareWood} wood, {oreEarned}+{rareOre} ore: {ex.Message}");
+                    + $"lost {goldEarned} gold, {woodEarned}+{rareWood} wood, {oreEarned}+{rareOre} ore: {ex.Message} - queued for retry.");
+
+                // Modul: THE DURABLE RETRY OUTBOX (audit #18). Every delta
+                // below is already a plain, fully-computed long by this
+                // point - nothing here re-rolls anything, it only persists
+                // the exact outcome the rolled-back transaction was trying
+                // to write, so a retry replays it rather than recomputing it.
+                var deltas = new Dictionary<string, long>();
+                if (woodEarned > 0) deltas[lumberjackMats.Log] = woodEarned;
+                if (oreEarned > 0) deltas[mineMats.Ore] = oreEarned;
+                if (rareWood > 0) deltas[lumberjackMats.RareLog] = rareWood;
+                if (rareOre > 0) deltas[mineMats.RareOre] = rareOre;
+                if (goldEarned > 0) deltas["gold"] = goldEarned;
+
+                await PendingGrantOutbox.EnqueueCommodityDeltasAsync(
+                    db, playerId, PendingGrantSourceType.OfflineVillageProduction, deltas);
             }
 
             return committed ? materialsLostToFullWarehouse : 0L;

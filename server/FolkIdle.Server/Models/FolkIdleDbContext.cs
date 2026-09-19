@@ -95,6 +95,9 @@ namespace FolkIdle.Server.Models
         // The Delve: one live run per player. See DelveRunRecord.
         public DbSet<DelveRunRecord> DelveRunRecords { get; set; }
 
+        // The durable retry outbox. See PendingGrant.
+        public DbSet<PendingGrant> PendingGrants { get; set; }
+
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
         }
