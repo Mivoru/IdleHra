@@ -1214,47 +1214,9 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.InfrastructureUpdateQueue.TryDequeue(out var updateNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, updateNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.ForgeLevel = updateNotif.ForgeLevel;
-                        currentPayload.InnLevel = updateNotif.InnLevel;
-                        currentPayload.BreedingLevel = updateNotif.BreedingLevel;
-                        currentPayload.AcademyLevel = updateNotif.AcademyLevel;
-                        currentPayload.CurrentPopulationCount = updateNotif.CurrentPopulationCount;
-                        currentPayload.VillagePopulation = updateNotif.CurrentPopulationCount;
-                        currentPayload.CachedCurrentToolTier = updateNotif.CurrentToolTier;
-                        currentPayload.CachedInnMaturationBonus = updateNotif.InnMaturationBonus;
-                        currentPayload.CachedMaxPopulationCapacity = updateNotif.MaxPopulationCapacity;
-                        currentPayload.LumberjackLevel = updateNotif.LumberjackLevel;
-                        currentPayload.MineLevel = updateNotif.MineLevel;
-                        currentPayload.WarehouseLevel = updateNotif.WarehouseLevel;
-                        currentPayload.TownHallLevel = updateNotif.TownHallLevel;
-                        currentPayload.CraftingWorkshopLevel = updateNotif.CraftingWorkshopLevel;
-                        currentPayload.PendingUpgradeBuildingId = updateNotif.PendingUpgradeBuildingId;
-                        currentPayload.PendingUpgradeCompletesAtEpoch = updateNotif.PendingUpgradeCompletesAtEpoch;
-                        // Modul: the row is already debited (VillageManagementEngine),
-                        // so the live balance follows it and the pending delta is left
-                        // alone - the same reasoning as BirthNotification.GoldSpent.
-                        currentPayload.CurrentGold = Math.Max(0L, currentPayload.CurrentGold - updateNotif.GoldSpent);
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                VillageTickCoordinator.DrainInfrastructureUpdates(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.VillagerRecruitmentUpdateQueue.TryDequeue(out var recruitmentNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, recruitmentNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        // Modul: the row is already debited (VillageArrivalEngine.RecruitAsync),
-                        // so the live balance follows it and the pending delta is left
-                        // alone - the same reasoning as BirthNotification.GoldSpent.
-                        currentPayload.CurrentGold = Math.Max(0L, currentPayload.CurrentGold - recruitmentNotif.GoldSpent);
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                VillageTickCoordinator.DrainRecruitmentUpdates(_playerRegistry, _activePlayers);
 
                 MentorshipTickCoordinator.DrainMentorshipUpdates(_playerRegistry, _activePlayers);
 
