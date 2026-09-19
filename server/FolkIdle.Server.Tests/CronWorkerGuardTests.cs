@@ -62,6 +62,7 @@ namespace FolkIdle.Server.Tests
                 ["GuildWarSnapshotEngine"] = "war standings refresh",
                 ["OfflineCapNotifier"] = "mails players whose offline bank has filled",
                 ["SeasonalRotationEngine"] = "season rollover",
+                ["PendingGrantDrainEngine"] = "drains pending_grants - the retry half of the loot/gathering/offline-production outbox",
             };
 
         // Modul: FOURTEEN, NOT TWELVE - and finding that out is why this file
