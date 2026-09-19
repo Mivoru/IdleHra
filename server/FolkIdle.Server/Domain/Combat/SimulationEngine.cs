@@ -1370,14 +1370,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.MentorshipUpdateQueue.TryDequeue(out var mentorshipUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, mentorshipUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.CachedMentorCount++; 
-                    }
-                }
+                MentorshipTickCoordinator.DrainMentorshipUpdates(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.QuarantineNotificationQueue.TryDequeue(out var quarantineNotification))
                 {
@@ -1467,23 +1460,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                // Nothing enqueues these any more; drained so a stale entry
-                // from a pre-removal process cannot sit in the queue forever.
-                while (_playerRegistry.MentorshipContractUpdateQueue.TryDequeue(out var mentorshipNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, mentorshipNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.ActiveMentorPlayerId = mentorshipNotif.MentorPlayerId;
-                        currentPayload.MentorshipExpBonusMultiplier = mentorshipNotif.ExpBonusMultiplier;
-                        currentPayload.ActiveMentorshipContractCount = mentorshipNotif.ActiveContractCount;
-                        if (mentorshipNotif.XpPenaltyExpiresEpoch > 0)
-                        {
-                            currentPayload.XpPenaltyExpiresEpoch = mentorshipNotif.XpPenaltyExpiresEpoch;
-                        }
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                MentorshipTickCoordinator.DrainContractUpdates(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.MailClaimRequestQueue.TryDequeue(out var req))
                 {
