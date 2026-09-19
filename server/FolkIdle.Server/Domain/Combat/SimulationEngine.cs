@@ -894,10 +894,11 @@ namespace FolkIdle.Server.Domain.Combat
                 // PlayerRecords; this is the hand-off that makes it live for the
                 // running session, so restocking mid-fight takes effect on the
                 // next tick rather than at the next login.
-                // Modul: crafting as an assignable job. Drained next to every
-                // other cross-engine queue, so a finished craft costs the tick
-                // one dequeue and CraftingEngine does the rest off the hot
-                // path.
+                //
+                // (The crafting drain that used to sit here, with its own
+                // "Modul: crafting as an assignable job" comment, moved to
+                // CraftingTickCoordinator.cs along with that comment - kept in
+                // one place now instead of two, per code review on Task 1.20.)
                 CraftingTickCoordinator.DrainCraftingTicks(_safeDispatch, _craftingEngine);
 
                 LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
