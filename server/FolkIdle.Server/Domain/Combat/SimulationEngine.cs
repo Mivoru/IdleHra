@@ -106,6 +106,17 @@ namespace FolkIdle.Server.Domain.Combat
         private readonly StackExchange.Redis.IConnectionMultiplexer _redis;
         private readonly GlobalTournamentMeshService? _tournamentMeshService;
         private readonly TelemetryStreamingEngine _telemetryStreamingEngine;
+
+        // Modul: SafeDispatchAsync, handed to the tick coordinators as a value.
+        //
+        // A coordinator must never own its own async dispatch - CLAUDE.md's
+        // cron-worker trap is that a bare Task.Run swallows its exception and
+        // the feature simply stops existing, server-wide, with no log. So the
+        // ONE implementation is passed down rather than reimplemented per
+        // coordinator, and it is cached here rather than built per call: this
+        // is a 10Hz loop, and a fresh delegate per drain per tick is an
+        // allocation on the hot path for nothing.
+        private readonly Action<string, long, Func<Task>> _safeDispatch;
         private bool _isRunning;
         private Thread? _engineThread;
         private Thread? _battlePassWorkerThread;
@@ -161,6 +172,7 @@ namespace FolkIdle.Server.Domain.Combat
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
             _networkSystem = networkSystem;
+            _safeDispatch = SafeDispatchAsync;
             _forgeEngine = forgeEngine;
             _marketEngine = marketEngine;
             _playerRegistry = playerRegistry;
@@ -745,61 +757,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // Read the authoritative LiveOps event selected by the background ticker.
                 ActiveGlobalEventId = GlobalEngineState.ActiveEventType;
 
-                while (_playerRegistry.MarketMatchQueue.TryDequeue(out var notification))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, notification.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.AddGold(notification.GoldDelta);
-                        currentPayload.IsDirty = true;
-                    }
-                    else if (notification.GoldDelta != 0L)
-                    {
-                        // Modul: market settlement rescue, 2026-08-01.
-                        //
-                        // MarketEscrowEngine chooses between crediting the
-                        // database directly and posting here, based on whether
-                        // the seller was online AT THAT MOMENT. If they logged
-                        // out between that check and this drain - a window of up
-                        // to one tick plus the escrow transaction's tail - this
-                        // used to dequeue the notification, find no payload, and
-                        // silently drop it. The database was never credited on
-                        // that path, so the seller permanently lost the proceeds
-                        // of a completed sale with no error and no telemetry.
-                        //
-                        // Falling back to the offline path closes it. Crediting
-                        // the row directly is safe precisely because the player
-                        // is NOT active: nothing holds a live CurrentGold that
-                        // this could race, and hydration reads this row at their
-                        // next login.
-                        long rescuePlayerId = notification.PlayerId;
-                        long rescueGold = notification.GoldDelta;
-
-                        SafeDispatchAsync("Market.SettlementRescue", 0L, async () =>
-                        {
-                            await using var rescueDb = await _contextFactory.CreateDbContextAsync();
-
-                            var goldRow = await rescueDb.CommodityRecords
-                                .FirstOrDefaultAsync(c => c.PlayerId == rescuePlayerId && c.ItemId == "gold");
-
-                            if (goldRow == null)
-                            {
-                                rescueDb.CommodityRecords.Add(new Models.CommodityRecord
-                                {
-                                    PlayerId = rescuePlayerId,
-                                    ItemId = "gold",
-                                    Quantity = rescueGold
-                                });
-                            }
-                            else
-                            {
-                                goldRow.Quantity += rescueGold;
-                            }
-
-                            await rescueDb.SaveChangesAsync();
-                        });
-                    }
-                }
+                MarketTickCoordinator.DrainMatchNotifications(_playerRegistry, _activePlayers, _safeDispatch, _contextFactory);
 
                 BreedingTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
