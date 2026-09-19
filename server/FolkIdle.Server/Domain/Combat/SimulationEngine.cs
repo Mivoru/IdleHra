@@ -1500,15 +1500,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 SkillTreeTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.BillingSyncQueue.TryDequeue(out var billingSyncNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, billingSyncNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.SetPremiumCurrency(billingSyncNotif.PremiumDiamondsBalance);
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                BillingTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.GuildLogisticsDepotUpdateQueue.TryDequeue(out var depotNotif))
                 {
