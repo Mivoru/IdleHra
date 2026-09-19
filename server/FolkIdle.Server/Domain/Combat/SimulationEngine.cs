@@ -964,42 +964,7 @@ namespace FolkIdle.Server.Domain.Combat
                     });
                 }
 
-                while (_playerRegistry.LarderSlotUpdateQueue.TryDequeue(out var larderUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, larderUpdate.PlayerId);
-                    if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        continue;
-                    }
-
-                    switch (larderUpdate.SlotIndex)
-                    {
-                        case 0:
-                            currentPayload.Food1_ItemId = larderUpdate.ItemId;
-                            currentPayload.Food1_Count = larderUpdate.Count;
-                            break;
-                        case 1:
-                            currentPayload.Food2_ItemId = larderUpdate.ItemId;
-                            currentPayload.Food2_Count = larderUpdate.Count;
-                            break;
-                        case 2:
-                            currentPayload.Food3_ItemId = larderUpdate.ItemId;
-                            currentPayload.Food3_Count = larderUpdate.Count;
-                            break;
-                    }
-
-                    // Modul: halt reasons. Stocking food is the direct answer to
-                    // an OutOfFood halt, so clear the banner as soon as there is
-                    // something to eat. The activity itself still needs
-                    // redeploying - only the player can decide that - so this
-                    // does not restart it.
-                    if (currentPayload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood && larderUpdate.Count > 0)
-                    {
-                        currentPayload.ActivityHaltReason = Network.ActivityHaltReason.None;
-                    }
-
-                    currentPayload.IsDirty = true;
-                }
+                LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 // Modul: Guild War scoreboard sync. Fans one authoritative
                 // per-guild snapshot out to every online member of that guild
