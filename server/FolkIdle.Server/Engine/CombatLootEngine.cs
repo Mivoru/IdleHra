@@ -836,6 +836,29 @@ namespace FolkIdle.Server.Engine
             // once the list has grown to its steady-state size.
             _pendingDrops.Clear();
 
+            // What auto-salvage turned into gold across this whole request.
+            // Accumulated rather than credited per roll: an offline catch-up
+            // walks thousands of kills here, and paying each one separately
+            // would be thousands of notifications for one number.
+            //
+            // Modul: all three of these are declared BEFORE the try, not
+            // inside it - a local declared inside a try block is out of
+            // scope in its own catch, and the catch below needs salvage.Gold
+            // and both outbox accumulators to persist what this batch had
+            // already decided before the write that is about to fail.
+            SalvageTally salvage = default;
+
+            // Modul: THE DURABLE RETRY OUTBOX (audit #18), plain-data twin
+            // of what the change tracker is about to write. Neither
+            // collection is EF state - they are the exact outcome of every
+            // roll this batch makes, so if the transaction below throws,
+            // the catch block can persist precisely what was decided
+            // rather than re-rolling the dice on retry. See
+            // PendingGrantOutbox's own doc comment for why that
+            // distinction is load-bearing.
+            var resolvedCommodityDeltas = new Dictionary<string, long>();
+            var resolvedEquipmentGrants = new List<EquipmentGrantPayload>();
+
             try
             {
                 // Modul: THE BACKPACK IS GONE. Loot is routed by what it is,
@@ -866,12 +889,6 @@ namespace FolkIdle.Server.Engine
                 // - while the other 95% becomes chest material the player can
                 // actually use. The session never stops.
 
-                // What auto-salvage turned into gold across this whole request.
-                // Accumulated rather than credited per roll: an offline catch-up
-                // walks thousands of kills here, and paying each one separately
-                // would be thousands of notifications for one number.
-                SalvageTally salvage = default;
-
                 // Modul: ONE ITERATION PER KILL, all inside the one transaction
                 // this method already opens. `kills` is 1 for the live tick, so
                 // it walks this exactly once and behaves as it always has; the
@@ -887,7 +904,7 @@ namespace FolkIdle.Server.Engine
                         LootTableEntry[] lootTable = ContentRegistry.GetLootTable(monsterLootTableId).ToArray();
                         if (lootTable.Length > 0)
                         {
-                            await GrantMaterialDropAsync(dbContext, playerId, monsterId, lootTable, materialQuantityPct);
+                            await GrantMaterialDropAsync(dbContext, playerId, monsterId, lootTable, materialQuantityPct, resolvedCommodityDeltas);
                             _materialsGranted++;
                         }
                     }
@@ -896,7 +913,7 @@ namespace FolkIdle.Server.Engine
                     // the materials roll above, so a kill can pay both, either or
                     // neither.
                     salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                        EquipmentDropChance, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
+                        EquipmentDropChance, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
 
                     // Regional bosses always drop one piece on top of that, which
                     // is the whole of what makes a boss kill worth walking to. It
@@ -906,7 +923,7 @@ namespace FolkIdle.Server.Engine
                     if (isRegionalBoss)
                     {
                         salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                            1.0, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
+                            1.0, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
                     }
                 }
 
@@ -968,7 +985,33 @@ namespace FolkIdle.Server.Engine
             {
                 await transaction.RollbackAsync();
                 _pendingDrops.Clear();
-                Console.WriteLine($"Combat loot drop failed: {ex.Message}");
+                Console.WriteLine($"Combat loot drop failed: {ex.Message} - queued for retry.");
+
+                // Modul: THE DURABLE RETRY OUTBOX (audit #18). Auto-salvage
+                // gold normally pays through AutoSalvageQueue - a live-session
+                // channel with no meaning for a player who may not be
+                // connected by the time a retry lands - so it is re-credited
+                // here as an ordinary CommodityRecords["gold"] outbox delta
+                // instead. The loot event feed (_pendingDrops, already
+                // cleared above) is cosmetic and correctly left unsent: there
+                // is no live session to announce to, and the retried grant
+                // still lands in the player's chest/bank.
+                if (salvage.Gold > 0L)
+                {
+                    resolvedCommodityDeltas["gold"] = resolvedCommodityDeltas.GetValueOrDefault("gold") + salvage.Gold;
+                }
+
+                if (resolvedCommodityDeltas.Count > 0)
+                {
+                    await PendingGrantOutbox.EnqueueCommodityDeltasAsync(
+                        dbContext, playerId, PendingGrantSourceType.CombatLoot, resolvedCommodityDeltas);
+                }
+                foreach (var grant in resolvedEquipmentGrants)
+                {
+                    await PendingGrantOutbox.EnqueueEquipmentGrantAsync(
+                        dbContext, playerId, PendingGrantSourceType.CombatLoot,
+                        grant.BaseItemId, grant.QualityTier, grant.AffixPayload);
+                }
             }
         }
 
@@ -998,7 +1041,7 @@ namespace FolkIdle.Server.Engine
         // weighted roll.
         private async Task GrantMaterialDropAsync(
             FolkIdleDbContext dbContext, long playerId, int monsterId, LootTableEntry[] lootTable,
-            float materialQuantityPct)
+            float materialQuantityPct, Dictionary<string, long> resolvedCommodityDeltas)
         {
             int totalWeight = 0;
             for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
@@ -1046,6 +1089,15 @@ namespace FolkIdle.Server.Engine
                     existing.Quantity += quantity;
                 }
 
+                // Modul: THE DURABLE RETRY OUTBOX (audit #18) - see the
+                // plain-data accumulator declared at the top of
+                // ProcessMonsterLootDropAsync. Coalesced here (one kill can
+                // roll the same material more than once across a batch) so a
+                // retry replays one delta per material instead of one row per
+                // roll.
+                resolvedCommodityDeltas.TryGetValue(materialItemId, out long existingDelta);
+                resolvedCommodityDeltas[materialItemId] = existingDelta + quantity;
+
                 PublishLootDrop(playerId, monsterId, entry.ItemId, quantity, qualityTier: 0, Network.ResponseLootDropPacket.DropKindMaterial);
                 return;
             }
@@ -1083,8 +1135,8 @@ namespace FolkIdle.Server.Engine
         // it to a tally and only a positive number is ever paid.
         private long TryRollEquipment(
             FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion,
-            float lootLuckPct, double dropChance, int bonusRarityTiers = 0,
-            int autoSalvageBelowTier = 0, float rarityElevationPct = 0f)
+            float lootLuckPct, double dropChance, List<EquipmentGrantPayload> resolvedEquipmentGrants,
+            int bonusRarityTiers = 0, int autoSalvageBelowTier = 0, float rarityElevationPct = 0f)
         {
             if (Random.Shared.NextDouble() >= dropChance) return 0L;
 
@@ -1180,6 +1232,17 @@ namespace FolkIdle.Server.Engine
                 AffixPayload = affixPayload,
                 IsAffixLocked = false
             });
+
+            // Modul: THE DURABLE RETRY OUTBOX (audit #18) - see the plain-data
+            // accumulator declared at the top of ProcessMonsterLootDropAsync.
+            // This roll is already fully decided; the outbox never re-rolls.
+            resolvedEquipmentGrants.Add(new EquipmentGrantPayload
+            {
+                BaseItemId = baseItemId,
+                QualityTier = tier,
+                AffixPayload = affixPayload
+            });
+
             _equipmentWritten++;
 
             PublishLootDrop(playerId, monsterId, chosenItemId, 1, (byte)tier, Network.ResponseLootDropPacket.DropKindEquipment);
