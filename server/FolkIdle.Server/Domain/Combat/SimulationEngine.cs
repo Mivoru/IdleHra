@@ -870,15 +870,7 @@ namespace FolkIdle.Server.Domain.Combat
 
                 CodexTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.RegionCompletionUpdateQueue.TryDequeue(out var regionCompletionUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, regionCompletionUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.CompletedAreaFlags |= regionCompletionUpdate.CompletedRegionFlags;
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                RegionProgressionTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 RaceProgressionTickCoordinator.DrainRaceUnlocks(_playerRegistry, _activePlayers);
 
