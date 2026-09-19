@@ -839,19 +839,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.ForgeUpgradeQueue.TryDequeue(out var forgeUpgrade))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, forgeUpgrade.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.ForgeUpgradeCount++;
-                        if (forgeUpgrade.ResultingQualityTier > currentPayload.HighestForgeSynthesisTier)
-                        {
-                            currentPayload.HighestForgeSynthesisTier = forgeUpgrade.ResultingQualityTier;
-                        }
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                ForgeTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.EquipmentSlotUpdateQueue.TryDequeue(out var equipUpdate))
                 {
