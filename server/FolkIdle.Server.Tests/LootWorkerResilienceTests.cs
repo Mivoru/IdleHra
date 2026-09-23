@@ -77,13 +77,22 @@ namespace FolkIdle.Server.Tests
 
             var deadline = DateTime.UtcNow.AddSeconds(60);
             int granted = 0;
-            while (DateTime.UtcNow < deadline)
+            try
             {
-                await Task.Delay(1000);
-                await using var check = await _fixture.DbContextFactory.CreateDbContextAsync();
-                granted = await check.EquipmentInstances.AsNoTracking()
-                    .CountAsync(e => e.PlayerId == goodPlayerId);
-                if (granted > 0) break;
+                while (DateTime.UtcNow < deadline)
+                {
+                    await Task.Delay(1000);
+                    await using var check = await _fixture.DbContextFactory.CreateDbContextAsync();
+                    granted = await check.EquipmentInstances.AsNoTracking()
+                        .CountAsync(e => e.PlayerId == goodPlayerId);
+                    if (granted > 0) break;
+                }
+            }
+            finally
+            {
+                // The queues are static; a worker left running drains the next
+                // test's loot into this test's database. See StopCron.
+                engine.StopCron();
             }
 
             Assert.True(granted > 0,
