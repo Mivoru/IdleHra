@@ -174,7 +174,7 @@
         <h3>{generation === 0 ? 'The founders' : `Generation ${generation}`}</h3>
         <ul>
           {#each members.filter((m) => m.GenerationIndex === generation) as m (m.CharacterId)}
-            <li class:doomed={!m.WouldCarry}>
+            <li class:doomed={!m.WouldCarry} data-character-id={m.CharacterId}>
               <RaceIcon raceId={m.RaceId} />
 
               <div class="who">

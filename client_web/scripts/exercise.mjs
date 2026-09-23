@@ -1933,6 +1933,7 @@ await go('Village');
 // from the DOM alone.
 let bredChildName = null;
 let bredChildHadTrait = null;
+let bredChildId = null;
 await go('Breeding');
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -2243,6 +2244,7 @@ await go('Breeding');
         const child = (rosterAfter ?? []).find((c) => !beforeIds.has(c.CharacterId));
         if (child) {
           bredChildName = child.Name;
+          bredChildId = child.CharacterId;
           bredChildHadTrait = Number(child.TraitMask) !== 0;
         }
       }
@@ -2334,7 +2336,10 @@ await go('Ancestors');
       `${bredChildName} inherited no trait this roll (RNG) - odds were still asserted on the preview above`,
     );
   } else {
-    const childRow = page.locator('.panel li').filter({ hasText: bredChildName }).first();
+    // By id, not name: the fixture had NINE characters called Muirenn and
+    // `.first()` matched an older one with no trait - a false FAIL on a
+    // child the server had granted a trait to (measured 2026-09-23).
+    const childRow = page.locator(`.panel li[data-character-id="${bredChildId}"]`);
     const rowExists = (await childRow.count()) > 0;
     const badgeCount = rowExists ? await childRow.locator('.trait').count() : 0;
     record(
