@@ -1,5 +1,10 @@
 # FolkIdle Task Board
 
+> **START HERE (2026-09-23): the open work is tasks 25-38, at the bottom of this
+> file** ("25 through 38, added 2026-09-23"), in the order given there. Tasks
+> 1-24 are all DONE and deployed; production runs `main`. Where any status
+> line below says otherwise it is stale (cleaning that up is task 30).
+
 Seven tasks, restated against what the code actually does as of 2026-09-01.
 Every "today" claim below was checked in the source or the live database rather
 than remembered — where a task turned out to be different from its one-line
@@ -3311,3 +3316,286 @@ individual gap staying under the cap. Whether that is a real exploit worth
 closing (a rolling per-day budget) or acceptable/intended (rewards engagement,
 which many idle games do on purpose) is a design call, not a bug — record the
 decision here once made, either way.
+
+**DECIDED 2026-09-23 by the owner: keep the offline cap as it is.** The cap is
+per gap, and the gaps of a day can never add up to more than the day itself -
+six logins four hours apart simulate 24h of production in 24h of real time.
+There is nothing to close.
+
+---
+
+# 25 through 38, added 2026-09-23: the owner's phone playtest, cleanup, and three designs
+
+**This is the front of the board.** Written after a few hours of play on the
+Android APK, plus the cleanup and decisions from the same day. Every fact below
+was checked against the code or the PRODUCTION database (Supabase, read-only)
+on 2026-09-23 - the evidence is written into each task so the next session does
+not have to re-derive it. Everything before this section is closed.
+
+**Work them in this order.** Phase 1 is player-visible defects, broken-first.
+Phase 2 is cheap, riskless cleanup the owner has approved. Phase 3 is design
+work: each of those needs a brainstorming pass WITH the owner before any code
+(use the brainstorming skill), then a written plan, then implementation.
+
+| Phase | # | Task | Size |
+|---|---|---|---|
+| 1 | 25 | World boss: no attack has ever landed | M, a real defect |
+| 1 | 26 | Rarity: no Ancient+ drop in ~5 days - measure, then decide | M, investigate first |
+| 1 | 27 | Loot drops list: the top row is cut off | S |
+| 1 | 28 | Village stopwatch: the whole icon spins on the phone | S |
+| 1 | 29 | Market filters: the checkboxes are misaligned | S |
+| 2 | 30 | Docs match reality | S |
+| 2 | 31 | CI: GitHub actions off Node 20 | S |
+| 2 | 32 | Branch and worktree cleanup | S |
+| 2 | 33 | Delete the 40 legacy crafting materials | M, approved |
+| 2 | 34 | Retire the Unity project | M, approved, plan exists |
+| 2 | 35 | Small leftovers | S |
+| 3 | 36 | World boss fight: a skill/reflex minigame, not a plate guess | L, design first |
+| 3 | 37 | A late-game gold sink (the Delve tops out at 250k; the owner earns 100M easily) | L, design first |
+| 3 | 38 | Guild Wars: design the whole system | XL, design first |
+
+Standing rules for all of them: verify gameplay with `npm run exercise` (and add
+a check to it for anything new a player can do); deploy after each merged fix
+with the `deploy` skill (the owner approved deploying after every fix on
+2026-09-23); CI only runs on push to `main`; two copies of the server suite
+cannot run at once on this machine (`SustainedLoadTests` binds port 8095);
+`exercise` spends onboarding state, so re-seed with `--seed-dev` between two runs.
+
+## 25. World boss: no attack has ever landed (P0, a real defect)
+
+**Reported:** "I can never attack."
+
+**Measured in production 2026-09-23:** the whole Sep 15-22 window ended with
+`WorldBossSnapshots` at `CurrentHp = MaxHp = 50,000,000`,
+`TotalDamageContributed = 0`, `EventState = 2` (failed), and
+`player_world_boss_attempts` **completely empty** - not one attempt was recorded
+for any player, although the owner tried. So attacks either never leave the
+client or are rolled back on the server before the attempt row commits.
+
+**Windows:** `LiveOpsTickEngine.EvaluateWorldBossEventWindowAsync` opens the
+boss on the 1st-7th and 15th-22nd of each month (UTC). On the 8th-14th and
+23rd-31st it is dormant by design - **so a repro needs a window forced open
+locally** (`WorldBossEngine.ActivateEventWindowAsync`, or the admin dev tools),
+not the calendar. The next live window opens Oct 1.
+
+**Where to look, in order:** CLAUDE.md's "Silent rollback is this server's
+favourite way to lie" names three silent rollbacks in `ExecuteAttackAsync`
+(attempt cap, empty larder, a battle session nothing puts on the wire) - check
+which one a real account hits; the client button's own disable conditions on
+the world boss screen; that the command reaches the server at all (since task
+21 it goes through the dispatch table - `WorldBossTickCoordinator`).
+`WorldBossArmourTests` covers the engine but evidently not what a real client
+does.
+
+**Done when:** on a locally forced-open window, the dev fixture AND a fresh
+account can attack, the damage and the attempt row land, a refusal says why on
+screen, and `exercise.mjs` attacks and asserts the boss HP moved (opening the
+window itself, and round-tripping what it spends).
+
+## 26. Rarity: no Ancient+ drop in ~5 days (investigate before changing anything)
+
+**Reported:** Godly and 2x Demonic earlier; for about five days only
+Mythic / Relic / Ancient at best.
+
+**Measured in production 2026-09-23** (player 8 "Mivoru", level 94, 1,604
+items, `AutoSalvageBelowTier = 0`, `BaseLuck = 300`):
+- The newest 800 equipment rows (ids 64216-65015, consecutive, so nothing was
+  deleted between them) are all region-5 gear (doom/dread/abyssal/dreadnought),
+  tiers 1-9: **9 Legendary+ (1.1%), 0 Ancient+**.
+- Older rows: 804 survivors, 621 Legendary+, 29 Ancient+ (tiers 10-13). **That
+  set is biased** - an earlier auto-salvage threshold deleted low tiers, so its
+  denominator is unknown. Do not compare the two percentages directly.
+
+**The roll** (`RarityTier.RollTier`, `CombatLootEngine.cs:126`): Normal weight
+100; tiers 2-13 weights 50, 25, 12.5, 5, 2.5, 1, 0.5, 0.1, 0.05, 0.01, 0.005,
+0.001, all multiplied by `1 + LootLuckPct/100`. At luck 0: Legendary+ ~0.85% per
+drop, Ancient+ ~0.03%, Godly ~0.0005%. **The recent 1.1% Legendary+ matches a
+LootLuckPct near zero** - suspicious for a level-94 account with 300 base luck.
+`LootLuckPct` is summed in `CombatLootDropRequest.Build` (`CombatLootEngine.cs`
+~line 330): combat stats (LCK via `AttributeRegistry.DiminishedPercent`, area
+bonus, affixes), inheritance, the skill tree's Loot Rarity branch, the guild
+DropRate buff; plus `BonusRarityTiers` (Golden Fleece) and `rarityElevationPct`.
+
+**Hypotheses, cheapest first:**
+1. **The old Godly/Demonic pieces were FORGED, not dropped.** The forge fuses
+   three same-rarity pieces into the next tier. If the tier 10+ pieces came from
+   fusion, drops were always ~0.03% and nothing changed. There is no drop log in
+   the database (`EcoTelemetryLedgers` is the only telemetry table - check what
+   it records).
+2. **The account's real `LootLuckPct` is far lower than expected.** Compute it
+   for player 8 with the live formula (a test or an admin endpoint), printing
+   each term, and check whether any term changed around the 2026-09-18 deploy
+   of `84fe16c`.
+3. **Offline catch-up vs live kills** - both build `CombatLootDropRequest`;
+   check both fill in every luck term.
+
+**Then decide with the owner** whether Ancient+ should be this rare at level 94
+in region 5 (`PowerCeilingTests` and task 9's "rarity is worth one region step"
+constrain the answer - read task 9 first). **Add a drop record** either way
+(tier, source = drop/forge/craft, time), so the next "this feels sus" is
+answered from data rather than reconstructed from row ids.
+
+## 27. Loot drops list: the top row is cut off (S)
+
+**Reported:** with many items the loot drops table glitches and the top item is
+cut off.
+
+**Where:** `client_web/src/lib/ui/SessionLoot.svelte` - a `max-height: 16rem;
+overflow-y: auto` list with `overflow-anchor: none` (deliberate, so new rows
+inserted at the top stay visible; CLAUDE.md "Scroll anchoring"). Suspects: the
+first row covered by a sticky header or the list's own padding/border, or rows
+taller than their slot. Reproduce with a long session's worth of drops at
+390px; then make `npm run check:clipping` catch it if it did not (it only
+measures what its fixtures render, and a short list hides this).
+
+## 28. Village stopwatch: the whole icon spins on the phone (S)
+
+**Reported:** while a building upgrades the whole timer icon spins, not just
+the hands.
+
+**Already fixed once, for browsers:** `4926886` (2026-09-12) split the hands
+from the dial and rotates only `.stopwatch .hand` about
+`transform-origin: 12px 13px` with `transform-box: view-box` (`Village.svelte`
+~lines 270-300). The live-update bundle (`/api/v1/app/bundle` ->
+`1.0.464.zip`) contains that fix. So either the phone still runs the pre-fix
+bundle (the APK was built 2026-09-12 00:04, before the fix; Capacitor
+live-update should replace it on launch) or the Android WebView ignores
+`transform-box: view-box` there.
+
+**Fix it robustly instead of guessing:** draw the hands around the SVG origin
+inside `<g transform="translate(12 13)">` so a plain `rotate()` needs no
+`transform-box`; also check which bundle version the app reports. Verify on
+the phone.
+
+## 29. Market filters: the checkboxes are misaligned (S)
+
+`client_web/src/routes/Market.svelte` ~lines 243-285: two
+`<fieldset class="checks">` (Type, Tier) of
+`<label><input type="checkbox">text</label>`. The CSS around lines 587-615 (read
+the comment on `.filters > input` - the `>` is load-bearing) does not lay the
+labels out as a grid, so they wrap raggedly. Make a tidy grid of equal cells,
+box and text vertically centred; keep the 44px touch floor (a checkbox cannot be
+enlarged by padding - size the label as the target). Run `check:touch` and
+`check:overlap` after.
+
+## 30. Docs match reality (S)
+
+- This file's header (top ~30 lines) still says PR #11/#12 are unmerged and task
+  21 Phase 2/3 not started; the 14-23 status paragraph and the first lines of
+  tasks 17/18/19/20/22 ("Not started", "PR open, NOT YET MERGED") are stale.
+  All of 14-24 are DONE and deployed. Point the header at this section.
+- `docs/architecture/CURRENT_IMPLEMENTATION_STATE.md`: describe the new tick
+  layout - `Domain/Shared/CommandGate.cs`, the dispatch table in
+  `CommandCoordinatorContext.cs`, the per-domain `*TickCoordinator` classes, the
+  Phase 1 drain coordinators, and `RunCraftingProgressTick` / `RunGatheringTick`
+  / `RunCombatTick`. `SimulationEngine.cs` is 5,020 lines.
+- CLAUDE.md: check every `SimulationEngine.cs` line reference still holds after
+  the split; add the static-loot-queue test trap (PR #15: a worker a test never
+  stops drains another test's loot into the wrong database).
+
+## 31. CI: GitHub actions off Node 20 (S)
+
+`.github/workflows/deploy.yml` uses `actions/checkout@v4`, `cache@v4`,
+`setup-dotnet@v4`, `setup-java@v4` (deprecated; v5 exists), `setup-node@v4`,
+`upload-artifact@v4`, `android-actions/setup-android@v3`. GitHub already forces
+them onto Node 24 with a warning. Bump each to its current major after reading
+its breaking changes, push to `main`, watch the run go green.
+
+## 32. Branch and worktree cleanup (S)
+
+Local: `combat-readability-and-rarity`, `feat/breeding-round-1`,
+`fix/drops-progression-oracle-migration`,
+`fix/guest-registration-and-reset-notice`, `mivoru-repository-audit`,
+`perf/chest-drain`, `tooling/claude-setup-and-guild-donate-fix`, and today's
+merged `fix/*` / `refactor/*` branches. Remote: `task-18-durable-grant-retry`,
+`task-22-sustained-load-test`, `worktree-breeding-traits` and the merged PR
+branches. Worktree: `copilot-worktrees/IdleHra/mivoru-improved-engine` (branch
+`mivoru-repository-audit`). **Check each with `git branch --merged main` before
+deleting; anything NOT merged is listed for the owner, not deleted.** Three
+empty, git-ignored folders under `.claude/worktrees/` were locked by Windows on
+2026-09-23 - delete them if still there.
+
+## 33. Delete the 40 legacy crafting materials (M, approved by the owner)
+
+`docs/crafting_material_audit.md` lists them: ten bars (ids 184-193) and thirty
+superseded monster-drop materials (ids 2, 6, 12, 22, 25, 40, 43, 46, 58, 61, 64,
+67, 76, 79, 82, 85, 100, 112, 115, 118, 130, 133, 136, 148, 151, 154, 166, 172,
+175, 177). Its precondition was "query production first": **done 2026-09-23 -
+no `CommodityRecords` row in production holds any of them** (the only regex hit
+was `mat_magic_bark`, a false positive on `_bar`).
+
+Still to check before deleting: every other place an item is stored or
+referenced by numeric id (bank, mailbox, market listings, recipes, the loot
+tables in `ContentRegistry`, client icon tables, `sprites.missing.txt`), and
+CLAUDE.md's warning that **item ids are positional in several places** -
+removing an `items.json` entry must not shift another item's id. Then remove the
+definitions, regenerate sprites, let the content-validator hook pass, run the
+full suite and `exercise`.
+
+## 34. Retire the Unity project (M, approved by the owner)
+
+Plan: `docs/superpowers/plans/2026-09-17-retire-unity-project.md` - three
+independently revertible steps. The last touches the production Docker build
+and CI, because the server serves artwork/audio out of `client/` (CLAUDE.md:
+"Kept only for artwork/audio the web client fetches from the server").
+Re-validate the plan against the current tree first (it is six days old), move
+whatever the server actually serves before removing anything, and deploy +
+smoke-test production after the last step.
+
+## 35. Small leftovers (S)
+
+- Nullable warnings and an unused `ex` in
+  `server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs`.
+- This machine's Python cannot import `encodings`, so
+  `Test_ContentValidatorScript_MalformedJson_ExitsNonZero` and the content hook
+  fail locally (CI is fine) - a machine fix, not a repo change.
+- 165 items have no art (`sprites.missing.txt`; 40 go away with task 33). Rank
+  the rest by how often a player sees them and hand the owner a prioritised list
+  for an artist or generator.
+
+## 36. World boss fight: skill and reflex, not a plate guess (L, design with the owner first)
+
+**Owner, 2026-09-23:** the five-plate choice is boring - whether you click the
+right plate is chance. Wanted: a minigame that needs some skill and reflexes.
+
+Constraints that must survive (task 10's write-up above, `WorldBossEngine`):
+**the client sends a CHOICE or a measured outcome, never a damage figure** - a
+reflex game's result must be validated or bounded server-side (e.g. the server
+issues the timing windows and checks the timestamps); 3 attempts per encounter;
+one shared HP pool across all players; the armour-plate identity can stay as the
+theme. It must work with a thumb on a phone (44px targets, no hover) and take
+under a minute. Brainstorm candidates with the owner (timing bar, weak-spot
+tapping, rhythm, dodge-and-strike), prototype one, then implement. **Task 25
+first** - there is no point redesigning a fight nobody can start.
+
+## 37. A late-game gold sink (L, design with the owner first)
+
+**Owner, 2026-09-23:** earning 100M gold is easy now, so the Delve's entry fee
+(`DelveRegistry.EntryFeeByRegion` = 7k / 17k / 42k / 100k / 250k by region) is
+no sink. Rescale the Delve or add something new and fun.
+
+Read first: task 11 (the Delve's design), `GatheringEconomyTests` (supply and
+every sink in the same units), `LeaderboardRewardTests` and
+`DelveRegistry.MaxDiamondsPerWeek` (60 - the Delve is the calibrated diamond
+tap; do not inflate it). A sink that scales with income (a percentage, or prices
+that climb with use) survives the next balance change; a fixed price does not.
+Directions to put to the owner: fees scaling with wealth or level, a
+prestige/cosmetic track, guild-level projects (ties into 38), high-roll forge or
+reroll services, a gold-funded endless Delve depth.
+
+## 38. Guild Wars: design the whole system (XL, design with the owner first)
+
+**Owner, 2026-09-23:** design Guild Wars completely - format, rewards,
+everything; take inspiration from popular games.
+
+What exists: a hidden Guild War UI in `GuildOps.svelte` (its four handlers -
+`defend`, `attackShard`, `takeTurn`, `damageDelta` - are the four permanent
+`svelte-check` errors), `GuildMatchmakingEngine` (a guarded `StartCron` loop),
+`GuildWarTickCoordinator` (turn/defence/shard commands since task 21), and guild
+war point queues fed from combat. Start with an end-to-end audit of what is
+actually wired (the `wiring-auditor` agent exists for exactly this), then
+brainstorm with the owner: format (async season vs live), matchmaking, what a
+player does day to day in an idle game, rewards and how they sit against the
+diamond economy and task 37's sink, anti-abuse. Then a written spec, then phased
+plans. Do not delete the hidden handlers before this lands - they are the
+`svelte-check` baseline.
