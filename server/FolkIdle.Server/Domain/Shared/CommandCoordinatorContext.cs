@@ -45,6 +45,9 @@ namespace FolkIdle.Server.Domain.Shared
         // Domain engine handles, added one at a time by the task whose
         // handlers need each.
         internal LegacyStoreEngine LegacyStoreEngine { get; init; }
+        internal StateCheckpointManager CheckpointManager { get; init; }
+        internal MarketEscrowEngine EscrowEngine { get; init; }
+        internal MarketOrderBookEngine MarketEngine { get; init; }
     }
 
     /// <summary>

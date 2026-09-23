@@ -746,6 +746,9 @@ namespace FolkIdle.Server.Domain.Combat
             return new System.Collections.Generic.Dictionary<CommandType, CommandHandler>
             {
                 [CommandType.PurchaseLegacyUnlocks] = LegacyStoreTickCoordinator.HandlePurchaseLegacyUnlocks,
+                [CommandType.MarketListItem] = MarketTickCoordinator.HandleMarketListOrBuy,
+                [CommandType.MarketBuyItem] = MarketTickCoordinator.HandleMarketListOrBuy,
+                [CommandType.PlaceLimitOrder] = MarketTickCoordinator.HandlePlaceLimitOrder,
             };
         }
 
@@ -763,6 +766,9 @@ namespace FolkIdle.Server.Domain.Combat
                 NetworkSystem = _networkSystem,
                 PlayerRegistry = _playerRegistry,
                 LegacyStoreEngine = _legacyStoreEngine,
+                CheckpointManager = _checkpointManager,
+                EscrowEngine = _escrowEngine,
+                MarketEngine = _marketEngine,
             };
         }
 
@@ -1365,37 +1371,6 @@ namespace FolkIdle.Server.Domain.Combat
                             currentPayload.ConsecutiveChallengeMisses = 0;
                         }
                     }
-                    else if (cmd.Command == CommandType.MarketListItem || cmd.Command == CommandType.MarketBuyItem)
-                    {
-                        if (!ClientCommandValidator.ValidateMarketCommands(ref currentPayload, (byte)cmd.Command, cmd.TargetId, cmd.LimitPrice))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-                        
-                        currentPayload.IsSuspended = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetId;
-                        long price = cmd.LimitPrice;
-                        bool isBuy = cmd.Command == CommandType.MarketBuyItem;
-                        // The chest is unlimited, so a buy always has room.
-                        bool hasSpace = true;
-
-                        SafeDispatchAsync("Market.EscrowOrder", pId, async () => {
-                            if (isBuy)
-                            {
-                                await _escrowEngine.BuyItemAsync(pId, targetId, hasSpace);
-                            }
-                            else
-                            {
-                                await _escrowEngine.ListItemAsync(pId, targetId, price);
-                            }
-                            _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                        });
-                    }
                     else if (cmd.Command == CommandType.ChangeActivity)
                     {
                         if (!ClientCommandValidator.ValidateChangeActivityRequest(ref currentPayload, cmd.TargetId))
@@ -1848,40 +1823,6 @@ namespace FolkIdle.Server.Domain.Combat
                                 QuantityToBurn = cmd.TertiaryId
                             });
                         }
-                    }
-                    else if (cmd.Command == CommandType.PlaceLimitOrder)
-                    {
-                        if (!ClientCommandValidator.ValidatePlaceLimitOrderRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        currentPayload.IsSuspended = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-
-                        long pId = currentPayload.PlayerId;
-                        bool isBuy = cmd.IsBuy == 1;
-                        long instanceId = cmd.TargetId;
-                        long price = cmd.LimitPrice;
-                        int qualityTier = cmd.QualityTier;
-                        // Modul: Play Mode audit fix. This used to synthesize a
-                        // bogus "ItemType_{TargetId}" string that never matched
-                        // any real MarketEquipmentInstance.BaseItemId - every BUY
-                        // limit order placed through the real wire protocol was
-                        // permanently unmatchable (only the direct-call unit test
-                        // passed a real baseItemId, bypassing this dispatcher
-                        // entirely). TargetId is the same numeric ContentRegistry
-                        // item id used by ConsumableEngine/CombatLootEngine -
-                        // resolving it here is the same GetItemBaseId lookup they
-                        // already use, not a new convention.
-                        string baseItemId = isBuy ? ContentRegistry.GetItemBaseId((int)cmd.TargetId) : "";
-
-                        SafeDispatchAsync("Market.LimitOrder", pId, async () => {
-                            await _marketEngine.PlaceLimitOrderAsync(pId, isBuy, instanceId, price, baseItemId, qualityTier);
-                            _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                        });
                     }
                     else if (cmd.Command == CommandType.ClaimMailItem)
                     {
