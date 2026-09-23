@@ -786,6 +786,10 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.UpdateAutoEatThreshold] = LarderTickCoordinator.HandleUpdateAutoEatThreshold,
                 [CommandType.SpendAttributePoint] = AttributeTickCoordinator.HandleSpendAttributePoint,
                 [CommandType.RespecAttributes] = AttributeTickCoordinator.HandleRespecAttributes,
+                [CommandType.PurchaseSkillTreeLevel] = SkillTreeTickCoordinator.HandlePurchaseSkillTreeLevel,
+                [CommandType.RespecSkillTree] = SkillTreeTickCoordinator.HandleRespecSkillTree,
+                [CommandType.RequestUnlockSkill] = SkillTreeTickCoordinator.HandleRetiredActiveSkill,
+                [CommandType.RequestCastSkill] = SkillTreeTickCoordinator.HandleRetiredActiveSkill,
             };
         }
 
@@ -822,6 +826,7 @@ namespace FolkIdle.Server.Domain.Combat
                 CraftingEngine = _craftingEngine,
                 EquipmentSlotEngine = _equipmentSlotEngine,
                 LarderEngine = _larderEngine,
+                SkillTreeEngine = _skillTreeEngine,
             };
         }
 
@@ -1660,36 +1665,6 @@ namespace FolkIdle.Server.Domain.Combat
                             }
                         });
                     }
-                    else if (cmd.Command == CommandType.PurchaseSkillTreeLevel)
-                    {
-                        // Modul: skill tree. Same shape as the inheritance
-                        // purchase above and for the same reasons - dispatched
-                        // off the tick, the point balance and the level written
-                        // in one Serializable FOR UPDATE transaction, and a
-                        // branch id out of range REFUSED rather than treated as
-                        // a protocol violation. A branch id is a menu choice.
-                        long treePlayerId = currentPayload.PlayerId;
-                        int treeBranchId = (int)cmd.TargetId;
-                        SafeDispatchAsync("SkillTree.Purchase", treePlayerId, async () => {
-                            if (_skillTreeEngine != null) await _skillTreeEngine.PurchaseLevelAsync(treePlayerId, treeBranchId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.RespecSkillTree)
-                    {
-                        // Modul: respec. Ring 2 forks and taking one side locks
-                        // the other for a ninety-day season, so there has to be
-                        // a way back - and it cannot be free and unlimited, or
-                        // the exclusivity that IS the choice would be gone.
-                        // One free a season, then a purchased grant.
-                        //
-                        // Dispatched off the tick like every other write: the
-                        // cleared levels come back through SkillTreeSyncQueue,
-                        // because the tick thread owns the payload.
-                        long respecPlayerId = currentPayload.PlayerId;
-                        SafeDispatchAsync("SkillTree.Respec", respecPlayerId, async () => {
-                            if (_skillTreeEngine != null) await _skillTreeEngine.RespecAsync(respecPlayerId);
-                        });
-                    }
                     else if (cmd.Command == CommandType.PurchaseBattlePass)
                     {
                         // Modul: Comprehensive Game System Audit, Part 4.3.
@@ -2026,22 +2001,6 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         currentPayload.ActiveUiContextBitmask = cmd.ActiveUiContextBitmask;
                         currentPayload.IsDirty = true;
-                    }
-                    // Modul: RequestUnlockSkill and RequestCastSkill are RETIRED,
-                    // with the four active skills they drove. Measured, that
-                    // rotation was +90% damage - +136% with the status synergy -
-                    // available only to a player clicking every three seconds,
-                    // in a game whose whole premise is not clicking. See
-                    // SkillTreeRegistry for what the points buy now.
-                    //
-                    // Ignored rather than rejected, like CommandType.CraftItem:
-                    // a client still sending them is a stale bundle, not an
-                    // attack, and disconnecting a tab that has not reloaded
-                    // teaches nobody anything.
-                    else if (cmd.Command == CommandType.RequestUnlockSkill
-                             || cmd.Command == CommandType.RequestCastSkill)
-                    {
-                        // Deliberately empty.
                     }
                 }
 
