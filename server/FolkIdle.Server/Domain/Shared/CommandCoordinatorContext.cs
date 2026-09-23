@@ -73,6 +73,7 @@ namespace FolkIdle.Server.Domain.Shared
         internal BillingVerificationEngine BillingVerificationEngine { get; init; }
         internal Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> ContextFactory { get; init; }
         internal MailboxAndBankEngine MailboxEngine { get; init; }
+        internal WorldBossEngine WorldBossEngine { get; init; }
     }
 
     /// <summary>
