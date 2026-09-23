@@ -106,6 +106,17 @@ namespace FolkIdle.Server.Domain.Combat
         private readonly StackExchange.Redis.IConnectionMultiplexer _redis;
         private readonly GlobalTournamentMeshService? _tournamentMeshService;
         private readonly TelemetryStreamingEngine _telemetryStreamingEngine;
+
+        // Modul: SafeDispatchAsync, handed to the tick coordinators as a value.
+        //
+        // A coordinator must never own its own async dispatch - CLAUDE.md's
+        // cron-worker trap is that a bare Task.Run swallows its exception and
+        // the feature simply stops existing, server-wide, with no log. So the
+        // ONE implementation is passed down rather than reimplemented per
+        // coordinator, and it is cached here rather than built per call: this
+        // is a 10Hz loop, and a fresh delegate per drain per tick is an
+        // allocation on the hot path for nothing.
+        private readonly Action<string, long, Func<Task>> _safeDispatch;
         private bool _isRunning;
         private Thread? _engineThread;
         private Thread? _battlePassWorkerThread;
@@ -161,6 +172,7 @@ namespace FolkIdle.Server.Domain.Combat
             _lootEngine = lootEngine;
             _checkpointManager = checkpointManager;
             _networkSystem = networkSystem;
+            _safeDispatch = SafeDispatchAsync;
             _forgeEngine = forgeEngine;
             _marketEngine = marketEngine;
             _playerRegistry = playerRegistry;
@@ -745,122 +757,15 @@ namespace FolkIdle.Server.Domain.Combat
                 // Read the authoritative LiveOps event selected by the background ticker.
                 ActiveGlobalEventId = GlobalEngineState.ActiveEventType;
 
-                while (_playerRegistry.MarketMatchQueue.TryDequeue(out var notification))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, notification.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.AddGold(notification.GoldDelta);
-                        currentPayload.IsDirty = true;
-                    }
-                    else if (notification.GoldDelta != 0L)
-                    {
-                        // Modul: market settlement rescue, 2026-08-01.
-                        //
-                        // MarketEscrowEngine chooses between crediting the
-                        // database directly and posting here, based on whether
-                        // the seller was online AT THAT MOMENT. If they logged
-                        // out between that check and this drain - a window of up
-                        // to one tick plus the escrow transaction's tail - this
-                        // used to dequeue the notification, find no payload, and
-                        // silently drop it. The database was never credited on
-                        // that path, so the seller permanently lost the proceeds
-                        // of a completed sale with no error and no telemetry.
-                        //
-                        // Falling back to the offline path closes it. Crediting
-                        // the row directly is safe precisely because the player
-                        // is NOT active: nothing holds a live CurrentGold that
-                        // this could race, and hydration reads this row at their
-                        // next login.
-                        long rescuePlayerId = notification.PlayerId;
-                        long rescueGold = notification.GoldDelta;
+                MarketTickCoordinator.DrainMatchNotifications(_playerRegistry, _activePlayers, _safeDispatch, _contextFactory);
 
-                        SafeDispatchAsync("Market.SettlementRescue", 0L, async () =>
-                        {
-                            await using var rescueDb = await _contextFactory.CreateDbContextAsync();
+                BreedingTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                            var goldRow = await rescueDb.CommodityRecords
-                                .FirstOrDefaultAsync(c => c.PlayerId == rescuePlayerId && c.ItemId == "gold");
+                WorldBossTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                            if (goldRow == null)
-                            {
-                                rescueDb.CommodityRecords.Add(new Models.CommodityRecord
-                                {
-                                    PlayerId = rescuePlayerId,
-                                    ItemId = "gold",
-                                    Quantity = rescueGold
-                                });
-                            }
-                            else
-                            {
-                                goldRow.Quantity += rescueGold;
-                            }
+                RaceProgressionTickCoordinator.DrainMasteryUpdates(_playerRegistry, _activePlayers);
 
-                            await rescueDb.SaveChangesAsync();
-                        });
-                    }
-                }
-
-                while (_playerRegistry.BirthNotificationQueue.TryDequeue(out var birthNotification))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, birthNotification.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        // Modul: a birth used to bump VillagePopulation - the
-                        // village's WORK slots, which the infrastructure update
-                        // overwrites from the buildings - so a child read as a
-                        // worker until the next village change. What a birth
-                        // does move is the gold the engine spent on it: the row
-                        // is already debited, so the live balance follows it and
-                        // the pending delta is left alone.
-                        currentPayload.CurrentGold = Math.Max(0L, currentPayload.CurrentGold - birthNotification.GoldSpent);
-                        currentPayload.IsDirty = true;
-                    }
-                }
-
-                while (_playerRegistry.WorldBossAttemptUpdateQueue.TryDequeue(out var worldBossAttemptUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, worldBossAttemptUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.WorldBossAttemptCount = worldBossAttemptUpdate.AttemptCount;
-                        currentPayload.WorldBossSessionEndsEpoch = worldBossAttemptUpdate.SessionEndsEpoch;
-                        currentPayload.IsDirty = true;
-                    }
-                }
-
-                while (_playerRegistry.MasteryUpdateQueue.TryDequeue(out var masteryUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, masteryUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        // Modul 13 fix: was gated on raw literals (1, 3, 4) that predate
-                        // RaceIds and never matched it - Vila updates (RaceId=2) were
-                        // silently dropped entirely, and RaceId 3/4 mislabeled Draugr's
-                        // and Kobold's levels as Vila's/Draugr's respectively.
-                        if (masteryUpdate.RaceId == RaceIds.Human) currentPayload.HumanMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Vila) currentPayload.VilaMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Draugr) currentPayload.DraugrMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Kobold) currentPayload.KoboldMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Vodnik) currentPayload.VodnikMasteryLevel = masteryUpdate.MasteryLevel;
-                        else if (masteryUpdate.RaceId == RaceIds.Moosleute) currentPayload.MoosleuteMasteryLevel = masteryUpdate.MasteryLevel;
-                        currentPayload.IsDirty = true;
-                    }
-                }
-
-                while (_playerRegistry.ForgeUpgradeQueue.TryDequeue(out var forgeUpgrade))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, forgeUpgrade.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.ForgeUpgradeCount++;
-                        if (forgeUpgrade.ResultingQualityTier > currentPayload.HighestForgeSynthesisTier)
-                        {
-                            currentPayload.HighestForgeSynthesisTier = forgeUpgrade.ResultingQualityTier;
-                        }
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                ForgeTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.EquipmentSlotUpdateQueue.TryDequeue(out var equipUpdate))
                 {
@@ -906,43 +811,11 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.CodexMultiplierUpdateQueue.TryDequeue(out var codexMultiplierUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, codexMultiplierUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.CachedCodexYieldMultiplier = codexMultiplierUpdate.YieldMultiplier;
-                        currentPayload.CachedCodexDamageMultiplier = codexMultiplierUpdate.DamageMultiplier;
-                    }
-                }
+                CodexTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.RegionCompletionUpdateQueue.TryDequeue(out var regionCompletionUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, regionCompletionUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.CompletedAreaFlags |= regionCompletionUpdate.CompletedRegionFlags;
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                RegionProgressionTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                // Modul: race unlock feedback. ORs the newly granted race into
-                // the live mask so the next outbound packet carries it and the
-                // client can announce it. An offline player needs nothing here:
-                // the row is already committed and login hydrates the mask from
-                // it.
-                while (_playerRegistry.RaceUnlockQueue.TryDequeue(out var raceUnlock))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, raceUnlock.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        if (raceUnlock.RaceId >= 1 && raceUnlock.RaceId <= 8)
-                        {
-                            currentPayload.UnlockedRaceBitmask |= (byte)(1 << (raceUnlock.RaceId - 1));
-                            currentPayload.IsDirty = true;
-                        }
-                    }
-                }
+                RaceProgressionTickCoordinator.DrainRaceUnlocks(_playerRegistry, _activePlayers);
 
                 // Modul: Deploy activation fix, generalised for multi-slot.
                 // Applies a committed activity change to the live payload.
@@ -1021,251 +894,26 @@ namespace FolkIdle.Server.Domain.Combat
                 // PlayerRecords; this is the hand-off that makes it live for the
                 // running session, so restocking mid-fight takes effect on the
                 // next tick rather than at the next login.
-                // Modul: crafting as an assignable job. Drained next to every
-                // other cross-engine queue, so a finished craft costs the tick
-                // one dequeue and CraftingEngine does the rest off the hot
-                // path.
-                while (CraftingTickQueue.TryDequeue(out var craftCompletion))
-                {
-                    long craftPlayerId = craftCompletion.PlayerId;
-                    int craftResultItemId = craftCompletion.ResultItemId;
-                    SafeDispatchAsync("Crafting.Job", craftPlayerId, async () => {
-                        await _craftingEngine.ExecuteCraftingAsync(craftPlayerId, craftResultItemId);
-                    });
-                }
-
-                while (_playerRegistry.LarderSlotUpdateQueue.TryDequeue(out var larderUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, larderUpdate.PlayerId);
-                    if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        continue;
-                    }
-
-                    switch (larderUpdate.SlotIndex)
-                    {
-                        case 0:
-                            currentPayload.Food1_ItemId = larderUpdate.ItemId;
-                            currentPayload.Food1_Count = larderUpdate.Count;
-                            break;
-                        case 1:
-                            currentPayload.Food2_ItemId = larderUpdate.ItemId;
-                            currentPayload.Food2_Count = larderUpdate.Count;
-                            break;
-                        case 2:
-                            currentPayload.Food3_ItemId = larderUpdate.ItemId;
-                            currentPayload.Food3_Count = larderUpdate.Count;
-                            break;
-                    }
-
-                    // Modul: halt reasons. Stocking food is the direct answer to
-                    // an OutOfFood halt, so clear the banner as soon as there is
-                    // something to eat. The activity itself still needs
-                    // redeploying - only the player can decide that - so this
-                    // does not restart it.
-                    if (currentPayload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood && larderUpdate.Count > 0)
-                    {
-                        currentPayload.ActivityHaltReason = Network.ActivityHaltReason.None;
-                    }
-
-                    currentPayload.IsDirty = true;
-                }
-
-                // Modul: Guild War scoreboard sync. Fans one authoritative
-                // per-guild snapshot out to every online member of that guild
-                // via the tick-thread-owned guild index, so a scoreboard costs
-                // one query per warring guild rather than one per member.
-                while (_playerRegistry.GuildWarScoreboardQueue.TryDequeue(out var warScoreboard))
-                {
-                    if (!_guildMembersIndex.TryGetValue(warScoreboard.GuildId, out var warMembers))
-                    {
-                        continue;
-                    }
-
-                    for (int memberIndex = 0; memberIndex < warMembers.Count; memberIndex++)
-                    {
-                        ref var memberPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, warMembers[memberIndex]);
-                        if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref memberPayload))
-                        {
-                            continue;
-                        }
-
-                        // Modul: Guild War scoreboard sync. A concluded war
-                        // clears rather than freezing its final score on screen.
-                        // The client decides "a war is on" from
-                        // ActiveGuildWarId > 0, so that has to go to zero too or
-                        // the panel keeps rendering a finished match as live.
-                        if (warScoreboard.WarEnded)
-                        {
-                            memberPayload.ActiveGuildWarId = 0L;
-                            memberPayload.GuildCombatVanguardPoints = 0;
-                            memberPayload.GuildProductionLogisticsPoints = 0;
-                            memberPayload.GuildGatheringSupplyChainPoints = 0;
-                            memberPayload.EnemyCombatVanguardPoints = 0;
-                            memberPayload.EnemyProductionLogisticsPoints = 0;
-                            memberPayload.EnemyGatheringSupplyChainPoints = 0;
-                            memberPayload.CachedWarMultiplier = 0f;
-                            memberPayload.IsDirty = true;
-                            continue;
-                        }
-
-                        memberPayload.GuildCombatVanguardPoints = warScoreboard.OurCombatVanguardPoints;
-                        memberPayload.GuildProductionLogisticsPoints = warScoreboard.OurProductionLogisticsPoints;
-                        memberPayload.GuildGatheringSupplyChainPoints = warScoreboard.OurGatheringSupplyChainPoints;
-                        memberPayload.EnemyCombatVanguardPoints = warScoreboard.EnemyCombatVanguardPoints;
-                        memberPayload.EnemyProductionLogisticsPoints = warScoreboard.EnemyProductionLogisticsPoints;
-                        memberPayload.EnemyGatheringSupplyChainPoints = warScoreboard.EnemyGatheringSupplyChainPoints;
-                        memberPayload.CachedWarMultiplier = warScoreboard.ScoreShare;
-                        memberPayload.IsDirty = true;
-                    }
-                }
-
-                // Modul: THE FULL-BACKPACK DEAD END.
                 //
-                // InventorySpaceRemaining was refreshed from exactly two
-                // places: the session load, and a loot drop carrying a census.
-                // ProcessSubTick's first line returns when it is 0, so a full
-                // backpack stopped combat, which stopped loot, which stopped
-                // the only thing that could recount - while depositing to the
-                // bank, claiming mail or selling on the market all changed the
-                // database without touching the live payload. The player freed
-                // slots, watched the number stay at 0, and had no way back
-                // short of reconnecting.
-                //
-                // Found by driving the real UI: the dev fixture at 20/20
-                // accepted ChangeActivity, set ActiveActivityId to 91, and
-                // CurrentMonsterId never left 0.
-                while (_playerRegistry.InventoryCensusQueue.TryDequeue(out var census))
-                {
-                    ref var censusPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, census.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref censusPayload))
-                    {
-                        // Modul: VESTIGIAL SINCE THE BACKPACK WAS REMOVED.
-                        //
-                        // Materials go to the unbounded village chest and
-                        // equipment to the bank or to scrap, so there is no
-                        // per-character carrying capacity left to run out of.
-                        // The field survives because a dozen gathering and
-                        // loot loops still decrement it defensively and the
-                        // wire still carries it; reporting full capacity keeps
-                        // every one of those a no-op without touching them, and
-                        // keeps the packet layout unchanged.
-                        //
-                        // It is deliberately NOT deleted in the same pass that
-                        // changed the loot routing - one behaviour change at a
-                        // time, and the layout guard pins this packet's size.
-                        int capacity = censusPayload.InventoryCapacity > 0 ? censusPayload.InventoryCapacity : DefaultBackpackCapacity;
-                        censusPayload.InventorySpaceRemaining = capacity;
+                // (The crafting drain that used to sit here, with its own
+                // "Modul: crafting as an assignable job" comment, moved to
+                // CraftingTickCoordinator.cs along with that comment - kept in
+                // one place now instead of two, per code review on Task 1.20.)
+                CraftingTickCoordinator.DrainCraftingTicks(_safeDispatch, _craftingEngine);
 
-                        // Clearing the halt here as well as recomputing the
-                        // number: the tick that follows only clears it when an
-                        // activity is running, and a player who just made room
-                        // should not keep reading "everything is stopped"
-                        // until the next kill lands.
-                        if (censusPayload.InventorySpaceRemaining > 0 &&
-                            censusPayload.ActivityHaltReason == Network.ActivityHaltReason.InventoryFull)
-                        {
-                            censusPayload.ActivityHaltReason = Network.ActivityHaltReason.None;
-                        }
+                LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                        censusPayload.IsDirty = true;
-                    }
-                }
+                GuildFanoutTickCoordinator.DrainWarScoreboard(_playerRegistry, _activePlayers, _guildMembersIndex);
 
-                while (_playerRegistry.CombatLootDropQueue.TryDequeue(out var combatLootDrop))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, combatLootDrop.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        // Modul: inventory census. Assign from the truth when
-                        // the loot engine sent one. The decrement below is only
-                        // the fallback for a notification with no census (the
-                        // no-loot-table early-out path), and even then the next
-                        // real kill corrects it - the old behaviour was decrement
-                        // only, forever, which made every backpack read as full
-                        // after 20 kills and silently discarded all loot for the
-                        // rest of the session.
-                        // Modul: the backpack is gone. Storage is one
-                        // unlimited village chest, so this counter is pinned
-                        // at capacity and gates nothing. It used to be
-                        // `capacity - OccupiedSlots`, and OccupiedSlots now
-                        // counts the CHEST - an unbounded number measured
-                        // against a 20 slot ceiling. Twenty stacks in and
-                        // every player was permanently "full": gathering
-                        // dropped nothing, and the halt banner said
-                        // EVERYTHING IS STOPPED.
-                        currentPayload.InventorySpaceRemaining =
-                            currentPayload.InventoryCapacity > 0 ? currentPayload.InventoryCapacity : DefaultBackpackCapacity;
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                InventoryCensusTickCoordinator.DrainCensus(_playerRegistry, _activePlayers);
 
-                // Modul: auto-salvage proceeds. The same AddGold /
-                // RedisPendingGoldDelta / RequiresRedisFlush triple a combat
-                // kill's own gold reward uses - see the goldReward block in
-                // ProcessSubTick. Deliberately NOT credited to
-                // CommodityRecords by the loot worker: this session holds
-                // unbanked gold in the payload and the checkpoint applies it as
-                // an increment, so writing the row directly as well would pay
-                // the player twice the moment the next checkpoint landed.
-                //
-                // An offline player has no payload and cannot be salvaging -
-                // the drop that produced this was rolled for a kill their
-                // session made - but the null-ref guard stays for the window
-                // where they log out between the roll and this drain. Dropping
-                // the gold there loses a few coins; the alternative is a second
-                // write path that can disagree with the checkpoint.
-                while (_playerRegistry.AutoSalvageQueue.TryDequeue(out var salvage))
-                {
-                    ref var salvagePayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, salvage.PlayerId);
-                    if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref salvagePayload))
-                    {
-                        continue;
-                    }
+                InventoryCensusTickCoordinator.DrainLootDrops(_playerRegistry, _activePlayers);
 
-                    salvagePayload.AddGold(salvage.GoldGained);
-                    salvagePayload.RedisPendingGoldDelta += salvage.GoldGained;
-                    salvagePayload.RequiresRedisFlush = true;
-                    salvagePayload.IsDirty = true;
-                }
+                VillageChestTickCoordinator.DrainAutoSalvage(_playerRegistry, _activePlayers);
 
-                // Modul: a chest sale's proceeds. READ ChestSaleGoldNotification
-                // BEFORE EDITING THIS - it is deliberately not the drain above.
-                //
-                // VillageChestEngine already wrote CommodityRecords["gold"] in
-                // its own transaction, so the row is correct and only the
-                // session's displayed total is behind. AddGold fixes that.
-                // RedisPendingGoldDelta is left alone on purpose: the checkpoint
-                // applies it as an INCREMENT to the row the engine just
-                // credited, so banking it here would pay the sale twice, one
-                // checkpoint later, where nothing would connect the two.
-                while (_playerRegistry.ChestSaleGoldQueue.TryDequeue(out var chestSale))
-                {
-                    ref var chestSalePayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, chestSale.PlayerId);
-                    if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref chestSalePayload))
-                    {
-                        continue;
-                    }
+                VillageChestTickCoordinator.DrainChestSaleGold(_playerRegistry, _activePlayers);
 
-                    chestSalePayload.AddGold(chestSale.GoldGained);
-                    chestSalePayload.IsDirty = true;
-                }
-
-                // Modul: an auto-salvage threshold the player just changed. The
-                // loot engine reads this off the payload, which is hydrated at
-                // login - without this drain the setting would not bite until
-                // the next sign-in and would read as a toggle that does nothing.
-                while (_playerRegistry.ChestSettingsQueue.TryDequeue(out var chestSettings))
-                {
-                    ref var chestSettingsPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, chestSettings.PlayerId);
-                    if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref chestSettingsPayload))
-                    {
-                        continue;
-                    }
-
-                    chestSettingsPayload.AutoSalvageBelowTier = chestSettings.AutoSalvageBelowTier;
-                    chestSettingsPayload.IsDirty = true;
-                }
+                VillageChestTickCoordinator.DrainChestSettings(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.ShardAttackResultQueue.TryDequeue(out var shardAttackResult))
                 {
@@ -1302,36 +950,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.CraftingCompletionQueue.TryDequeue(out var craftCompletion))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, craftCompletion.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        QuestEngine.IncrementProgress(ref currentPayload, QuestEngine.QuestTypeCraftItems, 1);
-
-                        // Mirrors the increment CraftingEngine already committed
-                        // to PlayerRecords, so the wire counter tracks the craft
-                        // instead of standing at its login value all session.
-                        currentPayload.LifetimeItemsCrafted += craftCompletion.Quantity;
-
-                        if (currentPayload.ActiveGuildWarId > 0 && ContentRegistry.ItemDefinitions.Length >= craftCompletion.CraftedItemId)
-                        {
-                            var def = ContentRegistry.ItemDefinitions[craftCompletion.CraftedItemId - 1];
-                            if (def.RegionTier >= 5)
-                            {
-                                int wp = 50 * def.RegionTier;
-                                _guildWarEngine.GuildWarPointQueue.Enqueue(new GuildWarPointEvent
-                                {
-                                    MatchId = currentPayload.ActiveGuildWarId,
-                                    GuildId = currentPayload.GuildId,
-                                    Front = 1,
-                                    Points = wp
-                                });
-                            }
-                        }
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                CraftingTickCoordinator.DrainCraftingCompletions(_playerRegistry, _activePlayers, _guildWarEngine.GuildWarPointQueue);
 
                 while (_playerRegistry.GuildMembershipChangeQueue.TryDequeue(out var membershipChange))
                 {
@@ -1368,121 +987,15 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                // Modul: generic client error-feedback channel drain - see
-                // CommandResultNotification's own comment. Zero-allocation:
-                // pure struct field writes against an already-resolved ref
-                // into _activePlayers, matching the guild-membership drain
-                // immediately above.
-                //
-                // Modul: Full-Stack Production Hardening Phase 3, Part 5.
-                // Appends into the 4-slot ring buffer instead of
-                // overwriting a single scalar - the previous single-slot
-                // design meant a client that missed one broadcast (e.g.
-                // across a reconnect gap) while two or more commands were
-                // rejected back to back would only ever see the last one,
-                // silently losing the earlier rejection's feedback. The
-                // ring-buffer append itself must happen here on the tick
-                // thread (not inside PlayerSessionRegistry.EnqueueCommandResult,
-                // which runs on arbitrary background SafeDispatchAsync
-                // threads and has no safe ref access to TickStatePayload) -
-                // CommandResultTickCounter is a per-player monotonically
-                // increasing counter, never reset, so the client can always
-                // tell which slots are newer than what it has already
-                // displayed and in what order to apply them.
-                while (_playerRegistry.CommandResultQueue.TryDequeue(out var commandResult))
-                {
-                    ref var resultPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, commandResult.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref resultPayload))
-                    {
-                        unchecked { resultPayload.CommandResultTickCounter++; }
-                        var newEntry = new CommandResultEntry { ResultCode = commandResult.ResultCode, ResultTick = resultPayload.CommandResultTickCounter };
-                        switch (resultPayload.CommandResultRingWriteIndex)
-                        {
-                            case 0: resultPayload.CommandResultSlot0 = newEntry; break;
-                            case 1: resultPayload.CommandResultSlot1 = newEntry; break;
-                            case 2: resultPayload.CommandResultSlot2 = newEntry; break;
-                            default: resultPayload.CommandResultSlot3 = newEntry; break;
-                        }
-                        resultPayload.CommandResultRingWriteIndex = (byte)((resultPayload.CommandResultRingWriteIndex + 1) & 3);
-                        resultPayload.IsDirty = true;
-                    }
-                }
+                CommandResultTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.GuildUpdateQueue.TryDequeue(out var guildUpdate))
-                {
-                    // Real-time updates for guild members - O(guild_size)
-                    // via _guildMembersIndex instead of O(active_player_count).
-                    if (_guildMembersIndex.TryGetValue(guildUpdate.GuildId, out var guildUpdateMembers))
-                    {
-                        foreach (long memberId in guildUpdateMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                if (guildUpdate.IsMining)
-                                {
-                                    currentPayload.CachedMiningMonolithLevel = guildUpdate.NewLevel;
-                                }
-                                else
-                                {
-                                    currentPayload.CachedWoodcuttingMonolithLevel = guildUpdate.NewLevel;
-                                }
-                                currentPayload.IsDirty = true;
-                            }
-                        }
-                    }
-                }
+                GuildFanoutTickCoordinator.DrainGuildUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
-                while (_playerRegistry.InfrastructureUpdateQueue.TryDequeue(out var updateNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, updateNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.ForgeLevel = updateNotif.ForgeLevel;
-                        currentPayload.InnLevel = updateNotif.InnLevel;
-                        currentPayload.BreedingLevel = updateNotif.BreedingLevel;
-                        currentPayload.AcademyLevel = updateNotif.AcademyLevel;
-                        currentPayload.CurrentPopulationCount = updateNotif.CurrentPopulationCount;
-                        currentPayload.VillagePopulation = updateNotif.CurrentPopulationCount;
-                        currentPayload.CachedCurrentToolTier = updateNotif.CurrentToolTier;
-                        currentPayload.CachedInnMaturationBonus = updateNotif.InnMaturationBonus;
-                        currentPayload.CachedMaxPopulationCapacity = updateNotif.MaxPopulationCapacity;
-                        currentPayload.LumberjackLevel = updateNotif.LumberjackLevel;
-                        currentPayload.MineLevel = updateNotif.MineLevel;
-                        currentPayload.WarehouseLevel = updateNotif.WarehouseLevel;
-                        currentPayload.TownHallLevel = updateNotif.TownHallLevel;
-                        currentPayload.CraftingWorkshopLevel = updateNotif.CraftingWorkshopLevel;
-                        currentPayload.PendingUpgradeBuildingId = updateNotif.PendingUpgradeBuildingId;
-                        currentPayload.PendingUpgradeCompletesAtEpoch = updateNotif.PendingUpgradeCompletesAtEpoch;
-                        // Modul: the row is already debited (VillageManagementEngine),
-                        // so the live balance follows it and the pending delta is left
-                        // alone - the same reasoning as BirthNotification.GoldSpent.
-                        currentPayload.CurrentGold = Math.Max(0L, currentPayload.CurrentGold - updateNotif.GoldSpent);
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                VillageTickCoordinator.DrainInfrastructureUpdates(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.VillagerRecruitmentUpdateQueue.TryDequeue(out var recruitmentNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, recruitmentNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        // Modul: the row is already debited (VillageArrivalEngine.RecruitAsync),
-                        // so the live balance follows it and the pending delta is left
-                        // alone - the same reasoning as BirthNotification.GoldSpent.
-                        currentPayload.CurrentGold = Math.Max(0L, currentPayload.CurrentGold - recruitmentNotif.GoldSpent);
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                VillageTickCoordinator.DrainRecruitmentUpdates(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.MentorshipUpdateQueue.TryDequeue(out var mentorshipUpdate))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, mentorshipUpdate.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.CachedMentorCount++; 
-                    }
-                }
+                MentorshipTickCoordinator.DrainMentorshipUpdates(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.QuarantineNotificationQueue.TryDequeue(out var quarantineNotification))
                 {
@@ -1494,166 +1007,23 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                while (_playerRegistry.LegacyStoreUpdateQueue.TryDequeue(out var legacyNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, legacyNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.SetLegacyShards(legacyNotif.LegacyShardBalance);
-                        currentPayload.CitizenMultiSlotsUnlocked = legacyNotif.CitizenMultiSlotsUnlocked;
-                        if (legacyNotif.HasLegacyPerksUpdate)
-                        {
-                            currentPayload.CachedLegacyPerks = legacyNotif.LegacyPerks;
-                        }
-                    }
-                }
+                LegacyStoreTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.InheritanceSyncQueue.TryDequeue(out var inheritNotif))
-                {
-                    ref var inheritPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, inheritNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref inheritPayload))
-                    {
-                        SetInheritanceLevel(ref inheritPayload, inheritNotif.StatId, inheritNotif.NewLevel);
-                        inheritPayload.IsDirty = true;
-                    }
-                }
+                InheritanceTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.SkillTreeSyncQueue.TryDequeue(out var treeNotif))
-                {
-                    ref var treePayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, treeNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref treePayload))
-                    {
-                        SetSkillTreeLevel(ref treePayload, treeNotif.BranchId, treeNotif.NewLevel);
-                        // The points were spent inside the same transaction the
-                        // level was written in, so the payload must take the
-                        // balance the engine reports rather than decrementing
-                        // its own copy - two subtractions of one purchase is
-                        // exactly how a counter drifts.
-                        treePayload.AvailableSkillPoints = treeNotif.RemainingSkillPoints;
+                SkillTreeTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                        // Modul: and the respec counters, which a respec also
-                        // moves. Without this the levels cleared and the points
-                        // came back, but the button went on offering a free
-                        // respec the player had already spent - it only
-                        // corrected itself at the next full hydration. The same
-                        // "the output side was never wired" shape this codebase
-                        // keeps finding; the write happened, nothing carried it.
-                        treePayload.FreeRespecUsed = treeNotif.FreeRespecUsed;
-                        treePayload.PaidRespecGrants = treeNotif.PaidRespecGrants;
-                        treePayload.IsDirty = true;
-                    }
-                }
+                BillingTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.BillingSyncQueue.TryDequeue(out var billingSyncNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, billingSyncNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.SetPremiumCurrency(billingSyncNotif.PremiumDiamondsBalance);
-                        currentPayload.IsDirty = true;
-                    }
-                }
+                GuildFanoutTickCoordinator.DrainLogisticsDepotUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
-                while (_playerRegistry.GuildLogisticsDepotUpdateQueue.TryDequeue(out var depotNotif))
-                {
-                    if (_guildMembersIndex.TryGetValue(depotNotif.GuildId, out var depotMembers))
-                    {
-                        foreach (long memberId in depotMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                currentPayload.GuildLogisticsCurrentStock = depotNotif.CurrentStock;
-                                currentPayload.GuildLogisticsTargetRequirement = depotNotif.TargetRequirement;
-                                currentPayload.CachedGuildLogisticsLevel = depotNotif.Level;
-                            }
-                        }
-                    }
-                }
+                GuildFanoutTickCoordinator.DrainCombatSimulationUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
-                while (_playerRegistry.GuildCombatSimulationUpdateQueue.TryDequeue(out var combatNotif))
-                {
-                    // Two guilds are in this match - a player's fixed
-                    // per-session GuildId can only ever match one of them,
-                    // so no dedup is needed when both index lookups happen
-                    // to return non-empty lists.
-                    if (_guildMembersIndex.TryGetValue(combatNotif.AttackingGuildId, out var attackingMembers))
-                    {
-                        foreach (long memberId in attackingMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                currentPayload.CombatSimulationMatchId = combatNotif.MatchId;
-                                currentPayload.CombatSimulationTurnCounter = combatNotif.TurnCounter;
-                                currentPayload.CombatSimulationDamageDelta = combatNotif.DamageDelta;
-                            }
-                        }
-                    }
+                GuildFanoutTickCoordinator.DrainRaidBossUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
-                    if (combatNotif.DefendingGuildId != combatNotif.AttackingGuildId &&
-                        _guildMembersIndex.TryGetValue(combatNotif.DefendingGuildId, out var defendingMembers))
-                    {
-                        foreach (long memberId in defendingMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                currentPayload.CombatSimulationMatchId = combatNotif.MatchId;
-                                currentPayload.CombatSimulationTurnCounter = combatNotif.TurnCounter;
-                                currentPayload.CombatSimulationDamageDelta = combatNotif.DamageDelta;
-                            }
-                        }
-                    }
-                }
+                MentorshipTickCoordinator.DrainContractUpdates(_playerRegistry, _activePlayers);
 
-                while (_playerRegistry.GuildRaidBossUpdateQueue.TryDequeue(out var raidNotif))
-                {
-                    if (_guildMembersIndex.TryGetValue(raidNotif.GuildId, out var raidMembers))
-                    {
-                        foreach (long memberId in raidMembers)
-                        {
-                            ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, memberId);
-                            if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                            {
-                                currentPayload.CachedGuildRaidTier = raidNotif.RaidTier;
-                                currentPayload.CachedGuildRaidBossCurrentHp = raidNotif.RaidBossCurrentHp;
-                                currentPayload.CachedGuildRaidBossMaxHp = raidNotif.RaidBossMaxHp;
-                            }
-                        }
-                    }
-                }
-
-                // Nothing enqueues these any more; drained so a stale entry
-                // from a pre-removal process cannot sit in the queue forever.
-                while (_playerRegistry.MentorshipContractUpdateQueue.TryDequeue(out var mentorshipNotif))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, mentorshipNotif.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        currentPayload.ActiveMentorPlayerId = mentorshipNotif.MentorPlayerId;
-                        currentPayload.MentorshipExpBonusMultiplier = mentorshipNotif.ExpBonusMultiplier;
-                        currentPayload.ActiveMentorshipContractCount = mentorshipNotif.ActiveContractCount;
-                        if (mentorshipNotif.XpPenaltyExpiresEpoch > 0)
-                        {
-                            currentPayload.XpPenaltyExpiresEpoch = mentorshipNotif.XpPenaltyExpiresEpoch;
-                        }
-                        currentPayload.IsDirty = true;
-                    }
-                }
-
-                while (_playerRegistry.MailClaimRequestQueue.TryDequeue(out var req))
-                {
-                    ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(_activePlayers, req.PlayerId);
-                    if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
-                    {
-                        {
-                            currentPayload.AddGold(req.GoldAttachment);
-                            currentPayload.IsDirty = true;
-                            SafeDispatchAsync("MailClaim.Accept", req.PlayerId, async () => { await _mailboxEngine.CommitMailClaimAsync(req.PlayerId, req.MailId, true); });
-                        }
-                    }
-                }
+                MailTickCoordinator.DrainClaimRequests(_playerRegistry, _activePlayers, _safeDispatch, _mailboxEngine);
 
                 while (_networkSystem.CommandQueue.TryDequeue(out var cmdWrapper))
                 {
@@ -5304,7 +4674,11 @@ namespace FolkIdle.Server.Domain.Combat
                 SkillTreeRegistry.CrownThunderer, payload.Skill_Thunderer) / 100f;
         }
 
-        private static void SetSkillTreeLevel(ref TickStatePayload payload, int branchId, byte level)
+        // Modul: widened from private to internal so the Progression-domain
+        // tick coordinators (InheritanceTickCoordinator, SkillTreeTickCoordinator)
+        // can call this without duplicating the switch. No behaviour change -
+        // same assembly, same tick-thread-only call graph.
+        internal static void SetSkillTreeLevel(ref TickStatePayload payload, int branchId, byte level)
         {
             switch (branchId)
             {
@@ -5331,7 +4705,9 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
-        private static void SetInheritanceLevel(ref TickStatePayload payload, int statId, byte level)
+        // Modul: widened from private to internal so InheritanceTickCoordinator
+        // (Domain.Progression) can call this. No behaviour change.
+        internal static void SetInheritanceLevel(ref TickStatePayload payload, int statId, byte level)
         {
             switch (statId)
             {
