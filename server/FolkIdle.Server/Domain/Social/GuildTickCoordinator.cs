@@ -13,7 +13,7 @@ namespace FolkIdle.Server.Domain.Social
     /// called synchronously on the 10Hz tick thread by SimulationEngine's
     /// command dispatch table after CommandGate has said Proceed. It owns no
     /// thread, timer or state; anything asynchronous goes through the
-    /// SafeDispatch delegate it is handed, never a Task.Run of its own.
+    /// SafeDispatch delegate it is handed, never a task it starts itself.
     /// </summary>
     internal static class GuildTickCoordinator
     {
