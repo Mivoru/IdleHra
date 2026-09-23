@@ -162,7 +162,25 @@ namespace FolkIdle.Server.Tests
                         // Without this every MarketListItem in this scenario
                         // would reject at that gate and never reach the escrow
                         // write this scenario means to contend over.
-                        GuildId = 1L
+                        GuildId = 1L,
+                        // Modul: task 24. Fighters used to target monster 55,
+                        // a pre-canon Forest Rat whose loot table is
+                        // deliberately empty (ContentRegistry, "LootTableId
+                        // 1-90 ... resolve to an empty table"), so assertion C
+                        // could never pass for them however well combat ran.
+                        // They fight the first canon monster now, and it bites
+                        // back: with an empty larder a bare character halts
+                        // OutOfFood and then dies before its first kill. The
+                        // larder is what sustains a fight in this game, so the
+                        // scenario stocks one, as a real player would.
+                        LarderSlot1ItemId = ContentRegistry.RawFishItemIds.First(),
+                        LarderSlot1Count = 500,
+                        // And an unarmed level-0 character takes about a
+                        // minute per Field Mouse - one kill in the whole
+                        // window, too few for a drop to be expected. Might is
+                        // raised so a fighter lands several kills; the subject
+                        // here is the loot pipeline under load, not pacing.
+                        BaseStrength = 400
                     });
 
                     // Modul: a registered account always owns at least one
@@ -260,7 +278,7 @@ namespace FolkIdle.Server.Tests
                     var enterActivity = new ClientCommandPacket
                     {
                         Command = CommandType.ChangeActivity,
-                        TargetId = isFighter ? 55 : 1001,
+                        TargetId = isFighter ? ContentRegistry.FirstCanonicalMonsterId : 1001,
                         LogicEpochCounter = Interlocked.Read(ref currentEpoch[idx])
                     };
                     await SendCommandAsync(ws, enterActivity);
@@ -371,9 +389,9 @@ namespace FolkIdle.Server.Tests
             }
             _o.WriteLine($"Worst observed TicksSinceLastFlush across {SessionCount} sessions: {worstTicksSinceLastFlush} (contract ceiling {StateCheckpointManager.CheckpointBoundaryTicks})");
 
-            // C) No dropped loot - every fighting session actually received
-            // SOMETHING (equipment or material), and every gathering session
-            // received materials.
+            // C) No dropped loot - the fighting sessions (at least half - see the
+            // note at the assertion) received equipment or material, and every
+            // gathering session received materials.
             //
             // Modul: EXCLUDE "gold" FROM THE MATERIALS SUM, DELIBERATELY.
             //
@@ -390,27 +408,64 @@ namespace FolkIdle.Server.Tests
             // the codex and gathering all kept working" while equipment and
             // materials did not). The check has to look at what the LOOT
             // WORKER actually grants, not at gold.
+            // What each session was last seen DOING, so a barren session
+            // explains itself: idle with a halt reason, or fighting with no
+            // XP, are two different defects.
+            foreach (var kv in receivedBySession.OrderBy(k => k.Key))
+            {
+                var seen = kv.Value.ToList();
+                if (seen.Count == 0) { _o.WriteLine($"session {kv.Key}: no packets"); continue; }
+                var last = seen[^1];
+                _o.WriteLine($"session {kv.Key}: packets={seen.Count} activities=[{string.Join(",", seen.Select(p => p.ActiveActivityId).Distinct())}] halts=[{string.Join(",", seen.Select(p => p.ActivityHaltReason).Distinct())}] minHp={seen.Min(p => p.PlayerHp)} xp={seen.Max(p => p.CurrentXp)}");
+            }
+
             await using var verifyDb = await contextFactory.CreateDbContextAsync();
             var barren = new System.Collections.Generic.List<string>();
             for (int i = 0; i < SessionCount; i++)
             {
                 long playerId = 990_000_000L + i;
-                int gear = await verifyDb.EquipmentInstances.AsNoTracking().CountAsync(e => e.PlayerId == playerId);
+                long seededListing = equipmentIdToList[i];
+                int gear = await verifyDb.EquipmentInstances.AsNoTracking().CountAsync(e => e.PlayerId == playerId && e.Id != seededListing);
                 long mats = await verifyDb.CommodityRecords.AsNoTracking()
                     .Where(c => c.PlayerId == playerId && c.ItemId != "gold")
                     .SumAsync(c => (long?)c.Quantity) ?? 0L;
-                // gear starts at 1 (the seeded listing, which a successful
-                // MarketListItem call removes from EquipmentInstances into
-                // escrow) - a fighter/gatherer with no NEW gear beyond
-                // whatever remains of the seed and no non-gold materials got
-                // nothing from the loot worker.
-                if (gear <= 1 && mats == 0)
+                // Modul: the seeded listing is excluded by id rather than
+                // allowed for as "gear <= 1". A successful MarketListItem moves
+                // it into escrow, so a fighter whose one drop was equipment
+                // read gear=1 and was counted barren - measured, "gear=1
+                // materials=0" in a failing run. A session with no gear beyond
+                // the seed and no non-gold materials got nothing from the loot
+                // worker.
+                if (gear == 0 && mats == 0)
                 {
-                    barren.Add($"player {playerId} ({(i % 2 == 0 ? "fighter" : "gatherer")}): gear={gear} materials={mats}");
+                    int codexKills = await verifyDb.MonsterCodexEntries.AsNoTracking().Where(c => c.PlayerId == playerId).SumAsync(c => (int?)c.KillCount) ?? 0;
+                    barren.Add($"player {playerId} ({(i % 2 == 0 ? "fighter" : "gatherer")}): gear={gear} materials={mats} codexKills={codexKills}");
                 }
             }
             _o.WriteLine(barren.Count == 0 ? "every session received loot or materials" : string.Join("; ", barren));
-            Assert.True(barren.Count == 0, "at least one session under sustained load received neither equipment nor materials: " + string.Join("; ", barren));
+
+            // Modul: gatherers and fighters are held to different standards
+            // because one is deterministic and the other is dice.
+            //
+            // A harvest grants on every cycle, so a gatherer with nothing got
+            // nothing from the worker - no allowance. A kill drops a material
+            // 35% of the time and equipment 15%, so it yields NOTHING about
+            // 55% of the time, and a fighter lands only ~4-5 kills in this
+            // window: each one comes up empty-handed 5-9% of the time on a
+            // perfectly healthy server. "Every fighter got loot" therefore
+            // passed about a third of the time - measured 2026-09-23, green
+            // alone and red in the full suite on identical kill counts.
+            //
+            // What this assertion exists to catch - the worker dead, or
+            // starved by the gathering queue - zeroes EVERY fighter at once.
+            // So fighters are held to "at least half": ~91% are expected to
+            // land something, and a dead or starved drain delivers 0%.
+            var barrenGatherers = barren.Where(b => b.Contains("(gatherer)")).ToList();
+            int barrenFighters = barren.Count - barrenGatherers.Count;
+            int fighterCount = (SessionCount + 1) / 2;
+            Assert.True(barrenGatherers.Count == 0, "a gathering session under sustained load received no materials: " + string.Join("; ", barrenGatherers));
+            Assert.True(barrenFighters * 2 <= fighterCount,
+                $"{barrenFighters} of {fighterCount} fighting sessions received no loot - far beyond drop-rate variance, so the loot worker is dead or starved: " + string.Join("; ", barren));
 
             // D) Reconnect carried progress forward - every session's
             // post-reconnect packet shows XP at least as high as anything
@@ -421,10 +476,18 @@ namespace FolkIdle.Server.Tests
             {
                 var all = kv.Value.ToList();
                 if (all.Count < 2) continue; // a session that never got even a login+reconnect pair can't be checked this way
-                var preDisconnectMaxXp = all.SkipLast(1).Select(p => p.CurrentXp).DefaultIfEmpty(0L).Max();
-                var postReconnectXp = all.Last().CurrentXp;
-                Assert.True(postReconnectXp >= preDisconnectMaxXp,
-                    $"session {kv.Key} lost XP across reconnect: pre-disconnect max {preDisconnectMaxXp}, post-reconnect {postReconnectXp}");
+                // Modul: (level, XP) as a pair. CurrentXp is XP INTO the
+                // current level and restarts at every level-up, so comparing
+                // it alone reported a lost-progress failure for any session
+                // that levelled up - which never ran while assertion C failed
+                // above it, and fired the moment fighters could land kills.
+                var preDisconnectMax = all.SkipLast(1)
+                    .Select(p => (p.CurrentLevel, p.CurrentXp))
+                    .DefaultIfEmpty((CurrentLevel: 0, CurrentXp: 0L))
+                    .Max();
+                var postReconnect = (all.Last().CurrentLevel, all.Last().CurrentXp);
+                Assert.True(postReconnect.CompareTo(preDisconnectMax) >= 0,
+                    $"session {kv.Key} lost progress across reconnect: pre-disconnect max level {preDisconnectMax.CurrentLevel} xp {preDisconnectMax.CurrentXp}, post-reconnect level {postReconnect.CurrentLevel} xp {postReconnect.CurrentXp}");
             }
 
             graph.SimulationEngine.Stop();

@@ -3176,8 +3176,60 @@ environment issue) — neither touches any file this fix changed.
 
 ## 24. A `ReloadState` silently discards the legacy path's live activity, dropping a fighting player back to idle (correctness, found 2026-09-19)
 
-**Not started. Found by task 22's sustained-load test (PR #12), not fixed
-there on purpose — its plan explicitly scopes out engine fixes.**
+**DONE 2026-09-23.** Fixed in the reload merge, not the flush:
+`StateReloadMerge.CarryLiveActivity` carries each slot's in-flight activity
+(activity id, progress, monster, monster HP, player HP, halt reason) across
+a reload **only while the same character still holds that slot**. Why not
+the "more correct" write-back in the flush: `FlushState` (the per-player
+path the reload uses) writes no `characters` row at all — only `FlushBatch`
+(shutdown) does — and the Hall of Ancestors benches a displaced character
+idle *before* its reload, so a flush-first write-back by character id would
+overwrite that bench reset with the stale fight. Equipment is not carried
+(a reload is how a fresh equip reaches the session). Side effect worth
+knowing: a reload is no longer a free full heal.
+
+Proved both ways: with the carry commented out every fighter in
+`SustainedLoadTests` has 0 XP; with it, they land kills. Unit tests in
+`StateReloadCarryTests` cover same-character, swapped-character, slots 2/3
+and equipment.
+
+**The load test also had five defects of its own, hidden behind this
+one** — assertion C failed first, so nothing below it had ever run:
+1. fighters targeted monster 55, a pre-canon monster whose loot table is
+   deliberately empty — C could never pass for them;
+2. a bare level-0 character with an empty larder dies to the first canon
+   monster (now: monster 91, stocked larder, raised Might);
+3. "every fighter got loot" is dice — a kill yields nothing ~55% of the
+   time, so with ~4-5 kills it passed about a third of the time. Gatherers
+   (deterministic) must all receive materials; fighters must reach at least
+   half, which a dead or starved worker (0%) still fails;
+4. `gear <= 1` allowed for the seeded listing, but a successful listing
+   moves it to escrow, so one equipment drop read as barren — the seed is
+   now excluded by id;
+5. assertion D compared `CurrentXp` alone, which restarts at every
+   level-up — now (level, XP).
+Per-session diagnostics (activities, halts, XP, codex kills) now print, so
+a failure explains itself. Full suite 892/893 (the one is this machine's
+broken Python), the load test green inside the full run.
+
+**Still open, found on the way (not fixed — each needs its own decision):**
+- **The legacy path's activity is still never PERSISTED.** Carrying fixes
+  the reload; a relogin still comes back idle (every session's
+  post-reconnect packet shows activity 0), and offline catch-up reads the
+  same row — so a legacy-path player may earn nothing offline. Fixing it
+  needs a guarded write-back (only while the row's slot is unchanged), not
+  a blind one; see above for why.
+- **A new account kills about one Field Mouse a minute.** The starter grant
+  is three tools and no weapon; an unarmed level-0 character took ~60s per
+  kill in the load test, against the <10s attention-span band
+  `Test_Content_EveryMonsterDiesInsideTheAttentionSpan` pins for a
+  tier-appropriate character. Check against a freshly registered account
+  before acting — the test's seeding is not a real registration.
+
+*Original report follows.*
+
+Found by task 22's sustained-load test (PR #12), not fixed there on purpose
+— its plan explicitly scopes out engine fixes.
 
 **Confirmed, traced to source.** `CommandType.MarketListItem`/
 `MarketBuyItem` (and, by the same mechanism, guild/crafting/breeding
