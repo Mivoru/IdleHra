@@ -133,6 +133,7 @@ namespace FolkIdle.Server.Domain.Combat
         // SafeDispatch lambda exactly as the inline branch called the method.
         private readonly Func<long, Task> _registerGuildDefense;
         private readonly Func<long, long, Guid, uint, bool, Task<(SyncMatchStateResponseBuffer Response, int ActiveMatchMmr)>> _submitShardAttack;
+        private readonly Func<long, Task<bool>> _executePassPurchase;
         private readonly System.Collections.Generic.Dictionary<CommandType, CommandHandler> _commandHandlers = BuildCommandHandlers();
         private bool _isRunning;
         private Thread? _engineThread;
@@ -194,6 +195,7 @@ namespace FolkIdle.Server.Domain.Combat
             _removeActivePlayer = RemoveActivePlayer;
             _registerGuildDefense = RegisterGuildDefenseAsync;
             _submitShardAttack = SubmitShardAttackAsync;
+            _executePassPurchase = ExecutePassPurchaseAsync;
             _forgeEngine = forgeEngine;
             _marketEngine = marketEngine;
             _playerRegistry = playerRegistry;
@@ -795,6 +797,10 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.KeepAncestor] = InheritanceTickCoordinator.HandleHallOfAncestors,
                 [CommandType.ReleaseAncestor] = InheritanceTickCoordinator.HandleHallOfAncestors,
                 [CommandType.AssignCharacterSlot] = InheritanceTickCoordinator.HandleHallOfAncestors,
+                [CommandType.ClaimBattlePassReward] = BillingTickCoordinator.HandleClaimBattlePassReward,
+                [CommandType.PurchaseBattlePass] = BillingTickCoordinator.HandlePurchaseBattlePass,
+                [CommandType.SubmitPurchaseReceipt] = BillingTickCoordinator.HandleSubmitPurchaseReceipt,
+                [CommandType.SyncBillingStatus] = BillingTickCoordinator.HandleSyncBillingStatus,
             };
         }
 
@@ -834,6 +840,10 @@ namespace FolkIdle.Server.Domain.Combat
                 SkillTreeEngine = _skillTreeEngine,
                 InheritanceEngine = _inheritanceEngine,
                 HallOfAncestorsEngine = _hallOfAncestorsEngine,
+                LiveSessionContexts = _liveSessionContexts,
+                ExecutePassPurchase = _executePassPurchase,
+                BillingVerificationEngine = _billingVerificationEngine,
+                ContextFactory = _contextFactory,
             };
         }
 
@@ -1582,43 +1592,6 @@ namespace FolkIdle.Server.Domain.Combat
                             });
                         }
                     }
-                    else if (cmd.Command == CommandType.ClaimBattlePassReward)
-                    {
-                        if (!ClientCommandValidator.ValidateBattlePassClaimRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint milestoneIndex = cmd.TargetMilestoneIndex;
-                        uint seasonalXp = currentPayload.AccumulatedSeasonalXp;
-                        uint passLevel = currentPayload.ActiveChroniclePassLevel;
-
-                        if (_liveSessionContexts.TryGetValue(pId, out var context))
-                        {
-                            var req = new BattlePassClaimRequest
-                            {
-                                TargetMilestoneIndex = milestoneIndex,
-                                AccumulatedSeasonalXp = seasonalXp,
-                                ActiveChroniclePassLevel = passLevel
-                            };
-                            context.TryEnqueueBattlePassClaim(in req);
-                        }
-                    }
-                    else if (cmd.Command == CommandType.PurchaseBattlePass)
-                    {
-                        // Modul: Comprehensive Game System Audit, Part 4.3.
-                        // Premium track unlock via in-game PremiumDiamonds -
-                        // dispatched off the tick thread like every other
-                        // DB-transactional command; balance check, deduction,
-                        // and PremiumUnlocked flag all resolve inside one
-                        // Serializable FOR UPDATE transaction server-side.
-                        long pId = currentPayload.PlayerId;
-                        SafeDispatchAsync("BattlePass.Purchase", pId, async () => {
-                            await ExecutePassPurchaseAsync(pId);
-                        });
-                    }
                     // Modul: THE BANK IS RETIRED, and both commands are now
                     // ignored rather than routed. See the RetireTheBank
                     // migration: it was a 100-slot store that existed to
@@ -1843,100 +1816,6 @@ namespace FolkIdle.Server.Domain.Combat
                         // PlayerSessionRegistry registration itself - see
                         // its own doc comment.
                         RemoveActivePlayer(routingPlayerId);
-                    }
-                    else if (cmd.Command == CommandType.SubmitPurchaseReceipt)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        string transactionId = "";
-                        unsafe {
-                            byte* ptr = cmd.RawTransactionReceipt;
-                            transactionId = System.Text.Encoding.UTF8.GetString(ptr, 64).TrimEnd('\0');
-                        }
-
-                        // Modul: Production Release Hardening, Part 1. This
-                        // used to build productId as the literal string
-                        // "Product_{hash}", which could never match a real
-                        // GameBalanceConfig.json key
-                        // (ResolvePremiumDiamondsForProduct's dictionary
-                        // lookup would always miss, silently resolving to 0
-                        // diamonds) - previously broken for every purchase
-                        // submitted through this command, a real financial
-                        // blocker. TryResolveProductIdFromHash resolves the
-                        // client-computed FNV-1a hash back to the real
-                        // product id via ContentRegistry's own reverse
-                        // lookup table (built once at boot, see
-                        // ContentRegistry.Initialize), never throwing on an
-                        // unresolved hash.
-                        //
-                        // Bulletproof fallback: if the hash does not
-                        // resolve (a stale client build, a corrupted
-                        // packet, or simply hash 0 from an
-                        // uninitialized/never-set client field), fall back
-                        // to treating transactionId itself as a cleartext
-                        // product id - this WebSocket command's only other
-                        // string payload - and accept it if it is a real,
-                        // known catalog entry. Genuine cryptographic
-                        // signed-receipt verification (where a cleartext
-                        // product id is extracted from a verified Apple/
-                        // Google payload) already exists as a separate,
-                        // correct path - VerifyReceiptAsync, reached only
-                        // through the REST /api/v1/billing/verify endpoint,
-                        // which is the only place a real signed receipt can
-                        // actually be carried (this 64-byte WebSocket
-                        // packet never could). Neither branch here ever
-                        // throws - an unresolved product id simply falls
-                        // through to VerifyPurchaseAsync's own existing
-                        // premiumAmount <= 0 rejection.
-                        if (!ContentRegistry.TryResolveProductIdFromHash(cmd.TargetProductIdHash, out string productId))
-                        {
-                            productId = transactionId;
-                        }
-
-                        SafeDispatchAsync("Billing.VerifyPurchase", pId, async () => {
-                            bool success = await _billingVerificationEngine.VerifyPurchaseAsync(pId, transactionId, productId);
-                            if (success) {
-                                _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                            }
-                        });
-                    }
-                    else if (cmd.Command == CommandType.SyncBillingStatus)
-                    {
-                        // Modul: reconciles the live in-memory
-                        // TickStatePayload.PremiumCurrency against the
-                        // database-authoritative PlayerRecords.
-                        // PremiumDiamonds - the client calls this after
-                        // returning from a store purchase flow that was
-                        // verified through the REST
-                        // /api/v1/billing/verify endpoint (see
-                        // BillingVerificationEngine.VerifyReceiptAsync),
-                        // which writes directly to the database and never
-                        // touches this session's in-memory payload. Reads
-                        // the balance rather than re-running verification
-                        // on a stored receipt, since no such "pending
-                        // unapplied record" is ever persisted here - every
-                        // receipt is verified synchronously at submission
-                        // time by BillingVerificationEngine, either via
-                        // that REST endpoint or via
-                        // CommandType.SubmitPurchaseReceipt above.
-                        long syncPlayerId = currentPayload.PlayerId;
-                        SafeDispatchAsync("Billing.SyncStatus", syncPlayerId, async () =>
-                        {
-                            await using var syncDb = await _contextFactory.CreateDbContextAsync();
-                            int? balance = await syncDb.PlayerRecords
-                                .AsNoTracking()
-                                .Where(p => p.Id == syncPlayerId)
-                                .Select(p => (int?)p.PremiumDiamonds)
-                                .SingleOrDefaultAsync();
-
-                            if (balance.HasValue)
-                            {
-                                _playerRegistry.BillingSyncQueue.Enqueue(new BillingSyncNotification
-                                {
-                                    PlayerId = syncPlayerId,
-                                    PremiumDiamondsBalance = balance.Value
-                                });
-                            }
-                        });
                     }
                     else if (cmd.Command == CommandType.ReportUiContextSwitch)
                     {

@@ -5,6 +5,7 @@ using FolkIdle.Server.Domain.Economy;
 using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Domain.Social;
 using FolkIdle.Server.Engine;
+using FolkIdle.Server.Models;
 using FolkIdle.Server.Network;
 
 namespace FolkIdle.Server.Domain.Shared
@@ -67,6 +68,10 @@ namespace FolkIdle.Server.Domain.Shared
         internal SkillTreeEngine? SkillTreeEngine { get; init; }
         internal InheritanceEngine? InheritanceEngine { get; init; }
         internal HallOfAncestorsEngine? HallOfAncestorsEngine { get; init; }
+        internal System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> LiveSessionContexts { get; init; }
+        internal Func<long, Task<bool>> ExecutePassPurchase { get; init; }
+        internal BillingVerificationEngine BillingVerificationEngine { get; init; }
+        internal Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> ContextFactory { get; init; }
     }
 
     /// <summary>
