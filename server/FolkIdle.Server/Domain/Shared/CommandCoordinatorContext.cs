@@ -48,6 +48,7 @@ namespace FolkIdle.Server.Domain.Shared
         internal StateCheckpointManager CheckpointManager { get; init; }
         internal MarketEscrowEngine EscrowEngine { get; init; }
         internal MarketOrderBookEngine MarketEngine { get; init; }
+        internal VillageManagementEngine VillageManagementEngine { get; init; }
     }
 
     /// <summary>

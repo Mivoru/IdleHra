@@ -749,6 +749,10 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.MarketListItem] = MarketTickCoordinator.HandleMarketListOrBuy,
                 [CommandType.MarketBuyItem] = MarketTickCoordinator.HandleMarketListOrBuy,
                 [CommandType.PlaceLimitOrder] = MarketTickCoordinator.HandlePlaceLimitOrder,
+                [CommandType.UpgradeBuilding] = VillageTickCoordinator.HandleUpgradeBuilding,
+                [CommandType.EvictVillager] = VillageTickCoordinator.HandleEvictVillager,
+                [CommandType.RecruitVillager] = VillageTickCoordinator.HandleRecruitOrDismissVillager,
+                [CommandType.DismissNewcomer] = VillageTickCoordinator.HandleRecruitOrDismissVillager,
             };
         }
 
@@ -769,6 +773,7 @@ namespace FolkIdle.Server.Domain.Combat
                 CheckpointManager = _checkpointManager,
                 EscrowEngine = _escrowEngine,
                 MarketEngine = _marketEngine,
+                VillageManagementEngine = _villageManagementEngine,
             };
         }
 
@@ -1705,70 +1710,6 @@ namespace FolkIdle.Server.Domain.Combat
                     else if (cmd.Command == CommandType.CraftItem)
                     {
                         // Deliberately empty.
-                    }
-                    else if (cmd.Command == CommandType.UpgradeBuilding)
-                    {
-                        if (!ClientCommandValidator.ValidateVillageManagementRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint buildingId = cmd.TargetBuildingId;
-                        
-                        SafeDispatchAsync("Village.UpgradeBuilding", pId, async () => {
-                            await _villageManagementEngine.ExecuteUpgradeBuildingAsync(pId, buildingId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.EvictVillager)
-                    {
-                        if (!ClientCommandValidator.ValidateVillageManagementRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint villagerSlot = cmd.TargetVillagerSlot;
-
-                        SafeDispatchAsync("Village.EvictVillager", pId, async () => {
-                            await _villageManagementEngine.ExecuteEvictVillagerAsync(pId, villagerSlot);
-                        });
-                    }
-                    // Modul: the village as something the player DOES. The
-                    // recruitment price and the refusals were written and
-                    // tested, DismissAsync existed, and neither had a way in -
-                    // so a full village was a dead end and the gold sink the top
-                    // of the economy lacks was unreachable.
-                    else if (cmd.Command == CommandType.RecruitVillager || cmd.Command == CommandType.DismissNewcomer)
-                    {
-                        if (!ClientCommandValidator.ValidateVillageRosterRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        bool isRecruit = cmd.Command == CommandType.RecruitVillager;
-                        long newcomerId = cmd.TargetId;
-
-                        SafeDispatchAsync(isRecruit ? "Village.Recruit" : "Village.Dismiss", pId, async () => {
-                            if (isRecruit)
-                            {
-                                await _villageManagementEngine.ExecuteRecruitVillagerAsync(pId);
-                            }
-                            else
-                            {
-                                await _villageManagementEngine.ExecuteDismissNewcomerAsync(pId, newcomerId);
-                            }
-                        });
                     }
                     else if (cmd.Command == CommandType.UpgradeTool)
                     {
