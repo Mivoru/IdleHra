@@ -1,5 +1,7 @@
 # Retire the Unity project
 
+> **Revalidated 2026-09-23. Read `docs/superpowers/plans/2026-09-23-task-34-retire-unity-revalidated.md` first. It corrects several steps below (a missing `.asmdef`, `find` versus `git ls-files`, local docker builds, the owner gate, deploy and rollback).**
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Remove the retired Unity project (`client/ProjectSettings`, `client/Packages`, the Unity-only files inside `client/Assets`, and `.github/workflows/unity_client.yml`) without breaking any of the live pipelines that read raw source art/audio and one shared C# file out of `client/Assets` — the sprite generator, the production Docker build, the audio validator, and both server `.csproj` files.
