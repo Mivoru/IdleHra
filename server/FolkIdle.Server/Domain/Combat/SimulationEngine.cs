@@ -117,6 +117,17 @@ namespace FolkIdle.Server.Domain.Combat
         // is a 10Hz loop, and a fresh delegate per drain per tick is an
         // allocation on the hot path for nothing.
         private readonly Action<string, long, Func<Task>> _safeDispatch;
+
+        // Modul: the command dispatch table and the two session-ending
+        // delegates its handlers are handed. Cached here, built once, for the
+        // same reason as _safeDispatch above: the command loop runs at 10Hz
+        // forever. The handlers are static coordinator methods, so the table
+        // holds no reference to this instance; the two delegates below are
+        // the ONLY way a handler can end a session, and both are this
+        // class's own methods, so session lifecycle still has one owner.
+        private readonly Action<long> _terminateSessionForSecurity;
+        private readonly Action<long> _removeActivePlayer;
+        private readonly System.Collections.Generic.Dictionary<CommandType, CommandHandler> _commandHandlers = BuildCommandHandlers();
         private bool _isRunning;
         private Thread? _engineThread;
         private Thread? _battlePassWorkerThread;
@@ -173,6 +184,8 @@ namespace FolkIdle.Server.Domain.Combat
             _checkpointManager = checkpointManager;
             _networkSystem = networkSystem;
             _safeDispatch = SafeDispatchAsync;
+            _terminateSessionForSecurity = TerminateSessionForSecurity;
+            _removeActivePlayer = RemoveActivePlayer;
             _forgeEngine = forgeEngine;
             _marketEngine = marketEngine;
             _playerRegistry = playerRegistry;
@@ -722,6 +735,37 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
+        // Modul: the command dispatch table. One line per CommandType that has
+        // left EngineLoop's if/else chain for a coordinator. The branches that
+        // STAY inline (node migration, consumables and Login before the gate;
+        // the challenge response, ChangeActivity, ReloadState and Logout after
+        // it) are deliberately absent - see the comment on each of those
+        // branches for why.
+        private static System.Collections.Generic.Dictionary<CommandType, CommandHandler> BuildCommandHandlers()
+        {
+            return new System.Collections.Generic.Dictionary<CommandType, CommandHandler>
+            {
+                [CommandType.PurchaseLegacyUnlocks] = LegacyStoreTickCoordinator.HandlePurchaseLegacyUnlocks,
+            };
+        }
+
+        // Built per dequeued command, on the stack: a ref struct cannot be
+        // cached. Every value in it is either the routing id or a readonly
+        // field/cached delegate of this instance.
+        private CommandCoordinatorContext BuildCommandContext(long routingPlayerId)
+        {
+            return new CommandCoordinatorContext
+            {
+                RoutingPlayerId = routingPlayerId,
+                SafeDispatch = _safeDispatch,
+                TerminateSessionForSecurity = _terminateSessionForSecurity,
+                RemoveActivePlayer = _removeActivePlayer,
+                NetworkSystem = _networkSystem,
+                PlayerRegistry = _playerRegistry,
+                LegacyStoreEngine = _legacyStoreEngine,
+            };
+        }
+
         private void EngineLoop()
         {
             Stopwatch stopwatch = new Stopwatch();
@@ -1255,6 +1299,19 @@ namespace FolkIdle.Server.Domain.Combat
                         case CommandGateVerdict.ShadowBan:
                             _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 2);
                             continue;
+                    }
+
+                    // Modul: the dispatch table is tried FIRST, then the
+                    // branches that deliberately stay inline below. Each
+                    // CommandType appears in exactly one of the two places, so
+                    // the order between them decides nothing. `continue` after
+                    // the handler is what every moved branch's own `continue`
+                    // meant: nothing follows this chain in the loop body.
+                    if (_commandHandlers.TryGetValue(cmd.Command, out var commandHandler))
+                    {
+                        var commandContext = BuildCommandContext(routingPlayerId);
+                        commandHandler(ref currentPayload, ref cmd, in commandContext);
+                        continue;
                     }
 
                     if (cmd.Command == CommandType.AntiCheatChallengeResponse)
@@ -2318,23 +2375,6 @@ namespace FolkIdle.Server.Domain.Combat
                             var reloaded = await _checkpointManager.LoadPlayerState(reloadPlayerId);
                             reloaded.IsSuspended = false;
                             _playerRegistry.StateReloadQueue.Enqueue(reloaded);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.PurchaseLegacyUnlocks)
-                    {
-                        if (!ClientCommandValidator.ValidateLegacyStoreRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint unlockId = cmd.TargetUnlockId;
-                        uint slotIndex = cmd.RequestedSlotIndex;
-
-                        SafeDispatchAsync("Legacy.PurchaseUnlock", pId, async () => {
-                            await _legacyStoreEngine.PurchaseLegacyUnlockAsync(pId, unlockId, slotIndex);
                         });
                     }
                     else if (cmd.Command == CommandType.DepositGuildMaterial)
