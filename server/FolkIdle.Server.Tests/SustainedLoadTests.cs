@@ -41,6 +41,10 @@ namespace FolkIdle.Server.Tests
 
         private PostgreSqlContainer? _dbContainer;
         private bool _dockerAvailable;
+        // Stopped in DisposeAsync, not at the end of the test body, so a
+        // FAILED run does not leave its loot worker draining the static queues
+        // (and its listener holding port 8095) for every test after it.
+        private E2ETestHarness.EngineGraph? _graph;
         private readonly ITestOutputHelper _o;
 
         public SustainedLoadTests(ITestOutputHelper o) => _o = o;
@@ -65,6 +69,12 @@ namespace FolkIdle.Server.Tests
 
         public async Task DisposeAsync()
         {
+            if (_graph is { } graph)
+            {
+                graph.LootEngine.StopCron();
+                graph.SimulationEngine.Stop();
+                graph.NetworkSystem.Stop();
+            }
             GlobalEngineState.IsColdBootRecoveryComplete = false;
             if (_dbContainer != null) await _dbContainer.DisposeAsync().AsTask();
         }
@@ -132,6 +142,7 @@ namespace FolkIdle.Server.Tests
             graph.NetworkSystem.Start();
             graph.SimulationEngine.Start();
             graph.LootEngine.StartCron();
+            _graph = graph;
 
             // Half the sessions fight, half gather - both feed CombatLootEngine's
             // two queues (DropRequestQueue / GatheringGrantQueue), which is the
@@ -490,8 +501,6 @@ namespace FolkIdle.Server.Tests
                     $"session {kv.Key} lost progress across reconnect: pre-disconnect max level {preDisconnectMax.CurrentLevel} xp {preDisconnectMax.CurrentXp}, post-reconnect level {postReconnect.CurrentLevel} xp {postReconnect.CurrentXp}");
             }
 
-            graph.SimulationEngine.Stop();
-            graph.NetworkSystem.Stop();
         }
     }
 }

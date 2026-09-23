@@ -506,6 +506,22 @@ namespace FolkIdle.Server.Engine
             Console.WriteLine("Loot worker started.");
         }
 
+        // Modul: A WORKER NOTHING COULD STOP DRAINED ANOTHER TEST'S LOOT,
+        // 2026-09-23.
+        //
+        // Both queues are STATIC and this worker had no stop, so every test
+        // that started one left it running for the rest of the test process,
+        // pointed at its own database. SustainedLoadTests - its own container -
+        // then lost its grants to whichever leftover worker dequeued them
+        // first, and they were written into the other test's database. CI
+        // showed it as all twenty gatherers receiving nothing; it came and
+        // went with test ordering, which is why it looked like load. Production
+        // starts exactly one worker and never stops it; this exists for tests.
+        public void StopCron()
+        {
+            _cts.Cancel();
+        }
+
         // Modul: ONE FAILED REQUEST USED TO KILL LOOT FOR THE WHOLE PROCESS.
         //
         // This loop had no exception handling of any kind, and

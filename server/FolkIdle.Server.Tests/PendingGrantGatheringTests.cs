@@ -84,6 +84,7 @@ namespace FolkIdle.Server.Tests
             const int birchLogItemId = 267; // ContentRegistry.GetItemBaseId(267) == "birch_log"
 
             await InstallCommodityWritePoisonAsync(poisonPlayerId);
+            CombatLootEngine? engine = null;
             try
             {
                 CombatLootEngine.GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
@@ -94,7 +95,7 @@ namespace FolkIdle.Server.Tests
                     Quantity = 50
                 });
 
-                var engine = new CombatLootEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+                engine = new CombatLootEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
                 engine.StartCron();
 
                 var deadline = DateTime.UtcNow.AddSeconds(30);
@@ -127,6 +128,7 @@ namespace FolkIdle.Server.Tests
             }
             finally
             {
+                engine?.StopCron();
                 await RemoveCommodityWritePoisonAsync();
             }
         }

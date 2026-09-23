@@ -98,9 +98,10 @@ namespace FolkIdle.Server.Tests
 
             var player = await CreatePlayerAsync();
             await InstallCommodityWritePoisonAsync(player.Id);
+            CombatLootEngine? engine = null;
             try
             {
-                var engine = new CombatLootEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+                engine = new CombatLootEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
                 CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
                 {
                     PlayerId = player.Id,
@@ -200,6 +201,7 @@ namespace FolkIdle.Server.Tests
             }
             finally
             {
+                engine?.StopCron();
                 await RemoveCommodityWritePoisonAsync();
             }
         }
@@ -212,9 +214,10 @@ namespace FolkIdle.Server.Tests
 
             var player = await CreatePlayerAsync();
             await InstallCommodityWritePoisonAsync(player.Id);
+            CombatLootEngine? engine = null;
             try
             {
-                var engine = new CombatLootEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+                engine = new CombatLootEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
                 CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
                 {
                     PlayerId = player.Id,
@@ -251,6 +254,7 @@ namespace FolkIdle.Server.Tests
             }
             finally
             {
+                engine?.StopCron();
                 await RemoveCommodityWritePoisonAsync();
             }
         }
