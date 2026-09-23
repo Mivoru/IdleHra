@@ -769,6 +769,10 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.SubmitShardAttack] = GuildWarTickCoordinator.HandleSubmitShardAttack,
                 [CommandType.LaunchGuildRaid] = GuildWarTickCoordinator.HandleLaunchGuildRaid,
                 [CommandType.ExecuteCombatTurn] = GuildWarTickCoordinator.HandleExecuteCombatTurn,
+                [CommandType.AddFriend] = RelationshipTickCoordinator.HandleAddFriend,
+                [CommandType.RemoveFriend] = RelationshipTickCoordinator.HandleRemoveFriend,
+                [CommandType.BlockPlayer] = RelationshipTickCoordinator.HandleBlockPlayer,
+                [CommandType.UnblockPlayer] = RelationshipTickCoordinator.HandleUnblockPlayer,
             };
         }
 
@@ -798,6 +802,7 @@ namespace FolkIdle.Server.Domain.Combat
                 GuildCombatSimulationEngine = _guildCombatSimulationEngine,
                 RegisterGuildDefense = _registerGuildDefense,
                 SubmitShardAttack = _submitShardAttack,
+                RelationshipEngine = _relationshipEngine,
             };
         }
 
@@ -1491,50 +1496,6 @@ namespace FolkIdle.Server.Domain.Combat
                         else
                         {
                             ApplyActivityChangeToPayload(ref currentPayload, cmd.TargetId);
-                        }
-                    }
-                    else if (cmd.Command == CommandType.AddFriend)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetPlayerId;
-                        if (_relationshipEngine != null)
-                        {
-                            SafeDispatchAsync("Relationship.AddFriend", pId, async () => {
-                                await _relationshipEngine.AddFriendAsync(pId, targetId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.RemoveFriend)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetPlayerId;
-                        if (_relationshipEngine != null)
-                        {
-                            SafeDispatchAsync("Relationship.RemoveFriend", pId, async () => {
-                                await _relationshipEngine.RemoveFriendAsync(pId, targetId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.BlockPlayer)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetPlayerId;
-                        if (_relationshipEngine != null)
-                        {
-                            SafeDispatchAsync("Relationship.BlockPlayer", pId, async () => {
-                                await _relationshipEngine.BlockPlayerAsync(pId, targetId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.UnblockPlayer)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetPlayerId;
-                        if (_relationshipEngine != null)
-                        {
-                            SafeDispatchAsync("Relationship.UnblockPlayer", pId, async () => {
-                                await _relationshipEngine.UnblockPlayerAsync(pId, targetId);
-                            });
                         }
                     }
                     else if (cmd.Command == CommandType.ExecuteForgeFusion)

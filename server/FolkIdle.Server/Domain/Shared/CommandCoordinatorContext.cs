@@ -57,6 +57,7 @@ namespace FolkIdle.Server.Domain.Shared
         internal GuildCombatSimulationEngine GuildCombatSimulationEngine { get; init; }
         internal Func<long, Task> RegisterGuildDefense { get; init; }
         internal Func<long, long, Guid, uint, bool, Task<(SyncMatchStateResponseBuffer Response, int ActiveMatchMmr)>> SubmitShardAttack { get; init; }
+        internal RelationshipEngine? RelationshipEngine { get; init; }
     }
 
     /// <summary>
