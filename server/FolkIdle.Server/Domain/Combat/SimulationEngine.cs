@@ -790,6 +790,11 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.RespecSkillTree] = SkillTreeTickCoordinator.HandleRespecSkillTree,
                 [CommandType.RequestUnlockSkill] = SkillTreeTickCoordinator.HandleRetiredActiveSkill,
                 [CommandType.RequestCastSkill] = SkillTreeTickCoordinator.HandleRetiredActiveSkill,
+                [CommandType.PurchaseInheritanceLevel] = InheritanceTickCoordinator.HandlePurchaseInheritanceLevel,
+                [CommandType.PurchaseAncestorSlot] = InheritanceTickCoordinator.HandleHallOfAncestors,
+                [CommandType.KeepAncestor] = InheritanceTickCoordinator.HandleHallOfAncestors,
+                [CommandType.ReleaseAncestor] = InheritanceTickCoordinator.HandleHallOfAncestors,
+                [CommandType.AssignCharacterSlot] = InheritanceTickCoordinator.HandleHallOfAncestors,
             };
         }
 
@@ -827,6 +832,8 @@ namespace FolkIdle.Server.Domain.Combat
                 EquipmentSlotEngine = _equipmentSlotEngine,
                 LarderEngine = _larderEngine,
                 SkillTreeEngine = _skillTreeEngine,
+                InheritanceEngine = _inheritanceEngine,
+                HallOfAncestorsEngine = _hallOfAncestorsEngine,
             };
         }
 
@@ -1598,72 +1605,6 @@ namespace FolkIdle.Server.Domain.Combat
                             };
                             context.TryEnqueueBattlePassClaim(in req);
                         }
-                    }
-                    else if (cmd.Command == CommandType.PurchaseInheritanceLevel)
-                    {
-                        // Modul: inheritance stats. Dispatched off the tick like
-                        // every other DB-transactional command; the balance
-                        // check, the deduction and the level write all resolve
-                        // in one Serializable FOR UPDATE transaction.
-                        //
-                        // TargetId carries the stat id, the way the skill
-                        // commands carry a skill id on it. The engine validates
-                        // the range itself and refuses rather than
-                        // disconnecting - a stat id is a menu choice, not a
-                        // capability claim, so a stale client asking for stat 9
-                        // deserves a rejection and not a kick.
-                        long inheritPlayerId = currentPayload.PlayerId;
-                        int inheritStatId = (int)cmd.TargetId;
-                        SafeDispatchAsync("Inheritance.Purchase", inheritPlayerId, async () => {
-                            if (_inheritanceEngine != null) await _inheritanceEngine.PurchaseLevelAsync(inheritPlayerId, inheritStatId);
-                        });
-                    }
-                    // Modul: the Hall of Ancestors. Four commands over one
-                    // validator, because they share a shape: a character or
-                    // nothing, and never a field belonging to something else.
-                    else if (cmd.Command == CommandType.PurchaseAncestorSlot
-                          || cmd.Command == CommandType.KeepAncestor
-                          || cmd.Command == CommandType.ReleaseAncestor
-                          || cmd.Command == CommandType.AssignCharacterSlot)
-                    {
-                        if (!ClientCommandValidator.ValidateHallOfAncestorsRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long hallPlayerId = currentPayload.PlayerId;
-                        var hallCommand = cmd.Command;
-                        var hallCharacterId = cmd.TargetGuid;
-                        int hallSlotIndex = (int)cmd.RequestedSlotIndex;
-
-                        SafeDispatchAsync("Hall." + hallCommand, hallPlayerId, async () => {
-                            if (_hallOfAncestorsEngine == null) return;
-
-                            switch (hallCommand)
-                            {
-                                case CommandType.PurchaseAncestorSlot:
-                                    await _hallOfAncestorsEngine.PurchaseSlotAsync(hallPlayerId);
-                                    break;
-                                case CommandType.KeepAncestor:
-                                    await _hallOfAncestorsEngine.SetKeptAsync(hallPlayerId, hallCharacterId, true);
-                                    break;
-                                case CommandType.ReleaseAncestor:
-                                    await _hallOfAncestorsEngine.SetKeptAsync(hallPlayerId, hallCharacterId, false);
-                                    break;
-                                case CommandType.AssignCharacterSlot:
-                                    await _hallOfAncestorsEngine.AssignSlotAsync(hallPlayerId, hallCharacterId, hallSlotIndex);
-                                    // Which character is in which slot decides
-                                    // everything the payload caches about the
-                                    // active register - gear, activity, stats -
-                                    // so the tick has to re-read it rather than
-                                    // keep simulating the character that moved.
-                                    _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = hallPlayerId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                                    break;
-                            }
-                        });
                     }
                     else if (cmd.Command == CommandType.PurchaseBattlePass)
                     {
