@@ -52,6 +52,11 @@ namespace FolkIdle.Server.Domain.Shared
         internal GuildLogisticsEngine GuildLogisticsEngine { get; init; }
         internal GuildContributionEngine GuildEngine { get; init; }
         internal GuildLogisticsDepotEngine GuildLogisticsDepotEngine { get; init; }
+        internal GuildWarEngine GuildWarEngine { get; init; }
+        internal GuildRaidEngine? GuildRaidEngine { get; init; }
+        internal GuildCombatSimulationEngine GuildCombatSimulationEngine { get; init; }
+        internal Func<long, Task> RegisterGuildDefense { get; init; }
+        internal Func<long, long, Guid, uint, bool, Task<(SyncMatchStateResponseBuffer Response, int ActiveMatchMmr)>> SubmitShardAttack { get; init; }
     }
 
     /// <summary>

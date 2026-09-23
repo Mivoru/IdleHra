@@ -127,6 +127,12 @@ namespace FolkIdle.Server.Domain.Combat
         // class's own methods, so session lifecycle still has one owner.
         private readonly Action<long> _terminateSessionForSecurity;
         private readonly Action<long> _removeActivePlayer;
+
+        // The three instance methods moved handlers dispatch to off the tick,
+        // cached for the same reason. Each is called from inside the handler's
+        // SafeDispatch lambda exactly as the inline branch called the method.
+        private readonly Func<long, Task> _registerGuildDefense;
+        private readonly Func<long, long, Guid, uint, bool, Task<(SyncMatchStateResponseBuffer Response, int ActiveMatchMmr)>> _submitShardAttack;
         private readonly System.Collections.Generic.Dictionary<CommandType, CommandHandler> _commandHandlers = BuildCommandHandlers();
         private bool _isRunning;
         private Thread? _engineThread;
@@ -186,6 +192,8 @@ namespace FolkIdle.Server.Domain.Combat
             _safeDispatch = SafeDispatchAsync;
             _terminateSessionForSecurity = TerminateSessionForSecurity;
             _removeActivePlayer = RemoveActivePlayer;
+            _registerGuildDefense = RegisterGuildDefenseAsync;
+            _submitShardAttack = SubmitShardAttackAsync;
             _forgeEngine = forgeEngine;
             _marketEngine = marketEngine;
             _playerRegistry = playerRegistry;
@@ -756,6 +764,11 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.ContributeToGuild] = GuildTickCoordinator.HandleContributeToGuild,
                 [CommandType.ContributeGuildTreasury] = GuildTickCoordinator.HandleContributeGuildTreasury,
                 [CommandType.DepositGuildMaterial] = GuildTickCoordinator.HandleDepositGuildMaterial,
+                [CommandType.ContributeToWarSupply] = GuildWarTickCoordinator.HandleContributeToWarSupply,
+                [CommandType.RegisterGuildDefense] = GuildWarTickCoordinator.HandleRegisterGuildDefense,
+                [CommandType.SubmitShardAttack] = GuildWarTickCoordinator.HandleSubmitShardAttack,
+                [CommandType.LaunchGuildRaid] = GuildWarTickCoordinator.HandleLaunchGuildRaid,
+                [CommandType.ExecuteCombatTurn] = GuildWarTickCoordinator.HandleExecuteCombatTurn,
             };
         }
 
@@ -780,6 +793,11 @@ namespace FolkIdle.Server.Domain.Combat
                 GuildLogisticsEngine = _guildLogisticsEngine,
                 GuildEngine = _guildEngine,
                 GuildLogisticsDepotEngine = _guildLogisticsDepotEngine,
+                GuildWarEngine = _guildWarEngine,
+                GuildRaidEngine = _guildRaidEngine,
+                GuildCombatSimulationEngine = _guildCombatSimulationEngine,
+                RegisterGuildDefense = _registerGuildDefense,
+                SubmitShardAttack = _submitShardAttack,
             };
         }
 
@@ -1736,20 +1754,6 @@ namespace FolkIdle.Server.Domain.Combat
                         // not to be thrown off the server for sending a command
                         // that was valid when their tab was opened.
                     }
-                    else if (cmd.Command == CommandType.ContributeToWarSupply)
-                    {
-                        if (currentPayload.GuildId > 0 && currentPayload.ActiveGuildWarId > 0 && cmd.SecondaryId > 0 && cmd.TertiaryId > 0)
-                        {
-                            currentPayload.IsSuspended = true;
-                            _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-                            _guildWarEngine.SupplyChainQueue.Enqueue(new GuildWarSupplyContribution
-                            {
-                                PlayerId = currentPayload.PlayerId,
-                                CommodityId = cmd.SecondaryId,
-                                QuantityToBurn = cmd.TertiaryId
-                            });
-                        }
-                    }
                     else if (cmd.Command == CommandType.ClaimMailItem)
                     {
                         if (!ClientCommandValidator.ValidateMailCommands(ref currentPayload, (byte)cmd.Command, cmd.TargetId))
@@ -2046,83 +2050,6 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         // Deliberately empty.
                     }
-                    else if (cmd.Command == CommandType.RegisterGuildDefense)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildWarAction(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        // Dispatched off-thread like every other database
-                        // command. This previously ran as
-                        // RegisterGuildDefenseAsync(...).GetAwaiter().GetResult(),
-                        // which blocked the 10 Hz tick - for EVERY player - on a
-                        // Serializable transaction taking two FOR UPDATE row
-                        // locks. UiGuildWarPanel sends this from a button, so any
-                        // player could stall the whole simulation for as long as
-                        // those locks took to acquire, and blocking the tick
-                        // thread while EF holds locks is a deadlock shape as well
-                        // as a latency one.
-                        //
-                        // Safe to fire and forget: it returns nothing and mutates
-                        // no payload state, so there is no result to thread back
-                        // through a notification queue.
-                        long guildDefenseGuildId = currentPayload.GuildId;
-                        SafeDispatchAsync("GuildWar.RegisterDefense", currentPayload.PlayerId, async () =>
-                        {
-                            await RegisterGuildDefenseAsync(guildDefenseGuildId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.SubmitShardAttack)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildWarAction(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        // Dispatched off-thread, result threaded back through
-                        // ShardAttackResultQueue and applied at the drain below.
-                        //
-                        // This was the last GetAwaiter().GetResult() in the tick
-                        // loop: a cross-shard network round trip executed
-                        // synchronously, which would have stalled every player's
-                        // simulation on one player's request. It could not follow
-                        // the plain fire-and-forget shape the other commands use,
-                        // because it writes three fields back into the payload -
-                        // and only the tick thread may touch a payload.
-                        //
-                        // The security-violation statuses (1, 2, 4) are carried
-                        // back rather than acted on in the lambda for the same
-                        // reason: TerminateSessionForSecurity mutates tick-owned
-                        // state, so the drain performs it.
-                        long shardPlayerId = currentPayload.PlayerId;
-                        long shardGuildId = currentPayload.GuildId;
-                        long shardNodeHp = currentPayload.GlobalNodeRemainingHp;
-                        System.Guid shardMatchUuid = cmd.TargetMatchUuid;
-                        uint shardPredictedDamage = cmd.ClientPredictedDamage;
-                        bool shardIsFinalBlow = cmd.IsBuy != 0;
-
-                        SafeDispatchAsync("GuildWar.SubmitShardAttack", shardPlayerId, async () =>
-                        {
-                            var attackResult = await SubmitShardAttackAsync(
-                                shardGuildId,
-                                shardNodeHp,
-                                shardMatchUuid,
-                                shardPredictedDamage,
-                                shardIsFinalBlow);
-
-                            _playerRegistry.ShardAttackResultQueue.Enqueue(new ShardAttackResultNotification
-                            {
-                                PlayerId = shardPlayerId,
-                                ProcessingStatus = attackResult.Response.ProcessingStatus,
-                                MatchUuid = shardMatchUuid,
-                                GlobalNodeRemainingHp = attackResult.Response.GlobalNodeRemainingHp,
-                                ActiveMatchMmr = attackResult.ActiveMatchMmr
-                            });
-                        });
-                    }
                     else if (cmd.Command == CommandType.ReportTelemetryBurst)
                     {
                         if (!ClientCommandValidator.ValidateTelemetryBurst(ref currentPayload, ref cmd))
@@ -2208,27 +2135,6 @@ namespace FolkIdle.Server.Domain.Combat
                             _playerRegistry.StateReloadQueue.Enqueue(reloaded);
                         });
                     }
-                    else if (cmd.Command == CommandType.LaunchGuildRaid)
-                    {
-                        long raidGuildId = currentPayload.GuildId;
-                        long raidRequestingPlayerId = currentPayload.PlayerId;
-                        if (raidGuildId > 0 && _guildRaidEngine != null)
-                        {
-                            // No single player to disconnect on failure here -
-                            // raidGuildId identifies a guild, not a player, and
-                            // passing it as playerIdToDisconnectOnFailure would
-                            // force-disconnect whichever unrelated player, if
-                            // any, happens to share that numeric id. Leader-only
-                            // enforcement happens inside TryStartRaidAsync
-                            // itself, against the locked GuildMembers row - a
-                            // non-leader's request simply rolls back with no
-                            // effect, matching every other rejected-command
-                            // path in this engine.
-                            SafeDispatchAsync("Guild.LaunchRaid", 0L, async () => {
-                                await _guildRaidEngine.TryStartRaidAsync(raidGuildId, raidRequestingPlayerId);
-                            });
-                        }
-                    }
                     else if (cmd.Command == CommandType.EquipItem)
                     {
                         long equipPlayerId = currentPayload.PlayerId;
@@ -2292,29 +2198,6 @@ namespace FolkIdle.Server.Domain.Combat
                                 await _larderEngine.ExecuteStockFoodSlotAsync(larderPlayerId, larderSlot, larderFoodId, larderQuantity);
                             });
                         }
-                    }
-                    else if (cmd.Command == CommandType.ExecuteCombatTurn)
-                    {
-                        if (!ClientCommandValidator.ValidateCombatTurnRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        long guildId = currentPayload.GuildId;
-                        ClientCommandPacket capturedCommand = cmd;
-
-                        SafeDispatchAsync("GuildCombat.ExecuteTurn", pId, async () => {
-                            var result = await _guildCombatSimulationEngine.ExecuteCombatTurnAsync(pId, guildId, capturedCommand);
-                            if (result == GuildCombatTurnResult.InvalidRequest || result == GuildCombatTurnResult.NotFound)
-                            {
-                                _networkSystem.PurgeTokensForPlayer(pId);
-                                _networkSystem.ForceDisconnect(pId);
-                            }
-                        });
                     }
                     else if (cmd.Command == CommandType.SetSimulationSpeed)
                     {
