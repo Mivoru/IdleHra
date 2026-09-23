@@ -3212,19 +3212,24 @@ Per-session diagnostics (activities, halts, XP, codex kills) now print, so
 a failure explains itself. Full suite 892/893 (the one is this machine's
 broken Python), the load test green inside the full run.
 
-**Still open, found on the way (not fixed — each needs its own decision):**
-- **The legacy path's activity is still never PERSISTED.** Carrying fixes
-  the reload; a relogin still comes back idle (every session's
-  post-reconnect packet shows activity 0), and offline catch-up reads the
-  same row — so a legacy-path player may earn nothing offline. Fixing it
-  needs a guarded write-back (only while the row's slot is unchanged), not
-  a blind one; see above for why.
-- **A new account kills about one Field Mouse a minute.** The starter grant
-  is three tools and no weapon; an unarmed level-0 character took ~60s per
-  kill in the load test, against the <10s attention-span band
-  `Test_Content_EveryMonsterDiesInsideTheAttentionSpan` pins for a
-  tier-appropriate character. Check against a freshly registered account
-  before acting — the test's seeding is not a real registration.
+**Follow-ups found on the way:**
+- **DONE 2026-09-23 — the fielded character's activity is durable now.**
+  Carrying fixed the reload; a relogin still came back idle (every
+  session's post-reconnect packet showed activity 0), and offline catch-up
+  simulates the loaded activity, so a legacy-path player earned nothing
+  offline. `StateCheckpointManager.PersistFieldedActivityAsync` writes it
+  from both `FlushState` and `FlushBatch` — GUARDED: only while the row is
+  still the character `LoadPlayerState` would field (first non-escrowed by
+  `SlotIndex`, `Id`), so a stale flush after a Hall of Ancestors swap
+  writes nothing. `FieldedActivityPersistenceTests` covers the round trip,
+  the idle reset and the Hall race (the first two fail with the call
+  removed).
+- **NOT a defect — the ~60s first kill is the design.** Measured against
+  `SecondsToKill` (HardenedEngineIntegrationTests): region-1 arrival is
+  modelled as a character with nothing, and the regulars are pinned at
+  12-180s on arrival (52s / 82s / 117s / 169s, boss 894s). A starter
+  claymore would have made it 30s / 95s / boss 497s; the owner decided
+  2026-09-23 to keep the design. Recorded so nobody "fixes" it again.
 
 *Original report follows.*
 
