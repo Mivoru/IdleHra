@@ -19,6 +19,25 @@ do next.
 
 ---
 
+# HANDOFF 2026-09-23 - task 21 Phase 1 reviewed and merged to main
+
+The background agent dispatched below finished Phase 1 on 2026-09-19 (last
+commit 12:54) and then sat unreviewed for 4 days — no session picked the
+notification back up. Found and reviewed in this session's own `/doctor`
+pass: build clean (0 errors, the same 4 pre-existing `svelte-check`-unrelated
+warnings), both invariants below confirmed by grep (no coordinator has its
+own `Task.Run`/`Timer`; none write directly to `_activePlayers`/
+`_guildMembersIndex`), and the full suite run — 875/876, the one failure
+(`Test_ContentValidatorScript_MalformedJson_ExitsNonZero`) is this machine's
+Python install failing to import `encodings` on ANY script (`python
+--version` works, running a script doesn't), reproduced identically against
+pre-merge `main`, so it is not a regression from this branch. Merged with
+`git merge --no-ff` (commit history preserved, 24 commits), worktree and
+branch deleted. Phase 2 and 3 remain not started, same as the owner's
+2026-09-19 checkpoint decision below.
+
+---
+
 # HANDOFF 2026-09-19d - task 21 Phase 1 dispatched, IN PROGRESS, unreviewed
 
 Continuation of 2026-09-19c immediately below, same session. With 18 and 22

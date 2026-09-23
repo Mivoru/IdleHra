@@ -22,8 +22,8 @@ the mobile app** - four phases, written against what is actually in the repo
 rather than what MOBILE.md claims. **Tasks 14-23, added 2026-09-17 from a
 GitHub Copilot audit — 14/15/16/17/19/20/23 done and merged; 18 (PR #11) and
 22 (PR #12) built, tested green on a fresh rebase onto `main`, and PRs opened
-2026-09-19 — NOT YET MERGED, need the owner's own read; 21's Phase 1
-dispatched to a background agent 2026-09-19, IN PROGRESS, unreviewed; Unity
+2026-09-19 — NOT YET MERGED, need the owner's own read; 21's Phase 1 is
+**DONE and MERGED to `main` 2026-09-23** (Phase 2/3 not started); Unity
 retirement gated on the owner. Task 22's own test found a new, real, unfixed
 bug — see task 24 below, added 2026-09-19.** Read
 `docs/architecture/NEXT_STEPS_BACKLOG.md`'s latest handoff entry before
@@ -3053,26 +3053,29 @@ the wire.
 
 ## 21. `SimulationEngine.cs` is a single 6,650-line file spanning every subsystem (architecture, was P1)
 
-**Phase 1 dispatched to a background agent, 2026-09-19, in its own worktree
-(`.claude/worktrees/agent-ab3d7ddeb74716528`, branch
-`worktree-agent-ab3d7ddeb74716528`, forked from `main` at `cd0207e`) —
-UNREVIEWED, in progress. See
+**Phase 1 (the drain-plane extraction, Tasks 1.1–1.21) is DONE and MERGED,
+2026-09-23** — reviewed and merged directly to `main` (no PR; the branch
+had gone unreviewed for 4 days after the background agent that built it
+finished). Review confirmed both invariants the plan called for: no
+coordinator introduces its own scheduling (`Task.Run`/`Timer`/etc — every
+extracted drain is still a callee of the tick thread), and none write
+directly to `_activePlayers`/`_guildMembersIndex`. Build clean, 875/876
+tests pass — the one failure is this machine's broken local Python
+install (confirmed identical on pre-merge `main`, unrelated to the
+refactor). The worktree and its branch are cleaned up. **Phase 2
+(command-dispatch coordinators) and Phase 3 (`ProcessSubTick`'s three
+branch bodies) are not started** — per the owner's 2026-09-19 checkpoint
+decision, each needs its own go-ahead. See
 `docs/superpowers/plans/2026-09-17-simulationengine-split-scoping.md`**
 (the scoping document: what the file actually contains, the full
 `TickStatePayload` shared-state analysis, three candidate decomposition
 options with honest tradeoffs, and documented landmines) **and
 `docs/superpowers/plans/2026-09-17-simulationengine-split-plan.md`** (the
-resulting 46-task executable plan across three phases — drain-plane
-extraction, command-dispatch coordinators, then `ProcessSubTick`'s three
-branch bodies — decided with the owner 2026-09-17). **A live bug was found
-and fixed independently while scoping this** (`ProcessSubTick`'s crafting
-branch had no `return`, so a crafting character silently fought monster 1
-every tick) — shipped as PR #7, unrelated to this task, see CLAUDE.md.
-Per the owner's explicit checkpoint decision, **only Phase 1 (the
-drain-plane extraction, Tasks 1.1–1.21) was dispatched — the agent was
-told not to start Phase 2 or Phase 3 under any circumstance.** Read
-`docs/architecture/NEXT_STEPS_BACKLOG.md`'s latest handoff entry before
-touching this worktree or its branch.
+46-task executable plan across three phases, decided with the owner
+2026-09-17). **A live bug was found and fixed independently while scoping
+this** (`ProcessSubTick`'s crafting branch had no `return`, so a crafting
+character silently fought monster 1 every tick) — shipped as PR #7,
+unrelated to this task, see CLAUDE.md.
 
 **Confirmed exactly.** `wc -l` = 6,650. It contains material touching Guild,
 Breeding, WorldBoss, Market, Village, Gathering, and Crafting concerns (280
