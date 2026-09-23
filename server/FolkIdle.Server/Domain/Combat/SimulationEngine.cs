@@ -780,6 +780,8 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.InitializeCrafting] = CraftingTickCoordinator.HandleInitializeCrafting,
                 [CommandType.CraftItem] = CraftingTickCoordinator.HandleCraftItem,
                 [CommandType.UpgradeTool] = CraftingTickCoordinator.HandleUpgradeTool,
+                [CommandType.EquipItem] = EquipmentTickCoordinator.HandleEquipItem,
+                [CommandType.UnequipItem] = EquipmentTickCoordinator.HandleUnequipItem,
             };
         }
 
@@ -814,6 +816,7 @@ namespace FolkIdle.Server.Domain.Combat
                 RerollEngine = _rerollEngine,
                 BreedingEngine = _breedingEngine,
                 CraftingEngine = _craftingEngine,
+                EquipmentSlotEngine = _equipmentSlotEngine,
             };
         }
 
@@ -1907,46 +1910,6 @@ namespace FolkIdle.Server.Domain.Combat
                             reloaded.IsSuspended = false;
                             _playerRegistry.StateReloadQueue.Enqueue(reloaded);
                         });
-                    }
-                    else if (cmd.Command == CommandType.EquipItem)
-                    {
-                        long equipPlayerId = currentPayload.PlayerId;
-                        long equipItemId = cmd.TargetId;
-                        // Modul: per-character equipment. TargetGuid names which
-                        // character puts the item on. Guid.Empty - what every
-                        // client that predates the roster sends - resolves to the
-                        // main character, so old behaviour is preserved exactly.
-                        System.Guid equipCharacterId = cmd.TargetGuid;
-                        if (equipItemId > 0 && _equipmentSlotEngine != null)
-                        {
-                            SafeDispatchAsync("Equipment.Equip", equipPlayerId, async () => {
-                                await _equipmentSlotEngine.EquipItemAsync(equipPlayerId, equipItemId, equipCharacterId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.UnequipItem)
-                    {
-                        long unequipPlayerId = currentPayload.PlayerId;
-                        // Modul: per-character equipment. Wire mapping widened
-                        // from three slots to six. TargetId now carries the slot
-                        // index directly (0 Weapon, 1 Helmet, 2 Chest, 3 Gloves,
-                        // 4 Leggings, 5 Boots).
-                        //
-                        // The one legacy case that must keep working is a client
-                        // that predates this and sends TargetId 0 with the old
-                        // IsBuy flag meaning weapon(0)/armor(1): TargetId 0 plus
-                        // IsBuy set is therefore read as the Chest slot, which is
-                        // where the old single "Armor" slot's contents now live.
-                        int unequipSlot = cmd.TargetId == 0L && cmd.IsBuy != 0
-                            ? EquipmentSlotEngine.SlotChest
-                            : (int)cmd.TargetId;
-                        System.Guid unequipCharacterId = cmd.TargetGuid;
-                        if (_equipmentSlotEngine != null)
-                        {
-                            SafeDispatchAsync("Equipment.Unequip", unequipPlayerId, async () => {
-                                await _equipmentSlotEngine.UnequipItemAsync(unequipPlayerId, unequipSlot, unequipCharacterId);
-                            });
-                        }
                     }
                     else if (cmd.Command == CommandType.StockFoodSlot)
                     {
