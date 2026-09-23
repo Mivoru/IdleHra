@@ -60,6 +60,7 @@ namespace FolkIdle.Server.Domain.Shared
         internal RelationshipEngine? RelationshipEngine { get; init; }
         internal ForgeSplicingEngine ForgeEngine { get; init; }
         internal AffixRerollEngine RerollEngine { get; init; }
+        internal BreedingEngine BreedingEngine { get; init; }
     }
 
     /// <summary>

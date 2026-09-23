@@ -775,6 +775,8 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.UnblockPlayer] = RelationshipTickCoordinator.HandleUnblockPlayer,
                 [CommandType.ExecuteForgeFusion] = ForgeTickCoordinator.HandleExecuteForgeFusion,
                 [CommandType.RerollItemAffix] = ForgeTickCoordinator.HandleRerollItemAffix,
+                [CommandType.ExecuteBreeding] = BreedingTickCoordinator.HandleExecuteBreeding,
+                [CommandType.ExecuteVillagerBreeding] = BreedingTickCoordinator.HandleExecuteVillagerBreeding,
             };
         }
 
@@ -807,6 +809,7 @@ namespace FolkIdle.Server.Domain.Combat
                 RelationshipEngine = _relationshipEngine,
                 ForgeEngine = _forgeEngine,
                 RerollEngine = _rerollEngine,
+                BreedingEngine = _breedingEngine,
             };
         }
 
@@ -1501,47 +1504,6 @@ namespace FolkIdle.Server.Domain.Combat
                         {
                             ApplyActivityChangeToPayload(ref currentPayload, cmd.TargetId);
                         }
-                    }
-                    else if (cmd.Command == CommandType.ExecuteBreeding)
-                    {
-                        if (!ClientCommandValidator.ValidateBreedingRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        var patId = cmd.TargetGuid;
-                        var matId = cmd.SecondaryGuid;
-                        int selectionMask = cmd.BreedingSelectionMask;
-
-                        SafeDispatchAsync("Breeding.Execute", pId, async () => {
-                            await _breedingEngine.ExecuteBreedingAsync(pId, patId, matId, selectionMask);
-                        });
-                    }
-                    // Modul: hero x villager - THE standard pair. The gene pool
-                    // the village fills up every season was inert until this
-                    // branch existed; nothing could marry into it.
-                    else if (cmd.Command == CommandType.ExecuteVillagerBreeding)
-                    {
-                        if (!ClientCommandValidator.ValidateVillagerBreedingRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        var heroId = cmd.TargetGuid;
-                        long newcomerId = cmd.TargetId;
-                        int villagerSelectionMask = cmd.BreedingSelectionMask;
-
-                        SafeDispatchAsync("Breeding.ExecuteVillager", pId, async () => {
-                            await _breedingEngine.ExecuteHeroVillagerBreedingAsync(pId, heroId, newcomerId, villagerSelectionMask);
-                        });
                     }
                     else if (cmd.Command == CommandType.InitializeCrafting)
                     {
