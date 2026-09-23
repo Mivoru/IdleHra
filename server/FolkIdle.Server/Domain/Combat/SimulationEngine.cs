@@ -1175,6 +1175,13 @@ namespace FolkIdle.Server.Domain.Combat
                     var cmd = cmdWrapper.Packet;
                     long routingPlayerId = cmdWrapper.PlayerId;
 
+                    // Modul: THESE THREE STAY INLINE AND RUN BEFORE THE GATE,
+                    // deliberately not in the dispatch table. Node migration,
+                    // consumables and Login either have no live payload to gate
+                    // against yet or are cross-shard session infrastructure;
+                    // moving them behind CommandGate would change what is
+                    // validated, and moving them to a coordinator would hand it
+                    // session lifecycle.
                     if (cmd.Command == CommandType.InitiateNodeMigration)
                     {
                         long pId = routingPlayerId;
@@ -1417,6 +1424,11 @@ namespace FolkIdle.Server.Domain.Combat
 
                     if (cmd.Command == CommandType.AntiCheatChallengeResponse)
                     {
+                        // Modul: STAYS INLINE, deliberately not in the dispatch
+                        // table. It is the anti-cheat machinery the gate above
+                        // belongs to, and it quarantines and shadow-bans -
+                        // powers that stay with SimulationEngine.
+                        //
                         // Modul: A LATE ANSWER IS NOT A CONFESSION.
                         //
                         // This branch used to quarantine PERMANENTLY on the
@@ -1468,6 +1480,12 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                     else if (cmd.Command == CommandType.ChangeActivity)
                     {
+                        // Modul: STAYS INLINE, deliberately not in the dispatch
+                        // table. It drives the active register (ActivityChangeQueue,
+                        // ApplyActivityChangeToPayload) - the swap discipline
+                        // ProcessAllSlotSubTicks depends on, which no coordinator
+                        // owns.
+                        //
                         if (!ClientCommandValidator.ValidateChangeActivityRequest(ref currentPayload, cmd.TargetId))
                         {
                             RemoveActivePlayer(routingPlayerId);
@@ -1561,6 +1579,12 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                     else if (cmd.Command == CommandType.ReloadState)
                     {
+                        // Modul: STAYS INLINE, deliberately not in the dispatch
+                        // table. Server-internal session lifecycle: its result
+                        // lands through StateReloadQueue, whose drain calls
+                        // AddActivePlayer - the pair belongs with whatever owns
+                        // _activePlayers.
+                        //
                         // Modul: RELOAD NOW ACTUALLY RELOADS.
                         //
                         // This set IsSuspended = false and nothing else. Every
@@ -1632,6 +1656,11 @@ namespace FolkIdle.Server.Domain.Combat
                     // No client path ever sent it, so it was pure attack surface.
                     else if (cmd.Command == CommandType.Logout)
                     {
+                        // Modul: STAYS INLINE, deliberately not in the dispatch
+                        // table. Server-internal session lifecycle: it is the
+                        // flush-and-remove path CLAUDE.md records as broken by
+                        // the epoch gate once already, and removing a player
+                        // is SimulationEngine's job, not a coordinator's.
                         currentPayload.LastLogoutTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         currentPayload.IsDirty = true;
                         _checkpointManager.FlushStateAndAdvance(ref currentPayload);
