@@ -61,6 +61,7 @@ namespace FolkIdle.Server.Domain.Shared
         internal ForgeSplicingEngine ForgeEngine { get; init; }
         internal AffixRerollEngine RerollEngine { get; init; }
         internal BreedingEngine BreedingEngine { get; init; }
+        internal CraftingEngine CraftingEngine { get; init; }
     }
 
     /// <summary>
