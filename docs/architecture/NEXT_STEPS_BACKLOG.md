@@ -19,6 +19,28 @@ do next.
 
 ---
 
+# HANDOFF 2026-09-23 (end of day) - everything shipped; the next block is TASK_BOARD 25-38
+
+Production runs `main` at `11e89e5` (deployed and smoke-tested 26/26). Shipped
+today, each merged and deployed: PR #13 (task 24 - a ReloadState no longer drops
+a fighter to idle), #14 (the fielded character's activity is durable, so relogin
+and offline catch-up keep it), #15 (loot workers started by tests are stopped -
+static queues had been draining one test's loot into another test's database;
+the real cause of CI's "all 20 gatherers got nothing"), #16 (task 21 Phase 2+3,
+`SimulationEngine.cs` 6,057 -> 5,020 lines, `exercise` 146/146). **Task 21 is
+fully closed; tasks 1-24 are all done.**
+
+Owner decisions today: keep the offline cap; no starter weapon (the ~60s first
+kill is the design); retire Unity; delete the unused legacy crafting materials;
+deploy after every fix.
+
+**Next:** `docs/TASK_BOARD.md` tasks 25-38 - the owner's phone playtest (world
+boss attacks never land, a rarity question, three UI defects), approved cleanup,
+and three designs to brainstorm with the owner (world boss minigame, late-game
+gold sink, Guild Wars). Each task carries the production evidence gathered today.
+
+---
+
 # HANDOFF 2026-09-23 - task 21 Phase 1 reviewed and merged to main
 
 The background agent dispatched below finished Phase 1 on 2026-09-19 (last
