@@ -117,6 +117,24 @@ namespace FolkIdle.Server.Domain.Combat
         // is a 10Hz loop, and a fresh delegate per drain per tick is an
         // allocation on the hot path for nothing.
         private readonly Action<string, long, Func<Task>> _safeDispatch;
+
+        // Modul: the command dispatch table and the two session-ending
+        // delegates its handlers are handed. Cached here, built once, for the
+        // same reason as _safeDispatch above: the command loop runs at 10Hz
+        // forever. The handlers are static coordinator methods, so the table
+        // holds no reference to this instance; the two delegates below are
+        // the ONLY way a handler can end a session, and both are this
+        // class's own methods, so session lifecycle still has one owner.
+        private readonly Action<long> _terminateSessionForSecurity;
+        private readonly Action<long> _removeActivePlayer;
+
+        // The three instance methods moved handlers dispatch to off the tick,
+        // cached for the same reason. Each is called from inside the handler's
+        // SafeDispatch lambda exactly as the inline branch called the method.
+        private readonly Func<long, Task> _registerGuildDefense;
+        private readonly Func<long, long, Guid, uint, bool, Task<(SyncMatchStateResponseBuffer Response, int ActiveMatchMmr)>> _submitShardAttack;
+        private readonly Func<long, Task<bool>> _executePassPurchase;
+        private readonly System.Collections.Generic.Dictionary<CommandType, CommandHandler> _commandHandlers = BuildCommandHandlers();
         private bool _isRunning;
         private Thread? _engineThread;
         private Thread? _battlePassWorkerThread;
@@ -173,6 +191,11 @@ namespace FolkIdle.Server.Domain.Combat
             _checkpointManager = checkpointManager;
             _networkSystem = networkSystem;
             _safeDispatch = SafeDispatchAsync;
+            _terminateSessionForSecurity = TerminateSessionForSecurity;
+            _removeActivePlayer = RemoveActivePlayer;
+            _registerGuildDefense = RegisterGuildDefenseAsync;
+            _submitShardAttack = SubmitShardAttackAsync;
+            _executePassPurchase = ExecutePassPurchaseAsync;
             _forgeEngine = forgeEngine;
             _marketEngine = marketEngine;
             _playerRegistry = playerRegistry;
@@ -680,7 +703,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
-        private static unsafe byte[] CopyDeviceTokenBytes(ref ClientCommandPacket packet)
+        internal static unsafe byte[] CopyDeviceTokenBytes(ref ClientCommandPacket packet)
         {
             byte[] token = new byte[64];
             fixed (byte* source = packet.DeviceTokenBytes)
@@ -720,6 +743,128 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
             }
+        }
+
+        // Modul: the command dispatch table. One line per CommandType that has
+        // left EngineLoop's if/else chain for a coordinator. The branches that
+        // STAY inline (node migration, consumables and Login before the gate;
+        // the challenge response, ChangeActivity, ReloadState and Logout after
+        // it) are deliberately absent - see the comment on each of those
+        // branches for why.
+        private static System.Collections.Generic.Dictionary<CommandType, CommandHandler> BuildCommandHandlers()
+        {
+            return new System.Collections.Generic.Dictionary<CommandType, CommandHandler>
+            {
+                [CommandType.PurchaseLegacyUnlocks] = LegacyStoreTickCoordinator.HandlePurchaseLegacyUnlocks,
+                [CommandType.MarketListItem] = MarketTickCoordinator.HandleMarketListOrBuy,
+                [CommandType.MarketBuyItem] = MarketTickCoordinator.HandleMarketListOrBuy,
+                [CommandType.PlaceLimitOrder] = MarketTickCoordinator.HandlePlaceLimitOrder,
+                [CommandType.UpgradeBuilding] = VillageTickCoordinator.HandleUpgradeBuilding,
+                [CommandType.EvictVillager] = VillageTickCoordinator.HandleEvictVillager,
+                [CommandType.RecruitVillager] = VillageTickCoordinator.HandleRecruitOrDismissVillager,
+                [CommandType.DismissNewcomer] = VillageTickCoordinator.HandleRecruitOrDismissVillager,
+                [CommandType.ContributeToGuild] = GuildTickCoordinator.HandleContributeToGuild,
+                [CommandType.ContributeGuildTreasury] = GuildTickCoordinator.HandleContributeGuildTreasury,
+                [CommandType.DepositGuildMaterial] = GuildTickCoordinator.HandleDepositGuildMaterial,
+                [CommandType.ContributeToWarSupply] = GuildWarTickCoordinator.HandleContributeToWarSupply,
+                [CommandType.RegisterGuildDefense] = GuildWarTickCoordinator.HandleRegisterGuildDefense,
+                [CommandType.SubmitShardAttack] = GuildWarTickCoordinator.HandleSubmitShardAttack,
+                [CommandType.LaunchGuildRaid] = GuildWarTickCoordinator.HandleLaunchGuildRaid,
+                [CommandType.ExecuteCombatTurn] = GuildWarTickCoordinator.HandleExecuteCombatTurn,
+                [CommandType.AddFriend] = RelationshipTickCoordinator.HandleAddFriend,
+                [CommandType.RemoveFriend] = RelationshipTickCoordinator.HandleRemoveFriend,
+                [CommandType.BlockPlayer] = RelationshipTickCoordinator.HandleBlockPlayer,
+                [CommandType.UnblockPlayer] = RelationshipTickCoordinator.HandleUnblockPlayer,
+                [CommandType.ExecuteForgeFusion] = ForgeTickCoordinator.HandleExecuteForgeFusion,
+                [CommandType.RerollItemAffix] = ForgeTickCoordinator.HandleRerollItemAffix,
+                [CommandType.ExecuteBreeding] = BreedingTickCoordinator.HandleExecuteBreeding,
+                [CommandType.ExecuteVillagerBreeding] = BreedingTickCoordinator.HandleExecuteVillagerBreeding,
+                [CommandType.InitializeCrafting] = CraftingTickCoordinator.HandleInitializeCrafting,
+                [CommandType.CraftItem] = CraftingTickCoordinator.HandleCraftItem,
+                [CommandType.UpgradeTool] = CraftingTickCoordinator.HandleUpgradeTool,
+                [CommandType.EquipItem] = EquipmentTickCoordinator.HandleEquipItem,
+                [CommandType.UnequipItem] = EquipmentTickCoordinator.HandleUnequipItem,
+                [CommandType.StockFoodSlot] = LarderTickCoordinator.HandleStockFoodSlot,
+                [CommandType.UpdateAutoEatThreshold] = LarderTickCoordinator.HandleUpdateAutoEatThreshold,
+                [CommandType.SpendAttributePoint] = AttributeTickCoordinator.HandleSpendAttributePoint,
+                [CommandType.RespecAttributes] = AttributeTickCoordinator.HandleRespecAttributes,
+                [CommandType.PurchaseSkillTreeLevel] = SkillTreeTickCoordinator.HandlePurchaseSkillTreeLevel,
+                [CommandType.RespecSkillTree] = SkillTreeTickCoordinator.HandleRespecSkillTree,
+                [CommandType.RequestUnlockSkill] = SkillTreeTickCoordinator.HandleRetiredActiveSkill,
+                [CommandType.RequestCastSkill] = SkillTreeTickCoordinator.HandleRetiredActiveSkill,
+                [CommandType.PurchaseInheritanceLevel] = InheritanceTickCoordinator.HandlePurchaseInheritanceLevel,
+                [CommandType.PurchaseAncestorSlot] = InheritanceTickCoordinator.HandleHallOfAncestors,
+                [CommandType.KeepAncestor] = InheritanceTickCoordinator.HandleHallOfAncestors,
+                [CommandType.ReleaseAncestor] = InheritanceTickCoordinator.HandleHallOfAncestors,
+                [CommandType.AssignCharacterSlot] = InheritanceTickCoordinator.HandleHallOfAncestors,
+                [CommandType.ClaimBattlePassReward] = BillingTickCoordinator.HandleClaimBattlePassReward,
+                [CommandType.PurchaseBattlePass] = BillingTickCoordinator.HandlePurchaseBattlePass,
+                [CommandType.SubmitPurchaseReceipt] = BillingTickCoordinator.HandleSubmitPurchaseReceipt,
+                [CommandType.SyncBillingStatus] = BillingTickCoordinator.HandleSyncBillingStatus,
+                [CommandType.ClaimMailItem] = MailTickCoordinator.HandleClaimMailItem,
+                [CommandType.ClaimAchievementReward] = MailTickCoordinator.HandleClaimAchievementReward,
+                [CommandType.DepositToBank] = MailTickCoordinator.HandleRetiredBank,
+                [CommandType.WithdrawFromBank] = MailTickCoordinator.HandleRetiredBank,
+                [CommandType.AssignMentor] = MentorshipTickCoordinator.HandleRetiredMentorship,
+                [CommandType.EstablishMentorship] = MentorshipTickCoordinator.HandleRetiredMentorship,
+                [CommandType.TerminateMentorship] = MentorshipTickCoordinator.HandleRetiredMentorship,
+                [CommandType.AttackWorldBoss] = WorldBossTickCoordinator.HandleAttackWorldBoss,
+                [CommandType.ReportTelemetryBurst] = ClientSessionTickCoordinator.HandleReportTelemetryBurst,
+                [CommandType.PingNetworkDiagnostics] = ClientSessionTickCoordinator.HandlePingNetworkDiagnostics,
+                [CommandType.RegisterPushToken] = ClientSessionTickCoordinator.HandleRegisterPushToken,
+                [CommandType.TriggerGdprPurge] = ClientSessionTickCoordinator.HandleTriggerGdprPurge,
+                [CommandType.SwitchLanguage] = ClientSessionTickCoordinator.HandleSwitchLanguage,
+                [CommandType.ReportUiContextSwitch] = ClientSessionTickCoordinator.HandleReportUiContextSwitch,
+                [CommandType.SetSimulationSpeed] = ClientSessionTickCoordinator.HandleSetSimulationSpeed,
+            };
+        }
+
+        // Built per dequeued command, on the stack: a ref struct cannot be
+        // cached. Every value in it is either the routing id or a readonly
+        // field/cached delegate of this instance.
+        private CommandCoordinatorContext BuildCommandContext(long routingPlayerId)
+        {
+            return new CommandCoordinatorContext
+            {
+                RoutingPlayerId = routingPlayerId,
+                SafeDispatch = _safeDispatch,
+                TerminateSessionForSecurity = _terminateSessionForSecurity,
+                RemoveActivePlayer = _removeActivePlayer,
+                NetworkSystem = _networkSystem,
+                PlayerRegistry = _playerRegistry,
+                LegacyStoreEngine = _legacyStoreEngine,
+                CheckpointManager = _checkpointManager,
+                EscrowEngine = _escrowEngine,
+                MarketEngine = _marketEngine,
+                VillageManagementEngine = _villageManagementEngine,
+                GuildLogisticsEngine = _guildLogisticsEngine,
+                GuildEngine = _guildEngine,
+                GuildLogisticsDepotEngine = _guildLogisticsDepotEngine,
+                GuildWarEngine = _guildWarEngine,
+                GuildRaidEngine = _guildRaidEngine,
+                GuildCombatSimulationEngine = _guildCombatSimulationEngine,
+                RegisterGuildDefense = _registerGuildDefense,
+                SubmitShardAttack = _submitShardAttack,
+                RelationshipEngine = _relationshipEngine,
+                ForgeEngine = _forgeEngine,
+                RerollEngine = _rerollEngine,
+                BreedingEngine = _breedingEngine,
+                CraftingEngine = _craftingEngine,
+                EquipmentSlotEngine = _equipmentSlotEngine,
+                LarderEngine = _larderEngine,
+                SkillTreeEngine = _skillTreeEngine,
+                InheritanceEngine = _inheritanceEngine,
+                HallOfAncestorsEngine = _hallOfAncestorsEngine,
+                LiveSessionContexts = _liveSessionContexts,
+                ExecutePassPurchase = _executePassPurchase,
+                BillingVerificationEngine = _billingVerificationEngine,
+                ContextFactory = _contextFactory,
+                MailboxEngine = _mailboxEngine,
+                WorldBossEngine = _worldBossEngine,
+                TelemetryStreamingEngine = _telemetryStreamingEngine,
+                PushNotificationTriggerEngine = _pushNotificationTriggerEngine,
+                CompliancePurgeEngine = _compliancePurgeEngine,
+            };
         }
 
         private void EngineLoop()
@@ -1030,6 +1175,13 @@ namespace FolkIdle.Server.Domain.Combat
                     var cmd = cmdWrapper.Packet;
                     long routingPlayerId = cmdWrapper.PlayerId;
 
+                    // Modul: THESE THREE STAY INLINE AND RUN BEFORE THE GATE,
+                    // deliberately not in the dispatch table. Node migration,
+                    // consumables and Login either have no live payload to gate
+                    // against yet or are cross-shard session infrastructure;
+                    // moving them behind CommandGate would change what is
+                    // validated, and moving them to a coordinator would hand it
+                    // session lifecycle.
                     if (cmd.Command == CommandType.InitiateNodeMigration)
                     {
                         long pId = routingPlayerId;
@@ -1242,72 +1394,41 @@ namespace FolkIdle.Server.Domain.Combat
                         continue;
                     }
 
-                    // Server-generated packets carry no client epoch - see
-                    // IsServerInternalCommand for why Logout is one of them.
-                    bool isInternalCommand = IsServerInternalCommand(cmd.Command);
-
-                    // Modul: THE ANTI-CHEAT'S "WAS THIS CLIENT TALKING" STAMP,
-                    // AND IT WAS WRITTEN IN ONE PLACE THAT IS NOT THIS ONE.
-                    //
-                    // The challenge-miss branch in ProcessAccountTick only
-                    // counts a miss against a client that was otherwise sending
-                    // commands during the window - the whole point being that a
-                    // silent client is a BACKGROUNDED one, not a cheating one,
-                    // which this codebase learned by quarantining a real player
-                    // twice. That guard reads LastClientCommandAtMs.
-                    //
-                    // It was stamped only inside the activity-change drain. So
-                    // a player who equipped, spent, chatted, bought or fought
-                    // for ten minutes without changing activity read as SILENT,
-                    // and a player who changed activity once and then locked
-                    // their phone read as TALKING - the exact inversion of what
-                    // the guard is for. It failed open far more often than
-                    // closed, so nobody was banned by it; it simply was not the
-                    // check its own comment describes.
-                    //
-                    // Stamped here instead, where every genuine client command
-                    // arrives. Internal commands are excluded deliberately:
-                    // ReloadState and Logout are enqueued by the SERVER, and
-                    // counting them as the client talking would make a silent
-                    // client look busy at exactly the wrong moment.
-                    if (!isInternalCommand)
+                    // Modul: the anti-cheat / epoch gate lives in CommandGate
+                    // now, with its comments; the order of its four checks is
+                    // the contract and CommandGateOrderingTests pins it. The
+                    // verdict is ACTED ON here because ending a session is
+                    // SimulationEngine's own work, not the gate's.
+                    switch (CommandGate.Evaluate(ref currentPayload, ref cmd))
                     {
-                        currentPayload.LastClientCommandAtMs = Environment.TickCount64;
+                        case CommandGateVerdict.Terminate:
+                            TerminateSessionForSecurity(routingPlayerId);
+                            continue;
+                        case CommandGateVerdict.ShadowBan:
+                            _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 2);
+                            continue;
                     }
 
-                    // Epoch interception gate: reject commands from desynchronized clients.
-                    //
-                    // Modul: commands 47 and 48 used to be exempt here, because
-                    // for those two LogicEpochCounter carried UNIX seconds
-                    // rather than the save-generation counter. Both commands are
-                    // gone, so the exemption is too - and with it the only place
-                    // where that field meant two different things.
-                    if (!isInternalCommand && !ClientCommandValidator.ValidateEpochSynchronization(ref currentPayload, ref cmd))
+                    // Modul: the dispatch table is tried FIRST, then the
+                    // branches that deliberately stay inline below. Each
+                    // CommandType appears in exactly one of the two places, so
+                    // the order between them decides nothing. `continue` after
+                    // the handler is what every moved branch's own `continue`
+                    // meant: nothing follows this chain in the loop body.
+                    if (_commandHandlers.TryGetValue(cmd.Command, out var commandHandler))
                     {
-                        TerminateSessionForSecurity(routingPlayerId);
-                        continue;
-                    }
-
-                    if (!isInternalCommand && !ClientCommandValidator.ValidateCommand(ref currentPayload, (byte)cmd.Command))
-                    {
-                        TerminateSessionForSecurity(routingPlayerId);
-                        continue;
-                    }
-
-                    if (!isInternalCommand && !ClientCommandValidator.ValidateNoAntiCheatPayload(ref currentPayload, ref cmd))
-                    {
-                        _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 2);
-                        continue;
-                    }
-
-                    if (!isInternalCommand && !ClientCommandValidator.ValidateNoPushCompliancePayload(ref currentPayload, ref cmd))
-                    {
-                        TerminateSessionForSecurity(routingPlayerId);
+                        var commandContext = BuildCommandContext(routingPlayerId);
+                        commandHandler(ref currentPayload, ref cmd, in commandContext);
                         continue;
                     }
 
                     if (cmd.Command == CommandType.AntiCheatChallengeResponse)
                     {
+                        // Modul: STAYS INLINE, deliberately not in the dispatch
+                        // table. It is the anti-cheat machinery the gate above
+                        // belongs to, and it quarantines and shadow-bans -
+                        // powers that stay with SimulationEngine.
+                        //
                         // Modul: A LATE ANSWER IS NOT A CONFESSION.
                         //
                         // This branch used to quarantine PERMANENTLY on the
@@ -1357,39 +1478,14 @@ namespace FolkIdle.Server.Domain.Combat
                             currentPayload.ConsecutiveChallengeMisses = 0;
                         }
                     }
-                    else if (cmd.Command == CommandType.MarketListItem || cmd.Command == CommandType.MarketBuyItem)
-                    {
-                        if (!ClientCommandValidator.ValidateMarketCommands(ref currentPayload, (byte)cmd.Command, cmd.TargetId, cmd.LimitPrice))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-                        
-                        currentPayload.IsSuspended = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetId;
-                        long price = cmd.LimitPrice;
-                        bool isBuy = cmd.Command == CommandType.MarketBuyItem;
-                        // The chest is unlimited, so a buy always has room.
-                        bool hasSpace = true;
-
-                        SafeDispatchAsync("Market.EscrowOrder", pId, async () => {
-                            if (isBuy)
-                            {
-                                await _escrowEngine.BuyItemAsync(pId, targetId, hasSpace);
-                            }
-                            else
-                            {
-                                await _escrowEngine.ListItemAsync(pId, targetId, price);
-                            }
-                            _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                        });
-                    }
                     else if (cmd.Command == CommandType.ChangeActivity)
                     {
+                        // Modul: STAYS INLINE, deliberately not in the dispatch
+                        // table. It drives the active register (ActivityChangeQueue,
+                        // ApplyActivityChangeToPayload) - the swap discipline
+                        // ProcessAllSlotSubTicks depends on, which no coordinator
+                        // owns.
+                        //
                         if (!ClientCommandValidator.ValidateChangeActivityRequest(ref currentPayload, cmd.TargetId))
                         {
                             RemoveActivePlayer(routingPlayerId);
@@ -1481,833 +1577,14 @@ namespace FolkIdle.Server.Domain.Combat
                             ApplyActivityChangeToPayload(ref currentPayload, cmd.TargetId);
                         }
                     }
-                    else if (cmd.Command == CommandType.ContributeToGuild)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildContributions(ref currentPayload, cmd.LimitPrice))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long guildId = currentPayload.GuildId;
-                        long quantity = cmd.LimitPrice;
-                        int itemDefinitionId = (int)cmd.TargetId;
-                        long pId = currentPayload.PlayerId;
-
-                        if (guildId > 0 && quantity > 0)
-                        {
-                            SafeDispatchAsync("Guild.Contribution", pId, async () => {
-                                await _guildLogisticsEngine.ExecuteGuildContributionAsync(pId, guildId, quantity, itemDefinitionId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.AddFriend)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetPlayerId;
-                        if (_relationshipEngine != null)
-                        {
-                            SafeDispatchAsync("Relationship.AddFriend", pId, async () => {
-                                await _relationshipEngine.AddFriendAsync(pId, targetId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.RemoveFriend)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetPlayerId;
-                        if (_relationshipEngine != null)
-                        {
-                            SafeDispatchAsync("Relationship.RemoveFriend", pId, async () => {
-                                await _relationshipEngine.RemoveFriendAsync(pId, targetId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.BlockPlayer)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetPlayerId;
-                        if (_relationshipEngine != null)
-                        {
-                            SafeDispatchAsync("Relationship.BlockPlayer", pId, async () => {
-                                await _relationshipEngine.BlockPlayerAsync(pId, targetId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.UnblockPlayer)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        long targetId = cmd.TargetPlayerId;
-                        if (_relationshipEngine != null)
-                        {
-                            SafeDispatchAsync("Relationship.UnblockPlayer", pId, async () => {
-                                await _relationshipEngine.UnblockPlayerAsync(pId, targetId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.ExecuteForgeFusion)
-                    {
-                        // Modul: REPORTS, does not disconnect.
-                        //
-                        // Reported from play as "I press fuse, I get an error,
-                        // and nothing happens" - and nothing happening was the
-                        // session being torn down. Every input here is chosen
-                        // by the player from a list on screen: three item ids
-                        // they own, against a Forge level that gates the rarity
-                        // they are reaching for. Picking three items your Forge
-                        // is too small to combine is a mistake to be told
-                        // about, not evidence of tampering.
-                        //
-                        // This is the same defect the larder had, and the
-                        // comment there says so: force-disconnecting on a
-                        // mis-click is how eating food used to throw players off
-                        // the server.
-                        if (!ClientCommandValidator.ValidateFusionCommand(ref currentPayload, cmd.TargetId, cmd.SecondaryId, cmd.TertiaryId))
-                        {
-                            _playerRegistry.EnqueueCommandResult(
-                                currentPayload.PlayerId,
-                                (byte)Network.CommandResultCode.GenericValidationFailure);
-                            continue;
-                        }
-
-                        currentPayload.IsSuspended = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-                        
-                        long pId = currentPayload.PlayerId;
-                        long cTargetId = cmd.TargetId;
-                        long cSecId = cmd.SecondaryId;
-                        long cTerId = cmd.TertiaryId;
-
-                        SafeDispatchAsync("Forge.Fusion", pId, async () => {
-                            var result = await _forgeEngine.ExecuteFusionAsync(pId, cTargetId, cSecId, cTerId);
-                            if (result == ForgeSplicingResult.InvalidRequest)
-                            {
-                                _networkSystem.ForceDisconnect(pId);
-                                return;
-                            }
-                            _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                        });
-                    }
-                    else if (cmd.Command == CommandType.RerollItemAffix)
-                    {
-                        if (!ClientCommandValidator.ValidateAffixReroll(ref currentPayload, cmd.TargetId, cmd.LimitPrice))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        currentPayload.IsSuspended = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-                        
-                        long pId = currentPayload.PlayerId;
-                        long cTargetId = cmd.TargetId;
-                        int affixIndex = cmd.LimitPrice;
-
-                        // Modul: reroll operations, 2026-08-01. Everything below
-                        // is copied off the command struct BEFORE the lambda, so
-                        // the closure never captures `cmd` - it is a ref-local
-                        // over tick-owned memory that will have been reused by
-                        // the time the continuation runs.
-                        var rerollOperation = (Engine.RerollOperation)cmd.RerollOperationKind;
-                        uint autoMaxAttempts = cmd.RerollAutoMaxAttempts;
-                        byte stopMinRarity = cmd.RerollStopMinRarity;
-                        byte stopAffixIndex = cmd.RerollStopAffixIndex;
-
-                        SafeDispatchAsync("Affix.Reroll", pId, async () => {
-                            if (autoMaxAttempts == 0U)
-                            {
-                                await _rerollEngine.ExecuteRerollAsync(pId, cTargetId, affixIndex, rerollOperation);
-                            }
-                            else
-                            {
-                                // The affix id is carried as a 1-based index into
-                                // AffixRegistry.Definitions rather than a string,
-                                // because the packet is fixed-layout. 0 means
-                                // "any stat".
-                                string? requiredAffixId = null;
-                                if (stopAffixIndex > 0 && stopAffixIndex <= Engine.AffixRegistry.Definitions.Length)
-                                {
-                                    requiredAffixId = Engine.AffixRegistry.Definitions[stopAffixIndex - 1].Id;
-                                }
-
-                                var stopCondition = new Engine.AutoRerollStopCondition(
-                                    (Engine.AffixRarity)(stopMinRarity < 1 ? 1 : stopMinRarity),
-                                    requiredAffixId);
-
-                                // The client's attempt count is a request, not a
-                                // bound - AutoRerollPlanner clamps it, because an
-                                // unbounded loop of Serializable transactions is a
-                                // self-inflicted denial of service.
-                                await _rerollEngine.ExecuteAutoRerollAsync(
-                                    pId, cTargetId, affixIndex, rerollOperation, stopCondition, (int)autoMaxAttempts);
-                            }
-
-                            _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                        });
-                    }
-                    else if (cmd.Command == CommandType.ExecuteBreeding)
-                    {
-                        if (!ClientCommandValidator.ValidateBreedingRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        var patId = cmd.TargetGuid;
-                        var matId = cmd.SecondaryGuid;
-                        int selectionMask = cmd.BreedingSelectionMask;
-
-                        SafeDispatchAsync("Breeding.Execute", pId, async () => {
-                            await _breedingEngine.ExecuteBreedingAsync(pId, patId, matId, selectionMask);
-                        });
-                    }
-                    // Modul: hero x villager - THE standard pair. The gene pool
-                    // the village fills up every season was inert until this
-                    // branch existed; nothing could marry into it.
-                    else if (cmd.Command == CommandType.ExecuteVillagerBreeding)
-                    {
-                        if (!ClientCommandValidator.ValidateVillagerBreedingRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        var heroId = cmd.TargetGuid;
-                        long newcomerId = cmd.TargetId;
-                        int villagerSelectionMask = cmd.BreedingSelectionMask;
-
-                        SafeDispatchAsync("Breeding.ExecuteVillager", pId, async () => {
-                            await _breedingEngine.ExecuteHeroVillagerBreedingAsync(pId, heroId, newcomerId, villagerSelectionMask);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.InitializeCrafting)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        int resultItemId = (int)cmd.TargetId;
-
-                        // Modul: the batch rides DepositQuantity, an existing
-                        // uint no other branch of this opcode reads. Adding a
-                        // BatchSize field would have meant a wire-struct change
-                        // - the packet is demultiplexed by exact byte size, so
-                        // the layout guard and the generated client protocol
-                        // both move - for one small integer that an unused
-                        // field already carries. 0 means a client that predates
-                        // this and gets the old behaviour of one.
-                        //
-                        // The value is CLAMPED IN THE ENGINE, not here.
-                        // batchSize multiplies both cost and output, so it is
-                        // exactly the kind of number a client must not be
-                        // trusted with.
-                        int batchSize = cmd.DepositQuantity > 0 ? (int)Math.Min(cmd.DepositQuantity, (uint)CraftingEngine.MaxCraftBatchSize) : 1;
-
-                        SafeDispatchAsync("Crafting.Initialize", pId, async () => {
-                            await _craftingEngine.ExecuteCraftingAsync(pId, resultItemId, batchSize);
-                        });
-                    }
-                    // Modul: CommandType.CraftItem is RETIRED, along with the
-                    // equipment recipes it carried. Equipment is monster loot
-                    // and tools are crafted - see CraftingEngine. A client
-                    // still sending it is an old bundle rather than an attack,
-                    // so it is ignored rather than treated as a protocol
-                    // violation: disconnecting a stale tab teaches nobody
-                    // anything and looks like the game is broken.
-                    else if (cmd.Command == CommandType.CraftItem)
-                    {
-                        // Deliberately empty.
-                    }
-                    else if (cmd.Command == CommandType.UpgradeBuilding)
-                    {
-                        if (!ClientCommandValidator.ValidateVillageManagementRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint buildingId = cmd.TargetBuildingId;
-                        
-                        SafeDispatchAsync("Village.UpgradeBuilding", pId, async () => {
-                            await _villageManagementEngine.ExecuteUpgradeBuildingAsync(pId, buildingId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.EvictVillager)
-                    {
-                        if (!ClientCommandValidator.ValidateVillageManagementRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint villagerSlot = cmd.TargetVillagerSlot;
-
-                        SafeDispatchAsync("Village.EvictVillager", pId, async () => {
-                            await _villageManagementEngine.ExecuteEvictVillagerAsync(pId, villagerSlot);
-                        });
-                    }
-                    // Modul: the village as something the player DOES. The
-                    // recruitment price and the refusals were written and
-                    // tested, DismissAsync existed, and neither had a way in -
-                    // so a full village was a dead end and the gold sink the top
-                    // of the economy lacks was unreachable.
-                    else if (cmd.Command == CommandType.RecruitVillager || cmd.Command == CommandType.DismissNewcomer)
-                    {
-                        if (!ClientCommandValidator.ValidateVillageRosterRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        bool isRecruit = cmd.Command == CommandType.RecruitVillager;
-                        long newcomerId = cmd.TargetId;
-
-                        SafeDispatchAsync(isRecruit ? "Village.Recruit" : "Village.Dismiss", pId, async () => {
-                            if (isRecruit)
-                            {
-                                await _villageManagementEngine.ExecuteRecruitVillagerAsync(pId);
-                            }
-                            else
-                            {
-                                await _villageManagementEngine.ExecuteDismissNewcomerAsync(pId, newcomerId);
-                            }
-                        });
-                    }
-                    else if (cmd.Command == CommandType.UpgradeTool)
-                    {
-                        // Modul: UPGRADETOOL DOES NOTHING AND NEVER DID.
-                        //
-                        // VillageBuildingEngine.ExecuteUpgradeToolAsync was
-                        // `return Task.CompletedTask;` - a twenty-four line
-                        // engine holding one empty method, constructed in
-                        // Program, threaded through this constructor and
-                        // dispatched to on every request. The command validated,
-                        // routed, awaited and accomplished nothing.
-                        //
-                        // Worse, a request that failed validation DISCONNECTED
-                        // the player - the same defect fusion had, over a
-                        // command with no effect to protect.
-                        //
-                        // Tools are ordinary equipment now: crafted, carried,
-                        // rerolled and raised at the Forge like anything else.
-                        // A second upgrade path for them was removed from the
-                        // village screen; this is the other half of it. Ignored
-                        // rather than rejected, so a client built before the
-                        // removal is simply not answered.
-                    }
-                    else if (cmd.Command == CommandType.AssignMentor
-                             || cmd.Command == CommandType.EstablishMentorship
-                             || cmd.Command == CommandType.TerminateMentorship)
-                    {
-                        // Modul: MENTORSHIP IS GONE - ignored, not rejected.
-                        //
-                        // The Academy, the mentor slots and the contracts were
-                        // removed as a feature: three screens and an XP penalty
-                        // that existed to make one number slightly larger, in a
-                        // game whose social half is guilds.
-                        //
-                        // Ignoring rather than disconnecting is deliberate and
-                        // is the same rule the removed active skills follow. A
-                        // client built before the removal still has the buttons,
-                        // and a player pressing one deserves nothing happening -
-                        // not to be thrown off the server for sending a command
-                        // that was valid when their tab was opened.
-                    }
-                    else if (cmd.Command == CommandType.ContributeToWarSupply)
-                    {
-                        if (currentPayload.GuildId > 0 && currentPayload.ActiveGuildWarId > 0 && cmd.SecondaryId > 0 && cmd.TertiaryId > 0)
-                        {
-                            currentPayload.IsSuspended = true;
-                            _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-                            _guildWarEngine.SupplyChainQueue.Enqueue(new GuildWarSupplyContribution
-                            {
-                                PlayerId = currentPayload.PlayerId,
-                                CommodityId = cmd.SecondaryId,
-                                QuantityToBurn = cmd.TertiaryId
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.PlaceLimitOrder)
-                    {
-                        if (!ClientCommandValidator.ValidatePlaceLimitOrderRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        currentPayload.IsSuspended = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-
-                        long pId = currentPayload.PlayerId;
-                        bool isBuy = cmd.IsBuy == 1;
-                        long instanceId = cmd.TargetId;
-                        long price = cmd.LimitPrice;
-                        int qualityTier = cmd.QualityTier;
-                        // Modul: Play Mode audit fix. This used to synthesize a
-                        // bogus "ItemType_{TargetId}" string that never matched
-                        // any real MarketEquipmentInstance.BaseItemId - every BUY
-                        // limit order placed through the real wire protocol was
-                        // permanently unmatchable (only the direct-call unit test
-                        // passed a real baseItemId, bypassing this dispatcher
-                        // entirely). TargetId is the same numeric ContentRegistry
-                        // item id used by ConsumableEngine/CombatLootEngine -
-                        // resolving it here is the same GetItemBaseId lookup they
-                        // already use, not a new convention.
-                        string baseItemId = isBuy ? ContentRegistry.GetItemBaseId((int)cmd.TargetId) : "";
-
-                        SafeDispatchAsync("Market.LimitOrder", pId, async () => {
-                            await _marketEngine.PlaceLimitOrderAsync(pId, isBuy, instanceId, price, baseItemId, qualityTier);
-                            _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                        });
-                    }
-                    else if (cmd.Command == CommandType.ClaimMailItem)
-                    {
-                        if (!ClientCommandValidator.ValidateMailCommands(ref currentPayload, (byte)cmd.Command, cmd.TargetId))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        long mailId = cmd.TargetId;
-                        SafeDispatchAsync("Mail.Claim", pId, async () => {
-                            await _mailboxEngine.ClaimMailItemAsync(pId, mailId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.ClaimAchievementReward)
-                    {
-                        if (!ClientCommandValidator.ValidateAchievementClaimRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint achievementId = cmd.TargetAchievementId;
-
-                        if (_liveSessionContexts.TryGetValue(pId, out var sessionContext))
-                        {
-                            _playerRegistry.AchievementClaimQueue.Enqueue(new AchievementClaimRequest
-                            {
-                                PlayerId = pId,
-                                AchievementId = achievementId,
-                                LiveSession = sessionContext
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.ClaimBattlePassReward)
-                    {
-                        if (!ClientCommandValidator.ValidateBattlePassClaimRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint milestoneIndex = cmd.TargetMilestoneIndex;
-                        uint seasonalXp = currentPayload.AccumulatedSeasonalXp;
-                        uint passLevel = currentPayload.ActiveChroniclePassLevel;
-
-                        if (_liveSessionContexts.TryGetValue(pId, out var context))
-                        {
-                            var req = new BattlePassClaimRequest
-                            {
-                                TargetMilestoneIndex = milestoneIndex,
-                                AccumulatedSeasonalXp = seasonalXp,
-                                ActiveChroniclePassLevel = passLevel
-                            };
-                            context.TryEnqueueBattlePassClaim(in req);
-                        }
-                    }
-                    else if (cmd.Command == CommandType.PurchaseInheritanceLevel)
-                    {
-                        // Modul: inheritance stats. Dispatched off the tick like
-                        // every other DB-transactional command; the balance
-                        // check, the deduction and the level write all resolve
-                        // in one Serializable FOR UPDATE transaction.
-                        //
-                        // TargetId carries the stat id, the way the skill
-                        // commands carry a skill id on it. The engine validates
-                        // the range itself and refuses rather than
-                        // disconnecting - a stat id is a menu choice, not a
-                        // capability claim, so a stale client asking for stat 9
-                        // deserves a rejection and not a kick.
-                        long inheritPlayerId = currentPayload.PlayerId;
-                        int inheritStatId = (int)cmd.TargetId;
-                        SafeDispatchAsync("Inheritance.Purchase", inheritPlayerId, async () => {
-                            if (_inheritanceEngine != null) await _inheritanceEngine.PurchaseLevelAsync(inheritPlayerId, inheritStatId);
-                        });
-                    }
-                    // Modul: the Hall of Ancestors. Four commands over one
-                    // validator, because they share a shape: a character or
-                    // nothing, and never a field belonging to something else.
-                    else if (cmd.Command == CommandType.PurchaseAncestorSlot
-                          || cmd.Command == CommandType.KeepAncestor
-                          || cmd.Command == CommandType.ReleaseAncestor
-                          || cmd.Command == CommandType.AssignCharacterSlot)
-                    {
-                        if (!ClientCommandValidator.ValidateHallOfAncestorsRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long hallPlayerId = currentPayload.PlayerId;
-                        var hallCommand = cmd.Command;
-                        var hallCharacterId = cmd.TargetGuid;
-                        int hallSlotIndex = (int)cmd.RequestedSlotIndex;
-
-                        SafeDispatchAsync("Hall." + hallCommand, hallPlayerId, async () => {
-                            if (_hallOfAncestorsEngine == null) return;
-
-                            switch (hallCommand)
-                            {
-                                case CommandType.PurchaseAncestorSlot:
-                                    await _hallOfAncestorsEngine.PurchaseSlotAsync(hallPlayerId);
-                                    break;
-                                case CommandType.KeepAncestor:
-                                    await _hallOfAncestorsEngine.SetKeptAsync(hallPlayerId, hallCharacterId, true);
-                                    break;
-                                case CommandType.ReleaseAncestor:
-                                    await _hallOfAncestorsEngine.SetKeptAsync(hallPlayerId, hallCharacterId, false);
-                                    break;
-                                case CommandType.AssignCharacterSlot:
-                                    await _hallOfAncestorsEngine.AssignSlotAsync(hallPlayerId, hallCharacterId, hallSlotIndex);
-                                    // Which character is in which slot decides
-                                    // everything the payload caches about the
-                                    // active register - gear, activity, stats -
-                                    // so the tick has to re-read it rather than
-                                    // keep simulating the character that moved.
-                                    _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = hallPlayerId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                                    break;
-                            }
-                        });
-                    }
-                    else if (cmd.Command == CommandType.SpendAttributePoint)
-                    {
-                        // Modul: ENTIRELY ON THE TICK THREAD, no database at all.
-                        //
-                        // Both the balance and the four attributes live on the
-                        // payload, and the checkpoint already persists all five
-                        // (PlayerRecords.UnspentAttributePoints and the Base*
-                        // columns). So this is pure struct arithmetic - no scope,
-                        // no transaction, no queue - which is the cheapest thing
-                        // a command can be and is available precisely because
-                        // the state was already tick-owned.
-                        //
-                        // A menu choice out of range is REFUSED, not treated as
-                        // a protocol violation: the attribute id comes from a
-                        // dropdown and the amount from a button, and neither is
-                        // evidence of a tampered client. Same call the skill tree
-                        // makes just below.
-                        int attributeId = (int)cmd.TargetId;
-                        int requested = cmd.LimitPrice;
-
-                        if (attributeId < 0 || attributeId > 3 || requested <= 0)
-                        {
-                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
-                                (byte)Network.CommandResultCode.GenericValidationFailure);
-                        }
-                        else if (currentPayload.UnspentAttributePoints < requested)
-                        {
-                            // Says so, rather than silently doing nothing - this
-                            // server's favourite way to lie.
-                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
-                                (byte)Network.CommandResultCode.InsufficientMaterials);
-                        }
-                        else
-                        {
-                            currentPayload.UnspentAttributePoints -= requested;
-                            switch (attributeId)
-                            {
-                                case 0: currentPayload.STR += requested; break;
-                                case 1: currentPayload.DEX += requested; break;
-                                case 2: currentPayload.CON += requested; break;
-                                default: currentPayload.LCK += requested; break;
-                            }
-
-                            currentPayload.IsDirty = true;
-
-                            // Modul: a placed point is a DECISION, not an
-                            // accumulating counter, so it does not wait out the
-                            // five-minute checkpoint window. Pulling the
-                            // boundary forward instead of flushing inline keeps
-                            // the synchronous database write off the click path
-                            // and coalesces a burst of clicks into one write on
-                            // the next tick.
-                            currentPayload.TicksSinceLastFlush = StateCheckpointManager.CheckpointBoundaryTicks;
-
-                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
-                                (byte)Network.CommandResultCode.Success);
-                        }
-                    }
-                    else if (cmd.Command == CommandType.RespecAttributes)
-                    {
-                        // Modul: FREE, AND THAT IS A DECISION.
-                        //
-                        // Every other purchase in this game charges through a
-                        // database transaction off the tick. Gold spent on the
-                        // TICK would need a new path - decrement CurrentGold and
-                        // RedisPendingGoldDelta together - and "two gold paths,
-                        // and mixing them pays the player twice" is a rule this
-                        // codebase learned the hard way. Inventing a third one
-                        // for a respec button is not worth it.
-                        //
-                        // Doing it off the tick instead would mean an engine
-                        // writing the four attribute columns while a live
-                        // session holds its own copy, which is the exact
-                        // split-brain the checkpoint's own comment warns about:
-                        // these are absolutes, so there can only be one writer,
-                        // and on the tick that writer is the payload.
-                        //
-                        // So the cost is the placing, not the paying. The points
-                        // come back and have to be spent again, which is enough
-                        // friction for a season-long choice and cannot corrupt a
-                        // balance. If it should cost gold later, the honest way
-                        // is a safe tick-side spend path first.
-                        int refunded =
-                            (currentPayload.STR - AttributeRegistry.StartingValue(AttributeRegistry.Might))
-                            + (currentPayload.DEX - AttributeRegistry.StartingValue(AttributeRegistry.Finesse))
-                            + (currentPayload.CON - AttributeRegistry.StartingValue(AttributeRegistry.Vigour))
-                            + (currentPayload.LCK - AttributeRegistry.StartingValue(AttributeRegistry.Fortune));
-
-                        if (refunded <= 0)
-                        {
-                            // Nothing placed. Says so rather than appearing to
-                            // work - a button that silently does nothing is this
-                            // server's favourite way to lie.
-                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
-                                (byte)Network.CommandResultCode.GenericValidationFailure);
-                        }
-                        else
-                        {
-                            currentPayload.STR = AttributeRegistry.StartingValue(AttributeRegistry.Might);
-                            currentPayload.DEX = AttributeRegistry.StartingValue(AttributeRegistry.Finesse);
-                            currentPayload.CON = AttributeRegistry.StartingValue(AttributeRegistry.Vigour);
-                            currentPayload.LCK = AttributeRegistry.StartingValue(AttributeRegistry.Fortune);
-                            currentPayload.UnspentAttributePoints += refunded;
-                            currentPayload.IsDirty = true;
-
-                            // Same reason as the spend above: a respec that only
-                            // exists in memory is a respec the next reload undoes.
-                            currentPayload.TicksSinceLastFlush = StateCheckpointManager.CheckpointBoundaryTicks;
-
-                            _playerRegistry.EnqueueCommandResult(currentPayload.PlayerId,
-                                (byte)Network.CommandResultCode.Success);
-                        }
-                    }
-                    else if (cmd.Command == CommandType.PurchaseSkillTreeLevel)
-                    {
-                        // Modul: skill tree. Same shape as the inheritance
-                        // purchase above and for the same reasons - dispatched
-                        // off the tick, the point balance and the level written
-                        // in one Serializable FOR UPDATE transaction, and a
-                        // branch id out of range REFUSED rather than treated as
-                        // a protocol violation. A branch id is a menu choice.
-                        long treePlayerId = currentPayload.PlayerId;
-                        int treeBranchId = (int)cmd.TargetId;
-                        SafeDispatchAsync("SkillTree.Purchase", treePlayerId, async () => {
-                            if (_skillTreeEngine != null) await _skillTreeEngine.PurchaseLevelAsync(treePlayerId, treeBranchId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.RespecSkillTree)
-                    {
-                        // Modul: respec. Ring 2 forks and taking one side locks
-                        // the other for a ninety-day season, so there has to be
-                        // a way back - and it cannot be free and unlimited, or
-                        // the exclusivity that IS the choice would be gone.
-                        // One free a season, then a purchased grant.
-                        //
-                        // Dispatched off the tick like every other write: the
-                        // cleared levels come back through SkillTreeSyncQueue,
-                        // because the tick thread owns the payload.
-                        long respecPlayerId = currentPayload.PlayerId;
-                        SafeDispatchAsync("SkillTree.Respec", respecPlayerId, async () => {
-                            if (_skillTreeEngine != null) await _skillTreeEngine.RespecAsync(respecPlayerId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.PurchaseBattlePass)
-                    {
-                        // Modul: Comprehensive Game System Audit, Part 4.3.
-                        // Premium track unlock via in-game PremiumDiamonds -
-                        // dispatched off the tick thread like every other
-                        // DB-transactional command; balance check, deduction,
-                        // and PremiumUnlocked flag all resolve inside one
-                        // Serializable FOR UPDATE transaction server-side.
-                        long pId = currentPayload.PlayerId;
-                        SafeDispatchAsync("BattlePass.Purchase", pId, async () => {
-                            await ExecutePassPurchaseAsync(pId);
-                        });
-                    }
-                    // Modul: THE BANK IS RETIRED, and both commands are now
-                    // ignored rather than routed. See the RetireTheBank
-                    // migration: it was a 100-slot store that existed to
-                    // relieve a backpack cap the game no longer has, and an
-                    // item inside it could not be equipped, fused, rerolled or
-                    // sold - every one of those reads EquipmentInstances. Its
-                    // rows were moved there and the table dropped.
-                    //
-                    // Ignored rather than treated as a protocol violation: a
-                    // client still sending these is an old bundle, and
-                    // disconnecting a stale tab teaches nobody anything.
-                    else if (cmd.Command == CommandType.DepositToBank || cmd.Command == CommandType.WithdrawFromBank)
-                    {
-                        // Deliberately empty.
-                    }
-                    else if (cmd.Command == CommandType.RegisterGuildDefense)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildWarAction(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        // Dispatched off-thread like every other database
-                        // command. This previously ran as
-                        // RegisterGuildDefenseAsync(...).GetAwaiter().GetResult(),
-                        // which blocked the 10 Hz tick - for EVERY player - on a
-                        // Serializable transaction taking two FOR UPDATE row
-                        // locks. UiGuildWarPanel sends this from a button, so any
-                        // player could stall the whole simulation for as long as
-                        // those locks took to acquire, and blocking the tick
-                        // thread while EF holds locks is a deadlock shape as well
-                        // as a latency one.
-                        //
-                        // Safe to fire and forget: it returns nothing and mutates
-                        // no payload state, so there is no result to thread back
-                        // through a notification queue.
-                        long guildDefenseGuildId = currentPayload.GuildId;
-                        SafeDispatchAsync("GuildWar.RegisterDefense", currentPayload.PlayerId, async () =>
-                        {
-                            await RegisterGuildDefenseAsync(guildDefenseGuildId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.SubmitShardAttack)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildWarAction(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        // Dispatched off-thread, result threaded back through
-                        // ShardAttackResultQueue and applied at the drain below.
-                        //
-                        // This was the last GetAwaiter().GetResult() in the tick
-                        // loop: a cross-shard network round trip executed
-                        // synchronously, which would have stalled every player's
-                        // simulation on one player's request. It could not follow
-                        // the plain fire-and-forget shape the other commands use,
-                        // because it writes three fields back into the payload -
-                        // and only the tick thread may touch a payload.
-                        //
-                        // The security-violation statuses (1, 2, 4) are carried
-                        // back rather than acted on in the lambda for the same
-                        // reason: TerminateSessionForSecurity mutates tick-owned
-                        // state, so the drain performs it.
-                        long shardPlayerId = currentPayload.PlayerId;
-                        long shardGuildId = currentPayload.GuildId;
-                        long shardNodeHp = currentPayload.GlobalNodeRemainingHp;
-                        System.Guid shardMatchUuid = cmd.TargetMatchUuid;
-                        uint shardPredictedDamage = cmd.ClientPredictedDamage;
-                        bool shardIsFinalBlow = cmd.IsBuy != 0;
-
-                        SafeDispatchAsync("GuildWar.SubmitShardAttack", shardPlayerId, async () =>
-                        {
-                            var attackResult = await SubmitShardAttackAsync(
-                                shardGuildId,
-                                shardNodeHp,
-                                shardMatchUuid,
-                                shardPredictedDamage,
-                                shardIsFinalBlow);
-
-                            _playerRegistry.ShardAttackResultQueue.Enqueue(new ShardAttackResultNotification
-                            {
-                                PlayerId = shardPlayerId,
-                                ProcessingStatus = attackResult.Response.ProcessingStatus,
-                                MatchUuid = shardMatchUuid,
-                                GlobalNodeRemainingHp = attackResult.Response.GlobalNodeRemainingHp,
-                                ActiveMatchMmr = attackResult.ActiveMatchMmr
-                            });
-                        });
-                    }
-                    else if (cmd.Command == CommandType.ReportTelemetryBurst)
-                    {
-                        if (!ClientCommandValidator.ValidateTelemetryBurst(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        _telemetryStreamingEngine.EnqueueClientTelemetryBurst(currentPayload.AccountId, currentPayload.PlayerId, cmd);
-                    }
-                    else if (cmd.Command == CommandType.PingNetworkDiagnostics)
-                    {
-                        if (!ClientCommandValidator.ValidatePingNetworkDiagnostics(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-                        
-                        currentPayload.NetworkDiagnosticsToken = cmd.NetworkDiagnosticsToken;
-                        currentPayload.IsDirty = true;
-                        continue;
-                    }
-                    else if (cmd.Command == CommandType.ContributeGuildTreasury)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildTreasuryContribution(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        currentPayload.IsSuspended = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-
-                        long pId = currentPayload.PlayerId;
-                        // Modul: Play Mode audit fix. Previously trusted
-                        // cmd.SecondaryId as the target guild id directly -
-                        // a player could donate their own gold/equipment
-                        // toward ANY guild's tier, not just their own.
-                        // Derives from the player's own live GuildId instead,
-                        // matching how the materials/Monolith contribution
-                        // branch already resolves guild membership.
-                        long guildId = currentPayload.GuildId;
-                        bool isGold = cmd.TargetId == 0;
-                        long instanceId = cmd.TargetId;
-                        long goldAmount = cmd.LimitPrice;
-
-                        SafeDispatchAsync("Guild.ContributeGoldOrEquipment", pId, async () => {
-                            if (isGold)
-                            {
-                                await _guildEngine.ContributeGoldAsync(pId, guildId, goldAmount);
-                            }
-                            else
-                            {
-                                await _guildEngine.ContributeEquipmentAsync(pId, guildId, instanceId);
-                            }
-                            _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                        });
-                    }
                     else if (cmd.Command == CommandType.ReloadState)
                     {
+                        // Modul: STAYS INLINE, deliberately not in the dispatch
+                        // table. Server-internal session lifecycle: its result
+                        // lands through StateReloadQueue, whose drain calls
+                        // AddActivePlayer - the pair belongs with whatever owns
+                        // _activePlayers.
+                        //
                         // Modul: RELOAD NOW ACTUALLY RELOADS.
                         //
                         // This set IsSuspended = false and nothing else. Every
@@ -2369,281 +1646,6 @@ namespace FolkIdle.Server.Domain.Combat
                             _playerRegistry.StateReloadQueue.Enqueue(reloaded);
                         });
                     }
-                    else if (cmd.Command == CommandType.PurchaseLegacyUnlocks)
-                    {
-                        if (!ClientCommandValidator.ValidateLegacyStoreRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint unlockId = cmd.TargetUnlockId;
-                        uint slotIndex = cmd.RequestedSlotIndex;
-
-                        SafeDispatchAsync("Legacy.PurchaseUnlock", pId, async () => {
-                            await _legacyStoreEngine.PurchaseLegacyUnlockAsync(pId, unlockId, slotIndex);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.DepositGuildMaterial)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildDepositRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        long guildId = currentPayload.GuildId;
-                        uint materialId = cmd.MaterialId;
-                        uint quantity = cmd.DepositQuantity;
-
-                        SafeDispatchAsync("Guild.DepositMaterial", pId, async () => {
-                            await _guildLogisticsDepotEngine.DepositMaterialAsync(pId, guildId, materialId, quantity);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.LaunchGuildRaid)
-                    {
-                        long raidGuildId = currentPayload.GuildId;
-                        long raidRequestingPlayerId = currentPayload.PlayerId;
-                        if (raidGuildId > 0 && _guildRaidEngine != null)
-                        {
-                            // No single player to disconnect on failure here -
-                            // raidGuildId identifies a guild, not a player, and
-                            // passing it as playerIdToDisconnectOnFailure would
-                            // force-disconnect whichever unrelated player, if
-                            // any, happens to share that numeric id. Leader-only
-                            // enforcement happens inside TryStartRaidAsync
-                            // itself, against the locked GuildMembers row - a
-                            // non-leader's request simply rolls back with no
-                            // effect, matching every other rejected-command
-                            // path in this engine.
-                            SafeDispatchAsync("Guild.LaunchRaid", 0L, async () => {
-                                await _guildRaidEngine.TryStartRaidAsync(raidGuildId, raidRequestingPlayerId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.EquipItem)
-                    {
-                        long equipPlayerId = currentPayload.PlayerId;
-                        long equipItemId = cmd.TargetId;
-                        // Modul: per-character equipment. TargetGuid names which
-                        // character puts the item on. Guid.Empty - what every
-                        // client that predates the roster sends - resolves to the
-                        // main character, so old behaviour is preserved exactly.
-                        System.Guid equipCharacterId = cmd.TargetGuid;
-                        if (equipItemId > 0 && _equipmentSlotEngine != null)
-                        {
-                            SafeDispatchAsync("Equipment.Equip", equipPlayerId, async () => {
-                                await _equipmentSlotEngine.EquipItemAsync(equipPlayerId, equipItemId, equipCharacterId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.UnequipItem)
-                    {
-                        long unequipPlayerId = currentPayload.PlayerId;
-                        // Modul: per-character equipment. Wire mapping widened
-                        // from three slots to six. TargetId now carries the slot
-                        // index directly (0 Weapon, 1 Helmet, 2 Chest, 3 Gloves,
-                        // 4 Leggings, 5 Boots).
-                        //
-                        // The one legacy case that must keep working is a client
-                        // that predates this and sends TargetId 0 with the old
-                        // IsBuy flag meaning weapon(0)/armor(1): TargetId 0 plus
-                        // IsBuy set is therefore read as the Chest slot, which is
-                        // where the old single "Armor" slot's contents now live.
-                        int unequipSlot = cmd.TargetId == 0L && cmd.IsBuy != 0
-                            ? EquipmentSlotEngine.SlotChest
-                            : (int)cmd.TargetId;
-                        System.Guid unequipCharacterId = cmd.TargetGuid;
-                        if (_equipmentSlotEngine != null)
-                        {
-                            SafeDispatchAsync("Equipment.Unequip", unequipPlayerId, async () => {
-                                await _equipmentSlotEngine.UnequipItemAsync(unequipPlayerId, unequipSlot, unequipCharacterId);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.StockFoodSlot)
-                    {
-                        // Modul: larder. Deliberately does NOT terminate the
-                        // session on a bad request. Every field here is
-                        // player-chosen from a UI list (which slot, which food,
-                        // how many), so a stale client sending a food id that no
-                        // longer exists is a mistake to report, not evidence of
-                        // tampering - and TerminateSessionForSecurity for a
-                        // mis-click is exactly the failure mode that made eating
-                        // food force-disconnect players before AlchemyCompendium
-                        // was fixed. LarderEngine validates and reports through
-                        // the CommandResult ring buffer instead.
-                        long larderPlayerId = currentPayload.PlayerId;
-                        int larderSlot = (int)cmd.TargetSlotIndex;
-                        int larderFoodId = (int)cmd.ConsumableItemId;
-                        int larderQuantity = (int)Math.Min(cmd.DepositQuantity, (uint)Network.LarderLimits.SlotCapacity);
-
-                        if (_larderEngine != null)
-                        {
-                            SafeDispatchAsync("Larder.StockFoodSlot", larderPlayerId, async () => {
-                                await _larderEngine.ExecuteStockFoodSlotAsync(larderPlayerId, larderSlot, larderFoodId, larderQuantity);
-                            });
-                        }
-                    }
-                    else if (cmd.Command == CommandType.ExecuteCombatTurn)
-                    {
-                        if (!ClientCommandValidator.ValidateCombatTurnRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        long guildId = currentPayload.GuildId;
-                        ClientCommandPacket capturedCommand = cmd;
-
-                        SafeDispatchAsync("GuildCombat.ExecuteTurn", pId, async () => {
-                            var result = await _guildCombatSimulationEngine.ExecuteCombatTurnAsync(pId, guildId, capturedCommand);
-                            if (result == GuildCombatTurnResult.InvalidRequest || result == GuildCombatTurnResult.NotFound)
-                            {
-                                _networkSystem.PurgeTokensForPlayer(pId);
-                                _networkSystem.ForceDisconnect(pId);
-                            }
-                        });
-                    }
-                    else if (cmd.Command == CommandType.SetSimulationSpeed)
-                    {
-                        int requestedMultiplier = (int)cmd.TargetId;
-                        if (requestedMultiplier == 1 || requestedMultiplier == 2 || requestedMultiplier == 4)
-                        {
-                            if (currentPayload.AccumulatedTimeBankMs > 0)
-                            {
-                                currentPayload.SpeedMultiplier = requestedMultiplier;
-                                currentPayload.IsDirty = true;
-                            }
-                            else if (requestedMultiplier == 1)
-                            {
-                                currentPayload.SpeedMultiplier = 1;
-                                currentPayload.IsDirty = true;
-                            }
-                        }
-                    }
-                    else if (cmd.Command == CommandType.UpdateAutoEatThreshold)
-                    {
-                        int thresholdValue = cmd.LimitPrice;
-                        if (!ClientCommandValidator.ValidateCombatConfiguration(ref currentPayload, thresholdValue))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-                        currentPayload.AutoEatThreshold = thresholdValue;
-
-                        // Modul: larder. This used to write the live payload and
-                        // nothing else, so a player's chosen auto-eat threshold
-                        // was silently discarded at every logout and reverted to
-                        // the default on the next login.
-                        if (_larderEngine != null)
-                        {
-                            long thresholdPlayerId = currentPayload.PlayerId;
-                            int persistedThreshold = thresholdValue;
-                            SafeDispatchAsync("Larder.PersistAutoEatThreshold", thresholdPlayerId, async () => {
-                                await _larderEngine.PersistAutoEatThresholdAsync(thresholdPlayerId, persistedThreshold);
-                            });
-                        }
-                        currentPayload.IsDirty = true;
-                    }
-                    else if (cmd.Command == CommandType.AttackWorldBoss)
-                    {
-                        if (!ClientCommandValidator.ValidateWorldBossAttackRequest(
-                            ref currentPayload,
-                            ref cmd,
-                            WorldBossEngine.ActiveBossInstanceId,
-                            _worldBossEngine.IsBossDead(),
-                            _worldBossEngine.IsEventActive))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        // Modul 06/15: Auto-Eat food depletion also closes a
-                        // player's World Boss battle session, alongside the
-                        // 300-second cap enforced inside WorldBossEngine itself.
-                        bool attackAutoEatDepleted = currentPayload.Food1_Count <= 0 && currentPayload.Food2_Count <= 0 && currentPayload.Food3_Count <= 0;
-
-                        // Modul: skill tree, Giantslayer. The most generous
-                        // branch in the tree - 40% at cap - because the world
-                        // boss is its own activity on its own timer and cannot
-                        // reach a region's pacing however large it grows.
-                        //
-                        // Applied HERE rather than inside WorldBossEngine: the
-                        // engine takes a damage figure and has no player state
-                        // to read a tree level from, and passing the payload in
-                        // would hand it far more than it needs.
-                        float giantslayerPct = SkillTreeRegistry.GetBonusPercent(
-                            SkillTreeRegistry.BranchWorldBossDamage, currentPayload.Skill_WorldBossDamage);
-
-                        // Modul: THE SERVER ANSWERS "how hard does this player
-                        // hit" ITSELF NOW.
-                        //
-                        // This used to read cmd.ClientPredictedDamage - a
-                        // figure the client computed about its own character
-                        // and posted, bounded only by a 100,000,000 clamp
-                        // inside WorldBossEngine. The same number the live tick
-                        // swings with is already on the payload, cached once per
-                        // tick, so there was never a reason to ask the client.
-                        //
-                        // In whole hit points, because the boss's health pool is
-                        // whole rather than milli.
-                        long serverAttack = currentPayload.CachedEffectiveMilliAttack / 1000L;
-                        if (serverAttack < 1L) serverAttack = 1L;
-
-                        uint bossDamage = (uint)Math.Min(
-                            uint.MaxValue,
-                            (double)serverAttack * (1.0 + (giantslayerPct / 100.0)));
-
-                        _worldBossEngine.QueueAttack(
-                            currentPayload.PlayerId,
-                            cmd.TargetedBossId,
-                            bossDamage,
-                            cmd.TargetedPlateIndex,
-                            attackAutoEatDepleted);
-                    }
-                    else if (cmd.Command == CommandType.RegisterPushToken)
-                    {
-                        if (!ClientCommandValidator.ValidateDeviceRegistrationRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        byte[] deviceToken = CopyDeviceTokenBytes(ref cmd);
-                        _pushNotificationTriggerEngine.QueueDeviceRegistration(currentPayload.PlayerId, deviceToken, cmd.TargetPlatformFamily);
-                    }
-                    else if (cmd.Command == CommandType.TriggerGdprPurge)
-                    {
-                        if (!ClientCommandValidator.ValidateGdprPurgeRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        _compliancePurgeEngine.QueueGdprPurge(currentPayload.PlayerId);
-                        TerminateSessionForSecurity(routingPlayerId);
-                    }
-                    else if (cmd.Command == CommandType.SwitchLanguage)
-                    {
-                        if (!ClientCommandValidator.ValidateLanguageSwitchRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        currentPayload.ActiveLanguageState = cmd.TargetLanguageId;
-                        currentPayload.IsDirty = true;
-                    }
                     // CommandType.RegisterWorldBossDamage (19) was retired here.
                     // It was a second entry point into the same
                     // WorldBossEngine.QueueAttack that AttackWorldBoss already
@@ -2654,6 +1656,11 @@ namespace FolkIdle.Server.Domain.Combat
                     // No client path ever sent it, so it was pure attack surface.
                     else if (cmd.Command == CommandType.Logout)
                     {
+                        // Modul: STAYS INLINE, deliberately not in the dispatch
+                        // table. Server-internal session lifecycle: it is the
+                        // flush-and-remove path CLAUDE.md records as broken by
+                        // the epoch gate once already, and removing a player
+                        // is SimulationEngine's job, not a coordinator's.
                         currentPayload.LastLogoutTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         currentPayload.IsDirty = true;
                         _checkpointManager.FlushStateAndAdvance(ref currentPayload);
@@ -2662,121 +1669,6 @@ namespace FolkIdle.Server.Domain.Combat
                         // PlayerSessionRegistry registration itself - see
                         // its own doc comment.
                         RemoveActivePlayer(routingPlayerId);
-                    }
-                    else if (cmd.Command == CommandType.SubmitPurchaseReceipt)
-                    {
-                        long pId = currentPayload.PlayerId;
-                        string transactionId = "";
-                        unsafe {
-                            byte* ptr = cmd.RawTransactionReceipt;
-                            transactionId = System.Text.Encoding.UTF8.GetString(ptr, 64).TrimEnd('\0');
-                        }
-
-                        // Modul: Production Release Hardening, Part 1. This
-                        // used to build productId as the literal string
-                        // "Product_{hash}", which could never match a real
-                        // GameBalanceConfig.json key
-                        // (ResolvePremiumDiamondsForProduct's dictionary
-                        // lookup would always miss, silently resolving to 0
-                        // diamonds) - previously broken for every purchase
-                        // submitted through this command, a real financial
-                        // blocker. TryResolveProductIdFromHash resolves the
-                        // client-computed FNV-1a hash back to the real
-                        // product id via ContentRegistry's own reverse
-                        // lookup table (built once at boot, see
-                        // ContentRegistry.Initialize), never throwing on an
-                        // unresolved hash.
-                        //
-                        // Bulletproof fallback: if the hash does not
-                        // resolve (a stale client build, a corrupted
-                        // packet, or simply hash 0 from an
-                        // uninitialized/never-set client field), fall back
-                        // to treating transactionId itself as a cleartext
-                        // product id - this WebSocket command's only other
-                        // string payload - and accept it if it is a real,
-                        // known catalog entry. Genuine cryptographic
-                        // signed-receipt verification (where a cleartext
-                        // product id is extracted from a verified Apple/
-                        // Google payload) already exists as a separate,
-                        // correct path - VerifyReceiptAsync, reached only
-                        // through the REST /api/v1/billing/verify endpoint,
-                        // which is the only place a real signed receipt can
-                        // actually be carried (this 64-byte WebSocket
-                        // packet never could). Neither branch here ever
-                        // throws - an unresolved product id simply falls
-                        // through to VerifyPurchaseAsync's own existing
-                        // premiumAmount <= 0 rejection.
-                        if (!ContentRegistry.TryResolveProductIdFromHash(cmd.TargetProductIdHash, out string productId))
-                        {
-                            productId = transactionId;
-                        }
-
-                        SafeDispatchAsync("Billing.VerifyPurchase", pId, async () => {
-                            bool success = await _billingVerificationEngine.VerifyPurchaseAsync(pId, transactionId, productId);
-                            if (success) {
-                                _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                            }
-                        });
-                    }
-                    else if (cmd.Command == CommandType.SyncBillingStatus)
-                    {
-                        // Modul: reconciles the live in-memory
-                        // TickStatePayload.PremiumCurrency against the
-                        // database-authoritative PlayerRecords.
-                        // PremiumDiamonds - the client calls this after
-                        // returning from a store purchase flow that was
-                        // verified through the REST
-                        // /api/v1/billing/verify endpoint (see
-                        // BillingVerificationEngine.VerifyReceiptAsync),
-                        // which writes directly to the database and never
-                        // touches this session's in-memory payload. Reads
-                        // the balance rather than re-running verification
-                        // on a stored receipt, since no such "pending
-                        // unapplied record" is ever persisted here - every
-                        // receipt is verified synchronously at submission
-                        // time by BillingVerificationEngine, either via
-                        // that REST endpoint or via
-                        // CommandType.SubmitPurchaseReceipt above.
-                        long syncPlayerId = currentPayload.PlayerId;
-                        SafeDispatchAsync("Billing.SyncStatus", syncPlayerId, async () =>
-                        {
-                            await using var syncDb = await _contextFactory.CreateDbContextAsync();
-                            int? balance = await syncDb.PlayerRecords
-                                .AsNoTracking()
-                                .Where(p => p.Id == syncPlayerId)
-                                .Select(p => (int?)p.PremiumDiamonds)
-                                .SingleOrDefaultAsync();
-
-                            if (balance.HasValue)
-                            {
-                                _playerRegistry.BillingSyncQueue.Enqueue(new BillingSyncNotification
-                                {
-                                    PlayerId = syncPlayerId,
-                                    PremiumDiamondsBalance = balance.Value
-                                });
-                            }
-                        });
-                    }
-                    else if (cmd.Command == CommandType.ReportUiContextSwitch)
-                    {
-                        currentPayload.ActiveUiContextBitmask = cmd.ActiveUiContextBitmask;
-                        currentPayload.IsDirty = true;
-                    }
-                    // Modul: RequestUnlockSkill and RequestCastSkill are RETIRED,
-                    // with the four active skills they drove. Measured, that
-                    // rotation was +90% damage - +136% with the status synergy -
-                    // available only to a player clicking every three seconds,
-                    // in a game whose whole premise is not clicking. See
-                    // SkillTreeRegistry for what the points buy now.
-                    //
-                    // Ignored rather than rejected, like CommandType.CraftItem:
-                    // a client still sending them is a stale bundle, not an
-                    // attack, and disconnecting a tab that has not reloaded
-                    // teaches nobody anything.
-                    else if (cmd.Command == CommandType.RequestUnlockSkill
-                             || cmd.Command == CommandType.RequestCastSkill)
-                    {
-                        // Deliberately empty.
                     }
                 }
 
@@ -4803,29 +3695,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (ContentRegistry.TryGetRecipeByActivityId(payload.ActiveActivityId, out var craftingRecipe))
             {
-                // Modul: crafting as an assignable job. CraftingTimeMs was
-                // authored on all 104 recipes and read by nothing - a craft
-                // was instant and needed no character. It is now a job like
-                // any other: one assigned character, real elapsed time, and
-                // it repeats until the player stops it or runs out of
-                // materials (CraftingEngine refuses the craft, the tick keeps
-                // counting, and the halt shows up as nothing being produced).
-                int craftTicks = craftingRecipe.CraftingTimeMs / 100;
-                if (craftTicks < MinCraftTicks) craftTicks = MinCraftTicks;
-
-                payload.RequiredProgressTicks = craftTicks;
-                payload.GatheringProgressTicks++;
-
-                if (payload.GatheringProgressTicks >= craftTicks)
-                {
-                    payload.GatheringProgressTicks = 0;
-                    payload.HarvestLoopCount++;
-                    CraftingTickQueue.Enqueue(new CraftTickCompletion
-                    {
-                        PlayerId = payload.PlayerId,
-                        ResultItemId = craftingRecipe.ResultItemId
-                    });
-                }
+                RunCraftingProgressTick(ref payload, in craftingRecipe);
 
                 // Modul: dispatch exclusivity, 2026-09-17. This branch had no
                 // return, unlike the gathering branch immediately below it -
@@ -4842,183 +3712,45 @@ namespace FolkIdle.Server.Domain.Combat
             }
             else if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out var gatheringNode))
             {
-                int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
-
-                // Modul: Deferred Part 5 Implementation, Parts 1/3. The
-                // required-tick math (legacy flat reductions + the tool
-                // family's percentage speed bonus + the village production
-                // building's +5 percent per level) lives in
-                // GatheringToolEngine.ComputeRequiredTicks - pure integer
-                // arithmetic over unmanaged payload ids, zero allocation on
-                // this 10Hz path. Lumberjack accelerates Woodcutting, Mine
-                // accelerates Mining.
-                // Only Woodcutting and Mining have a village production
-                // building. Fishing and Herbalism get no acceleration rather
-                // than silently borrowing the Mine's.
-                int villageProductionLevel = gatheringNode.ProfessionType switch
-                {
-                    0 => payload.LumberjackLevel,
-                    1 => payload.MineLevel,
-                    _ => 0
-                };
-                // Modul: the tool that matches the job. This passed
-                // CachedCurrentToolTier, which was the forge building's level -
-                // so an axe sped up fishing, a rod sped up mining, and owning
-                // no tool at all made no difference either way.
-                int toolTier = gatheringNode.ProfessionType switch
-                {
-                    0 => payload.AxeToolTier,
-                    1 => payload.PickaxeToolTier,
-                    _ => payload.RodToolTier
-                };
-                int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct
-                    + SkillTreeRegistry.GetBonusTenthsOfPercent(
-                        SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
-                    + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask)));
-                payload.RequiredProgressTicks = requiredTicks;
-                payload.GatheringProgressTicks++;
-
-                if (payload.GatheringProgressTicks >= requiredTicks)
-                {
-                    payload.GatheringProgressTicks = 0;
-                    payload.HarvestLoopCount++;
-
-                    int masteryXpGain = gatheringNode.BaseMasteryXpReward;
-                    ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, masteryXpGain);
-                    AddSeasonalXp(ref payload, masteryXpGain);
-
-                    // Loot roll
-                    var lootTable = ContentRegistry.GetLootTable(gatheringNode.ActivityId);
-                    if (lootTable.Length > 0)
-                    {
-                        int gatherActiveAgePhase = 1;
-                        int gatherActiveRaceId = 0;
-                        if (payload.Slot1_CharacterId != System.Guid.Empty)
-                        {
-                            gatherActiveAgePhase = payload.Slot1_AgePhase;
-                            gatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
-                        }
-                        var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
-
-                        int monolithLevel = gatheringNode.ProfessionType switch
-                        {
-                            0 => payload.CachedWoodcuttingMonolithLevel,
-                            1 => payload.CachedMiningMonolithLevel,
-                            _ => 0
-                        };
-                        float yieldBonusPct = Math.Min(monolithLevel * 1.0f, 50.0f);
-                        int additionalYieldBonus = (int)(100f * (yieldBonusPct / 100f)); // Add to multiplier
-
-                        // Modul 13: Kobold ore duplication (Mining) / Moosleute yield
-                        // bonus. Fishing (ProfessionType 2) and Herbalism
-                        // (ProfessionType 3) fall through to the Moosleute
-                        // branch below along with Woodcutting - Kobold's ore
-                        // duplication is intentionally Mining-specific, and
-                        // no dedicated racial bonus exists yet for Fishing/
-                        // Herbalism, so Moosleute's "double harvest" is
-                        // applied to them as the closest available bonus
-                        // rather than granting neither profession any
-                        // racial yield bonus at all.
-                        if (gatheringNode.ProfessionType == 1)
-                        {
-                            additionalYieldBonus += (int)RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel);
-                            // Modul 13.4.3: Kobold's innate baseline (not mastery-scaled).
-                            additionalYieldBonus += (int)gatherCombatStats.MiningOreDuplicationBonusPct;
-                        }
-                        else
-                        {
-                            additionalYieldBonus += (int)RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel);
-                            // Modul 13.4.3: Moosleute's innate baseline (not mastery-scaled).
-                            additionalYieldBonus += (int)gatherCombatStats.WoodcuttingYieldBonusPct;
-                        }
-
-                        if (ActiveGlobalEventId == 1) // GoldenHarvest
-                        {
-                            additionalYieldBonus += 20;
-                        }
-
-                        // Modul: yield traits, which replaced the Yield gene on
-                        // 2026-09-13 - percentage points of extra harvest rolls, the
-                        // same units as the race-mastery bonuses above.
-                        additionalYieldBonus += BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask));
-
-                        // Modul: LootLuckPct no longer multiplies the roll COUNT
-                        // (which previously inflated absolute yield of every
-                        // table entry, common trash and rare drops alike, in
-                        // fixed proportion - a placebo that never actually
-                        // shifted rarity odds). Roll count now stays driven only
-                        // by monolith/race/event/trait bonuses; luck
-                        // instead adds a flat weight bonus to every entry below,
-                        // which mathematically favors low-weight (rare) entries
-                        // far more than high-weight (common/trash) ones, since a
-                        // fixed addition is a much larger relative increase for
-                        // a small base weight than a large one.
-                        int luckWeightBonus = (int)(gatherCombatStats.LootLuckPct * 0.1f);
-                        if (luckWeightBonus < 0) luckWeightBonus = 0;
-
-                        int totalWeight = 0;
-                        for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight + luckWeightBonus;
-                        if (totalWeight > 0)
-                        {
-                            int multiplier = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier);
-                            int guaranteedRolls = multiplier / 100;
-                            int fractionalBonus = multiplier % 100;
-                            int rollsToExecute = guaranteedRolls;
-                            if (fractionalBonus > 0 && Random.Shared.Next(100) < fractionalBonus)
-                            {
-                                rollsToExecute++;
-                            }
-                            for (int r = 0; r < rollsToExecute; r++)
-                            {
-                                int roll = Random.Shared.Next(totalWeight);
-                                int currentWeight = 0;
-                                for (int i = 0; i < lootTable.Length; i++)
-                                {
-                                    currentWeight += lootTable[i].Weight + luckWeightBonus;
-                                    if (roll < currentWeight)
-                                    {
-                                        // Modul 04: Kobold's packed-weight penalty -
-                                        // anything other than raw ores/refined bars
-                                        // consumes 2 virtual capacity slots instead
-                                        // of 1. Breaching the cap drops this item
-                                        // (and stops this cycle's remaining rolls
-                                        // entirely, matching "0% efficiency" on
-                                        // overflow) while gold/XP already granted
-                                        // above are preserved.
-                                        // Modul: THE GATHERED ITEM IS ACTUALLY
-                                        // GRANTED. This block used to compute a
-                                        // Kobold carry weight, spend a backpack
-                                        // slot and break - with no write to
-                                        // CommodityRecords anywhere on the
-                                        // gathering path. The winner was picked
-                                        // and dropped on the floor.
-                                        //
-                                        // The Kobold penalty went with the
-                                        // backpack: it was a rule about carrying
-                                        // capacity, and there is no capacity to
-                                        // penalise now that storage is one
-                                        // unlimited chest.
-                                        int grantQuantity = lootTable[i].MaxQuantity > lootTable[i].MinQuantity
-                                            ? Random.Shared.Next(Math.Max(1, lootTable[i].MinQuantity), lootTable[i].MaxQuantity + 1)
-                                            : 1;
-
-                                        CombatLootEngine.GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
-                                        {
-                                            PlayerId = payload.PlayerId,
-                                            ActivityId = payload.ActiveActivityId,
-                                            ItemId = lootTable[i].ItemId,
-                                            Quantity = grantQuantity
-                                        });
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                RunGatheringTick(ref payload, in gatheringNode, localDropMultiplier);
                 return;
             }
 
+            RunCombatTick(ref payload, localXpMultiplier, localDropMultiplier, guildWarPointQueue, liveSessionContexts);
+        }
+
+        /// <summary>
+        /// Monster combat resolution for one tick - spawn, the player's swing,
+        /// the monster's reply, auto-eat, death, and kill rewards. Extracted
+        /// verbatim from ProcessSubTick, where it is what runs when neither
+        /// activity branch above it claimed the tick.
+        ///
+        /// Modul: THE EARLY `return` IN THE DEATH BRANCH IS LOAD-BEARING. It
+        /// is the only thing that keeps "died this tick" and "killed something
+        /// this tick" mutually exclusive within one call - the kill-reward
+        /// block below is reached only because a death returned before it. It
+        /// sits inside the `!TryInterceptLethalDamage` block on purpose, so a
+        /// Death Ward intercept is NOT a death and can still land a kill in
+        /// the same tick. Do not split this into always-both-called
+        /// ResolveDeath/ResolveKillReward methods; the exclusivity would have
+        /// to be reproduced explicitly and there is nothing today that would
+        /// catch it if it were reproduced wrongly. Returning from THIS method
+        /// is the same as returning from ProcessSubTick only because this call
+        /// is the last statement there - keep it last.
+        ///
+        /// Callable ONLY from ProcessSubTick. The slot register's
+        /// swap/try/finally discipline lives one level up in
+        /// ProcessAllSlotSubTicks; a caller that bypasses it leaves the wrong
+        /// character's gear, HP and activity "active" for every subsequent
+        /// read after any throw in here.
+        /// </summary>
+        private static void RunCombatTick(
+            ref TickStatePayload payload,
+            int localXpMultiplier,
+            int localDropMultiplier,
+            System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent> guildWarPointQueue,
+            System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts)
+        {
             int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
 
             int lineageId = payload.SelectedLineageId;
@@ -5034,7 +3766,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
-            
+
             // Modul: the base pool is a CURVE now, not a constant - see
             // ProgressionEngine.BaseMilliHpForLevel. A flat 100 against monster
             // attack that goes up 4.2x a region is why region 5 one-shot
@@ -5850,7 +4582,7 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 AddSeasonalXp(ref payload, seasonalCombatXp);
-                
+
                 if (liveSessionContexts.TryGetValue(payload.PlayerId, out var sessionCtx))
                 {
                     sessionCtx.ThreadSafeAddMonsterKill();
@@ -5915,7 +4647,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     codexRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
                 }
-                
+
                 CodexEngine.KillEventQueue.Enqueue(new KillEvent
                 {
                     PlayerId = payload.PlayerId,
@@ -6000,7 +4732,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     int totalWeight = 0;
                     for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
-                    
+
                     if (totalWeight > 0)
                     {
                         int multiplier = (int)(localDropMultiplier * payload.CachedCodexYieldMultiplier);
@@ -6051,6 +4783,237 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.CurrentMonsterId = fallbackId;
                 payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
+            }
+        }
+
+        /// <summary>
+        /// Gathering progress, yield and grants for one tick. Extracted
+        /// verbatim from ProcessSubTick's second activity branch.
+        ///
+        /// Modul: the branch's trailing `return;` stays at the CALL SITE -
+        /// returning from this method cannot make ProcessSubTick return, and a
+        /// gathering character that fell through would start fighting
+        /// monster 1 while gathering (the defect PR #7 fixed for crafting).
+        ///
+        /// Callable ONLY from ProcessSubTick: the slot register's
+        /// swap/try/finally discipline lives one level up in
+        /// ProcessAllSlotSubTicks.
+        /// </summary>
+        private static void RunGatheringTick(ref TickStatePayload payload, in GatheringNodeDefinition gatheringNode, int localDropMultiplier)
+        {
+            int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
+
+            // Modul: Deferred Part 5 Implementation, Parts 1/3. The
+            // required-tick math (legacy flat reductions + the tool
+            // family's percentage speed bonus + the village production
+            // building's +5 percent per level) lives in
+            // GatheringToolEngine.ComputeRequiredTicks - pure integer
+            // arithmetic over unmanaged payload ids, zero allocation on
+            // this 10Hz path. Lumberjack accelerates Woodcutting, Mine
+            // accelerates Mining.
+            // Only Woodcutting and Mining have a village production
+            // building. Fishing and Herbalism get no acceleration rather
+            // than silently borrowing the Mine's.
+            int villageProductionLevel = gatheringNode.ProfessionType switch
+            {
+                0 => payload.LumberjackLevel,
+                1 => payload.MineLevel,
+                _ => 0
+            };
+            // Modul: the tool that matches the job. This passed
+            // CachedCurrentToolTier, which was the forge building's level -
+            // so an axe sped up fishing, a rod sped up mining, and owning
+            // no tool at all made no difference either way.
+            int toolTier = gatheringNode.ProfessionType switch
+            {
+                0 => payload.AxeToolTier,
+                1 => payload.PickaxeToolTier,
+                _ => payload.RodToolTier
+            };
+            int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct
+                + SkillTreeRegistry.GetBonusTenthsOfPercent(
+                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
+                + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask)));
+            payload.RequiredProgressTicks = requiredTicks;
+            payload.GatheringProgressTicks++;
+
+            if (payload.GatheringProgressTicks >= requiredTicks)
+            {
+                payload.GatheringProgressTicks = 0;
+                payload.HarvestLoopCount++;
+
+                int masteryXpGain = gatheringNode.BaseMasteryXpReward;
+                ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, masteryXpGain);
+                AddSeasonalXp(ref payload, masteryXpGain);
+
+                // Loot roll
+                var lootTable = ContentRegistry.GetLootTable(gatheringNode.ActivityId);
+                if (lootTable.Length > 0)
+                {
+                    int gatherActiveAgePhase = 1;
+                    int gatherActiveRaceId = 0;
+                    if (payload.Slot1_CharacterId != System.Guid.Empty)
+                    {
+                        gatherActiveAgePhase = payload.Slot1_AgePhase;
+                        gatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
+                    }
+                    var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
+
+                    int monolithLevel = gatheringNode.ProfessionType switch
+                    {
+                        0 => payload.CachedWoodcuttingMonolithLevel,
+                        1 => payload.CachedMiningMonolithLevel,
+                        _ => 0
+                    };
+                    float yieldBonusPct = Math.Min(monolithLevel * 1.0f, 50.0f);
+                    int additionalYieldBonus = (int)(100f * (yieldBonusPct / 100f)); // Add to multiplier
+
+                    // Modul 13: Kobold ore duplication (Mining) / Moosleute yield
+                    // bonus. Fishing (ProfessionType 2) and Herbalism
+                    // (ProfessionType 3) fall through to the Moosleute
+                    // branch below along with Woodcutting - Kobold's ore
+                    // duplication is intentionally Mining-specific, and
+                    // no dedicated racial bonus exists yet for Fishing/
+                    // Herbalism, so Moosleute's "double harvest" is
+                    // applied to them as the closest available bonus
+                    // rather than granting neither profession any
+                    // racial yield bonus at all.
+                    if (gatheringNode.ProfessionType == 1)
+                    {
+                        additionalYieldBonus += (int)RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel);
+                        // Modul 13.4.3: Kobold's innate baseline (not mastery-scaled).
+                        additionalYieldBonus += (int)gatherCombatStats.MiningOreDuplicationBonusPct;
+                    }
+                    else
+                    {
+                        additionalYieldBonus += (int)RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel);
+                        // Modul 13.4.3: Moosleute's innate baseline (not mastery-scaled).
+                        additionalYieldBonus += (int)gatherCombatStats.WoodcuttingYieldBonusPct;
+                    }
+
+                    if (ActiveGlobalEventId == 1) // GoldenHarvest
+                    {
+                        additionalYieldBonus += 20;
+                    }
+
+                    // Modul: yield traits, which replaced the Yield gene on
+                    // 2026-09-13 - percentage points of extra harvest rolls, the
+                    // same units as the race-mastery bonuses above.
+                    additionalYieldBonus += BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask));
+
+                    // Modul: LootLuckPct no longer multiplies the roll COUNT
+                    // (which previously inflated absolute yield of every
+                    // table entry, common trash and rare drops alike, in
+                    // fixed proportion - a placebo that never actually
+                    // shifted rarity odds). Roll count now stays driven only
+                    // by monolith/race/event/trait bonuses; luck
+                    // instead adds a flat weight bonus to every entry below,
+                    // which mathematically favors low-weight (rare) entries
+                    // far more than high-weight (common/trash) ones, since a
+                    // fixed addition is a much larger relative increase for
+                    // a small base weight than a large one.
+                    int luckWeightBonus = (int)(gatherCombatStats.LootLuckPct * 0.1f);
+                    if (luckWeightBonus < 0) luckWeightBonus = 0;
+
+                    int totalWeight = 0;
+                    for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight + luckWeightBonus;
+                    if (totalWeight > 0)
+                    {
+                        int multiplier = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier);
+                        int guaranteedRolls = multiplier / 100;
+                        int fractionalBonus = multiplier % 100;
+                        int rollsToExecute = guaranteedRolls;
+                        if (fractionalBonus > 0 && Random.Shared.Next(100) < fractionalBonus)
+                        {
+                            rollsToExecute++;
+                        }
+                        for (int r = 0; r < rollsToExecute; r++)
+                        {
+                            int roll = Random.Shared.Next(totalWeight);
+                            int currentWeight = 0;
+                            for (int i = 0; i < lootTable.Length; i++)
+                            {
+                                currentWeight += lootTable[i].Weight + luckWeightBonus;
+                                if (roll < currentWeight)
+                                {
+                                    // Modul 04: Kobold's packed-weight penalty -
+                                    // anything other than raw ores/refined bars
+                                    // consumes 2 virtual capacity slots instead
+                                    // of 1. Breaching the cap drops this item
+                                    // (and stops this cycle's remaining rolls
+                                    // entirely, matching "0% efficiency" on
+                                    // overflow) while gold/XP already granted
+                                    // above are preserved.
+                                    // Modul: THE GATHERED ITEM IS ACTUALLY
+                                    // GRANTED. This block used to compute a
+                                    // Kobold carry weight, spend a backpack
+                                    // slot and break - with no write to
+                                    // CommodityRecords anywhere on the
+                                    // gathering path. The winner was picked
+                                    // and dropped on the floor.
+                                    //
+                                    // The Kobold penalty went with the
+                                    // backpack: it was a rule about carrying
+                                    // capacity, and there is no capacity to
+                                    // penalise now that storage is one
+                                    // unlimited chest.
+                                    int grantQuantity = lootTable[i].MaxQuantity > lootTable[i].MinQuantity
+                                        ? Random.Shared.Next(Math.Max(1, lootTable[i].MinQuantity), lootTable[i].MaxQuantity + 1)
+                                        : 1;
+
+                                    CombatLootEngine.GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
+                                    {
+                                        PlayerId = payload.PlayerId,
+                                        ActivityId = payload.ActiveActivityId,
+                                        ItemId = lootTable[i].ItemId,
+                                        Quantity = grantQuantity
+                                    });
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// Crafting-as-a-job progress for one tick. Extracted verbatim from
+        /// ProcessSubTick's first activity branch.
+        ///
+        /// Modul: the branch's `return;` stays at the CALL SITE in
+        /// ProcessSubTick, beside the comment that explains it (PR #7,
+        /// ProcessSubTickDispatchTests) - a return inside this method could
+        /// not stop ProcessSubTick falling through into combat.
+        ///
+        /// Callable ONLY from ProcessSubTick: the slot register's
+        /// swap/try/finally discipline lives one level up in
+        /// ProcessAllSlotSubTicks.
+        /// </summary>
+        private static void RunCraftingProgressTick(ref TickStatePayload payload, in ContentRegistry.RecipeDefinition craftingRecipe)
+        {
+            // Modul: crafting as an assignable job. CraftingTimeMs was
+            // authored on all 104 recipes and read by nothing - a craft
+            // was instant and needed no character. It is now a job like
+            // any other: one assigned character, real elapsed time, and
+            // it repeats until the player stops it or runs out of
+            // materials (CraftingEngine refuses the craft, the tick keeps
+            // counting, and the halt shows up as nothing being produced).
+            int craftTicks = craftingRecipe.CraftingTimeMs / 100;
+            if (craftTicks < MinCraftTicks) craftTicks = MinCraftTicks;
+
+            payload.RequiredProgressTicks = craftTicks;
+            payload.GatheringProgressTicks++;
+
+            if (payload.GatheringProgressTicks >= craftTicks)
+            {
+                payload.GatheringProgressTicks = 0;
+                payload.HarvestLoopCount++;
+                CraftingTickQueue.Enqueue(new CraftTickCompletion
+                {
+                    PlayerId = payload.PlayerId,
+                    ResultItemId = craftingRecipe.ResultItemId
+                });
             }
         }
     }

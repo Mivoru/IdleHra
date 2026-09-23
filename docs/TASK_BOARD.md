@@ -3053,6 +3053,25 @@ the wire.
 
 ## 21. `SimulationEngine.cs` is a single 6,650-line file spanning every subsystem (architecture, was P1)
 
+**ALL THREE PHASES DONE, 2026-09-23.** Phase 2 (command dispatch: the
+anti-cheat/epoch gate is `Domain/Shared/CommandGate.cs`, pinned by the new
+`CommandGateOrderingTests`; 61 commands go through a dispatch table in
+`CommandCoordinatorContext.cs` to per-domain `*TickCoordinator`s; only the
+challenge response, ChangeActivity, ReloadState and Logout stay inline)
+and Phase 3 (`ProcessSubTick`'s crafting/gathering/combat bodies are
+`RunCraftingProgressTick`/`RunGatheringTick`/`RunCombatTick`, PR #7's
+crafting `return` kept) were built by a background agent and reviewed
+independently. The file went from 6,057 to 5,020 lines. Zero existing
+test files changed. Review: no added line schedules work, no coordinator
+touches `_activePlayers`/`_guildMembersIndex`, `// Modul:` count 408 ->
+429, full suite twice clean (only this machine's Python test), and
+`npm run exercise` 146/146 against the refactored server (Task 3.4).
+Two defects surfaced on the way and were fixed separately: loot workers
+no test ever stopped draining the static queues into the wrong database
+(PR #15 - the real cause of the "all 20 gatherers got nothing" CI
+failure), and an exercise check that found a bred child by a name nine
+characters shared.
+
 **Phase 1 (the drain-plane extraction, Tasks 1.1–1.21) is DONE and MERGED,
 2026-09-23** — reviewed and merged directly to `main` (no PR; the branch
 had gone unreviewed for 4 days after the background agent that built it

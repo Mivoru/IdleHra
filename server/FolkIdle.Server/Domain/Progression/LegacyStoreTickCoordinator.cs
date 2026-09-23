@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using FolkIdle.Server.Domain.Shared;
 using FolkIdle.Server.Engine;
+using FolkIdle.Server.Network;
 
 namespace FolkIdle.Server.Domain.Progression
 {
@@ -55,6 +57,37 @@ namespace FolkIdle.Server.Domain.Progression
             {
                 payload.CachedLegacyPerks = legacyNotif.LegacyPerks;
             }
+        }
+
+        /// <summary>
+        /// CommandType.PurchaseLegacyUnlocks. Verbatim from
+        /// SimulationEngine.EngineLoop's dispatch chain.
+        ///
+        /// The rejection path is a DISCONNECT, not a CommandResult - the
+        /// branch chose that deliberately, and the per-branch choice between
+        /// ignore, report and disconnect is exactly what a dispatch table must
+        /// not flatten.
+        /// </summary>
+        internal static void HandlePurchaseLegacyUnlocks(
+            ref TickStatePayload currentPayload,
+            ref ClientCommandPacket cmd,
+            in CommandCoordinatorContext ctx)
+        {
+            if (!ClientCommandValidator.ValidateLegacyStoreRequest(ref currentPayload, ref cmd))
+            {
+                ctx.RemoveActivePlayer(ctx.RoutingPlayerId);
+                ctx.NetworkSystem.ForceDisconnect(ctx.RoutingPlayerId);
+                return;
+            }
+
+            long pId = currentPayload.PlayerId;
+            uint unlockId = cmd.TargetUnlockId;
+            uint slotIndex = cmd.RequestedSlotIndex;
+
+            var legacyStoreEngine = ctx.LegacyStoreEngine;
+            ctx.SafeDispatch("Legacy.PurchaseUnlock", pId, async () => {
+                await legacyStoreEngine.PurchaseLegacyUnlockAsync(pId, unlockId, slotIndex);
+            });
         }
     }
 }

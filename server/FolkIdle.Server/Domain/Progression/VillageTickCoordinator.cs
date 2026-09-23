@@ -1,3 +1,7 @@
+using System.Threading.Tasks;
+using System;
+using FolkIdle.Server.Network;
+using FolkIdle.Server.Domain.Shared;
 using System.Collections.Generic;
 using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Engine;
@@ -71,6 +75,88 @@ namespace FolkIdle.Server.Domain.Progression
             // alone - the same reasoning as BirthNotification.GoldSpent.
             payload.CurrentGold = System.Math.Max(0L, payload.CurrentGold - recruitmentNotif.GoldSpent);
             payload.IsDirty = true;
+        }
+
+        // Moved verbatim from EngineLoop: else if (cmd.Command == CommandType.UpgradeBuilding)
+        internal static void HandleUpgradeBuilding(
+            ref TickStatePayload currentPayload,
+            ref ClientCommandPacket cmd,
+            in CommandCoordinatorContext ctx)
+        {
+            if (!ClientCommandValidator.ValidateVillageManagementRequest(ref currentPayload, ref cmd))
+            {
+                ctx.RemoveActivePlayer(ctx.RoutingPlayerId);
+                ctx.NetworkSystem.PurgeTokensForPlayer(ctx.RoutingPlayerId);
+                ctx.NetworkSystem.ForceDisconnect(ctx.RoutingPlayerId);
+                return;
+            }
+
+            long pId = currentPayload.PlayerId;
+            uint buildingId = cmd.TargetBuildingId;
+            
+            var villageManagementEngine = ctx.VillageManagementEngine;
+            ctx.SafeDispatch("Village.UpgradeBuilding", pId, async () => {
+                await villageManagementEngine.ExecuteUpgradeBuildingAsync(pId, buildingId);
+            });
+        }
+
+        // Moved verbatim from EngineLoop: else if (cmd.Command == CommandType.EvictVillager)
+        internal static void HandleEvictVillager(
+            ref TickStatePayload currentPayload,
+            ref ClientCommandPacket cmd,
+            in CommandCoordinatorContext ctx)
+        {
+            if (!ClientCommandValidator.ValidateVillageManagementRequest(ref currentPayload, ref cmd))
+            {
+                ctx.RemoveActivePlayer(ctx.RoutingPlayerId);
+                ctx.NetworkSystem.PurgeTokensForPlayer(ctx.RoutingPlayerId);
+                ctx.NetworkSystem.ForceDisconnect(ctx.RoutingPlayerId);
+                return;
+            }
+
+            long pId = currentPayload.PlayerId;
+            uint villagerSlot = cmd.TargetVillagerSlot;
+
+            var villageManagementEngine = ctx.VillageManagementEngine;
+            ctx.SafeDispatch("Village.EvictVillager", pId, async () => {
+                await villageManagementEngine.ExecuteEvictVillagerAsync(pId, villagerSlot);
+            });
+        }
+
+        // Moved verbatim from EngineLoop: else if (cmd.Command == CommandType.RecruitVillager || cmd.Command == CommandType.DismissNewcomer)
+        internal static void HandleRecruitOrDismissVillager(
+            ref TickStatePayload currentPayload,
+            ref ClientCommandPacket cmd,
+            in CommandCoordinatorContext ctx)
+        {
+            // Modul: the village as something the player DOES. The
+            // recruitment price and the refusals were written and
+            // tested, DismissAsync existed, and neither had a way in -
+            // so a full village was a dead end and the gold sink the top
+            // of the economy lacks was unreachable.
+            if (!ClientCommandValidator.ValidateVillageRosterRequest(ref currentPayload, ref cmd))
+            {
+                ctx.RemoveActivePlayer(ctx.RoutingPlayerId);
+                ctx.NetworkSystem.PurgeTokensForPlayer(ctx.RoutingPlayerId);
+                ctx.NetworkSystem.ForceDisconnect(ctx.RoutingPlayerId);
+                return;
+            }
+
+            long pId = currentPayload.PlayerId;
+            bool isRecruit = cmd.Command == CommandType.RecruitVillager;
+            long newcomerId = cmd.TargetId;
+
+            var villageManagementEngine = ctx.VillageManagementEngine;
+            ctx.SafeDispatch(isRecruit ? "Village.Recruit" : "Village.Dismiss", pId, async () => {
+                if (isRecruit)
+                {
+                    await villageManagementEngine.ExecuteRecruitVillagerAsync(pId);
+                }
+                else
+                {
+                    await villageManagementEngine.ExecuteDismissNewcomerAsync(pId, newcomerId);
+                }
+            });
         }
     }
 }
