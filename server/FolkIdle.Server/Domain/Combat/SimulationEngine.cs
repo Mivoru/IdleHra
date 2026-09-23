@@ -3716,6 +3716,41 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
 
+            RunCombatTick(ref payload, localXpMultiplier, localDropMultiplier, guildWarPointQueue, liveSessionContexts);
+        }
+
+        /// <summary>
+        /// Monster combat resolution for one tick - spawn, the player's swing,
+        /// the monster's reply, auto-eat, death, and kill rewards. Extracted
+        /// verbatim from ProcessSubTick, where it is what runs when neither
+        /// activity branch above it claimed the tick.
+        ///
+        /// Modul: THE EARLY `return` IN THE DEATH BRANCH IS LOAD-BEARING. It
+        /// is the only thing that keeps "died this tick" and "killed something
+        /// this tick" mutually exclusive within one call - the kill-reward
+        /// block below is reached only because a death returned before it. It
+        /// sits inside the `!TryInterceptLethalDamage` block on purpose, so a
+        /// Death Ward intercept is NOT a death and can still land a kill in
+        /// the same tick. Do not split this into always-both-called
+        /// ResolveDeath/ResolveKillReward methods; the exclusivity would have
+        /// to be reproduced explicitly and there is nothing today that would
+        /// catch it if it were reproduced wrongly. Returning from THIS method
+        /// is the same as returning from ProcessSubTick only because this call
+        /// is the last statement there - keep it last.
+        ///
+        /// Callable ONLY from ProcessSubTick. The slot register's
+        /// swap/try/finally discipline lives one level up in
+        /// ProcessAllSlotSubTicks; a caller that bypasses it leaves the wrong
+        /// character's gear, HP and activity "active" for every subsequent
+        /// read after any throw in here.
+        /// </summary>
+        private static void RunCombatTick(
+            ref TickStatePayload payload,
+            int localXpMultiplier,
+            int localDropMultiplier,
+            System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent> guildWarPointQueue,
+            System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts)
+        {
             int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
 
             int lineageId = payload.SelectedLineageId;
@@ -3731,7 +3766,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
-            
+
             // Modul: the base pool is a CURVE now, not a constant - see
             // ProgressionEngine.BaseMilliHpForLevel. A flat 100 against monster
             // attack that goes up 4.2x a region is why region 5 one-shot
@@ -4547,7 +4582,7 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 AddSeasonalXp(ref payload, seasonalCombatXp);
-                
+
                 if (liveSessionContexts.TryGetValue(payload.PlayerId, out var sessionCtx))
                 {
                     sessionCtx.ThreadSafeAddMonsterKill();
@@ -4612,7 +4647,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     codexRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
                 }
-                
+
                 CodexEngine.KillEventQueue.Enqueue(new KillEvent
                 {
                     PlayerId = payload.PlayerId,
@@ -4697,7 +4732,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     int totalWeight = 0;
                     for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
-                    
+
                     if (totalWeight > 0)
                     {
                         int multiplier = (int)(localDropMultiplier * payload.CachedCodexYieldMultiplier);
