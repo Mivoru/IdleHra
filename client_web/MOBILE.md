@@ -89,8 +89,10 @@ tunnel is not a broken bundle.
 
 ### How a release reaches a phone
 
-1. `docker compose up -d --build` with `FOLKIDLE_BUNDLE_VERSION` set — see
-   `ops/oracle/README.md`. The web image builds `dist` once and zips the same
+1. `ops/oracle/deploy.sh` on the box, which stamps `FOLKIDLE_BUNDLE_VERSION`
+   from the commit count on **every** deploy and runs
+   `docker compose up -d --build`. See `ops/oracle/README.md`. An unchanged
+   version means no phone updates. The web image builds `dist` once and zips the same
    `dist` into `/srv/updates/<version>.zip`, so the site and the bundle can
    never be different builds.
 2. Caddy serves `/updates/*` as immutable static files.

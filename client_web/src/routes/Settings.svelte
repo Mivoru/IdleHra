@@ -24,6 +24,7 @@
   import { submitSupportTicket, scrubTrace, fetchAdminStatus, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent, fetchChestSettings, saveChestSettings } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
   import { rarityName } from '../lib/ui/rarity';
+  import { runningBundleVersion } from '../lib/net/liveUpdate';
 
   const snap = $derived($playerState);
 
@@ -31,7 +32,15 @@
     void loadTranslations();
     void loadEmailConsent();
     void loadChestSettings();
+    void runningBundleVersion().then((v) => (bundleVersion = v));
   });
+
+  // Modul: WHICH OVER-THE-AIR BUNDLE THIS PHONE IS ON. BUILD_ID says when the
+  // bundle was built; this says which one the updater thinks it installed.
+  // When it disagrees with the server's manifest the phone is stale - which is
+  // how a fixed stopwatch kept spinning on a phone for eleven days (task 28).
+  // Null on the web, where the line is simply not drawn.
+  let bundleVersion = $state<string | null>(null);
 
   // Modul: email is a PERMISSION, not a preference, so it is stored on the
   // account rather than in this browser - a background job decides to mail
@@ -704,6 +713,7 @@
     <p class="version">
       FolkIdle <strong>{APP_VERSION}</strong>
       <span class="dim tiny">build {BUILD_ID}</span>
+      {#if bundleVersion}<span class="dim tiny">bundle {bundleVersion}</span>{/if}
     </p>
     <p class="dim tiny">
       Quote both of these in a bug report &mdash; they say exactly which version

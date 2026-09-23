@@ -196,15 +196,9 @@ is exempt from LFS (see **Git LFS** above).
     cd ~/folkidle/ops/oracle
     cp .env.example .env        # if it does not exist yet
     $EDITOR .env                # DB connection string, JWT_SECRET_KEY, mail
-    # Stamp the over-the-air bundle for this deploy. Both go in .env, which
-    # compose reads for BOTH variable substitution (the caddy build arg) and
-    # the app container's own environment - one place, both halves.
-    V="1.0.$(git -C ~/folkidle rev-list --count HEAD)"
-    sed -i '/^FOLKIDLE_BUNDLE_/d' .env
-    echo "FOLKIDLE_BUNDLE_VERSION=$V" >> .env
-    echo "FOLKIDLE_BUNDLE_URL=https://folkidle.duckdns.org/updates/$V.zip" >> .env
-
-    docker compose up -d --build
+    # Stamps the over-the-air bundle into .env, builds, starts, and checks the
+    # live manifest. Use it for EVERY deploy, not only the first.
+    bash deploy.sh
 
 The first build takes a while — a .NET publish and an npm install on 2 vCPU.
 
@@ -221,6 +215,13 @@ answer with whatever a throwaway repo said, which is both wrong and not
 monotonic across deploys. The commit count is monotonic, reproducible from the
 checkout, and sorts above the APK's own `versionName` of `1.0` under semver,
 which is what a freshly installed app compares against.
+
+**It must be stamped on every deploy, not once.** `.env` goes into both the
+caddy build arg and the app container's environment, and `deploy.sh` rewrites
+both from the current commit count. The updater downloads only when the
+version changes, and `/updates/*` is served `immutable`. This was a one-off
+step here until 2026-09-23, and the manifest said `1.0.464` for eleven days
+while `main` moved 180 commits on. No phone received any of those commits.
 
 **Forgetting it is safe.** With the variable unset the image still builds, and
 the app's endpoint answers "no bundle configured" — nothing updates, nothing
