@@ -782,6 +782,8 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.UpgradeTool] = CraftingTickCoordinator.HandleUpgradeTool,
                 [CommandType.EquipItem] = EquipmentTickCoordinator.HandleEquipItem,
                 [CommandType.UnequipItem] = EquipmentTickCoordinator.HandleUnequipItem,
+                [CommandType.StockFoodSlot] = LarderTickCoordinator.HandleStockFoodSlot,
+                [CommandType.UpdateAutoEatThreshold] = LarderTickCoordinator.HandleUpdateAutoEatThreshold,
             };
         }
 
@@ -817,6 +819,7 @@ namespace FolkIdle.Server.Domain.Combat
                 BreedingEngine = _breedingEngine,
                 CraftingEngine = _craftingEngine,
                 EquipmentSlotEngine = _equipmentSlotEngine,
+                LarderEngine = _larderEngine,
             };
         }
 
@@ -1911,30 +1914,6 @@ namespace FolkIdle.Server.Domain.Combat
                             _playerRegistry.StateReloadQueue.Enqueue(reloaded);
                         });
                     }
-                    else if (cmd.Command == CommandType.StockFoodSlot)
-                    {
-                        // Modul: larder. Deliberately does NOT terminate the
-                        // session on a bad request. Every field here is
-                        // player-chosen from a UI list (which slot, which food,
-                        // how many), so a stale client sending a food id that no
-                        // longer exists is a mistake to report, not evidence of
-                        // tampering - and TerminateSessionForSecurity for a
-                        // mis-click is exactly the failure mode that made eating
-                        // food force-disconnect players before AlchemyCompendium
-                        // was fixed. LarderEngine validates and reports through
-                        // the CommandResult ring buffer instead.
-                        long larderPlayerId = currentPayload.PlayerId;
-                        int larderSlot = (int)cmd.TargetSlotIndex;
-                        int larderFoodId = (int)cmd.ConsumableItemId;
-                        int larderQuantity = (int)Math.Min(cmd.DepositQuantity, (uint)Network.LarderLimits.SlotCapacity);
-
-                        if (_larderEngine != null)
-                        {
-                            SafeDispatchAsync("Larder.StockFoodSlot", larderPlayerId, async () => {
-                                await _larderEngine.ExecuteStockFoodSlotAsync(larderPlayerId, larderSlot, larderFoodId, larderQuantity);
-                            });
-                        }
-                    }
                     else if (cmd.Command == CommandType.SetSimulationSpeed)
                     {
                         int requestedMultiplier = (int)cmd.TargetId;
@@ -1951,31 +1930,6 @@ namespace FolkIdle.Server.Domain.Combat
                                 currentPayload.IsDirty = true;
                             }
                         }
-                    }
-                    else if (cmd.Command == CommandType.UpdateAutoEatThreshold)
-                    {
-                        int thresholdValue = cmd.LimitPrice;
-                        if (!ClientCommandValidator.ValidateCombatConfiguration(ref currentPayload, thresholdValue))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-                        currentPayload.AutoEatThreshold = thresholdValue;
-
-                        // Modul: larder. This used to write the live payload and
-                        // nothing else, so a player's chosen auto-eat threshold
-                        // was silently discarded at every logout and reverted to
-                        // the default on the next login.
-                        if (_larderEngine != null)
-                        {
-                            long thresholdPlayerId = currentPayload.PlayerId;
-                            int persistedThreshold = thresholdValue;
-                            SafeDispatchAsync("Larder.PersistAutoEatThreshold", thresholdPlayerId, async () => {
-                                await _larderEngine.PersistAutoEatThresholdAsync(thresholdPlayerId, persistedThreshold);
-                            });
-                        }
-                        currentPayload.IsDirty = true;
                     }
                     else if (cmd.Command == CommandType.AttackWorldBoss)
                     {

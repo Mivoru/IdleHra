@@ -63,6 +63,7 @@ namespace FolkIdle.Server.Domain.Shared
         internal BreedingEngine BreedingEngine { get; init; }
         internal CraftingEngine CraftingEngine { get; init; }
         internal EquipmentSlotEngine? EquipmentSlotEngine { get; init; }
+        internal LarderEngine? LarderEngine { get; init; }
     }
 
     /// <summary>
