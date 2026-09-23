@@ -74,6 +74,9 @@ namespace FolkIdle.Server.Domain.Shared
         internal Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> ContextFactory { get; init; }
         internal MailboxAndBankEngine MailboxEngine { get; init; }
         internal WorldBossEngine WorldBossEngine { get; init; }
+        internal TelemetryStreamingEngine TelemetryStreamingEngine { get; init; }
+        internal PushNotificationTriggerEngine PushNotificationTriggerEngine { get; init; }
+        internal CompliancePurgeEngine CompliancePurgeEngine { get; init; }
     }
 
     /// <summary>

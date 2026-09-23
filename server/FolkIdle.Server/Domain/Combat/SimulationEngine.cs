@@ -703,7 +703,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
-        private static unsafe byte[] CopyDeviceTokenBytes(ref ClientCommandPacket packet)
+        internal static unsafe byte[] CopyDeviceTokenBytes(ref ClientCommandPacket packet)
         {
             byte[] token = new byte[64];
             fixed (byte* source = packet.DeviceTokenBytes)
@@ -809,6 +809,13 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.EstablishMentorship] = MentorshipTickCoordinator.HandleRetiredMentorship,
                 [CommandType.TerminateMentorship] = MentorshipTickCoordinator.HandleRetiredMentorship,
                 [CommandType.AttackWorldBoss] = WorldBossTickCoordinator.HandleAttackWorldBoss,
+                [CommandType.ReportTelemetryBurst] = ClientSessionTickCoordinator.HandleReportTelemetryBurst,
+                [CommandType.PingNetworkDiagnostics] = ClientSessionTickCoordinator.HandlePingNetworkDiagnostics,
+                [CommandType.RegisterPushToken] = ClientSessionTickCoordinator.HandleRegisterPushToken,
+                [CommandType.TriggerGdprPurge] = ClientSessionTickCoordinator.HandleTriggerGdprPurge,
+                [CommandType.SwitchLanguage] = ClientSessionTickCoordinator.HandleSwitchLanguage,
+                [CommandType.ReportUiContextSwitch] = ClientSessionTickCoordinator.HandleReportUiContextSwitch,
+                [CommandType.SetSimulationSpeed] = ClientSessionTickCoordinator.HandleSetSimulationSpeed,
             };
         }
 
@@ -854,6 +861,9 @@ namespace FolkIdle.Server.Domain.Combat
                 ContextFactory = _contextFactory,
                 MailboxEngine = _mailboxEngine,
                 WorldBossEngine = _worldBossEngine,
+                TelemetryStreamingEngine = _telemetryStreamingEngine,
+                PushNotificationTriggerEngine = _pushNotificationTriggerEngine,
+                CompliancePurgeEngine = _compliancePurgeEngine,
             };
         }
 
@@ -1549,28 +1559,6 @@ namespace FolkIdle.Server.Domain.Combat
                             ApplyActivityChangeToPayload(ref currentPayload, cmd.TargetId);
                         }
                     }
-                    else if (cmd.Command == CommandType.ReportTelemetryBurst)
-                    {
-                        if (!ClientCommandValidator.ValidateTelemetryBurst(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        _telemetryStreamingEngine.EnqueueClientTelemetryBurst(currentPayload.AccountId, currentPayload.PlayerId, cmd);
-                    }
-                    else if (cmd.Command == CommandType.PingNetworkDiagnostics)
-                    {
-                        if (!ClientCommandValidator.ValidatePingNetworkDiagnostics(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-                        
-                        currentPayload.NetworkDiagnosticsToken = cmd.NetworkDiagnosticsToken;
-                        currentPayload.IsDirty = true;
-                        continue;
-                    }
                     else if (cmd.Command == CommandType.ReloadState)
                     {
                         // Modul: RELOAD NOW ACTUALLY RELOADS.
@@ -1634,56 +1622,6 @@ namespace FolkIdle.Server.Domain.Combat
                             _playerRegistry.StateReloadQueue.Enqueue(reloaded);
                         });
                     }
-                    else if (cmd.Command == CommandType.SetSimulationSpeed)
-                    {
-                        int requestedMultiplier = (int)cmd.TargetId;
-                        if (requestedMultiplier == 1 || requestedMultiplier == 2 || requestedMultiplier == 4)
-                        {
-                            if (currentPayload.AccumulatedTimeBankMs > 0)
-                            {
-                                currentPayload.SpeedMultiplier = requestedMultiplier;
-                                currentPayload.IsDirty = true;
-                            }
-                            else if (requestedMultiplier == 1)
-                            {
-                                currentPayload.SpeedMultiplier = 1;
-                                currentPayload.IsDirty = true;
-                            }
-                        }
-                    }
-                    else if (cmd.Command == CommandType.RegisterPushToken)
-                    {
-                        if (!ClientCommandValidator.ValidateDeviceRegistrationRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        byte[] deviceToken = CopyDeviceTokenBytes(ref cmd);
-                        _pushNotificationTriggerEngine.QueueDeviceRegistration(currentPayload.PlayerId, deviceToken, cmd.TargetPlatformFamily);
-                    }
-                    else if (cmd.Command == CommandType.TriggerGdprPurge)
-                    {
-                        if (!ClientCommandValidator.ValidateGdprPurgeRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        _compliancePurgeEngine.QueueGdprPurge(currentPayload.PlayerId);
-                        TerminateSessionForSecurity(routingPlayerId);
-                    }
-                    else if (cmd.Command == CommandType.SwitchLanguage)
-                    {
-                        if (!ClientCommandValidator.ValidateLanguageSwitchRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        currentPayload.ActiveLanguageState = cmd.TargetLanguageId;
-                        currentPayload.IsDirty = true;
-                    }
                     // CommandType.RegisterWorldBossDamage (19) was retired here.
                     // It was a second entry point into the same
                     // WorldBossEngine.QueueAttack that AttackWorldBoss already
@@ -1702,11 +1640,6 @@ namespace FolkIdle.Server.Domain.Combat
                         // PlayerSessionRegistry registration itself - see
                         // its own doc comment.
                         RemoveActivePlayer(routingPlayerId);
-                    }
-                    else if (cmd.Command == CommandType.ReportUiContextSwitch)
-                    {
-                        currentPayload.ActiveUiContextBitmask = cmd.ActiveUiContextBitmask;
-                        currentPayload.IsDirty = true;
                     }
                 }
 
