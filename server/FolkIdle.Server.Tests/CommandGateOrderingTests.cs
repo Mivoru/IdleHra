@@ -342,5 +342,95 @@ namespace FolkIdle.Server.Tests
                 engine.Stop();
             }
         }
+
+        // ------------------------------------------------------------------
+        // Direct calls to the extracted gate - cheap, no container, no
+        // thread. They pin the gate's logic; the behavioural tests above pin
+        // that EngineLoop still CALLS it. Both levels are deliberate.
+        // ------------------------------------------------------------------
+
+        [Fact]
+        public void Evaluate_Synchronized_Proceeds_AndStampsTheClientAsTalking()
+        {
+            var payload = new TickStatePayload { PlayerId = 1L, LogicEpochCounter = 7L };
+            var cmd = new ClientCommandPacket { Command = CommandType.ReportUiContextSwitch, LogicEpochCounter = 7L };
+
+            Assert.Equal(CommandGateVerdict.Proceed, CommandGate.Evaluate(ref payload, ref cmd));
+            Assert.NotEqual(0L, payload.LastClientCommandAtMs);
+        }
+
+        [Fact]
+        public void Evaluate_InternalCommand_WithZeroedEpoch_Proceeds_WithoutStamping()
+        {
+            foreach (var internalCommand in new[] { CommandType.Logout, CommandType.ReloadState })
+            {
+                var payload = new TickStatePayload { PlayerId = 1L, LogicEpochCounter = 500L };
+                var cmd = new ClientCommandPacket { Command = internalCommand, LogicEpochCounter = 0L };
+
+                Assert.Equal(CommandGateVerdict.Proceed, CommandGate.Evaluate(ref payload, ref cmd));
+                Assert.Equal(0L, payload.LastClientCommandAtMs);
+            }
+        }
+
+        [Fact]
+        public void Evaluate_StampHappensBeforeAnyCheck_EvenWhenTerminated()
+        {
+            var payload = new TickStatePayload { PlayerId = 1L, LogicEpochCounter = 500L };
+            var cmd = new ClientCommandPacket { Command = CommandType.ReportUiContextSwitch, LogicEpochCounter = 0L };
+
+            Assert.Equal(CommandGateVerdict.Terminate, CommandGate.Evaluate(ref payload, ref cmd));
+            Assert.NotEqual(0L, payload.LastClientCommandAtMs);
+        }
+
+        [Fact]
+        public void Evaluate_EpochBeforeRateValidator_RateStampUntouchedOnStaleEpoch()
+        {
+            // ChangeActivity is rate-limited by ValidateCommand, which stamps
+            // LastCommandTimestamp when it passes. A stale epoch must stop the
+            // gate before that validator ever runs.
+            var payload = new TickStatePayload { PlayerId = 1L, LogicEpochCounter = 500L };
+            var cmd = new ClientCommandPacket { Command = CommandType.ChangeActivity, LogicEpochCounter = 0L };
+
+            Assert.Equal(CommandGateVerdict.Terminate, CommandGate.Evaluate(ref payload, ref cmd));
+            Assert.Equal(0L, payload.LastCommandTimestamp);
+        }
+
+        [Fact]
+        public void Evaluate_RateValidatorBeforeAntiCheatPayload()
+        {
+            // Rate-limited (a command 0ms ago) AND carrying a challenge
+            // payload: ValidateCommand runs first, so Terminate, not ShadowBan.
+            var payload = new TickStatePayload { PlayerId = 1L, LastCommandTimestamp = Environment.TickCount64 };
+            var cmd = new ClientCommandPacket { Command = CommandType.ChangeActivity, ChallengeId = 1 };
+
+            Assert.Equal(CommandGateVerdict.Terminate, CommandGate.Evaluate(ref payload, ref cmd));
+        }
+
+        [Fact]
+        public void Evaluate_EpochBeforeAntiCheatPayload()
+        {
+            var payload = new TickStatePayload { PlayerId = 1L, LogicEpochCounter = 500L };
+            var cmd = new ClientCommandPacket { Command = CommandType.ReportUiContextSwitch, LogicEpochCounter = 0L, ChallengeId = 1 };
+
+            Assert.Equal(CommandGateVerdict.Terminate, CommandGate.Evaluate(ref payload, ref cmd));
+        }
+
+        [Fact]
+        public void Evaluate_AntiCheatPayloadBeforePushCompliance()
+        {
+            var payload = new TickStatePayload { PlayerId = 1L };
+            var cmd = new ClientCommandPacket { Command = CommandType.ReportUiContextSwitch, ChallengeId = 1, TargetLanguageId = 1 };
+
+            Assert.Equal(CommandGateVerdict.ShadowBan, CommandGate.Evaluate(ref payload, ref cmd));
+        }
+
+        [Fact]
+        public void Evaluate_PushCompliancePayload_Terminates()
+        {
+            var payload = new TickStatePayload { PlayerId = 1L };
+            var cmd = new ClientCommandPacket { Command = CommandType.ReportUiContextSwitch, TargetLanguageId = 1 };
+
+            Assert.Equal(CommandGateVerdict.Terminate, CommandGate.Evaluate(ref payload, ref cmd));
+        }
     }
 }
