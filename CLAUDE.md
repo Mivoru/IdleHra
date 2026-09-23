@@ -28,9 +28,8 @@ There is **no `.sln`** — always target a `.csproj`.
 .\run-dev.ps1        # the whole local stack; opens http://localhost:5173
 ```
 
-That script starts Postgres+Redis containers, kills stale `dotnet`, sets the
-two env vars, waits for a real endpoint, then starts Vite. Prefer it over
-starting the halves by hand.
+See the `run-stack` skill for what that script does and what to check when it
+doesn't come up.
 
 ```powershell
 # Build / test  (stop the running server first — see rules)
@@ -59,12 +58,8 @@ the dev fixture, which does not exist in production; those are dev-box tools.
 They share the screen list in `client_web/scripts/screens.mjs` — add a
 destination there, once.
 
-Dev fixture login: `dev@folkidle.local` / `FolkIdleDev123!`. If never seeded:
-
-```powershell
-$env:FOLKIDLE_ALLOW_DEV_SEED=1
-dotnet run --project server/FolkIdle.Server/FolkIdle.Server.csproj --seed-dev
-```
+Dev fixture login: `dev@folkidle.local` / `FolkIdleDev123!`. Seeding it (if
+never seeded on this machine) is covered by the `run-stack` skill.
 
 ## Rules that are load-bearing
 
@@ -530,15 +525,9 @@ that looks finished is how this project has shipped its worst defects.
 
 ## Deploying
 
-```bash
-ssh folkidle-server
-cd ~/folkidle && git pull && cd ops/oracle
-docker compose up -d --build
-docker compose logs -f app
-```
-
-**Vite inlines the server address into the bundle**, so changing the hostname
-is a rebuild, not a restart.
+See the `deploy` skill for the full procedure — **notably, `git pull` does
+not work on the box** (it's a private repo with no credentials there); the
+skill documents pushing over SSH instead.
 
 **Migrations run on the container ENTRYPOINT (`--migrate && exec ...`), not on
 app start** — so deploys apply them, and `run-dev.ps1` does not. After adding a
