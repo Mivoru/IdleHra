@@ -753,6 +753,9 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.EvictVillager] = VillageTickCoordinator.HandleEvictVillager,
                 [CommandType.RecruitVillager] = VillageTickCoordinator.HandleRecruitOrDismissVillager,
                 [CommandType.DismissNewcomer] = VillageTickCoordinator.HandleRecruitOrDismissVillager,
+                [CommandType.ContributeToGuild] = GuildTickCoordinator.HandleContributeToGuild,
+                [CommandType.ContributeGuildTreasury] = GuildTickCoordinator.HandleContributeGuildTreasury,
+                [CommandType.DepositGuildMaterial] = GuildTickCoordinator.HandleDepositGuildMaterial,
             };
         }
 
@@ -774,6 +777,9 @@ namespace FolkIdle.Server.Domain.Combat
                 EscrowEngine = _escrowEngine,
                 MarketEngine = _marketEngine,
                 VillageManagementEngine = _villageManagementEngine,
+                GuildLogisticsEngine = _guildLogisticsEngine,
+                GuildEngine = _guildEngine,
+                GuildLogisticsDepotEngine = _guildLogisticsDepotEngine,
             };
         }
 
@@ -1469,27 +1475,6 @@ namespace FolkIdle.Server.Domain.Combat
                             ApplyActivityChangeToPayload(ref currentPayload, cmd.TargetId);
                         }
                     }
-                    else if (cmd.Command == CommandType.ContributeToGuild)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildContributions(ref currentPayload, cmd.LimitPrice))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long guildId = currentPayload.GuildId;
-                        long quantity = cmd.LimitPrice;
-                        int itemDefinitionId = (int)cmd.TargetId;
-                        long pId = currentPayload.PlayerId;
-
-                        if (guildId > 0 && quantity > 0)
-                        {
-                            SafeDispatchAsync("Guild.Contribution", pId, async () => {
-                                await _guildLogisticsEngine.ExecuteGuildContributionAsync(pId, guildId, quantity, itemDefinitionId);
-                            });
-                        }
-                    }
                     else if (cmd.Command == CommandType.AddFriend)
                     {
                         long pId = currentPayload.PlayerId;
@@ -2160,42 +2145,6 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.IsDirty = true;
                         continue;
                     }
-                    else if (cmd.Command == CommandType.ContributeGuildTreasury)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildTreasuryContribution(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        currentPayload.IsSuspended = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-
-                        long pId = currentPayload.PlayerId;
-                        // Modul: Play Mode audit fix. Previously trusted
-                        // cmd.SecondaryId as the target guild id directly -
-                        // a player could donate their own gold/equipment
-                        // toward ANY guild's tier, not just their own.
-                        // Derives from the player's own live GuildId instead,
-                        // matching how the materials/Monolith contribution
-                        // branch already resolves guild membership.
-                        long guildId = currentPayload.GuildId;
-                        bool isGold = cmd.TargetId == 0;
-                        long instanceId = cmd.TargetId;
-                        long goldAmount = cmd.LimitPrice;
-
-                        SafeDispatchAsync("Guild.ContributeGoldOrEquipment", pId, async () => {
-                            if (isGold)
-                            {
-                                await _guildEngine.ContributeGoldAsync(pId, guildId, goldAmount);
-                            }
-                            else
-                            {
-                                await _guildEngine.ContributeEquipmentAsync(pId, guildId, instanceId);
-                            }
-                            _networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
-                        });
-                    }
                     else if (cmd.Command == CommandType.ReloadState)
                     {
                         // Modul: RELOAD NOW ACTUALLY RELOADS.
@@ -2257,25 +2206,6 @@ namespace FolkIdle.Server.Domain.Combat
                             var reloaded = await _checkpointManager.LoadPlayerState(reloadPlayerId);
                             reloaded.IsSuspended = false;
                             _playerRegistry.StateReloadQueue.Enqueue(reloaded);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.DepositGuildMaterial)
-                    {
-                        if (!ClientCommandValidator.ValidateGuildDepositRequest(ref currentPayload, ref cmd))
-                        {
-                            RemoveActivePlayer(routingPlayerId);
-                            _networkSystem.PurgeTokensForPlayer(routingPlayerId);
-                            _networkSystem.ForceDisconnect(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        long guildId = currentPayload.GuildId;
-                        uint materialId = cmd.MaterialId;
-                        uint quantity = cmd.DepositQuantity;
-
-                        SafeDispatchAsync("Guild.DepositMaterial", pId, async () => {
-                            await _guildLogisticsDepotEngine.DepositMaterialAsync(pId, guildId, materialId, quantity);
                         });
                     }
                     else if (cmd.Command == CommandType.LaunchGuildRaid)

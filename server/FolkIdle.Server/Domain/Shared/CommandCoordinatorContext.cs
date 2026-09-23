@@ -49,6 +49,9 @@ namespace FolkIdle.Server.Domain.Shared
         internal MarketEscrowEngine EscrowEngine { get; init; }
         internal MarketOrderBookEngine MarketEngine { get; init; }
         internal VillageManagementEngine VillageManagementEngine { get; init; }
+        internal GuildLogisticsEngine GuildLogisticsEngine { get; init; }
+        internal GuildContributionEngine GuildEngine { get; init; }
+        internal GuildLogisticsDepotEngine GuildLogisticsDepotEngine { get; init; }
     }
 
     /// <summary>
