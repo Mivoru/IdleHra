@@ -72,6 +72,7 @@ namespace FolkIdle.Server.Domain.Shared
         internal Func<long, Task<bool>> ExecutePassPurchase { get; init; }
         internal BillingVerificationEngine BillingVerificationEngine { get; init; }
         internal Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdleDbContext> ContextFactory { get; init; }
+        internal MailboxAndBankEngine MailboxEngine { get; init; }
     }
 
     /// <summary>

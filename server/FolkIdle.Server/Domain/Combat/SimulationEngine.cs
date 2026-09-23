@@ -801,6 +801,13 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.PurchaseBattlePass] = BillingTickCoordinator.HandlePurchaseBattlePass,
                 [CommandType.SubmitPurchaseReceipt] = BillingTickCoordinator.HandleSubmitPurchaseReceipt,
                 [CommandType.SyncBillingStatus] = BillingTickCoordinator.HandleSyncBillingStatus,
+                [CommandType.ClaimMailItem] = MailTickCoordinator.HandleClaimMailItem,
+                [CommandType.ClaimAchievementReward] = MailTickCoordinator.HandleClaimAchievementReward,
+                [CommandType.DepositToBank] = MailTickCoordinator.HandleRetiredBank,
+                [CommandType.WithdrawFromBank] = MailTickCoordinator.HandleRetiredBank,
+                [CommandType.AssignMentor] = MentorshipTickCoordinator.HandleRetiredMentorship,
+                [CommandType.EstablishMentorship] = MentorshipTickCoordinator.HandleRetiredMentorship,
+                [CommandType.TerminateMentorship] = MentorshipTickCoordinator.HandleRetiredMentorship,
             };
         }
 
@@ -844,6 +851,7 @@ namespace FolkIdle.Server.Domain.Combat
                 ExecutePassPurchase = _executePassPurchase,
                 BillingVerificationEngine = _billingVerificationEngine,
                 ContextFactory = _contextFactory,
+                MailboxEngine = _mailboxEngine,
             };
         }
 
@@ -1538,74 +1546,6 @@ namespace FolkIdle.Server.Domain.Combat
                         {
                             ApplyActivityChangeToPayload(ref currentPayload, cmd.TargetId);
                         }
-                    }
-                    else if (cmd.Command == CommandType.AssignMentor
-                             || cmd.Command == CommandType.EstablishMentorship
-                             || cmd.Command == CommandType.TerminateMentorship)
-                    {
-                        // Modul: MENTORSHIP IS GONE - ignored, not rejected.
-                        //
-                        // The Academy, the mentor slots and the contracts were
-                        // removed as a feature: three screens and an XP penalty
-                        // that existed to make one number slightly larger, in a
-                        // game whose social half is guilds.
-                        //
-                        // Ignoring rather than disconnecting is deliberate and
-                        // is the same rule the removed active skills follow. A
-                        // client built before the removal still has the buttons,
-                        // and a player pressing one deserves nothing happening -
-                        // not to be thrown off the server for sending a command
-                        // that was valid when their tab was opened.
-                    }
-                    else if (cmd.Command == CommandType.ClaimMailItem)
-                    {
-                        if (!ClientCommandValidator.ValidateMailCommands(ref currentPayload, (byte)cmd.Command, cmd.TargetId))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        long mailId = cmd.TargetId;
-                        SafeDispatchAsync("Mail.Claim", pId, async () => {
-                            await _mailboxEngine.ClaimMailItemAsync(pId, mailId);
-                        });
-                    }
-                    else if (cmd.Command == CommandType.ClaimAchievementReward)
-                    {
-                        if (!ClientCommandValidator.ValidateAchievementClaimRequest(ref currentPayload, ref cmd))
-                        {
-                            TerminateSessionForSecurity(routingPlayerId);
-                            continue;
-                        }
-
-                        long pId = currentPayload.PlayerId;
-                        uint achievementId = cmd.TargetAchievementId;
-
-                        if (_liveSessionContexts.TryGetValue(pId, out var sessionContext))
-                        {
-                            _playerRegistry.AchievementClaimQueue.Enqueue(new AchievementClaimRequest
-                            {
-                                PlayerId = pId,
-                                AchievementId = achievementId,
-                                LiveSession = sessionContext
-                            });
-                        }
-                    }
-                    // Modul: THE BANK IS RETIRED, and both commands are now
-                    // ignored rather than routed. See the RetireTheBank
-                    // migration: it was a 100-slot store that existed to
-                    // relieve a backpack cap the game no longer has, and an
-                    // item inside it could not be equipped, fused, rerolled or
-                    // sold - every one of those reads EquipmentInstances. Its
-                    // rows were moved there and the table dropped.
-                    //
-                    // Ignored rather than treated as a protocol violation: a
-                    // client still sending these is an old bundle, and
-                    // disconnecting a stale tab teaches nobody anything.
-                    else if (cmd.Command == CommandType.DepositToBank || cmd.Command == CommandType.WithdrawFromBank)
-                    {
-                        // Deliberately empty.
                     }
                     else if (cmd.Command == CommandType.ReportTelemetryBurst)
                     {

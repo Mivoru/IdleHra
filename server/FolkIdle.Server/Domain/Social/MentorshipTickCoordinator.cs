@@ -1,3 +1,7 @@
+using System.Threading.Tasks;
+using System;
+using FolkIdle.Server.Network;
+using FolkIdle.Server.Domain.Shared;
 using System.Collections.Generic;
 using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Engine;
@@ -56,6 +60,27 @@ namespace FolkIdle.Server.Domain.Social
                 payload.XpPenaltyExpiresEpoch = mentorshipNotif.XpPenaltyExpiresEpoch;
             }
             payload.IsDirty = true;
+        }
+
+        // Moved verbatim from EngineLoop: else if (cmd.Command == CommandType.AssignMentor || cmd.Command == CommandType.EstablishMentorship || cmd.Command == CommandType.TerminateMentorship)
+        internal static void HandleRetiredMentorship(
+            ref TickStatePayload currentPayload,
+            ref ClientCommandPacket cmd,
+            in CommandCoordinatorContext ctx)
+        {
+            // Modul: MENTORSHIP IS GONE - ignored, not rejected.
+            //
+            // The Academy, the mentor slots and the contracts were
+            // removed as a feature: three screens and an XP penalty
+            // that existed to make one number slightly larger, in a
+            // game whose social half is guilds.
+            //
+            // Ignoring rather than disconnecting is deliberate and
+            // is the same rule the removed active skills follow. A
+            // client built before the removal still has the buttons,
+            // and a player pressing one deserves nothing happening -
+            // not to be thrown off the server for sending a command
+            // that was valid when their tab was opened.
         }
     }
 }
