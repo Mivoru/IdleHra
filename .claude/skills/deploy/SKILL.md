@@ -53,8 +53,18 @@ ssh folkidle-server "cd ~/folkidle && git config receive.denyCurrentBranch updat
 
 # every deploy, from the machine that has the commit
 git push --no-verify ssh://folkidle-server/home/ubuntu/folkidle main
-ssh folkidle-server "cd ~/folkidle/ops/oracle && docker compose up -d --build"
+ssh folkidle-server "bash ~/folkidle/ops/oracle/deploy.sh"
 ```
+
+**Always go through `deploy.sh`, never a bare `docker compose up -d --build`.**
+The script re-stamps the over-the-air bundle version (`1.0.<commit count>`),
+rebuilds, and then fails loudly unless the live manifest answers the new
+version and its zip serves 200. The phone updater downloads only when the
+version *changes*, and Caddy serves `/updates/*` as immutable. The stamp used to
+be a one-off step at "Bring it up", so from 2026-09-12 to 2026-09-23 every
+deploy shipped under the same name, `1.0.464`, and no phone received 180
+commits of fixes. A browser gets the new build anyway, which is why nobody
+noticed.
 
 `updateInstead` refuses a dirty working tree on the box — `git stash` there
 first, and say so, because it has held a local edit to the root
@@ -76,6 +86,8 @@ docker compose logs -f app      # the migration, then "Listening"
 docker compose logs -f caddy    # the certificate, if the hostname changed
 curl -s  https://folkidle.duckdns.org/healthz
 curl -sI https://folkidle.duckdns.org/       # 200 text/html = the client
+# the phone's manifest: must be 1.0.<git rev-list --count main> (deploy.sh checks it too)
+curl -s -X POST https://folkidle.duckdns.org/api/v1/app/bundle -H 'Content-Type: application/json' -d '{}'
 ```
 
 Then run the browser check against production **read-only**:
