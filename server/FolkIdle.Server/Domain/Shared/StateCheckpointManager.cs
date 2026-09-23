@@ -185,6 +185,45 @@ namespace FolkIdle.Server.Domain.Shared
             return committed;
         }
 
+        // Modul: THE FIELDED CHARACTER'S ACTIVITY IS DURABLE NOW, 2026-09-23.
+        //
+        // The single-character ChangeActivity path (TargetGuid empty) and the
+        // death reset change ActiveActivityId on the live payload only, and
+        // LoadPlayerState reads it from characters[0]'s row. Nothing wrote that
+        // row, so a relogin brought the character back on whatever the row
+        // last said - usually idle - and offline catch-up, which simulates the
+        // loaded activity, simulated nothing. StateReloadMerge covers a reload
+        // inside a session (task 24); this covers everything after it.
+        //
+        // GUARDED, not a write by id. The Hall of Ancestors rewrites slot
+        // membership out-of-band and benches the displaced character idle
+        // before the reload that follows - and that reload flushes FIRST, with
+        // the stale payload still naming the benched character in slot 1. A
+        // plain write by id would put the benched character's fight straight
+        // back. So the row is written only while it is still the character
+        // LoadPlayerState would field: the first non-escrowed row ordered by
+        // SlotIndex, then Id. That is LoadPlayerState's order; change both together.
+        //
+        // Slots 2 and 3 are not written: their only activity writer is
+        // ChangeCharacterActivityAsync, which commits the row itself.
+        private static async Task PersistFieldedActivityAsync(FolkIdleDbContext dbContext, long playerId, System.Guid fieldedCharacterId, long activityId)
+        {
+            if (fieldedCharacterId == System.Guid.Empty)
+            {
+                return;
+            }
+
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($@"
+                UPDATE ""characters"" SET ""ActiveActivityId"" = {activityId}
+                WHERE ""Id"" = {fieldedCharacterId}
+                  AND ""ActiveActivityId"" <> {activityId}
+                  AND ""Id"" = (
+                      SELECT c.""Id"" FROM ""characters"" c
+                      WHERE c.""PlayerId"" = {playerId} AND NOT c.""IsLockedInEscrow""
+                      ORDER BY c.""SlotIndex"", c.""Id""
+                      LIMIT 1)");
+        }
+
         public async Task<bool> FlushState(TickStatePayload state)
         {
             var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
@@ -356,6 +395,7 @@ namespace FolkIdle.Server.Domain.Shared
                         await UpsertChroniclePassAsync(dbContext, state);
                         await UpsertLifetimeAchievementsAsync(dbContext, player, state);
                         await QuestEngine.UpsertDailyQuestProgressAsync(dbContext, state);
+                        await PersistFieldedActivityAsync(dbContext, state.PlayerId, state.Slot1_CharacterId, state.ActiveActivityId);
                     }
                     else
                     {
@@ -1515,6 +1555,8 @@ namespace FolkIdle.Server.Domain.Shared
                             var c1 = await dbContext.CharacterRecords.FindAsync(state.Slot1_CharacterId);
                             if (c1 != null) { c1.AgeTicks = state.Slot1_AgeTicks; c1.AgePhase = state.Slot1_AgePhase; }
                         }
+                        // Shutdown flushes everyone through here, not FlushState.
+                        await PersistFieldedActivityAsync(dbContext, state.PlayerId, state.Slot1_CharacterId, state.ActiveActivityId);
                         if (state.Slot2_CharacterId != System.Guid.Empty)
                         {
                             var c2 = await dbContext.CharacterRecords.FindAsync(state.Slot2_CharacterId);
