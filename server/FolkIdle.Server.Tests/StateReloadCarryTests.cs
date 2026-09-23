@@ -98,5 +98,93 @@ namespace FolkIdle.Server.Tests
 
             Assert.Equal(900L, reloaded.CurrentGold);
         }
+
+        // Modul: task 24. A ReloadState after a market listing, a guild action
+        // or a craft put a fighting player back to idle, because the activity
+        // lived in memory and LoadPlayerState read a row nothing had written.
+        private static readonly System.Guid Fielded = new System.Guid("24242424-0000-0000-0000-000000000001");
+
+        private static TickStatePayload LiveFighter()
+        {
+            return new TickStatePayload
+            {
+                PlayerId = 4711L,
+                Slot1_CharacterId = Fielded,
+                ActiveActivityId = 91L,
+                CurrentMonsterId = 91,
+                CurrentMonsterHp = 12_000L,
+                PlayerHp = 40_000,
+                CurrentProgressTicks = 7,
+                GatheringProgressTicks = 3
+            };
+        }
+
+        [Fact]
+        public void AReloadKeepsTheFightOfACharacterStillInTheSlot()
+        {
+            var live = LiveFighter();
+            // What LoadPlayerState returns for a row nobody wrote: idle, full HP.
+            var reloaded = new TickStatePayload { PlayerId = 4711L, Slot1_CharacterId = Fielded, ActiveActivityId = 0L, PlayerHp = 100_000 };
+
+            StateReloadMerge.CarryLiveOnlyFields(in live, ref reloaded);
+
+            Assert.Equal(91L, reloaded.ActiveActivityId);
+            Assert.Equal(91, reloaded.CurrentMonsterId);
+            Assert.Equal(12_000L, reloaded.CurrentMonsterHp);
+            Assert.Equal(7, reloaded.CurrentProgressTicks);
+            Assert.Equal(3, reloaded.GatheringProgressTicks);
+            // A market listing is not a free full heal.
+            Assert.Equal(40_000, reloaded.PlayerHp);
+        }
+
+        /// <summary>
+        /// The Hall of Ancestors changes who holds a slot and benches the
+        /// displaced character idle before its reload. The old occupant's
+        /// fight must not follow the slot onto the newcomer.
+        /// </summary>
+        [Fact]
+        public void AReloadDoesNotCarryAFightOntoADifferentCharacter()
+        {
+            var live = LiveFighter();
+            var newcomer = new System.Guid("24242424-0000-0000-0000-000000000002");
+            var reloaded = new TickStatePayload { PlayerId = 4711L, Slot1_CharacterId = newcomer, ActiveActivityId = 0L, PlayerHp = 100_000 };
+
+            StateReloadMerge.CarryLiveOnlyFields(in live, ref reloaded);
+
+            Assert.Equal(0L, reloaded.ActiveActivityId);
+            Assert.Equal(100_000, reloaded.PlayerHp);
+        }
+
+        [Fact]
+        public void TheSecondAndThirdSlotsKeepTheirActivityToo()
+        {
+            var second = new System.Guid("24242424-0000-0000-0000-000000000003");
+            var live = new TickStatePayload { PlayerId = 4711L, Slot2_CharacterId = second };
+            live.Slot2Activity.ActiveActivityId = 92L;
+            live.Slot2Activity.CurrentMonsterHp = 5_000L;
+            var reloaded = new TickStatePayload { PlayerId = 4711L, Slot2_CharacterId = second };
+
+            StateReloadMerge.CarryLiveOnlyFields(in live, ref reloaded);
+
+            Assert.Equal(92L, reloaded.Slot2Activity.ActiveActivityId);
+            Assert.Equal(5_000L, reloaded.Slot2Activity.CurrentMonsterHp);
+        }
+
+        /// <summary>
+        /// Equipment is database truth, and a reload is how a fresh equip
+        /// reaches the live session. Carrying the activity must not drag the
+        /// old gear back with it.
+        /// </summary>
+        [Fact]
+        public void EquipmentStillComesFromTheReload()
+        {
+            var live = LiveFighter();
+            live.EquippedWeaponId = 1L;
+            var reloaded = new TickStatePayload { PlayerId = 4711L, Slot1_CharacterId = Fielded, EquippedWeaponId = 2L };
+
+            StateReloadMerge.CarryLiveOnlyFields(in live, ref reloaded);
+
+            Assert.Equal(2L, reloaded.EquippedWeaponId);
+        }
     }
 }
