@@ -3695,29 +3695,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (ContentRegistry.TryGetRecipeByActivityId(payload.ActiveActivityId, out var craftingRecipe))
             {
-                // Modul: crafting as an assignable job. CraftingTimeMs was
-                // authored on all 104 recipes and read by nothing - a craft
-                // was instant and needed no character. It is now a job like
-                // any other: one assigned character, real elapsed time, and
-                // it repeats until the player stops it or runs out of
-                // materials (CraftingEngine refuses the craft, the tick keeps
-                // counting, and the halt shows up as nothing being produced).
-                int craftTicks = craftingRecipe.CraftingTimeMs / 100;
-                if (craftTicks < MinCraftTicks) craftTicks = MinCraftTicks;
-
-                payload.RequiredProgressTicks = craftTicks;
-                payload.GatheringProgressTicks++;
-
-                if (payload.GatheringProgressTicks >= craftTicks)
-                {
-                    payload.GatheringProgressTicks = 0;
-                    payload.HarvestLoopCount++;
-                    CraftingTickQueue.Enqueue(new CraftTickCompletion
-                    {
-                        PlayerId = payload.PlayerId,
-                        ResultItemId = craftingRecipe.ResultItemId
-                    });
-                }
+                RunCraftingProgressTick(ref payload, in craftingRecipe);
 
                 // Modul: dispatch exclusivity, 2026-09-17. This branch had no
                 // return, unlike the gathering branch immediately below it -
@@ -4943,6 +4921,46 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.CurrentMonsterId = fallbackId;
                 payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
+            }
+        }
+
+        /// <summary>
+        /// Crafting-as-a-job progress for one tick. Extracted verbatim from
+        /// ProcessSubTick's first activity branch.
+        ///
+        /// Modul: the branch's `return;` stays at the CALL SITE in
+        /// ProcessSubTick, beside the comment that explains it (PR #7,
+        /// ProcessSubTickDispatchTests) - a return inside this method could
+        /// not stop ProcessSubTick falling through into combat.
+        ///
+        /// Callable ONLY from ProcessSubTick: the slot register's
+        /// swap/try/finally discipline lives one level up in
+        /// ProcessAllSlotSubTicks.
+        /// </summary>
+        private static void RunCraftingProgressTick(ref TickStatePayload payload, in ContentRegistry.RecipeDefinition craftingRecipe)
+        {
+            // Modul: crafting as an assignable job. CraftingTimeMs was
+            // authored on all 104 recipes and read by nothing - a craft
+            // was instant and needed no character. It is now a job like
+            // any other: one assigned character, real elapsed time, and
+            // it repeats until the player stops it or runs out of
+            // materials (CraftingEngine refuses the craft, the tick keeps
+            // counting, and the halt shows up as nothing being produced).
+            int craftTicks = craftingRecipe.CraftingTimeMs / 100;
+            if (craftTicks < MinCraftTicks) craftTicks = MinCraftTicks;
+
+            payload.RequiredProgressTicks = craftTicks;
+            payload.GatheringProgressTicks++;
+
+            if (payload.GatheringProgressTicks >= craftTicks)
+            {
+                payload.GatheringProgressTicks = 0;
+                payload.HarvestLoopCount++;
+                CraftingTickQueue.Enqueue(new CraftTickCompletion
+                {
+                    PlayerId = payload.PlayerId,
+                    ResultItemId = craftingRecipe.ResultItemId
+                });
             }
         }
     }
