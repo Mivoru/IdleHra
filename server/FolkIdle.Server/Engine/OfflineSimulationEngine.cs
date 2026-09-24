@@ -711,10 +711,10 @@ namespace FolkIdle.Server.Engine
             ApplyCombatXp(ref payload, xpGained);
 
             // Modul 13.4.3: Gold reward, matching the live tick's exact
-            // formula (GlobalEngineState.GlobalGoldDropMultiplier scaling plus
+            // formula (EconomyDecisions.CombatGoldPercent scaling plus
             // Human's innate +5% Gold acquisition passive) so offline combat
             // grants the same gold value per kill as live/warp combat.
-            long goldPerKill = (activeMonster.BaseGoldReward * (long)GlobalEngineState.GlobalGoldDropMultiplier) / 100L;
+            long goldPerKill = EconomyDecisions.BaseCombatGold(activeMonster.BaseGoldReward);
             goldPerKill += goldPerKill * InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100L;
             goldPerKill = (long)(goldPerKill * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
             long totalGoldGained = totalKills * goldPerKill;

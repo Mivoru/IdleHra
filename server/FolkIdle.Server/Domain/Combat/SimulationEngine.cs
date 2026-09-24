@@ -4621,7 +4621,7 @@ namespace FolkIdle.Server.Domain.Combat
                     if (payload.Skill_GoldenFleece > 0) fleeceTiers = GoldenFleeceBonusTiers;
                 }
 
-                long goldReward = (activeMonster.BaseGoldReward * (long)GlobalEngineState.GlobalGoldDropMultiplier) / 100L;
+                long goldReward = EconomyDecisions.BaseCombatGold(activeMonster.BaseGoldReward);
                 // Modul 13.4.3: Human's innate +5% Gold acquisition passive.
                 goldReward = (long)(goldReward * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
                 goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
