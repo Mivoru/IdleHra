@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using FolkIdle.Server.Domain.Shared;
 using FolkIdle.Server.Engine;
 using Xunit;
 using Xunit.Abstractions;
@@ -183,6 +184,44 @@ namespace FolkIdle.Server.Tests
             }
 
             _output.WriteLine($"{loot.Length} loot rows ({reachable.Count} reachable), {recipes.Length} recipes checked");
+            Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
+        }
+
+        // Modul: SOME ITEMS NOTHING GRANTS ARE STILL LOAD-BEARING, 2026-09-24.
+        //
+        // The tier-D clean-up retired 82 items that no loot table, recipe or
+        // code path could put in a player's hands. It kept 13 that look the
+        // same from the outside - no source, no art - but that code addresses
+        // by NUMBER: FoodRegistry indexes its heal table by the id block
+        // 194..203, the dev fixture stocks its larder with 196-198, and the
+        // three *_potion_consumable items are the only content
+        // ConsumableEngine's potion slots have. Deleting any of them compiles
+        // and fails somewhere far away. This fails here instead.
+        [Fact]
+        public void EveryIdTheCodeAddressesByNumberIsLive()
+        {
+            var failures = new List<string>();
+
+            for (int id = FoodRegistry.FirstCookedFoodItemId; id <= FoodRegistry.LastCookedFoodItemId; id++)
+            {
+                if (!ContentRegistry.ItemExists(id))
+                    failures.Add($"FoodRegistry's cooked-food block names id {id}, which is not an item");
+            }
+
+            foreach (string potion in new[]
+                     {
+                         "searing_tonic_offensive_potion_consumable",
+                         "obsidian_skin_defensive_potion_consumable",
+                         "doom_herald_offensive_potion_consumable",
+                     })
+            {
+                if (!ContentRegistry.TryGetItemDefinitionByBaseId(potion, out _))
+                    failures.Add($"'{potion}' is gone - ConsumableEngine's potion path has no other content");
+            }
+
+            if (ConsumableEngine.DeathWardItemId <= 0)
+                failures.Add("the Death Ward Elixir no longer resolves from content");
+
             Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
         }
 
