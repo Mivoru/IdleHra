@@ -6681,7 +6681,6 @@ namespace FolkIdle.Server.Tests
             foreach (var (name, payload) in new[]
             {
                 ("Fortune root (loot rarity skill)", withRoot),
-                ("Rarity bough", withBough),
                 ("Fortune breeding aptitude", withFortune),
             })
             {
@@ -6691,6 +6690,16 @@ namespace FolkIdle.Server.Tests
                 Assert.True(withSource > baseline,
                     $"{name} does not reach LootLuckPct - it has fallen out of the sum, which is the offline-drops bug again");
             }
+
+            // Modul: the Rarity bough is ELEVATION since task 26 (option B),
+            // which is what its card always said. It must reach the elevation
+            // chance, +1% a level, and must no longer be counted as luck.
+            var boughRequest = CombatLootDropRequest.Build(
+                in withBough, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+            var bareRequest = CombatLootDropRequest.Build(
+                in bare, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+            Assert.Equal(baseline, boughRequest.LootLuckPct, 3);
+            Assert.Equal(bareRequest.RarityElevationPct + 8f, boughRequest.RarityElevationPct, 3);
 
             // Plenty is a DIFFERENT question - how much of a material falls,
             // not what falls - and must not be folded into loot luck. An edit
@@ -6787,9 +6796,10 @@ namespace FolkIdle.Server.Tests
                 $"offline asked for {totalKillsRequested} kills of equipment rolls - the 500 cap is back, " +
                 "and it is worth about 25 pieces however long the player was away");
 
-            // 10 (Fortune root) + 8 (Rarity bough) + 45 (Fortune aptitude) on
+            // 10 (Fortune root) + 45 (Fortune aptitude) + ~15.5 from LCK 39 on
             // top of whatever gear gives. Well clear of the two-term sum that
-            // shipped before, which would land at 0 here.
+            // shipped before, which would land at 0 here. (The Rarity bough's
+            // 8 left this sum for elevation in task 26.)
             Assert.True(luck >= 60f,
                 $"offline rolled with {luck}% loot luck - the rarity bonuses have fallen out of the sum again");
         }

@@ -345,12 +345,31 @@ namespace FolkIdle.Server.Engine
         /// <summary>The Fortune root (BranchLootRarity).</summary>
         public float FortuneRoot { get; init; }
         public float GuildDropRate { get; init; }
-        /// <summary>Rarity, the Fortune bough - the same currency as the root, so it simply adds.</summary>
-        public float RarityBough { get; init; }
         /// <summary>Fortune, the bloodline's luck aptitude.</summary>
         public float FortuneAptitude { get; init; }
 
-        public float Total => Stats + Inheritance + FortuneRoot + GuildDropRate + RarityBough + FortuneAptitude;
+        public float Total => Stats + Inheritance + FortuneRoot + GuildDropRate + FortuneAptitude;
+
+        /// <summary>combatStats.RarityElevationPct: the LCK curve plus heritable traits.</summary>
+        public float StatsElevation { get; init; }
+
+        /// <summary>
+        /// Rarity, the Fortune bough: +1% ELEVATION per level, 8 levels, +8% at cap.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE BOUGH WAS SOLD AS ONE THING AND DID ANOTHER (task 26, H4).
+        /// Its card has always said "a drop has a chance to roll one rarity
+        /// higher than it should", and it was added to LOOT LUCK instead,
+        /// "the same currency as the root, so it simply adds". Luck reweights
+        /// tiers 2-14 equally and can only shrink Normal, so 8 levels bought
+        /// about +1.5% relative Ancient+ where the advertised elevation buys
+        /// about +9%. Decided with the owner 2026-09-24: the node does what
+        /// its card says. Hard-capped by the bough's 8 levels.
+        /// </remarks>
+        public float RarityBough { get; init; }
+
+        /// <summary>The chance, in percent, that a drop comes out one tier above what it rolled.</summary>
+        public float ElevationTotal => StatsElevation + RarityBough;
 
         public static LootLuckBreakdown From(in TickStatePayload payload, in CombatStats combatStats)
         {
@@ -360,8 +379,9 @@ namespace FolkIdle.Server.Engine
                 Inheritance = InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck),
                 FortuneRoot = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity),
                 GuildDropRate = GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f,
-                RarityBough = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity),
                 FortuneAptitude = BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
+                StatsElevation = combatStats.RarityElevationPct,
+                RarityBough = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity),
             };
         }
     }
@@ -463,6 +483,7 @@ namespace FolkIdle.Server.Engine
             int bonusRarityTiers,
             bool skipMaterialRoll)
         {
+            var odds = LootLuckBreakdown.From(in payload, in combatStats);
             return new CombatLootDropRequest
             {
                 PlayerId = payload.PlayerId,
@@ -474,13 +495,17 @@ namespace FolkIdle.Server.Engine
 
                 // Everything that shifts WHAT falls, summed into one figure -
                 // by LootLuckBreakdown, the only place the terms are named.
-                LootLuckPct = LootLuckBreakdown.From(in payload, in combatStats).Total,
+                LootLuckPct = odds.Total,
 
                 // Plenty changes HOW MUCH of a material falls, which is a
                 // different question from what falls, and has its own field.
                 MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
                     SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty),
-                RarityElevationPct = combatStats.RarityElevationPct,
+
+                // The LCK curve, traits and the Rarity bough - see
+                // LootLuckBreakdown.RarityBough for why the bough is here and
+                // not in the luck sum above.
+                RarityElevationPct = odds.ElevationTotal,
             };
         }
     }

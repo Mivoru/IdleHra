@@ -148,7 +148,7 @@ namespace FolkIdle.Server.Tests
         private const double FleeceChance = 0.01; // every hundredth kill
         private const int FleeceTiers = 2;
 
-        private static TickStatePayload Level94Region5Payload() => new TickStatePayload
+        internal static TickStatePayload Level94Region5Payload() => new TickStatePayload
         {
             PlayerId = 8L,
             CurrentLevel = 94,
@@ -169,7 +169,7 @@ namespace FolkIdle.Server.Tests
         };
 
         /// <summary>The identical 16-argument call the live tick makes (SimulationEngine, the combat block).</summary>
-        private static CombatStats StatsFor(in TickStatePayload p) => StatsCalculator.Calculate(
+        internal static CombatStats StatsFor(in TickStatePayload p) => StatsCalculator.Calculate(
             p.STR, p.DEX, p.CON, p.LCK, p.ActiveOffensivePotionId, p.ActiveDefensivePotionId,
             1, p.CompletedAreaFlags, 0, p.HumanMasteryLevel, p.VilaMasteryLevel, p.DraugrMasteryLevel,
             p.CachedAffixTotals, p.IsEpicMutation, TraitTotals.From(p.TraitMask), p.CachedSetIds);
@@ -230,23 +230,27 @@ namespace FolkIdle.Server.Tests
             report.AppendLine($"  inheritance (level 4)                            {breakdown.Inheritance,7:F2}");
             report.AppendLine($"  Fortune root (10 levels)                         {breakdown.FortuneRoot,7:F2}");
             report.AppendLine($"  guild DropRate                                   {breakdown.GuildDropRate,7:F2}");
-            report.AppendLine($"  Rarity bough (8 levels)                          {breakdown.RarityBough,7:F2}");
             report.AppendLine($"  Fortune aptitude (4)                             {breakdown.FortuneAptitude,7:F2}");
             report.AppendLine($"  TOTAL LootLuckPct                                {breakdown.Total,7:F2}");
-            report.AppendLine($"  RarityElevationPct                               {request.RarityElevationPct,7:F2}");
+            report.AppendLine("Rarity elevation:");
+            report.AppendLine($"  stats (LCK curve + traits)                       {breakdown.StatsElevation,7:F2}");
+            report.AppendLine($"  Rarity bough (8 levels)                          {breakdown.RarityBough,7:F2}");
+            report.AppendLine($"  TOTAL RarityElevationPct                         {request.RarityElevationPct,7:F2}");
             _output.WriteLine(report.ToString());
 
             Assert.Equal(28.78, breakdown.Stats, 2);          // 1.2*sqrt(300) = 20.78, + 8 Scavenger
             Assert.Equal(8.0, breakdown.Inheritance, 2);
             Assert.Equal(10.0, breakdown.FortuneRoot, 2);
             Assert.Equal(0.0, breakdown.GuildDropRate, 2);
-            Assert.Equal(8.0, breakdown.RarityBough, 2);
             Assert.Equal(6.0, breakdown.FortuneAptitude, 2);
-            Assert.Equal(60.78, breakdown.Total, 2);
-            Assert.Equal(6.06, request.RarityElevationPct, 2); // 0.35*sqrt(300)
+            Assert.Equal(52.78, breakdown.Total, 2);           // 60.78 before task 26 option B
+            Assert.Equal(6.06, breakdown.StatsElevation, 2);   // 0.35*sqrt(300)
+            Assert.Equal(8.0, breakdown.RarityBough, 2);       // elevation since option B, was luck
+            Assert.Equal(14.06, request.RarityElevationPct, 2); // 6.06 before option B
 
             // The breakdown and the drop path cannot drift apart.
             Assert.Equal(breakdown.Total, request.LootLuckPct);
+            Assert.Equal(breakdown.ElevationTotal, request.RarityElevationPct);
         }
 
         [Fact]
@@ -276,16 +280,19 @@ namespace FolkIdle.Server.Tests
             _output.WriteLine($"  infinite luck, plain roll: Legendary+ {ShareAtOrAbove(plainCeiling, RarityTier.Legendary):P3} = {ceilingGain:F2}x the zero-luck share");
             _output.WriteLine($"  infinite luck, this build: Legendary+ {ShareAtOrAbove(buildCeiling, RarityTier.Legendary):P3}");
 
-            Assert.InRange(legendaryPlus, 0.0115, 0.0124);
-            Assert.InRange(ancientPlus, 0.00047, 0.00052);
+            // Before option B (bough as luck): Legendary+ 1.195%, Ancient+ 0.0495%.
+            Assert.InRange(legendaryPlus, 0.0125, 0.0135);
+            Assert.InRange(ancientPlus, 0.00051, 0.00057);
             Assert.InRange(ancientPlus / legendaryPlus, 0.039, 0.043);
 
             // No amount of luck more than about doubles the top. If this fails
             // the roll's SHAPE changed - that is an owner decision (task 26,
             // options D/F), never a side effect.
             Assert.InRange(ceilingGain, 1.9, 2.2);
-            Assert.True(ShareAtOrAbove(buildCeiling, RarityTier.Legendary) < 0.020,
-                "infinite luck now buys more than 2% Legendary+ - the roll's shape changed");
+            // With this build's elevation on top: 1.964% while the bough was
+            // luck (elevation 6.06%), higher since it became elevation (14.06%).
+            Assert.True(ShareAtOrAbove(buildCeiling, RarityTier.Legendary) < 0.023,
+                "infinite luck now buys more than 2.3% Legendary+ - the roll's shape changed");
         }
 
         [Fact]
@@ -335,7 +342,7 @@ namespace FolkIdle.Server.Tests
             // per this file's convention for the rare tiers.
             Assert.InRange(observedAncientPlus, expectedAncientPlus / 3, expectedAncientPlus * 3);
             // Something must be lifted, or fleece and elevation are dead.
-            Assert.InRange(lifted / (double)samples, 0.05, 0.09);
+            Assert.InRange(lifted / (double)samples, 0.12, 0.18); // 0.05-0.09 before option B
         }
     }
 }

@@ -387,6 +387,106 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        /// <summary>BestOfNTierMass for an arbitrary per-drop distribution (index = tier).</summary>
+        private static double[] BestOfNTierMass(int drops, double[] perDrop)
+        {
+            var cdf = new double[15];
+            double running = 0;
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                running += perDrop[tier];
+                cdf[tier] = Math.Min(1.0, running);
+            }
+
+            var mass = new double[15];
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                double below = tier == 1 ? 0.0 : Math.Pow(cdf[tier - 1], drops);
+                mass[tier] = Math.Pow(cdf[tier], drops) - below;
+            }
+            return mass;
+        }
+
+        /// <summary>
+        /// Modul: TASK 26 - WHAT CHANGING THE DROP ODDS DOES TO THE MONSTER BUFF.
+        ///
+        /// The two measurements above run at ZERO loot luck, so a change to
+        /// luck or elevation cannot move them, and pasting them as a
+        /// before/after would prove nothing. The monster HP buff was matched to
+        /// the equipped median, and the equipped median is what a real,
+        /// invested build would move - so this measures the reporting account's
+        /// build (level 94, LCK 300, full Fortune tree) under the odds before
+        /// task 26 and under each accepted option, and turns the change in
+        /// expected equipped weapon power into an XP/sec change per region.
+        ///
+        /// The rule the owner set: anything outside +/-2% stops the change and
+        /// becomes a SEPARATE monster-HP decision with its own table.
+        /// </summary>
+        [Fact]
+        public void Task26_TheDropOddsChange_MovesXpPerSecondByUnderTwoPercent()
+        {
+            var payload = RarityRollDistributionTests.Level94Region5Payload();
+            var stats = RarityRollDistributionTests.StatsFor(in payload);
+            var odds = LootLuckBreakdown.From(in payload, in stats);
+
+            // Before task 26 the bough was loot luck, not elevation.
+            var scenarios = new List<(string Name, float Luck, float Elevation)>
+            {
+                ("before task 26", odds.Total + odds.RarityBough, odds.ElevationTotal - odds.RarityBough),
+                ("B: bough is elevation", odds.Total, odds.ElevationTotal),
+            };
+
+            var dropsByRegion = new Dictionary<int, int> { { 1, 10 }, { 2, 50 }, { 3, 200 }, { 4, 1000 }, { 5, 5000 } };
+
+            var report = new StringBuilder();
+            report.AppendLine("Expected equipped weapon power (best of N drops) for the level-94 build,");
+            report.AppendLine("and the XP/sec change against the odds before task 26.");
+            report.AppendLine();
+            foreach (var s in scenarios)
+            {
+                double[] perDrop = RarityTier.ExpectedFinalShares(s.Luck, s.Elevation, 0.01, 2);
+                double anc = 0; for (int t = RarityTier.Ancient; t <= 14; t++) anc += perDrop[t];
+                report.AppendLine($"  {s.Name,-26} L={s.Luck,6:F2}  elevation={s.Elevation,5:F2}%  Ancient+ {anc:P4}/drop");
+            }
+            report.AppendLine();
+            report.AppendLine("  region  drops  scenario                    mean tier   power    XP/sec vs before");
+
+            double worst = 0;
+            for (int region = 1; region <= 5; region++)
+            {
+                var power = new double[15];
+                for (int tier = 1; tier <= 14; tier++) power[tier] = ExpectedWeaponPower(region, tier).Effective;
+
+                double baseline = 0;
+                for (int i = 0; i < scenarios.Count; i++)
+                {
+                    double[] mass = BestOfNTierMass(
+                        dropsByRegion[region],
+                        RarityTier.ExpectedFinalShares(scenarios[i].Luck, scenarios[i].Elevation, 0.01, 2));
+                    double expected = 0, meanTier = 0;
+                    for (int tier = 1; tier <= 14; tier++)
+                    {
+                        expected += mass[tier] * power[tier];
+                        meanTier += mass[tier] * tier;
+                    }
+                    if (i == 0) baseline = expected;
+
+                    // Kill time is monster HP over player damage and XP per kill
+                    // is fixed, so XP/sec moves with equipped power.
+                    double xpChange = expected / baseline - 1.0;
+                    if (Math.Abs(xpChange) > Math.Abs(worst)) worst = xpChange;
+                    report.AppendLine(
+                        $"  {region,6}  {dropsByRegion[region],5}  {scenarios[i].Name,-26} {meanTier,9:F3}  {expected,7:F1}   {xpChange,+8:+0.00%;-0.00%;0.00%}");
+                }
+            }
+
+            report.AppendLine();
+            report.AppendLine($"  LARGEST XP/sec MOVE: {worst:+0.00%;-0.00%;0.00%} (the owner's limit is +/-2%)");
+            _output.WriteLine(report.ToString());
+
+            Assert.InRange(worst, -0.02, 0.02);
+        }
+
         [Fact]
         public void PrintTheDropDistribution_AndWhereItsMedianFalls()
         {

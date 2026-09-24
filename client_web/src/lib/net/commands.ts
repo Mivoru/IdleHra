@@ -1102,7 +1102,7 @@ export const SKILL_TREE_NODES: readonly {
 
   // boughs, two per root - only ONE of each pair may ever be levelled
   { id: 5, ring: 'bough', root: 0, name: 'Plenty', blurb: 'Materials drop in bigger stacks. Crafting eats stacks.', perLevel: 1.5, unit: 'pct' },
-  { id: 6, ring: 'bough', root: 0, name: 'Rarity', blurb: 'A drop has a chance to roll one rarity higher than it should.', perLevel: 1.0, unit: 'pct' },
+  { id: 6, ring: 'bough', root: 0, name: 'Rarity', blurb: 'A drop has a chance to come out one rarity higher than it rolled.', perLevel: 1.0, unit: 'pct' },
   { id: 7, ring: 'bough', root: 1, name: 'First Blood', blurb: 'A boss you have never beaten is less monstrous the first time.', perLevel: 4.0, unit: 'pct' },
   { id: 8, ring: 'bough', root: 1, name: 'Trophy Hunter', blurb: 'Bosses pay more gold, and always leave a material behind.', perLevel: 2.5, unit: 'pct' },
   { id: 9, ring: 'bough', root: 2, name: 'Guile', blurb: 'Critical hits bite deeper still.', perLevel: 3.0, unit: 'pct' },

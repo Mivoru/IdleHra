@@ -193,7 +193,7 @@ namespace FolkIdle.Server.Engine
 
             // --- boughs, 8 levels each ------------------------------------
             15,   // 5  Plenty        +1.5%/lvl material quantity, +12%
-            10,   // 6  Rarity        +1.0%/lvl rarity upgrade chance, +8%
+            10,   // 6  Rarity        +1.0%/lvl rarity ELEVATION chance, +8% (task 26: was loot luck)
             40,   // 7  First Blood   -4.0%/lvl of the first-clear HP penalty,
                   //                  -32%: 5x becomes ~3.4x at cap
             25,   // 8  Trophy Hunter +2.5%/lvl boss gold, +20%
@@ -229,7 +229,7 @@ namespace FolkIdle.Server.Engine
             "Levels arrive sooner, which is the slowest part of a season.",
 
             "Materials drop in bigger stacks. Crafting eats stacks.",
-            "A drop has a chance to roll one rarity higher than it should.",
+            "A drop has a chance to come out one rarity higher than it rolled.",
             "A boss you have never beaten is less monstrous the first time.",
             "Bosses pay more gold, and always leave a material behind.",
             "Critical hits bite deeper still.",
