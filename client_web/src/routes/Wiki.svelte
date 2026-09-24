@@ -596,7 +596,7 @@
           <ul class="styled-list">
             <li><strong>Catalogued items</strong> — everything with a picture, a region tier and a gold value. Logs, ores, fish, gear, tools. This is the real economy.</li>
             <li><strong>Gathering slugs</strong> — a handful of older ids like <code>wood</code> that have no catalogue entry at all. Nothing keyed on an item id will accept them.</li>
-            <li><strong>Legacy crafting materials</strong> — fifty ids ending <code>_crafting_material</code>. None of them can be obtained or spent any more; if you are holding thousands of Copper Ore Crafting Material, that is why. They are kept rather than deleted because they are yours.</li>
+            <li><strong>Legacy crafting materials</strong> — ten ids ending <code>_crafting_material</code>, all ores. None of them can be obtained or spent any more; if you are holding a stack of Copper Ore Crafting Material, that is why. Anything held under one of these names is still yours.</li>
           </ul>
 
           <h3 id="database">Item database</h3>

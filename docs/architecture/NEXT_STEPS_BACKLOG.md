@@ -3020,7 +3020,11 @@ Traps, in the order they will bite:
 - **Supabase MCP is read-only.** Run writes with psql from the box.
 - **Supabase pooler port 5432**, never 6543 - the latter hangs EF migrations.
 - **The item catalogue has HOLES.** Ids are positional (`_itemBaseIds[id - 1]`)
-  and 111 entries were removed, so never renumber and never assume 1..N.
+  and 151 entries were removed (111 in `d423b5b`, 40 legacy crafting
+  materials in task 33), so never renumber and never assume 1..N.
+  `ItemCatalogueIntegrityTests` + `server/FolkIdle.Server.Tests/ItemIdLedger.txt`
+  enforce it: no shifted id, no reused retired id, no loot row or recipe
+  naming a hole. A new item appends a line; a retired one becomes `-`.
 
 ## What shipped
 

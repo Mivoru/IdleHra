@@ -3347,7 +3347,7 @@ work: each of those needs a brainstorming pass WITH the owner before any code
 | 2 | 30 | Docs match reality | S |
 | 2 | 31 | CI: GitHub actions off Node 20 | S |
 | 2 | 32 | Branch and worktree cleanup | S |
-| 2 | 33 | Delete the 40 legacy crafting materials | M, approved |
+| 2 | 33 | Delete the 40 legacy crafting materials | M, **done 2026-09-24** |
 | 2 | 34 | Retire the Unity project | M, approved, plan exists |
 | 2 | 35 | Small leftovers | S |
 | 3 | 36 | World boss fight: a skill/reflex minigame, not a plate guess | L, design first |
@@ -3633,7 +3633,25 @@ deleting; anything NOT merged is listed for the owner, not deleted.** Three
 empty, git-ignored folders under `.claude/worktrees/` were locked by Windows on
 2026-09-23 - delete them if still there.
 
-## 33. Delete the 40 legacy crafting materials (M, approved by the owner)
+## 33. Delete the 40 legacy crafting materials (M, approved by the owner) - DONE 2026-09-24
+
+**Done** on branch `chore/delete-legacy-materials` (plan:
+`docs/superpowers/plans/2026-09-23-task-33-delete-legacy-materials.md`). Three
+facts a reader will want:
+
+- **No id shifted.** Ids are explicit and act as array slots, so the 40 became
+  holes; `ItemIdLedger.txt` + `ItemCatalogueIntegrityTests` now fail on any
+  shifted, reused or dangling id (proved by sabotage before the deletion).
+- **Production held nothing**: re-checked 2026-09-24, 0 rows across every table
+  that stores an item id or slug (list in `docs/crafting_material_audit.md`).
+- **The sprite aliases were the only live dependency** (`Iron bar`,
+  `Silver bar` named two of the bars). Missing-art budget 165 -> 127.
+
+Found on the way: the ten *surviving* `*_crafting_material` ores are
+unreachable too (their loot rows belong to the pre-renumber mining nodes
+201-205); recorded in the audit, not acted on.
+
+Original brief:
 
 `docs/crafting_material_audit.md` lists them: ten bars (ids 184-193) and thirty
 superseded monster-drop materials (ids 2, 6, 12, 22, 25, 40, 43, 46, 58, 61, 64,

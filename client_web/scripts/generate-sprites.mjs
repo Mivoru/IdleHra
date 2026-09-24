@@ -56,7 +56,7 @@ const checkOnly = process.argv.includes('--check');
  * pass. The per-item breakdown lives in the committed sprites.missing.txt, so
  * a change to this number always comes with a reviewable list of which items
  * moved. */
-const MISSING_ART_BUDGET = 165;
+const MISSING_ART_BUDGET = 127;
 
 // ---------------------------------------------------------------------------
 // Alias tables
@@ -106,6 +106,9 @@ const MATERIAL_ALIASES = {
   // "fix" this by drawing ore nuggets: that was tried, and it invents a
   // distinction the mechanics do not have.
   //
+  // The `*_bar_crafting_material` items these aliases also used to cover were
+  // deleted in task 33 (2026-09-24), so the ingot art now belongs to the ore alone.
+  //
   // Region 01 - from the Unity builder
   'Birch Tree': 'birch_trees_woodcutting_material',
   Copper: ['copper_ore_crafting_material', 'copper_ore'],
@@ -117,7 +120,7 @@ const MATERIAL_ALIASES = {
   'Golden Willow twig': 'whispering_willow_twig',
   'Willow tree': 'willow_logs_woodcutting_material',
   Hematite: 'hematite_ore',
-  'Iron bar': ['iron_bar_crafting_material', 'iron_ore'],
+  'Iron bar': 'iron_ore',
 
   // Region 03 - "Acatia" is the art's spelling of acacia, and the "Golden"
   // variant of each tree is the upgraded species, matching the log/twig pairs
@@ -134,7 +137,7 @@ const MATERIAL_ALIASES = {
   // Region 04
   'Golden Frostpine log': ['golden_frostpine_log', 'glacier_pine_log'],
   'Golden Frostpine twig': 'glacier_pine_twig',
-  'Silver bar': ['silver_bar_crafting_material', 'silver_ore'],
+  'Silver bar': 'silver_ore',
   'Cobalt bar': 'cobalt_ore',
   'yeti meat platter': 'yeti_platter_food_consumable',
 
@@ -464,7 +467,7 @@ for (const file of files) {
   // AN EXACT BaseId MATCH BEATS A PREFIX ONE, and is not ambiguous with it.
   //
   // The prefix arm exists because most art is named for the material and the
-  // item id adds a category suffix ("Iron bar" -> iron_bar_crafting_material).
+  // item id adds a category suffix ("Copper" -> copper_ore_crafting_material).
   // But `copper_ore.webp` matches BOTH `copper_ore` and its legacy twin
   // `copper_ore_crafting_material`, so the ambiguity rule threw away a sprite
   // whose filename is character-for-character the item's own id. A file named
