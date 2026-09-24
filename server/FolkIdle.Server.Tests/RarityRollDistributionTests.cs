@@ -42,9 +42,20 @@ namespace FolkIdle.Server.Tests
             const int samples = 2_000_000;
             var counts = new int[15];
 
+            // Modul: SEEDED, because this failed on a working roll. It drew from
+            // Random.Shared and held every tier to a flat 3% relative band. For
+            // Mythic (p ~ 0.25%) one standard deviation of the observed share
+            // at 2M samples is ~1.4%, so 3% was a ~2.1-sigma test and failed a
+            // few percent of runs for no reason (2026-09-24, on a branch that
+            // touched no loot code). The seed makes the run reproducible; the
+            // per-tier 4-sigma band below is what makes the seed irrelevant -
+            // any seed passes a correct table with ~99.99% probability per tier,
+            // and a broken one still fails, since a real table change moves a
+            // tier by far more than 4 sigma.
+            var rng = new Random(20260924);
             for (int i = 0; i < samples; i++)
             {
-                counts[RarityTier.RollTier(0f)]++;
+                counts[RarityTier.RollTier(0f, rng)]++;
             }
 
             double total = Weights.Sum();
@@ -70,15 +81,19 @@ namespace FolkIdle.Server.Tests
 
             _output.WriteLine(report.ToString());
 
-            // Two million samples puts the sampling error on the common tiers
-            // far below a percent, so a 3% band is generous for them and the
-            // rare tiers are checked by order of magnitude instead.
+            // Each of the eight common tiers is held to FOUR standard deviations
+            // of its own binomial sampling error: sigma = sqrt(p(1-p)/n). That
+            // is ~0.14% relative for Normal and ~5.6% for Mythic - tight where
+            // the sample is large, honest where it is not. A flat band was
+            // either too loose for Normal or too tight for Mythic.
             for (int tier = 1; tier <= 8; tier++)
             {
                 double expected = Weights[tier] / total;
                 double observed = (double)counts[tier] / samples;
-                Assert.True(Math.Abs(observed - expected) / expected < 0.03,
-                    $"tier {tier} ({RarityTier.GetName(tier)}) rolled {observed:P4} against an authored {expected:P4}");
+                double sigma = Math.Sqrt(expected * (1 - expected) / samples);
+                Assert.True(Math.Abs(observed - expected) < 4 * sigma,
+                    $"tier {tier} ({RarityTier.GetName(tier)}) rolled {observed:P4} against an authored {expected:P4} " +
+                    $"(off by {Math.Abs(observed - expected) / sigma:F1} sigma, allowed 4)");
             }
 
             // The top six are too rare to bound tightly at this sample size;

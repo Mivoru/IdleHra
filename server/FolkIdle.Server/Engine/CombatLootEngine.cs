@@ -123,7 +123,13 @@ namespace FolkIdle.Server.Engine
         // keeps a flat, unscaled weight so its share of the total shrinks as
         // luck raises the other tiers - "shifting generation logic smoothly
         // into higher rarity thresholds" without needing renormalization.
-        public static int RollTier(float lootLuckPct)
+        public static int RollTier(float lootLuckPct) => RollTier(lootLuckPct, Random.Shared);
+
+        // Modul: the same roll with the random source passed in, so
+        // RarityRollDistributionTests can seed it. The overload above is the
+        // only production caller shape; both run this one body, so the test
+        // still asks the real roll rather than a copy of it.
+        public static int RollTier(float lootLuckPct, Random rng)
         {
             const double normalBaseWeight = 100.0;
             double luckFactor = 1.0 + (lootLuckPct / 100.0);
@@ -139,7 +145,7 @@ namespace FolkIdle.Server.Engine
                 totalWeight += weight;
             }
 
-            double roll = Random.Shared.NextDouble() * totalWeight;
+            double roll = rng.NextDouble() * totalWeight;
             double cumulative = 0.0;
             for (int tier = 1; tier <= 14; tier++)
             {
