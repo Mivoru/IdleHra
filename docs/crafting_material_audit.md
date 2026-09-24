@@ -1,5 +1,37 @@
 # The `*_crafting_material` namespace: what is live and what is not
 
+## Resolved 2026-09-24 (task 33)
+
+**The 40 legacy entries were deleted** from `items.json` and their ids retired
+in `server/FolkIdle.Server.Tests/ItemIdLedger.txt`, where
+`ItemCatalogueIntegrityTests` fails if any of them is ever reused, if a live id
+shifts, or if a loot row or recipe names a hole. Nothing was renumbered: item
+ids are **explicit** (every entry carries `"Id"`) and they **act as array
+slots** (`ContentRegistry` stores each at `Id - 1` in arrays sized by the
+highest id), so a removed entry leaves a hole and every other id means what it
+meant before. That is how both halves of the old sentence below are true at
+once. 151 ids are retired now (111 from `d423b5b`, 40 here).
+
+Production was checked first (Supabase, read-only SELECTs, 2026-09-24): **0
+rows** naming any of the 40, by slug or numeric id, in `CommodityRecords`,
+`VillageStashInstances`, `EquipmentInstances`, `MarketEquipmentInstances`,
+`MarketOrderRecords` (`BaseItemId`, `CommodityId`), `historical_market_archives`
+(both), `MailboxInstances`, `GuildDepotBalances`, `GuildContributionLedgers`,
+`GuildLogisticsDepots`, `GuildMaterialSinkLedgers`, `PlayerCraftingSlots`, the
+three `PlayerRecords` larder slots and `pending_grants`. No migration, no
+compensation. The only live dependency was the sprite generator's
+`MATERIAL_ALIASES` (`Iron bar`, `Silver bar`), now pointing at the ore alone.
+
+**Correction to the "Live (10)" table below.** It says those ten are reached by
+"loot table". The rows exist (`_lootEntries` indices 21 and 61-76) but **no
+table points at them any more**: they belonged to mining nodes 201-205, which
+were renumbered to 2001-2005, and those use indices 87-96 (the regional
+`*_ore` family). No recipe consumes id 129 either. So the ten are defined but,
+as of 2026-09-24, obtainable from nothing and spent by nothing - the same state
+the 40 were in. They were left alone because task 33 was scoped to the 40;
+whether to delete them too is a separate decision (production holds 0 rows
+ending `_crafting_material` at all).
+
 Written 2026-09-02, closing out the last open point of Task Board item 7 ("decide
 what to do about the ~70 `*_crafting_material` entries").
 
@@ -81,9 +113,10 @@ Full list of the 40, by id:
 and the answer is that 40 of the 50 would be art for items no player can ever
 hold.
 
+*(Historical - the deletion below was done in task 33; see the top section.)*
 **Do not delete them yet either.** Deleting an `items.json` entry renumbers
-nothing (ids are explicit) but it is not free: item ids are positional in
-several places in this codebase, live `ItemInstanceRecords` rows could still
+nothing (ids are explicit, and each id is the array slot it occupies, so a
+removal leaves a hole rather than shifting anything) but it is not free: live `ItemInstanceRecords` rows could still
 reference a legacy id from before the drop tables changed, and the stranded-ore
 migration (`20260901194818_FoldStrandedCraftingMaterialOres`) is the precedent
 for how much care that takes.
