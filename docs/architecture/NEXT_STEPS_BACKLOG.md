@@ -19,6 +19,31 @@ do next.
 
 ---
 
+# HANDOFF 2026-09-24 - Guild War Phase 0: the population lock (branch `feat/guild-war-lock`)
+
+Task 38's Phase 0, with the owner's final decisions. Every Guild War path now
+goes through ONE gate, `GuildWarUnlock` (`Engine/GuildWarUnlock.cs`):
+`GuildWarEngine`'s pairing/settlement pass and its payout, the supply burn,
+`GuildMatchmakingEngine.ExecutePairingCycleAsync`, and opcodes 23/27/49/50.
+
+- **The floor:** 50 players at `LeaderboardTierRegistry.MinimumRankedLevel`
+  (level is the whole definition - no activity window, no quarantine filter)
+  AND 4 guilds with 3 such members each. Counted by `QualifyingPopulation`,
+  beside the leaderboard's ranked query in `LeaderboardCronEngine.cs`.
+- **One-way:** the crossing is a row in `feature_unlocks` (new, snake_case,
+  migration `AddFeatureUnlocks`, additive). Once written, nothing re-locks.
+- **Below the floor** the four opcodes answer `CommandResultCode.GuildWarsLocked`
+  (37) BEFORE any validator - they no longer disconnect - and the Guild screen
+  shows the locked line with players M/50 and guilds K/4 from
+  `GET /api/v1/guild/war-unlock`. The toast reads "now M/50" from the same query.
+- The crons still start (no change to `CronWorkerGuardTests`' inventory); they
+  ask the gate every pass, so the unlock happens without a deploy. The
+  matchmaking loop's two probes are inside its try now.
+- Not done, on purpose: the four orphaned `GuildOps.svelte` handlers (baseline
+  stays 4), and everything in Phases 1-6.
+
+---
+
 # HANDOFF 2026-09-23 (end of day) - everything shipped; the next block is TASK_BOARD 25-38
 
 Production runs `main` at `11e89e5` (deployed and smoke-tested 26/26). Shipped

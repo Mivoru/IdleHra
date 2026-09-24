@@ -56,6 +56,7 @@ export const queryKeys = {
   guildLogistics: ['social', 'guild', 'logistics'] as const,
   guildDepot: ['social', 'guild', 'depot'] as const,
   guildShardMatch: ['social', 'guild', 'shardMatch'] as const,
+  guildWarUnlock: ['social', 'guild', 'warUnlock'] as const,
   codexRegions: ['meta', 'codex', 'regions'] as const,
   storefront: ['shop', 'storefront'] as const,
 };
@@ -665,6 +666,32 @@ export interface GuildShardMatch {
 
 export function fetchGuildShardMatch(): Promise<GuildShardMatch | null> {
   return authedGet<GuildShardMatch | null>('/api/v1/guild/shard-match');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/guild/war-unlock
+// ---------------------------------------------------------------------------
+
+/**
+ * How far the game is from unlocking Guild Wars.
+ *
+ * Wars are locked behind a population floor (server: GuildWarUnlock) - enough
+ * players at the leaderboard's level bar AND enough guilds with enough such
+ * members. Once crossed the unlock is permanent, so `Unlocked` can be true
+ * while the counts sit below the numbers.
+ */
+export interface GuildWarUnlock {
+  Unlocked: boolean;
+  QualifyingPlayers: number;
+  RequiredPlayers: number;
+  QualifyingGuilds: number;
+  RequiredGuilds: number;
+  RequiredMembersPerGuild: number;
+  MinimumLevel: number;
+}
+
+export function fetchGuildWarUnlock(): Promise<GuildWarUnlock> {
+  return authedGet<GuildWarUnlock>('/api/v1/guild/war-unlock');
 }
 
 // ---------------------------------------------------------------------------

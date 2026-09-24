@@ -777,6 +777,30 @@ await go('Guild');
   record('guild screen loads roster and depot', /Depot|Roster|Guild war/i.test(text));
   record('cross-shard section resolves', !text.includes('Checking for a match'), 'match query settled');
 
+  // Modul: GUILD WARS ARE LOCKED behind a population floor (GuildWarUnlock).
+  // The screen has to say so WITH the progress the server reports, not just
+  // "No war is active" for ever. Compared against the endpoint itself so the
+  // check holds on a box that has crossed the floor too.
+  const warUnlock = await apiGet('/api/v1/guild/war-unlock');
+  if (warUnlock === null) {
+    record('the guild war lock reports its progress', false, '/api/v1/guild/war-unlock did not answer');
+  } else if (warUnlock.Unlocked) {
+    record('the guild war lock reports its progress', true, 'already unlocked on this server');
+  } else {
+    const lockLine = await page
+      .locator('[data-testid="guild-war-locked"]')
+      .waitFor({ timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+    const warText = await page.evaluate(() => document.body.innerText);
+    const shows = `${warUnlock.QualifyingPlayers} / ${warUnlock.RequiredPlayers}`;
+    record(
+      'the guild war lock reports its progress',
+      lockLine && warText.includes(shows) && warText.includes(`${warUnlock.QualifyingGuilds} / ${warUnlock.RequiredGuilds}`),
+      `players ${shows}, guilds ${warUnlock.QualifyingGuilds} / ${warUnlock.RequiredGuilds}`,
+    );
+  }
+
   // Modul: the whole Donate Materials panel shipped DEAD and rendered
   // perfectly while doing so. depotMaterial held a base-id string from the
   // <select> while depotMax looked it up by numeric definition id, so the

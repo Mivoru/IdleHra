@@ -89,6 +89,7 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 | PlayerWorldBossAttempt         | player_world_boss_attempts      |
 | MonsterCodexEntry              | monster_codex_entries           |
 | ConversationMessage            | conversation_messages           |
+| FeatureUnlock                  | feature_unlocks                 |
 
 (`MentorshipAcademyAssignment` and `VillageResident`/`VillageInfrastructure`
 carry `[Table(...)]` overrides too, but to their default PascalCase names -

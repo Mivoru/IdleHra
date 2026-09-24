@@ -233,7 +233,15 @@ namespace FolkIdle.Server.Network
         // The transaction threw - under Serializable isolation a concurrent
         // write is an ordinary cause - and was rolled back, so nothing was spent.
         // It used to be caught and printed to the server console only.
-        BreedingFailed = 36
+        BreedingFailed = 36,
+
+        // Modul: GUILD WARS ARE LOCKED behind a population floor (see
+        // GuildWarUnlock): 50 qualifying players and 4 guilds of 3. Opcodes
+        // 23/27/49/50 answer this instead of acting - and instead of the
+        // disconnect two of them used to answer a stale screen with. The
+        // client renders it with the live progress ("now 12/50") from
+        // /api/v1/guild/war-unlock, because a byte cannot carry the count.
+        GuildWarsLocked = 37
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

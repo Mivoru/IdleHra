@@ -11,6 +11,7 @@
     donateToGuildDepot,
     activateGuildBuff,
     fetchGuildShardMatch,
+    fetchGuildWarUnlock,
     fetchMaterials,
     kickGuildMember,
     promoteGuildMember,
@@ -26,6 +27,7 @@
     submitShardAttack,
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
+  import { setGuildWarLockProgress } from '../lib/stores/commandResults';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { loadContent, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
   import Bar from '../lib/ui/Bar.svelte';
@@ -56,6 +58,23 @@
   }
 
   // --- war ------------------------------------------------------------------
+  // Modul: GUILD WARS ARE LOCKED behind a population floor (server:
+  // GuildWarUnlock) - the war code could mint diamonds for two alt guilds, and
+  // a war means nothing with one guild. The panel says so with the live
+  // progress, and hands the same numbers to the command-result toast so a
+  // refused war command reads "now 12/50" rather than a bare refusal.
+  const warLock = createQuery(() => ({
+    queryKey: queryKeys.guildWarUnlock,
+    queryFn: fetchGuildWarUnlock,
+    staleTime: 5 * 60_000,
+  }));
+  const warLocked = $derived(warLock.data ? !warLock.data.Unlocked : false);
+
+  $effect(() => {
+    const d = warLock.data;
+    setGuildWarLockProgress(d && !d.Unlocked ? { players: d.QualifyingPlayers, required: d.RequiredPlayers } : null);
+  });
+
   // Modul: the three war axes are mirrored for both sides on the hot path, so
   // this is a live scoreboard rather than a REST snapshot.
   const warAxes = $derived(
@@ -430,7 +449,31 @@
     <section class="panel">
       <h2>Guild war</h2>
 
-      {#if warId <= 0}
+      {#if warLocked && warLock.data}
+        {@const lock = warLock.data}
+        <p class="war-locked" data-testid="guild-war-locked">
+          Guild Wars unlock at {lock.RequiredPlayers} players.
+        </p>
+        <div class="axis">
+          <span class="dim tiny">Players at level {lock.MinimumLevel}+</span>
+          <Bar
+            value={Math.min(lock.QualifyingPlayers, lock.RequiredPlayers)}
+            max={lock.RequiredPlayers}
+            label={`${lock.QualifyingPlayers} / ${lock.RequiredPlayers}`}
+          />
+        </div>
+        <div class="axis">
+          <span class="dim tiny">Guilds with {lock.RequiredMembersPerGuild}+ such members</span>
+          <Bar
+            value={Math.min(lock.QualifyingGuilds, lock.RequiredGuilds)}
+            max={lock.RequiredGuilds}
+            label={`${lock.QualifyingGuilds} / ${lock.RequiredGuilds}`}
+          />
+        </div>
+        <p class="dim tiny">
+          Both are needed. Once reached, Guild Wars stay unlocked for good.
+        </p>
+      {:else if warId <= 0}
         <p class="dim">
           No war is active. The scoreboard below appears once your guild is
           matched.
@@ -1060,6 +1103,11 @@
     display: grid;
     gap: 0.2rem;
     margin-bottom: 0.5rem;
+  }
+
+  .war-locked {
+    margin: 0 0 0.6rem;
+    font-weight: 600;
   }
 
   .row {

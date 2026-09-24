@@ -84,7 +84,32 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   34: 'Not enough gold for this pairing.',
   35: 'A child was born - find it in the Hall of Ancestors.',
   36: 'The pairing could not be completed - nothing was spent. Try again.',
+
+  // Modul: Guild Wars are locked behind a population floor. The server's byte
+  // cannot carry the count, so this is the fallback sentence; messageFor below
+  // adds "now M/50" from the Guild screen's own progress query when it has it.
+  37: 'Guild Wars are locked until the game has enough players - see the Guild screen for progress.',
 };
+
+export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;
+
+let guildWarLockProgress: { players: number; required: number } | null = null;
+
+/**
+ * The Guild screen reports the population it last fetched, so a refused war
+ * command can say how far away the unlock is rather than only that it exists.
+ */
+export function setGuildWarLockProgress(progress: { players: number; required: number } | null): void {
+  guildWarLockProgress = progress;
+}
+
+export function messageFor(code: number): string {
+  if (code === COMMAND_RESULT_GUILD_WARS_LOCKED && guildWarLockProgress) {
+    const { players, required } = guildWarLockProgress;
+    return `Guild Wars unlock at ${required} players (now ${players}/${required}).`;
+  }
+  return COMMAND_RESULT_MESSAGES[code] ?? `Rejected (code ${code}).`;
+}
 
 export const COMMAND_RESULT_SUCCESS = 0;
 
@@ -163,7 +188,7 @@ export class CommandResultFeed {
         id: ++sequence,
         code: slot.code,
         tick: slot.tick,
-        message: COMMAND_RESULT_MESSAGES[slot.code] ?? `Rejected (code ${slot.code}).`,
+        message: messageFor(slot.code),
         atMs: nowMs,
       }));
 
