@@ -56,7 +56,7 @@ const checkOnly = process.argv.includes('--check');
  * pass. The per-item breakdown lives in the committed sprites.missing.txt, so
  * a change to this number always comes with a reviewable list of which items
  * moved. */
-const MISSING_ART_BUDGET = 127;
+const MISSING_ART_BUDGET = 119;
 
 // ---------------------------------------------------------------------------
 // Alias tables
@@ -107,11 +107,13 @@ const MATERIAL_ALIASES = {
   // distinction the mechanics do not have.
   //
   // The `*_bar_crafting_material` items these aliases also used to cover were
-  // deleted in task 33 (2026-09-24), so the ingot art now belongs to the ore alone.
+  // deleted in task 33 (2026-09-24), and the ten `*_ore_crafting_material`
+  // twins the Copper and Absidian aliases covered were retired the same day,
+  // so each piece of ingot art now belongs to its ore alone.
   //
   // Region 01 - from the Unity builder
   'Birch Tree': 'birch_trees_woodcutting_material',
-  Copper: ['copper_ore_crafting_material', 'copper_ore'],
+  Copper: 'copper_ore',
   Malachite: 'malachite_ore',
   'Viper Venom Elixir': 'mat_viper_venom',
 
@@ -130,7 +132,7 @@ const MATERIAL_ALIASES = {
   'Acatia twig': 'acacia_twig',
   'Golden Acatia log': ['golden_acacia_log', 'ironwood_log'],
   'Golden Acatia twig': 'ironwood_twig',
-  Absidian: ['obsidian_ore', 'obsidian_ore_crafting_material'],
+  Absidian: 'obsidian_ore',
   'volcanic sulfur': 'sulfur_ore',
   'Bear stew': 'bear_stew_food_consumable',
 
@@ -467,9 +469,9 @@ for (const file of files) {
   // AN EXACT BaseId MATCH BEATS A PREFIX ONE, and is not ambiguous with it.
   //
   // The prefix arm exists because most art is named for the material and the
-  // item id adds a category suffix ("Copper" -> copper_ore_crafting_material).
-  // But `copper_ore.webp` matches BOTH `copper_ore` and its legacy twin
-  // `copper_ore_crafting_material`, so the ambiguity rule threw away a sprite
+  // item id adds a category suffix ("Roasted Perch" -> roasted_perch_food_consumable).
+  // But `copper_ore.webp` matched BOTH `copper_ore` and its legacy twin
+  // `copper_ore_crafting_material` (retired 2026-09-24), so the ambiguity rule threw away a sprite
   // whose filename is character-for-character the item's own id. A file named
   // exactly after an item is the strongest signal in this whole script - there
   // is nothing to guess - so it wins outright and the prefix arm is only

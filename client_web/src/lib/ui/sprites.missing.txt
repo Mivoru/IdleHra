@@ -9,17 +9,7 @@
 # exactly after the BaseId (an exact filename match wins outright), or add an
 # explicitly verified alias to MATERIAL_ALIASES. Then lower the budget.
 
-total 127 of 290 catalogued items have no artwork
-
-## crafting materials (8)
-adamantite_ore_crafting_material
-celestial_ore_crafting_material
-coal_node_crafting_material
-gold_ore_crafting_material
-iron_ore_crafting_material
-mithril_ore_crafting_material
-silver_ore_crafting_material
-tin_ore_crafting_material
+total 119 of 280 catalogued items have no artwork
 
 ## gathering & profession materials (46)
 abyssal_lanternfish_raw_fishing_material

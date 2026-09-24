@@ -1,7 +1,7 @@
 # id<TAB>BaseId, or id<TAB>- for a retired id. See ItemCatalogueIntegrityTests.
 # Append new ids at the end. Retiring an id: replace its BaseId with -  (never delete the line).
 # A - line may never become an item again.
-1	gold_ore_crafting_material
+1	-
 2	-
 3	-
 4	premium_diamond
@@ -21,7 +21,7 @@
 18	premium_diamond_cluster
 19	-
 20	-
-21	mithril_ore_crafting_material
+21	-
 22	-
 23	-
 24	screaming_mandrake_herbalism_material
@@ -39,7 +39,7 @@
 36	spine_whip_link_unique_regional_boss_material
 37	-
 38	-
-39	adamantite_ore_crafting_material
+39	-
 40	-
 41	-
 42	jagged_bloodgrass_herbalism_material
@@ -57,7 +57,7 @@
 54	zmey_core_scale_unique_regional_boss_material
 55	-
 56	-
-57	obsidian_ore_crafting_material
+57	-
 58	-
 59	-
 60	frost_moonflower_herbalism_material
@@ -75,7 +75,7 @@
 72	glacial_hearthstone_unique_regional_boss_material
 73	-
 74	-
-75	celestial_ore_crafting_material
+75	-
 76	-
 77	-
 78	golden_ambrosia_herbalism_material
@@ -93,7 +93,7 @@
 90	lightning_bolt_fragment_ultimate_mythic_upgrade_material
 91	-
 92	-
-93	tin_ore_crafting_material
+93	-
 94	viper_venom_alchemy_material
 95	-
 96	bog_nightshade_herbalism_material
@@ -111,7 +111,7 @@
 108	regent_ribbon_unique_regional_boss_material
 109	-
 110	-
-111	iron_ore_crafting_material
+111	-
 112	-
 113	-
 114	cave_moss_herbalism_material
@@ -129,7 +129,7 @@
 126	overlord_crest_unique_regional_boss_material
 127	-
 128	-
-129	coal_node_crafting_material
+129	-
 130	-
 131	-
 132	mountain_ginger_herbalism_material
@@ -147,7 +147,7 @@
 144	wurm_eye_unique_regional_boss_material
 145	-
 146	-
-147	silver_ore_crafting_material
+147	-
 148	-
 149	-
 150	wild_ginseng_herbalism_material
@@ -165,7 +165,7 @@
 162	noon_shroud_unique_regional_boss_material
 163	-
 164	-
-165	copper_ore_crafting_material
+165	-
 166	-
 167	-
 168	pond_minnow_raw_cooking_ingredient

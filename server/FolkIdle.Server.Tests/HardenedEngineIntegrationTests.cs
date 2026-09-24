@@ -1956,8 +1956,9 @@ namespace FolkIdle.Server.Tests
                 // Modul: GetMaterialString, NOT GetItemBaseId. Analytical loot
                 // resolves its ids through the six-slug gathering namespace, so
                 // loot table id 1 lands in "copper_ore" - which is a different
-                // thing from the catalogue's item id 1
-                // (gold_ore_crafting_material) and a different thing again from
+                // thing from the catalogue's item id 1 (once
+                // gold_ore_crafting_material, retired 2026-09-24 and now a
+                // hole) and a different thing again from
                 // the village's tier ore. Three namespaces, one number; this
                 // line names the one the granting path actually writes.
                 var commodity = await verifyDb.CommodityRecords.AsNoTracking()

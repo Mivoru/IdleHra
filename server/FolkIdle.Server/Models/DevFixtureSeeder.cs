@@ -192,8 +192,9 @@ namespace FolkIdle.Server.Models
             //     ("copper_ore", "raw_log", ...). Produced by gathering nodes,
             //     consumed by VillageManagementEngine's building upgrades.
             //   GetItemBaseId(id)      - the full items.json catalogue
-            //     ("iron_ore_crafting_material", "coal_node_crafting_material",
-            //     ...). Produced by combat loot, consumed by every crafting
+            //     ("birch_log", "mat_wolf_hide", ... - the old
+            //     *_crafting_material examples here were retired 2026-09-24).
+            //     Produced by combat loot, consumed by every crafting
             //     recipe.
             //
             // Both are legitimate and both have real producers and consumers,

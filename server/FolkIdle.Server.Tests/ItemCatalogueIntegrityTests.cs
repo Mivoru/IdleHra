@@ -111,22 +111,63 @@ namespace FolkIdle.Server.Tests
             Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
         }
 
+        // Modul: the loot rows no table can reach. _lootSegments slices
+        // _lootEntries by POSITION, so a row that lost its table cannot be
+        // removed without re-slicing every table after it - the dead rows stay
+        // as padding. Measured 2026-09-24: rows 0-21 (the pre-renumber fishing,
+        // herbalism and mining-201 rows) and 47-76 (the old woodcutting and
+        // mining nodes 101-105/201-205, renumbered to 1001-1005/2001-2005,
+        // whose new tables start at row 77). Pinned here so a table that
+        // silently loses its segment - or a new row that no table covers -
+        // is a decision rather than an accident.
+        private static readonly HashSet<int> UnreachableLootRows =
+            new(Enumerable.Range(0, 22).Concat(Enumerable.Range(47, 30)));
+
         // Modul: Test_ContentRegistry_EveryRecipeIngredientIsObtainableFromSomeSource
         // only asks whether a recipe input appears in SOME loot table, so a
         // recipe and a loot row that both point at a hole pass it together.
         // This asks the question that matters: does the id name an item.
-        // AllLootEntries is the whole array, not the tables reachable through
-        // monsters and nodes, so an orphaned table (3001) is checked too.
+        //
+        // Every row a loot table can reach must name a LIVE item. A row no
+        // table reaches may also name a RETIRED id (the ten *_crafting_material
+        // ores retired 2026-09-24 had no rows except dead padding), but
+        // never an id that never existed - that would be a typo, not history.
         [Fact]
         public void NoLootRowOrRecipeNamesAMissingItem()
         {
             var failures = new List<string>();
+            var ledger = ReadLedger();
 
             var loot = ContentRegistry.AllLootEntries;
+            var reachable = new HashSet<int>();
+            foreach (var (tableId, segment) in ContentRegistry.LootSegments)
+            {
+                if (segment.Start < 0 || segment.Start + segment.Count > loot.Length)
+                {
+                    failures.Add($"loot table {tableId} slices ({segment.Start}, {segment.Count}) past the {loot.Length}-row array");
+                    continue;
+                }
+                for (int i = segment.Start; i < segment.Start + segment.Count; i++) reachable.Add(i);
+            }
+
             for (int i = 0; i < loot.Length; i++)
             {
-                if (!ContentRegistry.ItemExists(loot[i].ItemId))
-                    failures.Add($"loot row index {i} -> {loot[i].ItemId} (missing)");
+                int itemId = loot[i].ItemId;
+                if (reachable.Contains(i))
+                {
+                    if (!ContentRegistry.ItemExists(itemId))
+                        failures.Add($"loot row index {i} -> {itemId} (missing, and a table reaches it)");
+                    if (UnreachableLootRows.Contains(i))
+                        failures.Add($"loot row index {i} is listed as unreachable but a table now reaches it - update UnreachableLootRows");
+                }
+                else
+                {
+                    if (!UnreachableLootRows.Contains(i))
+                        failures.Add($"loot row index {i} -> {itemId} is reached by no loot table - give it a segment, or add it to UnreachableLootRows");
+                    bool retired = ledger.TryGetValue(itemId, out string? recorded) && recorded == "-";
+                    if (!ContentRegistry.ItemExists(itemId) && !retired)
+                        failures.Add($"dead loot row index {i} -> {itemId}, which never was an item");
+                }
             }
 
             var recipes = ContentRegistry.Recipes;
@@ -141,7 +182,7 @@ namespace FolkIdle.Server.Tests
                     failures.Add($"recipe {r.ResultItemId} Mat2 -> {r.Mat2Id} (missing)");
             }
 
-            _output.WriteLine($"{loot.Length} loot rows, {recipes.Length} recipes checked");
+            _output.WriteLine($"{loot.Length} loot rows ({reachable.Count} reachable), {recipes.Length} recipes checked");
             Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
         }
 
