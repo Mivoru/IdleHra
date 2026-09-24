@@ -8,14 +8,6 @@
     "BaseId": "gold_ore_crafting_material"
   },
   {
-    "Id": 2,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "highland_wool_crafting_material"
-  },
-  {
     "Id": 4,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -30,14 +22,6 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "salt_lotus_herbalism_material"
-  },
-  {
-    "Id": 6,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "ominous_feather_crafting_material"
   },
   {
     "Id": 8,
@@ -62,14 +46,6 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "coastline_cod_raw_fishing_material"
-  },
-  {
-    "Id": 12,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "selkie_skin_fragment_crafting_material"
   },
   {
     "Id": 14,
@@ -104,28 +80,12 @@
     "BaseId": "mithril_ore_crafting_material"
   },
   {
-    "Id": 22,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "shadow_feather_crafting_material"
-  },
-  {
     "Id": 24,
     "RegionTier": 1,
     "BaseValueGold": 10,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "screaming_mandrake_herbalism_material"
-  },
-  {
-    "Id": 25,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "tainted_tusk_crafting_material"
   },
   {
     "Id": 27,
@@ -184,14 +144,6 @@
     "BaseId": "adamantite_ore_crafting_material"
   },
   {
-    "Id": 40,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "scorpion_stinger_crafting_material"
-  },
-  {
     "Id": 42,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -200,28 +152,12 @@
     "BaseId": "jagged_bloodgrass_herbalism_material"
   },
   {
-    "Id": 43,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "crystallized_venom_crafting_material"
-  },
-  {
     "Id": 45,
     "RegionTier": 1,
     "BaseValueGold": 10,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "elder_trees_woodcutting_material"
-  },
-  {
-    "Id": 46,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "harpy_talon_crafting_material"
   },
   {
     "Id": 48,
@@ -264,28 +200,12 @@
     "BaseId": "obsidian_ore_crafting_material"
   },
   {
-    "Id": 58,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "frosted_down_crafting_material"
-  },
-  {
     "Id": 60,
     "RegionTier": 1,
     "BaseValueGold": 10,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "frost_moonflower_herbalism_material"
-  },
-  {
-    "Id": 61,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "glacial_claw_crafting_material"
   },
   {
     "Id": 63,
@@ -296,28 +216,12 @@
     "BaseId": "ancient_wood_woodcutting_material"
   },
   {
-    "Id": 64,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "runestone_shard_crafting_material"
-  },
-  {
     "Id": 66,
     "RegionTier": 1,
     "BaseValueGold": 10,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "fjord_shark_raw_fishing_material"
-  },
-  {
-    "Id": 67,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "ancient_burial_cloth_crafting_material"
   },
   {
     "Id": 69,
@@ -344,28 +248,12 @@
     "BaseId": "celestial_ore_crafting_material"
   },
   {
-    "Id": 76,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "pure_aurora_filament_crafting_material"
-  },
-  {
     "Id": 78,
     "RegionTier": 6,
     "BaseValueGold": 360,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "golden_ambrosia_herbalism_material"
-  },
-  {
-    "Id": 79,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "sentinel_alloy_plate_crafting_material"
   },
   {
     "Id": 81,
@@ -376,28 +264,12 @@
     "BaseId": "yggdrasil_burl_woodcutting_material"
   },
   {
-    "Id": 82,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "prismatic_core_prism_crafting_material"
-  },
-  {
     "Id": 84,
     "RegionTier": 1,
     "BaseValueGold": 10,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "astral_whale_raw_fishing_material"
-  },
-  {
-    "Id": 85,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "ethereal_shroud_fabric_crafting_material"
   },
   {
     "Id": 87,
@@ -456,14 +328,6 @@
     "BaseId": "oak_logs_woodcutting_material"
   },
   {
-    "Id": 100,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "waterlogged_cloth_crafting_material"
-  },
-  {
     "Id": 102,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -504,14 +368,6 @@
     "BaseId": "iron_ore_crafting_material"
   },
   {
-    "Id": 112,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "bat_wing_crafting_material"
-  },
-  {
     "Id": 114,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -520,28 +376,12 @@
     "BaseId": "cave_moss_herbalism_material"
   },
   {
-    "Id": 115,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "carapace_shard_crafting_material"
-  },
-  {
     "Id": 117,
     "RegionTier": 1,
     "BaseValueGold": 10,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "willow_logs_woodcutting_material"
-  },
-  {
-    "Id": 118,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "chitin_segment_crafting_material"
   },
   {
     "Id": 120,
@@ -584,14 +424,6 @@
     "BaseId": "coal_node_crafting_material"
   },
   {
-    "Id": 130,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "eagle_feather_crafting_material"
-  },
-  {
     "Id": 132,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -600,28 +432,12 @@
     "BaseId": "mountain_ginger_herbalism_material"
   },
   {
-    "Id": 133,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "thick_goat_horn_crafting_material"
-  },
-  {
     "Id": 135,
     "RegionTier": 1,
     "BaseValueGold": 10,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "pine_trees_woodcutting_material"
-  },
-  {
-    "Id": 136,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "frozen_scale_crafting_material"
   },
   {
     "Id": 138,
@@ -664,14 +480,6 @@
     "BaseId": "silver_ore_crafting_material"
   },
   {
-    "Id": 148,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "locust_wing_crafting_material"
-  },
-  {
     "Id": 150,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -680,28 +488,12 @@
     "BaseId": "wild_ginseng_herbalism_material"
   },
   {
-    "Id": 151,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "falcon_talon_crafting_material"
-  },
-  {
     "Id": 153,
     "RegionTier": 1,
     "BaseValueGold": 10,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "birch_trees_woodcutting_material"
-  },
-  {
-    "Id": 154,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "desiccated_bone_crafting_material"
   },
   {
     "Id": 156,
@@ -744,14 +536,6 @@
     "BaseId": "copper_ore_crafting_material"
   },
   {
-    "Id": 166,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "rat_pelt_crafting_material"
-  },
-  {
     "Id": 168,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -776,36 +560,12 @@
     "BaseId": "field_marigold_herbalism/cooking_ingredient"
   },
   {
-    "Id": 172,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "sharp_claw_crafting_material"
-  },
-  {
     "Id": 174,
     "RegionTier": 1,
     "BaseValueGold": 10,
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "beech_logs_raw_woodcutting_material"
-  },
-  {
-    "Id": 175,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "wolf_tooth_crafting_material"
-  },
-  {
-    "Id": 177,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "thick_wolf_hide_rare_crafting_material"
   },
   {
     "Id": 180,
@@ -822,86 +582,6 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "premium_diamond_cluster_guaranteed_currency_payout"
-  },
-  {
-    "Id": 184,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "copper_bar_crafting_material"
-  },
-  {
-    "Id": 185,
-    "RegionTier": 2,
-    "BaseValueGold": 40,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "bronze_bar_crafting_material"
-  },
-  {
-    "Id": 186,
-    "RegionTier": 3,
-    "BaseValueGold": 90,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "iron_bar_crafting_material"
-  },
-  {
-    "Id": 187,
-    "RegionTier": 4,
-    "BaseValueGold": 160,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "steel_bar_crafting_material"
-  },
-  {
-    "Id": 188,
-    "RegionTier": 5,
-    "BaseValueGold": 250,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "silver_bar_crafting_material"
-  },
-  {
-    "Id": 189,
-    "RegionTier": 6,
-    "BaseValueGold": 360,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "gold_bar_crafting_material"
-  },
-  {
-    "Id": 190,
-    "RegionTier": 7,
-    "BaseValueGold": 490,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "mithril_bar_crafting_material"
-  },
-  {
-    "Id": 191,
-    "RegionTier": 8,
-    "BaseValueGold": 640,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "adamantite_bar_crafting_material"
-  },
-  {
-    "Id": 192,
-    "RegionTier": 9,
-    "BaseValueGold": 810,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "obsidian_bar_crafting_material"
-  },
-  {
-    "Id": 193,
-    "RegionTier": 10,
-    "BaseValueGold": 1000,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "celestial_bar_crafting_material"
   },
   {
     "Id": 194,
