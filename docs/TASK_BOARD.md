@@ -3478,6 +3478,81 @@ constrain the answer - read task 9 first). **Add a drop record** either way
 (tier, source = drop/forge/craft, time), so the next "this feels sus" is
 answered from data rather than reconstructed from row ids.
 
+### Investigated 2026-09-23 (plan: `docs/superpowers/plans/2026-09-23-task-26-rarity-investigation.md`)
+
+**The odds did not change.** Everything observed fits the authored table at
+the account's real loot luck, which a test now computes rather than a person:
+`RarityRollDistributionTests.ALevel94Region5Build_EveryLuckTermIsWhatTheFormulaSays`
+reproduced the hand sum exactly (60.78 luck, 6.06% elevation before the fixes
+below). Ancient+ was ~1 drop in 2,018; seeing none in 976 drops happens 62% of
+the time. H1 (forged, not dropped): ruled out - no fusion affix key on any row.
+H2/H2b (luck lower than expected, or changed at a deploy): ruled out. H3
+(offline fills fewer terms): ruled out, fixed 2026-09-03. **Luck multiplies
+tiers 2-14 equally**, so it can only shrink Normal and never more than about
+doubles the top (1.72% Legendary+ at infinite luck on the plain roll); the
+Ancient+ : Legendary+ ratio is luck-invariant (~4.15%) and is the one
+comparison a survivor-biased chest allows. Two unrelated defects were found on
+the way (H4, H5). H6 - the drought is volume, not odds (~10 days mean wait at
+~195 drops/day) - is now measurable with the drop record below.
+
+### Decided with the owner, 2026-09-24
+
+- **B: the Rarity bough is rarity ELEVATION (+1%/level, +8% at cap), as its
+  card always said** - it had been added to loot luck. Card text kept
+  identical on both sides; `serverMirrors.test.ts` now holds all twenty node
+  blurbs together.
+- **C: area completion counts the five canonical regions only** (ids 91-115):
+  1,000 kills of each regular monster and **100 of the region boss**. It had
+  counted the 90 unfightable legacy monsters, so no region could complete and
+  the +1 luck/region was 0 for everyone (0 rows in production). One rule now,
+  `RegionCompletionRules`, asked by the login recompute, the codex worker and
+  `/api/v1/codex/regions`. The Codex screen read the flags one bit off; fixed.
+- **No weight, pity or tilt change** (options D, E, F declined).
+- **Ship the drop record and an odds line in the Wiki.**
+
+### Result (branch `fix/rarity-26`, not yet deployed)
+
+| level-94 build (player 8) | luck | elevation | Legendary+ / drop | Ancient+ / drop |
+|---|---|---|---|---|
+| before task 26 | 60.78 | 6.06% | 1.195% | 0.0495% (1 in 2,018) |
+| B | 52.78 | 14.06% | 1.299% | 0.0539% (1 in 1,854) |
+| B + C, all five regions done | 57.78 | 14.06% | 1.316% | 0.0546% (1 in 1,831) |
+
+Player 8 completes no region yet under C (region 2 and 4 regulars are done;
+their bosses stand at 8 and 2 of 100).
+
+**Balance:** `ItemRarityPowerTests`' two task-9 measurements run at zero luck
+and are unchanged. A new one
+(`Task26_TheDropOddsChange_MovesXpPerSecondByUnderTwoPercent`) runs the
+invested build through the same best-of-N power model: XP/sec moves by at most
+**+0.97%** (region 4, B+C), inside the owner's +/-2%. No monster HP change.
+
+**Drop record:** `loot_tier_daily_counts` (a count per player/day/source/
+region/final tier for every piece created, salvaged ones included) and
+`notable_item_events` (a row for every Legendary+, every fusion, every
+trophy), written only through `Engine/DropRecord.cs` inside the creating
+transaction; one upsert per loot request. The migration is additive. A
+rolled-back drop leaves no count and the retry outbox records it as
+`OutboxRetry`. `DropRecordTests.EveryCreationSite_RecordsOrIsExcludedOnPurpose`
+fails on an unrecorded creation site.
+
+**Odds line:** the Wiki's "Drop chances and luck" section opens with the
+player's own odds, computed server-side (`/api/v1/player/loot-odds`) from the
+luck and elevation their last drop request rolled with.
+
+**Verified 2026-09-24:** full server suite 954/954; `npm run exercise`
+156/156 (including the new odds-line check); smoke:screens 26/26;
+check:clipping 0; svelte-check at its 4-error baseline. Locally, the
+exercise run's crafts wrote `loot_tier_daily_counts` rows (Source 5) through
+the running server; it made only three kills, none of which dropped gear, so
+live-kill and forge rows were proven by the Testcontainers tests rather than
+by the dev box.
+
+**Still open:** deploy (plan Task 6), then the next-day production query
+(`SELECT "Source","QualityTier",sum("Count") FROM loot_tier_daily_counts
+WHERE "PlayerId"=8 GROUP BY 1,2 ORDER BY 1,2;`) to measure drops/day and close
+H6. The admin loot-stats view (plan Task 4b) was optional and not built.
+
 ## 27. Loot drops list: the top row is cut off (S)
 
 **Reported:** with many items the loot drops table glitches and the top item is
