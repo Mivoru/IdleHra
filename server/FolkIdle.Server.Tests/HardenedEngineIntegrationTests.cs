@@ -11394,7 +11394,6 @@ namespace FolkIdle.Server.Tests
         public async Task Test_Crafting_GrantsTheCraftedItemAndNotJustConsumesMaterials()
         {
             const long testPlayerId = 970004201L;
-            // copper_bar_crafting_material: 3x mat 93 + 1x mat 129, Smelting.
             // 408 is the Birch Axe - see the note on the other crafting test.
             const int resultItemId = 408;
 
