@@ -329,6 +329,16 @@ namespace FolkIdle.Server.Network
             _simulationEngine = engine;
         }
 
+        // Modul: the world boss engine, for the dev-only window override only.
+        // Null in any graph that never registers it, and the dev route then
+        // answers 503 rather than pretending.
+        private WorldBossEngine? _worldBossEngine;
+
+        public void RegisterWorldBossEngine(WorldBossEngine engine)
+        {
+            _worldBossEngine = engine;
+        }
+
         // Modul: matches the RegisterSimulationEngine wiring pattern -
         // BillingVerificationEngine is constructed independently in
         // Program.cs (it needs RetryingDbContextOptions and
@@ -1344,6 +1354,15 @@ namespace FolkIdle.Server.Network
                     if (requestPath.StartsWith("/api/v1/admin/"))
                     {
                         await HandleAdminEndpoints(context, requestPath);
+                        continue;
+                    }
+
+                    // Modul: dev-only tools. 404 unless FOLKIDLE_DEV_TOOLS=1,
+                    // so production answers exactly as if the route did not
+                    // exist. See HandleDevEndpoints.
+                    if (requestPath.StartsWith("/api/v1/dev/"))
+                    {
+                        await HandleDevEndpoints(context, requestPath);
                         continue;
                     }
 
@@ -9502,6 +9521,112 @@ namespace FolkIdle.Server.Network
                 }
             }
         }
+        internal static bool DevToolsEnabled()
+            => Environment.GetEnvironmentVariable("FOLKIDLE_DEV_TOOLS") == "1";
+
+        private sealed class DevWorldBossWindowRequest
+        {
+            public bool Open { get; set; }
+            public long DurationSeconds { get; set; } = 900;
+        }
+
+        /// <summary>
+        /// Dev-box tools. Every route here answers 404 unless FOLKIDLE_DEV_TOOLS=1.
+        ///
+        /// Modul: NOT under /api/v1/admin/, because the dev fixture is not an
+        /// admin by IsAdmin's rule (username Mivoru or one e-mail), and a gate the
+        /// fixture fails is a tool exercise.mjs cannot use. The environment
+        /// variable is the gate instead, and it fails CLOSED: run-dev.ps1 sets
+        /// it, ops/oracle does not, so production 404s. It exists because the
+        /// world boss window is calendar-driven and nothing could strike on the
+        /// other 13-16 days of a month (task 25).
+        /// </summary>
+        private async Task HandleDevEndpoints(HttpListenerContext context, string requestPath)
+        {
+            try
+            {
+                if (!DevToolsEnabled())
+                {
+                    context.Response.StatusCode = 404;
+                    return;
+                }
+
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                if (_worldBossEngine == null)
+                {
+                    context.Response.StatusCode = 503;
+                    return;
+                }
+
+                if (requestPath == "/api/v1/dev/worldboss/window" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    var req = JsonSerializer.Deserialize<DevWorldBossWindowRequest>(
+                        string.IsNullOrWhiteSpace(body) ? "{}" : body,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new DevWorldBossWindowRequest();
+
+                    if (req.Open)
+                    {
+                        await _worldBossEngine.OpenManualWindowAsync(req.DurationSeconds);
+                    }
+                    else
+                    {
+                        await _worldBossEngine.CloseManualWindowAsync();
+                    }
+
+                    await WriteDevWorldBossStateAsync(context, playerId);
+                    return;
+                }
+
+                if (requestPath == "/api/v1/dev/worldboss/attempt" && context.Request.HttpMethod == "GET")
+                {
+                    await WriteDevWorldBossStateAsync(context, playerId);
+                    return;
+                }
+
+                context.Response.StatusCode = 404;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Dev endpoint error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>The boss and the CALLER's attempt row, straight from the database.</summary>
+        private async Task WriteDevWorldBossStateAsync(HttpListenerContext context, long playerId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            var snapshot = await db.WorldBossSnapshots.AsNoTracking()
+                .FirstOrDefaultAsync(b => b.BossInstanceId == WorldBossEngine.ActiveBossInstanceId);
+            var attempt = await db.PlayerWorldBossAttempts.AsNoTracking()
+                .FirstOrDefaultAsync(a => a.PlayerId == playerId && a.BossInstanceId == WorldBossEngine.ActiveBossInstanceId);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            await JsonSerializer.SerializeAsync(context.Response.OutputStream, new
+            {
+                EventState = snapshot?.EventState ?? 0,
+                CurrentHp = snapshot?.CurrentHp ?? 0,
+                MaxHp = snapshot?.MaxHp ?? 0,
+                EventEndEpoch = snapshot?.EventEndEpoch ?? 0,
+                AttemptCount = attempt?.AttemptCount ?? 0,
+                TotalInflictedDamage = attempt?.TotalInflictedDamage ?? 0,
+            });
+        }
+
         private bool IsAdmin(FolkIdle.Server.Models.PlayerRecord? player)
         {
             if (player == null) return false;

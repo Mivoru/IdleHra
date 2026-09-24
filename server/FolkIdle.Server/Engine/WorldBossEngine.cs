@@ -374,6 +374,55 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Modul: A WINDOW A DEVELOPER CAN OPEN ON ANY DAY (task 25).
+        //
+        // The calendar (1st-7th, 15th-22nd) was the only way in, so on 13-16
+        // days a month nothing could press Strike - not exercise.mjs, not a
+        // developer reproducing "no attack has ever landed". A SQL poke to
+        // EventState = 1 does not help: LiveOps sees "active outside the
+        // calendar" on its next 60-second tick and finalises it as failed. So
+        // the override lives HERE, and LiveOps asks it before closing anything.
+        //
+        // Only reachable through POST /api/v1/dev/worldboss/window, which
+        // answers 404 unless FOLKIDLE_DEV_TOOLS=1 - opening a window deletes
+        // every attempt row server-wide, which on production would refund
+        // everybody's strikes mid-encounter.
+        private long _manualWindowEndEpoch;
+
+        public const long MinManualWindowSeconds = 60;
+        public const long MaxManualWindowSeconds = 86_400;
+
+        public static long ClampManualWindowSeconds(long seconds)
+            => Math.Clamp(seconds, MinManualWindowSeconds, MaxManualWindowSeconds);
+
+        public bool IsManualWindowOpen(long nowEpoch)
+        {
+            long end = Interlocked.Read(ref _manualWindowEndEpoch);
+            return end > 0 && nowEpoch < end;
+        }
+
+        public long ManualWindowEndEpoch => Interlocked.Read(ref _manualWindowEndEpoch);
+
+        /// <summary>
+        /// Opens a fresh encounter now (full health, new weak point, every
+        /// attempt row deleted) that LiveOps will not close until it runs out.
+        /// </summary>
+        public async Task OpenManualWindowAsync(long durationSeconds, long? nowEpoch = null)
+        {
+            long now = nowEpoch ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long end = now + ClampManualWindowSeconds(durationSeconds);
+            Interlocked.Exchange(ref _manualWindowEndEpoch, end);
+            await EnsureSnapshotAsync();
+            await ActivateEventWindowAsync(end);
+        }
+
+        /// <summary>Ends the override and concludes the encounter, as the calendar would have.</summary>
+        public async Task CloseManualWindowAsync()
+        {
+            Interlocked.Exchange(ref _manualWindowEndEpoch, 0);
+            await FinalizeEventAsFailedAsync();
+        }
+
         public async Task ActivateEventWindowAsync(long eventEndEpoch)
         {
             await EnsureSnapshotAsync();
