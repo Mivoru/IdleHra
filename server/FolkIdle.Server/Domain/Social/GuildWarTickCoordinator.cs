@@ -17,12 +17,36 @@ namespace FolkIdle.Server.Domain.Social
     /// </summary>
     internal static class GuildWarTickCoordinator
     {
+        /// <summary>
+        /// True when the command must stop here because Guild Wars are still
+        /// locked - having told the player why.
+        ///
+        /// Modul: the population lock (GuildWarUnlock), checked FIRST, before
+        /// any validator. Two of these handlers used to answer a malformed or
+        /// stale request by disconnecting, and a locked feature is neither: the
+        /// player gets GuildWarsLocked on the result ring and stays connected.
+        /// A null engine counts as locked - a war path with no war engine
+        /// behind it has nothing to act with.
+        /// </summary>
+        internal static bool RefuseWhileLocked(ref TickStatePayload currentPayload, in CommandCoordinatorContext ctx)
+        {
+            if (ctx.GuildWarEngine != null && ctx.GuildWarEngine.Unlock.IsUnlocked)
+            {
+                return false;
+            }
+
+            ctx.PlayerRegistry?.EnqueueCommandResult(currentPayload.PlayerId, (byte)CommandResultCode.GuildWarsLocked);
+            return true;
+        }
+
         // Moved verbatim from EngineLoop: else if (cmd.Command == CommandType.ContributeToWarSupply)
         internal static void HandleContributeToWarSupply(
             ref TickStatePayload currentPayload,
             ref ClientCommandPacket cmd,
             in CommandCoordinatorContext ctx)
         {
+            if (RefuseWhileLocked(ref currentPayload, in ctx)) return;
+
             if (currentPayload.GuildId > 0 && currentPayload.ActiveGuildWarId > 0 && cmd.SecondaryId > 0 && cmd.TertiaryId > 0)
             {
                 currentPayload.IsSuspended = true;
@@ -42,6 +66,8 @@ namespace FolkIdle.Server.Domain.Social
             ref ClientCommandPacket cmd,
             in CommandCoordinatorContext ctx)
         {
+            if (RefuseWhileLocked(ref currentPayload, in ctx)) return;
+
             if (!ClientCommandValidator.ValidateGuildWarAction(ref currentPayload, ref cmd))
             {
                 ctx.TerminateSessionForSecurity(ctx.RoutingPlayerId);
@@ -76,6 +102,8 @@ namespace FolkIdle.Server.Domain.Social
             ref ClientCommandPacket cmd,
             in CommandCoordinatorContext ctx)
         {
+            if (RefuseWhileLocked(ref currentPayload, in ctx)) return;
+
             if (!ClientCommandValidator.ValidateGuildWarAction(ref currentPayload, ref cmd))
             {
                 ctx.TerminateSessionForSecurity(ctx.RoutingPlayerId);
@@ -159,6 +187,8 @@ namespace FolkIdle.Server.Domain.Social
             ref ClientCommandPacket cmd,
             in CommandCoordinatorContext ctx)
         {
+            if (RefuseWhileLocked(ref currentPayload, in ctx)) return;
+
             if (!ClientCommandValidator.ValidateCombatTurnRequest(ref currentPayload, ref cmd))
             {
                 ctx.RemoveActivePlayer(ctx.RoutingPlayerId);

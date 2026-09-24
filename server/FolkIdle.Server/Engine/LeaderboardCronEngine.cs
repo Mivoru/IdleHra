@@ -369,4 +369,52 @@ namespace FolkIdle.Server.Engine
             }
         }
 }
+
+    /// <summary>
+    /// "How many real players does this game have" - asked in ONE place.
+    ///
+    /// Modul: the leaderboard learned the hard way that registrations are not
+    /// players (29 accounts, one above level 5, a board full of `exercise######`
+    /// throwaways), and answered with <see cref="LeaderboardTierRegistry.MinimumRankedLevel"/>.
+    /// The Guild War population floor asks the same question, so it asks it
+    /// HERE, beside the ranked query above and with the same constant, rather
+    /// than growing a second definition of "a real player" that drifts.
+    ///
+    /// Owner decision 2026-09-24: level is the WHOLE definition. No activity
+    /// window and no quarantine filter - the unlock is one-way, so a short-term
+    /// signal like "active this fortnight" would only decide the day it
+    /// happens, and the level bar already keeps throwaways out.
+    ///
+    /// LINQ rather than raw SQL on purpose: two of the tables involved are
+    /// PascalCase EF defaults and a raw string is where a table-name mistake
+    /// hides until runtime.
+    /// </summary>
+    public static class QualifyingPopulation
+    {
+        /// <summary>Accounts at or above the leaderboard's level bar.</summary>
+        public static Task<int> CountPlayersAsync(FolkIdleDbContext db, System.Threading.CancellationToken ct = default)
+        {
+            return db.PlayerRecords
+                .AsNoTracking()
+                .CountAsync(p => p.CurrentLevel >= LeaderboardTierRegistry.MinimumRankedLevel, ct);
+        }
+
+        /// <summary>
+        /// Guilds with at least <paramref name="minimumQualifyingMembers"/>
+        /// members who are themselves qualifying players. A guild of one real
+        /// player and five level-1 alts counts as a guild of one.
+        /// </summary>
+        public static async Task<int> CountGuildsAsync(FolkIdleDbContext db, int minimumQualifyingMembers, System.Threading.CancellationToken ct = default)
+        {
+            int minLevel = LeaderboardTierRegistry.MinimumRankedLevel;
+            return await (
+                    from m in db.GuildMembers.AsNoTracking()
+                    join p in db.PlayerRecords.AsNoTracking() on m.PlayerId equals p.Id
+                    where p.CurrentLevel >= minLevel
+                    group m by m.GuildId into g
+                    where g.Count() >= minimumQualifyingMembers
+                    select g.Key)
+                .CountAsync(ct);
+        }
+    }
 }

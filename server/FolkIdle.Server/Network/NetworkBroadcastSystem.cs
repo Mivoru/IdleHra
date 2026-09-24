@@ -1080,6 +1080,17 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // Modul: the Guild War population lock's progress, for the
+                    // locked line on the Guild screen and for the text of the
+                    // GuildWarsLocked command result. REST, not a packet field:
+                    // it changes on the scale of days, and StateUpdatePacket
+                    // has about a byte of headroom. See GuildWarUnlock.
+                    if (requestPath == "/api/v1/guild/war-unlock" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleGuildWarUnlock(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guild/logistics/snapshot" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGuildLogisticsSnapshot(context);
@@ -3100,6 +3111,59 @@ namespace FolkIdle.Server.Network
             public bool Locked { get; set; }
 
             public string Reason { get; set; } = string.Empty;
+        }
+
+        private sealed class GuildWarUnlockResponse
+        {
+            public bool Unlocked { get; set; }
+            public int QualifyingPlayers { get; set; }
+            public int RequiredPlayers { get; set; }
+            public int QualifyingGuilds { get; set; }
+            public int RequiredGuilds { get; set; }
+            public int RequiredMembersPerGuild { get; set; }
+            public int MinimumLevel { get; set; }
+        }
+
+        private async Task HandleGuildWarUnlock(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                // Evaluates rather than reading a cache, so the screen shows
+                // today's count - and if this is the request that crosses the
+                // floor, it records the unlock like any other evaluator would.
+                var status = await GuildWarUnlock.EvaluateAsync(db);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildWarUnlockResponse
+                {
+                    Unlocked = status.Unlocked,
+                    QualifyingPlayers = status.QualifyingPlayers,
+                    RequiredPlayers = GuildWarUnlock.RequiredQualifyingPlayers,
+                    QualifyingGuilds = status.QualifyingGuilds,
+                    RequiredGuilds = GuildWarUnlock.RequiredGuilds,
+                    RequiredMembersPerGuild = GuildWarUnlock.RequiredMembersPerGuild,
+                    MinimumLevel = LeaderboardTierRegistry.MinimumRankedLevel
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild war unlock error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
         }
 
         private async Task HandleGuildShardMatch(HttpListenerContext context)

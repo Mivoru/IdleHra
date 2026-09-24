@@ -149,3 +149,19 @@ describe('CommandResultFeed', () => {
     expect(feed.accept(packet([[5, 1], [0, 0], [0, 0], [0, 0]]), 20)).toHaveLength(0);
   });
 });
+
+describe('GuildWarsLocked (37)', () => {
+  it('says how far away the unlock is once the Guild screen has reported progress', async () => {
+    const { messageFor, setGuildWarLockProgress, COMMAND_RESULT_GUILD_WARS_LOCKED } = await import(
+      '../src/lib/stores/commandResults'
+    );
+    expect(readServerEnum('CommandResultCode')).toMatch(/GuildWarsLocked\s*=\s*37/);
+
+    setGuildWarLockProgress(null);
+    expect(messageFor(COMMAND_RESULT_GUILD_WARS_LOCKED)).toBe(COMMAND_RESULT_MESSAGES[37]);
+
+    setGuildWarLockProgress({ players: 12, required: 50 });
+    expect(messageFor(COMMAND_RESULT_GUILD_WARS_LOCKED)).toBe('Guild Wars unlock at 50 players (now 12/50).');
+    setGuildWarLockProgress(null);
+  });
+});

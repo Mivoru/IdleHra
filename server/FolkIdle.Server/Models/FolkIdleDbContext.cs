@@ -98,6 +98,9 @@ namespace FolkIdle.Server.Models
         // The durable retry outbox. See PendingGrant.
         public DbSet<PendingGrant> PendingGrants { get; set; }
 
+        // One-way population unlocks (Guild Wars first). See FeatureUnlock.
+        public DbSet<FeatureUnlock> FeatureUnlocks { get; set; }
+
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
         }

@@ -103,6 +103,17 @@ namespace FolkIdle.Server.Engine
             using var scope = _serviceProvider.CreateScope();
             var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>();
             await using var db = await dbFactory.CreateDbContextAsync(stoppingToken);
+
+            // Modul: the same population lock as GuildWarEngine - one gate, two
+            // pairers (see GuildWarUnlock). This one pairs cross-shard matches
+            // whose damage the client supplies, so it is the last thing that
+            // should run on a population too small to hold a war.
+            var unlock = await GuildWarUnlock.EvaluateAsync(db, stoppingToken);
+            if (!unlock.Unlocked)
+            {
+                return;
+            }
+
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, stoppingToken);
 
             try
