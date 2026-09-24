@@ -2862,6 +2862,38 @@ namespace FolkIdle.Server.Network
 
                     outcome = await engine.ChooseDoorAsync(playerId, door);
                 }
+                else if (requestPath == "/api/v1/delve/deep/descend")
+                {
+                    // Modul: QuotedStake is the stake the screen SHOWED, and it
+                    // is only ever a ceiling - the engine charges its own
+                    // number and answers PriceChanged if that is higher. A
+                    // missing or malformed quote is a 400, not a zero: a zero
+                    // quote would just read as "price changed" for ever.
+                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
+                    string body = await reader.ReadToEndAsync();
+
+                    long quotedStake;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(body);
+                        if (!parsed.RootElement.TryGetProperty("QuotedStake", out var quoteElement)
+                            || quoteElement.ValueKind != JsonValueKind.Number
+                            || !quoteElement.TryGetInt64(out quotedStake))
+                        {
+                            context.Response.StatusCode = 400;
+                            context.Response.Close();
+                            return;
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        context.Response.StatusCode = 400;
+                        context.Response.Close();
+                        return;
+                    }
+
+                    outcome = await engine.DescendAsync(playerId, quotedStake);
+                }
                 else
                 {
                     context.Response.StatusCode = 404;
@@ -2875,9 +2907,14 @@ namespace FolkIdle.Server.Network
                 // again. Reported once already as "I have to press F5 for the
                 // gold to update"; ReloadState is the answer every other
                 // off-tick engine here uses.
+                //
+                // A descent moves both: it banks floors 1-8 (diamonds or
+                // consolation gold) and debits a toll, all in the database.
                 bool changedBalances =
                     outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.Ok
-                    && (requestPath == "/api/v1/delve/start" || requestPath == "/api/v1/delve/bank");
+                    && (requestPath == "/api/v1/delve/start"
+                        || requestPath == "/api/v1/delve/bank"
+                        || requestPath == "/api/v1/delve/deep/descend");
 
                 if (changedBalances)
                 {
@@ -2895,6 +2932,7 @@ namespace FolkIdle.Server.Network
                     Result = outcome.Result.ToString(),
                     outcome.DiamondsGranted,
                     outcome.GoldReturned,
+                    outcome.GoldCharged,
                     outcome.View
                 });
             }
@@ -9716,6 +9754,21 @@ namespace FolkIdle.Server.Network
                 if (playerId <= 0)
                 {
                     context.Response.StatusCode = 401;
+                    return;
+                }
+
+                // Modul: THE DEEP'S WAY IN (task 37). Descending needs a run at
+                // the bottom of floor 8, which no fixture sheet reaches reliably
+                // - the doors are a gamble by design. This places the CALLER's
+                // run there, as a bank-ready full clear, so exercise.mjs can
+                // test a descent on every run instead of on a lucky one.
+                if (requestPath == "/api/v1/dev/delve/at-bottom" && context.Request.HttpMethod == "POST")
+                {
+                    var delve = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Economy.DelveEngine>();
+                    var view = await delve.DevPlaceRunAtBottomAsync(playerId);
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    await JsonSerializer.SerializeAsync(context.Response.OutputStream, view);
                     return;
                 }
 

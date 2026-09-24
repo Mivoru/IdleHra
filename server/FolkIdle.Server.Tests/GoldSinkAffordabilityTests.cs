@@ -253,7 +253,63 @@ namespace FolkIdle.Server.Tests
             new SinkRow("feast n=20", VillagerArrivalRules.RecruitCostGold(20), false, 300.0, 3_000.0),
             new SinkRow("feast n=25", VillagerArrivalRules.RecruitCostGold(25), false, 3_000.0, 30_000.0),
             new SinkRow("Delve gate (r5)", DelveRegistry.EntryFeeForRegion(5), true, 2.0, 30.0),
+            // Modul: THE DEEP (task 37 phase 1). A descent's first toll is the
+            // stake, a share of HOLDINGS - so it is priced for the account that
+            // holds the hoard, and repeats every run. At the top account's 492M
+            // it is 2.46M, about an hour and a half of top income.
+            new SinkRow("Deep descent (492M held)", DelveRegistry.Stake(DelveRegistry.EntryFeeForRegion(5), TopAccountHeld), true, 30.0, 600.0),
         };
+
+        /// <summary>What the top account held on 2026-09-23 (brief §1.1), which the spec's worked prices use.</summary>
+        internal const long TopAccountHeld = 492_000_000;
+
+        /// <summary>
+        /// Stake + tolls from floor 9 down to <paramref name="deepestFloor"/>,
+        /// plus <paramref name="refills"/> lanterns - one push, as spec §3.3
+        /// prices it.
+        /// </summary>
+        private static double DeepPushCost(long stake, int deepestFloor, int refills)
+        {
+            double total = 0;
+            for (int floor = DelveRegistry.FirstDeepFloor; floor <= deepestFloor; floor++) total += DelveRegistry.TollForFloor(stake, floor);
+            for (int k = 0; k < refills; k++) total += DelveRegistry.LanternRefillPrice(stake, k);
+            return total;
+        }
+
+        /// <summary>
+        /// Spec §3.3's worked prices and §6's affordability bands, asserted.
+        ///
+        /// Modul: THE BANDS ARE THE SPEC'S, STATED AT ITS 10M/h, and they hold
+        /// there. At the honest top-of-game profile (about 1.67M/h, see above)
+        /// the same pushes are six times as many hours - printed beside them -
+        /// because the Deep's price is a share of HOLDINGS, not of income: it
+        /// is sized to drain a hoard, and at the top account's hoard it does.
+        /// Which income to state the bands against is for the owner; the gold
+        /// figures are asserted either way.
+        /// </summary>
+        [Fact]
+        public void TheDeepsWorkedPricesAreTheSpecs()
+        {
+            long stake = DelveRegistry.Stake(DelveRegistry.EntryFeeForRegion(5), TopAccountHeld);
+            Assert.Equal(2_460_000, stake);
+
+            foreach (var (floor, spec) in new[] { (12, 31_400_000.0), (16, 66_000_000.0), (20, 150_000_000.0) })
+            {
+                double cost = DeepPushCost(stake, floor, refills: 3);
+                _output.WriteLine(
+                    $"to floor {floor} + 3 refills: {cost:N0}g = {cost / MeasuredPeakIncomePerHour:F1} h at 10M/h, " +
+                    $"{cost / TopOfGameGoldPerHour():F1} h at the profile's {TopOfGameGoldPerHour():N0}/h");
+                Assert.InRange(cost, spec * 0.97, spec * 1.03);
+            }
+
+            Assert.InRange(DeepPushCost(stake, 12, 3) / MeasuredPeakIncomePerHour, 0.5, 4.0);
+            Assert.InRange(DeepPushCost(stake, 20, 3) / MeasuredPeakIncomePerHour, 8.0, 24.0);
+
+            // A small holder pays the region floor, and floor 12 is out of reach without income.
+            long small = DelveRegistry.Stake(DelveRegistry.EntryFeeForRegion(5), 1_000_000);
+            Assert.Equal(DelveRegistry.EntryFeeForRegion(5), small);
+            Assert.True(DeepPushCost(small, 12, 0) > 1_000_000);
+        }
 
         /// <summary>
         /// Every gold sink, priced in MINUTES OF TOP INCOME, printed and
@@ -279,9 +335,10 @@ namespace FolkIdle.Server.Tests
         /// Modul: on 2026-09-24 none did - the dearest repeatable price at the
         /// top was the Delve's 250k gate, a few percent of an hour - which is
         /// the owner's "earning 100M is easy" stated as a number. The Deep
-        /// (task 37 phase 1) is what turns it green.
+        /// (task 37 phase 1) turned it green: a descent's stake is a share of
+        /// holdings, and it repeats every run.
         /// </summary>
-        [Fact(Skip = "task 37 phase 1 turns this green: no repeatable sink reaches 30% of an hour until the Deep exists")]
+        [Fact]
         public void ARepeatableSinkAbsorbsAThirdOfAnHourAtTheTop()
         {
             double best = 0;

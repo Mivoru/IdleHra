@@ -393,6 +393,14 @@ serviceCollection.AddSingleton<RedisPlayerSessionLock>();
 // The Delve: a gold sink shaped like a game. Stateless apart from the run row
 // it reads and writes, so a singleton over the context factory is all it needs
 // - see FolkIdle.Server.Domain.Economy.DelveEngine.
+//
+// Modul: THE DEEP (task 37) ships behind FOLKIDLE_DELVE_DEEP = off | on, off by
+// default. With it off the Delve is exactly what it was: the view never offers
+// a descent and the Deep's routes answer DeepDisabled, visibly.
+var delveDeepSettings = FolkIdle.Server.Domain.Economy.DelveDeepSettings.FromEnvironment(
+    Environment.GetEnvironmentVariable("FOLKIDLE_DELVE_DEEP"));
+Console.WriteLine($"The Deep: {(delveDeepSettings.Enabled ? "on" : "off")} (FOLKIDLE_DELVE_DEEP)");
+serviceCollection.AddSingleton(delveDeepSettings);
 serviceCollection.AddSingleton<FolkIdle.Server.Domain.Economy.DelveEngine>();
 
 // Modul: registers IHttpClientFactory - required by
