@@ -347,6 +347,23 @@ describe('the numbers the client mirrors still match the server', () => {
     }
   });
 
+  // Modul: TASK 26. The Rarity bough's card promised elevation and the server
+  // paid loot luck - the card text is a claim about what a node does, so the
+  // two copies of it are held together like the numbers above.
+  it('skill tree: every node says the same thing on both sides', () => {
+    const registry = read(serverRoot, 'Engine', 'SkillTreeRegistry.cs');
+    const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
+
+    const block = registry.slice(registry.indexOf('string[] Blurbs')).split('};')[0];
+    const server = [...block.matchAll(/^\s*"((?:[^"\\]|\\.)*)",?\s*$/gm)].map((m) => m[1]);
+    const client = [
+      ...commands.matchAll(/ring: '(?:root|bough|crown)'.*?blurb: (['"])((?:\\.|(?!\1).)*)\1/g),
+    ].map((m) => m[2].replace(/\\'/g, "'"));
+
+    expect(server).toHaveLength(20);
+    expect(client).toEqual(server);
+  });
+
   it('skill tree: the three caps and the two prices', () => {
     const registry = read(serverRoot, 'Engine', 'SkillTreeRegistry.cs');
     const commands = read(clientRoot, 'lib', 'net', 'commands.ts');

@@ -758,7 +758,7 @@ namespace FolkIdle.Server.Engine
             {
                 CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
                     in payload, in combatStats, fallbackId,
-                    kills: (int)plainKills, bonusRarityTiers: 0, skipMaterialRoll: true));
+                    kills: (int)plainKills, bonusRarityTiers: 0, skipMaterialRoll: true, source: DropSource.Offline));
             }
             if (fleeceKills > 0)
             {
@@ -766,7 +766,8 @@ namespace FolkIdle.Server.Engine
                     in payload, in combatStats, fallbackId,
                     kills: (int)fleeceKills,
                     bonusRarityTiers: Domain.Combat.SimulationEngine.GoldenFleeceBonusTiers,
-                    skipMaterialRoll: true));
+                    skipMaterialRoll: true,
+                    source: DropSource.Offline));
             }
 
             // Modul: the global drop multiplier reaches offline play too. The

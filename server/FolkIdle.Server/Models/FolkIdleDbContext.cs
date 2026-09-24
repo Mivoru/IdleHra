@@ -101,6 +101,11 @@ namespace FolkIdle.Server.Models
         // One-way population unlocks (Guild Wars first). See FeatureUnlock.
         public DbSet<FeatureUnlock> FeatureUnlocks { get; set; }
 
+        // The drop record (task 26). See LootTierDailyCount and NotableItemEvent;
+        // both are written only through Engine.DropRecord.
+        public DbSet<LootTierDailyCount> LootTierDailyCounts { get; set; }
+        public DbSet<NotableItemEvent> NotableItemEvents { get; set; }
+
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
         }
@@ -447,6 +452,14 @@ namespace FolkIdle.Server.Models
             // then quality, then open/filled status.
             modelBuilder.Entity<MarketOrderRecord>()
                 .HasIndex(m => new { m.BaseItemId, m.QualityTier, m.Status });
+
+            // The drop record (task 26). The composite key IS the upsert's
+            // ON CONFLICT target in Engine.DropRecord - change them together.
+            modelBuilder.Entity<LootTierDailyCount>()
+                .HasKey(c => new { c.PlayerId, c.Day, c.Source, c.RegionTier, c.QualityTier });
+
+            modelBuilder.Entity<NotableItemEvent>()
+                .HasIndex(e => new { e.PlayerId, e.CreatedAtUtc });
         }
     }
 }

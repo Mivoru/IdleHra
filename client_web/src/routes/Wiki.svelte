@@ -57,6 +57,7 @@
     selectableAptitudeCount,
     upMutationPercent,
     bestVillagerAptitudeFor,
+    ATTRIBUTE_CURVES,
   } from '../lib/net/commands';
   import {
     REROLL_GOLD_BY_REGION,
@@ -410,13 +411,17 @@
                 </tr>
                 <tr>
                   <td><strong>LCK</strong> Luck</td>
-                  <td>+0.05% forge success, +0.1% loot luck</td>
+                  <td>
+                    Loot luck ({ATTRIBUTE_CURVES.lootLuckPerRootPoint} × √LCK %) and a chance to
+                    elevate a drop one rarity ({ATTRIBUTE_CURVES.rarityElevationPerRootPoint} × √LCK %)
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
           <p class="dim tiny">
-            Completing a region adds another +1% loot luck on top, permanently.
+            Completing a region - 1,000 kills of each ordinary monster and 100 of its
+            boss, tracked in the Codex - adds another +1% loot luck on top, permanently.
           </p>
 
           <h3 id="damage">How a hit is resolved</h3>

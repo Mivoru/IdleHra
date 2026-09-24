@@ -711,15 +711,12 @@ namespace FolkIdle.Server.Domain.Shared
                 }
             }
 
-            int completedAreas = 0;
-            for (int region = 1; region <= 10; region++)
-            {
-                var monstersInRegion = ContentRegistry.Monsters.ToArray().Where(m => ContentRegistry.GetMonsterRegionTier(m.Id) == region).ToList();
-                if (monstersInRegion.Count > 0 && monstersInRegion.All(m => codexEntries.Any(c => c.MonsterId == m.Id && c.KillCount >= 1000)))
-                {
-                    completedAreas |= (1 << region);
-                }
-            }
+            // Modul: the five canonical regions, by RegionCompletionRules - the
+            // legacy monsters this used to include made completion impossible.
+            var killsByMonster = new System.Collections.Generic.Dictionary<int, int>(codexEntries.Count);
+            foreach (var c in codexEntries) killsByMonster[c.MonsterId] = c.KillCount;
+            int completedAreas = RegionCompletionRules.CompletedFlags(
+                id => killsByMonster.TryGetValue(id, out int k) ? k : 0);
 
             // Modul 13 fix: RaceId filters here previously used raw literals (1, 3, 4)
             // that predate RaceIds and never matched it - see the same fix in

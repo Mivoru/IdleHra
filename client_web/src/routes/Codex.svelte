@@ -19,11 +19,14 @@
   const snap = $derived($playerState);
   const byMonster = $derived(new Map((codex.data ?? []).map((e) => [e.MonsterId, e])));
 
-  // Modul: region completion is a BITMASK on the hot path - bit (region - 1)
-  // per completed region - not a count, so it is read per bit rather than
-  // compared against a total.
+  // Modul: region completion is a BITMASK on the hot path - bit `region`
+  // (1-5, so bit 0 is never set) per completed region - not a count, so it is
+  // read per bit rather than compared against a total. This read bit
+  // (region - 1) until task 26, which went unnoticed only because no region
+  // could be completed at all: region 1's "complete" would have lit up
+  // region 2's heading.
   function regionComplete(regionIndex: number): boolean {
-    return snap ? (snap.CompletedAreaFlags & (1 << regionIndex)) !== 0 : false;
+    return snap ? (snap.CompletedAreaFlags & (1 << (regionIndex + 1))) !== 0 : false;
   }
 
   const discovered = $derived((codex.data ?? []).filter((e) => e.Kills > 0).length);
@@ -37,7 +40,9 @@
     queryFn: fetchCodexRegions,
   }));
 
-  // THE ENDPOINT REPORTS TEN REGIONS. THIS GAME HAS FIVE.
+  // THE ENDPOINT REPORTED TEN REGIONS. THIS GAME HAS FIVE. (Fixed server-side
+  // in task 26 - it walks the five canonical regions now; the filter below is
+  // kept as a cheap guard. The history, for why it was ever needed:)
   //
   // HandleCodexRegionsSnapshot groups monsters by ContentRegistry.
   // GetMonsterRegionTier, and RegionTier is NOT the canonical region - the
@@ -85,9 +90,10 @@
       <p class="dim tiny">No region requirements are defined.</p>
     {:else}
       <p class="dim tiny reg-note">
-        Each region needs {regions[0].RequiredKills.toLocaleString()} kills of its
-        <em>least</em>-killed monster, so the bar tracks your weakest entry, not
-        your total. Finishing one grants +{LOOT_LUCK_PER_REGION_PCT}% loot luck
+        Each region needs {regions[0].RequiredKills.toLocaleString()} kills of every
+        ordinary monster and {regions[0].RequiredBossKills.toLocaleString()} of its
+        boss. The bar tracks your <em>least</em>-killed ordinary monster, not your
+        total. Finishing one grants +{LOOT_LUCK_PER_REGION_PCT}% loot luck
         permanently.
       </p>
       <ul class="regions">
@@ -105,6 +111,9 @@
               color={region.IsCompleted ? 'var(--good)' : 'var(--rarity-6)'}
               label={`${region.CurrentKills.toLocaleString()} / ${region.RequiredKills.toLocaleString()}`}
             />
+            <span class="dim tiny">
+              Boss {region.BossKills.toLocaleString()} / {region.RequiredBossKills.toLocaleString()}
+            </span>
           </li>
         {/each}
       </ul>

@@ -303,6 +303,16 @@ namespace FolkIdle.Server.Tests
             var toTheTop = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 13, forgeEngine);
             Assert.Equal(ForgeSplicingResult.Success, toTheTop);
 
+            // Task 26's drop record: a fusion leaves a Forge row saying what it
+            // started from, so "dropped or forged?" is a query.
+            await using (var record = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.True(await record.NotableItemEvents.AsNoTracking().AnyAsync(e =>
+                    e.PlayerId == DbSeeder.PlayerHighId && e.Source == (short)DropSource.Forge
+                    && e.RolledTier == 13 && e.FinalTier == 14 && e.BaseItemId == starterBaseId
+                    && e.EquipmentInstanceId != null));
+            }
+
             // 14 is the top and stays the top.
             var pastTheTop = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 14, forgeEngine);
             Assert.Equal(ForgeSplicingResult.MaxTierReached, pastTheTop);
@@ -6681,7 +6691,6 @@ namespace FolkIdle.Server.Tests
             foreach (var (name, payload) in new[]
             {
                 ("Fortune root (loot rarity skill)", withRoot),
-                ("Rarity bough", withBough),
                 ("Fortune breeding aptitude", withFortune),
             })
             {
@@ -6691,6 +6700,16 @@ namespace FolkIdle.Server.Tests
                 Assert.True(withSource > baseline,
                     $"{name} does not reach LootLuckPct - it has fallen out of the sum, which is the offline-drops bug again");
             }
+
+            // Modul: the Rarity bough is ELEVATION since task 26 (option B),
+            // which is what its card always said. It must reach the elevation
+            // chance, +1% a level, and must no longer be counted as luck.
+            var boughRequest = CombatLootDropRequest.Build(
+                in withBough, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+            var bareRequest = CombatLootDropRequest.Build(
+                in bare, in stats, monsterId: 1, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+            Assert.Equal(baseline, boughRequest.LootLuckPct, 3);
+            Assert.Equal(bareRequest.RarityElevationPct + 8f, boughRequest.RarityElevationPct, 3);
 
             // Plenty is a DIFFERENT question - how much of a material falls,
             // not what falls - and must not be folded into loot luck. An edit
@@ -6787,9 +6806,10 @@ namespace FolkIdle.Server.Tests
                 $"offline asked for {totalKillsRequested} kills of equipment rolls - the 500 cap is back, " +
                 "and it is worth about 25 pieces however long the player was away");
 
-            // 10 (Fortune root) + 8 (Rarity bough) + 45 (Fortune aptitude) on
+            // 10 (Fortune root) + 45 (Fortune aptitude) + ~15.5 from LCK 39 on
             // top of whatever gear gives. Well clear of the two-term sum that
-            // shipped before, which would land at 0 here.
+            // shipped before, which would land at 0 here. (The Rarity bough's
+            // 8 left this sum for elevation in task 26.)
             Assert.True(luck >= 60f,
                 $"offline rolled with {luck}% loot luck - the rarity bonuses have fallen out of the sum again");
         }
@@ -9526,7 +9546,7 @@ namespace FolkIdle.Server.Tests
                 // becomes a row and the assertions below still count what they always
                 // counted. Auto-salvage has its own coverage; switching it on here would
                 // silently turn these into tests of the salvage path instead.
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f, DropSource.LiveKill })!;
             }
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -12094,7 +12114,7 @@ namespace FolkIdle.Server.Tests
                 // becomes a row and the assertions below still count what they always
                 // counted. Auto-salvage has its own coverage; switching it on here would
                 // silently turn these into tests of the salvage path instead.
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f, DropSource.LiveKill })!;
             }
 
             int publishedCount = 0;

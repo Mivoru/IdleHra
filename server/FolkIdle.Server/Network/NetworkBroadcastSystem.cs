@@ -1125,6 +1125,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/player/loot-odds" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleLootOdds(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/breeding/roster" && context.Request.HttpMethod == "GET")
                     {
                         await HandleBreedingRosterSnapshot(context);
@@ -4231,20 +4237,99 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
+        internal sealed class LootOddsResponse
+        {
+            /// <summary>False until this player's first drop request since the server started.</summary>
+            public bool Known { get; set; }
+            public float LootLuckPct { get; set; }
+            public float RarityElevationPct { get; set; }
+            public bool HasGoldenFleece { get; set; }
+            /// <summary>CombatLootEngine.EquipmentDropChance: how often a kill drops gear at all.</summary>
+            public double EquipmentDropChance { get; set; }
+            /// <summary>Share of equipment drops that land at Legendary or better, after fleece and elevation.</summary>
+            public double LegendaryPlusPerDrop { get; set; }
+            public double AncientPlusPerDrop { get; set; }
+            /// <summary>Per-tier share of drops, index = tier (0 unused).</summary>
+            public double[] TierShares { get; set; } = Array.Empty<double>();
+        }
+
+        /// <summary>
+        /// What a player's drops are rolling at, from the figures the loot
+        /// worker last rolled with and the engine's own expectation - see
+        /// CombatLootEngine.TryGetLastOdds and RarityTier.ExpectedFinalShares.
+        /// Task 26's odds line in the Wiki.
+        /// </summary>
+        internal static LootOddsResponse BuildLootOdds(bool known, CombatLootEngine.LootOddsSnapshot odds)
+        {
+            var response = new LootOddsResponse
+            {
+                Known = known,
+                EquipmentDropChance = CombatLootEngine.EquipmentDropChance,
+            };
+            if (!known) return response;
+
+            double[] shares = RarityTier.ExpectedFinalShares(
+                odds.LootLuckPct, odds.RarityElevationPct,
+                odds.HasGoldenFleece ? 1.0 / SimulationEngine.GoldenFleeceKillInterval : 0.0,
+                SimulationEngine.GoldenFleeceBonusTiers);
+
+            double legendaryPlus = 0, ancientPlus = 0;
+            for (int tier = RarityTier.Legendary; tier <= RarityTier.Transcendent; tier++)
+            {
+                legendaryPlus += shares[tier];
+                if (tier >= RarityTier.Ancient) ancientPlus += shares[tier];
+            }
+
+            response.LootLuckPct = odds.LootLuckPct;
+            response.RarityElevationPct = odds.RarityElevationPct;
+            response.HasGoldenFleece = odds.HasGoldenFleece;
+            response.LegendaryPlusPerDrop = legendaryPlus;
+            response.AncientPlusPerDrop = ancientPlus;
+            response.TierShares = shares;
+            return response;
+        }
+
+        private async Task HandleLootOdds(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                bool known = CombatLootEngine.TryGetLastOdds(playerId, out var odds);
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, BuildLootOdds(known, odds));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Loot odds error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
         private sealed class RegionProgressResponse
         {
             public int RegionId { get; set; }
             public int CurrentKills { get; set; }
             public int RequiredKills { get; set; }
+            public int BossKills { get; set; }
+            public int RequiredBossKills { get; set; }
             public bool IsCompleted { get; set; }
             public int LootLuckBonusPct { get; set; }
         }
 
         // Modul 13.4.3: region-completion progress for the Codex regions UI. A
-        // region is 6 distinct monster ids (5 standard/elite + 1 regional
-        // boss, see CodexEngine's ((MonsterId - 1) % 30) / 6 + 1 grouping) and
-        // completes only once every monster in it individually reaches 1000
-        // kills - so CurrentKills here is the MINIMUM kill count across the
+        // region is the five canonical monsters of one location and completes
+        // once each regular has 1000 kills and the boss 100 (see
+        // RegionCompletionRules) - so CurrentKills here is the MINIMUM kill count across the
         // region's monsters (the true bottleneck to completion), not a sum.
         // IsCompleted comes from PlayerRegionCompletions (the durable ledger
         // CodexEngine writes to and never re-grants) rather than being
@@ -4285,40 +4370,38 @@ namespace FolkIdle.Server.Network
                     killsByMonsterId[codexEntries[i].MonsterId] = codexEntries[i].KillCount;
                 }
 
-                var response = new System.Collections.Generic.List<RegionProgressResponse>(10);
-                for (int region = 1; region <= 10; region++)
+                // Modul: task 26 (H5) - the FIVE canonical regions and the rule
+                // in RegionCompletionRules. This used to walk RegionTier 1-10,
+                // legacy monsters included, and report ten bars of which none
+                // could ever fill. CurrentKills is still the weakest REGULAR
+                // (the bottleneck), and the boss has its own, smaller target.
+                // IsCompleted also accepts a region the rule says is done but the
+                // ledger has not recorded yet (CodexEngine writes it on the next
+                // kill), so the screen agrees with the luck login already grants.
+                System.Func<int, int> killsFor = id => killsByMonsterId.TryGetValue(id, out int k) ? k : 0;
+                var response = new System.Collections.Generic.List<RegionProgressResponse>(ContentRegistry.LocationCount);
+                for (int region = 1; region <= ContentRegistry.LocationCount; region++)
                 {
-                    int minKillsInRegion = -1;
-                    bool regionExists = false;
-
-                    for (int monsterIndex = 0; monsterIndex < ContentRegistry.Monsters.Length; monsterIndex++)
+                    int minRegular = int.MaxValue;
+                    int bossKills = 0;
+                    int first = RegionCompletionRules.FirstMonsterOf(region);
+                    for (int monsterId = first; monsterId < first + ContentRegistry.MonstersPerRegion; monsterId++)
                     {
-                        int monsterId = ContentRegistry.Monsters[monsterIndex].Id;
-                        if (ContentRegistry.GetMonsterRegionTier(monsterId) != region)
-                        {
-                            continue;
-                        }
-
-                        regionExists = true;
-                        killsByMonsterId.TryGetValue(monsterId, out int killCount);
-                        if (killCount > 1000) killCount = 1000;
-                        if (minKillsInRegion < 0 || killCount < minKillsInRegion)
-                        {
-                            minKillsInRegion = killCount;
-                        }
+                        int kills = killsFor(monsterId);
+                        if (ContentRegistry.IsRegionalBoss(monsterId)) bossKills = kills;
+                        else if (kills < minRegular) minRegular = kills;
                     }
+                    if (minRegular == int.MaxValue) minRegular = 0;
 
-                    if (!regionExists)
-                    {
-                        continue;
-                    }
-
-                    bool isCompleted = completedRegionSet.Contains(region);
+                    bool isCompleted = completedRegionSet.Contains(region)
+                        || RegionCompletionRules.IsComplete(region, killsFor);
                     response.Add(new RegionProgressResponse
                     {
                         RegionId = region,
-                        CurrentKills = minKillsInRegion < 0 ? 0 : minKillsInRegion,
-                        RequiredKills = 1000,
+                        CurrentKills = Math.Min(minRegular, RegionCompletionRules.RegularKillsRequired),
+                        RequiredKills = RegionCompletionRules.RegularKillsRequired,
+                        BossKills = Math.Min(bossKills, RegionCompletionRules.BossKillsRequired),
+                        RequiredBossKills = RegionCompletionRules.BossKillsRequired,
                         IsCompleted = isCompleted,
                         LootLuckBonusPct = isCompleted ? 1 : 0
                     });

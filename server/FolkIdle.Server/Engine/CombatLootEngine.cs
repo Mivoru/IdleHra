@@ -153,6 +153,99 @@ namespace FolkIdle.Server.Engine
             return RarityTier.Normal;
         }
 
+        /// <summary>
+        /// One drop's rarity, start to finish: the weighted roll, then Golden
+        /// Fleece, then Fortune's elevation. Returns what the roll produced as
+        /// well as where the piece landed, so the drop record can tell a piece
+        /// ROLLED Ancient from one LIFTED into it.
+        /// </summary>
+        /// <remarks>
+        /// Modul: TASK 26. These three steps were inline in TryRollEquipment,
+        /// which is an instance method that needs a DbContext - so the only
+        /// way to measure the chain end to end was to reimplement it in a
+        /// test, which is a second copy of the drop table waiting to drift.
+        /// </remarks>
+        public static (int Rolled, int Final) ResolveDropTier(float lootLuckPct, int bonusRarityTiers, float rarityElevationPct)
+        {
+            int rolled = RollTier(lootLuckPct);
+            int tier = rolled;
+
+            // Modul: Golden Fleece, the Fortune crown. Two tiers ABOVE what the
+            // roll produced, rather than a reroll with better odds - the crown
+            // is meant to be a moment the player can see coming and then see
+            // land, and "your hundredth kill rolled slightly better" is not
+            // one. Clamped to the fourteen real tiers.
+            if (bonusRarityTiers > 0)
+            {
+                tier = Math.Clamp(tier + bonusRarityTiers, 1, Domain.Economy.CraftingEngine.RarityTierCount);
+            }
+
+            // Modul: FORTUNE'S RARITY ELEVATION, 2026-09-06.
+            //
+            // One tier above what the roll produced, on a chance. It replaces
+            // forge success as Fortune's second per-point effect - fusion cannot
+            // fail, so that stat was only ever a discount on the fusion fee,
+            // under a name promising otherwise.
+            //
+            // Deliberately a SEPARATE mechanic from loot luck rather than more
+            // of it: luck reweights the rarity roll silently and elevation bumps
+            // the result, so the player can see this one happen. Rolled AFTER
+            // the Golden Fleece bonus and clamped with it, so the two stack
+            // without either being able to leave the fourteen real tiers.
+            if (rarityElevationPct > 0f && Random.Shared.NextDouble() * 100.0 < rarityElevationPct)
+            {
+                tier = Math.Clamp(tier + 1, 1, Domain.Economy.CraftingEngine.RarityTierCount);
+            }
+
+            return (rolled, tier);
+        }
+
+        /// <summary>
+        /// The EXPECTED final-tier distribution of <see cref="ResolveDropTier"/>,
+        /// computed rather than sampled: index t is the share of drops that
+        /// land at tier t. <paramref name="fleeceChance"/> is the share of drops
+        /// that carry the Golden Fleece bonus (0.01 with the crown, else 0).
+        /// </summary>
+        /// <remarks>
+        /// Modul: TASK 26. What the player is shown as their odds comes from
+        /// here, from the same weights RollTier reads - never from a client
+        /// copy. RarityRollDistributionTests checks it against both its own
+        /// restated table and a Monte-Carlo run of ResolveDropTier.
+        /// </remarks>
+        public static double[] ExpectedFinalShares(float lootLuckPct, float rarityElevationPct, double fleeceChance, int fleeceTiers)
+        {
+            const double normalBaseWeight = 100.0;
+            double luckFactor = 1.0 + (lootLuckPct / 100.0);
+            int top = Domain.Economy.CraftingEngine.RarityTierCount;
+
+            var rolled = new double[15];
+            double total = normalBaseWeight;
+            rolled[1] = normalBaseWeight;
+            for (int tier = 2; tier <= 14; tier++)
+            {
+                rolled[tier] = _explicitWeights[tier] * luckFactor;
+                total += rolled[tier];
+            }
+            for (int tier = 1; tier <= 14; tier++) rolled[tier] /= total;
+
+            double fleece = Math.Clamp(fleeceChance, 0.0, 1.0);
+            var afterFleece = new double[15];
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                afterFleece[tier] += rolled[tier] * (1.0 - fleece);
+                afterFleece[Math.Clamp(tier + Math.Max(0, fleeceTiers), 1, top)] += rolled[tier] * fleece;
+            }
+
+            double elevation = Math.Clamp(rarityElevationPct / 100.0, 0.0, 1.0);
+            var final = new double[15];
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                final[tier] += afterFleece[tier] * (1.0 - elevation);
+                final[Math.Clamp(tier + 1, 1, top)] += afterFleece[tier] * elevation;
+            }
+            return final;
+        }
+
         public static int GetAffixCount(int tier)
         {
             if (tier <= 3) return 1;
@@ -229,6 +322,70 @@ namespace FolkIdle.Server.Engine
         public long TargetActivityId;
     }
 
+    /// <summary>
+    /// Every term of a drop's loot luck, named. CombatLootDropRequest.Build
+    /// takes <see cref="Total"/> and nothing else, so this IS the sum - a test,
+    /// a screen or an admin view that wants to show a term reads it from here
+    /// rather than restating the arithmetic.
+    /// </summary>
+    /// <remarks>
+    /// Modul: TASK 26, 2026-09-23. "No Ancient+ in five days" could only be
+    /// answered by computing this sum BY HAND from six tables, because nothing
+    /// could print it. Split out so RarityRollDistributionTests can pin every
+    /// term for a real build and fail when one moves. The sum used to be
+    /// written inline and carried a plea to keep it contiguous, because an
+    /// edit had once slid a term out of it; one named field per term is the
+    /// structural answer to that plea.
+    /// </remarks>
+    public readonly struct LootLuckBreakdown
+    {
+        /// <summary>combatStats.LootLuckPct: the LCK curve, its milestones, completed areas and equipped affixes.</summary>
+        public float Stats { get; init; }
+        public float Inheritance { get; init; }
+        /// <summary>The Fortune root (BranchLootRarity).</summary>
+        public float FortuneRoot { get; init; }
+        public float GuildDropRate { get; init; }
+        /// <summary>Fortune, the bloodline's luck aptitude.</summary>
+        public float FortuneAptitude { get; init; }
+
+        public float Total => Stats + Inheritance + FortuneRoot + GuildDropRate + FortuneAptitude;
+
+        /// <summary>combatStats.RarityElevationPct: the LCK curve plus heritable traits.</summary>
+        public float StatsElevation { get; init; }
+
+        /// <summary>
+        /// Rarity, the Fortune bough: +1% ELEVATION per level, 8 levels, +8% at cap.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE BOUGH WAS SOLD AS ONE THING AND DID ANOTHER (task 26, H4).
+        /// Its card has always said "a drop has a chance to roll one rarity
+        /// higher than it should", and it was added to LOOT LUCK instead,
+        /// "the same currency as the root, so it simply adds". Luck reweights
+        /// tiers 2-14 equally and can only shrink Normal, so 8 levels bought
+        /// about +1.5% relative Ancient+ where the advertised elevation buys
+        /// about +9%. Decided with the owner 2026-09-24: the node does what
+        /// its card says. Hard-capped by the bough's 8 levels.
+        /// </remarks>
+        public float RarityBough { get; init; }
+
+        /// <summary>The chance, in percent, that a drop comes out one tier above what it rolled.</summary>
+        public float ElevationTotal => StatsElevation + RarityBough;
+
+        public static LootLuckBreakdown From(in TickStatePayload payload, in CombatStats combatStats)
+        {
+            return new LootLuckBreakdown
+            {
+                Stats = combatStats.LootLuckPct,
+                Inheritance = InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck),
+                FortuneRoot = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity),
+                GuildDropRate = GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f,
+                FortuneAptitude = BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
+                StatsElevation = combatStats.RarityElevationPct,
+                RarityBough = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity),
+            };
+        }
+    }
+
     // Modul 03/10/11/12: an equipment drop roll request from the 10 Hz tick.
     // ProcessSubTick is a static method (matching CodexEngine.KillEventQueue's
     // established convention) so it enqueues onto this static queue directly
@@ -298,6 +455,23 @@ namespace FolkIdle.Server.Engine
         // by the 500-request cap that also hid it.
         public bool SkipMaterialRoll;
 
+        // Modul: WHERE THIS REQUEST CAME FROM, for the drop record (task 26).
+        //
+        // ZERO MEANS LIVE KILL, like Kills above: the struct has no field
+        // initialisers, so a request built without this would otherwise record
+        // under a source that does not exist. Read it through RecordedSource,
+        // the one place 0 is mapped.
+        public DropSource Source;
+
+        public readonly DropSource RecordedSource => Source == 0 ? DropSource.LiveKill : Source;
+
+        /// <summary>
+        /// Whether the player holds the Golden Fleece crown - not whether THIS
+        /// kill procced it (that is BonusRarityTiers). Only for the odds line
+        /// the Wiki shows; the roll never reads it.
+        /// </summary>
+        public bool HasGoldenFleece;
+
         /// <summary>
         /// Builds a drop request from a payload and its combat stats. THE ONLY
         /// place loot luck is composed.
@@ -324,8 +498,10 @@ namespace FolkIdle.Server.Engine
             int monsterId,
             int kills,
             int bonusRarityTiers,
-            bool skipMaterialRoll)
+            bool skipMaterialRoll,
+            DropSource source = DropSource.LiveKill)
         {
+            var odds = LootLuckBreakdown.From(in payload, in combatStats);
             return new CombatLootDropRequest
             {
                 PlayerId = payload.PlayerId,
@@ -334,24 +510,22 @@ namespace FolkIdle.Server.Engine
                 BonusRarityTiers = bonusRarityTiers,
                 SkipMaterialRoll = skipMaterialRoll,
                 AutoSalvageBelowTier = payload.AutoSalvageBelowTier,
+                Source = source,
+                HasGoldenFleece = payload.Skill_GoldenFleece > 0,
 
-                // Everything that shifts WHAT falls, summed into one figure.
-                // Keep this sum contiguous.
-                LootLuckPct = combatStats.LootLuckPct
-                    + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
-                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity)
-                    + (GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f)
-                    // Rarity, the Fortune bough - the same currency as the
-                    // root, so it simply adds.
-                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity)
-                    // Fortune, the bloodline's luck aptitude.
-                    + BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
+                // Everything that shifts WHAT falls, summed into one figure -
+                // by LootLuckBreakdown, the only place the terms are named.
+                LootLuckPct = odds.Total,
 
                 // Plenty changes HOW MUCH of a material falls, which is a
                 // different question from what falls, and has its own field.
                 MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
                     SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty),
-                RarityElevationPct = combatStats.RarityElevationPct,
+
+                // The LCK curve, traits and the Rarity bough - see
+                // LootLuckBreakdown.RarityBough for why the bough is here and
+                // not in the luck sum above.
+                RarityElevationPct = odds.ElevationTotal,
             };
         }
     }
@@ -443,6 +617,9 @@ namespace FolkIdle.Server.Engine
         // ProcessMonsterLootDropAsync for why drops are held until commit.
         private readonly List<Network.ResponseLootDropPacket> _pendingDrops = new(8);
 
+        // Modul: the drop record (task 26) - see DropRecord.
+        private readonly DropTally _dropTally = new();
+
         // Modul: THE LOOT PATH HAD NO OBSERVABILITY AT ALL, and it cost a day.
         //
         // Reported live: kills climbing, gold climbing, gathering materials
@@ -483,6 +660,27 @@ namespace FolkIdle.Server.Engine
         /// half is silent.
         /// </summary>
         public static void NoteKillEnqueued() => Interlocked.Increment(ref _killsEnqueued);
+
+        /// <summary>The odds a player's most recent drop request rolled with.</summary>
+        public readonly record struct LootOddsSnapshot(float LootLuckPct, float RarityElevationPct, bool HasGoldenFleece, DateTime AtUtc);
+
+        // Modul: THE ODDS THE PLAYER IS SHOWN ARE THE ODDS THE ROLL USED (task 26).
+        //
+        // "Is my luck even working?" was answerable only by recomputing a
+        // six-term sum by hand. The worker already holds the exact figures each
+        // request rolls with, so it keeps the last pair per player and the
+        // Wiki's odds line reads them back - no client copy of the formula, no
+        // new wire field, no database. Lost on restart by design: the line says
+        // "kill something" until the next drop request arrives.
+        private static readonly ConcurrentDictionary<long, LootOddsSnapshot> _lastOdds = new();
+
+        private static void NoteOdds(in CombatLootDropRequest request)
+        {
+            _lastOdds[request.PlayerId] = new LootOddsSnapshot(
+                request.LootLuckPct, request.RarityElevationPct, request.HasGoldenFleece, DateTime.UtcNow);
+        }
+
+        public static bool TryGetLastOdds(long playerId, out LootOddsSnapshot odds) => _lastOdds.TryGetValue(playerId, out odds);
 
         private static long _codexKills;
 
@@ -571,6 +769,7 @@ namespace FolkIdle.Server.Engine
 
                         int killsThisRequest = request.Kills <= 0 ? 1 : request.Kills;
                         _requestsDrained++;
+                        NoteOdds(in request);
                         _killsRolled += killsThisRequest;
 
                         try
@@ -582,7 +781,8 @@ namespace FolkIdle.Server.Engine
                                 killsThisRequest,
                                 request.SkipMaterialRoll,
                                 request.AutoSalvageBelowTier,
-                                request.RarityElevationPct);
+                                request.RarityElevationPct,
+                                request.RecordedSource);
                         }
                         catch (Exception ex)
                         {
@@ -829,7 +1029,7 @@ namespace FolkIdle.Server.Engine
         private async Task ProcessMonsterLootDropAsync(
             long playerId, int monsterId, float lootLuckPct, float materialQuantityPct,
             int bonusRarityTiers, int kills, bool skipMaterialRoll, int autoSalvageBelowTier,
-            float rarityElevationPct)
+            float rarityElevationPct, DropSource source = DropSource.LiveKill)
         {
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
@@ -851,6 +1051,11 @@ namespace FolkIdle.Server.Engine
             // request at a time), so the feed costs no per-kill allocation
             // once the list has grown to its steady-state size.
             _pendingDrops.Clear();
+
+            // Modul: the drop record's accumulator, reused like _pendingDrops
+            // (this worker is single-threaded). Cleared here as well as by the
+            // write, because a request that throws never reaches the write.
+            _dropTally.Clear();
 
             // What auto-salvage turned into gold across this whole request.
             // Accumulated rather than credited per roll: an offline catch-up
@@ -929,7 +1134,8 @@ namespace FolkIdle.Server.Engine
                     // the materials roll above, so a kill can pay both, either or
                     // neither.
                     salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                        EquipmentDropChance, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
+                        EquipmentDropChance, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct,
+                        _dropTally, source));
 
                     // Regional bosses always drop one piece on top of that, which
                     // is the whole of what makes a boss kill worth walking to. It
@@ -939,11 +1145,17 @@ namespace FolkIdle.Server.Engine
                     if (isRegionalBoss)
                     {
                         salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                            1.0, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
+                            1.0, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct,
+                            _dropTally, DropSource.BossGuarantee));
                     }
                 }
 
                 await dbContext.SaveChangesAsync();
+
+                // Modul: THE DROP RECORD (task 26) - one upsert for the whole
+                // request, however many kills it carried, inside the same
+                // transaction as the drops it counts.
+                await DropRecord.WriteAsync(dbContext, playerId, _dropTally, DateTime.UtcNow);
                 await transaction.CommitAsync();
 
                 // Modul: THE CENSUS IS GONE, and it was pure waste on the
@@ -1024,9 +1236,10 @@ namespace FolkIdle.Server.Engine
                 }
                 foreach (var grant in resolvedEquipmentGrants)
                 {
+                    // The whole payload, so the replay can record where the
+                    // drop came from (task 26's drop record).
                     await PendingGrantOutbox.EnqueueEquipmentGrantAsync(
-                        dbContext, playerId, PendingGrantSourceType.CombatLoot,
-                        grant.BaseItemId, grant.QualityTier, grant.AffixPayload);
+                        dbContext, playerId, PendingGrantSourceType.CombatLoot, grant);
                 }
             }
         }
@@ -1152,7 +1365,8 @@ namespace FolkIdle.Server.Engine
         private long TryRollEquipment(
             FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion,
             float lootLuckPct, double dropChance, List<EquipmentGrantPayload> resolvedEquipmentGrants,
-            int bonusRarityTiers = 0, int autoSalvageBelowTier = 0, float rarityElevationPct = 0f)
+            int bonusRarityTiers = 0, int autoSalvageBelowTier = 0, float rarityElevationPct = 0f,
+            DropTally? tally = null, DropSource source = DropSource.LiveKill)
         {
             if (Random.Shared.NextDouble() >= dropChance) return 0L;
 
@@ -1162,34 +1376,7 @@ namespace FolkIdle.Server.Engine
             int chosenItemId = table[Random.Shared.Next(table.Length)];
             if (chosenItemId == 0) return 0L;
 
-            int tier = RarityTier.RollTier(lootLuckPct);
-
-            // Modul: Golden Fleece, the Fortune crown. Two tiers ABOVE what the
-            // roll produced, rather than a reroll with better odds - the crown
-            // is meant to be a moment the player can see coming and then see
-            // land, and "your hundredth kill rolled slightly better" is not
-            // one. Clamped to the fourteen real tiers.
-            if (bonusRarityTiers > 0)
-            {
-                tier = Math.Clamp(tier + bonusRarityTiers, 1, Domain.Economy.CraftingEngine.RarityTierCount);
-            }
-
-            // Modul: FORTUNE'S RARITY ELEVATION, 2026-09-06.
-            //
-            // One tier above what the roll produced, on a chance. It replaces
-            // forge success as Fortune's second per-point effect - fusion cannot
-            // fail, so that stat was only ever a discount on the fusion fee,
-            // under a name promising otherwise.
-            //
-            // Deliberately a SEPARATE mechanic from loot luck rather than more
-            // of it: luck reweights the rarity roll silently and elevation bumps
-            // the result, so the player can see this one happen. Rolled AFTER
-            // the Golden Fleece bonus and clamped with it, so the two stack
-            // without either being able to leave the fourteen real tiers.
-            if (rarityElevationPct > 0f && Random.Shared.NextDouble() * 100.0 < rarityElevationPct)
-            {
-                tier = Math.Clamp(tier + 1, 1, Domain.Economy.CraftingEngine.RarityTierCount);
-            }
+            var (rolledTier, tier) = RarityTier.ResolveDropTier(lootLuckPct, bonusRarityTiers, rarityElevationPct);
             string baseItemId = ContentRegistry.GetItemBaseId(chosenItemId);
 
             // Modul: NOTHING IS DESTROYED ON THE WAY IN UNLESS THE PLAYER ASKED.
@@ -1223,6 +1410,7 @@ namespace FolkIdle.Server.Engine
                 // Same valuation as a manual chest sale - one function, so
                 // salvaging and selling can never drift into two economies.
                 _salvagedOnTheWayIn++;
+                tally?.Count(source, monsterRegion, tier, salvaged: true);
                 return VillageChestEngine.ValueEquipment(baseItemId, tier);
             }
 
@@ -1240,14 +1428,24 @@ namespace FolkIdle.Server.Engine
             // loot a Legendary and never be able to wear, upgrade or sell it.
             //
             // This table is the chest's equipment half. It is unbounded now.
-            dbContext.EquipmentInstances.Add(new EquipmentInstance
+            var instance = new EquipmentInstance
             {
                 BaseItemId = baseItemId,
                 PlayerId = playerId,
                 QualityTier = tier,
                 AffixPayload = affixPayload,
                 IsAffixLocked = false
-            });
+            };
+            dbContext.EquipmentInstances.Add(instance);
+
+            if (tally != null)
+            {
+                tally.Count(source, monsterRegion, tier);
+                if (DropRecord.IsNotable(tier))
+                {
+                    tally.Notable(playerId, source, instance, baseItemId, rolledTier, tier, lootLuckPct, DateTime.UtcNow);
+                }
+            }
 
             // Modul: THE DURABLE RETRY OUTBOX (audit #18) - see the plain-data
             // accumulator declared at the top of ProcessMonsterLootDropAsync.
@@ -1256,7 +1454,11 @@ namespace FolkIdle.Server.Engine
             {
                 BaseItemId = baseItemId,
                 QualityTier = tier,
-                AffixPayload = affixPayload
+                AffixPayload = affixPayload,
+                RegionTier = monsterRegion,
+                RolledTier = rolledTier,
+                LootLuckPct = lootLuckPct,
+                OriginalSource = (short)source
             });
 
             _equipmentWritten++;

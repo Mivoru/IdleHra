@@ -368,6 +368,15 @@ namespace FolkIdle.Server.Domain.Economy
 
                     Console.WriteLine($"Fusion Success! Target item {targetItem.Id} upgraded to Tier {targetItem.QualityTier}.");
                     await db.SaveChangesAsync();
+
+                    // Modul: the drop record (task 26). Every fusion gets a row,
+                    // whatever the tier: "was that Godly dropped or forged?" had
+                    // to be reconstructed from affix-key shapes once, and that
+                    // is a question a WHERE clause should answer. Same
+                    // transaction, beside ForgeFusionsCompleted.
+                    await DropRecord.RecordOneAsync(db, playerId, DropSource.Forge, regionTier,
+                        targetItem, targetItem.BaseItemId, rolledTier: currentTier, finalTier: currentTier + 1,
+                        alwaysNotable: true);
                     await transaction.CommitAsync();
 
                     _playerRegistry?.ForgeUpgradeQueue.Enqueue(new ForgeUpgradeNotification
