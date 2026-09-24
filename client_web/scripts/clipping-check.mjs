@@ -22,7 +22,10 @@
 // design and is perfectly correct. Reporting those drowns the real ones: the
 // first version of this flagged 300+ boxes, nearly all of them honest scrollers.
 //
-// Vertical overflow is NOT checked. Pages scroll down; that is what pages do.
+// Page-level vertical overflow is NOT checked. Pages scroll down; that is what
+// pages do. One specific vertical defect IS: a flex item squashed below its
+// own content by a column that overflows (see "SQUASHED VERTICALLY" below,
+// task 27).
 import { SCREENS, assertMatchesNav, go, open, signIn } from './screens.mjs';
 
 // The three widths that matter: a desktop panel grid, the tablet breakpoint
@@ -37,6 +40,14 @@ const TOLERANCE = 4;
 const { browser, page } = await open({ width: WIDTHS[0], height: 1000 });
 await signIn(page);
 
+// Modul: THE LOOT PANEL IS EMPTY UNLESS SOMETHING FILLS IT - it is tab memory,
+// fed by live drops - and the defect it had (task 27) only exists past 16rem
+// of rows. The hook is dev-only; against a production build it is absent and
+// the panel goes unmeasured, which is said rather than passed silently.
+const demoLoot = await page.evaluate(() => typeof globalThis.__folkidleDemoLoot === 'function');
+if (demoLoot) await page.evaluate(() => globalThis.__folkidleDemoLoot(40));
+else console.log('note: __folkidleDemoLoot absent (not a dev server) - loot lists unmeasured');
+
 const nav = await assertMatchesNav(page);
 if (nav.missing.length > 0) console.log(`FAIL nav has no button for: ${nav.missing.join(', ')}`);
 if (nav.unvisited.length > 0) console.log(`note: not visited: ${nav.unvisited.join(', ')}`);
@@ -48,6 +59,12 @@ for (const width of WIDTHS) {
   for (const label of SCREENS) {
     if (nav.missing.includes(label)) continue;
     await go(page, label);
+    // Modul: fill again where the panel lives - a relog (game.ts clears both
+    // logs on sign-in and sign-out) would otherwise leave it "Nothing yet.".
+    // The hook uses set(), so this is idempotent rather than cumulative.
+    if (demoLoot && (label === 'Combat' || label === 'Gathering')) {
+      await page.evaluate(() => globalThis.__folkidleDemoLoot(40));
+    }
     // Let the grid settle at the new width before measuring.
     await page.waitForTimeout(250);
 
@@ -181,6 +198,46 @@ for (const width of WIDTHS) {
             text: (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 60),
           });
           continue;
+        }
+
+        // Modul: A FLEX ITEM SQUASHED VERTICALLY is the height twin of the
+        // collapsed-to-zero-width case above. A flex item that is a scroll
+        // container (overflow hidden/clip) has an automatic minimum height of
+        // ZERO, so in a column that overflows it is the first thing flex
+        // shrinks - the loot list's rare rows (`.folk-sweep` sets overflow:
+        // hidden) shrank to their padding and the best drop read as a 4px
+        // line (task 27). Nothing was cut sideways, so the width checks above
+        // said nothing.
+        //
+        // Measured against the IN-FLOW children, not scrollHeight: those same
+        // rare rows carry a Burst whose absolutely positioned sparks fly
+        // outside the row on purpose, and they count toward scrollHeight. A
+        // healthy row mid-burst would read as squashed; a row shorter than
+        // its own laid-out text is squashed whatever the sparks are doing.
+        const parentStyle = el.parentElement ? getComputedStyle(el.parentElement) : null;
+        if (parentStyle
+            && parentStyle.display.includes('flex')
+            && parentStyle.flexDirection.startsWith('column')
+            && (style.overflowY === 'hidden' || style.overflowY === 'clip')) {
+          const box = el.getBoundingClientRect();
+          let need = 0;
+          for (const c of el.children) {
+            const cs = getComputedStyle(c);
+            if (cs.position === 'absolute' || cs.position === 'fixed' || cs.display === 'none') continue;
+            need = Math.max(need, c.getBoundingClientRect().height);
+          }
+          need += parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+            + parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+          if (box.height >= 1 && need - box.height > tolerance) {
+            out.push({
+              tag: el.tagName.toLowerCase(),
+              cls: 'flex-item-squashed-vertically',
+              over: Math.round(need - box.height),
+              width: Math.round(box.height), // printed as "box" - the HEIGHT here
+              text: (el.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 60),
+            });
+            continue;
+          }
         }
 
         const over = el.scrollWidth - el.clientWidth;

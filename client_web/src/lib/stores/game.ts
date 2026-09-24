@@ -438,6 +438,38 @@ if (import.meta.env.DEV) {
     ]);
     play('achievementUnlock');
   };
+
+  // Modul: a way to FILL the loot panel without fighting for an hour.
+  //
+  // The session loot log lives only in this tab's memory and fills only from
+  // live drop packets, so every geometry checker saw "Nothing yet." - and the
+  // squashed-top-row defect (task 27) needs MORE rows than 16rem holds, with
+  // rare (tier >= 10) ones on top. Dev builds only, like the achievement demo.
+  (globalThis as Record<string, unknown>).__folkidleDemoLoot = (rows = 40) => {
+    const now = Date.now();
+    lootLogEquipment.set(
+      Array.from({ length: rows }, (_, i) => ({
+        id: ++lootSequence,
+        itemId: 1 + i, // distinct -> one row each
+        quantity: 1,
+        monsterId: 91,
+        qualityTier: i < 4 ? 13 - i : i % 10, // four glowing rows on top
+        dropKind: 1,
+        atMs: now - i * 1000,
+      })),
+    );
+    lootLogMaterials.set(
+      Array.from({ length: rows }, (_, i) => ({
+        id: ++lootSequence,
+        itemId: 1000 + i,
+        quantity: 5 + i,
+        monsterId: 91,
+        qualityTier: 0,
+        dropKind: 0,
+        atMs: now - i * 1000,
+      })),
+    );
+  };
 }
 
 /**
