@@ -3747,6 +3747,32 @@ Directions to put to the owner: fees scaling with wealth or level, a
 prestige/cosmetic track, guild-level projects (ties into 38), high-roll forge or
 reroll services, a gold-funded endless Delve depth.
 
+**Decided 2026-09-24: "The Deep".** Spec
+`docs/superpowers/specs/2026-09-24-the-deep-gold-sink-design.md`, plan
+`docs/superpowers/plans/2026-09-24-task-37-the-deep.md`, brief (the measured
+economy) `docs/superpowers/plans/2026-09-23-task-37-late-game-gold-sink-design.md`.
+Phase 0.1 (combat gold is the named `EconomyDecisions.CombatGoldPercent = 75`)
+merged in PR #32.
+
+**Phase 0.2, measured income** (`GoldSinkAffordabilityTests`, all asserted):
+
+- The top account's REAL sheet and gear (player 8, read from production
+  2026-09-24: level 94, Warrior lineage, a tier-13 scepter, six attack-speed,
+  four crit-chance and three crit-damage rolls, codex level sum 17,660 = 6.32x,
+  inheritance damage 4) kills the Death Knight in **3.59 s = about 1.67M gold/h**.
+- The brief's long-run gross (22 days, +633.8M and at least -152.1M) is
+  **1.49M/h**; the profile is asserted within 3x of that.
+- The brief's **10M/h "working figure" is NOT this account's combat**: it came
+  from two single offline catch-up snapshots the telemetry cannot separate from
+  chest sales, and the combat model's absolute ceiling on the Death Knight (a
+  lethal swing every 600 ms) is 9.96M/h. The plan's "within 3x of 10M/h" does
+  not hold; the test asserts the account sits under a third of it instead.
+- The sink table at 1.67M/h: reroll r5 0.36 min, fusion into tier 14 0.36 min,
+  village L20 15 min, Delve gate r5 9 min (all repeatable ones under 10% of an
+  hour); feast n=16 166 min, n=20 18 h, n=25 190 h (bounded by the Inn, so not
+  repeatable). **No repeatable sink absorbs 30% of an hour**: that row is
+  skipped until the Deep lands.
+
 ## 38. Guild Wars: design the whole system (XL, design with the owner first)
 
 **Owner, 2026-09-23:** design Guild Wars completely - format, rewards,
