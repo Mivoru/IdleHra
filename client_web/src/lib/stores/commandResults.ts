@@ -84,6 +84,17 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   34: 'Not enough gold for this pairing.',
   35: 'A child was born - find it in the Hall of Ancestors.',
   36: 'The pairing could not be completed - nothing was spent. Try again.',
+
+  // 37 is GuildWarsLocked (the Guild War population lock).
+
+  // Modul: THE WORLD BOSS, which used to answer a refused strike with a silent
+  // rollback or a disconnect (task 25). The pip stayed unspent and nothing said
+  // why, which is how "no attack has ever landed" was reported.
+  38: 'The world boss is not here right now - your strike was not sent to it.',
+  39: 'The world boss has already been defeated this encounter.',
+  40: 'You have used all three strikes this encounter.',
+  41: 'Your battle session has closed - it lasts five minutes from your first strike.',
+  42: 'Your strike could not be recorded - nothing was spent. Try again.',
 };
 
 export const COMMAND_RESULT_SUCCESS = 0;

@@ -40,21 +40,30 @@ namespace FolkIdle.Server.Domain.Combat
             ref ClientCommandPacket cmd,
             in CommandCoordinatorContext ctx)
         {
+            // Protocol first: a client this build does not speak to is
+            // terminated, exactly as before.
             if (!ClientCommandValidator.ValidateWorldBossAttackRequest(
                 ref currentPayload,
                 ref cmd,
-                WorldBossEngine.ActiveBossInstanceId,
-                ctx.WorldBossEngine.IsBossDead(),
-                ctx.WorldBossEngine.IsEventActive))
+                WorldBossEngine.ActiveBossInstanceId))
             {
                 ctx.TerminateSessionForSecurity(ctx.RoutingPlayerId);
                 return;
             }
 
-            // Modul 06/15: Auto-Eat food depletion also closes a
-            // player's World Boss battle session, alongside the
-            // 300-second cap enforced inside WorldBossEngine itself.
-            bool attackAutoEatDepleted = currentPayload.Food1_Count <= 0 && currentPayload.Food2_Count <= 0 && currentPayload.Food3_Count <= 0;
+            // Modul: then state, which is ANSWERED rather than punished (task
+            // 25). A window that closed a moment ago or a boss that died a
+            // moment ago is a race an honest client loses, and it used to cost
+            // the player their session.
+            var stateRefusal = ClientCommandValidator.WorldBossStateRefusal(
+                ref currentPayload,
+                ctx.WorldBossEngine.IsBossDead(),
+                ctx.WorldBossEngine.IsEventActive);
+            if (stateRefusal.HasValue)
+            {
+                ctx.PlayerRegistry.EnqueueCommandResult(currentPayload.PlayerId, (byte)stateRefusal.Value);
+                return;
+            }
 
             // Modul: skill tree, Giantslayer. The most generous
             // branch in the tree - 40% at cap - because the world
@@ -91,8 +100,7 @@ namespace FolkIdle.Server.Domain.Combat
                 currentPayload.PlayerId,
                 cmd.TargetedBossId,
                 bossDamage,
-                cmd.TargetedPlateIndex,
-                attackAutoEatDepleted);
+                cmd.TargetedPlateIndex);
         }
     }
 }

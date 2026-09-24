@@ -233,7 +233,26 @@ namespace FolkIdle.Server.Network
         // The transaction threw - under Serializable isolation a concurrent
         // write is an ordinary cause - and was rolled back, so nothing was spent.
         // It used to be caught and printed to the server console only.
-        BreedingFailed = 36
+        BreedingFailed = 36,
+
+        // 37 is GuildWarsLocked (the Guild War population lock, PR #22).
+
+        // Modul: THE WORLD BOSS, which had five silent rollbacks and two
+        // disconnects between a Strike press and a player who could be told
+        // anything (task 25). Every refusal on that path now lands one of
+        // these on the result ring, and an honest client is never
+        // disconnected for a state race - a window that closed a moment ago,
+        // a boss that died a moment ago, a double-tap. See
+        // WorldBossEngine.ResultCodeFor.
+        WorldBossNotActive = 38,
+        WorldBossAlreadyDefeated = 39,
+        WorldBossNoAttemptsLeft = 40,
+        WorldBossSessionClosed = 41,
+
+        // The strike threw - a refused connection, a serialization conflict -
+        // and was rolled back, so nothing was spent. It used to be an
+        // unobserved task exception or a server-console line.
+        WorldBossStrikeFailed = 42
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
