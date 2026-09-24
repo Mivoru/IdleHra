@@ -33,6 +33,7 @@ export const queryKeys = {
   loginBonus: ['meta', 'loginBonus'] as const,
   leaderboard: ['meta', 'leaderboard'] as const,
   guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
+  deepestBoard: ['meta', 'leaderboard', 'deepest'] as const,
   codex: ['meta', 'codex'] as const,
   metadata: ['meta', 'metadata'] as const,
   breedingRoster: ['meta', 'breeding'] as const,
@@ -1456,6 +1457,13 @@ export interface DelveRunView {
   LanternsBought: number;
   DeepestFloor: number;
   DeepestThisWeek: number;
+  /** In the Deep with the light out: what the next lantern costs. 0 otherwise. */
+  LanternPrice: number;
+  LanternRefillsLeft: number;
+  /** The next Deep title past the record, by the server's registry, or null. */
+  NextTitle: { Slug: string; Name: string; Floor: number } | null;
+  /** The worn title's display name as the server sends it - the client keeps no list of titles. */
+  ActiveTitle: string | null;
 }
 
 export type DelveResultCode =
@@ -1472,7 +1480,9 @@ export type DelveResultCode =
   | 'PriceChanged'
   | 'NoMoreLanterns'
   | 'NotAtTheBottom'
-  | 'DeepDisabled';
+  | 'DeepDisabled'
+  | 'ChargesRemain'
+  | 'LanternOut';
 
 export interface DelveActionResponse {
   Result: DelveResultCode;
@@ -1507,4 +1517,56 @@ export function bankDelve(): Promise<DelveActionResponse | null> {
  */
 export function descendDeep(quotedStake: number): Promise<DelveActionResponse | null> {
   return authedPost<DelveActionResponse>('/api/v1/delve/deep/descend', { QuotedStake: quotedStake });
+}
+
+/**
+ * Light another lantern in the Deep. The body is empty on purpose: the client
+ * never sends a price, and the server charges stake x 2^bought.
+ */
+export function buyDeepLantern(): Promise<DelveActionResponse | null> {
+  return authedPost<DelveActionResponse>('/api/v1/delve/deep/lantern', {});
+}
+
+// ---------------------------------------------------------------------------
+// Titles (task 37) - REST, keyed by slug. Names are rendered as the server
+// sends them; there is deliberately no client-side list of titles to drift.
+// ---------------------------------------------------------------------------
+
+export interface EarnedTitle {
+  Slug: string;
+  Name: string;
+  EarnedAtUtc: string;
+}
+
+export interface TitlesResponse {
+  /** Set by a POST: 'Ok' | 'NotEarned' | 'UnknownTitle' | 'PlayerNotFound'. */
+  Result: string | null;
+  Titles: EarnedTitle[];
+  Active: { Slug: string; Name: string } | null;
+}
+
+export function fetchTitles(): Promise<TitlesResponse> {
+  return authedGet<TitlesResponse>('/api/v1/player/titles');
+}
+
+/** Wear a title by slug, or clear it with null. */
+export function setActiveTitle(slug: string | null): Promise<TitlesResponse | null> {
+  return authedPost<TitlesResponse>('/api/v1/player/title', { Slug: slug });
+}
+
+// ---------------------------------------------------------------------------
+// The weekly Deepest board (task 37). Pays nothing.
+// ---------------------------------------------------------------------------
+
+export interface DeepestBoardRow {
+  Rank: number;
+  PlayerId: number;
+  Name: string;
+  Floor: number;
+  ReachedAtUtc: string | null;
+  Title: string | null;
+}
+
+export function fetchDeepestBoard(): Promise<DeepestBoardRow[]> {
+  return authedGet<{ Entries: DeepestBoardRow[] }>('/api/v1/leaderboard/deepest').then((r) => r?.Entries ?? []);
 }

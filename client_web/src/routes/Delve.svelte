@@ -49,6 +49,10 @@
     chooseDelveDoor,
     bankDelve,
     descendDeep,
+    buyDeepLantern,
+    fetchTitles,
+    setActiveTitle,
+    type TitlesResponse,
     type DelveRunView,
     type DelveActionResponse,
   } from '../lib/net/rest';
@@ -75,6 +79,48 @@
   ];
   const HIDDEN_FLAVOUR = 'A cold draught from somewhere below';
 
+  let titles = $state<TitlesResponse | null>(null);
+  let titleNotice = $state('');
+
+  async function loadTitles() {
+    try {
+      titles = await fetchTitles();
+    } catch {
+      titles = null;
+    }
+  }
+
+  /*
+    Modul: A TITLE PICKER OF BUTTONS, NOT A <select>. A native select whose
+    options change while it is open is broken on Android's WebView (the
+    Breeding pickers, 2026-09-13), and a list of names is not a select anyway.
+    The names are the server's; this file keeps no list of titles.
+  */
+  async function wear(slug: string | null) {
+    if (busy) return;
+    busy = true;
+    titleNotice = '';
+    try {
+      const answer = await setActiveTitle(slug);
+      if (answer) {
+        titles = answer;
+        titleNotice =
+          answer.Result === 'Ok'
+            ? slug
+              ? `You now go by ${answer.Active?.Name ?? 'that title'}.`
+              : 'You go by your name alone.'
+            : answer.Result === 'NotEarned'
+              ? 'That title has not been earned yet.'
+              : 'That title does not exist.';
+      }
+      await load();
+    } catch (err) {
+      titleNotice = err instanceof Error ? err.message : 'the request failed';
+    } finally {
+      busy = false;
+    }
+  }
+
   async function load() {
     try {
       view = await fetchDelve();
@@ -84,7 +130,10 @@
     }
   }
 
-  onMount(load);
+  onMount(() => {
+    load();
+    loadTitles();
+  });
 
   function describe(outcome: DelveActionResponse): string {
     switch (outcome.Result) {
@@ -101,7 +150,9 @@
       case 'RunLost':
         return 'The last lantern charge goes out. You come up with nothing.';
       case 'ChargeLost':
-        return 'The way is barred. A lantern charge burns out, and the floor offers new doors.';
+        return outcome.View.IsDeep && outcome.View.ChargesRemaining === 0
+          ? 'The way is barred, and your lantern goes out.'
+          : 'The way is barred. A lantern charge burns out, and the floor offers new doors.';
       case 'FloorCleared':
         return outcome.View.IsDeep
           ? `Floor ${outcome.View.CurrentFloor} is yours. The dark goes on below.`
@@ -118,6 +169,10 @@
         return 'The way into the Deep is closed for now.';
       case 'NoMoreLanterns':
         return 'There are no more lanterns to buy on this run.';
+      case 'ChargesRemain':
+        return 'Your lantern is still lit. A new one is only for when it goes out.';
+      case 'LanternOut':
+        return 'Your lantern is out. Light another, or walk out.';
       default:
         return '';
     }
@@ -138,8 +193,10 @@
           if (outcome.DiamondsGranted > 0) banked.push(`${outcome.DiamondsGranted} diamonds`);
           if (outcome.GoldReturned > 0) banked.push(`${formatCompact(outcome.GoldReturned)} gold`);
           notice =
-            (banked.length ? `Floors 1-8 banked: ${banked.join(' and ')}. ` : '') +
-            `You pay ${formatCompact(outcome.GoldCharged)} gold and go down to floor ${outcome.View.CurrentFloor}.`;
+            fn === lightLantern
+              ? `You pay ${formatCompact(outcome.GoldCharged)} gold and the lantern burns again.`
+              : (banked.length ? `Floors 1-8 banked: ${banked.join(' and ')}. ` : '') +
+                `You pay ${formatCompact(outcome.GoldCharged)} gold and go down to floor ${outcome.View.CurrentFloor}.`;
         } else if (outcome.Result === 'Ok' && (outcome.DiamondsGranted > 0 || outcome.GoldReturned > 0)) {
           const parts: string[] = [];
           if (outcome.DiamondsGranted > 0) parts.push(`${outcome.DiamondsGranted} diamonds`);
@@ -158,6 +215,9 @@
       busy = false;
     }
   }
+
+  const lightLantern = () => buyDeepLantern();
+  const lanternOut = $derived(!!view?.IsDeep && view.ChargesRemaining === 0 && !view.AtLanding);
 
   const canAfford = $derived(!!view && view.CurrentGold >= view.EntryFeeForNextRun);
   const ceilingLeft = $derived(view ? Math.max(0, view.WeeklyDiamondCeiling - view.DiamondsEarnedThisWeek) : 0);
@@ -258,7 +318,25 @@
           {/if}
         </div>
 
-        {#if atBottom && isDeep}
+        {#if lanternOut}
+          <!-- Modul: the light going out in the Deep is an offer, not an end:
+               the run waits here until the player pays or walks out. -->
+          {#if view.LanternPrice > 0}
+            <p class="bottom">Your lantern is out. Light another: <Money amount={view.LanternPrice} />.</p>
+            <button
+              class="primary"
+              disabled={busy || view.CurrentGold < view.LanternPrice}
+              onclick={() => act(lightLantern)}
+            >
+              Light another lantern: {formatCompact(view.LanternPrice)}
+            </button>
+            <p class="muted small">
+              Each lantern costs twice the last. {view.LanternRefillsLeft} left on this run.
+            </p>
+          {:else}
+            <p class="bottom">Your lantern is out, and there are none left to buy. Walk out.</p>
+          {/if}
+        {:else if atBottom && isDeep}
           <p class="bottom">Floor {view.CurrentFloor} is behind you. The water below is darker.</p>
         {:else if atBottom && view.CanDescend}
           <p class="bottom">The floor of the Delve. Below it, the Deep: no diamonds down there, only how far you went.</p>
@@ -331,6 +409,40 @@
 
     {#if notice}
       <p class="notice" role="status">{notice}</p>
+    {/if}
+
+    {#if view.DeepEnabled}
+      <section class="sheet titles">
+        <h2>Titles</h2>
+        {#if view.NextTitle}
+          <p class="muted small">
+            Clear floor {view.NextTitle.Floor} of the Deep to earn <strong>{view.NextTitle.Name}</strong>.
+          </p>
+        {/if}
+        {#if titles && titles.Titles.length > 0}
+          <div class="picker">
+            {#each titles.Titles as t (t.Slug)}
+              <button
+                class="secondary"
+                class:worn={titles.Active?.Slug === t.Slug}
+                aria-pressed={titles.Active?.Slug === t.Slug}
+                disabled={busy}
+                onclick={() => wear(t.Slug)}
+              >
+                {t.Name}
+              </button>
+            {/each}
+            {#if titles.Active}
+              <button class="secondary" disabled={busy} onclick={() => wear(null)}>No title</button>
+            {/if}
+          </div>
+        {:else}
+          <p class="muted small">No titles yet. The Deep pays in these, not in diamonds.</p>
+        {/if}
+        {#if titleNotice}
+          <p class="notice" role="status">{titleNotice}</p>
+        {/if}
+      </section>
     {/if}
 
     <section class="sheet">
@@ -568,6 +680,19 @@
     padding: 10px 12px;
     margin: 0 0 16px;
     line-height: 1.45;
+  }
+
+  .picker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  button.worn {
+    border-color: #d9c48b;
+    color: #d9c48b;
+    font-weight: 700;
   }
 
   .sheet ul {

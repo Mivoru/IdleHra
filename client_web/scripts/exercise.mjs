@@ -1467,7 +1467,35 @@ await go('The Delve');
         down ? `floor ${down.CurrentFloor}, deep=${down.IsDeep}, stake ${down.StakeGold.toLocaleString()}` : '',
       );
 
-      const goldInTheDeep = down?.CurrentGold;
+      // A lantern, bought at the price the SCREEN showed, must take exactly
+      // that - and the request carries no price at all. The light is put out
+      // by the dev route rather than by failing doors until chance obliges.
+      const dark = await apiPostStatus('/api/v1/dev/delve/lantern-out', {});
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1500);
+      await dismissOfflineSummary(3000);
+      await go('The Delve');
+      await page.waitForTimeout(800);
+      const unlit = await apiGet('/api/v1/delve');
+      const lanternPrice = unlit?.LanternPrice ?? 0;
+      record(
+        'the Deep offers a lantern when the light goes out',
+        dark === 200 && Boolean(unlit) && unlit.ChargesRemaining === 0 && lanternPrice === stake,
+        unlit ? `status ${dark}, charges ${unlit.ChargesRemaining}, price ${lanternPrice.toLocaleString()}g (stake ${stake.toLocaleString()}g)` : `status ${dark}`,
+      );
+
+      if (lanternPrice > 0) {
+        await page.getByRole('button', { name: /Light another lantern/i }).first().click();
+        await page.waitForTimeout(1500);
+        const relit = await apiGet('/api/v1/delve');
+        record(
+          'a lantern takes exactly the quoted price and relights the run',
+          Boolean(relit) && relit.CurrentGold === unlit.CurrentGold - lanternPrice && relit.ChargesRemaining === 1 && relit.LanternsBought === 1,
+          relit ? `${unlit.CurrentGold.toLocaleString()} - ${lanternPrice.toLocaleString()} -> ${relit.CurrentGold.toLocaleString()}g, ${relit.ChargesRemaining} charge` : '',
+        );
+      }
+
+      const goldInTheDeep = (await apiGet('/api/v1/delve'))?.CurrentGold;
       await page.getByRole('button', { name: /^\s*Walk out\s*$/i }).first().click();
       await page.waitForTimeout(1200);
 
@@ -1491,6 +1519,61 @@ await go('The Delve');
         Boolean(out) && out.DeepestFloor >= 8 && out.DeepestThisWeek >= 8,
         out ? `deepest ${out.DeepestFloor}, this week ${out.DeepestThisWeek}` : '',
       );
+
+      // --- the Deepest board shows the record, on the screen -----------------
+      await go('Leaderboards');
+      await page.getByRole('tab', { name: /Deepest this week/i }).first().click();
+      await page.waitForTimeout(1500);
+      const board = (await apiGet('/api/v1/leaderboard/deepest'))?.Entries ?? [];
+      // The fixture's username is DevFixtureSeeder.Username, 'dev'.
+      const selfId = board.find((r) => r.Name === 'dev') ?? null;
+      const rowText = selfId
+        ? await page.locator('.deepest .board li', { hasText: selfId.Name }).first().textContent().catch(() => '')
+        : '';
+      record(
+        'the Deepest board shows the fixture and its record',
+        Boolean(selfId) && (rowText ?? '').includes(`floor ${out?.DeepestThisWeek}`),
+        selfId ? `#${selfId.Rank} ${selfId.Name}, floor ${selfId.Floor}; row "${(rowText ?? '').trim().replace(/\s+/g, ' ')}"` : `${board.length} rows, fixture not among them`,
+      );
+
+      // --- a title: granted, worn, seen in the profile, and taken off -------
+      const granted = await apiPostStatus('/api/v1/dev/titles/grant', { Slug: 'deep_10' });
+      await go('The Delve');
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1500);
+      await dismissOfflineSummary(3000);
+      await go('The Delve');
+      await page.waitForTimeout(1000);
+      const titleButton = page.locator('.titles .picker button', { hasText: 'Lamplighter' }).first();
+      if (granted === 200 && (await titleButton.count()) > 0) {
+        await titleButton.click();
+        await page.waitForTimeout(1200);
+        const worn = await apiGet('/api/v1/player/titles');
+        record('wearing a title is saved on the server', worn?.Active?.Slug === 'deep_10', worn?.Active ? worn.Active.Name : 'no active title');
+
+        await go('Leaderboards');
+        await page.getByRole('tab', { name: /Deepest this week/i }).first().click();
+        await page.waitForTimeout(1200);
+        const nameButton = selfId ? page.locator('.deepest .who-btn', { hasText: selfId.Name }).first() : null;
+        let modalTitle = '';
+        if (nameButton && (await nameButton.count()) > 0) {
+          await nameButton.click();
+          await page.waitForTimeout(1500);
+          modalTitle = (await page.locator('.modal .title-badge').first().textContent().catch(() => '')) ?? '';
+          await page.locator('.modal .close-btn').first().click().catch(() => {});
+        }
+        record('the profile shows the title the server named', modalTitle.trim() === 'Lamplighter', `badge "${modalTitle.trim()}"`);
+
+        // Round-trip: take it off, so the next run starts from a bare name.
+        await go('The Delve');
+        await page.waitForTimeout(800);
+        await page.locator('.titles .picker button', { hasText: 'No title' }).first().click();
+        await page.waitForTimeout(1200);
+        const bare = await apiGet('/api/v1/player/titles');
+        record('a title can be taken off again', Boolean(bare) && bare.Active === null, bare?.Active ? bare.Active.Name : 'none worn');
+      } else {
+        record('a granted title appears in the picker', false, `grant status ${granted}, picker button ${await titleButton.count()}`);
+      }
     }
   }
 }
