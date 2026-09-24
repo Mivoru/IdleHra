@@ -492,7 +492,7 @@ var leaderboardCronEngine = new LeaderboardCronEngine(serviceProvider, redisMult
 // Modul: reads the ZSET leaderboardCronEngine publishes, so the payout and the
 // board a player looked at cannot disagree. Idempotent per ISO week off the
 // player row - see LeaderboardPayoutEngine.
-var leaderboardPayoutEngine = new LeaderboardPayoutEngine(serviceProvider, redisMultiplexer);
+var leaderboardPayoutEngine = new LeaderboardPayoutEngine(serviceProvider, redisMultiplexer, playerRegistry);
 var guildManagementEngine = new GuildManagementEngine(serviceProvider.GetRequiredService<RetryingDbContextOptions>(), playerRegistry);
 // Modul: MockIapReceiptValidator performs no cryptographic verification -
 // see its own doc comment. Production instead uses
