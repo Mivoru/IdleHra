@@ -78,11 +78,14 @@ namespace FolkIdle.Server.Tests
             try
             {
                 // Rank 1 is ours; the rest are ids with no row, which the payout
-                // skips, but which make the population clear the floor.
+                // skips, but which make the population clear the floor. NEGATIVE
+                // on purpose: the first version used 990_000_001.., which are real
+                // rows other tests in this collection create, so the full suite
+                // paid them too and this test failed only there.
                 var entries = new List<SortedSetEntry> { new(playerId.ToString(), 1_000_000) };
                 for (int i = 1; i < rankedPopulation; i++)
                 {
-                    entries.Add(new SortedSetEntry((990_000_000L + i).ToString(), 1_000 - i));
+                    entries.Add(new SortedSetEntry((-i).ToString(), 1_000 - i));
                 }
                 await redis.SortedSetAddAsync(BoardKey, entries.ToArray());
 
