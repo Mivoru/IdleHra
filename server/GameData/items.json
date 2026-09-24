@@ -1,13 +1,5 @@
 [
   {
-    "Id": 1,
-    "RegionTier": 6,
-    "BaseValueGold": 360,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "gold_ore_crafting_material"
-  },
-  {
     "Id": 4,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -72,14 +64,6 @@
     "BaseId": "premium_diamond_cluster"
   },
   {
-    "Id": 21,
-    "RegionTier": 7,
-    "BaseValueGold": 490,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "mithril_ore_crafting_material"
-  },
-  {
     "Id": 24,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -136,14 +120,6 @@
     "BaseId": "spine_whip_link_unique_regional_boss_material"
   },
   {
-    "Id": 39,
-    "RegionTier": 8,
-    "BaseValueGold": 640,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "adamantite_ore_crafting_material"
-  },
-  {
     "Id": 42,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -192,14 +168,6 @@
     "BaseId": "zmey_core_scale_unique_regional_boss_material"
   },
   {
-    "Id": 57,
-    "RegionTier": 9,
-    "BaseValueGold": 810,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "obsidian_ore_crafting_material"
-  },
-  {
     "Id": 60,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -240,14 +208,6 @@
     "BaseId": "glacial_hearthstone_unique_regional_boss_material"
   },
   {
-    "Id": 75,
-    "RegionTier": 10,
-    "BaseValueGold": 1000,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "celestial_ore_crafting_material"
-  },
-  {
     "Id": 78,
     "RegionTier": 6,
     "BaseValueGold": 360,
@@ -286,14 +246,6 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "lightning_bolt_fragment_ultimate_mythic_upgrade_material"
-  },
-  {
-    "Id": 93,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "tin_ore_crafting_material"
   },
   {
     "Id": 94,
@@ -360,14 +312,6 @@
     "BaseId": "regent_ribbon_unique_regional_boss_material"
   },
   {
-    "Id": 111,
-    "RegionTier": 3,
-    "BaseValueGold": 90,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "iron_ore_crafting_material"
-  },
-  {
     "Id": 114,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -414,14 +358,6 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "overlord_crest_unique_regional_boss_material"
-  },
-  {
-    "Id": 129,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "coal_node_crafting_material"
   },
   {
     "Id": 132,
@@ -472,14 +408,6 @@
     "BaseId": "wurm_eye_unique_regional_boss_material"
   },
   {
-    "Id": 147,
-    "RegionTier": 5,
-    "BaseValueGold": 250,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "silver_ore_crafting_material"
-  },
-  {
     "Id": 150,
     "RegionTier": 1,
     "BaseValueGold": 10,
@@ -526,14 +454,6 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "noon_shroud_unique_regional_boss_material"
-  },
-  {
-    "Id": 165,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "copper_ore_crafting_material"
   },
   {
     "Id": 168,

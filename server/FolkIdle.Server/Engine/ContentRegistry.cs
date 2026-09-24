@@ -340,7 +340,7 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 51, Weight = 100 },  // index 18: subterranean_sawdust_rare_alchemy_ingredient
             new LootTableEntry { ItemId = 60, Weight = 100 },  // index 19: frost_moonflower_herbalism_material
             new LootTableEntry { ItemId = 69, Weight = 100 },  // index 20: berserker_blood_essence_rare_alchemy_ingredient
-            new LootTableEntry { ItemId = 129, Weight = 100 }, // index 21: coal_node_crafting_material - see Mining node 201 below
+            new LootTableEntry { ItemId = 129, Weight = 100 }, // index 21: coal_node_crafting_material (retired 2026-09-24; dead row, see index 61)
 
             // Modul: Full-Stack Expansion, Part 2. Monster material drop
             // tables for the 25 new regional monsters (monster/loot-table
@@ -415,6 +415,15 @@ namespace FolkIdle.Server.Engine
             new LootTableEntry { ItemId = 63, Weight = 62, MinQuantity = 1, MaxQuantity = 3 },  // index 59: ancient_wood    (node 105)
             new LootTableEntry { ItemId = 81, Weight = 38, MinQuantity = 1, MaxQuantity = 2 },  // index 60: yggdrasil_burl  (node 105)
 
+            // Modul: DEAD PADDING, KEPT FOR POSITION. No _lootSegments entry
+            // reaches rows 61-76 (nor 21): mining nodes 201-205 became
+            // 2001-2005, whose tables start at row 77. The ten
+            // *_crafting_material ids these rows name were retired on
+            // 2026-09-24 (holes in items.json, tombstones in
+            // ItemIdLedger.txt). Do not delete the rows - that re-slices every
+            // table after them - and do not point a segment back at them.
+            // ItemCatalogueIntegrityTests pins the dead set.
+            //
             // Mining: the nine ores the ten Smelting recipes consume, plus coal
             // on the first three nodes. Coal is the single most demanded
             // material in the game - Mat2Id on every Smelting AND every Cooking
