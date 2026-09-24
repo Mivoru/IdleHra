@@ -3,8 +3,8 @@
 Written 2026-09-24 for task 35c (`docs/TASK_BOARD.md` §35). The source list
 is `client_web/src/lib/ui/sprites.missing.txt`, which `generate-sprites.mjs`
 regenerates. After the task-33 deletions (#26) and the ten-ore follow-up
-(#28), it holds **119 of 280 items**. Until #28 merges, main also lists the
-8 retired ores; they do not belong on this list either way. The number is a ratchet
+(#28), it held **119 of 280 items**. After the tier-D deletion below, it
+holds **37 of 198**: the 24 in tiers A-C plus the 13 kept from tier D. The number is a ratchet
 (`MISSING_ART_BUDGET`). Lower it only when art actually lands, not because
 of this list.
 
@@ -84,7 +84,7 @@ the existing style: a transparent background, one object, readable at 32 px.
 except `mat_viper_venom`, which already has art through an alias. Art for
 these 24 would clear every icon a player earns by fighting.
 
-## D: do not draw (95). Nothing in the game grants these
+## D: do not draw (95). Nothing in the game grants these (82 deleted, see below)
 
 Each group was checked the same way. No reachable loot row, no recipe, and no
 literal reference in server code grants any of them.
@@ -99,16 +99,26 @@ literal reference in server code grants any of them.
 | `obsidian_chunk` | 1 | No source. |
 | `premium_diamond`, `premium_diamond_cluster`, `premium_diamond_cluster_guaranteed_currency_payout` | 3 | Diamonds are a currency (`PlayerRecords` diamonds, with their own icon via `currencyIcon('diamond')`), not a commodity row. Only a comment in `AffixRerollEngine` names `premium_diamond`. This is plumbing. |
 
-**Owner decision for D.** These 95 are what task 33 was for the 40 legacy
-materials: defined, visible in the Wiki item database and the Market
-browser, and obtainable by nothing. Two honest options:
+**Resolved 2026-09-24 (branch `chore/delete-dead-tier-d-items`).** The owner
+approved deleting tier D the same way as task 33. **82 of the 95 are
+deleted.** A production SELECT found that nobody held any of them. Their ids
+are retired in `ItemIdLedger.txt`, and the art budget went from 119 to 37.
 
-- **Delete them the same way** (a zero-holder production check, ledger
-  tombstones, the guard tests). That lowers the art budget to 24.
-- **Wire them.** That is a design task per group, for example a cooking or
-  alchemy profession. It is not something to draw art for first.
+**13 were kept deliberately.** Nothing grants them, but code addresses them
+by number, so deleting them would be a code rework, not a content removal:
 
-Drawing them first would be art for items no player can hold.
+- **The ten cooked foods (194-203).** `FoodRegistry` indexes its heal table
+  by exactly this id block. `LarderEngine` and `AlchemyCompendium` accept
+  them, `BossGearBenchmark` uses the first one, and the dev fixture's larder
+  is 196-198.
+- **The three `*_potion_consumable` items (376-378).** They are the only
+  content `ConsumableEngine`'s potion slots have, and `searing_tonic` is the
+  fixture of the potion-lifecycle test.
+
+`ItemCatalogueIntegrityTests.EveryIdTheCodeAddressesByNumberIsLive` pins
+them. For these, the owner has to choose between two things: give them a
+source (a cooking or alchemy profession) and then draw them, or rework
+FoodRegistry and ConsumableEngine and then delete them.
 
 ## Method, for a rerun
 
