@@ -1,5 +1,24 @@
 # The `*_crafting_material` namespace: what is live and what is not
 
+## Resolved 2026-09-24, part 2: the ten ores are gone too
+
+The owner approved deleting the ten ores in the "Live (10)" table below, which
+turned out to be unreachable (see the correction further down). They are
+deleted on branch `chore/delete-legacy-ores`: ids 1, 21, 39, 57, 75, 93, 111,
+129, 147 and 165, with ledger tombstones (161 retired ids now). **The whole
+`*_crafting_material` namespace is now empty.** Production was checked again
+the same day, with the same 16 read-only checks: 0 rows each, and 0
+`CommodityRecords` rows ending `_crafting_material` at all.
+
+Their only loot rows (`_lootEntries` 21 and 61-76) **stay in the array as
+dead padding**. `_lootSegments` slices the array by position, so removing
+those rows would re-slice every table after them.
+`ItemCatalogueIntegrityTests` now tells reachable rows from dead ones. A
+reachable row must name a live item. A dead row may name a live or a retired
+id. The set of dead rows is pinned, currently 0-21 and 47-76. The `Copper`
+and `Absidian` sprite aliases now point at the ore alone, and the missing-art
+budget went from 127 to 119.
+
 ## Resolved 2026-09-24 (task 33)
 
 **The 40 legacy entries were deleted** from `items.json` and their ids retired

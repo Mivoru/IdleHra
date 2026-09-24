@@ -623,7 +623,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'items', anchor: 'rarity', title: 'The fourteen rarity tiers', keywords: 'normal common uncommon rare epic legendary mythic relic ancient divine demonic godly transcendent' },
   { tab: 'items', anchor: 'droprates', title: 'Drop chances and luck', keywords: 'drop rate luck lck calculator odds equipment 15%' },
   { tab: 'items', anchor: 'database', title: 'Item database', keywords: 'search items catalogue browse' },
-  { tab: 'items', anchor: 'namespaces', title: 'Three kinds of material', keywords: 'commodity slug crafting material namespace copper ore stranded' },
+  { tab: 'items', anchor: 'namespaces', title: 'Two kinds of material', keywords: 'commodity slug crafting material namespace copper ore stranded' },
 
   { tab: 'forge', anchor: 'fusion', title: 'Fusion', keywords: 'forge fuse combine sacrifice rarity ceiling level' },
   { tab: 'forge', anchor: 'reroll', title: 'Affix rerolls and what they cost', keywords: 'reroll affix price region gold 1000 2000 4000 5000 10000 lock' },

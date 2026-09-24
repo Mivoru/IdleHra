@@ -588,16 +588,19 @@
           <h3 id="droprates">Drop chances and luck</h3>
           <WikiDropChances />
 
-          <h3 id="namespaces">Three kinds of material share one shelf</h3>
+          <h3 id="namespaces">Two kinds of material share one shelf</h3>
           <p class="dim small">
-            Worth knowing, because it explains a stack you cannot spend. Three
+            Worth knowing, because it explains a stack you cannot spend. Two
             different families of id sit in the same inventory:
           </p>
           <ul class="styled-list">
             <li><strong>Catalogued items</strong> — everything with a picture, a region tier and a gold value. Logs, ores, fish, gear, tools. This is the real economy.</li>
             <li><strong>Gathering slugs</strong> — a handful of older ids like <code>wood</code> that have no catalogue entry at all. Nothing keyed on an item id will accept them.</li>
-            <li><strong>Legacy crafting materials</strong> — ten ids ending <code>_crafting_material</code>, all ores. None of them can be obtained or spent any more; if you are holding a stack of Copper Ore Crafting Material, that is why. Anything held under one of these names is still yours.</li>
           </ul>
+          <p class="dim small">
+            There used to be a third family, fifty ids ending <code>_crafting_material</code>.
+            None of them could be obtained or spent, nobody held one, and they were removed.
+          </p>
 
           <h3 id="database">Item database</h3>
           <p class="dim small">Every item in the catalogue, searchable.</p>

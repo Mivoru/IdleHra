@@ -3649,7 +3649,9 @@ facts a reader will want:
 
 Found on the way: the ten *surviving* `*_crafting_material` ores are
 unreachable too (their loot rows belong to the pre-renumber mining nodes
-201-205); recorded in the audit, not acted on.
+201-205). **Follow-up, owner-approved 2026-09-24:** deleted the same way on
+`chore/delete-legacy-ores`. Production held 0 rows. The `*_crafting_material`
+namespace is empty now, and the missing-art budget went from 127 to 119.
 
 Original brief:
 
