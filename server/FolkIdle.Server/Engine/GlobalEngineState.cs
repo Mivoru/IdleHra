@@ -8,7 +8,6 @@ namespace FolkIdle.Server.Engine
         public static volatile bool IsShuttingDown = false;
         public static volatile int GlobalXpMultiplier = 100;
         public static volatile int GlobalDropMultiplier = 100;
-        public static volatile int GlobalGoldDropMultiplier = 100;
         public static volatile int ActiveEventType = 0;
         public static volatile int NotificationQueueStateLength = 0;
         // Cold boot gate: set to true only after ColdRecoveryCoordinator completes reconstruction.

@@ -149,9 +149,12 @@ namespace FolkIdle.Server.Engine
                 await writeTx.CommitAsync(stoppingToken);
             }
 
+            // Modul: REPORT, DO NOT STEER. This used to set combat gold to 75%
+            // out of band and 100% in band. Combat gold is an owner decision now
+            // (EconomyDecisions.CombatGoldPercent) and the audit only records
+            // what it saw: the ledger row above, and this event.
             if (ratio < LowerParityBound || ratio > UpperParityBound)
             {
-                GlobalEngineState.GlobalGoldDropMultiplier = 75;
                 TelemetryStreamer.TryWrite(new TelemetryEvent
                 {
                     PlayerId = 0,
@@ -160,10 +163,6 @@ namespace FolkIdle.Server.Engine
                     Value2 = (int)Math.Clamp(ratio * 1000.0, 0.0, int.MaxValue),
                     Timestamp = Environment.TickCount64
                 });
-            }
-            else
-            {
-                GlobalEngineState.GlobalGoldDropMultiplier = 100;
             }
         }
     }
