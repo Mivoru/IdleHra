@@ -1394,6 +1394,107 @@ await go('The Delve');
   }
 }
 
+// --- the Deep: a toll has to leave, and the record has to move ----------------
+//
+// Modul: TASK 37. The Deep is an endless, gold-tolled continuation past floor
+// 8, and the defect it is most exposed to is the one this file exists for: a
+// "Descend" button that renders, takes a click, and moves nothing. So every
+// assertion is on the SERVER's view, the gold is checked to the coin, and the
+// last read is after a page reload.
+//
+// A run at the bottom of floor 8 cannot be reached reliably by playing - the
+// doors are a gamble by design - so the dev-only route puts one there. It
+// round-trips: the run is walked out of, so the next exercise starts clean, and
+// the fixture's 5M (DevFixtureInvariantTests holds it at ten region-5 gates)
+// pays a toll priced at half a percent of what it holds.
+{
+  const res = await fetch(`${API_BASE}/api/v1/dev/delve/at-bottom`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${await authToken()}`, 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+
+  if (res.status === 404) {
+    record(
+      'the Deep: a run can be placed at the bottom of floor 8',
+      false,
+      'the server answered 404 - start it with FOLKIDLE_DEV_TOOLS=1 (run-dev.ps1 does)',
+    );
+  } else {
+    // Reloaded, not just navigated: the Delve screen may already be open with
+    // the view it read before the dev route moved the run.
+    await go('The Delve');
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+    await dismissOfflineSummary(3000);
+    await go('The Delve');
+    await page.waitForTimeout(800);
+    const atBottom = await apiGet('/api/v1/delve');
+
+    if (!atBottom?.DeepEnabled) {
+      record(
+        'the Deep is open on the dev box',
+        false,
+        'DeepEnabled is false - start the server with FOLKIDLE_DELVE_DEEP=on (run-dev.ps1 does)',
+      );
+    } else {
+      const g0 = atBottom.CurrentGold;
+      const stake = atBottom.StakeGold;
+      const toll = atBottom.DescendQuote;
+      const bankPayout = atBottom.ConsolationGoldIfCapped;
+      const diamondsBefore = atBottom.DiamondsEarnedThisWeek;
+      const diamondsBanked = atBottom.DiamondsAfterCeiling;
+
+      record(
+        'the bottom of floor 8 offers a descent with a toll',
+        atBottom.Active && atBottom.AtLanding && atBottom.CanDescend && toll > 0 && stake >= atBottom.EntryFeeForNextRun,
+        `stake ${stake.toLocaleString()}g, toll ${toll.toLocaleString()}g`,
+      );
+
+      await page.getByRole('button', { name: /Descend into the Deep/i }).first().click();
+      await page.waitForTimeout(1500);
+
+      const down = await apiGet('/api/v1/delve');
+      const expectedGold = g0 + bankPayout - toll;
+      record(
+        'descending banks floors 1-8 and takes exactly the toll',
+        Boolean(down) && down.CurrentGold === expectedGold,
+        down ? `${g0.toLocaleString()} + ${bankPayout.toLocaleString()} - ${toll.toLocaleString()} = ${expectedGold.toLocaleString()}; server says ${down.CurrentGold.toLocaleString()}` : 'no view',
+      );
+      record(
+        'the run is in the Deep on floor 9, on a frozen stake',
+        Boolean(down) && down.Active && down.IsDeep && down.CurrentFloor === 9 && down.StakeGold === stake,
+        down ? `floor ${down.CurrentFloor}, deep=${down.IsDeep}, stake ${down.StakeGold.toLocaleString()}` : '',
+      );
+
+      const goldInTheDeep = down?.CurrentGold;
+      await page.getByRole('button', { name: /^\s*Walk out\s*$/i }).first().click();
+      await page.waitForTimeout(1200);
+
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1500);
+      await dismissOfflineSummary(3000);
+
+      const out = await apiGet('/api/v1/delve');
+      record(
+        'walking out of the Deep closes the run and pays nothing',
+        Boolean(out) && !out.Active && out.CurrentGold === goldInTheDeep,
+        out ? `active=${out.Active}, gold ${goldInTheDeep?.toLocaleString()} -> ${out.CurrentGold.toLocaleString()}` : '',
+      );
+      record(
+        'the Deep minted no diamonds: only the floors-1-8 bank moved the weekly count',
+        Boolean(out) && out.DiamondsEarnedThisWeek === diamondsBefore + diamondsBanked,
+        out ? `${diamondsBefore} + ${diamondsBanked} banked = ${out.DiamondsEarnedThisWeek}` : '',
+      );
+      record(
+        'the record moved',
+        Boolean(out) && out.DeepestFloor >= 8 && out.DeepestThisWeek >= 8,
+        out ? `deepest ${out.DeepestFloor}, this week ${out.DeepestThisWeek}` : '',
+      );
+    }
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character

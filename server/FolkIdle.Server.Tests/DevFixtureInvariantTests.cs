@@ -100,6 +100,29 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(3, characters.Select(c => c.Id).Distinct().Count());
         }
 
+        // Modul: THE FIXTURE MUST BE ABLE TO PAY INTO THE DEEP, AND KEEP PAYING.
+        //
+        // exercise.mjs descends and walks out on every run. The Deep's first
+        // toll is at least the region-5 gate, so a fixture holding less than
+        // ten of those would run dry after a handful of exercises and report a
+        // working feature as NotEnoughGold - the "check that spends fixture
+        // state passes once" trap. The stake is a share of holdings, so ten
+        // gates of headroom is ten runs at the very least.
+        [Fact]
+        public async Task Seeder_HoldsTenTimesTheTopDelveGateInGold()
+        {
+            await using var db = NewContext();
+            long playerId = await DevFixtureSeeder.SeedAsync(db);
+
+            long gold = await db.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
+                .Select(c => c.Quantity)
+                .FirstAsync();
+
+            Assert.True(gold >= 10 * DelveRegistry.EntryFeeForRegion(5),
+                $"the fixture holds {gold:N0} gold, under ten region-5 gates ({10 * DelveRegistry.EntryFeeForRegion(5):N0})");
+        }
+
         // Modul: THE FIXTURE MUST BE ABLE TO BREED.
         //
         // Three separate absences each made the Breeding screen dead on the one
