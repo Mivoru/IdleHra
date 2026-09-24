@@ -327,11 +327,9 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
-                // Modul 13.4.3: region completion check. A region is 6
-                // distinct monster ids (5 standard/elite + 1 regional boss -
-                // same grouping formula StateCheckpointManager.LoadPlayerState
-                // uses for the login-time CompletedAreaFlags recompute) with
-                // every monster's KillCount >= 1000. Only newly-completed
+                // Modul 13.4.3: region completion check, by the same
+                // RegionCompletionRules StateCheckpointManager.LoadPlayerState
+                // uses for the login-time CompletedAreaFlags recompute. Only newly-completed
                 // regions (not already in PlayerRegionCompletions) grant the
                 // permanent +1% Luck via CompletedAreaFlags; already-completed
                 // regions are skipped so the bonus is never re-granted.
@@ -344,25 +342,21 @@ namespace FolkIdle.Server.Engine
 
                 var newRegionFlagsByPlayer = new System.Collections.Generic.Dictionary<long, int>();
 
+                // Modul: task 26 (H5) - the five canonical regions, 1,000 kills
+                // of each regular and 100 of the boss, by RegionCompletionRules.
+                // This loop used to group by GetMonsterRegionTier and so
+                // demanded kills of legacy monsters nobody can fight.
                 foreach (long touchedPlayerId in playerIds)
                 {
-                    for (int region = 1; region <= 10; region++)
+                    for (int region = 1; region <= ContentRegistry.LocationCount; region++)
                     {
                         if (existingCompletionSet.Contains((touchedPlayerId, region))) continue;
 
-                        var monstersInRegion = ContentRegistry.Monsters.ToArray().Where(m => ContentRegistry.GetMonsterRegionTier(m.Id) == region).ToList();
-                        if (monstersInRegion.Count == 0) continue;
-
-                        bool allKilled = true;
-                        for (int i = 0; i < monstersInRegion.Count; i++)
-                        {
-                            var lookupKey = new { PlayerId = touchedPlayerId, MonsterId = monstersInRegion[i].Id };
-                            if (!codexEntries.TryGetValue(lookupKey, out var regionEntry) || regionEntry.KillCount < 1000)
-                            {
-                                allKilled = false;
-                                break;
-                            }
-                        }
+                        long regionPlayerId = touchedPlayerId;
+                        bool allKilled = RegionCompletionRules.IsComplete(region, monsterId =>
+                            codexEntries.TryGetValue(new { PlayerId = regionPlayerId, MonsterId = monsterId }, out var regionEntry)
+                                ? regionEntry.KillCount
+                                : 0);
 
                         if (!allKilled) continue;
 

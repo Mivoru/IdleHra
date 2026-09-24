@@ -1224,6 +1224,9 @@ export interface RegionProgress {
   RegionId: number;
   CurrentKills: number;
   RequiredKills: number;
+  /** The region boss's kills, capped at RequiredBossKills (task 26: 100, not 1,000). */
+  BossKills: number;
+  RequiredBossKills: number;
   IsCompleted: boolean;
   LootLuckBonusPct: number;
 }

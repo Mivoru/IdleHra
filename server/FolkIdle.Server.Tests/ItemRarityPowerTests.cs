@@ -436,6 +436,15 @@ namespace FolkIdle.Server.Tests
                 ("B: bough is elevation", odds.Total, odds.ElevationTotal),
             };
 
+            // C: area completion became earnable - the most it can add is all
+            // five regions, +1 loot luck each.
+            var allRegions = payload;
+            allRegions.CompletedAreaFlags = 0b111110;
+            var allRegionsStats = RarityRollDistributionTests.StatsFor(in allRegions);
+            var withAreas = LootLuckBreakdown.From(in allRegions, in allRegionsStats);
+            Assert.Equal(5.0, withAreas.Total - odds.Total, 3);
+            scenarios.Add(("B+C: all 5 regions done", withAreas.Total, withAreas.ElevationTotal));
+
             var dropsByRegion = new Dictionary<int, int> { { 1, 10 }, { 2, 50 }, { 3, 200 }, { 4, 1000 }, { 5, 5000 } };
 
             var report = new StringBuilder();
