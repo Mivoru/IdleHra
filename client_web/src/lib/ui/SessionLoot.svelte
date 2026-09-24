@@ -251,6 +251,18 @@
     font-size: 0.82rem;
     padding: 0.1rem 0;
     border-bottom: 1px solid var(--border);
+    /* Modul: A ROW MUST NOT SHRINK - and the BEST row was the one that did.
+       The <ul> is a flex column with max-height, so once the rows outgrow it
+       flex takes the difference out of any item allowed to shrink. A normal
+       row is not (its minimum height is its content), but a rare row carries
+       .folk-sweep, whose `overflow: hidden` makes it a scroll container, and
+       a scroll container's automatic minimum is ZERO. So every glowing row -
+       sorted to the TOP - was crushed to its padding (measured: 4.2px against
+       19.2px for a plain row): "the top item is cut off", task 27. The list
+       scrolls; its rows keep their height. Do not "fix" this by removing the
+       overflow from .folk-sweep - the sweep and the sparks overshoot the row
+       on purpose and must be clipped. */
+    flex: none;
   }
 
   .name {

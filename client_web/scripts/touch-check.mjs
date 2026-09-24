@@ -111,8 +111,24 @@ const measure = async () => {
           if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity) === 0) continue;
           if (el.disabled) continue;
 
-          const rect = el.getBoundingClientRect();
-          if (rect.width < hiddenEpsilon || rect.height < hiddenEpsilon) continue;
+          const ownRect = el.getBoundingClientRect();
+          if (ownRect.width < hiddenEpsilon || ownRect.height < hiddenEpsilon) continue;
+
+          // Modul: A CHECKBOX'S TARGET IS ITS LABEL when the label wraps it or
+          // names it with for=. The browser forwards a tap anywhere on that
+          // label to the box, and padding can never enlarge the box itself (it
+          // hit-tests its border box) - so a small box in a 44px label is the
+          // correct design, not an undersized control (the Market filters,
+          // task 29). Take the largest associated label's rect; a box with no
+          // label is still measured on its own, exactly as before. The hidden
+          // test above stays on the input itself.
+          let rect = ownRect;
+          if ((el.type === 'checkbox' || el.type === 'radio') && el.labels && el.labels.length > 0) {
+            for (const l of el.labels) {
+              const lr = l.getBoundingClientRect();
+              if (lr.width * lr.height > rect.width * rect.height) rect = lr;
+            }
+          }
           if (rect.bottom < 0 || rect.top > window.innerHeight) continue;
 
           // A control inside a horizontally scrolling strip is allowed to be

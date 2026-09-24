@@ -249,6 +249,7 @@
           <label>
             <input
               type="checkbox"
+              class="touch-exempt"
               checked={filterSlots.includes(option.index)}
               onchange={() => {
                 filterSlots = filterSlots.includes(option.index)
@@ -268,6 +269,7 @@
           <label>
             <input
               type="checkbox"
+              class="touch-exempt"
               checked={filterTiers.includes(tier)}
               onchange={() => {
                 filterTiers = filterTiers.includes(tier)
@@ -793,10 +795,20 @@
        `.panel * { min-width: 0 !important }` lets a flex item shrink below its
        own basis, the thing that gave way was the CHECKBOX: check:touch caught
        two at 36x44 and 43x44 against the 44px floor. Widening the track fixes
-       it at the cause instead of fighting that !important with another one. */
-    grid-template-columns: repeat(auto-fill, minmax(10.5rem, 1fr));
-    align-items: center;
-    gap: 0.15rem 0.6rem;
+       it at the cause instead of fighting that !important with another one.
+
+       Modul: EQUAL CELLS, and the LABEL is the touch target (task 29).
+       That 10.5rem left room for ONE column on a 390px phone - sixteen 44px
+       rows of filters, ~700px of checkboxes. The box no longer has to be the
+       target (see .checks label), so a track only has to hold a 1.15rem box
+       and a label that may wrap: two columns on any phone, more on a desktop.
+       min(100%, ...) keeps a single track from ever exceeding a very narrow
+       panel. 8.5rem rather than 9rem because 9rem only JUST fits two tracks
+       at 360px (2 x 144 + gap = 296 of ~297px of fieldset) - one pixel of
+       padding anywhere and a small phone is back to one column. Measured on
+       a replica: two columns at 390 and 360, one at 320. */
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr));
+    gap: 0.2rem 0.5rem;
     margin: 0;
     padding: 0.35rem 0.6rem 0.45rem;
     border: 1px solid var(--border);
@@ -812,17 +824,46 @@
   }
 
   .checks label {
+    /* Modul: THE LABEL IS WHAT A THUMB HITS. A tap anywhere on a <label> that
+       wraps a checkbox toggles it natively, and padding can NEVER enlarge the
+       checkbox itself (the browser hit-tests its border box - app.css). So the
+       cell carries the 44px floor, and the box inside it is opted out of
+       app.css's 44x44 checkbox rule with .touch-exempt. check:touch credits a
+       wrapping label for exactly this reason. */
     display: flex;
     align-items: center;
-    gap: 0.3rem;
+    gap: 0.45rem;
+    min-height: 2.25rem;
+    padding: 0 0.35rem;
+    border-radius: 6px;
     font-size: 0.82rem;
-    white-space: nowrap;
+    line-height: 1.2;
+    /* Wrap instead of widening the track - "Scorched Wasteland" may take two
+       lines in an 8.5rem cell, and a 44px cell has room for both. */
+    white-space: normal;
+    overflow-wrap: anywhere;
     cursor: pointer;
   }
 
+  .checks label:hover {
+    background: var(--bg-sunken, rgba(0, 0, 0, 0.12));
+  }
+
   .checks input {
+    /* flex: none, not min-width: `.panel * { min-width: 0 !important }` would
+       otherwise let the row squeeze the box - see app.css. */
+    flex: none;
+    width: 1.15rem;
+    height: 1.15rem;
     margin: 0;
+    accent-color: var(--accent);
     cursor: pointer;
+  }
+
+  @media (max-width: 40rem) {
+    .checks label {
+      min-height: 44px;
+    }
   }
 
   /* A button, because it navigates rather than addressing anything - the
