@@ -19,6 +19,62 @@ do next.
 
 ---
 
+# HANDOFF 2026-09-25 - tasks 25-35 shipped, task 37 half-built (START HERE)
+
+**Live:** production is **1.0.703**, main `054cb87`. Full suite 963/963. `smoke:screens` 26/26 on production.
+
+**Shipped and deployed, 2026-09-24:**
+
+| Task | PRs |
+|---|---|
+| 25 world boss | #23, plus a review-fix commit |
+| 27-29 UI | #21 |
+| Guild War lock (lvl>=10, >=4 guilds x3 members) | #22 |
+| 31 CI on Node 24 | #20 |
+| 32 branch cleanup | none |
+| 26 rarity (bough = elevation, canonical area completion, drop record + `/api/v1/player/loot-odds`) | #25 |
+| 33 legacy materials | #26 |
+| 34 Unity retired | #27 |
+| 10 legacy ores | #28 |
+| 35a warnings + 35c `docs/art_backlog.md` | #29 |
+| Seeded rarity test | #30 |
+| Leaderboard diamonds reach an online payload via `BillingSyncQueue` | #31 |
+| Combat gold is `EconomyDecisions.CombatGoldPercent = 75`; the eco audit only reports | #32 |
+| 82 of 95 unobtainable tier-D items deleted | #33 |
+
+The specs and plans for 36/37/38 are in `docs/superpowers/{specs,plans}/2026-09-24-*` (#24). Owner decisions are recorded in those specs.
+
+**Task 37, The Deep, is IN PROGRESS.** The work was stopped mid-work. No PR is open, nothing is merged, and the branches are pushed to origin, stacked:
+
+1. **`task37/phase0-income-profile`** (b430e04): Phase 0 Task 0.2, the income profile and the asserted sink table. It is a test-only change. **To do:** run the full suite, then open a PR.
+2. **`task37/phase1-the-deep`** (7b82480): Phase 1. Rules, the 7-day gold high-water mark, and migration `20260924212939_AddTheDeep` with the tables `delve_run`, player gold daily high, and player titles. It also carries the engine, REST, the Delve screen, and an exercise step. Its last commit says exercise round-trips it, but the full suite and the geometry checks **have not been confirmed**. **To do:** run the verify order (`dotnet test`, `exercise`, `check:clipping`, `check:touch`, `check:overlap`, `check:ratchet`), open a PR, review, merge and deploy. **The migration is additive**, but take the usual look before deploying.
+3. **`task37/phase2-lanterns-titles-board`** (6047bb2, a **WIP commit**): lanterns, `TitleEngine`/`TitleRegistry`, `DeepestBoard`, the Leaderboards and profile UI, and tests. It was stopped while the exercise step was being written. **Nothing has been run on it.** Finish it from the plan's Phase 2 section.
+
+The local dev DB may already have `AddTheDeep` applied, which means it is ahead of main. If main misbehaves locally, that is why.
+
+**Owner decisions still open:**
+- **13 dead items KEPT** in #33. They are cooked foods 194-203 (`FoodRegistry` indexes its heal table by these ids) and potions 376-378 (the only content `ConsumableEngine` has). The choice is to give them a source, such as cooking or alchemy, or to rework those systems and then delete them. `ItemCatalogueIntegrityTests.EveryIdTheCodeAddressesByNumberIsLive` guards them.
+- The live and offline kill paths apply different gold multipliers on top of the base. Unifying them changes what offline play pays.
+
+**Next, in order:**
+1. Finish and ship 37 (the Phase 0.2, 1 and 2 PRs).
+2. Build 36: wheel + parry minigame, behind a flag, aimed at the Oct 15-22 window, with a security review before merge.
+3. 38 waits until the population nears the floor.
+4. **Task 30 (docs match reality) goes LAST.** It includes the TASK_BOARD §32 line and the status lines for 27-29, 31, 33 and 34 (§34 still says "deploy pending", but it IS deployed).
+
+**Follow-ups:**
+- Production proof of a world boss strike during Oct 1-7: a row in `player_world_boss_attempts`.
+- Query `loot_tier_daily_counts` to close H6.
+- Drop-record lows from the #25 review:
+  - the outbox retry loses `OriginalSource`;
+  - offline boss drops are tagged `BossGuarantee`;
+  - the forge double-counts per-tier;
+  - neither table is pruned.
+- Pre-existing and not ours: the Village "Got it" hint overlaps "Upgrade" at 1500px.
+- Stale worktrees under `.claude/worktrees/` (the agent-* folders) can be removed with `git worktree remove` once their branches are merged. The `agent-ad617…` one holds the task 37 branches, so keep it or rely on origin.
+
+---
+
 # HANDOFF 2026-09-24 - task 25, world boss attack (branch `fix/world-boss-attack`, NOT deployed)
 
 The owner confirmed that his Strike button was grey and that he tried outside a
