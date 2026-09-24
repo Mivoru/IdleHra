@@ -56,5 +56,24 @@ namespace FolkIdle.Server.Models
         public int RevealedDoorMask { get; set; }
 
         public long StartedAtEpoch { get; set; }
+
+        // Modul: THE DEEP (task 37). A run that descended past floor 8 keeps
+        // this row - it is the same run, with floors 1-8 already banked - so a
+        // relogin finds it exactly where it was, and "one run per player" still
+        // holds without a second table.
+
+        /// <summary>True once the run has descended past floor 8. From then on nothing it does pays diamonds or embers.</summary>
+        public bool IsDeep { get; set; }
+
+        /// <summary>
+        /// The stake, FROZEN at the descent. Every toll and lantern price is a
+        /// multiple of it, so earning or spending mid-run changes no later price
+        /// - a player cannot make the next floor cheaper by emptying their
+        /// purse into the market between two doors.
+        /// </summary>
+        public long StakeGold { get; set; }
+
+        /// <summary>Lantern charges bought in the Deep this run - the k in stake x 2^k.</summary>
+        public int LanternsBought { get; set; }
     }
 }
