@@ -1046,14 +1046,40 @@ await go('Chest');
 // the CLIENT computed about itself. It is five armour plates now, one of them
 // soft, and the player picks which to strike - see docs/world_boss_design.md.
 //
-// The event window is calendar-driven (the 1st-7th and 15th-22nd UTC), so this
-// block has to work on a dormant boss too. Everything that does not need an
-// active encounter is checked unconditionally; the strike is checked when there
-// is something to strike.
+// Modul: AND IT USED TO STRIKE ONLY WHEN THE CALENDAR ALLOWED (task 25). The
+// window is the 1st-7th and 15th-22nd UTC, so on 13-16 days a month this block
+// never pressed Strike at all - which is how "no attack has ever landed" went
+// uncaught. It opens its own window now through the dev-only route
+// (FOLKIDLE_DEV_TOOLS=1, set by run-dev.ps1; the route 404s everywhere else),
+// strikes, asserts the world changed, and closes it again. Opening a window
+// deletes every attempt row, so each run starts with three fresh attempts and
+// the round trip leaves the fixture as the calendar would.
+const bossWindow = (open) =>
+  apiPostStatus('/api/v1/dev/worldboss/window', open ? { open: true, durationSeconds: 900 } : { open: false });
+const bossStateIs = (label, timeout) =>
+  page
+    .waitForFunction(
+      (want) => (document.querySelector('.state')?.textContent ?? '').trim() === want,
+      label,
+      { timeout },
+    )
+    .then(() => true)
+    .catch(() => false);
+
 await go('World Boss');
 {
+  const openStatus = await bossWindow(true);
+  record(
+    'a world boss window can be opened for this run',
+    openStatus === 200,
+    openStatus === 404
+      ? 'the server answered 404 - start it with FOLKIDLE_DEV_TOOLS=1 (run-dev.ps1 does)'
+      : `status ${openStatus}`,
+  );
+  const active = openStatus === 200 && (await bossStateIs('Active', 70000));
+  record('the forced window reaches the screen', active);
+
   const text = await page.evaluate(() => document.body.innerText);
-  const active = text.includes('Active');
   record('world boss state is shown', /Active|Dormant|Concluded/.test(text));
 
   const plates = page.locator('.armour-plate');
@@ -1088,51 +1114,58 @@ await go('World Boss');
   if (active) {
     const strike = page.locator('button.attack').first();
     const disabled = await strike.isDisabled();
+    const reason = await page.locator('.strike-reason').innerText().catch(() => '');
+    record('a fresh window lets the fixture strike', !disabled, disabled ? `grey: ${reason}` : '');
 
-    if (disabled) {
-      // Modul: A SPENT CHECK MUST STILL SAY SOMETHING TRUE. Three attempts per
-      // encounter and they only refill when a new window opens, so a second run
-      // of this script on the same day finds them gone. Asserting that the
-      // screen NAMES the reason is the check that keeps working - the same
-      // shape the village step uses for an exhausted villager pool.
-      record(
-        'a disabled strike states its reason',
-        /larder is empty/i.test(text)
-          || /0 of 3 left/.test(text)
-          || /already dead/i.test(text)
-          || /battle session has closed/i.test(text),
-        'attempts spent, larder empty, session closed or boss down',
-      );
-    } else {
-      const before = await page.evaluate(() => ({
-        states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
-        pips: document.querySelectorAll('.pip.spent').length,
-      }));
+    if (!disabled) {
+      const read = () =>
+        page.evaluate(() => ({
+          hp: Number(document.querySelector('.bar[role="progressbar"]')?.getAttribute('aria-valuenow') ?? -1),
+          pips: document.querySelectorAll('.pip.spent').length,
+          states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
+        }));
+      const before = await read();
 
       await strike.click();
-      await page.waitForTimeout(2500);
+      await page
+        .waitForFunction((n) => document.querySelectorAll('.pip.spent').length > n, before.pips, { timeout: 10000 })
+        .catch(() => {});
+      await page.waitForTimeout(600);
+      const after = await read();
 
-      const after = await page.evaluate(() => ({
-        states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
-        pips: document.querySelectorAll('.pip.spent').length,
-      }));
-
-      // The attempt is the thing the server always spends, whichever plate was
-      // struck. The plate STATES change too, but only when the strike missed
-      // the weak point - so the pip is the honest assertion and the plate
-      // change is reported rather than required.
-      record(
-        'striking a plate spends an attempt',
-        after.pips > before.pips,
-        `${before.pips} -> ${after.pips} spent`,
-      );
+      // The attempt is the thing the server always spends, whichever plate
+      // was struck. The plate STATES change too, but only when the strike
+      // missed the weak point - so the pip and the health are the honest
+      // assertions and the plate change is reported rather than required.
+      record('striking a plate spends an attempt', after.pips > before.pips, `${before.pips} -> ${after.pips} spent`);
+      record('the strike moved the boss HP', after.hp >= 0 && after.hp < before.hp, `${before.hp} -> ${after.hp}`);
       record(
         'the strike is reflected on the boss',
         after.states.join() !== before.states.join() || after.pips > before.pips,
         `${before.states.join('/')} -> ${after.states.join('/')}`,
       );
+
+      const row = await apiGet('/api/v1/dev/worldboss/attempt');
+      record(
+        'the strike is recorded on the server',
+        row !== null && row.AttemptCount >= 1 && row.TotalInflictedDamage > 0,
+        row === null ? 'no answer' : `attempts ${row.AttemptCount}, damage ${row.TotalInflictedDamage}`,
+      );
     }
   }
+
+  // A closed window must say WHY the button is grey, next to the button. The
+  // owner saw a grey Strike on a dormant day with the reason far above it,
+  // and read it as broken.
+  const closeStatus = await bossWindow(false);
+  const concluded = closeStatus === 200 && (await bossStateIs('Concluded', 15000));
+  const greyReason = await page.locator('.strike-reason').innerText().catch(() => '');
+  const greyNow = await page.locator('button.attack').first().isDisabled().catch(() => false);
+  record(
+    'a closed window greys the strike and says why beside it',
+    concluded && greyNow && /not here|next encounter|returns/i.test(greyReason),
+    `status ${closeStatus}, grey ${greyNow}: "${greyReason.trim()}"`,
+  );
 }
 
 // --- the objective track: the game keeps answering "what now" -----------------
@@ -2519,6 +2552,63 @@ await go('Ancestors');
       afterNav !== null && afterNav.id === first?.id,
       afterNav ? `still ${afterNav.id}` : 'the panel vanished on navigation',
     );
+
+    // Modul: A NEW PLAYER CAN STRIKE THE WORLD BOSS (task 25). Checked here,
+    // BEFORE this account stocks its larder, on purpose: the old rule
+    // discarded every strike from an empty larder in silence, so a brand-new
+    // account could not take part at all. The owner dropped the rule on
+    // 2026-09-24. Either the strike lands (health moved) or the screen names
+    // the reason - never "nothing happened". The window is opened and closed
+    // around the check, so the fixture is left as the calendar would leave it.
+    {
+      const freshToken = await fresh.evaluate(
+        () => sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token'),
+      );
+      const freshWindow = async (open) => {
+        const res = await fetch(`${API_BASE}/api/v1/dev/worldboss/window`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${freshToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(open ? { open: true, durationSeconds: 900 } : { open: false }),
+        });
+        return res.status;
+      };
+      const openStatus = await freshWindow(true);
+      await fresh.locator('header').getByRole('button', { name: 'World Boss', exact: true }).first().click();
+      const active = await fresh
+        .waitForFunction(() => (document.querySelector('.state')?.textContent ?? '').trim() === 'Active', null, { timeout: 70000 })
+        .then(() => true)
+        .catch(() => false);
+      const hp = () =>
+        fresh.evaluate(() => Number(document.querySelector('.bar[role="progressbar"]')?.getAttribute('aria-valuenow') ?? -1));
+      const strike = fresh.locator('button.attack').first();
+      const grey = await strike.isDisabled().catch(() => true);
+      let outcome = 'nothing happened';
+      let landed = false;
+      if (active && !grey) {
+        const before = await hp();
+        await strike.click();
+        await fresh
+          .waitForFunction((n) => {
+            const v = Number(document.querySelector('.bar[role="progressbar"]')?.getAttribute('aria-valuenow') ?? -1);
+            // A command toast, not the "FolkIdle has been updated" prompt,
+            // which is also a .toast and appears after any client edit.
+            const told = [...document.querySelectorAll('.toast')].some((t) => !/has been updated/i.test(t.textContent ?? ''));
+            return (v >= 0 && v < n) || told;
+          }, before, { timeout: 10000 })
+          .catch(() => {});
+        const after = await hp();
+        const toastText = (await fresh.locator('.toast').allInnerTexts())
+          .filter((t) => !/has been updated/i.test(t))
+          .join(' | ');
+        landed = after >= 0 && after < before;
+        outcome = landed ? `hp ${before} -> ${after}` : toastText ? `told: ${toastText}` : `hp ${before} -> ${after}, no message`;
+      } else {
+        const reason = await fresh.locator('.strike-reason').innerText().catch(() => '');
+        outcome = reason ? `grey: ${reason}` : `window ${openStatus}, active ${active}, grey with no reason`;
+      }
+      record('a brand-new account can strike the world boss with an empty larder', landed, outcome);
+      await freshWindow(false);
+    }
 
     // 3. Survives a reload. Progress is re-derived from the packet rather than
     //    stored, so a player who closed the tab mid-step comes back to it.
