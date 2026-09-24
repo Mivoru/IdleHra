@@ -5368,7 +5368,7 @@ namespace FolkIdle.Server.Network
                     summaries.Add(new ConversationSummaryResponse
                     {
                         PlayerId = other,
-                        Username = names.TryGetValue(other, out string? name) ? name : "(unknown player)",
+                        Username = names.TryGetValue(other, out string? name) && name != null ? name : "(unknown player)",
                         LastMessage = latest.MessageText,
                         LastMessageAtEpochMs = latest.SentAtEpochMs,
                         LastMessageWasMine = latest.SenderPlayerId == playerId,
@@ -5634,7 +5634,7 @@ namespace FolkIdle.Server.Network
 
                 long targetPlayerId = await db.PlayerRecords
                     .AsNoTracking()
-                    .Where(p => EF.Functions.ILike(p.Username, username))
+                    .Where(p => p.Username != null && EF.Functions.ILike(p.Username, username))
                     .Select(p => p.Id)
                     .FirstOrDefaultAsync();
 
@@ -5817,6 +5817,9 @@ namespace FolkIdle.Server.Network
             }
             catch (Exception ex)
             {
+                // Modul: this answered 500 and logged nothing - the silent-failure
+                // shape CLAUDE.md warns about. Say why, in the file's own style.
+                Console.WriteLine($"Stats online failed: {ex.Message}");
                 if (context != null && context.Response != null)
                 {
                     context.Response.StatusCode = 500;
@@ -9842,7 +9845,7 @@ namespace FolkIdle.Server.Network
                 {
                     string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
                     var req = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(body);
-                    if (req != null && req.TryGetValue("text", out string message) && !string.IsNullOrWhiteSpace(message))
+                    if (req != null && req.TryGetValue("text", out string? message) && !string.IsNullOrWhiteSpace(message))
                     {
                         if (message.Length > 128) message = message.Substring(0, 128);
                         
