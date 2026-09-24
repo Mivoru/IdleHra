@@ -3348,7 +3348,7 @@ work: each of those needs a brainstorming pass WITH the owner before any code
 | 2 | 31 | CI: GitHub actions off Node 20 | S |
 | 2 | 32 | Branch and worktree cleanup | S |
 | 2 | 33 | Delete the 40 legacy crafting materials | M, **done 2026-09-24** |
-| 2 | 34 | Retire the Unity project | M, approved, plan exists |
+| 2 | 34 | Retire the Unity project | M, deletion ready, deploy pending |
 | 2 | 35 | Small leftovers | S |
 | 3 | 36 | World boss fight: a skill/reflex minigame, not a plate guess | L, design first |
 | 3 | 37 | A late-game gold sink (the Delve tops out at 250k; the owner earns 100M easily) | L, design first |
@@ -3668,7 +3668,18 @@ removing an `items.json` entry must not shift another item's id. Then remove the
 definitions, regenerate sprites, let the content-validator hook pass, run the
 full suite and `exercise`.
 
-## 34. Retire the Unity project (M, approved by the owner)
+## 34. Retire the Unity project (M, approved by the owner) - deletion ready 2026-09-24, deploy pending
+
+**Deletion done** on branch `chore/retire-unity`: 1,422 files (1,421 under
+`client/` plus `unity_client.yml`), leave-in-place, the survivors match the
+643-file manifest exactly. Both production images (`ops/oracle/web.Dockerfile`,
+`server/Dockerfile`) were built from a clean, non-LFS export before and after:
+215 sprites in the web image both times, and "Audio: 11 real clips in the
+publish output". **Still to do after merge:** the deploy and the production
+checks in the revalidated plan's steps 5-6, then close the backlog entry
+(`NEXT_STEPS_BACKLOG.md`, "retire the Unity project").
+
+Original brief:
 
 Plan: `docs/superpowers/plans/2026-09-17-retire-unity-project.md` - three
 independently revertible steps. The last touches the production Docker build
