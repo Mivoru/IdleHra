@@ -1169,6 +1169,9 @@ namespace FolkIdle.Server.Engine
         /// <summary>Every authored loot row, across all tables. For content-integrity tests.</summary>
         public static ReadOnlySpan<LootTableEntry> AllLootEntries => _lootEntries;
 
+        /// <summary>LootTableId -> (Start, Count) into AllLootEntries. For content-integrity tests.</summary>
+        public static IReadOnlyDictionary<int, (int Start, int Count)> LootSegments => _lootSegments;
+
         private sealed class MonsterJson
         {
             public int Id { get; set; }
