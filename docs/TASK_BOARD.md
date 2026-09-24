@@ -3349,7 +3349,7 @@ work: each of those needs a brainstorming pass WITH the owner before any code
 | 2 | 32 | Branch and worktree cleanup | S |
 | 2 | 33 | Delete the 40 legacy crafting materials | M, **done 2026-09-24** |
 | 2 | 34 | Retire the Unity project | M, deletion ready, deploy pending |
-| 2 | 35 | Small leftovers | S |
+| 2 | 35 | Small leftovers | S, **done 2026-09-24** |
 | 3 | 36 | World boss fight: a skill/reflex minigame, not a plate guess | L, design first |
 | 3 | 37 | A late-game gold sink (the Delve tops out at 250k; the owner earns 100M easily) | L, design first |
 | 3 | 38 | Guild Wars: design the whole system | XL, design first |
@@ -3689,7 +3689,22 @@ Re-validate the plan against the current tree first (it is six days old), move
 whatever the server actually serves before removing anything, and deploy +
 smoke-test production after the last step.
 
-## 35. Small leftovers (S)
+## 35. Small leftovers (S) - DONE 2026-09-24
+
+**Status.**
+- **35a:** the four warnings are fixed, and `HandleStatsOnline` now logs its
+  500. `FolkIdle.Server.csproj` builds with 0 warnings (branch
+  `fix/35-warnings-and-art-list`).
+- **35b:** fixed on the machine. DaVinci Resolve's installer had set
+  `PYTHONHOME` at user level, and removing it restored the three hooks.
+  `Test_ContentValidatorScript_MalformedJson_ExitsNonZero` passes locally
+  now.
+- **35c:** the ranked list is in `docs/art_backlog.md`. **24** items are worth
+  drawing: the drops of the 25 canonical monsters, in tiers A, B and C. The
+  other **95 cannot be obtained by anything**. They are a delete-or-wire
+  decision for the owner, not art.
+
+Original brief:
 
 - Nullable warnings and an unused `ex` in
   `server/FolkIdle.Server/Network/NetworkBroadcastSystem.cs`.
