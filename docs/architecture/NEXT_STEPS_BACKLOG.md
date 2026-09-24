@@ -610,7 +610,10 @@ the right answer.
 The owner wants `client/` (the Unity project) deleted, since the web client is
 the only one that ships (`client_web/`, per this file's own header table -
 Unity is "retired... kept only for artwork/audio the web client fetches from
-the server"). **Not started. Has its own plan — see
+the server"). **In progress 2026-09-24 (task 34, owner go-ahead given),
+branch `chore/retire-unity`.** Plans: the revalidation
+`docs/superpowers/plans/2026-09-23-task-34-retire-unity-revalidated.md`
+(read first) and the base plan
 `docs/superpowers/plans/2026-09-17-retire-unity-project.md`** (3 conservative,
 independently-revertible tasks: confirm every reader, build a keep/delete
 manifest and verify all six readers pass locally, then the actual deletion,
@@ -640,6 +643,24 @@ generic - `client/Assets` is a load-bearing SOURCE directory for at least:
   likely no-ops today, but it is a live workflow, not dead YAML, and deleting
   `client/` without also retiring this file leaves a workflow with nothing to
   build.
+- `server/Dockerfile`, via `ops/oracle/docker-compose.yml` (`context: ../..`,
+  `dockerfile: server/Dockerfile`) - the image PRODUCTION runs. Its code names
+  no `client/` path, but its `COPY . .` of the repo root is what lets the
+  csproj globs find the audio and SpritesWeb, and its RIFF check ("Audio: 11
+  real clips in the publish output") is the production proof the audio
+  survived. A reader in effect.
+- Dev-only, not in any build or CI: `tools/clean_sprites.py` (Sprites ->
+  SpritesWeb), `tools/prepare_backgrounds.py` (WithWhiteBackground/Background
+  -> SpritesWeb/Backgrounds) and `ops/tools/generate_sprites.py`. They read and
+  write real paths under `client/Assets/Images`, so a future MOVE of the tree
+  must update them too.
+- `client_web/src/lib/ui/audio.ts` only mentions `client/Assets` in a comment;
+  it fetches `/audio/*` over HTTP.
+
+Decision: **leave `client/Assets` in place** (no reader's path changes). The
+deletion frees about **44 MB in ~1,423 tracked files**, not ~1 GB: the ~1 GB
+is the source art, which stays, and `.git` does not shrink. The 4.2 GB local
+`client/Library` is gitignored and untouched by any commit.
 
 So the task is not "delete `client/`" - it is "separate the raw art/audio
 SOURCE assets (which several pipelines still read) from the Unity PROJECT
