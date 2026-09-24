@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Required pre-build gate: structurally validates every
       # server/GameData/*.json against the same rules
@@ -45,7 +45,7 @@ jobs:
         run: python3 ops/validate_audio.py
 
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
@@ -73,17 +73,17 @@ jobs:
     # serialising them would add several minutes for no signal.
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # The protocol check runs the SERVER to ask it for its own wire layout,
       # so this job needs the .NET SDK as well as Node.
       - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           # Modul: 22 BECAUSE THE CAPACITOR CLI REFUSES ANYTHING OLDER.
           #
@@ -246,7 +246,7 @@ jobs:
       # Still not proven: that the app LAUNCHES. That needs an emulator or a
       # device, which is A2, and no amount of compiling substitutes for it.
       - name: Set up the JDK for Gradle
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'
@@ -271,8 +271,12 @@ jobs:
       # which cascaded into skipping the Docker build, migrations and deploy
       # for five merges straight. Gradle needs platform-tools and the named
       # platform/build-tools only; it was never needed.
+      # Modul: setup-android v4 moved the default cmdline-tools to 20.0. That
+      # is safe here only because `packages:` names everything explicitly and
+      # the JDK 21 step above runs first - the newer sdkmanager needs a modern
+      # JDK. If this step goes red after a bump, pin v3 alone, not the rest.
       - name: Set up the Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools platforms;android-36 build-tools;36.0.0'
 
@@ -281,7 +285,7 @@ jobs:
       # plugin and the AndroidX tree - minutes, and hundreds of megabytes,
       # which was the stated reason this step did not exist.
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.gradle/caches
@@ -305,7 +309,7 @@ jobs:
       # path to A2, the device session everything else in the mobile plan is
       # waiting on.
       - name: Keep the APK
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: folkidle-debug-apk
           path: client_web/android/app/build/outputs/apk/debug/*.apk
@@ -323,7 +327,7 @@ jobs:
       packages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Cleanly parameterized via repository secrets: if REGISTRY_URL,
       # REGISTRY_USERNAME, and REGISTRY_PASSWORD are all configured, those
@@ -346,21 +350,21 @@ jobs:
           fi
 
       - name: Log in to container registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ secrets.REGISTRY_URL != '' && secrets.REGISTRY_URL || 'ghcr.io' }}
           username: ${{ secrets.REGISTRY_USERNAME != '' && secrets.REGISTRY_USERNAME || github.actor }}
           password: ${{ secrets.REGISTRY_PASSWORD != '' && secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Uses server/FolkIdle.Server/Dockerfile - the one docker-compose.yml
       # actually builds from - not the alternate server/Dockerfile
       # (a different chiseled-runtime variant with a different build
       # context that nothing else in this repository references).
       - name: Build and push server image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ${{ env.DOCKERFILE_CONTEXT }}
           file: ${{ env.DOCKERFILE_PATH }}
@@ -384,7 +388,7 @@ jobs:
     if: ${{ vars.KUBE_DEPLOY_ENABLED == 'true' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configure cluster access
         run: |
@@ -433,7 +437,7 @@ jobs:
     if: ${{ vars.KUBE_DEPLOY_ENABLED == 'true' }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Configure cluster access
         run: |
