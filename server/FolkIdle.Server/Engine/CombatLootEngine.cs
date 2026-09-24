@@ -153,6 +153,99 @@ namespace FolkIdle.Server.Engine
             return RarityTier.Normal;
         }
 
+        /// <summary>
+        /// One drop's rarity, start to finish: the weighted roll, then Golden
+        /// Fleece, then Fortune's elevation. Returns what the roll produced as
+        /// well as where the piece landed, so the drop record can tell a piece
+        /// ROLLED Ancient from one LIFTED into it.
+        /// </summary>
+        /// <remarks>
+        /// Modul: TASK 26. These three steps were inline in TryRollEquipment,
+        /// which is an instance method that needs a DbContext - so the only
+        /// way to measure the chain end to end was to reimplement it in a
+        /// test, which is a second copy of the drop table waiting to drift.
+        /// </remarks>
+        public static (int Rolled, int Final) ResolveDropTier(float lootLuckPct, int bonusRarityTiers, float rarityElevationPct)
+        {
+            int rolled = RollTier(lootLuckPct);
+            int tier = rolled;
+
+            // Modul: Golden Fleece, the Fortune crown. Two tiers ABOVE what the
+            // roll produced, rather than a reroll with better odds - the crown
+            // is meant to be a moment the player can see coming and then see
+            // land, and "your hundredth kill rolled slightly better" is not
+            // one. Clamped to the fourteen real tiers.
+            if (bonusRarityTiers > 0)
+            {
+                tier = Math.Clamp(tier + bonusRarityTiers, 1, Domain.Economy.CraftingEngine.RarityTierCount);
+            }
+
+            // Modul: FORTUNE'S RARITY ELEVATION, 2026-09-06.
+            //
+            // One tier above what the roll produced, on a chance. It replaces
+            // forge success as Fortune's second per-point effect - fusion cannot
+            // fail, so that stat was only ever a discount on the fusion fee,
+            // under a name promising otherwise.
+            //
+            // Deliberately a SEPARATE mechanic from loot luck rather than more
+            // of it: luck reweights the rarity roll silently and elevation bumps
+            // the result, so the player can see this one happen. Rolled AFTER
+            // the Golden Fleece bonus and clamped with it, so the two stack
+            // without either being able to leave the fourteen real tiers.
+            if (rarityElevationPct > 0f && Random.Shared.NextDouble() * 100.0 < rarityElevationPct)
+            {
+                tier = Math.Clamp(tier + 1, 1, Domain.Economy.CraftingEngine.RarityTierCount);
+            }
+
+            return (rolled, tier);
+        }
+
+        /// <summary>
+        /// The EXPECTED final-tier distribution of <see cref="ResolveDropTier"/>,
+        /// computed rather than sampled: index t is the share of drops that
+        /// land at tier t. <paramref name="fleeceChance"/> is the share of drops
+        /// that carry the Golden Fleece bonus (0.01 with the crown, else 0).
+        /// </summary>
+        /// <remarks>
+        /// Modul: TASK 26. What the player is shown as their odds comes from
+        /// here, from the same weights RollTier reads - never from a client
+        /// copy. RarityRollDistributionTests checks it against both its own
+        /// restated table and a Monte-Carlo run of ResolveDropTier.
+        /// </remarks>
+        public static double[] ExpectedFinalShares(float lootLuckPct, float rarityElevationPct, double fleeceChance, int fleeceTiers)
+        {
+            const double normalBaseWeight = 100.0;
+            double luckFactor = 1.0 + (lootLuckPct / 100.0);
+            int top = Domain.Economy.CraftingEngine.RarityTierCount;
+
+            var rolled = new double[15];
+            double total = normalBaseWeight;
+            rolled[1] = normalBaseWeight;
+            for (int tier = 2; tier <= 14; tier++)
+            {
+                rolled[tier] = _explicitWeights[tier] * luckFactor;
+                total += rolled[tier];
+            }
+            for (int tier = 1; tier <= 14; tier++) rolled[tier] /= total;
+
+            double fleece = Math.Clamp(fleeceChance, 0.0, 1.0);
+            var afterFleece = new double[15];
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                afterFleece[tier] += rolled[tier] * (1.0 - fleece);
+                afterFleece[Math.Clamp(tier + Math.Max(0, fleeceTiers), 1, top)] += rolled[tier] * fleece;
+            }
+
+            double elevation = Math.Clamp(rarityElevationPct / 100.0, 0.0, 1.0);
+            var final = new double[15];
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                final[tier] += afterFleece[tier] * (1.0 - elevation);
+                final[Math.Clamp(tier + 1, 1, top)] += afterFleece[tier] * elevation;
+            }
+            return final;
+        }
+
         public static int GetAffixCount(int tier)
         {
             if (tier <= 3) return 1;
@@ -1198,34 +1291,7 @@ namespace FolkIdle.Server.Engine
             int chosenItemId = table[Random.Shared.Next(table.Length)];
             if (chosenItemId == 0) return 0L;
 
-            int tier = RarityTier.RollTier(lootLuckPct);
-
-            // Modul: Golden Fleece, the Fortune crown. Two tiers ABOVE what the
-            // roll produced, rather than a reroll with better odds - the crown
-            // is meant to be a moment the player can see coming and then see
-            // land, and "your hundredth kill rolled slightly better" is not
-            // one. Clamped to the fourteen real tiers.
-            if (bonusRarityTiers > 0)
-            {
-                tier = Math.Clamp(tier + bonusRarityTiers, 1, Domain.Economy.CraftingEngine.RarityTierCount);
-            }
-
-            // Modul: FORTUNE'S RARITY ELEVATION, 2026-09-06.
-            //
-            // One tier above what the roll produced, on a chance. It replaces
-            // forge success as Fortune's second per-point effect - fusion cannot
-            // fail, so that stat was only ever a discount on the fusion fee,
-            // under a name promising otherwise.
-            //
-            // Deliberately a SEPARATE mechanic from loot luck rather than more
-            // of it: luck reweights the rarity roll silently and elevation bumps
-            // the result, so the player can see this one happen. Rolled AFTER
-            // the Golden Fleece bonus and clamped with it, so the two stack
-            // without either being able to leave the fourteen real tiers.
-            if (rarityElevationPct > 0f && Random.Shared.NextDouble() * 100.0 < rarityElevationPct)
-            {
-                tier = Math.Clamp(tier + 1, 1, Domain.Economy.CraftingEngine.RarityTierCount);
-            }
+            var (rolledTier, tier) = RarityTier.ResolveDropTier(lootLuckPct, bonusRarityTiers, rarityElevationPct);
             string baseItemId = ContentRegistry.GetItemBaseId(chosenItemId);
 
             // Modul: NOTHING IS DESTROYED ON THE WAY IN UNLESS THE PLAYER ASKED.

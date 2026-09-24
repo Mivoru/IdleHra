@@ -287,5 +287,55 @@ namespace FolkIdle.Server.Tests
             Assert.True(ShareAtOrAbove(buildCeiling, RarityTier.Legendary) < 0.020,
                 "infinite luck now buys more than 2% Legendary+ - the roll's shape changed");
         }
+
+        [Fact]
+        public void TheRealChain_ResolveDropTier_MatchesTheAnalyticRates()
+        {
+            var payload = Level94Region5Payload();
+            var stats = StatsFor(in payload);
+            var request = CombatLootDropRequest.Build(
+                in payload, in stats, monsterId: 111, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+            float luck = request.LootLuckPct;
+            float elevation = request.RarityElevationPct;
+
+            // The engine's own expectation must equal this file's restated one.
+            double[] ours = AnalyticFinalShares(luck, elevation, FleeceChance, FleeceTiers);
+            double[] engine = RarityTier.ExpectedFinalShares(luck, elevation, FleeceChance, FleeceTiers);
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                Assert.True(Math.Abs(ours[tier] - engine[tier]) < 1e-12,
+                    $"tier {tier}: RarityTier.ExpectedFinalShares says {engine[tier]}, the restated table says {ours[tier]}");
+            }
+
+            // And the real chain, sampled. Fleece fires on every hundredth kill.
+            const int samples = 2_000_000;
+            var counts = new int[15];
+            int lifted = 0;
+            for (int i = 0; i < samples; i++)
+            {
+                int bonus = i % 100 == 99 ? FleeceTiers : 0;
+                var (rolled, final) = RarityTier.ResolveDropTier(luck, bonus, elevation);
+                counts[final]++;
+                if (final > rolled) lifted++;
+            }
+
+            double observedLegendaryPlus = counts.Skip(RarityTier.Legendary).Sum() / (double)samples;
+            double observedAncientPlus = counts.Skip(RarityTier.Ancient).Sum() / (double)samples;
+            double expectedLegendaryPlus = ShareAtOrAbove(ours, RarityTier.Legendary);
+            double expectedAncientPlus = ShareAtOrAbove(ours, RarityTier.Ancient);
+
+            _output.WriteLine($"{samples:N0} drops through ResolveDropTier at L={luck:F2}, elevation {elevation:F2}%, fleece 1%:");
+            _output.WriteLine($"  Legendary+  expected {expectedLegendaryPlus:P4}  observed {observedLegendaryPlus:P4}");
+            _output.WriteLine($"  Ancient+    expected {expectedAncientPlus:P4}  observed {observedAncientPlus:P4}");
+            _output.WriteLine($"  lifted by fleece or elevation: {lifted / (double)samples:P3}");
+
+            Assert.True(Math.Abs(observedLegendaryPlus - expectedLegendaryPlus) / expectedLegendaryPlus < 0.03,
+                $"Legendary+ observed {observedLegendaryPlus:P4} against an analytic {expectedLegendaryPlus:P4}");
+            // ~1,000 expected at this sample size: an order-of-magnitude band,
+            // per this file's convention for the rare tiers.
+            Assert.InRange(observedAncientPlus, expectedAncientPlus / 3, expectedAncientPlus * 3);
+            // Something must be lifted, or fleece and elevation are dead.
+            Assert.InRange(lifted / (double)samples, 0.05, 0.09);
+        }
     }
 }
