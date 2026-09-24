@@ -13,10 +13,10 @@
 - **Task 37 Phase 0 must be merged before Phase 6** (the Great Works gold is recorded where the audit used to move combat gold).
 
 ```
-opt-in ─> prep (pairing pass: roster lock + snapshots + pairing, idempotent per cycle)
+weekly: opt-in Thu-Mon ─> prep Mon (pairing pass: roster lock + snapshots + pairing, idempotent per week)
        ─> battle 2 days (POST /api/v1/guildwar/attack: AttackResolver over CombatDamageModel, FOR UPDATE on the roster row)
        ─> BattleEndsAtUtc ─> settlement pass (time-based ONLY; SettledAtUtc under FOR UPDATE; rating, points, mail)
-Sunday ─> Works weekly settlement ─> weekly board payout (GuildMMR, floors, cap 20/member, week key, BillingSyncQueue)
+Thu 00:00 results ─> war settlement ─> Works weekly settlement ─> weekly board payout (GuildMMR, floors, cap 20/member, week key, BillingSyncQueue)
 GuildWarCycleEngine.StartCron: one 60 s loop; each pass isolated, try before CreateScope, budgeted, depth in heartbeat
 ```
 
@@ -57,24 +57,26 @@ GuildWarCycleEngine.StartCron: one 60 s loop; each pass isolated, try before Cre
 - [ ] **Step 2: Implement.** Update the existing test that asserts "pairing does run once crossed": it now needs `HeadToHeadV1`, and that condition cannot be reached until Phase 3. Keep the test, but point it at the new engine in Phase 3. Update its comment to say so.
 - [ ] **Step 3: Commit** `fix(guild-war): the legacy war can never unlock, whatever the population`.
 
-### Task 1.2: delete the three-front, cross-shard, turn-based and defence-roster systems (server)
+### Task 1.2: delete the three-front, cross-shard, turn-based, defence-roster and Guild Raid systems (server)
 
-**Files (delete):** `Engine/GuildWarEngine.cs`, `Engine/GuildMatchmakingEngine.cs`, `GlobalTournamentMeshService` (find it with `grep -rln "class GlobalTournamentMeshService" server/`), `Engine/GuildCombatSimulationEngine.cs`, and the `Models/` entities for `GuildWarMatch`, `GuildMatchmakingSnapshot`, `GuildWarActiveMatch`, `GuildWarCombatHistory`, `GuildDefenseRoster`, `GuildWarDefensiveSnapshot`.
+**Files (delete):** `Engine/GuildWarEngine.cs`, `Engine/GuildMatchmakingEngine.cs`, `GlobalTournamentMeshService` (find it with `grep -rln "class GlobalTournamentMeshService" server/`), `Engine/GuildCombatSimulationEngine.cs`, **`Engine/GuildRaidEngine.cs`** (owner decision: Guild Raid goes too), and the `Models/` entities for `GuildWarMatch`, `GuildMatchmakingSnapshot`, `GuildWarActiveMatch`, `GuildWarCombatHistory`, `GuildDefenseRoster`, `GuildWarDefensiveSnapshot`, **`GuildRaidState`**.
+
+The raid's handler lives in `GuildWarTickCoordinator.cs:~139-148`, and its opcode 53 dispatch entry is in `SimulationEngine.cs`. Add `GuildRaidStates` to the migration's drops. **The Logistics half of the hidden "Raid + Logistics" panel is not war code and is not deleted.**
 **Files (modify):**
 - `Program.cs:~453-554`: stop constructing and starting them. **Keep an unlock refresh**: add a minimal `GuildWarUnlockRefresher` loop (60 s, guarded, try before `CreateScope`) that Phase 3 folds into `GuildWarCycleEngine`, and keep the startup warm-up from `696c559`.
 - `Engine/GuildWarSnapshotEngine.cs`: move `BuildMemberCombatStatsAsync` into a new `Domain/Social/GuildWarDefenceSnapshotBuilder.cs` (`internal static`) and delete the aggregate loop.
-- `Domain/Social/GuildWarTickCoordinator.cs`: opcodes 23/27/49/50 answer `GuildWarsLocked` (37) and do nothing more, until Task 1.3 retires them.
+- `Domain/Social/GuildWarTickCoordinator.cs`: opcodes 23/27/49/50/53 answer `GuildWarsLocked` (37) and do nothing more, until Task 1.3 retires them.
 - `SimulationEngine.cs`: the war point sources `~4673-4683`, the opcode 49 handler `~2559-2613`, and the dispatch entries `~771-773`.
 - `CraftingTickCoordinator.cs:~58-73`.
 - `NetworkBroadcastSystem.cs`: `/api/v1/guild/shard-match`, `~1077`, handler `~3110-3150`.
 - `Models/FolkIdleDbContext.cs`: the DbSets.
-- `CronWorkerGuardTests.cs`: remove `GuildWarEngine`, `GuildMatchmakingEngine`, `GuildWarSnapshotEngine`; add `GuildWarUnlockRefresher`.
+- `CronWorkerGuardTests.cs`: remove `GuildWarEngine`, `GuildMatchmakingEngine`, `GuildWarSnapshotEngine`, `GuildRaidEngine`; add `GuildWarUnlockRefresher`.
 - `HardenedEngineIntegrationTests.cs`: remove the tests of deleted engines (`Test_GuildCombat_*`, `Test_GuildWarScoreboardQueue_*`, `Test_GuildWarSnapshot_*`). **Keep** a snapshot-builder test pointed at the new builder.
 - `E2ETestHarness.cs`, `CommandGateOrderingTests.cs`: references.
 
-**Migration (non-additive):** `DropLegacyGuildWarTables` drops `"GuildWarMatches"`, `"GuildMatchmakingSnapshots"`, `"GuildWarActiveMatches"`, `"GuildWarCombatHistory"`, `"GuildDefenseRosters"`, `"GuildWarDefensiveSnapshots"`.
+**Migration (non-additive):** `DropLegacyGuildWarTables` drops `"GuildWarMatches"`, `"GuildMatchmakingSnapshots"`, `"GuildWarActiveMatches"`, `"GuildWarCombatHistory"`, `"GuildDefenseRosters"`, `"GuildWarDefensiveSnapshots"`, `"GuildRaidStates"`.
 
-- [ ] **Step 1: Evidence first.** Run a read-only Supabase SELECT of `count(*)` on each of the six tables in production, and paste the numbers into the PR body. The audit found 0,0,0,0,1,1. **If any count is non-zero beyond those two write-only rows, stop and ask the owner.**
+- [ ] **Step 1: Evidence first.** Run a read-only Supabase SELECT of `count(*)` on each of the seven tables in production, and paste the numbers into the PR body. The audit found 0,0,0,0,1,1 and 0 for `GuildRaidStates`. **If any count is non-zero beyond those two write-only rows, stop and ask the owner.**
 - [ ] **Step 2: Grep for writers and readers** of every symbol you delete (`grep -rn "GuildWarMatches\|GuildMatchmakingSnapshots\|GuildWarActiveMatches\|GuildWarCombatHistory\|GuildDefenseRosters\|GuildWarDefensiveSnapshots\|GlobalTournamentMesh\|GuildWarPointEvent\|GuildWarScoreboardQueue" server/`) and remove every hit, or justify it in the PR body.
 - [ ] **Step 3: Delete, build, and fix what breaks.** Stop the server, then run `dotnet build server/FolkIdle.Server/FolkIdle.Server.csproj`.
 - [ ] **Step 4: A new test**, `GuildWarDeletionTests.NoLegacyWarCodeRemains`: a source grep asserts that none of the deleted class names exist, and that `Program.cs` starts no war cron but `GuildWarUnlockRefresher`.
@@ -84,7 +86,7 @@ GuildWarCycleEngine.StartCron: one 60 s loop; each pass isolated, try before Cre
 
 ### Task 1.3: retire the opcodes and wire fields (`add-command` skill)
 
-**Files:** `Network/ClientCommandPacket.cs` (opcodes 23, 27, 49, 50 become comments of the form `// 23 reserved: ContributeToWarSupply, retired by task 38`, with **no** enum members; the validator entries go), `Network/StateUpdatePacket.cs` (remove the fields in spec §3: `ActiveGuildWarId`, `CombatSimulationMatchId/TurnCounter/DamageDelta`, `GlobalNodeRemainingHp`, `CachedWarMultiplier`, the six scoreboard point fields, and any `VisualActiveMatchMmr`), `NetworkPacketLayoutGuard.cs` (the new `ExpectedStateUpdateSize`, measured by the guard at startup), `StateCheckpointManager.cs` (the hydration of `ActiveGuildWarId`, `~590`, and of the node HP, `~546-556`), `StateUpdatePacketFieldCoverageTests.cs` (remove the seven "Guild Wars, on the roadmap" entries), `client_web/src/lib/net/protocol.generated.ts` (regenerated)
+**Files:** `Network/ClientCommandPacket.cs` (opcodes 23, 27, 49, 50, 53 become comments of the form `// 23 reserved: ContributeToWarSupply, retired by task 38`, with **no** enum members; the validator entries go), `Network/StateUpdatePacket.cs` (remove the fields in spec §3: `ActiveGuildWarId`, `CombatSimulationMatchId/TurnCounter/DamageDelta`, `GlobalNodeRemainingHp`, `CachedWarMultiplier`, the six scoreboard point fields, any `VisualActiveMatchMmr`, and the Guild Raid fields `GuildRaidTier`/`GuildRaidBossCurrentHp`/`GuildRaidBossMaxHp`), `NetworkPacketLayoutGuard.cs` (the new `ExpectedStateUpdateSize`, measured by the guard at startup), `StateCheckpointManager.cs` (the hydration of `ActiveGuildWarId`, `~590`, and of the node HP, `~546-556`), `StateUpdatePacketFieldCoverageTests.cs` (remove the seven "Guild Wars, on the roadmap" entries), `client_web/src/lib/net/protocol.generated.ts` (regenerated)
 
 - [ ] **Step 1:** Follow the `add-command` skill's removal steps.
   - `ClientPredictedDamage`: remove it **only** if no reader remains (the world boss validator checks it is 0) **and** the new `ExpectedClientCommandSize` collides with none of the demux sizes the skill lists. Otherwise keep it and write why in a `// Modul:` comment.
@@ -95,7 +97,7 @@ GuildWarCycleEngine.StartCron: one 60 s loop; each pass isolated, try before Cre
 
 ### Task 1.4: the client, as ONE block, and the ratchet goes down
 
-**Files:** `client_web/src/routes/GuildOps.svelte` (delete `~251-306`: `quarantined`, `defend`, `shardMatch`/`matchUuid`/`EMPTY_UUID`, `attackShard`, `matchId`/`turnCounter`/`damageDelta`, `takeTurn`; the imports `registerGuildDefense`, `executeCombatTurn`, `submitShardAttack`, `fetchGuildShardMatch`, and `typicalHit` if nothing else reads it; the visible three-front "Guild war" panel `~428-470`, **keeping** PR #22's locked-progress line), `client_web/src/lib/net/commands.ts` (`~842-920`: the four senders), `client_web/src/lib/net/rest.ts` (`~643-667`: `fetchGuildShardMatch` and its DTO), `client_web/scripts/typecheck-ratchet.mjs` (`BASELINE`), `CLAUDE.md` (the Conventions bullet "Four pre-existing svelte-check errors..."), any client test that referenced the senders (`commandsAudit.test.ts`: the audit list)
+**Files:** `client_web/src/routes/GuildOps.svelte` (delete `~251-306`: `quarantined`, `defend`, `shardMatch`/`matchUuid`/`EMPTY_UUID`, `attackShard`, `matchId`/`turnCounter`/`damageDelta`, `takeTurn`; the imports `registerGuildDefense`, `executeCombatTurn`, `submitShardAttack`, `fetchGuildShardMatch`, and `typicalHit` if nothing else reads it; the visible three-front "Guild war" panel `~428-470`, **keeping** PR #22's locked-progress line), `client_web/src/lib/net/commands.ts` (`~842-920`: the four senders), `client_web/src/lib/net/rest.ts` (`~643-667`: `fetchGuildShardMatch` and its DTO), the Guild Raid client (`launchGuildRaid` import and handler, `GuildOps.svelte:~22, ~100-105`; the raid half of the hidden panel, `~526-540`; its sender in `commands.ts`), `client_web/scripts/typecheck-ratchet.mjs` (`BASELINE`), `CLAUDE.md` (the Conventions bullet "Four pre-existing svelte-check errors..."), any client test that referenced the senders (`commandsAudit.test.ts`: the audit list)
 
 - [ ] **Step 1:** Run `npm run check` and record the raw count before (expected 4).
 - [ ] **Step 2:** Delete the whole block in one edit. **Do not delete the four symbols alone.** Audit A.2 shows that makes the count go **up**, because each is the only reader of something else.
@@ -104,7 +106,9 @@ GuildWarCycleEngine.StartCron: one 60 s loop; each pass isolated, try before Cre
 - [ ] **Step 5:** `exercise.mjs`: the existing Guild-lock check from PR #22 still passes. Run `npm run exercise`.
 - [ ] **Step 6: Commit** `refactor(guild-ops): delete the orphaned war handlers as one block; svelte-check baseline 4 -> 0`.
 
-### Task 1.5: fix the lost-grant shape in `LeaderboardPayoutEngine` (spec §8)
+### Task 1.5: fix the lost-grant shape in `LeaderboardPayoutEngine` (spec §8.1)
+
+**Standalone:** this task touches nothing war-related and can be pulled forward as its own PR. The defect: `LeaderboardPayoutEngine.cs:177` adds diamonds with no `BillingSyncQueue` notice, and `StateCheckpointManager.cs:377`/`:1550` then writes the online payload's stale `PremiumCurrency` over the row.
 
 **Files:** `server/FolkIdle.Server/Engine/LeaderboardPayoutEngine.cs` (take `PlayerSessionRegistry`; after each commit, `BillingSyncQueue.Enqueue(new BillingSyncNotification { PlayerId, ... authoritative balance })`, as `AchievementEngine.cs:~195-215` does), `Program.cs` (the constructor), a new test in `LeaderboardRewardTests.cs` or `LeaderboardPayoutTests.cs`
 
@@ -115,7 +119,7 @@ GuildWarCycleEngine.StartCron: one 60 s loop; each pass isolated, try before Cre
 
 - [ ] **Step 1:** Full verification in the `verify` skill's order: `dotnet build`, then the full `dotnet test` (run alone), `npm run check:ratchet` (now at the new baseline), `npm test`, `npm run build`, `npm run exercise`, and the geometry checks for the Guild screen.
 - [ ] **Step 2:** Run the `wiring-auditor` agent once on "Guild war: every path from a button to a table". It must report **nothing reachable** except the locked line and the unlock endpoint.
-- [ ] **Step 3:** PR "task 38 phase 1: the settlement exploit cannot open; the dead war code is gone". Run `code-review`. Merge and deploy (the `deploy` skill; the non-additive migration runs on ENTRYPOINT, so confirm afterwards with a read-only SELECT that the six tables are gone). Run `smoke:screens` against production.
+- [ ] **Step 3:** PR "task 38 phase 1: the settlement exploit cannot open; the dead war code is gone". Run `code-review`. Merge and deploy (the `deploy` skill; the non-additive migration runs on ENTRYPOINT, so confirm afterwards with a read-only SELECT that the seven tables are gone). Run `smoke:screens` against production.
 - [ ] **Step 4: Docs:**
   - `CURRENT_IMPLEMENTATION_STATE.md`: the war section, the dead code list, the dropped tables;
   - `NEXT_STEPS_BACKLOG.md`: the top section;
@@ -190,8 +194,8 @@ GuildWarCycleEngine.StartCron: one 60 s loop; each pass isolated, try before Cre
   - pairing by adjacent Power;
   - a bucket drop for an odd guild out;
   - no rematch within 2 wars when an alternative exists;
-  - "no opponent this cycle" is recorded and visible;
-  - the pass is **idempotent per cycle** (run it twice: one set of wars);
+  - "no opponent this week" is recorded and visible;
+  - the pass is **idempotent per week** (run it twice: one set of wars);
   - a guild below `MinWarSize` does not enter.
 - [ ] **Step 3: Failing settlement tests. THE EXPLOIT (spec §2):**
   - `ANewGuildCannotEndARunningWar`: a war in battle; create two new unmatched guilds, then run **every** pass of the engine repeatedly at `now < BattleEndsAtUtc`. Assert `SettledAtUtc` is null, `GuildMMR` is unchanged for both, and no contribution points or mail were sent. Advance the injected clock past `BattleEndsAtUtc` and run the passes **twice**: assert it settled exactly once, with one rating change and one set of points and mail.
@@ -232,7 +236,8 @@ GuildWarCycleEngine.StartCron: one 60 s loop; each pass isolated, try before Cre
 **Files:** `server/FolkIdle.Server/Engine/GuildWarBoardRegistry.cs` (tiers, `MinimumRankedGuilds = 4`, `WeeklyDiamondsFor(rank, rankedGuilds)`), `GuildWarCycleEngine.cs` (the board payout pass: polled, per player one transaction with the week key and diamonds, then `BillingSyncQueue`), migration `AddGuildWarPayoutWeekKey` (`PlayerRecords.GuildWarPayoutWeekKey`, `GuildWarPayoutRank`), `NetworkBroadcastSystem.cs` (`GET /api/v1/leaderboard/guildwar`), `Leaderboards.svelte` (a tab), `server/FolkIdle.Server.Tests/GuildWarBoardTests.cs`, `LeaderboardRewardTests.cs`
 
 - [ ] **Step 1: Failing tests:**
-  - first place per member is at most `DelveRegistry.MaxDiamondsPerWeek / 3` (asserted against the constant);
+  - first place per member is exactly `GuildWarBoardRegistry.MaxWeeklyDiamondsPerMember == 20`, and at most `DelveRegistry.MaxDiamondsPerWeek / 3` (asserted against the constant);
+  - **the three taps pinned together** (owner decision; add it to `LeaderboardRewardTests`, next to `First_place_does_not_out_earn_the_delve`): `DelveRegistry.MaxDiamondsPerWeek == 60`, `LeaderboardTierRegistry.WeeklyDiamondsFor(1, int.MaxValue) == 60`, and `GuildWarBoardRegistry.WeeklyDiamondsFor(1, int.MaxValue) == 20`. Their sum equals `EconomyDecisions.MaxWeeklyDiamondsAllTaps == 140`, a new named constant beside `CombatGoldPercent` (task 37). A change to any tap fails this until the decision is changed on purpose;
   - no rank pays more than first place;
   - a tier pays nothing unless the ranked guild count reaches **both** `MinimumRankedGuilds` and the tier's `MaxRank`;
   - only rostered members with at least one attack that week are paid;
@@ -275,7 +280,7 @@ GuildWarCycleEngine.StartCron: one 60 s loop; each pass isolated, try before Cre
   - the in-game Wiki;
   - CLAUDE.md, only for new confirmed traps. The candidate is "a pairing pass must never settle: settlement is time-based and once per war".
 - [ ] **Step 2: Deploy** each phase with the `deploy` skill as it merges. `FOLKIDLE_GUILD_WARS` stays `off` in production. The **population lock** alone opens the real war, because `dev` only enables the forced-war dev route, which is off in Production anyway.
-- [ ] **Step 3: Before the floor is crossed**, run the `wiring-auditor` agent on "Guild war: opt-in -> pairing -> attack -> settlement -> board -> diamonds on the header", and a read-only check that `feature_unlocks` has no `guild_wars` row yet. When it crosses, watch the first cycle with SELECT-only queries on `guild_wars`, `guild_war_attacks` and the payout week keys.
+- [ ] **Step 3: Before the floor is crossed**, run the `wiring-auditor` agent on "Guild war: opt-in -> pairing -> attack -> settlement -> board -> diamonds on the header", and a read-only check that `feature_unlocks` has no `guild_wars` row yet. When it crosses, watch the first war week with SELECT-only queries on `guild_wars`, `guild_war_attacks` and the payout week keys.
 
 ## Risks
 

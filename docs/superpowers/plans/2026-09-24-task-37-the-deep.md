@@ -57,7 +57,10 @@ Profile / Delve ── title ──> GET /api/v1/player/titles, POST /api/v1/pla
 - Modify: `server/FolkIdle.Server/Engine/EcoTelemetryEngine.cs:~152-167` (keep the ratio row and the `EventType 6 / Value1 44` event; delete both assignments)
 - Create: `server/FolkIdle.Server.Tests/CombatGoldDecisionTests.cs`
 
+This task is **standalone**. It fixes the defect in spec §9 (100% combat gold after every restart) and can be pulled forward as its own PR, ahead of the rest of task 37.
+
 - [ ] **Step 1: Failing tests:**
+  - (0) on a freshly started engine, **before any audit pass**, the per-kill gold is the 75% value (today it is 100%);
   - (a) run `ExecuteAuditAsync` against a Testcontainers DB seeded so the ratio lands **inside** `[0.85, 1.15]`, then assert the per-kill gold of a fixed monster (computed through the same helper both kill paths use; extract `GoldPerKill(monster, payload)` if the two copies are still inline, and make the offline path call it) is still `BaseGoldReward x 75 / 100` times the other multipliers;
   - (b) the same **outside** the band;
   - (c) a source grep over `server/FolkIdle.Server` finds no `GoldDropMultiplier =` assignment, and no identifier `GlobalGoldDropMultiplier` at all.
@@ -100,7 +103,7 @@ No lanterns, titles or board yet. A run at the bottom can descend, pay tolls, go
 **Files:**
 - Modify: `server/FolkIdle.Server/Engine/DelveRegistry.cs`:
   - `StakeFraction = 0.005`, `TollGrowth = 1.25`, `DeepDecay = 0.97`, `MaxLanternRefills = 8`, `PriceCeiling = long.MaxValue / 4`;
-  - `Stake(regionFee, goldHeld)`, `TollForFloor(stake, floor)`, `LanternRefillPrice(stake, bought)`, `DeepSuccessChance(value, floor)`;
+  - `Stake(regionFee, wealth)` (the caller passes `max(locked gold, 7-day high-water mark)`), `TollForFloor(stake, floor)`, `LanternRefillPrice(stake, bought)`, `DeepSuccessChance(value, floor)`;
   - each with a `// Modul:` comment giving the measured number it was priced against.
 - Create: `server/FolkIdle.Server.Tests/DelveDeepRulesTests.cs`
 
@@ -113,10 +116,35 @@ No lanterns, titles or board yet. A run at the bottom can descend, pay tolls, go
   - the requirement used is `RequirementForFloor(8)` for every d > 8.
 - [ ] **Step 2: Implement, run, commit** `feat(delve): the Deep's rules, a stake on holdings and a stated curve`.
 
+### Task 1.1b: the 7-day gold high-water mark (spec §3.4)
+
+**Files:**
+- Create: `server/FolkIdle.Server/Models/PlayerGoldDailyHigh.cs` (`[Table("player_gold_daily_high")]`, PK `(PlayerId, DayUtc)`), and the DbSet
+- Create: `server/FolkIdle.Server/Domain/Economy/GoldHighWater.cs`:
+  - `RecordAsync(db, playerId, gold, todayUtc)`, the raw upsert with `GREATEST`, which also prunes rows older than 7 days;
+  - `SevenDayMaxAsync(db, playerId, todayUtc)`.
+- Modify: `server/FolkIdle.Server/Domain/Shared/StateCheckpointManager.cs`:
+  - call `RecordAsync(state.CurrentGold)` **inside `FlushState`'s transaction** (`~227`), **not** in `TrackState`/the Redis frame path;
+  - call it at login hydration, from the gold row just read.
+- The migration is folded into Task 1.2's `AddTheDeep`.
+- Create: `server/FolkIdle.Server.Tests/GoldHighWaterTests.cs` (Testcontainers)
+
+- [ ] **Step 1: Failing tests** (spec §3.4):
+  - two flushes the same day (10M then 4M) keep 10M;
+  - rows older than 7 days are pruned, and a player never holds more than 8;
+  - `SevenDayMaxAsync` spans today and the 6 days before;
+  - **a Redis-frame-only tick writes no row**: drive `TrackState` with Redis up and assert the table is empty;
+  - **a flush that rolls back writes no row**;
+  - login hydration records the loaded gold;
+  - the stake after a 10M flush and a mail-out down to 1M is still priced on 10M for 7 days, and on 1M from day 8 (injected clock).
+- [ ] **Step 2: Implement.** Use raw SQL with the quoted PascalCase columns on a snake_case table: check the names against the generated migration.
+- [ ] **Step 3:** Run the filter `~GoldHighWater|~StateCheckpoint|~Checkpoint`. The existing checkpoint tests must stay green, because the upsert must not change what `FlushState` returns.
+- [ ] **Step 4: Commit** `feat(economy): a 7-day gold high-water mark, written by the checkpoint`.
+
 ### Task 1.2: migration, engine, REST
 
 **Files:**
-- Create: migration `AddTheDeep` (spec §5: `DelveRunRecords.IsDeep/StakeGold/LanternsBought`; `PlayerRecords.DelveDeepestFloor/DelveDeepestThisWeek/DelveDeepestThisWeekAtUtc/ActiveTitleSlug`; the `player_titles` table, created now so Phase 2 needs no second migration). Additive only. Check the generated SQL for `defaultValue:` traps: the memory note says EF backfilled 0 over a C# default of 4 once, so the defaults must match the C# model.
+- Create: migration `AddTheDeep` (spec §5: `DelveRunRecords.IsDeep/StakeGold/LanternsBought`; `PlayerRecords.DelveDeepestFloor/DelveDeepestThisWeek/DelveDeepestThisWeekAtUtc/ActiveTitleSlug`; the `player_titles` and `player_gold_daily_high` tables, created now so no later phase needs a second migration). Additive only. Check the generated SQL for `defaultValue:` traps: the memory note says EF backfilled 0 over a C# default of 4 once, so the defaults must match the C# model.
 - Modify: `server/FolkIdle.Server/Models/DelveRunRecord.cs`, `Models/PlayerRecord.cs`, create `Models/PlayerTitle.cs` (`[Table("player_titles")]`), `Models/FolkIdleDbContext.cs`
 - Modify: `server/FolkIdle.Server/Domain/Economy/DelveEngine.cs`:
   - `DescendAsync(playerId, quotedStake)`;
@@ -132,6 +160,7 @@ No lanterns, titles or board yet. A run at the bottom can descend, pay tolls, go
 - [ ] **Step 1: Failing engine tests:**
   - descending from the bottom banks exactly what `BankAsync` would have paid (diamonds and consolation) **and** debits exactly `toll(9)`, in one transaction;
   - with gold after banking below the toll, the answer is `NotEnoughGold` and **nothing** changes: no bank, no floor, no gold;
+  - **the stake uses the high-water mark**: flush the player at 50M, mail it down to 2M, then descend; the stake is `0.005 x 50M`, not the region floor;
   - `QuotedStake` below the server's stake gives `PriceChanged` and nothing changes, while one at or above it proceeds and charges the **server's** number;
   - descending when not at the bottom gives `NotAtTheBottom`;
   - with the flag off, the answer is `DeepDisabled` and the view offers no descent;
@@ -255,6 +284,6 @@ Spec §7. Its own plan when started. The outline:
 
 ## Risks
 
-- **Gold parked with an alt** lowers the stake (spec §8 question 2). It is accepted for v1 and written in a `// Modul:` on `Stake`.
+- **Gold parked with an alt:** closed by the 7-day high-water mark (Task 1.1b; owner decision). The one residual gap is gold earned and mailed away inside a single checkpoint interval, which never reaches a checkpoint. It is bounded by that interval, and accepted.
 - **The income profile may not land within 3x of 10M/h.** Then the model is wrong. Find out why (codex damage, crit, attack speed) before pricing anything off it. That investigation is the point of Phase 0.
 - **The `DelveWeekKey` sharing** between the diamonds and the Deep records is the one subtle state rule. Test both orders: record first, then bank; and bank first, then record.

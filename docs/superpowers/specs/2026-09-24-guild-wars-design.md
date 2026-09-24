@@ -27,6 +27,9 @@ This spec keeps all of that, and does not redo it.
 | 5 | Old code | **DELETE** the cross-shard war, the turn-based duel, and the defence roster, plus the four orphaned `GuildOps.svelte` handlers **as one block**. The `check:ratchet` baseline goes down to match |
 | 6 | Interaction | A **plain Attack button**. Task 36's minigame may be reused later, as a bounded multiplier |
 | 7 | Urgency | Not urgent, but the plan must be complete |
+| 8 | Third diamond tap | Accepted: a **separate** war board, at most 20 per member per week, so 140 a week across all taps (60 + 60 + 20), pinned by a test (follow-up answer) |
+| 9 | Guild Raid | **Deleted** with the other old war code (follow-up answer) |
+| 10 | Cadence | **One war a week**: prep Monday, battle Tuesday and Wednesday, results Thursday (follow-up answer) |
 
 ## 2. The settlement exploit, and the phase that must ship BEFORE the lock can open
 
@@ -63,18 +66,19 @@ Nothing here is kept "for later". Opcode numbers stay **reserved**, never reused
 | Client | `GuildOps.svelte:~251-306` (the `quarantined`, `defend`, `shardMatch`/`matchUuid`/`EMPTY_UUID`, `attackShard`, `matchId`/`turnCounter`/`damageDelta`, `takeTurn` blocks) and their imports (`registerGuildDefense`, `submitShardAttack`, `executeCombatTurn`, `fetchGuildShardMatch`, and `typicalHit` if left unread); the senders in `commands.ts:~842-920` and `rest.ts:~643-667`; the visible three-front "Guild war" panel | **One commit** for the whole block, with `BASELINE` in `client_web/scripts/typecheck-ratchet.mjs` lowered to the count `npm run check` actually reports (expected 0), plus CLAUDE.md's "Four pre-existing svelte-check errors" convention rewritten. Deleting the four alone would **raise** the count (audit A.2) |
 | Tables | `GuildWarMatches`, `GuildMatchmakingSnapshots`, `GuildWarActiveMatches`, `GuildWarCombatHistory`, `GuildDefenseRosters`, `GuildWarDefensiveSnapshots` | a **non-additive** migration. Confirm the row counts in production first (read-only SELECT). The audit found 0/0/0/0/1/1, and the two single rows are the one guild's write-only snapshot and roster |
 
-**Guild Raid** (opcode 53, `GuildRaidEngine`, the hidden panel) is **not** in the owner's delete list and is untouched here (§9 open question 2).
+| **Guild Raid** (owner decision, follow-up answer) | `Engine/GuildRaidEngine.cs` (a live cron), `GuildRaidStates`, opcode 53 `LaunchGuildRaid`, its handler in `GuildWarTickCoordinator.cs:~139-148`, the `StateUpdatePacket` fields `GuildRaidTier`/`GuildRaidBossCurrentHp`/`GuildRaidBossMaxHp` (`StateUpdatePacket.cs:~660-662`), the raid half of the hidden **Raid + Logistics** panel (`GuildOps.svelte:~526-540`), and `launchGuildRaid` in `GuildOps.svelte:~22,100-105` and `commands.ts` | 0 rows ever. Its only reward was guild `ContributionPoints`. **The logistics half of that panel is not war code and is not deleted here.** If removing the raid half leaves logistics controls that nothing else reaches, record that in the PR as a finding for the owner rather than deleting them |
 
 ## 4. The war
 
 ### 4.1 The cycle
 
-- **Two wars a week**, aligned to UTC and to `DelveEngine.CurrentWeekKey`'s ISO week:
-  - Cycle A: **opt-in** until Mon 00:00, **prep** Mon 00:00-24:00, **battle** Tue 00:00 to Thu 00:00;
-  - Cycle B: opt-in until Thu 00:00, prep Thu, battle Fri 00:00 to Sun 00:00;
-  - **Sunday** is rest, and the weekly board settles.
+- **One war a week** (owner decision, follow-up answer), UTC, keyed to `DelveEngine.CurrentWeekKey`'s ISO week:
+  - **opt-in**: Thu 00:00 to Mon 00:00 (it opens as the previous war's results are posted);
+  - **prep**: Mon 00:00-24:00 (roster lock, snapshots, pairing, scouting);
+  - **battle**: Tue 00:00 to Thu 00:00 (Tuesday and Wednesday);
+  - **results**: Thursday 00:00. Settlement, the Great Works weekly settlement and the weekly board payout all run in that order in the first cron pass at or after Thu 00:00. Results are shown all of Thursday, and the next opt-in is open.
 - **One constant table**, `GuildWarSchedule`, with a pure `PhaseAt(DateTime utc) -> (cycleId, phase, phaseEndsAt)`. Everything derives from it, and no stored schedule can drift from it.
-- **Opt-in:** each member presses **"I'm in"** during the opt-in window (the previous battle phase and rest, up to prep start). Leaders can remove a member's opt-in, but cannot add anyone.
+- **Opt-in:** each member presses **"I'm in"** during the opt-in window (Thursday to Monday 00:00). Leaders can remove a member's opt-in, but cannot add anyone.
 - **Eligibility to opt in**:
   - `CurrentLevel >= LeaderboardTierRegistry.MinimumRankedLevel` (10);
   - not quarantined;
@@ -90,7 +94,7 @@ At prep start, one settlement-style pass runs. It is idempotent per cycle, throu
 3. **Pairing.** Guilds are grouped by bucket and sorted by **total roster Power** (tie-break: `GuildMMR`). Each is paired with the adjacent one:
    - never the same opponent as in either of the guild's last 2 wars, if any alternative exists;
    - a guild left unpaired in its bucket drops one bucket (trimming its roster to that size, last opt-ins benched) and tries again;
-   - still unpaired: **"no opponent this cycle"**, visible on the Guild screen, and nothing else happens.
+   - still unpaired: **"no opponent this week"**, visible on the Guild screen, and nothing else happens.
 
    Guilds never choose opponents.
 4. **Rosters are visible** to both sides during prep: names, snapshot HP, armour and Power. That is the scouting layer.
@@ -123,7 +127,7 @@ At `BattleEndsAtUtc`, the war row is locked, `SettledAtUtc` is checked, and then
 
 ### 4.5 The weekly board (the only diamond tap)
 
-- **Metric:** `GuildMMR` at the week's end, among guilds that **fought at least one war that week**.
+- **Metric:** `GuildMMR` right after Thursday's settlement, among guilds that **fought that week's war**.
 - **Payout** (`GuildWarBoardRegistry`):
 
   | Rank | Diamonds per member |
@@ -132,10 +136,11 @@ At `BattleEndsAtUtc`, the war row is locked, `SettledAtUtc` is checked, and then
   | 2-3 | 12 |
   | 4-10 | 6 |
 
-  - It pays each member who was **rostered and made at least one attack** in that week's wars. A benched or idle member gets nothing.
+  - It pays each member who was **rostered and made at least one attack** in that week's war. A benched or idle member gets nothing.
   - **Floors, the two-gate pattern of `LeaderboardTierRegistry`:** a tier pays only if the ranked guild count is at least `MinimumRankedGuilds = 4` **and** at least the tier's `MaxRank`. "Top 10 of 6" does not pay rank 10.
 - **Caps, asserted in tests** (the `LeaderboardRewardTests` style, against the constants, not trusting comments):
-  - first place per member is at most `DelveRegistry.MaxDiamondsPerWeek / 3` (20);
+  - first place per member is **exactly** `GuildWarBoardRegistry.MaxWeeklyDiamondsPerMember = 20`, which is at most `DelveRegistry.MaxDiamondsPerWeek / 3`;
+  - **the three weekly taps are pinned together** (owner decision: a separate tap, a weekly maximum of 140). `DelveRegistry.MaxDiamondsPerWeek` (60) + mastery-board first place (`LeaderboardTierRegistry.WeeklyDiamondsFor(1, large)`, 60) + war-board first place (20) == `EconomyDecisions.MaxWeeklyDiamondsAllTaps = 140`. Any change to one tap fails that test until the decision constant is changed on purpose;
   - no rank pays more than first place;
   - a player receives the war-board payout at most once per ISO week (`PlayerRecords.GuildWarPayoutWeekKey`, written in the same transaction as the diamonds).
 - **The grant path:** a DB write per player, one transaction each, week key and diamonds together. Then `BillingSyncQueue` (the `AchievementEngine` pattern) so an **online** member's payload learns the new balance. **Never a bare `PremiumDiamonds +=` behind a live session**, which the checkpoint's absolute write (`StateCheckpointManager.cs:~377`) would overwrite. See §8 for the same defect found in `LeaderboardPayoutEngine`.
@@ -161,7 +166,7 @@ At `BattleEndsAtUtc`, the war row is locked, `SettledAtUtc` is checked, and then
   - `goal = max(WorkFloorGold, 1.1 x lastWeekContributed)`, where `WorkFloorGold = 250,000 x the guild's qualifying member count`. So it follows the guild's own income.
   - **Met by the week's end:** the level rises by 1, capped at 3.
   - **Missed:** it falls by 1. The level is upkeep, so the sink recurs.
-  - A **Sunday** settlement pass in the war engine's cron applies this, idempotent through `guild_great_works.SettledWeekKey`.
+  - The **Thursday results pass** in the war engine's cron applies this, right after the war settles, idempotent through `guild_great_works.SettledWeekKey`. A Works week is the war week (Thu 00:00 to Thu 00:00).
 - **Funding:**
   - (a) members donate their **own** gold: `POST /api/v1/guild/works/donate { Work, Amount }`. A DB debit on the member's locked `CommodityRecords` gold row, then `ReloadState`. **Never `RedisPendingGoldDelta`.**
   - (b) the leader or an officer moves **treasury** gold: `POST /api/v1/guild/works/fund { Work, Amount }`. A debit on `GuildRecords.GuildTreasuryGold`, `FOR UPDATE`.
@@ -182,7 +187,7 @@ At `BattleEndsAtUtc`, the war row is locked, `SettledAtUtc` is checked, and then
 
 | Table | Key columns |
 |---|---|
-| `guild_war_cycles` | `CycleId` (e.g. `2026W41A`), `OptInClosesAtUtc`, `PrepEndsAtUtc`, `BattleEndsAtUtc`, `PairedAtUtc?` |
+| `guild_war_cycles` | `CycleId` (the ISO week, e.g. `2026W41`), `OptInClosesAtUtc`, `PrepEndsAtUtc`, `BattleEndsAtUtc`, `PairedAtUtc?` |
 | `guild_war_optins` | `(CycleId, PlayerId)` PK, `GuildId`, `OptedInAtUtc` |
 | `guild_wars` | `WarId`, `CycleId`, `GuildAId`, `GuildBId`, `WarSize`, `BattleEndsAtUtc`, `StarsA/B`, `DestructionA/B` (milli), `LastStarAtA/B`, `Outcome`, `RatingDeltaA/B`, `SettledAtUtc?` |
 | `guild_war_roster` | `(WarId, PlayerId)` PK, `GuildId`, `Slot`, `StatsJson` (jsonb, cast explicitly: the 42804 trap recorded in `GuildWarSnapshotEngine`), `Power`, `AttacksUsed`, `BestStarsAgainst`, `BestDestructionAgainst` |
@@ -212,7 +217,7 @@ The Guild screen polls `GET /api/v1/guildwar` (TanStack query, a 30 s refetch wh
 `CronWorkerGuardTests.KnownCronEngines`:
 
 - **add** `GuildWarCycleEngine`;
-- **remove** `GuildWarEngine`, `GuildMatchmakingEngine` and `GuildWarSnapshotEngine`.
+- **remove** `GuildWarEngine`, `GuildMatchmakingEngine`, `GuildWarSnapshotEngine` and `GuildRaidEngine`.
 
 ## 7. Client
 
@@ -229,13 +234,34 @@ The Guild screen polls `GET /api/v1/guildwar` (TanStack query, a 30 s refetch wh
 
 ## 8. Side findings (not the owner's to answer; fix in the plan)
 
-- **`LeaderboardPayoutEngine` has the lost-grant shape.** It writes `player.PremiumDiamonds += diamonds` (`LeaderboardPayoutEngine.cs:~177`) with no `BillingSyncQueue` notice and no `ReloadState`. For an **online** player, the next checkpoint's absolute write `player.PremiumDiamonds = state.PremiumCurrency` (`StateCheckpointManager.cs:~377`) can overwrite it. `AchievementEngine.cs:~195-210` documents exactly this bug and its fix.
-  - It has been harmless so far only because the board never cleared its population floor.
-  - The plan fixes it in Phase 1, because the war board copies its pattern, and verifies it with a test that pays an online player and runs a checkpoint.
+### 8.1 Standalone defect: the weekly leaderboard's diamonds can be overwritten for an online player (may be pulled forward as its own fix)
+
+**Files:**
+
+| File:line | What |
+|---|---|
+| `server/FolkIdle.Server/Engine/LeaderboardPayoutEngine.cs:177` | `player.PremiumDiamonds += diamonds;` committed with the week key (`:178`). The class holds no `PlayerSessionRegistry`, and sends no `BillingSyncQueue` notice and no `ReloadState` |
+| `server/FolkIdle.Server/Domain/Shared/StateCheckpointManager.cs:377` (and `:1550`) | `player.PremiumDiamonds = state.PremiumCurrency;`, an **absolute** write from the live payload on every checkpoint |
+| `server/FolkIdle.Server/Engine/AchievementEngine.cs:~195-215` | the same bug, documented and fixed (2026-08-02) by enqueuing a `BillingSyncNotification` with the authoritative balance, so the tick thread updates `PremiumCurrency` |
+
+**What happens:**
+
+- For a player who is **online** when the payout pass runs, the payload's `PremiumCurrency` still holds the old balance.
+- The next checkpoint writes that stale value back over the row, and the week's diamonds vanish.
+- The week key was written, so the payout is never retried.
+- Offline players are unaffected, which is why it would be hard to notice.
+
+It has not fired in production only because the mastery board has never cleared `MinimumRankedPopulation` (20).
+
+**Fix:** after each per-player commit, enqueue `BillingSyncQueue` with the new authoritative balance, exactly as `AchievementEngine` does. The constructor gains the registry (`Program.cs`, where the engine is constructed).
+
+**Test:** pay rank 1 to a player who is in the session registry with a stale payload, run one checkpoint flush, and assert the row still includes the payout.
+
+It is task 38 Phase 1 Task 1.5 in the plan, but it touches nothing war-related and can ship on its own. The war board (§4.5) must use the fixed pattern either way.
 - **`GuildContributionEngine.ContributeGoldAsync`** debits gold with no `ReloadState`, so the header shows the old balance until a relog. Fixed where the Works take over the donation.
 
-## 9. Open questions for the owner (short)
+## 9. Owner answers (2026-09-24, final)
 
-1. **A third weekly diamond tap.** The war board pays at most 20 a week per member. With the Delve (60) and the mastery board (first place 60), a player's theoretical weekly maximum becomes 140. Accept, or should the war board share the mastery board's cap (a player takes the higher of the two, not both)?
-2. **Guild Raid** (opcode 53, the hidden panel, 0 rows ever) is not on the delete list. Delete it with the rest, or keep it hidden for a later guild-vs-environment mode?
-3. **Cadence.** Two 3-day wars a week (Mon and Thu prep, Sunday rest), or one a week?
+1. **The war board is a separate diamond tap**, capped at 20 per member per week. The weekly maximum across all taps is 140 (60 + 60 + 20), pinned by a test (§4.5).
+2. **Guild Raid is deleted** with the other old war code (§3).
+3. **One war a week:** prep Monday, battle Tuesday and Wednesday, results Thursday (§4.1).

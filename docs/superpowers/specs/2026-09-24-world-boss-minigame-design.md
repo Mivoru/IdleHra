@@ -27,7 +27,9 @@ This spec assumes all of it is merged, and it does not redo any of it.
 | 5 | Practice | Free and server-issued. It costs no attempt and deals no damage |
 | 6 | 300 s battle session | **Dropped** |
 | 7 | Abandoned challenge | Resolves as an auto-strike at the floor (the exact rule is in §5.6) |
-| 8 | Difficulty over the encounter | Not asked. v1 keeps it **constant** (§9 open question 3) |
+| 8 | Difficulty over the encounter | **Harder in the boss's last 25% of HP**: the enraged schedule, §3.4 (owner, follow-up answer) |
+| 8b | Auto-strike floor | A played attempt is **never worth less than auto-striking the same plate**: `max(played, auto)` per attempt, §3.2 (owner, follow-up answer) |
+| 8c | Break rule | **One plate break per attempt, the first hit** (§3.3), confirmed |
 | 9 | Haptics | `navigator.vibrate` on a hit. No Capacitor Haptics plugin |
 | 10 | Ship window | Flagged rollout for the **Oct 15-22** window, after a phone playtest of practice mode |
 | - | Weak-plate feedback | A weak-plate hit glows **only for the player who threw it, during that attempt**. The global reveal comes only through the plate-break mechanic, so the crowd-deduction layer survives |
@@ -135,18 +137,47 @@ s = mean of the best 4 of 5 spear class values             (None for unthrown an
 M = min(Cap, Floor + (Cap - Floor) * s / SaturationScore)  in [1.0, 2.0]
 P = mean over spears whose class is Plate or Seam of (3.0 if that plate is weak else 1.0)
     P = 1.0 if no spear reached Plate class                in [1.0, 3.0]
-damage = ComputeAppliedDamage(currentHp, A * G * M * P)   (existing clamp [1,000, 100,000,000] and to remaining HP)
+Auto = max over the plates struck by a Plate-or-Seam spear of (3.0 if weak else 1.0)
+       Auto = 1.0 if no spear reached Plate class          in [1.0, 3.0]
+played = max(M * P, Auto)                                  (owner, 2026-09-24: the auto-strike floor)
+damage = ComputeAppliedDamage(currentHp, A * G * played)   (existing clamp [1,000, 100,000,000] and to remaining HP)
 ```
 
 - **Auto-strike** is today's strike exactly: `M = 1.0`, and `P` is 3.0 or 1.0 for the one plate chosen.
-- **Ceiling:** `M * P <= 6.0`, the same maximum as the brief's E (2.0 x 3.0).
-- **Playing is never worse than auto-striking an unknown plate.** It *can* be worse than auto-striking a plate the board has **already revealed** (auto-strike 3.0 against a poor wheel run of about 1.4 x 1.4). That is intended: auto-striking a revealed weak plate is how the crowd's work gets cashed in, and a good wheel run on the same plate (counters aimed at it, seams on it) pays up to 6.0. See §9 open question 1.
+- **The auto-strike floor (owner decision, final).** A played attempt is never worth less than auto-striking the same plate: `played = max(M x P, Auto)` per attempt.
+  - "The same plate" is **any plate one of the attempt's spears struck with Plate or Seam class**, and the floor takes the best of them. A player who lands even one spear on the weak plate is guaranteed at least the 3.0x an auto-strike on it would have paid.
+  - Glance-only and empty attempts floor at 1.0, the value of an auto-strike on a non-weak plate.
+  - This is the simplest definition that honours "the same plate" when five spears strike up to five plates. It needs nothing new from the client; the landings are already in the order.
+- **Ceiling:** `played <= 6.0` (M x P maxes at 2.0 x 3.0, and Auto maxes at 3.0), the same maximum as the brief's E.
+- **Playing is never worse than not playing.** This holds by construction and is asserted in the ledger test: a wheel attempt on a revealed weak plate pays at least the 3.0 of auto-striking it.
 
 ### 3.3 What an attempt does to the shared board
 
 - **Break.** Each attempt breaks **at most one** plate for everyone: the first spear, in tap order, that lands with class Plate or Seam on a **non-weak, unbroken** plate. Today one strike breaks one plate. This rule keeps that information rate (three attempts means at most three breaks per player) even though an attempt now throws five spears. Without it, one attempt would break three or four plates and solve the board for everyone within minutes, which is the brief's own objection to E2.
 - **Reveal.** A weak-plate hit **no longer** sets `WeakPlateRevealed`. `WeakPlateRevealed` becomes 1 when `BrokenPlateMask` covers all four non-weak plates, because at that point the board has solved itself by elimination and the flag only shows what everyone can already deduce. This applies to auto-strike too: an auto-strike on the weak plate tells *that player* "weak point", in its REST result, and nobody else.
 - Every server response and broadcast mirror still carries 255 for an unrevealed weak plate, with **one** exception. The `/throw` answer tells the thrower whether *their* spear hit it (§5.3).
+
+### 3.4 The enraged wheel: the boss's last 25% of HP (owner decision, final)
+
+**When:** a challenge is **enraged** if, at issue time, `CurrentHp <= 0.25 x MaxHp` (the boss snapshot row, read in the eligibility step). The phase is decided **once, at issue**, and written into the schedule (`"Enraged": true`). A challenge never changes difficulty mid-play, and its score never depends on when the HP crossed the line.
+
+**What changes:**
+
+| Constant | Normal | Enraged |
+|---|---|---|
+| Segment speed \|w\| | 90-210 deg/s | **120-260 deg/s** |
+| Segment duration | 700-2,200 ms | **500-1,600 ms** (more reversals) |
+| Interrupts | 2 or 3 | **always 3** |
+| `ResponseCloseMs` | 1,000 | **850** (the reaction floor stays 150) |
+
+**What does not change:** `SeamDegrees`, the class values, `SaturationScore`, `Floor`/`Cap` and the weak multiplier. Damage is not re-priced. The wheel is only harder to play. A 12 degree seam at 260 deg/s is a 46 ms window (plus the 35 ms tolerance either side). Three guaranteed counters still let a good reader reach the cap: the 3-counter simulation in §3.1 gives 1.91. The auto-strike floor (§3.2) protects anyone who cannot.
+
+**Tests:**
+
+- the generator property test runs for both phases, including the "every plate's seam passes the impact point at least 3 times" rule;
+- the ledger asserts that the mean `M` for a "3 reads + random" simulation on the enraged schedule stays at 1.75 or more.
+
+**Client:** the overlay shows "The boss is enraged" before the countdown. It does not tint only in colour; it adds a shape or glyph change too.
 
 ## 4. What is dropped or changed on the server
 
@@ -397,8 +428,7 @@ REST DTOs are **hand-written** in `rest.ts`, because REST is not the generated p
 - `NEXT_STEPS_BACKLOG.md`: the top section.
 - `.claude/skills/add-command/SKILL.md`: the stale "359"/700-byte figures become 341/801.
 
-## 9. Open questions for the owner (short)
+## 9. Owner answers (2026-09-24, final)
 
-1. **Revealed weak plate vs. a poor wheel run.** Once the board reveals the weak plate, auto-striking it (3.0x) beats a poor wheel run (about 1.4x x 1.4). Accept this (recommended: the crowd's reveal is cashed in by auto-strike, and a good run still pays up to 6.0x), or floor every wheel attempt at the auto-strike value of the plate its counter or first spear chose?
-2. **The break rule.** Is "an attempt breaks at most one plate, the first non-weak plate a spear lands on" the right pace for the crowd layer? The alternative is "the plate this attempt hit most".
-3. **Difficulty over the encounter.** v1 is constant. Should the wheel be faster, or have a third interrupt, in the last 25% of boss HP?
+1. **Floor the wheel at auto-strike.** A played attempt is never worth less than auto-striking the same plate. Specced in §3.2.
+2. **One plate break per attempt (the first hit), and the wheel gets harder in the boss's last 25% of HP.** The breaks are in §3.3, the enrage in §3.4.

@@ -14,7 +14,7 @@ Brief, evidence and option menu: `docs/superpowers/plans/2026-09-23-task-37-late
 |---|---|---|
 | 1 | Option | **B, "The Deep"**, now: an endless, gold-tolled continuation of the Delve past floor 8 |
 | 2 | Before it | **Phase 0: measure income honestly.** Fix the test income model, which is 13-38x wrong |
-| 3 | Pricing | `stake = max(region fee, StakeFraction x gold HELD)`, frozen when the descent begins. Tolls grow about 1.25x a floor. Lantern refills double. The pass requirement is capped at floor 8, with a `DeepDecay` on the pass chance |
+| 3 | Pricing | `stake = max(region fee, StakeFraction x max(gold held, 7-day high-water mark))`, frozen when the descent begins. Tolls grow about 1.25x a floor. Lantern refills double. The pass requirement is capped at floor 8, with a `DeepDecay` on the pass chance |
 | 4 | What it pays | **Records + titles** (a minimal title display) + a **weekly "Deepest" board** that pays **no diamonds and nothing convertible** |
 | 5 | `GlobalGoldDropMultiplier` | **Stays 75**, but becomes an explicit, named constant and decision, so the economy audit can never silently move it again |
 | 6 | Patronage | A **later phase**: a cosmetic monument track at `C0 x 1.2^L`, no stats, reusing the Deep's title display. Specced briefly in §7 |
@@ -38,7 +38,7 @@ Brief, evidence and option menu: `docs/superpowers/plans/2026-09-23-task-37-late
    - **the mutable field `GlobalEngineState.GlobalGoldDropMultiplier` is deleted**;
    - `EcoTelemetryEngine.ExecuteAuditAsync` keeps computing and recording the ratio and its telemetry event (`EventType 6, Value1 44`), but **no longer writes any multiplier**.
 
-   **A finding on the way:** the field defaults to **100** and only drops to 75 after the first audit pass, so every restart has paid **full** combat gold until that pass completed. The constant removes that window too.
+   **A finding on the way (standalone write-up in §9):** the field defaults to **100** and drops to 75 only when an audit pass succeeds, so every restart pays **full** combat gold until then, which is 10 minutes or more if the first pass throws. The constant removes that window too.
 
    A test pins it three ways:
    - an audit run whose ratio is inside `[0.85, 1.15]` leaves the per-kill gold unchanged;
@@ -51,8 +51,10 @@ Brief, evidence and option menu: `docs/superpowers/plans/2026-09-23-task-37-late
 
 - **Only from the bottom of a live Delve run**: `FloorsCleared == FloorCount (8)`, where today the only action is Bank. The view offers **Walk out** (today's bank) and **Descend into the Deep: toll X**.
 - **Descending banks floors 1-8 first**, in the same transaction and by the exact code path `BankAsync` uses: diamonds within `MaxDiamondsPerWeek`, consolation gold past it. The Deep therefore can never put a diamond at risk nor add one. It is **diamond-neutral by construction**, not by a rule someone has to remember.
-- **Stake**, computed at the moment of descent from the **locked** gold row after banking:
-  `stake = max(DelveRegistry.EntryFeeForRegion(highestRegion), floor(StakeFraction x goldHeld))`, with `StakeFraction = 0.005`.
+- **Stake**, computed at the moment of descent:
+  `stake = max(DelveRegistry.EntryFeeForRegion(highestRegion), floor(StakeFraction x wealth))`, with `StakeFraction = 0.005`, where
+  `wealth = max(gold on the locked row after banking, the player's 7-day gold high-water mark)`.
+  **Owner decision, final:** the stake is priced on the **maximum gold held over the last 7 days**. Mailing gold to an alt before descending does not lower it. The high-water mark is specced in §3.4.
   At 492M held, the stake is 2.46M. A small holder pays the region fee floor (7k-250k).
 - **The stake is frozen on the run row** (`StakeGold`). Spending or earning mid-run changes no later price.
 - **Quote guard:** the descend request carries `QuotedStake` from the view. If the server's own stake is **higher**, it answers `PriceChanged` with a fresh view and changes nothing. The server never charges the client's number. It only refuses to charge more than the player was shown, because held gold, and so the stake, rises with income between view and press.
@@ -89,6 +91,49 @@ A small holder (1M gold, r5): the stake is 250k and floor 12 costs about 1.25M, 
 
 Phase 2 asserts these bands (§6).
 
+### 3.4 The 7-day gold high-water mark (owner decision, final)
+
+This is the persistence spec the stake depends on.
+
+**Table:** `player_gold_daily_high` (snake_case `[Table]`; add it to `CURRENT_IMPLEMENTATION_STATE.md` §3):
+
+- `PlayerId bigint`, `DayUtc date`, `MaxGold bigint`;
+- PK `(PlayerId, DayUtc)`.
+
+It holds **one row per player per UTC day**, and at most 8 rows per player.
+
+**Written by the durable checkpoint path, never by the Redis frame.**
+
+- `StateCheckpointManager.FlushState` (the Postgres checkpoint; `TrackState`'s Redis frame does **not** write it) upserts
+  `INSERT ... ON CONFLICT ("PlayerId","DayUtc") DO UPDATE SET "MaxGold" = GREATEST(player_gold_daily_high."MaxGold", EXCLUDED."MaxGold")`
+  with `MaxGold = state.CurrentGold`, the payload's live balance, which already includes gold not yet banked through `RedisPendingGoldDelta`. It does this **inside the checkpoint's own transaction**, so a failed flush writes nothing.
+- The same statement deletes that player's rows with `DayUtc < today - 7`, lazily.
+- CLAUDE.md: "A Redis frame is not a checkpoint". The frame is twelve fields and this is not one of them, deliberately.
+
+**Also sampled:**
+
+- **(a) at login hydration**, from the gold row that was just read, which covers a player whose wealth arrived offline;
+- **(b) inside `DescendAsync`**, from the locked gold row before the stake is computed. This path is authoritative even when no checkpoint has run today.
+
+**Read:** `wealth = max(lockedGold, SELECT max("MaxGold") FROM player_gold_daily_high WHERE "PlayerId" = @p AND "DayUtc" >= today - 6)`. That covers 7 UTC days including today.
+
+**Why daily rows and not one column:**
+
+- a single "max ever" never decays, so a player who really did spend down would pay on old wealth for ever;
+- a single "max since N" cannot roll.
+
+Eight small rows per player is the cheapest honest rolling window.
+
+**Cost:** one upsert per checkpoint per online player. That is the same order of work as the checkpoint's existing `PlayerRecords` write, and adds no new connection or loop, so no `StartCron`.
+
+**Tests:**
+
+- a flush at 10M then a mail-out to 1M still prices the stake on 10M for 7 days, and on the lower value from day 8;
+- a Redis-frame-only tick writes no row;
+- a failed flush (rolled back) writes no row;
+- the week's rows cap at 8;
+- login hydration records offline wealth.
+
 ## 4. Rewards: records, titles, the board
 
 **Records:**
@@ -118,7 +163,7 @@ Phase 2 asserts these bands (§6).
     | `deep_40` | 40 | "Where No Bell Rings" |
     | `deep_50` | 50 | "The Bottomless" |
 
-  - Names are a proposal; the owner may rename (§8).
+  - The names are final (owner, 2026-09-24). A later rename touches only `TitleRegistry`.
   - A title is granted in the same transaction as the record that earned it.
 - **REST, not the wire:**
   - `GET /api/v1/player/titles` returns the earned titles and the active one;
@@ -146,7 +191,7 @@ Phase 2 asserts these bands (§6).
 - **Migration `AddTheDeep`** (additive):
   - `DelveRunRecords`: `IsDeep bool default false`, `StakeGold bigint default 0`, `LanternsBought int default 0`;
   - `PlayerRecords`: `DelveDeepestFloor int default 0`, `DelveDeepestThisWeek int default 0`, `DelveDeepestThisWeekAtUtc timestamptz null`, `ActiveTitleSlug varchar(32) null`;
-  - new table `player_titles`.
+  - new tables `player_titles` and `player_gold_daily_high` (§3.4).
   - Migrations run on the container ENTRYPOINT. Apply locally with `--migrate` before signing in.
 - **REST:**
   - `POST /api/v1/delve/deep/descend { QuotedStake }` (from the bottom: bank + stake + toll(9); from a cleared Deep floor: toll(d+1));
@@ -178,7 +223,33 @@ Phase 2 asserts these bands (§6).
 - **Surface:** `POST /api/v1/patronage/pledge { Levels: 1 }` (the server prices it; a `QuotedPrice` guard as in the Deep) and a panel in the Village (Great Hall).
 - **Not a sole source of cosmetics:** Deep titles exist first, so Patronage is not the only way to look distinguished (the pay-to-look risk in the brief).
 
-## 8. Open questions for the owner (short)
+## 8. Owner answers (2026-09-24, final)
 
-1. **Title names.** Keep the six proposed Deep titles (§4), or supply your own (Czech folk names, like the breeding names)?
-2. **Parking gold with an alt.** Mailing gold to an alt before descending lowers the stake to the region floor. Accept it for v1 (recommended: today the only hoarder is you), or base the stake on the maximum gold held over the last 7 days?
+1. **Title names:** use the six proposed Deep titles (§4). The owner may rename them later. Names live only in `TitleRegistry`, keyed by slug, so a rename is a one-line change that touches no earned row.
+2. **The stake is priced on the maximum gold held over the last 7 days** (§3.1, §3.4).
+
+## 9. Standalone defect: combat gold pays 100% after every restart (may be pulled forward as its own fix)
+
+**Files:**
+
+| File | What |
+|---|---|
+| `server/FolkIdle.Server/Engine/GlobalEngineState.cs:11` | `public static volatile int GlobalGoldDropMultiplier = 100;` |
+| `server/FolkIdle.Server/Engine/EcoTelemetryEngine.cs:~36-55` (loop), `~152-167` (the assignments) | the only writer |
+| `server/FolkIdle.Server/Domain/Combat/SimulationEngine.cs:~4608` | reader, live kills |
+| `server/FolkIdle.Server/Engine/OfflineSimulationEngine.cs:~717` | reader, offline catch-up |
+
+**What happens:**
+
+- The multiplier starts at **100** on every process start.
+- The only thing that lowers it to the value production has run on since 2026-08-05 (75) is `EcoTelemetryEngine.ExecuteAuditAsync`, when the audit ratio falls outside `[0.85, 1.15]`. It always does today (about 761).
+- The audit loop runs a pass at start and then every 10 minutes. Its `catch (Exception)` only logs, so **if the first pass throws** (for example a pooler refusal, `EMAXCONNSESSION`, the documented failure mode on Supabase), the multiplier stays at 100 **until the next successful pass, 10 minutes or more later**.
+- During that window every live kill and every offline catch-up computed at login pays **4/3 of normal combat gold**. After a deploy, every returning player's offline catch-up is computed in exactly that window.
+
+**Fix:** §2 point 3. Make it a named constant (`EconomyDecisions.CombatGoldPercent = 75`), delete the mutable field, and stop the audit from writing it.
+
+**The test pins it:**
+
+- the per-kill gold on a freshly constructed engine, before any audit, is the 75% value;
+- the audit, in or out of band, leaves it unchanged;
+- no assignment to `GoldDropMultiplier` exists in the tree.

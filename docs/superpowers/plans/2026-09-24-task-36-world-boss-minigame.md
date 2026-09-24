@@ -95,6 +95,11 @@ Practice touches no attempt, no damage, no shared state and no wire. The owner c
   - `BreakTarget` picks the first non-weak, unbroken plate in tap order with class Plate or better, and returns null for Glance-only or weak-only attempts.
   - `RevealByElimination` is true exactly when the mask covers the four non-weak plates.
   - `P` is 3.0 for all-weak, 1.0 for none, and the mean in between.
+  - **The auto-strike floor (spec §3.2):**
+    - `Auto` is the best plate multiplier among the plates struck with Plate class or better, and 1.0 for Glance-only or empty attempts;
+    - `played = max(M x P, Auto)`;
+    - a poor run with one weak-plate hit pays at least 3.0;
+    - a strong run pays `M x P` when that is larger.
 - [ ] **Step 5: Implement** until green. `AngleAt` integrates the segments from `StartAngleDeg`, modulo 360. The class is computed from the offset inside the 72 degree sector (rivet bands `[0, 3)` and `(69, 72]`, seam `|offset - 36| <= 6`). Tolerance samples every 5 ms, restricted to the exact-tap plate.
 - [ ] **Step 6: The ledger** (`WorldBossStrikeLedgerTests`). Print, and **assert**, each of:
   - `Cap <= 2.0`;
@@ -103,7 +108,8 @@ Practice touches no attempt, no damage, no shared state and no wire. The owner c
   - `M(0) == Floor`;
   - `M(SaturationScore) == Cap`;
   - `P <= WeakPlateDamageMultiplier == 3.0`;
-  - `M x P <= 6.0`;
+  - `M x P <= 6.0`, and `played = max(M x P, Auto) <= 6.0`;
+  - **playing never pays less than auto-striking the same plate**: for every landing combination in a generated sample, `played >= Auto`;
   - the Giantslayer cap x 6.0 stays under a stated `WorldBossMaxStrikeFactor` constant (compute Giantslayer's cap from its registry; do not hard-code it);
   - a random-tap simulation (fixed seed, 20,000 attempts) has mean `M` in [1.25, 1.45];
   - a "two reads + random" simulation has mean `M` in [1.65, 1.85].
@@ -116,6 +122,8 @@ Practice touches no attempt, no damage, no shared state and no wire. The owner c
   - the interrupt count is in {2, 3};
   - the placement rules of spec §3 hold;
   - **each of the 5 plates' seams passes the impact point at least 3 times in non-frozen time**. A plate that never comes round makes the counter the only way to hit it, which is a broken schedule.
+  - **Enraged schedules (spec §3.4):** `Generate(rng, practice, enraged: true)` gives speeds in [120, 260], durations in [500, 1,600], exactly 3 interrupts and `ResponseCloseMs = 850`, and meets the same seam-pass rule. The ledger adds that the mean `M` for "3 reads + random" on the enraged schedule is at least 1.75.
+  - `Enraged` is decided by the caller from `CurrentHp <= 0.25 x MaxHp` **at issue** and written into the schedule. Test the boundary (exactly 25% is enraged).
 - [ ] **Step 8:** Stop the server, then `dotnet test server/FolkIdle.Server.Tests/FolkIdle.Server.Tests.csproj --filter "FullyQualifiedName~ShieldWheel|FullyQualifiedName~WorldBossStrikeLedger"`. Expected: PASS.
 - [ ] **Step 9: Commit** `feat(world-boss): shield wheel and parry rules, pure, scored and ledgered`.
 
@@ -203,7 +211,9 @@ Practice touches no attempt, no damage, no shared state and no wire. The owner c
 - Create: `server/FolkIdle.Server.Tests/WorldBossStrikeIntegrationTests.cs` (Testcontainers)
 
 - [ ] **Step 1: Failing integration tests.** Force the weak plate through the snapshot, as `WorldBossArmourTests` does. Then:
-  - a wheel strike reduces HP by exactly `ComputeAppliedDamage(hp, A x G x M x P)`, where `A` is the payload's attack;
+  - a wheel strike reduces HP by exactly `ComputeAppliedDamage(hp, A x G x max(M x P, Auto))`, where `A` is the payload's attack;
+  - a poor run that landed one spear on the (forced) weak plate deals at least the damage of an auto-strike on it;
+  - a challenge issued at 24% HP carries `Enraged: true`, and one at 26% does not;
   - `AttemptCount` increments;
   - `_playerDamageMap` and the Redis hash receive the same applied damage;
   - the break rule breaks exactly the expected plate, and a weak hit does **not** reveal;
@@ -301,6 +311,5 @@ Practice touches no attempt, no damage, no shared state and no wire. The owner c
 
 ## What would change this plan
 
-- **The owner answers spec §9 question 1 with "floor at auto-strike":** add `max(played, autoValue(counterPlate))` inside `ExecuteAttackAsync`, plus a ledger assertion.
-- **The owner wants difficulty to rise with lost HP (spec §9 question 3):** `Generate` takes a `hpFraction` argument, and the property test gains a phase dimension.
+- The owner's follow-up answers (the auto-strike floor, and the enraged wheel in the last 25% of HP) are already in Tasks 1.1 and 2.1. There are no open design questions left.
 - **Guild Wars (task 38) wants the minigame later:** `ShieldWheelScorer` and `WorldBossStrikeRules.Multiplier` are pure and reusable, and the war resolver takes an optional bounded `M`. Nothing here needs to change for that.
