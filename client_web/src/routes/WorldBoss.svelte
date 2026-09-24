@@ -4,9 +4,10 @@
   // shared by everyone - the one place in this game where a player's progress
   // is visible to strangers in real time.
   //
-  // Missing from the web client entirely until the 2026-08-02 audit. Three of
-  // its rules are enforced by SILENT ROLLBACK rather than a message, so most of
-  // this screen exists to say out loud what the server will not.
+  // Missing from the web client entirely until the 2026-08-02 audit. Its rules
+  // used to be enforced by SILENT ROLLBACK; since task 25 the server answers
+  // every refused strike with a result code, and this screen still says each
+  // rule out loud before the player has to press anything.
 
   import {
     attackWorldBoss,
@@ -30,12 +31,6 @@
   const endEpoch = $derived(Number(snap?.WorldBossEventEndEpoch ?? 0));
 
   const hpPct = $derived(maxHp > 0 ? Math.max(0, Math.min(1, currentHp / maxHp)) : 0);
-
-  // Auto-eat food depletion makes the server discard the attack without a
-  // word, so the larder is checked on exactly the fields it checks.
-  const larderEmpty = $derived(
-    !snap || (snap.Food1_Count <= 0 && snap.Food2_Count <= 0 && snap.Food3_Count <= 0),
-  );
 
   const attemptsLeft = $derived(Math.max(0, MAX_BOSS_ATTEMPTS - attempts));
 
@@ -136,18 +131,58 @@
     return () => clearInterval(id);
   });
 
+  // Modul: ONE STRIKE IN FLIGHT AT A TIME (task 25). A double-tap on a phone
+  // used to send two strikes inside 100 ms, and the server answered the second
+  // by DISCONNECTING. The server no longer does, but a second tap before the
+  // first is answered is never what the player meant: the button waits for
+  // the attempt count to move, or five seconds, whichever is first. A refused
+  // strike reports itself through the result toast in the meantime.
+  let striking = $state(false);
+  let attemptsAtStrike = 0;
+  let strikeTimer: ReturnType<typeof setTimeout> | undefined;
+
+  $effect(() => {
+    if (striking && attempts !== attemptsAtStrike) {
+      striking = false;
+      clearTimeout(strikeTimer);
+    }
+  });
+
+  $effect(() => () => clearTimeout(strikeTimer));
+
   function attack() {
+    if (striking) return;
     const outcome = attackWorldBoss({
       plateIndex: selectedPlate,
       eventState,
       bossCurrentHp: currentHp,
       attemptCount: attempts,
-      larderEmpty,
       sessionEndsEpoch,
     });
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    striking = true;
+    attemptsAtStrike = attempts;
+    clearTimeout(strikeTimer);
+    strikeTimer = setTimeout(() => (striking = false), 5000);
     play('playerHit');
   }
+
+  // Modul: WHY THE BUTTON IS GREY, said NEXT TO the button (task 25). The
+  // owner pressed a grey Strike on a day between encounters and read it as
+  // broken: the reason was at the top of the panel, a screen away on a phone,
+  // and nothing beside the button connected the two.
+  const strikeBlockedReason = $derived.by(() => {
+    if (eventState !== BossEventState.Active) {
+      return `The boss is not here right now. ${returnsLabel || 'It returns with the next encounter.'}`;
+    }
+    if (currentHp <= 0) return 'The boss has been defeated. It returns with the next encounter.';
+    if (attemptsLeft === 0) {
+      return `You have used all ${MAX_BOSS_ATTEMPTS} strikes. They refill when the next encounter opens.`;
+    }
+    if (sessionExpired) return 'Your battle session has closed until the next encounter.';
+    if (striking) return 'Striking...';
+    return '';
+  });
 
   const stateLabel = $derived(
     eventState === BossEventState.Active
@@ -209,22 +244,10 @@
       </p>
     {/if}
 
-    {#if larderEmpty}
-      <!-- The single most important sentence on this screen. With an empty
-           larder the server ACCEPTS the attack, applies nothing, and reports
-           nothing - so without this the player just watches a working button
-           do nothing forever. -->
-      <p class="warn" role="status">
-        <strong>Your larder is empty.</strong> An attack sent now is discarded by
-        the server without applying any damage and without telling you. Stock
-        food before attacking.
-      </p>
-    {/if}
-
     {#if sessionExpired && attemptsLeft > 0}
-      <!-- The second most important sentence on this screen, for the same
-           reason as the larder warning above it: the server accepts the attack
-           and applies nothing. -->
+      <!-- Said before a strike is sent. The server answers a strike after the
+           session with its own message now (task 25), but a player should not
+           have to spend a tap to learn what the screen already knows. -->
       <p class="warn" role="status">
         <strong>Your battle session has closed.</strong> It lasts
         {BOSS_SESSION_CAP_SECONDS / 60} minutes from your first strike, and your
@@ -288,11 +311,14 @@
 
     <button
       class="attack"
-      disabled={eventState !== BossEventState.Active || attemptsLeft === 0 || larderEmpty || currentHp <= 0 || sessionExpired}
+      disabled={strikeBlockedReason !== ''}
       onclick={attack}
     >
       Strike plate {selectedPlate + 1}
     </button>
+    {#if strikeBlockedReason}
+      <p class="strike-reason dim tiny" role="status">{strikeBlockedReason}</p>
+    {/if}
   </section>
 </div>
 
@@ -466,6 +492,11 @@
     width: 100%;
     padding: 0.6rem;
     font-weight: 700;
+  }
+
+  .strike-reason {
+    margin: 0.4rem 0 0;
+    text-align: center;
   }
 
   .attack:not(:disabled) {
