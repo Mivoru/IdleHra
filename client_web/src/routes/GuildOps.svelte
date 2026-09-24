@@ -72,7 +72,7 @@
 
   $effect(() => {
     const d = warLock.data;
-    setGuildWarLockProgress(d && !d.Unlocked ? { players: d.QualifyingPlayers, required: d.RequiredPlayers } : null);
+    setGuildWarLockProgress(d && !d.Unlocked ? { players: d.QualifyingPlayers, required: d.RequiredPlayers, guilds: d.QualifyingGuilds, requiredGuilds: d.RequiredGuilds } : null);
   });
 
   // Modul: the three war axes are mirrored for both sides on the hot path, so

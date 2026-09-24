@@ -65,6 +65,22 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
 
+            // Modul: A SPENT BUDGET IS REFUSED HERE, IN MEMORY. Opcode 32 left
+            // the 100 ms double-tap rule in task 25, so without this every
+            // press after the third was a Task.Run holding a pooled connection
+            // in a Serializable transaction on the one row every player
+            // contends for - enough spam fills the bounded pool and starves
+            // the loot and checkpoint workers behind it. The payload count is
+            // reset to 0 for every online player when a window opens, and the
+            // engine still enforces the cap inside its transaction.
+            if (currentPayload.WorldBossAttemptCount >= WorldBossEngine.MaxAttemptsPerEncounter)
+            {
+                ctx.PlayerRegistry.EnqueueCommandResult(
+                    currentPayload.PlayerId,
+                    (byte)FolkIdle.Server.Network.CommandResultCode.WorldBossNoAttemptsLeft);
+                return;
+            }
+
             // Modul: skill tree, Giantslayer. The most generous
             // branch in the tree - 40% at cap - because the world
             // boss is its own activity on its own timer and cannot

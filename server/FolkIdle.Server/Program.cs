@@ -462,6 +462,18 @@ var hallOfAncestorsEngine = new HallOfAncestorsEngine(serviceProvider, playerReg
 var craftingEngine = new CraftingEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), playerRegistry, serviceProvider.GetRequiredService<RetryingDbContextOptions>(), guildWarEngine);
 var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
 worldBossEngine.EnsureSnapshotAsync().GetAwaiter().GetResult();
+// Modul: the Guild War unlock cache starts Locked and the matchmaking pass is
+// its only refresher, so a restart of an ALREADY-unlocked server refused war
+// commands with "locked" until that first pass ran - minutes, if the database
+// refused it. Warm it here; a failure only leaves the old behaviour.
+try
+{
+    guildWarEngine.Unlock.RefreshAsync(serviceProvider).GetAwaiter().GetResult();
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Guild War unlock warm-up failed (the matchmaking pass will retry): {ex.Message}");
+}
 var villageManagementEngine = new VillageManagementEngine(serviceProvider, playerRegistry);
 var guildMatchmakingEngine = new GuildMatchmakingEngine(serviceProvider);
 var legacyStoreEngine = new LegacyStoreEngine(serviceProvider, playerRegistry);

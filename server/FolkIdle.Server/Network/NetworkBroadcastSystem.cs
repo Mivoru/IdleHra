@@ -9586,7 +9586,18 @@ namespace FolkIdle.Server.Network
             }
         }
         internal static bool DevToolsEnabled()
-            => Environment.GetEnvironmentVariable("FOLKIDLE_DEV_TOOLS") == "1";
+            => DevToolsEnabled(
+                Environment.GetEnvironmentVariable("FOLKIDLE_DEV_TOOLS"),
+                Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT"));
+
+        // Modul: the flag alone was a convention - the box's real .env is not
+        // versioned, and one stray FOLKIDLE_DEV_TOOLS=1 there would let any
+        // signed-in guest open or close the world boss window and wipe every
+        // player's attempts. Production (ops/oracle sets DOTNET_ENVIRONMENT)
+        // refuses the tools whatever the flag says.
+        internal static bool DevToolsEnabled(string? flag, string? dotnetEnvironment)
+            => flag == "1"
+               && !string.Equals(dotnetEnvironment, "Production", StringComparison.OrdinalIgnoreCase);
 
         private sealed class DevWorldBossWindowRequest
         {

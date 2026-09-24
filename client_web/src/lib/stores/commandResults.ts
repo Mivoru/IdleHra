@@ -102,19 +102,27 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;
 
-let guildWarLockProgress: { players: number; required: number } | null = null;
+type GuildWarLockProgress = { players: number; required: number; guilds: number; requiredGuilds: number };
+
+let guildWarLockProgress: GuildWarLockProgress | null = null;
 
 /**
  * The Guild screen reports the population it last fetched, so a refused war
  * command can say how far away the unlock is rather than only that it exists.
  */
-export function setGuildWarLockProgress(progress: { players: number; required: number } | null): void {
+export function setGuildWarLockProgress(progress: GuildWarLockProgress | null): void {
   guildWarLockProgress = progress;
 }
 
 export function messageFor(code: number): string {
   if (code === COMMAND_RESULT_GUILD_WARS_LOCKED && guildWarLockProgress) {
-    const { players, required } = guildWarLockProgress;
+    // Modul: the floor has TWO conditions. Naming only players read "now
+    // 57/50" - apparently met - while the server kept refusing for want of
+    // guilds, so once the players are there the sentence names the guilds.
+    const { players, required, guilds, requiredGuilds } = guildWarLockProgress;
+    if (players >= required) {
+      return `Guild Wars unlock once ${requiredGuilds} guilds qualify (now ${guilds}/${requiredGuilds}).`;
+    }
     return `Guild Wars unlock at ${required} players (now ${players}/${required}).`;
   }
   return COMMAND_RESULT_MESSAGES[code] ?? `Rejected (code ${code}).`;

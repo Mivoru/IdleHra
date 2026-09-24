@@ -275,6 +275,51 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task ASpentBudget_IsRefusedInMemory_WithoutOpeningATransaction()
+        {
+            // Opcode 32 is outside the 100 ms rule, so spam after the third
+            // strike must not reach ExecuteAttackAsync: the payload says the
+            // budget is spent, and no attempt row may appear for this player.
+            const long playerId = 970_025_009L;
+            var (engine, boss) = CreateEngine();
+            await ClearAttemptsAsync(playerId);
+            await boss.OpenManualWindowAsync(900);
+
+            try
+            {
+                engine.Start();
+                var spent = Striker(playerId);
+                spent.WorldBossAttemptCount = (byte)WorldBossEngine.MaxAttemptsPerEncounter;
+                engine.InjectVirtualPlayer(spent);
+                engine.InjectBenchmarkCommand(playerId, BrowserStrike(plate: 0));
+
+                Assert.True(await WaitAsync(() => HasResult(engine, playerId, CommandResultCode.WorldBossNoAttemptsLeft)),
+                    "A strike with a spent budget was not answered with WorldBossNoAttemptsLeft.");
+                Assert.True(engine.IsActivePlayerPresent(playerId));
+                Assert.Null(await AttemptAsync(playerId));
+            }
+            finally
+            {
+                engine.Stop();
+                await boss.CloseManualWindowAsync();
+            }
+        }
+
+        [Theory]
+        [InlineData(null, null, false)]
+        [InlineData("0", "Development", false)]
+        [InlineData("1", null, true)]
+        [InlineData("1", "Development", true)]
+        [InlineData("1", "Production", false)]
+        [InlineData("1", "production", false)]
+        public void DevTools_AreClosedUnlessFlagged_AndAlwaysClosedInProduction(string? flag, string? env, bool expected)
+        {
+            // The dev window route can wipe every player's attempts; a stray
+            // flag in the box's unversioned .env must not open it.
+            Assert.Equal(expected, FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled(flag, env));
+        }
+
+        [Fact]
         public async Task AStrikeAfterTheSessionClosed_SaysSo()
         {
             const long playerId = 970_025_006L;

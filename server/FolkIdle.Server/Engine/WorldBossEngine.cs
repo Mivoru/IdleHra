@@ -67,7 +67,7 @@ namespace FolkIdle.Server.Engine
         /// <summary>On the wire while nobody has landed on the weak point yet.</summary>
         public const byte WeakPlateHidden = 255;
         private const long BaseHp = 50000000L;
-        private const int MaxAttemptsPerEncounter = 3;
+        internal const int MaxAttemptsPerEncounter = 3;
 
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
@@ -704,18 +704,31 @@ namespace FolkIdle.Server.Engine
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                _playerDamageMap.AddOrUpdate(playerId, appliedDamage, (_, existing) => existing + appliedDamage);
-                if (_redis?.IsConnected == true)
-                {
-                    await _redis.GetDatabase().HashIncrementAsync(ContributionKey(bossId), playerId, appliedDamage);
-                }
+                // Modul: PAST THE COMMIT THE STRIKE HAS LANDED, whatever
+                // happens next. These steps used to share the catch below, so
+                // a Redis timeout here answered "nothing was spent - try again"
+                // for an attempt already in the database, and skipped the
+                // notification that spends the pip. The notification goes
+                // FIRST and nothing after the commit may turn Landed into Failed.
                 _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
                 {
                     PlayerId = playerId,
                     AttemptCount = updatedAttemptCount,
                     SessionEndsEpoch = attemptSessionStart + BattleSessionCapSeconds
                 });
+                _playerDamageMap.AddOrUpdate(playerId, appliedDamage, (_, existing) => existing + appliedDamage);
                 RefreshLocalSnapshot(snapshot);
+                try
+                {
+                    if (_redis?.IsConnected == true)
+                    {
+                        await _redis.GetDatabase().HashIncrementAsync(ContributionKey(bossId), playerId, appliedDamage);
+                    }
+                }
+                catch (Exception redisEx)
+                {
+                    Console.WriteLine($"World boss contribution mirror failed for player {playerId} (strike landed): {redisEx.Message}");
+                }
                 return WorldBossAttackOutcome.Landed;
             }
             catch (Exception ex)

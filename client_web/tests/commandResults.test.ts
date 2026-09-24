@@ -160,8 +160,12 @@ describe('GuildWarsLocked (37)', () => {
     setGuildWarLockProgress(null);
     expect(messageFor(COMMAND_RESULT_GUILD_WARS_LOCKED)).toBe(COMMAND_RESULT_MESSAGES[37]);
 
-    setGuildWarLockProgress({ players: 12, required: 50 });
+    setGuildWarLockProgress({ players: 12, required: 50, guilds: 0, requiredGuilds: 4 });
     expect(messageFor(COMMAND_RESULT_GUILD_WARS_LOCKED)).toBe('Guild Wars unlock at 50 players (now 12/50).');
+
+    // Enough players but too few guilds must not read as "now 57/50".
+    setGuildWarLockProgress({ players: 57, required: 50, guilds: 2, requiredGuilds: 4 });
+    expect(messageFor(COMMAND_RESULT_GUILD_WARS_LOCKED)).toBe('Guild Wars unlock once 4 guilds qualify (now 2/4).');
     setGuildWarLockProgress(null);
   });
 });
