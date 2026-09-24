@@ -370,6 +370,11 @@ namespace FolkIdle.Server.Engine
                             goldAttachment = 10000L;
                         }
 
+                        // Modul: the drop record (task 26) counts the reward
+                        // HERE, where it is created as mail - the claim that
+                        // later turns mail into a row is a move, not a creation.
+                        await DropRecord.RecordOneAsync(db, participantId, DropSource.WorldBoss, 0,
+                            null, "perun_avatar_reward_token", 5, 5);
                         db.MailboxInstances.Add(new MailboxInstance
                         {
                             PlayerId = participantId,

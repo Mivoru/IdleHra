@@ -2820,6 +2820,11 @@ namespace FolkIdle.Server.Domain.Combat
                     IsAffixLocked = false
                 });
 
+                // Modul: the drop record (task 26). The chronicle's pieces top
+                // out at tier 5, so counts only; one upsert for both rewards.
+                var chronicleTally = new DropTally();
+                chronicleTally.Count(DropSource.ChroniclePass, 0, qualityTier);
+
                 // Modul: Comprehensive Game System Audit, Part 4.2/4.3.
                 // Premium rewards now gate on a real purchased unlock
                 // (pass.PremiumUnlocked, set by ExecutePassPurchaseAsync
@@ -2841,6 +2846,7 @@ namespace FolkIdle.Server.Domain.Combat
                         AffixPayload = "{}",
                         IsAffixLocked = false
                     });
+                    chronicleTally.Count(DropSource.ChroniclePass, 0, qualityTier);
 
                     int diamondReward = ChroniclePassEconomy.GetPremiumDiamondReward((int)milestoneIndex);
                     if (diamondReward > 0)
@@ -2859,6 +2865,7 @@ namespace FolkIdle.Server.Domain.Combat
                 });
 
                 await context.SaveChangesAsync();
+                await DropRecord.WriteAsync(context, playerId, chronicleTally, DateTime.UtcNow);
                 await transaction.CommitAsync();
                 return true;
             }

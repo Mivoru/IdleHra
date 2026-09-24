@@ -303,6 +303,16 @@ namespace FolkIdle.Server.Tests
             var toTheTop = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 13, forgeEngine);
             Assert.Equal(ForgeSplicingResult.Success, toTheTop);
 
+            // Task 26's drop record: a fusion leaves a Forge row saying what it
+            // started from, so "dropped or forged?" is a query.
+            await using (var record = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.True(await record.NotableItemEvents.AsNoTracking().AnyAsync(e =>
+                    e.PlayerId == DbSeeder.PlayerHighId && e.Source == (short)DropSource.Forge
+                    && e.RolledTier == 13 && e.FinalTier == 14 && e.BaseItemId == starterBaseId
+                    && e.EquipmentInstanceId != null));
+            }
+
             // 14 is the top and stays the top.
             var pastTheTop = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 14, forgeEngine);
             Assert.Equal(ForgeSplicingResult.MaxTierReached, pastTheTop);
@@ -9536,7 +9546,7 @@ namespace FolkIdle.Server.Tests
                 // becomes a row and the assertions below still count what they always
                 // counted. Auto-salvage has its own coverage; switching it on here would
                 // silently turn these into tests of the salvage path instead.
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f, DropSource.LiveKill })!;
             }
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
@@ -12104,7 +12114,7 @@ namespace FolkIdle.Server.Tests
                 // becomes a row and the assertions below still count what they always
                 // counted. Auto-salvage has its own coverage; switching it on here would
                 // silently turn these into tests of the salvage path instead.
-                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f })!;
+                await (Task)processMethod.Invoke(combatLootEngine, new object[] { testPlayerId, monsterId, 0f, 0f, 0, 1, false, 0, 0f, DropSource.LiveKill })!;
             }
 
             int publishedCount = 0;

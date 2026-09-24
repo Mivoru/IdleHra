@@ -90,6 +90,18 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 | MonsterCodexEntry              | monster_codex_entries           |
 | ConversationMessage            | conversation_messages           |
 | FeatureUnlock                  | feature_unlocks                 |
+| LootTierDailyCount             | loot_tier_daily_counts          |
+| NotableItemEvent               | notable_item_events             |
+
+The last two are the **drop record** (task 26): a count per (player, UTC day,
+source, region, final tier) for every equipment piece created, and a row for
+every Legendary+ piece, every forge fusion and every first-clear trophy. Both
+are written only through `Engine/DropRecord.cs`, inside the transaction that
+creates the piece; its header lists every `EquipmentInstances` creation site
+and the four deliberately not recorded (market, mail claim, starter kit, dev
+fixture), and `DropRecordTests.EveryCreationSite_RecordsOrIsExcludedOnPurpose`
+fails on a new one. No pruning loop: `loot_tier_daily_counts` is bounded by
+days x sources x regions x tiers hit; revisit `notable_item_events` at ~1M rows.
 
 (`MentorshipAcademyAssignment` and `VillageResident`/`VillageInfrastructure`
 carry `[Table(...)]` overrides too, but to their default PascalCase names -

@@ -375,6 +375,13 @@ namespace FolkIdle.Server.Domain.Economy
                 // still roll, because even Normal grants one (GDD 5.2).
                 int regionTier = ResolveRegionTierForItem(recipe.ResultItemId);
 
+                // Modul: the drop record (task 26) - a craft creates pieces too,
+                // always Normal, so counts only. One upsert for the batch,
+                // inside the craft's transaction.
+                var craftTally = new DropTally();
+                for (int i = 0; i < quantityProduced; i++) craftTally.Count(DropSource.Craft, regionTier, RarityTier.Normal);
+                await DropRecord.WriteAsync(context, playerId, craftTally, DateTime.UtcNow);
+
                 for (int i = 0; i < quantityProduced; i++)
                 {
                     var rolled = new Dictionary<string, int>();

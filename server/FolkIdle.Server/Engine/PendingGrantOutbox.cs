@@ -96,12 +96,17 @@ namespace FolkIdle.Server.Engine
         /// Persists an already-resolved equipment drop for retry. Same shape
         /// as EnqueueCommodityDeltasAsync - see PendingGrantPayloadKind.EquipmentGrant.
         /// </summary>
-        public static async Task EnqueueEquipmentGrantAsync(
+        public static Task EnqueueEquipmentGrantAsync(
             FolkIdleDbContext db, long playerId, int sourceType, string baseItemId, int qualityTier, string affixPayload)
+            => EnqueueEquipmentGrantAsync(db, playerId, sourceType,
+                new EquipmentGrantPayload { BaseItemId = baseItemId, QualityTier = qualityTier, AffixPayload = affixPayload });
+
+        /// <summary>The same, carrying the drop record's origin fields (task 26).</summary>
+        public static async Task EnqueueEquipmentGrantAsync(
+            FolkIdleDbContext db, long playerId, int sourceType, EquipmentGrantPayload payload)
         {
             await EnsureSeededAsync(db, sourceType);
 
-            var payload = new EquipmentGrantPayload { BaseItemId = baseItemId, QualityTier = qualityTier, AffixPayload = affixPayload };
             long sequence = NextSourceSequence(sourceType);
             long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             string payloadJson = JsonSerializer.Serialize(payload);
@@ -150,14 +155,32 @@ namespace FolkIdle.Server.Engine
 
                 case PendingGrantPayloadKind.EquipmentGrant:
                     var grant = JsonSerializer.Deserialize<EquipmentGrantPayload>(row.PayloadJson)!;
-                    db.EquipmentInstances.Add(new EquipmentInstance
+                    var instance = new EquipmentInstance
                     {
                         BaseItemId = grant.BaseItemId,
                         PlayerId = row.PlayerId,
                         QualityTier = grant.QualityTier,
                         AffixPayload = grant.AffixPayload,
                         IsAffixLocked = false
-                    });
+                    };
+                    db.EquipmentInstances.Add(instance);
+
+                    // Modul: THE DROP RECORD (task 26). The failed transaction
+                    // rolled its counts back with it, so without this the record
+                    // under-counts exactly the drops the outbox saved. Recorded
+                    // as OutboxRetry in the caller's transaction, so it commits
+                    // with the piece. The original source is not lost: it is in
+                    // this row's payload, and the notable row keeps the roll's
+                    // own tier and luck.
+                    var tally = new DropTally();
+                    DateTime now = DateTime.UtcNow;
+                    tally.Count(DropSource.OutboxRetry, grant.RegionTier, grant.QualityTier);
+                    if (DropRecord.IsNotable(grant.QualityTier))
+                    {
+                        tally.Notable(row.PlayerId, DropSource.OutboxRetry, instance, grant.BaseItemId,
+                            grant.RolledTier > 0 ? grant.RolledTier : grant.QualityTier, grant.QualityTier, grant.LootLuckPct, now);
+                    }
+                    await DropRecord.WriteAsync(db, row.PlayerId, tally, now);
                     return true;
 
                 default:
@@ -172,5 +195,14 @@ namespace FolkIdle.Server.Engine
         public string BaseItemId { get; set; }
         public int QualityTier { get; set; }
         public string AffixPayload { get; set; }
+
+        // Modul: the drop record's origin fields (task 26). Absent - so 0 - on
+        // rows written before they existed; the replay treats 0 as "unknown"
+        // and still records the piece.
+        public int RegionTier { get; set; }
+        public int RolledTier { get; set; }
+        public float LootLuckPct { get; set; }
+        /// <summary>The DropSource the failed write would have recorded.</summary>
+        public short OriginalSource { get; set; }
     }
 }

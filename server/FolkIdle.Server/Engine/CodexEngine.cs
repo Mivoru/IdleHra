@@ -289,14 +289,21 @@ namespace FolkIdle.Server.Engine
                         int trophyRegion = ContentRegistry.GetMonsterRegionTier(key.MonsterId);
                         string trophyBaseId = ContentRegistry.GetItemBaseId(trophyItemId);
 
-                        dbContext.EquipmentInstances.Add(new Models.EquipmentInstance
+                        var trophy = new Models.EquipmentInstance
                         {
                             PlayerId = key.PlayerId,
                             BaseItemId = trophyBaseId,
                             QualityTier = Domain.Combat.BossFirstClearTrophy.QualityTier,
                             AffixPayload = Domain.Combat.BossFirstClearTrophy.BuildAffixPayload(trophyItemId, trophyRegion),
                             IsAffixLocked = false
-                        });
+                        };
+                        dbContext.EquipmentInstances.Add(trophy);
+
+                        // Modul: the drop record (task 26). A trophy is always
+                        // notable - it is the one Transcendent a player is given
+                        // rather than rolls, and must not be mistaken for a drop.
+                        await DropRecord.RecordOneAsync(dbContext, key.PlayerId, DropSource.FirstClearTrophy, trophyRegion,
+                            trophy, trophyBaseId, trophy.QualityTier, trophy.QualityTier, alwaysNotable: true);
 
                         Console.WriteLine(
                             $"First-clear trophy: player {key.PlayerId} earned a Transcendent {trophyBaseId} for beating monster {key.MonsterId}.");

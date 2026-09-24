@@ -455,6 +455,16 @@ namespace FolkIdle.Server.Engine
         // by the 500-request cap that also hid it.
         public bool SkipMaterialRoll;
 
+        // Modul: WHERE THIS REQUEST CAME FROM, for the drop record (task 26).
+        //
+        // ZERO MEANS LIVE KILL, like Kills above: the struct has no field
+        // initialisers, so a request built without this would otherwise record
+        // under a source that does not exist. Read it through RecordedSource,
+        // the one place 0 is mapped.
+        public DropSource Source;
+
+        public readonly DropSource RecordedSource => Source == 0 ? DropSource.LiveKill : Source;
+
         /// <summary>
         /// Builds a drop request from a payload and its combat stats. THE ONLY
         /// place loot luck is composed.
@@ -481,7 +491,8 @@ namespace FolkIdle.Server.Engine
             int monsterId,
             int kills,
             int bonusRarityTiers,
-            bool skipMaterialRoll)
+            bool skipMaterialRoll,
+            DropSource source = DropSource.LiveKill)
         {
             var odds = LootLuckBreakdown.From(in payload, in combatStats);
             return new CombatLootDropRequest
@@ -492,6 +503,7 @@ namespace FolkIdle.Server.Engine
                 BonusRarityTiers = bonusRarityTiers,
                 SkipMaterialRoll = skipMaterialRoll,
                 AutoSalvageBelowTier = payload.AutoSalvageBelowTier,
+                Source = source,
 
                 // Everything that shifts WHAT falls, summed into one figure -
                 // by LootLuckBreakdown, the only place the terms are named.
@@ -596,6 +608,9 @@ namespace FolkIdle.Server.Engine
         // Modul: Loot Event Feed staging buffer - see
         // ProcessMonsterLootDropAsync for why drops are held until commit.
         private readonly List<Network.ResponseLootDropPacket> _pendingDrops = new(8);
+
+        // Modul: the drop record (task 26) - see DropRecord.
+        private readonly DropTally _dropTally = new();
 
         // Modul: THE LOOT PATH HAD NO OBSERVABILITY AT ALL, and it cost a day.
         //
@@ -736,7 +751,8 @@ namespace FolkIdle.Server.Engine
                                 killsThisRequest,
                                 request.SkipMaterialRoll,
                                 request.AutoSalvageBelowTier,
-                                request.RarityElevationPct);
+                                request.RarityElevationPct,
+                                request.RecordedSource);
                         }
                         catch (Exception ex)
                         {
@@ -983,7 +999,7 @@ namespace FolkIdle.Server.Engine
         private async Task ProcessMonsterLootDropAsync(
             long playerId, int monsterId, float lootLuckPct, float materialQuantityPct,
             int bonusRarityTiers, int kills, bool skipMaterialRoll, int autoSalvageBelowTier,
-            float rarityElevationPct)
+            float rarityElevationPct, DropSource source = DropSource.LiveKill)
         {
             int monsterRegion = ContentRegistry.GetMonsterRegionTier(monsterId);
             if (monsterRegion < 1) monsterRegion = 1;
@@ -1005,6 +1021,11 @@ namespace FolkIdle.Server.Engine
             // request at a time), so the feed costs no per-kill allocation
             // once the list has grown to its steady-state size.
             _pendingDrops.Clear();
+
+            // Modul: the drop record's accumulator, reused like _pendingDrops
+            // (this worker is single-threaded). Cleared here as well as by the
+            // write, because a request that throws never reaches the write.
+            _dropTally.Clear();
 
             // What auto-salvage turned into gold across this whole request.
             // Accumulated rather than credited per roll: an offline catch-up
@@ -1083,7 +1104,8 @@ namespace FolkIdle.Server.Engine
                     // the materials roll above, so a kill can pay both, either or
                     // neither.
                     salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                        EquipmentDropChance, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
+                        EquipmentDropChance, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct,
+                        _dropTally, source));
 
                     // Regional bosses always drop one piece on top of that, which
                     // is the whole of what makes a boss kill worth walking to. It
@@ -1093,11 +1115,17 @@ namespace FolkIdle.Server.Engine
                     if (isRegionalBoss)
                     {
                         salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
-                            1.0, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct));
+                            1.0, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct,
+                            _dropTally, DropSource.BossGuarantee));
                     }
                 }
 
                 await dbContext.SaveChangesAsync();
+
+                // Modul: THE DROP RECORD (task 26) - one upsert for the whole
+                // request, however many kills it carried, inside the same
+                // transaction as the drops it counts.
+                await DropRecord.WriteAsync(dbContext, playerId, _dropTally, DateTime.UtcNow);
                 await transaction.CommitAsync();
 
                 // Modul: THE CENSUS IS GONE, and it was pure waste on the
@@ -1178,9 +1206,10 @@ namespace FolkIdle.Server.Engine
                 }
                 foreach (var grant in resolvedEquipmentGrants)
                 {
+                    // The whole payload, so the replay can record where the
+                    // drop came from (task 26's drop record).
                     await PendingGrantOutbox.EnqueueEquipmentGrantAsync(
-                        dbContext, playerId, PendingGrantSourceType.CombatLoot,
-                        grant.BaseItemId, grant.QualityTier, grant.AffixPayload);
+                        dbContext, playerId, PendingGrantSourceType.CombatLoot, grant);
                 }
             }
         }
@@ -1306,7 +1335,8 @@ namespace FolkIdle.Server.Engine
         private long TryRollEquipment(
             FolkIdleDbContext dbContext, long playerId, int monsterId, int monsterRegion,
             float lootLuckPct, double dropChance, List<EquipmentGrantPayload> resolvedEquipmentGrants,
-            int bonusRarityTiers = 0, int autoSalvageBelowTier = 0, float rarityElevationPct = 0f)
+            int bonusRarityTiers = 0, int autoSalvageBelowTier = 0, float rarityElevationPct = 0f,
+            DropTally? tally = null, DropSource source = DropSource.LiveKill)
         {
             if (Random.Shared.NextDouble() >= dropChance) return 0L;
 
@@ -1350,6 +1380,7 @@ namespace FolkIdle.Server.Engine
                 // Same valuation as a manual chest sale - one function, so
                 // salvaging and selling can never drift into two economies.
                 _salvagedOnTheWayIn++;
+                tally?.Count(source, monsterRegion, tier, salvaged: true);
                 return VillageChestEngine.ValueEquipment(baseItemId, tier);
             }
 
@@ -1367,14 +1398,24 @@ namespace FolkIdle.Server.Engine
             // loot a Legendary and never be able to wear, upgrade or sell it.
             //
             // This table is the chest's equipment half. It is unbounded now.
-            dbContext.EquipmentInstances.Add(new EquipmentInstance
+            var instance = new EquipmentInstance
             {
                 BaseItemId = baseItemId,
                 PlayerId = playerId,
                 QualityTier = tier,
                 AffixPayload = affixPayload,
                 IsAffixLocked = false
-            });
+            };
+            dbContext.EquipmentInstances.Add(instance);
+
+            if (tally != null)
+            {
+                tally.Count(source, monsterRegion, tier);
+                if (DropRecord.IsNotable(tier))
+                {
+                    tally.Notable(playerId, source, instance, baseItemId, rolledTier, tier, lootLuckPct, DateTime.UtcNow);
+                }
+            }
 
             // Modul: THE DURABLE RETRY OUTBOX (audit #18) - see the plain-data
             // accumulator declared at the top of ProcessMonsterLootDropAsync.
@@ -1383,7 +1424,11 @@ namespace FolkIdle.Server.Engine
             {
                 BaseItemId = baseItemId,
                 QualityTier = tier,
-                AffixPayload = affixPayload
+                AffixPayload = affixPayload,
+                RegionTier = monsterRegion,
+                RolledTier = rolledTier,
+                LootLuckPct = lootLuckPct,
+                OriginalSource = (short)source
             });
 
             _equipmentWritten++;
