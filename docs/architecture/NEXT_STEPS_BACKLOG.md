@@ -44,11 +44,19 @@ do next.
 
 The specs and plans for 36/37/38 are in `docs/superpowers/{specs,plans}/2026-09-24-*` (#24). Owner decisions are recorded in those specs.
 
-**Task 37, The Deep, is IN PROGRESS.** The work was stopped mid-work. No PR is open, nothing is merged, and the branches are pushed to origin, stacked:
+**Task 37, The Deep, is IN PROGRESS.** The work was stopped mid-work, and nothing from it is deployed.
 
-1. **`task37/phase0-income-profile`** (b430e04): Phase 0 Task 0.2, the income profile and the asserted sink table. It is a test-only change. **To do:** run the full suite, then open a PR.
-2. **`task37/phase1-the-deep`** (7b82480): Phase 1. Rules, the 7-day gold high-water mark, and migration `20260924212939_AddTheDeep` with the tables `delve_run`, player gold daily high, and player titles. It also carries the engine, REST, the Delve screen, and an exercise step. Its last commit says exercise round-trips it, but the full suite and the geometry checks **have not been confirmed**. **To do:** run the verify order (`dotnet test`, `exercise`, `check:clipping`, `check:touch`, `check:overlap`, `check:ratchet`), open a PR, review, merge and deploy. **The migration is additive**, but take the usual look before deploying.
-3. **`task37/phase2-lanterns-titles-board`** (6047bb2, a **WIP commit**): lanterns, `TitleEngine`/`TitleRegistry`, `DeepestBoard`, the Leaderboards and profile UI, and tests. It was stopped while the exercise step was being written. **Nothing has been run on it.** Finish it from the plan's Phase 2 section.
+1. **Phase 0.2, the income profile and the sink table (PR #34), IS ON MAIN** as `c762da4`. It is test-only, so there is no deploy to do.
+2. **Phase 1, the Deep behind `FOLKIDLE_DELVE_DEEP` (off by default) (PR #35), is NOT ON MAIN.**
+   - #35 was stacked on `task37/phase0-income-profile`, and it was merged into that branch *after* #34 had already gone to main. So its commits (up to `7b82480`, merge `4c5ca52`) sit only on `origin/task37/phase0-income-profile` and `origin/task37/phase1-the-deep`.
+   - **To do:** open a new PR from `task37/phase1-the-deep` to `main`, then review, merge and deploy it.
+   - The flag stays off in production until the owner turns it on.
+   - PR #35's body records the verification: full suite **1003/1003**, exercise **162/162** with a new Deep block, and the geometry checks clean on the Delve screen.
+   - It carries migration `20260924212939_AddTheDeep`, which is additive and also creates `player_titles` for phase 2.
+3. **Phase 2, `task37/phase2-lanterns-titles-board`** (6047bb2, a **WIP commit**, stacked on phase 1):
+   - Contains lanterns, `TitleEngine`/`TitleRegistry`, `DeepestBoard`, the Leaderboards and profile UI, and tests.
+   - It was stopped while the exercise step was being written, and **nothing has been run on it**.
+   - Finish it from the plan's Phase 2 section, after phase 1 is on main.
 
 The local dev DB may already have `AddTheDeep` applied, which means it is ahead of main. If main misbehaves locally, that is why.
 
