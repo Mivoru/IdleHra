@@ -58,6 +58,7 @@ export const queryKeys = {
   guildShardMatch: ['social', 'guild', 'shardMatch'] as const,
   guildWarUnlock: ['social', 'guild', 'warUnlock'] as const,
   codexRegions: ['meta', 'codex', 'regions'] as const,
+  lootOdds: ['player', 'lootOdds'] as const,
   storefront: ['shop', 'storefront'] as const,
 };
 
@@ -1233,6 +1234,31 @@ export interface RegionProgress {
 
 export function fetchCodexRegions(): Promise<RegionProgress[]> {
   return authedGet<RegionProgress[]>('/api/v1/codex/regions');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/player/loot-odds
+// ---------------------------------------------------------------------------
+
+/**
+ * The odds the player's drops are rolling at, computed by the SERVER from the
+ * figures its loot worker last rolled with (task 26). Nothing here is derived
+ * client-side: the formula has six terms and a client copy would drift.
+ * `Known` is false until the first drop request since the server started.
+ */
+export interface LootOdds {
+  Known: boolean;
+  LootLuckPct: number;
+  RarityElevationPct: number;
+  HasGoldenFleece: boolean;
+  EquipmentDropChance: number;
+  LegendaryPlusPerDrop: number;
+  AncientPlusPerDrop: number;
+  TierShares: number[];
+}
+
+export function fetchLootOdds(): Promise<LootOdds> {
+  return authedGet<LootOdds>('/api/v1/player/loot-odds');
 }
 
 // ---------------------------------------------------------------------------

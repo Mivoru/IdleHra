@@ -466,6 +466,13 @@ namespace FolkIdle.Server.Engine
         public readonly DropSource RecordedSource => Source == 0 ? DropSource.LiveKill : Source;
 
         /// <summary>
+        /// Whether the player holds the Golden Fleece crown - not whether THIS
+        /// kill procced it (that is BonusRarityTiers). Only for the odds line
+        /// the Wiki shows; the roll never reads it.
+        /// </summary>
+        public bool HasGoldenFleece;
+
+        /// <summary>
         /// Builds a drop request from a payload and its combat stats. THE ONLY
         /// place loot luck is composed.
         /// </summary>
@@ -504,6 +511,7 @@ namespace FolkIdle.Server.Engine
                 SkipMaterialRoll = skipMaterialRoll,
                 AutoSalvageBelowTier = payload.AutoSalvageBelowTier,
                 Source = source,
+                HasGoldenFleece = payload.Skill_GoldenFleece > 0,
 
                 // Everything that shifts WHAT falls, summed into one figure -
                 // by LootLuckBreakdown, the only place the terms are named.
@@ -653,6 +661,27 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public static void NoteKillEnqueued() => Interlocked.Increment(ref _killsEnqueued);
 
+        /// <summary>The odds a player's most recent drop request rolled with.</summary>
+        public readonly record struct LootOddsSnapshot(float LootLuckPct, float RarityElevationPct, bool HasGoldenFleece, DateTime AtUtc);
+
+        // Modul: THE ODDS THE PLAYER IS SHOWN ARE THE ODDS THE ROLL USED (task 26).
+        //
+        // "Is my luck even working?" was answerable only by recomputing a
+        // six-term sum by hand. The worker already holds the exact figures each
+        // request rolls with, so it keeps the last pair per player and the
+        // Wiki's odds line reads them back - no client copy of the formula, no
+        // new wire field, no database. Lost on restart by design: the line says
+        // "kill something" until the next drop request arrives.
+        private static readonly ConcurrentDictionary<long, LootOddsSnapshot> _lastOdds = new();
+
+        private static void NoteOdds(in CombatLootDropRequest request)
+        {
+            _lastOdds[request.PlayerId] = new LootOddsSnapshot(
+                request.LootLuckPct, request.RarityElevationPct, request.HasGoldenFleece, DateTime.UtcNow);
+        }
+
+        public static bool TryGetLastOdds(long playerId, out LootOddsSnapshot odds) => _lastOdds.TryGetValue(playerId, out odds);
+
         private static long _codexKills;
 
         /// <summary>A kill reached the codex enqueue, sixty lines above the loot one.</summary>
@@ -740,6 +769,7 @@ namespace FolkIdle.Server.Engine
 
                         int killsThisRequest = request.Kills <= 0 ? 1 : request.Kills;
                         _requestsDrained++;
+                        NoteOdds(in request);
                         _killsRolled += killsThisRequest;
 
                         try

@@ -1064,6 +1064,29 @@ await go('Chest');
   }
 }
 
+// --- the Wiki's odds line (task 26) -------------------------------------------
+//
+// Modul: the line is the SERVER's arithmetic over the luck its loot worker last
+// rolled with, so it can only read "Your odds" once a kill from the combat step
+// above has reached that worker. A line stuck on "after your next kill" after
+// minutes of fighting means the odds snapshot was never written.
+await go('Wiki');
+{
+  await page.getByRole('button', { name: /Items & rarity/ }).first().click();
+  const line = page.getByTestId('loot-odds-line');
+  await line.waitFor({ timeout: 10000 }).catch(() => {});
+  await page.waitForFunction(
+    () => !/Working out/.test(document.querySelector('[data-testid="loot-odds-line"]')?.textContent ?? ''),
+    { timeout: 10000 },
+  ).catch(() => {});
+  const text = ((await line.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim();
+  record(
+    'the wiki quotes the odds the loot roll is using',
+    /Your odds:.*1 in [\d,\s ]+ is Ancient or better/.test(text),
+    text.slice(0, 160),
+  );
+}
+
 // --- world boss --------------------------------------------------------------
 //
 // Modul: this used to be three presses of a button that posted a damage figure

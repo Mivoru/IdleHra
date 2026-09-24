@@ -1,5 +1,17 @@
 <script lang="ts">
+  import { createQuery } from '@tanstack/svelte-query';
   import { rarityName, rarityColor } from './rarity';
+  import { queryKeys, fetchLootOdds } from '../net/rest';
+
+  // Modul: THE ODDS LINE (task 26). "No Ancient in five days - is something
+  // broken?" is a question about a number the player had no way to see. The
+  // server quotes the luck and elevation its loot worker last rolled with and
+  // what they come to, so this line is the roll's own arithmetic, not a copy.
+  const odds = createQuery(() => ({ queryKey: queryKeys.lootOdds, queryFn: fetchLootOdds }));
+
+  function oneIn(share: number): string {
+    return share > 0 ? Math.round(1 / share).toLocaleString() : '—';
+  }
 
   // Base weights matching FolkIdle.Server/Engine/CombatLootEngine.cs
   const EXPLICIT_WEIGHTS = [
@@ -54,14 +66,35 @@
 </script>
 
 <div class="drop-chances">
+  <p class="odds-line" data-testid="loot-odds-line">
+    {#if odds.isPending}
+      Working out your odds…
+    {:else if odds.isError || !odds.data}
+      Your odds could not be loaded.
+    {:else if !odds.data.Known}
+      Your odds appear here after your next kill.
+    {:else}
+      <strong>Your odds:</strong> about 1 drop in {oneIn(odds.data.LegendaryPlusPerDrop)} is
+      Legendary or better, and 1 in {oneIn(odds.data.AncientPlusPerDrop)} is Ancient or better
+      ({odds.data.LootLuckPct.toFixed(1)}% loot luck, {odds.data.RarityElevationPct.toFixed(1)}%
+      rarity elevation{odds.data.HasGoldenFleece ? ', Golden Fleece' : ''}). Gear drops on
+      {Math.round(odds.data.EquipmentDropChance * 100)}% of kills, so Ancient+ is roughly one kill in
+      {oneIn(odds.data.AncientPlusPerDrop * odds.data.EquipmentDropChance)}. Long gaps are normal:
+      these are averages, not a schedule.
+    {/if}
+  </p>
+
   <div class="calculator">
     <label>
-      <strong>Your LCK (Luck) Stat:</strong>
+      <strong>Loot luck (%):</strong>
       <input type="number" bind:value={playerLuck} min="0" max="1000" />
     </label>
     <p class="dim small">
       Monsters have a base <strong>15% chance</strong> to drop an equipment piece on kill (Bosses roll twice).
-      Your Luck stat multiplies the weights of higher rarities, reducing the proportion of Normal items.
+      Loot luck multiplies the weights of every rarity above Normal by the same factor, so it
+      shrinks Normal's share and can never much more than double the top. This table is the
+      roll alone - rarity elevation and Golden Fleece lift a drop afterwards, and the line
+      above includes them.
     </p>
   </div>
 
@@ -100,6 +133,11 @@
     padding: 1.5rem;
     border-radius: var(--radius, 8px);
     border: 1px solid var(--border);
+  }
+
+  .odds-line {
+    margin: 0;
+    font-size: 0.9rem;
   }
 
   .calculator {

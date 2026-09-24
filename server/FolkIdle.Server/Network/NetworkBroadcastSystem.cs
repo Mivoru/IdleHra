@@ -1125,6 +1125,12 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    if (requestPath == "/api/v1/player/loot-odds" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleLootOdds(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/breeding/roster" && context.Request.HttpMethod == "GET")
                     {
                         await HandleBreedingRosterSnapshot(context);
@@ -4225,6 +4231,84 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Codex snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        internal sealed class LootOddsResponse
+        {
+            /// <summary>False until this player's first drop request since the server started.</summary>
+            public bool Known { get; set; }
+            public float LootLuckPct { get; set; }
+            public float RarityElevationPct { get; set; }
+            public bool HasGoldenFleece { get; set; }
+            /// <summary>CombatLootEngine.EquipmentDropChance: how often a kill drops gear at all.</summary>
+            public double EquipmentDropChance { get; set; }
+            /// <summary>Share of equipment drops that land at Legendary or better, after fleece and elevation.</summary>
+            public double LegendaryPlusPerDrop { get; set; }
+            public double AncientPlusPerDrop { get; set; }
+            /// <summary>Per-tier share of drops, index = tier (0 unused).</summary>
+            public double[] TierShares { get; set; } = Array.Empty<double>();
+        }
+
+        /// <summary>
+        /// What a player's drops are rolling at, from the figures the loot
+        /// worker last rolled with and the engine's own expectation - see
+        /// CombatLootEngine.TryGetLastOdds and RarityTier.ExpectedFinalShares.
+        /// Task 26's odds line in the Wiki.
+        /// </summary>
+        internal static LootOddsResponse BuildLootOdds(bool known, CombatLootEngine.LootOddsSnapshot odds)
+        {
+            var response = new LootOddsResponse
+            {
+                Known = known,
+                EquipmentDropChance = CombatLootEngine.EquipmentDropChance,
+            };
+            if (!known) return response;
+
+            double[] shares = RarityTier.ExpectedFinalShares(
+                odds.LootLuckPct, odds.RarityElevationPct,
+                odds.HasGoldenFleece ? 1.0 / SimulationEngine.GoldenFleeceKillInterval : 0.0,
+                SimulationEngine.GoldenFleeceBonusTiers);
+
+            double legendaryPlus = 0, ancientPlus = 0;
+            for (int tier = RarityTier.Legendary; tier <= RarityTier.Transcendent; tier++)
+            {
+                legendaryPlus += shares[tier];
+                if (tier >= RarityTier.Ancient) ancientPlus += shares[tier];
+            }
+
+            response.LootLuckPct = odds.LootLuckPct;
+            response.RarityElevationPct = odds.RarityElevationPct;
+            response.HasGoldenFleece = odds.HasGoldenFleece;
+            response.LegendaryPlusPerDrop = legendaryPlus;
+            response.AncientPlusPerDrop = ancientPlus;
+            response.TierShares = shares;
+            return response;
+        }
+
+        private async Task HandleLootOdds(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                bool known = CombatLootEngine.TryGetLastOdds(playerId, out var odds);
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, BuildLootOdds(known, odds));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Loot odds error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

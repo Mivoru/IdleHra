@@ -296,6 +296,31 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void TheWikiOddsLine_QuotesWhatTheRollUses()
+        {
+            var payload = Level94Region5Payload();
+            var stats = StatsFor(in payload);
+            var request = CombatLootDropRequest.Build(
+                in payload, in stats, monsterId: 111, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+            Assert.True(request.HasGoldenFleece);
+
+            var odds = new CombatLootEngine.LootOddsSnapshot(
+                request.LootLuckPct, request.RarityElevationPct, request.HasGoldenFleece, DateTime.UtcNow);
+            var line = FolkIdle.Server.Network.NetworkBroadcastSystem.BuildLootOdds(true, odds);
+
+            double[] ours = AnalyticFinalShares(request.LootLuckPct, request.RarityElevationPct, FleeceChance, FleeceTiers);
+            _output.WriteLine($"odds line: L={line.LootLuckPct:F2} elev={line.RarityElevationPct:F2} " +
+                $"Legendary+ {line.LegendaryPlusPerDrop:P3}, Ancient+ {line.AncientPlusPerDrop:P4} (1 in {1 / line.AncientPlusPerDrop:N0})");
+            Assert.Equal(ShareAtOrAbove(ours, RarityTier.Legendary), line.LegendaryPlusPerDrop, 10);
+            Assert.Equal(ShareAtOrAbove(ours, RarityTier.Ancient), line.AncientPlusPerDrop, 10);
+            Assert.Equal(15, line.TierShares.Length);
+
+            var unknown = FolkIdle.Server.Network.NetworkBroadcastSystem.BuildLootOdds(false, default);
+            Assert.False(unknown.Known);
+            Assert.Equal(0.0, unknown.AncientPlusPerDrop);
+        }
+
+        [Fact]
         public void TheRealChain_ResolveDropTier_MatchesTheAnalyticRates()
         {
             var payload = Level94Region5Payload();
