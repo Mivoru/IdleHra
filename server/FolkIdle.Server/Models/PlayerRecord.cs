@@ -244,6 +244,27 @@ namespace FolkIdle.Server.Models
         public int DelveDiamondsThisWeek { get; set; }
         public int DelveWeekKey { get; set; }
 
+        // Modul: THE DEEP'S RECORDS (task 37). The deepest floor ever CLEARED,
+        // and the deepest this week - which SHARES DelveWeekKey with the diamond
+        // counter above. That sharing is the one subtle rule here: whichever of
+        // the two is written first in a new week must reset BOTH weekly columns
+        // and move the key, or a bank could zero a record set this week, or a
+        // record could inherit last week's diamonds. DelveEngine.RollWeek is the
+        // only place that rule lives. Same single writer as the columns above.
+        //
+        // DelveDeepestThisWeekAtUtc breaks ties on the weekly board: the earlier
+        // record ranks first.
+        public int DelveDeepestFloor { get; set; }
+        public int DelveDeepestThisWeek { get; set; }
+        public System.DateTime? DelveDeepestThisWeekAtUtc { get; set; }
+
+        /// <summary>
+        /// The title the player shows, by TitleRegistry slug, or null. Set only
+        /// through the title endpoint, which refuses a slug not in player_titles.
+        /// </summary>
+        [System.ComponentModel.DataAnnotations.MaxLength(32)]
+        public string? ActiveTitleSlug { get; set; }
+
         // Modul: THE LEADERBOARD PAYOUT'S IDEMPOTENCY, in the same shape as the
         // Delve's two columns directly above - deliberately, because it is the
         // same problem and a second mechanism would be a second thing to get

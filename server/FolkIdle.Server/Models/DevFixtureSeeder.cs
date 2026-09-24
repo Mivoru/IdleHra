@@ -33,6 +33,8 @@ namespace FolkIdle.Server.Models
         public const string Username = "dev";
         public const string Password = "FolkIdleDev123!";
 
+        // Modul: at least ten region-5 Delve gates (2.5M), because exercise.mjs
+        // pays a Deep toll on every run - DevFixtureInvariantTests holds it there.
         private const long Gold = 5_000_000L;
         private const int Diamonds = 5_000;
         /// <summary>Enough for exercise.mjs to spend some and still leave a balance.</summary>

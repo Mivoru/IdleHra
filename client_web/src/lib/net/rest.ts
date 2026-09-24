@@ -1439,6 +1439,23 @@ export interface DelveRunView {
   HighestRegionReached: number;
   CurrentGold: number;
   Attributes: number[];
+
+  // --- The Deep (task 37). Every number is the server's. ---
+  /** FOLKIDLE_DELVE_DEEP is on. False = never offer a descent. */
+  DeepEnabled: boolean;
+  /** The run descended past floor 8: nothing it does pays diamonds. */
+  IsDeep: boolean;
+  /** At the bottom of floor 8, or a cleared Deep floor: no doors, walk out or descend. */
+  AtLanding: boolean;
+  CanDescend: boolean;
+  /** Frozen stake in the Deep; at the bottom, the stake a descent would freeze - sent back as QuotedStake. */
+  StakeGold: number;
+  /** Gold the next descent tolls. */
+  DescendQuote: number;
+  NextDeepFloor: number;
+  LanternsBought: number;
+  DeepestFloor: number;
+  DeepestThisWeek: number;
 }
 
 export type DelveResultCode =
@@ -1451,12 +1468,18 @@ export type DelveResultCode =
   | 'FloorCleared'
   | 'ChargeLost'
   | 'AtTheBottom'
-  | 'PlayerNotFound';
+  | 'PlayerNotFound'
+  | 'PriceChanged'
+  | 'NoMoreLanterns'
+  | 'NotAtTheBottom'
+  | 'DeepDisabled';
 
 export interface DelveActionResponse {
   Result: DelveResultCode;
   DiamondsGranted: number;
   GoldReturned: number;
+  /** A Deep toll or lantern: exactly what was debited. */
+  GoldCharged: number;
   View: DelveRunView;
 }
 
@@ -1475,4 +1498,13 @@ export function chooseDelveDoor(door: number): Promise<DelveActionResponse | nul
 
 export function bankDelve(): Promise<DelveActionResponse | null> {
   return authedPost<DelveActionResponse>('/api/v1/delve/bank', {});
+}
+
+/**
+ * Descend into the Deep, or one floor deeper. `quotedStake` is the StakeGold the
+ * screen SHOWED; the server charges its own number and answers PriceChanged if
+ * that has risen - it never charges more than was shown.
+ */
+export function descendDeep(quotedStake: number): Promise<DelveActionResponse | null> {
+  return authedPost<DelveActionResponse>('/api/v1/delve/deep/descend', { QuotedStake: quotedStake });
 }

@@ -212,6 +212,110 @@ namespace FolkIdle.Server.Engine
             return (int)Math.Floor(embers / EmbersPerDiamond);
         }
 
+        // ------------------------------------------------------------------
+        // THE DEEP (task 37): an endless, gold-tolled continuation past floor 8.
+        //
+        // Modul: THE DELVE'S GATE STOPPED BEING A SINK AT THE TOP. It is priced
+        // at forty minutes of a region's income by the 180-kills model, and the
+        // top account held 492M gold on 2026-09-23 - a 250k gate is 0.05% of
+        // that. The Deep prices itself off what the player HOLDS instead
+        // (spec docs/superpowers/specs/2026-09-24-the-deep-gold-sink-design.md
+        // §3), so it keeps its weight however income moves. It pays records,
+        // titles and a weekly board - NO diamonds and no power - so it can be
+        // bottomless without being a tap.
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// The stake is this share of the player's wealth (the larger of gold
+        /// held and the 7-day high-water mark). 0.5% of the top account's 492M
+        /// is 2.46M: a descent is felt without being a week's income.
+        /// </summary>
+        public const double StakeFraction = 0.005;
+
+        /// <summary>Each floor past 9 tolls this much more than the one before: floor 12 is ~2x the stake, floor 20 ~12x.</summary>
+        public const double TollGrowth = 1.25;
+
+        /// <summary>
+        /// Per floor below 8, the pass chance is multiplied by this. 3% a floor
+        /// takes a 0.9 door to the 0.25 floor at about floor 50, so depth is
+        /// eventually a question of gold and nerve rather than of the sheet.
+        /// </summary>
+        public const double DeepDecay = 0.97;
+
+        /// <summary>Lantern charges a Deep run may buy. The 8th costs 128 stakes; after it the run ends when the light does.</summary>
+        public const int MaxLanternRefills = 8;
+
+        /// <summary>
+        /// Modul: EVERY DEEP PRICE SATURATES HERE, computed in double and
+        /// clamped before it ever becomes a long. 1.25^d passes long.MaxValue a
+        /// little past floor 200, and a wrapped price would be negative - a
+        /// toll that PAYS. A quarter of long.MaxValue leaves room to add two
+        /// prices without overflow; no real balance comes near it.
+        /// </summary>
+        public const long PriceCeiling = long.MaxValue / 4;
+
+        /// <summary>The first floor of the Deep - the one a descent from the bottom enters.</summary>
+        public const int FirstDeepFloor = FloorCount + 1;
+
+        private static long Saturate(double price)
+        {
+            if (double.IsNaN(price) || price >= PriceCeiling) return PriceCeiling;
+            if (price <= 0) return 0;
+            return (long)Math.Floor(price);
+        }
+
+        /// <summary>
+        /// The stake a descent freezes onto the run: the region's own entry fee
+        /// or StakeFraction of wealth, whichever is larger. The caller passes
+        /// wealth = max(locked gold, 7-day high-water mark) - see GoldHighWater
+        /// for why the high-water mark exists (mailing gold to an alt must not
+        /// make the Deep cheap).
+        /// </summary>
+        public static long Stake(long regionFee, long wealth)
+        {
+            long share = Saturate(StakeFraction * Math.Max(0L, wealth));
+            return Math.Max(Math.Max(0L, regionFee), share);
+        }
+
+        /// <summary>
+        /// Gold to enter floor <paramref name="floor"/> of the Deep. toll(9) is
+        /// the stake itself; each floor after is TollGrowth times the last.
+        /// A floor above the Deep is priced as its first floor.
+        /// </summary>
+        public static long TollForFloor(long stake, int floor)
+        {
+            int steps = Math.Max(0, floor - FirstDeepFloor);
+            return Saturate(Math.Max(0L, stake) * Math.Pow(TollGrowth, steps));
+        }
+
+        /// <summary>
+        /// A lantern charge bought in the Deep, when the last one went out:
+        /// stake x 2^bought. Doubling, and capped at MaxLanternRefills, so a
+        /// bad run is recoverable once or twice and never indefinitely.
+        /// </summary>
+        public static long LanternRefillPrice(long stake, int alreadyBought)
+            => Saturate(Math.Max(0L, stake) * Math.Pow(2.0, Math.Max(0, alreadyBought)));
+
+        /// <summary>The attribute a Deep door asks for: floor 8's, for every floor below it.</summary>
+        public static int DeepRequirement => RequirementForFloor(FloorCount);
+
+        /// <summary>
+        /// Chance a Deep door passes on floor <paramref name="floor"/> (> 8).
+        ///
+        /// Modul: A STATED DIMINISHING CURVE, not a new lever. The requirement
+        /// stops climbing at floor 8 so depth stays a question of the sheet, and
+        /// DeepDecay^(d - 8) takes it down from there: never above floor 8's own
+        /// odds (so never above MaxSuccessChance), strictly falling until it
+        /// reaches MinSuccessChance, and never below it. SuccessChance's clamp
+        /// already caps the start; the decay only ever multiplies by less than 1.
+        /// </summary>
+        public static double DeepSuccessChance(int attributeValue, int floor)
+        {
+            double atBottom = SuccessChance(attributeValue, FloorCount);
+            int depth = Math.Max(0, floor - FloorCount);
+            return Math.Max(MinSuccessChance, atBottom * Math.Pow(DeepDecay, depth));
+        }
+
         /// <summary>
         /// Gold returned instead of diamonds once the weekly ceiling is spent,
         /// scaled by depth so a deep run is still worth more than a shallow one.

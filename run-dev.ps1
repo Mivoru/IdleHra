@@ -27,6 +27,9 @@ $env:FOLKIDLE_DB_CONN = 'Host=localhost;Database=folkidle_dev;Username=postgres;
 # exercise.mjs can strike on any day). They answer 404 without this, which is
 # how production stays closed - never set it in ops/oracle.
 $env:FOLKIDLE_DEV_TOOLS = '1'
+# The Deep (task 37) ships OFF in production; the dev box runs it on so the
+# Delve screen and exercise.mjs can reach it.
+$env:FOLKIDLE_DELVE_DEEP = 'on'
 
 Write-Host 'Starting the game server on :8080...' -ForegroundColor Cyan
 Start-Process powershell -ArgumentList @(
@@ -35,6 +38,7 @@ Start-Process powershell -ArgumentList @(
   "`$env:FOLKIDLE_WEB_ORIGINS='http://localhost:5173'; " +
   "`$env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres'; " +
   "`$env:FOLKIDLE_DEV_TOOLS='1'; " +
+  "`$env:FOLKIDLE_DELVE_DEEP='on'; " +
   "dotnet run --project FolkIdle.Server/FolkIdle.Server.csproj"
 )
 
