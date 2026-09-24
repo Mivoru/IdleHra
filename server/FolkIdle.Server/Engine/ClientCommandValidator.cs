@@ -211,8 +211,16 @@ namespace FolkIdle.Server.Engine
 
         public static bool ValidateCommand(ref TickStatePayload payload, byte commandType)
         {
+            // Modul: opcode 32 (AttackWorldBoss) LEFT this list, 2026-09-24
+            // (task 25). The 100 ms rule below answers by TERMINATING the
+            // session, and a double-tap on a phone is two strikes well inside
+            // 100 ms - so the second tap disconnected an honest player. A strike
+            // is already bounded by its own rules (three per encounter, a
+            // Serializable row lock per attempt), and the client now disables
+            // the button until the first strike is answered. The other opcodes
+            // keep the rule; loosening it for them is a separate decision.
             // Only validate state commands that affect gameplay.
-            if (commandType == 1 || commandType == 2 || commandType == 8 || commandType == 24 || commandType == 25 || commandType == 26 || commandType == 27 || commandType == 28 || commandType == 29 || commandType == 30 || commandType == 32 || commandType == 33 || commandType == 47 || commandType == 48 || commandType == 49 || commandType == 50 || commandType == 51 || commandType == 52)
+            if (commandType == 1 || commandType == 2 || commandType == 8 || commandType == 24 || commandType == 25 || commandType == 26 || commandType == 27 || commandType == 28 || commandType == 29 || commandType == 30 || commandType == 33 || commandType == 47 || commandType == 48 || commandType == 49 || commandType == 50 || commandType == 51 || commandType == 52)
             {
                 long currentTick = Environment.TickCount64;
 
@@ -1023,17 +1031,23 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
-        public static bool ValidateWorldBossAttackRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet, uint activeBossId, bool bossIsDead, bool eventActive)
+        /// <summary>
+        /// PROTOCOL checks for a world boss strike. False means a client this
+        /// build does not speak to, and the caller terminates the session.
+        ///
+        /// Modul: the two STATE checks that used to live here - the window not
+        /// being open, the boss already being dead - moved to
+        /// <see cref="WorldBossStateRefusal"/> (task 25). Both are races an
+        /// honest client hits: the mirror they read refreshes once a minute, so
+        /// a strike in the last minute of a window, or the minute after a kill,
+        /// was answered with a DISCONNECT. A phone reconnects quietly, so the
+        /// player saw "I pressed it and nothing happened".
+        /// </summary>
+        public static bool ValidateWorldBossAttackRequest(ref TickStatePayload payload, ref FolkIdle.Server.Network.ClientCommandPacket packet, uint activeBossId)
         {
             if (packet.Command != FolkIdle.Server.Network.CommandType.AttackWorldBoss)
             {
                 return true;
-            }
-
-            if (!eventActive)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 32, Value2 = 4, Timestamp = Environment.TickCount64 });
-                return false;
             }
 
             // Modul: THE CLIENT NO LONGER SENDS A DAMAGE FIGURE, and this is
@@ -1064,12 +1078,6 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            if (bossIsDead)
-            {
-                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 32, Value2 = 3, Timestamp = Environment.TickCount64 });
-                return false;
-            }
-
             if (packet.TargetId != 0 || packet.SecondaryId != 0 || packet.TertiaryId != 0 || packet.LimitPrice != 0 || packet.IsBuy != 0 || packet.QualityTier != 0 || packet.TargetGuid != Guid.Empty || packet.SecondaryGuid != Guid.Empty || packet.TargetUnlockId != 0 || packet.RequestedSlotIndex != 0 || packet.MaterialId != 0 || packet.DepositQuantity != 0 || packet.MatchId != 0 || packet.ClientPredictedTurnCounter != 0 || packet.TargetPlayerId != 0 || packet.MentorshipRole != 0 || packet.TargetBuildingId != 0 || packet.TargetVillagerSlot != 0 || packet.ChallengeId != 0 || packet.ChallengeVerificationHash != 0)
             {
                 TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 32, Value2 = 4, Timestamp = Environment.TickCount64 });
@@ -1077,6 +1085,29 @@ namespace FolkIdle.Server.Engine
             }
 
             return true;
+        }
+
+        /// <summary>
+        /// The STATE refusals for a well-formed strike: a reason to tell the
+        /// player, or null to go ahead. Never a disconnect. The telemetry the
+        /// old validator wrote for these is kept (value2 4 = inactive,
+        /// 3 = dead) so anti-cheat evidence reads the same.
+        /// </summary>
+        public static FolkIdle.Server.Network.CommandResultCode? WorldBossStateRefusal(ref TickStatePayload payload, bool bossIsDead, bool eventActive)
+        {
+            if (!eventActive)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 32, Value2 = 4, Timestamp = Environment.TickCount64 });
+                return FolkIdle.Server.Network.CommandResultCode.WorldBossNotActive;
+            }
+
+            if (bossIsDead)
+            {
+                TelemetryStreamer.TryWrite(new TelemetryEvent { PlayerId = payload.PlayerId, EventType = 3, Value1 = 32, Value2 = 3, Timestamp = Environment.TickCount64 });
+                return FolkIdle.Server.Network.CommandResultCode.WorldBossAlreadyDefeated;
+            }
+
+            return null;
         }
 
         // Modul: RETIRED with CommandType.CraftItem and the equipment recipes

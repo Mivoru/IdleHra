@@ -440,6 +440,15 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
+        // Test-only: the world boss attempt count as the player's packet will carry it.
+        internal int GetActivePlayerWorldBossAttemptCount(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.WorldBossAttemptCount : -1;
+            }
+        }
+
         internal bool IsActivePlayerPresent(long playerId)
         {
             lock (_activePlayers)

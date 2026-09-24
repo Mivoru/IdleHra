@@ -19,6 +19,30 @@ do next.
 
 ---
 
+# HANDOFF 2026-09-24 - task 25, world boss attack (branch `fix/world-boss-attack`, NOT deployed)
+
+The owner confirmed that his Strike button was grey and that he tried outside a
+window. So the production cause was the calendar plus a screen that did not say
+why. The server path works: a local repro on a forced window landed the
+fixture's strike. It also exposed an empty-larder lockout that stopped every
+new account. Fixed on the branch:
+
+- a dev-only window override that LiveOps respects;
+- result codes 38-42 for every refusal;
+- state races are answered instead of disconnecting;
+- opcode 32 is out of the 100 ms rule;
+- the attack transaction is inside its `try`;
+- the larder rule is dropped (owner decision);
+- the grey button's reason sits next to it;
+- `exercise.mjs` strikes on any date, and a fresh account strikes too.
+
+Details are in TASK_BOARD §25. **Open:** production proof on Oct 1-7 (one row
+in `player_world_boss_attempts`). **New finding, left alone:** every strike is
+floored at 1,000 HP and nobody's attack exceeds that yet, so the weak plate's 3x
+does nothing (task 36 / balance).
+
+---
+
 # HANDOFF 2026-09-24 - Guild War Phase 0: the population lock (branch `feat/guild-war-lock`)
 
 Task 38's Phase 0, with the owner's final decisions. Every Guild War path now

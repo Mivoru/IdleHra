@@ -241,7 +241,24 @@ namespace FolkIdle.Server.Network
         // disconnect two of them used to answer a stale screen with. The
         // client renders it with the live progress ("now 12/50") from
         // /api/v1/guild/war-unlock, because a byte cannot carry the count.
-        GuildWarsLocked = 37
+        GuildWarsLocked = 37,
+
+        // Modul: THE WORLD BOSS, which had five silent rollbacks and two
+        // disconnects between a Strike press and a player who could be told
+        // anything (task 25). Every refusal on that path now lands one of
+        // these on the result ring, and an honest client is never
+        // disconnected for a state race - a window that closed a moment ago,
+        // a boss that died a moment ago, a double-tap. See
+        // WorldBossEngine.ResultCodeFor.
+        WorldBossNotActive = 38,
+        WorldBossAlreadyDefeated = 39,
+        WorldBossNoAttemptsLeft = 40,
+        WorldBossSessionClosed = 41,
+
+        // The strike threw - a refused connection, a serialization conflict -
+        // and was rolled back, so nothing was spent. It used to be an
+        // unobserved task exception or a server-console line.
+        WorldBossStrikeFailed = 42
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

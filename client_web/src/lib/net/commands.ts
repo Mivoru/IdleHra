@@ -331,30 +331,25 @@ export const BOSS_WEAK_PLATE_MULTIPLIER = 3;
 export const BOSS_SESSION_CAP_SECONDS = 300;
 
 /**
- * Mirrors ValidateWorldBossAttackRequest - and then goes further, because that
- * validator is only half the story.
+ * Mirrors ValidateWorldBossAttackRequest's protocol rules, and says the state
+ * rules out loud before sending.
  *
- * The validator DISCONNECTS on: the event not being active, a plate index
- * outside 0-4, a boss id other than the active one, the boss already being
- * dead, or any of twenty unrelated fields being non-zero - INCLUDING
- * ClientPredictedDamage, which this command stopped carrying on 2026-09-05.
- * The server takes the damage from the player's own attack power now; there is
- * no number here to get wrong or to inflate.
+ * The validator still DISCONNECTS a client that is stale or trying: a plate
+ * index outside 0-4, a boss id other than the active one, or any of twenty
+ * unrelated fields being non-zero - INCLUDING ClientPredictedDamage, which this
+ * command stopped carrying on 2026-09-05. The server takes the damage from the
+ * player's own attack power; there is no number here to get wrong.
  *
- * ExecuteAttackAsync then SILENTLY ROLLS BACK - no damage, no message, no
- * telemetry the player will ever see - on three further conditions:
+ * Every STATE refusal is answered now rather than swallowed (task 25): a closed
+ * window, a dead boss, spent attempts and a closed battle session each come
+ * back as a command result (codes 38-41), and a strike that failed on the
+ * server as 42. They used to be a disconnect (the first two) or a silent
+ * rollback (the rest). They are still refused HERE first, with a reason, so a
+ * player does not have to spend a round trip to learn what the screen knows.
  *
- *   - the player has already used all three attempts this encounter
- *   - THE BATTLE SESSION CAP HAS ELAPSED: 300 seconds from the FIRST strike to
- *     spend the other two, inside an encounter that runs for up to seven days
- *   - AUTO-EAT FOOD IS DEPLETED (all three larder slots empty)
- *
- * All three are refused here with an explanation rather than sent into the
- * void. The session cap was the worst of them and went unsaid the longest: the
- * deadline was not on the wire at all until 2026-09-05, so the button stayed
- * enabled and did nothing for the rest of the encounter. An idle player who
- * strikes once and comes back an hour later is the NORMAL case in this genre,
- * and it silently cost them two thirds of their participation.
+ * The larder rule is GONE (owner decision 2026-09-24). An empty larder used to
+ * discard the strike in silence, which locked every brand-new account out of
+ * the world boss; a strike eats nothing.
  */
 export function attackWorldBoss(options: {
   /** Which armour plate to strike, 0-4. A choice, not a quantity. */
@@ -362,14 +357,12 @@ export function attackWorldBoss(options: {
   eventState: number;
   bossCurrentHp: number;
   attemptCount: number;
-  /** True when Food1_Count, Food2_Count and Food3_Count are all zero. */
-  larderEmpty: boolean;
   /** StateUpdatePacket.WorldBossSessionEndsEpoch; 0 before the first strike. */
   sessionEndsEpoch?: number;
   /** Unix seconds. Injected so this stays pure and testable. */
   nowEpoch?: number;
 }): CommandOutcome {
-  const { plateIndex, eventState, bossCurrentHp, attemptCount, larderEmpty } = options;
+  const { plateIndex, eventState, bossCurrentHp, attemptCount } = options;
   const sessionEndsEpoch = options.sessionEndsEpoch ?? 0;
   const nowEpoch = options.nowEpoch ?? Math.floor(Date.now() / 1000);
 
@@ -381,9 +374,6 @@ export function attackWorldBoss(options: {
   }
   if (attemptCount >= MAX_BOSS_ATTEMPTS) {
     return refuse(`You have used all ${MAX_BOSS_ATTEMPTS} attempts this encounter.`);
-  }
-  if (larderEmpty) {
-    return refuse('Stock your larder first - an attack with no food is discarded silently.');
   }
   if (sessionEndsEpoch > 0 && nowEpoch >= sessionEndsEpoch) {
     return refuse(

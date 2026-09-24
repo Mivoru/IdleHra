@@ -205,6 +205,20 @@ alone had three: the attempt cap, an empty larder, and a five-minute battle
 session nothing put on the wire - so the button stayed enabled and did nothing
 for the rest of a seven-day encounter. When a handler rolls back, ask what the
 player sees. If the answer is "nothing", that is the defect, not the rollback.
+(Task 25 made each of those answer with a result code, 38-42, and dropped the
+larder rule.) The inverse lie is a **disconnect for an honest client**. A
+validator that returns false gets `TerminateSessionForSecurity`, and a phone
+reconnects quietly, so "the window closed a moment ago" and a double-tap inside
+`ValidateCommand`'s 100 ms rule both read as "I pressed it and nothing
+happened". Terminate a protocol violation. Answer a state race.
+
+**A calendar-gated feature needs a way to open it, or it is untested most of
+the month.** The world boss window is the 1st-7th and 15th-22nd, and
+`exercise.mjs` struck only `if (active)`, so on 13-16 days a month nothing
+pressed Strike. A SQL poke does not help either, because LiveOps finalises an
+out-of-calendar window within one 60 s tick. `POST /api/v1/dev/worldboss/window`
+(404 unless `FOLKIDLE_DEV_TOOLS=1`, which `run-dev.ps1` sets) is the way in,
+and LiveOps respects it.
 
 **A background worker that can throw is a feature that can vanish.** Every
 `StartCron` loop runs in a bare `Task.Run`, so an exception anywhere in the loop

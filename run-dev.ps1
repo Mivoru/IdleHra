@@ -23,6 +23,10 @@ Start-Sleep -Seconds 2
 
 $env:FOLKIDLE_WEB_ORIGINS = 'http://localhost:5173'
 $env:FOLKIDLE_DB_CONN = 'Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres'
+# Dev-only routes (/api/v1/dev/*, e.g. forcing a world boss window open so
+# exercise.mjs can strike on any day). They answer 404 without this, which is
+# how production stays closed - never set it in ops/oracle.
+$env:FOLKIDLE_DEV_TOOLS = '1'
 
 Write-Host 'Starting the game server on :8080...' -ForegroundColor Cyan
 Start-Process powershell -ArgumentList @(
@@ -30,6 +34,7 @@ Start-Process powershell -ArgumentList @(
   "cd '$root\server'; " +
   "`$env:FOLKIDLE_WEB_ORIGINS='http://localhost:5173'; " +
   "`$env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres'; " +
+  "`$env:FOLKIDLE_DEV_TOOLS='1'; " +
   "dotnet run --project FolkIdle.Server/FolkIdle.Server.csproj"
 )
 

@@ -538,6 +538,8 @@ networkSystem.RegisterAntiCheatTelemetryEngine(antiCheatTelemetryEngine);
 
 var engine = new SimulationEngine(lootEngine, checkpointManager, networkSystem, forgeEngine, marketEngine, playerRegistry, guildEngine, escrowEngine, mailboxEngine, rerollEngine, breedingEngine, guildLogisticsEngine, craftingEngine, worldBossEngine, villageManagementEngine, guildWarEngine, legacyStoreEngine, guildLogisticsDepotEngine, guildCombatSimulationEngine, antiCheatTelemetryEngine, pushNotificationTriggerEngine, compliancePurgeEngine, billingVerificationEngine, redisMultiplexer, serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), guildRaidEngine, equipmentSlotEngine, relationshipEngine, larderEngine, inheritanceEngine, skillTreeEngine, hallOfAncestorsEngine);
 networkSystem.RegisterSimulationEngine(engine);
+// Modul: for the dev-only world boss window override (FOLKIDLE_DEV_TOOLS=1).
+networkSystem.RegisterWorldBossEngine(worldBossEngine);
 var timeBankService = new TimeBankService(engine, checkpointManager);
 
 mailboxEngine.StartCleanupCron();

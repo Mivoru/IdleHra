@@ -3392,6 +3392,49 @@ account can attack, the damage and the attempt row land, a refusal says why on
 screen, and `exercise.mjs` attacks and asserts the boss HP moved (opening the
 window itself, and round-tripping what it spends).
 
+### Investigation and fix, 2026-09-24 (branch `fix/world-boss-attack`)
+
+**Status: fixed on the branch, not deployed. It is verified in production only
+once a row exists in `player_world_boss_attempts` during the Oct 1-7 window.**
+
+- **Owner's answer:** the Strike button was **grey**, and he tried outside a
+  window. **H1 is confirmed.** The production cause was the calendar plus a
+  screen that did not say why the button was grey, not a server defect.
+- **Production, re-read 2026-09-24 (SELECT only):** unchanged. `EventState 2`,
+  `CurrentHp = MaxHp = 50,000,000`, `TotalDamageContributed 0`, 0 attempt rows.
+  The Oracle box logs and Redis telemetry were not read (no SSH in this session).
+- **`wiring-auditor`:** "chain intact apart from the known list". It found no
+  missing link beyond the ones this plan already named.
+- **Local repro on a forced window, before any fix:**
+  - As the dev fixture at 390 px, a strike **landed**: attempt row 1, HP down
+    by 1000.
+  - As a fresh account, the button was **grey** with "Your larder is empty", so
+    nobody new could ever take part.
+  - The server path works. What blocked players was the calendar, the larder
+    rule and the screen.
+- **Fixed anyway, as the task requires:**
+  - Every refusal is now a result code: 38 not active, 39 defeated, 40 no
+    attempts, 41 session closed, 42 strike failed.
+  - The closed-window and dead-boss races are answered with a code instead of a
+    disconnect.
+  - A double-tap no longer disconnects. Opcode 32 left the 100 ms rule; the
+    test was confirmed red with the old rule in place.
+  - `ExecuteAttackAsync`'s scope and transaction moved inside its `try`, and
+    `QueueAttack` is a guarded dispatch.
+  - The larder rule is dropped, on the owner's decision.
+  - The reason for a grey button is shown next to the button.
+  - `exercise.mjs` opens its own window through
+    `POST /api/v1/dev/worldboss/window`. That route answers 404 unless
+    `FOLKIDLE_DEV_TOOLS=1`.
+- **New finding, not changed (balance):** `ComputeAppliedDamage` floors every
+  strike at 1,000, and a level-40 fixture's own attack is below that. So the
+  fixture and a level-1 account both deal exactly 1,000, and **the weak plate's
+  3x does nothing** until a character's attack exceeds 1,000 HP. The soft-plate
+  strike in `exercise` did 1,000, the same as a broken plate. This belongs to
+  task 36 or an owner balance call.
+- **To do on Oct 1-2:** run `SELECT count(*) FROM player_world_boss_attempts`
+  and the snapshot SELECT, and ask the owner to strike once from the phone.
+
 ## 26. Rarity: no Ancient+ drop in ~5 days (investigate before changing anything)
 
 **Reported:** Godly and 2x Demonic earlier; for about five days only

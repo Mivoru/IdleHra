@@ -33,12 +33,17 @@ namespace FolkIdle.Server.Engine
         private long _lastSeenUtcDateKey = -1L;
         private bool _isRunning;
 
-        public LiveOpsTickEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry, WorldBossEngine worldBossEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine)
+        // Injectable so a test can stand on a dormant calendar day whatever
+        // today happens to be.
+        private readonly Func<DateTimeOffset> _clock;
+
+        public LiveOpsTickEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry, WorldBossEngine worldBossEngine, PushNotificationTriggerEngine pushNotificationTriggerEngine, Func<DateTimeOffset>? clock = null)
         {
             _serviceProvider = serviceProvider;
             _playerRegistry = playerRegistry;
             _worldBossEngine = worldBossEngine;
             _pushNotificationTriggerEngine = pushNotificationTriggerEngine;
+            _clock = clock ?? (() => DateTimeOffset.UtcNow);
         }
 
         public void StartCron()
@@ -81,21 +86,36 @@ namespace FolkIdle.Server.Engine
         // World boss event windows run from the 1st-7th and the 15th-22nd of each month (UTC).
         // Outside those windows the boss is dormant; if not defeated by the window's last day
         // at 23:59:59 UTC, the encounter is finalized as failed.
-        private async Task EvaluateWorldBossEventWindowAsync()
+        internal async Task EvaluateWorldBossEventWindowAsync()
         {
             await _worldBossEngine.EnsureSnapshotAsync();
 
-            DateTimeOffset now = DateTimeOffset.UtcNow;
+            DateTimeOffset now = _clock();
             int day = now.Day;
             bool inWindowA = day >= 1 && day <= 7;
             bool inWindowB = day >= 15 && day <= 22;
-            bool shouldBeActive = inWindowA || inWindowB;
+
+            // Modul: a dev-opened window counts as a window. Without this the
+            // `!shouldBeActive && IsEventActive` branch below finalised any
+            // window opened outside the calendar within one 60-second tick,
+            // which is why no SQL poke could ever open one. See
+            // WorldBossEngine.OpenManualWindowAsync.
+            bool manualWindowOpen = _worldBossEngine.IsManualWindowOpen(now.ToUnixTimeSeconds());
+            bool shouldBeActive = inWindowA || inWindowB || manualWindowOpen;
 
             if (shouldBeActive && !_worldBossEngine.IsEventActive)
             {
-                int windowEndDay = inWindowA ? 7 : 22;
-                var windowEnd = new DateTimeOffset(now.Year, now.Month, windowEndDay, 23, 59, 59, TimeSpan.Zero);
-                await _worldBossEngine.ActivateEventWindowAsync(windowEnd.ToUnixTimeSeconds());
+                long windowEndEpoch;
+                if (inWindowA || inWindowB)
+                {
+                    int windowEndDay = inWindowA ? 7 : 22;
+                    windowEndEpoch = new DateTimeOffset(now.Year, now.Month, windowEndDay, 23, 59, 59, TimeSpan.Zero).ToUnixTimeSeconds();
+                }
+                else
+                {
+                    windowEndEpoch = _worldBossEngine.ManualWindowEndEpoch;
+                }
+                await _worldBossEngine.ActivateEventWindowAsync(windowEndEpoch);
 
                 // Modul: wires the previously-dead PushNotificationTriggerEngine
                 // into the one moment a currently-offline player would
@@ -109,7 +129,7 @@ namespace FolkIdle.Server.Engine
                 // occurrence.
                 long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 long[] onlinePlayerIdsForBossAlert = _playerRegistry.GetOnlinePlayerIds();
-                for (int i = 0; i < onlinePlayerIdsForBossAlert.Length; i++)
+                for (int i = 0; i < onlinePlayerIdsForBossAlert.Length && _pushNotificationTriggerEngine != null; i++)
                 {
                     await _pushNotificationTriggerEngine.ScheduleTriggerAsync(onlinePlayerIdsForBossAlert[i], nowEpoch, PushTriggerTypeWorldBossWindowOpen, "world_boss_window_open");
                 }

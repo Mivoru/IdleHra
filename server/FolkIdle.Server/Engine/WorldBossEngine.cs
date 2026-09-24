@@ -22,6 +22,21 @@ namespace FolkIdle.Server.Engine
         public long Damage { get; set; }
     }
 
+    /// <summary>
+    /// How one strike ended. Every value but Landed is something the player
+    /// is told - see WorldBossEngine.ResultCodeFor.
+    /// </summary>
+    public enum WorldBossAttackOutcome : byte
+    {
+        Landed = 0,
+        InvalidRequest = 1,
+        NotActive = 2,
+        AlreadyDefeated = 3,
+        NoAttemptsLeft = 4,
+        SessionClosed = 5,
+        Failed = 6,
+    }
+
     public class WorldBossEngine
     {
         public const uint ActiveBossInstanceId = 1;
@@ -137,11 +152,46 @@ namespace FolkIdle.Server.Engine
         /// Queues one strike. `serverComputedDamage` is exactly that - taken
         /// from the player's own cached attack power inside the tick, never
         /// from anything the client said about itself.
+        ///
+        /// Modul: A GUARDED DISPATCH, and it answers (task 25). This was a bare
+        /// `_ = Task.Run(...)`, so anything ExecuteAttackAsync threw became an
+        /// unobserved task exception - no row, no log, no message - and every
+        /// refusal inside it was a silent rollback. Whatever happens now, a
+        /// strike that did not land puts a reason on the player's result ring.
         /// </summary>
-        public void QueueAttack(long playerId, uint bossId, uint serverComputedDamage, byte plateIndex, bool autoEatFoodDepleted = false)
+        public void QueueAttack(long playerId, uint bossId, uint serverComputedDamage, byte plateIndex)
         {
-            _ = Task.Run(async () => await ExecuteAttackAsync(playerId, bossId, serverComputedDamage, plateIndex, autoEatFoodDepleted));
+            _ = Task.Run(async () =>
+            {
+                WorldBossAttackOutcome outcome;
+                try
+                {
+                    outcome = await ExecuteAttackAsync(playerId, bossId, serverComputedDamage, plateIndex);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"World boss attack dispatch failed for player {playerId}: {ex.Message}");
+                    outcome = WorldBossAttackOutcome.Failed;
+                }
+
+                var code = ResultCodeFor(outcome);
+                if (code.HasValue)
+                {
+                    _playerRegistry?.EnqueueCommandResult(playerId, (byte)code.Value);
+                }
+            });
         }
+
+        /// <summary>The sentence a refused strike maps to; null for a strike that landed.</summary>
+        public static FolkIdle.Server.Network.CommandResultCode? ResultCodeFor(WorldBossAttackOutcome outcome) => outcome switch
+        {
+            WorldBossAttackOutcome.Landed => null,
+            WorldBossAttackOutcome.NotActive => FolkIdle.Server.Network.CommandResultCode.WorldBossNotActive,
+            WorldBossAttackOutcome.AlreadyDefeated => FolkIdle.Server.Network.CommandResultCode.WorldBossAlreadyDefeated,
+            WorldBossAttackOutcome.NoAttemptsLeft => FolkIdle.Server.Network.CommandResultCode.WorldBossNoAttemptsLeft,
+            WorldBossAttackOutcome.SessionClosed => FolkIdle.Server.Network.CommandResultCode.WorldBossSessionClosed,
+            _ => FolkIdle.Server.Network.CommandResultCode.WorldBossStrikeFailed,
+        };
 
         public async Task ScaleActiveBossAsync(long[] onlinePlayerIds)
         {
@@ -374,6 +424,55 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Modul: A WINDOW A DEVELOPER CAN OPEN ON ANY DAY (task 25).
+        //
+        // The calendar (1st-7th, 15th-22nd) was the only way in, so on 13-16
+        // days a month nothing could press Strike - not exercise.mjs, not a
+        // developer reproducing "no attack has ever landed". A SQL poke to
+        // EventState = 1 does not help: LiveOps sees "active outside the
+        // calendar" on its next 60-second tick and finalises it as failed. So
+        // the override lives HERE, and LiveOps asks it before closing anything.
+        //
+        // Only reachable through POST /api/v1/dev/worldboss/window, which
+        // answers 404 unless FOLKIDLE_DEV_TOOLS=1 - opening a window deletes
+        // every attempt row server-wide, which on production would refund
+        // everybody's strikes mid-encounter.
+        private long _manualWindowEndEpoch;
+
+        public const long MinManualWindowSeconds = 60;
+        public const long MaxManualWindowSeconds = 86_400;
+
+        public static long ClampManualWindowSeconds(long seconds)
+            => Math.Clamp(seconds, MinManualWindowSeconds, MaxManualWindowSeconds);
+
+        public bool IsManualWindowOpen(long nowEpoch)
+        {
+            long end = Interlocked.Read(ref _manualWindowEndEpoch);
+            return end > 0 && nowEpoch < end;
+        }
+
+        public long ManualWindowEndEpoch => Interlocked.Read(ref _manualWindowEndEpoch);
+
+        /// <summary>
+        /// Opens a fresh encounter now (full health, new weak point, every
+        /// attempt row deleted) that LiveOps will not close until it runs out.
+        /// </summary>
+        public async Task OpenManualWindowAsync(long durationSeconds, long? nowEpoch = null)
+        {
+            long now = nowEpoch ?? DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            long end = now + ClampManualWindowSeconds(durationSeconds);
+            Interlocked.Exchange(ref _manualWindowEndEpoch, end);
+            await EnsureSnapshotAsync();
+            await ActivateEventWindowAsync(end);
+        }
+
+        /// <summary>Ends the override and concludes the encounter, as the calendar would have.</summary>
+        public async Task CloseManualWindowAsync()
+        {
+            Interlocked.Exchange(ref _manualWindowEndEpoch, 0);
+            await FinalizeEventAsFailedAsync();
+        }
+
         public async Task ActivateEventWindowAsync(long eventEndEpoch)
         {
             await EnsureSnapshotAsync();
@@ -483,32 +582,46 @@ namespace FolkIdle.Server.Engine
         // what it cost to leave that unsaid.
         public const long BattleSessionCapSeconds = 300L;
 
-        internal async Task ExecuteAttackAsync(long playerId, uint bossId, uint serverComputedDamage, byte plateIndex = 0, bool autoEatFoodDepleted = false)
+        internal async Task<WorldBossAttackOutcome> ExecuteAttackAsync(long playerId, uint bossId, uint serverComputedDamage, byte plateIndex = 0)
         {
             if (playerId <= 0 || bossId != ActiveBossInstanceId || serverComputedDamage == 0)
             {
-                return;
+                return WorldBossAttackOutcome.InvalidRequest;
             }
 
             if (plateIndex >= PlateCount)
             {
-                return;
+                return WorldBossAttackOutcome.InvalidRequest;
             }
 
-            using var scope = _serviceProvider.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
+            // Modul: the scope, the connection and BeginTransaction are INSIDE
+            // the try now. CLAUDE.md: "a guard that starts AFTER
+            // CreateScope/BeginTransactionAsync is not a guard - that is where
+            // the connection is acquired and where the throw comes from." They
+            // sat outside it, in a fire-and-forget task, so a pooler refusing
+            // the connection lost the strike without a trace.
+            IServiceScope? scope = null;
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
             try
             {
+                scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
                 var snapshot = await db.WorldBossSnapshots
                     .FromSqlRaw("SELECT * FROM \"WorldBossSnapshots\" WHERE \"BossInstanceId\" = {0} FOR UPDATE", (long)bossId)
                     .SingleOrDefaultAsync();
 
-                if (snapshot == null || snapshot.CurrentHp <= 0 || snapshot.EventState != 1)
+                if (snapshot == null || snapshot.EventState != 1)
                 {
                     await transaction.RollbackAsync();
-                    return;
+                    return WorldBossAttackOutcome.NotActive;
+                }
+
+                if (snapshot.CurrentHp <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    return WorldBossAttackOutcome.AlreadyDefeated;
                 }
 
                 var attempt = await db.PlayerWorldBossAttempts
@@ -533,7 +646,7 @@ namespace FolkIdle.Server.Engine
                 if (attempt.AttemptCount >= MaxAttemptsPerEncounter)
                 {
                     await transaction.RollbackAsync();
-                    return;
+                    return WorldBossAttackOutcome.NoAttemptsLeft;
                 }
 
                 // Modul 06/15: close this player's battle session instantly -
@@ -543,14 +656,14 @@ namespace FolkIdle.Server.Engine
                 if (attempt.SessionStartEpoch > 0 && nowEpoch - attempt.SessionStartEpoch >= BattleSessionCapSeconds)
                 {
                     await transaction.RollbackAsync();
-                    return;
+                    return WorldBossAttackOutcome.SessionClosed;
                 }
 
-                if (autoEatFoodDepleted)
-                {
-                    await transaction.RollbackAsync();
-                    return;
-                }
+                // Modul: THE LARDER RULE IS GONE (owner decision 2026-09-24).
+                // "Auto-eat food depleted closes the battle session" meant a
+                // brand-new account - whose larder is empty until it cooks or
+                // buys food - could not strike the world boss at all, and the
+                // strike itself eats nothing. Dropped end to end.
 
                 // Modul: which plate was struck decides what the blow is worth,
                 // and what it teaches everyone else.
@@ -603,11 +716,21 @@ namespace FolkIdle.Server.Engine
                     SessionEndsEpoch = attemptSessionStart + BattleSessionCapSeconds
                 });
                 RefreshLocalSnapshot(snapshot);
+                return WorldBossAttackOutcome.Landed;
             }
             catch (Exception ex)
             {
-                await transaction.RollbackAsync();
+                if (transaction != null)
+                {
+                    try { await transaction.RollbackAsync(); } catch { /* the connection may already be gone */ }
+                }
                 Console.WriteLine($"World boss attack failed for player {playerId}: {ex.Message}");
+                return WorldBossAttackOutcome.Failed;
+            }
+            finally
+            {
+                if (transaction != null) await transaction.DisposeAsync();
+                scope?.Dispose();
             }
         }
 

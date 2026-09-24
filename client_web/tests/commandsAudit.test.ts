@@ -97,7 +97,6 @@ describe('world boss', () => {
     eventState: 1,
     bossCurrentHp: 1_000_000,
     attemptCount: 0,
-    larderEmpty: false,
   };
 
   it('sends the constant boss id, never a caller-supplied one', () => {
@@ -134,12 +133,13 @@ describe('world boss', () => {
     expect(sent).toHaveLength(0);
   });
 
-  it('refuses on an EMPTY LARDER, which the server discards in silence', () => {
-    // ExecuteAttackAsync rolls the transaction back with no message when
-    // auto-eat food is depleted. The request is accepted, nothing happens, and
-    // the player has no way to find out - so it is refused with a reason.
-    expect(attackWorldBoss({ ...healthy, larderEmpty: true }).ok).toBe(false);
-    expect(sent).toHaveLength(0);
+  it('does NOT ask about the larder any more', () => {
+    // Owner decision 2026-09-24 (task 25): the "auto-eat food depleted closes
+    // the battle session" rule is gone end to end. It meant a brand-new
+    // account - whose larder is empty - could not strike the world boss at
+    // all, and a strike eats nothing. The option does not exist to pass.
+    expect(attackWorldBoss(healthy).ok).toBe(true);
+    expect(sent).toHaveLength(1);
   });
 
   it('refuses a plate index the server would disconnect over', () => {
