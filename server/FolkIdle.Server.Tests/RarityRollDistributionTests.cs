@@ -129,5 +129,163 @@ namespace FolkIdle.Server.Tests
             _output.WriteLine($"tier 5+ at 0% luck: {plainHigh:N0}, at 100% luck: {luckyHigh:N0}");
             Assert.True(luckyHigh > plainHigh, "loot luck did not raise the odds of a better drop");
         }
+
+        // ------------------------------------------------------------------
+        // Modul: TASK 26, 2026-09-23 - "no Ancient+ in five days".
+        //
+        // The investigation computed the reporting account's loot luck BY HAND
+        // from six tables and concluded the odds had not changed. A hand
+        // computation is a claim, not a measurement, so the build below is
+        // that account's real inputs (production, player 8, level 94, region 5)
+        // run through the same StatsCalculator call the live tick makes and the
+        // same LootLuckBreakdown CombatLootDropRequest.Build sums. Every printed
+        // term is asserted beside the print: the bands encode TODAY's
+        // behaviour and are meant to fail when a term changes, so a change to
+        // the drop odds has to come here and restate them on purpose.
+        // ------------------------------------------------------------------
+
+        private const int BuildLck = 300;
+        private const double FleeceChance = 0.01; // every hundredth kill
+        private const int FleeceTiers = 2;
+
+        private static TickStatePayload Level94Region5Payload() => new TickStatePayload
+        {
+            PlayerId = 8L,
+            CurrentLevel = 94,
+            STR = 200,
+            DEX = 200,
+            CON = 120,
+            LCK = BuildLck,
+            Inherit_LootLuck = 4,
+            Skill_LootRarity = 10,
+            Skill_Rarity = 8,
+            Skill_GoldenFleece = 1,
+            Aptitude_Fortune = 4,
+            // GuildBonusesCache answers 0 for guild 0 - the account's DropRate
+            // buff expired on 2026-09-09.
+            GuildId = 0,
+            CompletedAreaFlags = 0,
+            CachedAffixTotals = default,
+        };
+
+        /// <summary>The identical 16-argument call the live tick makes (SimulationEngine, the combat block).</summary>
+        private static CombatStats StatsFor(in TickStatePayload p) => StatsCalculator.Calculate(
+            p.STR, p.DEX, p.CON, p.LCK, p.ActiveOffensivePotionId, p.ActiveDefensivePotionId,
+            1, p.CompletedAreaFlags, 0, p.HumanMasteryLevel, p.VilaMasteryLevel, p.DraugrMasteryLevel,
+            p.CachedAffixTotals, p.IsEpicMutation, TraitTotals.From(p.TraitMask), p.CachedSetIds);
+
+        /// <summary>
+        /// The final-tier distribution after the roll, Golden Fleece and
+        /// elevation, from THIS FILE's restated weights - deliberately not from
+        /// the engine, so the engine can be checked against it.
+        /// </summary>
+        internal static double[] AnalyticFinalShares(double lootLuckPct, double elevationPct, double fleeceChance, int fleeceTiers)
+        {
+            double factor = 1.0 + lootLuckPct / 100.0;
+            var rolled = new double[15];
+            double total = 0;
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                rolled[tier] = tier == 1 ? Weights[1] : Weights[tier] * factor;
+                total += rolled[tier];
+            }
+            for (int tier = 1; tier <= 14; tier++) rolled[tier] /= total;
+
+            var fleeced = new double[15];
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                fleeced[tier] += rolled[tier] * (1 - fleeceChance);
+                fleeced[Math.Min(14, tier + fleeceTiers)] += rolled[tier] * fleeceChance;
+            }
+
+            double e = elevationPct / 100.0;
+            var final = new double[15];
+            for (int tier = 1; tier <= 14; tier++)
+            {
+                final[tier] += fleeced[tier] * (1 - e);
+                final[Math.Min(14, tier + 1)] += fleeced[tier] * e;
+            }
+            return final;
+        }
+
+        private static double ShareAtOrAbove(double[] shares, int tier)
+        {
+            double sum = 0;
+            for (int t = tier; t <= 14; t++) sum += shares[t];
+            return sum;
+        }
+
+        [Fact]
+        public void ALevel94Region5Build_EveryLuckTermIsWhatTheFormulaSays()
+        {
+            var payload = Level94Region5Payload();
+            var stats = StatsFor(in payload);
+            var breakdown = LootLuckBreakdown.From(in payload, in stats);
+            var request = CombatLootDropRequest.Build(
+                in payload, in stats, monsterId: 111, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+
+            var report = new StringBuilder();
+            report.AppendLine("Loot luck, term by term, for a level-94 region-5 build (LCK 300):");
+            report.AppendLine($"  stats (LCK curve + Scavenger + areas + affixes)  {breakdown.Stats,7:F2}");
+            report.AppendLine($"  inheritance (level 4)                            {breakdown.Inheritance,7:F2}");
+            report.AppendLine($"  Fortune root (10 levels)                         {breakdown.FortuneRoot,7:F2}");
+            report.AppendLine($"  guild DropRate                                   {breakdown.GuildDropRate,7:F2}");
+            report.AppendLine($"  Rarity bough (8 levels)                          {breakdown.RarityBough,7:F2}");
+            report.AppendLine($"  Fortune aptitude (4)                             {breakdown.FortuneAptitude,7:F2}");
+            report.AppendLine($"  TOTAL LootLuckPct                                {breakdown.Total,7:F2}");
+            report.AppendLine($"  RarityElevationPct                               {request.RarityElevationPct,7:F2}");
+            _output.WriteLine(report.ToString());
+
+            Assert.Equal(28.78, breakdown.Stats, 2);          // 1.2*sqrt(300) = 20.78, + 8 Scavenger
+            Assert.Equal(8.0, breakdown.Inheritance, 2);
+            Assert.Equal(10.0, breakdown.FortuneRoot, 2);
+            Assert.Equal(0.0, breakdown.GuildDropRate, 2);
+            Assert.Equal(8.0, breakdown.RarityBough, 2);
+            Assert.Equal(6.0, breakdown.FortuneAptitude, 2);
+            Assert.Equal(60.78, breakdown.Total, 2);
+            Assert.Equal(6.06, request.RarityElevationPct, 2); // 0.35*sqrt(300)
+
+            // The breakdown and the drop path cannot drift apart.
+            Assert.Equal(breakdown.Total, request.LootLuckPct);
+        }
+
+        [Fact]
+        public void ExpectedRatesAtThatBuild_MatchTheInvestigationTable()
+        {
+            var payload = Level94Region5Payload();
+            var stats = StatsFor(in payload);
+            var request = CombatLootDropRequest.Build(
+                in payload, in stats, monsterId: 111, kills: 1, bonusRarityTiers: 0, skipMaterialRoll: false);
+
+            double[] shares = AnalyticFinalShares(request.LootLuckPct, request.RarityElevationPct, FleeceChance, FleeceTiers);
+            double legendaryPlus = ShareAtOrAbove(shares, RarityTier.Legendary);
+            double ancientPlus = ShareAtOrAbove(shares, RarityTier.Ancient);
+
+            // The luck ceiling. Luck multiplies tiers 2-14 by the SAME factor, so
+            // all it can ever do is shrink Normal's 100 towards nothing.
+            double[] plainZero = AnalyticFinalShares(0, 0, 0, 0);
+            double[] plainCeiling = AnalyticFinalShares(1e6, 0, 0, 0);
+            double[] buildCeiling = AnalyticFinalShares(1e6, request.RarityElevationPct, FleeceChance, FleeceTiers);
+            double ceilingGain = ShareAtOrAbove(plainCeiling, RarityTier.Legendary) / ShareAtOrAbove(plainZero, RarityTier.Legendary);
+
+            _output.WriteLine($"at L={request.LootLuckPct:F2}, elevation {request.RarityElevationPct:F2}%, fleece 1%:");
+            _output.WriteLine($"  Legendary+ per drop   {legendaryPlus,9:P3}");
+            _output.WriteLine($"  Ancient+ per drop     {ancientPlus,9:P4}   (one in {1 / ancientPlus:N0} drops)");
+            _output.WriteLine($"  Ancient+ / Legendary+ {ancientPlus / legendaryPlus,9:P2}");
+            _output.WriteLine($"  P(no Ancient+ in 976 drops) {Math.Pow(1 - ancientPlus, 976):F2}");
+            _output.WriteLine($"  infinite luck, plain roll: Legendary+ {ShareAtOrAbove(plainCeiling, RarityTier.Legendary):P3} = {ceilingGain:F2}x the zero-luck share");
+            _output.WriteLine($"  infinite luck, this build: Legendary+ {ShareAtOrAbove(buildCeiling, RarityTier.Legendary):P3}");
+
+            Assert.InRange(legendaryPlus, 0.0115, 0.0124);
+            Assert.InRange(ancientPlus, 0.00047, 0.00052);
+            Assert.InRange(ancientPlus / legendaryPlus, 0.039, 0.043);
+
+            // No amount of luck more than about doubles the top. If this fails
+            // the roll's SHAPE changed - that is an owner decision (task 26,
+            // options D/F), never a side effect.
+            Assert.InRange(ceilingGain, 1.9, 2.2);
+            Assert.True(ShareAtOrAbove(buildCeiling, RarityTier.Legendary) < 0.020,
+                "infinite luck now buys more than 2% Legendary+ - the roll's shape changed");
+        }
     }
 }

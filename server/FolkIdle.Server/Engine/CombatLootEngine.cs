@@ -229,6 +229,50 @@ namespace FolkIdle.Server.Engine
         public long TargetActivityId;
     }
 
+    /// <summary>
+    /// Every term of a drop's loot luck, named. CombatLootDropRequest.Build
+    /// takes <see cref="Total"/> and nothing else, so this IS the sum - a test,
+    /// a screen or an admin view that wants to show a term reads it from here
+    /// rather than restating the arithmetic.
+    /// </summary>
+    /// <remarks>
+    /// Modul: TASK 26, 2026-09-23. "No Ancient+ in five days" could only be
+    /// answered by computing this sum BY HAND from six tables, because nothing
+    /// could print it. Split out so RarityRollDistributionTests can pin every
+    /// term for a real build and fail when one moves. The sum used to be
+    /// written inline and carried a plea to keep it contiguous, because an
+    /// edit had once slid a term out of it; one named field per term is the
+    /// structural answer to that plea.
+    /// </remarks>
+    public readonly struct LootLuckBreakdown
+    {
+        /// <summary>combatStats.LootLuckPct: the LCK curve, its milestones, completed areas and equipped affixes.</summary>
+        public float Stats { get; init; }
+        public float Inheritance { get; init; }
+        /// <summary>The Fortune root (BranchLootRarity).</summary>
+        public float FortuneRoot { get; init; }
+        public float GuildDropRate { get; init; }
+        /// <summary>Rarity, the Fortune bough - the same currency as the root, so it simply adds.</summary>
+        public float RarityBough { get; init; }
+        /// <summary>Fortune, the bloodline's luck aptitude.</summary>
+        public float FortuneAptitude { get; init; }
+
+        public float Total => Stats + Inheritance + FortuneRoot + GuildDropRate + RarityBough + FortuneAptitude;
+
+        public static LootLuckBreakdown From(in TickStatePayload payload, in CombatStats combatStats)
+        {
+            return new LootLuckBreakdown
+            {
+                Stats = combatStats.LootLuckPct,
+                Inheritance = InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck),
+                FortuneRoot = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity),
+                GuildDropRate = GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f,
+                RarityBough = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity),
+                FortuneAptitude = BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
+            };
+        }
+    }
+
     // Modul 03/10/11/12: an equipment drop roll request from the 10 Hz tick.
     // ProcessSubTick is a static method (matching CodexEngine.KillEventQueue's
     // established convention) so it enqueues onto this static queue directly
@@ -335,17 +379,9 @@ namespace FolkIdle.Server.Engine
                 SkipMaterialRoll = skipMaterialRoll,
                 AutoSalvageBelowTier = payload.AutoSalvageBelowTier,
 
-                // Everything that shifts WHAT falls, summed into one figure.
-                // Keep this sum contiguous.
-                LootLuckPct = combatStats.LootLuckPct
-                    + InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck)
-                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity)
-                    + (GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f)
-                    // Rarity, the Fortune bough - the same currency as the
-                    // root, so it simply adds.
-                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity)
-                    // Fortune, the bloodline's luck aptitude.
-                    + BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
+                // Everything that shifts WHAT falls, summed into one figure -
+                // by LootLuckBreakdown, the only place the terms are named.
+                LootLuckPct = LootLuckBreakdown.From(in payload, in combatStats).Total,
 
                 // Plenty changes HOW MUCH of a material falls, which is a
                 // different question from what falls, and has its own field.
