@@ -49,12 +49,14 @@ namespace FolkIdle.Server.Engine
 
         private readonly IServiceProvider _serviceProvider;
         private readonly IConnectionMultiplexer _redis;
+        private readonly PlayerSessionRegistry _registry;
         private CancellationTokenSource? _cts;
 
-        public LeaderboardPayoutEngine(IServiceProvider serviceProvider, IConnectionMultiplexer redis)
+        public LeaderboardPayoutEngine(IServiceProvider serviceProvider, IConnectionMultiplexer redis, PlayerSessionRegistry registry)
         {
             _serviceProvider = serviceProvider;
             _redis = redis;
+            _registry = registry;
         }
 
         public void StartCron()
@@ -181,6 +183,26 @@ namespace FolkIdle.Server.Engine
                         await db.SaveChangesAsync(token);
                         await tx.CommitAsync(token);
                         paid++;
+
+                        // Modul: THE ROW IS NOT ENOUGH FOR AN ONLINE PLAYER.
+                        //
+                        // The live payload owns PremiumCurrency and every
+                        // checkpoint writes it back with plain assignment
+                        // (player.PremiumDiamonds = state.PremiumCurrency), so
+                        // without this the next flush put the pre-payout
+                        // balance back - and the week key just committed means
+                        // the payout is never retried. AchievementEngine had
+                        // the identical bug (fixed 2026-08-02); same fix: hand
+                        // the authoritative balance to the tick thread, the
+                        // only thread allowed to touch the payload. For an
+                        // offline player the drain finds no payload and drops
+                        // it, which is correct - the row is the truth then.
+                        // Pinned by LeaderboardPayoutLiveSessionTests.
+                        _registry.BillingSyncQueue.Enqueue(new BillingSyncNotification
+                        {
+                            PlayerId = player.Id,
+                            PremiumDiamondsBalance = player.PremiumDiamonds
+                        });
                     }
                     catch (Exception ex)
                     {
