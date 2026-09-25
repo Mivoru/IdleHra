@@ -1,7 +1,65 @@
 # FolkIdle on the Oracle Ampere box
 
-**The whole game runs here** — the API and the web client both. Nothing is
-left on Render. Only the database stays external, on Supabase.
+**The whole game runs here**: the API, the web client and, since 2026-09-25,
+the database. Nothing is left on Render or Supabase.
+
+## The database (moved off Supabase 2026-09-25)
+
+Postgres 17 runs as the `postgres` service in `docker-compose.yml`. It has
+no published port, so only the app reaches it, over the compose network.
+Its data lives in the named volume `pgdata`. **Never run `docker compose down -v`:**
+the `-v` deletes that volume.
+
+**Why it moved.** Supabase's free plan allows 5 GB of egress a month, and
+every row the server read crossed the internet to reach this box. The
+database is only 20 MB, but the traffic was large:
+- gathering made one read per harvest roll, about 9.3M of them;
+- whole equipment lists were loaded 5,220 times at an average of 4,222 rows.
+
+The quota ran out. On this host the same traffic costs nothing.
+
+**How it moved.** The scripts are in `~/folkidle-migration/` on the box.
+1. A rehearsal first: `pg_dump --schema=public` from Supabase while the game
+   ran, restored locally with no errors. All 70 tables matched row for row,
+   and the identity sequences matched the max ids.
+2. Then the real cutover:
+   - `docker compose stop -t 60 app` (SIGTERM runs the graceful flush);
+   - the final dump and restore;
+   - `FOLKIDLE_DB_CONN` repointed to `Host=postgres;...`;
+   - `deploy.sh`.
+
+**Rollback.** The Supabase project was left intact, and the old connection
+string is kept in `.env` as `FOLKIDLE_DB_CONN_SUPABASE`. Anything written
+after 17:12 UTC on 2026-09-25 exists only here, so rolling back means
+dumping this database into Supabase first.
+
+**Looking at it:**
+
+    cd ~/folkidle/ops/oracle && docker compose exec postgres psql -U folkidle folkidle
+
+The Supabase MCP tool now reads a FROZEN copy. Query over SSH instead.
+
+### Backups: this box's job now
+
+`backup-db.sh` runs from cron at 03:17 UTC nightly:
+
+    17 3 * * * bash $HOME/folkidle/ops/oracle/backup-db.sh >> $HOME/folkidle-backups/backup.log 2>&1
+
+What it does:
+- writes `~/folkidle-backups/folkidle-<utc>.dump` (pg_dump `-Fc`) and keeps
+  the newest 7;
+- writes to a partial name first and renames it, so a half-finished dump is
+  never mistaken for a good one;
+- refuses a dump under 10 KB.
+
+It was proven on the day by restoring a dump into a scratch database: 70
+tables, 59 players and 1,961 items, matching production. The restore
+command is in the script's header.
+
+**These dumps live on the same disk as the database, so a lost disk loses
+both.** Copy `~/folkidle-backups/` off the box regularly, for example:
+
+    scp folkidle-server:folkidle-backups/*.dump <somewhere safe>/
 
 Why: Render's free instance is 0.15 vCPU / 512 MB and sleeps after 15 minutes,
 which for an idle game means the tick loop stops.
@@ -264,8 +322,9 @@ pending migration applies the moment the container starts — no prompt, no
 separate step. That is safe at exactly one replica and this file says elsewhere
 not to scale it.
 
-**Take a Supabase backup before a release that carries a destructive
-migration.** The 2026-08-09 release carried two: `BackfillFounderAptitudes`
+**Take a backup before a release that carries a destructive migration:**
+run `bash ~/folkidle/ops/oracle/backup-db.sh` on the box. (Before 2026-09-25
+this meant a Supabase backup.) The 2026-08-09 release carried two: `BackfillFounderAptitudes`
 rewrote live lineage rows, and `RetireTheBank` copied rows out of
 `BankEquipmentInstances` and then dropped the table. Both were verified
 afterwards against the live database rather than assumed.

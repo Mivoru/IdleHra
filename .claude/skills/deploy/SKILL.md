@@ -6,7 +6,8 @@ description: Ship FolkIdle to the live Oracle box (server and web client togethe
 # Deploying FolkIdle
 
 The whole game runs on one Oracle Ampere box — API and web client both, behind
-Caddy on one origin. Only Postgres is external (Supabase). Live at
+Caddy on one origin, and Postgres beside them (moved off Supabase on
+2026-09-25; see `ops/oracle/README.md`). Live at
 https://folkidle.duckdns.org / https://92-5-0-94.sslip.io.
 
 **Deploying is a real, outward-facing action affecting live players. Confirm
@@ -29,7 +30,8 @@ curl -s -o /dev/null -w "%{http_code}\n" https://folkidle.duckdns.org/api/v1/<en
 2. **Does this release carry a destructive migration?** Migrations apply
    automatically on container start (`--migrate && exec ...`) — no prompt, no
    separate step. If any migration drops, rewrites or backfills existing rows,
-   **take a Supabase backup first** and say so. Precedent: one release
+   **take a backup first** (`ssh folkidle-server "bash ~/folkidle/ops/oracle/backup-db.sh"`)
+   and say so. Precedent: one release
    rewrote live lineage rows and another dropped a table after copying it out.
 3. **Did the hostname change?** Vite inlines the server address into the
    bundle. Changing it means editing the `Caddyfile` site address, the
