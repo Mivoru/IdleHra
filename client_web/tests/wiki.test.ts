@@ -20,6 +20,11 @@ import {
   DAILY_LOGIN_DAY7_DIAMONDS,
   WORLD_BOSS_HP,
   WORLD_BOSS_ATTEMPTS,
+  DEEP_STAKE_PCT,
+  DEEP_TOLL_GROWTH_PCT,
+  DEEP_MIN_DOOR_CHANCE_PCT,
+  DEEP_MAX_LANTERNS,
+  DEEP_TITLE_FLOORS,
   GUILD_TAX_MIN_PCT,
   GUILD_TAX_MAX_PCT,
   townHallCeiling,
@@ -310,5 +315,26 @@ describe('the tables the wiki restates still match the server', () => {
     expect(DAILY_LOGIN_DAY7_DIAMONDS).toBe(
       num(daily, /PremiumDiamondsOnDay7Completion = (\d+)/, 'day 7 diamonds'),
     );
+  });
+
+  it('economy: the Deep - stake, toll, door floor, lanterns and title floors', () => {
+    const delve = read(serverRoot, 'Engine', 'DelveRegistry.cs');
+    const titles = read(serverRoot, 'Domain', 'Progression', 'TitleRegistry.cs');
+
+    // Percentages on the page, fractions and factors in the registry.
+    const pct = (re: RegExp, what: string) => {
+      const m = delve.match(re);
+      expect(m, `${what} not found in DelveRegistry.cs`).not.toBeNull();
+      return Math.round(Number(m![1]) * 10000) / 100;
+    };
+    expect(DEEP_STAKE_PCT).toBe(pct(/StakeFraction = ([\d.]+);/, 'stake fraction'));
+    expect(DEEP_TOLL_GROWTH_PCT).toBe(Math.round((pct(/TollGrowth = ([\d.]+);/, 'toll growth') - 100) * 100) / 100);
+    expect(DEEP_MIN_DOOR_CHANCE_PCT).toBe(pct(/MinSuccessChance = ([\d.]+);/, 'door floor'));
+    expect(DEEP_MAX_LANTERNS).toBe(num(delve, /MaxLanternRefills = (\d+);/, 'lantern cap'));
+
+    const floors = [...titles.matchAll(/new TitleDefinition\("[a-z0-9_]+", "[^"]+", (\d+)\)/g)]
+      .map((m) => Number(m[1]))
+      .filter((f) => f > 0);
+    expect([...DEEP_TITLE_FLOORS]).toEqual(floors);
   });
 });

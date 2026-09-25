@@ -96,6 +96,134 @@ namespace FolkIdle.Server.Tests
 
         private static long RegionOneFee => DelveRegistry.EntryFeeForRegion(1);
 
+        private async Task SetLanternsBoughtAsync(long playerId, int bought)
+        {
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            await db.Database.ExecuteSqlRawAsync("UPDATE \"DelveRunRecords\" SET \"LanternsBought\" = {1} WHERE \"PlayerId\" = {0}", playerId, bought);
+        }
+
+        /// <summary>A Deep run on floor 9 with its light out. Returns the frozen stake.</summary>
+        private async Task<long> DeepRunInTheDarkAsync(DelveEngine engine, long playerId, long gold)
+        {
+            await SeedAsync(playerId, gold);
+            var view = await engine.DevPlaceRunAtBottomAsync(playerId);
+            await engine.DescendAsync(playerId, view.StakeGold, Pass);
+            for (int i = 0; i < DelveRegistry.LanternCharges; i++) await engine.ChooseDoorAsync(playerId, 0, Fail);
+            return view.StakeGold;
+        }
+
+        // ------------------------------------------------------------------
+        // Lanterns (task 37 phase 2).
+        // ------------------------------------------------------------------
+
+        [Fact]
+        public async Task TheLightGoingOutInTheDeepIsAnOfferNotAnEnd()
+        {
+            const long playerId = 982000030L;
+            var engine = Engine();
+            long stake = await DeepRunInTheDarkAsync(engine, playerId, 20_000_000);
+
+            var view = await engine.GetViewAsync(playerId);
+            Assert.True(view.Active);
+            Assert.Equal(0, view.ChargesRemaining);
+            Assert.Equal(stake, view.LanternPrice);
+            Assert.Equal(DelveRegistry.MaxLanternRefills, view.LanternRefillsLeft);
+
+            // A door in the dark is refused, visibly, and changes nothing.
+            var door = await engine.ChooseDoorAsync(playerId, 0, Pass);
+            Assert.Equal(DelveResult.LanternOut, door.Result);
+            Assert.Equal(8, (await RunAsync(playerId))!.FloorsCleared);
+        }
+
+        [Fact]
+        public async Task ALanternCostsExactlyStakeTimesTwoToTheKAndAddsOneCharge()
+        {
+            const long playerId = 982000031L;
+            var engine = Engine();
+            long stake = await DeepRunInTheDarkAsync(engine, playerId, 200_000_000);
+
+            for (int k = 0; k < 3; k++)
+            {
+                long before = await GoldAsync(playerId);
+                var bought = await engine.BuyLanternAsync(playerId);
+
+                Assert.Equal(DelveResult.Ok, bought.Result);
+                Assert.Equal(stake * (1L << k), bought.GoldCharged);
+                Assert.Equal(before - stake * (1L << k), await GoldAsync(playerId));
+                Assert.Equal(1, bought.View.ChargesRemaining);
+                Assert.Equal(k + 1, bought.View.LanternsBought);
+
+                await engine.ChooseDoorAsync(playerId, 0, Fail);
+            }
+        }
+
+        [Fact]
+        public async Task ALanternIsRefusedWhileTheLightStillBurnsOrWithNoDeepRun()
+        {
+            const long playerId = 982000032L;
+            var engine = Engine();
+            await SeedAsync(playerId, 20_000_000);
+
+            Assert.Equal(DelveResult.NoRunInProgress, (await engine.BuyLanternAsync(playerId)).Result);
+
+            var view = await engine.DevPlaceRunAtBottomAsync(playerId);
+            Assert.Equal(DelveResult.NoRunInProgress, (await engine.BuyLanternAsync(playerId)).Result);
+
+            await engine.DescendAsync(playerId, view.StakeGold, Pass);
+            long gold = await GoldAsync(playerId);
+            Assert.Equal(DelveResult.ChargesRemain, (await engine.BuyLanternAsync(playerId)).Result);
+            Assert.Equal(gold, await GoldAsync(playerId));
+            Assert.Equal(0, (await RunAsync(playerId))!.LanternsBought);
+        }
+
+        [Fact]
+        public async Task TheNinthLanternIsRefused()
+        {
+            const long playerId = 982000033L;
+            var engine = Engine();
+            await DeepRunInTheDarkAsync(engine, playerId, 20_000_000);
+            await SetLanternsBoughtAsync(playerId, DelveRegistry.MaxLanternRefills);
+            long gold = await GoldAsync(playerId);
+
+            var refused = await engine.BuyLanternAsync(playerId);
+
+            Assert.Equal(DelveResult.NoMoreLanterns, refused.Result);
+            Assert.Equal(gold, await GoldAsync(playerId));
+            Assert.Equal(0, refused.View.LanternPrice);
+        }
+
+        [Fact]
+        public async Task ALanternThePlayerCannotAffordChangesNothing()
+        {
+            const long playerId = 982000034L;
+            var engine = Engine();
+            long stake = await DeepRunInTheDarkAsync(engine, playerId, 20_000_000);
+            await SetGoldAsync(playerId, stake - 1);
+
+            var refused = await engine.BuyLanternAsync(playerId);
+
+            Assert.Equal(DelveResult.NotEnoughGold, refused.Result);
+            Assert.Equal(stake - 1, await GoldAsync(playerId));
+            var run = await RunAsync(playerId);
+            Assert.Equal(0, run!.ChargesRemaining);
+            Assert.Equal(0, run.LanternsBought);
+        }
+
+        /// <summary>
+        /// Modul: THE CLIENT NEVER SENDS A PRICE. The engine's purchase takes the
+        /// player and nothing else, so no request shape can carry one - asserted
+        /// on the signature, where a later "just pass the quoted price" would
+        /// have to show up.
+        /// </summary>
+        [Fact]
+        public void BuyingALanternTakesNoPriceFromTheCaller()
+        {
+            var method = typeof(DelveEngine).GetMethod(nameof(DelveEngine.BuyLanternAsync))!;
+            var parameters = method.GetParameters();
+            Assert.Single(parameters);
+            Assert.Equal("playerId", parameters[0].Name);
+        }
+
         [Fact]
         public async Task DescendingFromTheBottomBanksWhatWalkingOutWouldAndDebitsTheFirstToll()
         {
@@ -502,14 +630,18 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(afterBank.DelveDiamondsThisWeek, walker.DelveDiamondsThisWeek);
             Assert.Equal(11, walker.DelveDeepestFloor);
 
-            // Descend, fail to 0 charges: RunLost, and still nothing minted.
+            // Descend, buy a lantern, fail to 0 charges with every lantern
+            // bought: RunLost, and still nothing minted.
             await SeedAsync(loserId, gold: 50_000_000);
             view = await engine.DevPlaceRunAtBottomAsync(loserId);
             await engine.DescendAsync(loserId, view.StakeGold, Pass);
             var afterLoserBank = await PlayerAsync(loserId);
 
-            DelveActionOutcome last = null!;
-            for (int i = 0; i < DelveRegistry.LanternCharges; i++) last = await engine.ChooseDoorAsync(loserId, 0, Fail);
+            for (int i = 0; i < DelveRegistry.LanternCharges; i++) await engine.ChooseDoorAsync(loserId, 0, Fail);
+            Assert.Equal(DelveResult.Ok, (await engine.BuyLanternAsync(loserId)).Result);
+            await SetLanternsBoughtAsync(loserId, DelveRegistry.MaxLanternRefills);
+
+            var last = await engine.ChooseDoorAsync(loserId, 0, Fail);
             Assert.Equal(DelveResult.RunLost, last.Result);
 
             var loser = await PlayerAsync(loserId);

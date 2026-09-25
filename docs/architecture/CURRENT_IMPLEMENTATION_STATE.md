@@ -92,8 +92,35 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 | FeatureUnlock                  | feature_unlocks                 |
 | LootTierDailyCount             | loot_tier_daily_counts          |
 | NotableItemEvent               | notable_item_events             |
+| PlayerTitle                    | player_titles                   |
+| PlayerGoldDailyHigh            | player_gold_daily_high          |
 
-The last two are the **drop record** (task 26): a count per (player, UTC day,
+**The Deep (task 37)** added the last two, in migration `AddTheDeep`:
+- `player_titles` is keyed `(PlayerId, TitleSlug)`, and grants are
+  `ON CONFLICT DO NOTHING`.
+- `player_gold_daily_high` is the 7-day gold high-water mark the Deep's stake
+  is priced on. It is written inside `FlushState`'s transaction, never on
+  the Redis frame path.
+
+The same migration added these columns:
+- `DelveRunRecords`: `IsDeep`, `StakeGold`, `LanternsBought`.
+- `PlayerRecords`: `DelveDeepestFloor`, `DelveDeepestThisWeek`,
+  `DelveDeepestThisWeekAtUtc`, `ActiveTitleSlug`.
+
+The routes:
+- `POST /api/v1/delve/deep/descend` and `/api/v1/delve/deep/lantern`. Both
+  take no price from the client, and both are gated by
+  `FOLKIDLE_DELVE_DEEP`.
+- `GET /api/v1/player/titles` and `POST /api/v1/player/title`.
+- `GET /api/v1/leaderboard/deepest`. It is a SQL query, not a Redis board,
+  and it pays nothing.
+- The dev routes `/api/v1/dev/delve/{at-bottom,lantern-out}` and
+  `/api/v1/dev/titles/grant`.
+
+Combat gold is `EconomyDecisions.CombatGoldPercent` (75, an owner decision),
+and both kill paths reach it through `CombatGoldReward.PerKill`.
+
+`loot_tier_daily_counts` and `notable_item_events` are the **drop record** (task 26): a count per (player, UTC day,
 source, region, final tier) for every equipment piece created, and a row for
 every Legendary+ piece, every forge fusion and every first-clear trophy. Both
 are written only through `Engine/DropRecord.cs`, inside the transaction that

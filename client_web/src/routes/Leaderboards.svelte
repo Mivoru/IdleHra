@@ -4,14 +4,70 @@
     queryKeys,
     fetchLeaderboard,
     fetchGuildLeaderboard,
+    fetchDeepestBoard,
   } from '../lib/net/rest';
   import { connection } from '../lib/net/connection';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
   import { tierNameStyle } from '../lib/ui/leaderboardTiers';
 
   const leaderboard = createQuery(() => ({ queryKey: queryKeys.leaderboard, queryFn: fetchLeaderboard }));
   const guildBoard = createQuery(() => ({ queryKey: queryKeys.guildLeaderboard, queryFn: fetchGuildLeaderboard }));
+
+  /*
+    Modul: THE DEEPEST BOARD PAYS NOTHING, and says so. It is a plain query on
+    the server, not a Redis board, so the diamond payout cannot pick it up.
+    Its own tab rather than a third panel, because it is a different question
+    ("how far down did anyone get this week") and it resets weekly.
+  */
+  let tab = $state<'standing' | 'deepest'>('standing');
+  /** The board row whose profile is open - a title is worn to be seen. */
+  let inspectPlayerId = $state<number | null>(null);
+  const deepest = createQuery(() => ({
+    queryKey: queryKeys.deepestBoard,
+    queryFn: fetchDeepestBoard,
+    enabled: tab === 'deepest',
+  }));
 </script>
+
+<div class="tabs" role="tablist">
+  <button role="tab" class:active={tab === 'standing'} aria-selected={tab === 'standing'} onclick={() => (tab = 'standing')}>
+    Standing
+  </button>
+  <button role="tab" class:active={tab === 'deepest'} aria-selected={tab === 'deepest'} onclick={() => (tab = 'deepest')}>
+    Deepest this week
+  </button>
+</div>
+
+{#if tab === 'deepest'}
+  <div class="grid">
+    <section class="panel deepest">
+      <h2>Deepest this week</h2>
+      <p class="dim tiny">
+        The deepest floor of the Deep cleared since Monday. Glory only: this board pays nothing, and it
+        starts again every week.
+      </p>
+      {#if deepest.isPending}
+        <Skeleton />
+      {:else if (deepest.data ?? []).length === 0}
+        <p class="dim">Nobody has gone below the Delve this week.</p>
+      {:else}
+        <ol class="board">
+          {#each deepest.data ?? [] as row (row.PlayerId)}
+            <li class:self={row.PlayerId === connection.currentPlayerId}>
+              <span class="rank dim">#{row.Rank}</span>
+              <button class="who who-btn" onclick={() => (inspectPlayerId = row.PlayerId)}>
+                {row.Name}
+                {#if row.Title}<span class="title tiny">{row.Title}</span>{/if}
+              </button>
+              <span class="xp">floor {row.Floor}</span>
+            </li>
+          {/each}
+        </ol>
+      {/if}
+    </section>
+  </div>
+{:else}
 
 <div class="grid">
   <section class="panel">
@@ -81,8 +137,63 @@
     {/if}
   </section>
 </div>
+{/if}
+
+{#if inspectPlayerId !== null}
+  <PlayerProfileModal playerId={inspectPlayerId} onClose={() => (inspectPlayerId = null)} />
+{/if}
 
 <style>
+  .tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 1rem 0;
+    flex-wrap: wrap;
+  }
+
+  .tabs button {
+    min-height: 44px;
+    flex-shrink: 0;
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .tabs button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .deepest .board li {
+    grid-template-columns: 2.5rem 1fr auto;
+    align-items: center;
+  }
+
+  .who-btn {
+    min-height: 44px;
+    min-width: 0;
+    text-align: left;
+    background: none;
+    border: none;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .title {
+    margin-left: 0.35rem;
+    font-style: italic;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));

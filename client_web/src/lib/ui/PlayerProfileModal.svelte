@@ -58,6 +58,8 @@
   interface PlayerProfile {
     PlayerId: number;
     Username: string;
+    /** The worn title's display name, resolved by the server, or null. */
+    ActiveTitle: string | null;
     GuildId: number;
     CurrentLevel: number;
     LastLogoutTimestamp: number;
@@ -95,7 +97,12 @@
 <div class="overlay" onclick={onClose}>
   <div class="modal" onclick={(e) => e.stopPropagation()}>
     <div class="header">
-      <h3>{profile.data ? `${profile.data.Username}'s Profile` : 'Loading Profile...'}</h3>
+      <h3>
+        {profile.data ? `${profile.data.Username}'s Profile` : 'Loading Profile...'}
+        {#if profile.data?.ActiveTitle}
+          <span class="title-badge">{profile.data.ActiveTitle}</span>
+        {/if}
+      </h3>
       <button class="close-btn" onclick={onClose}>&times;</button>
     </div>
     
@@ -166,6 +173,16 @@
 </div>
 
 <style>
+  /* A title (task 37) sits beside the name, in the name's own line. */
+  .title-badge {
+    display: inline-block;
+    margin-left: 0.4rem;
+    font-size: 0.75em;
+    font-style: italic;
+    color: var(--accent, #d9c48b);
+    font-weight: 600;
+  }
+
   .overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;

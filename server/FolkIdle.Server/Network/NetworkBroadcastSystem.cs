@@ -1585,6 +1585,26 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // The Deep's weekly board (task 37). Read-only SQL; pays nothing.
+                    if (requestPath == "/api/v1/leaderboard/deepest" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleDeepestLeaderboard(context);
+                        continue;
+                    }
+
+                    // Titles (task 37): REST, not the wire - no StateUpdatePacket field.
+                    if (requestPath == "/api/v1/player/titles" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleTitlesView(context);
+                        continue;
+                    }
+
+                    if (requestPath == "/api/v1/player/title" && context.Request.HttpMethod == "POST")
+                    {
+                        await HandleTitleSet(context);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/market/listings" && context.Request.HttpMethod == "GET")
                     {
                         await HandleMarketBrowserListings(context);
@@ -2894,6 +2914,12 @@ namespace FolkIdle.Server.Network
 
                     outcome = await engine.DescendAsync(playerId, quotedStake);
                 }
+                else if (requestPath == "/api/v1/delve/deep/lantern")
+                {
+                    // No body is read: the action is the whole request, and the
+                    // price is the engine's (stake x 2^bought, frozen stake).
+                    outcome = await engine.BuyLanternAsync(playerId);
+                }
                 else
                 {
                     context.Response.StatusCode = 404;
@@ -2914,7 +2940,8 @@ namespace FolkIdle.Server.Network
                     outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.Ok
                     && (requestPath == "/api/v1/delve/start"
                         || requestPath == "/api/v1/delve/bank"
-                        || requestPath == "/api/v1/delve/deep/descend");
+                        || requestPath == "/api/v1/delve/deep/descend"
+                        || requestPath == "/api/v1/delve/deep/lantern");
 
                 if (changedBalances)
                 {
@@ -5760,6 +5787,9 @@ namespace FolkIdle.Server.Network
                     GuildId = player.GuildId,
                     CurrentLevel = player.CurrentLevel,
                     LastLogoutTimestamp = player.LastLogoutTimestamp,
+                    // The display name, as the server has it - the client keeps
+                    // no list of titles to look a slug up in.
+                    ActiveTitle = FolkIdle.Server.Domain.Progression.TitleRegistry.DisplayNameFor(player.ActiveTitleSlug),
                     Characters = characters,
                     Equipment = equipment
                 };
@@ -5775,6 +5805,128 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Profile fetch error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleDeepestLeaderboard(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var rows = await FolkIdle.Server.Domain.Economy.DeepestBoard.TopAsync(db, DateTime.UtcNow);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new { Entries = rows });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Deepest board error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task WriteTitlesAsync(HttpListenerContext context, FolkIdleDbContext db, long playerId, string? result)
+        {
+            var player = await db.PlayerRecords.AsNoTracking().SingleOrDefaultAsync(p => p.Id == playerId);
+            var titles = await FolkIdle.Server.Domain.Progression.TitleEngine.ListAsync(db, playerId);
+            var active = FolkIdle.Server.Domain.Progression.TitleRegistry.Find(player?.ActiveTitleSlug);
+
+            context.Response.StatusCode = 200;
+            context.Response.ContentType = "application/json";
+            await JsonSerializer.SerializeAsync(context.Response.OutputStream, new
+            {
+                Result = result,
+                Titles = titles.Select(t => new { t.Slug, t.Name, t.EarnedAtUtc }),
+                Active = active == null ? null : new { active.Slug, Name = active.DisplayName },
+            });
+        }
+
+        private async Task HandleTitlesView(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await WriteTitlesAsync(context, db, playerId, null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Titles view error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>
+        /// Wear a title, or clear it with { "Slug": null }. An unearned or
+        /// unknown slug answers 200 with its Result - NotEarned / UnknownTitle -
+        /// and changes nothing, so the screen can say why.
+        /// </summary>
+        private async Task HandleTitleSet(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                string? slug;
+                using (var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding))
+                {
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(await reader.ReadToEndAsync());
+                        if (!parsed.RootElement.TryGetProperty("Slug", out var slugElement)) { context.Response.StatusCode = 400; return; }
+                        if (slugElement.ValueKind == JsonValueKind.Null) slug = null;
+                        else if (slugElement.ValueKind == JsonValueKind.String) slug = slugElement.GetString();
+                        else { context.Response.StatusCode = 400; return; }
+                    }
+                    catch (JsonException)
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var result = await FolkIdle.Server.Domain.Progression.TitleEngine.SetActiveAsync(db, playerId, slug);
+                await WriteTitlesAsync(context, db, playerId, result.ToString());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Title set error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally
@@ -9769,6 +9921,43 @@ namespace FolkIdle.Server.Network
                     context.Response.StatusCode = 200;
                     context.Response.ContentType = "application/json";
                     await JsonSerializer.SerializeAsync(context.Response.OutputStream, view);
+                    return;
+                }
+
+                // The lantern purchase needs a Deep run whose light is out,
+                // which failing doors reaches only by chance.
+                if (requestPath == "/api/v1/dev/delve/lantern-out" && context.Request.HttpMethod == "POST")
+                {
+                    var delve = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Economy.DelveEngine>();
+                    bool done = await delve.DevPutOutTheLanternAsync(playerId);
+                    context.Response.StatusCode = done ? 200 : 409;
+                    return;
+                }
+
+                // A title for the caller, through the real idempotent grant, so
+                // the title picker and the profile can be exercised without a
+                // player first clearing floor 10 by luck.
+                if (requestPath == "/api/v1/dev/titles/grant" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    string? slug = null;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                        if (parsed.RootElement.TryGetProperty("Slug", out var el) && el.ValueKind == JsonValueKind.String) slug = el.GetString();
+                    }
+                    catch (JsonException) { }
+
+                    if (slug == null || FolkIdle.Server.Domain.Progression.TitleRegistry.Find(slug) == null)
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    await FolkIdle.Server.Domain.Progression.TitleEngine.GrantAsync(db, playerId, slug, DateTime.UtcNow);
+                    context.Response.StatusCode = 200;
                     return;
                 }
 

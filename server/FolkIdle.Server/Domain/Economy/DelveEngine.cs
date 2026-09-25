@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 
@@ -42,7 +43,11 @@ namespace FolkIdle.Server.Domain.Economy
         /// <summary>A descent was asked for with doors still in front of the run.</summary>
         NotAtTheBottom,
         /// <summary>FOLKIDLE_DELVE_DEEP is off. The Deep's routes answer this rather than a bare 404.</summary>
-        DeepDisabled
+        DeepDisabled,
+        /// <summary>A lantern was offered to a run that still has light. Buying is only for a run at 0 charges.</summary>
+        ChargesRemain,
+        /// <summary>A door was tried in the Deep with the lantern out. Light another, or walk out.</summary>
+        LanternOut
     }
 
     /// <summary>
@@ -141,6 +146,29 @@ namespace FolkIdle.Server.Domain.Economy
         /// <summary>The deepest floor ever cleared, and this week's (0 when the stored week is stale).</summary>
         public int DeepestFloor { get; set; }
         public int DeepestThisWeek { get; set; }
+
+        /// <summary>
+        /// In the Deep with the lantern out and refills left: what the next
+        /// lantern costs (stake x 2^bought). 0 otherwise. The client never sends
+        /// a price - buying is an action, and the server charges this number.
+        /// </summary>
+        public long LanternPrice { get; set; }
+
+        /// <summary>Lanterns this run may still buy (MaxLanternRefills - LanternsBought).</summary>
+        public int LanternRefillsLeft { get; set; }
+
+        /// <summary>The next Deep title past the player's record, or null when all are earned.</summary>
+        public DelveNextTitle? NextTitle { get; set; }
+
+        /// <summary>The display name of the title the player wears, or null. Rendered as sent; the client keeps no list.</summary>
+        public string? ActiveTitle { get; set; }
+    }
+
+    public sealed class DelveNextTitle
+    {
+        public string Slug { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public int Floor { get; set; }
     }
 
     public sealed class DelveActionOutcome
@@ -349,6 +377,9 @@ namespace FolkIdle.Server.Domain.Economy
             view.DeepEnabled = _deep.Enabled;
             view.DeepestFloor = player.DelveDeepestFloor;
             view.DeepestThisWeek = thisWeek ? player.DelveDeepestThisWeek : 0;
+            view.ActiveTitle = TitleRegistry.DisplayNameFor(player.ActiveTitleSlug);
+            var next = TitleRegistry.NextDeepTitle(player.DelveDeepestFloor);
+            view.NextTitle = next == null ? null : new DelveNextTitle { Slug = next.Slug, Name = next.DisplayName, Floor = next.DeepFloor };
         }
 
         private static void ApplyRunToView(DelveRunView view, DelveRunRecord run, PlayerRecord player)
@@ -361,6 +392,14 @@ namespace FolkIdle.Server.Domain.Economy
             view.IsDeep = run.IsDeep;
             view.AtLanding = IsAtLanding(run);
             view.LanternsBought = run.LanternsBought;
+            if (run.IsDeep)
+            {
+                view.LanternRefillsLeft = Math.Max(0, DelveRegistry.MaxLanternRefills - run.LanternsBought);
+                if (run.ChargesRemaining <= 0 && view.LanternRefillsLeft > 0)
+                {
+                    view.LanternPrice = DelveRegistry.LanternRefillPrice(run.StakeGold, run.LanternsBought);
+                }
+            }
             if (run.IsDeep) view.StakeGold = run.StakeGold;
 
             var demands = new int[DelveRegistry.DoorsPerFloor];
@@ -570,6 +609,14 @@ namespace FolkIdle.Server.Domain.Economy
                     return outcome;
                 }
 
+                if (run.IsDeep && run.ChargesRemaining <= 0)
+                {
+                    await tx.RollbackAsync();
+                    outcome.Result = DelveResult.LanternOut;
+                    outcome.View = await GetViewAsync(playerId);
+                    return outcome;
+                }
+
                 if (IsAtLanding(run))
                 {
                     await tx.RollbackAsync();
@@ -591,6 +638,15 @@ namespace FolkIdle.Server.Domain.Economy
                     run.FloorsCleared = run.CurrentFloor;
                     run.RevealedDoorMask = 0;
                     RecordDepth(player, run.CurrentFloor, Now());
+
+                    // Modul: THE TITLE IS GRANTED IN THE SAME TRANSACTION AS THE
+                    // RECORD THAT EARNED IT. Every milestone at or above this
+                    // floor is (re)granted - idempotent, so a replay or a
+                    // title added to the registry later is caught up here.
+                    foreach (var title in TitleRegistry.ForDeepFloor(player.DelveDeepestFloor))
+                    {
+                        await TitleEngine.GrantAsync(db, playerId, title.Slug, Now());
+                    }
                     outcome.Result = DelveResult.FloorCleared;
                 }
                 else if (passed)
@@ -617,6 +673,24 @@ namespace FolkIdle.Server.Domain.Economy
                 else
                 {
                     run.ChargesRemaining--;
+
+                    // Modul: IN THE DEEP THE LIGHT GOING OUT IS AN OFFER, not an
+                    // end - while a refill is left, the run waits at 0 charges
+                    // for the player to buy a lantern or walk out. Only a run
+                    // that has bought every lantern it may is lost outright.
+                    bool canRefill = run.IsDeep && run.LanternsBought < DelveRegistry.MaxLanternRefills;
+                    if (run.ChargesRemaining <= 0 && canRefill)
+                    {
+                        run.ChargesRemaining = 0;
+                        run.RevealedDoorMask = 0;
+                        await db.SaveChangesAsync();
+                        await tx.CommitAsync();
+
+                        outcome.Result = DelveResult.ChargeLost;
+                        outcome.View = await GetViewAsync(playerId);
+                        return outcome;
+                    }
+
                     if (run.ChargesRemaining <= 0)
                     {
                         // In the Deep this loses only the gold already spent:
@@ -776,6 +850,94 @@ namespace FolkIdle.Server.Domain.Economy
                 await tx.RollbackAsync();
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Buys one lantern charge for a Deep run whose light is out, at
+        /// stake x 2^bought, capped at MaxLanternRefills.
+        ///
+        /// Modul: THE CLIENT SENDS NO PRICE. The request is the action alone;
+        /// the price is computed here from the FROZEN stake and the count on the
+        /// run row, debited from the locked gold row in the same transaction as
+        /// the charge it buys. Every refusal says why: no Deep run, light still
+        /// burning, every lantern bought, not enough gold - and changes nothing.
+        /// </summary>
+        public async Task<DelveActionOutcome> BuyLanternAsync(long playerId)
+        {
+            var outcome = new DelveActionOutcome();
+            if (!_deep.Enabled)
+            {
+                outcome.Result = DelveResult.DeepDisabled;
+                outcome.View = await GetViewAsync(playerId);
+                return outcome;
+            }
+
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var run = await LockRunAsync(db, playerId);
+
+                DelveResult? refusal = run == null || !run.IsDeep ? DelveResult.NoRunInProgress
+                    : run.ChargesRemaining > 0 ? DelveResult.ChargesRemain
+                    : run.LanternsBought >= DelveRegistry.MaxLanternRefills ? DelveResult.NoMoreLanterns
+                    : null;
+
+                long price = run == null ? 0 : DelveRegistry.LanternRefillPrice(run.StakeGold, run.LanternsBought);
+                CommodityRecord? goldRow = null;
+                if (refusal == null)
+                {
+                    goldRow = await LockGoldRowAsync(db, playerId);
+                    if (goldRow == null || goldRow.Quantity < price) refusal = DelveResult.NotEnoughGold;
+                }
+
+                if (refusal != null)
+                {
+                    await tx.RollbackAsync();
+                    outcome.Result = refusal.Value;
+                    outcome.View = await GetViewAsync(playerId);
+                    return outcome;
+                }
+
+                var player = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == playerId);
+                goldRow!.Quantity -= price;
+                run!.LanternsBought++;
+                run.ChargesRemaining = 1;
+                // A fresh light shows the floor afresh.
+                var (packed, mask) = RollFloor(player.BaseLuck, Random.Shared);
+                run.PackedDoorDemands = packed;
+                run.RevealedDoorMask = mask;
+
+                await db.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                outcome.Result = DelveResult.Ok;
+                outcome.GoldCharged = price;
+                outcome.View = await GetViewAsync(playerId);
+                return outcome;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// DEV TOOLS ONLY (POST /api/v1/dev/delve/lantern-out): puts out the
+        /// light of the caller's Deep run, so exercise.mjs can buy a lantern on
+        /// every run instead of failing doors until chance obliges. Returns false
+        /// when there is no Deep run to darken.
+        /// </summary>
+        public async Task<bool> DevPutOutTheLanternAsync(long playerId)
+        {
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            var run = await db.DelveRunRecords.SingleOrDefaultAsync(r => r.PlayerId == playerId);
+            if (run == null || !run.IsDeep || IsAtLanding(run)) return false;
+            run.ChargesRemaining = 0;
+            run.RevealedDoorMask = 0;
+            await db.SaveChangesAsync();
+            return true;
         }
 
         /// <summary>

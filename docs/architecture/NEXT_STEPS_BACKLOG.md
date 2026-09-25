@@ -19,9 +19,9 @@ do next.
 
 ---
 
-# HANDOFF 2026-09-25 - tasks 25-35 shipped, task 37 half-built (START HERE)
+# HANDOFF 2026-09-25 - tasks 25-35 and 37 shipped (START HERE)
 
-**Live:** production is **1.0.703**, main `054cb87`. Full suite 963/963. `smoke:screens` 26/26 on production.
+**Live:** production is **1.0.717** (main `d10ceeb`, #38 + #39), plus the task 37 phase 2 PR once it deploys. `smoke:screens` 26/26 on production. **The Deep's flag `FOLKIDLE_DELVE_DEEP` is OFF in production: the owner turns it on.**
 
 **Shipped and deployed, 2026-09-24:**
 
@@ -44,21 +44,14 @@ do next.
 
 The specs and plans for 36/37/38 are in `docs/superpowers/{specs,plans}/2026-09-24-*` (#24). Owner decisions are recorded in those specs.
 
-**Task 37, The Deep, is IN PROGRESS.** The work was stopped mid-work, and nothing from it is deployed.
-
-1. **Phase 0.2, the income profile and the sink table (PR #34), IS ON MAIN** as `c762da4`. It is test-only, so there is no deploy to do.
-2. **Phase 1, the Deep behind `FOLKIDLE_DELVE_DEEP` (off by default) (PR #35), is NOT ON MAIN.**
-   - #35 was stacked on `task37/phase0-income-profile`, and it was merged into that branch *after* #34 had already gone to main. So its commits (up to `7b82480`, merge `4c5ca52`) sit only on `origin/task37/phase0-income-profile` and `origin/task37/phase1-the-deep`.
-   - **To do:** open a new PR from `task37/phase1-the-deep` to `main`, then review, merge and deploy it.
-   - The flag stays off in production until the owner turns it on.
-   - PR #35's body records the verification: full suite **1003/1003**, exercise **162/162** with a new Deep block, and the geometry checks clean on the Delve screen.
-   - It carries migration `20260924212939_AddTheDeep`, which is additive and also creates `player_titles` for phase 2.
-3. **Phase 2, `task37/phase2-lanterns-titles-board`** (6047bb2, a **WIP commit**, stacked on phase 1):
-   - Contains lanterns, `TitleEngine`/`TitleRegistry`, `DeepestBoard`, the Leaderboards and profile UI, and tests.
-   - It was stopped while the exercise step was being written, and **nothing has been run on it**.
-   - Finish it from the plan's Phase 2 section, after phase 1 is on main.
-
-The local dev DB may already have `AddTheDeep` applied, which means it is ahead of main. If main misbehaves locally, that is why.
+**Task 37, The Deep, is DONE**, and all of it sits behind the flag:
+1. Phase 0.2 (the income profile and the sink table) is PR #34.
+2. Phase 1 (descend on a frozen stake, tolls, records, the 7-day high-water mark) is PR #39. It re-opens #35, which stranded on its stacked base. It is deployed as 1.0.717, with migration `AddTheDeep`.
+3. Phase 2 (lanterns, six titles, the weekly Deepest board that pays nothing, the Wiki section) is the phase 2 PR.
+   - Full suite 1024/1024.
+   - `exercise` 174/174, then 164/164 twice. The difference is the breeding/feast block, which runs only when a villager pair is ready.
+- **Phase 3 is still open:** a week after the flag goes on, run the read-only SELECTs described in TASK_BOARD section 37.
+- **Local trap found on the way:** `vite.config.ts` stamps `public/version.json` on every config load, and `vitest` loads it too. Running `npm test` while the dev server is up makes every open tab show "Update available", and that toast covered 5 controls in `check:overlap`. Restart Vite (kill the :5173 listener) before the geometry checks.
 
 **Owner decisions, resolved 2026-09-25 (branch `fix/offline-gold-parity-and-dead-items`):**
 - **The 13 dead items are DELETED.** They were cooked foods 194-203 and potions 376-378. `FoodRegistry`, `BossGearBenchmark` and the dev fixture's larder now use each region's raw fish (`FoodRegistry.FirstRawFishOfTier`). The Death Ward is the only potion left, so the offensive potion slot has no content. Production held none of the 13. The art budget went from 37 to 24.
@@ -66,7 +59,7 @@ The local dev DB may already have `AddTheDeep` applied, which means it is ahead 
 - **Found on the way: guild buffs had never worked.** `GuildBonusesCache` had four readers and no writer, so no purchased buff ever changed a number in combat, while the guild screen showed it as active. Now a purchase writes the cache, start-up loads it, and each entry expires by itself. `GuildBuffCacheTests` guards it. **Guilds holding a buff will see Damage/Exp/Gold/DropRate actually apply from this deploy on.**
 
 **Next, in order:**
-1. Finish and ship 37 (the Phase 0.2, 1 and 2 PRs).
+1. The owner turns `FOLKIDLE_DELVE_DEEP` on (`ops/oracle/.env`, then `deploy.sh`); Phase 3 measures a week later.
 2. Build 36: wheel + parry minigame, behind a flag, aimed at the Oct 15-22 window, with a security review before merge.
 3. 38 waits until the population nears the floor.
 4. **Task 30 (docs match reality) goes LAST.** It includes the TASK_BOARD §32 line and the status lines for 27-29, 31, 33 and 34 (§34 still says "deploy pending", but it IS deployed).
