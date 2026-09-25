@@ -95,6 +95,11 @@ namespace FolkIdle.Server.Models
         // The Delve: one live run per player. See DelveRunRecord.
         public DbSet<DelveRunRecord> DelveRunRecords { get; set; }
 
+        // The Deep (task 37): the 7-day gold high-water mark its stake reads,
+        // and the titles it grants. See PlayerGoldDailyHigh and PlayerTitle.
+        public DbSet<PlayerGoldDailyHigh> PlayerGoldDailyHighs { get; set; }
+        public DbSet<PlayerTitle> PlayerTitles { get; set; }
+
         // The durable retry outbox. See PendingGrant.
         public DbSet<PendingGrant> PendingGrants { get; set; }
 
@@ -235,6 +240,12 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<VillageInfrastructure>()
                 .HasKey(v => new { v.PlayerId, v.BuildingId });
+
+            modelBuilder.Entity<PlayerGoldDailyHigh>()
+                .HasKey(h => new { h.PlayerId, h.DayUtc });
+
+            modelBuilder.Entity<PlayerTitle>()
+                .HasKey(t => new { t.PlayerId, t.TitleSlug });
 
             modelBuilder.Entity<VillageResident>()
                 .HasKey(v => new { v.PlayerId, v.SlotIndex });

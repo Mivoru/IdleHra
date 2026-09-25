@@ -25,9 +25,40 @@ namespace FolkIdle.Server.Domain.Economy
         FloorCleared,
         /// <summary>The check failed but a charge remains - the same floor is re-offered.</summary>
         ChargeLost,
-        /// <summary>Every floor is behind you. The only thing left to do is walk out.</summary>
+        /// <summary>Every floor is behind you. The only thing left to do is walk out (or, with the Deep open, descend).</summary>
         AtTheBottom,
-        PlayerNotFound
+        PlayerNotFound,
+
+        // --- The Deep (task 37). Appended, so no existing value moves. ---
+
+        /// <summary>
+        /// The stake the server would freeze is higher than the one the player
+        /// was shown - held gold rose between the view and the press. Nothing
+        /// changed; the fresh view carries the new quote.
+        /// </summary>
+        PriceChanged,
+        /// <summary>Every lantern a Deep run may buy has been bought.</summary>
+        NoMoreLanterns,
+        /// <summary>A descent was asked for with doors still in front of the run.</summary>
+        NotAtTheBottom,
+        /// <summary>FOLKIDLE_DELVE_DEEP is off. The Deep's routes answer this rather than a bare 404.</summary>
+        DeepDisabled
+    }
+
+    /// <summary>
+    /// The Deep's switch and clock. A settings object rather than a static so a
+    /// test can run the engine with the Deep on and a fixed date beside tests
+    /// that run it off, without the two racing over a global.
+    /// </summary>
+    public sealed class DelveDeepSettings
+    {
+        public bool Enabled { get; init; }
+
+        public Func<DateTime> UtcNow { get; init; } = () => DateTime.UtcNow;
+
+        /// <summary>FOLKIDLE_DELVE_DEEP: "on" opens the Deep; anything else, including unset, keeps it shut.</summary>
+        public static DelveDeepSettings FromEnvironment(string? flag)
+            => new DelveDeepSettings { Enabled = string.Equals(flag?.Trim(), "on", StringComparison.OrdinalIgnoreCase) };
     }
 
     /// <summary>What the screen needs to draw a run. Never accepted FROM the client.</summary>
@@ -72,6 +103,44 @@ namespace FolkIdle.Server.Domain.Economy
         public long CurrentGold { get; set; }
 
         public int[] Attributes { get; set; } = Array.Empty<int>();
+
+        // --- The Deep (task 37). Every number is the server's; the client only
+        // ever echoes StakeGold back as QuotedStake. ---
+
+        /// <summary>FOLKIDLE_DELVE_DEEP is on. False = the screen never offers a descent.</summary>
+        public bool DeepEnabled { get; set; }
+
+        /// <summary>The run has descended past floor 8. Nothing it does from here pays diamonds.</summary>
+        public bool IsDeep { get; set; }
+
+        /// <summary>
+        /// The run is at a landing: the bottom of floor 8, or a cleared Deep
+        /// floor. The only acts left are walking out and (with the Deep open)
+        /// descending.
+        /// </summary>
+        public bool AtLanding { get; set; }
+
+        /// <summary>A descent is on offer right now - DeepEnabled and AtLanding.</summary>
+        public bool CanDescend { get; set; }
+
+        /// <summary>
+        /// In the Deep, the stake frozen at the descent. At the bottom, the stake
+        /// a descent WOULD freeze now - the number the client sends back as
+        /// QuotedStake.
+        /// </summary>
+        public long StakeGold { get; set; }
+
+        /// <summary>Gold the next descent tolls: toll(9) = the stake at the bottom, toll(d+1) on a Deep landing. 0 when none is on offer.</summary>
+        public long DescendQuote { get; set; }
+
+        /// <summary>The floor the next descent would enter.</summary>
+        public int NextDeepFloor { get; set; }
+
+        public int LanternsBought { get; set; }
+
+        /// <summary>The deepest floor ever cleared, and this week's (0 when the stored week is stale).</summary>
+        public int DeepestFloor { get; set; }
+        public int DeepestThisWeek { get; set; }
     }
 
     public sealed class DelveActionOutcome
@@ -79,9 +148,12 @@ namespace FolkIdle.Server.Domain.Economy
         public DelveResult Result { get; set; }
         public DelveRunView View { get; set; } = new();
 
-        /// <summary>Set only by a bank. Both are what the player was actually paid.</summary>
+        /// <summary>Set only by a bank (walking out, or the floors-1-8 bank a descent makes). Both are what the player was actually paid.</summary>
         public int DiamondsGranted { get; set; }
         public long GoldReturned { get; set; }
+
+        /// <summary>Set only by a Deep purchase (a toll or a lantern): exactly what was debited.</summary>
+        public long GoldCharged { get; set; }
     }
 
     /// <summary>
@@ -107,11 +179,16 @@ namespace FolkIdle.Server.Domain.Economy
     public sealed class DelveEngine
     {
         private readonly IDbContextFactory<FolkIdleDbContext> _contextFactory;
+        private readonly DelveDeepSettings _deep;
 
-        public DelveEngine(IDbContextFactory<FolkIdleDbContext> contextFactory)
+        public DelveEngine(IDbContextFactory<FolkIdleDbContext> contextFactory, DelveDeepSettings? deep = null)
         {
             _contextFactory = contextFactory;
+            _deep = deep ?? new DelveDeepSettings();
         }
+
+        // Utc-kinded whatever the clock returned: Npgsql refuses a non-UTC DateTime for timestamptz.
+        private DateTime Now() => DateTime.SpecifyKind(_deep.UtcNow(), DateTimeKind.Utc);
 
         /// <summary>
         /// ISO week and year, packed. Modul: the reset is a COMPARISON, not a
@@ -123,6 +200,40 @@ namespace FolkIdle.Server.Domain.Economy
         public static int CurrentWeekKey(DateTime utcNow)
         {
             return ISOWeek.GetYear(utcNow) * 100 + ISOWeek.GetWeekOfYear(utcNow);
+        }
+
+        /// <summary>
+        /// Moves the player into this week if the stored key is stale.
+        ///
+        /// Modul: THE ONE PLACE THE WEEK TURNS OVER, for BOTH weekly columns.
+        /// DelveDeepestThisWeek shares DelveWeekKey with DelveDiamondsThisWeek,
+        /// and before the Deep only the bank path reset the week (and only the
+        /// diamond counter). With two writers, whichever runs first in a new
+        /// week must clear both - or a bank would zero a record set this week,
+        /// or a record written first would carry last week's diamonds forward
+        /// and shut the tap early. Both orders are tested.
+        /// </summary>
+        private static void RollWeek(PlayerRecord player, DateTime utcNow)
+        {
+            int weekKey = CurrentWeekKey(utcNow);
+            if (player.DelveWeekKey == weekKey) return;
+
+            player.DelveWeekKey = weekKey;
+            player.DelveDiamondsThisWeek = 0;
+            player.DelveDeepestThisWeek = 0;
+            player.DelveDeepestThisWeekAtUtc = null;
+        }
+
+        /// <summary>Raises the all-time and weekly records to <paramref name="floorCleared"/> where it beats them.</summary>
+        private static void RecordDepth(PlayerRecord player, int floorCleared, DateTime utcNow)
+        {
+            RollWeek(player, utcNow);
+            if (floorCleared > player.DelveDeepestFloor) player.DelveDeepestFloor = floorCleared;
+            if (floorCleared > player.DelveDeepestThisWeek)
+            {
+                player.DelveDeepestThisWeek = floorCleared;
+                player.DelveDeepestThisWeekAtUtc = utcNow;
+            }
         }
 
         private static int UnpackDoor(int packed, int index) => (packed >> (index * 8)) & 0xFF;
@@ -141,6 +252,21 @@ namespace FolkIdle.Server.Domain.Economy
             AttributeRegistry.Vigour => player.BaseConstitution,
             _ => player.BaseLuck
         };
+
+        /// <summary>The pass chance of a door on the run's current floor - the Deep's curve once the run is past floor 8.</summary>
+        private static double DoorChance(DelveRunRecord run, int attributeValue)
+            => run.IsDeep
+                ? DelveRegistry.DeepSuccessChance(attributeValue, run.CurrentFloor)
+                : DelveRegistry.SuccessChance(attributeValue, run.CurrentFloor);
+
+        /// <summary>
+        /// At a landing: the bottom of floor 8 before a descent, or a Deep floor
+        /// just cleared. No doors are on offer at a landing.
+        /// </summary>
+        private static bool IsAtLanding(DelveRunRecord run)
+            => run.IsDeep
+                ? run.FloorsCleared >= run.CurrentFloor
+                : run.FloorsCleared >= DelveRegistry.FloorCount;
 
         /// <summary>
         /// Rolls the three doors for a floor: what each wants, and which of them
@@ -201,19 +327,28 @@ namespace FolkIdle.Server.Domain.Economy
             return row?.Quantity ?? 0L;
         }
 
+        private static Task<CommodityRecord?> LockGoldRowAsync(FolkIdleDbContext db, long playerId)
+            => db.CommodityRecords
+                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
+                .FirstOrDefaultAsync();
+
         /// <summary>
         /// Fills the parts of the view that describe the PLAYER rather than the
         /// run - what a run would cost, what the ceiling has left, the sheet the
-        /// doors will be resolved against.
+        /// doors will be resolved against, and the Deep's records.
         /// </summary>
-        private static void ApplyPlayerContext(DelveRunView view, PlayerRecord player, int highestRegion, long gold, DateTime utcNow)
+        private void ApplyPlayerContext(DelveRunView view, PlayerRecord player, int highestRegion, long gold, DateTime utcNow)
         {
+            bool thisWeek = player.DelveWeekKey == CurrentWeekKey(utcNow);
             view.HighestRegionReached = highestRegion;
             view.EntryFeeForNextRun = DelveRegistry.EntryFeeForRegion(highestRegion);
             view.CurrentGold = gold;
             view.WeeklyDiamondCeiling = DelveRegistry.MaxDiamondsPerWeek;
-            view.DiamondsEarnedThisWeek = player.DelveWeekKey == CurrentWeekKey(utcNow) ? player.DelveDiamondsThisWeek : 0;
+            view.DiamondsEarnedThisWeek = thisWeek ? player.DelveDiamondsThisWeek : 0;
             view.Attributes = new[] { player.BaseStrength, player.BaseDexterity, player.BaseConstitution, player.BaseLuck };
+            view.DeepEnabled = _deep.Enabled;
+            view.DeepestFloor = player.DelveDeepestFloor;
+            view.DeepestThisWeek = thisWeek ? player.DelveDeepestThisWeek : 0;
         }
 
         private static void ApplyRunToView(DelveRunView view, DelveRunRecord run, PlayerRecord player)
@@ -223,6 +358,10 @@ namespace FolkIdle.Server.Domain.Economy
             view.FloorsCleared = run.FloorsCleared;
             view.ChargesRemaining = run.ChargesRemaining;
             view.EntryFeePaid = run.EntryFeePaid;
+            view.IsDeep = run.IsDeep;
+            view.AtLanding = IsAtLanding(run);
+            view.LanternsBought = run.LanternsBought;
+            if (run.IsDeep) view.StakeGold = run.StakeGold;
 
             var demands = new int[DelveRegistry.DoorsPerFloor];
             var odds = new double[DelveRegistry.DoorsPerFloor];
@@ -236,10 +375,15 @@ namespace FolkIdle.Server.Domain.Economy
                 // decision if the arithmetic is visible. A hidden door reports
                 // -1 rather than its real odds - showing them would reveal the
                 // demand by inference and make Fortune worthless.
-                odds[i] = revealed ? DelveRegistry.SuccessChance(AttributeValue(player, demand), run.CurrentFloor) : -1.0;
+                odds[i] = revealed ? DoorChance(run, AttributeValue(player, demand)) : -1.0;
             }
             view.DoorDemands = demands;
             view.DoorOdds = odds;
+
+            // Modul: THE DEEP PAYS NO DIAMONDS, and the view says so rather
+            // than repeating floor 8's figure: floors 1-8 were banked at the
+            // descent, and nothing past them is convertible.
+            if (run.IsDeep) return;
 
             view.DiamondsIfBankedNow = DelveRegistry.DiamondsForBanking(run.FloorsCleared);
             view.DiamondsIfNextFloorCleared = DelveRegistry.DiamondsForBanking(
@@ -248,6 +392,7 @@ namespace FolkIdle.Server.Domain.Economy
 
         private static void ApplyBankPreview(DelveRunView view, DelveRunRecord run)
         {
+            if (run.IsDeep) return;
             int gross = DelveRegistry.DiamondsForBanking(run.FloorsCleared);
             int remaining = Math.Max(0, DelveRegistry.MaxDiamondsPerWeek - view.DiamondsEarnedThisWeek);
             int granted = Math.Min(gross, remaining);
@@ -263,6 +408,36 @@ namespace FolkIdle.Server.Domain.Economy
             return (long)Math.Floor(DelveRegistry.ConsolationGold(entryFee, floorsCleared) * unpaid);
         }
 
+        /// <summary>
+        /// The stake a descent would freeze right now: the region fee, or
+        /// StakeFraction of max(gold, the 7-day high-water mark).
+        /// </summary>
+        private async Task<long> CurrentStakeAsync(FolkIdleDbContext db, long playerId, int highestRegion, long gold)
+        {
+            long highWater = await GoldHighWater.SevenDayMaxAsync(db, playerId, GoldHighWater.Today(Now()));
+            return DelveRegistry.Stake(DelveRegistry.EntryFeeForRegion(highestRegion), Math.Max(gold, highWater));
+        }
+
+        /// <summary>
+        /// The descent quote on the view: at the bottom, the stake the server
+        /// would freeze (priced on gold AFTER the floors-1-8 bank, as the
+        /// descent itself is); on a Deep landing, the frozen stake's next toll.
+        /// </summary>
+        private async Task ApplyDescendQuoteAsync(FolkIdleDbContext db, DelveRunView view, DelveRunRecord run, long playerId, int highestRegion, long gold)
+        {
+            if (!IsAtLanding(run)) return;
+
+            int nextFloor = run.IsDeep ? run.CurrentFloor + 1 : DelveRegistry.FirstDeepFloor;
+            long stake = run.IsDeep
+                ? run.StakeGold
+                : await CurrentStakeAsync(db, playerId, highestRegion, gold + view.ConsolationGoldIfCapped);
+
+            view.StakeGold = stake;
+            view.NextDeepFloor = nextFloor;
+            view.DescendQuote = DelveRegistry.TollForFloor(stake, nextFloor);
+            view.CanDescend = _deep.Enabled;
+        }
+
         /// <summary>Read-only. What the screen draws, whether or not a run is live.</summary>
         public async Task<DelveRunView> GetViewAsync(long playerId)
         {
@@ -273,13 +448,15 @@ namespace FolkIdle.Server.Domain.Economy
             if (player == null) return view;
 
             int highestRegion = await HighestRegionReachedAsync(db, playerId);
-            ApplyPlayerContext(view, player, highestRegion, await ReadGoldAsync(db, playerId), DateTime.UtcNow);
+            long gold = await ReadGoldAsync(db, playerId);
+            ApplyPlayerContext(view, player, highestRegion, gold, Now());
 
             var run = await db.DelveRunRecords.AsNoTracking().SingleOrDefaultAsync(r => r.PlayerId == playerId);
             if (run != null)
             {
                 ApplyRunToView(view, run, player);
                 ApplyBankPreview(view, run);
+                await ApplyDescendQuoteAsync(db, view, run, playerId, highestRegion, gold);
             }
 
             return view;
@@ -318,9 +495,7 @@ namespace FolkIdle.Server.Domain.Economy
                     return outcome;
                 }
 
-                var goldRow = await db.CommodityRecords
-                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
-                    .FirstOrDefaultAsync();
+                var goldRow = await LockGoldRowAsync(db, playerId);
 
                 if (goldRow == null || goldRow.Quantity < fee)
                 {
@@ -342,7 +517,7 @@ namespace FolkIdle.Server.Domain.Economy
                     ChargesRemaining = DelveRegistry.LanternCharges,
                     PackedDoorDemands = packed,
                     RevealedDoorMask = mask,
-                    StartedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    StartedAtEpoch = new DateTimeOffset(Now()).ToUnixTimeSeconds()
                 };
                 db.DelveRunRecords.Add(run);
 
@@ -351,7 +526,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 outcome.Result = DelveResult.Ok;
                 outcome.View = new DelveRunView();
-                ApplyPlayerContext(outcome.View, player, highestRegion, goldRow.Quantity, DateTime.UtcNow);
+                ApplyPlayerContext(outcome.View, player, highestRegion, goldRow.Quantity, Now());
                 ApplyRunToView(outcome.View, run, player);
                 ApplyBankPreview(outcome.View, run);
                 return outcome;
@@ -395,7 +570,7 @@ namespace FolkIdle.Server.Domain.Economy
                     return outcome;
                 }
 
-                if (run.FloorsCleared >= DelveRegistry.FloorCount)
+                if (IsAtLanding(run))
                 {
                     await tx.RollbackAsync();
                     outcome.Result = DelveResult.AtTheBottom;
@@ -404,19 +579,28 @@ namespace FolkIdle.Server.Domain.Economy
                 }
 
                 int demand = UnpackDoor(run.PackedDoorDemands, doorIndex);
-                double chance = DelveRegistry.SuccessChance(AttributeValue(player, demand), run.CurrentFloor);
+                double chance = DoorChance(run, AttributeValue(player, demand));
                 bool passed = rng.NextDouble() < chance;
 
-                int highestRegion = await HighestRegionReachedAsync(db, playerId);
-                long gold = await ReadGoldAsync(db, playerId);
-
-                if (passed)
+                if (passed && run.IsDeep)
+                {
+                    // Modul: A DEEP CLEAR STOPS AT A LANDING. Every floor past 8
+                    // is entered by paying its toll, so a clear does not roll
+                    // the next floor's doors - it records the depth, in this
+                    // transaction, and offers "walk out" or "descend to d+1".
+                    run.FloorsCleared = run.CurrentFloor;
+                    run.RevealedDoorMask = 0;
+                    RecordDepth(player, run.CurrentFloor, Now());
+                    outcome.Result = DelveResult.FloorCleared;
+                }
+                else if (passed)
                 {
                     run.FloorsCleared++;
                     if (run.FloorsCleared >= DelveRegistry.FloorCount)
                     {
                         // The bottom. The doors stop being offered and the only
-                        // remaining act is walking out with what was banked.
+                        // remaining acts are walking out with what was banked,
+                        // or - with the Deep open - descending.
                         run.CurrentFloor = DelveRegistry.FloorCount;
                         run.RevealedDoorMask = 0;
                         outcome.Result = DelveResult.AtTheBottom;
@@ -435,13 +619,15 @@ namespace FolkIdle.Server.Domain.Economy
                     run.ChargesRemaining--;
                     if (run.ChargesRemaining <= 0)
                     {
+                        // In the Deep this loses only the gold already spent:
+                        // floors 1-8 were banked at the descent, and the record
+                        // stands.
                         db.DelveRunRecords.Remove(run);
                         await db.SaveChangesAsync();
                         await tx.CommitAsync();
 
                         outcome.Result = DelveResult.RunLost;
-                        outcome.View = new DelveRunView();
-                        ApplyPlayerContext(outcome.View, player, highestRegion, gold, DateTime.UtcNow);
+                        outcome.View = await GetViewAsync(playerId);
                         return outcome;
                     }
 
@@ -459,10 +645,7 @@ namespace FolkIdle.Server.Domain.Economy
                 await db.SaveChangesAsync();
                 await tx.CommitAsync();
 
-                outcome.View = new DelveRunView();
-                ApplyPlayerContext(outcome.View, player, highestRegion, gold, DateTime.UtcNow);
-                ApplyRunToView(outcome.View, run, player);
-                ApplyBankPreview(outcome.View, run);
+                outcome.View = await GetViewAsync(playerId);
                 return outcome;
             }
             catch
@@ -473,12 +656,72 @@ namespace FolkIdle.Server.Domain.Economy
         }
 
         /// <summary>
+        /// Pays out floors 1-8 of <paramref name="run"/> onto the locked player
+        /// and gold rows: diamonds up to the weekly ceiling, consolation gold
+        /// for whatever the ceiling refused. Changes tracked entities only; the
+        /// caller saves and commits.
+        ///
+        /// Modul: THE ONE BANKING PATH. BankAsync (walking out) and DescendAsync
+        /// (banking on the way down) both call this, so the Deep is
+        /// diamond-neutral by construction: a descent pays exactly what walking
+        /// out would have, and nothing below floor 8 is ever convertible. A
+        /// copy of this in the descent would be one more place for the
+        /// ceiling to drift.
+        /// </summary>
+        private async Task<(int Granted, long Consolation, CommodityRecord? GoldRow)> BankFloorsAsync(
+            FolkIdleDbContext db, PlayerRecord player, DelveRunRecord run, long playerId)
+        {
+            RollWeek(player, Now());
+
+            int gross = DelveRegistry.DiamondsForBanking(run.FloorsCleared);
+            int remaining = Math.Max(0, DelveRegistry.MaxDiamondsPerWeek - player.DelveDiamondsThisWeek);
+            int granted = Math.Min(gross, remaining);
+            long consolation = ConsolationFor(run.EntryFeePaid, run.FloorsCleared, gross, granted);
+
+            if (granted > 0)
+            {
+                player.PremiumDiamonds += granted;
+                player.DelveDiamondsThisWeek += granted;
+            }
+
+            var goldRow = await LockGoldRowAsync(db, playerId);
+            if (consolation > 0)
+            {
+                if (goldRow == null)
+                {
+                    goldRow = new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = consolation };
+                    db.CommodityRecords.Add(goldRow);
+                }
+                else
+                {
+                    goldRow.Quantity += consolation;
+                }
+            }
+
+            return (granted, consolation, goldRow);
+        }
+
+        private static Task<PlayerRecord?> LockPlayerAsync(FolkIdleDbContext db, long playerId)
+            => db.PlayerRecords
+                .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                .FirstOrDefaultAsync();
+
+        private static Task<DelveRunRecord?> LockRunAsync(FolkIdleDbContext db, long playerId)
+            => db.DelveRunRecords
+                .FromSqlRaw("SELECT * FROM \"DelveRunRecords\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
+                .FirstOrDefaultAsync();
+
+        /// <summary>
         /// Walk out. Pays diamonds up to the weekly ceiling and gold for
         /// whatever the ceiling refused, then ends the run.
         ///
         /// Banking a run that has cleared nothing is how a player abandons one:
         /// it pays zero and takes the row away, which is honest and needs no
         /// second command.
+        ///
+        /// In the Deep, walking out ends the run and pays NOTHING: floors 1-8
+        /// were banked at the descent, and the Deep's only rewards - the
+        /// records - were written when each floor was cleared.
         /// </summary>
         public async Task<DelveActionOutcome> BankAsync(long playerId)
         {
@@ -487,9 +730,7 @@ namespace FolkIdle.Server.Domain.Economy
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
-                var run = await db.DelveRunRecords
-                    .FromSqlRaw("SELECT * FROM \"DelveRunRecords\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
-                    .FirstOrDefaultAsync();
+                var run = await LockRunAsync(db, playerId);
 
                 if (run == null)
                 {
@@ -499,9 +740,7 @@ namespace FolkIdle.Server.Domain.Economy
                     return outcome;
                 }
 
-                var player = await db.PlayerRecords
-                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
-                    .FirstOrDefaultAsync();
+                var player = await LockPlayerAsync(db, playerId);
 
                 if (player == null)
                 {
@@ -510,38 +749,11 @@ namespace FolkIdle.Server.Domain.Economy
                     return outcome;
                 }
 
-                int weekKey = CurrentWeekKey(DateTime.UtcNow);
-                if (player.DelveWeekKey != weekKey)
+                int granted = 0;
+                long consolation = 0;
+                if (!run.IsDeep)
                 {
-                    player.DelveWeekKey = weekKey;
-                    player.DelveDiamondsThisWeek = 0;
-                }
-
-                int gross = DelveRegistry.DiamondsForBanking(run.FloorsCleared);
-                int remaining = Math.Max(0, DelveRegistry.MaxDiamondsPerWeek - player.DelveDiamondsThisWeek);
-                int granted = Math.Min(gross, remaining);
-                long consolation = ConsolationFor(run.EntryFeePaid, run.FloorsCleared, gross, granted);
-
-                if (granted > 0)
-                {
-                    player.PremiumDiamonds += granted;
-                    player.DelveDiamondsThisWeek += granted;
-                }
-
-                if (consolation > 0)
-                {
-                    var goldRow = await db.CommodityRecords
-                        .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
-                        .FirstOrDefaultAsync();
-
-                    if (goldRow == null)
-                    {
-                        db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = consolation });
-                    }
-                    else
-                    {
-                        goldRow.Quantity += consolation;
-                    }
+                    (granted, consolation, _) = await BankFloorsAsync(db, player, run, playerId);
                 }
 
                 int floorsCleared = run.FloorsCleared;
@@ -555,8 +767,166 @@ namespace FolkIdle.Server.Domain.Economy
 
                 outcome.View = new DelveRunView();
                 int highestRegion = await HighestRegionReachedAsync(db, playerId);
-                ApplyPlayerContext(outcome.View, player, highestRegion, await ReadGoldAsync(db, playerId), DateTime.UtcNow);
+                ApplyPlayerContext(outcome.View, player, highestRegion, await ReadGoldAsync(db, playerId), Now());
                 outcome.View.FloorsCleared = floorsCleared;
+                return outcome;
+            }
+            catch
+            {
+                await tx.RollbackAsync();
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// DEV TOOLS ONLY (POST /api/v1/dev/delve/at-bottom, behind
+        /// NetworkBroadcastSystem.DevToolsEnabled): replaces the player's run
+        /// with one standing at the bottom of floor 8, as if every floor had
+        /// been cleared. Charges no fee - it is the state a paid run reaches,
+        /// not a way to buy one - and the entry fee on the row is the region's,
+        /// so the floors-1-8 bank a descent makes pays what a real clear would.
+        /// </summary>
+        public async Task<DelveRunView> DevPlaceRunAtBottomAsync(long playerId)
+        {
+            await using (var db = await _contextFactory.CreateDbContextAsync())
+            {
+                var existing = await db.DelveRunRecords.SingleOrDefaultAsync(r => r.PlayerId == playerId);
+                if (existing != null) db.DelveRunRecords.Remove(existing);
+
+                int highestRegion = await HighestRegionReachedAsync(db, playerId);
+                db.DelveRunRecords.Add(new DelveRunRecord
+                {
+                    PlayerId = playerId,
+                    EntryFeePaid = DelveRegistry.EntryFeeForRegion(highestRegion),
+                    CurrentFloor = DelveRegistry.FloorCount,
+                    FloorsCleared = DelveRegistry.FloorCount,
+                    ChargesRemaining = DelveRegistry.LanternCharges,
+                    StartedAtEpoch = new DateTimeOffset(Now()).ToUnixTimeSeconds()
+                });
+                await db.SaveChangesAsync();
+            }
+
+            return await GetViewAsync(playerId);
+        }
+
+        /// <summary>
+        /// Descend into the Deep, or one floor deeper in it.
+        ///
+        /// From the bottom of floor 8: bank floors 1-8 (BankFloorsAsync, the
+        /// walk-out path), sample the high-water mark from the locked gold row,
+        /// freeze the stake, debit toll(9) and roll floor 9's doors - one
+        /// Serializable transaction, so a refusal at any step changes nothing at
+        /// all, the bank included. From a cleared Deep floor d: debit toll(d+1)
+        /// on the frozen stake and roll its doors.
+        ///
+        /// Modul: THE SERVER NEVER CHARGES THE CLIENT'S NUMBER. QuotedStake is
+        /// the stake the player was SHOWN; it is only a ceiling. Held gold, and
+        /// so the stake, rises with income between the view and the press, and
+        /// charging more than was shown would be a price the player never
+        /// agreed to - so a higher server stake answers PriceChanged with a
+        /// fresh quote instead. A quote above the server's number is fine: the
+        /// server's own, lower stake is what is charged.
+        ///
+        /// Modul: A DB DEBIT, NEVER RedisPendingGoldDelta. The checkpoint applies
+        /// the pending delta as an INCREMENT to CommodityRecords, so a debit
+        /// written there would be un-debited one checkpoint later. The caller
+        /// enqueues ReloadState so the live payload sees the new balance.
+        /// </summary>
+        public async Task<DelveActionOutcome> DescendAsync(long playerId, long quotedStake, Random? rng = null)
+        {
+            rng ??= Random.Shared;
+            var outcome = new DelveActionOutcome();
+
+            if (!_deep.Enabled)
+            {
+                outcome.Result = DelveResult.DeepDisabled;
+                outcome.View = await GetViewAsync(playerId);
+                return outcome;
+            }
+
+            await using var db = await _contextFactory.CreateDbContextAsync();
+            await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            try
+            {
+                var run = await LockRunAsync(db, playerId);
+                var player = run == null ? null : await LockPlayerAsync(db, playerId);
+
+                DelveResult? refusal = run == null ? DelveResult.NoRunInProgress
+                    : player == null ? DelveResult.PlayerNotFound
+                    : !IsAtLanding(run) ? DelveResult.NotAtTheBottom
+                    : null;
+                if (refusal != null)
+                {
+                    await tx.RollbackAsync();
+                    outcome.Result = refusal.Value;
+                    outcome.View = await GetViewAsync(playerId);
+                    return outcome;
+                }
+
+                DateTime now = Now();
+                int nextFloor;
+                long stake;
+                CommodityRecord? goldRow;
+
+                if (!run!.IsDeep)
+                {
+                    (outcome.DiamondsGranted, outcome.GoldReturned, goldRow) = await BankFloorsAsync(db, player!, run, playerId);
+
+                    // Spec §3.4 (b): sampled from the locked row, so the stake is
+                    // honest even on a day no checkpoint has run.
+                    long heldAfterBank = goldRow?.Quantity ?? 0L;
+                    await GoldHighWater.RecordAsync(db, playerId, heldAfterBank, GoldHighWater.Today(now));
+
+                    int highestRegion = await HighestRegionReachedAsync(db, playerId);
+                    stake = await CurrentStakeAsync(db, playerId, highestRegion, heldAfterBank);
+                    nextFloor = DelveRegistry.FirstDeepFloor;
+                }
+                else
+                {
+                    goldRow = await LockGoldRowAsync(db, playerId);
+                    stake = run.StakeGold;
+                    nextFloor = run.CurrentFloor + 1;
+                }
+
+                if (stake > quotedStake)
+                {
+                    await tx.RollbackAsync();
+                    outcome = new DelveActionOutcome { Result = DelveResult.PriceChanged, View = await GetViewAsync(playerId) };
+                    return outcome;
+                }
+
+                long toll = DelveRegistry.TollForFloor(stake, nextFloor);
+                if (goldRow == null || goldRow.Quantity < toll)
+                {
+                    // The whole transaction goes, the floors-1-8 bank with it:
+                    // the run stays at the bottom and can still walk out and be
+                    // paid exactly that.
+                    await tx.RollbackAsync();
+                    outcome = new DelveActionOutcome { Result = DelveResult.NotEnoughGold, View = await GetViewAsync(playerId) };
+                    return outcome;
+                }
+
+                goldRow.Quantity -= toll;
+
+                if (!run.IsDeep)
+                {
+                    run.IsDeep = true;
+                    run.StakeGold = stake;
+                    RecordDepth(player!, DelveRegistry.FloorCount, now);
+                }
+
+                run.CurrentFloor = nextFloor;
+                run.FloorsCleared = nextFloor - 1;
+                var (packed, mask) = RollFloor(player!.BaseLuck, rng);
+                run.PackedDoorDemands = packed;
+                run.RevealedDoorMask = mask;
+
+                await db.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                outcome.Result = DelveResult.Ok;
+                outcome.GoldCharged = toll;
+                outcome.View = await GetViewAsync(playerId);
                 return outcome;
             }
             catch

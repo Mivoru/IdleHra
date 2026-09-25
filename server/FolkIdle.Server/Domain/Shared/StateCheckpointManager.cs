@@ -392,6 +392,15 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LarderSlot3Count = state.Food3_Count;
                         player.AutoEatThresholdPct = state.AutoEatThreshold;
                         await ApplyPendingGoldDeltaAsync(dbContext, state);
+                        // Modul: THE DEEP'S 7-DAY HIGH-WATER MARK (task 37), in
+                        // THIS transaction so a flush that rolls back records
+                        // nothing. CurrentGold is the live balance, which
+                        // already includes gold still riding on
+                        // RedisPendingGoldDelta. Deliberately not in TrackState's
+                        // Redis frame: a frame is a cache, not a checkpoint.
+                        await FolkIdle.Server.Domain.Economy.GoldHighWater.RecordAsync(
+                            dbContext, state.PlayerId, state.CurrentGold,
+                            FolkIdle.Server.Domain.Economy.GoldHighWater.Today(DateTime.UtcNow));
                         await UpsertChroniclePassAsync(dbContext, state);
                         await UpsertLifetimeAchievementsAsync(dbContext, player, state);
                         await QuestEngine.UpsertDailyQuestProgressAsync(dbContext, state);
@@ -903,6 +912,22 @@ namespace FolkIdle.Server.Domain.Shared
                 .Where(c => c.PlayerId == playerId && c.ItemId == "gold")
                 .Select(c => c.Quantity)
                 .FirstOrDefaultAsync();
+
+            // Modul: the Deep's high-water mark, sampled at login from the row
+            // just read - wealth that arrived while the player was away (a mail,
+            // an offline catch-up banked by the last session's flush) would
+            // otherwise not be seen until the first checkpoint. Guarded: a mark
+            // that fails to write must never block a login.
+            try
+            {
+                await FolkIdle.Server.Domain.Economy.GoldHighWater.RecordAsync(
+                    dbContext, playerId, loadedGold,
+                    FolkIdle.Server.Domain.Economy.GoldHighWater.Today(DateTime.UtcNow));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"GoldHighWater: login sample failed for player {playerId}: {ex.Message}");
+            }
 
             // Modul: Deferred Part 5 Implementation, Part 2 - consumable
             // expiry hydration reference clock (see the ActiveOffensive/

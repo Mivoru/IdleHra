@@ -24,6 +24,13 @@
 
     NOTHING HERE DECIDES ANYTHING. Every outcome is rolled by DelveEngine; this
     sends "start", "door N" and "bank", and draws what comes back.
+
+    THE DEEP (task 37). With the server's flag on, the bottom of floor 8 is a
+    landing, not an end: "Descend into the Deep" banks floors 1-8 exactly as
+    walking out would, then pays a toll priced on what the player HOLDS. The
+    only number this screen sends is the stake it was shown (QuotedStake), and
+    the server charges its own - never more than that. The Deep pays records,
+    not diamonds, and the screen says so.
   */
   import { onMount } from 'svelte';
   import Money from '../lib/ui/Money.svelte';
@@ -41,6 +48,7 @@
     startDelve,
     chooseDelveDoor,
     bankDelve,
+    descendDeep,
     type DelveRunView,
     type DelveActionResponse,
   } from '../lib/net/rest';
@@ -81,7 +89,9 @@
   function describe(outcome: DelveActionResponse): string {
     switch (outcome.Result) {
       case 'NotEnoughGold':
-        return 'Not enough gold for the gate.';
+        return outcome.View.AtLanding
+          ? `Not enough gold for the toll of ${formatCompact(outcome.View.DescendQuote)}. Nothing was charged.`
+          : 'Not enough gold for the gate.';
       case 'RunAlreadyInProgress':
         return 'You are already down there.';
       case 'NoRunInProgress':
@@ -93,9 +103,21 @@
       case 'ChargeLost':
         return 'The way is barred. A lantern charge burns out, and the floor offers new doors.';
       case 'FloorCleared':
-        return 'Through. The stair keeps going down.';
+        return outcome.View.IsDeep
+          ? `Floor ${outcome.View.CurrentFloor} is yours. The dark goes on below.`
+          : 'Through. The stair keeps going down.';
       case 'AtTheBottom':
-        return 'The bottom. There is nothing below this - take what you have and climb.';
+        return outcome.View.CanDescend
+          ? 'The bottom of the Delve. Climb out with what you have, or pay to go deeper.'
+          : 'The bottom. There is nothing below this - take what you have and climb.';
+      case 'PriceChanged':
+        return `Your purse grew since the price was shown. The stake is now ${formatCompact(outcome.View.StakeGold)} gold. Nothing was charged.`;
+      case 'NotAtTheBottom':
+        return 'There are still doors in front of you. Descending waits until the floor is clear.';
+      case 'DeepDisabled':
+        return 'The way into the Deep is closed for now.';
+      case 'NoMoreLanterns':
+        return 'There are no more lanterns to buy on this run.';
       default:
         return '';
     }
@@ -110,7 +132,15 @@
       if (outcome) {
         view = outcome.View;
         notice = describe(outcome);
-        if (outcome.Result === 'Ok' && (outcome.DiamondsGranted > 0 || outcome.GoldReturned > 0)) {
+        if (outcome.Result === 'Ok' && outcome.GoldCharged > 0) {
+          // A descent: say what was banked on the way down and what the toll took.
+          const banked: string[] = [];
+          if (outcome.DiamondsGranted > 0) banked.push(`${outcome.DiamondsGranted} diamonds`);
+          if (outcome.GoldReturned > 0) banked.push(`${formatCompact(outcome.GoldReturned)} gold`);
+          notice =
+            (banked.length ? `Floors 1-8 banked: ${banked.join(' and ')}. ` : '') +
+            `You pay ${formatCompact(outcome.GoldCharged)} gold and go down to floor ${outcome.View.CurrentFloor}.`;
+        } else if (outcome.Result === 'Ok' && (outcome.DiamondsGranted > 0 || outcome.GoldReturned > 0)) {
           const parts: string[] = [];
           if (outcome.DiamondsGranted > 0) parts.push(`${outcome.DiamondsGranted} diamonds`);
           if (outcome.GoldReturned > 0) parts.push(`${formatCompact(outcome.GoldReturned)} gold`);
@@ -131,7 +161,8 @@
 
   const canAfford = $derived(!!view && view.CurrentGold >= view.EntryFeeForNextRun);
   const ceilingLeft = $derived(view ? Math.max(0, view.WeeklyDiamondCeiling - view.DiamondsEarnedThisWeek) : 0);
-  const atBottom = $derived(!!view?.Active && view.FloorsCleared >= 8);
+  const atBottom = $derived(!!view?.Active && view.AtLanding);
+  const isDeep = $derived(!!view?.IsDeep);
 
   function oddsLabel(odds: number): string {
     return odds < 0 ? '???' : `${Math.round(odds * 100)}%`;
@@ -169,6 +200,10 @@
       <div><span class="k">Your gold</span><span class="v"><Money amount={view.CurrentGold} /></span></div>
       <div><span class="k">Diamonds this week</span><span class="v">{view.DiamondsEarnedThisWeek} / {view.WeeklyDiamondCeiling}</span></div>
       <div><span class="k">Deepest region reached</span><span class="v">{view.HighestRegionReached}</span></div>
+      {#if view.DeepEnabled}
+        <div><span class="k">Deepest floor</span><span class="v">{view.DeepestFloor}</span></div>
+        <div><span class="k">Deepest this week</span><span class="v">{view.DeepestThisWeek}</span></div>
+      {/if}
     </section>
 
     {#if ceilingLeft === 0}
@@ -201,7 +236,7 @@
         <div class="runhead">
           <div class="floor">
             <span class="k">Floor</span>
-            <span class="v">{Math.min(view.CurrentFloor, 8)} / 8</span>
+            <span class="v">{isDeep ? `${view.CurrentFloor} - the Deep` : `${Math.min(view.CurrentFloor, 8)} / 8`}</span>
           </div>
           <div class="charges" aria-label="{view.ChargesRemaining} lantern charges left">
             {#each Array(3) as _, i}
@@ -210,13 +245,24 @@
               </span>
             {/each}
           </div>
-          <div class="banked">
-            <span class="k">Banked</span>
-            <span class="v">{view.DiamondsAfterCeiling}{@render Diamond()}</span>
-          </div>
+          {#if isDeep}
+            <div class="banked">
+              <span class="k">Stake</span>
+              <span class="v"><Money amount={view.StakeGold} /></span>
+            </div>
+          {:else}
+            <div class="banked">
+              <span class="k">Banked</span>
+              <span class="v">{view.DiamondsAfterCeiling}{@render Diamond()}</span>
+            </div>
+          {/if}
         </div>
 
-        {#if atBottom}
+        {#if atBottom && isDeep}
+          <p class="bottom">Floor {view.CurrentFloor} is behind you. The water below is darker.</p>
+        {:else if atBottom && view.CanDescend}
+          <p class="bottom">The floor of the Delve. Below it, the Deep: no diamonds down there, only how far you went.</p>
+        {:else if atBottom}
           <p class="bottom">You are standing on the floor of the world. There is nothing below.</p>
         {:else}
           <div class="doors">
@@ -236,12 +282,43 @@
         {/if}
 
         <div class="decision">
+          {#if atBottom && view.CanDescend}
+            <!-- Modul: the toll is IN the label because it is the decision; the
+                 stake it is priced from is stated beside it. Nothing that ticks
+                 sits inside this button - the quote only changes when the view
+                 is re-read, never on a timer. -->
+            <button
+              class="primary descend"
+              disabled={busy || view.CurrentGold + view.ConsolationGoldIfCapped < view.DescendQuote}
+              onclick={() => act(() => descendDeep(view!.StakeGold))}
+            >
+              {isDeep ? `Descend to floor ${view.NextDeepFloor}` : 'Descend into the Deep'}: toll {formatCompact(view.DescendQuote)}
+            </button>
+            <p class="muted small">
+              {#if isDeep}
+                Each floor down tolls a quarter more than the last. Your stake of
+                <Money amount={view.StakeGold} /> was fixed when you entered the Deep.
+              {:else}
+                Descending banks floors 1-8 first, exactly as climbing out would. The stake is half a
+                percent of the most gold you have held this week (at least the gate's price), and it is
+                fixed for the rest of the run.
+              {/if}
+            </p>
+          {/if}
           <button class="secondary" disabled={busy} onclick={() => act(bankDelve)}>
-            Climb out with {view.DiamondsAfterCeiling}{@render Diamond()}{view.ConsolationGoldIfCapped > 0
-              ? ` + ${formatCompact(view.ConsolationGoldIfCapped)} gold`
-              : ''}
+            {#if isDeep}
+              Walk out
+            {:else}
+              Climb out with {view.DiamondsAfterCeiling}{@render Diamond()}{view.ConsolationGoldIfCapped > 0
+                ? ` + ${formatCompact(view.ConsolationGoldIfCapped)} gold`
+                : ''}
+            {/if}
           </button>
-          {#if !atBottom}
+          {#if isDeep && !atBottom}
+            <p class="muted small">
+              Three failures and the run ends here. Your record stands; only the gold is spent.
+            </p>
+          {:else if !atBottom}
             <p class="muted small">
               Clearing floor {Math.min(view.CurrentFloor, 8)} would make it
               <strong>{view.DiamondsIfNextFloorCleared}{@render Diamond()}</strong>. Three failures and you
@@ -463,6 +540,8 @@
     padding: 10px 14px;
     border-radius: 6px;
     cursor: pointer;
+    min-height: 44px;
+    flex-shrink: 0;
   }
 
   button.primary {
