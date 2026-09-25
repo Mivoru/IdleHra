@@ -71,9 +71,10 @@ namespace FolkIdle.Server.Domain.Combat
             // in a Serializable transaction on the one row every player
             // contends for - enough spam fills the bounded pool and starves
             // the loot and checkpoint workers behind it. The payload count is
-            // reset to 0 for every online player when a window opens, and the
+            // reset to 0 for every online player when a window opens AND at
+            // every UTC midnight (one strike a day, LiveOps), and the
             // engine still enforces the cap inside its transaction.
-            if (currentPayload.WorldBossAttemptCount >= WorldBossEngine.MaxAttemptsPerEncounter)
+            if (currentPayload.WorldBossAttemptCount >= WorldBossEngine.MaxAttemptsPerDay)
             {
                 ctx.PlayerRegistry.EnqueueCommandResult(
                     currentPayload.PlayerId,

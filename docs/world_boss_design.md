@@ -114,6 +114,26 @@ three".
 about the attempt accounting in `ExecuteAttackAsync` changes except what it does
 with the request.
 
+**Superseded 2026-09-25 (owner): one encounter a week, Monday to Sunday UTC, back
+to back, and ONE strike a day** (`WorldBossCalendar`, `MaxAttemptsPerDay`). The
+battle session is gone. What that does to the argument above:
+- A player now has about **seven strikes an encounter**, not three, spread over
+  the week.
+- So **a solo player CAN find the weak plate alone**, in at most four days: each
+  wrong strike breaks a plate, and four broken plates reveal the fifth by
+  elimination.
+- The crowd still matters: with a few players striking daily, the board is
+  usually solved within a day or two. After that everyone spends the rest of
+  the week's strikes at 3x.
+- "Knowing is worth 1.67x" was a three-strike number. Over a week it is closer
+  to "most of your strikes land at 3x once anyone has solved it".
+
+Whether that is too easy is an open question for the owner, to be watched in the
+first weeks' `player_world_boss_attempts`. Levers, if it is:
+- more plates;
+- no elimination reveal (the task 36 spec keeps it);
+- a weak plate that moves mid-week.
+
 ## 4. What survives?
 
 Everything that is already correct:

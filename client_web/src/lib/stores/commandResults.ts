@@ -95,8 +95,10 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   // why, which is how "no attack has ever landed" was reported.
   38: 'The world boss is not here right now - your strike was not sent to it.',
   39: 'The world boss has already been defeated this encounter.',
-  40: 'You have used all three strikes this encounter.',
-  41: 'Your battle session has closed - it lasts five minutes from your first strike.',
+  40: "You have used today's strike. It comes back at midnight UTC.",
+  // 41 was the 300-second battle session, dropped 2026-09-24. The server never
+  // sends it now; the sentence stays so an old build's code still reads.
+  41: 'Your battle session has closed.',
   42: 'Your strike could not be recorded - nothing was spent. Try again.',
 };
 

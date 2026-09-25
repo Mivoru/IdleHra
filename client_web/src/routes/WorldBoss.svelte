@@ -12,12 +12,12 @@
   import {
     attackWorldBoss,
     BossEventState,
-    nextBossWindow,
+    nextBossMonday,
+    nextStrikeRefill,
     MAX_BOSS_ATTEMPTS,
     BOSS_PLATE_COUNT,
     BOSS_WEAK_PLATE_HIDDEN,
     BOSS_WEAK_PLATE_MULTIPLIER,
-    BOSS_SESSION_CAP_SECONDS,
   } from '../lib/net/commands';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { play } from '../lib/ui/audio';
@@ -77,20 +77,19 @@
 
   const attemptsLeft = $derived(Math.max(0, MAX_BOSS_ATTEMPTS - attempts));
 
-  // Modul: WHEN, not "at some point". See BOSS_WINDOW_DAYS for why this is
-  // mirrored from the server rather than guessed, and for the report that
-  // caused it - a player reading a correct "0 attempts" as a broken feature,
-  // because nothing on the screen connected it to a closed window.
-  const upcoming = $derived(nextBossWindow(new Date()));
-  const returnsLabel = $derived.by(() => {
-    if (upcoming === null) return '';
-    const ordinal = (n: number) => {
-      const suffix = n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th';
-      return `${n}${suffix}`;
-    };
-    return `Returns on the ${ordinal(upcoming.day)}${upcoming.nextMonth ? ' of next month' : ''}.`;
+  // Modul: WHEN, not "at some point". A correct "0 attempts" was once reported
+  // as a broken feature because nothing on the screen said when they come back.
+  // Since 2026-09-25 there are two "whens": the strike refills at UTC midnight,
+  // and a fallen boss is replaced on Monday (WorldBossCalendar, pinned by
+  // serverMirrors.test.ts).
+  // en-GB, not the browser's locale: every other sentence on this screen is
+  // English, and a Czech phone printed "arrives on pondělí" mid-sentence.
+  const onDay = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const returnsLabel = $derived(`A new boss arrives on ${onDay(nextBossMonday(new Date()))} at 00:00 UTC.`);
+  const refillLabel = $derived.by(() => {
+    const at = nextStrikeRefill(new Date());
+    return `Your strike comes back at ${at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}.`;
   });
-
   // Modul: THE ARMOUR, and it is the whole interaction now.
   //
   // This screen used to show an estimate of the player's own damage, because
@@ -130,29 +129,9 @@
 
   let selectedPlate = $state(0);
 
-  // Modul: THE BATTLE SESSION, which used to be invisible from every angle.
-  //
-  // The server gives a player 300 seconds from their FIRST strike to spend the
-  // other two, then rolls every later attack back in silence - inside an
-  // encounter that runs for up to seven days. Nothing carried the deadline, so
-  // the button stayed enabled and did nothing, forever, with no message. An
-  // idle player who strikes once and comes back later is the NORMAL case in
-  // this genre; it cost them two thirds of their participation and never said
-  // why.
-  const sessionEndsEpoch = $derived(Number(snap?.WorldBossSessionEndsEpoch ?? 0));
-
-  let nowEpoch = $state(Math.floor(Date.now() / 1000));
-  $effect(() => {
-    // One second is the resolution the countdown is displayed at; anything
-    // faster is a timer nobody can read.
-    const id = setInterval(() => (nowEpoch = Math.floor(Date.now() / 1000)), 1000);
-    return () => clearInterval(id);
-  });
-
-  const sessionStarted = $derived(sessionEndsEpoch > 0);
-  const sessionExpired = $derived(sessionStarted && nowEpoch >= sessionEndsEpoch);
-  const sessionSecondsLeft = $derived(sessionStarted ? Math.max(0, sessionEndsEpoch - nowEpoch) : 0);
-
+  // Modul: THE 300-SECOND BATTLE SESSION IS GONE (owner, 2026-09-24), and with
+  // it the countdown this screen used to show. With one strike a day there is
+  // nothing for a session to fence.
   let remainingLabel = $state('');
   $effect(() => {
     if (eventState !== BossEventState.Active || endEpoch <= 0) {
@@ -200,7 +179,6 @@
       eventState,
       bossCurrentHp: currentHp,
       attemptCount: attempts,
-      sessionEndsEpoch,
     });
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
     striking = true;
@@ -216,13 +194,12 @@
   // and nothing beside the button connected the two.
   const strikeBlockedReason = $derived.by(() => {
     if (eventState !== BossEventState.Active) {
-      return `The boss is not here right now. ${returnsLabel || 'It returns with the next encounter.'}`;
+      return `The boss is not here right now. ${returnsLabel}`;
     }
-    if (currentHp <= 0) return 'The boss has been defeated. It returns with the next encounter.';
+    if (currentHp <= 0) return `The boss has been defeated. ${returnsLabel}`;
     if (attemptsLeft === 0) {
-      return `You have used all ${MAX_BOSS_ATTEMPTS} strikes. They refill when the next encounter opens.`;
+      return `You have used today's strike. ${refillLabel}`;
     }
-    if (sessionExpired) return 'Your battle session has closed until the next encounter.';
     if (striking) return 'Striking...';
     return '';
   });
@@ -269,41 +246,17 @@
       <p class="dim">No encounter is running. {returnsLabel}</p>
     {/if}
 
-    <h3>Your attempts</h3>
-    <div class="attempts" aria-label="{attemptsLeft} of {MAX_BOSS_ATTEMPTS} attempts remaining">
+    <h3>Today's strike</h3>
+    <div class="attempts" aria-label={attemptsLeft > 0 ? "Today's strike is ready" : "Today's strike is used"}>
       {#each Array(MAX_BOSS_ATTEMPTS) as _, index}
         <span class="pip" class:spent={index < attempts}></span>
       {/each}
-      <span class="dim tiny">{attemptsLeft} of {MAX_BOSS_ATTEMPTS} left</span>
+      <span class="dim tiny">{attemptsLeft > 0 ? 'Ready' : 'Used'}</span>
     </div>
-    {#if eventState !== BossEventState.Active}
-      <!-- Modul: without this line a spent counter between windows reads as
-           "you have none", which is how a correct 0 got reported as a bug.
-           Attempts are per ENCOUNTER - the server deletes every attempt row
-           when it opens a window - so what the player needs to know is that
-           these come back, not how many are left right now. -->
-      <p class="dim tiny">
-        Attempts refill when the next encounter opens.
-      </p>
-    {/if}
-
-    {#if sessionExpired && attemptsLeft > 0}
-      <!-- Said before a strike is sent. The server answers a strike after the
-           session with its own message now (task 25), but a player should not
-           have to spend a tap to learn what the screen already knows. -->
-      <p class="warn" role="status">
-        <strong>Your battle session has closed.</strong> It lasts
-        {BOSS_SESSION_CAP_SECONDS / 60} minutes from your first strike, and your
-        remaining {attemptsLeft} {attemptsLeft === 1 ? 'attempt' : 'attempts'} cannot be
-        used until the next encounter.
-      </p>
-    {:else if sessionStarted && attemptsLeft > 0}
-      <p class="dim tiny" role="status">
-        Battle session closes in {Math.floor(sessionSecondsLeft / 60)}m {sessionSecondsLeft % 60}s -
-        spend your remaining {attemptsLeft} before then.
-      </p>
-    {/if}
-
+    <p class="dim tiny">
+      One strike a day, every day. {attemptsLeft > 0 ? 'It refills at midnight UTC.' : refillLabel} A new
+      boss arrives every Monday.
+    </p>
     <h3>Its armour</h3>
     <p class="dim tiny">
       Five plates, one of them soft. A strike on the soft one does

@@ -83,38 +83,45 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        // World boss event windows run from the 1st-7th and the 15th-22nd of each month (UTC).
-        // Outside those windows the boss is dormant; if not defeated by the window's last day
-        // at 23:59:59 UTC, the encounter is finalized as failed.
+        // Modul: ONE ENCOUNTER A WEEK, MONDAY TO SUNDAY UTC, BACK TO BACK (owner,
+        // 2026-09-25; see WorldBossCalendar). Was the 1st-7th and 15th-22nd.
+        //
+        // With windows back to back, "is it inside a window" stopped being the
+        // question - it always is. The question is "has THIS WEEK's encounter
+        // happened yet", and the snapshot answers it: an encounter's
+        // EventEndEpoch is its week's Sunday 23:59:59, and a defeat leaves that
+        // epoch in place. So:
+        //   - an active encounter whose end has passed is closed as failed;
+        //   - no active encounter, and the snapshot's end is not this week's,
+        //     opens this week's;
+        //   - a boss defeated on Wednesday stays defeated until Monday, because
+        //     its end IS this week's and nothing reopens it.
         internal async Task EvaluateWorldBossEventWindowAsync()
         {
             await _worldBossEngine.EnsureSnapshotAsync();
 
             DateTimeOffset now = _clock();
-            int day = now.Day;
-            bool inWindowA = day >= 1 && day <= 7;
-            bool inWindowB = day >= 15 && day <= 22;
+            long nowEpoch = now.ToUnixTimeSeconds();
+            long thisWeekEnd = WorldBossCalendar.WeekEndEpoch(now);
 
-            // Modul: a dev-opened window counts as a window. Without this the
-            // `!shouldBeActive && IsEventActive` branch below finalised any
-            // window opened outside the calendar within one 60-second tick,
-            // which is why no SQL poke could ever open one. See
-            // WorldBossEngine.OpenManualWindowAsync.
-            bool manualWindowOpen = _worldBossEngine.IsManualWindowOpen(now.ToUnixTimeSeconds());
-            bool shouldBeActive = inWindowA || inWindowB || manualWindowOpen;
+            // Modul: a dev-opened window counts as a window. Without this a
+            // window opened by the dev route would be closed on the next
+            // 60-second tick, which is why no SQL poke could ever open one.
+            // See WorldBossEngine.OpenManualWindowAsync.
+            bool manualWindowOpen = _worldBossEngine.IsManualWindowOpen(nowEpoch);
 
-            if (shouldBeActive && !_worldBossEngine.IsEventActive)
+            if (!manualWindowOpen && _worldBossEngine.IsEventActive && nowEpoch > _worldBossEngine.EventEndEpoch)
             {
-                long windowEndEpoch;
-                if (inWindowA || inWindowB)
-                {
-                    int windowEndDay = inWindowA ? 7 : 22;
-                    windowEndEpoch = new DateTimeOffset(now.Year, now.Month, windowEndDay, 23, 59, 59, TimeSpan.Zero).ToUnixTimeSeconds();
-                }
-                else
-                {
-                    windowEndEpoch = _worldBossEngine.ManualWindowEndEpoch;
-                }
+                // The week (or a lapsed dev window) ran out with the boss alive.
+                await _worldBossEngine.FinalizeEventAsFailedAsync();
+            }
+
+            bool thisWeeksEncounterPending = !manualWindowOpen && _worldBossEngine.EventEndEpoch != thisWeekEnd;
+            bool shouldOpen = !_worldBossEngine.IsEventActive && (manualWindowOpen || thisWeeksEncounterPending);
+
+            if (shouldOpen)
+            {
+                long windowEndEpoch = manualWindowOpen ? _worldBossEngine.ManualWindowEndEpoch : thisWeekEnd;
                 await _worldBossEngine.ActivateEventWindowAsync(windowEndEpoch);
 
                 // Modul: wires the previously-dead PushNotificationTriggerEngine
@@ -127,16 +134,12 @@ namespace FolkIdle.Server.Engine
                 // open date is itself dynamic (month-dependent), unlike the
                 // daily reset below, which has a fixed, predictable next
                 // occurrence.
-                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long alertEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                 long[] onlinePlayerIdsForBossAlert = _playerRegistry.GetOnlinePlayerIds();
                 for (int i = 0; i < onlinePlayerIdsForBossAlert.Length && _pushNotificationTriggerEngine != null; i++)
                 {
-                    await _pushNotificationTriggerEngine.ScheduleTriggerAsync(onlinePlayerIdsForBossAlert[i], nowEpoch, PushTriggerTypeWorldBossWindowOpen, "world_boss_window_open");
+                    await _pushNotificationTriggerEngine.ScheduleTriggerAsync(onlinePlayerIdsForBossAlert[i], alertEpoch, PushTriggerTypeWorldBossWindowOpen, "world_boss_window_open");
                 }
-            }
-            else if (!shouldBeActive && _worldBossEngine.IsEventActive)
-            {
-                await _worldBossEngine.FinalizeEventAsFailedAsync();
             }
 
             if (_worldBossEngine.IsEventActive)
@@ -179,6 +182,23 @@ namespace FolkIdle.Server.Engine
             }
 
             _lastSeenUtcDateKey = currentDateKey;
+
+            // Modul: THE DAILY WORLD BOSS STRIKE COMES BACK HERE (2026-09-25). The
+            // engine resets a row's count when the day moves on, and login loads
+            // only today's - but an online player's payload still holds
+            // yesterday's count, and the tick refuses a spent budget in memory.
+            // Without this, a player online over midnight would keep a grey
+            // Strike button until they relogged.
+            long[] onlinePlayerIdsForBossReset = _playerRegistry.GetOnlinePlayerIds();
+            for (int i = 0; i < onlinePlayerIdsForBossReset.Length; i++)
+            {
+                _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
+                {
+                    PlayerId = onlinePlayerIdsForBossReset[i],
+                    AttemptCount = 0,
+                    SessionEndsEpoch = 0
+                });
+            }
 
             long[] onlinePlayerIdsForDailyReset = _playerRegistry.GetOnlinePlayerIds();
             for (int i = 0; i < onlinePlayerIdsForDailyReset.Length; i++)

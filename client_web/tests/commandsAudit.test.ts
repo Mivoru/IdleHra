@@ -153,34 +153,19 @@ describe('world boss', () => {
     expect(sent).toHaveLength(0);
   });
 
-  it('refuses once the BATTLE SESSION has closed, which the server does in silence', () => {
-    // WorldBossEngine gives a player 300 seconds from their FIRST strike to
-    // spend the other two, then rolls every later attack back with no damage,
-    // no message and no telemetry they will ever see - inside an encounter that
-    // runs for up to seven days.
-    //
-    // The deadline was not on the wire at all until 2026-09-05, so the button
-    // stayed enabled and did nothing forever. An idle player who strikes once
-    // and comes back later is the NORMAL case in this genre.
-    const closed = attackWorldBoss({
-      ...healthy,
-      sessionEndsEpoch: 1_000_000,
-      nowEpoch: 1_000_001,
-    });
-    expect(closed.ok).toBe(false);
-    expect(closed.ok === false && closed.reason).toMatch(/battle session/i);
-    expect(sent).toHaveLength(0);
+  it('has no battle session to refuse on any more', () => {
+    // The 300-second session (strike once, then the rest within five minutes)
+    // was dropped by the owner on 2026-09-24; with one strike a day there is
+    // nothing for it to fence. The option no longer exists to pass, and a
+    // strike with today's budget unspent is always sent.
+    expect(attackWorldBoss(healthy).ok).toBe(true);
+    expect(sent).toHaveLength(1);
   });
 
-  it('allows a strike while the session is still open', () => {
-    expect(
-      attackWorldBoss({ ...healthy, sessionEndsEpoch: 1_000_000, nowEpoch: 999_999 }).ok,
-    ).toBe(true);
-    // Zero means the clock has not started - the player has not struck yet.
-    expect(attackWorldBoss({ ...healthy, sessionEndsEpoch: 0, nowEpoch: 9_999_999 }).ok).toBe(true);
-    expect(sent).toHaveLength(2);
+  it('says when the spent strike comes back', () => {
+    const spent = attackWorldBoss({ ...healthy, attemptCount: MAX_BOSS_ATTEMPTS });
+    expect(spent.ok === false && spent.reason).toMatch(/today's strike.*midnight UTC/i);
   });
-
   it('accepts every plate the server does', () => {
     for (let plate = 0; plate < BOSS_PLATE_COUNT; plate++) {
       expect(attackWorldBoss({ ...healthy, plateIndex: plate }).ok).toBe(true);
