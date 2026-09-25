@@ -1,13 +1,27 @@
 # FolkIdle on the Oracle Ampere box - the whole game, client and server.
 #
 # NOT the repository's own docker-compose.yml, which cannot be reused here:
-# that one stands up its own Postgres, a pgbouncer in front of it and a
-# one-shot migrate job. The database stays on Supabase, whose pooler already
-# does the pooling, and the app image migrates on its own entrypoint - so all
-# three of those services would be wrong rather than merely redundant.
+# that one stands up a pgbouncer in front of its Postgres and a one-shot migrate
+# job. The app image migrates on its own entrypoint, and at one replica talking
+# to a Postgres on the same host there is nothing to pool.
 #
-# Three services: the app, a Redis beside it, and Caddy - which terminates TLS,
-# serves the built client, and proxies the API and the WebSocket to the app.
+# Four services: the app, Postgres and Redis beside it, and Caddy - which
+# terminates TLS, serves the built client, and proxies the API and the
+# WebSocket to the app.
+#
+# Modul: POSTGRES MOVED HERE FROM SUPABASE ON 2026-09-25, because of EGRESS.
+# The database is 20 MB, but every row the server read crossed the internet
+# from Supabase to this box, and the free plan allows 5 GB of that a month.
+# Gathering alone was about 9.3M single-row reads, one per harvest roll, and
+# a player's whole equipment list was loaded 5,220 times at an average of
+# 4,222 rows. The quota ran out. On the same host that traffic is free and
+# costs microseconds rather than a round trip to Frankfurt. It also ends the
+# 15-client session-pooler ceiling that once killed the loot worker (see
+# ConnectionStringDefaults.WithBoundedPool).
+#
+# What Supabase used to do and this box now has to: BACKUPS. backup-db.sh runs
+# nightly from cron and keeps seven dumps - see ops/oracle/README.md. The
+# Supabase project was left intact as the rollback, not deleted.
 # Client and server share one origin, so there is no CORS relationship between
 # the two halves and only one certificate to keep.
 #
@@ -41,12 +55,44 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+      postgres:
+        condition: service_healthy
+    # Modul: SIGTERM runs ShutdownGracefully and flushes the Redis write-behind
+    # (Program.cs). Docker's default grace is 10 s before SIGKILL, which is
+    # not enough for a flush over a busy table; a killed flush loses whatever
+    # was only in memory.
+    stop_grace_period: 60s
     expose:
       - "8080"
     # The entrypoint migrates before serving. Safe at exactly one replica -
     # see server/Dockerfile. Do not scale this service.
     deploy:
       replicas: 1
+
+  # The game's database. 17, to match the Supabase server it was restored
+  # from (17.6) - pg_restore refuses a dump from a newer major, and an older
+  # one is a downgrade nobody tested.
+  #
+  # NO `ports:` on purpose. Only the app reaches it, over the compose network,
+  # so the database is not on the internet and neither firewall needs a hole.
+  # To look at it: `docker compose exec postgres psql -U folkidle folkidle`.
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: folkidle
+      POSTGRES_USER: folkidle
+      # From .env - generated on the box at the move, never committed.
+      POSTGRES_PASSWORD: "${FOLKIDLE_PG_PASSWORD:?FOLKIDLE_PG_PASSWORD must be set in ops/oracle/.env}"
+    volumes:
+      # Named, so the data survives `docker compose up --build` and a
+      # container recreate. `docker compose down -v` DELETES it - never use -v.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U folkidle -d folkidle"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   redis:
     image: redis:7-alpine
@@ -112,5 +158,6 @@ services:
       - app
 
 volumes:
+  pgdata:
   caddy_data:
   caddy_config:
