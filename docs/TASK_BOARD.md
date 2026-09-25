@@ -1,9 +1,19 @@
 # FolkIdle Task Board
 
-> **START HERE (2026-09-23): the open work is tasks 25-38, at the bottom of this
-> file** ("25 through 38, added 2026-09-23"), in the order given there. Tasks
-> 1-24 are all DONE and deployed; production runs `main`. Where any status
-> line below says otherwise it is stale (cleaning that up is task 30).
+> **START HERE (status checked 2026-09-25 against GitHub and production).**
+> Tasks 1-35 and 37 are DONE, merged and deployed; production runs `main`.
+> Two are open, and both are waiting on a gate, not on code:
+> - **36, the shield wheel.** Phase 1 (practice) is live behind
+>   `FOLKIDLE_BOSS_MINIGAME=practice`. **Gate:** the owner plays it on the
+>   phone and decides the numbers (spec section 3.1) before Phase 2.
+> - **38, Guild Wars.** Parked by the owner's rule until the population nears
+>   the floor. **Measured 2026-09-25:** 61 accounts, 1 at level 10 or above,
+>   15 active in 7 days, 1 guild. The lock needs 4 or more guilds of 3 or more
+>   level-10 members.
+>
+> Also scheduled: task 37 Phase 3 (measure the Deep) on 2026-10-02. The owner's
+> PC captures the numbers automatically. Each task's own section says what is
+> true about it; the history paragraphs below are kept as the record.
 
 Seven tasks, restated against what the code actually does as of 2026-09-01.
 Every "today" claim below was checked in the source or the live database rather
@@ -24,16 +34,11 @@ sink built as a minigame (**DONE - shipped as The Delve**) and the tutorial past
 its first ten minutes (**DONE - shipped as tier three, the objective track**).
 Both write-ups are at the bottom of this file. **Task 13, added 2026-09-10, is
 the mobile app** - four phases, written against what is actually in the repo
-rather than what MOBILE.md claims. **Tasks 14-23, added 2026-09-17 from a
-GitHub Copilot audit — 14/15/16/17/19/20/23 done and merged; 18 (PR #11) and
-22 (PR #12) built, tested green on a fresh rebase onto `main`, and PRs opened
-2026-09-19 — NOT YET MERGED, need the owner's own read; 21's Phase 1 is
-**DONE and MERGED to `main` 2026-09-23** (Phase 2/3 not started); Unity
-retirement gated on the owner. Task 22's own test found a new, real, unfixed
-bug — see task 24 below, added 2026-09-19.** Read
-`docs/architecture/NEXT_STEPS_BACKLOG.md`'s latest handoff entry before
-touching any of 18/21/22/24. See that section's own status line, below the
-mobile-app write-up.**
+rather than what MOBILE.md claims. **Tasks 14-24, added 2026-09-17 from a
+GitHub Copilot audit, are ALL DONE and deployed.** 18 is PR #11 and 22 is
+PR #12, both merged 2026-09-19. 21's three phases were done 2026-09-23. 24
+(the bug 22's test found) was fixed 2026-09-23. The Unity project was retired
+in task 34.
 
 | # | Open task | Shape |
 |---|---|---|
@@ -2913,8 +2918,9 @@ fix. See the plan for exact steps.
 
 ## 17. Offline village production fails silently on a database error (reliability, was P0)
 
-**Not started. Fully scoped — see the separate implementation plan at
-`docs/superpowers/plans/2026-09-17-audit-fixes-14-17-19-20.md` (Task 2).**
+**DONE, merged 2026-09-19 (PR #9).** The plan it followed is
+`docs/superpowers/plans/2026-09-17-audit-fixes-14-17-19-20.md` (Task 2). The
+scoping below is kept as the record.
 
 **Confirmed.** `OfflineSimulationEngine.cs:396-399`:
 `catch { await transaction.RollbackAsync(); }` — no log line, no failure
@@ -2945,9 +2951,8 @@ visibility.
 
 ## 18. No durable retry for loot, gathering, or offline production grants (reliability, was P0)
 
-**Built, PR #11 open against `main`, NOT YET MERGED — see
-`docs/superpowers/plans/2026-09-17-durable-grant-retry.md`, all 4 tasks
-committed.** A `pending_grants` table stores the already-resolved outcome
+**DONE, PR #11 merged 2026-09-19.** See
+`docs/superpowers/plans/2026-09-17-durable-grant-retry.md`, all 4 tasks. A `pending_grants` table stores the already-resolved outcome
 (never "redo this roll," since combat loot rolls randomness before the
 write that can fail) keyed by `(PlayerId, SourceType, SourceSequence)`,
 proven on offline village production first, then wired to gathering and
@@ -2998,8 +3003,9 @@ addition, not a rewrite.
 
 ## 19. Village passive production discards overflow with no record (reliability, cheap)
 
-**Not started. Fully scoped — see the separate implementation plan at
-`docs/superpowers/plans/2026-09-17-audit-fixes-14-17-19-20.md` (Task 3).**
+**DONE, merged 2026-09-19 (with task 17, PR #9).** A full warehouse now
+reports what offline production discarded. The plan it followed is
+`docs/superpowers/plans/2026-09-17-audit-fixes-14-17-19-20.md` (Task 3).
 Bigger than "cheap": this is a wire change (`TickStatePayload`/
 `StateUpdatePacket` both need the new field, plus `generate:protocol` and
 a client display line), not just a backend log line — the plan corrects
@@ -3029,8 +3035,9 @@ the player how much was discarded, not just how much was kept.
 
 ## 20. The wire's field-coverage guard only covers one of four state layers (testing infra, was P1)
 
-**Not started. Fully scoped — see the separate implementation plan at
-`docs/superpowers/plans/2026-09-17-audit-fixes-14-17-19-20.md` (Task 4).**
+**DONE, merged 2026-09-19 (PR #8).** The plan it followed is
+`docs/superpowers/plans/2026-09-17-audit-fixes-14-17-19-20.md` (Task 4).
+`StateUpdatePacketFieldCoverageTests` covers the layers.
 
 **Confirmed, but narrower in scope than the audit's "build a manifest"
 framing.** `StateUpdatePacketFieldCoverageTests` is real and mechanical — it
@@ -3125,9 +3132,9 @@ dedicated brainstorming/spec pass first.
 
 ## 22. No sustained-load test combining the systems that actually interact in production (testing infra, was P1)
 
-**Built, PR #12 open against `main`, NOT YET MERGED — see
-`docs/superpowers/plans/2026-09-17-sustained-load-test.md`, both tasks
-committed.** Task 1 extracted a shared `E2ETestHarness` out of
+**DONE, PR #12 merged 2026-09-19.** See
+`docs/superpowers/plans/2026-09-17-sustained-load-test.md`, both tasks. The
+bug its test found is task 24, fixed 2026-09-23. Task 1 extracted a shared `E2ETestHarness` out of
 `E2EGameLoopTest.cs`'s two duplicated engine-graph blocks, adding
 `CombatLootEngine` to the constructed graph (neither pre-existing E2E test
 had ever started it, so neither had ever actually observed a granted item
@@ -3363,6 +3370,8 @@ cannot run at once on this machine (`SustainedLoadTests` binds port 8095);
 
 ## 25. World boss: no attack has ever landed (P0, a real defect)
 
+**DONE, PR #23 merged and deployed 2026-09-24.** Every strike lands or answers with a result code (38-42); the dev window; exercise strikes on any day.
+
 **Reported:** "I can never attack."
 
 **Measured in production 2026-09-23:** the whole Sep 15-22 window ended with
@@ -3436,6 +3445,8 @@ once a row exists in `player_world_boss_attempts` during the Oct 1-7 window.**
   and the snapshot SELECT, and ask the owner to strike once from the phone.
 
 ## 26. Rarity: no Ancient+ drop in ~5 days (investigate before changing anything)
+
+**DONE, PR #25 merged and deployed 2026-09-24.** The bough is elevation; canonical area completion; the drop record and `/api/v1/player/loot-odds`; the Wiki odds line.
 
 **Reported:** Godly and 2x Demonic earlier; for about five days only
 Mythic / Relic / Ancient at best.
@@ -3555,6 +3566,8 @@ H6. The admin loot-stats view (plan Task 4b) was optional and not built.
 
 ## 27. Loot drops list: the top row is cut off (S)
 
+**DONE, PR #21 merged and deployed 2026-09-24** (with 28 and 29).
+
 **Reported:** with many items the loot drops table glitches and the top item is
 cut off.
 
@@ -3567,6 +3580,8 @@ taller than their slot. Reproduce with a long session's worth of drops at
 measures what its fixtures render, and a short list hides this).
 
 ## 28. Village stopwatch: the whole icon spins on the phone (S)
+
+**DONE, PR #21 merged and deployed 2026-09-24** (with 27 and 29).
 
 **Reported:** while a building upgrades the whole timer icon spins, not just
 the hands.
@@ -3587,6 +3602,8 @@ the phone.
 
 ## 29. Market filters: the checkboxes are misaligned (S)
 
+**DONE, PR #21 merged and deployed 2026-09-24** (with 27 and 28).
+
 `client_web/src/routes/Market.svelte` ~lines 243-285: two
 `<fieldset class="checks">` (Type, Tier) of
 `<label><input type="checkbox">text</label>`. The CSS around lines 587-615 (read
@@ -3597,6 +3614,8 @@ enlarged by padding - size the label as the target). Run `check:touch` and
 `check:overlap` after.
 
 ## 30. Docs match reality (S)
+
+**DONE 2026-09-25.** This file's header and every stale status line in 14-38 were checked against GitHub. `CURRENT_IMPLEMENTATION_STATE.md` section 2.1 describes the tick layout after task 21. `CLAUDE.md` has no `SimulationEngine.cs` line references left to rot, and it now records the static-loot-queue test trap.
 
 - This file's header (top ~30 lines) still says PR #11/#12 are unmerged and task
   21 Phase 2/3 not started; the 14-23 status paragraph and the first lines of
@@ -3613,6 +3632,8 @@ enlarged by padding - size the label as the target). Run `check:touch` and
 
 ## 31. CI: GitHub actions off Node 20 (S)
 
+**DONE, PR #20 merged 2026-09-24.** Every action is on its Node 24 major.
+
 `.github/workflows/deploy.yml` uses `actions/checkout@v4`, `cache@v4`,
 `setup-dotnet@v4`, `setup-java@v4` (deprecated; v5 exists), `setup-node@v4`,
 `upload-artifact@v4`, `android-actions/setup-android@v3`. GitHub already forces
@@ -3620,6 +3641,8 @@ them onto Node 24 with a warning. Bump each to its current major after reading
 its breaking changes, push to `main`, watch the run go green.
 
 ## 32. Branch and worktree cleanup (S)
+
+**DONE 2026-09-24** (no PR; branch deletions only). Anything not merged was listed for the owner rather than deleted.
 
 Local: `combat-readability-and-rarity`, `feat/breeding-round-1`,
 `fix/drops-progression-oracle-migration`,
@@ -3670,7 +3693,7 @@ removing an `items.json` entry must not shift another item's id. Then remove the
 definitions, regenerate sprites, let the content-validator hook pass, run the
 full suite and `exercise`.
 
-## 34. Retire the Unity project (M, approved by the owner) - deletion ready 2026-09-24, deploy pending
+## 34. Retire the Unity project (M, approved by the owner) - DONE, PR #27 merged and deployed 2026-09-24
 
 **Deletion done** on branch `chore/retire-unity`: 1,422 files (1,421 under
 `client/` plus `unity_client.yml`), leave-in-place, the survivors match the
@@ -3865,6 +3888,8 @@ PC is off, and writes `D:\FolkIdleBackups\deep-phase3-week1.txt`. Copy its
 numbers here.
 
 ## 38. Guild Wars: design the whole system (XL, design with the owner first)
+
+**PARKED by the owner's rule: it waits until the population nears the floor (50).** Measured in production on 2026-09-25: 61 accounts, **1** at level 10 or above, 15 active in the last 7 days, **1** guild. The Guild War lock (PR #22) needs 4 or more guilds of 3 or more level-10 members. The design (H2H async plus Great Works) is in `docs/superpowers/specs/2026-09-24-guild-wars-design.md`. Re-measure before starting.
 
 **Owner, 2026-09-23:** design Guild Wars completely - format, rewards,
 everything; take inspiration from popular games.

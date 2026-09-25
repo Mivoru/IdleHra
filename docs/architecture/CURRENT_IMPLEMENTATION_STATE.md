@@ -38,7 +38,7 @@ do not let it drift into aspirational/planned content - that belongs in
 
 ## 2. Core Tick Architecture
 
-`SimulationEngine` (`Engine/SimulationEngine.cs`) runs a single dedicated
+`SimulationEngine` (`Domain/Combat/SimulationEngine.cs`) runs a single dedicated
 thread at 10 Hz and owns `_activePlayers`, a
 `Dictionary<long, TickStatePayload>`. Because exactly one thread ever reads
 or writes this dictionary, in-memory per-player state (stats, active
@@ -50,8 +50,8 @@ and mutates fields in place.
 
 Any engine method that needs to touch the database runs off the tick thread
 (`Task.Run`, or a background polling cron) and reports results back to the
-tick thread via one of the 35 `ConcurrentQueue<T>` members exposed on
-`PlayerSessionRegistry` (`Engine/PlayerSessionRegistry.cs`) - e.g.
+tick thread via one of the `ConcurrentQueue<T>` members exposed on
+`PlayerSessionRegistry` (`Engine/PlayerSessionRegistry.cs`; 39 of them on 2026-09-25, and a hard-coded count here went stale once already) - e.g.
 `MarketMatchQueue`, `ForgeUpgradeQueue`, `QuarantineNotificationQueue`,
 `CombatLootDropQueue`. The tick loop drains these queues every frame
 with zero-allocation `TryDequeue` calls and folds the results into the live
@@ -63,6 +63,55 @@ straight to the database for an offline player.
 This queue-drain pattern is the backbone nearly every engine in the
 codebase depends on for correctness; see Section 7 for why it was not
 touched in this pass despite a request to make it "stateless".
+
+### 2.1 How one tick is laid out now (task 21's split, merged 2026-09-23)
+
+`SimulationEngine.cs` (`Domain/Combat/`, **5,021 lines**) still owns the tick
+thread and `_activePlayers`. It no longer does everything inline. A command
+passes through four stages:
+
+1. **The gate: `Domain/Shared/CommandGate.cs`.** Every non-internal client
+   command goes through `CommandGate.Evaluate` first: the epoch check and the
+   anti-cheat validators, **in a fixed order**. Validators take the payload by
+   ref and may stamp it, so the order is part of the contract, and
+   `CommandGateOrderingTests` pins it. The gate returns a verdict
+   (`Proceed`, `Terminate`, `ShadowBan`) and never acts on it itself. Ending
+   a session stays `SimulationEngine`'s own power.
+2. **The dispatch table.** `SimulationEngine.BuildCommandHandlers()` maps
+   each `CommandType` to a `CommandHandler` (the delegate is declared in
+   `Domain/Shared/CommandCoordinatorContext.cs`). A handler receives the
+   payload by ref, the packet and a `CommandCoordinatorContext`.
+   - The context is a **readonly ref struct** holding the engines and the
+     three session-ending primitives. It lives only on the tick thread's
+     stack: it cannot be captured into a lambda or stored, so it cannot
+     become a back door into engine state from another thread.
+   - The handlers themselves live in the per-domain **`*TickCoordinator`**
+     classes, 26 of them across `Domain/Combat`, `Domain/Economy`,
+     `Domain/Progression`, `Domain/Shared` and `Domain/Social` (for example
+     `WorldBossTickCoordinator`, `ForgeTickCoordinator`,
+     `BreedingTickCoordinator`, `GuildTickCoordinator`). Each handler owns one
+     domain's commands and the drain of that domain's result queue(s).
+3. **The Phase 1 drains.** The `PlayerSessionRegistry` queue drains described
+   above run from those coordinators rather than inline in the loop body. They
+   stay zero-allocation `TryDequeue`, and each worker-fed drain takes a
+   budget (see CLAUDE.md, "An unbounded drain in a worker loop is a starvation
+   bug").
+4. **The simulation itself.**
+   - `ProcessAccountTick` runs once per account per tick.
+   - `ProcessAllSlotSubTicks` swaps each playable slot's character into the
+     payload, inside a try/finally, and calls `ProcessSubTick`.
+   - `ProcessSubTick` dispatches to exactly one of `RunCraftingProgressTick`,
+     `RunGatheringTick` or `RunCombatTick`. **Each branch ends in its own
+     `return`**; the crafting branch once fell through into combat
+     (`ProcessSubTickDispatchTests`).
+   - `RunCombatTick`'s early return in the death branch is what keeps "died"
+     and "killed" exclusive within one tick. Keep it the last call in
+     `ProcessSubTick`.
+
+A new command is added with the `add-command` skill: an opcode, a handler in
+the right `*TickCoordinator`, and an entry in `BuildCommandHandlers`. REST
+features that the tick never reads (the Delve, the Deep, the shield wheel's
+practice) bypass all of this on purpose. See their own sections.
 
 ## 3. Persistence and Migration State
 

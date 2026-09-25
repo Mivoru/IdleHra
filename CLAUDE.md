@@ -368,6 +368,15 @@ onboarding's own first instruction died to the first monster in the game and the
 tutorial stalled there forever. Anything a new player meets has to be checked by
 registering one; `exercise.mjs` does that in its own browser context at the end.
 
+**A test that starts a background worker must stop it, because the queues are
+STATIC.** `CombatLootEngine.DropRequestQueue` (and the other worker queues) are
+static fields, so one worker drains every test's requests. A test that calls
+`StartCron()` and never `StopCron()` leaves a worker running into later tests,
+where it takes another test's loot and writes it through ITS OWN service
+provider, into the wrong database. The victim fails with "no loot arrived",
+nowhere near the test that caused it (PR #15, commit `1ef5318`). Start and
+stop inside a `try/finally`, as `DropRecordTests.RunAsync` does.
+
 **A check that spends fixture state passes once and fails forever.** Three
 `exercise.mjs` steps had been red on a working game for a long time because they
 marked a flag nothing clears, re-equipped the item already worn, or consumed the
