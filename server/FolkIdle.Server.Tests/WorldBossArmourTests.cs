@@ -44,6 +44,11 @@ namespace FolkIdle.Server.Tests
 
         private const long TestPlayerId = 970_000_101L;
 
+        // One strike a day (2026-09-25): a test that needs a second strike makes
+        // it as a second player, which is what a second strike on the shared
+        // board is anyway.
+        private const long SecondPlayerId = 970_000_102L;
+
         private async Task<WorldBossEngine> FreshEncounterAsync()
         {
             var engine = new WorldBossEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
@@ -78,7 +83,7 @@ namespace FolkIdle.Server.Tests
             // Striking the WRONG plate reveals nothing about the right one.
             Assert.Equal(WorldBossEngine.WeakPlateHidden, engine.WeakPlate);
 
-            await engine.ExecuteAttackAsync(TestPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000, armour.Weak);
+            await engine.ExecuteAttackAsync(SecondPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000, armour.Weak);
 
             // Landing on it does.
             Assert.Equal(armour.Weak, engine.WeakPlate);
@@ -97,7 +102,7 @@ namespace FolkIdle.Server.Tests
             await engine.ExecuteAttackAsync(TestPlayerId, WorldBossEngine.ActiveBossInstanceId, damage, armoured);
             long afterArmoured = engine.BossCurrentHp;
 
-            await engine.ExecuteAttackAsync(TestPlayerId, WorldBossEngine.ActiveBossInstanceId, damage, armour.Weak);
+            await engine.ExecuteAttackAsync(SecondPlayerId, WorldBossEngine.ActiveBossInstanceId, damage, armour.Weak);
             long afterWeak = engine.BossCurrentHp;
 
             long armouredHit = before - afterArmoured;
@@ -179,7 +184,7 @@ namespace FolkIdle.Server.Tests
 
             byte armoured = (byte)((first.Weak + 1) % WorldBossEngine.PlateCount);
             await engine.ExecuteAttackAsync(TestPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000, armoured);
-            await engine.ExecuteAttackAsync(TestPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000, first.Weak);
+            await engine.ExecuteAttackAsync(SecondPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000, first.Weak);
             Assert.NotEqual(0, engine.BrokenPlateMask);
             Assert.Equal(first.Weak, engine.WeakPlate);
 
@@ -210,13 +215,22 @@ namespace FolkIdle.Server.Tests
             byte armoured = (byte)((armour.Weak + 1) % WorldBossEngine.PlateCount);
 
             await engine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, 5000, armoured);
-            await engine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, 5000, armoured);
 
             var checkpointManager = new FolkIdle.Server.Domain.Shared.StateCheckpointManager(_fixture.ServiceProvider);
             var reloaded = await checkpointManager.LoadPlayerState(DbSeeder.PlayerLowId);
 
             _output.WriteLine($"attempts after reload: {reloaded.WorldBossAttemptCount}");
-            Assert.Equal(2, reloaded.WorldBossAttemptCount);
+            Assert.Equal(WorldBossEngine.MaxAttemptsPerDay, reloaded.WorldBossAttemptCount);
+
+            // And the other half of one-a-day: YESTERDAY's strike loads as 0,
+            // or a player would log in to a grey button every morning.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    "UPDATE \"player_world_boss_attempts\" SET \"AttemptDateKey\" = \"AttemptDateKey\" - 1 WHERE \"PlayerId\" = {0}", DbSeeder.PlayerLowId);
+            }
+            var nextDay = await checkpointManager.LoadPlayerState(DbSeeder.PlayerLowId);
+            Assert.Equal(0, nextDay.WorldBossAttemptCount);
         }
 
         [Fact]
@@ -236,6 +250,27 @@ namespace FolkIdle.Server.Tests
             var reloaded = await checkpointManager.LoadPlayerState(DbSeeder.PlayerLowId);
 
             Assert.Equal(0, reloaded.WorldBossAttemptCount);
+        }
+
+        // Modul: every strike takes the one boss row FOR UPDATE under
+        // Serializable, and before the engine queued them the loser of two
+        // simultaneous strikes failed with a serialization error ("the strike
+        // could not be recorded"). Found 2026-09-25 through a double-tap test.
+        [Fact]
+        public async Task ManyPlayersStrikingAtOnceAllLand()
+        {
+            var engine = await FreshEncounterAsync();
+            var armour = await ReadArmourAsync();
+            byte armoured = (byte)((armour.Weak + 1) % WorldBossEngine.PlateCount);
+            long before = engine.BossCurrentHp;
+
+            var strikes = Enumerable.Range(0, 8)
+                .Select(i => engine.ExecuteAttackAsync(970_000_200L + i, WorldBossEngine.ActiveBossInstanceId, 2_000, armoured))
+                .ToArray();
+            var outcomes = await Task.WhenAll(strikes);
+
+            Assert.All(outcomes, o => Assert.Equal(WorldBossAttackOutcome.Landed, o));
+            Assert.Equal(before - 8 * 2_000, engine.BossCurrentHp);
         }
 
         [Fact]

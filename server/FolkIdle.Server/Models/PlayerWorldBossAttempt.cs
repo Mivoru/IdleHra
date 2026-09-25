@@ -15,10 +15,16 @@ namespace FolkIdle.Server.Models
         public int AttemptCount { get; set; }
         public long TotalInflictedDamage { get; set; }
 
-        // Modul 06/15: unix-epoch-seconds when this player's current World Boss
-        // battle session began. A session is capped at 300 seconds - once
-        // exceeded (or the player's Auto-Eat food stock is depleted), further
-        // attacks are rejected and the damage delta already registered stands.
+        // Modul: UNREAD since 2026-09-25. It stamped the start of a 300-second
+        // battle session, which the owner dropped: with one strike a day there
+        // is nothing to fence inside a session. The column stays because
+        // dropping it would be a non-additive migration for nothing.
         public long SessionStartEpoch { get; set; }
+
+        // Modul: ONE STRIKE A DAY (owner, 2026-09-25). AttemptCount now counts
+        // the strikes made on THIS UTC day (WorldBossCalendar.DayKey), and the
+        // engine resets it to 0 inside its transaction when the day has moved
+        // on. TotalInflictedDamage still counts the whole encounter.
+        public long AttemptDateKey { get; set; }
     }
 }

@@ -679,15 +679,15 @@ namespace FolkIdle.Server.Domain.Shared
                 .AsNoTracking()
                 .SingleOrDefaultAsync(a => a.PlayerId == playerId
                     && a.BossInstanceId == FolkIdle.Server.Engine.WorldBossEngine.ActiveBossInstanceId);
+            // Modul: ONE STRIKE A DAY (2026-09-25): the row's count belongs to
+            // the day it was made on, so a row from an earlier day loads as 0 -
+            // otherwise yesterday's strike would grey the button today. The
+            // 300-second session is gone, so nothing sets its end any more.
             long worldBossSessionEndsEpoch = 0;
-            if (bossAttemptRow != null)
+            if (bossAttemptRow != null
+                && bossAttemptRow.AttemptDateKey == FolkIdle.Server.Engine.WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
             {
                 worldBossAttemptCount = (byte)Math.Clamp(bossAttemptRow.AttemptCount, 0, byte.MaxValue);
-                if (bossAttemptRow.SessionStartEpoch > 0)
-                {
-                    worldBossSessionEndsEpoch = bossAttemptRow.SessionStartEpoch
-                        + FolkIdle.Server.Engine.WorldBossEngine.BattleSessionCapSeconds;
-                }
             }
 
             // Modul: the tools the ACTIVE CHARACTER IS WEARING.

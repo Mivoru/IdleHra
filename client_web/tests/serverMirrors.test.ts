@@ -12,7 +12,7 @@ import {
   BOSS_REQUIRED_QUALITY_TIER,
 } from '../src/lib/ui/victories';
 import { TIER_STYLES } from '../src/lib/ui/leaderboardTiers';
-import { BOSS_WINDOW_DAYS, isBossWindowDay, nextBossWindow } from '../src/lib/net/commands';
+import { nextBossMonday, nextStrikeRefill } from '../src/lib/net/commands';
 import {
   VILLAGE_UPGRADE_BASE_SECONDS,
   VILLAGE_UPGRADE_GROWTH,
@@ -494,25 +494,20 @@ describe('the numbers the client mirrors still match the server', () => {
     );
   });
 
-  it('world boss: the attempt budget and the battle session cap', () => {
-    const engine = read(serverRoot, 'Engine', 'WorldBossEngine.cs');
+  it('world boss: the daily strike budget', () => {
+    const calendar = read(serverRoot, 'Engine', 'WorldBossCalendar.cs');
     const commands = read(clientRoot, 'lib', 'net', 'commands.ts');
 
-    expect(num(commands, /MAX_BOSS_ATTEMPTS = (\d+)/, 'client attempt cap')).toBe(
-      num(engine, /MaxAttemptsPerEncounter = (\d+)/, 'server attempt cap'),
+    // One strike a day since 2026-09-25 (owner). The screen counts pips
+    // against this number, so the two halves have to agree or a pip lies.
+    // The 300-second battle session this also pinned is GONE - nothing on
+    // either side may bring a number for it back.
+    expect(num(commands, /MAX_BOSS_ATTEMPTS = (\d+)/, 'client strike budget')).toBe(
+      num(calendar, /StrikesPerDay = (\d+)/, 'server strike budget'),
     );
-
-    // THIS ONE COST THE MOST BY BEING UNSAID. The server gives a player 300
-    // seconds from their first strike to spend the other two, and until
-    // 2026-09-05 nothing carried that - the button stayed enabled and the
-    // attack rolled back in silence for the rest of an encounter that runs for
-    // up to seven days. The screen counts down against this number now, so the
-    // two halves have to agree or the countdown lies.
-    expect(num(commands, /BOSS_SESSION_CAP_SECONDS = (\d+)/, 'client session cap')).toBe(
-      num(engine, /BattleSessionCapSeconds = (\d+)L/, 'server session cap'),
-    );
+    expect(commands).not.toContain('BOSS_SESSION_CAP_SECONDS');
+    expect(read(serverRoot, 'Engine', 'WorldBossEngine.cs')).not.toContain('BattleSessionCapSeconds');
   });
-
   it('wiki: the world boss page quotes the rules the server enforces', () => {
     // Modul: THE WIKI TAUGHT A MECHANIC THE GAME NO LONGER HAD.
     //
@@ -524,6 +519,7 @@ describe('the numbers the client mirrors still match the server', () => {
     // pre-2026-09-02 order and said the FOURTH monster kills an unfed
     // character.
     const engine = read(serverRoot, 'Engine', 'WorldBossEngine.cs');
+    const calendar = read(serverRoot, 'Engine', 'WorldBossCalendar.cs');
     const wiki = read(clientRoot, 'lib', 'ui', 'wikiData.ts');
 
     expect(num(wiki, /WORLD_BOSS_PLATES = (\d+)/, 'wiki plate count')).toBe(
@@ -532,13 +528,11 @@ describe('the numbers the client mirrors still match the server', () => {
     expect(num(wiki, /WORLD_BOSS_WEAK_MULTIPLIER = (\d+)/, 'wiki weak multiplier')).toBe(
       num(engine, /WeakPlateDamageMultiplier = ([\d.]+)/, 'server weak multiplier'),
     );
-    expect(num(wiki, /WORLD_BOSS_ATTEMPTS = (\d+)/, 'wiki attempt cap')).toBe(
-      num(engine, /MaxAttemptsPerEncounter = (\d+)/, 'server attempt cap'),
+    expect(num(wiki, /WORLD_BOSS_ATTEMPTS = (\d+)/, 'wiki strikes per day')).toBe(
+      num(calendar, /StrikesPerDay = (\d+)/, 'server strikes per day'),
     );
-    // The page says the session in MINUTES; the server counts seconds.
-    expect(num(wiki, /WORLD_BOSS_SESSION_MINUTES = (\d+)/, 'wiki session minutes') * 60).toBe(
-      num(engine, /BattleSessionCapSeconds = (\d+)L/, 'server session cap'),
-    );
+    // The session the page used to explain is gone, and so is its number.
+    expect(wiki).not.toContain('WORLD_BOSS_SESSION_MINUTES');
 
     // And the retired ceiling must not come back as a number nobody enforces.
     expect(wiki).not.toContain('WORLD_BOSS_DAMAGE_CEILING =');
@@ -678,50 +672,38 @@ describe('the leaderboard tier ladder', () => {
 
 // Modul: THE WORLD BOSS WINDOW CALENDAR.
 //
-// LiveOpsTickEngine decides when the boss is awake: days 1-7 and 15-22 of each
-// month, UTC. The client mirrors that purely so the screen can say WHEN the
-// boss returns instead of "the next scheduled window" - which is not an answer
-// anybody can plan around, and which is why a correct "0 attempts" was reported
-// as a broken feature on the 11th.
-//
-// A calendar rule written down twice is the same drift risk as any other, so
-// the two are compared here rather than trusted.
-describe('the world boss window calendar', () => {
-  const server = read(serverRoot, 'Engine', 'LiveOpsTickEngine.cs');
+// WorldBossCalendar decides when the boss is awake: one encounter a week,
+// Monday 00:00 to Sunday 23:59:59 UTC, back to back (owner, 2026-09-25; it was
+// the 1st-7th and 15th-22nd). The client mirrors the week purely so the screen
+// can say WHEN a fallen boss is replaced and when today's strike refills - "the
+// next scheduled window" is not an answer anybody can plan around, which is
+// why a correct "0 attempts" was once reported as a broken feature.
+describe('the world boss week', () => {
+  const calendar = read(serverRoot, 'Engine', 'WorldBossCalendar.cs');
 
-  it('agrees with the server on which days a window is open', () => {
-    // `bool inWindowA = day >= 1 && day <= 7;`
-    const windows = [...server.matchAll(/day\s*>=\s*(\d+)\s*&&\s*day\s*<=\s*(\d+)/g)].map((m) => [
-      Number(m[1]),
-      Number(m[2]),
-    ]);
-
-    expect(windows.length, 'could not find the window conditions - the pattern needs updating').toBeGreaterThan(0);
-    expect(BOSS_WINDOW_DAYS.map((w) => [...w])).toEqual(windows);
+  it('starts the week on Monday, the way the server does', () => {
+    // `int sinceMonday = ((int)utc.DayOfWeek + 6) % 7; // Monday = 0 ...`
+    expect(calendar).toMatch(/DayOfWeek\s*\+\s*6\)\s*%\s*7/);
+    expect(calendar).toContain('WeekStart(now).AddDays(7).AddSeconds(-1)');
   });
 
-  it('answers "is today a window day" the same way the server would', () => {
-    for (let day = 1; day <= 31; day++) {
-      const serverSays = (day >= 1 && day <= 7) || (day >= 15 && day <= 22);
-      expect(isBossWindowDay(day), `day ${day}`).toBe(serverSays);
+  it('names next Monday from every day of a week', () => {
+    // 2026-09-07 is a Monday; every day of that week points at 2026-09-14.
+    for (let d = 7; d <= 13; d++) {
+      const next = nextBossMonday(new Date(Date.UTC(2026, 8, d, 15, 30)));
+      expect(next.toISOString(), `from 2026-09-${d}`).toBe('2026-09-14T00:00:00.000Z');
     }
+    // A Monday's "next Monday" is the following week, never itself.
+    expect(nextBossMonday(new Date(Date.UTC(2026, 8, 14, 0, 0, 1))).toISOString()).toBe('2026-09-21T00:00:00.000Z');
+    // Across a month end.
+    expect(nextBossMonday(new Date(Date.UTC(2026, 8, 30, 12))).toISOString()).toBe('2026-10-05T00:00:00.000Z');
   });
 
-  it('names the next window from any day of the month', () => {
-    const at = (day: number) => nextBossWindow(new Date(Date.UTC(2026, 8, day)));
-
-    // Inside a window there is nothing to wait for.
-    expect(at(3)).toBeNull();
-    expect(at(20)).toBeNull();
-
-    // Between the two windows - the 11th, which is the day this was reported.
-    expect(at(11)).toEqual({ day: 15, nextMonth: false });
-
-    // Past the last window, it rolls into next month.
-    expect(at(28)).toEqual({ day: 1, nextMonth: true });
+  it('refills the strike at the next UTC midnight', () => {
+    expect(nextStrikeRefill(new Date(Date.UTC(2026, 8, 25, 23, 59, 59))).toISOString()).toBe('2026-09-26T00:00:00.000Z');
+    expect(nextStrikeRefill(new Date(Date.UTC(2026, 8, 30, 0, 0, 0))).toISOString()).toBe('2026-10-01T00:00:00.000Z');
   });
 });
-
 // Modul: THE VILLAGE UPGRADE DURATION CURVE.
 //
 // The wire carries only the COMPLETION epoch, so the screen's progress bar has

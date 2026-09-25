@@ -18,7 +18,7 @@ export const WORLD_BOSS_RESULT_SENTENCES: Record<WorldBossStrikeResult, string> 
   Disabled: 'The boss fight is not open to the wheel yet. Use the plate buttons.',
   NotActive: 'The boss is not here right now.',
   AlreadyDefeated: 'The boss has already fallen.',
-  NoAttemptsLeft: 'You have used all three attempts for this encounter.',
+  NoAttemptsLeft: "You have used today's strike. It comes back at midnight UTC.",
   TooLateInWindow: 'The encounter ends before a strike could finish.',
   ChallengeOutstanding: 'Finish your open strike first.',
   NoChallenge: 'That strike has expired. Start a new one.',

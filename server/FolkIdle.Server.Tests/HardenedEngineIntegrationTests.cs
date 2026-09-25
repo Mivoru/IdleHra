@@ -618,28 +618,29 @@ namespace FolkIdle.Server.Tests
                 armouredPlate = (byte)((seeded.WeakPlateIndex + 1) % WorldBossEngine.PlateCount);
             }
 
-            for (int i = 0; i < 3; i++)
-            {
-                long hpBeforeThisAttack = worldBossEngine.BossCurrentHp;
-                await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage, armouredPlate);
-                Assert.Equal(hpBeforeThisAttack - attackDamage, worldBossEngine.BossCurrentHp);
-            }
+            // Modul: ONE STRIKE A DAY since 2026-09-25 (was three per encounter).
+            long hpBeforeThisAttack = worldBossEngine.BossCurrentHp;
+            await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage, armouredPlate);
+            Assert.Equal(hpBeforeThisAttack - attackDamage, worldBossEngine.BossCurrentHp);
+            Assert.Equal(hpBeforeAttacks - attackDamage, worldBossEngine.BossCurrentHp);
 
-            Assert.Equal(hpBeforeAttacks - (attackDamage * 3), worldBossEngine.BossCurrentHp);
-
-            long hpBeforeFourthAttack = worldBossEngine.BossCurrentHp;
+            long hpBeforeSecondAttack = worldBossEngine.BossCurrentHp;
             await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage, armouredPlate);
 
-            Assert.Equal(hpBeforeFourthAttack, worldBossEngine.BossCurrentHp);
+            Assert.Equal(hpBeforeSecondAttack, worldBossEngine.BossCurrentHp);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var attempt = await verifyDb.PlayerWorldBossAttempts.AsNoTracking()
                 .SingleAsync(a => a.PlayerId == DbSeeder.PlayerLowId && a.BossInstanceId == WorldBossEngine.ActiveBossInstanceId);
-            Assert.Equal(3, attempt.AttemptCount);
+            Assert.Equal(WorldBossEngine.MaxAttemptsPerDay, attempt.AttemptCount);
         }
 
+        // Modul: THE SESSION CAP IS GONE, and this test used to pin it (a strike
+        // an hour after the session began was refused). It now pins the two
+        // things that replaced it: an old session never refuses a strike, and a
+        // count from an earlier UTC day does not count today.
         [Fact]
-        public async Task Test_WorldBoss_RejectsAttackAfterSessionCap()
+        public async Task Test_WorldBoss_AnOldSessionAndYesterdaysStrikeRefuseNothing()
         {
             const long testPlayerId = 950000009L;
 
@@ -647,8 +648,7 @@ namespace FolkIdle.Server.Tests
             await worldBossEngine.ActivateEventWindowAsync(DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
             await worldBossEngine.ScaleActiveBossAsync(new[] { DbSeeder.PlayerLowId });
 
-            long expiredSessionStart = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 3600L;
-
+            long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 db.PlayerWorldBossAttempts.Add(new PlayerWorldBossAttempt
@@ -657,24 +657,27 @@ namespace FolkIdle.Server.Tests
                     BossInstanceId = WorldBossEngine.ActiveBossInstanceId,
                     AttemptCount = 1,
                     TotalInflictedDamage = 1000,
-                    SessionStartEpoch = expiredSessionStart
+                    SessionStartEpoch = nowEpoch - 3600L,
+                    AttemptDateKey = WorldBossCalendar.DayKey(nowEpoch) - 1,
                 });
                 await db.SaveChangesAsync();
             }
 
-            long bossHpBeforeExpiredAttack = worldBossEngine.BossCurrentHp;
+            long bossHpBefore = worldBossEngine.BossCurrentHp;
             await worldBossEngine.ExecuteAttackAsync(testPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000);
 
-            Assert.Equal(bossHpBeforeExpiredAttack, worldBossEngine.BossCurrentHp);
+            Assert.Equal(bossHpBefore - 5000, worldBossEngine.BossCurrentHp);
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var attempt = await verifyDb.PlayerWorldBossAttempts.AsNoTracking()
                 .SingleAsync(a => a.PlayerId == testPlayerId && a.BossInstanceId == WorldBossEngine.ActiveBossInstanceId);
 
+            // Today's count restarted at 0 and took this strike; the encounter's
+            // damage total kept yesterday's 1,000.
             Assert.Equal(1, attempt.AttemptCount);
-            Assert.Equal(1000L, attempt.TotalInflictedDamage);
+            Assert.Equal(WorldBossCalendar.DayKey(nowEpoch), attempt.AttemptDateKey);
+            Assert.Equal(6000L, attempt.TotalInflictedDamage);
         }
-
         [Fact]
         public void Test_RarityTier_HighLuckIncreasesRareRollProbability()
         {

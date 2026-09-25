@@ -464,9 +464,9 @@ export const DEEP_MIN_DOOR_CHANCE_PCT = 25;
 export const DEEP_MAX_LANTERNS = 8;
 export const DEEP_TITLE_FLOORS: readonly number[] = [10, 15, 20, 30, 40, 50];
 
-/** WorldBossEngine. */
+/** WorldBossEngine. WORLD_BOSS_ATTEMPTS is strikes per UTC day (WorldBossCalendar.StrikesPerDay) since 2026-09-25. */
 export const WORLD_BOSS_HP = 50_000_000;
-export const WORLD_BOSS_ATTEMPTS = 3;
+export const WORLD_BOSS_ATTEMPTS = 1;
 export const WORLD_BOSS_DAMAGE_FLOOR = 1000;
 export const WORLD_BOSS_MAILBOX_LIMIT = 50;
 
@@ -484,9 +484,6 @@ export const WORLD_BOSS_PLATES = 5;
 
 /** WorldBossEngine.WeakPlateDamageMultiplier. */
 export const WORLD_BOSS_WEAK_MULTIPLIER = 3;
-
-/** WorldBossEngine.BattleSessionCapSeconds, in minutes, as the page says it. */
-export const WORLD_BOSS_SESSION_MINUTES = 5;
 
 /** The percentile brackets AwardRewards pays into the mailbox. */
 export const WORLD_BOSS_REWARDS: readonly { bracket: string; tokens: number; gold: number }[] = [

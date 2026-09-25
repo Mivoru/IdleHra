@@ -32,6 +32,7 @@ This spec assumes all of it is merged, and it does not redo any of it.
 | 8c | Break rule | **One plate break per attempt, the first hit** (§3.3), confirmed |
 | 9 | Haptics | `navigator.vibrate` on a hit. No Capacitor Haptics plugin |
 | 10 | Ship window | Flagged rollout for the **Oct 15-22** window, after a phone playtest of practice mode |
+| 11 | Cadence (owner, 2026-09-25) | **One encounter a week, Monday to Sunday UTC, back to back, and ONE strike a day.** It was two windows a month (1st-7th, 15th-22nd) with 3 strikes per encounter. Shipped ahead of Phase 2, which therefore meters challenges per DAY: WorldBossCalendar.StrikesPerDay. The Oct 15-22 target becomes the week of Oct 12 or Oct 19 |
 | - | Weak-plate feedback | A weak-plate hit glows **only for the player who threw it, during that attempt**. The global reveal comes only through the plate-break mechanic, so the crowd-deduction layer survives |
 | - | Pipeline | The brief's server pipeline: REST challenge/strike, a server-issued schedule including the parry tells, `RandomNumberGenerator`, a pure scorer, and timestamps and choices from the client, never a number the server trusts. Plausibility checks, one unique telemetry code, and `security-review` as a gate |
 

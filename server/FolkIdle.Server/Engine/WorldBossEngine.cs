@@ -67,7 +67,8 @@ namespace FolkIdle.Server.Engine
         /// <summary>On the wire while nobody has landed on the weak point yet.</summary>
         public const byte WeakPlateHidden = 255;
         private const long BaseHp = 50000000L;
-        internal const int MaxAttemptsPerEncounter = 3;
+        /// <summary>Strikes per player per UTC day - see WorldBossCalendar. Was 3 per encounter until 2026-09-25.</summary>
+        internal const int MaxAttemptsPerDay = WorldBossCalendar.StrikesPerDay;
 
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
@@ -91,6 +92,19 @@ namespace FolkIdle.Server.Engine
         private int _weakPlate = WeakPlateHidden;
 
         private readonly ConcurrentDictionary<long, long> _playerDamageMap = new();
+
+        // Modul: ONE WRITER AT A TIME ON THE BOSS ROW (2026-09-25). Every strike,
+        // the minute-by-minute rescale, the reward payout and opening or closing
+        // an encounter take the one WorldBossSnapshots row FOR UPDATE inside a
+        // Serializable transaction. When two met, the loser did not wait its
+        // turn: Postgres failed it with a serialization error, and the player saw
+        // "the strike could not be recorded". That covers two players striking
+        // together, or a strike landing on LiveOps' rescale. The second tap of a
+        // double-tap showed it (code 42 where "strike already spent" belonged)
+        // once one-a-day made the second strike a same-row race. Strikes are
+        // now one a player a day, so queueing them costs nothing and turns a
+        // spurious failure into the right answer.
+        private readonly SemaphoreSlim _snapshotGate = new(1, 1);
 
         public long BossMaxHp => Interlocked.Read(ref _bossMaxHp);
         public long BossCurrentHp => Interlocked.Read(ref _bossCurrentHp);
@@ -195,6 +209,13 @@ namespace FolkIdle.Server.Engine
 
         public async Task ScaleActiveBossAsync(long[] onlinePlayerIds)
         {
+            await _snapshotGate.WaitAsync();
+            try { await ScaleActiveBossCoreAsync(onlinePlayerIds); }
+            finally { _snapshotGate.Release(); }
+        }
+
+        private async Task ScaleActiveBossCoreAsync(long[] onlinePlayerIds)
+        {
             await EnsureSnapshotAsync();
 
             int activeAccounts = onlinePlayerIds.Length;
@@ -268,6 +289,13 @@ namespace FolkIdle.Server.Engine
         }
 
         public async Task ProcessDefeatedBossAsync()
+        {
+            await _snapshotGate.WaitAsync();
+            try { await ProcessDefeatedBossCoreAsync(); }
+            finally { _snapshotGate.Release(); }
+        }
+
+        private async Task ProcessDefeatedBossCoreAsync()
         {
             if (Interlocked.CompareExchange(ref _rewardDispatchActive, 1, 0) != 0)
             {
@@ -480,6 +508,13 @@ namespace FolkIdle.Server.Engine
 
         public async Task ActivateEventWindowAsync(long eventEndEpoch)
         {
+            await _snapshotGate.WaitAsync();
+            try { await ActivateEventWindowCoreAsync(eventEndEpoch); }
+            finally { _snapshotGate.Release(); }
+        }
+
+        private async Task ActivateEventWindowCoreAsync(long eventEndEpoch)
+        {
             await EnsureSnapshotAsync();
 
             using var scope = _serviceProvider.CreateScope();
@@ -549,6 +584,13 @@ namespace FolkIdle.Server.Engine
 
         public async Task FinalizeEventAsFailedAsync()
         {
+            await _snapshotGate.WaitAsync();
+            try { await FinalizeEventAsFailedCoreAsync(); }
+            finally { _snapshotGate.Release(); }
+        }
+
+        private async Task FinalizeEventAsFailedCoreAsync()
+        {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
@@ -579,15 +621,14 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        // Modul 06/15: session cutoff duration, matching the brief's absolute
-        // 300-second per-player battle entry cap.
-        // Modul: how long a player has, from their FIRST strike, to spend the
-        // rest of their attempts. Public because the client has to be able to
-        // say it - see WorldBossAttemptUpdateNotification.SessionEndsEpoch for
-        // what it cost to leave that unsaid.
-        public const long BattleSessionCapSeconds = 300L;
-
         internal async Task<WorldBossAttackOutcome> ExecuteAttackAsync(long playerId, uint bossId, uint serverComputedDamage, byte plateIndex = 0)
+        {
+            await _snapshotGate.WaitAsync();
+            try { return await ExecuteAttackCoreAsync(playerId, bossId, serverComputedDamage, plateIndex); }
+            finally { _snapshotGate.Release(); }
+        }
+
+        private async Task<WorldBossAttackOutcome> ExecuteAttackCoreAsync(long playerId, uint bossId, uint serverComputedDamage, byte plateIndex)
         {
             if (playerId <= 0 || bossId != ActiveBossInstanceId || serverComputedDamage == 0)
             {
@@ -634,6 +675,7 @@ namespace FolkIdle.Server.Engine
                     .SingleOrDefaultAsync();
 
                 long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long today = WorldBossCalendar.DayKey(nowEpoch);
 
                 if (attempt == null)
                 {
@@ -643,26 +685,33 @@ namespace FolkIdle.Server.Engine
                         BossInstanceId = bossId,
                         AttemptCount = 0,
                         TotalInflictedDamage = 0,
-                        SessionStartEpoch = nowEpoch
+                        AttemptDateKey = today
                     };
                     db.PlayerWorldBossAttempts.Add(attempt);
                 }
 
-                if (attempt.AttemptCount >= MaxAttemptsPerEncounter)
+                // Modul: ONE STRIKE A DAY (owner, 2026-09-25). The count is for
+                // today only; a row last used on an earlier day starts again
+                // at 0. Done HERE, under the row lock, so the rollover cannot
+                // race a strike - the in-memory check on the tick is only a
+                // cheap early answer.
+                if (attempt.AttemptDateKey != today)
+                {
+                    attempt.AttemptDateKey = today;
+                    attempt.AttemptCount = 0;
+                }
+
+                if (attempt.AttemptCount >= MaxAttemptsPerDay)
                 {
                     await transaction.RollbackAsync();
                     return WorldBossAttackOutcome.NoAttemptsLeft;
                 }
 
-                // Modul 06/15: close this player's battle session instantly -
-                // no new damage is applied, but the damage delta already
-                // registered (attempt.TotalInflictedDamage / snapshot.CurrentHp)
-                // stands untouched.
-                if (attempt.SessionStartEpoch > 0 && nowEpoch - attempt.SessionStartEpoch >= BattleSessionCapSeconds)
-                {
-                    await transaction.RollbackAsync();
-                    return WorldBossAttackOutcome.SessionClosed;
-                }
+                // Modul: THE 300-SECOND BATTLE SESSION IS GONE (owner decision,
+                // 2026-09-24, task 36 spec section 4). With one strike a day
+                // there is nothing left for it to fence.
+                // WorldBossAttackOutcome.SessionClosed and result code 41 stay
+                // declared and unproduced - codes are never reused.
 
                 // Modul: THE LARDER RULE IS GONE (owner decision 2026-09-24).
                 // "Auto-eat food depleted closes the battle session" meant a
@@ -704,7 +753,6 @@ namespace FolkIdle.Server.Engine
                 attempt.TotalInflictedDamage += appliedDamage;
 
                 byte updatedAttemptCount = (byte)attempt.AttemptCount;
-                long attemptSessionStart = attempt.SessionStartEpoch;
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -719,7 +767,7 @@ namespace FolkIdle.Server.Engine
                 {
                     PlayerId = playerId,
                     AttemptCount = updatedAttemptCount,
-                    SessionEndsEpoch = attemptSessionStart + BattleSessionCapSeconds
+                    SessionEndsEpoch = 0
                 });
                 _playerDamageMap.AddOrUpdate(playerId, appliedDamage, (_, existing) => existing + appliedDamage);
                 RefreshLocalSnapshot(snapshot);

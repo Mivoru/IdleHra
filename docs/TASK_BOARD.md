@@ -5,8 +5,8 @@
 > Two are open, and both are waiting on a gate, not on code:
 > - **36, the shield wheel.** Phase 1 (practice) is live behind
 >   `FOLKIDLE_BOSS_MINIGAME=practice`. The first playtest's retune is shipped and
->   the numbers are decided. **Gate:** the owner plays the retuned practice once
->   more, then Phase 2.
+>   the numbers are decided. The playtest gate is **passed** (owner, 2026-09-25).
+>   **Phase 2 (damage) is in progress**; production stays on `practice`.
 > - **38, Guild Wars.** Parked by the owner's rule until the population nears
 >   the floor. **Measured 2026-09-25:** 61 accounts, 1 at level 10 or above,
 >   15 active in 7 days, 1 guild. The lock needs 4 or more guilds of 3 or more
@@ -3781,7 +3781,14 @@ first** - there is no point redesigning a fight nobody can start.
   - the buttons are named by the blow (◀ From the left / ▼ From above / From the right ▶) and sit in one row, 60 px tall;
   - the tell sits directly above them, with a shrinking time bar.
 - **Numbers decided: seam 8 degrees, Plate worth 0.** The ledger's random-tap check is un-skipped. Measured on the real scorer: random tapping **1.349**, 2 reads + random **1.744**, enraged 3 reads + random **1.917**. These are the spec's targets.
-- **Still open:** the owner plays the retuned practice on the phone once more. If it feels right, Phase 2 starts.
+- **Second playtest on the retuned build (1.0.740), 2026-09-25: "it looks good now".** **The gate is PASSED.** Phase 2 has started on branch `task36/phase2-damage`.
+**World boss cadence changed 2026-09-25 (owner), shipped ahead of Phase 2:**
+- **One encounter a week, Monday to Sunday UTC, back to back** (was the 1st-7th and 15th-22nd).
+- **One strike a day** (was 3 per encounter). The 300 s battle session is gone.
+- It lives in `WorldBossCalendar`, the daily count in `player_world_boss_attempts.AttemptDateKey` (migration `AddWorldBossAttemptDateKey`), and LiveOps refills online players at UTC midnight.
+- Found on the way: two strikes meeting on the boss row made the loser fail with a Postgres serialization error ("could not be recorded"). `WorldBossEngine` now queues every boss-row writer.
+- Open design question (`docs/world_boss_design.md`): with about 7 strikes a week, a solo player can find the weak plate alone in 4 days.
+
 **Phase 2** (scoring becomes damage, auto-strike over REST, opcode 32
 answers "update", the 300 s session removed from the wire) needs
 `security-review` before it merges. It is targeted at the Oct 15-22 window.

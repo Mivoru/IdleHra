@@ -176,7 +176,6 @@ export function claimMailItem(mailId: number): CommandOutcome {
 /** WorldBossEngine.ActiveBossInstanceId. One boss exists; the id is a constant. */
 export const ACTIVE_BOSS_INSTANCE_ID = 1;
 
-/** WorldBossEngine.MaxAttemptsPerEncounter. */
 /**
  * How long a village upgrade of a building AT THIS LEVEL takes, mirroring
  * `VillageManagementEngine.CalculateUpgradeDurationSeconds`.
@@ -267,54 +266,35 @@ export function formatDuration(totalSeconds: number): string {
   return `${seconds}s`;
 }
 
-export const MAX_BOSS_ATTEMPTS = 3;
+/**
+ * Strikes per player per UTC day - `WorldBossCalendar.StrikesPerDay`.
+ *
+ * Modul: ONE A DAY, ONE BOSS A WEEK (owner, 2026-09-25). This was 3 per
+ * encounter, with encounters on the 1st-7th and 15th-22nd; a player spent the
+ * three in an hour and then had nothing to do for a week or more. The boss is
+ * now always there - a new one every Monday - and the strike refills at UTC
+ * midnight. serverMirrors.test.ts pins both numbers to the server.
+ */
+export const MAX_BOSS_ATTEMPTS = 1;
 
 /**
- * The days of each month a world boss window is open, from
- * `LiveOpsTickEngine.EvaluateWorldBossEventWindowAsync`.
+ * Monday 00:00 UTC after `now`: when the next boss arrives if this week's has
+ * already fallen. Mirrors `WorldBossCalendar.WeekStart` (Monday-based, UTC),
+ * which serverMirrors.test.ts pins.
  *
- * Modul: MIRRORED SO THE SCREEN CAN SAY *WHEN*, and guarded by
- * serverMirrors.test.ts because a calendar rule written down twice is exactly
- * the drift this repository keeps paying for.
- *
- * It is here because of a real report: "world boss attempts are always on 0 and
- * I didn't fight him yet". Checked against the live database, the player HAD
- * fought - three attempts, 3,000 damage, during the window that closed on the
- * 7th - and the day of the report was the 11th, between windows. The number was
- * right and the screen could not say why, because it only knew "there is no
- * encounter", not when the next one is. "The next scheduled window" is not an
- * answer a player can plan around.
- *
- * Attempts are PER WINDOW: the server deletes every row in
- * player_world_boss_attempts when it opens a new one, so a spent counter
- * between windows is stale by design rather than a debt being carried.
+ * Modul: MIRRORED SO THE SCREEN CAN SAY *WHEN*. It exists because of a real
+ * report ("attempts are always 0 and I didn't fight him yet") that was a
+ * correct number the screen could not explain.
  */
-export const BOSS_WINDOW_DAYS: ReadonlyArray<readonly [number, number]> = [
-  [1, 7],
-  [15, 22],
-];
-
-/** Whether a day of the month falls inside a boss window. */
-export function isBossWindowDay(day: number): boolean {
-  return BOSS_WINDOW_DAYS.some(([from, to]) => day >= from && day <= to);
+export function nextBossMonday(now: Date): Date {
+  const sinceMonday = (now.getUTCDay() + 6) % 7; // Monday = 0 ... Sunday = 6
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - sinceMonday + 7));
 }
 
-/**
- * The day the next window opens, and whether it is in this month or the next.
- *
- * Returns null while a window is open - there is nothing to wait for.
- */
-export function nextBossWindow(now: Date): { day: number; nextMonth: boolean } | null {
-  const day = now.getUTCDate();
-  if (isBossWindowDay(day)) return null;
-
-  for (const [from] of BOSS_WINDOW_DAYS) {
-    if (day < from) return { day: from, nextMonth: false };
-  }
-  // Past the last window of the month - the first window of the next one.
-  return { day: BOSS_WINDOW_DAYS[0][0], nextMonth: true };
+/** Next UTC midnight after `now`: when today's strike comes back. */
+export function nextStrikeRefill(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
 }
-
 /** StateUpdatePacket.WorldBossEventState. */
 export const BossEventState = { Dormant: 0, Active: 1, Concluded: 2 } as const;
 
@@ -327,9 +307,6 @@ export const BOSS_WEAK_PLATE_HIDDEN = 255;
 /** WorldBossEngine.WeakPlateDamageMultiplier. */
 export const BOSS_WEAK_PLATE_MULTIPLIER = 3;
 
-/** WorldBossEngine.BattleSessionCapSeconds. */
-export const BOSS_SESSION_CAP_SECONDS = 300;
-
 /**
  * Mirrors ValidateWorldBossAttackRequest's protocol rules, and says the state
  * rules out loud before sending.
@@ -341,9 +318,9 @@ export const BOSS_SESSION_CAP_SECONDS = 300;
  * player's own attack power; there is no number here to get wrong.
  *
  * Every STATE refusal is answered now rather than swallowed (task 25): a closed
- * window, a dead boss, spent attempts and a closed battle session each come
- * back as a command result (codes 38-41), and a strike that failed on the
- * server as 42. They used to be a disconnect (the first two) or a silent
+ * window, a dead boss and a spent strike each come back as a command result
+ * (codes 38-40), and a strike that failed on the server as 42. Code 41 was the
+ * 300-second battle session, dropped by the owner and never sent now. They used to be a disconnect (the first two) or a silent
  * rollback (the rest). They are still refused HERE first, with a reason, so a
  * player does not have to spend a round trip to learn what the screen knows.
  *
@@ -357,14 +334,8 @@ export function attackWorldBoss(options: {
   eventState: number;
   bossCurrentHp: number;
   attemptCount: number;
-  /** StateUpdatePacket.WorldBossSessionEndsEpoch; 0 before the first strike. */
-  sessionEndsEpoch?: number;
-  /** Unix seconds. Injected so this stays pure and testable. */
-  nowEpoch?: number;
 }): CommandOutcome {
   const { plateIndex, eventState, bossCurrentHp, attemptCount } = options;
-  const sessionEndsEpoch = options.sessionEndsEpoch ?? 0;
-  const nowEpoch = options.nowEpoch ?? Math.floor(Date.now() / 1000);
 
   if (eventState !== BossEventState.Active) {
     return refuse('No world boss is active right now.');
@@ -373,12 +344,7 @@ export function attackWorldBoss(options: {
     return refuse('The boss is already dead.');
   }
   if (attemptCount >= MAX_BOSS_ATTEMPTS) {
-    return refuse(`You have used all ${MAX_BOSS_ATTEMPTS} attempts this encounter.`);
-  }
-  if (sessionEndsEpoch > 0 && nowEpoch >= sessionEndsEpoch) {
-    return refuse(
-      `Your battle session for this encounter has closed - it lasts ${BOSS_SESSION_CAP_SECONDS / 60} minutes from your first strike.`,
-    );
+    return refuse("You have used today's strike. It comes back at midnight UTC.");
   }
 
   if (!Number.isInteger(plateIndex) || plateIndex < 0 || plateIndex >= BOSS_PLATE_COUNT) {

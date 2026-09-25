@@ -1343,11 +1343,26 @@ async function playPractice(aimed) {
   );
 
   if (offered) {
-    const board = () =>
-      page.evaluate(() => ({
-        hp: document.querySelector('.bar[role="progressbar"]')?.getAttribute('aria-valuenow') ?? null,
-        pips: document.querySelectorAll('.pip.spent').length,
-      }));
+    // Modul: A WINDOW OF ITS OWN (2026-09-25). There is a boss every week now,
+    // so after the block above closes its dev window, LiveOps reopens THIS
+    // week's encounter on its next 60-second tick - fresh HP, attempts wiped -
+    // and a before/after that spans that reopening compares two different
+    // encounters. Holding a dev window open keeps LiveOps' hands off for the
+    // whole practice block, so any change really would be practice's doing.
+    const practiceWindow = await bossWindow(true);
+    await bossStateIs('Active', 70000);
+    await page.waitForTimeout(1000);
+    // Not the boss's HP: LiveOps rescales it with the online population every
+    // minute, so it moves on its own. What practice must not touch is THIS
+    // player's attempt row - its count and the damage it has dealt.
+    const board = async () => {
+      const row = await apiGet('/api/v1/dev/worldboss/attempt');
+      return {
+        attempts: row?.AttemptCount ?? 0,
+        damage: row?.TotalInflictedDamage ?? 0,
+        pips: await page.evaluate(() => document.querySelectorAll('.pip.spent').length),
+      };
+    };
     const before = await board();
 
     await practiceButton.click();
@@ -1411,9 +1426,10 @@ async function playPractice(aimed) {
     const after = await board();
     record(
       'practice moved neither the boss nor an attempt',
-      before.hp === after.hp && before.pips === after.pips,
-      `hp ${before.hp} -> ${after.hp}, pips ${before.pips} -> ${after.pips}`,
+      practiceWindow === 200 && before.attempts === after.attempts && before.damage === after.damage && before.pips === after.pips,
+      `window ${practiceWindow}, attempts ${before.attempts} -> ${after.attempts}, damage ${before.damage} -> ${after.damage}, pips ${before.pips} -> ${after.pips}`,
     );
+    await bossWindow(false);
   }
 }
 

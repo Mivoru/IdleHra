@@ -310,7 +310,7 @@ describe('the tables the wiki restates still match the server', () => {
 
     expect(WORLD_BOSS_HP).toBe(num(boss, /BaseHp = (\d+)L/, 'boss hp'));
     expect(WORLD_BOSS_ATTEMPTS).toBe(
-      num(boss, /MaxAttemptsPerEncounter = (\d+)/, 'boss attempts'),
+      num(read(serverRoot, 'Engine', 'WorldBossCalendar.cs'), /StrikesPerDay = (\d+)/, 'boss strikes per day'),
     );
     expect(DAILY_LOGIN_DAY7_DIAMONDS).toBe(
       num(daily, /PremiumDiamondsOnDay7Completion = (\d+)/, 'day 7 diamonds'),

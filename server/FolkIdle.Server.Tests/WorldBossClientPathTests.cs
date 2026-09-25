@@ -155,7 +155,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task ADoubleTap_IsTwoStrikes_NotADisconnect()
+        public async Task ADoubleTap_IsOneStrikeAndAnAnswer_NotADisconnect()
         {
             const long playerId = 970_025_002L;
             var (engine, boss) = CreateEngine();
@@ -168,12 +168,18 @@ namespace FolkIdle.Server.Tests
                 engine.InjectVirtualPlayer(Striker(playerId));
 
                 // Both land inside one tick - well under the 100 ms rule that
-                // used to terminate the second.
+                // used to terminate the second. With one strike a day
+                // (2026-09-25) the first lands and the second is ANSWERED, never
+                // punished: the property this test guards is still "a double-tap
+                // is not a disconnect".
                 engine.InjectBenchmarkCommand(playerId, BrowserStrike(plate: 1));
                 engine.InjectBenchmarkCommand(playerId, BrowserStrike(plate: 1));
 
-                Assert.True(await WaitAsync(() => AttemptAsync(playerId).GetAwaiter().GetResult() is { AttemptCount: 2 }),
-                    "A double-tap did not produce two strikes.");
+                Assert.True(await WaitAsync(() => AttemptAsync(playerId).GetAwaiter().GetResult() is { AttemptCount: 1 }),
+                    "A double-tap did not land its first strike.");
+                Assert.True(await WaitAsync(() => HasResult(engine, playerId, CommandResultCode.WorldBossNoAttemptsLeft)),
+                    "The second tap of a double-tap was not answered with WorldBossNoAttemptsLeft. Results seen: "
+                    + string.Join(",", engine.GetActivePlayerCommandResultSlots(playerId).Where(s => s.tick > 0).Select(s => s.code)));
                 Assert.True(engine.IsActivePlayerPresent(playerId), "A double-tap disconnected the player.");
             }
             finally
@@ -244,17 +250,14 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task AFourthStrike_SaysTheAttemptsAreSpent()
+        public async Task ASecondStrikeTheSameDay_SaysTheStrikeIsSpent()
         {
             const long playerId = 970_025_005L;
             var (engine, boss) = CreateEngine();
             await ClearAttemptsAsync(playerId);
             await boss.OpenManualWindowAsync(900);
-            for (int i = 0; i < 3; i++)
-            {
-                Assert.Equal(WorldBossAttackOutcome.Landed,
-                    await boss.ExecuteAttackAsync(playerId, WorldBossEngine.ActiveBossInstanceId, 10, 0));
-            }
+            Assert.Equal(WorldBossAttackOutcome.Landed,
+                await boss.ExecuteAttackAsync(playerId, WorldBossEngine.ActiveBossInstanceId, 10, 0));
 
             try
             {
@@ -263,9 +266,9 @@ namespace FolkIdle.Server.Tests
                 engine.InjectBenchmarkCommand(playerId, BrowserStrike(plate: 0));
 
                 Assert.True(await WaitAsync(() => HasResult(engine, playerId, CommandResultCode.WorldBossNoAttemptsLeft)),
-                    "A fourth strike was not answered with WorldBossNoAttemptsLeft.");
+                    "A second strike the same day was not answered with WorldBossNoAttemptsLeft.");
                 Assert.True(engine.IsActivePlayerPresent(playerId));
-                Assert.Equal(3, (await AttemptAsync(playerId))!.AttemptCount);
+                Assert.Equal(WorldBossEngine.MaxAttemptsPerDay, (await AttemptAsync(playerId))!.AttemptCount);
             }
             finally
             {
@@ -278,7 +281,7 @@ namespace FolkIdle.Server.Tests
         public async Task ASpentBudget_IsRefusedInMemory_WithoutOpeningATransaction()
         {
             // Opcode 32 is outside the 100 ms rule, so spam after the third
-            // strike must not reach ExecuteAttackAsync: the payload says the
+            // strike of the day must not reach ExecuteAttackAsync: the payload says the
             // budget is spent, and no attempt row may appear for this player.
             const long playerId = 970_025_009L;
             var (engine, boss) = CreateEngine();
@@ -289,7 +292,7 @@ namespace FolkIdle.Server.Tests
             {
                 engine.Start();
                 var spent = Striker(playerId);
-                spent.WorldBossAttemptCount = (byte)WorldBossEngine.MaxAttemptsPerEncounter;
+                spent.WorldBossAttemptCount = (byte)WorldBossEngine.MaxAttemptsPerDay;
                 engine.InjectVirtualPlayer(spent);
                 engine.InjectBenchmarkCommand(playerId, BrowserStrike(plate: 0));
 
@@ -319,40 +322,76 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(expected, FolkIdle.Server.Network.NetworkBroadcastSystem.DevToolsEnabled(flag, env));
         }
 
+        // Modul: ONE STRIKE A DAY (owner, 2026-09-25) replaced "three per
+        // encounter inside a 300-second session". The count belongs to a UTC
+        // day: a second strike the same day is answered NoAttemptsLeft, and
+        // the same row the next day starts again at 0.
         [Fact]
-        public async Task AStrikeAfterTheSessionClosed_SaysSo()
+        public async Task OneStrikeADay_TheSecondIsRefused_AndTomorrowRefills()
         {
             const long playerId = 970_025_006L;
-            var (engine, boss) = CreateEngine();
+            var (_, boss) = CreateEngine();
             await ClearAttemptsAsync(playerId);
             await boss.OpenManualWindowAsync(900);
-            Assert.Equal(WorldBossAttackOutcome.Landed,
-                await boss.ExecuteAttackAsync(playerId, WorldBossEngine.ActiveBossInstanceId, 10, 0));
-
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                await db.Database.ExecuteSqlRawAsync(
-                    "UPDATE \"player_world_boss_attempts\" SET \"SessionStartEpoch\" = \"SessionStartEpoch\" - {0} WHERE \"PlayerId\" = {1}",
-                    WorldBossEngine.BattleSessionCapSeconds + 1, playerId);
-            }
-
             try
             {
-                engine.Start();
-                engine.InjectVirtualPlayer(Striker(playerId));
-                engine.InjectBenchmarkCommand(playerId, BrowserStrike(plate: 0));
+                Assert.Equal(WorldBossAttackOutcome.Landed,
+                    await boss.ExecuteAttackAsync(playerId, WorldBossEngine.ActiveBossInstanceId, 10, 0));
+                Assert.Equal(WorldBossAttackOutcome.NoAttemptsLeft,
+                    await boss.ExecuteAttackAsync(playerId, WorldBossEngine.ActiveBossInstanceId, 10, 0));
 
-                Assert.True(await WaitAsync(() => HasResult(engine, playerId, CommandResultCode.WorldBossSessionClosed)),
-                    "A strike after the battle session closed was not answered with WorldBossSessionClosed.");
-                Assert.True(engine.IsActivePlayerPresent(playerId));
+                // Yesterday's strike, as far as the row knows.
+                await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    await db.Database.ExecuteSqlRawAsync(
+                        "UPDATE \"player_world_boss_attempts\" SET \"AttemptDateKey\" = \"AttemptDateKey\" - 1 WHERE \"PlayerId\" = {0}", playerId);
+                }
+
+                Assert.Equal(WorldBossAttackOutcome.Landed,
+                    await boss.ExecuteAttackAsync(playerId, WorldBossEngine.ActiveBossInstanceId, 10, 0));
+                var row = await AttemptAsync(playerId);
+                Assert.NotNull(row);
+                Assert.Equal(1, row!.AttemptCount);
+                Assert.Equal(WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds()), row.AttemptDateKey);
             }
             finally
             {
-                engine.Stop();
                 await boss.CloseManualWindowAsync();
             }
         }
 
+        [Fact]
+        public async Task ThereIsNoBattleSessionAnyMore()
+        {
+            // An attempt row whose "session" began long ago used to be refused
+            // with SessionClosed. Nothing reads SessionStartEpoch now.
+            const long playerId = 970_025_010L;
+            var (_, boss) = CreateEngine();
+            await ClearAttemptsAsync(playerId);
+            await boss.OpenManualWindowAsync(900);
+            try
+            {
+                await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    db.PlayerWorldBossAttempts.Add(new FolkIdle.Server.Models.PlayerWorldBossAttempt
+                    {
+                        PlayerId = playerId,
+                        BossInstanceId = WorldBossEngine.ActiveBossInstanceId,
+                        AttemptCount = 0,
+                        SessionStartEpoch = DateTimeOffset.UtcNow.AddHours(-5).ToUnixTimeSeconds(),
+                        AttemptDateKey = WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                    });
+                    await db.SaveChangesAsync();
+                }
+
+                Assert.Equal(WorldBossAttackOutcome.Landed,
+                    await boss.ExecuteAttackAsync(playerId, WorldBossEngine.ActiveBossInstanceId, 10, 0));
+            }
+            finally
+            {
+                await boss.CloseManualWindowAsync();
+            }
+        }
         [Fact]
         public async Task AStrikeThatThrows_SaysItFailed_InsteadOfVanishing()
         {
