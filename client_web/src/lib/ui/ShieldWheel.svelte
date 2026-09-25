@@ -77,7 +77,21 @@
   // The interrupt on screen, and where the player is in it.
   let activeInterrupt = $state<number>(-1);
   let parryOpen = $state(false);
+  let parryRemainingMs = $state(0);
   let counterOpen = $state(false);
+
+  // Modul: THE BUTTONS ARE NAMED BY THE BLOW, NOT BY THE DODGE (playtest,
+  // 2026-09-25, spec 3.5). "From the left" used to be "Dodge right": the player
+  // had to read the tell and then invert it inside a second. The player now
+  // taps the side the blow comes from, and this map sends the dodge that
+  // answers it. The wire and the scorer did not change - the server still
+  // receives a ParryChoice, still checks it against the tell, and still
+  // refuses anything faster than the reaction floor.
+  const ANSWER_FOR: Record<'Left' | 'Overhead' | 'Right', ParryChoice> = {
+    Left: 'DodgeRight',
+    Overhead: 'Block',
+    Right: 'DodgeLeft',
+  };
   const answered = new Set<number>();
   const readInterrupts = new Set<number>();
   const counterUsed = new Set<number>();
@@ -188,6 +202,11 @@
 
     const wantParry =
       interrupt !== null && !answered.has(interrupt.Index) && t <= interrupt.TellAtMs + interrupt.ResponseCloseMs;
+    if (wantParry && !parryOpen && interrupt) {
+      // The time bar animates over whatever is left of the window from the
+      // frame it appears on - set once, then CSS runs it (nothing ticks here).
+      parryRemainingMs = Math.max(0, interrupt.TellAtMs + interrupt.ResponseCloseMs - t);
+    }
     if (wantParry !== parryOpen) parryOpen = wantParry;
 
     // A response window that closed with no answer costs a spear.
@@ -361,12 +380,6 @@
 
   {#if phase === 'play' || phase === 'countdown'}
     <div class="stage">
-      {#if tell}
-        <div class="tell" data-tell={tell} aria-live="assertive">
-          <span class="tell-glyph" aria-hidden="true">{tell === 'Left' ? '◀' : tell === 'Right' ? '▶' : '▼'}</span>
-          <span>The blow comes {tell === 'Left' ? 'from the left' : tell === 'Right' ? 'from the right' : 'from above'}</span>
-        </div>
-      {/if}
       <svg class="wheel" viewBox="-110 -110 220 220" aria-hidden="true">
         <g bind:this={ring} class="ring">
           {#each plates as plate (plate)}
@@ -398,10 +411,20 @@
 
     <div class="controls">
       {#if parryOpen}
-        <div class="row" role="group" aria-label="Answer the blow">
-          <button type="button" class="ctl" onclick={(e) => parry('DodgeLeft', e)}>Dodge left</button>
-          <button type="button" class="ctl" onclick={(e) => parry('Block', e)}>Block</button>
-          <button type="button" class="ctl" onclick={(e) => parry('DodgeRight', e)}>Dodge right</button>
+        <!-- D: the tell sits right above the buttons, so reading and pressing
+             happen in one place. E: the bar shrinks over the response window,
+             OUTSIDE every button. C: each button is named by the blow. -->
+        {#if tell}
+          <div class="tell" data-tell={tell} aria-live="assertive">
+            <span class="tell-glyph" aria-hidden="true">{tell === 'Left' ? '◀' : tell === 'Right' ? '▶' : '▼'}</span>
+            <span>The blow comes {tell === 'Left' ? 'from the left' : tell === 'Right' ? 'from the right' : 'from above'}!</span>
+          </div>
+        {/if}
+        <div class="timebar" aria-hidden="true"><span style="animation-duration: {parryRemainingMs}ms"></span></div>
+        <div class="row parry-row" role="group" aria-label="Where does the blow come from?">
+          <button type="button" class="ctl side" onclick={(e) => parry(ANSWER_FOR.Left, e)}>&#x25C0; From the left</button>
+          <button type="button" class="ctl side" onclick={(e) => parry(ANSWER_FOR.Overhead, e)}>&#x25BC; From above</button>
+          <button type="button" class="ctl side" onclick={(e) => parry(ANSWER_FOR.Right, e)}>From the right &#x25B6;</button>
         </div>
       {:else if counterOpen}
         <p class="hint">Read it! Pick a plate for a sure seam hit.</p>
@@ -567,31 +590,70 @@
   }
 
   .tell {
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
     display: flex;
     align-items: center;
-    gap: 0.4rem;
-    font-weight: 700;
-    background: color-mix(in srgb, var(--bg, #111) 80%, transparent);
-    padding: 0.2rem 0.5rem;
-    border-radius: 6px;
-    white-space: nowrap;
+    justify-content: center;
+    gap: 0.5rem;
+    font-weight: 800;
+    font-size: 1.05rem;
+    padding: 0.35rem 0.6rem;
+    border: 2px solid var(--danger, #e55);
+    border-radius: 8px;
+    text-align: center;
   }
 
+  /* The side the blow comes from is also WHERE the tell leans, so it is
+     readable by position and shape, never by colour alone. */
   .tell[data-tell='Left'] {
-    left: 0;
-    transform: none;
+    justify-content: flex-start;
   }
 
   .tell[data-tell='Right'] {
-    left: auto;
-    right: 0;
-    transform: none;
+    justify-content: flex-end;
   }
 
+  .timebar {
+    height: 6px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--border, #555) 60%, transparent);
+    overflow: hidden;
+  }
+
+  .timebar span {
+    display: block;
+    height: 100%;
+    background: var(--danger, #e55);
+    transform-origin: left center;
+    animation-name: shrink;
+    animation-timing-function: linear;
+    animation-fill-mode: forwards;
+  }
+
+  @keyframes shrink {
+    from {
+      transform: scaleX(1);
+    }
+    to {
+      transform: scaleX(0);
+    }
+  }
+
+  /* One row, always: left, above, right - the button for a blow from the right
+     has to BE on the right, or naming them by the blow buys nothing. The
+     .ctl.side specificity is what beats .ctl's own 44px further down. */
+  .parry-row {
+    flex-wrap: nowrap;
+  }
+
+  .ctl.side {
+    flex: 1 1 0;
+    min-width: 44px;
+    min-height: 60px;
+    padding: 0.3rem 0.35rem;
+    font-size: 0.9rem;
+    line-height: 1.15;
+    white-space: normal;
+  }
   .tell-glyph {
     font-size: 1.4rem;
   }

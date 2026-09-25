@@ -40,7 +40,8 @@ export interface WheelSchedule {
 
 export const PLATE_COUNT = 5;
 export const PLATE_DEGREES = 360 / PLATE_COUNT;
-export const SEAM_DEGREES = 12;
+// 8 since the owner's playtest decision, 2026-09-25 (spec 3.1); was 12.
+export const SEAM_DEGREES = 8;
 export const RIVET_DEGREES = 3;
 export const FLIGHT_MS = 120;
 export const TOLERANCE_MS = 35;

@@ -4,8 +4,9 @@
 > Tasks 1-35 and 37 are DONE, merged and deployed; production runs `main`.
 > Two are open, and both are waiting on a gate, not on code:
 > - **36, the shield wheel.** Phase 1 (practice) is live behind
->   `FOLKIDLE_BOSS_MINIGAME=practice`. **Gate:** the owner plays it on the
->   phone and decides the numbers (spec section 3.1) before Phase 2.
+>   `FOLKIDLE_BOSS_MINIGAME=practice`. The first playtest's retune is shipped and
+>   the numbers are decided. **Gate:** the owner plays the retuned practice once
+>   more, then Phase 2.
 > - **38, Guild Wars.** Parked by the owner's rule until the population nears
 >   the floor. **Measured 2026-09-25:** 61 accounts, 1 at level 10 or above,
 >   15 active in 7 days, 1 guild. The lock needs 4 or more guilds of 3 or more
@@ -3773,18 +3774,14 @@ first** - there is no point redesigning a fight nobody can start.
     brand-new account.
 - Every geometry check and `check:perf` runs with the overlay open.
 
-**PHASE GATE, OPEN: the owner plays practice on the phone before Phase 2.**
-Two things to decide there:
-- **The numbers.** Random tapping measures **1.53x**, not the spec's 1.36x.
-  The spec's simulation left out its own 35 ms tolerance; with the
-  tolerance at 0 it reproduces 1.360 and 1.746 exactly. The options table
-  is in spec section 3.1. **Seam 8 degrees with Plate worth 0** restores all
-  three targets. `WorldBossStrikeLedgerTests.RandomTappingEarnsAboutOnePointThreeSix`
-  is **skipped with that reason**, and Phase 2 must not ship while it is
-  skipped.
-- **The feel on a real phone:** the tell glyphs, the throw zone and the
-  counter buttons.
-
+**PHASE GATE: first phone playtest done 2026-09-25. The owner's verdict:**
+- **"Too fast. I cannot click anything, and the choices disappear."** Fixed in the spec first (section 3.5), then in code:
+  - the response window is 2.0 s, was 1.0 s (enraged 1.7 s, was 0.85 s);
+  - a freeze is 3.4 s and the run is 24 s, so the wheel spins no less;
+  - the buttons are named by the blow (◀ From the left / ▼ From above / From the right ▶) and sit in one row, 60 px tall;
+  - the tell sits directly above them, with a shrinking time bar.
+- **Numbers decided: seam 8 degrees, Plate worth 0.** The ledger's random-tap check is un-skipped. Measured on the real scorer: random tapping **1.349**, 2 reads + random **1.744**, enraged 3 reads + random **1.917**. These are the spec's targets.
+- **Still open:** the owner plays the retuned practice on the phone once more. If it feels right, Phase 2 starts.
 **Phase 2** (scoring becomes damage, auto-strike over REST, opcode 32
 answers "update", the 300 s session removed from the wire) needs
 `security-review` before it merges. It is targeted at the Oct 15-22 window.

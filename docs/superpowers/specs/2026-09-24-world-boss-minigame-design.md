@@ -50,7 +50,7 @@ The World Boss screen keeps its plate board: five plates, broken plates cracked,
    - the centre band of a plate is a **Seam**;
    - the rest of the plate is a **Plate** hit;
    - a narrow rivet band on either side of each border between plates is a **Glance**.
-3. **Interrupts.** 2 or 3 times in the 20 s of play, the boss winds up a blow and **the wheel stops**. A tell shows where the blow will land: **left**, **right** or **overhead**. Three buttons appear: **Dodge left / Block / Dodge right**.
+3. **Interrupts.** 2 or 3 times in the 24 s of play, the boss winds up a blow and **the wheel stops**. A tell shows where the blow comes from: **left**, **right** or **overhead**. It is drawn **directly above** three buttons labelled by that same direction (**◀ From the left / ▼ From above / From the right ▶**), with a shrinking time bar above them (playtest 2026-09-25, section 3.5).
    - **Correct read, inside the window:** a **counter window** opens with the wheel still frozen. The player taps a plate on the frozen ring (or one of five numbered plate buttons). That spear is a **guaranteed Seam hit on the plate tapped**.
    - **Wrong read, or no read inside the window:** the player **loses one spear** (it counts as None).
 4. **Result card.** It shows each spear's plate and class, `M`, the plate multiplier, the damage dealt, and whether this attempt broke a plate. It says "no damage dealt" in practice.
@@ -89,15 +89,15 @@ Every constant lives in `WorldBossStrikeRules` with a `// Modul:` comment. The *
 | Constant | Value | Note |
 |---|---|---|
 | `CountdownMs` | 3,000 | |
-| `MaxPlayMs` | 20,000 | includes frozen interrupt time |
+| `MaxPlayMs` | **24,000** | includes frozen interrupt time. Was 20,000; lengthened with `InterruptMs` so the wheel spins no less (playtest, section 3.5) |
 | `Spears` | 5 | |
 | `FlightMs` | 120 | tap to landing |
 | `MinReloadMs` | 350 | client locks the throw zone for this long |
 | `ToleranceMs` | 35 | display/touch latency benefit of the doubt |
 | `PlateDegrees` | 72 | 360 / 5 |
-| `SeamDegrees` | **12** | the Seam band is centred on the plate. Narrowed from the brief's 20; see §3.1 |
+| `SeamDegrees` | **8** | the Seam band is centred on the plate. Brief 20, spec 12, **owner 2026-09-25: 8**; see §3.1 |
 | `RivetDegrees` | 3 | Glance band on each side of every border between plates |
-| Class values | **Seam 1.0, Plate 0.15, Glance 0, None 0** | changed from the brief (Plate 0.6, Glance 0.15); see §3.1 |
+| Class values | **Seam 1.0, Plate 0, Glance 0, None 0** | brief Plate 0.6/Glance 0.15, spec Plate 0.15, **owner 2026-09-25: Plate 0**; see §3.1 |
 | `BestOf` | best 4 of 5 spears | one mistake is forgiven |
 | `SaturationScore` | **0.90** | `s` at which `M` reaches the cap |
 | `Floor` / `Cap` | 1.0 / 2.0 | owner |
@@ -105,11 +105,11 @@ Every constant lives in `WorldBossStrikeRules` with a `// Modul:` comment. The *
 | Segment speed | \|w\| in [90, 210] deg/s | piecewise-constant. Sign flips allowed |
 | Segment duration | 700-2,200 ms | |
 | `Interrupts` | 2 or 3, uniform | |
-| `InterruptMs` | 2,400 | the wheel is frozen for this long from `TellAtMs` |
+| `InterruptMs` | **3,400** | the wheel is frozen for this long from `TellAtMs`. Was 2,400: `ResponseCloseMs` + 1,400, so a counter window is never shorter than it was |
 | `ReactionFloorMs` | 150 | a choice earlier than `TellAtMs + 150` is a guess, scored as a wrong read |
-| `ResponseCloseMs` | 1,000 | a choice must arrive by `TellAtMs + 1,000` |
+| `ResponseCloseMs` | **2,000** | a choice must arrive by `TellAtMs + 2,000`. Was 1,000; **the owner could not read and press in time on the phone** (playtest 2026-09-25) |
 | Counter window | from the correct choice to `TellAtMs + InterruptMs` | at least 1,400 ms |
-| Interrupt placement | first `TellAtMs` >= 3,000; gap between interrupts >= 4,000; the last ends by `MaxPlayMs - 2,000` | |
+| Interrupt placement | first `TellAtMs` >= 3,000; gap between tells >= **5,000** (was 4,000, so the wheel always moves at least 1,600 ms between freezes); the last ends by `MaxPlayMs - 2,000` | |
 
 ### 3.1 Why the class values changed from the brief (a finding, not a preference)
 
@@ -143,7 +143,7 @@ The simulation behind the table scored each landing at its exact angle. The scor
 
 The tolerance-0 row reproduces the table above exactly, which confirms the cause. **Seam 8° with Plate worth 0** restores all three of the spec's targets and keeps the full 35 ms latency allowance.
 
-This is an **owner decision for the Phase 1 playtest gate.** Until it is made, the ledger's random-tap check is **skipped with this reason**, not widened. Practice shows the current numbers and deals no damage. Phase 2 must not ship while that check is skipped.
+This was an **owner decision for the Phase 1 playtest gate.** **Decided 2026-09-25: seam 8 degrees, Plate worth 0.** The ledger's random-tap check is un-skipped and asserts the spec's band again.
 
 ### 3.2 Damage for one attempt
 
@@ -185,9 +185,9 @@ damage = ComputeAppliedDamage(currentHp, A * G * played)   (existing clamp [1,00
 | Segment speed \|w\| | 90-210 deg/s | **120-260 deg/s** |
 | Segment duration | 700-2,200 ms | **500-1,600 ms** (more reversals) |
 | Interrupts | 2 or 3 | **always 3** |
-| `ResponseCloseMs` | 1,000 | **850** (the reaction floor stays 150) |
+| `ResponseCloseMs` | 2,000 | **1,700** (the reaction floor stays 150). Was 1,000 / 850 before the playtest |
 
-**What does not change:** `SeamDegrees`, the class values, `SaturationScore`, `Floor`/`Cap` and the weak multiplier. Damage is not re-priced. The wheel is only harder to play. A 12 degree seam at 260 deg/s is a 46 ms window (plus the 35 ms tolerance either side). Three guaranteed counters still let a good reader reach the cap: the 3-counter simulation in §3.1 gives 1.91. The auto-strike floor (§3.2) protects anyone who cannot.
+**What does not change:** `SeamDegrees`, the class values, `SaturationScore`, `Floor`/`Cap` and the weak multiplier. Damage is not re-priced. The wheel is only harder to play. An 8 degree seam at 260 deg/s is a 31 ms window (plus the 35 ms tolerance either side). Three guaranteed counters still let a good reader reach the cap: the 3-counter simulation in §3.1 gives 1.91. The auto-strike floor (§3.2) protects anyone who cannot.
 
 **Tests:**
 
@@ -196,6 +196,22 @@ damage = ComputeAppliedDamage(currentHp, A * G * played)   (existing clamp [1,00
 
 **Client:** the overlay shows "The boss is enraged" before the countdown. It does not tint only in colour; it adds a shape or glyph change too.
 
+### 3.5 The first phone playtest (owner, 2026-09-25)
+
+The owner played practice on the phone and reported: **"it is too fast. I cannot click anything, and the choices disappear."** The parry buttons lived for 1,000 ms from the tell, and anything under 150 ms counted as a guess, so the usable window was about 850 ms. In that time the player had to:
+
+- read a tell drawn at the top of the ring;
+- invert it in the head ("from the left" means *dodge right*);
+- find the right button at the bottom of the screen.
+
+Changed, in this spec first:
+
+- **A. A longer window.** `ResponseCloseMs` goes from 1,000 to **2,000** (enraged: 850 to **1,700**). `InterruptMs` goes from 2,400 to **3,400**, so a late correct read still leaves at least the same 1,400 ms counter window. To keep the wheel spinning as long as before, `MaxPlayMs` goes from 20,000 to **24,000** and the gap between tells from 4,000 to **5,000**.
+- **C. Buttons named by the blow, not by the dodge.** The buttons read **◀ From the left / ▼ From above / From the right ▶**. The player taps the side the blow comes from, and the client sends the matching dodge (`Left` sends `DodgeRight`, and so on). **The wire and the scorer are unchanged.** The server still receives a `ParryChoice` and still checks it against the tell, and the reaction floor still refuses a guess. Only the translation step moves from the player's head to the label.
+- **D. The tell sits directly above those buttons**, not at the top of the ring, so the eyes do not travel between reading and pressing.
+- **E. A time bar above the buttons** shrinks over the response window. It sits outside every button, because nothing that ticks may sit inside a control.
+
+**Numbers (owner, same session):** seam 8 degrees, Plate worth 0 (the section 3.1 table).
 ## 4. What is dropped or changed on the server
 
 - **The 300 s battle session is dropped.** Removed:
@@ -235,15 +251,15 @@ damage = ComputeAppliedDamage(currentHp, A * G * played)   (existing clamp [1,00
   "Challenge": {
     "ChallengeId": "b3f1...",               // 128-bit random, hex; not guessable
     "Practice": false,
-    "CountdownMs": 3000, "MaxPlayMs": 20000, "Spears": 5,
+    "CountdownMs": 3000, "MaxPlayMs": 24000, "Spears": 5,
     "FlightMs": 120, "MinReloadMs": 350, "ToleranceMs": 35,
-    "PlateDegrees": 72, "SeamDegrees": 12, "RivetDegrees": 3,
+    "PlateDegrees": 72, "SeamDegrees": 8, "RivetDegrees": 3,
     "StartAngleDeg": 137.0,
     "Segments": [ { "StartMs": 0,    "DurationMs": 1400, "DegPerSec": 150 },
                   { "StartMs": 1400, "DurationMs": 900,  "DegPerSec": -210 },
                   { "StartMs": 4100, "DurationMs": 2400, "DegPerSec": 0, "Interrupt": 0 }, ... ],
     "Interrupts": [ { "Index": 0, "TellAtMs": 4100, "Tell": "Left",
-                      "ReactionFloorMs": 150, "ResponseCloseMs": 1000, "InterruptMs": 2400 }, ... ],
+                      "ReactionFloorMs": 150, "ResponseCloseMs": 2000, "InterruptMs": 3400 }, ... ],
     "BrokenPlateMask": 5, "RevealedWeakPlate": 255
   }
 }

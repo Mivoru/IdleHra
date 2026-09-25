@@ -33,7 +33,8 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
     {
         public const int CountdownMs = 3_000;
         /// <summary>Play time after the countdown, including frozen interrupt time.</summary>
-        public const int MaxPlayMs = 20_000;
+        /// <remarks>24 s since the 2026-09-25 playtest (was 20): the longer freezes below would otherwise have cut the spinning time.</remarks>
+        public const int MaxPlayMs = 24_000;
         public const int Spears = 5;
         /// <summary>Tap to landing: the spear hits whatever part of the ring is at the impact point this much later.</summary>
         public const int FlightMs = 120;
@@ -46,14 +47,15 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
 
         public const int PlateCount = WorldBossEngine.PlateCount;
         public const double PlateDegrees = 360.0 / PlateCount;
-        /// <summary>The Seam band, centred on the plate. 12, narrowed from the brief's 20 (spec 3.1).</summary>
-        public const double SeamDegrees = 12.0;
+        /// <summary>The Seam band, centred on the plate. 8, by the owner at the playtest gate (spec 3.1): 12 let a random tapper earn 1.53x.</summary>
+        public const double SeamDegrees = 8.0;
         /// <summary>The Glance band on each side of every border between plates.</summary>
         public const double RivetDegrees = 3.0;
 
-        // Class values (spec 3.1): changed from the brief's Plate 0.6 / Glance 0.15.
+        // Class values (spec 3.1). Plate is 0 by the owner's decision at the playtest gate: only a seam
         public const double SeamValue = 1.0;
-        public const double PlateValue = 0.15;
+        // counts toward skill, and a Plate hit still breaks a plate and still counts for P.
+        public const double PlateValue = 0.0;
         public const double GlanceValue = 0.0;
         public const double NoneValue = 0.0;
 
@@ -74,12 +76,14 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         public const int EnragedMaxSpeedDegPerSec = 260;
         public const int EnragedMinSegmentMs = 500;
         public const int EnragedMaxSegmentMs = 1_600;
-        public const int InterruptMs = 2_400;
+        /// <remarks>ResponseCloseMs + 1,400, so a late correct read still leaves the counter window it had before the playtest.</remarks>
+        public const int InterruptMs = 3_400;
         public const int ReactionFloorMs = 150;
-        public const int ResponseCloseMs = 1_000;
-        public const int EnragedResponseCloseMs = 850;
+        /// <remarks>Was 1,000: on the phone the owner could not read the tell and press in time (spec 3.5).</remarks>
+        public const int ResponseCloseMs = 2_000;
+        public const int EnragedResponseCloseMs = 1_700;
         public const int FirstTellAtLeastMs = 3_000;
-        public const int TellGapAtLeastMs = 4_000;
+        public const int TellGapAtLeastMs = 5_000;
         public const int LastInterruptEndsByMs = MaxPlayMs - 2_000;
         /// <summary>A boss at or below this share of its health issues the enraged schedule (spec 3.4).</summary>
         public const double EnrageHpFraction = 0.25;

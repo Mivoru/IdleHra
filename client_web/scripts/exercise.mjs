@@ -1260,8 +1260,10 @@ const seamLandings = (s) => {
   }
   return out;
 };
-const correctParry = { Left: 'Dodge right', Right: 'Dodge left', Overhead: 'Block' };
-const wrongParry = { Left: 'Dodge left', Right: 'Block', Overhead: 'Dodge right' };
+// The buttons are named by the blow since the 2026-09-25 playtest: the right
+// answer is the side the tell says the blow comes from.
+const correctParry = { Left: 'From the left', Right: 'From the right', Overhead: 'From above' };
+const wrongParry = { Left: 'From above', Right: 'From the left', Overhead: 'From the right' };
 
 /** Plays one practice run in the page. `aimed` reads and counters; otherwise every read is wrong. */
 async function playPractice(aimed) {
@@ -1313,7 +1315,7 @@ async function playPractice(aimed) {
         const zone = overlay.querySelector('.throw-zone');
         zone?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
       } else if (a.kind === 'parry') {
-        const button = [...overlay.querySelectorAll('button')].find((b) => b.textContent.trim() === a.label);
+        const button = [...overlay.querySelectorAll('button')].find((b) => b.textContent.includes(a.label));
         button?.click();
       } else if (a.kind === 'counter') {
         const button = [...overlay.querySelectorAll('.plate-btn')].find((b) => b.textContent.trim() === String(a.plate + 1));

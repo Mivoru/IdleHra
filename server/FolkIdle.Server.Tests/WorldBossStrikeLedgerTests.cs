@@ -162,15 +162,10 @@ namespace FolkIdle.Server.Tests
             return (sum / attempts, min, max);
         }
 
-        // Modul: SKIPPED ON PURPOSE, NOT WIDENED (2026-09-25). With the spec's
-        // numbers this measures 1.527, not the spec's 1.36: spec 3.1's
-        // simulation left out the spec's own 35 ms tolerance, and with the
-        // tolerance at 0 it reproduces 1.360 and 1.746 exactly. Retuning is
-        // the owner's call at the phone playtest gate (spec 3.1, "Finding"
-        // table: seam 8 + Plate 0 restores all three targets). Phase 1 is
-        // practice and deals no damage, so nothing live rests on this; Phase 2
-        // must not ship while it is skipped.
-        [Fact(Skip = "Owner decision pending at the Phase 1 playtest gate: measured 1.527 vs spec 1.36 - see spec section 3.1, Finding.")]
+        // Modul: THIS CHECK WAS SKIPPED until the owner decided the numbers at the
+        // Phase 1 playtest gate (2026-09-25): seam 8, Plate 0. With the spec's
+        // earlier seam 12 / Plate 0.15 it measured 1.527 - see spec 3.1.
+        [Fact]
         public void RandomTappingEarnsAboutOnePointThreeSix()
         {
             var (mean, min, max) = Simulate(enraged: false, counters: 0, attempts: 20_000, seed: 1);

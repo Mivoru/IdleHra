@@ -72,7 +72,7 @@ The specs and plans for 36/37/38 are in `docs/superpowers/{specs,plans}/2026-09-
 
 **Next, in order:**
 1. Task 37 Phase 3 (measure) is due on **2026-10-02**, a week after the flag went on. Run `ops/oracle/deep-phase3.sql` on the box and record the result in TASK_BOARD section 37. The day-0 baseline is already recorded there.
-2. Task 36, the shield wheel. **Phase 1 (practice) is shipped behind `FOLKIDLE_BOSS_MINIGAME=practice`.** Waiting on **the owner's phone playtest** and one numbers decision: random tapping is 1.53x, not 1.36x (spec section 3.1, options table). Then Phase 2 (damage, with a security review before merge), aimed at the Oct 15-22 window.
+2. Task 36, the shield wheel. **Phase 1 (practice) is live.** The first phone playtest (2026-09-25) found it too fast. The retune is shipped: a 2 s window, buttons named by the blow, the tell above them and a time bar. The numbers are decided (seam 8, Plate 0), and the ledger matches the spec. **Next:** the owner plays it once more, then Phase 2 (damage, with a security review before merge), aimed at the Oct 15-22 window.
 3. 38 waits until the population nears the floor. **Measured 2026-09-25:** 61 accounts, 1 at level 10 or above, 15 active in 7 days, 1 guild. Re-measure before starting.
 4. Task 30 (docs match reality) is **DONE 2026-09-25**.
 

@@ -172,15 +172,19 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void TwoCorrectReadsPlusRandomTapsClearsOnePointSix()
+        public void TwoCorrectReadsPlusRandomTapsClearsOnePointFive()
         {
-            // Two guaranteed Seams from counters, three unaimed taps.
+            // Two guaranteed Seams from counters, three unaimed taps. Two seams
+            // alone make s = 0.5 and M = 1 + 0.5/0.9 = 1.56 - with Plate worth 0
+            // (owner, 2026-09-25) the random taps add nothing unless one lands
+            // a seam, so the floor of this case is 1.5. The MEAN over random
+            // taps is the ledger's TwoReadsPlusRandomEarnsAboutOnePointSevenFive.
             var taps = new[] { new WheelTap(0, 500), new WheelTap(1, 1500), new WheelTap(3, 7500) };
             var parries = new[] { new ParryEntry(0, ParryChoice.DodgeRight, 4300), new ParryEntry(1, ParryChoice.Block, 10700) };
             var counters = new[] { new CounterEntry(0, 2, 4900, 1), new CounterEntry(1, 4, 11200, 3) };
             var scored = ShieldWheelScorer.Score(Schedule, new StrikeLog(taps, parries, counters), 15000);
             Assert.Equal(SubmissionVerdict.Accepted, scored.Verdict);
-            Assert.True(scored.Multiplier >= 1.6, $"M = {scored.Multiplier}");
+            Assert.True(scored.Multiplier >= 1.5, $"M = {scored.Multiplier}");
         }
 
         public static IEnumerable<object[]> ShapeCases()
@@ -190,7 +194,7 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "non-increasing times", new StrikeLog(new[] { new WheelTap(0, 1080), new WheelTap(1, 280) }, Array.Empty<ParryEntry>(), Array.Empty<CounterEntry>()), 9000.0 };
             yield return new object[] { "duplicate Seq", new StrikeLog(new[] { new WheelTap(0, 280), new WheelTap(0, 1080) }, Array.Empty<ParryEntry>(), Array.Empty<CounterEntry>()), 9000.0 };
             yield return new object[] { "negative time", new StrikeLog(new[] { new WheelTap(0, -5) }, Array.Empty<ParryEntry>(), Array.Empty<CounterEntry>()), 9000.0 };
-            yield return new object[] { "past MaxPlayMs", new StrikeLog(new[] { new WheelTap(0, 20_001) }, Array.Empty<ParryEntry>(), Array.Empty<CounterEntry>()), 90000.0 };
+            yield return new object[] { "past MaxPlayMs", new StrikeLog(new[] { new WheelTap(0, WorldBossStrikeRules.MaxPlayMs + 1) }, Array.Empty<ParryEntry>(), Array.Empty<CounterEntry>()), 90000.0 };
             yield return new object[] { "two wheel taps 100 ms apart", new StrikeLog(new[] { new WheelTap(0, 280), new WheelTap(1, 380) }, Array.Empty<ParryEntry>(), Array.Empty<CounterEntry>()), 9000.0 };
             yield return new object[] { "unknown interrupt", new StrikeLog(ok, new[] { new ParryEntry(7, ParryChoice.Block, 4300) }, Array.Empty<CounterEntry>()), 9000.0 };
             yield return new object[] { "plate 7", new StrikeLog(ok, new[] { new ParryEntry(0, ParryChoice.DodgeRight, 4300) }, new[] { new CounterEntry(0, 2, 4900, 7) }), 9000.0 };
@@ -274,7 +278,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(1.0, WorldBossStrikeRules.AutoFloor(Array.Empty<SpearLanding>(), weak));
 
             // A poor run: one Plate hit on the weak plate, four Plate hits elsewhere.
-            // M x P = (1 + 0.15/0.9) x (1 + 1 + 1 + 1 + 3)/5 = 1.1667 x 1.4 = 1.63 < 3.0.
+            // Plate hits score 0 toward skill, so M = 1.0 and M x P = 1.0 x (1+1+1+1+3)/5 = 1.4 < 3.0.
             var poor = new[] { L(0, 0, SpearClass.Plate), L(1, 1, SpearClass.Plate), L(2, weak, SpearClass.Plate), L(3, 2, SpearClass.Plate), L(4, 3, SpearClass.Plate) };
             Assert.True(WorldBossStrikeRules.Played(poor, weak) >= 3.0);
 
