@@ -128,6 +128,23 @@ With this spec's values:
 
 A 12 degree seam at 150 deg/s is an 80 ms window, plus the 35 ms tolerance either side. That is inside a good human's reach, which is the anti-bot economics of §6: **the cap must be reachable by a good human.**
 
+**Finding, 2026-09-25 (implementation, `WorldBossStrikeLedgerTests`): the table above omits the tolerance, so random tapping earns 1.53, not 1.36.**
+The simulation behind the table scored each landing at its exact angle. The scorer this spec defines takes the best class within ±35 ms. At a typical speed, that widens the 12° seam to about 22°. The ledger runs the real scorer over generated schedules, 8,000 attempts each:
+
+| Seam | Tolerance | Plate value | random `M` | 2 reads + random | enraged, 3 reads + random |
+|---|---|---|---|---|---|
+| 12 | 35 ms | 0.15 (**this spec**) | **1.527** | 1.825 | 1.947 |
+| 12 | 0 ms | 0.15 | 1.360 | 1.746 | 1.914 |
+| 12 | 20 ms | 0.15 | 1.457 | 1.793 | 1.934 |
+| 8 | 35 ms | 0.15 | 1.464 | 1.795 | 1.937 |
+| 12 | 35 ms | 0 | 1.425 | 1.779 | 1.929 |
+| **8** | **35 ms** | **0** | **1.351** | **1.743** | **1.917** |
+| 8 | 20 ms | 0.15 | 1.394 | 1.763 | 1.923 |
+
+The tolerance-0 row reproduces the table above exactly, which confirms the cause. **Seam 8° with Plate worth 0** restores all three of the spec's targets and keeps the full 35 ms latency allowance.
+
+This is an **owner decision for the Phase 1 playtest gate.** Until it is made, the ledger's random-tap check is **skipped with this reason**, not widened. Practice shows the current numbers and deals no damage. Phase 2 must not ship while that check is skipped.
+
 ### 3.2 Damage for one attempt
 
 ```
