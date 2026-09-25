@@ -5,7 +5,11 @@ An idle/incremental RPG. A **C# server owns the entire simulation** and a
 it decides nothing. Any change to what the game *does* is a server change.
 
 Live at https://folkidle.duckdns.org (and https://92-5-0-94.sslip.io, same
-Oracle Ampere box). Postgres is external, on Supabase.
+Oracle Ampere box). Postgres runs on the same box since 2026-09-25, as the
+`postgres` compose service. It moved off Supabase because of the egress
+quota. Backups are `ops/oracle/backup-db.sh`, run nightly from cron. The
+Supabase project is a frozen pre-move copy, so do not read production state
+from it.
 
 ## Layout
 
