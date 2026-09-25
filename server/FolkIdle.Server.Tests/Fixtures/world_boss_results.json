@@ -1,0 +1,19 @@
+[
+  "Issued",
+  "Outstanding",
+  "Disabled",
+  "NotActive",
+  "AlreadyDefeated",
+  "NoAttemptsLeft",
+  "TooLateInWindow",
+  "ChallengeOutstanding",
+  "NoChallenge",
+  "TooEarly",
+  "OutOfSpears",
+  "Landed",
+  "ResolvedAtFloor",
+  "Refused",
+  "Queued",
+  "Failed",
+  "PracticeScored"
+]

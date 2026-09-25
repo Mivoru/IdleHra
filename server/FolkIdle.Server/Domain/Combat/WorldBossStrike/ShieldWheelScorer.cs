@@ -168,10 +168,7 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
                 var parry = parries.FirstOrDefault(p => p.Interrupt == interrupt.Index);
                 var correct = ShieldWheelSchedule.CorrectChoice(interrupt.Tell);
 
-                bool isRead = parry != null
-                    && parry.ChoiceMs >= interrupt.TellAtMs + interrupt.ReactionFloorMs
-                    && parry.ChoiceMs <= interrupt.TellAtMs + interrupt.ResponseCloseMs
-                    && parry.Choice == correct;
+                bool isRead = IsRead(interrupt, parry);
 
                 if (parry != null && parry.ChoiceMs < interrupt.TellAtMs + interrupt.ReactionFloorMs && parry.Choice == correct)
                 {
@@ -234,6 +231,17 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
 
             return new ScoredAttempt(landings, spearsLost, SubmissionVerdict.Accepted, StrikeSuspicion.None, suspicions);
         }
+
+        /// <summary>
+        /// A correct read: the right answer, no sooner than the reaction floor
+        /// and no later than the response window. Shared by the finish and the
+        /// per-throw answer so the two cannot disagree.
+        /// </summary>
+        public static bool IsRead(ShieldWheelInterrupt interrupt, ParryEntry? parry) =>
+            parry != null
+            && parry.ChoiceMs >= interrupt.TellAtMs + interrupt.ReactionFloorMs
+            && parry.ChoiceMs <= interrupt.TellAtMs + interrupt.ResponseCloseMs
+            && parry.Choice == ShieldWheelSchedule.CorrectChoice(interrupt.Tell);
 
         /// <summary>
         /// Where a wheel tap lands: the plate under the impact point FlightMs

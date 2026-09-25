@@ -401,6 +401,20 @@ var delveDeepSettings = FolkIdle.Server.Domain.Economy.DelveDeepSettings.FromEnv
     Environment.GetEnvironmentVariable("FOLKIDLE_DELVE_DEEP"));
 Console.WriteLine($"The Deep: {(delveDeepSettings.Enabled ? "on" : "off")} (FOLKIDLE_DELVE_DEEP)");
 serviceCollection.AddSingleton(delveDeepSettings);
+
+// Modul: THE SHIELD WHEEL (task 36) ships behind FOLKIDLE_BOSS_MINIGAME =
+// off | practice | wheel, off by default. Phase 1 serves practice only - no
+// attempt, no damage, no shared state - and answers Disabled on every real
+// path whatever the flag says, until Phase 2's security review.
+var bossMinigameSettings = FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameSettings.FromEnvironment(
+    Environment.GetEnvironmentVariable("FOLKIDLE_BOSS_MINIGAME"));
+Console.WriteLine($"The shield wheel: {bossMinigameSettings.ModeName} (FOLKIDLE_BOSS_MINIGAME)");
+serviceCollection.AddSingleton(bossMinigameSettings);
+serviceCollection.AddSingleton<FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossChallengeRegistry>(_ =>
+    new FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossChallengeRegistry());
+serviceCollection.AddSingleton(sp => new FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeService(
+    sp.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossChallengeRegistry>(),
+    sp.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameSettings>()));
 serviceCollection.AddSingleton<FolkIdle.Server.Domain.Economy.DelveEngine>();
 
 // Modul: registers IHttpClientFactory - required by
