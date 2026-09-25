@@ -126,10 +126,11 @@ namespace FolkIdle.Server.Tests
                 .ToList();
             Assert.True(offenders.Count == 0, "combat gold must not be a mutable global again: " + string.Join(", ", offenders));
 
-            string live = sources.Single(s => Path.GetFileName(s.Path) == "SimulationEngine.cs").Text;
-            string offline = sources.Single(s => Path.GetFileName(s.Path) == "OfflineSimulationEngine.cs").Text;
-            Assert.Contains("EconomyDecisions.BaseCombatGold(activeMonster.BaseGoldReward)", live);
-            Assert.Contains("EconomyDecisions.BaseCombatGold(activeMonster.BaseGoldReward)", offline);
+            // Both kill paths reach the decision through the one shared
+            // formula since 2026-09-25 - CombatGoldParityTests pins that they
+            // call it.
+            string shared = sources.Single(s => Path.GetFileName(s.Path) == "CombatGoldReward.cs").Text;
+            Assert.Contains("EconomyDecisions.BaseCombatGold(monster.BaseGoldReward)", shared);
         }
 
         private async Task<double> LastRatioAsync()

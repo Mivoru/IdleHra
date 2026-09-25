@@ -4621,24 +4621,9 @@ namespace FolkIdle.Server.Domain.Combat
                     if (payload.Skill_GoldenFleece > 0) fleeceTiers = GoldenFleeceBonusTiers;
                 }
 
-                long goldReward = EconomyDecisions.BaseCombatGold(activeMonster.BaseGoldReward);
-                // Modul 13.4.3: Human's innate +5% Gold acquisition passive.
-                goldReward = (long)(goldReward * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
-                goldReward = (long)(goldReward * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
-            goldReward = (long)(goldReward * (1.0f + FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Gold") * 0.02f));
-                // Modul: inheritance. A permanent, season-crossing multiplier.
-                goldReward = (long)(goldReward * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
-
-                // Modul: Trophy Hunter on the LIVE kill path as well as the
-                // offline one above. A bonus that only pays while the player is
-                // asleep is the kind of divergence this codebase has shipped
-                // before, in gathering.
-                if (payload.Skill_TrophyHunter > 0
-                    && RaceUnlockRegistry.GetRegionForBossMonsterId(activeMonster.Id) > 0)
-                {
-                    goldReward = (long)(goldReward * (1.0f + SkillTreeRegistry.GetBonusPercent(
-                        SkillTreeRegistry.BoughTrophyHunter, payload.Skill_TrophyHunter) / 100f));
-                }
+                // Modul: the one gold formula, shared with the offline
+                // projection - see CombatGoldReward.
+                long goldReward = CombatGoldReward.PerKill(in payload, in activeMonster, combatStats.GoldAcquisitionMultiplierPct);
 
                 if (goldReward > 0)
                 {

@@ -710,13 +710,10 @@ namespace FolkIdle.Server.Engine
             xpGained += xpGained * InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain) / 100L;
             ApplyCombatXp(ref payload, xpGained);
 
-            // Modul 13.4.3: Gold reward, matching the live tick's exact
-            // formula (EconomyDecisions.CombatGoldPercent scaling plus
-            // Human's innate +5% Gold acquisition passive) so offline combat
-            // grants the same gold value per kill as live/warp combat.
-            long goldPerKill = EconomyDecisions.BaseCombatGold(activeMonster.BaseGoldReward);
-            goldPerKill += goldPerKill * InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100L;
-            goldPerKill = (long)(goldPerKill * (1.0f + combatStats.GoldAcquisitionMultiplierPct / 100f));
+            // Modul: the live tick's formula, CALLED rather than copied. The
+            // copy that used to live here had lost the legacy perk, the guild
+            // buff and Trophy Hunter - see CombatGoldReward.
+            long goldPerKill = CombatGoldReward.PerKill(in payload, in activeMonster, combatStats.GoldAcquisitionMultiplierPct);
             long totalGoldGained = totalKills * goldPerKill;
             if (totalGoldGained > 0)
             {

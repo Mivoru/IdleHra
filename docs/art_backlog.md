@@ -84,7 +84,7 @@ the existing style: a transparent background, one object, readable at 32 px.
 except `mat_viper_venom`, which already has art through an alias. Art for
 these 24 would clear every icon a player earns by fighting.
 
-## D: do not draw (95). Nothing in the game grants these (82 deleted, see below)
+## D: do not draw (95). Nothing in the game granted these (all 95 deleted, see below)
 
 Each group was checked the same way. No reachable loot row, no recipe, and no
 literal reference in server code grants any of them.
@@ -115,10 +115,14 @@ by number, so deleting them would be a code rework, not a content removal:
   content `ConsumableEngine`'s potion slots have, and `searing_tonic` is the
   fixture of the potion-lifecycle test.
 
-`ItemCatalogueIntegrityTests.EveryIdTheCodeAddressesByNumberIsLive` pins
-them. For these, the owner has to choose between two things: give them a
-source (a cooking or alchemy profession) and then draw them, or rework
-FoodRegistry and ConsumableEngine and then delete them.
+**Resolved 2026-09-25 (branch `fix/offline-gold-parity-and-dead-items`).**
+The owner chose the rework, and all 13 are deleted. The code that addressed
+them now eats each region's raw fish (`FoodRegistry.FirstRawFishOfTier`),
+and the potion-lifecycle test uses the Death Ward. The production SELECT
+showed nobody held any of them. **All 95 of tier D are gone**, and the art
+budget went from 37 to 24. That leaves exactly the 24 A-C drops above.
+`ItemCatalogueIntegrityTests.EveryItemTheCodeResolvesFromContentIsLive`
+pins what the code still needs from content.
 
 ## Method, for a rerun
 

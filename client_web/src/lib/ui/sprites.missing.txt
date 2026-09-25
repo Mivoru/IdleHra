@@ -9,24 +9,9 @@
 # exactly after the BaseId (an exact filename match wins outright), or add an
 # explicitly verified alias to MATERIAL_ALIASES. Then lower the budget.
 
-total 37 of 198 catalogued items have no artwork
+total 24 of 185 catalogued items have no artwork
 
-## consumables (3)
-doom_herald_offensive_potion_consumable
-obsidian_skin_defensive_potion_consumable
-searing_tonic_offensive_potion_consumable
-
-## other (34)
-cooked_astral_whale_t10_food
-cooked_canyon_catfish_t8_food
-cooked_chasm_pike_t4_food
-cooked_coastline_cod_t6_food
-cooked_deep_mire_eel_t7_food
-cooked_fjord_shark_t9_food
-cooked_mud_carp_t3_food
-cooked_pond_minnow_t1_food
-cooked_river_trout_t2_food
-cooked_steppe_salmon_t5_food
+## other (24)
 mat_basilisk_scale
 mat_bear_claw
 mat_boar_tusk

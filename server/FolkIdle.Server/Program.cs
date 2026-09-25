@@ -424,6 +424,19 @@ if (Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") != "Production")
     await DbSeeder.SeedAllAsync(seedDb);
 }
 
+// Modul: guild buffs survive a restart. The tick reads GuildBonusesCache and
+// never the table, so without this load every buff bought before a deploy did
+// nothing until it expired. A failure here costs buffs rather than the boot.
+try
+{
+    await using var buffDb = await serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>().CreateDbContextAsync();
+    await GuildBonusesCache.LoadAllAsync(buffDb);
+}
+catch (Exception buffLoadEx)
+{
+    Console.WriteLine($"[Startup] Guild buff cache load failed: {buffLoadEx.Message}");
+}
+
 var redisMultiplexer = serviceProvider.GetRequiredService<IConnectionMultiplexer>();
 TelemetryStreamer.ConfigureRedis(redisMultiplexer);
 

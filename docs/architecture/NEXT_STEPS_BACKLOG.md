@@ -60,9 +60,10 @@ The specs and plans for 36/37/38 are in `docs/superpowers/{specs,plans}/2026-09-
 
 The local dev DB may already have `AddTheDeep` applied, which means it is ahead of main. If main misbehaves locally, that is why.
 
-**Owner decisions still open:**
-- **13 dead items KEPT** in #33. They are cooked foods 194-203 (`FoodRegistry` indexes its heal table by these ids) and potions 376-378 (the only content `ConsumableEngine` has). The choice is to give them a source, such as cooking or alchemy, or to rework those systems and then delete them. `ItemCatalogueIntegrityTests.EveryIdTheCodeAddressesByNumberIsLive` guards them.
-- The live and offline kill paths apply different gold multipliers on top of the base. Unifying them changes what offline play pays.
+**Owner decisions, resolved 2026-09-25 (branch `fix/offline-gold-parity-and-dead-items`):**
+- **The 13 dead items are DELETED.** They were cooked foods 194-203 and potions 376-378. `FoodRegistry`, `BossGearBenchmark` and the dev fixture's larder now use each region's raw fish (`FoodRegistry.FirstRawFishOfTier`). The Death Ward is the only potion left, so the offensive potion slot has no content. Production held none of the 13. The art budget went from 37 to 24.
+- **Offline pays what online pays.** Both kill paths call `CombatGoldReward.PerKill`. The offline copy had been missing the legacy gold perk, the guild Gold buff and Trophy Hunter.
+- **Found on the way: guild buffs had never worked.** `GuildBonusesCache` had four readers and no writer, so no purchased buff ever changed a number in combat, while the guild screen showed it as active. Now a purchase writes the cache, start-up loads it, and each entry expires by itself. `GuildBuffCacheTests` guards it. **Guilds holding a buff will see Damage/Exp/Gold/DropRate actually apply from this deploy on.**
 
 **Next, in order:**
 1. Finish and ship 37 (the Phase 0.2, 1 and 2 PRs).

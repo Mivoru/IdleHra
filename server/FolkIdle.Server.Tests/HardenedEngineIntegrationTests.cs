@@ -9135,15 +9135,21 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void Test_ConsumableEngine_PotionLifecycleAndDeathWardIntercept()
         {
-            Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("searing_tonic_offensive_potion_consumable", out var tonicDef));
             Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("roasted_perch_food_consumable", out var perchDef));
             Assert.True(ConsumableEngine.DeathWardItemId > 0, "The Death Ward Elixir item must resolve from content.");
+            int wardId = ConsumableEngine.DeathWardItemId;
 
             var payload = new TickStatePayload { PlayerId = 970007001L };
 
-            Assert.True(ConsumableEngine.TryApplyConsumable(ref payload, tonicDef.Id));
-            Assert.Equal(tonicDef.Id, payload.ActiveOffensivePotionId);
-            Assert.Equal(ConsumableEngine.PotionDurationMs, payload.OffensivePotionDurationMs);
+            // Modul: the three *_potion_consumable items this used to apply
+            // were deleted 2026-09-25. The Death Ward is the only potion left,
+            // so it carries the apply-and-expire half. The offensive slot has
+            // no content now; its countdown is armed by hand below.
+            Assert.True(ConsumableEngine.TryApplyConsumable(ref payload, wardId));
+            Assert.Equal(wardId, payload.ActiveDefensivePotionId);
+            Assert.Equal(ConsumableEngine.PotionDurationMs, payload.DefensivePotionDurationMs);
+            payload.ActiveOffensivePotionId = perchDef.Id;
+            payload.OffensivePotionDurationMs = ConsumableEngine.PotionDurationMs;
 
             Assert.True(ConsumableEngine.TryApplyConsumable(ref payload, perchDef.Id));
             Assert.Equal(perchDef.Id, payload.ActiveFoodBuffId);
@@ -9151,15 +9157,18 @@ namespace FolkIdle.Server.Tests
             // A non-consumable item id must be left to the legacy path.
             Assert.False(ConsumableEngine.TryApplyConsumable(ref payload, 1));
 
-            // Deterministic expiry: exactly duration / 100 ticks clears the
-            // slot without any string work.
+            // Deterministic expiry: exactly duration / 100 ticks clears both
+            // potion slots without any string work.
             int expectedTicks = ConsumableEngine.PotionDurationMs / 100;
             for (int i = 0; i < expectedTicks - 1; i++)
             {
                 ConsumableEngine.TickBuffCountdowns(ref payload);
             }
-            Assert.Equal(tonicDef.Id, payload.ActiveOffensivePotionId);
+            Assert.Equal(wardId, payload.ActiveDefensivePotionId);
+            Assert.Equal(perchDef.Id, payload.ActiveOffensivePotionId);
             ConsumableEngine.TickBuffCountdowns(ref payload);
+            Assert.Equal(0, payload.ActiveDefensivePotionId);
+            Assert.Equal(0, payload.DefensivePotionDurationMs);
             Assert.Equal(0, payload.ActiveOffensivePotionId);
             Assert.Equal(0, payload.OffensivePotionDurationMs);
 
@@ -11474,7 +11483,7 @@ namespace FolkIdle.Server.Tests
         public async Task Test_Larder_StockingMovesFoodFromTheBackpackIntoTheSlotAndUnloadingReturnsIt()
         {
             const long testPlayerId = 970004202L;
-            const int foodItemId = FoodRegistry.FirstCookedFoodItemId; // cooked_pond_minnow_t1_food
+            int foodItemId = FoodRegistry.FirstRawFishOfTier(1);
             const int stockedQuantity = 12;
 
             string foodBaseId = ContentRegistry.GetItemBaseId(foodItemId);
@@ -11536,7 +11545,7 @@ namespace FolkIdle.Server.Tests
         public async Task Test_Larder_RefusesToStockFoodTheBackpackDoesNotContain()
         {
             const long testPlayerId = 970004203L;
-            const int foodItemId = FoodRegistry.FirstCookedFoodItemId;
+            int foodItemId = FoodRegistry.FirstRawFishOfTier(1);
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
@@ -11561,26 +11570,34 @@ namespace FolkIdle.Server.Tests
         // every slot at a hardcoded 50000 milli-HP, so its "pick the
         // highest-healing food" comparison was a tie every time and a tier-10
         // roast healed exactly as much as a tier-1 minnow.
+        //
+        // The cooked foods were deleted 2026-09-25; raw fish, one per region
+        // tier, carry the same guarantees now.
         [Fact]
-        public void Test_FoodRegistry_RecognisesEveryCookedFoodAndScalesHealingByTier()
+        public void Test_FoodRegistry_RecognisesEveryRegionsFishAndScalesHealingByTier()
         {
-            for (int itemId = FoodRegistry.FirstCookedFoodItemId; itemId <= FoodRegistry.LastCookedFoodItemId; itemId++)
+            const int regionCount = 5;
+            var fishByTier = new int[regionCount + 1];
+            for (int tier = 1; tier <= regionCount; tier++)
             {
-                Assert.True(FoodRegistry.IsFood(itemId), $"Item {itemId} is a cooking-recipe output but was not recognised as food.");
+                int itemId = FoodRegistry.FirstRawFishOfTier(tier);
+                Assert.True(itemId > 0, $"No fishing node drops a tier-{tier} fish.");
+                Assert.True(FoodRegistry.IsFood(itemId), $"Item {itemId} is a fish but was not recognised as food.");
                 Assert.True(AlchemyCompendium.IsValidConsumable((uint)itemId), $"Item {itemId} is real food but would have failed consumable validation.");
-                Assert.True(FoodRegistry.GetHealMilliHp(itemId) > 0);
+                Assert.Equal(tier, FoodRegistry.GetTier(itemId));
+                fishByTier[tier] = itemId;
             }
 
-            // GDD Module "Cooking (Sustain & Auto-Eat Economy)" 3.2 heal
-            // payouts, in the engine's milli-HP units.
-            Assert.Equal(40 * 1000, FoodRegistry.GetHealMilliHp(FoodRegistry.FirstCookedFoodItemId));
-            Assert.Equal(82000 * 1000, FoodRegistry.GetHealMilliHp(FoodRegistry.LastCookedFoodItemId));
+            // The GDD 3.2 heal table at the raw-fish share (60%), in the
+            // engine's milli-HP units.
+            Assert.Equal(40 * 1000 * 60 / 100, FoodRegistry.GetHealMilliHp(fishByTier[1]));
+            Assert.Equal(1720 * 1000 * 60 / 100, FoodRegistry.GetHealMilliHp(fishByTier[5]));
 
             // Strictly increasing, which is what makes the auto-eat selection
             // mean anything at all.
-            for (int itemId = FoodRegistry.FirstCookedFoodItemId; itemId < FoodRegistry.LastCookedFoodItemId; itemId++)
+            for (int tier = 1; tier < regionCount; tier++)
             {
-                Assert.True(FoodRegistry.GetHealMilliHp(itemId + 1) > FoodRegistry.GetHealMilliHp(itemId));
+                Assert.True(FoodRegistry.GetHealMilliHp(fishByTier[tier + 1]) > FoodRegistry.GetHealMilliHp(fishByTier[tier]));
             }
 
             // A weapon is not food, and must score zero so an occupied-but-bogus
