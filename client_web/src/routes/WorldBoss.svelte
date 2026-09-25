@@ -21,6 +21,49 @@
   } from '../lib/net/commands';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { play } from '../lib/ui/audio';
+  import ShieldWheel from '../lib/ui/ShieldWheel.svelte';
+  import { fetchBossChallenge, issueBossChallenge, type ShieldWheelChallenge } from '../lib/net/rest';
+  import { worldBossResultSentence } from '../lib/game/worldBossResults';
+
+  // Modul: THE SHIELD WHEEL, PRACTICE ONLY (task 36 Phase 1). The server says
+  // whether the wheel is open (FOLKIDLE_BOSS_MINIGAME); with it off, GET
+  // /challenge answers Disabled and this screen is exactly what it was. The
+  // plate buttons below are still the real strike until Phase 2.
+  let wheelMode = $state('off');
+  let practiceChallenge = $state<ShieldWheelChallenge | null>(null);
+  let openingPractice = $state(false);
+
+  $effect(() => {
+    fetchBossChallenge()
+      .then((answer) => (wheelMode = answer.Result === 'Disabled' ? 'off' : answer.Mode))
+      .catch(() => (wheelMode = 'off'));
+  });
+
+  async function openPractice() {
+    if (openingPractice) return;
+    openingPractice = true;
+    try {
+      const answer = await issueBossChallenge(true);
+      if (answer && (answer.Result === 'Issued' || answer.Result === 'Outstanding') && answer.Challenge) {
+        practiceChallenge = answer.Challenge;
+      } else if (answer) {
+        pushLocalNotice(worldBossResultSentence(answer.Result) || 'Practice is not available right now.');
+      }
+    } catch (err) {
+      pushLocalNotice(err instanceof Error ? err.message : 'Practice could not be opened.');
+    } finally {
+      openingPractice = false;
+    }
+  }
+
+  function closePractice() {
+    practiceChallenge = null;
+  }
+
+  async function practiceAgain() {
+    practiceChallenge = null;
+    await openPractice();
+  }
 
   const snap = $derived($playerState);
 
@@ -319,8 +362,23 @@
     {#if strikeBlockedReason}
       <p class="strike-reason dim tiny" role="status">{strikeBlockedReason}</p>
     {/if}
+
+    {#if wheelMode !== 'off'}
+      <h3>The shield wheel</h3>
+      <p class="dim tiny">
+        A new way to strike is coming: spin, read the boss's blows, and aim for the seams. Practice it
+        here for free - it spends no attempt and deals no damage.
+      </p>
+      <button class="practice" disabled={openingPractice} onclick={openPractice}>
+        Practice the shield wheel
+      </button>
+    {/if}
   </section>
 </div>
+
+{#if practiceChallenge}
+  <ShieldWheel challenge={practiceChallenge} onclose={closePractice} onagain={practiceAgain} />
+{/if}
 
 <style>
   .wrap {
@@ -497,6 +555,13 @@
   .strike-reason {
     margin: 0.4rem 0 0;
     text-align: center;
+  }
+
+  .practice {
+    width: 100%;
+    min-height: 44px;
+    margin-top: 0.4rem;
+    font-weight: 700;
   }
 
   .attack:not(:disabled) {

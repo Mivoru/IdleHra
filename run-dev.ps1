@@ -30,6 +30,9 @@ $env:FOLKIDLE_DEV_TOOLS = '1'
 # The Deep (task 37) ships OFF in production; the dev box runs it on so the
 # Delve screen and exercise.mjs can reach it.
 $env:FOLKIDLE_DELVE_DEEP = 'on'
+# The shield wheel (task 36) ships OFF in production; the dev box runs its
+# practice mode so the World Boss screen and exercise.mjs can play it.
+$env:FOLKIDLE_BOSS_MINIGAME = 'practice'
 
 Write-Host 'Starting the game server on :8080...' -ForegroundColor Cyan
 Start-Process powershell -ArgumentList @(
@@ -39,6 +42,7 @@ Start-Process powershell -ArgumentList @(
   "`$env:FOLKIDLE_DB_CONN='Host=localhost;Database=folkidle_dev;Username=postgres;Password=postgres'; " +
   "`$env:FOLKIDLE_DEV_TOOLS='1'; " +
   "`$env:FOLKIDLE_DELVE_DEEP='on'; " +
+  "`$env:FOLKIDLE_BOSS_MINIGAME='practice'; " +
   "dotnet run --project FolkIdle.Server/FolkIdle.Server.csproj"
 )
 
