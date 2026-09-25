@@ -341,7 +341,10 @@ namespace FolkIdle.Server.Engine
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
-                GuildBonusesCache.MarkGuildDirty(guildId);
+                // Modul: the tick reads the cache, not this table - see
+                // GuildBonusesCache. Written from the row just committed, so
+                // there is no second query that could fail after the purchase.
+                GuildBonusesCache.Apply(guildId, activeBuff.BuffType, activeBuff.Tier, activeBuff.ExpiresAt);
                 return true;
             }
             catch (Exception ex)
