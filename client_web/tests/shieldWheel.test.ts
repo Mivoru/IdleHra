@@ -54,10 +54,12 @@ describe('shield wheel geometry', () => {
     expect(classify(0)).toBe('Glance');
     expect(classify(2.99)).toBe('Glance');
     expect(classify(3)).toBe('Plate');
-    expect(classify(30)).toBe('Seam');
+    // Seam is 8 degrees since 2026-09-25: |offset - 36| <= 4.
+    expect(classify(31.99)).toBe('Plate');
+    expect(classify(32)).toBe('Seam');
     expect(classify(36)).toBe('Seam');
-    expect(classify(42)).toBe('Seam');
-    expect(classify(42.01)).toBe('Plate');
+    expect(classify(40)).toBe('Seam');
+    expect(classify(40.01)).toBe('Plate');
     expect(classify(69)).toBe('Plate');
     expect(classify(69.01)).toBe('Glance');
   });
