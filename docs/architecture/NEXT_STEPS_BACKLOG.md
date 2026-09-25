@@ -19,9 +19,21 @@ do next.
 
 ---
 
-# HANDOFF 2026-09-25 - tasks 25-35 and 37 shipped (START HERE)
+# HANDOFF 2026-09-25 (end of day) - everything shipped; two gates and a date left (START HERE)
 
-**Live:** production runs main with #38-#42 (task 37 complete, Postgres on the box). `smoke:screens` 26/26 on production. **The Deep is ON in production** (`FOLKIDLE_DELVE_DEEP=on` in the box's `ops/oracle/.env` since 2026-09-25). **The database is no longer on Supabase**: see `ops/oracle/README.md`.
+**Live:** production is **1.0.736**: main through #45, plus this docs PR. `smoke:screens` 27/27 on production, including the practice overlay.
+- **The Deep is ON** (`FOLKIDLE_DELVE_DEEP=on`).
+- **The shield wheel is in PRACTICE** (`FOLKIDLE_BOSS_MINIGAME=practice`). Both flags are in the box's `ops/oracle/.env`.
+- **The database is on the box, not Supabase** (#41-#43; see `ops/oracle/README.md`). Nightly dumps land in `~/folkidle-backups`, and the owner's PC pulls them to `D:\FolkIdleBackups` (scheduled task "FolkIdle backup pull").
+
+**Shipped on 2026-09-25:**
+- #38: offline gold parity, guild buffs that finally apply, the 13 dead items deleted.
+- #39, #40: the Deep.
+- #41, #42: Postgres self-hosted.
+- #43: combat material writes batched, Deep spend recorded, backups on D:.
+- #44: the Phase 3 baseline.
+- #45: shield wheel practice.
+- This PR: task 30.
 
 **Shipped and deployed, 2026-09-24:**
 
@@ -47,10 +59,10 @@ The specs and plans for 36/37/38 are in `docs/superpowers/{specs,plans}/2026-09-
 **Task 37, The Deep, is DONE**, and all of it sits behind the flag:
 1. Phase 0.2 (the income profile and the sink table) is PR #34.
 2. Phase 1 (descend on a frozen stake, tolls, records, the 7-day high-water mark) is PR #39. It re-opens #35, which stranded on its stacked base. It is deployed as 1.0.717, with migration `AddTheDeep`.
-3. Phase 2 (lanterns, six titles, the weekly Deepest board that pays nothing, the Wiki section) is the phase 2 PR.
+3. Phase 2 (lanterns, six titles, the weekly Deepest board that pays nothing, the Wiki section) is PR #40.
    - Full suite 1024/1024.
    - `exercise` 174/174, then 164/164 twice. The difference is the breeding/feast block, which runs only when a villager pair is ready.
-- **Phase 3 is still open:** a week after the flag goes on, run the read-only SELECTs described in TASK_BOARD section 37.
+- **Phase 3 is due 2026-10-02.** The owner's PC captures it automatically (scheduled task "FolkIdle Deep phase 3 capture", writing `D:\FolkIdleBackups\deep-phase3-week1.txt`). Copy the numbers into TASK_BOARD section 37.
 - **Local trap found on the way:** `vite.config.ts` stamps `public/version.json` on every config load, and `vitest` loads it too. Running `npm test` while the dev server is up makes every open tab show "Update available", and that toast covered 5 controls in `check:overlap`. Restart Vite (kill the :5173 listener) before the geometry checks.
 
 **Owner decisions, resolved 2026-09-25 (branch `fix/offline-gold-parity-and-dead-items`):**
@@ -61,8 +73,8 @@ The specs and plans for 36/37/38 are in `docs/superpowers/{specs,plans}/2026-09-
 **Next, in order:**
 1. Task 37 Phase 3 (measure) is due on **2026-10-02**, a week after the flag went on. Run `ops/oracle/deep-phase3.sql` on the box and record the result in TASK_BOARD section 37. The day-0 baseline is already recorded there.
 2. Task 36, the shield wheel. **Phase 1 (practice) is shipped behind `FOLKIDLE_BOSS_MINIGAME=practice`.** Waiting on **the owner's phone playtest** and one numbers decision: random tapping is 1.53x, not 1.36x (spec section 3.1, options table). Then Phase 2 (damage, with a security review before merge), aimed at the Oct 15-22 window.
-3. 38 waits until the population nears the floor.
-4. **Task 30 (docs match reality) goes LAST.** It includes the TASK_BOARD §32 line and the status lines for 27-29, 31, 33 and 34 (§34 still says "deploy pending", but it IS deployed).
+3. 38 waits until the population nears the floor. **Measured 2026-09-25:** 61 accounts, 1 at level 10 or above, 15 active in 7 days, 1 guild. Re-measure before starting.
+4. Task 30 (docs match reality) is **DONE 2026-09-25**.
 
 **Follow-ups:**
 - Production proof of a world boss strike during Oct 1-7: a row in `player_world_boss_attempts`.
