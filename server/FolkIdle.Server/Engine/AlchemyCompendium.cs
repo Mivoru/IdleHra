@@ -55,12 +55,11 @@ namespace FolkIdle.Server.Engine
                 return false;
             }
 
-            // Modul: larder. Food classification now defers to FoodRegistry,
-            // which recognises the ten cooked_*_tN_food items the cooking
-            // recipes actually produce. This method only matched
-            // "_food_consumable", a marker none of them carry, so eating any
-            // real crafted food failed validation - and validation failure here
-            // calls TerminateSessionForSecurity.
+            // Modul: larder. Food classification defers to FoodRegistry. This
+            // method used to match only "_food_consumable", a marker the
+            // (since deleted) cooked foods did not carry, so eating one failed
+            // validation - and validation failure here calls
+            // TerminateSessionForSecurity.
             if (FoodRegistry.IsFood((int)itemId))
             {
                 return true;

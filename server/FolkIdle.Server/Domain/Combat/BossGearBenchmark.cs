@@ -176,10 +176,10 @@ namespace FolkIdle.Server.Domain.Combat
             // "nothing could kill a player who owned fish" made a boss a check
             // on inventory rather than on equipment.
             //
-            // Cooked food tiers run 1-10 over a contiguous id block and heal a
-            // share of the bar per tier, so the region's tier is its food tier.
-            int foodItemId = FoodRegistry.FirstCookedFoodItemId
-                + Math.Clamp(boss.RegionTier, 1, FoodRegistry.TierCount) - 1;
+            // The region's own fish: food heals a share of the bar per tier,
+            // and a fish's tier is the region it was caught in.
+            int foodItemId = FoodRegistry.FirstRawFishOfTier(
+                Math.Clamp(boss.RegionTier, 1, FoodRegistry.TierCount));
             int healPerBite = FoodRegistry.GetHealMilliHp(foodItemId, playerMaxMilliHp);
 
             double playerMilliHp = playerMaxMilliHp;

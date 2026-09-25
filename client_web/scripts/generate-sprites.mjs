@@ -56,7 +56,7 @@ const checkOnly = process.argv.includes('--check');
  * pass. The per-item breakdown lives in the committed sprites.missing.txt, so
  * a change to this number always comes with a reviewable list of which items
  * moved. */
-const MISSING_ART_BUDGET = 37;
+const MISSING_ART_BUDGET = 24;
 
 // ---------------------------------------------------------------------------
 // Alias tables

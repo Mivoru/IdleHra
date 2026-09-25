@@ -168,13 +168,14 @@ namespace FolkIdle.Server.Models
             // whole purpose is unattended playtesting must be able to run
             // unattended, so it ships fed.
             //
-            // Ids 194-203 are the ten real cooked foods; the three stocked here
-            // are mid-tier so healing is meaningful without being infinite.
-            player.LarderSlot1ItemId = 198; // cooked_steppe_salmon_t5_food
+            // Raw fish from regions 5, 4 and 3 - mid-to-high tier so healing is
+            // meaningful without being infinite. (This was the cooked foods
+            // 196-198 until those were deleted on 2026-09-25.)
+            player.LarderSlot1ItemId = FolkIdle.Server.Engine.FoodRegistry.FirstRawFishOfTier(5);
             player.LarderSlot1Count = 999;
-            player.LarderSlot2ItemId = 197; // cooked_chasm_pike_t4_food
+            player.LarderSlot2ItemId = FolkIdle.Server.Engine.FoodRegistry.FirstRawFishOfTier(4);
             player.LarderSlot2Count = 999;
-            player.LarderSlot3ItemId = 196; // cooked_mud_carp_t3_food
+            player.LarderSlot3ItemId = FolkIdle.Server.Engine.FoodRegistry.FirstRawFishOfTier(3);
             player.LarderSlot3Count = 999;
 
             // Eat at 50% rather than the default 0, which never triggers.

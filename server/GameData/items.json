@@ -24,86 +24,6 @@
     "BaseId": "birch_trees_woodcutting_material"
   },
   {
-    "Id": 194,
-    "RegionTier": 1,
-    "BaseValueGold": 10,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_pond_minnow_t1_food"
-  },
-  {
-    "Id": 195,
-    "RegionTier": 2,
-    "BaseValueGold": 40,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_river_trout_t2_food"
-  },
-  {
-    "Id": 196,
-    "RegionTier": 3,
-    "BaseValueGold": 90,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_mud_carp_t3_food"
-  },
-  {
-    "Id": 197,
-    "RegionTier": 4,
-    "BaseValueGold": 160,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_chasm_pike_t4_food"
-  },
-  {
-    "Id": 198,
-    "RegionTier": 5,
-    "BaseValueGold": 250,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_steppe_salmon_t5_food"
-  },
-  {
-    "Id": 199,
-    "RegionTier": 6,
-    "BaseValueGold": 360,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_coastline_cod_t6_food"
-  },
-  {
-    "Id": 200,
-    "RegionTier": 7,
-    "BaseValueGold": 490,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_deep_mire_eel_t7_food"
-  },
-  {
-    "Id": 201,
-    "RegionTier": 8,
-    "BaseValueGold": 640,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_canyon_catfish_t8_food"
-  },
-  {
-    "Id": 202,
-    "RegionTier": 9,
-    "BaseValueGold": 810,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_fjord_shark_t9_food"
-  },
-  {
-    "Id": 203,
-    "RegionTier": 10,
-    "BaseValueGold": 1000,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "cooked_astral_whale_t10_food"
-  },
-  {
     "Id": 250,
     "RegionTier": 1,
     "BaseValueGold": 5,
@@ -1062,30 +982,6 @@
     "FlatAttackPower": 0,
     "FlatDefenseRating": 0,
     "BaseId": "yeti_platter_food_consumable"
-  },
-  {
-    "Id": 376,
-    "RegionTier": 3,
-    "BaseValueGold": 800,
-    "FlatAttackPower": 150,
-    "FlatDefenseRating": 0,
-    "BaseId": "searing_tonic_offensive_potion_consumable"
-  },
-  {
-    "Id": 377,
-    "RegionTier": 3,
-    "BaseValueGold": 800,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 120,
-    "BaseId": "obsidian_skin_defensive_potion_consumable"
-  },
-  {
-    "Id": 378,
-    "RegionTier": 5,
-    "BaseValueGold": 12000,
-    "FlatAttackPower": 400,
-    "FlatDefenseRating": 0,
-    "BaseId": "doom_herald_offensive_potion_consumable"
   },
   {
     "Id": 379,

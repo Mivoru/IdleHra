@@ -187,40 +187,33 @@ namespace FolkIdle.Server.Tests
             Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
         }
 
-        // Modul: SOME ITEMS NOTHING GRANTS ARE STILL LOAD-BEARING, 2026-09-24.
+        // Modul: WHAT THE CODE STILL ADDRESSES FROM CONTENT, 2026-09-25.
         //
-        // The tier-D clean-up retired 82 items that no loot table, recipe or
-        // code path could put in a player's hands. It kept 13 that look the
-        // same from the outside - no source, no art - but that code addresses
-        // by NUMBER: FoodRegistry indexes its heal table by the id block
-        // 194..203, the dev fixture stocks its larder with 196-198, and the
-        // three *_potion_consumable items are the only content
-        // ConsumableEngine's potion slots have. Deleting any of them compiles
-        // and fails somewhere far away. This fails here instead.
+        // The tier-D clean-up (2026-09-24) kept 13 unobtainable items because
+        // code addressed them by number: FoodRegistry's cooked-food id block
+        // 194..203 and the three *_potion_consumable items 376-378. The owner
+        // ruled they go. FoodRegistry, BossGearBenchmark and the dev fixture
+        // now use each region's raw fish instead. What code still needs from
+        // content is below: a fish for every region tier, and the Death Ward.
         [Fact]
-        public void EveryIdTheCodeAddressesByNumberIsLive()
+        public void EveryItemTheCodeResolvesFromContentIsLive()
         {
             var failures = new List<string>();
 
-            for (int id = FoodRegistry.FirstCookedFoodItemId; id <= FoodRegistry.LastCookedFoodItemId; id++)
+            for (int tier = 1; tier <= 5; tier++)
             {
-                if (!ContentRegistry.ItemExists(id))
-                    failures.Add($"FoodRegistry's cooked-food block names id {id}, which is not an item");
-            }
-
-            foreach (string potion in new[]
-                     {
-                         "searing_tonic_offensive_potion_consumable",
-                         "obsidian_skin_defensive_potion_consumable",
-                         "doom_herald_offensive_potion_consumable",
-                     })
-            {
-                if (!ContentRegistry.TryGetItemDefinitionByBaseId(potion, out _))
-                    failures.Add($"'{potion}' is gone - ConsumableEngine's potion path has no other content");
+                if (FoodRegistry.FirstRawFishOfTier(tier) <= 0)
+                    failures.Add($"no fishing node drops a tier-{tier} fish - the boss benchmark and the dev fixture's larder eat one");
             }
 
             if (ConsumableEngine.DeathWardItemId <= 0)
                 failures.Add("the Death Ward Elixir no longer resolves from content");
+
+            foreach (int id in new[] { 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 376, 377, 378 })
+            {
+                if (ContentRegistry.ItemExists(id))
+                    failures.Add($"id {id} was retired on 2026-09-25 and is an item again - the ledger forbids reuse");
+            }
 
             Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
         }

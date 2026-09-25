@@ -3,10 +3,16 @@ using System;
 namespace FolkIdle.Server.Engine
 {
     // Modul: larder. The single authority on what counts as auto-eat food and
-    // how much each tier heals, per GDD Module "Cooking (Sustain & Auto-Eat
-    // Economy)" section 3.2, whose ten recipes food_t01..food_t10 are exactly
-    // ContentRegistry's ten ProfessionType == 4 recipes producing items
-    // 194..203 (cooked_pond_minnow_t1_food .. cooked_astral_whale_t10_food).
+    // how much each tier heals. The per-tier table is the GDD's cooking
+    // table (Module "Cooking", section 3.2).
+    //
+    // Modul: THE COOKED FOODS ARE GONE, 2026-09-25. Items 194-203 were the
+    // ten cooked_*_tN_food dishes. Their recipes were deleted long ago, so
+    // nothing could grant one, and production held none. The owner chose to
+    // delete them rather than add a cooking profession. The heal table stays:
+    // raw fish eat on it, as the legacy "_food_consumable" items do. What used
+    // to be "the cooked dish of tier N" is now "a fish from region N", and
+    // FirstRawFishOfTier answers that question.
     //
     // This file exists because two things were wrong before it:
     //
@@ -45,23 +51,30 @@ namespace FolkIdle.Server.Engine
             82000    // food_t10 Astral Ambrosia Roast
         };
 
-        // The contiguous id block ContentRegistry's cooking recipes produce.
-        public const int FirstCookedFoodItemId = 194;
-        public const int LastCookedFoodItemId = 203;
-
         public static int TierCount => _healPayoutFlatHp.Length;
 
-        // True for anything the larder will accept. Deliberately checks the id
-        // block first (a pure integer compare, so the hot auto-eat path never
-        // touches a string) and only falls back to the BaseId marker for the
-        // legacy "_food_consumable" family.
+        /// <summary>
+        /// The lowest-id raw fish whose region tier is <paramref name="tier"/>,
+        /// or 0 if no fishing node drops one. Every fish of a tier heals the
+        /// same, so any of them is the tier's food.
+        /// </summary>
+        public static int FirstRawFishOfTier(int tier)
+        {
+            int best = 0;
+            foreach (int id in ContentRegistry.RawFishItemIds)
+            {
+                if (ContentRegistry.ItemDefinitions[id - 1].RegionTier == tier && (best == 0 || id < best))
+                {
+                    best = id;
+                }
+            }
+            return best;
+        }
+
+        // True for anything the larder will accept: raw fish, and the legacy
+        // "_food_consumable" family by its BaseId marker.
         public static bool IsFood(int itemId)
         {
-            if (itemId >= FirstCookedFoodItemId && itemId <= LastCookedFoodItemId)
-            {
-                return true;
-            }
-
             if (itemId <= 0 || itemId > ContentRegistry.ItemDefinitions.Length)
             {
                 return false;
@@ -86,8 +99,6 @@ namespace FolkIdle.Server.Engine
         // the auto-eat comparison can score an empty or bogus slot at 0 and
         // never pick it.
         //
-        // Zero allocation and no string work for the cooked block: the tier is
-        // the id's offset within it.
         // Raw fish heals this share of what the same-tier cooked dish would.
         // Cooking is not in the design list, so this is not a penalty pushing
         // players towards a profession that does not exist - it is simply what
@@ -171,11 +182,6 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public static int GetTier(int itemId)
         {
-            if (itemId >= FirstCookedFoodItemId && itemId <= LastCookedFoodItemId)
-            {
-                return itemId - FirstCookedFoodItemId + 1;
-            }
-
             if (itemId <= 0 || itemId > ContentRegistry.ItemDefinitions.Length)
             {
                 return 0;
@@ -197,11 +203,6 @@ namespace FolkIdle.Server.Engine
 
         public static int GetHealMilliHp(int itemId)
         {
-            if (itemId >= FirstCookedFoodItemId && itemId <= LastCookedFoodItemId)
-            {
-                return _healPayoutFlatHp[itemId - FirstCookedFoodItemId] * 1000;
-            }
-
             if (itemId <= 0 || itemId > ContentRegistry.ItemDefinitions.Length)
             {
                 return 0;
