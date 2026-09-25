@@ -3732,6 +3732,40 @@ under a minute. Brainstorm candidates with the owner (timing bar, weak-spot
 tapping, rhythm, dodge-and-strike), prototype one, then implement. **Task 25
 first** - there is no point redesigning a fight nobody can start.
 
+**Decided 2026-09-24: the shield wheel with parries.**
+- Spec: `docs/superpowers/specs/2026-09-24-world-boss-minigame-design.md`.
+- Plan: `docs/superpowers/plans/2026-09-24-task-36-world-boss-minigame.md`.
+
+**Phase 1 (practice only) DONE 2026-09-25, behind `FOLKIDLE_BOSS_MINIGAME=practice`.**
+- Practice spends no attempt, deals no damage and answers from a decoy weak
+  plate. Every real path answers `Disabled` whatever the flag says.
+- What shipped:
+  - the pure rules, the schedule generator and the scorer, with a fixture
+    shared by the C# and TypeScript tests;
+  - the ledger;
+  - the in-memory challenge registry and the REST routes;
+  - the overlay (`ShieldWheel.svelte`) and a Practice button on the World
+    Boss screen;
+  - exercise runs: aimed (M 2.00), wrong reads (lost spears, M 1.40), and a
+    brand-new account.
+- Every geometry check and `check:perf` runs with the overlay open.
+
+**PHASE GATE, OPEN: the owner plays practice on the phone before Phase 2.**
+Two things to decide there:
+- **The numbers.** Random tapping measures **1.53x**, not the spec's 1.36x.
+  The spec's simulation left out its own 35 ms tolerance; with the
+  tolerance at 0 it reproduces 1.360 and 1.746 exactly. The options table
+  is in spec section 3.1. **Seam 8 degrees with Plate worth 0** restores all
+  three targets. `WorldBossStrikeLedgerTests.RandomTappingEarnsAboutOnePointThreeSix`
+  is **skipped with that reason**, and Phase 2 must not ship while it is
+  skipped.
+- **The feel on a real phone:** the tell glyphs, the throw zone and the
+  counter buttons.
+
+**Phase 2** (scoring becomes damage, auto-strike over REST, opcode 32
+answers "update", the 300 s session removed from the wire) needs
+`security-review` before it merges. It is targeted at the Oct 15-22 window.
+
 ## 37. A late-game gold sink (L, design with the owner first)
 
 **Owner, 2026-09-23:** earning 100M gold is easy now, so the Delve's entry fee
