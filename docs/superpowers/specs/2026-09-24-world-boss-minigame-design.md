@@ -171,11 +171,13 @@ damage = ComputeAppliedDamage(currentHp, A * G * played)   (existing clamp [1,00
 
 ### 3.3 What an attempt does to the shared board
 
+> **Superseded in part by section 3.3.1 (2026-09-26).** The weak plate is now drawn per attempt from the unbroken plates, and the armour regrows at UTC midnight. The one-break rule below still stands. The reveal rule does not: in `wheel` mode nothing sets `WeakPlateRevealed`, and four broken plates simply make the fifth certain.
+
 - **Break.** Each attempt breaks **at most one** plate for everyone: the first spear, in tap order, that lands with class Plate or Seam on a **non-weak, unbroken** plate. Today one strike breaks one plate. This rule keeps that information rate (three attempts means at most three breaks per player) even though an attempt now throws five spears. Without it, one attempt would break three or four plates and solve the board for everyone within minutes, which is the brief's own objection to E2.
 - **Reveal.** A weak-plate hit **no longer** sets `WeakPlateRevealed`. `WeakPlateRevealed` becomes 1 when `BrokenPlateMask` covers all four non-weak plates, because at that point the board has solved itself by elimination and the flag only shows what everyone can already deduce. This applies to auto-strike too: an auto-strike on the weak plate tells *that player* "weak point", in its REST result, and nobody else.
 - Every server response and broadcast mirror still carries 255 for an unrevealed weak plate, with **one** exception. The `/throw` answer tells the thrower whether *their* spear hit it (§5.3).
 
-### 3.3.1 Owner request, 2026-09-26: the weak plate should change between attempts. DECIDE BEFORE PHASE 2.
+### 3.3.1 The weak plate changes every attempt (owner request and decision, 2026-09-26)
 
 **Why.** Once the weekly cadence (one encounter a week, one strike a day, #48) gave a player about seven strikes an encounter, one weak plate for the whole week became solvable. A solo player finds it in at most four days (each wrong strike breaks a plate, and four broken reveal the fifth). After that everyone strikes at 3x for the rest of the week. The owner wants the weak plate to move. They proposed two variants:
 
@@ -197,7 +199,29 @@ damage = ComputeAppliedDamage(currentHp, A * G * played)   (existing clamp [1,00
 
 **Recommendation: Variant 1, drawn from the unbroken plates.** It changes the fewest moving parts, removes the weekly solve-and-farm problem, keeps "breaking plates helps everyone", and makes the wheel's `WeakHit` glow the core of every strike instead of a one-time discovery.
 
-**Status: OPEN - the owner picks at the start of Phase 2.** Whichever is chosen, write it here as a decision, then change `WorldBossStrikeRules`, `ExecuteAttackAsync`/the strike order, the tests, and the `ledger`.
+**DECIDED (owner, 2026-09-26): a new weak plate for EVERY attempt, drawn only from the UNBROKEN plates, and armour that REGROWS every UTC midnight.**
+
+Why the combination and not variant 1 alone: drawing only from unbroken plates, the crowd would break the four non-weak plates within a handful of strikes (each attempt breaks at most one). By the first morning of the week every later strike would know the answer again. Regrowing the armour daily gives every day its own arc:
+- the day starts with five intact plates and a 1-in-5 guess;
+- early strikers probe, and their breaks narrow the odds for everyone after them;
+- late strikers cash in (1-in-4, 1-in-3, ... and certainty once four are broken).
+
+That fits one strike a day: there is a reason to come back daily, and a reason to care who struck before you.
+
+**The rules, for Phase 2 (all behind `FOLKIDLE_BOSS_MINIGAME=wheel`; opcode 32 under `off`/`practice` keeps today's per-encounter weak plate until the flip):**
+1. **Per attempt.** When a real challenge is issued (and for each REST auto-strike), the server draws its weak plate with `RandomNumberGenerator.GetInt32` **from the plates unbroken at that moment**. It holds it on the challenge and never on the snapshot. `/throw`'s `WeakHit` and the strike's `P`/`Auto` read the challenge's weak plate. `WorldBossSnapshot.WeakPlateIndex` is not used in `wheel` mode.
+2. **Breaking** is unchanged: each attempt breaks at most one plate, the first spear that lands Plate or better on a plate that is **not this attempt's weak plate** and not already broken. A plate that is weak for one player can be broken by another player's attempt, where it was not weak. That is intended: the board records what the crowd has ruled out today.
+3. **Four broken means the fifth is certain.** When only one plate is unbroken, every draw picks it. So at most four plates can ever be broken, and the last one never breaks (it is always that attempt's weak plate). There is no separate global reveal: `WeakPlateRevealed` is not set in `wheel` mode, and the screen's existing deduction ("every other plate is broken, so it must be plate N") is exactly true under this rule.
+4. **Regrowth.** At every UTC midnight (LiveOps' daily reset, the same moment strikes refill) `BrokenPlateMask` returns to 0 for the active encounter, and everyone online gets the new board.
+5. **Privacy** is unchanged and simpler: `WeakHit` goes only to the thrower. Since the secret lives for one attempt, practice, sharing and scouting cannot leak anything reusable. Practice keeps its own decoy, drawn the same way against a practice board with no broken plates.
+6. **Tests to write in Phase 2:**
+   - the draw only ever picks unbroken plates (a property test over masks);
+   - with four broken, the draw always picks the fifth;
+   - midnight clears the mask, and only the mask;
+   - a weak plate is never on the wire except as the thrower's own `WeakHit`;
+   - the ledger's `played >= Auto` still holds.
+
+**A tuning lever, NOT decided:** if the board still strips too fast in practice, make breaking require a **Seam** rather than a Plate hit, so stripping armour is itself a skill. Decide it from the first weeks' data, not in advance.
 ### 3.4 The enraged wheel: the boss's last 25% of HP (owner decision, final)
 
 **When:** a challenge is **enraged** if, at issue time, `CurrentHp <= 0.25 x MaxHp` (the boss snapshot row, read in the eligibility step). The phase is decided **once, at issue**, and written into the schedule (`"Enraged": true`). A challenge never changes difficulty mid-play, and its score never depends on when the HP crossed the line.
