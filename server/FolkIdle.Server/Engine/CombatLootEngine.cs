@@ -1131,7 +1131,7 @@ namespace FolkIdle.Server.Engine
                         LootTableEntry[] lootTable = ContentRegistry.GetLootTable(monsterLootTableId).ToArray();
                         if (lootTable.Length > 0)
                         {
-                            await GrantMaterialDropAsync(dbContext, playerId, monsterId, lootTable, materialQuantityPct, resolvedCommodityDeltas);
+                            RollMaterialDrop(playerId, monsterId, lootTable, materialQuantityPct, resolvedCommodityDeltas);
                             _materialsGranted++;
                         }
                     }
@@ -1155,6 +1155,10 @@ namespace FolkIdle.Server.Engine
                             _dropTally, DropSource.BossGuarantee));
                     }
                 }
+
+                // Every material this request rolled, in one locked read and
+                // one write, however many kills it carried.
+                await ApplyCommodityDeltasAsync(dbContext, playerId, resolvedCommodityDeltas);
 
                 await dbContext.SaveChangesAsync();
 
@@ -1274,8 +1278,18 @@ namespace FolkIdle.Server.Engine
         // needs to be told WHAT dropped, which is the whole point of the
         // feed, and only this method knows which loot-table entry won the
         // weighted roll.
-        private async Task GrantMaterialDropAsync(
-            FolkIdleDbContext dbContext, long playerId, int monsterId, LootTableEntry[] lootTable,
+        //
+        // Modul: A ROLL NO LONGER TOUCHES THE DATABASE (2026-09-25). This
+        // used to take its own SELECT ... FOR UPDATE on the material's chest
+        // row for every roll, and an offline catch-up passes its whole window
+        // through the kill loop - so twelve hours away was thousands of
+        // single-row round trips in one transaction. pg_stat_statements
+        // counted 9.3M of them, and against Supabase every one was billable
+        // egress; that is what spent the free quota. The roll now only adds
+        // to resolvedCommodityDeltas, and ProcessMonsterLootDropAsync writes
+        // the sum once per request through ApplyCommodityDeltasAsync.
+        private void RollMaterialDrop(
+            long playerId, int monsterId, LootTableEntry[] lootTable,
             float materialQuantityPct, Dictionary<string, long> resolvedCommodityDeltas)
         {
             int totalWeight = 0;
@@ -1311,30 +1325,56 @@ namespace FolkIdle.Server.Engine
                 // loot range (ids 250+) needs GetItemBaseId, the same
                 // full-catalog lookup equipment drops already use.
                 string materialItemId = ContentRegistry.GetItemBaseId(entry.ItemId);
-                var existing = await dbContext.CommodityRecords
-                    .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {materialItemId} FOR UPDATE")
-                    .SingleOrDefaultAsync();
+                if (string.IsNullOrEmpty(materialItemId)) return;
 
-                if (existing == null)
-                {
-                    dbContext.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = materialItemId, Quantity = quantity });
-                }
-                else
-                {
-                    existing.Quantity += quantity;
-                }
-
-                // Modul: THE DURABLE RETRY OUTBOX (audit #18) - see the
-                // plain-data accumulator declared at the top of
-                // ProcessMonsterLootDropAsync. Coalesced here (one kill can
-                // roll the same material more than once across a batch) so a
-                // retry replays one delta per material instead of one row per
-                // roll.
+                // Modul: THE ONE ACCUMULATOR. It is both what the write applies
+                // (ApplyCommodityDeltasAsync, after the kill loop) and what the
+                // durable retry outbox (audit #18) persists if that write
+                // throws, so the two cannot disagree about what was rolled.
                 resolvedCommodityDeltas.TryGetValue(materialItemId, out long existingDelta);
                 resolvedCommodityDeltas[materialItemId] = existingDelta + quantity;
 
                 PublishLootDrop(playerId, monsterId, entry.ItemId, quantity, qualityTier: 0, Network.ResponseLootDropPacket.DropKindMaterial);
                 return;
+            }
+        }
+
+        /// <summary>
+        /// Adds each (BaseId, quantity) to the player's chest: one
+        /// SELECT ... FOR UPDATE over every row the batch touches, then an
+        /// increment or an insert per material, which the caller's
+        /// SaveChangesAsync writes. The row lock is taken only over those rows,
+        /// exactly as the per-roll version took it, just once.
+        /// </summary>
+        internal static async Task ApplyCommodityDeltasAsync(
+            FolkIdleDbContext dbContext, long playerId, IReadOnlyDictionary<string, long> deltas)
+        {
+            if (deltas.Count == 0) return;
+
+            var ids = new List<string>(deltas.Count);
+            foreach (var delta in deltas)
+            {
+                if (delta.Value > 0 && !string.IsNullOrEmpty(delta.Key)) ids.Add(delta.Key);
+            }
+            if (ids.Count == 0) return;
+
+            var idArray = ids.ToArray();
+            var rows = await dbContext.CommodityRecords
+                .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = ANY({idArray}) FOR UPDATE")
+                .ToListAsync();
+
+            foreach (string id in ids)
+            {
+                long quantity = deltas[id];
+                var row = rows.FirstOrDefault(r => r.ItemId == id);
+                if (row == null)
+                {
+                    dbContext.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = id, Quantity = quantity });
+                }
+                else
+                {
+                    row.Quantity += quantity;
+                }
             }
         }
 
