@@ -899,8 +899,9 @@ namespace FolkIdle.Server.Domain.Economy
                     return outcome;
                 }
 
-                var player = await db.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == playerId);
+                var player = await db.PlayerRecords.SingleAsync(p => p.Id == playerId);
                 goldRow!.Quantity -= price;
+                player.DelveDeepGoldSpent += price;
                 run!.LanternsBought++;
                 run.ChargesRemaining = 1;
                 // A fresh light shows the floor afresh.
@@ -1069,6 +1070,7 @@ namespace FolkIdle.Server.Domain.Economy
                 }
 
                 goldRow.Quantity -= toll;
+                player!.DelveDeepGoldSpent += toll;
 
                 if (!run.IsDeep)
                 {

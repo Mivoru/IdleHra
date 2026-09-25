@@ -98,6 +98,92 @@ namespace FolkIdle.Server.Tests
             Assert.All(notables, n => Assert.NotNull(n.EquipmentInstanceId));
         }
 
+        // Modul: MATERIALS ARE WRITTEN ONCE PER REQUEST, 2026-09-25. Every
+        // material roll used to take its own SELECT ... FOR UPDATE, so one
+        // offline window was thousands of round trips, and that traffic spent
+        // the Supabase egress quota. Rolls now only add to one accumulator,
+        // and ApplyCommodityDeltasAsync writes the sum once. The witness here
+        // is the loot FEED: every roll publishes its quantity, so the chest
+        // must hold exactly what the feed announced. Two batches cover both
+        // paths, insert and increment, and each material must still be ONE
+        // row: a batch that Add()ed twice would leave a duplicate.
+        [Fact]
+        public async Task MaterialsFromTwoBatches_LandInOneRowEach_ExactlyAsTheFeedAnnounced()
+        {
+            var player = await CreatePlayerAsync();
+
+            for (int batch = 0; batch < 2; batch++)
+            {
+                long piecesBefore;
+                await using (var before = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    piecesBefore = await before.LootTierDailyCounts.AsNoTracking()
+                        .Where(c => c.PlayerId == player.Id).SumAsync(c => (long)c.Count);
+                }
+
+                var engine = new CombatLootEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+                try
+                {
+                    CombatLootEngine.DropRequestQueue.Enqueue(new CombatLootDropRequest
+                    {
+                        PlayerId = player.Id,
+                        MonsterId = ContentRegistry.FirstCanonicalMonsterId,
+                        Kills = 1000,
+                        Source = DropSource.Offline,
+                    });
+                    engine.StartCron();
+
+                    var deadline = DateTime.UtcNow.AddSeconds(60);
+                    while (true)
+                    {
+                        Assert.True(DateTime.UtcNow < deadline, $"batch {batch + 1} never committed");
+                        await Task.Delay(500);
+                        await using var check = await _fixture.DbContextFactory.CreateDbContextAsync();
+                        long pieces = await check.LootTierDailyCounts.AsNoTracking()
+                            .Where(c => c.PlayerId == player.Id).SumAsync(c => (long)c.Count);
+                        if (pieces > piecesBefore) break;
+                    }
+                }
+                finally
+                {
+                    engine.StopCron();
+                }
+            }
+
+            var announced = _fixture.PlayerRegistry.OutboundLootDropQueue.ToArray()
+                .Where(d => d.PlayerId == player.Id && d.DropKind == Network.ResponseLootDropPacket.DropKindMaterial)
+                .GroupBy(d => ContentRegistry.GetItemBaseId(d.ItemId))
+                .ToDictionary(g => g.Key, g => g.Sum(d => (long)d.Quantity));
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var rows = await db.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == player.Id && c.ItemId != "gold")
+                .ToListAsync();
+
+            Assert.True(announced.Count > 0, "2,000 kills rolled no material at all");
+            Assert.Equal(rows.Count, rows.Select(r => r.ItemId).Distinct().Count());
+            Assert.Equal(announced.OrderBy(kv => kv.Key), rows.ToDictionary(r => r.ItemId, r => r.Quantity).OrderBy(kv => kv.Key));
+        }
+
+        [Fact]
+        public void AMaterialRollTouchesNoDatabase()
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, "FolkIdle.Server"))) dir = dir.Parent;
+            Assert.NotNull(dir);
+            string source = File.ReadAllText(Path.Combine(dir!.FullName, "FolkIdle.Server", "Engine", "CombatLootEngine.cs"));
+
+            int start = source.IndexOf("private void RollMaterialDrop(", StringComparison.Ordinal);
+            Assert.True(start >= 0, "RollMaterialDrop is gone - update this guard with whatever replaced it");
+            int end = source.IndexOf("\n        }\n", start, StringComparison.Ordinal);
+            if (end < 0) end = source.IndexOf("\r\n        }\r\n", start, StringComparison.Ordinal);
+            string body = source.Substring(start, end - start);
+
+            Assert.DoesNotContain("await", body);
+            Assert.DoesNotContain("FOR UPDATE", body);
+            Assert.DoesNotContain("dbContext", body);
+        }
+
         [Fact]
         public async Task AutoSalvagedDrops_AreCounted_AsSalvaged_AndGetNoRow()
         {

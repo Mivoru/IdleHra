@@ -3773,15 +3773,14 @@ merged in PR #32.
   repeatable). **No repeatable sink absorbs 30% of an hour**: that row is
   skipped until the Deep lands.
 
-**DONE 2026-09-25, all three phases shipped. The Deep is behind
-`FOLKIDLE_DELVE_DEEP`, and the flag is OFF in production until the owner
-turns it on.**
+**DONE 2026-09-25, all three phases shipped, and the Deep is ON in
+production** (`FOLKIDLE_DELVE_DEEP=on` in the box's `ops/oracle/.env`,
+deployed as 1.0.719).
 - **Phase 0.2** is PR #34.
 - **Phase 1** (descend on a frozen stake, tolls, records, the 7-day
-  high-water mark) was re-opened as PR #39 after #35 stranded, and is
-  deployed as 1.0.717.
+  high-water mark) was re-opened as PR #39 after #35 stranded.
 - **Phase 2** (lanterns at stake x 2^k up to 8, six titles at Deep floors
-  10-50, the weekly Deepest board that pays nothing) is the phase 2 PR.
+  10-50, the weekly Deepest board that pays nothing) is PR #40.
 
 The sink table after the Deep: one descent at the top account's 492M
 holdings is a 2.46M stake, **about 88 minutes of top income (1.67M/h) for the first
@@ -3790,9 +3789,28 @@ skipped, and `TheDeepsWorkedPricesAreTheSpecs` pins pushes to floors 12 and
 20 at 0.5-4 h and 8-24 h of income. A wallet parked on an alt still pays on
 the 7-day high.
 
-**Phase 3 (measure, no code)** is still open: a week after the flag goes on,
-run read-only SELECTs over `EcoTelemetryLedgers`, the top account's
-`DelveDeepestFloor` and the `player_titles` count.
+**Phase 3 (measure) is due on 2026-10-02**, a week after the flag went on.
+It is one command:
+
+    ssh folkidle-server "cd ~/folkidle/ops/oracle && docker compose exec -T postgres psql -U folkidle -d folkidle" < ops/oracle/deep-phase3.sql
+
+Compare it against the day-0 baseline below, then write the week's numbers
+under it.
+
+**Found while preparing it: nothing recorded what the Deep took.** Tolls
+and lanterns came straight off the chest row, and `EcoTelemetryEngine`
+counted only guild sinks and market fees as consumed. The week would have
+produced depths and titles but no gold figure. Since 2026-09-25 two things
+fix that:
+- `PlayerRecords.DelveDeepGoldSpent` is a lifetime total of every toll and
+  lantern, written in the same transaction as the debit (migration
+  `AddDelveDeepGoldSpent`);
+- the eco audit sums that column into `TotalGoldConsumed`.
+
+Tolls paid on the flag's first hours, before the column existed, are not
+counted.
+
+**Day-0 baseline:** (filled in at deploy, below)
 
 ## 38. Guild Wars: design the whole system (XL, design with the owner first)
 

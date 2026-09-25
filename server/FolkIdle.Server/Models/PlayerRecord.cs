@@ -258,6 +258,17 @@ namespace FolkIdle.Server.Models
         public int DelveDeepestThisWeek { get; set; }
         public System.DateTime? DelveDeepestThisWeekAtUtc { get; set; }
 
+        // Modul: WHAT THE DEEP HAS TAKEN, lifetime, in gold: every toll and
+        // every lantern, added in the same transaction as the debit.
+        //
+        // Task 37's Phase 3 asks what share of income the Deep absorbs, and
+        // until 2026-09-25 nothing recorded it. The tolls and lanterns came
+        // straight off the chest row, EcoTelemetryEngine counted only guild
+        // sinks and market fees as "consumed", and the week of live data would
+        // have held depths and titles but no gold. EcoTelemetryEngine sums this
+        // into TotalGoldConsumed now. DelveEngine is its only writer.
+        public long DelveDeepGoldSpent { get; set; }
+
         /// <summary>
         /// The title the player shows, by TitleRegistry slug, or null. Set only
         /// through the title endpoint, which refuses a slug not in player_titles.

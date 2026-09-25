@@ -56,10 +56,61 @@ It was proven on the day by restoring a dump into a scratch database: 70
 tables, 59 players and 1,961 items, matching production. The restore
 command is in the script's header.
 
-**These dumps live on the same disk as the database, so a lost disk loses
-both.** Copy `~/folkidle-backups/` off the box regularly, for example:
+**The off-box copy lives on the owner's PC, at `D:\FolkIdleBackups\`.**
+The box's own dumps share a disk with the database, so a lost disk would
+take both.
+- `ops/oracle/pull-backups.ps1` copies every dump the PC does not already
+  have into `D:\FolkIdleBackups\dumps\` and keeps the newest 30 (the box
+  keeps only 7).
+- Each file is copied under a `.partial` name and renamed only once its size
+  matches the box's, so a pull cut off by a sleeping laptop is retried
+  rather than kept truncated.
+- It logs one line per run to `D:\FolkIdleBackups\pull.log`.
 
-    scp folkidle-server:folkidle-backups/*.dump <somewhere safe>/
+It runs as the Windows scheduled task **"FolkIdle backup pull"**:
+- daily at 10:00 and at logon;
+- with "run as soon as possible after a missed start", so a PC that was off
+  at 10:00 catches up;
+- only when the network is available.
+
+It runs as the logged-in user, because it needs that user's SSH key for
+`folkidle-server`. To re-create the task:
+
+    $script = 'C:\Users\promi\skola2025\IdleHra\ops\oracle\pull-backups.ps1'
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$script`""
+    $triggers = @((New-ScheduledTaskTrigger -Daily -At 10:00), (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME))
+    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 30) -RunOnlyIfNetworkAvailable
+    Register-ScheduledTask -TaskName 'FolkIdle backup pull' -Action $action -Trigger $triggers -Settings $settings -Force
+
+Check it with `Get-Content D:\FolkIdleBackups\pull.log -Tail 5`. A `FAILED`
+line names the reason. A newest dump more than two days old means either
+the box's cron or this task has stopped.
+
+To restore from a D: copy, `scp` it back to the box first, then follow the
+restore command in `backup-db.sh`.
+
+### Where the database time goes
+
+`pg_stat_statements` is preloaded (see the compose `command:`). To look:
+
+    docker compose exec -T postgres psql -U folkidle -d folkidle -c "select calls, rows, left(query, 120) from pg_stat_statements order by rows desc limit 20"
+
+The two costs found on 2026-09-25 while leaving Supabase:
+- **Per-roll combat material writes: FIXED.** Every material roll took its
+  own `SELECT ... FOR UPDATE`, and offline catch-up rolls a whole window in
+  one request, so there were 9.3M round trips. Rolls now sum in memory, and
+  `CombatLootEngine.ApplyCommodityDeltasAsync` writes each request once.
+  `DropRecordTests.AMaterialRollTouchesNoDatabase` guards it.
+- **Whole-list equipment reads: kept on purpose.** The Forge and Inventory
+  snapshots (`HandleForgeInventorySnapshot`, `HandlePlayerInventorySnapshot`)
+  return a player's entire `EquipmentInstances` list, because the client
+  windows it. With the database local, those rows no longer cross a
+  network. The biggest account now holds 1,727 items, down from 17,836 at
+  its worst. Page the endpoints if that number starts climbing again.
+
+The app's connection pool is 40 here (`FOLKIDLE_DB_MAX_POOL` in the compose
+file), not the code default of 12, which was sized under Supabase's
+15-client pooler.
 
 Why: Render's free instance is 0.15 vCPU / 512 MB and sleeps after 15 minutes,
 which for an idle game means the tick loop stops.

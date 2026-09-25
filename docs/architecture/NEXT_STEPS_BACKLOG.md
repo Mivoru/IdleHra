@@ -21,7 +21,7 @@ do next.
 
 # HANDOFF 2026-09-25 - tasks 25-35 and 37 shipped (START HERE)
 
-**Live:** production is **1.0.717** (main `d10ceeb`, #38 + #39), plus the task 37 phase 2 PR once it deploys. `smoke:screens` 26/26 on production. **The Deep's flag `FOLKIDLE_DELVE_DEEP` is OFF in production: the owner turns it on.**
+**Live:** production runs main with #38-#42 (task 37 complete, Postgres on the box). `smoke:screens` 26/26 on production. **The Deep is ON in production** (`FOLKIDLE_DELVE_DEEP=on` in the box's `ops/oracle/.env` since 2026-09-25). **The database is no longer on Supabase**: see `ops/oracle/README.md`.
 
 **Shipped and deployed, 2026-09-24:**
 
@@ -59,7 +59,7 @@ The specs and plans for 36/37/38 are in `docs/superpowers/{specs,plans}/2026-09-
 - **Found on the way: guild buffs had never worked.** `GuildBonusesCache` had four readers and no writer, so no purchased buff ever changed a number in combat, while the guild screen showed it as active. Now a purchase writes the cache, start-up loads it, and each entry expires by itself. `GuildBuffCacheTests` guards it. **Guilds holding a buff will see Damage/Exp/Gold/DropRate actually apply from this deploy on.**
 
 **Next, in order:**
-1. The owner turns `FOLKIDLE_DELVE_DEEP` on (`ops/oracle/.env`, then `deploy.sh`); Phase 3 measures a week later.
+1. Task 37 Phase 3 (measure) is due on **2026-10-02**, a week after the flag went on. Run `ops/oracle/deep-phase3.sql` on the box and record the result in TASK_BOARD section 37. The day-0 baseline is already recorded there.
 2. Build 36: wheel + parry minigame, behind a flag, aimed at the Oct 15-22 window, with a security review before merge.
 3. 38 waits until the population nears the floor.
 4. **Task 30 (docs match reality) goes LAST.** It includes the TASK_BOARD §32 line and the status lines for 27-29, 31, 33 and 34 (§34 still says "deploy pending", but it IS deployed).
