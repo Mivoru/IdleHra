@@ -117,6 +117,42 @@
     raf = requestAnimationFrame(frame);
   }
 
+  // Modul: A REOPENED RUN RESUMES FROM WHAT THE SERVER KEPT (code review,
+  // 2026-09-25). Starting again at Seq 0 with five spears reused Seqs the
+  // server had already answered, and it replayed the OLD answers against the
+  // new taps: wrong chips, a stale weak glow, and a card that disagreed with
+  // them. The challenge carries its answered throws and the parries they
+  // reported, and those are the starting state here.
+  {
+    const throws = [...(challenge.Throws ?? [])].sort((a, b) => a.Seq - b.Seq);
+    for (const t of throws) {
+      spears.push({ seq: t.Seq, plate: t.Plate, cls: t.Class, weak: t.WeakHit, counter: t.Counter !== null });
+      if (t.Counter) {
+        counters.push(t.Counter);
+        counterUsed.add(t.Counter.Interrupt);
+      } else {
+        taps.push({ Seq: t.Seq, TapMs: t.TapMs });
+        lastWheelTap = Math.max(lastWheelTap, t.TapMs);
+      }
+      nextSeq = Math.max(nextSeq, t.Seq + 1);
+    }
+    const playedSoFar = challenge.ElapsedMs - challenge.CountdownMs;
+    for (const p of challenge.Parries ?? []) {
+      parries.push(p);
+      answered.add(p.Interrupt);
+      const interrupt = schedule.Interrupts.find((i) => i.Index === p.Interrupt);
+      if (interrupt && isRead(interrupt, p.Choice, p.ChoiceMs)) readInterrupts.add(p.Interrupt);
+      else lost += 1;
+    }
+    // A response window that closed while the screen was away, unanswered.
+    for (const i of schedule.Interrupts) {
+      if (!answered.has(i.Index) && i.TellAtMs + i.ResponseCloseMs < playedSoFar) {
+        answered.add(i.Index);
+        lost += 1;
+      }
+    }
+  }
+
   // Resume where a reopened screen left off; otherwise count down.
   {
     const playedMs = challenge.ElapsedMs - challenge.CountdownMs;
@@ -193,6 +229,10 @@
   function throwAtWheel(event: PointerEvent) {
     if (phase !== 'play' || spearsLeft <= 0) return;
     const tapMs = event.timeStamp - t0;
+    // Code review, 2026-09-25: the run ends on the NEXT frame, so a tap in the
+    // last ~16 ms after MaxPlayMs was still sent - and the server refuses the
+    // whole log for one time past MaxPlayMs, throwing away every good spear.
+    if (tapMs > challenge.MaxPlayMs) return;
     if (interruptAt(schedule, tapMs) !== null) return;
     if (tapMs - lastWheelTap < challenge.MinReloadMs) return;
     lastWheelTap = tapMs;
@@ -225,6 +265,7 @@
     if (!counterOpen || activeInterrupt < 0 || spearsLeft <= 0) return;
     const interrupt = activeInterrupt;
     const tapMs = event.timeStamp - t0;
+    if (tapMs > challenge.MaxPlayMs) return;
     counterUsed.add(interrupt);
     counterOpen = false;
     const seq = nextSeq++;

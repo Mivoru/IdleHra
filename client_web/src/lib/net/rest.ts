@@ -1623,6 +1623,17 @@ export interface ShieldWheelChallenge {
   RevealedWeakPlate: number;
   /** How long the challenge has been open, so a reopened screen resumes the same clock. */
   ElapsedMs: number;
+  /** Spears already thrown on this challenge, as the server answered them - a reopened screen restores from these. */
+  Throws: {
+    Seq: number;
+    TapMs: number;
+    Plate: number;
+    Class: 'None' | 'Glance' | 'Plate' | 'Seam';
+    WeakHit: boolean;
+    Counter: CounterEntryDto | null;
+  }[];
+  /** The parries those throws reported. */
+  Parries: ParryEntryDto[];
 }
 
 export interface ChallengeResponse {

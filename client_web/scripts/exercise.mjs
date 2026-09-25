@@ -1366,6 +1366,46 @@ async function playPractice(aimed) {
 
     await page.locator('[data-schedule]').getByRole('button', { name: /^\s*Close\s*$/i }).first().click();
     await page.waitForTimeout(500);
+
+    // Code review, 2026-09-25: a reopened run must resume from what the
+    // server kept, not restart at Seq 0 with five spears (which replayed the
+    // server's OLD answers against new taps). Throw one, reload, reopen.
+    await practiceButton.click();
+    await page.locator('[data-schedule][data-t0]').waitFor({ timeout: 10000 });
+    const schedule = JSON.parse(await page.locator('[data-schedule]').getAttribute('data-schedule'));
+    const firstTap = (() => {
+      for (let t = 200; t < schedule.MaxPlayMs; t += 50) if (!wheelFrozenAt(schedule, t) && !wheelFrozenAt(schedule, t + 200)) return t;
+      return 200;
+    })();
+    await page.evaluate(async (at) => {
+      const overlay = document.querySelector('[data-schedule]');
+      const t0 = Number(overlay.getAttribute('data-t0'));
+      await new Promise((r) => setTimeout(r, Math.max(0, t0 + at - performance.now())));
+      overlay.querySelector('.throw-zone')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
+    }, firstTap);
+    await page.waitForTimeout(1200);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+    await dismissOfflineSummary(3000);
+    await go('World Boss');
+    await page.getByRole('button', { name: /Practice the shield wheel/i }).first().click();
+    await page.locator('[data-schedule]').waitFor({ timeout: 10000 });
+    await page.waitForTimeout(600);
+    const resumed = await page.evaluate(() => ({
+      chips: document.querySelectorAll('[data-schedule] .chip').length,
+      spears: document.querySelector('[data-schedule] .status [aria-label$="spears left"]')?.getAttribute('aria-label') ?? '',
+    }));
+    record(
+      'a reopened practice run resumes with the spear it already threw',
+      resumed.chips === 1 && /^[0-4] spears left$/.test(resumed.spears),
+      `${resumed.chips} chip(s), "${resumed.spears}"`,
+    );
+    // Leave the half-played run behind; it expires on its own.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+    await dismissOfflineSummary(3000);
+    await go('World Boss');
+
     const after = await board();
     record(
       'practice moved neither the boss nor an attempt',

@@ -145,6 +145,59 @@ namespace FolkIdle.Server.Tests
                 service.Throw(Player, new ThrowRequest { ChallengeId = c.ChallengeId, Seq = 5, TapMs = after }).Result);
         }
 
+        // Code review, 2026-09-25: a counter whose interrupt has no parry in the
+        // same request used to throw inside the service and answer HTTP 500.
+        [Fact]
+        public void ACounterWithNoParryIsDroppedNotAnException()
+        {
+            var service = Service(BossMinigameMode.Practice);
+            var c = service.IssueChallenge(Player, practice: true).Challenge!;
+            var tell = c.Interrupts[0];
+            _now += WorldBossStrikeRules.CountdownMs + WorldBossStrikeRules.MaxPlayMs;
+
+            var answer = service.Throw(Player, new ThrowRequest
+            {
+                ChallengeId = c.ChallengeId,
+                Seq = 0,
+                TapMs = tell.TellAtMs + 500,
+                Counter = new CounterEntry(tell.Index, 0, tell.TellAtMs + 500, 1),
+                Parries = new(),
+            });
+
+            Assert.Equal(WorldBossStrikeResult.Landed, answer.Result);
+            Assert.Equal(-1, answer.Plate);
+            Assert.Equal(SpearClass.None, answer.Class);
+        }
+
+        // Code review, 2026-09-25: a reopened screen restarted at Seq 0 with
+        // five spears, so its throws reused Seqs the server had answered and
+        // got the OLD answers back. The challenge now carries what it has.
+        [Fact]
+        public void AReopenedChallengeCarriesItsThrowsAndParries()
+        {
+            var service = Service(BossMinigameMode.Practice);
+            var c = service.IssueChallenge(Player, practice: true).Challenge!;
+            var tell = c.Interrupts[0];
+            var read = new ParryEntry(tell.Index, ShieldWheelSchedule.CorrectChoice(tell.Tell), tell.TellAtMs + 300);
+            double tap = MovingTap(c, 100);
+            _now += WorldBossStrikeRules.CountdownMs + (long)tell.TellAtMs + 1_000;
+
+            var first = service.Throw(Player, new ThrowRequest { ChallengeId = c.ChallengeId, Seq = 0, TapMs = tap, Parries = new() { read } });
+            var counter = new CounterEntry(tell.Index, 1, tell.TellAtMs + 600, 3);
+            var second = service.Throw(Player, new ThrowRequest { ChallengeId = c.ChallengeId, Seq = 1, TapMs = counter.TapMs, Counter = counter, Parries = new() { read } });
+            Assert.Equal(SpearClass.Seam, second.Class);
+
+            var reopened = service.IssueChallenge(Player, practice: true);
+            Assert.Equal(WorldBossStrikeResult.Outstanding, reopened.Result);
+            var throws = reopened.Challenge!.Throws;
+            Assert.Equal(new[] { 0, 1 }, throws.Select(t => t.Seq));
+            Assert.Equal(first.Plate, throws[0].Plate);
+            Assert.Equal(first.Class, throws[0].Class);
+            Assert.Equal(3, throws[1].Plate);
+            Assert.NotNull(throws[1].Counter);
+            Assert.Equal(new[] { read }, reopened.Challenge.Parries);
+        }
+
         [Fact]
         public void ATooEarlyThrowIsNotStored()
         {

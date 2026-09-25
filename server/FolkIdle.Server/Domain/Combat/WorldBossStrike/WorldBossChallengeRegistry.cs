@@ -26,6 +26,18 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
 
         internal readonly object Gate = new();
         internal readonly Dictionary<int, RecordedThrow> Throws = new();
+        internal readonly Dictionary<int, ParryEntry> Parries = new();
+
+        /// <summary>Every parry a throw has reported so far, by interrupt, the first answer kept.</summary>
+        public IReadOnlyList<ParryEntry> ParriesSnapshot()
+        {
+            lock (Gate)
+            {
+                var list = new List<ParryEntry>(Parries.Values);
+                list.Sort((a, b) => a.Interrupt.CompareTo(b.Interrupt));
+                return list;
+            }
+        }
 
         public long ExpiresAtMs => IssuedAtMs + WorldBossStrikeRules.CountdownMs + WorldBossStrikeRules.MaxPlayMs + WorldBossChallengeRegistry.ExpiryGraceMs;
 
@@ -114,6 +126,18 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
                 if (challenge.Throws.TryGetValue(answer.Seq, out var stored)) return stored;
                 challenge.Throws[answer.Seq] = answer;
                 return answer;
+            }
+        }
+
+        /// <summary>
+        /// Keeps the parries a throw reported, so a reopened screen can resume
+        /// the same run - a parry, once made, is never replaced by a later one.
+        /// </summary>
+        public void RecordParries(WorldBossChallenge challenge, IEnumerable<ParryEntry> parries)
+        {
+            lock (challenge.Gate)
+            {
+                foreach (var parry in parries) challenge.Parries.TryAdd(parry.Interrupt, parry);
             }
         }
 

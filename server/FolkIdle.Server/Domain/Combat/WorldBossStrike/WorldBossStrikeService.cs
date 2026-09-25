@@ -48,8 +48,25 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         /// <summary>How long this challenge has been open, so a reopened screen resumes the same clock.</summary>
         public long ElapsedMs { get; init; }
 
+        /// <summary>
+        /// The spears this player has already thrown on this challenge, as the
+        /// server answered them. A reopened screen restores from these rather
+        /// than starting again at Seq 0 - which would reuse Seqs the server has
+        /// already answered and replay the old answers against new taps.
+        /// </summary>
+        public IReadOnlyList<RecordedThrowDto> Throws { get; init; } = Array.Empty<RecordedThrowDto>();
+
+        /// <summary>The parries those throws reported, so a resumed run knows which reads it has made.</summary>
+        public IReadOnlyList<ParryEntry> Parries { get; init; } = Array.Empty<ParryEntry>();
+
         public static ChallengeDto From(WorldBossChallenge challenge, long nowMs) => new()
         {
+            Throws = challenge.ThrowsSnapshot().Select(t => new RecordedThrowDto
+            {
+                Seq = t.Seq, TapMs = t.TapMs, Plate = t.Landing.Plate, Class = t.Landing.Class,
+                WeakHit = t.WeakHit, Counter = t.Counter,
+            }).ToList(),
+            Parries = challenge.ParriesSnapshot(),
             ChallengeId = challenge.ChallengeId,
             Practice = challenge.Practice,
             Enraged = challenge.Schedule.Enraged,
@@ -65,6 +82,16 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
             }).ToList(),
             ElapsedMs = Math.Max(0, nowMs - challenge.IssuedAtMs),
         };
+    }
+
+    public sealed class RecordedThrowDto
+    {
+        public int Seq { get; init; }
+        public double TapMs { get; init; }
+        public int Plate { get; init; }
+        public SpearClass Class { get; init; }
+        public bool WeakHit { get; init; }
+        public CounterEntry? Counter { get; init; }
     }
 
     public sealed class ChallengeResponse
@@ -253,8 +280,11 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
             SpearLanding landing;
             if (request.Counter is { } counter)
             {
-                var parry = parries.First(p => p.Interrupt == counter.Interrupt);
-                bool inWindow = reads.TryGetValue(counter.Interrupt, out var read)
+                // A counter with no parry for its interrupt is no read at all:
+                // dropped, like one outside its window - never a 500.
+                var parry = parries.FirstOrDefault(p => p.Interrupt == counter.Interrupt);
+                bool inWindow = parry != null
+                    && reads.TryGetValue(counter.Interrupt, out var read)
                     && request.TapMs >= parry.ChoiceMs && request.TapMs <= read.EndMs;
                 landing = inWindow
                     ? new SpearLanding(request.Seq, counter.Plate, SpearClass.Seam, true)
@@ -272,6 +302,7 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
             // Practice answers from ITS decoy, never the real secret.
             bool weakHit = landing.Class >= SpearClass.Plate && landing.Plate == challenge.DecoyWeakPlate;
             var recorded = _registry.RecordThrow(challenge, new RecordedThrow(request.Seq, request.TapMs, request.Counter, landing, weakHit));
+            _registry.RecordParries(challenge, parries);
             return Answer(recorded);
         }
 
