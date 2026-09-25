@@ -175,6 +175,29 @@ damage = ComputeAppliedDamage(currentHp, A * G * played)   (existing clamp [1,00
 - **Reveal.** A weak-plate hit **no longer** sets `WeakPlateRevealed`. `WeakPlateRevealed` becomes 1 when `BrokenPlateMask` covers all four non-weak plates, because at that point the board has solved itself by elimination and the flag only shows what everyone can already deduce. This applies to auto-strike too: an auto-strike on the weak plate tells *that player* "weak point", in its REST result, and nobody else.
 - Every server response and broadcast mirror still carries 255 for an unrevealed weak plate, with **one** exception. The `/throw` answer tells the thrower whether *their* spear hit it (§5.3).
 
+### 3.3.1 Owner request, 2026-09-26: the weak plate should change between attempts. DECIDE BEFORE PHASE 2.
+
+**Why.** Once the weekly cadence (one encounter a week, one strike a day, #48) gave a player about seven strikes an encounter, one weak plate for the whole week became solvable. A solo player finds it in at most four days (each wrong strike breaks a plate, and four broken reveal the fifth). After that everyone strikes at 3x for the rest of the week. The owner wants the weak plate to move. They proposed two variants:
+
+**Variant 1: a new random weak plate for every attempt.**
+- It fits the wheel best. Each strike becomes its own small puzzle. The first throws find the weak plate (the private `WeakHit` glow from `/throw`), and the counters, which are guaranteed Seams on a chosen plate, then exploit it. That is skill inside the attempt rather than a lookup.
+- Unmodified, it **empties the shared board**: breaking a plate helps nobody if the next attempt's weak plate can be anywhere.
+- **Recommended form: draw each attempt's weak plate only from the UNBROKEN plates.** Breaking still helps everyone, because every broken plate raises the odds of the rest (1/5, 1/4, 1/3, ...). The crowd layer survives, and the solve-it-once-then-farm problem disappears. When four plates are broken the fifth is always weak, and that is the end-game reward for a crowd that stripped the armour.
+- Implementation consequences:
+  - The weak index is drawn **per challenge** (per auto-strike), from `RandomNumberGenerator`, at issue.
+  - It is held on the challenge, never on the snapshot.
+  - `IsWeakPlateAsync` becomes `challenge.WeakPlate`.
+  - `WorldBossSnapshot.WeakPlateIndex` and `WeakPlateRevealed` lose their meaning. The reveal-by-elimination rule becomes "four broken, so the last is always weak", which the board already shows.
+  - The secret test (Phase 2 Task 2.3) still applies, per challenge.
+
+**Variant 2: the weak plate stays until it is hit, then moves for the next attempt.**
+- **Per player** (each player has their own secret plate): the shared board no longer means anything, because broken plates and one player's discovery say nothing about another player's secret.
+- **Shared** (it moves for everyone once anyone hits it): finding the plate **hurts the other players** by moving the answer away from them. That is the opposite of the co-operative board this design is built on, and it rewards hiding a discovery.
+- Either way it needs new state: a per-player or global "current weak plate", plus rules for moving it.
+
+**Recommendation: Variant 1, drawn from the unbroken plates.** It changes the fewest moving parts, removes the weekly solve-and-farm problem, keeps "breaking plates helps everyone", and makes the wheel's `WeakHit` glow the core of every strike instead of a one-time discovery.
+
+**Status: OPEN - the owner picks at the start of Phase 2.** Whichever is chosen, write it here as a decision, then change `WorldBossStrikeRules`, `ExecuteAttackAsync`/the strike order, the tests, and the `ledger`.
 ### 3.4 The enraged wheel: the boss's last 25% of HP (owner decision, final)
 
 **When:** a challenge is **enraged** if, at issue time, `CurrentHp <= 0.25 x MaxHp` (the boss snapshot row, read in the eligibility step). The phase is decided **once, at issue**, and written into the schedule (`"Enraged": true`). A challenge never changes difficulty mid-play, and its score never depends on when the HP crossed the line.

@@ -129,7 +129,9 @@ battle session is gone. What that does to the argument above:
   to "most of your strikes land at 3x once anyone has solved it".
 
 Whether that is too easy is an open question for the owner, to be watched in the
-first weeks' `player_world_boss_attempts`. Levers, if it is:
+first weeks' `player_world_boss_attempts`. **The owner answered on 2026-09-26: the
+weak plate should change between attempts.** The variants and the recommendation
+are in the task 36 spec, section 3.3.1, to be decided before task 36 Phase 2. Levers, if it is:
 - more plates;
 - no elimination reveal (the task 36 spec keeps it);
 - a weak plate that moves mid-week.
