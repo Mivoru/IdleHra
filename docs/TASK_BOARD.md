@@ -3810,7 +3810,25 @@ fix that:
 Tolls paid on the flag's first hours, before the column existed, are not
 counted.
 
-**Day-0 baseline:** (filled in at deploy, below)
+**Day-0 baseline, 2026-09-25 about 18:05 UTC** (deployed as 1.0.726, about
+an hour after the flag went on). Nobody had entered the Deep yet:
+- 0 players had paid a toll, and `DelveDeepGoldSpent` totalled 0;
+- 0 records past floor 8, 0 titles, 0 open Deep runs.
+
+The economy it has to act on:
+- 558.7M gold held in total;
+- **one account holds 558.6M of it**, the only holder of 10M or more;
+- the eco ledger's `TotalGoldMinted` stood at 559.3M and
+  `TotalGoldConsumed` at 0.57M.
+
+So the Deep's effect is, in practice, whether that one account descends.
+Its stake would be 0.5% of its 7-day high, about 2.8M.
+
+**Week 1 (2026-10-02):** *to be filled in from `deep-phase3.sql`.* The
+owner's PC runs it automatically: the one-time scheduled task **"FolkIdle
+Deep phase 3 capture"** fires at 10:30 that day, or at the next logon if the
+PC is off, and writes `D:\FolkIdleBackups\deep-phase3-week1.txt`. Copy its
+numbers here.
 
 ## 38. Guild Wars: design the whole system (XL, design with the owner first)
 
