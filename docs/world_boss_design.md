@@ -165,9 +165,21 @@ thought about:
 
 ## What is deliberately NOT in this design
 
-- **Minigames.** They were mentioned in the request. Everything above is
-  reachable with a choice and a number; a minigame adds an input surface, an
-  exploit surface, and an accessibility problem, for the same decision.
+- **Minigames**, at the time of this design (task 10). They were mentioned in
+  the request. Everything above is reachable with a choice and a number; a
+  minigame adds an input surface, an exploit surface, and an accessibility
+  problem, for the same decision. **Superseded by task 36 (2026-09-24):** the
+  owner chose the shield wheel with parries. It answers those three
+  objections as follows:
+  - it sends only timestamps and choices, scored against a server-issued
+    schedule;
+  - it has no automatic penalty of any kind;
+  - auto-strike stays as the accessibility path, and a played attempt never
+    pays less than auto-striking the same plate.
+
+  Spec: `docs/superpowers/specs/2026-09-24-world-boss-minigame-design.md`.
+  Practice shipped behind a flag on 2026-09-25; the damage-dealing half has
+  not.
 - **Changing the reward table.** Ranked by contribution is fine and orthogonal.
 - **Boss phases or timers.** They would make the fight a schedule, which is the
   one thing an idle game must not ask for.

@@ -1570,3 +1570,141 @@ export interface DeepestBoardRow {
 export function fetchDeepestBoard(): Promise<DeepestBoardRow[]> {
   return authedGet<{ Entries: DeepestBoardRow[] }>('/api/v1/leaderboard/deepest').then((r) => r?.Entries ?? []);
 }
+
+// ---------------------------------------------------------------------------
+// The world boss shield wheel (task 36). REST DTOs are hand-written by design
+// (REST is not the generated protocol); the Result list is pinned against the
+// server's enum by tests/worldBossResults.test.ts.
+// ---------------------------------------------------------------------------
+
+export type WorldBossStrikeResult =
+  | 'Issued'
+  | 'Outstanding'
+  | 'Disabled'
+  | 'NotActive'
+  | 'AlreadyDefeated'
+  | 'NoAttemptsLeft'
+  | 'TooLateInWindow'
+  | 'ChallengeOutstanding'
+  | 'NoChallenge'
+  | 'TooEarly'
+  | 'OutOfSpears'
+  | 'Landed'
+  | 'ResolvedAtFloor'
+  | 'Refused'
+  | 'Queued'
+  | 'Failed'
+  | 'PracticeScored';
+
+export interface ShieldWheelChallenge {
+  ChallengeId: string;
+  Practice: boolean;
+  Enraged: boolean;
+  CountdownMs: number;
+  MaxPlayMs: number;
+  Spears: number;
+  FlightMs: number;
+  MinReloadMs: number;
+  ToleranceMs: number;
+  PlateDegrees: number;
+  SeamDegrees: number;
+  RivetDegrees: number;
+  StartAngleDeg: number;
+  Segments: { StartMs: number; DurationMs: number; DegPerSec: number; Interrupt?: number | null }[];
+  Interrupts: {
+    Index: number;
+    TellAtMs: number;
+    Tell: 'Left' | 'Right' | 'Overhead';
+    ReactionFloorMs: number;
+    ResponseCloseMs: number;
+    InterruptMs: number;
+  }[];
+  BrokenPlateMask: number;
+  RevealedWeakPlate: number;
+  /** How long the challenge has been open, so a reopened screen resumes the same clock. */
+  ElapsedMs: number;
+  /** Spears already thrown on this challenge, as the server answered them - a reopened screen restores from these. */
+  Throws: {
+    Seq: number;
+    TapMs: number;
+    Plate: number;
+    Class: 'None' | 'Glance' | 'Plate' | 'Seam';
+    WeakHit: boolean;
+    Counter: CounterEntryDto | null;
+  }[];
+  /** The parries those throws reported. */
+  Parries: ParryEntryDto[];
+}
+
+export interface ChallengeResponse {
+  Result: WorldBossStrikeResult;
+  /** 'off' | 'practice' | 'wheel' - FOLKIDLE_BOSS_MINIGAME on the server. */
+  Mode: string;
+  Challenge: ShieldWheelChallenge | null;
+}
+
+export interface ParryEntryDto {
+  Interrupt: number;
+  Choice: 'DodgeLeft' | 'Block' | 'DodgeRight';
+  ChoiceMs: number;
+}
+
+export interface CounterEntryDto {
+  Interrupt: number;
+  Seq: number;
+  TapMs: number;
+  Plate: number;
+}
+
+export interface ThrowResponse {
+  Result: WorldBossStrikeResult;
+  Seq: number;
+  /** -1 when the spear was dropped. */
+  Plate: number;
+  Class: 'None' | 'Glance' | 'Plate' | 'Seam';
+  WeakHit: boolean;
+}
+
+export interface PracticeScoreResponse {
+  Result: WorldBossStrikeResult;
+  Verdict: 'Accepted' | 'Refused';
+  Landings: { Seq: number; Plate: number; Class: 'None' | 'Glance' | 'Plate' | 'Seam'; IsCounter: boolean; WeakHit: boolean }[];
+  SpearsLost: number;
+  Score: number;
+  Multiplier: number;
+  PlateMultiplier: number;
+  Played: number;
+  NoDamageDealt: boolean;
+}
+
+export function fetchBossChallenge(): Promise<ChallengeResponse> {
+  return authedGet<ChallengeResponse>('/api/v1/worldboss/challenge');
+}
+
+export function issueBossChallenge(practice: boolean): Promise<ChallengeResponse | null> {
+  return authedPost<ChallengeResponse>('/api/v1/worldboss/challenge', { Practice: practice });
+}
+
+/**
+ * One spear. Only times and choices: the server scores them against its own
+ * schedule and answers with the plate, the class and - the one thing the round
+ * trip exists for - whether it struck the weak plate.
+ */
+export function throwSpear(body: {
+  ChallengeId: string;
+  Seq: number;
+  TapMs: number;
+  Counter?: CounterEntryDto | null;
+  Parries: ParryEntryDto[];
+}): Promise<ThrowResponse | null> {
+  return authedPost<ThrowResponse>('/api/v1/worldboss/throw', body);
+}
+
+export function scoreBossPractice(body: {
+  ChallengeId: string;
+  Taps: { Seq: number; TapMs: number }[];
+  Parries: ParryEntryDto[];
+  Counters: CounterEntryDto[];
+}): Promise<PracticeScoreResponse | null> {
+  return authedPost<PracticeScoreResponse>('/api/v1/worldboss/practice/score', body);
+}

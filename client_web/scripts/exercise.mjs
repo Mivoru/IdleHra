@@ -1215,6 +1215,206 @@ await go('World Boss');
   );
 }
 
+// --- the shield wheel, practice (task 36 Phase 1) -----------------------------
+//
+// Modul: PRACTICE MUST PROVE SKILL MOVES THE NUMBER, AND THAT IT TOUCHES NOTHING.
+// Two runs: one aimed (every interrupt read correctly and countered, every
+// wheel spear timed to a seam crossing) and one that reads every tell wrongly.
+// The aimed run must reach M >= 1.6 on the card; the wrong run must show lost
+// spears. Neither may move the boss's health or an attempt pip - practice is
+// free by design (spec 1, decision 5).
+//
+// The taps are fired INSIDE the page, against the overlay's own t0 (data-t0),
+// because a Playwright click cannot choose its event timestamp and the score is
+// all timestamps. The geometry below is the same arithmetic as
+// src/lib/game/shieldWheel.ts, duplicated here only to aim.
+const wheelAngleAt = (s, t) => {
+  let a = s.StartAngleDeg;
+  for (const seg of s.Segments) {
+    if (t <= seg.StartMs) break;
+    const end = seg.StartMs + seg.DurationMs;
+    a += (seg.DegPerSec * (Math.min(t, end) - seg.StartMs)) / 1000;
+    if (t <= end) break;
+  }
+  return ((a % 360) + 360) % 360;
+};
+const wheelFrozenAt = (s, t) => s.Interrupts.some((i) => t >= i.TellAtMs && t < i.TellAtMs + i.InterruptMs);
+/** Landing times (ms after t0) when some plate's seam centre sits at the impact point. */
+const seamLandings = (s) => {
+  const out = [];
+  let prev = wheelAngleAt(s, 0);
+  for (let t = 1; t < s.MaxPlayMs - 200; t++) {
+    const cur = wheelAngleAt(s, t);
+    if (!wheelFrozenAt(s, t)) {
+      let d = cur - prev;
+      if (d > 180) d -= 360;
+      if (d < -180) d += 360;
+      const lo = Math.min(prev, prev + d);
+      const hi = Math.max(prev, prev + d);
+      for (let p = 0; p < 5; p++) {
+        const c = p * 72 + 36;
+        if ([c - 360, c, c + 360].some((x) => x > lo && x <= hi)) out.push(t);
+      }
+    }
+    prev = cur;
+  }
+  return out;
+};
+const correctParry = { Left: 'Dodge right', Right: 'Dodge left', Overhead: 'Block' };
+const wrongParry = { Left: 'Dodge left', Right: 'Block', Overhead: 'Dodge right' };
+
+/** Plays one practice run in the page. `aimed` reads and counters; otherwise every read is wrong. */
+async function playPractice(aimed) {
+  await page.locator('[data-schedule]').waitFor({ timeout: 10000 });
+  const schedule = JSON.parse(await page.locator('[data-schedule]').getAttribute('data-schedule'));
+
+  const actions = [];
+  const interrupts = schedule.Interrupts;
+  for (const i of interrupts) {
+    actions.push({ at: i.TellAtMs + 250, kind: 'parry', label: aimed ? correctParry[i.Tell] : wrongParry[i.Tell] });
+    if (aimed) actions.push({ at: i.TellAtMs + 650, kind: 'counter', plate: 0 });
+  }
+  // Wheel spears: the rest of the five, at seam crossings minus the flight
+  // time, spaced past the reload and clear of every freeze and its edges.
+  const wheelCount = aimed ? 5 - interrupts.length : 5;
+  let last = -1e9;
+  const wheel = [];
+  for (const landing of seamLandings(schedule)) {
+    const tap = landing - schedule.FlightMs;
+    if (tap < 150 || tap - last < 450) continue;
+    if (wheelFrozenAt(schedule, tap) || wheelFrozenAt(schedule, tap + 60) || wheelFrozenAt(schedule, tap - 60)) continue;
+    // Aimed: keep the wheel spears before the last interrupt's counter so
+    // each counter still has a spear to throw. Wrong: throw after the
+    // first tell so the missed reads are REACHED and cost their spears.
+    wheel.push(tap);
+    last = tap;
+    if (wheel.length === wheelCount) break;
+  }
+  if (!aimed) {
+    // Evenly spread across the run instead, so reads are reached.
+    wheel.length = 0;
+    for (let k = 0; k < 5; k++) {
+      let t = 800 + k * 3400;
+      while (wheelFrozenAt(schedule, t) || wheelFrozenAt(schedule, t + 60)) t += 100;
+      wheel.push(t);
+    }
+  }
+  for (const t of wheel) actions.push({ at: t, kind: 'tap' });
+  actions.sort((a, b) => a.at - b.at);
+
+  await page.locator('[data-schedule][data-t0]').waitFor({ timeout: 10000 });
+  await page.evaluate(async (plan) => {
+    const overlay = document.querySelector('[data-schedule]');
+    const t0 = Number(overlay.getAttribute('data-t0'));
+    const sleepUntil = (ms) => new Promise((r) => setTimeout(r, Math.max(0, t0 + ms - performance.now())));
+    for (const a of plan) {
+      await sleepUntil(a.at);
+      if (a.kind === 'tap') {
+        const zone = overlay.querySelector('.throw-zone');
+        zone?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
+      } else if (a.kind === 'parry') {
+        const button = [...overlay.querySelectorAll('button')].find((b) => b.textContent.trim() === a.label);
+        button?.click();
+      } else if (a.kind === 'counter') {
+        const button = [...overlay.querySelectorAll('.plate-btn')].find((b) => b.textContent.trim() === String(a.plate + 1));
+        button?.click();
+      }
+    }
+  }, actions);
+
+  await page.locator('[data-testid="practice-card"]').waitFor({ timeout: 40000 });
+  return {
+    m: Number((await page.locator('[data-testid="practice-m"]').innerText()).replace(/[^0-9.]/g, '')),
+    text: await page.locator('[data-testid="practice-card"]').innerText(),
+    interrupts: interrupts.length,
+  };
+}
+
+{
+  await go('World Boss');
+  const practiceButton = page.getByRole('button', { name: /Practice the shield wheel/i }).first();
+  const offered = (await practiceButton.count()) > 0;
+  record(
+    'the World Boss screen offers shield wheel practice',
+    offered,
+    offered ? '' : 'no Practice button - start the server with FOLKIDLE_BOSS_MINIGAME=practice (run-dev.ps1 does)',
+  );
+
+  if (offered) {
+    const board = () =>
+      page.evaluate(() => ({
+        hp: document.querySelector('.bar[role="progressbar"]')?.getAttribute('aria-valuenow') ?? null,
+        pips: document.querySelectorAll('.pip.spent').length,
+      }));
+    const before = await board();
+
+    await practiceButton.click();
+    const aimed = await playPractice(true);
+    record(
+      'an aimed practice run reads, counters and scores high',
+      aimed.m >= 1.6 && /No damage dealt/i.test(aimed.text),
+      `M ${aimed.m.toFixed(2)} with ${aimed.interrupts} interrupts`,
+    );
+
+    await page.locator('[data-schedule]').getByRole('button', { name: /Practice again/i }).first().click();
+    const wrong = await playPractice(false);
+    record(
+      'wrong reads cost spears in practice',
+      /lost to missed reads/i.test(wrong.text) && wrong.m < aimed.m,
+      `M ${wrong.m.toFixed(2)}; ${/(\d+) spears? lost/.exec(wrong.text)?.[0] ?? 'nothing lost'}`,
+    );
+
+    await page.locator('[data-schedule]').getByRole('button', { name: /^\s*Close\s*$/i }).first().click();
+    await page.waitForTimeout(500);
+
+    // Code review, 2026-09-25: a reopened run must resume from what the
+    // server kept, not restart at Seq 0 with five spears (which replayed the
+    // server's OLD answers against new taps). Throw one, reload, reopen.
+    await practiceButton.click();
+    await page.locator('[data-schedule][data-t0]').waitFor({ timeout: 10000 });
+    const schedule = JSON.parse(await page.locator('[data-schedule]').getAttribute('data-schedule'));
+    const firstTap = (() => {
+      for (let t = 200; t < schedule.MaxPlayMs; t += 50) if (!wheelFrozenAt(schedule, t) && !wheelFrozenAt(schedule, t + 200)) return t;
+      return 200;
+    })();
+    await page.evaluate(async (at) => {
+      const overlay = document.querySelector('[data-schedule]');
+      const t0 = Number(overlay.getAttribute('data-t0'));
+      await new Promise((r) => setTimeout(r, Math.max(0, t0 + at - performance.now())));
+      overlay.querySelector('.throw-zone')?.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
+    }, firstTap);
+    await page.waitForTimeout(1200);
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+    await dismissOfflineSummary(3000);
+    await go('World Boss');
+    await page.getByRole('button', { name: /Practice the shield wheel/i }).first().click();
+    await page.locator('[data-schedule]').waitFor({ timeout: 10000 });
+    await page.waitForTimeout(600);
+    const resumed = await page.evaluate(() => ({
+      chips: document.querySelectorAll('[data-schedule] .chip').length,
+      spears: document.querySelector('[data-schedule] .status [aria-label$="spears left"]')?.getAttribute('aria-label') ?? '',
+    }));
+    record(
+      'a reopened practice run resumes with the spear it already threw',
+      resumed.chips === 1 && /^[0-4] spears left$/.test(resumed.spears),
+      `${resumed.chips} chip(s), "${resumed.spears}"`,
+    );
+    // Leave the half-played run behind; it expires on its own.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1500);
+    await dismissOfflineSummary(3000);
+    await go('World Boss');
+
+    const after = await board();
+    record(
+      'practice moved neither the boss nor an attempt',
+      before.hp === after.hp && before.pips === after.pips,
+      `hp ${before.hp} -> ${after.hp}, pips ${before.pips} -> ${after.pips}`,
+    );
+  }
+}
+
 // --- the objective track: the game keeps answering "what now" -----------------
 //
 // Modul: TIER THREE, AND WHY IT NEEDED A CHECK OF ITS OWN.
@@ -2839,6 +3039,25 @@ await go('Ancestors');
       }
       record('a brand-new account can strike the world boss with an empty larder', landed, outcome);
       await freshWindow(false);
+
+      // Task 36: a brand-new account can play shield wheel practice start to
+      // finish. The fixture has done everything and is an admin, so only a
+      // fresh account proves the practice path does not lean on either. No
+      // taps at all: the run times out, is scored at the floor, and the card
+      // still says what happened.
+      const practice = fresh.getByRole('button', { name: /Practice the shield wheel/i }).first();
+      if ((await practice.count()) > 0) {
+        await practice.click();
+        const card = await fresh
+          .locator('[data-testid="practice-card"]')
+          .waitFor({ timeout: 45000 })
+          .then(() => fresh.locator('[data-testid="practice-card"]').innerText())
+          .catch(() => '');
+        record('a brand-new account can finish a shield wheel practice run', /No damage dealt/i.test(card), card ? card.split('\n')[0] : 'no result card');
+        await fresh.locator('[data-schedule]').getByRole('button', { name: /^\s*Close\s*$/i }).first().click().catch(() => {});
+      } else {
+        record('a brand-new account can finish a shield wheel practice run', false, 'no Practice button for the new account');
+      }
     }
 
     // 3. Survives a reload. Progress is re-derived from the packet rather than

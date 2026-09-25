@@ -1,0 +1,150 @@
+{
+  "_comment": "Task 36. One hand-built shield wheel schedule and cases scored against it. Read by ShieldWheelScorerTests (C#) and client_web/tests/shieldWheel.test.ts, so the drawn ring and the scored ring cannot disagree. Angles are ring-local under the impact point: +90 deg/s to 2000 (180), -150 deg/s to 4000 (240), frozen 4000-6400, +120 deg/s to 10400 (0), frozen 10400-12800, -180 deg/s to 20000.",
+  "schedule": {
+    "StartAngleDeg": 0,
+    "Practice": true,
+    "Enraged": false,
+    "Segments": [
+      { "StartMs": 0,     "DurationMs": 2000, "DegPerSec": 90 },
+      { "StartMs": 2000,  "DurationMs": 2000, "DegPerSec": -150 },
+      { "StartMs": 4000,  "DurationMs": 2400, "DegPerSec": 0, "Interrupt": 0 },
+      { "StartMs": 6400,  "DurationMs": 4000, "DegPerSec": 120 },
+      { "StartMs": 10400, "DurationMs": 2400, "DegPerSec": 0, "Interrupt": 1 },
+      { "StartMs": 12800, "DurationMs": 7200, "DegPerSec": -180 }
+    ],
+    "Interrupts": [
+      { "Index": 0, "TellAtMs": 4000,  "Tell": "Left",     "ReactionFloorMs": 150, "ResponseCloseMs": 1000, "InterruptMs": 2400 },
+      { "Index": 1, "TellAtMs": 10400, "Tell": "Overhead", "ReactionFloorMs": 150, "ResponseCloseMs": 1000, "InterruptMs": 2400 }
+    ]
+  },
+  "angles": [
+    { "tMs": 0,     "angle": 0,     "plate": 0, "frozen": false },
+    { "tMs": 1000,  "angle": 90,    "plate": 1, "frozen": false },
+    { "tMs": 2000,  "angle": 180,   "plate": 2, "frozen": false },
+    { "tMs": 2400,  "angle": 120,   "plate": 1, "frozen": false },
+    { "tMs": 3000,  "angle": 30,    "plate": 0, "frozen": false },
+    { "tMs": 4000,  "angle": 240,   "plate": 3, "frozen": true },
+    { "tMs": 5000,  "angle": 240,   "plate": 3, "frozen": true },
+    { "tMs": 6790,  "angle": 286.8, "plate": 3, "frozen": false },
+    { "tMs": 10400, "angle": 0,     "plate": 0, "frozen": true },
+    { "tMs": 13000, "angle": 324,   "plate": 4, "frozen": false },
+    { "tMs": 20000, "angle": 144,   "plate": 2, "frozen": false }
+  ],
+  "cases": [
+    {
+      "name": "perfect: five taps at seam centre-crossings minus FlightMs",
+      "taps": [ { "Seq": 0, "TapMs": 280 }, { "Seq": 1, "TapMs": 1080 }, { "Seq": 2, "TapMs": 1880 }, { "Seq": 3, "TapMs": 2840 }, { "Seq": 4, "TapMs": 3320 } ],
+      "parries": [], "counters": [],
+      "receivedAfterIssueMs": 6820,
+      "expect": { "verdict": "Accepted", "spearsLost": 0, "multiplier": 2.0, "suspicions": [1],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" }, { "Seq": 1, "Plate": 1, "Class": "Seam" }, { "Seq": 2, "Plate": 2, "Class": "Seam" }, { "Seq": 3, "Plate": 0, "Class": "Seam" }, { "Seq": 4, "Plate": 4, "Class": "Seam" } ] }
+    },
+    {
+      "name": "late device: the same taps 30 ms late are still five Seams (the tolerance)",
+      "taps": [ { "Seq": 0, "TapMs": 310 }, { "Seq": 1, "TapMs": 1110 }, { "Seq": 2, "TapMs": 1910 }, { "Seq": 3, "TapMs": 2870 }, { "Seq": 4, "TapMs": 3350 } ],
+      "parries": [], "counters": [],
+      "receivedAfterIssueMs": 6850,
+      "expect": { "verdict": "Accepted", "spearsLost": 0, "multiplier": 2.0, "suspicions": [],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" }, { "Seq": 1, "Plate": 1, "Class": "Seam" }, { "Seq": 2, "Plate": 2, "Class": "Seam" }, { "Seq": 3, "Plate": 0, "Class": "Seam" }, { "Seq": 4, "Plate": 4, "Class": "Seam" } ] }
+    },
+    {
+      "name": "tolerance never changes plate: a Glance 1.2 degrees from plate 4 stays on plate 3 as a Plate hit",
+      "taps": [ { "Seq": 0, "TapMs": 6670 } ],
+      "parries": [], "counters": [],
+      "receivedAfterIssueMs": 9800,
+      "expect": { "verdict": "Accepted", "spearsLost": 1, "suspicions": [],
+        "landings": [ { "Seq": 0, "Plate": 3, "Class": "Plate" } ] }
+    },
+    {
+      "name": "reversal: a landing after the direction flip is where AngleAt says (plate 1), not where constant speed would put it (plate 3)",
+      "taps": [ { "Seq": 0, "TapMs": 2280 } ],
+      "parries": [], "counters": [],
+      "receivedAfterIssueMs": 5400,
+      "expect": { "verdict": "Accepted", "spearsLost": 0, "suspicions": [],
+        "landings": [ { "Seq": 0, "Plate": 1, "Class": "Plate" } ] }
+    },
+    {
+      "name": "frozen tap: a wheel tap inside an interrupt is dropped, not refused",
+      "taps": [ { "Seq": 0, "TapMs": 280 }, { "Seq": 1, "TapMs": 5000 } ],
+      "parries": [], "counters": [],
+      "receivedAfterIssueMs": 8100,
+      "expect": { "verdict": "Accepted", "spearsLost": 1, "suspicions": [3],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" } ] }
+    },
+    {
+      "name": "no taps: the floor",
+      "taps": [], "parries": [], "counters": [],
+      "receivedAfterIssueMs": 23000,
+      "expect": { "verdict": "Accepted", "spearsLost": 0, "multiplier": 1.0, "suspicions": [], "landings": [] }
+    },
+    {
+      "name": "one miss forgiven: four Seams and an unthrown spear still reach the cap",
+      "taps": [ { "Seq": 0, "TapMs": 280 }, { "Seq": 1, "TapMs": 1080 }, { "Seq": 2, "TapMs": 1880 }, { "Seq": 3, "TapMs": 2840 } ],
+      "parries": [], "counters": [],
+      "receivedAfterIssueMs": 6000,
+      "expect": { "verdict": "Accepted", "spearsLost": 0, "multiplier": 2.0, "suspicions": [1],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" }, { "Seq": 1, "Plate": 1, "Class": "Seam" }, { "Seq": 2, "Plate": 2, "Class": "Seam" }, { "Seq": 3, "Plate": 0, "Class": "Seam" } ] }
+    },
+    {
+      "name": "correct read: tell Left, Dodge right at +300, counter on plate 4 lands a Seam there",
+      "taps": [ { "Seq": 0, "TapMs": 280 }, { "Seq": 1, "TapMs": 1080 }, { "Seq": 2, "TapMs": 1880 } ],
+      "parries": [ { "Interrupt": 0, "Choice": "DodgeRight", "ChoiceMs": 4300 } ],
+      "counters": [ { "Interrupt": 0, "Seq": 3, "TapMs": 4900, "Plate": 4 } ],
+      "receivedAfterIssueMs": 8000,
+      "expect": { "verdict": "Accepted", "spearsLost": 0, "multiplier": 2.0, "suspicions": [1],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" }, { "Seq": 1, "Plate": 1, "Class": "Seam" }, { "Seq": 2, "Plate": 2, "Class": "Seam" }, { "Seq": 3, "Plate": 4, "Class": "Seam", "IsCounter": true } ] }
+    },
+    {
+      "name": "wrong read: Dodge left to a Left tell loses a spear",
+      "taps": [ { "Seq": 0, "TapMs": 280 }, { "Seq": 1, "TapMs": 6500 } ],
+      "parries": [ { "Interrupt": 0, "Choice": "DodgeLeft", "ChoiceMs": 4300 } ],
+      "counters": [],
+      "receivedAfterIssueMs": 9600,
+      "expect": { "verdict": "Accepted", "spearsLost": 1, "suspicions": [],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" }, { "Seq": 1, "Plate": 3, "Class": "Plate" } ] }
+    },
+    {
+      "name": "guess: the right answer 100 ms after the tell is under the reaction floor",
+      "taps": [ { "Seq": 0, "TapMs": 280 }, { "Seq": 1, "TapMs": 6500 } ],
+      "parries": [ { "Interrupt": 0, "Choice": "DodgeRight", "ChoiceMs": 4100 } ],
+      "counters": [],
+      "receivedAfterIssueMs": 9600,
+      "expect": { "verdict": "Accepted", "spearsLost": 1, "suspicions": [2],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" }, { "Seq": 1, "Plate": 3, "Class": "Plate" } ] }
+    },
+    {
+      "name": "late: the right answer 1,100 ms after the tell is past the window",
+      "taps": [ { "Seq": 0, "TapMs": 280 }, { "Seq": 1, "TapMs": 6500 } ],
+      "parries": [ { "Interrupt": 0, "Choice": "DodgeRight", "ChoiceMs": 5100 } ],
+      "counters": [],
+      "receivedAfterIssueMs": 9600,
+      "expect": { "verdict": "Accepted", "spearsLost": 1, "suspicions": [],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" }, { "Seq": 1, "Plate": 3, "Class": "Plate" } ] }
+    },
+    {
+      "name": "missing: a reached interrupt with no answer loses a spear",
+      "taps": [ { "Seq": 0, "TapMs": 280 }, { "Seq": 1, "TapMs": 6500 } ],
+      "parries": [], "counters": [],
+      "receivedAfterIssueMs": 9600,
+      "expect": { "verdict": "Accepted", "spearsLost": 1, "suspicions": [],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" }, { "Seq": 1, "Plate": 3, "Class": "Plate" } ] }
+    },
+    {
+      "name": "counter outside its window is dropped",
+      "taps": [ { "Seq": 0, "TapMs": 280 } ],
+      "parries": [ { "Interrupt": 0, "Choice": "DodgeRight", "ChoiceMs": 4300 } ],
+      "counters": [ { "Interrupt": 0, "Seq": 1, "TapMs": 6450, "Plate": 2 } ],
+      "receivedAfterIssueMs": 9600,
+      "expect": { "verdict": "Accepted", "spearsLost": 0, "suspicions": [3],
+        "landings": [ { "Seq": 0, "Plate": 0, "Class": "Seam" } ] }
+    },
+    {
+      "name": "counter without a read is a shape refusal",
+      "taps": [ { "Seq": 0, "TapMs": 280 } ],
+      "parries": [],
+      "counters": [ { "Interrupt": 0, "Seq": 1, "TapMs": 4900, "Plate": 2 } ],
+      "receivedAfterIssueMs": 8000,
+      "expect": { "verdict": "Refused", "refusalDetail": 4, "landings": [] }
+    }
+  ]
+}

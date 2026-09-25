@@ -1084,6 +1084,18 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // The world boss shield wheel (task 36). REST like the
+                    // Delve: a strike is a handful of requests and nothing in
+                    // the tick reads them. See WorldBossStrikeService.
+                    if (requestPath == "/api/v1/worldboss/challenge"
+                        || requestPath == "/api/v1/worldboss/throw"
+                        || requestPath == "/api/v1/worldboss/strike"
+                        || requestPath == "/api/v1/worldboss/practice/score")
+                    {
+                        await HandleWorldBossStrikeRoute(context, requestPath);
+                        continue;
+                    }
+
                     if (requestPath == "/api/v1/guild/shard-match" && context.Request.HttpMethod == "GET")
                     {
                         await HandleGuildShardMatch(context);
@@ -2789,6 +2801,107 @@ namespace FolkIdle.Server.Network
         /// What the Delve screen draws: the run if there is one, and what a run
         /// would cost if there is not.
         /// </summary>
+        private static readonly JsonSerializerOptions WorldBossStrikeJson = new()
+        {
+            PropertyNameCaseInsensitive = true,
+            Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() },
+        };
+
+        /// <summary>
+        /// The shield wheel's four routes (task 36, spec 5).
+        ///
+        /// Modul: TIMESTAMPS AND CHOICES ONLY. Nothing a request carries is a
+        /// quantity the server adopts: Seq, TapMs, a parry enum and a plate
+        /// 0-4, every one of them scored against the server's own schedule.
+        /// Every refusal answers 200 with a Result the screen can say out loud;
+        /// malformed JSON is 400 and a missing token 401.
+        /// </summary>
+        private async Task HandleWorldBossStrikeRoute(HttpListenerContext context, string requestPath)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                var service = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeService>();
+                string method = context.Request.HttpMethod;
+                object? answer = null;
+
+                if (requestPath == "/api/v1/worldboss/challenge" && method == "GET")
+                {
+                    answer = service.GetChallenge(playerId);
+                }
+                else if (method == "POST")
+                {
+                    string body;
+                    using (var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding))
+                    {
+                        body = await reader.ReadToEndAsync();
+                    }
+
+                    try
+                    {
+                        switch (requestPath)
+                        {
+                            case "/api/v1/worldboss/challenge":
+                                bool practice = false;
+                                if (!string.IsNullOrWhiteSpace(body))
+                                {
+                                    using var parsed = JsonDocument.Parse(body);
+                                    if (parsed.RootElement.TryGetProperty("Practice", out var p) && p.ValueKind == JsonValueKind.True) practice = true;
+                                }
+                                answer = service.IssueChallenge(playerId, practice);
+                                break;
+                            case "/api/v1/worldboss/throw":
+                                var throwRequest = JsonSerializer.Deserialize<FolkIdle.Server.Domain.Combat.WorldBossStrike.ThrowRequest>(body, WorldBossStrikeJson);
+                                if (throwRequest == null) { context.Response.StatusCode = 400; return; }
+                                answer = service.Throw(playerId, throwRequest);
+                                break;
+                            case "/api/v1/worldboss/practice/score":
+                                var scoreRequest = JsonSerializer.Deserialize<FolkIdle.Server.Domain.Combat.WorldBossStrike.StrikeRequest>(body, WorldBossStrikeJson);
+                                if (scoreRequest == null) { context.Response.StatusCode = 400; return; }
+                                answer = service.ScorePractice(playerId, scoreRequest);
+                                break;
+                            case "/api/v1/worldboss/strike":
+                                var strikeRequest = string.IsNullOrWhiteSpace(body)
+                                    ? new FolkIdle.Server.Domain.Combat.WorldBossStrike.StrikeRequest()
+                                    : JsonSerializer.Deserialize<FolkIdle.Server.Domain.Combat.WorldBossStrike.StrikeRequest>(body, WorldBossStrikeJson);
+                                answer = service.Strike(playerId, strikeRequest ?? new FolkIdle.Server.Domain.Combat.WorldBossStrike.StrikeRequest());
+                                break;
+                        }
+                    }
+                    catch (JsonException)
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+                }
+
+                if (answer == null)
+                {
+                    context.Response.StatusCode = 405;
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, answer, answer.GetType(), WorldBossStrikeJson);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"World boss strike route error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
         private async Task HandleDelveView(HttpListenerContext context)
         {
             try

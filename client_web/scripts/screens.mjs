@@ -56,7 +56,34 @@ export const SCREENS = [
   'Breeding', 'Ancestors', 'Inheritance',
   'Village', 'Skill Tree', 'Progress', 'Codex', 'Store', 'Settings',
   'Wiki',
+  // Not a nav button: a STATE of one. See OVERLAYS below.
+  'World Boss · shield wheel',
 ];
+
+/**
+ * Destinations that are a screen with something opened on top of it, so the
+ * geometry checkers measure an overlay they would otherwise never see.
+ *
+ * Modul: THE SHIELD WHEEL (task 36) is a full-screen overlay of buttons that
+ * exist only inside their windows - exactly what a checker walking the nav
+ * never reaches. `open` is forgiving on purpose: against a server with
+ * FOLKIDLE_BOSS_MINIGAME=off (production, today) there is no Practice button,
+ * and the destination measures the plain World Boss screen instead of failing
+ * smoke:screens.
+ */
+export const OVERLAYS = {
+  'World Boss · shield wheel': {
+    screen: 'World Boss',
+    open: async (page) => {
+      const practice = page.getByRole('button', { name: /Practice the shield wheel/i }).first();
+      if ((await practice.count()) === 0) return false;
+      await practice.click();
+      await page.locator('[data-schedule][data-t0]').waitFor({ timeout: 10000 }).catch(() => {});
+      await page.waitForTimeout(400);
+      return true;
+    },
+  },
+};
 
 /**
  * Header buttons that are not destinations, and so are not expected in SCREENS.
@@ -189,7 +216,7 @@ export async function assertMatchesNav(page) {
       .filter((t) => t.length > 0),
   );
   return {
-    missing: SCREENS.filter((s) => !navLabels.includes(s)),
+    missing: SCREENS.filter((s) => !(s in OVERLAYS) && !navLabels.includes(s)),
     unvisited: navLabels.filter((n) => !SCREENS.includes(n) && !NON_DESTINATIONS.includes(n)),
   };
 }
@@ -204,6 +231,23 @@ export async function assertMatchesNav(page) {
  * is what stopped the first narrow-width sweep dead.
  */
 export async function go(page, label) {
+  // An open shield wheel covers the header. The challenge lives on the server,
+  // so a reload drops the overlay and loses nothing.
+  if ((await page.locator('[data-schedule]').count()) > 0) {
+    await page.reload({ waitUntil: 'networkidle' });
+    await page
+      .waitForFunction(() => !document.body.innerText.includes('Waiting for the first state snapshot'), { timeout: 30000 })
+      .catch(() => {});
+    await page.waitForTimeout(800);
+  }
+
+  if (label in OVERLAYS) {
+    const overlay = OVERLAYS[label];
+    await go(page, overlay.screen);
+    await overlay.open(page);
+    return;
+  }
+
   // Modul: a destination's button may carry a BADGE. Mail renders as "Mail 3"
   // when something is unclaimed, so `exact: true` matched it on an empty
   // mailbox and timed out the moment the fixture had a message waiting - which

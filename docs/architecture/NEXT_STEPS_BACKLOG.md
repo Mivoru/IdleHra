@@ -60,7 +60,7 @@ The specs and plans for 36/37/38 are in `docs/superpowers/{specs,plans}/2026-09-
 
 **Next, in order:**
 1. Task 37 Phase 3 (measure) is due on **2026-10-02**, a week after the flag went on. Run `ops/oracle/deep-phase3.sql` on the box and record the result in TASK_BOARD section 37. The day-0 baseline is already recorded there.
-2. Build 36: wheel + parry minigame, behind a flag, aimed at the Oct 15-22 window, with a security review before merge.
+2. Task 36, the shield wheel. **Phase 1 (practice) is shipped behind `FOLKIDLE_BOSS_MINIGAME=practice`.** Waiting on **the owner's phone playtest** and one numbers decision: random tapping is 1.53x, not 1.36x (spec section 3.1, options table). Then Phase 2 (damage, with a security review before merge), aimed at the Oct 15-22 window.
 3. 38 waits until the population nears the floor.
 4. **Task 30 (docs match reality) goes LAST.** It includes the TASK_BOARD §32 line and the status lines for 27-29, 31, 33 and 34 (§34 still says "deploy pending", but it IS deployed).
 
