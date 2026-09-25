@@ -45,6 +45,7 @@ The database is on the box (not Supabase). Nightly dumps go to `~/folkidle-backu
 
 **Next session, in order** (also in TASK_BOARD's START HERE block):
 1. **Task 36 Phase 2: the wheel deals damage.** Plan: `docs/superpowers/plans/2026-09-24-task-36-world-boss-minigame.md`, Phase 2. Start on a fresh branch from `main`. Changes since the plan was written:
+   - **FIRST, an owner decision (request 2026-09-26): the weak plate should change between attempts.** Spec section 3.3.1 has both variants: a new weak plate every attempt, or one that stays until it is hit. **Recommended: variant 1, drawn only from the UNBROKEN plates.** That keeps the shared board useful and removes the solve-once-then-farm-3x problem. Ask the owner to pick before writing any Phase 2 code.
    - **Challenges are metered per DAY:** `WorldBossCalendar.StrikesPerDay` and `WorldBossEngine.MaxAttemptsPerDay`, not 3 per encounter.
    - **Decided, not yet in the spec:** the new reveal rule (a weak hit tells only the thrower; the reveal is by elimination only) applies **only when `FOLKIDLE_BOSS_MINIGAME=wheel`**. Opcode 32 has no private channel to tell a player they hit the weak plate, and in `wheel` mode opcode 32 is refused anyway ("update required"). Write this into the spec first.
    - The 300 s session is already gone from the engine. Phase 2.4 still removes `WorldBossSessionEndsEpoch` from the wire (use the `add-command` skill).
