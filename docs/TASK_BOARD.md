@@ -3773,6 +3773,27 @@ merged in PR #32.
   repeatable). **No repeatable sink absorbs 30% of an hour**: that row is
   skipped until the Deep lands.
 
+**DONE 2026-09-25, all three phases shipped. The Deep is behind
+`FOLKIDLE_DELVE_DEEP`, and the flag is OFF in production until the owner
+turns it on.**
+- **Phase 0.2** is PR #34.
+- **Phase 1** (descend on a frozen stake, tolls, records, the 7-day
+  high-water mark) was re-opened as PR #39 after #35 stranded, and is
+  deployed as 1.0.717.
+- **Phase 2** (lanterns at stake x 2^k up to 8, six titles at Deep floors
+  10-50, the weekly Deepest board that pays nothing) is the phase 2 PR.
+
+The sink table after the Deep: one descent at the top account's 492M
+holdings is a 2.46M stake, **about 88 minutes of top income (1.67M/h) for the first
+floor alone**. `ARepeatableSinkAbsorbsAThirdOfAnHourAtTheTop` is no longer
+skipped, and `TheDeepsWorkedPricesAreTheSpecs` pins pushes to floors 12 and
+20 at 0.5-4 h and 8-24 h of income. A wallet parked on an alt still pays on
+the 7-day high.
+
+**Phase 3 (measure, no code)** is still open: a week after the flag goes on,
+run read-only SELECTs over `EcoTelemetryLedgers`, the top account's
+`DelveDeepestFloor` and the `player_titles` count.
+
 ## 38. Guild Wars: design the whole system (XL, design with the owner first)
 
 **Owner, 2026-09-23:** design Guild Wars completely - format, rewards,

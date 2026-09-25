@@ -452,6 +452,18 @@ export const MARKET_FEE_BRACKETS: readonly { wealth: string; feePct: number }[] 
   { wealth: 'over 5,000,000', feePct: 15 },
 ];
 
+/**
+ * The Deep (DelveRegistry): the stake as a percentage of the 7-day high, the
+ * toll growth per floor, the door's floor, the lantern cap. Title floors come
+ * from TitleRegistry - floors only, never names: the client keeps no list of
+ * title names (tests/titles.test.ts).
+ */
+export const DEEP_STAKE_PCT = 0.5;
+export const DEEP_TOLL_GROWTH_PCT = 25;
+export const DEEP_MIN_DOOR_CHANCE_PCT = 25;
+export const DEEP_MAX_LANTERNS = 8;
+export const DEEP_TITLE_FLOORS: readonly number[] = [10, 15, 20, 30, 40, 50];
+
 /** WorldBossEngine. */
 export const WORLD_BOSS_HP = 50_000_000;
 export const WORLD_BOSS_ATTEMPTS = 3;
@@ -670,6 +682,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'economy', anchor: 'mailbox', title: 'The mailbox', keywords: 'mail claim attachment full fifty lost reward' },
   { tab: 'economy', anchor: 'diamonds', title: 'Diamonds', keywords: 'premium currency store purchase inheritance hall slots affix rarity' },
   { tab: 'economy', anchor: 'delve', title: 'The Delve', keywords: 'gold sink minigame doors floors lantern charges bank push diamonds ceiling fortune embers' },
+  { tab: 'economy', anchor: 'deep', title: 'The Deep', keywords: 'deep delve below floor eight stake toll lantern refill titles lamplighter deepest board weekly record' },
 
   { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'perun avatar shared hp attempts percentile token reward' },
   { tab: 'events', anchor: 'daily', title: 'The daily bonus', keywords: 'login streak seven days gold diamonds utc midnight' },

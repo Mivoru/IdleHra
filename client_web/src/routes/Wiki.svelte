@@ -82,6 +82,11 @@
     MARKET_FEE_BRACKETS,
     WORLD_BOSS_HP,
     WORLD_BOSS_ATTEMPTS,
+    DEEP_STAKE_PCT,
+    DEEP_TOLL_GROWTH_PCT,
+    DEEP_MIN_DOOR_CHANCE_PCT,
+    DEEP_MAX_LANTERNS,
+    DEEP_TITLE_FLOORS,
     WORLD_BOSS_DAMAGE_FLOOR,
     WORLD_BOSS_PLATES,
     WORLD_BOSS_WEAK_MULTIPLIER,
@@ -1376,6 +1381,21 @@
             and every outcome are rolled by the server, which is why the numbers
             on screen are the real ones.
           </p>
+
+          <h3 id="deep">The Deep</h3>
+          <p class="dim small">
+            Below the eighth floor of the Delve, the dark goes on. The Deep pays no
+            diamonds and no power, only how far you went: a record, titles, and a
+            place on a weekly board.
+          </p>
+          <ul class="styled-list">
+            <li><strong>Descending banks floors 1-8 first</strong>, exactly as climbing out would, then charges the first toll.</li>
+            <li><strong>The stake is {DEEP_STAKE_PCT}% of the most gold you have held in the last seven days</strong> (never less than the gate's own price), and it is fixed for the rest of the run. Moving gold to another character does not lower it.</li>
+            <li><strong>Each floor down tolls {DEEP_TOLL_GROWTH_PCT}% more than the last.</strong> The doors get harder too, slowly, but a door never drops below a {DEEP_MIN_DOOR_CHANCE_PCT}% chance.</li>
+            <li><strong>When your lantern goes out, you can light another</strong> at the stake, then twice that, then twice again: up to {DEEP_MAX_LANTERNS} on one run. Or walk out. Walking out of the Deep ends the run and pays nothing, because the Deep was never about the gold.</li>
+            <li><strong>Titles</strong> are earned at floors {DEEP_TITLE_FLOORS.join(', ')} of the Deep. Wear one from the Delve screen; it shows on your profile and on the board.</li>
+            <li><strong>Deepest this week</strong> is its own tab on the Leaderboards. It starts again every Monday, and it pays nothing.</li>
+          </ul>
 
         <!-- ================================================== EVENTS -->
         {:else if activeTab === 'events'}
