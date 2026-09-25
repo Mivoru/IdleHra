@@ -196,7 +196,7 @@ Practice touches no attempt, no damage, no shared state and no wire. The owner c
 
 ## Phase 2 - scoring becomes damage (one PR; `security-review` required)
 
-> **Before any Phase 2 code (2026-09-26):** the owner asked for the weak plate to change between attempts. Pick the variant in spec section 3.3.1 first; the recommendation is a new weak plate per attempt, drawn from the unbroken plates. That changes Task 2.1: the weak index is drawn per challenge, and `IsWeakPlateAsync` reads the challenge, not the snapshot. It also changes the reveal rule and these tests. Challenges are also metered per DAY since #48 (`WorldBossCalendar.StrikesPerDay`), not 3 per encounter.
+> **Decided 2026-09-26 (spec section 3.3.1):** a new weak plate for every attempt, drawn only from the unbroken plates, and armour that regrows at every UTC midnight. That changes Task 2.1: the weak index is drawn per challenge, and `IsWeakPlateAsync` reads the challenge, not the snapshot. It also changes the reveal rule and these tests. Challenges are also metered per DAY since #48 (`WorldBossCalendar.StrikesPerDay`), not 3 per encounter.
 
 ### Task 2.1: the strike queue and the engine
 

@@ -6,10 +6,9 @@
 >
 > **TODO, in order:**
 > 1. **Task 36 Phase 2: the shield wheel deals damage** (section 36 below; plan
->    Phase 2). **First, the owner decides how the weak plate moves between
->    attempts** (request 2026-09-26, spec section 3.3.1). Variant 1 (a new one
->    every attempt, drawn from the UNBROKEN plates) is recommended over variant 2
->    (it stays until hit). The playtest gate PASSED on 2026-09-25. Challenges are metered
+>    Phase 2). **Decided 2026-09-26 (spec section 3.3.1): a new weak plate every
+>    attempt, drawn only from the UNBROKEN plates, and armour that regrows every
+>    UTC midnight.** The playtest gate PASSED on 2026-09-25. Challenges are metered
 >    per DAY now (one strike a day). The new reveal rule applies only in
 >    `wheel` mode; write that into the spec first. A `security-review` is
 >    required before the merge. Flip production to `wheel` before the week of
