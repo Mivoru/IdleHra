@@ -377,7 +377,11 @@
 </div>
 
 {#if practiceChallenge}
-  <ShieldWheel challenge={practiceChallenge} onclose={closePractice} onagain={practiceAgain} />
+  <!-- Keyed on the challenge: ShieldWheel reads its schedule ONCE (a challenge
+       never changes mid-run), so a new challenge must mean a new component. -->
+  {#key practiceChallenge.ChallengeId}
+    <ShieldWheel challenge={practiceChallenge} onclose={closePractice} onagain={practiceAgain} />
+  {/key}
 {/if}
 
 <style>

@@ -35,6 +35,10 @@
     type PracticeScoreResponse,
   } from '../net/rest';
 
+  // `challenge` is read ONCE, on purpose, which is what svelte-check's
+  // state_referenced_locally warnings on this file are about: a challenge
+  // never changes during a run, and the parent keys this component on the
+  // ChallengeId, so a new challenge is always a new instance.
   let { challenge, onclose, onagain }: {
     challenge: ShieldWheelChallenge;
     onclose: () => void;
