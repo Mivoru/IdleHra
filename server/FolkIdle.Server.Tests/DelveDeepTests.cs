@@ -142,6 +142,8 @@ namespace FolkIdle.Server.Tests
             var engine = Engine();
             long stake = await DeepRunInTheDarkAsync(engine, playerId, 200_000_000);
 
+            long spentBefore = (await PlayerAsync(playerId)).DelveDeepGoldSpent;
+            long lanternsPaid = 0;
             for (int k = 0; k < 3; k++)
             {
                 long before = await GoldAsync(playerId);
@@ -152,9 +154,13 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(before - stake * (1L << k), await GoldAsync(playerId));
                 Assert.Equal(1, bought.View.ChargesRemaining);
                 Assert.Equal(k + 1, bought.View.LanternsBought);
+                lanternsPaid += bought.GoldCharged;
 
                 await engine.ChooseDoorAsync(playerId, 0, Fail);
             }
+
+            // Every lantern is counted where Phase 3 and the eco audit read it.
+            Assert.Equal(spentBefore + lanternsPaid, (await PlayerAsync(playerId)).DelveDeepGoldSpent);
         }
 
         [Fact]
@@ -254,6 +260,9 @@ namespace FolkIdle.Server.Tests
             var player = await PlayerAsync(descender);
             Assert.Equal(walked.DiamondsGranted, player.PremiumDiamonds);
             Assert.Equal(walked.DiamondsGranted, player.DelveDiamondsThisWeek);
+            // The toll is recorded as Deep spend; the walker, who paid none, has none.
+            Assert.Equal(descended.GoldCharged, player.DelveDeepGoldSpent);
+            Assert.Equal(0L, (await PlayerAsync(walker)).DelveDeepGoldSpent);
 
             Assert.True(descended.View.IsDeep);
             Assert.Equal(9, descended.View.CurrentFloor);
@@ -684,6 +693,8 @@ namespace FolkIdle.Server.Tests
                 nameof(PlayerRecord.DelveDeepestThisWeekAtUtc),
                 nameof(PlayerRecord.DelveWeekKey),
                 nameof(PlayerRecord.ActiveTitleSlug),
+                // What the tolls came to - its own test pins the amount.
+                nameof(PlayerRecord.DelveDeepGoldSpent),
             };
 
             foreach (var property in typeof(PlayerRecord).GetProperties())
@@ -694,6 +705,35 @@ namespace FolkIdle.Server.Tests
                     $"a Deep session changed PlayerRecords.{property.Name}: {property.GetValue(before)} -> {property.GetValue(after)}");
             }
             Assert.Equal(10, after.DelveDeepestFloor);
+        }
+
+        // Modul: THE DEEP SHOWS UP IN THE ECONOMY'S LEDGER (2026-09-25). The eco
+        // audit counted guild sinks and market fees as consumed and nothing
+        // else, so the game's biggest repeatable sink was invisible to the one
+        // table Phase 3 measures with. The audit now sums DelveDeepGoldSpent.
+        [Fact]
+        public async Task TheEcoAuditCountsDeepSpendAsConsumed()
+        {
+            const long playerId = 982000041L;
+            await SeedAsync(playerId, gold: 1_000_000);
+            var audit = new EcoTelemetryEngine(_fixture.ServiceProvider);
+
+            async Task<long> ConsumedAsync()
+            {
+                await audit.ExecuteAuditAsync(System.Threading.CancellationToken.None);
+                await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+                return await db.EcoTelemetryLedgers.AsNoTracking().OrderByDescending(l => l.LogId).Select(l => l.TotalGoldConsumed).FirstAsync();
+            }
+
+            long before = await ConsumedAsync();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    "UPDATE \"PlayerRecords\" SET \"DelveDeepGoldSpent\" = \"DelveDeepGoldSpent\" + 7777777 WHERE \"Id\" = {0}", playerId);
+            }
+            long after = await ConsumedAsync();
+
+            Assert.Equal(7_777_777L, after - before);
         }
 
         private static string ServerFile(params string[] parts)

@@ -120,7 +120,15 @@ namespace FolkIdle.Server.Engine
                     .AsNoTracking()
                     .LongCountAsync(stoppingToken) * 100L;
 
-                totalGoldConsumed = guildGoldSinks + estimatedMarketFees;
+                // Modul: the Deep's tolls and lanterns (task 37). Without this
+                // row the biggest repeatable sink in the game was invisible
+                // to the one ledger that tracks sinks - see
+                // PlayerRecord.DelveDeepGoldSpent.
+                long deepGoldSpent = await db.PlayerRecords
+                    .AsNoTracking()
+                    .SumAsync(p => (long?)p.DelveDeepGoldSpent, stoppingToken) ?? 0L;
+
+                totalGoldConsumed = guildGoldSinks + estimatedMarketFees + deepGoldSpent;
                 totalGoldMinted = goldBalances + mailboxGold + totalGoldConsumed;
                 totalDiamondsConsumed = 0L;
                 totalDiamondsMinted = Math.Max(premiumBalances, purchaseDiamonds);
