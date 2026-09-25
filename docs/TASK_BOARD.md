@@ -1,20 +1,26 @@
 # FolkIdle Task Board
 
-> **START HERE (status checked 2026-09-25 against GitHub and production).**
-> Tasks 1-35 and 37 are DONE, merged and deployed; production runs `main`.
-> Two are open, and both are waiting on a gate, not on code:
-> - **36, the shield wheel.** Phase 1 (practice) is live behind
->   `FOLKIDLE_BOSS_MINIGAME=practice`. The first playtest's retune is shipped and
->   the numbers are decided. The playtest gate is **passed** (owner, 2026-09-25).
->   **Phase 2 (damage) is in progress**; production stays on `practice`.
-> - **38, Guild Wars.** Parked by the owner's rule until the population nears
->   the floor. **Measured 2026-09-25:** 61 accounts, 1 at level 10 or above,
->   15 active in 7 days, 1 guild. The lock needs 4 or more guilds of 3 or more
->   level-10 members.
+> **START HERE (updated 2026-09-26). Tasks 1-35 and 37 are DONE and deployed;
+> production runs `main` (1.0.742).** The handoff with context is at the top of
+> `docs/architecture/NEXT_STEPS_BACKLOG.md`.
 >
-> Also scheduled: task 37 Phase 3 (measure the Deep) on 2026-10-02. The owner's
-> PC captures the numbers automatically. Each task's own section says what is
-> true about it; the history paragraphs below are kept as the record.
+> **TODO, in order:**
+> 1. **Task 36 Phase 2: the shield wheel deals damage** (section 36 below; plan
+>    Phase 2). The playtest gate PASSED on 2026-09-25. Challenges are metered
+>    per DAY now (one strike a day). The new reveal rule applies only in
+>    `wheel` mode; write that into the spec first. A `security-review` is
+>    required before the merge. Flip production to `wheel` before the week of
+>    Oct 12 or Oct 19.
+> 2. **Task 37 Phase 3: measure the Deep, due 2026-10-02.** The owner's PC
+>    captures `D:\FolkIdleBackups\deep-phase3-week1.txt` automatically. Copy
+>    it into section 37, "Week 1".
+> 3. **Watch the weekly boss / one-strike-a-day cadence** (#48) for its first
+>    weeks, and decide the open question: a solo player can find the weak
+>    plate in 4 days (`docs/world_boss_design.md`, section 3).
+> 4. **Task 38 (Guild Wars): parked** until the population nears the floor.
+>    Re-measure before starting.
+> 5. Backlog follow-ups (not blocking) are in the handoff: the Village "Got it"
+>    overlap and the drop-record lows from #25.
 
 Seven tasks, restated against what the code actually does as of 2026-09-01.
 Every "today" claim below was checked in the source or the live database rather
@@ -3781,7 +3787,7 @@ first** - there is no point redesigning a fight nobody can start.
   - the buttons are named by the blow (◀ From the left / ▼ From above / From the right ▶) and sit in one row, 60 px tall;
   - the tell sits directly above them, with a shrinking time bar.
 - **Numbers decided: seam 8 degrees, Plate worth 0.** The ledger's random-tap check is un-skipped. Measured on the real scorer: random tapping **1.349**, 2 reads + random **1.744**, enraged 3 reads + random **1.917**. These are the spec's targets.
-- **Second playtest on the retuned build (1.0.740), 2026-09-25: "it looks good now".** **The gate is PASSED.** Phase 2 has started on branch `task36/phase2-damage`.
+- **Second playtest on the retuned build (1.0.740), 2026-09-25: "it looks good now".** **The gate is PASSED.** Phase 2 is next; nothing of it is written yet. Start from `main`, with challenges metered per day (#48).
 **World boss cadence changed 2026-09-25 (owner), shipped ahead of Phase 2:**
 - **One encounter a week, Monday to Sunday UTC, back to back** (was the 1st-7th and 15th-22nd).
 - **One strike a day** (was 3 per encounter). The 300 s battle session is gone.

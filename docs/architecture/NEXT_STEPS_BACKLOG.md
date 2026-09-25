@@ -19,7 +19,51 @@ do next.
 
 ---
 
-# HANDOFF 2026-09-25 (end of day) - everything shipped; two gates and a date left (START HERE)
+# HANDOFF 2026-09-26 - START HERE
+
+**Live:** production is **1.0.742** (main at `0575bf1`, PRs #38-#48). `smoke:screens` 27/27 on production.
+
+Flags, in the box's `ops/oracle/.env`:
+- `FOLKIDLE_DELVE_DEEP=on`: the Deep is live.
+- `FOLKIDLE_BOSS_MINIGAME=practice`: shield wheel practice is live; the real strike is still opcode 32 (plate buttons).
+
+The database is on the box (not Supabase). Nightly dumps go to `~/folkidle-backups`, and the owner's PC copies them to `D:\FolkIdleBackups`.
+
+**Since the previous handoff (below):**
+- **#47, the shield wheel retune after the owner's first phone playtest:**
+  - a 2 s response window (enraged 1.7 s);
+  - buttons named by the blow, in one 60 px row, with the tell and a time bar above them;
+  - seam 8 and Plate 0. The ledger matches the spec's targets (1.349 / 1.744 / 1.917).
+  - **The second playtest PASSED the gate: "it looks good now".**
+- **#48, the world boss cadence (owner decision):**
+  - **one encounter a week, Monday to Sunday UTC, back to back**;
+  - **one strike a day**, refilled at UTC midnight;
+  - no 300 s session;
+  - code: `WorldBossCalendar` and `player_world_boss_attempts.AttemptDateKey` (migration `AddWorldBossAttemptDateKey`).
+  - Found on the way: simultaneous strikes failed with a Postgres serialization error. Every boss-row writer is now queued through one `SemaphoreSlim`.
+  - Verified in production: the encounter opened with a Sunday 2026-09-27 23:59:59 UTC end.
+
+**Next session, in order** (also in TASK_BOARD's START HERE block):
+1. **Task 36 Phase 2: the wheel deals damage.** Plan: `docs/superpowers/plans/2026-09-24-task-36-world-boss-minigame.md`, Phase 2. Start on a fresh branch from `main`. Changes since the plan was written:
+   - **Challenges are metered per DAY:** `WorldBossCalendar.StrikesPerDay` and `WorldBossEngine.MaxAttemptsPerDay`, not 3 per encounter.
+   - **Decided, not yet in the spec:** the new reveal rule (a weak hit tells only the thrower; the reveal is by elimination only) applies **only when `FOLKIDLE_BOSS_MINIGAME=wheel`**. Opcode 32 has no private channel to tell a player they hit the weak plate, and in `wheel` mode opcode 32 is refused anyway ("update required"). Write this into the spec first.
+   - The 300 s session is already gone from the engine. Phase 2.4 still removes `WorldBossSessionEndsEpoch` from the wire (use the `add-command` skill).
+   - `security-review` is a required gate before the merge.
+   - Target: flip to `wheel` before the week of **Oct 12 or Oct 19** (the fixed Oct 15-22 window no longer exists).
+2. **Task 37 Phase 3, due 2026-10-02.** The owner's PC writes `D:\FolkIdleBackups\deep-phase3-week1.txt` automatically (scheduled task "FolkIdle Deep phase 3 capture"). Copy the numbers into TASK_BOARD section 37, "Week 1".
+3. **Watch the new boss cadence in its first weeks.** `player_world_boss_attempts` shows how many strike daily. The snapshot's `BrokenPlateMask`/`WeakPlateRevealed` shows how fast the weak plate is found. **Open owner question:** with about 7 strikes a week, a solo player can find the weak plate alone in 4 days (`docs/world_boss_design.md`, section 3). If that is too easy, the levers are more plates, no elimination reveal, or a weak plate that moves mid-week.
+4. Task 38 (Guild Wars) stays parked until the population nears the floor. Measured 2026-09-25: 61 accounts, 1 at level 10 or above, 1 guild.
+
+**Local traps worth knowing:**
+- **Vite version stamp.** Running `npm test` re-stamps `public/version.json` under a live Vite. Kill the :5173 listener before the geometry checks.
+- **After a migration**, apply it locally with `--migrate` before `run-dev.ps1`.
+- **Piping from PowerShell into `ssh ... cat >`** adds a BOM and CRLF.
+- **SQL over ssh:** pipe it on stdin.
+- **CI runs only on `main`.** Verify combined branches locally before merging them together.
+
+---
+
+# HANDOFF 2026-09-25 (end of day) - superseded by the block above
 
 **Live:** production is **1.0.736**: main through #45, plus this docs PR. `smoke:screens` 27/27 on production, including the practice overlay.
 - **The Deep is ON** (`FOLKIDLE_DELVE_DEEP=on`).
