@@ -485,7 +485,7 @@ export const WORLD_BOSS_PLATES = 5;
 /** WorldBossEngine.WeakPlateDamageMultiplier. */
 export const WORLD_BOSS_WEAK_MULTIPLIER = 3;
 
-/** The percentile brackets AwardRewards pays into the mailbox. */
+/** The percentile brackets WorldBossBoard.BracketFor pays into the mailbox (pinned by wiki.test.ts). */
 export const WORLD_BOSS_REWARDS: readonly { bracket: string; tokens: number; gold: number }[] = [
   { bracket: 'Top 1%', tokens: 10, gold: 250_000 },
   { bracket: 'Top 10%', tokens: 6, gold: 100_000 },

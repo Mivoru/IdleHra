@@ -1734,6 +1734,29 @@ export function scoreBossPractice(body: {
   return authedPost<PracticeScoreResponse>('/api/v1/worldboss/practice/score', body);
 }
 
+export interface WorldBossBoardRow {
+  Rank: number;
+  PlayerId: number;
+  Name: string;
+  Damage: number;
+  Title: string | null;
+}
+
+/** The encounter's damage board: who dealt what, and the server's total. */
+export interface WorldBossBoardView {
+  TotalDamage: number;
+  BossMaxHp: number;
+  BossCurrentHp: number;
+  Participants: number;
+  Top: WorldBossBoardRow[];
+  Me: WorldBossBoardRow | null;
+  MyBracket: string | null;
+}
+
+export function fetchBossBoard(): Promise<WorldBossBoardView | null> {
+  return authedGet<WorldBossBoardView>('/api/v1/worldboss/board');
+}
+
 /**
  * The real strike: the finished wheel log, or an auto-strike on one plate.
  * Spends today's strike. The HP and the pip arrive on the stream as usual;

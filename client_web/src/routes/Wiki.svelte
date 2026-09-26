@@ -1346,7 +1346,7 @@
           <p class="dim tiny">
             <strong>Keep it under {WORLD_BOSS_MAILBOX_LIMIT} items.</strong> A world
             boss reward is skipped outright for anybody whose mailbox is at that
-            limit when the boss dies — it is not queued, it is lost.
+            limit when the week's encounter ends — it is not queued, it is lost.
           </p>
 
           <h3 id="diamonds">Diamonds</h3>
@@ -1425,7 +1425,12 @@
             </li>
             <li>Your hit is your character's real attack power, floored at {WORLD_BOSS_DAMAGE_FLOOR.toLocaleString()} — an account that has never fought still contributes something.</li>
             <li>A strike eats nothing: an empty larder does not stop you swinging.</li>
-            <li>Rewards land in the mailbox when the boss dies, by your percentile among everybody who dealt damage.</li>
+            <li>
+              <strong>The boss does not have to fall.</strong> When the week ends - or sooner, if it
+              dies - everybody who dealt damage is paid into the mailbox by their place on the
+              damage board, which the World Boss screen shows along with what the whole server dealt
+              together.
+            </li>
           </ul>
           <div class="scroll">
             <table>

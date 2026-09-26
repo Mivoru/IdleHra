@@ -340,104 +340,8 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                var contributions = await LoadDistributedContributionsAsync();
-
-                var rankedParticipants = new System.Collections.Generic.List<System.Collections.Generic.KeyValuePair<long, long>>();
-                foreach (var entry in contributions)
-                {
-                    if (entry.Key > 0 && entry.Value > 0)
-                    {
-                        rankedParticipants.Add(entry);
-                    }
-                }
-                rankedParticipants.Sort((a, b) => b.Value.CompareTo(a.Value));
-
                 long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                int participantCount = rankedParticipants.Count;
-                if (participantCount > 0)
-                {
-                    for (int i = 0; i < participantCount; i++)
-                    {
-                        long participantId = rankedParticipants[i].Key;
-
-                        var existingMail = await db.MailboxInstances
-                            .FromSqlRaw("SELECT * FROM \"MailboxInstances\" WHERE \"PlayerId\" = {0} FOR UPDATE", participantId)
-                            .ToListAsync();
-
-                        if (existingMail.Count >= 50)
-                        {
-                            // Modul: world boss reward visibility, 2026-08-01.
-                            //
-                            // A full mailbox silently destroyed the player's
-                            // ENTIRE world boss reward - tokens and gold - after
-                            // they had fought for it, with no log, no telemetry
-                            // and nothing the player could see. They simply
-                            // never received anything.
-                            //
-                            // Still skipped rather than force-inserted, because
-                            // the 50 cap is a real invariant and overflowing it
-                            // here would be a design decision this fix should
-                            // not smuggle in. But it is no longer invisible: see
-                            // NEXT_STEPS_BACKLOG for the open question of
-                            // whether earned, non-repeatable rewards should
-                            // bypass the cap or be held for later delivery.
-                            Console.WriteLine(
-                                $"World boss reward SKIPPED for player {participantId}: mailbox full ({existingMail.Count} items). Reward lost.");
-
-                            TelemetryStreamer.TryWrite(new TelemetryEvent
-                            {
-                                PlayerId = participantId,
-                                EventType = 3,
-                                Value1 = 19,
-                                Value2 = existingMail.Count,
-                                Timestamp = Environment.TickCount64
-                            });
-                            continue;
-                        }
-
-                        // Percentile bracket by rank among damage-dealing participants: Top 1% / Top 10% / Top 50% / Participation.
-                        double percentileRank = (double)(i + 1) / participantCount;
-                        int tokenQuantity;
-                        long goldAttachment;
-                        if (percentileRank <= 0.01)
-                        {
-                            tokenQuantity = 10;
-                            goldAttachment = 250000L;
-                        }
-                        else if (percentileRank <= 0.10)
-                        {
-                            tokenQuantity = 6;
-                            goldAttachment = 100000L;
-                        }
-                        else if (percentileRank <= 0.50)
-                        {
-                            tokenQuantity = 3;
-                            goldAttachment = 50000L;
-                        }
-                        else
-                        {
-                            tokenQuantity = 1;
-                            goldAttachment = 10000L;
-                        }
-
-                        // Modul: the drop record (task 26) counts the reward
-                        // HERE, where it is created as mail - the claim that
-                        // later turns mail into a row is a move, not a creation.
-                        await DropRecord.RecordOneAsync(db, participantId, DropSource.WorldBoss, 0,
-                            null, "perun_avatar_reward_token", 5, 5);
-                        db.MailboxInstances.Add(new MailboxInstance
-                        {
-                            PlayerId = participantId,
-                            BaseItemId = "perun_avatar_reward_token",
-                            QualityTier = 5,
-                            Quantity = tokenQuantity,
-                            IsClaimed = false,
-                            IsPending = false,
-                            GoldAttachment = goldAttachment,
-                            ReceivedTimestamp = now
-                        });
-                    }
-                }
+                await PayEncounterRewardsAsync(db, now);
 
                 snapshot.MaxHp = BaseHp;
                 snapshot.CurrentHp = BaseHp;
@@ -462,8 +366,7 @@ namespace FolkIdle.Server.Engine
                     _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
                     {
                         PlayerId = onlinePlayerIds[i],
-                        AttemptCount = 0,
-                        SessionEndsEpoch = 0
+                        AttemptCount = 0
                     });
                 }
 
@@ -477,6 +380,81 @@ namespace FolkIdle.Server.Engine
             {
                 Interlocked.Exchange(ref _rewardDispatchActive, 0);
             }
+        }
+
+        // Modul: THE BOSS DOES NOT HAVE TO FALL (owner, 2026-09-26). Rewards
+        // used to be mailed only from ProcessDefeatedBossAsync, so a week the
+        // boss survived - every week, at today's population against 50M+ HP -
+        // paid nobody anything for seven days of strikes. Now the encounter pays
+        // when it ends either way, by each player's rank in damage dealt, from
+        // the same rows the damage board shows (WorldBossBoard). Called inside
+        // the caller's transaction, before the attempt rows are deleted.
+        internal static async Task<int> PayEncounterRewardsAsync(FolkIdleDbContext db, long now)
+        {
+            var ranked = await WorldBossBoard.RankedAsync(db);
+            int participantCount = ranked.Count;
+            int paid = 0;
+            for (int i = 0; i < participantCount; i++)
+            {
+                long participantId = ranked[i].PlayerId;
+
+                var existingMail = await db.MailboxInstances
+                    .FromSqlRaw("SELECT * FROM \"MailboxInstances\" WHERE \"PlayerId\" = {0} FOR UPDATE", participantId)
+                    .ToListAsync();
+
+                if (existingMail.Count >= 50)
+                {
+                    // Modul: world boss reward visibility, 2026-08-01.
+                    //
+                    // A full mailbox silently destroyed the player's
+                    // ENTIRE world boss reward - tokens and gold - after
+                    // they had fought for it, with no log, no telemetry
+                    // and nothing the player could see. They simply
+                    // never received anything.
+                    //
+                    // Still skipped rather than force-inserted, because
+                    // the 50 cap is a real invariant and overflowing it
+                    // here would be a design decision this fix should
+                    // not smuggle in. But it is no longer invisible: see
+                    // NEXT_STEPS_BACKLOG for the open question of
+                    // whether earned, non-repeatable rewards should
+                    // bypass the cap or be held for later delivery.
+                    Console.WriteLine(
+                        $"World boss reward SKIPPED for player {participantId}: mailbox full ({existingMail.Count} items). Reward lost.");
+
+                    TelemetryStreamer.TryWrite(new TelemetryEvent
+                    {
+                        PlayerId = participantId,
+                        EventType = 3,
+                        Value1 = 19,
+                        Value2 = existingMail.Count,
+                        Timestamp = Environment.TickCount64
+                    });
+                    continue;
+                }
+
+                // Percentile bracket by rank among damage-dealing participants: Top 1% / Top 10% / Top 50% / Participation.
+                var (_, tokenQuantity, goldAttachment) = WorldBossBoard.BracketFor(i + 1, participantCount);
+
+                // Modul: the drop record (task 26) counts the reward
+                // HERE, where it is created as mail - the claim that
+                // later turns mail into a row is a move, not a creation.
+                await DropRecord.RecordOneAsync(db, participantId, DropSource.WorldBoss, 0,
+                    null, "perun_avatar_reward_token", 5, 5);
+                db.MailboxInstances.Add(new MailboxInstance
+                {
+                    PlayerId = participantId,
+                    BaseItemId = "perun_avatar_reward_token",
+                    QualityTier = 5,
+                    Quantity = tokenQuantity,
+                    IsClaimed = false,
+                    IsPending = false,
+                    GoldAttachment = goldAttachment,
+                    ReceivedTimestamp = now
+                });
+                paid++;
+            }
+            return paid;
         }
 
         // Modul: A WINDOW A DEVELOPER CAN OPEN ON ANY DAY (task 25).
@@ -521,11 +499,16 @@ namespace FolkIdle.Server.Engine
             await ActivateEventWindowAsync(end);
         }
 
-        /// <summary>Ends the override and concludes the encounter, as the calendar would have.</summary>
+        /// <summary>
+        /// Ends the override and concludes the encounter, as the calendar would
+        /// have - but pays nothing: a developer's window is a test, and
+        /// exercise.mjs opens and closes several a run, which would otherwise
+        /// fill the dev fixture's 50-item mailbox with boss rewards.
+        /// </summary>
         public async Task CloseManualWindowAsync()
         {
             Interlocked.Exchange(ref _manualWindowEndEpoch, 0);
-            await FinalizeEventAsFailedAsync();
+            await FinalizeEventAsFailedAsync(payRewards: false);
         }
 
         public async Task ActivateEventWindowAsync(long eventEndEpoch)
@@ -594,8 +577,7 @@ namespace FolkIdle.Server.Engine
                     _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
                     {
                         PlayerId = onlinePlayerIds[i],
-                        AttemptCount = 0,
-                        SessionEndsEpoch = 0
+                        AttemptCount = 0
                     });
                 }
 
@@ -609,14 +591,18 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        public async Task FinalizeEventAsFailedAsync()
+        /// <summary>
+        /// Closes an encounter the boss survived, and pays it out by damage
+        /// dealt (owner, 2026-09-26: the boss does not have to fall).
+        /// </summary>
+        public async Task FinalizeEventAsFailedAsync(bool payRewards = true)
         {
             await _snapshotGate.WaitAsync();
-            try { await FinalizeEventAsFailedCoreAsync(); }
+            try { await FinalizeEventAsFailedCoreAsync(payRewards); }
             finally { _snapshotGate.Release(); }
         }
 
-        private async Task FinalizeEventAsFailedCoreAsync()
+        private async Task FinalizeEventAsFailedCoreAsync(bool payRewards)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -634,12 +620,20 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
+                // Paid in the same transaction that concludes the encounter, so
+                // it pays exactly once: a second close finds EventState 2 above
+                // and returns. The attempt rows are left for the board to show
+                // until the next encounter opens and deletes them.
+                int paid = payRewards
+                    ? await PayEncounterRewardsAsync(db, DateTimeOffset.UtcNow.ToUnixTimeSeconds())
+                    : 0;
+
                 snapshot.EventState = 2; // Concluded: failed, window expired without defeat.
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 RefreshLocalSnapshot(snapshot);
-                Console.WriteLine($"World boss event window closed without defeat. TotalDamageContributed={snapshot.TotalDamageContributed}, RemainingHp={snapshot.CurrentHp}.");
+                Console.WriteLine($"World boss event window closed without defeat. TotalDamageContributed={snapshot.TotalDamageContributed}, RemainingHp={snapshot.CurrentHp}, rewards mailed={paid}.");
             }
             catch (Exception ex)
             {
@@ -1047,8 +1041,7 @@ namespace FolkIdle.Server.Engine
             _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
             {
                 PlayerId = playerId,
-                AttemptCount = updatedAttemptCount,
-                SessionEndsEpoch = 0
+                AttemptCount = updatedAttemptCount
             });
             _playerDamageMap.AddOrUpdate(playerId, appliedDamage, (_, existing) => existing + appliedDamage);
             RefreshLocalSnapshot(snapshot);
@@ -1067,39 +1060,6 @@ namespace FolkIdle.Server.Engine
             {
                 Console.WriteLine($"World boss contribution mirror failed for player {playerId} (strike landed): {redisEx.Message}");
             }
-        }
-
-        private async Task<System.Collections.Generic.Dictionary<long, long>> LoadDistributedContributionsAsync()
-        {
-            var result = new System.Collections.Generic.Dictionary<long, long>();
-            bool loadedRedisContributions = false;
-
-            if (_redis?.IsConnected == true)
-            {
-                HashEntry[] entries = await _redis.GetDatabase().HashGetAllAsync(ContributionKey(ActiveBossInstanceId));
-                loadedRedisContributions = entries.Length > 0;
-                for (int i = 0; i < entries.Length; i++)
-                {
-                    long damage = (long)entries[i].Value;
-                    if (long.TryParse(entries[i].Name.ToString(), out long playerId) && damage > 0)
-                    {
-                        result[playerId] = damage;
-                    }
-                }
-            }
-
-            if (!loadedRedisContributions)
-            {
-                foreach (var entry in _playerDamageMap)
-                {
-                    if (entry.Value > 0)
-                    {
-                        result[entry.Key] = result.TryGetValue(entry.Key, out long existing) ? existing + entry.Value : entry.Value;
-                    }
-                }
-            }
-
-            return result;
         }
 
         private static long ComputeAppliedDamage(long currentHp, uint clientPredictedDamage)

@@ -1149,6 +1149,8 @@ await go('World Boss');
   // plate buttons are the AUTO-strike over REST and button.attack opens the
   // wheel, so this block strikes with the auto button; the wheel itself has
   // its own block below.
+  // The mode arrives by REST after the screen renders; give it a moment.
+  await page.waitForSelector('[data-testid="wheel-strike"]', { timeout: 5000 }).catch(() => {});
   const wheelMode = (await page.locator('[data-testid="wheel-strike"]').count()) > 0;
   const plateStrike = wheelMode ? 'button.auto' : 'button.attack';
 
@@ -1209,6 +1211,19 @@ await go('World Boss');
         const card = page.locator('[data-testid="auto-card"]');
         const damage = Number((await card.getAttribute('data-damage').catch(() => null)) ?? 0);
         record('the auto-strike shows its damage on the screen', damage > 0, `${damage} damage`);
+
+        // The boss does not have to fall (owner, 2026-09-26): the damage board
+        // is what a strike is for, so it has to move when one lands.
+        await page
+          .waitForFunction(() => /#\d+/.test(document.querySelector('[data-testid="boss-me"]')?.textContent ?? ''), null, { timeout: 10000 })
+          .catch(() => {});
+        const me = await page.locator('[data-testid="boss-me"]').innerText().catch(() => '');
+        const total = await page.locator('[data-testid="boss-total"]').innerText().catch(() => '');
+        record(
+          'the damage board shows your place and what everyone dealt together',
+          /#\d+/.test(me) && new RegExp(damage.toLocaleString('en-US').replace(/,/g, '[,\\s\\u00a0.]?')).test(me) && /dealt/.test(total),
+          `"${me.trim()}" / "${total.trim()}"`,
+        );
         const grey = await page.locator('[data-testid="wheel-strike"]').isDisabled();
         const reason = await page.locator('.strike-reason').innerText().catch(() => '');
         record(
@@ -3131,7 +3146,11 @@ await go('Ancestors');
         .catch(() => false);
       const hp = () =>
         fresh.evaluate(() => Number(document.querySelector('.bar[role="progressbar"]')?.getAttribute('aria-valuenow') ?? -1));
-      // Under the wheel the one-press strike is the auto-strike.
+      // Under the wheel the one-press strike is the auto-strike. The screen
+      // learns its mode from a REST call after it renders, so wait for it:
+      // counting too early picked button.attack, which under the wheel opens
+      // a real run whose overlay then covered everything below.
+      await fresh.waitForSelector('[data-testid="auto-strike"]', { timeout: 5000 }).catch(() => {});
       const strike = (await fresh.locator('button.auto').count()) > 0 ? fresh.locator('button.auto').first() : fresh.locator('button.attack').first();
       const grey = await strike.isDisabled().catch(() => true);
       let outcome = 'nothing happened';
