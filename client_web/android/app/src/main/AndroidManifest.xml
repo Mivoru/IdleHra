@@ -69,6 +69,10 @@
          Settings asks for permission from a control the player pressed, and
          the OS remembers a refusal permanently - so without this line the one
          ask the app ever gets would be spent on a request that was never
-         shown. -->
+         shown.
+
+         Task 45: @capacitor/local-notifications (the "your folk are resting"
+         reminder) needs the same declaration, and its permission is likewise
+         requested only from a Settings button. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 </manifest>

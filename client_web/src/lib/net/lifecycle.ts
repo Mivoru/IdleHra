@@ -23,6 +23,7 @@
 // `pageshow` catches the third case: a bfcache restore, where the page is
 // resurrected wholesale and neither of the other two need have fired.
 import { connection } from './connection';
+import { scheduleRestingNotice, cancelRestingNotice } from './localNotify';
 
 type Unsubscribe = () => void;
 
@@ -31,6 +32,9 @@ let lastResumeAt = 0;
 const RESUME_DEBOUNCE_MS = 400;
 
 function onResume(): void {
+  // Modul: task 45. Cancelled BEFORE the debounce - it is idempotent, and a
+  // reminder left armed on a phone the player is holding is a false alarm.
+  void cancelRestingNotice();
   const now = Date.now();
   if (now - lastResumeAt < RESUME_DEBOUNCE_MS) return;
   lastResumeAt = now;
@@ -60,6 +64,9 @@ function onBackground(): void {
   // Any resume debounce in flight is meaningless now.
   lastResumeAt = 0;
   connection.suspendForBackground();
+  // Modul: task 45. One fixed id, so the second of the two background events
+  // replaces the first rather than stacking a second reminder.
+  void scheduleRestingNotice();
 }
 
 interface CapacitorAppPlugin {

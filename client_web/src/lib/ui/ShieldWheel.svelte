@@ -38,6 +38,7 @@
     type StrikeResponse,
   } from '../net/rest';
   import { worldBossResultSentence } from '../game/worldBossResults';
+  import { tap } from '../net/haptics';
 
   // `challenge` is read ONCE, on purpose, which is what svelte-check's
   // state_referenced_locally warnings on this file are about: a challenge
@@ -212,6 +213,8 @@
       // The time bar animates over whatever is left of the window from the
       // frame it appears on - set once, then CSS runs it (nothing ticks here).
       parryRemainingMs = Math.max(0, interrupt.TellAtMs + interrupt.ResponseCloseMs - t);
+      // Modul: task 45 - the parry window opening is felt, not only seen.
+      tap('light');
     }
     if (wantParry !== parryOpen) parryOpen = wantParry;
 
@@ -344,6 +347,8 @@
         strike = answer;
         phase = 'result';
         if (answer.Result === 'Landed') vibrate(answer.Landings.some((l) => l.WeakHit) ? [30, 40, 60] : 30);
+        // Modul: task 45 - a plate breaking for everyone is the heaviest tap.
+        if (answer.BrokePlate >= 0) tap('heavy');
         return;
       }
       errorText = answer

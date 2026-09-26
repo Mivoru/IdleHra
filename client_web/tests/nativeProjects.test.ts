@@ -49,6 +49,12 @@ const REQUIRED_PLUGINS = [
     global: 'PushNotifications',
     usedBy: 'push.ts',
   },
+  { pkg: '@capacitor/haptics', global: 'Haptics', usedBy: 'haptics.ts' },
+  {
+    pkg: '@capacitor/local-notifications',
+    global: 'LocalNotifications',
+    usedBy: 'localNotify.ts',
+  },
   {
     pkg: '@capgo/capacitor-updater',
     global: 'CapacitorUpdater',

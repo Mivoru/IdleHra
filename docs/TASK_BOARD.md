@@ -4091,6 +4091,17 @@ duplicates, then adds a unique index.
 
 ## 45. Haptics and local notifications (M) - plan item 7
 
+**Status (2026-09-27): code DONE; on-device check owed (owner's phone).**
+Branch `feat/haptics-local-notify`. `@capacitor/haptics` and
+`@capacitor/local-notifications` installed and synced (both in
+`nativeProjects.test.ts`); `haptics.ts` (crit light, kill medium, loot tier
+10+ success, parry window light, plate break heavy; 80 ms throttle; Settings
+toggle, default on); `localNotify.ts` (fixed id 4501, scheduled on background
+at `now + OfflineCapSeconds - 3600`, cancelled on resume, permission from a
+Settings button only). `OfflineCapSeconds` is on `StateUpdatePacket`
+(801 -> 805), computed from the hydrated `VodnikMasteryLevel`. Owed: on the
+phone, a crit vibrates, and backgrounding the app schedules the reminder.
+
 **Why:** neither plugin is installed, and local notifications need no Firebase.
 
 **Rules to follow (CLAUDE.md):**
@@ -4132,3 +4143,4 @@ tick thread with no WebSocket compression. **Not yet measured.**
 - `visualState.set` runs on every animation frame (`game.ts:110`), even when nothing is moving. It is also listed under 46/8b; do it here if 46 is closed.
 - All 26 screens load at startup (`App.svelte:3-31`, one 644 KB chunk). Load the large ones with `import()`.
 - Lock ordering in market matching (`MarketOrderBookEngine.cs:412-474`) only matters at a higher population. Record it and do nothing yet.
+- **Larder run-out notification** (split out of 45): needs a server-computed `ProjectedLarderSeconds` on the wire from `OfflineSimulationEngine`'s food model; the client cannot compute the drain honestly.

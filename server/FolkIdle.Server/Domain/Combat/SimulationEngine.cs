@@ -2210,7 +2210,15 @@ namespace FolkIdle.Server.Domain.Combat
                                 LastDeathTick = currentPayload.LastDeathTick,
                                 LastHitWasCrit = currentPayload.LastHitWasCrit,
                                 EquippedWeaponKind = currentPayload.EquippedWeaponKind,
-                                TicksSinceLastFlush = currentPayload.TicksSinceLastFlush
+                                TicksSinceLastFlush = currentPayload.TicksSinceLastFlush,
+                                // Modul: task 45. The EFFECTIVE offline cap,
+                                // Vodnik extension included, so the client's
+                                // local "they stop earning in 1 h" notification
+                                // never mirrors the 12 h rule itself. Derived
+                                // from VodnikMasteryLevel, which the login
+                                // hydrates, so a relogin cannot read it as 0.
+                                OfflineCapSeconds = (int)RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(
+                                    currentPayload.VodnikMasteryLevel, OfflineSimulationEngine.MaxOfflineSeconds)
                             };
                             // Modul: this packet carries currentPayload's own
                             // private data (gold, stats, equipment, mana,

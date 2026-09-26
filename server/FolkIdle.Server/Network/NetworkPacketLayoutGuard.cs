@@ -200,7 +200,12 @@ namespace FolkIdle.Server.Network
         // owner dropped the 300-second session on 2026-09-24 and one strike a
         // day left nothing for it to fence, so WorldBossSessionEndsEpoch had
         // been 0 on every packet since. CommandResultCode 41 stays reserved.
-        public const int ExpectedStateUpdateSize = 801;
+        //
+        // Modul: the offline cap, 801 -> 805 (task 45). One int,
+        // OfflineCapSeconds - the EFFECTIVE cap including the Vodnik
+        // extension, so the client's local "stop earning in 1 h" notification
+        // reads the rule instead of copying it.
+        public const int ExpectedStateUpdateSize = 805;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

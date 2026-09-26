@@ -250,5 +250,23 @@
     "Pl": "Brak aktywnej wojny",
     "Es": "Sin Guerra Activa",
     "Fr": "Aucune Guerre Active"
+  },
+  {
+    "Key": "SettingsHaptics",
+    "En": "Vibration",
+    "Cs": "Vibrace",
+    "De": "Vibration",
+    "Pl": "Wibracje",
+    "Es": "Vibración",
+    "Fr": "Vibration"
+  },
+  {
+    "Key": "SettingsRestingReminder",
+    "En": "Remind me before my folk stop earning",
+    "Cs": "Připomenout mi, než moji lidé přestanou vydělávat",
+    "De": "Erinnere mich, bevor mein Volk nichts mehr verdient",
+    "Pl": "Przypomnij mi, zanim moi ludzie przestaną zarabiać",
+    "Es": "Avísame antes de que mi gente deje de ganar",
+    "Fr": "Me prévenir avant que mes gens cessent de gagner"
   }
 ]
