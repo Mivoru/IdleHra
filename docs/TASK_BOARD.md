@@ -23,7 +23,12 @@
 >    the weak plate is drawn per strike and the armour regrows daily.
 > 4. **Task 38 (Guild Wars): parked** until the population nears the floor.
 >    Re-measure before starting.
-> 5. **Backlog follow-ups** (not blocking, all pre-existing):
+> 5. **Tasks 39-47, the 2026-09-26 architecture audit** (added 2026-09-27).
+>    - Index at the bottom of this file; plan in
+>      `docs/superpowers/plans/2026-09-26-audit-remediation.md`.
+>    - Start with **39 (funnel telemetry)**.
+>    - **40 (the HTTP loop handles one request at a time) is P0.**
+> 6. **Backlog follow-ups** (not blocking, all pre-existing):
 >    - the Village "Got it" overlap;
 >    - a Forge row at the bottom edge (`check:touch`);
 >    - the practice ring in landscape (`check:safearea`);
@@ -3959,3 +3964,171 @@ player does day to day in an idle game, rewards and how they sit against the
 diamond economy and task 37's sink, anti-abuse. Then a written spec, then phased
 plans. Do not delete the hidden handlers before this lands - they are the
 `svelte-check` baseline.
+
+# Tasks 39-47: the 2026-09-26 architecture audit
+
+Added 2026-09-27. **The plan is `docs/superpowers/plans/2026-09-26-audit-remediation.md`.**
+It holds the steps, the tests to write first, and the "Done when" criteria.
+This section is the index; do not copy the plan's steps here, because two
+copies drift.
+
+**Order is 39 → 47 as numbered.** It is not the audit's order:
+- the funnel goes first, because every day it is not live is a cohort nobody can measure afterwards;
+- 42 goes before 43, because both edit `FlushState`.
+
+**Decisions, settled 2026-09-27:**
+- **D1, set by the owner:** split-brain compensation is a flat **1,000 gold**, once per incident.
+- **D2-D5, delegated by the owner and recorded with their reasoning in the plan's decisions block:**
+  - first kill: reopened only by a pre-set funnel trigger;
+  - haptics: on by default;
+  - frame size: measure, then compression before deltas;
+  - Kestrel: only if compression is needed, or if concurrent players pass about 200.
+
+| # | Task | Plan item | Size |
+|---|---|---|---|
+| 39 | Funnel telemetry: `player_funnel_events`, 12 first-time steps | 4 | S-M |
+| 40 | Concurrent HTTP router, per-account striped lock, bounded body reads, Caddy `request_buffers` | 1 | M |
+| 41 | Per-session outbox: events are never dropped silently, and one slow peer no longer delays everyone | 3 | M |
+| 42 | Cap the split-brain gold mail (flat 1,000, once per incident) | 6 | S |
+| 43 | Checkpoints off the tick thread: `CheckpointWriter`, staggered boundaries, fixed timestep | 2 | L |
+| 44 | Unique `(PlayerId, ItemId)` on `CommodityRecords`, and `CommodityLedger.AddAsync` | 5 | M |
+| 45 | Haptics and local notifications (`OfflineCapSeconds` on the wire) | 7 | M |
+| 46 | State-frame size: measure, then compression via Kestrel, then deltas only if needed | 8 | S to L |
+| 47 | Audit leftovers | "Also found" | S each |
+
+## 39. Funnel telemetry (S-M) - plan item 4
+
+**Why:** 61 accounts, **1** at level 10 or above (2026-09-25). Nothing records where the
+other 60 stopped. `PlayerRecord` has no creation timestamp, so the funnel's
+"registered" row is also the only record of when an account was created.
+Accounts from before the deploy are outside the cohort, and that is accepted.
+
+**Done when:**
+- `exercise.mjs`'s new-player context produces steps 1-2 locally;
+- `docs/ops/funnel.sql` returns rows in production after the deploy;
+- `CronWorkerGuardTests` lists the new worker.
+
+**Follow-up:** apply the D2 trigger once the cohort holds at least 30 registrations.
+
+## 40. The HTTP accept loop handles one request at a time (M, P0) - plan item 1
+
+**Why:**
+- `ListenLoopAsync` (`NetworkBroadcastSystem.cs:663`) awaits 79 handlers inline, and 37 of them read bodies with `ReadToEndAsync`.
+- One slow request stalls every login and WebSocket upgrade.
+- A trickled body on `/api/v1/assets/handshake` freezes the server **without authenticating**.
+
+**The trap:** handling one request at a time is what currently prevents a
+double chest sale. Add the per-account lock **before** making the loop
+concurrent.
+
+**Done when:**
+- `HttpRouterConcurrencyTests`, which fails on `main` today, passes;
+- the double-sale test passes;
+- `exercise.mjs` passes;
+- `smoke:screens` passes against production;
+- CLAUDE.md gains the "per-account striped lock" rule.
+
+## 41. Loot, combat and chat frames are dropped silently (M) - plan item 3
+
+**Why:** `WebSocketSession.SendAsync` (`:126`) drops a frame when the socket is
+busy. That is right for snapshots and wrong for events. The three dispatch
+loops also await each send in turn, so one peer that has stopped reading
+delays everyone for up to 20 s.
+
+**Done when:**
+- `SessionOutboxTests` (a) to (e) pass;
+- `outbox_events_dropped_total` is in `/metrics`;
+- `exercise.mjs` passes;
+- a two-browser chat check under combat, done by hand, shows every message.
+
+## 42. The split-brain gold mail has no cap and pays more than once per incident (S) - plan item 6
+
+**Why:** `StateCheckpointManager.cs:265` mails `epochDelta * 500` gold, with no
+ceiling and nothing keying it to one incident. The trigger is plausible, not
+demonstrated.
+
+**Owner decision:** a flat **1,000 gold** per incident, recorded once per
+`(PlayerId, DbEpoch)` in `split_brain_incidents`.
+
+**Done when:**
+- the past-payout count from production is in the PR;
+- the "flushed twice, mailed once" test passes.
+
+## 43. Blocking database checkpoints on the 10 Hz tick thread (L, the riskiest) - plan item 2
+
+**Why:** `FlushStateAndAdvance` (`:172`) runs a Serializable transaction
+synchronously on the one thread that simulates every player. It is called from
+10 sites.
+
+**Read before starting:**
+- CLAUDE.md, "Two gold paths" and "A Redis frame is not a checkpoint";
+- `RedisSessionCache.TryStoreFrame` (`:79-83`): with Redis up, the gold delta moves into Redis on the tick thread.
+
+Three PRs:
+- **2a:** the writer alone.
+- **2b:** the callers, one per commit, plus deleting the `InventorySpaceRemaining` boundary.
+- **2c/2d:** staggered boundaries, then a fixed timestep as its own PR.
+
+**Done when:**
+- a guard test finds no `FlushStateAndAdvance` call on the tick thread;
+- tests (a) to (e) pass, including gold banked exactly once while a flush is in flight;
+- `exercise.mjs` passes;
+- tick p99 in production is under 25 ms.
+
+## 44. `CommodityRecords` has no unique key; about 30 check-then-insert sites (M) - plan item 5
+
+**Why:** a second `gold` row splits a balance. `MarketTickCoordinator`'s
+settlement rescue (`:58-80`) inserts with no lock at all.
+
+**Before writing the migration:** run the duplicate query in production and
+put the result in the PR. The migration is **not additive**: it merges the
+duplicates, then adds a unique index.
+
+**Done when:**
+- the guard test allows `new CommodityRecord` only in `CommodityLedger` and the two seeders;
+- `exercise.mjs` passes;
+- the production query returns 0 rows.
+
+## 45. Haptics and local notifications (M) - plan item 7
+
+**Why:** neither plugin is installed, and local notifications need no Firebase.
+
+**Rules to follow (CLAUDE.md):**
+- a plugin read off the global still has to be INSTALLED;
+- `npm run sync`, not raw `cap sync`;
+- **declare** `POST_NOTIFICATIONS`.
+
+Haptics default to **on**. `OfflineCapSeconds` goes on the wire, using the
+`add-command` skill (801 → 805). The client must not mirror the 12 h rule.
+
+The larder run-out notification is **not** in scope. It needs a
+server-computed field, so file it separately if wanted.
+
+**Done when:**
+- `nativeProjects.test.ts` lists both plugins;
+- the unit tests pass;
+- on the owner's Android phone, a crit vibrates and backgrounding schedules the notification.
+
+## 46. State-frame size (S to L) - plan item 8
+
+**Why:** web clients get JSON snapshots of about 230 fields, serialized on the
+tick thread with no WebSocket compression. **Not yet measured.**
+
+**Steps:**
+1. **Measure (8a).** A week of `/metrics`, plus a test that asserts the frame size.
+2. **Go if either threshold is crossed:**
+   - bandwidth above about 150 KB per player per minute;
+   - serialization above 10% of the tick budget.
+
+   Otherwise close the task with the numbers written down.
+3. **If bandwidth is the trigger:** Kestrel plus permessage-deflate (8c), then re-measure. Build deltas (8b), with capability negotiation, only if frames are still over the threshold.
+4. **If only the CPU trigger fires:** skip compression and move serialization off the tick thread instead.
+
+## 47. Audit leftovers (S each)
+
+- **The Character sheet's HP bar uses an estimate.** `Character.svelte:370` uses `observedMaxPlayerHp`, while `PlayerMaxHp` is on the wire and `Combat.svelte:157` uses it. Switch it, and delete the estimate (`game.ts:66`).
+- `MailboxInstances` has no index on `PlayerId`.
+- Offline catch-up makes up to 200,000 loot rolls one at a time (`OfflineSimulationEngine.cs:94-103, 954`). Use a binomial draw per table entry.
+- `visualState.set` runs on every animation frame (`game.ts:110`), even when nothing is moving. It is also listed under 46/8b; do it here if 46 is closed.
+- All 26 screens load at startup (`App.svelte:3-31`, one 644 KB chunk). Load the large ones with `import()`.
+- Lock ordering in market matching (`MarketOrderBookEngine.cs:412-474`) only matters at a higher population. Record it and do nothing yet.
