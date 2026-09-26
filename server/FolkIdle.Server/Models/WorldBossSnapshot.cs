@@ -48,5 +48,12 @@ namespace FolkIdle.Server.Models
         // global game with one shared boss rewards a timezone rather than a
         // decision.
         public byte WeakPlateRevealed { get; set; }
+
+        // Modul: THE UTC DAY THE ARMOUR LAST REGREW (task 36, spec 3.3.1). In
+        // wheel mode the broken plates are cleared whenever this is not today,
+        // by whichever writer holds the row lock first - a strike or LiveOps'
+        // once-a-minute rescale. Persisted because LiveOps' own midnight edge
+        // does not fire across a restart.
+        public long ArmourDayKey { get; set; }
     }
 }

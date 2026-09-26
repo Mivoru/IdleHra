@@ -917,6 +917,8 @@ namespace FolkIdle.Server.Domain.Combat
 
                 WorldBossTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
+                WorldBossTickCoordinator.DrainStrikeOrders(_playerRegistry, _activePlayers, _worldBossEngine);
+
                 RaceProgressionTickCoordinator.DrainMasteryUpdates(_playerRegistry, _activePlayers);
 
                 ForgeTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);

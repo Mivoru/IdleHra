@@ -27,6 +27,9 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         Queued,
         Failed,
         PracticeScored,
+        // A real challenge needs the player's live character to price it; asked
+        // for from a script with no WebSocket open, it is refused up front.
+        NoGameSession,
     }
 
     public static class WorldBossStrikeResults

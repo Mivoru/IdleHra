@@ -158,8 +158,10 @@ P = mean over spears whose class is Plate or Seam of (3.0 if that plate is weak 
 Auto = max over the plates struck by a Plate-or-Seam spear of (3.0 if weak else 1.0)
        Auto = 1.0 if no spear reached Plate class          in [1.0, 3.0]
 played = max(M * P, Auto)                                  (owner, 2026-09-24: the auto-strike floor)
-damage = ComputeAppliedDamage(currentHp, A * G * played)   (existing clamp [1,000, 100,000,000] and to remaining HP)
+damage = ComputeAppliedDamage(currentHp, max(1,000, A * G) * played)   (clamp to 100,000,000 and to remaining HP)
 ```
+
+**The 1,000 floor applies to the base hit, before `played` (found 2026-09-26).** The formula first written here floored the *result*. A typical character's `A x G` is 100-200, so `A x G x 6.0` is still under 1,000 and every strike dealt exactly 1,000: `exercise.mjs` measured a blind run (M 1.28) and a capped run (M 2.00) dealing the same damage. Flooring the base hit keeps "a character that has never fought still contributes" and lets every multiplier count. Opcode 32 keeps the old clamp until it is retired by the flip.
 
 - **Auto-strike** is today's strike exactly: `M = 1.0`, and `P` is 3.0 or 1.0 for the one plate chosen.
 - **The auto-strike floor (owner decision, final).** A played attempt is never worth less than auto-striking the same plate: `played = max(M x P, Auto)` per attempt.
@@ -222,6 +224,14 @@ That fits one strike a day: there is a reason to come back daily, and a reason t
    - the ledger's `played >= Auto` still holds.
 
 **A tuning lever, NOT decided:** if the board still strips too fast in practice, make breaking require a **Seam** rather than a Plate hit, so stripping armour is itself a skill. Decide it from the first weeks' data, not in advance.
+
+**Implementation decisions (Phase 2, 2026-09-26).** Written here before the code, as the plan requires:
+1. **The reveal rule applies only in `wheel` mode.** Opcode 32 has no private channel (its answer is a result code on the ring, and the weak index reaches the client only through the shared mirror), so under `off`/`practice` it keeps task 10's rule: one weak plate per encounter, revealed to everyone by the first hit. In `wheel` mode the mirror always carries 255 and nothing sets `WeakPlateRevealed`.
+2. **The last unbroken plate never breaks, enforced under the row lock.** A wheel challenge draws its weak plate from the in-memory mirror at issue, which can be a moment stale. Without a guard, a stale draw could leave the true last plate unweak for that attempt and break it, so all five would be broken and the next draw would have nothing to pick from. The engine therefore refuses a break that would complete the mask, and a draw from a full mask (which then cannot happen) falls back to all five.
+3. **An auto-strike draws its weak plate inside the transaction**, from the locked row's mask, because it has no challenge to hold one.
+4. **Regrowth is keyed on a persisted day.** LiveOps' midnight edge does not fire for a day the server was down across, and its first tick after a start only records "today". So the snapshot carries `ArmourDayKey` (additive column). Every writer that already locks the row (a strike, and LiveOps' once-a-minute rescale) clears the mask when the key is not today and stamps today. Midnight is therefore exact for a strike and at most a minute late for the board everyone sees.
+5. **Metering is one strike a day** (#48), so `exercise.mjs` re-opens the dev window between its blind, aimed and auto strikes (opening one deletes the attempt rows) and compares the damage on the result cards, not the HP of three different encounters.
+6. **A strike needs a live game session, and one without it is SPENT at the floor.** `A` and `G` come from the tick's payload (spec 5.7). A real challenge is refused up front with `NoGameSession` when the player has no WebSocket session. A strike that still reaches the tick with no payload is priced with the base hit at its 1,000 floor and spends the attempt. **Superseded 2026-09-26 (security review):** this rule first said "answers `Failed` and spends nothing". The challenge was already removed by then, so a script could close its socket, throw one spear, read `WeakHit`, and discard the run for free. Retrying until the first guess was weak gave the 6.0x ceiling every day, and any poor run could be re-rolled, which breaks 5.6. The web client always holds a session on the World Boss screen, so an honest player never meets either rule.
 ### 3.4 The enraged wheel: the boss's last 25% of HP (owner decision, final)
 
 **When:** a challenge is **enraged** if, at issue time, `CurrentHp <= 0.25 x MaxHp` (the boss snapshot row, read in the eligibility step). The phase is decided **once, at issue**, and written into the schedule (`"Enraged": true`). A challenge never changes difficulty mid-play, and its score never depends on when the HP crossed the line.

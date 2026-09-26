@@ -2833,7 +2833,7 @@ namespace FolkIdle.Server.Network
 
                 if (requestPath == "/api/v1/worldboss/challenge" && method == "GET")
                 {
-                    answer = service.GetChallenge(playerId);
+                    answer = await service.GetChallengeAsync(playerId);
                 }
                 else if (method == "POST")
                 {
@@ -2854,7 +2854,7 @@ namespace FolkIdle.Server.Network
                                     using var parsed = JsonDocument.Parse(body);
                                     if (parsed.RootElement.TryGetProperty("Practice", out var p) && p.ValueKind == JsonValueKind.True) practice = true;
                                 }
-                                answer = service.IssueChallenge(playerId, practice);
+                                answer = await service.IssueChallengeAsync(playerId, practice);
                                 break;
                             case "/api/v1/worldboss/throw":
                                 var throwRequest = JsonSerializer.Deserialize<FolkIdle.Server.Domain.Combat.WorldBossStrike.ThrowRequest>(body, WorldBossStrikeJson);
@@ -2870,7 +2870,8 @@ namespace FolkIdle.Server.Network
                                 var strikeRequest = string.IsNullOrWhiteSpace(body)
                                     ? new FolkIdle.Server.Domain.Combat.WorldBossStrike.StrikeRequest()
                                     : JsonSerializer.Deserialize<FolkIdle.Server.Domain.Combat.WorldBossStrike.StrikeRequest>(body, WorldBossStrikeJson);
-                                answer = service.Strike(playerId, strikeRequest ?? new FolkIdle.Server.Domain.Combat.WorldBossStrike.StrikeRequest());
+                                answer = await service.StrikeAsync(playerId, strikeRequest ?? new FolkIdle.Server.Domain.Combat.WorldBossStrike.StrikeRequest());
+                                if (answer == null) { context.Response.StatusCode = 400; return; }
                                 break;
                         }
                     }

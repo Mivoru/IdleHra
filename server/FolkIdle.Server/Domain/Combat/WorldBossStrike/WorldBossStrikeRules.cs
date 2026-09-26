@@ -13,6 +13,9 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         Seam = 3,
     }
 
+    /// <summary>What one strike is worth, and what it breaks. See <see cref="WorldBossStrikeRules.Price"/>.</summary>
+    public readonly record struct StrikePrice(double Multiplier, double PlateMultiplier, double Auto, double Played, int? BreakPlate);
+
     /// <summary>One spear's outcome: which plate it struck, and how well.</summary>
     public readonly record struct SpearLanding(int Seq, int Plate, SpearClass Class, bool IsCounter);
 
@@ -235,6 +238,22 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         {
             int allButWeak = ((1 << PlateCount) - 1) & ~(1 << weakPlate);
             return (brokenMask & allButWeak) == allButWeak;
+        }
+
+        /// <summary>
+        /// Prices one strike on the locked row (spec 3.2 and 3.3.1): P, the
+        /// auto-strike floor, played = max(M x P, Auto), and the one plate it
+        /// breaks - never the last one standing. <paramref name="multiplier"/>
+        /// is clamped to [Floor, Cap] whatever the caller passed.
+        /// </summary>
+        public static StrikePrice Price(IReadOnlyList<SpearLanding> landingsInTapOrder, int weakPlate, double multiplier, int brokenMask)
+        {
+            double m = double.IsNaN(multiplier) ? Floor : Math.Clamp(multiplier, Floor, Cap);
+            double p = PlateMultiplier(landingsInTapOrder, weakPlate);
+            double auto = AutoFloor(landingsInTapOrder, weakPlate);
+            int? target = BreakTarget(landingsInTapOrder, weakPlate, brokenMask);
+            if (target is int plate && WeakPlateDraw.WouldBreakTheLast(brokenMask, plate)) target = null;
+            return new StrikePrice(m, p, auto, Math.Max(m * p, auto), target);
         }
 
         public static double Normalize(double angleDeg)

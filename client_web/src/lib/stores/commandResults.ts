@@ -100,6 +100,9 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   // sends it now; the sentence stays so an old build's code still reads.
   41: 'Your battle session has closed.',
   42: 'Your strike could not be recorded - nothing was spent. Try again.',
+  // Modul: the shield wheel replaced opcode 32 (task 36). Only an old bundle
+  // still sends it, and restarting the app is how the OTA update lands.
+  43: 'This version of the app cannot strike the boss any more. Restart the app to update it.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;

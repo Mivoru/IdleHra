@@ -258,7 +258,15 @@ namespace FolkIdle.Server.Network
         // The strike threw - a refused connection, a serialization conflict -
         // and was rolled back, so nothing was spent. It used to be an
         // unobserved task exception or a server-console line.
-        WorldBossStrikeFailed = 42
+        WorldBossStrikeFailed = 42,
+
+        // Modul: OPCODE 32 UNDER THE SHIELD WHEEL (task 36 Phase 2). With
+        // FOLKIDLE_BOSS_MINIGAME=wheel a strike is a REST challenge; a stale
+        // bundle still pressing the old plate buttons cannot show the private
+        // weak-hit answer or the damage card, so it is told to update over the
+        // air. Answered, never TerminateSessionForSecurity - it is an honest
+        // old client, not a protocol violation.
+        WorldBossUpdateRequired = 43
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

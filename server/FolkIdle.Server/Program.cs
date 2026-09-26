@@ -403,9 +403,9 @@ Console.WriteLine($"The Deep: {(delveDeepSettings.Enabled ? "on" : "off")} (FOLK
 serviceCollection.AddSingleton(delveDeepSettings);
 
 // Modul: THE SHIELD WHEEL (task 36) ships behind FOLKIDLE_BOSS_MINIGAME =
-// off | practice | wheel, off by default. Phase 1 serves practice only - no
-// attempt, no damage, no shared state - and answers Disabled on every real
-// path whatever the flag says, until Phase 2's security review.
+// off | practice | wheel, off by default. practice serves the free drill only;
+// wheel adds real challenges, auto-strike over REST and damage, and turns
+// opcode 32 into "update the app".
 var bossMinigameSettings = FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameSettings.FromEnvironment(
     Environment.GetEnvironmentVariable("FOLKIDLE_BOSS_MINIGAME"));
 Console.WriteLine($"The shield wheel: {bossMinigameSettings.ModeName} (FOLKIDLE_BOSS_MINIGAME)");
@@ -497,6 +497,10 @@ var hallOfAncestorsEngine = new HallOfAncestorsEngine(serviceProvider, playerReg
 var craftingEngine = new CraftingEngine(serviceProvider.GetRequiredService<IDbContextFactory<FolkIdleDbContext>>(), playerRegistry, serviceProvider.GetRequiredService<RetryingDbContextOptions>(), guildWarEngine);
 var worldBossEngine = new WorldBossEngine(serviceProvider, playerRegistry);
 worldBossEngine.EnsureSnapshotAsync().GetAwaiter().GetResult();
+// Modul: the shield wheel's REST service reads the board through the engine,
+// which only exists from here on. Until this line every real path is Disabled.
+serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeService>()
+    .AttachBoard(worldBossEngine);
 // Modul: the Guild War unlock cache starts Locked and the matchmaking pass is
 // its only refresher, so a restart of an ALREADY-unlocked server refused war
 // commands with "locked" until that first pass ran - minutes, if the database

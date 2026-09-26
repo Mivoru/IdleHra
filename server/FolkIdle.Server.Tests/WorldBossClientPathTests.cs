@@ -42,12 +42,13 @@ namespace FolkIdle.Server.Tests
 
         private const long Epoch = 7L;
 
-        private (SimulationEngine Engine, WorldBossEngine Boss) CreateEngine()
+        private (SimulationEngine Engine, WorldBossEngine Boss) CreateEngine(
+            FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameMode mode = FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameMode.Off)
         {
             var serviceProvider = _fixture.ServiceProvider;
             var playerRegistry = _fixture.PlayerRegistry;
             var contextFactory = _fixture.DbContextFactory;
-            var boss = new WorldBossEngine(serviceProvider, playerRegistry);
+            var boss = new WorldBossEngine(serviceProvider, playerRegistry, mode);
 
             var networkSystem = new NetworkBroadcastSystem(serviceProvider, AuthenticationDefaults.LocalDevelopmentFallback, "http://localhost:8098/");
             var engine = new SimulationEngine(
@@ -146,6 +147,99 @@ namespace FolkIdle.Server.Tests
                 Assert.True(await WaitAsync(() => engine.GetActivePlayerWorldBossAttemptCount(playerId) == 1),
                     "The attempt never reached the player's packet.");
                 Assert.True(engine.IsActivePlayerPresent(playerId), "A legal strike ended the session.");
+            }
+            finally
+            {
+                engine.Stop();
+                await boss.CloseManualWindowAsync();
+            }
+        }
+
+        // Task 36 Phase 2: with the wheel on, the old plate buttons are a stale
+        // bundle. Answered with "update the app" - no row, no disconnect.
+        [Fact]
+        public async Task UnderTheWheel_Opcode32_SaysUpdate_SpendsNothing_AndKeepsTheSession()
+        {
+            const long playerId = 970_025_011L;
+            var (engine, boss) = CreateEngine(FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameMode.Wheel);
+            await ClearAttemptsAsync(playerId);
+            await boss.OpenManualWindowAsync(900);
+            long hpBefore = (await SnapshotAsync()).CurrentHp;
+
+            try
+            {
+                engine.Start();
+                engine.InjectVirtualPlayer(Striker(playerId));
+                engine.InjectBenchmarkCommand(playerId, BrowserStrike(plate: 2));
+
+                Assert.True(await WaitAsync(() => HasResult(engine, playerId, CommandResultCode.WorldBossUpdateRequired)),
+                    "Opcode 32 under the wheel was not answered with WorldBossUpdateRequired.");
+                Assert.Null(await AttemptAsync(playerId));
+                Assert.Equal(hpBefore, (await SnapshotAsync()).CurrentHp);
+                Assert.True(engine.IsActivePlayerPresent(playerId), "An old client's strike ended the session.");
+            }
+            finally
+            {
+                engine.Stop();
+                await boss.CloseManualWindowAsync();
+            }
+        }
+
+        // Task 36 Phase 2, spec 5.7: the REST order goes through the TICK, which
+        // prices it with A x G from the striker's own payload - never from
+        // anything the client sent - and a striker with no payload at the floor.
+        [Fact]
+        public async Task AShieldWheelOrder_IsPricedFromThePayload_OnTheTick()
+        {
+            const long playerId = 970_025_012L;
+            const long absentPlayerId = 970_025_013L;
+            var (engine, boss) = CreateEngine(FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameMode.Wheel);
+            await ClearAttemptsAsync(playerId);
+            await ClearAttemptsAsync(absentPlayerId);
+            await boss.OpenManualWindowAsync(900);
+            long hpBefore = (await SnapshotAsync()).CurrentHp;
+
+            try
+            {
+                engine.Start();
+                engine.InjectVirtualPlayer(Striker(playerId));
+
+                var order = new FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeOrder
+                {
+                    PlayerId = playerId,
+                    Landings = new[] { new FolkIdle.Server.Domain.Combat.WorldBossStrike.SpearLanding(0, 1, FolkIdle.Server.Domain.Combat.WorldBossStrike.SpearClass.Seam, true) },
+                    WeakPlate = 1,
+                    Multiplier = 1.5,
+                    LandedAs = FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeResult.Landed,
+                };
+                boss.Submit(order);
+                var outcome = await order.Completion.Task.WaitAsync(TimeSpan.FromSeconds(10));
+
+                // Striker's CachedEffectiveMilliAttack is 5,000,000: A = 5,000,
+                // no Giantslayer. 1.5 x 3.0 = 4.5.
+                Assert.Equal(FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeResult.Landed, outcome.Result);
+                Assert.Equal(22_500, outcome.Damage);
+                Assert.Equal(hpBefore - 22_500, (await SnapshotAsync()).CurrentHp);
+                Assert.True(await WaitAsync(() => engine.GetActivePlayerWorldBossAttemptCount(playerId) == 1),
+                    "The wheel strike never reached the player's packet.");
+
+                // No game session, nothing to price the blow with: Failed, nothing spent.
+                var orphan = new FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeOrder
+                {
+                    PlayerId = absentPlayerId,
+                    Landings = Array.Empty<FolkIdle.Server.Domain.Combat.WorldBossStrike.SpearLanding>(),
+                    WeakPlate = 0,
+                    Multiplier = 1.0,
+                    LandedAs = FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeResult.Landed,
+                };
+                // Security review, 2026-09-26: no game session is priced at the
+                // 1,000 floor and SPENT - never "nothing spent", which let a
+                // script discard a run after reading its throws.
+                boss.Submit(orphan);
+                var orphanOutcome = await orphan.Completion.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.Equal(FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeResult.Landed, orphanOutcome.Result);
+                Assert.Equal(WorldBossEngine.MinStrikeDamage, orphanOutcome.Damage);
+                Assert.Equal(1, (await AttemptAsync(absentPlayerId))!.AttemptCount);
             }
             finally
             {
@@ -444,6 +538,7 @@ namespace FolkIdle.Server.Tests
                 // The Redis lookup in the constructor is optional; everything
                 // the attack needs throws, the way a refused pool does.
                 if (serviceType == typeof(StackExchange.Redis.IConnectionMultiplexer)) return null;
+                if (serviceType == typeof(FolkIdle.Server.Domain.Combat.WorldBossStrike.BossMinigameSettings)) return null;
                 throw new InvalidOperationException("EMAXCONNSESSION (simulated)");
             }
         }

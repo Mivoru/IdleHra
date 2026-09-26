@@ -18,11 +18,15 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         public bool Practice => Schedule.Practice;
 
         /// <summary>
-        /// Practice only: a weak plate drawn for this challenge alone. Practice
-        /// must never answer from the real one, or it is a free probe for the
-        /// secret (spec 5.2).
+        /// This attempt's weak plate, drawn at issue and held here and nowhere
+        /// else (spec 3.3.1). A real challenge draws it from the plates unbroken
+        /// at issue; practice draws a decoy from all five, so practice can never
+        /// answer from anything real and is no probe for the secret (spec 5.2).
         /// </summary>
-        public int DecoyWeakPlate { get; init; }
+        public int WeakPlate { get; init; }
+
+        /// <summary>The encounter a real challenge belongs to; 0 in practice.</summary>
+        public long EncounterEndEpoch { get; init; }
 
         internal readonly object Gate = new();
         internal readonly Dictionary<int, RecordedThrow> Throws = new();
@@ -81,8 +85,14 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         public WorldBossChallenge? Get(long playerId, bool practice) =>
             Map(practice).TryGetValue(playerId, out var challenge) ? challenge : null;
 
-        /// <summary>Issues a challenge, or returns the one already outstanding (issued = false).</summary>
-        public (WorldBossChallenge Challenge, bool Issued) IssueOrGet(long playerId, bool practice, bool enraged, long nowMs)
+        /// <summary>
+        /// Issues a challenge, or returns the one already outstanding (issued =
+        /// false). <paramref name="brokenPlateMask"/> is the board at issue: a
+        /// real challenge's weak plate is drawn only from the plates it leaves
+        /// standing. Practice ignores it.
+        /// </summary>
+        public (WorldBossChallenge Challenge, bool Issued) IssueOrGet(long playerId, bool practice, bool enraged, long nowMs,
+            int brokenPlateMask = 0, long encounterEndEpoch = 0)
         {
             var map = Map(practice);
             if (map.TryGetValue(playerId, out var existing) && existing.ExpiresAtMs > nowMs) return (existing, false);
@@ -98,7 +108,8 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
                     PlayerId = playerId,
                     Schedule = ShieldWheelSchedule.Generate(_rng, practice, enraged),
                     IssuedAtMs = nowMs,
-                    DecoyWeakPlate = practice ? RandomNumberGenerator.GetInt32(WorldBossStrikeRules.PlateCount) : -1,
+                    WeakPlate = WeakPlateDraw.From(practice ? 0 : brokenPlateMask),
+                    EncounterEndEpoch = practice ? 0 : encounterEndEpoch,
                 };
             }
 
@@ -152,9 +163,9 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         }
 
         /// <summary>
-        /// Drops expired practice challenges silently. Real challenges are
-        /// returned for resolution at the floor (spec 5.6) - that lands with
-        /// Phase 2; until then there are none.
+        /// Drops expired practice challenges silently. Expired real challenges
+        /// are removed and returned, for the caller to resolve at the floor
+        /// (spec 5.6) - whoever's request happened to sweep them.
         /// </summary>
         public IReadOnlyList<WorldBossChallenge> ExpireDue(long nowMs)
         {
@@ -172,5 +183,16 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         }
 
         public int PracticeCount => _practice.Count;
+
+        // Modul: THE ANSWER TO A STRIKE NOBODY FINISHED. An abandoned challenge
+        // is resolved by whichever request sweeps it, which is usually not the
+        // owner's, so the owner's next look at the screen collects the result
+        // here ("your unfinished strike was resolved at the base multiplier").
+        private readonly ConcurrentDictionary<long, WorldBossStrikeOutcome> _resolvedNotes = new();
+
+        public void NoteResolved(long playerId, WorldBossStrikeOutcome outcome) => _resolvedNotes[playerId] = outcome;
+
+        public WorldBossStrikeOutcome? TakeResolvedNote(long playerId) =>
+            _resolvedNotes.TryRemove(playerId, out var outcome) ? outcome : null;
     }
 }

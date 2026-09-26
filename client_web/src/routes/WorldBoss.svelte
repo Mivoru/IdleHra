@@ -22,22 +22,70 @@
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { play } from '../lib/ui/audio';
   import ShieldWheel from '../lib/ui/ShieldWheel.svelte';
-  import { fetchBossChallenge, issueBossChallenge, type ShieldWheelChallenge } from '../lib/net/rest';
+  import {
+    fetchBossChallenge,
+    issueBossChallenge,
+    strikeBoss,
+    type ShieldWheelChallenge,
+    type StrikeResponse,
+  } from '../lib/net/rest';
   import { worldBossResultSentence } from '../lib/game/worldBossResults';
 
-  // Modul: THE SHIELD WHEEL, PRACTICE ONLY (task 36 Phase 1). The server says
-  // whether the wheel is open (FOLKIDLE_BOSS_MINIGAME); with it off, GET
-  // /challenge answers Disabled and this screen is exactly what it was. The
-  // plate buttons below are still the real strike until Phase 2.
+  // Modul: THE SHIELD WHEEL (task 36). The server says which mode it runs
+  // (FOLKIDLE_BOSS_MINIGAME); with it off, GET /challenge answers Disabled and
+  // this screen is what it always was. Under `practice` the wheel is a free
+  // drill and the plate buttons are the real strike over opcode 32. Under
+  // `wheel` (Phase 2) the real strike IS the wheel, and the plate buttons
+  // become the auto-strike over REST - opcode 32 only tells an old bundle to
+  // update.
   let wheelMode = $state('off');
+  const wheelStrikes = $derived(wheelMode === 'wheel');
   let practiceChallenge = $state<ShieldWheelChallenge | null>(null);
+  let strikeChallenge = $state<ShieldWheelChallenge | null>(null);
+  let resumable = $state<ShieldWheelChallenge | null>(null);
   let openingPractice = $state(false);
+  let openingStrike = $state(false);
+  let autoResult = $state<StrikeResponse | null>(null);
+
+  function sayResolved(resolved: StrikeResponse | null | undefined) {
+    if (resolved) pushLocalNotice(worldBossResultSentence(resolved.Result, resolved.Damage));
+  }
 
   $effect(() => {
     fetchBossChallenge()
-      .then((answer) => (wheelMode = answer.Result === 'Disabled' ? 'off' : answer.Mode))
+      .then((answer) => {
+        wheelMode = answer.Result === 'Disabled' ? 'off' : answer.Mode;
+        sayResolved(answer.Resolved);
+        // A real strike left open (the app was closed mid-run) can be picked
+        // up where it was: the server kept its throws and its clock.
+        if (answer.Challenge && !answer.Challenge.Practice) resumable = answer.Challenge;
+      })
       .catch(() => (wheelMode = 'off'));
   });
+
+  async function openStrike() {
+    if (openingStrike) return;
+    openingStrike = true;
+    autoResult = null;
+    try {
+      const answer = await issueBossChallenge(false);
+      sayResolved(answer?.Resolved);
+      if (answer && (answer.Result === 'Issued' || answer.Result === 'Outstanding') && answer.Challenge) {
+        resumable = null;
+        strikeChallenge = answer.Challenge;
+      } else if (answer) {
+        pushLocalNotice(worldBossResultSentence(answer.Result) || 'The strike could not be started.');
+      }
+    } catch (err) {
+      pushLocalNotice(err instanceof Error ? err.message : 'The strike could not be started.');
+    } finally {
+      openingStrike = false;
+    }
+  }
+
+  function closeStrike() {
+    strikeChallenge = null;
+  }
 
   async function openPractice() {
     if (openingPractice) return;
@@ -172,7 +220,28 @@
 
   $effect(() => () => clearTimeout(strikeTimer));
 
+  // Modul: THE AUTO-STRIKE (task 36 Phase 2) is today's plate strike exactly -
+  // M 1.0, the chosen plate, triple if it happens to be this attempt's weak
+  // plate - sent over REST so its answer can say so to this player alone.
+  async function autoStrike() {
+    if (striking) return;
+    striking = true;
+    attemptsAtStrike = attempts;
+    autoResult = null;
+    play('playerHit');
+    try {
+      const answer = await strikeBoss({ Mode: 'Auto', Plate: selectedPlate });
+      if (answer && answer.Result === 'Landed') autoResult = answer;
+      else pushLocalNotice(answer ? worldBossResultSentence(answer.Result, answer.Damage) || 'The strike was not recorded.' : 'The strike could not be sent.');
+    } catch (err) {
+      pushLocalNotice(err instanceof Error ? err.message : 'The strike could not be sent.');
+    } finally {
+      striking = false;
+    }
+  }
+
   function attack() {
+    if (wheelStrikes) return void autoStrike();
     if (striking) return;
     const outcome = attackWorldBoss({
       plateIndex: selectedPlate,
@@ -258,12 +327,22 @@
       boss arrives every Monday.
     </p>
     <h3>Its armour</h3>
-    <p class="dim tiny">
-      Five plates, one of them soft. A strike on the soft one does
-      <strong>{BOSS_WEAK_PLATE_MULTIPLIER}x</strong> damage. A strike anywhere else does full
-      damage and <strong>breaks</strong> that plate - for everyone, for the rest of this
-      encounter. Which plate is soft changes every encounter.
-    </p>
+    {#if wheelStrikes}
+      <p class="dim tiny">
+        Five plates, and one of them is soft - but a <strong>different one for every strike</strong>,
+        chosen among the plates still standing. A hit on it does
+        <strong>{BOSS_WEAK_PLATE_MULTIPLIER}x</strong> damage, and only you see where it was. A hit
+        anywhere else <strong>breaks</strong> that plate for everyone, so every broken plate makes
+        the soft one easier to find for whoever strikes next. The armour grows back at midnight UTC.
+      </p>
+    {:else}
+      <p class="dim tiny">
+        Five plates, one of them soft. A strike on the soft one does
+        <strong>{BOSS_WEAK_PLATE_MULTIPLIER}x</strong> damage. A strike anywhere else does full
+        damage and <strong>breaks</strong> that plate - for everyone, for the rest of this
+        encounter. Which plate is soft changes every encounter.
+      </p>
+    {/if}
 
     <div class="armour-plates" role="radiogroup" aria-label="Which plate to strike">
       {#each Array(BOSS_PLATE_COUNT) as _, index}
@@ -295,9 +374,17 @@
       {#if weakPlateFound}
         Somebody found the soft plate: it is <strong>plate {weakPlate + 1}</strong>. Every
         strike on it pays {BOSS_WEAK_PLATE_MULTIPLIER}x.
+      {:else if deducedPlate >= 0 && wheelStrikes}
+        Every other plate is broken, so the next strike's soft plate is certain:
+        <strong>plate {deducedPlate + 1}</strong>.
       {:else if deducedPlate >= 0}
         Every other plate is broken and nobody has found the soft one, so it must be
         <strong>plate {deducedPlate + 1}</strong>.
+      {:else if brokenCount === 0 && wheelStrikes}
+        No plate is broken yet today: the soft one could be any of the five.
+      {:else if wheelStrikes}
+        {brokenCount} of {BOSS_PLATE_COUNT} plates broken today: the soft one is among the other
+        {BOSS_PLATE_COUNT - brokenCount}.
       {:else if brokenCount === 0}
         Nobody has struck this boss yet. Whatever you learn, everyone else will see.
       {:else}
@@ -305,22 +392,59 @@
       {/if}
     </p>
 
-    <button
-      class="attack"
-      disabled={strikeBlockedReason !== ''}
-      onclick={attack}
-    >
-      Strike plate {selectedPlate + 1}
-    </button>
-    {#if strikeBlockedReason}
+    {#if wheelStrikes}
+      <!-- The strike: the shield wheel. Up to 2x for a skilled run, and never
+           less than an auto-strike on the best plate it struck. -->
+      <button
+        class="attack"
+        data-testid="wheel-strike"
+        disabled={(strikeBlockedReason !== '' && !resumable) || openingStrike}
+        onclick={openStrike}
+      >
+        {resumable ? 'Finish your strike' : 'Strike with the shield wheel'}
+      </button>
+      <button
+        class="auto"
+        data-testid="auto-strike"
+        disabled={strikeBlockedReason !== '' || resumable !== null}
+        onclick={attack}
+      >
+        Auto-strike plate {selectedPlate + 1} (1x skill)
+      </button>
+    {:else}
+      <button
+        class="attack"
+        disabled={strikeBlockedReason !== ''}
+        onclick={attack}
+      >
+        Strike plate {selectedPlate + 1}
+      </button>
+    {/if}
+    {#if strikeBlockedReason && !resumable}
       <p class="strike-reason dim tiny" role="status">{strikeBlockedReason}</p>
+    {/if}
+
+    {#if autoResult}
+      <p class="auto-result small" role="status" data-testid="auto-card" data-damage={autoResult.Damage}>
+        {#if autoResult.Landings.some((l) => l.WeakHit)}
+          Plate {selectedPlate + 1} was the soft one this time:
+        {:else if autoResult.BrokePlate >= 0}
+          You broke plate {autoResult.BrokePlate + 1} for everyone:
+        {/if}
+        <strong>{autoResult.Damage.toLocaleString()}</strong> damage ({autoResult.Played.toFixed(2)}x).
+      </p>
     {/if}
 
     {#if wheelMode !== 'off'}
       <h3>The shield wheel</h3>
       <p class="dim tiny">
-        A new way to strike is coming: spin, read the boss's blows, and aim for the seams. Practice it
-        here for free - it spends no attempt and deals no damage.
+        {#if wheelStrikes}
+          Spin, read the boss's blows, and aim for the seams. Practice it here for free - it spends
+          no strike and deals no damage.
+        {:else}
+          A new way to strike is coming: spin, read the boss's blows, and aim for the seams. Practice it
+          here for free - it spends no attempt and deals no damage.
+        {/if}
       </p>
       <button class="practice" disabled={openingPractice} onclick={openPractice}>
         Practice the shield wheel
@@ -334,6 +458,12 @@
        never changes mid-run), so a new challenge must mean a new component. -->
   {#key practiceChallenge.ChallengeId}
     <ShieldWheel challenge={practiceChallenge} onclose={closePractice} onagain={practiceAgain} />
+  {/key}
+{/if}
+
+{#if strikeChallenge}
+  {#key strikeChallenge.ChallengeId}
+    <ShieldWheel challenge={strikeChallenge} onclose={closeStrike} onagain={closeStrike} />
   {/key}
 {/if}
 
@@ -511,6 +641,17 @@
 
   .strike-reason {
     margin: 0.4rem 0 0;
+    text-align: center;
+  }
+
+  .auto {
+    width: 100%;
+    min-height: 44px;
+    margin-top: 0.4rem;
+  }
+
+  .auto-result {
+    margin: 0.5rem 0 0;
     text-align: center;
   }
 

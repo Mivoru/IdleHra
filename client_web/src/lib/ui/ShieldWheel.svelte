@@ -1,6 +1,7 @@
 <script lang="ts">
-  // Modul: THE SHIELD WHEEL OVERLAY (task 36, spec 2 and 7). Practice only in
-  // Phase 1: it posts to /practice/score and deals no damage.
+  // Modul: THE SHIELD WHEEL OVERLAY (task 36, spec 2 and 7). A practice run
+  // posts to /practice/score and deals no damage; a real one (Phase 2) posts
+  // the same log to /strike, spends today's strike and shows the damage.
   //
   // What it sends is times and choices, never a score. Every timestamp is
   // pointerdown.timeStamp minus t0 (performance.now() at the end of the
@@ -29,11 +30,14 @@
   import {
     throwSpear,
     scoreBossPractice,
+    strikeBoss,
     type ShieldWheelChallenge,
     type ParryEntryDto,
     type CounterEntryDto,
     type PracticeScoreResponse,
+    type StrikeResponse,
   } from '../net/rest';
+  import { worldBossResultSentence } from '../game/worldBossResults';
 
   // `challenge` is read ONCE, on purpose, which is what svelte-check's
   // state_referenced_locally warnings on this file are about: a challenge
@@ -57,6 +61,8 @@
   let secondsLeft = $state(Math.ceil(challenge.MaxPlayMs / 1000));
   let errorText = $state('');
   let result = $state<PracticeScoreResponse | null>(null);
+  let strike = $state<StrikeResponse | null>(null);
+  const practice = challenge.Practice;
 
   interface Spear {
     seq: number;
@@ -301,6 +307,7 @@
     cancelAnimationFrame(raf);
     clearInterval(countdownTimer);
     phase = 'submitting';
+    if (!practice) return finishStrike();
     try {
       const scored = await scoreBossPractice({
         ChallengeId: challenge.ChallengeId,
@@ -315,6 +322,34 @@
       }
       result = scored;
       phase = 'result';
+    } catch (err) {
+      errorText = err instanceof Error ? err.message : 'the request failed';
+      phase = 'error';
+    }
+  }
+
+  // Modul: A REAL RUN POSTS THE SAME LOG TO /strike. The result card reads the
+  // REST answer only; the boss's health and the pip arrive on the stream, so
+  // nothing here invalidates or recomputes them (one source per truth).
+  async function finishStrike() {
+    try {
+      const answer = await strikeBoss({
+        Mode: 'Wheel',
+        ChallengeId: challenge.ChallengeId,
+        Taps: taps,
+        Parries: parries,
+        Counters: counters,
+      });
+      if (answer && (answer.Result === 'Landed' || answer.Result === 'Refused' || answer.Result === 'ResolvedAtFloor')) {
+        strike = answer;
+        phase = 'result';
+        if (answer.Result === 'Landed') vibrate(answer.Landings.some((l) => l.WeakHit) ? [30, 40, 60] : 30);
+        return;
+      }
+      errorText = answer
+        ? worldBossResultSentence(answer.Result) || 'The strike could not be recorded. Nothing was spent. Try again.'
+        : 'The strike could not be sent.';
+      phase = 'error';
     } catch (err) {
       errorText = err instanceof Error ? err.message : 'the request failed';
       phase = 'error';
@@ -361,13 +396,13 @@
   class="overlay"
   role="dialog"
   aria-modal="true"
-  aria-label="Shield wheel practice"
+  aria-label={practice ? 'Shield wheel practice' : 'Shield wheel strike'}
   data-schedule={scheduleJson}
   data-t0={t0Attr > 0 ? t0Attr : undefined}
   data-phase={phase}
 >
   <div class="top">
-    <span class="mode">Practice - no damage, no attempt spent</span>
+    <span class="mode">{practice ? 'Practice - no damage, no attempt spent' : "Today's strike - this one counts"}</span>
     {#if challenge.Enraged}
       <span class="enraged"><span aria-hidden="true">&#x2620;</span> The boss is enraged</span>
     {/if}
@@ -477,6 +512,38 @@
     </div>
   {/if}
 
+  {#if phase === 'result' && strike}
+    <div class="card" data-testid="strike-card" data-damage={strike.Damage} data-played={strike.Played}>
+      <h3>{strike.Result === 'Landed' ? 'Your strike' : 'Strike resolved'}</h3>
+      {#if strike.Result !== 'Landed'}
+        <p class="hint">{worldBossResultSentence(strike.Result, strike.Damage)}</p>
+      {/if}
+      <ul class="spears">
+        {#each strike.Landings as landing (landing.Seq)}
+          <li>
+            Spear {landing.Seq + 1}: {landing.Plate >= 0 ? `plate ${landing.Plate + 1}, ` : ''}{landing.Class}{landing.IsCounter ? ' (counter)' : ''}{landing.WeakHit ? ' - weak plate!' : ''}
+          </li>
+        {/each}
+        {#if strike.SpearsLost > 0}
+          <li class="lost">{strike.SpearsLost} spear{strike.SpearsLost === 1 ? '' : 's'} lost to missed reads</li>
+        {/if}
+      </ul>
+      <dl class="numbers">
+        <div><dt>Skill</dt><dd data-testid="strike-m">{strike.Multiplier.toFixed(2)}x</dd></div>
+        <div><dt>Plates</dt><dd>{strike.PlateMultiplier.toFixed(2)}x</dd></div>
+        <div><dt>Strike</dt><dd>{strike.Played.toFixed(2)}x</dd></div>
+      </dl>
+      <p class="damage"><strong data-testid="strike-damage">{strike.Damage.toLocaleString()}</strong> damage dealt</p>
+      {#if strike.BrokePlate >= 0}
+        <p class="hint">You broke plate {strike.BrokePlate + 1} for everyone until midnight UTC.</p>
+      {/if}
+      <p class="hint">The weak plate was yours alone to find - the next strike draws a new one.</p>
+      <div class="row">
+        <button type="button" class="ctl" onclick={onclose}>Close</button>
+      </div>
+    </div>
+  {/if}
+
   {#if phase === 'error'}
     <div class="card">
       <p class="hint">{errorText}</p>
@@ -488,6 +555,11 @@
 </div>
 
 <style>
+  .damage {
+    margin: 0.4rem 0;
+    font-size: 1.05rem;
+  }
+
   .overlay {
     position: fixed;
     inset: 0;

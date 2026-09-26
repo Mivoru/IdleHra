@@ -479,6 +479,12 @@ namespace FolkIdle.Server.Engine
         public ConcurrentQueue<MailClaimRequest> MailClaimRequestQueue { get; } = new();
         public ConcurrentQueue<BirthNotification> BirthNotificationQueue { get; } = new();
         public ConcurrentQueue<WorldBossAttemptUpdateNotification> WorldBossAttemptUpdateQueue { get; } = new();
+
+        /// <summary>
+        /// Shield-wheel strikes from REST, waiting for the tick to add A x G from
+        /// the payload (task 36, spec 5.7). Drained with a budget.
+        /// </summary>
+        public ConcurrentQueue<FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeOrder> WorldBossStrikeQueue { get; } = new();
         public ConcurrentQueue<MasteryUpdateNotification> MasteryUpdateQueue { get; } = new();
         public ConcurrentQueue<long> LoginQueue { get; } = new();
         public ConcurrentQueue<GuildUpdateNotification> GuildUpdateQueue { get; } = new();
