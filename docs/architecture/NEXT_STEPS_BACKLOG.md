@@ -21,6 +21,16 @@ do next.
 
 # HANDOFF 2026-09-26 (evening) - START HERE
 
+**UPDATE, late: all of it is LIVE.**
+- Production is 1.0.756 with `FOLKIDLE_BOSS_MINIGAME=wheel`.
+- The owner merged #52 at `4895d9d`, before the last three commits reached its
+  branch, so those shipped as #53.
+- Checks: the migration applied and `smoke:screens` passed 27/27 on
+  production.
+- **First weekly payout:** Sunday 2026-09-27 23:59:59 UTC. Check the mail.
+
+The status lines below were written before the merge.
+
 **Task 36 Phase 2 is done as PR #52. It is not merged and not deployed.**
 Production is still 1.0.742 on `practice`.
 
