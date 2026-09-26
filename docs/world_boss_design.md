@@ -201,11 +201,42 @@ thought about:
     pays less than auto-striking the same plate.
 
   Spec: `docs/superpowers/specs/2026-09-24-world-boss-minigame-design.md`.
-  Practice shipped behind a flag on 2026-09-25; the damage-dealing half has
-  not.
+  Practice shipped behind a flag on 2026-09-25. The damage-dealing half was
+  built on 2026-09-26 (PR #52) and is live once the flag is `wheel`.
 - **Changing the reward table.** Ranked by contribution is fine and orthogonal.
+  **Update 2026-09-26 (owner): the boss does not have to fall.** The table is
+  unchanged, but it now pays at the end of every encounter, whether the boss
+  died or not. See "The weekly payout" below.
 - **Boss phases or timers.** They would make the fight a schedule, which is the
   one thing an idle game must not ask for.
+
+## The weekly payout (owner, 2026-09-26)
+
+**The boss does not have to die.** At today's population (61 accounts) a
+boss with 50M+ HP cannot fall to one strike a day of 1,000-6,000 damage. So
+rewards were paid only on a kill, and in practice no week ever paid anybody.
+
+Now each encounter pays when it ends, killed or survived:
+- **Who is paid:** everybody who dealt damage.
+- **By rank:** their rank in damage dealt, into the same four brackets (top 1%,
+  top 10%, top 50%, participation).
+- **Where:** as mail.
+
+The ranking and the board read the same durable rows,
+`player_world_boss_attempts.TotalInflictedDamage` (`WorldBossBoard`). The
+payout used to read an in-memory map and a Redis hash, which a mid-week
+restart emptied.
+
+The World Boss screen shows the board (`GET /api/v1/worldboss/board`):
+- the top ten;
+- your place and your current bracket;
+- what the whole server has dealt together.
+
+**A percentile bracket is honest about small populations.** A lone striker is
+the 100th percentile, so participation. With four strikers the best is in the
+top 50%. The top brackets need a crowd, which is the point of a shared boss.
+
+A developer's window (`FOLKIDLE_DEV_TOOLS`) pays nothing when it is closed.
 
 ## The three decisions, taken 2026-09-05
 

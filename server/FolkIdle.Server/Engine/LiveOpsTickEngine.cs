@@ -195,8 +195,7 @@ namespace FolkIdle.Server.Engine
                 _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
                 {
                     PlayerId = onlinePlayerIdsForBossReset[i],
-                    AttemptCount = 0,
-                    SessionEndsEpoch = 0
+                    AttemptCount = 0
                 });
             }
 

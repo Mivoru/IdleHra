@@ -824,6 +824,45 @@ behind, when levels and gear are both wiped. The design is
   written a `SlotIndex` after creation. Without it every child bred past the
   third slot was permanently unplayable.
 
+## 19b. The world boss: the shield wheel and the weekly payout (task 36)
+
+**The flag.** `FOLKIDLE_BOSS_MINIGAME` = `off` | `practice` | `wheel`, read once
+at start-up (`BossMinigameSettings`).
+
+**The REST routes** (`WorldBossStrikeService`, hand-written DTOs in `rest.ts`,
+the result list pinned by `worldBossResults.test.ts`):
+- `GET|POST /api/v1/worldboss/challenge`;
+- `POST /api/v1/worldboss/throw`;
+- `POST /api/v1/worldboss/strike`;
+- `POST /api/v1/worldboss/practice/score`;
+- `GET /api/v1/worldboss/board`.
+
+**How a strike travels:**
+1. REST builds a `WorldBossStrikeOrder` and queues it on
+   `PlayerSessionRegistry.WorldBossStrikeQueue`.
+2. The tick drains that queue with a budget
+   (`WorldBossTickCoordinator.DrainStrikeOrders`) and prices each order with
+   A x G from the payload. With no payload, the base hit is priced at the
+   1,000 floor and the strike is still spent.
+3. `WorldBossEngine.ExecuteStrikeAsync` applies it under the row lock.
+
+**The weak plate lives on the challenge.** In `wheel` mode it is drawn per
+attempt, never kept on the snapshot, and the mirror always reads 255.
+
+**Regrowth.** `WorldBossSnapshots.ArmourDayKey` makes the armour regrow at UTC
+midnight.
+
+**Opcode 32** answers `WorldBossUpdateRequired` (43) under `wheel`.
+
+**The payout.** Encounters pay at the end whether the boss fell or not
+(`PayEncounterRewardsAsync`), ranked from
+`player_world_boss_attempts.TotalInflictedDamage`. The damage board reads the
+same rows (`WorldBossBoard`).
+
+**Telemetry.** `EventType = 8` is written only by `WorldBossStrikeTelemetry`.
+
+**The wire.** The 300 s battle session and its wire field are gone.
+
 ## 20. What the client is told about a moment
 
 The wire carries **no combat event of any kind** - there is no "you hit for

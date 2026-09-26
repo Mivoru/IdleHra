@@ -2126,7 +2126,6 @@ namespace FolkIdle.Server.Domain.Combat
                                 NetworkDiagnosticsToken = currentPayload.NetworkDiagnosticsToken,
                                 Gold = currentPayload.CurrentGold,
                                 WorldBossAttemptCount = currentPayload.WorldBossAttemptCount,
-                                WorldBossSessionEndsEpoch = currentPayload.WorldBossSessionEndsEpoch,
                                 WorldBossEventState = _worldBossEngine.EventState,
                                 WorldBossEventEndEpoch = _worldBossEngine.EventEndEpoch,
                                 WorldBossBrokenPlateMask = _worldBossEngine.BrokenPlateMask,

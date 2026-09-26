@@ -19,7 +19,41 @@ do next.
 
 ---
 
-# HANDOFF 2026-09-26 - START HERE
+# HANDOFF 2026-09-26 (evening) - START HERE
+
+**Task 36 Phase 2 is done as PR #52. It is not merged and not deployed.**
+Production is still 1.0.742 on `practice`.
+
+What is in the PR:
+- **The wheel deals damage.** Per-attempt weak plate, armour regrows at
+  midnight, auto-strike over REST, opcode 32 answers "update", and
+  `WorldBossSessionEndsEpoch` is off the wire (809 -> 801).
+- **The owner's decision that the boss need not fall.** Every encounter pays
+  at its end by damage rank, and the World Boss screen shows a damage board
+  with the server's total.
+- **Two defects found on the way:**
+  - the 1,000 damage floor swallowed every multiplier;
+  - a strike with no game session was a free re-roll (`security-review`).
+- **run-dev.ps1** now runs `wheel`, so exercise.mjs proves skill reaches
+  damage.
+
+Next:
+1. **Merge #52.** The owner reviews it first.
+2. **Deploy with `practice` kept.** The `ArmourDayKey` migration runs on the
+   entrypoint.
+3. **Flip to `wheel`** before the week of Oct 12 or Oct 19. Rewrite the Wiki's
+   strike bullets for the wheel at the flip; the payout bullets are already
+   true.
+4. **Task 37 Phase 3 on 2026-10-02**, as below.
+
+**Pre-existing geometry findings**, none of them from #52:
+- a Forge row at the bottom edge;
+- the Village "Got it" overlap;
+- the practice ring in landscape (safe-area).
+
+---
+
+# HANDOFF 2026-09-26 (morning) - superseded by the block above
 
 **Live:** production is **1.0.742** (main at `0575bf1`, PRs #38-#48). `smoke:screens` 27/27 on production.
 

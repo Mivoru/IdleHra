@@ -5,14 +5,13 @@
 > `docs/architecture/NEXT_STEPS_BACKLOG.md`.
 >
 > **TODO, in order:**
-> 1. **Task 36 Phase 2: the shield wheel deals damage** (section 36 below; plan
->    Phase 2). **Decided 2026-09-26 (spec section 3.3.1): a new weak plate every
->    attempt, drawn only from the UNBROKEN plates, and armour that regrows every
->    UTC midnight.** The playtest gate PASSED on 2026-09-25. Challenges are metered
->    per DAY now (one strike a day). The new reveal rule applies only in
->    `wheel` mode; write that into the spec first. A `security-review` is
->    required before the merge. Flip production to `wheel` before the week of
->    Oct 12 or Oct 19.
+> 1. **Task 36 Phase 3: deploy and flip.** Phase 2 (the wheel deals damage,
+>    weekly payout by damage rank, damage board) is **PR #52**, which has passed
+>    `security-review`.
+>    1. Merge it.
+>    2. Deploy with `FOLKIDLE_BOSS_MINIGAME=practice` kept. The deploy applies
+>       the `ArmourDayKey` migration.
+>    3. Flip production to `wheel` before the week of Oct 12 or Oct 19.
 > 2. **Task 37 Phase 3: measure the Deep, due 2026-10-02.** The owner's PC
 >    captures `D:\FolkIdleBackups\deep-phase3-week1.txt` automatically. Copy
 >    it into section 37, "Week 1".
@@ -3797,9 +3796,43 @@ first** - there is no point redesigning a fight nobody can start.
 - Found on the way: two strikes meeting on the boss row made the loser fail with a Postgres serialization error ("could not be recorded"). `WorldBossEngine` now queues every boss-row writer.
 - Open design question (`docs/world_boss_design.md`): with about 7 strikes a week, a solo player can find the weak plate alone in 4 days.
 
-**Phase 2** (scoring becomes damage, auto-strike over REST, opcode 32
-answers "update", the 300 s session removed from the wire) needs
-`security-review` before it merges. It is targeted at the Oct 15-22 window.
+**Phase 2 DONE 2026-09-26 (PR #52), behind `FOLKIDLE_BOSS_MINIGAME=wheel`.
+Production stays on `practice` until the owner flips it.**
+
+What shipped:
+- **Real challenges.** Each one draws its own weak plate at issue, only from
+  the unbroken plates. The armour regrows every UTC midnight, keyed on the
+  persisted `ArmourDayKey` (migration `AddWorldBossArmourDayKey`).
+- **Scoring.** `/strike` scores the log and checks it against the answered
+  throws. The tick prices it with A x G from the payload (budgeted drain,
+  `WorldBossStrikeQueue`), and the engine applies it in the Serializable
+  transaction.
+- **Auto-strike over REST.** Opcode 32 under `wheel` answers
+  `WorldBossUpdateRequired` (43).
+- **Unfinished strikes.** An abandoned challenge resolves at the floor, and
+  the owner is told once.
+- **The wire.** `WorldBossSessionEndsEpoch` is gone (StateUpdatePacket 809 ->
+  801).
+- **The screen.** Strike (wheel), auto-strike, result card, and resuming an
+  open run.
+- **exercise.mjs** strikes blind and aimed for real. The aimed run's higher M
+  reaches the damage on the same base hit.
+
+Found on the way:
+- **The 1,000 damage floor sat after the multiplier.** A typical A x G is
+  100-200, so every strike dealt exactly 1,000 and neither skill nor the weak
+  plate showed. The floor is now on the base hit.
+- **`security-review`: a free re-roll.** A strike with no game session
+  answered "nothing spent" after its throws had been answered. It is now spent
+  at the floor, and a real challenge needs a live session (`NoGameSession`).
+- **The owner decided the boss need not fall.** Rewards are paid at the end of
+  every encounter by damage rank, and a damage board with the server's total
+  is on the screen (`docs/world_boss_design.md`, "The weekly payout").
+
+**Next (Phase 3):**
+1. Deploy with `practice` kept.
+2. Flip to `wheel` before the week of Oct 12 or Oct 19.
+3. Watch the first week.
 
 ## 37. A late-game gold sink (L, design with the owner first)
 

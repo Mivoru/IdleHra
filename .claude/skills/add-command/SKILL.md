@@ -51,18 +51,20 @@ output. Never hand-write or hand-patch it.
 startup if the struct disagrees**. Adding a field means updating the constant
 in the same commit:
 
-- `ExpectedClientCommandSize` (currently 359)
-- `ExpectedStateUpdateSize`
+- `ExpectedClientCommandSize` (341 as of 2026-09-26)
+- `ExpectedStateUpdateSize` (801 as of 2026-09-26)
+
+Read the constants rather than trusting these numbers: they move.
 
 The client's copy of the size comes from `protocol.generated.ts`, so
 regenerating handles that half — but only if you regenerate. The two guards
 drifted apart once and the client threw on every startup.
 
-**`StateUpdatePacket` has a 700-byte structural ceiling** that the tests pin,
-and as of the last measurement roughly **one byte of headroom**. The next
-addition must shrink something else or move the ceiling deliberately. Historic
-additions are documented byte-by-byte in the guard's own comments; add yours to
-that record.
+**Every change to `StateUpdatePacket`'s size is a deliberate, recorded
+decision.** It used to have a 700-byte ceiling, which has been moved on
+purpose several times since. Historic additions and removals are documented
+byte-by-byte in the guard's own comments. Add yours to that record, and prefer
+REST or `TickStatePayload` for anything that does not change every tick.
 
 **`TickStatePayload` is NOT the wire packet.** It is the in-memory per-player
 tick state. Caching something onto it costs nothing on the network and needs no

@@ -736,10 +736,6 @@ namespace FolkIdle.Server.Engine
         public byte ActiveLanguageState;
         public byte WorldBossAttemptCount;
 
-        // Modul: when this player's remaining world boss attempts stop working.
-        // 0 while they have not struck yet. See
-        // WorldBossAttemptUpdateNotification.SessionEndsEpoch.
-        public long WorldBossSessionEndsEpoch;
         public uint ActiveUiContextBitmask;
         public uint ActiveChroniclePassLevel;
         public uint AccumulatedSeasonalXp;

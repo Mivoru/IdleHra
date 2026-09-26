@@ -653,17 +653,6 @@ namespace FolkIdle.Server.Network
         public byte WorldBossBrokenPlateMask;
         public byte WorldBossWeakPlate;
 
-        // Modul: AND WHEN THE PLAYER'S OWN ATTEMPTS STOP WORKING.
-        //
-        // WorldBossEngine gives 300 seconds from a player's first strike to
-        // spend the other two, then rolls every later attack back in silence.
-        // Nothing carried that, so the button stayed enabled and did nothing
-        // for the rest of an encounter that runs for up to seven days - the
-        // exact silent-failure shape this screen already had to be built around
-        // once, for the empty larder.
-        //
-        // 0 means they have not struck yet and the clock has not started.
-        public long WorldBossSessionEndsEpoch;
         public int GuildLogisticsLevel;
         public int GuildRaidTier;
         public long GuildRaidBossCurrentHp;

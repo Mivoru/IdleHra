@@ -195,7 +195,12 @@ namespace FolkIdle.Server.Network
         // OfflineMaterialsLostToFullWarehouse - the village passive-production
         // clamps (window ceiling, then live warehouse room) discarded whatever
         // a full warehouse could not hold and told nobody; this is that amount.
-        public const int ExpectedStateUpdateSize = 809;
+        //
+        // Modul: the battle session is gone, 809 -> 801 (task 36 Phase 2). The
+        // owner dropped the 300-second session on 2026-09-24 and one strike a
+        // day left nothing for it to fence, so WorldBossSessionEndsEpoch had
+        // been 0 on every packet since. CommandResultCode 41 stays reserved.
+        public const int ExpectedStateUpdateSize = 801;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper
