@@ -23,9 +23,11 @@
   import { play } from '../lib/ui/audio';
   import ShieldWheel from '../lib/ui/ShieldWheel.svelte';
   import {
+    fetchBossBoard,
     fetchBossChallenge,
     issueBossChallenge,
     strikeBoss,
+    type WorldBossBoardView,
     type ShieldWheelChallenge,
     type StrikeResponse,
   } from '../lib/net/rest';
@@ -114,6 +116,20 @@
   }
 
   const snap = $derived($playerState);
+
+  // Modul: THE BOSS DOES NOT HAVE TO FALL (owner, 2026-09-26). Everyone is
+  // paid at the end of the week by their rank in damage, so the board is what
+  // a strike is FOR: your place, your bracket, and what the whole server has
+  // dealt together. Refetched when a strike lands (the pip moves), not on a
+  // timer - it only changes when somebody strikes.
+  let board = $state<WorldBossBoardView | null>(null);
+  const strikesSpent = $derived(snap?.WorldBossAttemptCount ?? 0);
+  $effect(() => {
+    void strikesSpent;
+    fetchBossBoard()
+      .then((view) => (board = view))
+      .catch(() => {});
+  });
 
   const eventState = $derived(snap?.WorldBossEventState ?? BossEventState.Dormant);
   const maxHp = $derived(Number(snap?.WorldBossMaxHp ?? 0));
@@ -435,6 +451,39 @@
       </p>
     {/if}
 
+    <h3>Damage this week</h3>
+    {#if board && board.Participants > 0}
+      <p class="small together" data-testid="boss-total">
+        Together, {board.Participants} {board.Participants === 1 ? 'player has' : 'players have'} dealt
+        <strong>{board.TotalDamage.toLocaleString()}</strong> damage{#if board.BossMaxHp > 0}
+          &nbsp;({((board.TotalDamage / board.BossMaxHp) * 100).toFixed(2)}% of its health){/if}.
+      </p>
+      {#if board.Me}
+        <p class="small" data-testid="boss-me">
+          You are <strong>#{board.Me.Rank}</strong> with {board.Me.Damage.toLocaleString()} damage -
+          {board.MyBracket} right now.
+        </p>
+      {:else}
+        <p class="dim tiny">You have not struck this boss yet.</p>
+      {/if}
+      <ol class="board">
+        {#each board.Top.slice(0, 10) as row (row.PlayerId)}
+          <li class:me={row.PlayerId === board.Me?.PlayerId}>
+            <span class="rank">{row.Rank}</span>
+            <span class="who">{row.Name}{#if row.Title}<span class="dim tiny"> · {row.Title}</span>{/if}</span>
+            <span class="dmg">{row.Damage.toLocaleString()}</span>
+          </li>
+        {/each}
+      </ol>
+    {:else}
+      <p class="dim tiny">Nobody has struck this boss yet.</p>
+    {/if}
+    <p class="dim tiny">
+      The boss does not have to fall. When the week ends, everybody who dealt damage is paid by their
+      place on this board: top 1%, top 10%, top 50%, or a participation reward. Rewards arrive in the
+      mailbox.
+    </p>
+
     {#if wheelMode !== 'off'}
       <h3>The shield wheel</h3>
       <p class="dim tiny">
@@ -642,6 +691,52 @@
   .strike-reason {
     margin: 0.4rem 0 0;
     text-align: center;
+  }
+
+  .together {
+    margin: 0 0 0.3rem;
+  }
+
+  .board {
+    list-style: none;
+    margin: 0.4rem 0;
+    padding: 0;
+    display: grid;
+    gap: 0.15rem;
+    font-size: 0.8rem;
+  }
+
+  .board li {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    padding: 0.15rem 0.3rem;
+    border-radius: 4px;
+  }
+
+  .board li.me {
+    background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+    font-weight: 700;
+  }
+
+  .board .rank {
+    width: 1.8rem;
+    flex-shrink: 0;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .board .who {
+    flex: 1 1 auto;
+    min-width: 4rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .board .dmg {
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
   }
 
   .auto {

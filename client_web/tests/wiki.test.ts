@@ -20,6 +20,7 @@ import {
   DAILY_LOGIN_DAY7_DIAMONDS,
   WORLD_BOSS_HP,
   WORLD_BOSS_ATTEMPTS,
+  WORLD_BOSS_REWARDS,
   DEEP_STAKE_PCT,
   DEEP_TOLL_GROWTH_PCT,
   DEEP_MIN_DOOR_CHANCE_PCT,
@@ -312,6 +313,14 @@ describe('the tables the wiki restates still match the server', () => {
     expect(WORLD_BOSS_ATTEMPTS).toBe(
       num(read(serverRoot, 'Engine', 'WorldBossCalendar.cs'), /StrikesPerDay = (\d+)/, 'boss strikes per day'),
     );
+    // The reward table is the payout's own brackets, in the same order.
+    const brackets = [
+      ...read(serverRoot, 'Domain', 'Combat', 'WorldBossStrike', 'WorldBossBoard.cs').matchAll(
+        /return \("([^"]+)", (\d+), ([\d_]+)L\)/g,
+      ),
+    ].map((m) => ({ tokens: Number(m[2]), gold: Number(m[3].replace(/_/g, '')) }));
+    expect(brackets.length).toBe(4);
+    expect(WORLD_BOSS_REWARDS.map((r) => ({ tokens: r.tokens, gold: r.gold }))).toEqual(brackets);
     expect(DAILY_LOGIN_DAY7_DIAMONDS).toBe(
       num(daily, /PremiumDiamondsOnDay7Completion = (\d+)/, 'day 7 diamonds'),
     );

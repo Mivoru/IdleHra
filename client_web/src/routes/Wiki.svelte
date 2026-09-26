@@ -1346,7 +1346,7 @@
           <p class="dim tiny">
             <strong>Keep it under {WORLD_BOSS_MAILBOX_LIMIT} items.</strong> A world
             boss reward is skipped outright for anybody whose mailbox is at that
-            limit when the boss dies — it is not queued, it is lost.
+            limit when the week's encounter ends — it is not queued, it is lost.
           </p>
 
           <h3 id="diamonds">Diamonds</h3>
@@ -1409,23 +1409,32 @@
             <li><strong>A new boss every Monday</strong> (00:00 UTC), and it stays until Sunday night or until it falls. If it falls early, the next one comes on Monday.</li>
             <li><strong>{WORLD_BOSS_ATTEMPTS} strike a day</strong>, every day, refilled at midnight UTC — about seven a week, and each one is a choice.</li>
             <li>
-              <strong>The boss wears {WORLD_BOSS_PLATES} armour plates and one of them is soft.</strong>
-              Striking the soft one does {WORLD_BOSS_WEAK_MULTIPLIER}x damage. Striking any other does
-              full damage and <strong>breaks</strong> that plate — for everyone, for the rest of the
-              encounter.
+              <strong>You strike with the shield wheel.</strong> The boss's {WORLD_BOSS_PLATES} armour
+              plates spin as a ring; you have five spears, and a spear that lands on the seam in the
+              middle of a plate is the best hit. Two or three times the wheel stops and the boss
+              winds up a blow: press the side it comes from, and your next spear is a guaranteed
+              seam on the plate you pick. A skilled run is worth up to 2x.
             </li>
             <li>
-              So the boss you arrive at is a message from everyone who came before you: read the
-              plates before you swing. Which one is soft changes every encounter, so it cannot be
-              looked up.
+              <strong>One plate is soft, and it is a different one every strike</strong> - chosen
+              among the plates still standing. A hit on it does {WORLD_BOSS_WEAK_MULTIPLIER}x damage
+              and glows for you alone. A hit on any other plate <strong>breaks</strong> it for
+              everyone, so every broken plate makes the soft one easier to find for whoever strikes
+              next. The armour grows back at midnight UTC.
             </li>
             <li>
-              A wrong guess is <strong>not punished</strong> — it does full damage and strips armour
-              that narrows the search for whoever is next.
+              Not quick with your thumbs? <strong>Auto-strike</strong> hits the plate you choose at the
+              base multiplier, and a played strike is never worth less than auto-striking the best plate
+              it hit. Practice is free and deals no damage.
             </li>
-            <li>Your hit is your character's real attack power, floored at {WORLD_BOSS_DAMAGE_FLOOR.toLocaleString()} — an account that has never fought still contributes something.</li>
+            <li>Your hit is your character's real attack power, floored at {WORLD_BOSS_DAMAGE_FLOOR.toLocaleString()} before any multiplier - an account that has never fought still contributes something.</li>
             <li>A strike eats nothing: an empty larder does not stop you swinging.</li>
-            <li>Rewards land in the mailbox when the boss dies, by your percentile among everybody who dealt damage.</li>
+            <li>
+              <strong>The boss does not have to fall.</strong> When the week ends - or sooner, if it
+              dies - everybody who dealt damage is paid into the mailbox by their place on the
+              damage board, which the World Boss screen shows along with what the whole server dealt
+              together.
+            </li>
           </ul>
           <div class="scroll">
             <table>
