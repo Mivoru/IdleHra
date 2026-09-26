@@ -1,27 +1,33 @@
 # FolkIdle Task Board
 
-> **START HERE (updated 2026-09-26). Tasks 1-35 and 37 are DONE and deployed;
-> production runs `main` (1.0.742).** The handoff with context is at the top of
-> `docs/architecture/NEXT_STEPS_BACKLOG.md`.
+> **START HERE (updated 2026-09-26, late). Tasks 1-37 are DONE and deployed;
+> production runs `main` (1.0.756) with the shield wheel LIVE
+> (`FOLKIDLE_BOSS_MINIGAME=wheel`, PRs #52 and #53).** The handoff with context
+> is at the top of `docs/architecture/NEXT_STEPS_BACKLOG.md`.
 >
 > **TODO, in order:**
-> 1. **Task 36 Phase 3: deploy and flip.** Phase 2 (the wheel deals damage,
->    weekly payout by damage rank, damage board) is **PR #52**, which has passed
->    `security-review`.
->    1. Merge it.
->    2. Deploy with `FOLKIDLE_BOSS_MINIGAME=practice` kept. The deploy applies
->       the `ArmourDayKey` migration.
->    3. Flip production to `wheel` before the week of Oct 12 or Oct 19.
+> 1. **Check the first weekly payout** (Sunday 2026-09-27 23:59:59 UTC).
+>    - Everybody who struck gets mail.
+>    - Compare `player_world_boss_attempts` before the reset with
+>      `MailboxInstances` rows for `perun_avatar_reward_token`.
 > 2. **Task 37 Phase 3: measure the Deep, due 2026-10-02.** The owner's PC
 >    captures `D:\FolkIdleBackups\deep-phase3-week1.txt` automatically. Copy
 >    it into section 37, "Week 1".
-> 3. **Watch the weekly boss / one-strike-a-day cadence** (#48) for its first
->    weeks, and decide the open question: a solo player can find the weak
->    plate in 4 days (`docs/world_boss_design.md`, section 3).
+> 3. **Watch the wheel's first weeks:**
+>    - how many strike daily;
+>    - wheel versus auto-strike;
+>    - how fast the board strips each day. The lever, if it strips too fast,
+>      is breaking only on a Seam (spec 3.3.1).
+>
+>    The old "solo player finds the weak plate in 4 days" question is **moot**:
+>    the weak plate is drawn per strike and the armour regrows daily.
 > 4. **Task 38 (Guild Wars): parked** until the population nears the floor.
 >    Re-measure before starting.
-> 5. Backlog follow-ups (not blocking) are in the handoff: the Village "Got it"
->    overlap and the drop-record lows from #25.
+> 5. **Backlog follow-ups** (not blocking, all pre-existing):
+>    - the Village "Got it" overlap;
+>    - a Forge row at the bottom edge (`check:touch`);
+>    - the practice ring in landscape (`check:safearea`);
+>    - the drop-record lows from #26.
 
 Seven tasks, restated against what the code actually does as of 2026-09-01.
 Every "today" claim below was checked in the source or the live database rather
@@ -3829,10 +3835,13 @@ Found on the way:
   every encounter by damage rank, and a damage board with the server's total
   is on the screen (`docs/world_boss_design.md`, "The weekly payout").
 
-**Next (Phase 3):**
-1. Deploy with `practice` kept.
-2. Flip to `wheel` before the week of Oct 12 or Oct 19.
-3. Watch the first week.
+**Phase 3 DONE 2026-09-26.**
+- The owner chose to ship everything at once: merged (#52, #53), deployed as
+  1.0.756, flipped to `wheel`, and the Wiki describes the wheel.
+- Production checks: the migration applied, `ArmourDayKey` is stamped, and
+  `smoke:screens` passed 27/27.
+- **To roll back:** set `FOLKIDLE_BOSS_MINIGAME=practice` in the box's
+  `ops/oracle/.env`, then run `deploy.sh`.
 
 ## 37. A late-game gold sink (L, design with the owner first)
 
