@@ -590,7 +590,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Mailbox', label: 'Mailbox', status: 'documented', tab: 'economy', note: 'Where world boss rewards and undeliverable market goods land.' },
   { screen: 'Store', label: 'Store', status: 'documented', tab: 'economy', note: 'Diamonds, and the two sinks worth spending them on.' },
   { screen: 'Delve', label: 'The Delve', status: 'documented', tab: 'economy', note: 'The gold sink: the fee per region, the floor ladder, what Fortune buys and the weekly diamond ceiling.' },
-  { screen: 'WorldBoss', label: 'World boss', status: 'documented', tab: 'events', note: 'The shared encounter, the three attempts and the percentile rewards.' },
+  { screen: 'WorldBoss', label: 'World boss', status: 'documented', tab: 'events', note: 'The shared encounter, the shield wheel, one strike a day and the weekly payout by damage.' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -681,7 +681,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'economy', anchor: 'delve', title: 'The Delve', keywords: 'gold sink minigame doors floors lantern charges bank push diamonds ceiling fortune embers' },
   { tab: 'economy', anchor: 'deep', title: 'The Deep', keywords: 'deep delve below floor eight stake toll lantern refill titles lamplighter deepest board weekly record' },
 
-  { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'perun avatar shared hp attempts percentile token reward' },
+  { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'perun avatar shared hp attempts percentile token reward shield wheel spear seam parry auto-strike damage board' },
   { tab: 'events', anchor: 'daily', title: 'The daily bonus', keywords: 'login streak seven days gold diamonds utc midnight' },
   { tab: 'events', anchor: 'achievements', title: 'Achievements', keywords: 'treasury forging logistics tiers diamonds claim' },
 
