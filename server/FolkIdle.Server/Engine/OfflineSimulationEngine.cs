@@ -706,6 +706,10 @@ namespace FolkIdle.Server.Engine
             double totalKillsDouble = effectiveElapsedSeconds / secondsPerKillEstimate;
             long totalKills = (long)totalKillsDouble;
 
+            // Funnel step 2, the offline half: a first kill made while away is
+            // still a first kill. See FunnelRecorder.
+            if (totalKills > 0) FunnelRecorder.Record(payload.PlayerId, FunnelStep.FirstKill);
+
             long xpGained = totalKills * activeMonster.BaseXpReward;
             xpGained += xpGained * InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain) / 100L;
             ApplyCombatXp(ref payload, xpGained);

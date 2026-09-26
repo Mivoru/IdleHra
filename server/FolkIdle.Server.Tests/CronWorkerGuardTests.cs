@@ -63,6 +63,7 @@ namespace FolkIdle.Server.Tests
                 ["OfflineCapNotifier"] = "mails players whose offline bank has filled",
                 ["SeasonalRotationEngine"] = "season rollover",
                 ["PendingGrantDrainEngine"] = "drains pending_grants - the retry half of the loot/gathering/offline-production outbox",
+                ["FunnelRecorder"] = "drains the new-player funnel queue into player_funnel_events (task 39) - budgeted, and the try opens before the delay and before CreateScope",
             };
 
         // Modul: FOURTEEN, NOT TWELVE - and finding that out is why this file

@@ -172,6 +172,11 @@ namespace FolkIdle.Server.Engine
             }
             int effectiveXp = (baseExpReward * xpMultiplier) / 100;
 
+            // Funnel step 2, the live half (offline has its own line). Every
+            // kill calls this; FunnelRecorder's per-session guard makes all but
+            // the first a dictionary read.
+            FunnelRecorder.Record(payload.PlayerId, FunnelStep.FirstKill);
+
             // Modul 13.4.3: -20% character XP generation while an early
             // mentorship termination penalty is active (see MentorshipEngine).
             if (payload.XpPenaltyExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds())

@@ -161,12 +161,7 @@ namespace FolkIdle.Server.Domain.Social
 
                 if (outcome.GuildId > 0)
                 {
-                    _playerRegistry.GuildMembershipChangeQueue.Enqueue(new GuildMembershipChangeNotification
-                    {
-                        PlayerId = playerId,
-                        OldGuildId = 0,
-                        NewGuildId = outcome.GuildId
-                    });
+                    PublishJoined(playerId, outcome.GuildId);
                 }
 
                 return outcome;
@@ -176,6 +171,25 @@ namespace FolkIdle.Server.Domain.Social
                 Console.WriteLine($"Guild creation failed - PlayerId {playerId}, Name '{guildName}': {ex.Message}");
                 return new GuildCreateOutcome { Refusal = GuildCreateRefusal.NameInvalid };
             }
+        }
+
+        // Modul: THE ONE PLACE A COMMITTED JOIN IS ANNOUNCED. Three routes put
+        // a player into a guild - founding one, an open join, and a leader
+        // approving an application - and each used to enqueue its own
+        // membership change. They share this now so funnel step 10
+        // (joined_guild) has exactly one writer and cannot be forgotten by a
+        // fourth route that copies only the notification. Call it after the
+        // commit, never inside the transaction.
+        private void PublishJoined(long playerId, long guildId)
+        {
+            _playerRegistry.GuildMembershipChangeQueue.Enqueue(new GuildMembershipChangeNotification
+            {
+                PlayerId = playerId,
+                OldGuildId = 0,
+                NewGuildId = guildId
+            });
+
+            FunnelRecorder.Record(playerId, FunnelStep.JoinedGuild);
         }
 
         // Joins an existing guild as a regular Member. Rejected if the
@@ -279,12 +293,7 @@ namespace FolkIdle.Server.Domain.Social
 
                 if (joined)
                 {
-                    _playerRegistry.GuildMembershipChangeQueue.Enqueue(new GuildMembershipChangeNotification
-                    {
-                        PlayerId = playerId,
-                        OldGuildId = 0,
-                        NewGuildId = guildId
-                    });
+                    PublishJoined(playerId, guildId);
                 }
 
                 return joined;
@@ -593,12 +602,7 @@ namespace FolkIdle.Server.Domain.Social
 
                 if (result.Approved)
                 {
-                    _playerRegistry.GuildMembershipChangeQueue.Enqueue(new GuildMembershipChangeNotification
-                    {
-                        PlayerId = result.ApplicantPlayerId,
-                        OldGuildId = 0,
-                        NewGuildId = result.GuildId
-                    });
+                    PublishJoined(result.ApplicantPlayerId, result.GuildId);
                 }
 
                 return result.Approved;

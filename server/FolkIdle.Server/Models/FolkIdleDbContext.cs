@@ -100,6 +100,10 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerGoldDailyHigh> PlayerGoldDailyHighs { get; set; }
         public DbSet<PlayerTitle> PlayerTitles { get; set; }
 
+        // The new-player funnel (task 39): the first time each player reached
+        // each step. See PlayerFunnelEvent and FunnelRecorder.
+        public DbSet<PlayerFunnelEvent> PlayerFunnelEvents { get; set; }
+
         // The durable retry outbox. See PendingGrant.
         public DbSet<PendingGrant> PendingGrants { get; set; }
 
@@ -246,6 +250,9 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<PlayerTitle>()
                 .HasKey(t => new { t.PlayerId, t.TitleSlug });
+
+            modelBuilder.Entity<PlayerFunnelEvent>()
+                .HasKey(f => new { f.PlayerId, f.Step });
 
             modelBuilder.Entity<VillageResident>()
                 .HasKey(v => new { v.PlayerId, v.SlotIndex });

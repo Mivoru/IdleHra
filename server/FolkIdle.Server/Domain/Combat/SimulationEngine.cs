@@ -1360,6 +1360,9 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         long tId = cmd.TargetId;
                         _playerRegistry.RegisterPlayer(tId);
+                        // Funnel steps 11-12 (a day-1 / day-7 return) and the
+                        // re-arm of the per-session guard. See FunnelRecorder.
+                        FunnelRecorder.BeginSession(tId);
                         SafeDispatchAsync("Login", tId, async () => {
                             var payload = await _checkpointManager.LoadPlayerState(tId);
 
@@ -4577,6 +4580,13 @@ namespace FolkIdle.Server.Domain.Combat
                 if (wasFirstClearForThisPlayer && clearedBossRegion > 0)
                 {
                     BossFirstClearAnnouncer.Announce(payload.PlayerId, activeMonster.Id);
+
+                    // Funnel step 6: this player's first clear of region 1's
+                    // boss - the door to everything past the tutorial region.
+                    if (clearedBossRegion == RaceUnlockRegistry.FirstRegion)
+                    {
+                        FunnelRecorder.Record(payload.PlayerId, FunnelStep.Region1Boss);
+                    }
 
                     // Modul: and the card that says what just happened.
                     //

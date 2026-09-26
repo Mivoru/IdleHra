@@ -621,6 +621,10 @@ namespace FolkIdle.Server.Engine
                     await transaction.CommitAsync();
 
                     Console.WriteLine($"Auto-provisioned new player {player.Id} for device login.");
+
+                    // Funnel step 1, after the commit: a registration that rolled
+                    // back is not a player. See FunnelRecorder.
+                    FunnelRecorder.Record(player.Id, FunnelStep.Registered);
                     return (player.Id, characterId);
                 }
                 catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)
@@ -859,6 +863,9 @@ namespace FolkIdle.Server.Engine
                     await transaction.CommitAsync();
 
                     Console.WriteLine($"Registered new player {player.Id} via email.");
+
+                    // Funnel step 1 - the email route's half. See FunnelRecorder.
+                    FunnelRecorder.Record(player.Id, FunnelStep.Registered);
                     return (EmailRegisterOutcome.Success, player.Id, characterId);
                 }
                 catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)

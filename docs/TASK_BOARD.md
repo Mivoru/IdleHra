@@ -4010,6 +4010,22 @@ Accounts from before the deploy are outside the cohort, and that is accepted.
 
 **Follow-up:** apply the D2 trigger once the cohort holds at least 30 registrations.
 
+**DONE (pending deploy), branch `feat/funnel-telemetry`.** Built:
+- `player_funnel_events` (`PlayerFunnelEvent`, migration `AddPlayerFunnelEvents`), keyed `(PlayerId, Step)`, listed in CURRENT_IMPLEMENTATION_STATE.md §3.
+- `Engine/FunnelRecorder.cs`: static queue, per-session guard (re-armed at login), and a budgeted cron worker that writes one `unnest` multi-row `INSERT ... ON CONFLICT DO NOTHING` per cycle. The try opens before `CreateScope`, and it prints a one-line heartbeat every minute with the queue depth. It is in the `CronWorkerGuardTests` inventory.
+- All 12 hooks. `FunnelRecorderTests.EachStepHasItsDocumentedWriters` pins the writer count for each step.
+- Levels 5/10/20 and onboarding_done are recorded in `FlushState` after it commits.
+- Returned d1/d7 is a login probe: the worker joins it against the player's own step-1 row.
+- `docs/ops/funnel.sql`.
+
+Where it differs from the plan:
+- **onboarding_done** is the client's tier-one "Completed" predicate: food in the larder, level at least 2, and a weapon worn. It is read at the checkpoint. The plan pointed at `OnboardingSeenIds`, but that has no "final id".
+- **joined_guild** goes through one `GuildManagementEngine.PublishJoined`, shared by create, join and approve.
+- **funnel.sql** uses `COALESCE` on the username. A guest has a NULL username, and without it the plan's query dropped every guest.
+- **The warp path** (`ApplyBulkExperience`) has no callers any more. The test reaches it by reflection.
+
+Still open: the `exercise.mjs` new-player check and the production SQL run, both after merge and deploy.
+
 ## 40. The HTTP accept loop handles one request at a time (M, P0) - plan item 1
 
 **Why:**
