@@ -89,6 +89,20 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task AWeakCharactersMultipliersCountOnTopOfTheFloor()
+        {
+            // A x G of 150 is below the 1,000 floor. The floor lifts the BASE
+            // hit, and the skill and weak-plate multipliers still apply to it -
+            // before this, every strike by such a character dealt exactly 1,000.
+            var engine = await FreshWheelEncounterAsync();
+            var blind = await engine.ExecuteStrikeAsync(Order(P1, weak: 0, m: 1.0, Hit(0, 1)), 150);
+            var skilled = await engine.ExecuteStrikeAsync(Order(P2, weak: 3, m: 2.0, Seam(0, 3)), 150);
+
+            Assert.Equal(WorldBossEngine.MinStrikeDamage, blind.Damage);
+            Assert.Equal(WorldBossEngine.MinStrikeDamage * 6, skilled.Damage);
+        }
+
+        [Fact]
         public async Task APoorRunThatFoundTheWeakPlatePaysAtLeastAnAutoStrikeOnIt()
         {
             var engine = await FreshWheelEncounterAsync();

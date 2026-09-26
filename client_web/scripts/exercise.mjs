@@ -1145,13 +1145,20 @@ await go('World Boss');
     plateStates.join(', '),
   );
 
+  // Modul: UNDER THE WHEEL (FOLKIDLE_BOSS_MINIGAME=wheel, task 36 Phase 2) the
+  // plate buttons are the AUTO-strike over REST and button.attack opens the
+  // wheel, so this block strikes with the auto button; the wheel itself has
+  // its own block below.
+  const wheelMode = (await page.locator('[data-testid="wheel-strike"]').count()) > 0;
+  const plateStrike = wheelMode ? 'button.auto' : 'button.attack';
+
   // Picking a plate has to change what the button says it will do, or the
   // choice is invisible at the moment it matters.
   if (plateCount === 5) {
     await plates.nth(3).click();
     await page.waitForTimeout(200);
     const label = await page
-      .locator('button.attack')
+      .locator(plateStrike)
       .first()
       .innerText()
       .catch(() => '');
@@ -1159,7 +1166,7 @@ await go('World Boss');
   }
 
   if (active) {
-    const strike = page.locator('button.attack').first();
+    const strike = page.locator(plateStrike).first();
     const disabled = await strike.isDisabled();
     const reason = await page.locator('.strike-reason').innerText().catch(() => '');
     record('a fresh window lets the fixture strike', !disabled, disabled ? `grey: ${reason}` : '');
@@ -1198,6 +1205,18 @@ await go('World Boss');
         row !== null && row.AttemptCount >= 1 && row.TotalInflictedDamage > 0,
         row === null ? 'no answer' : `attempts ${row.AttemptCount}, damage ${row.TotalInflictedDamage}`,
       );
+      if (wheelMode) {
+        const card = page.locator('[data-testid="auto-card"]');
+        const damage = Number((await card.getAttribute('data-damage').catch(() => null)) ?? 0);
+        record('the auto-strike shows its damage on the screen', damage > 0, `${damage} damage`);
+        const grey = await page.locator('[data-testid="wheel-strike"]').isDisabled();
+        const reason = await page.locator('.strike-reason').innerText().catch(() => '');
+        record(
+          "a second strike the same day is greyed with today's reason",
+          grey && /today's strike/i.test(reason),
+          `grey ${grey}: "${reason.trim()}"`,
+        );
+      }
     }
   }
 
@@ -1265,8 +1284,12 @@ const seamLandings = (s) => {
 const correctParry = { Left: 'From the left', Right: 'From the right', Overhead: 'From above' };
 const wrongParry = { Left: 'From above', Right: 'From the left', Overhead: 'From the right' };
 
-/** Plays one practice run in the page. `aimed` reads and counters; otherwise every read is wrong. */
-async function playPractice(aimed) {
+/**
+ * Plays one run in the page. `aimed` reads and counters; otherwise every read
+ * is wrong. The same overlay serves practice and the real strike (task 36
+ * Phase 2); only the card at the end differs.
+ */
+async function playPractice(aimed, card = 'practice-card', multiplier = 'practice-m') {
   await page.locator('[data-schedule]').waitFor({ timeout: 10000 });
   const schedule = JSON.parse(await page.locator('[data-schedule]').getAttribute('data-schedule'));
 
@@ -1293,10 +1316,18 @@ async function playPractice(aimed) {
     if (wheel.length === wheelCount) break;
   }
   if (!aimed) {
-    // Evenly spread across the run instead, so reads are reached.
+    // Modul: ONE SPEAR BEFORE THE FIRST TELL, THE REST AFTER IT (2026-09-26).
+    // An interrupt only costs a spear if it is REACHED - some spear is thrown
+    // after it (spec 5.5). Taps spread evenly from 800 ms failed about one
+    // schedule in four: the first tell fell after the fourth tap, its wrong
+    // read spent the client's fifth spear, and the server - rightly - counted
+    // nothing lost, so the card said so. Throwing right after the first freeze
+    // ends makes the read reached on every schedule.
     wheel.length = 0;
-    for (let k = 0; k < 5; k++) {
-      let t = 800 + k * 3400;
+    const first = interrupts[0];
+    const after = first.TellAtMs + first.InterruptMs + 200;
+    const plan = [800, ...[0, 1, 2, 3].map((k) => after + k * 1500)];
+    for (let t of plan) {
       while (wheelFrozenAt(schedule, t) || wheelFrozenAt(schedule, t + 60)) t += 100;
       wheel.push(t);
     }
@@ -1324,10 +1355,12 @@ async function playPractice(aimed) {
     }
   }, actions);
 
-  await page.locator('[data-testid="practice-card"]').waitFor({ timeout: 40000 });
+  await page.locator(`[data-testid="${card}"]`).waitFor({ timeout: 40000 });
   return {
-    m: Number((await page.locator('[data-testid="practice-m"]').innerText()).replace(/[^0-9.]/g, '')),
-    text: await page.locator('[data-testid="practice-card"]').innerText(),
+    m: Number((await page.locator(`[data-testid="${multiplier}"]`).innerText()).replace(/[^0-9.]/g, '')),
+    text: await page.locator(`[data-testid="${card}"]`).innerText(),
+    damage: Number((await page.locator(`[data-testid="${card}"]`).getAttribute('data-damage')) ?? 0),
+    played: Number((await page.locator(`[data-testid="${card}"]`).getAttribute('data-played')) ?? 0),
     interrupts: interrupts.length,
   };
 }
@@ -1428,6 +1461,75 @@ async function playPractice(aimed) {
       'practice moved neither the boss nor an attempt',
       practiceWindow === 200 && before.attempts === after.attempts && before.damage === after.damage && before.pips === after.pips,
       `window ${practiceWindow}, attempts ${before.attempts} -> ${after.attempts}, damage ${before.damage} -> ${after.damage}, pips ${before.pips} -> ${after.pips}`,
+    );
+    await bossWindow(false);
+  }
+}
+
+// --- the shield wheel, for real (task 36 Phase 2) ------------------------------
+//
+// Modul: THIS IS THE CHECK THAT PROVES SKILL REACHES DAMAGE. A blind run (every
+// read wrong, spears spread evenly) and an aimed run (every read right and
+// countered, every spear on a seam) each spend a real strike. One strike a
+// day, so each run gets a fresh dev window (opening one deletes the attempt
+// rows); the damage compared is the card's, because two windows are two boss
+// health bars.
+//
+// NOT "the aimed run deals more". Each attempt draws its own weak plate, and a
+// played strike is never worth less than auto-striking the best plate it hit
+// (spec 3.2), so a blind run that happens to land on the weak plate is paid
+// 3.0x and can match an aimed run that did not (measured 2026-09-26: blind
+// M 1.00 and aimed M 2.00 both dealt 3,000). What is invariant is the wiring:
+// both runs hit with the same base (damage / played), and the aimed run's
+// damage is at least that base times its higher M.
+{
+  await go('World Boss');
+  const wheelOffered = (await page.locator('[data-testid="wheel-strike"]').count()) > 0;
+  if (!wheelOffered) {
+    record(
+      'the World Boss screen strikes with the shield wheel',
+      false,
+      'no wheel Strike - start the server with FOLKIDLE_BOSS_MINIGAME=wheel (run-dev.ps1 does)',
+    );
+  } else {
+    const realRun = async (aimed) => {
+      const status = await bossWindow(true);
+      await bossStateIs('Active', 70000);
+      await page.waitForTimeout(1000);
+      const button = page.locator('[data-testid="wheel-strike"]');
+      await page.waitForFunction(() => !document.querySelector('[data-testid="wheel-strike"]')?.disabled, null, { timeout: 15000 }).catch(() => {});
+      if (status !== 200 || (await button.isDisabled())) return null;
+      await button.click();
+      const run = await playPractice(aimed, 'strike-card', 'strike-m');
+      await page.locator('[data-schedule]').getByRole('button', { name: /^\s*Close\s*$/i }).first().click();
+      await page.waitForTimeout(500);
+      return run;
+    };
+
+    const blind = await realRun(false);
+    record(
+      'a blind shield wheel strike lands at the floor or a little above',
+      blind !== null && blind.damage > 0 && blind.m >= 1.0 && blind.m <= 1.6,
+      blind ? `M ${blind.m.toFixed(2)}, ${blind.damage} damage` : 'the strike could not be opened',
+    );
+    const aimed = await realRun(true);
+    const base = (run) => (run && run.played > 0 ? run.damage / run.played : NaN);
+    record(
+      'an aimed shield wheel strike scores higher, and its skill reaches the damage',
+      blind !== null &&
+        aimed !== null &&
+        aimed.m > blind.m + 0.2 &&
+        Math.abs(base(aimed) - base(blind)) <= 1 &&
+        aimed.damage >= Math.floor(base(aimed) * aimed.m),
+      aimed && blind
+        ? `M ${blind.m.toFixed(2)} -> ${aimed.m.toFixed(2)}, played ${blind.played} -> ${aimed.played}, damage ${blind.damage} -> ${aimed.damage}, base ${base(blind)} / ${base(aimed)}`
+        : 'a run was missing',
+    );
+    const row = await apiGet('/api/v1/dev/worldboss/attempt');
+    record(
+      'the wheel strike is recorded on the server',
+      row !== null && row.AttemptCount === 1 && row.TotalInflictedDamage === (aimed?.damage ?? -1),
+      row === null ? 'no answer' : `attempts ${row.AttemptCount}, damage ${row.TotalInflictedDamage}`,
     );
     await bossWindow(false);
   }
@@ -3029,7 +3131,8 @@ await go('Ancestors');
         .catch(() => false);
       const hp = () =>
         fresh.evaluate(() => Number(document.querySelector('.bar[role="progressbar"]')?.getAttribute('aria-valuenow') ?? -1));
-      const strike = fresh.locator('button.attack').first();
+      // Under the wheel the one-press strike is the auto-strike.
+      const strike = (await fresh.locator('button.auto').count()) > 0 ? fresh.locator('button.auto').first() : fresh.locator('button.attack').first();
       const grey = await strike.isDisabled().catch(() => true);
       let outcome = 'nothing happened';
       let landed = false;

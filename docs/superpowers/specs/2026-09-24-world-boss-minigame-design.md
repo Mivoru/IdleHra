@@ -158,8 +158,10 @@ P = mean over spears whose class is Plate or Seam of (3.0 if that plate is weak 
 Auto = max over the plates struck by a Plate-or-Seam spear of (3.0 if weak else 1.0)
        Auto = 1.0 if no spear reached Plate class          in [1.0, 3.0]
 played = max(M * P, Auto)                                  (owner, 2026-09-24: the auto-strike floor)
-damage = ComputeAppliedDamage(currentHp, A * G * played)   (existing clamp [1,000, 100,000,000] and to remaining HP)
+damage = ComputeAppliedDamage(currentHp, max(1,000, A * G) * played)   (clamp to 100,000,000 and to remaining HP)
 ```
+
+**The 1,000 floor applies to the base hit, before `played` (found 2026-09-26).** The formula first written here floored the *result*. A typical character's `A x G` is 100-200, so `A x G x 6.0` is still under 1,000 and every strike dealt exactly 1,000: `exercise.mjs` measured a blind run (M 1.28) and a capped run (M 2.00) dealing the same damage. Flooring the base hit keeps "a character that has never fought still contributes" and lets every multiplier count. Opcode 32 keeps the old clamp until it is retired by the flip.
 
 - **Auto-strike** is today's strike exactly: `M = 1.0`, and `P` is 3.0 or 1.0 for the one plate chosen.
 - **The auto-strike floor (owner decision, final).** A played attempt is never worth less than auto-striking the same plate: `played = max(M x P, Auto)` per attempt.

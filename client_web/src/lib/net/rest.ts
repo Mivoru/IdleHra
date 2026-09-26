@@ -1641,6 +1641,30 @@ export interface ChallengeResponse {
   /** 'off' | 'practice' | 'wheel' - FOLKIDLE_BOSS_MINIGAME on the server. */
   Mode: string;
   Challenge: ShieldWheelChallenge | null;
+  /** A strike this player left unfinished, resolved at the floor since they last looked. Shown once. */
+  Resolved?: StrikeResponse | null;
+}
+
+export interface StrikeLandingDto {
+  Seq: number;
+  Plate: number;
+  Class: 'None' | 'Glance' | 'Plate' | 'Seam';
+  IsCounter: boolean;
+  /** Told to the striker only: this spear struck this attempt's weak plate. */
+  WeakHit: boolean;
+}
+
+/** The answer to a real strike (task 36 Phase 2). Damage is 0 unless it landed. */
+export interface StrikeResponse {
+  Result: WorldBossStrikeResult;
+  Damage: number;
+  Multiplier: number;
+  PlateMultiplier: number;
+  Played: number;
+  /** The plate this strike broke for everyone, or -1. */
+  BrokePlate: number;
+  SpearsLost: number;
+  Landings: StrikeLandingDto[];
 }
 
 export interface ParryEntryDto {
@@ -1707,4 +1731,17 @@ export function scoreBossPractice(body: {
   Counters: CounterEntryDto[];
 }): Promise<PracticeScoreResponse | null> {
   return authedPost<PracticeScoreResponse>('/api/v1/worldboss/practice/score', body);
+}
+
+/**
+ * The real strike: the finished wheel log, or an auto-strike on one plate.
+ * Spends today's strike. The HP and the pip arrive on the stream as usual;
+ * this answer is only for the result card.
+ */
+export function strikeBoss(
+  body:
+    | { Mode: 'Wheel'; ChallengeId: string; Taps: { Seq: number; TapMs: number }[]; Parries: ParryEntryDto[]; Counters: CounterEntryDto[] }
+    | { Mode: 'Auto'; Plate: number },
+): Promise<StrikeResponse | null> {
+  return authedPost<StrikeResponse>('/api/v1/worldboss/strike', body);
 }

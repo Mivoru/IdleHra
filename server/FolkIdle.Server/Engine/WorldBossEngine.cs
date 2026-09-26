@@ -68,6 +68,9 @@ namespace FolkIdle.Server.Engine
         /// <summary>On the wire while nobody has landed on the weak point yet.</summary>
         public const byte WeakPlateHidden = 255;
         private const long BaseHp = 50000000L;
+
+        /// <summary>The least one strike's BASE hit is worth, before any plate or skill multiplier.</summary>
+        public const long MinStrikeDamage = 1000L;
         /// <summary>Strikes per player per UTC day - see WorldBossCalendar. Was 3 per encounter until 2026-09-25.</summary>
         internal const int MaxAttemptsPerDay = WorldBossCalendar.StrikesPerDay;
 
@@ -976,7 +979,15 @@ namespace FolkIdle.Server.Engine
                 // Modul: WeakPlateRevealed is NOT set in wheel mode. The secret
                 // lives for one attempt; "four broken, so the last is weak" is
                 // what the board already shows (spec 3.3.1, rule 3).
-                double raw = Math.Max(1.0, attackDamage * price.Played);
+                // Modul: THE FLOOR IS ON THE BASE HIT, NOT ON THE RESULT (found by
+                // exercise.mjs, 2026-09-26). ComputeAppliedDamage floors at 1,000
+                // AFTER any multiplier, and a typical character's A x G is 100-200
+                // hit points, so a blind run and a capped one with three weak
+                // seams (6x) both dealt exactly 1,000: the whole skill lever and
+                // the weak plate were invisible in damage. Flooring the base hit
+                // first keeps "an account that has never fought still
+                // contributes" and lets every multiplier count on top of it.
+                double raw = Math.Max(MinStrikeDamage, attackDamage) * price.Played;
                 long appliedDamage = ComputeAppliedDamage(snapshot.CurrentHp, (uint)Math.Min(uint.MaxValue, raw));
                 snapshot.CurrentHp -= appliedDamage;
                 if (snapshot.CurrentHp < 0) snapshot.CurrentHp = 0;
