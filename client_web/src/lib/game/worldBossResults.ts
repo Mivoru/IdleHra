@@ -30,6 +30,7 @@ export const WORLD_BOSS_RESULT_SENTENCES: Record<WorldBossStrikeResult, string> 
   Queued: 'Strike sent. The result will show on the board.',
   Failed: 'The strike could not be recorded. Nothing was spent. Try again.',
   PracticeScored: '',
+  NoGameSession: 'The game is not connected right now. Wait for it to reconnect, then strike.',
 };
 
 /** The results that are client bugs rather than something to tell the player. */

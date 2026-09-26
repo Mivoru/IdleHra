@@ -378,6 +378,16 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
             var refusal = await RefusalAsync(playerId, now, forChallenge: true);
             if (refusal.HasValue) return new ChallengeResponse { Result = refusal.Value, Mode = _settings.ModeName, Resolved = resolved };
 
+            // Modul: A REAL CHALLENGE NEEDS A LIVE CHARACTER (security review,
+            // 2026-09-26). Defence in depth: the strike is priced from the
+            // tick's payload, and one issued with no session open is what the
+            // free re-roll exploited. The authority is still the drain, which
+            // prices a session-less strike at the floor and spends it.
+            if (!_board!.HasGameSession(playerId))
+            {
+                return new ChallengeResponse { Result = WorldBossStrikeResult.NoGameSession, Mode = _settings.ModeName, Resolved = resolved };
+            }
+
             var board = _board!;
             bool enraged = WorldBossStrikeRules.IsEnraged(board.BossCurrentHp, board.BossMaxHp);
             var (challenge, issued) = _registry.IssueOrGet(playerId, practice: false, enraged, now, board.BrokenPlateMask, board.EventEndEpoch);

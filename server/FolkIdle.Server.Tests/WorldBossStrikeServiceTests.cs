@@ -38,6 +38,8 @@ namespace FolkIdle.Server.Tests
             public readonly ConcurrentQueue<WorldBossStrikeOrder> Orders = new();
 
             public Task<int> StrikesUsedTodayAsync(long playerId) => Task.FromResult(Used);
+            public bool Session { get; set; } = true;
+            public bool HasGameSession(long playerId) => Session;
 
             public void Submit(WorldBossStrikeOrder order)
             {
@@ -154,6 +156,10 @@ namespace FolkIdle.Server.Tests
             board.EventEndEpoch = _nowMs / 1000 + 30; // less than countdown + play + margin
             Assert.Equal(WorldBossStrikeResult.TooLateInWindow, service.IssueChallengeAsync(Player, false).Result.Result);
             board.EventEndEpoch = _nowMs / 1000 + 86_400;
+
+            board.Session = false;
+            Assert.Equal(WorldBossStrikeResult.NoGameSession, service.IssueChallengeAsync(Player, false).Result.Result);
+            board.Session = true;
 
             board.Used = 1;
             Assert.Equal(WorldBossStrikeResult.NoAttemptsLeft, service.IssueChallengeAsync(Player, false).Result.Result);

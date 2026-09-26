@@ -15,5 +15,6 @@
   "Refused",
   "Queued",
   "Failed",
-  "PracticeScored"
+  "PracticeScored",
+  "NoGameSession"
 ]

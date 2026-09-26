@@ -187,7 +187,7 @@ namespace FolkIdle.Server.Tests
 
         // Task 36 Phase 2, spec 5.7: the REST order goes through the TICK, which
         // prices it with A x G from the striker's own payload - never from
-        // anything the client sent.
+        // anything the client sent - and a striker with no payload at the floor.
         [Fact]
         public async Task AShieldWheelOrder_IsPricedFromThePayload_OnTheTick()
         {
@@ -232,10 +232,14 @@ namespace FolkIdle.Server.Tests
                     Multiplier = 1.0,
                     LandedAs = FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeResult.Landed,
                 };
+                // Security review, 2026-09-26: no game session is priced at the
+                // 1,000 floor and SPENT - never "nothing spent", which let a
+                // script discard a run after reading its throws.
                 boss.Submit(orphan);
-                Assert.Equal(FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeResult.Failed,
-                    (await orphan.Completion.Task.WaitAsync(TimeSpan.FromSeconds(10))).Result);
-                Assert.Null(await AttemptAsync(absentPlayerId));
+                var orphanOutcome = await orphan.Completion.Task.WaitAsync(TimeSpan.FromSeconds(10));
+                Assert.Equal(FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeResult.Landed, orphanOutcome.Result);
+                Assert.Equal(WorldBossEngine.MinStrikeDamage, orphanOutcome.Damage);
+                Assert.Equal(1, (await AttemptAsync(absentPlayerId))!.AttemptCount);
             }
             finally
             {

@@ -1594,7 +1594,8 @@ export type WorldBossStrikeResult =
   | 'Refused'
   | 'Queued'
   | 'Failed'
-  | 'PracticeScored';
+  | 'PracticeScored'
+  | 'NoGameSession';
 
 export interface ShieldWheelChallenge {
   ChallengeId: string;

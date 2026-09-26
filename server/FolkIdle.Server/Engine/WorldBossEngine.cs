@@ -864,6 +864,8 @@ namespace FolkIdle.Server.Engine
 
         public void Submit(WorldBossStrikeOrder order) => _playerRegistry.WorldBossStrikeQueue.Enqueue(order);
 
+        public bool HasGameSession(long playerId) => _playerRegistry.IsPlayerOnline(playerId);
+
         /// <summary>
         /// Applies a priced order off the tick thread and ALWAYS completes it:
         /// the REST handler is waiting on the answer, and a strike with no
@@ -897,7 +899,9 @@ namespace FolkIdle.Server.Engine
         private async Task<WorldBossStrikeOutcome> ExecuteStrikeCoreAsync(WorldBossStrikeOrder order, long attackDamage)
         {
             long playerId = order.PlayerId;
-            if (playerId <= 0 || attackDamage <= 0 || !WheelMode)
+            // attackDamage 0 is legal: a striker with no live payload, priced at
+            // the MinStrikeDamage floor (see WorldBossTickCoordinator.DrainStrikeOrders).
+            if (playerId <= 0 || attackDamage < 0 || !WheelMode)
             {
                 return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed);
             }

@@ -53,9 +53,17 @@ namespace FolkIdle.Server.Domain.Combat
                     ref var payload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(activePlayers, order.PlayerId);
                     if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref payload))
                     {
-                        // No game session, so no attack power to price the blow
-                        // with (spec 3.3.1, decision 6). Nothing is spent.
-                        order.Complete(WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed));
+                        // Modul: NO SESSION IS PRICED AT THE FLOOR, NEVER REFUSED
+                        // (security review, 2026-09-26). This answered Failed -
+                        // "nothing spent" - and the challenge was already gone.
+                        // So a script could close its socket, throw a spear, read
+                        // WeakHit, and discard the run for free until the first
+                        // guess was weak: the 6.0x ceiling every day, and every
+                        // bad run re-rolled. With no payload there is no attack
+                        // power, so the engine prices the base hit at its
+                        // 1,000 floor and the strike is SPENT, like any other.
+                        // An honest client always has a session here.
+                        engine.QueueStrike(order, 0);
                         continue;
                     }
                     if (payload.WorldBossAttemptCount >= WorldBossEngine.MaxAttemptsPerDay)

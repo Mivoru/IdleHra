@@ -78,6 +78,9 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
 
         /// <summary>Hands the order to the tick, which prices and applies it.</summary>
         void Submit(WorldBossStrikeOrder order);
+
+        /// <summary>Whether this player has a live game session on the tick (a WebSocket, a payload).</summary>
+        bool HasGameSession(long playerId);
     }
 
     /// <summary>
