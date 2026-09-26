@@ -4054,6 +4054,14 @@ demonstrated.
 - the past-payout count from production is in the PR;
 - the "flushed twice, mailed once" test passes.
 
+**DONE 2026-09-27** (branch `fix/split-brain-gold-cap`). Production before the
+change: `SELECT count(*), sum("GoldAttachment") FROM "MailboxInstances" WHERE
+"BaseItemId"='GOLD_COMPENSATION'` = **2 rows, 1,000 gold** - the path does
+fire. Now: table `split_brain_incidents` (migration `AddSplitBrainIncidents`),
+`INSERT ... ON CONFLICT DO NOTHING` in the same transaction as the mail, flat
+`SplitBrainCompensationGold = 1000`, and one log line per refusal with player,
+both epochs and the Redis lock holder. `SplitBrainCompensationTests` pins it.
+
 ## 43. Blocking database checkpoints on the 10 Hz tick thread (L, the riskiest) - plan item 2
 
 **Why:** `FlushStateAndAdvance` (`:172`) runs a Serializable transaction

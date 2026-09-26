@@ -49,6 +49,77 @@ namespace FolkIdle.Server.Domain.Shared
             _forceDisconnectCallback = callback;
         }
 
+        /// <summary>
+        /// Gold mailed once per split-brain incident (owner decision D1,
+        /// 2026-09-27), independent of how far apart the two epochs are.
+        /// </summary>
+        public const long SplitBrainCompensationGold = 1000;
+
+        // Test-only observability (via InternalsVisibleTo): the most recent
+        // fire-and-forget compensation, so a test can await it instead of
+        // polling the mailbox.
+        internal Task LastSplitBrainCompensation { get; private set; } = Task.CompletedTask;
+
+        // Modul: task 42. Records the incident and mails only when THIS call
+        // recorded it. The INSERT ... ON CONFLICT DO NOTHING and the mail share
+        // one transaction, so a failed mail rolls the incident back and a later
+        // refusal at the same DbEpoch can still pay it; a second refusal at the
+        // same DbEpoch (the same stale session flushed again, or a retry) finds
+        // the row and pays nothing. Never throws - it runs detached.
+        internal async Task CompensateSplitBrainAsync(long playerId, long dbEpoch, long sessionEpoch)
+        {
+            string lockHolder = "unknown";
+            try
+            {
+                var sessionLock = _serviceProvider.GetService<RedisPlayerSessionLock>();
+                if (sessionLock != null)
+                {
+                    lockHolder = await sessionLock.PeekHolderAsync(playerId) ?? "none";
+                }
+            }
+            catch
+            {
+                // Diagnostics only.
+            }
+
+            try
+            {
+                using var bgScope = _serviceProvider.CreateScope();
+                var bgDb = bgScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await using var bgTx = await bgDb.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+
+                int inserted = await bgDb.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO split_brain_incidents (\"PlayerId\", \"DbEpoch\", \"At\") VALUES ({0}, {1}, {2}) ON CONFLICT DO NOTHING",
+                    playerId, dbEpoch, DateTimeOffset.UtcNow);
+
+                bool mailed = inserted == 1;
+                if (mailed)
+                {
+                    bgDb.MailboxInstances.Add(new MailboxInstance
+                    {
+                        PlayerId = playerId,
+                        BaseItemId = "GOLD_COMPENSATION",
+                        QualityTier = 0,
+                        Quantity = 0,
+                        GoldAttachment = SplitBrainCompensationGold,
+                        IsClaimed = false,
+                        IsPending = false,
+                        ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    });
+                    await bgDb.SaveChangesAsync();
+                }
+
+                await bgTx.CommitAsync();
+
+                Console.WriteLine($"Split-brain: player {playerId} db epoch {dbEpoch} > session epoch {sessionEpoch}, lock holder {lockHolder}, " +
+                    (mailed ? $"mailed {SplitBrainCompensationGold} gold" : "already compensated for this db epoch"));
+            }
+            catch (Exception bgEx)
+            {
+                Console.WriteLine($"Split-brain compensation failed for player {playerId} (db epoch {dbEpoch}, session epoch {sessionEpoch}, lock holder {lockHolder}): {bgEx.Message}");
+            }
+        }
+
         public StateCheckpointManager(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
@@ -261,10 +332,10 @@ namespace FolkIdle.Server.Domain.Shared
                         {
                             await transaction.RollbackAsync();
 
-                            // Calculate asset delta and compensate via Gold mailbox write (Module 31.2.2).
-                            long epochDelta = player.LogicEpochCounter - state.LogicEpochCounter;
-                            long compensationGold = epochDelta * 500L;
-
+                            // Modul: task 42. A flat SplitBrainCompensationGold, paid
+                            // once per (PlayerId, DbEpoch) - see SplitBrainIncident.
+                            // This used to mail epochDelta * 500 on every refused
+                            // flush: uncapped, and paid again for every race.
                             TelemetryStreamer.TryWrite(new TelemetryEvent
                             {
                                 PlayerId = state.PlayerId,
@@ -275,33 +346,10 @@ namespace FolkIdle.Server.Domain.Shared
                             });
 
                             long capturedPlayerId = state.PlayerId;
-                            long capturedGold = compensationGold;
-                            _ = Task.Run(async () =>
-                            {
-                                try
-                                {
-                                    using var bgScope = _serviceProvider.CreateScope();
-                                    var bgDb = bgScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                                    using var bgTx = await bgDb.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-                                    bgDb.MailboxInstances.Add(new MailboxInstance
-                                    {
-                                        PlayerId = capturedPlayerId,
-                                        BaseItemId = "GOLD_COMPENSATION",
-                                        QualityTier = 0,
-                                        Quantity = 0,
-                                        GoldAttachment = capturedGold,
-                                        IsClaimed = false,
-                                        IsPending = false,
-                                        ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                                    });
-                                    await bgDb.SaveChangesAsync();
-                                    await bgTx.CommitAsync();
-                                }
-                                catch (Exception bgEx)
-                                {
-                                    Console.WriteLine($"Split-brain mailbox compensation failed for player {capturedPlayerId}: {bgEx.Message}");
-                                }
-                            });
+                            long capturedDbEpoch = player.LogicEpochCounter;
+                            long capturedSessionEpoch = state.LogicEpochCounter;
+                            LastSplitBrainCompensation = Task.Run(() =>
+                                CompensateSplitBrainAsync(capturedPlayerId, capturedDbEpoch, capturedSessionEpoch));
 
                             _forceDisconnectCallback?.Invoke(state.PlayerId);
                             _dirtyStates.TryRemove(state.PlayerId, out _);

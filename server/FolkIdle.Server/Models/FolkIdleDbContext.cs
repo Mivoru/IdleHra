@@ -100,6 +100,10 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerGoldDailyHigh> PlayerGoldDailyHighs { get; set; }
         public DbSet<PlayerTitle> PlayerTitles { get; set; }
 
+        // Task 42: one row per split-brain compensation, so it pays once.
+        // See SplitBrainIncident.
+        public DbSet<SplitBrainIncident> SplitBrainIncidents { get; set; }
+
         // The durable retry outbox. See PendingGrant.
         public DbSet<PendingGrant> PendingGrants { get; set; }
 
@@ -243,6 +247,9 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<PlayerGoldDailyHigh>()
                 .HasKey(h => new { h.PlayerId, h.DayUtc });
+
+            modelBuilder.Entity<SplitBrainIncident>()
+                .HasKey(i => new { i.PlayerId, i.DbEpoch });
 
             modelBuilder.Entity<PlayerTitle>()
                 .HasKey(t => new { t.PlayerId, t.TitleSlug });
