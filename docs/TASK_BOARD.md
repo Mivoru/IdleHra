@@ -4127,7 +4127,7 @@ tick thread with no WebSocket compression. **Not yet measured.**
 ## 47. Audit leftovers (S each)
 
 - **DONE (fix/audit-leftovers).** **The Character sheet's HP bar uses an estimate.** `Character.svelte:370` uses `observedMaxPlayerHp`, while `PlayerMaxHp` is on the wire and `Combat.svelte:157` uses it. Switch it, and delete the estimate (`game.ts:66`). *Both screens now read `PlayerMaxHp` (clamped to at least `PlayerHp`); `observedMaxPlayerHp` is deleted.*
-- `MailboxInstances` has no index on `PlayerId`.
+- **DONE (fix/audit-leftovers).** `MailboxInstances` has no index on `PlayerId`. *`IX_MailboxInstances_PlayerId`, migration `AddMailboxPlayerIdIndex` (additive).*
 - Offline catch-up makes up to 200,000 loot rolls one at a time (`OfflineSimulationEngine.cs:94-103, 954`). Use a binomial draw per table entry.
 - **DONE (fix/audit-leftovers).** `visualState.set` runs on every animation frame (`game.ts:110`), even when nothing is moving. It is also listed under 46/8b; do it here if 46 is closed. *Now publishes only a frame that moved > 0.5 (the settling frame always lands exactly), and the rAF loop stops once the interpolator has settled and no damage number or toast is alive; a snapshot, combat event or local notice restarts it (`shouldPublishVisual`, `SnapshotInterpolator.isSettled`).*
 - **DONE (fix/audit-leftovers).** All 26 screens load at startup (`App.svelte:3-31`, one 644 KB chunk). Load the large ones with `import()`. *Login and Hub stay static; the other 25 are `import()`ed on first visit (`SCREEN_LOADERS`), with a Reload answer when a chunk is gone after a deploy. `npx vite build`: the entry chunk went from 659.00 kB (215.37 kB gzip) to 249.80 kB (84.93 kB gzip); the largest lazy chunk is the Wiki at 114.20 kB.*
