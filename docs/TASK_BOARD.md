@@ -4126,7 +4126,7 @@ tick thread with no WebSocket compression. **Not yet measured.**
 
 ## 47. Audit leftovers (S each)
 
-- **The Character sheet's HP bar uses an estimate.** `Character.svelte:370` uses `observedMaxPlayerHp`, while `PlayerMaxHp` is on the wire and `Combat.svelte:157` uses it. Switch it, and delete the estimate (`game.ts:66`).
+- **DONE (fix/audit-leftovers).** **The Character sheet's HP bar uses an estimate.** `Character.svelte:370` uses `observedMaxPlayerHp`, while `PlayerMaxHp` is on the wire and `Combat.svelte:157` uses it. Switch it, and delete the estimate (`game.ts:66`). *Both screens now read `PlayerMaxHp` (clamped to at least `PlayerHp`); `observedMaxPlayerHp` is deleted.*
 - `MailboxInstances` has no index on `PlayerId`.
 - Offline catch-up makes up to 200,000 loot rolls one at a time (`OfflineSimulationEngine.cs:94-103, 954`). Use a binomial draw per table entry.
 - `visualState.set` runs on every animation frame (`game.ts:110`), even when nothing is moving. It is also listed under 46/8b; do it here if 46 is closed.

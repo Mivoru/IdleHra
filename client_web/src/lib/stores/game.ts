@@ -51,19 +51,11 @@ export const connectionStatus = writable<ConnectionStatus>({
 
 export const playerState = writable<StateUpdate | null>(null);
 
-// Modul: MAX HEALTH IS NOT ON THE WIRE. StateUpdatePacket carries PlayerHp and
-// nothing to scale it against, so a health bar has no honest denominator.
-//
-// Derived here, once, as the highest value seen this session - rather than
-// each screen inventing its own guess, which is how two screens end up
-// disagreeing about the same character. Combat's bar and the Character sheet
-// now read the same number.
-//
-// It is a floor, not a fact: a character that has not been at full health this
-// session reads low, and the bar then looks fuller than it is. Acceptable
-// because this value only ever scales a bar - nothing decides from it - but it
-// is the reason MaxHp belongs on the wire eventually.
-export const observedMaxPlayerHp = writable(1);
+// Modul: the player's maximum health is `PlayerMaxHp` on the snapshot. A
+// session high-water mark of PlayerHp (`observedMaxPlayerHp`) stood in for it
+// before the field reached the wire, and outlived it on the Character sheet,
+// which read "2320 / 2320" beside a PlayerHp of 3701. Deleted rather than kept
+// as a fallback: two sources for one number is this codebase's dominant bug.
 
 // ---------------------------------------------------------------------------
 // Smoothed state
@@ -540,9 +532,6 @@ export function startSession(token: string): void {
   achievementToasts.set([]);
   toastWatermark.highWater = -1;
   lastTierSnapshot = [];
-  // A different account has a different maximum; carrying the old one over
-  // would scale the new player's bar against a stranger's health.
-  observedMaxPlayerHp.set(1);
   // A new session numbers its events from scratch, so a carried-over sequence
   // high-water mark would swallow every line until the server caught up to it.
   resetCombatLog();
@@ -606,7 +595,6 @@ export function startSession(token: string): void {
     onStateUpdate: (packet: StateUpdate) => {
       const arrivedAtMs = performance.timeOrigin + performance.now();
       playerState.set(packet);
-      observedMaxPlayerHp.update((seen) => Math.max(seen, packet.PlayerHp));
 
       interpolator.push(
         extractInterpolated(packet as unknown as Record<string, unknown>),

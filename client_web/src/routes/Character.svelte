@@ -1,6 +1,6 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query';
-  import { playerState, visualState, observedMaxPlayerHp, pushLocalNotice } from '../lib/stores/game';
+  import { playerState, visualState, pushLocalNotice } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchInventory, type InventoryEquipment } from '../lib/net/rest';
@@ -76,6 +76,9 @@
 
 
   const visual = $derived($visualState);
+  // The wire's own maximum, as Combat reads it. Clamped against PlayerHp so a
+  // bar can never read over-full while a stat change is still propagating.
+  const playerMaxHp = $derived(Math.max(1, $playerState?.PlayerMaxHp ?? 0, $playerState?.PlayerHp ?? 0));
 
   // Equipment ids arrive on StateUpdate but their names, rarities and affixes
   // do not - the hot-path packet carries only the instance id, deliberately.
@@ -367,9 +370,9 @@
           <span class="dim">Health</span>
           <Bar
             value={visual?.PlayerHp ?? snap.PlayerHp}
-            max={$observedMaxPlayerHp}
+            max={playerMaxHp}
             color="var(--good)"
-            label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp).toLocaleString()} / ${$observedMaxPlayerHp.toLocaleString()}`}
+            label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp).toLocaleString()} / ${playerMaxHp.toLocaleString()}`}
           />
         </div>
         <!-- Modul: the mana bar went with the four active skills. It measured
