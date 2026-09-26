@@ -4129,6 +4129,6 @@ tick thread with no WebSocket compression. **Not yet measured.**
 - **DONE (fix/audit-leftovers).** **The Character sheet's HP bar uses an estimate.** `Character.svelte:370` uses `observedMaxPlayerHp`, while `PlayerMaxHp` is on the wire and `Combat.svelte:157` uses it. Switch it, and delete the estimate (`game.ts:66`). *Both screens now read `PlayerMaxHp` (clamped to at least `PlayerHp`); `observedMaxPlayerHp` is deleted.*
 - `MailboxInstances` has no index on `PlayerId`.
 - Offline catch-up makes up to 200,000 loot rolls one at a time (`OfflineSimulationEngine.cs:94-103, 954`). Use a binomial draw per table entry.
-- `visualState.set` runs on every animation frame (`game.ts:110`), even when nothing is moving. It is also listed under 46/8b; do it here if 46 is closed.
+- **DONE (fix/audit-leftovers).** `visualState.set` runs on every animation frame (`game.ts:110`), even when nothing is moving. It is also listed under 46/8b; do it here if 46 is closed. *Now publishes only a frame that moved > 0.5 (the settling frame always lands exactly), and the rAF loop stops once the interpolator has settled and no damage number or toast is alive; a snapshot, combat event or local notice restarts it (`shouldPublishVisual`, `SnapshotInterpolator.isSettled`).*
 - All 26 screens load at startup (`App.svelte:3-31`, one 644 KB chunk). Load the large ones with `import()`.
 - Lock ordering in market matching (`MarketOrderBookEngine.cs:412-474`) only matters at a higher population. Record it and do nothing yet.

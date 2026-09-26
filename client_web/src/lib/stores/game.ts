@@ -16,6 +16,7 @@ import { registerPlatformStore } from '../net/storeRegistration';
 import {
   SnapshotInterpolator,
   extractInterpolated,
+  shouldPublishVisual,
   type InterpolatedFields,
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
@@ -65,6 +66,8 @@ const interpolator = new SnapshotInterpolator();
 export const visualState = writable<InterpolatedFields | null>(null);
 
 let animationHandle = 0;
+/** The last frame actually handed to `visualState`, for the change test. */
+let lastPublishedVisual: InterpolatedFields | null = null;
 
 // Tutorial and audio edge detection. -1 / 0 mean "no baseline yet", so the
 // first packet of a session never fires a cue for progress made while away.
@@ -95,11 +98,26 @@ export const damageEvents = writable<DamageEvent[]>([]);
  */
 export const typicalHit = writable<number | null>(null);
 
+// Modul: THE LOOP RUNS ONLY WHILE SOMETHING IS MOVING.
+//
+// It used to reschedule itself unconditionally and `set` visualState on every
+// frame, so an idle character redrew its bars sixty times a second for hours.
+// It now publishes only a frame that moved (see shouldPublishVisual) and stops
+// once the interpolator has settled AND nothing it expires is still alive -
+// damage numbers and toasts are pruned from here, so they keep it running too.
+// Anything that gives it new work calls startPump(): a snapshot, a combat
+// event, a local notice. A late snapshot on a stopped loop is therefore never
+// missed, and the Combat bar still glides between two snapshots as before.
 function pump(): void {
+  animationHandle = 0;
   const now = performance.timeOrigin + performance.now();
 
   const sampled = interpolator.sample(now);
-  if (sampled !== null) visualState.set(sampled);
+  const settled = interpolator.isSettled(now);
+  if (sampled !== null && shouldPublishVisual(lastPublishedVisual, sampled, settled)) {
+    lastPublishedVisual = sampled;
+    visualState.set(sampled);
+  }
 
   // Expiry is driven from the render loop rather than a setTimeout per hit:
   // one timer per damage number would be dozens of live timers a minute, and
@@ -108,12 +126,16 @@ function pump(): void {
   const kept = damageFeed.prune(now);
   if (kept.length !== before) damageEvents.set(kept);
 
+  let liveResults = 0;
   commandResults.update((entries) => {
     const live = entries.filter((e) => now - e.atMs < COMMAND_RESULT_LIFETIME_MS);
+    liveResults = live.length;
     return live.length === entries.length ? entries : live;
   });
 
-  animationHandle = requestAnimationFrame(pump);
+  if (!settled || kept.length > 0 || liveResults > 0) {
+    animationHandle = requestAnimationFrame(pump);
+  }
 }
 
 function startPump(): void {
@@ -276,6 +298,8 @@ export function pushLocalNotice(message: string, tone: 'info' | 'error' = 'error
     atMs: performance.timeOrigin + performance.now(),
   };
   commandResults.update((entries) => [...entries, entry]);
+  // The loop expires toasts; it may be asleep if nothing was moving.
+  startPump();
 
   // A refusal makes a noise; an informational notice does not. The refusals
   // are the ones a player might otherwise miss - they usually follow a click
@@ -543,6 +567,7 @@ export function startSession(token: string): void {
   commandResultFeed.reset();
   commandResults.set([]);
   visualState.set(null);
+  lastPublishedVisual = null;
   playerState.set(null);
 
   // Modul: started here rather than at module load, because it needs a session
@@ -829,6 +854,7 @@ export function startSession(token: string): void {
 
       damageEvents.set(damageFeed.current);
       typicalHit.set(damageFeed.typicalHit);
+      startPump();
 
       // Modul: A HIT MADE A SOUND AND A MARK.
       //
@@ -894,6 +920,7 @@ export function endSession(): void {
   offlineSummary.set(null);
   playerState.set(null);
   visualState.set(null);
+  lastPublishedVisual = null;
 }
 
 /** Current authoritative snapshot without subscribing. */
