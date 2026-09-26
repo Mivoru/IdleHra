@@ -1597,6 +1597,15 @@ namespace FolkIdle.Server.Network
                         continue;
                     }
 
+                    // The world boss damage board (owner, 2026-09-26): who dealt
+                    // what this encounter, and the server's total. Read-only SQL;
+                    // the payout ranks from the same rows (WorldBossBoard).
+                    if (requestPath == "/api/v1/worldboss/board" && context.Request.HttpMethod == "GET")
+                    {
+                        await HandleWorldBossBoard(context);
+                        continue;
+                    }
+
                     // The Deep's weekly board (task 37). Read-only SQL; pays nothing.
                     if (requestPath == "/api/v1/leaderboard/deepest" && context.Request.HttpMethod == "GET")
                     {
@@ -5919,6 +5928,36 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Profile fetch error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleWorldBossBoard(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var view = await FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossBoard.ViewAsync(db, playerId);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, view);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"World boss board error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally
