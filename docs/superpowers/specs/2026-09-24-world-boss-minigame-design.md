@@ -222,6 +222,14 @@ That fits one strike a day: there is a reason to come back daily, and a reason t
    - the ledger's `played >= Auto` still holds.
 
 **A tuning lever, NOT decided:** if the board still strips too fast in practice, make breaking require a **Seam** rather than a Plate hit, so stripping armour is itself a skill. Decide it from the first weeks' data, not in advance.
+
+**Implementation decisions (Phase 2, 2026-09-26).** Written here before the code, as the plan requires:
+1. **The reveal rule applies only in `wheel` mode.** Opcode 32 has no private channel (its answer is a result code on the ring, and the weak index reaches the client only through the shared mirror), so under `off`/`practice` it keeps task 10's rule: one weak plate per encounter, revealed to everyone by the first hit. In `wheel` mode the mirror always carries 255 and nothing sets `WeakPlateRevealed`.
+2. **The last unbroken plate never breaks, enforced under the row lock.** A wheel challenge draws its weak plate from the in-memory mirror at issue, which can be a moment stale. Without a guard, a stale draw could leave the true last plate unweak for that attempt and break it, so all five would be broken and the next draw would have nothing to pick from. The engine therefore refuses a break that would complete the mask, and a draw from a full mask (which then cannot happen) falls back to all five.
+3. **An auto-strike draws its weak plate inside the transaction**, from the locked row's mask, because it has no challenge to hold one.
+4. **Regrowth is keyed on a persisted day.** LiveOps' midnight edge does not fire for a day the server was down across, and its first tick after a start only records "today". So the snapshot carries `ArmourDayKey` (additive column). Every writer that already locks the row (a strike, and LiveOps' once-a-minute rescale) clears the mask when the key is not today and stamps today. Midnight is therefore exact for a strike and at most a minute late for the board everyone sees.
+5. **Metering is one strike a day** (#48), so `exercise.mjs` re-opens the dev window between its blind, aimed and auto strikes (opening one deletes the attempt rows) and compares the damage on the result cards, not the HP of three different encounters.
+6. **A strike needs a live game session.** `A` and `G` come from the tick's payload (spec 5.7), so a `/strike` from a player with no WebSocket session answers `Failed` and spends nothing. The web client always holds one on the World Boss screen.
 ### 3.4 The enraged wheel: the boss's last 25% of HP (owner decision, final)
 
 **When:** a challenge is **enraged** if, at issue time, `CurrentHp <= 0.25 x MaxHp` (the boss snapshot row, read in the eligibility step). The phase is decided **once, at issue**, and written into the schedule (`"Enraged": true`). A challenge never changes difficulty mid-play, and its score never depends on when the HP crossed the line.

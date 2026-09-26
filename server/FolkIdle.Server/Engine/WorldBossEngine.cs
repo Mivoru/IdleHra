@@ -13,6 +13,7 @@ using FolkIdle.Server.Domain.Economy;
 using FolkIdle.Server.Domain.Social;
 using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Domain.Shared;
+using FolkIdle.Server.Domain.Combat.WorldBossStrike;
 
 namespace FolkIdle.Server.Engine
 {
@@ -37,7 +38,7 @@ namespace FolkIdle.Server.Engine
         Failed = 6,
     }
 
-    public class WorldBossEngine
+    public class WorldBossEngine : IWorldBossStrikeBoard
     {
         public const uint ActiveBossInstanceId = 1;
         public const uint MaxClientPredictedDamage = 100000000;
@@ -119,11 +120,22 @@ namespace FolkIdle.Server.Engine
         /// <summary>The weak point once somebody has found it, or 255 while it is still a secret.</summary>
         public byte WeakPlate => (byte)Volatile.Read(ref _weakPlate);
 
-        public WorldBossEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry)
+        /// <summary>
+        /// FOLKIDLE_BOSS_MINIGAME. In Wheel mode the weak plate is drawn per
+        /// attempt and the armour regrows every UTC midnight (spec 3.3.1); in
+        /// Off and Practice, opcode 32 keeps task 10's one weak plate per
+        /// encounter, revealed by the first hit.
+        /// </summary>
+        public BossMinigameMode MinigameMode { get; }
+
+        private bool WheelMode => MinigameMode == BossMinigameMode.Wheel;
+
+        public WorldBossEngine(IServiceProvider serviceProvider, PlayerSessionRegistry playerRegistry, BossMinigameMode? minigameMode = null)
         {
             _serviceProvider = serviceProvider;
             _playerRegistry = playerRegistry;
             _redis = serviceProvider.GetService<IConnectionMultiplexer>();
+            MinigameMode = minigameMode ?? serviceProvider.GetService<BossMinigameSettings>()?.Mode ?? BossMinigameMode.Off;
         }
 
         public static RedisKey ContributionKey(uint bossId) => $"boss:{bossId}:contributions";
@@ -256,6 +268,13 @@ namespace FolkIdle.Server.Engine
                     RefreshLocalSnapshot(snapshot);
                     await transaction.CommitAsync();
                     return;
+                }
+
+                // The board everyone sees regrows within a minute of midnight;
+                // a strike regrows it exactly (see RegrowArmourIfNewDay).
+                if (RegrowArmourIfNewDay(snapshot, DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
+                {
+                    await db.SaveChangesAsync();
                 }
 
                 if (snapshot.MaxHp != newMaxHp)
@@ -548,7 +567,12 @@ namespace FolkIdle.Server.Engine
                 // have a shelf life of about a day.
                 snapshot.BrokenPlateMask = 0;
                 snapshot.WeakPlateRevealed = 0;
-                snapshot.WeakPlateIndex = (byte)Random.Shared.Next(PlateCount);
+                snapshot.ArmourDayKey = WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+
+                // Modul: A CRYPTOGRAPHIC DRAW (task 36 spec section 4). A
+                // predictable seed is a precomputable secret. In wheel mode this
+                // index is unused - every attempt draws its own.
+                snapshot.WeakPlateIndex = (byte)System.Security.Cryptography.RandomNumberGenerator.GetInt32(PlateCount);
 
                 await db.SaveChangesAsync();
                 await db.Database.ExecuteSqlRawAsync(
@@ -763,25 +787,8 @@ namespace FolkIdle.Server.Engine
                 // for an attempt already in the database, and skipped the
                 // notification that spends the pip. The notification goes
                 // FIRST and nothing after the commit may turn Landed into Failed.
-                _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
-                {
-                    PlayerId = playerId,
-                    AttemptCount = updatedAttemptCount,
-                    SessionEndsEpoch = 0
-                });
-                _playerDamageMap.AddOrUpdate(playerId, appliedDamage, (_, existing) => existing + appliedDamage);
-                RefreshLocalSnapshot(snapshot);
-                try
-                {
-                    if (_redis?.IsConnected == true)
-                    {
-                        await _redis.GetDatabase().HashIncrementAsync(ContributionKey(bossId), playerId, appliedDamage);
-                    }
-                }
-                catch (Exception redisEx)
-                {
-                    Console.WriteLine($"World boss contribution mirror failed for player {playerId} (strike landed): {redisEx.Message}");
-                }
+                AfterStrikeCommitted(playerId, appliedDamage, updatedAttemptCount, snapshot);
+                await MirrorContributionAsync(playerId, appliedDamage);
                 return WorldBossAttackOutcome.Landed;
             }
             catch (Exception ex)
@@ -812,8 +819,239 @@ namespace FolkIdle.Server.Engine
             // The secret stays a secret. Only a revealed weak point reaches the
             // mirror the broadcast reads, so nothing downstream can leak it by
             // accident.
+            //
+            // In wheel mode there is no encounter-wide weak plate to reveal at
+            // all: each attempt draws its own, so the mirror is always hidden -
+            // including a WeakPlateRevealed left over from before the flip.
             Volatile.Write(ref _weakPlate,
-                snapshot.WeakPlateRevealed == 1 ? snapshot.WeakPlateIndex : WeakPlateHidden);
+                !WheelMode && snapshot.WeakPlateRevealed == 1 ? snapshot.WeakPlateIndex : WeakPlateHidden);
+        }
+
+        // Modul: THE ARMOUR REGROWS EVERY UTC MIDNIGHT, IN WHEEL MODE ONLY
+        // (owner, 2026-09-26, spec 3.3.1). Each attempt's weak plate is drawn
+        // from the unbroken plates, so without regrowth the crowd would strip
+        // four plates by the first morning and every later strike of the week
+        // would know the answer. Keyed on a PERSISTED day rather than on
+        // LiveOps' midnight edge, which never fires for a midnight the server
+        // was down across (its first tick after a start only records "today").
+        // Called by every writer that already holds the row lock.
+        internal bool RegrowArmourIfNewDay(WorldBossSnapshot snapshot, long nowEpoch)
+        {
+            if (!WheelMode) return false;
+            long today = WorldBossCalendar.DayKey(nowEpoch);
+            if (snapshot.ArmourDayKey == today) return false;
+            snapshot.ArmourDayKey = today;
+            snapshot.BrokenPlateMask = 0;
+            return true;
+        }
+
+        // --- the shield wheel's strike (task 36 Phase 2) ------------------------
+
+        public async Task<int> StrikesUsedTodayAsync(long playerId)
+        {
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            long today = WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            var row = await db.PlayerWorldBossAttempts.AsNoTracking()
+                .Where(a => a.PlayerId == playerId && a.BossInstanceId == ActiveBossInstanceId)
+                .Select(a => new { a.AttemptCount, a.AttemptDateKey })
+                .SingleOrDefaultAsync();
+            return row == null || row.AttemptDateKey != today ? 0 : row.AttemptCount;
+        }
+
+        public void Submit(WorldBossStrikeOrder order) => _playerRegistry.WorldBossStrikeQueue.Enqueue(order);
+
+        /// <summary>
+        /// Applies a priced order off the tick thread and ALWAYS completes it:
+        /// the REST handler is waiting on the answer, and a strike with no
+        /// answer is the silent rollback CLAUDE.md warns about.
+        /// </summary>
+        public void QueueStrike(WorldBossStrikeOrder order, long attackDamage)
+        {
+            _ = Task.Run(async () =>
+            {
+                WorldBossStrikeOutcome outcome;
+                try
+                {
+                    outcome = await ExecuteStrikeAsync(order, attackDamage);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"World boss strike dispatch failed for player {order.PlayerId}: {ex.Message}");
+                    outcome = WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed);
+                }
+                order.Complete(outcome);
+            });
+        }
+
+        internal async Task<WorldBossStrikeOutcome> ExecuteStrikeAsync(WorldBossStrikeOrder order, long attackDamage)
+        {
+            await _snapshotGate.WaitAsync();
+            try { return await ExecuteStrikeCoreAsync(order, attackDamage); }
+            finally { _snapshotGate.Release(); }
+        }
+
+        private async Task<WorldBossStrikeOutcome> ExecuteStrikeCoreAsync(WorldBossStrikeOrder order, long attackDamage)
+        {
+            long playerId = order.PlayerId;
+            if (playerId <= 0 || attackDamage <= 0 || !WheelMode)
+            {
+                return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed);
+            }
+            if (order.WeakPlate is int held && (held < 0 || held >= PlateCount))
+            {
+                return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed);
+            }
+
+            // The same guarded shape as ExecuteAttackCoreAsync: the scope, the
+            // connection and the transaction are all inside the try.
+            IServiceScope? scope = null;
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+            try
+            {
+                scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+
+                var snapshot = await db.WorldBossSnapshots
+                    .FromSqlRaw("SELECT * FROM \"WorldBossSnapshots\" WHERE \"BossInstanceId\" = {0} FOR UPDATE", (long)ActiveBossInstanceId)
+                    .SingleOrDefaultAsync();
+
+                // A challenge from last week's encounter answers NotActive and
+                // spends nothing (spec 5.6): the boss it was aimed at is gone.
+                if (snapshot == null || snapshot.EventState != 1
+                    || (order.EncounterEndEpoch != 0 && order.EncounterEndEpoch != snapshot.EventEndEpoch))
+                {
+                    await transaction.RollbackAsync();
+                    return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.NotActive);
+                }
+
+                if (snapshot.CurrentHp <= 0)
+                {
+                    await transaction.RollbackAsync();
+                    return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.AlreadyDefeated);
+                }
+
+                var attempt = await db.PlayerWorldBossAttempts
+                    .FromSqlRaw("SELECT * FROM \"player_world_boss_attempts\" WHERE \"PlayerId\" = {0} AND \"BossInstanceId\" = {1} FOR UPDATE", playerId, (long)ActiveBossInstanceId)
+                    .SingleOrDefaultAsync();
+
+                long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                long today = WorldBossCalendar.DayKey(nowEpoch);
+                if (attempt == null)
+                {
+                    attempt = new PlayerWorldBossAttempt
+                    {
+                        PlayerId = playerId,
+                        BossInstanceId = ActiveBossInstanceId,
+                        AttemptCount = 0,
+                        TotalInflictedDamage = 0,
+                        AttemptDateKey = today
+                    };
+                    db.PlayerWorldBossAttempts.Add(attempt);
+                }
+                if (attempt.AttemptDateKey != today)
+                {
+                    attempt.AttemptDateKey = today;
+                    attempt.AttemptCount = 0;
+                }
+                if (attempt.AttemptCount >= MaxAttemptsPerDay)
+                {
+                    await transaction.RollbackAsync();
+                    return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.NoAttemptsLeft);
+                }
+
+                RegrowArmourIfNewDay(snapshot, nowEpoch);
+
+                // The weak plate: the challenge's, drawn at issue - or, for an
+                // auto-strike, drawn now from the plates this locked row leaves
+                // standing. Either way it lives for this one attempt.
+                int weak = order.WeakPlate ?? WeakPlateDraw.From(snapshot.BrokenPlateMask);
+                var price = WorldBossStrikeRules.Price(order.Landings, weak, order.Multiplier, snapshot.BrokenPlateMask);
+                if (price.BreakPlate is int broken)
+                {
+                    snapshot.BrokenPlateMask |= (byte)(1 << broken);
+                }
+
+                // Modul: WeakPlateRevealed is NOT set in wheel mode. The secret
+                // lives for one attempt; "four broken, so the last is weak" is
+                // what the board already shows (spec 3.3.1, rule 3).
+                double raw = Math.Max(1.0, attackDamage * price.Played);
+                long appliedDamage = ComputeAppliedDamage(snapshot.CurrentHp, (uint)Math.Min(uint.MaxValue, raw));
+                snapshot.CurrentHp -= appliedDamage;
+                if (snapshot.CurrentHp < 0) snapshot.CurrentHp = 0;
+                snapshot.TotalDamageContributed += appliedDamage;
+                snapshot.LastActiveTimestamp = nowEpoch;
+
+                attempt.AttemptCount++;
+                attempt.TotalInflictedDamage += appliedDamage;
+                byte updatedAttemptCount = (byte)attempt.AttemptCount;
+
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                AfterStrikeCommitted(playerId, appliedDamage, updatedAttemptCount, snapshot);
+                await MirrorContributionAsync(playerId, appliedDamage);
+
+                return new WorldBossStrikeOutcome(
+                    order.LandedAs,
+                    appliedDamage,
+                    price.Multiplier,
+                    price.PlateMultiplier,
+                    price.Played,
+                    price.BreakPlate ?? -1,
+                    order.Landings.Select(l => new LandingDto
+                    {
+                        Seq = l.Seq, Plate = l.Plate, Class = l.Class, IsCounter = l.IsCounter,
+                        WeakHit = l.Class >= SpearClass.Plate && l.Plate == weak,
+                    }).ToList());
+            }
+            catch (Exception ex)
+            {
+                if (transaction != null)
+                {
+                    try { await transaction.RollbackAsync(); } catch { /* the connection may already be gone */ }
+                }
+                Console.WriteLine($"World boss strike failed for player {playerId}: {ex.Message}");
+                return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed);
+            }
+            finally
+            {
+                if (transaction != null) await transaction.DisposeAsync();
+                scope?.Dispose();
+            }
+        }
+
+        /// <summary>
+        /// Past the commit the strike has landed, whatever happens next: the
+        /// notification that spends the pip goes first, and nothing here may
+        /// turn Landed into Failed. Shared by opcode 32 and the wheel.
+        /// </summary>
+        private void AfterStrikeCommitted(long playerId, long appliedDamage, byte updatedAttemptCount, WorldBossSnapshot snapshot)
+        {
+            _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
+            {
+                PlayerId = playerId,
+                AttemptCount = updatedAttemptCount,
+                SessionEndsEpoch = 0
+            });
+            _playerDamageMap.AddOrUpdate(playerId, appliedDamage, (_, existing) => existing + appliedDamage);
+            RefreshLocalSnapshot(snapshot);
+        }
+
+        private async Task MirrorContributionAsync(long playerId, long appliedDamage)
+        {
+            try
+            {
+                if (_redis?.IsConnected == true)
+                {
+                    await _redis.GetDatabase().HashIncrementAsync(ContributionKey(ActiveBossInstanceId), playerId, appliedDamage);
+                }
+            }
+            catch (Exception redisEx)
+            {
+                Console.WriteLine($"World boss contribution mirror failed for player {playerId} (strike landed): {redisEx.Message}");
+            }
         }
 
         private async Task<System.Collections.Generic.Dictionary<long, long>> LoadDistributedContributionsAsync()

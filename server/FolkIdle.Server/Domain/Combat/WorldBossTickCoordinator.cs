@@ -4,6 +4,7 @@ using FolkIdle.Server.Network;
 using FolkIdle.Server.Domain.Shared;
 using System.Collections.Generic;
 using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Combat.WorldBossStrike;
 
 namespace FolkIdle.Server.Domain.Combat
 {
@@ -27,6 +28,91 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
+        /// <summary>
+        /// Prices the shield wheel's strikes with A x G from each striker's
+        /// payload and hands them to the engine (spec 5.7).
+        /// </summary>
+        /// <remarks>
+        /// Modul: A BUDGET, NOT A DRAIN-TO-EMPTY (CLAUDE.md, unbounded drain).
+        /// The depth is read once per tick and only that many orders are taken,
+        /// so a burst of strikes cannot hold the tick thread; the rest wait one
+        /// tick. Every order taken is answered, including the ones refused here.
+        /// </remarks>
+        internal static int DrainStrikeOrders(
+            PlayerSessionRegistry registry,
+            Dictionary<long, TickStatePayload> activePlayers,
+            WorldBossEngine engine)
+        {
+            int budget = registry.WorldBossStrikeQueue.Count;
+            int taken = 0;
+            while (taken < budget && registry.WorldBossStrikeQueue.TryDequeue(out var order))
+            {
+                taken++;
+                try
+                {
+                    ref var payload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(activePlayers, order.PlayerId);
+                    if (System.Runtime.CompilerServices.Unsafe.IsNullRef(ref payload))
+                    {
+                        // No game session, so no attack power to price the blow
+                        // with (spec 3.3.1, decision 6). Nothing is spent.
+                        order.Complete(WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed));
+                        continue;
+                    }
+                    if (payload.WorldBossAttemptCount >= WorldBossEngine.MaxAttemptsPerDay)
+                    {
+                        order.Complete(WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.NoAttemptsLeft));
+                        continue;
+                    }
+                    engine.QueueStrike(order, ServerStrikeDamage(ref payload));
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"World boss strike order failed for player {order.PlayerId}: {ex.Message}");
+                    order.Complete(WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.Failed));
+                }
+            }
+            return taken;
+        }
+
+        /// <summary>
+        /// A x G: how hard this player hits the boss before any plate or skill
+        /// multiplier, from the payload alone. The one place both opcode 32 and
+        /// the shield wheel take it from.
+        /// </summary>
+        internal static long ServerStrikeDamage(ref TickStatePayload currentPayload)
+        {
+            // Modul: skill tree, Giantslayer. The most generous
+            // branch in the tree - 40% at cap - because the world
+            // boss is its own activity on its own timer and cannot
+            // reach a region's pacing however large it grows.
+            //
+            // Applied HERE rather than inside WorldBossEngine: the
+            // engine takes a damage figure and has no player state
+            // to read a tree level from, and passing the payload in
+            // would hand it far more than it needs.
+            float giantslayerPct = SkillTreeRegistry.GetBonusPercent(
+                SkillTreeRegistry.BranchWorldBossDamage, currentPayload.Skill_WorldBossDamage);
+
+            // Modul: THE SERVER ANSWERS "how hard does this player
+            // hit" ITSELF NOW.
+            //
+            // This used to read cmd.ClientPredictedDamage - a
+            // figure the client computed about its own character
+            // and posted, bounded only by a 100,000,000 clamp
+            // inside WorldBossEngine. The same number the live tick
+            // swings with is already on the payload, cached once per
+            // tick, so there was never a reason to ask the client.
+            //
+            // In whole hit points, because the boss's health pool is
+            // whole rather than milli.
+            long serverAttack = currentPayload.CachedEffectiveMilliAttack / 1000L;
+            if (serverAttack < 1L) serverAttack = 1L;
+
+            return (long)Math.Min(
+                uint.MaxValue,
+                (double)serverAttack * (1.0 + (giantslayerPct / 100.0)));
+        }
+
         internal static void Apply(ref TickStatePayload payload, in WorldBossAttemptUpdateNotification worldBossAttemptUpdate)
         {
             payload.WorldBossAttemptCount = worldBossAttemptUpdate.AttemptCount;
@@ -48,6 +134,18 @@ namespace FolkIdle.Server.Domain.Combat
                 WorldBossEngine.ActiveBossInstanceId))
             {
                 ctx.TerminateSessionForSecurity(ctx.RoutingPlayerId);
+                return;
+            }
+
+            // Modul: UNDER THE WHEEL, OPCODE 32 IS AN OLD CLIENT, told to update
+            // rather than obeyed (spec 4). Its plate press would be a strike
+            // priced on the encounter-wide weak plate, which wheel mode no
+            // longer keeps, and its answer has no room for the private result.
+            if (ctx.WorldBossEngine.MinigameMode == BossMinigameMode.Wheel)
+            {
+                ctx.PlayerRegistry.EnqueueCommandResult(
+                    currentPayload.PlayerId,
+                    (byte)FolkIdle.Server.Network.CommandResultCode.WorldBossUpdateRequired);
                 return;
             }
 
@@ -82,36 +180,7 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
 
-            // Modul: skill tree, Giantslayer. The most generous
-            // branch in the tree - 40% at cap - because the world
-            // boss is its own activity on its own timer and cannot
-            // reach a region's pacing however large it grows.
-            //
-            // Applied HERE rather than inside WorldBossEngine: the
-            // engine takes a damage figure and has no player state
-            // to read a tree level from, and passing the payload in
-            // would hand it far more than it needs.
-            float giantslayerPct = SkillTreeRegistry.GetBonusPercent(
-                SkillTreeRegistry.BranchWorldBossDamage, currentPayload.Skill_WorldBossDamage);
-
-            // Modul: THE SERVER ANSWERS "how hard does this player
-            // hit" ITSELF NOW.
-            //
-            // This used to read cmd.ClientPredictedDamage - a
-            // figure the client computed about its own character
-            // and posted, bounded only by a 100,000,000 clamp
-            // inside WorldBossEngine. The same number the live tick
-            // swings with is already on the payload, cached once per
-            // tick, so there was never a reason to ask the client.
-            //
-            // In whole hit points, because the boss's health pool is
-            // whole rather than milli.
-            long serverAttack = currentPayload.CachedEffectiveMilliAttack / 1000L;
-            if (serverAttack < 1L) serverAttack = 1L;
-
-            uint bossDamage = (uint)Math.Min(
-                uint.MaxValue,
-                (double)serverAttack * (1.0 + (giantslayerPct / 100.0)));
+            uint bossDamage = (uint)ServerStrikeDamage(ref currentPayload);
 
             ctx.WorldBossEngine.QueueAttack(
                 currentPayload.PlayerId,

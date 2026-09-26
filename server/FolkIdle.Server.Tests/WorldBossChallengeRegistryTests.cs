@@ -37,8 +37,8 @@ namespace FolkIdle.Server.Tests
         public void IssuingTwiceReturnsTheSameChallenge()
         {
             var service = Service(BossMinigameMode.Practice);
-            var first = service.IssueChallenge(Player, practice: true);
-            var second = service.IssueChallenge(Player, practice: true);
+            var first = service.IssueChallengeAsync(Player, practice: true).Result;
+            var second = service.IssueChallengeAsync(Player, practice: true).Result;
 
             Assert.Equal(WorldBossStrikeResult.Issued, first.Result);
             Assert.Equal(WorldBossStrikeResult.Outstanding, second.Result);
@@ -47,38 +47,42 @@ namespace FolkIdle.Server.Tests
             Assert.True(first.Challenge.Practice);
             Assert.Equal(0, first.Challenge.BrokenPlateMask);
             Assert.Equal(255, first.Challenge.RevealedWeakPlate);
-            Assert.Equal(WorldBossStrikeResult.Outstanding, service.GetChallenge(Player).Result);
+            Assert.Equal(WorldBossStrikeResult.Outstanding, service.GetChallengeAsync(Player).Result.Result);
         }
 
         [Fact]
         public void EveryRouteIsDisabledWithTheFlagOff()
         {
             var service = Service(BossMinigameMode.Off);
-            Assert.Equal(WorldBossStrikeResult.Disabled, service.GetChallenge(Player).Result);
-            Assert.Equal("off", service.GetChallenge(Player).Mode);
-            Assert.Equal(WorldBossStrikeResult.Disabled, service.IssueChallenge(Player, practice: true).Result);
-            Assert.Equal(WorldBossStrikeResult.Disabled, service.IssueChallenge(Player, practice: false).Result);
+            Assert.Equal(WorldBossStrikeResult.Disabled, service.GetChallengeAsync(Player).Result.Result);
+            Assert.Equal("off", service.GetChallengeAsync(Player).Result.Mode);
+            Assert.Equal(WorldBossStrikeResult.Disabled, service.IssueChallengeAsync(Player, practice: true).Result.Result);
+            Assert.Equal(WorldBossStrikeResult.Disabled, service.IssueChallengeAsync(Player, practice: false).Result.Result);
             Assert.Equal(WorldBossStrikeResult.Disabled, service.Throw(Player, new ThrowRequest { ChallengeId = "x" }).Result);
             Assert.Equal(WorldBossStrikeResult.Disabled, service.ScorePractice(Player, new StrikeRequest { ChallengeId = "x" }).Result);
-            Assert.Equal(WorldBossStrikeResult.Disabled, service.Strike(Player, new StrikeRequest()).Result);
+            Assert.Equal(WorldBossStrikeResult.Disabled, service.StrikeAsync(Player, new StrikeRequest()).Result!.Result);
         }
 
+        // Phase 2: a real path needs the flag at wheel AND a board attached. The
+        // practice flag, or a wheel flag before Program attaches the engine,
+        // answers Disabled - never a half-wired strike.
         [Theory]
         [InlineData(BossMinigameMode.Practice)]
         [InlineData(BossMinigameMode.Wheel)]
-        public void PhaseOneRefusesEveryRealPathWhateverTheFlag(BossMinigameMode mode)
+        public void EveryRealPathIsDisabledWithoutTheWheelAndABoard(BossMinigameMode mode)
         {
             var service = Service(mode);
-            Assert.Equal(WorldBossStrikeResult.Disabled, service.IssueChallenge(Player, practice: false).Result);
-            Assert.Equal(WorldBossStrikeResult.Disabled, service.Strike(Player, new StrikeRequest { Mode = "Auto", Plate = 1 }).Result);
+            Assert.Equal(WorldBossStrikeResult.Disabled, service.IssueChallengeAsync(Player, practice: false).Result.Result);
+            Assert.Equal(WorldBossStrikeResult.Disabled, service.StrikeAsync(Player, new StrikeRequest { Mode = "Auto", Plate = 1 }).Result!.Result);
         }
 
         [Fact]
         public void PracticeAnswersFromItsOwnDecoyAndNeverFromTheRealBoss()
         {
-            // The service cannot consult the real weak plate: it is never given
-            // anything that knows it. Pinned in the source, since a later
-            // edit that injected WorldBossEngine here would compile silently.
+            // The service cannot consult a boss-wide weak plate: it is never
+            // given anything that knows one (IWorldBossStrikeBoard has no weak
+            // plate). Pinned in the source, since a later edit that injected
+            // WorldBossEngine here would compile silently.
             string source = File.ReadAllText(ServerFile("Domain", "Combat", "WorldBossStrike", "WorldBossStrikeService.cs"));
             Assert.DoesNotContain("WorldBossEngine", source);
 
@@ -89,27 +93,27 @@ namespace FolkIdle.Server.Tests
             for (int i = 0; i < 60; i++)
             {
                 var (challenge, _) = registry.IssueOrGet(Player + i, practice: true, enraged: false, _now);
-                Assert.InRange(challenge.DecoyWeakPlate, 0, WorldBossStrikeRules.PlateCount - 1);
-                decoys.Add(challenge.DecoyWeakPlate);
+                Assert.InRange(challenge.WeakPlate, 0, WorldBossStrikeRules.PlateCount - 1);
+                decoys.Add(challenge.WeakPlate);
             }
             Assert.True(decoys.Count > 1, "every practice challenge had the same decoy");
 
             // A throw whose landing is the decoy says WeakHit; any other does not.
             var service = Service(BossMinigameMode.Practice, registry);
-            var issued = service.IssueChallenge(Player, practice: true).Challenge!;
+            var issued = service.IssueChallengeAsync(Player, practice: true).Result.Challenge!;
             var stored = registry.Get(Player, practice: true)!;
             double tap = MovingTap(issued, 0);
             _now += WorldBossStrikeRules.CountdownMs + (long)tap + 100;
             var answer = service.Throw(Player, new ThrowRequest { ChallengeId = issued.ChallengeId, Seq = 0, TapMs = tap });
             Assert.Equal(WorldBossStrikeResult.Landed, answer.Result);
-            Assert.Equal(answer.Class >= SpearClass.Plate && answer.Plate == stored.DecoyWeakPlate, answer.WeakHit);
+            Assert.Equal(answer.Class >= SpearClass.Plate && answer.Plate == stored.WeakPlate, answer.WeakHit);
         }
 
         [Fact]
         public void ARepeatedSeqReturnsTheStoredAnswer()
         {
             var service = Service(BossMinigameMode.Practice);
-            var c = service.IssueChallenge(Player, practice: true).Challenge!;
+            var c = service.IssueChallengeAsync(Player, practice: true).Result.Challenge!;
             double tap = MovingTap(c, 100);
             _now += WorldBossStrikeRules.CountdownMs + 5_000;
 
@@ -127,7 +131,7 @@ namespace FolkIdle.Server.Tests
         public void ASeqBeyondTheSpearsLeftIsOutOfSpears()
         {
             var service = Service(BossMinigameMode.Practice);
-            var c = service.IssueChallenge(Player, practice: true).Challenge!;
+            var c = service.IssueChallengeAsync(Player, practice: true).Result.Challenge!;
             var firstTell = c.Interrupts[0];
             _now += WorldBossStrikeRules.CountdownMs + WorldBossStrikeRules.MaxPlayMs;
 
@@ -151,7 +155,7 @@ namespace FolkIdle.Server.Tests
         public void ACounterWithNoParryIsDroppedNotAnException()
         {
             var service = Service(BossMinigameMode.Practice);
-            var c = service.IssueChallenge(Player, practice: true).Challenge!;
+            var c = service.IssueChallengeAsync(Player, practice: true).Result.Challenge!;
             var tell = c.Interrupts[0];
             _now += WorldBossStrikeRules.CountdownMs + WorldBossStrikeRules.MaxPlayMs;
 
@@ -176,7 +180,7 @@ namespace FolkIdle.Server.Tests
         public void AReopenedChallengeCarriesItsThrowsAndParries()
         {
             var service = Service(BossMinigameMode.Practice);
-            var c = service.IssueChallenge(Player, practice: true).Challenge!;
+            var c = service.IssueChallengeAsync(Player, practice: true).Result.Challenge!;
             var tell = c.Interrupts[0];
             var read = new ParryEntry(tell.Index, ShieldWheelSchedule.CorrectChoice(tell.Tell), tell.TellAtMs + 300);
             double tap = MovingTap(c, 100);
@@ -187,7 +191,7 @@ namespace FolkIdle.Server.Tests
             var second = service.Throw(Player, new ThrowRequest { ChallengeId = c.ChallengeId, Seq = 1, TapMs = counter.TapMs, Counter = counter, Parries = new() { read } });
             Assert.Equal(SpearClass.Seam, second.Class);
 
-            var reopened = service.IssueChallenge(Player, practice: true);
+            var reopened = service.IssueChallengeAsync(Player, practice: true).Result;
             Assert.Equal(WorldBossStrikeResult.Outstanding, reopened.Result);
             var throws = reopened.Challenge!.Throws;
             Assert.Equal(new[] { 0, 1 }, throws.Select(t => t.Seq));
@@ -203,7 +207,7 @@ namespace FolkIdle.Server.Tests
         {
             var registry = new WorldBossChallengeRegistry(new SeededRandomNumberGenerator(9));
             var service = Service(BossMinigameMode.Practice, registry);
-            var c = service.IssueChallenge(Player, practice: true).Challenge!;
+            var c = service.IssueChallengeAsync(Player, practice: true).Result.Challenge!;
             double tap = MovingTap(c, 2_000);
 
             // Only half the countdown has passed: the spear cannot have been thrown yet.
@@ -222,7 +226,7 @@ namespace FolkIdle.Server.Tests
         public void AThrowForAForeignOrMissingChallengeIsNoChallenge()
         {
             var service = Service(BossMinigameMode.Practice);
-            service.IssueChallenge(Player, practice: true);
+            service.IssueChallengeAsync(Player, practice: true).Wait();
             Assert.Equal(WorldBossStrikeResult.NoChallenge,
                 service.Throw(Player, new ThrowRequest { ChallengeId = new string('0', 32), Seq = 0, TapMs = 100 }).Result);
             Assert.Equal(WorldBossStrikeResult.NoChallenge,
@@ -234,12 +238,12 @@ namespace FolkIdle.Server.Tests
         {
             var registry = new WorldBossChallengeRegistry(new SeededRandomNumberGenerator(3));
             var service = Service(BossMinigameMode.Practice, registry);
-            var c = service.IssueChallenge(Player, practice: true).Challenge!;
+            var c = service.IssueChallengeAsync(Player, practice: true).Result.Challenge!;
 
             _now += WorldBossStrikeRules.CountdownMs + WorldBossStrikeRules.MaxPlayMs + WorldBossChallengeRegistry.ExpiryGraceMs;
             Assert.Empty(registry.ExpireDue(_now));
             Assert.Null(registry.Get(Player, practice: true));
-            Assert.Equal(WorldBossStrikeResult.NoChallenge, service.GetChallenge(Player).Result);
+            Assert.Equal(WorldBossStrikeResult.NoChallenge, service.GetChallengeAsync(Player).Result.Result);
             Assert.Equal(WorldBossStrikeResult.NoChallenge, service.ScorePractice(Player, new StrikeRequest { ChallengeId = c.ChallengeId }).Result);
         }
 
@@ -247,7 +251,7 @@ namespace FolkIdle.Server.Tests
         public void APracticeScoreDealsNoDamageAndClosesTheChallenge()
         {
             var service = Service(BossMinigameMode.Practice);
-            var c = service.IssueChallenge(Player, practice: true).Challenge!;
+            var c = service.IssueChallengeAsync(Player, practice: true).Result.Challenge!;
             double t1 = MovingTap(c, 200);
             double t2 = MovingTap(c, t1 + 400);
             _now += WorldBossStrikeRules.CountdownMs + WorldBossStrikeRules.MaxPlayMs;
