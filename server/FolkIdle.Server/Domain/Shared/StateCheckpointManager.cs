@@ -682,8 +682,7 @@ namespace FolkIdle.Server.Domain.Shared
             // Modul: ONE STRIKE A DAY (2026-09-25): the row's count belongs to
             // the day it was made on, so a row from an earlier day loads as 0 -
             // otherwise yesterday's strike would grey the button today. The
-            // 300-second session is gone, so nothing sets its end any more.
-            long worldBossSessionEndsEpoch = 0;
+            // 300-second session is gone, and its wire field with it (task 36).
             if (bossAttemptRow != null
                 && bossAttemptRow.AttemptDateKey == FolkIdle.Server.Engine.WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
             {
@@ -1039,7 +1038,6 @@ namespace FolkIdle.Server.Domain.Shared
                 HighestUnlockedRegion = highestUnlockedRegion,
                 DefeatedRegionBossMask = defeatedRegionBossMask,
                 WorldBossAttemptCount = worldBossAttemptCount,
-                WorldBossSessionEndsEpoch = worldBossSessionEndsEpoch,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,
                 DraugrMasteryLevel = draugrMastery,

@@ -124,7 +124,6 @@ namespace FolkIdle.Server.Domain.Combat
         internal static void Apply(ref TickStatePayload payload, in WorldBossAttemptUpdateNotification worldBossAttemptUpdate)
         {
             payload.WorldBossAttemptCount = worldBossAttemptUpdate.AttemptCount;
-            payload.WorldBossSessionEndsEpoch = worldBossAttemptUpdate.SessionEndsEpoch;
             payload.IsDirty = true;
         }
 
