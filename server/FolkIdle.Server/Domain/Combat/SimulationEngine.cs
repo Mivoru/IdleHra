@@ -232,6 +232,9 @@ namespace FolkIdle.Server.Domain.Combat
             _telemetryStreamingEngine = new TelemetryStreamingEngine(contextFactory, _liveSessionContexts);
             // Wire split-brain disconnect callback so StateCheckpointManager can force-close sockets.
             _networkSystem.RegisterCheckpointManager(_checkpointManager);
+            // Checkpoint acks come back through the registry, like every other
+            // cross-thread hand-off into the tick (task 43).
+            _checkpointManager.BindAckQueue(_playerRegistry.FlushAckQueue);
         }
 
         public void Start()
@@ -269,6 +272,7 @@ namespace FolkIdle.Server.Domain.Combat
             
             lock (_activePlayers)
             {
+                DrainCheckpointWriterForShutdown();
                 var allPlayers = _activePlayers.Values.ToArray();
                 var chunks = allPlayers.Chunk(200).ToArray();
 
@@ -289,6 +293,20 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
+        // Modul: the writer drains BEFORE the batch flush, and its acks are
+        // applied first. A queued logout or command flush must still commit,
+        // and a payload whose in-flight flushes committed without the tick
+        // seeing the acks carries an epoch behind the database - FlushBatch's
+        // sieve would skip it in silence. Called with the tick stopped.
+        private void DrainCheckpointWriterForShutdown()
+        {
+            if (!_checkpointManager.DrainWriter(TimeSpan.FromSeconds(10)))
+            {
+                Console.WriteLine("[SimulationEngine] Checkpoint writer did not drain within 10 s; continuing with the batch flush.");
+            }
+            CheckpointAckTickCoordinator.Drain(_playerRegistry, _activePlayers, _checkpointManager);
+        }
+
         public void ShutdownGracefully()
         {
             Console.WriteLine("[SimulationEngine] Initiating graceful shutdown...");
@@ -300,6 +318,7 @@ namespace FolkIdle.Server.Domain.Combat
             
             lock (_activePlayers)
             {
+                DrainCheckpointWriterForShutdown();
                 var allPlayers = _activePlayers.Values.ToArray();
                 var chunks = allPlayers.Chunk(100).ToArray();
 
@@ -930,6 +949,11 @@ namespace FolkIdle.Server.Domain.Combat
 
                 // Read the authoritative LiveOps event selected by the background ticker.
                 ActiveGlobalEventId = GlobalEngineState.ActiveEventType;
+
+                // First, before anything reads an epoch or installs a reloaded
+                // payload - see CheckpointAckTickCoordinator for why the order
+                // against StateReloadQueue matters.
+                CheckpointAckTickCoordinator.Drain(_playerRegistry, _activePlayers, _checkpointManager);
 
                 MarketTickCoordinator.DrainMatchNotifications(_playerRegistry, _activePlayers, _safeDispatch, _contextFactory);
 

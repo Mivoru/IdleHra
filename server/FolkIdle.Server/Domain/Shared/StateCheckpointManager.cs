@@ -126,6 +126,200 @@ namespace FolkIdle.Server.Domain.Shared
             _redisSessionCache = serviceProvider.GetService<RedisSessionCache>();
         }
 
+        // Modul: checkpoints off the tick thread (task 43). Where acks go. A
+        // manager on its own (a test) keeps them here; SimulationEngine binds
+        // PlayerSessionRegistry.FlushAckQueue at construction, before any flush
+        // can be requested.
+        private ConcurrentQueue<FlushAck> _ackQueue = new();
+
+        // Set by FlushState's split-brain branch, consumed by the writer, so a
+        // refused flush is not retried or rescued as if it were a transient one.
+        private readonly ConcurrentDictionary<long, byte> _splitBrainRefused = new();
+
+        private CheckpointWriter? _writer;
+
+        // Test-only (InternalsVisibleTo): stands in for FlushState on the
+        // writer, so a test can fail or delay one flush of a sequence.
+        internal Func<TickStatePayload, Task<bool>>? FlushOverrideForTests;
+        private readonly object _writerGate = new();
+
+        public void BindAckQueue(ConcurrentQueue<FlushAck> queue)
+        {
+            _ackQueue = queue;
+        }
+
+        internal ConcurrentQueue<FlushAck> AckQueue => _ackQueue;
+
+        /// <summary>
+        /// Started on first use, so a manager that only ever loads state (the
+        /// login tests, the cold-recovery path) never owns four idle tasks.
+        /// </summary>
+        public CheckpointWriter Writer
+        {
+            get
+            {
+                var writer = Volatile.Read(ref _writer);
+                if (writer != null)
+                {
+                    return writer;
+                }
+
+                lock (_writerGate)
+                {
+                    _writer ??= new CheckpointWriter(
+                        snapshot => FlushOverrideForTests?.Invoke(snapshot) ?? FlushState(snapshot),
+                        BankGoldDeltaAsync,
+                        playerId => _splitBrainRefused.TryRemove(playerId, out _),
+                        () => _ackQueue,
+                        playerId => _forceDisconnectCallback?.Invoke(playerId));
+                    return _writer;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Queues a checkpoint of <paramref name="state"/> on CheckpointWriter
+        /// and returns at once. Tick thread only: it mutates the live payload.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE EPOCH ARITHMETIC. FlushState refuses a snapshot whose
+        /// epoch is behind the database's and, on commit, writes db = snapshot
+        /// + 1. The live epoch only rises when an ack is applied, so a snapshot
+        /// taken while k flushes are still in flight is stamped live + k: each
+        /// queued flush is then exactly one ahead of the one before it, and a
+        /// FIFO partition can never refuse this player's own next flush. A
+        /// failed flush leaves a gap in the sequence, which is harmless -
+        /// epochs only have to increase, and the command gate has a drift
+        /// tolerance.
+        ///
+        /// Modul: THE GOLD MOVES WITH THE JOB. TryStoreFrame first (unchanged:
+        /// with Redis up it moves RedisPendingGoldDelta into Redis and zeroes
+        /// it), then whatever delta is left rides on the snapshot, and the live
+        /// payload is zeroed at once. Gold earned while the flush is in flight
+        /// accumulates from zero and goes with the NEXT flush; a failed flush's
+        /// delta comes back through the ack. Each coin is carried by exactly one
+        /// of them - which is the "two gold paths" rule held across threads.
+        ///
+        /// <paramref name="then"/> runs on the writer after the commit, never
+        /// after a failure (a reload excepted, see FlushJob.RunThenOnFailure).
+        /// It is how a command keeps "flush, then do the engine work that reads
+        /// the flushed rows" in that order without waiting on the tick.
+        /// </remarks>
+        public void RequestFlush(ref TickStatePayload state, FlushReason reason, Func<Task>? then = null)
+        {
+            _redisSessionCache?.TryStoreFrame(ref state);
+
+            var job = new FlushJob
+            {
+                Kind = FlushJobKind.Flush,
+                PlayerId = state.PlayerId,
+                Reason = reason,
+                Snapshot = state,
+                GoldDelta = state.RedisPendingGoldDelta,
+                Then = then,
+                RunThenOnFailure = reason == FlushReason.Reload
+            };
+            job.Snapshot.LogicEpochCounter = state.LogicEpochCounter + state.FlushesInFlight;
+
+            state.RedisPendingGoldDelta = 0L;
+            state.FlushesInFlight++;
+            state.IsDirty = false;
+            state.TicksSinceLastFlush = 0;
+            _dirtyStates.TryRemove(state.PlayerId, out _);
+
+            Writer.Enqueue(job);
+        }
+
+        /// <summary>
+        /// Banks a gold delta that lost its checkpoint - a logout that failed
+        /// every retry, or a failed flush whose player has gone by the time the
+        /// ack arrived. The same FOR UPDATE increment FlushState applies.
+        /// </summary>
+        internal async Task<bool> BankGoldDeltaAsync(long playerId, long delta)
+        {
+            var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+            await using var dbContext = new FolkIdleDbContext(retryingOptions.Options);
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            try
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    dbContext.ChangeTracker.Clear();
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+                    await ApplyPendingGoldDeltaAsync(dbContext, new TickStatePayload { PlayerId = playerId, RedisPendingGoldDelta = delta });
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Gold rescue failed for player {playerId} (delta {delta}): {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>Queues a gold-only rescue on the player's partition.</summary>
+        internal void RequestGoldRescue(long playerId, long delta)
+        {
+            if (delta == 0L)
+            {
+                return;
+            }
+            Writer.Enqueue(new FlushJob { Kind = FlushJobKind.GoldRescue, PlayerId = playerId, GoldDelta = delta });
+        }
+
+        /// <summary>
+        /// Completes once every checkpoint already queued for this player has
+        /// finished. A login awaits it before reading the database.
+        /// </summary>
+        public Task WaitForPendingFlushesAsync(long playerId)
+        {
+            var writer = Volatile.Read(ref _writer);
+            return writer == null ? Task.CompletedTask : writer.WaitForPlayerAsync(playerId);
+        }
+
+        /// <summary>
+        /// Shutdown: stops taking jobs and lets the queued ones finish. The
+        /// caller then drains FlushAckQueue into the live payloads, so the
+        /// batch flush that follows carries current epochs.
+        /// </summary>
+        public bool DrainWriter(TimeSpan timeout)
+        {
+            var writer = Volatile.Read(ref _writer);
+            return writer == null || writer.CompleteAndDrain(timeout);
+        }
+
+        // Test-only (InternalsVisibleTo): wait for the writer, then apply this
+        // player's acks to a payload the test holds, as the tick would.
+        internal async Task WhenWriterIdleAsync()
+        {
+            var writer = Volatile.Read(ref _writer);
+            if (writer != null)
+            {
+                await writer.WhenIdleAsync();
+            }
+        }
+
+        internal int ApplyPendingAcks(ref TickStatePayload state)
+        {
+            int applied = 0;
+            int pending = _ackQueue.Count;
+            for (int i = 0; i < pending && _ackQueue.TryDequeue(out var ack); i++)
+            {
+                if (ack.PlayerId == state.PlayerId)
+                {
+                    CheckpointAckTickCoordinator.Apply(ref state, in ack);
+                    applied++;
+                }
+                else
+                {
+                    _ackQueue.Enqueue(ack);
+                }
+            }
+            return applied;
+        }
+
         /// <summary>
         /// How far behind the database a live payload is allowed to fall.
         /// 3000 ticks at 10 Hz is five minutes.
@@ -241,6 +435,9 @@ namespace FolkIdle.Server.Domain.Shared
             long pendingGold = state.RedisPendingGoldDelta;
 
             bool committed = FlushState(state).GetAwaiter().GetResult();
+            // The writer's split-brain mark is for the writer; this path has
+            // its answer already and must not leave one behind for it.
+            _splitBrainRefused.TryRemove(state.PlayerId, out _);
             if (committed)
             {
                 state.LogicEpochCounter++;
@@ -353,6 +550,7 @@ namespace FolkIdle.Server.Domain.Shared
 
                             _forceDisconnectCallback?.Invoke(state.PlayerId);
                             _dirtyStates.TryRemove(state.PlayerId, out _);
+                            _splitBrainRefused[state.PlayerId] = 0;
                             return false;
                         }
 

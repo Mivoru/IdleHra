@@ -266,7 +266,14 @@ namespace FolkIdle.Server.Network
         // weak-hit answer or the damage card, so it is told to update over the
         // air. Answered, never TerminateSessionForSecurity - it is an honest
         // old client, not a protocol violation.
-        WorldBossUpdateRequired = 43
+        WorldBossUpdateRequired = 43,
+
+        // Modul: checkpoints off the tick thread (task 43). A market, forge,
+        // reroll or guild command now flushes on CheckpointWriter and runs
+        // its engine work only after the commit. When that flush fails the
+        // work never runs - and the player is told so, un-suspended, rather
+        // than left pressing a button that did nothing.
+        CheckpointFailed = 44
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
