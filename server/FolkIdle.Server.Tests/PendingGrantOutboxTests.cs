@@ -52,25 +52,23 @@ namespace FolkIdle.Server.Tests
             return record?.Quantity ?? 0L;
         }
 
-        // Modul: same poison technique OfflineVillageProductionTests already
-        // uses for audit #17 - two CommodityRecords rows for the same
-        // (PlayerId, "gold") make the goldRecord SingleOrDefaultAsync throw
-        // "Sequence contains more than one element", the identical shape a
-        // live race or a dropped connection produces from the caller's point
-        // of view.
-        private async Task SeedDuplicateGoldRowsAsync(long playerId)
+        // Modul: same poison technique OfflineVillageProductionTests uses for
+        // audit #17. It used to be two gold rows for one player; task 44 made
+        // (PlayerId, ItemId) unique, so the poison is now a gold row already
+        // at long.MaxValue - the gold upsert overflows bigint and throws
+        // inside the grant's transaction, the identical shape a dropped
+        // connection produces from the caller's point of view.
+        private async Task SeedPoisonedGoldRowAsync(long playerId)
         {
             await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
-            db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 0L });
-            db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 0L });
-            await db.SaveChangesAsync();
+            await CommodityLedger.AddAsync(db, playerId, "gold", long.MaxValue);
         }
 
         [Fact]
         public async Task AFailedOfflineProductionGrantLandsInThePendingGrantsTable()
         {
             var player = await CreatePlayerAsync();
-            await SeedDuplicateGoldRowsAsync(player.Id);
+            await SeedPoisonedGoldRowAsync(player.Id);
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {

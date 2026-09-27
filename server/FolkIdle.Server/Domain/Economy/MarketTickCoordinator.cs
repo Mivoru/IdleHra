@@ -59,24 +59,12 @@ namespace FolkIdle.Server.Domain.Economy
                     {
                         await using var rescueDb = await contextFactory.CreateDbContextAsync();
 
-                        var goldRow = await rescueDb.CommodityRecords
-                            .FirstOrDefaultAsync(c => c.PlayerId == rescuePlayerId && c.ItemId == "gold");
-
-                        if (goldRow == null)
-                        {
-                            rescueDb.CommodityRecords.Add(new CommodityRecord
-                            {
-                                PlayerId = rescuePlayerId,
-                                ItemId = "gold",
-                                Quantity = rescueGold
-                            });
-                        }
-                        else
-                        {
-                            goldRow.Quantity += rescueGold;
-                        }
-
-                        await rescueDb.SaveChangesAsync();
+                        // Modul: this was an UNLOCKED read-modify-write (no
+                        // FOR UPDATE, no transaction), so a concurrent credit
+                        // between the read and SaveChanges was overwritten,
+                        // and a missing row could be inserted twice. One
+                        // upsert statement is atomic on its own (task 44).
+                        await CommodityLedger.AddAsync(rescueDb, rescuePlayerId, "gold", rescueGold);
                     });
                 }
             }
@@ -95,9 +83,6 @@ namespace FolkIdle.Server.Domain.Economy
                 return;
             }
             
-            currentPayload.IsSuspended = true;
-            ctx.CheckpointManager.FlushStateAndAdvance(ref currentPayload);
-
             long pId = currentPayload.PlayerId;
             long targetId = cmd.TargetId;
             long price = cmd.LimitPrice;
@@ -107,16 +92,27 @@ namespace FolkIdle.Server.Domain.Economy
 
             var escrowEngine = ctx.EscrowEngine;
             var networkSystem = ctx.NetworkSystem;
-            ctx.SafeDispatch("Market.EscrowOrder", pId, async () => {
-                if (isBuy)
-                {
-                    await escrowEngine.BuyItemAsync(pId, targetId, hasSpace);
-                }
-                else
-                {
-                    await escrowEngine.ListItemAsync(pId, targetId, price);
-                }
-                networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+            var safeDispatch = ctx.SafeDispatch;
+
+            // Modul: checkpoints off the tick thread (task 43). Suspend, flush
+            // on CheckpointWriter, and only once that commits dispatch the
+            // escrow work that reads the flushed gold. A failed flush never
+            // trades: the ack un-suspends and answers CheckpointFailed.
+            currentPayload.IsSuspended = true;
+            ctx.CheckpointManager.RequestFlush(ref currentPayload, FlushReason.Command, then: () =>
+            {
+                safeDispatch("Market.EscrowOrder", pId, async () => {
+                    if (isBuy)
+                    {
+                        await escrowEngine.BuyItemAsync(pId, targetId, hasSpace);
+                    }
+                    else
+                    {
+                        await escrowEngine.ListItemAsync(pId, targetId, price);
+                    }
+                    networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                });
+                return Task.CompletedTask;
             });
         }
 
@@ -132,9 +128,6 @@ namespace FolkIdle.Server.Domain.Economy
                 ctx.NetworkSystem.ForceDisconnect(ctx.RoutingPlayerId);
                 return;
             }
-
-            currentPayload.IsSuspended = true;
-            ctx.CheckpointManager.FlushStateAndAdvance(ref currentPayload);
 
             long pId = currentPayload.PlayerId;
             bool isBuy = cmd.IsBuy == 1;
@@ -155,9 +148,17 @@ namespace FolkIdle.Server.Domain.Economy
 
             var marketEngine = ctx.MarketEngine;
             var networkSystem = ctx.NetworkSystem;
-            ctx.SafeDispatch("Market.LimitOrder", pId, async () => {
-                await marketEngine.PlaceLimitOrderAsync(pId, isBuy, instanceId, price, baseItemId, qualityTier);
-                networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+            var safeDispatch = ctx.SafeDispatch;
+
+            // Modul: checkpoints off the tick thread (task 43) - as above.
+            currentPayload.IsSuspended = true;
+            ctx.CheckpointManager.RequestFlush(ref currentPayload, FlushReason.Command, then: () =>
+            {
+                safeDispatch("Market.LimitOrder", pId, async () => {
+                    await marketEngine.PlaceLimitOrderAsync(pId, isBuy, instanceId, price, baseItemId, qualityTier);
+                    networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                });
+                return Task.CompletedTask;
             });
         }
     }

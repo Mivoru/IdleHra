@@ -194,22 +194,9 @@ namespace FolkIdle.Server.Engine
                 return 0L;
             }
 
-            var gold = await db.CommodityRecords
-                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (gold == null)
-            {
-                gold = new CommodityRecord
-                {
-                    PlayerId = playerId,
-                    ItemId = "gold",
-                    Quantity = 0L
-                };
-                db.CommodityRecords.Add(gold);
-            }
-
-            gold.Quantity += delta;
+            // Modul: an upsert (CommodityLedger), task 44. Same increment, same
+            // transaction; only the row creation is race-free now.
+            await CommodityLedger.AddAsync(db, playerId, "gold", delta);
             return delta;
         }
 
@@ -224,17 +211,7 @@ namespace FolkIdle.Server.Engine
                 return;
             }
 
-            var commodity = await db.CommodityRecords
-                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, itemId)
-                .FirstOrDefaultAsync(cancellationToken);
-
-            if (commodity == null)
-            {
-                commodity = new CommodityRecord { PlayerId = playerId, ItemId = itemId, Quantity = 0L };
-                db.CommodityRecords.Add(commodity);
-            }
-
-            commodity.Quantity += delta;
+            await CommodityLedger.AddAsync(db, playerId, itemId, delta);
             appliedDeltas.Add((bufferKey, delta));
         }
 

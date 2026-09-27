@@ -144,6 +144,40 @@ namespace FolkIdle.Server.Domain.Combat
         private EngineMetricsPayload _metrics;
         public ref EngineMetricsPayload GetMetrics() => ref _metrics;
 
+        // Modul: TICK PERCENTILES FROM A ROLLING WINDOW (task 43). The
+        // histogram buckets are cumulative since boot and in whole
+        // milliseconds, so they can say "99% of all ticks ever were <= 25 ms"
+        // but not what p99 was over the last minute - which is the number the
+        // task's "tick p99 under 25 ms in production" is judged on, and the
+        // only one that moves after a deploy. The last 600 ticks (one minute at
+        // 10 Hz) in microseconds; written by the tick alone, copied and sorted
+        // by the /metrics scrape. A torn read of one slot mid-write costs one
+        // sample's accuracy, not correctness.
+        internal const int RecentTickWindow = 600;
+        private readonly int[] _recentTickMicros = new int[RecentTickWindow];
+        private long _recentTickCount;
+
+        internal readonly record struct TickPercentiles(int Samples, double P50Ms, double P95Ms, double P99Ms, double MaxMs);
+
+        internal TickPercentiles GetRecentTickPercentiles()
+        {
+            int n = (int)Math.Min(Interlocked.Read(ref _recentTickCount), RecentTickWindow);
+            return ComputeTickPercentiles(_recentTickMicros, n);
+        }
+
+        internal static TickPercentiles ComputeTickPercentiles(int[] micros, int n)
+        {
+            if (n == 0) return new TickPercentiles(0, 0, 0, 0, 0);
+            var copy = new int[n];
+            Array.Copy(micros, copy, n);
+            Array.Sort(copy);
+            double At(double q) => copy[Math.Min(n - 1, (int)Math.Ceiling(q * n) - 1)] / 1000.0;
+            return new TickPercentiles(n, At(0.50), At(0.95), At(0.99), copy[n - 1] / 1000.0);
+        }
+
+        // For /metrics: checkpoint back-pressure beside the tick time.
+        internal StateCheckpointManager CheckpointManager => _checkpointManager;
+
         public bool IsRunning => _isRunning;
 
         // Modul: inventory census. The base backpack size before
@@ -232,6 +266,9 @@ namespace FolkIdle.Server.Domain.Combat
             _telemetryStreamingEngine = new TelemetryStreamingEngine(contextFactory, _liveSessionContexts);
             // Wire split-brain disconnect callback so StateCheckpointManager can force-close sockets.
             _networkSystem.RegisterCheckpointManager(_checkpointManager);
+            // Checkpoint acks come back through the registry, like every other
+            // cross-thread hand-off into the tick (task 43).
+            _checkpointManager.BindAckQueue(_playerRegistry.FlushAckQueue);
         }
 
         public void Start()
@@ -269,6 +306,7 @@ namespace FolkIdle.Server.Domain.Combat
             
             lock (_activePlayers)
             {
+                DrainCheckpointWriterForShutdown();
                 var allPlayers = _activePlayers.Values.ToArray();
                 var chunks = allPlayers.Chunk(200).ToArray();
 
@@ -289,6 +327,20 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
+        // Modul: the writer drains BEFORE the batch flush, and its acks are
+        // applied first. A queued logout or command flush must still commit,
+        // and a payload whose in-flight flushes committed without the tick
+        // seeing the acks carries an epoch behind the database - FlushBatch's
+        // sieve would skip it in silence. Called with the tick stopped.
+        private void DrainCheckpointWriterForShutdown()
+        {
+            if (!_checkpointManager.DrainWriter(TimeSpan.FromSeconds(10)))
+            {
+                Console.WriteLine("[SimulationEngine] Checkpoint writer did not drain within 10 s; continuing with the batch flush.");
+            }
+            CheckpointAckTickCoordinator.Drain(_playerRegistry, _activePlayers, _checkpointManager);
+        }
+
         public void ShutdownGracefully()
         {
             Console.WriteLine("[SimulationEngine] Initiating graceful shutdown...");
@@ -300,6 +352,7 @@ namespace FolkIdle.Server.Domain.Combat
             
             lock (_activePlayers)
             {
+                DrainCheckpointWriterForShutdown();
                 var allPlayers = _activePlayers.Values.ToArray();
                 var chunks = allPlayers.Chunk(100).ToArray();
 
@@ -449,6 +502,14 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
+        internal int GetActivePlayerTicksSinceLastFlush(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.TicksSinceLastFlush : -1;
+            }
+        }
+
         internal bool IsActivePlayerPresent(long playerId)
         {
             lock (_activePlayers)
@@ -528,6 +589,17 @@ namespace FolkIdle.Server.Domain.Combat
         // path.
         private void AddActivePlayer(TickStatePayload payload)
         {
+            // Modul: STAGGERED CHECKPOINT BOUNDARIES (task 43, 2c). Every
+            // session used to start its five-minute clock at 0, so a reconnect
+            // wave - a deploy, a network blip - put every player on the same
+            // boundary tick, and every checkpoint in the game was queued at
+            // once, every five minutes, for ever. A fixed per-player phase
+            // spreads them over the whole window. A payload arriving with a
+            // counter already set (a forced boundary, a test) keeps it.
+            if (payload.TicksSinceLastFlush == 0)
+            {
+                payload.TicksSinceLastFlush = StateCheckpointManager.StaggeredStartTicks(payload.PlayerId);
+            }
             _activePlayers[payload.PlayerId] = payload;
             AddToGuildIndex(payload.GuildId, payload.PlayerId);
 
@@ -903,6 +975,26 @@ namespace FolkIdle.Server.Domain.Combat
                 long tickStartTimestamp = Stopwatch.GetTimestamp();
                 stopwatch.Restart();
 
+                // Modul: THE TICK HOLDS THE LOCK EVERY OTHER READER TAKES.
+                //
+                // Every off-thread accessor of _activePlayers (the test hooks
+                // below the constructor, InjectVirtualPlayer, the drain and
+                // shutdown paths) says lock (_activePlayers) - and the tick,
+                // the one thread that mutates it all the time, never did. So
+                // the locks excluded each other and nothing else. A test that
+                // called InjectVirtualPlayer while the engine ran added a key
+                // in the middle of the tick's foreach, and the next MoveNext
+                // threw "Collection was modified" OUTSIDE the per-player
+                // try/catch, which ended EngineLoop and, on a bare thread,
+                // the whole test host. Taken once per tick, uncontended in
+                // production (nothing else takes it while the engine runs);
+                // released before the sleep so a hook waits one tick at most.
+                // The body is deliberately not re-indented.
+                bool tickLockTaken = false;
+                Monitor.Enter(_activePlayers, ref tickLockTaken);
+                try
+                {
+
                 if (isBenchmarking)
                 {
                     FolkIdle.Server.Benchmark.EngineStressTester.InjectCommandFlood(this);
@@ -910,6 +1002,11 @@ namespace FolkIdle.Server.Domain.Combat
 
                 // Read the authoritative LiveOps event selected by the background ticker.
                 ActiveGlobalEventId = GlobalEngineState.ActiveEventType;
+
+                // First, before anything reads an epoch or installs a reloaded
+                // payload - see CheckpointAckTickCoordinator for why the order
+                // against StateReloadQueue matters.
+                CheckpointAckTickCoordinator.Drain(_playerRegistry, _activePlayers, _checkpointManager);
 
                 MarketTickCoordinator.DrainMatchNotifications(_playerRegistry, _activePlayers, _safeDispatch, _contextFactory);
 
@@ -1360,7 +1457,21 @@ namespace FolkIdle.Server.Domain.Combat
                     {
                         long tId = cmd.TargetId;
                         _playerRegistry.RegisterPlayer(tId);
+                        // Funnel steps 11-12 (a day-1 / day-7 return) and the
+                        // re-arm of the per-session guard. See FunnelRecorder.
+                        FunnelRecorder.BeginSession(tId);
                         SafeDispatchAsync("Login", tId, async () => {
+                            // Modul: A LOGIN READS THE ROW ONLY AFTER THE LAST
+                            // SESSION'S LOGOUT HAS WRITTEN IT (task 43). The
+                            // logout flush is queued on CheckpointWriter now,
+                            // not committed before this command is even read -
+                            // so an F5 (socket closes, socket opens) could load
+                            // the pre-logout row, and the logout's commit would
+                            // then leave this new session one epoch behind the
+                            // database: a false split-brain, mailed and
+                            // disconnected. The fence waits for this player's
+                            // queued jobs, and only theirs.
+                            await _checkpointManager.WaitForPendingFlushesAsync(tId);
                             var payload = await _checkpointManager.LoadPlayerState(tId);
 
                             long currentUnixTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -1633,8 +1744,7 @@ namespace FolkIdle.Server.Domain.Combat
                         // it only banks the coins earned since the last flush.
                         // A second flush after an already-flushed command is a
                         // no-op, because the delta has been zeroed.
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-
+                        //
                         // Modul: THE RESULT COMES BACK THROUGH A QUEUE, because
                         // the tick thread owns _activePlayers.
                         //
@@ -1650,11 +1760,28 @@ namespace FolkIdle.Server.Domain.Combat
                         // The player stays suspended until the reload lands,
                         // which is correct - their state is in flight - and the
                         // drain clears it.
+                        //
+                        // Modul: CHECKPOINTS OFF THE TICK THREAD (task 43). The
+                        // flush now commits on CheckpointWriter and the reload
+                        // is its continuation, so "flush first, then reload" is
+                        // still the order - the load runs on the writer after
+                        // the commit and sees every earlier checkpoint of this
+                        // player. A reload runs even when the flush fails
+                        // (FlushJob.RunThenOnFailure), as it always did: an
+                        // engine has already committed a change the player must
+                        // see. The failed flush's gold comes back via its ack,
+                        // which the tick applies BEFORE this payload lands, and
+                        // StateReloadMerge carries it across. A continuation
+                        // that throws disconnects the player, as SafeDispatch
+                        // did here before.
                         long reloadPlayerId = currentPayload.PlayerId;
-                        SafeDispatchAsync("ReloadState", reloadPlayerId, async () => {
-                            var reloaded = await _checkpointManager.LoadPlayerState(reloadPlayerId);
+                        var reloadCheckpoints = _checkpointManager;
+                        var reloadRegistry = _playerRegistry;
+                        _checkpointManager.RequestFlush(ref currentPayload, FlushReason.Reload, then: async () =>
+                        {
+                            var reloaded = await reloadCheckpoints.LoadPlayerState(reloadPlayerId);
                             reloaded.IsSuspended = false;
-                            _playerRegistry.StateReloadQueue.Enqueue(reloaded);
+                            reloadRegistry.StateReloadQueue.Enqueue(reloaded);
                         });
                     }
                     // CommandType.RegisterWorldBossDamage (19) was retired here.
@@ -1674,7 +1801,14 @@ namespace FolkIdle.Server.Domain.Combat
                         // is SimulationEngine's job, not a coordinator's.
                         currentPayload.LastLogoutTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         currentPayload.IsDirty = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
+                        // Modul: checkpoints off the tick thread (task 43). The
+                        // last flush of a session is queued like every other;
+                        // CheckpointWriter retries it (a logout has no next
+                        // tick to retry on), then banks its gold alone, then
+                        // writes a CHECKPOINT-DEADLETTER line - where a failed
+                        // synchronous flush here used to lose it in silence.
+                        // The next Login waits for it: see the Login branch.
+                        _checkpointManager.RequestFlush(ref currentPayload, FlushReason.Logout);
                         currentPayload.IsSuspended = true;
                         // Modul: RemoveActivePlayer now clears
                         // PlayerSessionRegistry registration itself - see
@@ -2210,7 +2344,15 @@ namespace FolkIdle.Server.Domain.Combat
                                 LastDeathTick = currentPayload.LastDeathTick,
                                 LastHitWasCrit = currentPayload.LastHitWasCrit,
                                 EquippedWeaponKind = currentPayload.EquippedWeaponKind,
-                                TicksSinceLastFlush = currentPayload.TicksSinceLastFlush
+                                TicksSinceLastFlush = currentPayload.TicksSinceLastFlush,
+                                // Modul: task 45. The EFFECTIVE offline cap,
+                                // Vodnik extension included, so the client's
+                                // local "they stop earning in 1 h" notification
+                                // never mirrors the 12 h rule itself. Derived
+                                // from VodnikMasteryLevel, which the login
+                                // hydrates, so a relogin cannot read it as 0.
+                                OfflineCapSeconds = (int)RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(
+                                    currentPayload.VodnikMasteryLevel, OfflineSimulationEngine.MaxOfflineSeconds)
                             };
                             // Modul: this packet carries currentPayload's own
                             // private data (gold, stats, equipment, mana,
@@ -2267,8 +2409,20 @@ namespace FolkIdle.Server.Domain.Combat
                     FolkIdleEventSource.Log.BroadcastSnapshotEnd(broadcastSnapshotElapsedMicroseconds, _activePlayers.Count);
                 }
 
+                }
+                finally
+                {
+                    if (tickLockTaken)
+                    {
+                        Monitor.Exit(_activePlayers);
+                    }
+                }
+
                 stopwatch.Stop();
                 long tickEndTimestamp = Stopwatch.GetTimestamp();
+                long tickMicros = (tickEndTimestamp - tickStartTimestamp) * 1_000_000L / Stopwatch.Frequency;
+                _recentTickMicros[(int)(_recentTickCount % RecentTickWindow)] = (int)Math.Min(tickMicros, int.MaxValue);
+                Interlocked.Increment(ref _recentTickCount);
                 _metrics.TotalTicksProcessed++;
                 long tickElapsedForMetricsMs = stopwatch.ElapsedMilliseconds;
                 _metrics.LastExecutionTimeMs = tickElapsedForMetricsMs;
@@ -4577,6 +4731,13 @@ namespace FolkIdle.Server.Domain.Combat
                 if (wasFirstClearForThisPlayer && clearedBossRegion > 0)
                 {
                     BossFirstClearAnnouncer.Announce(payload.PlayerId, activeMonster.Id);
+
+                    // Funnel step 6: this player's first clear of region 1's
+                    // boss - the door to everything past the tutorial region.
+                    if (clearedBossRegion == RaceUnlockRegistry.FirstRegion)
+                    {
+                        FunnelRecorder.Record(payload.PlayerId, FunnelStep.Region1Boss);
+                    }
 
                     // Modul: and the card that says what just happened.
                     //

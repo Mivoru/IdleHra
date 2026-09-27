@@ -9,7 +9,7 @@
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
   import { onMount } from 'svelte';
-  import { playerState, visualState, connectionStatus, observedMaxPlayerHp, damageEvents, pushLocalNotice, levelUpPulse } from '../lib/stores/game';
+  import { playerState, visualState, connectionStatus, damageEvents, pushLocalNotice, levelUpPulse } from '../lib/stores/game';
   import {
     loadContent,
     itemName,
@@ -152,9 +152,9 @@
   // Modul: and the player's own maximum, which was a SESSION HIGH-WATER MARK
   // of the largest PlayerHp ever seen. A measured trace caught the bar reading
   // "2320 / 2320" while PlayerHp was 3701: the mark starts at whatever the
-  // first snapshot happened to show and only ever grows. observedMaxPlayerHp
-  // is kept as the fallback for the same reason as above.
-  const playerMaxHp = $derived((snap?.PlayerMaxHp ?? 0) > 0 ? (snap?.PlayerMaxHp ?? 1) : $observedMaxPlayerHp);
+  // first snapshot happened to show and only ever grows. That estimate is gone;
+  // before the first snapshot the bar is simply scaled against itself.
+  const playerMaxHp = $derived(Math.max(1, snap?.PlayerMaxHp ?? 0, snap?.PlayerHp ?? 0));
 
   // predecessor's boss is still standing (CommandResultCode.RegionLocked), so
   // the list has to say which those are. Offering a Fight button that is

@@ -12,10 +12,13 @@ import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
 import { watchAppLifecycle } from '../net/lifecycle';
 import { refreshDeviceTokenIfPermitted, watchNotificationTaps } from '../net/push';
+import { tap } from '../net/haptics';
+import { noteOfflineCap } from '../net/localNotify';
 import { registerPlatformStore } from '../net/storeRegistration';
 import {
   SnapshotInterpolator,
   extractInterpolated,
+  shouldPublishVisual,
   type InterpolatedFields,
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
@@ -51,19 +54,11 @@ export const connectionStatus = writable<ConnectionStatus>({
 
 export const playerState = writable<StateUpdate | null>(null);
 
-// Modul: MAX HEALTH IS NOT ON THE WIRE. StateUpdatePacket carries PlayerHp and
-// nothing to scale it against, so a health bar has no honest denominator.
-//
-// Derived here, once, as the highest value seen this session - rather than
-// each screen inventing its own guess, which is how two screens end up
-// disagreeing about the same character. Combat's bar and the Character sheet
-// now read the same number.
-//
-// It is a floor, not a fact: a character that has not been at full health this
-// session reads low, and the bar then looks fuller than it is. Acceptable
-// because this value only ever scales a bar - nothing decides from it - but it
-// is the reason MaxHp belongs on the wire eventually.
-export const observedMaxPlayerHp = writable(1);
+// Modul: the player's maximum health is `PlayerMaxHp` on the snapshot. A
+// session high-water mark of PlayerHp (`observedMaxPlayerHp`) stood in for it
+// before the field reached the wire, and outlived it on the Character sheet,
+// which read "2320 / 2320" beside a PlayerHp of 3701. Deleted rather than kept
+// as a fallback: two sources for one number is this codebase's dominant bug.
 
 // ---------------------------------------------------------------------------
 // Smoothed state
@@ -73,6 +68,8 @@ const interpolator = new SnapshotInterpolator();
 export const visualState = writable<InterpolatedFields | null>(null);
 
 let animationHandle = 0;
+/** The last frame actually handed to `visualState`, for the change test. */
+let lastPublishedVisual: InterpolatedFields | null = null;
 
 // Tutorial and audio edge detection. -1 / 0 mean "no baseline yet", so the
 // first packet of a session never fires a cue for progress made while away.
@@ -103,11 +100,26 @@ export const damageEvents = writable<DamageEvent[]>([]);
  */
 export const typicalHit = writable<number | null>(null);
 
+// Modul: THE LOOP RUNS ONLY WHILE SOMETHING IS MOVING.
+//
+// It used to reschedule itself unconditionally and `set` visualState on every
+// frame, so an idle character redrew its bars sixty times a second for hours.
+// It now publishes only a frame that moved (see shouldPublishVisual) and stops
+// once the interpolator has settled AND nothing it expires is still alive -
+// damage numbers and toasts are pruned from here, so they keep it running too.
+// Anything that gives it new work calls startPump(): a snapshot, a combat
+// event, a local notice. A late snapshot on a stopped loop is therefore never
+// missed, and the Combat bar still glides between two snapshots as before.
 function pump(): void {
+  animationHandle = 0;
   const now = performance.timeOrigin + performance.now();
 
   const sampled = interpolator.sample(now);
-  if (sampled !== null) visualState.set(sampled);
+  const settled = interpolator.isSettled(now);
+  if (sampled !== null && shouldPublishVisual(lastPublishedVisual, sampled, settled)) {
+    lastPublishedVisual = sampled;
+    visualState.set(sampled);
+  }
 
   // Expiry is driven from the render loop rather than a setTimeout per hit:
   // one timer per damage number would be dozens of live timers a minute, and
@@ -116,12 +128,16 @@ function pump(): void {
   const kept = damageFeed.prune(now);
   if (kept.length !== before) damageEvents.set(kept);
 
+  let liveResults = 0;
   commandResults.update((entries) => {
     const live = entries.filter((e) => now - e.atMs < COMMAND_RESULT_LIFETIME_MS);
+    liveResults = live.length;
     return live.length === entries.length ? entries : live;
   });
 
-  animationHandle = requestAnimationFrame(pump);
+  if (!settled || kept.length > 0 || liveResults > 0) {
+    animationHandle = requestAnimationFrame(pump);
+  }
 }
 
 function startPump(): void {
@@ -284,6 +300,8 @@ export function pushLocalNotice(message: string, tone: 'info' | 'error' = 'error
     atMs: performance.timeOrigin + performance.now(),
   };
   commandResults.update((entries) => [...entries, entry]);
+  // The loop expires toasts; it may be asleep if nothing was moving.
+  startPump();
 
   // A refusal makes a noise; an informational notice does not. The refusals
   // are the ones a player might otherwise miss - they usually follow a click
@@ -540,9 +558,6 @@ export function startSession(token: string): void {
   achievementToasts.set([]);
   toastWatermark.highWater = -1;
   lastTierSnapshot = [];
-  // A different account has a different maximum; carrying the old one over
-  // would scale the new player's bar against a stranger's health.
-  observedMaxPlayerHp.set(1);
   // A new session numbers its events from scratch, so a carried-over sequence
   // high-water mark would swallow every line until the server caught up to it.
   resetCombatLog();
@@ -554,6 +569,7 @@ export function startSession(token: string): void {
   commandResultFeed.reset();
   commandResults.set([]);
   visualState.set(null);
+  lastPublishedVisual = null;
   playerState.set(null);
 
   // Modul: started here rather than at module load, because it needs a session
@@ -604,9 +620,9 @@ export function startSession(token: string): void {
     },
 
     onStateUpdate: (packet: StateUpdate) => {
+      noteOfflineCap(packet.OfflineCapSeconds);
       const arrivedAtMs = performance.timeOrigin + performance.now();
       playerState.set(packet);
-      observedMaxPlayerHp.update((seen) => Math.max(seen, packet.PlayerHp));
 
       interpolator.push(
         extractInterpolated(packet as unknown as Record<string, unknown>),
@@ -829,7 +845,13 @@ export function startSession(token: string): void {
       // Only the player's own blows float. A monster's hit moves the player's
       // health bar, which is its own feedback, and a screen that threw a number
       // for every event would be unreadable at this cadence.
-      if (Number(packet.EventKind) !== CombatEventKind.PlayerHit) return;
+      // Modul: task 45 haptics, read off the same feed - a kill is a medium
+      // tap, a crit a light one. tap() throttles a fast fight to one per 80 ms.
+      const kind = Number(packet.EventKind);
+      if (kind === CombatEventKind.Kill) tap('medium');
+      else if (kind === CombatEventKind.PlayerHit && (Number(packet.Flags) & CombatEventFlag.Crit) !== 0) tap('light');
+
+      if (kind !== CombatEventKind.PlayerHit) return;
 
       const hit = damageFeed.push(
         Number(packet.Amount),
@@ -841,6 +863,7 @@ export function startSession(token: string): void {
 
       damageEvents.set(damageFeed.current);
       typicalHit.set(damageFeed.typicalHit);
+      startPump();
 
       // Modul: A HIT MADE A SOUND AND A MARK.
       //
@@ -853,6 +876,7 @@ export function startSession(token: string): void {
 
     onLootDrop: (packet: ResponseLootDrop) => {
       play(packet.QualityTier >= 10 ? 'lootRare' : 'lootDropped');
+      if (packet.QualityTier >= 10) tap('success');
 
 
       const entry: LootEntry = {
@@ -906,6 +930,7 @@ export function endSession(): void {
   offlineSummary.set(null);
   playerState.set(null);
   visualState.set(null);
+  lastPublishedVisual = null;
 }
 
 /** Current authoritative snapshot without subscribing. */

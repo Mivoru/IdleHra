@@ -3014,6 +3014,9 @@ namespace FolkIdle.Server.Tests
             };
 
             checkpointManager.TrackState(ref state);
+            // Task 43: the checkpoint is queued on CheckpointWriter now.
+            await checkpointManager.WhenWriterIdleAsync();
+            checkpointManager.DrainWriter(TimeSpan.FromSeconds(10));
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
@@ -3089,6 +3092,11 @@ namespace FolkIdle.Server.Tests
             };
 
             checkpointManager.TrackState(ref state);
+            // Task 43: the flush runs on CheckpointWriter; its failure comes
+            // back as an ack, applied here the way the tick applies it.
+            await checkpointManager.WhenWriterIdleAsync();
+            checkpointManager.ApplyPendingAcks(ref state);
+            checkpointManager.DrainWriter(TimeSpan.FromSeconds(10));
 
             Assert.True(state.IsDirty, "A failed flush must leave IsDirty set so the state is requeued on the next cycle instead of being silently discarded.");
             Assert.Equal(3000, state.TicksSinceLastFlush);
@@ -4416,6 +4424,23 @@ namespace FolkIdle.Server.Tests
 
                 Assert.Contains("# TYPE folkidle_database_write_queue_length gauge", body);
                 Assert.Contains("folkidle_database_write_queue_length", body);
+
+                // Modul: task 46 (8a - measure). No JSON session has connected
+                // in this test, so these read as pure zeros - proving the
+                // scrape still succeeds with an empty StateFrameMetrics is the
+                // same "defaults to 0 rather than failing" property the other
+                // three metrics above are pinned for.
+                Assert.Contains("# TYPE folkidle_state_frame_bytes_total counter", body);
+                Assert.Contains("folkidle_state_frame_bytes_total", body);
+
+                Assert.Contains("# TYPE folkidle_state_frames_total counter", body);
+                Assert.Contains("folkidle_state_frames_total", body);
+
+                Assert.Contains("# TYPE folkidle_state_frame_serialize_microseconds histogram", body);
+                Assert.Contains("folkidle_state_frame_serialize_microseconds_bucket{le=\"100\"}", body);
+                Assert.Contains("folkidle_state_frame_serialize_microseconds_bucket{le=\"+Inf\"}", body);
+                Assert.Contains("folkidle_state_frame_serialize_microseconds_sum", body);
+                Assert.Contains("folkidle_state_frame_serialize_microseconds_count", body);
             }
             finally
             {

@@ -1,12 +1,16 @@
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
@@ -21,6 +25,134 @@ using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Network
 {
+    /// <summary>
+    /// One connected player's socket, and the only code that writes to it.
+    /// </summary>
+    /// <remarks>
+    /// Modul: A PER-SESSION OUTBOX (task 41, audit item 3, 2026-09-27).
+    ///
+    /// .NET forbids two outstanding send-family operations on one WebSocket,
+    /// and five independent call sites target the same socket: the 10 Hz state
+    /// broadcast, the loot feed, the combat feed, chat, and every disconnect
+    /// path. This class used to serialise them with a semaphore taken with a
+    /// ZERO timeout - which was the right call for snapshots (see
+    /// OfferSnapshot) and silently wrong for everything else. A loot line, a
+    /// combat blow or a private message that arrived while a state frame was
+    /// in flight was simply discarded, and at 10 Hz a state frame is in flight
+    /// a large share of the time. On top of that, each dispatch loop awaited
+    /// its sends one after another, so one peer that had stopped reading held
+    /// its loop - and every other player behind it - for up to the 20 s send
+    /// timeout.
+    ///
+    /// Now there is one writer task per session and nothing else touches the
+    /// socket. Producers never await and never block:
+    ///   - EnqueueEvent: a bounded FIFO (512, drop-OLDEST, counted). Events
+    ///     are deltas - each one is a line the player would otherwise never
+    ///     see - so they queue rather than drop.
+    ///   - OfferSnapshot / OfferStateFrame: one slot, latest wins. A state
+    ///     frame is an ABSOLUTE snapshot, so an older one still waiting when a
+    ///     newer one arrives is worth nothing. That is THE COMBAT FREEZE fix
+    ///     below, kept.
+    ///   - CloseAsync: a sentinel the writer honours before anything else, so
+    ///     a close never races a send.
+    ///
+    /// THE COMBAT FREEZE, for the record, because it is why snapshots keep
+    /// latest-wins semantics: the old lock was once taken with no timeout from
+    /// a fire-and-forget 10 Hz broadcast. When a peer stopped reading, TCP
+    /// back-pressure left one send pending forever, it kept the lock, and every
+    /// later frame queued behind it - nothing threw, nothing closed, the socket
+    /// stayed open and silent, and the client (whose reconnect logic is fine)
+    /// had nothing to reconnect FROM. The send timeout and IsWedged below are
+    /// the second half of that fix, and they now live in the writer.
+    /// </remarks>
+    // Modul: task 46 (audit item 8, "8a - measure"). Nothing on /metrics
+    // answered how big a JSON state frame actually is or how long
+    // PacketJsonCodec.SerializeToUtf8 takes on the tick thread, and
+    // docs/TASK_BOARD.md #46's go/no-go call - close the item, or add
+    // compression (8c) and maybe deltas (8b) - needs a week of real
+    // production numbers, not a guess. CLAUDE.md: "a number a test PRINTS is
+    // not a number a test CHECKS" applies to a dashboard nobody reads just
+    // as much as to a test nobody asserts on.
+    //
+    // Bytes count every frame actually handed to a session: the JSON
+    // serialize output, plus the binary struct's fixed size for the
+    // (retired-client) binary path - a memcpy of a constant-size unmanaged
+    // struct, cheap enough to fold into the byte total without its own
+    // timer. The microsecond histogram is JSON-only, wrapped tightly around
+    // SerializeToUtf8 itself, because that Utf8JsonWriter walk over ~230
+    // fields is the actual cost the CPU-budget threshold is about - timing
+    // the binary path would just measure noise.
+    //
+    // Plain Interlocked counters rather than a lock: written from the single
+    // tick thread (SendToPlayer runs once per online player per 10Hz tick),
+    // read from a concurrent HTTP scrape - the same shape as
+    // WebSocketSession.EventsDroppedTotal below.
+    public static class StateFrameMetrics
+    {
+        private static long s_bytesTotal;
+        private static long s_framesTotal;
+        private static long s_serializeSumUs;
+        private static long s_serializeCount;
+        private static long s_bucket100Us;
+        private static long s_bucket250Us;
+        private static long s_bucket500Us;
+        private static long s_bucket1000Us;
+        private static long s_bucket2500Us;
+        private static long s_bucketInfUs;
+
+        public static long BytesTotal => Interlocked.Read(ref s_bytesTotal);
+        public static long FramesTotal => Interlocked.Read(ref s_framesTotal);
+        public static long SerializeSumMicroseconds => Interlocked.Read(ref s_serializeSumUs);
+        public static long SerializeCount => Interlocked.Read(ref s_serializeCount);
+        public static long Bucket100Us => Interlocked.Read(ref s_bucket100Us);
+        public static long Bucket250Us => Interlocked.Read(ref s_bucket250Us);
+        public static long Bucket500Us => Interlocked.Read(ref s_bucket500Us);
+        public static long Bucket1000Us => Interlocked.Read(ref s_bucket1000Us);
+        public static long Bucket2500Us => Interlocked.Read(ref s_bucket2500Us);
+        public static long BucketInfUs => Interlocked.Read(ref s_bucketInfUs);
+
+        /// <summary>Records one JSON state frame: its wire size, and how long SerializeToUtf8 took to build it.</summary>
+        public static void RecordJsonFrame(int bytes, long serializeMicroseconds)
+        {
+            Interlocked.Add(ref s_bytesTotal, bytes);
+            Interlocked.Increment(ref s_framesTotal);
+            Interlocked.Add(ref s_serializeSumUs, serializeMicroseconds);
+            Interlocked.Increment(ref s_serializeCount);
+            if (serializeMicroseconds <= 100) Interlocked.Increment(ref s_bucket100Us);
+            if (serializeMicroseconds <= 250) Interlocked.Increment(ref s_bucket250Us);
+            if (serializeMicroseconds <= 500) Interlocked.Increment(ref s_bucket500Us);
+            if (serializeMicroseconds <= 1000) Interlocked.Increment(ref s_bucket1000Us);
+            if (serializeMicroseconds <= 2500) Interlocked.Increment(ref s_bucket2500Us);
+            Interlocked.Increment(ref s_bucketInfUs);
+        }
+
+        /// <summary>Records one binary state frame's fixed size. No serialize timer - see the class remarks.</summary>
+        public static void RecordBinaryFrame(int bytes)
+        {
+            Interlocked.Add(ref s_bytesTotal, bytes);
+            Interlocked.Increment(ref s_framesTotal);
+        }
+
+        // Modul: test-only reset. StateFrameMetrics is exercised directly by
+        // StateFrameSizeTests with no database or socket involved, and these
+        // are process-wide static counters (deliberately, like every other
+        // /metrics counter in this file) - without a reset, an earlier
+        // test's frames would leak into a later test's assertions.
+        internal static void ResetForTests()
+        {
+            Interlocked.Exchange(ref s_bytesTotal, 0);
+            Interlocked.Exchange(ref s_framesTotal, 0);
+            Interlocked.Exchange(ref s_serializeSumUs, 0);
+            Interlocked.Exchange(ref s_serializeCount, 0);
+            Interlocked.Exchange(ref s_bucket100Us, 0);
+            Interlocked.Exchange(ref s_bucket250Us, 0);
+            Interlocked.Exchange(ref s_bucket500Us, 0);
+            Interlocked.Exchange(ref s_bucket1000Us, 0);
+            Interlocked.Exchange(ref s_bucket2500Us, 0);
+            Interlocked.Exchange(ref s_bucketInfUs, 0);
+        }
+    }
+
     public class WebSocketSession
     {
         public WebSocket Socket { get; }
@@ -28,7 +160,6 @@ namespace FolkIdle.Server.Network
         public string RedisLockToken { get; }
         public TokenBucket TokenBucket;
         public TokenBucket ChatTokenBucket;
-        public byte[] DiagnosticSendBuffer { get; }
 
         // Modul: cached from the player's live TickStatePayload.GuildId
         // (see SimulationEngine.AddActivePlayer/UpdateSessionGuildId) so
@@ -45,37 +176,30 @@ namespace FolkIdle.Server.Network
         //
         // False is the default in the fullest sense: the Unity client sends a
         // binary AuthHandshakePacket, lands in the binary branch, and every
-        // send path below takes the same reusable-buffer, blittable-write
-        // route it always has. Nothing about the binary path changed to make
-        // room for this.
+        // send path below takes the blittable-write route it always has.
         public bool UseJsonProtocol { get; }
 
-        // Modul: .NET's WebSocket forbids more than one outstanding
-        // send-family operation (SendAsync or CloseAsync) in flight at a
-        // time on the same instance. State broadcasts (SendToPlayer, 1Hz),
-        // chat broadcasts (BroadcastChatMessage), and disconnects
-        // (ForceDisconnect, DisconnectAllClientsGracefullyAsync, stale-
-        // session eviction) are independent call sites that can all target
-        // the same socket - each individually well-behaved in isolation,
-        // but unsynchronized against each other, which is what let two of
-        // them race and throw "already one outstanding SendAsync call",
-        // silently aborting the socket with no error surfaced anywhere.
-        // Every send/close on this session's socket MUST go through
-        // SendAsync/CloseAsync below rather than Socket.SendAsync/
-        // Socket.CloseAsync directly, so exactly one send-family operation
-        // is ever in flight regardless of which caller issued it.
-        private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+        /// <summary>How many events one session may hold before the oldest is dropped.</summary>
+        public const int EventCapacity = 512;
 
-        public WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol = false)
-        {
-            Socket = socket;
-            RedisLockToken = redisLockToken;
-            UseJsonProtocol = useJsonProtocol;
-            Throttler = new ClientInputThrottler();
-            TokenBucket = NetworkThrottlingEngine.CreateBucket();
-            ChatTokenBucket = ChatEngine.CreateChatBucket();
-            DiagnosticSendBuffer = new byte[Marshal.SizeOf<StateUpdatePacket>()];
-        }
+        /// <summary>
+        /// Events dropped because an outbox was full, across every session
+        /// since start. Exposed on /metrics as
+        /// folkidle_outbox_events_dropped_total.
+        /// </summary>
+        /// <remarks>
+        /// Modul: a drop nobody counts is the silent loss this outbox exists
+        /// to end, so the one place it can still drop reports that it did.
+        /// </remarks>
+        public static long EventsDroppedTotal => Interlocked.Read(ref s_eventsDroppedTotal);
+        private static long s_eventsDroppedTotal;
+
+        /// <summary>Events dropped from THIS session's outbox.</summary>
+        public long EventsDropped => Interlocked.Read(ref _eventsDropped);
+        private long _eventsDropped;
+
+        /// <summary>Events waiting for this session's writer.</summary>
+        public int PendingEventCount => _events.Reader.Count;
 
         /// <summary>
         /// How long one frame may take before the socket is considered wedged.
@@ -84,157 +208,413 @@ namespace FolkIdle.Server.Network
         /// for a slow second. What it stops is the unbounded case: a peer that
         /// has stopped reading entirely, where the send never completes at all.
         /// </summary>
-        private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(20);
+        public static readonly TimeSpan DefaultSendTimeout = TimeSpan.FromSeconds(20);
+        private readonly TimeSpan _sendTimeout;
 
         /// <summary>
-        /// True once a send has timed out. The broadcast loop reads it and
-        /// evicts the session, which is what lets the client's own reconnect
-        /// logic run - see SendAsync for why silence was worse than a
-        /// disconnect.
+        /// True once a send has timed out. SendToPlayer reads it and evicts
+        /// the session, which is what lets the client's own reconnect logic
+        /// run - a disconnect the client can act on beats a socket that is
+        /// open and silent.
         /// </summary>
         public volatile bool IsWedged;
 
-        /// <summary>
-        /// Sends one frame, or drops it if this socket is already busy.
-        ///
-        /// THIS IS THE COMBAT FREEZE.
-        ///
-        /// The lock is necessary - .NET forbids two outstanding sends on one
-        /// WebSocket - but it was taken with `WaitAsync(cancellationToken)`
-        /// where every caller passes CancellationToken.None, and the sends are
-        /// fire-and-forget from a 10 Hz broadcast. So when a peer stopped
-        /// reading, TCP back-pressure left `Socket.SendAsync` pending
-        /// indefinitely, that send kept the semaphore, and every following
-        /// tick's send queued behind it forever.
-        ///
-        /// Nothing threw. Nothing closed. The socket stayed open with no frames
-        /// arriving, so the client - whose reconnect logic is fine - never had
-        /// anything to reconnect FROM: it was not disconnected, it was being
-        /// ignored. HP stopped ticking, kills stopped appearing, and F5 fixed
-        /// it because a new socket has an uncontended lock. It also grew the
-        /// queue without bound for as long as the player left the tab open.
-        ///
-        /// Two changes, and the first is the one that matters. A state update
-        /// is an ABSOLUTE SNAPSHOT, not a delta, so a frame that cannot be sent
-        /// right now is worth nothing - the next tick carries the same truth,
-        /// only fresher. Taking the lock with a zero timeout turns a stalled
-        /// socket into dropped frames instead of an infinite queue. The second
-        /// bounds the underlying send, so a socket that is truly gone is torn
-        /// down and the client is told, rather than left watching a frozen
-        /// screen.
-        /// </summary>
-        public async Task SendAsync(ArraySegment<byte> segment, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
+        private readonly struct OutboundFrame
         {
-            // Zero timeout: do not queue behind an in-flight send.
-            if (!await _sendLock.WaitAsync(0, cancellationToken).ConfigureAwait(false))
+            public readonly byte[] Buffer;
+            public readonly WebSocketMessageType Type;
+
+            public OutboundFrame(byte[] buffer, WebSocketMessageType type)
             {
-                return;
+                Buffer = buffer;
+                Type = type;
             }
+        }
 
-            try
+        private sealed class CloseRequest
+        {
+            public readonly WebSocketCloseStatus Status;
+            public readonly string Description;
+            public readonly TaskCompletionSource Done = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            public CloseRequest(WebSocketCloseStatus status, string description)
             {
-                if (Socket.State != WebSocketState.Open) return;
+                Status = status;
+                Description = description;
+            }
+        }
 
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(SendTimeout);
+        private readonly Channel<OutboundFrame> _events;
 
-                try
+        // Modul: the snapshot slot is guarded by a plain lock rather than an
+        // Interlocked.Exchange of a frame object, so the binary path can hand
+        // over a rented buffer without allocating a holder per 10 Hz tick.
+        // Held for a few field writes only - never across an await.
+        private readonly object _snapshotGate = new();
+        private byte[]? _snapshotBuffer;
+        private int _snapshotLength;
+        private WebSocketMessageType _snapshotType;
+        private bool _snapshotRented;
+
+        private readonly object _lifecycleGate = new();
+        private CloseRequest? _closeRequest;
+        private bool _writerExited;
+        private volatile bool _shutdown;
+
+        // Modul: one wake-up per burst, not one per frame. A producer
+        // releases the semaphore only on the 0 -> 1 transition of this flag,
+        // and the writer clears it BEFORE it drains - so anything enqueued
+        // during the drain signals again and is picked up by the next pass
+        // rather than lost between a check and a wait.
+        private readonly SemaphoreSlim _signal = new(0);
+        private int _signalled;
+
+        private readonly Task _writer;
+
+        public WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol = false)
+            : this(socket, redisLockToken, useJsonProtocol, DefaultSendTimeout)
+        {
+        }
+
+        // Test seam: SessionOutboxTests drives the wedge path with a
+        // millisecond timeout rather than waiting twenty real seconds.
+        internal WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol, TimeSpan sendTimeout)
+        {
+            Socket = socket;
+            RedisLockToken = redisLockToken;
+            UseJsonProtocol = useJsonProtocol;
+            Throttler = new ClientInputThrottler();
+            TokenBucket = NetworkThrottlingEngine.CreateBucket();
+            ChatTokenBucket = ChatEngine.CreateChatBucket();
+            _sendTimeout = sendTimeout;
+
+            _events = Channel.CreateBounded<OutboundFrame>(
+                new BoundedChannelOptions(EventCapacity)
                 {
-                    await Socket.SendAsync(segment, messageType, endOfMessage, timeout.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                    FullMode = BoundedChannelFullMode.DropOldest,
+                    SingleReader = true,
+                    SingleWriter = false,
+                    AllowSynchronousContinuations = false,
+                },
+                _ =>
                 {
-                    // The peer is not reading. Mark it so the broadcast loop
-                    // evicts the session - a disconnect the client can act on
-                    // beats a socket that is open and silent.
-                    IsWedged = true;
-                    throw new WebSocketException($"send timed out after {SendTimeout.TotalSeconds:F0}s");
-                }
-            }
-            finally
-            {
-                _sendLock.Release();
-            }
+                    Interlocked.Increment(ref _eventsDropped);
+                    Interlocked.Increment(ref s_eventsDroppedTotal);
+                });
+
+            _writer = Task.Run(WriterLoopAsync);
         }
 
         /// <summary>
-        /// Sends one state frame on the binary protocol without allocating.
-        ///
-        /// The lock is taken BEFORE the copy, which is the whole point. The
-        /// caller used to write this session's reusable buffer and then hand it
-        /// to a fire-and-forget send - so the next tick's write could land in
-        /// the buffer the previous send was still reading, and the client would
-        /// receive a frame spliced out of two. Acquiring first means a frame is
-        /// either copied and sent, or dropped before anything is touched.
-        ///
-        /// Synchronous Wait(0) rather than WaitAsync: it never blocks (zero
-        /// timeout) and it keeps the copy off an await boundary, where a Span
-        /// cannot go.
+        /// Queues one event frame. Never blocks, never awaits.
         /// </summary>
-        public Task SendStateFrameAsync(ref StateUpdatePacket packet)
+        /// <remarks>
+        /// The buffer is sent as-is at some later point, so the caller must
+        /// not write to it afterwards. One immutable buffer may be enqueued to
+        /// many sessions - chat does exactly that.
+        /// </remarks>
+        public void EnqueueEvent(byte[] frame, WebSocketMessageType messageType)
         {
-            if (!_sendLock.Wait(0))
-            {
-                return Task.CompletedTask;
-            }
-
-            try
-            {
-                if (Socket.State != WebSocketState.Open) return Task.CompletedTask;
-
-                ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
-                MemoryMarshal.AsBytes(span).CopyTo(DiagnosticSendBuffer);
-            }
-            catch
-            {
-                _sendLock.Release();
-                throw;
-            }
-
-            return SendHeldAsync(new ArraySegment<byte>(DiagnosticSendBuffer), WebSocketMessageType.Binary);
+            if (_shutdown) return;
+            _events.Writer.TryWrite(new OutboundFrame(frame, messageType));
+            Signal();
         }
 
-        /// <summary>Sends with the lock ALREADY held, and releases it.</summary>
-        private async Task SendHeldAsync(ArraySegment<byte> segment, WebSocketMessageType messageType)
+        /// <summary>Encodes one packet for this session's protocol and queues it as an event.</summary>
+        public void EnqueuePacket<T>(ref T packet) where T : unmanaged
         {
-            try
+            if (UseJsonProtocol)
             {
-                using var timeout = new CancellationTokenSource(SendTimeout);
-                try
-                {
-                    await Socket.SendAsync(segment, messageType, true, timeout.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (timeout.IsCancellationRequested)
-                {
-                    IsWedged = true;
-                    throw new WebSocketException($"send timed out after {SendTimeout.TotalSeconds:F0}s");
-                }
+                EnqueueEvent(PacketJsonCodec.SerializeToUtf8(ref packet), WebSocketMessageType.Text);
             }
-            finally
+            else
             {
-                _sendLock.Release();
+                EnqueueEvent(EncodeBinary(ref packet), WebSocketMessageType.Binary);
             }
         }
 
-        public async Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
+        /// <summary>A fresh blittable copy of one packet - owned by the caller, safe to share.</summary>
+        public static byte[] EncodeBinary<T>(ref T packet) where T : unmanaged
         {
-            // Bounded, like SendAsync: a close must never be the thing that
-            // hangs the eviction path for a socket that is already gone.
-            if (!await _sendLock.WaitAsync(SendTimeout, cancellationToken).ConfigureAwait(false))
+            ReadOnlySpan<T> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
+            return MemoryMarshal.AsBytes(span).ToArray();
+        }
+
+        /// <summary>
+        /// Offers a state snapshot. Replaces any snapshot still waiting - the
+        /// newer one carries the same truth, only fresher.
+        /// </summary>
+        public void OfferSnapshot(byte[] frame, WebSocketMessageType messageType)
+        {
+            SetSnapshot(frame, frame.Length, messageType, rented: false);
+        }
+
+        /// <summary>
+        /// Offers a state snapshot on the binary protocol.
+        /// </summary>
+        /// <remarks>
+        /// Modul: this used to copy into one per-session DiagnosticSendBuffer
+        /// and send from it, which is only safe while a lock guarantees the
+        /// previous send has finished reading. With a writer that sends later,
+        /// the next tick's copy would land in the buffer the writer is still
+        /// sending - a frame spliced out of two. So each offer copies into a
+        /// buffer rented from the shared pool, and whoever retires it (the
+        /// writer after sending, or a newer offer superseding it) returns it.
+        /// </remarks>
+        public void OfferStateFrame(ref StateUpdatePacket packet)
+        {
+            int size = Unsafe.SizeOf<StateUpdatePacket>();
+            byte[] rented = ArrayPool<byte>.Shared.Rent(size);
+            ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
+            MemoryMarshal.AsBytes(span).CopyTo(rented);
+            SetSnapshot(rented, size, WebSocketMessageType.Binary, rented: true);
+        }
+
+        private void SetSnapshot(byte[] buffer, int length, WebSocketMessageType type, bool rented)
+        {
+            if (_shutdown)
             {
+                if (rented) ArrayPool<byte>.Shared.Return(buffer);
                 return;
             }
 
+            byte[]? superseded;
+            bool supersededRented;
+            lock (_snapshotGate)
+            {
+                superseded = _snapshotBuffer;
+                supersededRented = _snapshotRented;
+                _snapshotBuffer = buffer;
+                _snapshotLength = length;
+                _snapshotType = type;
+                _snapshotRented = rented;
+            }
+
+            if (superseded != null && supersededRented)
+            {
+                ArrayPool<byte>.Shared.Return(superseded);
+            }
+
+            Signal();
+        }
+
+        /// <summary>
+        /// Asks the writer to close the socket. Completes when the close has
+        /// run (or the writer has already stopped).
+        /// </summary>
+        /// <remarks>
+        /// Modul: a sentinel rather than a direct Socket.CloseAsync, so a
+        /// close can never be the second outstanding send-family operation on
+        /// the socket. It jumps the queue: events still waiting are for a
+        /// connection that is going away. The first close requested wins - a
+        /// later one (say the shutdown sweep after an eviction) just waits on
+        /// the same result.
+        /// </remarks>
+        public Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
+        {
+            Task done;
+            lock (_lifecycleGate)
+            {
+                if (_writerExited) return Task.CompletedTask;
+                _closeRequest ??= new CloseRequest(closeStatus, statusDescription);
+                done = _closeRequest.Done.Task;
+            }
+
+            Signal();
+            return cancellationToken.CanBeCanceled ? done.WaitAsync(cancellationToken) : done;
+        }
+
+        /// <summary>
+        /// Stops the writer without closing - the connection has already
+        /// ended. Called once the receive loop for this socket has finished.
+        /// </summary>
+        public void Shutdown()
+        {
+            _shutdown = true;
+            Signal();
+        }
+
+        /// <summary>The writer task. Test-only observability.</summary>
+        internal Task WriterTask => _writer;
+
+        private void Signal()
+        {
+            if (Interlocked.Exchange(ref _signalled, 1) == 0)
+            {
+                _signal.Release();
+            }
+        }
+
+        private async Task WriterLoopAsync()
+        {
             try
             {
-                if (Socket.State != WebSocketState.Open) return;
-                await Socket.CloseAsync(closeStatus, statusDescription, cancellationToken).ConfigureAwait(false);
+                while (true)
+                {
+                    await _signal.WaitAsync().ConfigureAwait(false);
+                    Volatile.Write(ref _signalled, 0);
+
+                    if (await TryHonourCloseAsync().ConfigureAwait(false)) return;
+                    if (_shutdown || IsTerminal(Socket.State)) return;
+
+                    // Modul: EVENTS FIRST, then the snapshot, in the same
+                    // wake-up. The combat feed needs this order: a blow must
+                    // not arrive visibly after the health change it explains.
+                    //
+                    // And a BUDGET: at most one queue's worth per pass.
+                    // Draining `while (TryRead)` unbounded would let a producer
+                    // that never pauses starve the snapshot forever - the
+                    // exact shape that stopped equipment drops server-wide in
+                    // CombatLootEngine. The budget is a fixed bound rather
+                    // than the depth read at the top, deliberately: an event
+                    // that arrived while an earlier send was blocked is still
+                    // older news than the snapshot waiting behind it, so it
+                    // goes first. Whatever is left has signalled again and is
+                    // next pass's work.
+                    for (int i = 0; i < EventCapacity && _events.Reader.TryRead(out OutboundFrame frame); i++)
+                    {
+                        if (Volatile.Read(ref _closeRequest) != null || _shutdown) break;
+                        if (!await SendFrameAsync(new ArraySegment<byte>(frame.Buffer), frame.Type).ConfigureAwait(false)) return;
+                    }
+
+                    if (Volatile.Read(ref _closeRequest) != null || _shutdown)
+                    {
+                        Signal();
+                        continue;
+                    }
+
+                    byte[]? snapshot;
+                    int length;
+                    WebSocketMessageType type;
+                    bool rented;
+                    lock (_snapshotGate)
+                    {
+                        snapshot = _snapshotBuffer;
+                        length = _snapshotLength;
+                        type = _snapshotType;
+                        rented = _snapshotRented;
+                        _snapshotBuffer = null;
+                    }
+
+                    if (snapshot != null)
+                    {
+                        bool sent;
+                        try
+                        {
+                            sent = await SendFrameAsync(new ArraySegment<byte>(snapshot, 0, length), type).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            if (rented) ArrayPool<byte>.Shared.Return(snapshot);
+                        }
+
+                        if (!sent) return;
+                    }
+
+                    // Events left over by the budget were enqueued before
+                    // this pass cleared the signal, so nothing else will wake
+                    // the writer for them.
+                    if (_events.Reader.Count > 0) Signal();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Modul: nothing escapes a writer - an unobserved fault here
+                // would be a player whose screen stops moving with no log.
+                Console.WriteLine($"Session writer stopped: {ex.GetBaseException().Message}");
             }
             finally
             {
-                _sendLock.Release();
+                ExitWriter();
             }
         }
+
+        /// <summary>Sends one frame. False means the writer must stop.</summary>
+        private async Task<bool> SendFrameAsync(ArraySegment<byte> segment, WebSocketMessageType type)
+        {
+            WebSocketState state = Socket.State;
+            if (state != WebSocketState.Open)
+            {
+                // CloseReceived: the peer is leaving and the receive loop is
+                // about to request the close - keep going so it can.
+                return !IsTerminal(state);
+            }
+
+            using var timeout = new CancellationTokenSource(_sendTimeout);
+            try
+            {
+                await Socket.SendAsync(segment, type, true, timeout.Token).ConfigureAwait(false);
+                return true;
+            }
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+            {
+                // The peer is not reading. Mark it so SendToPlayer evicts the
+                // session - a disconnect the client can act on beats a socket
+                // that is open and silent. A cancelled send has aborted the
+                // socket, so this writer has nothing left to do.
+                IsWedged = true;
+                Console.WriteLine($"Session send timed out after {_sendTimeout.TotalSeconds:F0}s; marked wedged.");
+                return false;
+            }
+            catch (Exception ex) when (ex is WebSocketException || ex is ObjectDisposedException || ex is InvalidOperationException)
+            {
+                Console.WriteLine($"Session send failed: {ex.Message}");
+                return !IsTerminal(Socket.State);
+            }
+        }
+
+        private async Task<bool> TryHonourCloseAsync()
+        {
+            CloseRequest? request = Volatile.Read(ref _closeRequest);
+            if (request == null) return false;
+
+            try
+            {
+                WebSocketState state = Socket.State;
+                if (state == WebSocketState.Open || state == WebSocketState.CloseReceived)
+                {
+                    // Bounded, like a send: a close must never be the thing
+                    // that hangs for a peer that is already gone.
+                    using var timeout = new CancellationTokenSource(_sendTimeout);
+                    await Socket.CloseAsync(request.Status, request.Description, timeout.Token).ConfigureAwait(false);
+                }
+
+                request.Done.TrySetResult();
+            }
+            catch (Exception ex)
+            {
+                request.Done.TrySetException(ex);
+            }
+
+            return true;
+        }
+
+        private void ExitWriter()
+        {
+            CloseRequest? pending;
+            lock (_lifecycleGate)
+            {
+                _writerExited = true;
+                pending = _closeRequest;
+            }
+
+            _shutdown = true;
+            pending?.Done.TrySetResult();
+
+            byte[]? snapshot;
+            bool rented;
+            lock (_snapshotGate)
+            {
+                snapshot = _snapshotBuffer;
+                rented = _snapshotRented;
+                _snapshotBuffer = null;
+            }
+
+            if (snapshot != null && rented) ArrayPool<byte>.Shared.Return(snapshot);
+        }
+
+        private static bool IsTerminal(WebSocketState state) =>
+            state == WebSocketState.Closed || state == WebSocketState.Aborted;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -270,18 +650,6 @@ namespace FolkIdle.Server.Network
         private PushNotificationTriggerEngine? _pushNotificationTriggerEngine;
         private PlayerSessionRegistry? _playerSessionRegistry;
         private readonly ChatEngine _chatEngine;
-
-        // Modul: Full-Stack Social Layer, Part 1. A single buffer is now
-        // sufficient - ChatEngine's dispatch worker drains
-        // OutboundDispatchQueue with exactly one background task, so at
-        // most one HandleChatDispatchAsync invocation (and therefore one
-        // buffer copy-then-send sequence) is ever in flight at a time,
-        // regardless of which channel (global/guild/whisper) an item came
-        // from. Previously two buffers were required because the global
-        // and guild Redis subscriptions could invoke their handlers
-        // concurrently with each other; that is no longer true once
-        // delivery is centralized behind one dispatch worker.
-        private readonly byte[] _chatDispatchBuffer = new byte[Marshal.SizeOf<ResponseChatMessagePacket>()];
 
         public NetworkBroadcastSystem(IServiceProvider serviceProvider, string jwtSecretKey, string uriPrefix = "http://localhost:8080/")
         {
@@ -379,22 +747,19 @@ namespace FolkIdle.Server.Network
         }
 
         // Modul: Loot Event Feed. Drains PlayerSessionRegistry.OutboundLootDropQueue
-        // and pushes each drop to the socket of the player it belongs to.
+        // and hands each drop to the outbox of the player it belongs to.
         //
         // Its own background loop rather than a hook on the 10Hz tick,
         // because drops are produced by CombatLootEngine's own 3-second cron
-        // (never on the tick thread) and a socket write must not be able to
-        // stall the simulation. Mirrors ChatEngine's dispatch worker shape
-        // exactly, including the 50ms idle sleep - loot is bursty and rare,
-        // so a tight spin would burn a core to deliver a handful of messages
-        // a minute.
+        // (never on the tick thread). The 50ms idle sleep stays - loot is
+        // bursty and rare, so a tight spin would burn a core to deliver a
+        // handful of messages a minute.
         //
-        // Allocation-free per drop: one reusable buffer, one blittable
-        // write, no strings anywhere on the path (the packet carries a
-        // numeric ContentRegistry item id which the client resolves through
-        // its own content mirror).
-        private readonly byte[] _lootDropDispatchBuffer = new byte[Marshal.SizeOf<ResponseLootDropPacket>()];
-
+        // Modul: task 41. This loop ENQUEUES and never awaits a socket. It
+        // used to await each send in turn, so one peer that had stopped
+        // reading held every other player's loot for up to the 20 s send
+        // timeout - and a drop that met a state frame in flight was thrown
+        // away. The session's own writer does the sending now.
         private async Task LootDropDispatchLoopAsync()
         {
             while (_isRunning)
@@ -406,27 +771,12 @@ namespace FolkIdle.Server.Network
                     continue;
                 }
 
-                if (!_connectedClients.TryGetValue(drop.PlayerId, out var session) || session.Socket.State != WebSocketState.Open)
-                {
-                    // The player logged off between the drop resolving and
-                    // this dispatch. The item is already persisted, so
-                    // dropping the notification loses nothing but the
-                    // on-screen line.
-                    continue;
-                }
-
                 try
                 {
-                    if (session.UseJsonProtocol)
-                    {
-                        byte[] json = PacketJsonCodec.SerializeToUtf8(ref drop);
-                        await session.SendAsync(new ArraySegment<byte>(json), WebSocketMessageType.Text, true, CancellationToken.None);
-                    }
-                    else
-                    {
-                        MemoryMarshal.Write(_lootDropDispatchBuffer, in drop);
-                        await session.SendAsync(new ArraySegment<byte>(_lootDropDispatchBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
-                    }
+                    // False when the player logged off between the drop
+                    // resolving and this dispatch. The item is already
+                    // persisted, so that loses nothing but the on-screen line.
+                    EnqueueEventTo(_connectedClients, drop.PlayerId, ref drop);
                 }
                 catch (Exception ex)
                 {
@@ -435,20 +785,37 @@ namespace FolkIdle.Server.Network
             }
         }
 
-        // Modul: Combat Event Feed. Drains Domain.Combat.CombatEventFeed and
-        // pushes each resolved blow to the socket of the player it belongs to.
-        //
-        // The same shape as the loot loop directly above, for the same reasons,
-        // with one difference worth knowing: combat events are produced by the
-        // 10Hz simulation tick itself rather than by a 3-second cron, so the
-        // idle sleep is shorter. At 50ms a burst of events resolved in one tick
-        // would be delivered over several hundred milliseconds and arrive
-        // visibly after the health change they explain.
-        //
-        // The queue is bounded and drops when full (see CombatEventFeed), so a
-        // client that cannot keep up costs the simulation nothing.
-        private readonly byte[] _combatEventDispatchBuffer = new byte[Marshal.SizeOf<ResponseCombatEventPacket>()];
+        /// <summary>
+        /// Queues one event packet on a connected player's outbox. Never awaits.
+        /// </summary>
+        /// <remarks>
+        /// Static over the session map so SessionOutboxTests can prove that a
+        /// dispatch returns at once even when the target's socket is stalled.
+        /// </remarks>
+        internal static bool EnqueueEventTo<T>(ConcurrentDictionary<long, WebSocketSession> clients, long playerId, ref T packet) where T : unmanaged
+        {
+            if (!clients.TryGetValue(playerId, out var session) || session.Socket.State != WebSocketState.Open)
+            {
+                return false;
+            }
 
+            session.EnqueuePacket(ref packet);
+            return true;
+        }
+
+        // Modul: Combat Event Feed. Drains Domain.Combat.CombatEventFeed and
+        // hands each resolved blow to the outbox of the player it belongs to.
+        //
+        // The same shape as the loot loop directly above, with one difference
+        // worth knowing: combat events are produced by the 10Hz simulation
+        // tick itself rather than by a 3-second cron, so the idle sleep is
+        // shorter. At 50ms a burst of events resolved in one tick would be
+        // delivered over several hundred milliseconds and arrive visibly after
+        // the health change they explain. The writer keeps the other half of
+        // that promise: it sends queued events BEFORE the pending snapshot.
+        //
+        // The feed is bounded and drops when full (see CombatEventFeed), so a
+        // client that cannot keep up costs the simulation nothing.
         private async Task CombatEventDispatchLoopAsync()
         {
             while (_isRunning)
@@ -459,26 +826,12 @@ namespace FolkIdle.Server.Network
                     continue;
                 }
 
-                if (!_connectedClients.TryGetValue(combatEvent.PlayerId, out var session) || session.Socket.State != WebSocketState.Open)
-                {
-                    // Nobody is watching. The blow already happened and is
-                    // already reflected in the authoritative state; only the
-                    // on-screen line is lost.
-                    continue;
-                }
-
                 try
                 {
-                    if (session.UseJsonProtocol)
-                    {
-                        byte[] json = PacketJsonCodec.SerializeToUtf8(ref combatEvent);
-                        await session.SendAsync(new ArraySegment<byte>(json), WebSocketMessageType.Text, true, CancellationToken.None);
-                    }
-                    else
-                    {
-                        MemoryMarshal.Write(_combatEventDispatchBuffer, in combatEvent);
-                        await session.SendAsync(new ArraySegment<byte>(_combatEventDispatchBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
-                    }
+                    // False when nobody is watching. The blow already happened
+                    // and is already reflected in the authoritative state;
+                    // only the on-screen line is lost.
+                    EnqueueEventTo(_connectedClients, combatEvent.PlayerId, ref combatEvent);
                 }
                 catch (Exception ex)
                 {
@@ -495,12 +848,16 @@ namespace FolkIdle.Server.Network
         // locally as a special case. Runs entirely off ChatEngine's own
         // background dispatch worker, never on the Redis message pump and
         // never on the 10Hz simulation tick - see ChatEngine's own doc
-        // comment on OutboundDispatchQueue for why. ChatEngine guarantees
-        // only one dispatch item is ever being processed at a time, so
-        // awaiting every SendAsync here in turn (and reusing one shared
-        // buffer) is both safe and required, matching the exact same
-        // constraint the old two-buffer/two-handler split existed to
-        // satisfy.
+        // comment on OutboundDispatchQueue for why.
+        //
+        // Modul: task 41. Every recipient's frame goes on that recipient's
+        // outbox; nothing here awaits a socket. Chat - private messages
+        // included - used to be dropped whenever the recipient had a state
+        // frame in flight, and one stalled recipient held the fan-out for
+        // everyone after it. The message is encoded at most once per protocol
+        // and the SAME immutable buffer is queued to every recipient, which is
+        // safe only because nothing writes to it afterwards (the old shared
+        // _chatDispatchBuffer is gone for exactly that reason).
         //
         // Modul: Full-Stack Social Layer, Part 2.2. Block filtering. One
         // query per dispatched message (not per recipient) fetches every
@@ -513,16 +870,8 @@ namespace FolkIdle.Server.Network
         {
             System.Collections.Generic.HashSet<long> blockedByRecipients = await GetPlayersWhoBlockedAsync(item.Packet.SenderPlayerId);
 
-            CopyChatPacketToDispatchBuffer(item.Packet);
-            var segment = new ArraySegment<byte>(_chatDispatchBuffer);
-
-            // Modul: JSON WebSocket mode, 2026-08-02. Encoded at most once
-            // per dispatched message no matter how many JSON recipients it
-            // has, and not at all when every recipient is on the binary
-            // protocol - which is the state of the world until a web client
-            // actually connects.
             ResponseChatMessagePacket chatPacket = item.Packet;
-            byte[]? chatJson = null;
+            var frames = new ChatFrames(chatPacket);
 
             if (item.DispatchMode == ChatEngine.DispatchModeWhisper)
             {
@@ -535,19 +884,11 @@ namespace FolkIdle.Server.Network
                 {
                     try
                     {
-                        if (targetSession.UseJsonProtocol)
-                        {
-                            chatJson ??= PacketJsonCodec.SerializeToUtf8(ref chatPacket);
-                            await targetSession.SendAsync(new ArraySegment<byte>(chatJson), WebSocketMessageType.Text, true, CancellationToken.None);
-                        }
-                        else
-                        {
-                            await targetSession.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
-                        }
+                        frames.EnqueueTo(targetSession);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Whisper send failed for player {item.TargetPlayerId}: {ex.Message}");
+                        Console.WriteLine($"Whisper dispatch failed for player {item.TargetPlayerId}: {ex.Message}");
                     }
                 }
                 return;
@@ -569,20 +910,43 @@ namespace FolkIdle.Server.Network
                 {
                     try
                     {
-                        if (kvp.Value.UseJsonProtocol)
-                        {
-                            chatJson ??= PacketJsonCodec.SerializeToUtf8(ref chatPacket);
-                            await kvp.Value.SendAsync(new ArraySegment<byte>(chatJson), WebSocketMessageType.Text, true, CancellationToken.None);
-                        }
-                        else
-                        {
-                            await kvp.Value.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
-                        }
+                        frames.EnqueueTo(kvp.Value);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Chat dispatch send failed for player {kvp.Key}: {ex.Message}");
+                        Console.WriteLine($"Chat dispatch failed for player {kvp.Key}: {ex.Message}");
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// One chat message, encoded lazily and at most once per protocol, for
+        /// fan-out to many outboxes. The buffers are shared and never written
+        /// after encoding.
+        /// </summary>
+        private sealed class ChatFrames
+        {
+            private ResponseChatMessagePacket _packet;
+            private byte[]? _json;
+            private byte[]? _binary;
+
+            public ChatFrames(ResponseChatMessagePacket packet)
+            {
+                _packet = packet;
+            }
+
+            public void EnqueueTo(WebSocketSession session)
+            {
+                if (session.UseJsonProtocol)
+                {
+                    _json ??= PacketJsonCodec.SerializeToUtf8(ref _packet);
+                    session.EnqueueEvent(_json, WebSocketMessageType.Text);
+                }
+                else
+                {
+                    _binary ??= WebSocketSession.EncodeBinary(ref _packet);
+                    session.EnqueueEvent(_binary, WebSocketMessageType.Binary);
                 }
             }
         }
@@ -602,13 +966,6 @@ namespace FolkIdle.Server.Network
                 .ToListAsync();
 
             return new System.Collections.Generic.HashSet<long>(blockerIds);
-        }
-
-        private void CopyChatPacketToDispatchBuffer(ResponseChatMessagePacket packet)
-        {
-            ReadOnlySpan<ResponseChatMessagePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
-            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
-            bytes.CopyTo(_chatDispatchBuffer);
         }
 
         // Modul: one persistent pod-wide subscription (not one per
@@ -660,1008 +1017,1238 @@ namespace FolkIdle.Server.Network
             _httpListener.Stop();
         }
 
+        // Modul: THE ACCEPT LOOP ONLY ACCEPTS NOW (task 40, audit item 1).
+        // It used to await every handler inline - the whole if-chain below,
+        // body reads included - so ONE slow request stalled every login,
+        // every WebSocket upgrade and every health probe behind it, and a
+        // body trickled a byte at a time at the unauthenticated asset
+        // handshake froze the server without a password. Each context now
+        // runs on its own task (RouteAsync); what the serial loop used to
+        // prevent by accident - a double-tapped sale racing itself - is the
+        // per-account striped lock's job (AccountStripes).
         private async Task ListenLoopAsync()
         {
             while (_isRunning)
             {
+                HttpListenerContext context;
                 try
                 {
-                    var context = await _httpListener.GetContextAsync();
-                    string requestPath = context.Request.Url?.AbsolutePath ?? "/";
-
-                    // Modul: browser client support, 2026-08-02. Phase 0 of the
-                    // web client port plan.
-                    //
-                    // A browser refuses every cross-origin response that does
-                    // not carry these headers, so without this the web client
-                    // cannot make a single successful call - not even login.
-                    // The Unity client is unaffected: it is not a browser and
-                    // ignores them.
-                    //
-                    // Allow-list, never "*", because these endpoints carry a
-                    // bearer token. A wildcard would let any page on the
-                    // internet call this API with a user's credentials once
-                    // credentials are ever sent.
-                    ApplyCorsHeaders(context);
-
-                    // A browser sends OPTIONS before any request carrying an
-                    // Authorization header, and expects a bodyless 204. Answered
-                    // here rather than per-route so a new endpoint cannot forget
-                    // it - forgetting is invisible until a browser tries.
-                    if (context.Request.HttpMethod == "OPTIONS")
-                    {
-                        context.Response.StatusCode = 204;
-                        context.Response.Close();
-                        continue;
-                    }
-
-                    // Modul: previously both paths unconditionally returned 200
-                    // regardless of real engine state - InfrastructureHealthMonitor
-                    // (IsLive/IsReady/WritePlainHealth) already existed with the
-                    // correct distinct semantics but was never actually called
-                    // from here, so Kubernetes could never detect a pod still
-                    // mid cold-boot-recovery or under heap pressure and would
-                    // route live traffic to it regardless. Liveness only checks
-                    // GlobalEngineState.IsShuttingDown (restart-worthy failure);
-                    // readiness additionally requires cold-boot recovery to have
-                    // completed and heap usage under the readiness limit
-                    // (service-endpoint-worthy, not restart-worthy - see
-                    // InfrastructureHealthMonitor.IsReady).
-                    if (requestPath == "/health/liveness")
-                    {
-                        InfrastructureHealthMonitor.WritePlainHealth(context.Response, InfrastructureHealthMonitor.IsLive());
-                        continue;
-                    }
-
-                    if (requestPath == "/health/readiness")
-                    {
-                        InfrastructureHealthMonitor.WritePlainHealth(context.Response, InfrastructureHealthMonitor.IsReady());
-                        continue;
-                    }
-
-                    if (requestPath == "/healthz")
-                    {
-                        context.Response.StatusCode = 200;
-                        context.Response.Close();
-                        continue;
-                    }
-
-                    // Modul: Prometheus scrape target. Exempt from the
-                    // cold-boot-recovery/shutdown gate below, same as the
-                    // health endpoints above - Prometheus should keep
-                    // observing a pod's state (including zero active
-                    // sessions during cold boot) rather than getting 503s
-                    // that would just show up as scrape failures in its own
-                    // monitoring instead of real data.
-                    if (requestPath == "/metrics" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleMetrics(context);
-                        continue;
-                    }
-
-                    if (GlobalEngineState.IsShuttingDown || !GlobalEngineState.IsColdBootRecoveryComplete)
-                    {
-                        context.Response.StatusCode = 503;
-                        context.Response.Close();
-                        continue;
-                    }
-
-                    // Modul: browser client support, 2026-08-02. Phase 0, step
-                    // 3 of the web client port plan. Serves the exact content
-                    // files the Unity client reads from StreamingAssets, so a
-                    // browser client mirrors monsters/items/skills/gathering
-                    // from the same bytes rather than shipping its own copy.
-                    // Unauthenticated by design - see HandleGameDataFile.
-                    if (requestPath.StartsWith("/gamedata/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGameDataFile(context, requestPath.Substring("/gamedata/".Length));
-                        continue;
-                    }
-
-                    if (requestPath == "/gamedata" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGameDataManifest(context);
-                        continue;
-                    }
-
-                    // Modul: web client port, Phase 7. The same ten sound
-                    // effects the Unity client loads from Resources/Audio,
-                    // linked into this project's output by the csproj rather
-                    // than copied - see that link's own comment. Unauthenticated
-                    // for the same reason the content files are: they ship
-                    // inside the Unity app bundle already.
-                    if (requestPath.StartsWith("/audio/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleAudioFile(context, requestPath.Substring("/audio/".Length));
-                        continue;
-                    }
-
-                    if (requestPath == "/audio" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleAudioManifest(context);
-                        continue;
-                    }
-
-                    if (requestPath.StartsWith("/sprites/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleSpriteFile(context, requestPath.Substring("/sprites/".Length));
-                        continue;
-                    }
-
-                    if (requestPath == "/sprites" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleSpriteManifest(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/assets/handshake" && context.Request.HttpMethod == "POST")
-                    {
-                        string expectedHash = Environment.GetEnvironmentVariable("ExpectedCatalogHash") ?? string.Empty;
-                        string clientHash = string.Empty;
-
-                        if (context.Request.HasEntityBody)
-                        {
-                            using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                            string payload = await reader.ReadToEndAsync();
-                            try
-                            {
-                                var json = System.Text.Json.JsonDocument.Parse(payload);
-                                if (json.RootElement.TryGetProperty("catalog.hash", out var hashElement))
-                                {
-                                    clientHash = hashElement.GetString() ?? string.Empty;
-                                }
-                            }
-                            catch { }
-                        }
-
-                        if (!string.IsNullOrEmpty(expectedHash) && clientHash != expectedHash)
-                        {
-                            context.Response.StatusCode = 426; // Upgrade Required
-                            context.Response.Close();
-                            continue;
-                        }
-
-                        context.Response.StatusCode = 200;
-                        context.Response.Close();
-                        continue;
-                    }
-
-                    // Modul: THE AUTHENTICATION ENDPOINTS HAVE A BUDGET NOW.
-                    //
-                    // Eight wrong passwords in a row used to return eight plain
-                    // 401s with nothing in between. Unlimited guessing against
-                    // any known email, and - because every attempt runs PBKDF2
-                    // at 210,000 iterations - a way to spend the box's CPU from
-                    // a laptop. See AuthThrottle on why the budget counts
-                    // requests rather than failures, and why it reads
-                    // X-Forwarded-For rather than the socket's address.
-                    if (requestPath == "/api/v1/auth/login"
-                        || requestPath == "/api/v1/auth/register"
-                        || requestPath == "/api/v1/auth/oauth-link"
-                        // Modul: the reset endpoints belong in the budget too.
-                        // The request side sends mail to somebody else's
-                        // address, so unthrottled it is a way to use this
-                        // server to spam a stranger; the completion side is a
-                        // guess against a token.
-                        || requestPath == "/api/v1/auth/request-password-reset"
-                        || requestPath == "/api/v1/auth/reset-password"
-                        || requestPath == "/api/v1/auth/refresh"
-                        // Modul: Task 10's step-up gate made this endpoint
-                        // verify a password too (HandleBillingVerify, for a
-                        // device-bearer session on a password-holding
-                        // account) - without this it would be an unthrottled
-                        // oracle for guessing that one account's password at
-                        // full PBKDF2 cost, with no email enumeration even
-                        // needed since the bearer token already identifies
-                        // the account.
-                        || requestPath == "/api/v1/billing/verify")
-                    {
-                        if (!AuthThrottle.TryConsume(AuthThrottle.ResolveClientAddress(context.Request)))
-                        {
-                            context.Response.StatusCode = 429;
-                            context.Response.Headers["Retry-After"] = "60";
-                            context.Response.Close();
-                            continue;
-                        }
-                    }
-
-                    if (requestPath == "/api/v1/auth/login" && context.Request.HttpMethod == "POST")
-                    {
-                        // Modul: dispatched fire-and-forget, not awaited
-                        // inline, matching the WebSocket branch's own
-                        // _ = HandleClientLoopAsync(...) pattern below. This
-                        // loop otherwise processes one HttpListener context
-                        // at a time end to end - under concurrent load,
-                        // awaiting a provisioning transaction here (which
-                        // may now retry with backoff under Serializable
-                        // contention, see LoginOrProvisionAsync) would
-                        // serialize every other connection's login behind
-                        // it, compounding retry latency across all of them
-                        // instead of letting them resolve in parallel.
-                        // HandleAuthLogin already wraps its entire body in
-                        // its own try/catch and always closes the response,
-                        // so dispatching it this way does not drop error
-                        // visibility.
-                        _ = HandleAuthLogin(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/auth/oauth-link" && context.Request.HttpMethod == "POST")
-                    {
-                        _ = HandleOAuthLink(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/auth/register" && context.Request.HttpMethod == "POST")
-                    {
-                        _ = HandleAuthRegister(context);
-                        continue;
-                    }
-
-                    // Modul: PASSWORD RESET. Registration used to be the only
-                    // place this server set a password, so a player who forgot
-                    // theirs had permanently lost the account - on a live game.
-                    if (requestPath == "/api/v1/auth/request-password-reset" && context.Request.HttpMethod == "POST")
-                    {
-                        _ = HandleRequestPasswordReset(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/auth/reset-password" && context.Request.HttpMethod == "POST")
-                    {
-                        _ = HandleResetPassword(context);
-                        continue;
-                    }
-
-                    // Modul: EXCHANGING A REFRESH TOKEN FOR A JWT, AND WHY IT
-                    // IS IN THE THROTTLE BUDGET.
-                    //
-                    // The body is a 256-bit secret, so guessing it is not a
-                    // realistic attack - but the route is unauthenticated by
-                    // construction (its whole job is to run when there is no
-                    // valid session) and every unauthenticated route on this
-                    // server that touches the database has to cost something,
-                    // or it is a way to spend the box from a laptop. The reset
-                    // endpoints are in this list for the same reason.
-                    if (requestPath == "/api/v1/auth/refresh" && context.Request.HttpMethod == "POST")
-                    {
-                        _ = HandleAuthRefresh(context);
-                        continue;
-                    }
-
-                    // Signing out. Unauthenticated on purpose: a player whose
-                    // JWT has already expired must still be able to invalidate
-                    // the refresh token sitting on the device, and requiring a
-                    // live session to do it would make that impossible in
-                    // exactly the case where it matters.
-                    if (requestPath == "/api/v1/auth/revoke" && context.Request.HttpMethod == "POST")
-                    {
-                        _ = HandleAuthRevoke(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/admin/liveops" && context.Request.HttpMethod == "POST")
-                    {
-                        // Modul: NO DEFAULT PASSWORD. This read
-                        // `?? "supersecretadmin123"`, and this repository is
-                        // public - so on any deployment that had not set the
-                        // variable, the admin credential was a string anybody
-                        // could read on GitHub. It happened to be unreachable
-                        // from the internet, because ops/oracle/Caddyfile's api
-                        // matcher does not list /admin/* and the static file
-                        // server answers it instead. That is an accident of a
-                        // path list, not a decision, and it would have ended the
-                        // first time someone added a proxy rule.
-                        //
-                        // Unset now means CLOSED. An operator who wants the
-                        // endpoint sets a key; nobody inherits one.
-                        string secretKey = context.Request.Headers["X-Admin-Secret-Key"] ?? string.Empty;
-                        string expectedKey = Environment.GetEnvironmentVariable("ADMIN_SECRET_KEY") ?? string.Empty;
-
-                        // Constant-time, like every other secret comparison in
-                        // this codebase - `!=` on strings returns as soon as two
-                        // bytes differ, which leaks the prefix a byte at a time.
-                        bool keyMatches = expectedKey.Length > 0
-                            && secretKey.Length == expectedKey.Length
-                            && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
-                                System.Text.Encoding.UTF8.GetBytes(secretKey),
-                                System.Text.Encoding.UTF8.GetBytes(expectedKey));
-
-                        if (!keyMatches)
-                        {
-                            context.Response.StatusCode = 401;
-                            context.Response.Close();
-                            continue;
-                        }
-
-                        if (context.Request.InputStream != null)
-                        {
-                            var buffer = new byte[Marshal.SizeOf<AdminCommandPacket>()];
-                            int bytesRead = await context.Request.InputStream.ReadAsync(buffer, 0, buffer.Length);
-                            if (bytesRead >= Marshal.SizeOf<AdminCommandPacket>())
-                            {
-                                ParseAdminCommand(buffer, bytesRead);
-                            }
-                        }
-
-                        context.Response.StatusCode = 200;
-                        context.Response.Close();
-                        continue;
-                    }
-
-                    // Modul: `/api/v1/billing/verify-receipt` USED TO ROUTE HERE TO
-                    // HandleVerifyReceipt, which trusted a client-supplied
-                    // AccountId/TransactionId/ProductId out of the request body and
-                    // credited diamonds with NO signature check at all - the REST
-                    // wrapper around VerifyPurchaseAsync, the method the doc comment
-                    // on that engine method calls "the legacy in-session notification
-                    // path" for the internal WebSocket opcode 39 handler, never meant
-                    // to be reachable over public HTTP. The web client's own billing.ts
-                    // had always POSTed to this exact URL believing it was the
-                    // signature-checking endpoint (its header comment said so), so no
-                    // real purchase ever verified anything; anyone who knew their own
-                    // AccountId could grant themselves unlimited free diamonds by
-                    // hand. Route and handler removed 2026-09-18. The only REST
-                    // purchase path now is /api/v1/billing/verify below, which
-                    // resolves the player from the caller's own bearer JWT and checks
-                    // the store's signature before granting anything.
-                    if (requestPath == "/api/v1/billing/verify" && context.Request.HttpMethod == "POST")
-                    {
-                        _ = HandleBillingVerify(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/billing/refund-webhook" && context.Request.HttpMethod == "POST")
-                    {
-                        _ = HandleRefundWebhook(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/storefront/listings" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleStorefrontListings(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/chest/sell" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleChestAction(context, sell: true);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/chest/discard" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleChestAction(context, sell: false);
-                        continue;
-                    }
-
-                    // Modul: the chest's drain. One call clears a whole rarity
-                    // band; the per-item routes above cannot, and seventeen
-                    // thousand calls to them is not an alternative. See
-                    // HandleChestBulkAction.
-                    if (requestPath == "/api/v1/chest/bulk-sell" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleChestBulkAction(context, sell: true);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/chest/bulk-discard" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleChestBulkAction(context, sell: false);
-                        continue;
-                    }
-
-                    // Modul: the lock's write side. See
-                    // VillageChestEngine.ToggleAffixLockAsync - the flag was
-                    // read in ten places and set by nothing, so none of that
-                    // code could ever run.
-                    if (requestPath == "/api/v1/chest/lock" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleChestToggleLock(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/chest/settings")
-                    {
-                        await HandleChestSettings(context);
-                        continue;
-                    }
-
-                    // The Delve - a gold sink shaped like a game. REST rather
-                    // than opcodes on purpose: a run is a handful of requests
-                    // minutes apart, nothing in the 10 Hz tick reads any of it,
-                    // and the state packet is already near its 800-byte layout
-                    // guard. See DelveEngine.
-                    if (requestPath == "/api/v1/delve" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleDelveView(context);
-                        continue;
-                    }
-
-                    if (requestPath.StartsWith("/api/v1/delve/") && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleDelveAction(context, requestPath);
-                        continue;
-                    }
-
-                    // The world boss shield wheel (task 36). REST like the
-                    // Delve: a strike is a handful of requests and nothing in
-                    // the tick reads them. See WorldBossStrikeService.
-                    if (requestPath == "/api/v1/worldboss/challenge"
-                        || requestPath == "/api/v1/worldboss/throw"
-                        || requestPath == "/api/v1/worldboss/strike"
-                        || requestPath == "/api/v1/worldboss/practice/score")
-                    {
-                        await HandleWorldBossStrikeRoute(context, requestPath);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guild/shard-match" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGuildShardMatch(context);
-                        continue;
-                    }
-
-                    // Modul: the Guild War population lock's progress, for the
-                    // locked line on the Guild screen and for the text of the
-                    // GuildWarsLocked command result. REST, not a packet field:
-                    // it changes on the scale of days, and StateUpdatePacket
-                    // has about a byte of headroom. See GuildWarUnlock.
-                    if (requestPath == "/api/v1/guild/war-unlock" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGuildWarUnlock(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guild/logistics/snapshot" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGuildLogisticsSnapshot(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/forge/inventory" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleForgeInventorySnapshot(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/codex/snapshot" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleCodexSnapshot(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/codex/regions" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleCodexRegionsSnapshot(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/player/loot-odds" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleLootOdds(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/breeding/roster" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleBreedingRosterSnapshot(context);
-                        continue;
-                    }
-
-                    // Modul: the trait catalogue. Served, never copied: the client
-                    // renders what this says, so a new trait is a server change only.
-                    if (requestPath == "/api/v1/breeding/traits" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleBreedingTraits(context);
-                        continue;
-                    }
-
-                    // Modul: the Book of Deeds. Five chapters, their live
-                    // counters, and the Seals - which are BANKED on this read,
-                    // because a Seal grants permanent skill points and a client
-                    // that decided when it had earned one could award itself
-                    // the whole tree.
-                    if (requestPath == "/api/v1/deeds/snapshot" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleDeedsSnapshot(context);
-                        continue;
-                    }
-
-                    // Modul: the Hall of Ancestors. The breeding roster answers
-                    // "who can I pair"; this answers "who carries into next
-                    // season, and where do they stand" - the cap, the marks,
-                    // the pedigree and which of the three playable slots each
-                    // member occupies.
-                    if (requestPath == "/api/v1/ancestors/hall" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleAncestorsHall(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/breeding/preview" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleBreedingPreview(context);
-                        continue;
-                    }
-
-                    // Modul: the same question asked of THE standard pair - a
-                    // hero and somebody from the village. Separate because the
-                    // partner is a village_newcomers row, not a character.
-                    if (requestPath == "/api/v1/breeding/village-preview" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleVillagerBreedingPreview(context);
-                        continue;
-                    }
-
-                    // Modul: the village gene pool. The roster above is the
-                    // player's OWN characters; this is the outside blood they
-                    // can marry into the line, which is a different list
-                    // answering a different question.
-                    if (requestPath == "/api/v1/village/newcomers" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleVillageNewcomers(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/mastery/snapshot" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleMasterySnapshot(context);
-                        continue;
-                    }
-
-                    // Modul: UI audit follow-up. Friends roster - AddFriend/
-                    // RemoveFriend/BlockPlayer/UnblockPlayer (RelationshipEngine)
-                    // already existed and worked over the WebSocket wire, but
-                    // there was no way for the client to list the current
-                    // relationship set or discover a target player's numeric
-                    // Id from their username. Mirrors HandleMasterySnapshot's
-                    // exact authenticated-GET shape.
-                    // Modul: conversations are read over REST, deliberately not
-                    // over the wire. Every packet is demultiplexed by exact
-                    // byte size and the state packet has about a byte of
-                    // headroom, so putting history on it would cost a layout
-                    // guard change and a protocol regeneration for something
-                    // that is a paged list - which is what HTTP is for, and
-                    // what the friends list and mailbox beside it already do.
-                    if (requestPath == "/api/v1/conversations/list" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleConversationList(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/conversations/history" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleConversationHistory(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/conversations/read" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleConversationMarkRead(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/friends/list" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleFriendsList(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/players/resolve" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandlePlayerResolve(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/players/profile" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandlePlayerProfile(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/stats/online" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleStatsOnline(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guilds/kick" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleGuildKick(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guilds/promote" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleGuildPromote(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guilds/demote" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleGuildDemote(context);
-                        continue;
-                    }
-
-                    // Modul: UI rework. Reverse lookup of the above -
-                    // "?ids=1,2,3" to usernames, so chat/whisper rows can
-                    // show a name instead of the raw SenderPlayerId the
-                    // wire protocol carries. Batched deliberately; see
-                    // PlayerNameEntryResponse's own comment.
-                    if (requestPath == "/api/v1/players/names" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandlePlayerNames(context);
-                        continue;
-                    }
-
-                    // Modul: Inventory screen. The only inventory-shaped
-                    // endpoint that existed was HandleForgeInventorySnapshot,
-                    // which is scoped to what the Forge needs (equipment
-                    // instances plus the handful of materials the Forge's own
-                    // recipes consume). Nothing anywhere exposed the village
-                    // stash, the full commodity list, or which items are
-                    // currently equipped, so no inventory screen was possible.
-                    // Modul: the stackable half only, for the screens that read
-                    // nothing else. See HandlePlayerMaterialsSnapshot - the
-                    // route below serves 3.2 MB on a long-played account and
-                    // three screens were fetching all of it to count fish.
-                    if (requestPath == "/api/v1/player/materials" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandlePlayerMaterialsSnapshot(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/player/inventory" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandlePlayerInventorySnapshot(context);
-                        continue;
-                    }
-
-                    // Modul: Crafting Tree screen. ContentRegistry's 103
-                    // recipes have been fully functional server-side for a
-                    // long time but had no endpoint of any kind - the client
-                    // could not even enumerate them, let alone show costs.
-                    if (requestPath == "/api/v1/crafting/recipes" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleCraftingRecipeSnapshot(context);
-                        continue;
-                    }
-
-                    // Modul: UI audit follow-up. DailyLoginRewardEngine
-                    // already grants a real, server-authoritative streak
-                    // reward on every login/register, but the result was
-                    // discarded (awaited, never returned to the client) -
-                    // the player had no way to see their streak or today's
-                    // reward. Read-only snapshot, mirrors HandleMasterySnapshot.
-                    if (requestPath == "/api/v1/login-bonus/state" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleLoginBonusState(context);
-                        continue;
-                    }
-
-                    // Modul: UI audit follow-up. No player-statistics engine
-                    // existed anywhere server-side. Rather than invent new
-                    // tracking, this aggregates fields that are already
-                    // persisted for other systems (level/xp/diamonds on
-                    // PlayerRecord, gold via CommodityRecords, claimed
-                    // achievements, region completions, character count,
-                    // guild membership) into one read-only snapshot.
-                    if (requestPath == "/api/v1/player/statistics" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandlePlayerStatistics(context);
-                        continue;
-                    }
-
-                    // Modul: UI audit follow-up. GuildManagementEngine.
-                    // CreateGuildAsync/JoinGuildAsync already existed
-                    // (server/FolkIdle.Server/Domain/Social/GuildManagementEngine.cs)
-                    // but had no HTTP route or CommandType exposing them -
-                    // UiGuildCreatePanel's buttons were wired client-side to
-                    // a clearly-labeled no-op rather than guessing at an
-                    // unofficial packet shape. POST (not a WS CommandType)
-                    // because a guild name is a variable-length string,
-                    // which ClientCommandPacket's fixed-size binary layout
-                    // has no field for - matches how Email/Password auth
-                    // (also string-carrying) already uses HTTP, not the WS
-                    // command loop. Called directly rather than routed
-                    // through SimulationEngine's tick thread, matching
-                    // GuildManagementEngine's own header comment that it
-                    // "never touches SimulationEngine state directly."
-                    if (requestPath == "/api/v1/monsters/loot" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleMonsterLoot(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guilds/list" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGuildList(context);
-                        continue;
-                    }
-
-                    if (requestPath.StartsWith("/api/v1/admin/"))
-                    {
-                        await HandleAdminEndpoints(context, requestPath);
-                        continue;
-                    }
-
-                    // Modul: dev-only tools. 404 unless FOLKIDLE_DEV_TOOLS=1,
-                    // so production answers exactly as if the route did not
-                    // exist. See HandleDevEndpoints.
-                    if (requestPath.StartsWith("/api/v1/dev/"))
-                    {
-                        await HandleDevEndpoints(context, requestPath);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guilds/create" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleGuildCreate(context);
-                        continue;
-                    }
-
-                    // "Join" here means self-service join-by-name against
-                    // JoinGuildAsync(playerId, guildId) - the only guild-
-                    // joining capability that actually exists server-side.
-                    // There is no player-to-player invite/notification
-                    // mechanism anywhere in this codebase (no pending-invite
-                    // table, no accept/decline flow) - building one would be
-                    // a materially larger, separate feature, not a wiring
-                    // gap. The name->id resolution happens inline in the
-                    // same request rather than as a separate GET+POST round
-                    // trip (unlike Friends' username resolve), since there
-                    // is no existing "browse guilds" UI that would want the
-                    // id on its own.
-                    if (requestPath == "/api/v1/guilds/join" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleGuildJoin(context);
-                        continue;
-                    }
-
-                    // Modul: Play Mode audit fix. JoinGuildAsync has always
-                    // filed a GuildApplication row for Application-Required
-                    // guilds, but nothing anywhere ever reviewed one - see
-                    // GuildManagementEngine.ListPendingApplicationsAsync/
-                    // ApproveApplicationAsync/RejectApplicationAsync's own
-                    // comment. GET is leader-only (returns an empty list
-                    // for anyone else, matching HandleGuildRoster's
-                    // no-guild convention rather than a 403).
-                    if (requestPath == "/api/v1/guild/applications/pending" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGuildApplicationsPending(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guild/applications/approve" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleGuildApplicationApprove(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guild/applications/reject" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleGuildApplicationReject(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guilds/depot" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGuildDepot(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guilds/depot/donate" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleGuildDepotDonate(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/guilds/buffs/activate" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleGuildBuffsActivate(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/achievements/snapshot" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleAchievementsSnapshot(context);
-                        continue;
-                    }
-
-                    // Modul: Phase - Full-Stack Production Polish, Part 1.2.
-                    // MailboxAndBankEngine's Claim/Deposit/Withdraw commands
-                    // already existed on the WebSocket wire protocol
-                    // (ClaimMailItem/DepositToBank/WithdrawFromBank) - what
-                    // was missing was any way for the client to discover
-                    // WHICH ids exist to act on. Paginated-list snapshot
-                    // endpoints, mirroring HandleForgeInventorySnapshot's
-                    // exact shape (an authenticated, read-only, per-player
-                    // list query) rather than StateUpdatePacket's fixed
-                    // binary layout, for the same reason every other
-                    // variable-length listing in this file uses HTTP.
-                    // Modul: Production Release Hardening, Part 2. Both
-                    // routes below carry fields removed from
-                    // StateUpdatePacket to shrink the 10Hz hot-path packet
-                    // (see that struct's own trailing doc comment) -
-                    // low-frequency/static metadata that does not need a
-                    // ~10-times-per-second broadcast. Mirrors every other
-                    // REST-snapshot handler's exact shape.
-                    if (requestPath == "/api/v1/player/metadata" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandlePlayerMetadata(context);
-                        continue;
-                    }
-
-                    // Modul: the player's own answer to "may we email you".
-                    // Opt-in: PlayerRecord.EmailNotificationsConsented starts
-                    // false for every account and only this route sets it.
-                    if (requestPath == "/api/v1/player/email-consent")
-                    {
-                        await HandleEmailConsent(context);
-                        continue;
-                    }
-
-                    // Modul: THE DEVICE TOKEN GOES OVER REST, NOT OVER
-                    // OPCODE 33.
-                    //
-                    // `ClientCommandPacket.DeviceTokenBytes` is a fixed
-                    // `byte[64]`. An FCM registration token is around 160
-                    // characters, so Android push could never have travelled
-                    // that path and iOS push fitted it with nothing to spare.
-                    // The purchase receipt hit the same wall and took the same
-                    // answer, for the same reason - see HandleBillingVerify.
-                    //
-                    // Awaited rather than dispatched: this one writes a single
-                    // small row and the client is standing in Settings waiting
-                    // to be told whether its device is registered.
-                    if (requestPath == "/api/v1/player/push-token" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandlePushTokenRegistration(context);
-                        continue;
-                    }
-
-                    // Modul: WHICH WEB BUNDLE A PHONE SHOULD BE RUNNING.
-                    //
-                    // The live-update plugin POSTs here on a cold start with
-                    // the bundle it currently has, and this answers with the
-                    // one it should have. UNAUTHENTICATED on purpose: it is
-                    // asked before anybody signs in - that is the whole point,
-                    // the player opens the app and the update is already
-                    // arriving - and it reveals nothing but a version number
-                    // and a URL that serves a public static file anyway.
-                    if (requestPath == "/api/v1/app/bundle" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleLiveBundleManifest(context);
-                        continue;
-                    }
-
-                    // Modul: which explanations this player has already read.
-                    // Was localStorage only, which taught a returning player
-                    // the whole game again on a second device - see
-                    // PlayerRecord.OnboardingSeenIds for why that trade stopped
-                    // being worth it.
-                    if (requestPath == "/api/v1/player/onboarding-seen")
-                    {
-                        await HandleOnboardingSeen(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/achievements/state" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleAchievementsState(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/mailbox/list" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleMailboxListSnapshot(context);
-                        continue;
-                    }
-
-                    // Modul: Phase - Full-Stack Production Polish Phase 2,
-                    // Part 3.1. Exposes ContentRegistry.Balance.
-                    // IapProductPrices (loaded from GameBalanceConfig.json)
-                    // to the client's Store window - previously only read
-                    // server-side (BillingVerificationEngine.
-                    // ResolvePremiumDiamondsForProduct), with no way for a
-                    // client to discover which packages exist or what they
-                    // cost without hardcoding a second, driftable copy.
-                    if (requestPath == "/api/v1/store/catalog" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleStoreCatalog(context);
-                        continue;
-                    }
-
-                    // Modul: Phase - Full-Stack Production Polish Phase 2,
-                    // Part 3.1 (UiGuildRosterPanel). No prior endpoint
-                    // exposed a guild's member list at all - guild UI so
-                    // far (logistics/raid/war panels) only ever showed
-                    // aggregate guild-wide numbers, never individual
-                    // members or their Role.
-                    if (requestPath == "/api/v1/guild/roster" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGuildRoster(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/leaderboard/global" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGlobalLeaderboard(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/leaderboard/guilds" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleGuildLeaderboard(context);
-                        continue;
-                    }
-
-                    // The world boss damage board (owner, 2026-09-26): who dealt
-                    // what this encounter, and the server's total. Read-only SQL;
-                    // the payout ranks from the same rows (WorldBossBoard).
-                    if (requestPath == "/api/v1/worldboss/board" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleWorldBossBoard(context);
-                        continue;
-                    }
-
-                    // The Deep's weekly board (task 37). Read-only SQL; pays nothing.
-                    if (requestPath == "/api/v1/leaderboard/deepest" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleDeepestLeaderboard(context);
-                        continue;
-                    }
-
-                    // Titles (task 37): REST, not the wire - no StateUpdatePacket field.
-                    if (requestPath == "/api/v1/player/titles" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleTitlesView(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/player/title" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleTitleSet(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/market/listings" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleMarketBrowserListings(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/market/history" && context.Request.HttpMethod == "GET")
-                    {
-                        await HandleMarketPriceHistory(context);
-                        continue;
-                    }
-
-                    if (requestPath == "/api/v1/support/tickets/create" && context.Request.HttpMethod == "POST")
-                    {
-                        await HandleSupportTicket(context);
-                        continue;
-                    }
-
-                    if (context.Request.IsWebSocketRequest)
-                    {
-                        var webSocketContext = await context.AcceptWebSocketAsync(null);
-                        _ = HandleClientLoopAsync(webSocketContext.WebSocket);
-                    }
-                    else
-                    {
-                        context.Response.StatusCode = 400;
-                        context.Response.Close();
-                    }
+                    context = await _httpListener.GetContextAsync();
                 }
                 catch (HttpListenerException)
                 {
+                    continue;
+                }
+                catch (ObjectDisposedException)
+                {
+                    break;
                 }
                 catch (Exception ex)
                 {
                     Console.WriteLine($"Network error: {ex.Message}");
+                    continue;
                 }
+
+                _ = Task.Run(() => RouteAsync(context));
+            }
+        }
+
+        // Modul: per-request state that has to reach a handler without
+        // widening 79 signatures: the body-read deadline, and the account
+        // stripe this request holds (released by RouteAsync, never by a
+        // handler). AsyncLocal flows into every awaited handler call.
+        private sealed class RequestScope
+        {
+            public CancellationToken Aborted;
+            public SemaphoreSlim? Stripe;
+            public bool BodyRejected;
+        }
+
+        private static readonly AsyncLocal<RequestScope?> _currentRequest = new();
+
+        internal static readonly TimeSpan RequestDeadline = TimeSpan.FromSeconds(30);
+        internal static readonly TimeSpan AccountStripeWait = TimeSpan.FromSeconds(10);
+        internal const int MaxRequestBodyBytes = 64 * 1024;
+
+        // Modul: STRIPED, not a lock per account - 1024 semaphores whatever
+        // the population, nothing to evict, nothing to leak. Two accounts that
+        // hash to one stripe serialise against each other, which costs a
+        // few milliseconds and is otherwise harmless.
+        private const int AccountStripeCount = 1024;
+        private static readonly SemaphoreSlim[] AccountStripes = CreateAccountStripes();
+
+        private static SemaphoreSlim[] CreateAccountStripes()
+        {
+            var stripes = new SemaphoreSlim[AccountStripeCount];
+            for (int i = 0; i < stripes.Length; i++) stripes[i] = new SemaphoreSlim(1, 1);
+            return stripes;
+        }
+
+        private async Task RouteAsync(HttpListenerContext context)
+        {
+            using var deadline = new CancellationTokenSource(RequestDeadline);
+            var scope = new RequestScope { Aborted = deadline.Token };
+            _currentRequest.Value = scope;
+            try
+            {
+                await RouteCoreAsync(context);
+            }
+            catch (HttpListenerException)
+            {
+            }
+            catch (RequestBodyRejectedException)
+            {
+                // ReadBodyAsync already answered (413) or dropped the socket.
+            }
+            catch (ObjectDisposedException) when (scope.BodyRejected)
+            {
+                // A handler's own catch tried to write a 500 onto the response
+                // ReadBodyAsync had already closed. Nothing left to say.
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Network error: {ex.Message}");
+                try
+                {
+                    context.Response.StatusCode = 500;
+                    context.Response.Close();
+                }
+                catch
+                {
+                    // The handler already closed (or the peer left); either way
+                    // there is no response left to repair.
+                }
+            }
+            finally
+            {
+                scope.Stripe?.Release();
+                scope.Stripe = null;
+            }
+        }
+
+        // Modul: THE PER-ACCOUNT LOCK. Every non-GET request carrying a valid
+        // bearer token holds its account's stripe for the whole handler, so a
+        // double-tapped sale, two bulk salvages or a Delve action racing
+        // itself run one after the other exactly as they did on the old
+        // serial loop. ValidateJwt is CPU-only; the handler still does the
+        // nonce check, so a revoked-but-well-signed token can at worst wait
+        // in line, never act. A GET that MUTATES is not covered - say so at
+        // the handler if you write one (CLAUDE.md).
+        //
+        // Returns false only when the wait timed out and a 429 has been sent.
+        private async Task<bool> EnterAccountStripeAsync(HttpListenerContext context)
+        {
+            string method = context.Request.HttpMethod;
+            if (method == "GET" || method == "OPTIONS" || method == "HEAD") return true;
+
+            const string bearerPrefix = "Bearer ";
+            string bearerHeader = context.Request.Headers["Authorization"] ?? string.Empty;
+            if (bearerHeader.Length <= bearerPrefix.Length || !bearerHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            JwtValidationResult jwt = AuthenticationEngine.ValidateJwt(bearerHeader.Substring(bearerPrefix.Length), _jwtSecretKey);
+            if (!jwt.IsValid) return true;
+
+            var stripe = AccountStripes[jwt.AccountId.GetHashCode() & (AccountStripeCount - 1)];
+            var scope = _currentRequest.Value;
+            if (scope == null || !await stripe.WaitAsync(AccountStripeWait))
+            {
+                if (scope == null) return true;
+
+                // Modul: a refusal the player can SEE (CLAUDE.md, "silent
+                // rollback"): the client reads Reason like every other refusal.
+                context.Response.StatusCode = 429;
+                context.Response.Headers["Retry-After"] = "1";
+                context.Response.ContentType = "application/json";
+                byte[] reply = Encoding.UTF8.GetBytes("{\"Success\":false,\"Reason\":\"AccountBusy\"}");
+                await context.Response.OutputStream.WriteAsync(reply);
+                context.Response.Close();
+                return false;
+            }
+
+            scope.Stripe = stripe;
+            return true;
+        }
+
+        private sealed class RequestBodyRejectedException : Exception
+        {
+            public RequestBodyRejectedException(string message) : base(message) { }
+        }
+
+        // Modul: THE ONLY WAY A HANDLER READS A BODY. A cap (64 KB, 413 past
+        // it - no endpoint takes more than a few hundred bytes) and the
+        // request's 30 s deadline, after which the socket is aborted rather
+        // than answered, because a peer trickling a body is not reading
+        // replies either. WaitAsync, not a token passed to ReadAsync: the
+        // listener's request stream only checks a token before it starts a
+        // read, never during one. HttpRouterConcurrencyTests greps this file
+        // for any ReadToEndAsync that tries to come back.
+        //
+        // Takes the context rather than the request so it can answer; takes
+        // nothing else from it, to keep a later move off HttpListener small
+        // (audit plan D5).
+        private static async Task<string> ReadBodyAsync(HttpListenerContext context, int maxBytes = MaxRequestBodyBytes, CancellationToken ct = default)
+        {
+            var scope = _currentRequest.Value;
+            if (!ct.CanBeCanceled && scope != null) ct = scope.Aborted;
+
+            var request = context.Request;
+            if (request.ContentLength64 > maxBytes)
+            {
+                RejectBody(context, scope, abort: false);
+            }
+
+            using var buffer = new System.IO.MemoryStream();
+            byte[] chunk = System.Buffers.ArrayPool<byte>.Shared.Rent(8192);
+            try
+            {
+                while (true)
+                {
+                    int read;
+                    try
+                    {
+                        read = await request.InputStream.ReadAsync(chunk, 0, chunk.Length).WaitAsync(ct);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        RejectBody(context, scope, abort: true);
+                        throw; // unreachable, RejectBody throws
+                    }
+
+                    if (read == 0) break;
+                    if (buffer.Length + read > maxBytes)
+                    {
+                        RejectBody(context, scope, abort: false);
+                    }
+                    buffer.Write(chunk, 0, read);
+                }
+            }
+            finally
+            {
+                System.Buffers.ArrayPool<byte>.Shared.Return(chunk);
+            }
+
+            Encoding encoding = request.ContentEncoding ?? Encoding.UTF8;
+            return encoding.GetString(buffer.GetBuffer(), 0, (int)buffer.Length);
+        }
+
+        [System.Diagnostics.CodeAnalysis.DoesNotReturn]
+        private static void RejectBody(HttpListenerContext context, RequestScope? scope, bool abort)
+        {
+            if (scope != null) scope.BodyRejected = true;
+            try
+            {
+                if (abort)
+                {
+                    context.Response.Abort();
+                }
+                else
+                {
+                    context.Response.StatusCode = 413;
+                    context.Response.Close();
+                }
+            }
+            catch
+            {
+                // Already gone.
+            }
+            throw new RequestBodyRejectedException(abort ? "request body deadline passed" : "request body too large");
+        }
+
+        // Modul: today's if-chain, moved out of the accept loop unchanged
+        // except that `continue` became `return` and the auth handlers that
+        // were dispatched fire-and-forget (so as not to serialise the old
+        // loop) are awaited - the loop no longer waits on them, and awaiting
+        // keeps them inside the account stripe and the outer 500 guard.
+        private async Task RouteCoreAsync(HttpListenerContext context)
+        {
+            string requestPath = context.Request.Url?.AbsolutePath ?? "/";
+
+            // Modul: browser client support, 2026-08-02. Phase 0 of the
+            // web client port plan.
+            //
+            // A browser refuses every cross-origin response that does
+            // not carry these headers, so without this the web client
+            // cannot make a single successful call - not even login.
+            // The Unity client is unaffected: it is not a browser and
+            // ignores them.
+            //
+            // Allow-list, never "*", because these endpoints carry a
+            // bearer token. A wildcard would let any page on the
+            // internet call this API with a user's credentials once
+            // credentials are ever sent.
+            ApplyCorsHeaders(context);
+
+            // A browser sends OPTIONS before any request carrying an
+            // Authorization header, and expects a bodyless 204. Answered
+            // here rather than per-route so a new endpoint cannot forget
+            // it - forgetting is invisible until a browser tries.
+            if (context.Request.HttpMethod == "OPTIONS")
+            {
+                context.Response.StatusCode = 204;
+                context.Response.Close();
+                return;
+            }
+
+            // Modul: previously both paths unconditionally returned 200
+            // regardless of real engine state - InfrastructureHealthMonitor
+            // (IsLive/IsReady/WritePlainHealth) already existed with the
+            // correct distinct semantics but was never actually called
+            // from here, so Kubernetes could never detect a pod still
+            // mid cold-boot-recovery or under heap pressure and would
+            // route live traffic to it regardless. Liveness only checks
+            // GlobalEngineState.IsShuttingDown (restart-worthy failure);
+            // readiness additionally requires cold-boot recovery to have
+            // completed and heap usage under the readiness limit
+            // (service-endpoint-worthy, not restart-worthy - see
+            // InfrastructureHealthMonitor.IsReady).
+            if (requestPath == "/health/liveness")
+            {
+                InfrastructureHealthMonitor.WritePlainHealth(context.Response, InfrastructureHealthMonitor.IsLive());
+                return;
+            }
+
+            if (requestPath == "/health/readiness")
+            {
+                InfrastructureHealthMonitor.WritePlainHealth(context.Response, InfrastructureHealthMonitor.IsReady());
+                return;
+            }
+
+            if (requestPath == "/healthz")
+            {
+                context.Response.StatusCode = 200;
+                context.Response.Close();
+                return;
+            }
+
+            // Modul: Prometheus scrape target. Exempt from the
+            // cold-boot-recovery/shutdown gate below, same as the
+            // health endpoints above - Prometheus should keep
+            // observing a pod's state (including zero active
+            // sessions during cold boot) rather than getting 503s
+            // that would just show up as scrape failures in its own
+            // monitoring instead of real data.
+            if (requestPath == "/metrics" && context.Request.HttpMethod == "GET")
+            {
+                await HandleMetrics(context);
+                return;
+            }
+
+            if (GlobalEngineState.IsShuttingDown || !GlobalEngineState.IsColdBootRecoveryComplete)
+            {
+                context.Response.StatusCode = 503;
+                context.Response.Close();
+                return;
+            }
+
+            // Modul: taken here - after the probes and the cold-boot gate,
+            // before any handler - and released by RouteAsync's finally.
+            if (!await EnterAccountStripeAsync(context))
+            {
+                return;
+            }
+
+            // Modul: browser client support, 2026-08-02. Phase 0, step
+            // 3 of the web client port plan. Serves the exact content
+            // files the Unity client reads from StreamingAssets, so a
+            // browser client mirrors monsters/items/skills/gathering
+            // from the same bytes rather than shipping its own copy.
+            // Unauthenticated by design - see HandleGameDataFile.
+            if (requestPath.StartsWith("/gamedata/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
+            {
+                await HandleGameDataFile(context, requestPath.Substring("/gamedata/".Length));
+                return;
+            }
+
+            if (requestPath == "/gamedata" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGameDataManifest(context);
+                return;
+            }
+
+            // Modul: web client port, Phase 7. The same ten sound
+            // effects the Unity client loads from Resources/Audio,
+            // linked into this project's output by the csproj rather
+            // than copied - see that link's own comment. Unauthenticated
+            // for the same reason the content files are: they ship
+            // inside the Unity app bundle already.
+            if (requestPath.StartsWith("/audio/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
+            {
+                await HandleAudioFile(context, requestPath.Substring("/audio/".Length));
+                return;
+            }
+
+            if (requestPath == "/audio" && context.Request.HttpMethod == "GET")
+            {
+                await HandleAudioManifest(context);
+                return;
+            }
+
+            if (requestPath.StartsWith("/sprites/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
+            {
+                await HandleSpriteFile(context, requestPath.Substring("/sprites/".Length));
+                return;
+            }
+
+            if (requestPath == "/sprites" && context.Request.HttpMethod == "GET")
+            {
+                await HandleSpriteManifest(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/assets/handshake" && context.Request.HttpMethod == "POST")
+            {
+                string expectedHash = Environment.GetEnvironmentVariable("ExpectedCatalogHash") ?? string.Empty;
+                string clientHash = string.Empty;
+
+                if (context.Request.HasEntityBody)
+                {
+                    string payload = await ReadBodyAsync(context);
+                    try
+                    {
+                        var json = System.Text.Json.JsonDocument.Parse(payload);
+                        if (json.RootElement.TryGetProperty("catalog.hash", out var hashElement))
+                        {
+                            clientHash = hashElement.GetString() ?? string.Empty;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (!string.IsNullOrEmpty(expectedHash) && clientHash != expectedHash)
+                {
+                    context.Response.StatusCode = 426; // Upgrade Required
+                    context.Response.Close();
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.Close();
+                return;
+            }
+
+            // Modul: THE AUTHENTICATION ENDPOINTS HAVE A BUDGET NOW.
+            //
+            // Eight wrong passwords in a row used to return eight plain
+            // 401s with nothing in between. Unlimited guessing against
+            // any known email, and - because every attempt runs PBKDF2
+            // at 210,000 iterations - a way to spend the box's CPU from
+            // a laptop. See AuthThrottle on why the budget counts
+            // requests rather than failures, and why it reads
+            // X-Forwarded-For rather than the socket's address.
+            if (requestPath == "/api/v1/auth/login"
+                || requestPath == "/api/v1/auth/register"
+                || requestPath == "/api/v1/auth/oauth-link"
+                // Modul: the reset endpoints belong in the budget too.
+                // The request side sends mail to somebody else's
+                // address, so unthrottled it is a way to use this
+                // server to spam a stranger; the completion side is a
+                // guess against a token.
+                || requestPath == "/api/v1/auth/request-password-reset"
+                || requestPath == "/api/v1/auth/reset-password"
+                || requestPath == "/api/v1/auth/refresh"
+                // Modul: Task 10's step-up gate made this endpoint
+                // verify a password too (HandleBillingVerify, for a
+                // device-bearer session on a password-holding
+                // account) - without this it would be an unthrottled
+                // oracle for guessing that one account's password at
+                // full PBKDF2 cost, with no email enumeration even
+                // needed since the bearer token already identifies
+                // the account.
+                || requestPath == "/api/v1/billing/verify")
+            {
+                if (!AuthThrottle.TryConsume(AuthThrottle.ResolveClientAddress(context.Request)))
+                {
+                    context.Response.StatusCode = 429;
+                    context.Response.Headers["Retry-After"] = "60";
+                    context.Response.Close();
+                    return;
+                }
+            }
+
+            if (requestPath == "/api/v1/auth/login" && context.Request.HttpMethod == "POST")
+            {
+                // Modul: this and the other auth handlers used to be
+                // dispatched fire-and-forget, so a provisioning transaction
+                // retrying under Serializable contention (see
+                // LoginOrProvisionAsync) would not serialise every other
+                // connection behind the old one-at-a-time accept loop.
+                // Every request has its own task now (RouteAsync), so they
+                // are awaited like everything else - which keeps them
+                // inside the account stripe and the router's 500 guard.
+                await HandleAuthLogin(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/auth/oauth-link" && context.Request.HttpMethod == "POST")
+            {
+                await HandleOAuthLink(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/auth/register" && context.Request.HttpMethod == "POST")
+            {
+                await HandleAuthRegister(context);
+                return;
+            }
+
+            // Modul: PASSWORD RESET. Registration used to be the only
+            // place this server set a password, so a player who forgot
+            // theirs had permanently lost the account - on a live game.
+            if (requestPath == "/api/v1/auth/request-password-reset" && context.Request.HttpMethod == "POST")
+            {
+                await HandleRequestPasswordReset(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/auth/reset-password" && context.Request.HttpMethod == "POST")
+            {
+                await HandleResetPassword(context);
+                return;
+            }
+
+            // Modul: EXCHANGING A REFRESH TOKEN FOR A JWT, AND WHY IT
+            // IS IN THE THROTTLE BUDGET.
+            //
+            // The body is a 256-bit secret, so guessing it is not a
+            // realistic attack - but the route is unauthenticated by
+            // construction (its whole job is to run when there is no
+            // valid session) and every unauthenticated route on this
+            // server that touches the database has to cost something,
+            // or it is a way to spend the box from a laptop. The reset
+            // endpoints are in this list for the same reason.
+            if (requestPath == "/api/v1/auth/refresh" && context.Request.HttpMethod == "POST")
+            {
+                await HandleAuthRefresh(context);
+                return;
+            }
+
+            // Signing out. Unauthenticated on purpose: a player whose
+            // JWT has already expired must still be able to invalidate
+            // the refresh token sitting on the device, and requiring a
+            // live session to do it would make that impossible in
+            // exactly the case where it matters.
+            if (requestPath == "/api/v1/auth/revoke" && context.Request.HttpMethod == "POST")
+            {
+                await HandleAuthRevoke(context);
+                return;
+            }
+
+            if (requestPath == "/admin/liveops" && context.Request.HttpMethod == "POST")
+            {
+                // Modul: NO DEFAULT PASSWORD. This read
+                // `?? "supersecretadmin123"`, and this repository is
+                // public - so on any deployment that had not set the
+                // variable, the admin credential was a string anybody
+                // could read on GitHub. It happened to be unreachable
+                // from the internet, because ops/oracle/Caddyfile's api
+                // matcher does not list /admin/* and the static file
+                // server answers it instead. That is an accident of a
+                // path list, not a decision, and it would have ended the
+                // first time someone added a proxy rule.
+                //
+                // Unset now means CLOSED. An operator who wants the
+                // endpoint sets a key; nobody inherits one.
+                string secretKey = context.Request.Headers["X-Admin-Secret-Key"] ?? string.Empty;
+                string expectedKey = Environment.GetEnvironmentVariable("ADMIN_SECRET_KEY") ?? string.Empty;
+
+                // Constant-time, like every other secret comparison in
+                // this codebase - `!=` on strings returns as soon as two
+                // bytes differ, which leaks the prefix a byte at a time.
+                bool keyMatches = expectedKey.Length > 0
+                    && secretKey.Length == expectedKey.Length
+                    && System.Security.Cryptography.CryptographicOperations.FixedTimeEquals(
+                        System.Text.Encoding.UTF8.GetBytes(secretKey),
+                        System.Text.Encoding.UTF8.GetBytes(expectedKey));
+
+                if (!keyMatches)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (context.Request.InputStream != null)
+                {
+                    var buffer = new byte[Marshal.SizeOf<AdminCommandPacket>()];
+                    int bytesRead = await context.Request.InputStream.ReadAsync(buffer, 0, buffer.Length);
+                    if (bytesRead >= Marshal.SizeOf<AdminCommandPacket>())
+                    {
+                        ParseAdminCommand(buffer, bytesRead);
+                    }
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.Close();
+                return;
+            }
+
+            // Modul: `/api/v1/billing/verify-receipt` USED TO ROUTE HERE TO
+            // HandleVerifyReceipt, which trusted a client-supplied
+            // AccountId/TransactionId/ProductId out of the request body and
+            // credited diamonds with NO signature check at all - the REST
+            // wrapper around VerifyPurchaseAsync, the method the doc comment
+            // on that engine method calls "the legacy in-session notification
+            // path" for the internal WebSocket opcode 39 handler, never meant
+            // to be reachable over public HTTP. The web client's own billing.ts
+            // had always POSTed to this exact URL believing it was the
+            // signature-checking endpoint (its header comment said so), so no
+            // real purchase ever verified anything; anyone who knew their own
+            // AccountId could grant themselves unlimited free diamonds by
+            // hand. Route and handler removed 2026-09-18. The only REST
+            // purchase path now is /api/v1/billing/verify below, which
+            // resolves the player from the caller's own bearer JWT and checks
+            // the store's signature before granting anything.
+            if (requestPath == "/api/v1/billing/verify" && context.Request.HttpMethod == "POST")
+            {
+                await HandleBillingVerify(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/billing/refund-webhook" && context.Request.HttpMethod == "POST")
+            {
+                await HandleRefundWebhook(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/storefront/listings" && context.Request.HttpMethod == "GET")
+            {
+                await HandleStorefrontListings(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/chest/sell" && context.Request.HttpMethod == "POST")
+            {
+                await HandleChestAction(context, sell: true);
+                return;
+            }
+
+            if (requestPath == "/api/v1/chest/discard" && context.Request.HttpMethod == "POST")
+            {
+                await HandleChestAction(context, sell: false);
+                return;
+            }
+
+            // Modul: the chest's drain. One call clears a whole rarity
+            // band; the per-item routes above cannot, and seventeen
+            // thousand calls to them is not an alternative. See
+            // HandleChestBulkAction.
+            if (requestPath == "/api/v1/chest/bulk-sell" && context.Request.HttpMethod == "POST")
+            {
+                await HandleChestBulkAction(context, sell: true);
+                return;
+            }
+
+            if (requestPath == "/api/v1/chest/bulk-discard" && context.Request.HttpMethod == "POST")
+            {
+                await HandleChestBulkAction(context, sell: false);
+                return;
+            }
+
+            // Modul: the lock's write side. See
+            // VillageChestEngine.ToggleAffixLockAsync - the flag was
+            // read in ten places and set by nothing, so none of that
+            // code could ever run.
+            if (requestPath == "/api/v1/chest/lock" && context.Request.HttpMethod == "POST")
+            {
+                await HandleChestToggleLock(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/chest/settings")
+            {
+                await HandleChestSettings(context);
+                return;
+            }
+
+            // The Delve - a gold sink shaped like a game. REST rather
+            // than opcodes on purpose: a run is a handful of requests
+            // minutes apart, nothing in the 10 Hz tick reads any of it,
+            // and the state packet is already near its 800-byte layout
+            // guard. See DelveEngine.
+            if (requestPath == "/api/v1/delve" && context.Request.HttpMethod == "GET")
+            {
+                await HandleDelveView(context);
+                return;
+            }
+
+            if (requestPath.StartsWith("/api/v1/delve/") && context.Request.HttpMethod == "POST")
+            {
+                await HandleDelveAction(context, requestPath);
+                return;
+            }
+
+            // The world boss shield wheel (task 36). REST like the
+            // Delve: a strike is a handful of requests and nothing in
+            // the tick reads them. See WorldBossStrikeService.
+            if (requestPath == "/api/v1/worldboss/challenge"
+                || requestPath == "/api/v1/worldboss/throw"
+                || requestPath == "/api/v1/worldboss/strike"
+                || requestPath == "/api/v1/worldboss/practice/score")
+            {
+                await HandleWorldBossStrikeRoute(context, requestPath);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guild/shard-match" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildShardMatch(context);
+                return;
+            }
+
+            // Modul: the Guild War population lock's progress, for the
+            // locked line on the Guild screen and for the text of the
+            // GuildWarsLocked command result. REST, not a packet field:
+            // it changes on the scale of days, and StateUpdatePacket
+            // has about a byte of headroom. See GuildWarUnlock.
+            if (requestPath == "/api/v1/guild/war-unlock" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildWarUnlock(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guild/logistics/snapshot" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildLogisticsSnapshot(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/forge/inventory" && context.Request.HttpMethod == "GET")
+            {
+                await HandleForgeInventorySnapshot(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/codex/snapshot" && context.Request.HttpMethod == "GET")
+            {
+                await HandleCodexSnapshot(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/codex/regions" && context.Request.HttpMethod == "GET")
+            {
+                await HandleCodexRegionsSnapshot(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/player/loot-odds" && context.Request.HttpMethod == "GET")
+            {
+                await HandleLootOdds(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/breeding/roster" && context.Request.HttpMethod == "GET")
+            {
+                await HandleBreedingRosterSnapshot(context);
+                return;
+            }
+
+            // Modul: the trait catalogue. Served, never copied: the client
+            // renders what this says, so a new trait is a server change only.
+            if (requestPath == "/api/v1/breeding/traits" && context.Request.HttpMethod == "GET")
+            {
+                await HandleBreedingTraits(context);
+                return;
+            }
+
+            // Modul: the Book of Deeds. Five chapters, their live
+            // counters, and the Seals - which are BANKED on this read,
+            // because a Seal grants permanent skill points and a client
+            // that decided when it had earned one could award itself
+            // the whole tree.
+            if (requestPath == "/api/v1/deeds/snapshot" && context.Request.HttpMethod == "GET")
+            {
+                await HandleDeedsSnapshot(context);
+                return;
+            }
+
+            // Modul: the Hall of Ancestors. The breeding roster answers
+            // "who can I pair"; this answers "who carries into next
+            // season, and where do they stand" - the cap, the marks,
+            // the pedigree and which of the three playable slots each
+            // member occupies.
+            if (requestPath == "/api/v1/ancestors/hall" && context.Request.HttpMethod == "GET")
+            {
+                await HandleAncestorsHall(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/breeding/preview" && context.Request.HttpMethod == "GET")
+            {
+                await HandleBreedingPreview(context);
+                return;
+            }
+
+            // Modul: the same question asked of THE standard pair - a
+            // hero and somebody from the village. Separate because the
+            // partner is a village_newcomers row, not a character.
+            if (requestPath == "/api/v1/breeding/village-preview" && context.Request.HttpMethod == "GET")
+            {
+                await HandleVillagerBreedingPreview(context);
+                return;
+            }
+
+            // Modul: the village gene pool. The roster above is the
+            // player's OWN characters; this is the outside blood they
+            // can marry into the line, which is a different list
+            // answering a different question.
+            if (requestPath == "/api/v1/village/newcomers" && context.Request.HttpMethod == "GET")
+            {
+                await HandleVillageNewcomers(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/mastery/snapshot" && context.Request.HttpMethod == "GET")
+            {
+                await HandleMasterySnapshot(context);
+                return;
+            }
+
+            // Modul: UI audit follow-up. Friends roster - AddFriend/
+            // RemoveFriend/BlockPlayer/UnblockPlayer (RelationshipEngine)
+            // already existed and worked over the WebSocket wire, but
+            // there was no way for the client to list the current
+            // relationship set or discover a target player's numeric
+            // Id from their username. Mirrors HandleMasterySnapshot's
+            // exact authenticated-GET shape.
+            // Modul: conversations are read over REST, deliberately not
+            // over the wire. Every packet is demultiplexed by exact
+            // byte size and the state packet has about a byte of
+            // headroom, so putting history on it would cost a layout
+            // guard change and a protocol regeneration for something
+            // that is a paged list - which is what HTTP is for, and
+            // what the friends list and mailbox beside it already do.
+            if (requestPath == "/api/v1/conversations/list" && context.Request.HttpMethod == "GET")
+            {
+                await HandleConversationList(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/conversations/history" && context.Request.HttpMethod == "GET")
+            {
+                await HandleConversationHistory(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/conversations/read" && context.Request.HttpMethod == "POST")
+            {
+                await HandleConversationMarkRead(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/friends/list" && context.Request.HttpMethod == "GET")
+            {
+                await HandleFriendsList(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/players/resolve" && context.Request.HttpMethod == "GET")
+            {
+                await HandlePlayerResolve(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/players/profile" && context.Request.HttpMethod == "GET")
+            {
+                await HandlePlayerProfile(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/stats/online" && context.Request.HttpMethod == "GET")
+            {
+                await HandleStatsOnline(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guilds/kick" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildKick(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guilds/promote" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildPromote(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guilds/demote" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildDemote(context);
+                return;
+            }
+
+            // Modul: UI rework. Reverse lookup of the above -
+            // "?ids=1,2,3" to usernames, so chat/whisper rows can
+            // show a name instead of the raw SenderPlayerId the
+            // wire protocol carries. Batched deliberately; see
+            // PlayerNameEntryResponse's own comment.
+            if (requestPath == "/api/v1/players/names" && context.Request.HttpMethod == "GET")
+            {
+                await HandlePlayerNames(context);
+                return;
+            }
+
+            // Modul: Inventory screen. The only inventory-shaped
+            // endpoint that existed was HandleForgeInventorySnapshot,
+            // which is scoped to what the Forge needs (equipment
+            // instances plus the handful of materials the Forge's own
+            // recipes consume). Nothing anywhere exposed the village
+            // stash, the full commodity list, or which items are
+            // currently equipped, so no inventory screen was possible.
+            // Modul: the stackable half only, for the screens that read
+            // nothing else. See HandlePlayerMaterialsSnapshot - the
+            // route below serves 3.2 MB on a long-played account and
+            // three screens were fetching all of it to count fish.
+            if (requestPath == "/api/v1/player/materials" && context.Request.HttpMethod == "GET")
+            {
+                await HandlePlayerMaterialsSnapshot(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/player/inventory" && context.Request.HttpMethod == "GET")
+            {
+                await HandlePlayerInventorySnapshot(context);
+                return;
+            }
+
+            // Modul: Crafting Tree screen. ContentRegistry's 103
+            // recipes have been fully functional server-side for a
+            // long time but had no endpoint of any kind - the client
+            // could not even enumerate them, let alone show costs.
+            if (requestPath == "/api/v1/crafting/recipes" && context.Request.HttpMethod == "GET")
+            {
+                await HandleCraftingRecipeSnapshot(context);
+                return;
+            }
+
+            // Modul: UI audit follow-up. DailyLoginRewardEngine
+            // already grants a real, server-authoritative streak
+            // reward on every login/register, but the result was
+            // discarded (awaited, never returned to the client) -
+            // the player had no way to see their streak or today's
+            // reward. Read-only snapshot, mirrors HandleMasterySnapshot.
+            if (requestPath == "/api/v1/login-bonus/state" && context.Request.HttpMethod == "GET")
+            {
+                await HandleLoginBonusState(context);
+                return;
+            }
+
+            // Modul: UI audit follow-up. No player-statistics engine
+            // existed anywhere server-side. Rather than invent new
+            // tracking, this aggregates fields that are already
+            // persisted for other systems (level/xp/diamonds on
+            // PlayerRecord, gold via CommodityRecords, claimed
+            // achievements, region completions, character count,
+            // guild membership) into one read-only snapshot.
+            if (requestPath == "/api/v1/player/statistics" && context.Request.HttpMethod == "GET")
+            {
+                await HandlePlayerStatistics(context);
+                return;
+            }
+
+            // Modul: UI audit follow-up. GuildManagementEngine.
+            // CreateGuildAsync/JoinGuildAsync already existed
+            // (server/FolkIdle.Server/Domain/Social/GuildManagementEngine.cs)
+            // but had no HTTP route or CommandType exposing them -
+            // UiGuildCreatePanel's buttons were wired client-side to
+            // a clearly-labeled no-op rather than guessing at an
+            // unofficial packet shape. POST (not a WS CommandType)
+            // because a guild name is a variable-length string,
+            // which ClientCommandPacket's fixed-size binary layout
+            // has no field for - matches how Email/Password auth
+            // (also string-carrying) already uses HTTP, not the WS
+            // command loop. Called directly rather than routed
+            // through SimulationEngine's tick thread, matching
+            // GuildManagementEngine's own header comment that it
+            // "never touches SimulationEngine state directly."
+            if (requestPath == "/api/v1/monsters/loot" && context.Request.HttpMethod == "GET")
+            {
+                await HandleMonsterLoot(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guilds/list" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildList(context);
+                return;
+            }
+
+            if (requestPath.StartsWith("/api/v1/admin/"))
+            {
+                await HandleAdminEndpoints(context, requestPath);
+                return;
+            }
+
+            // Modul: dev-only tools. 404 unless FOLKIDLE_DEV_TOOLS=1,
+            // so production answers exactly as if the route did not
+            // exist. See HandleDevEndpoints.
+            if (requestPath.StartsWith("/api/v1/dev/"))
+            {
+                await HandleDevEndpoints(context, requestPath);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guilds/create" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildCreate(context);
+                return;
+            }
+
+            // "Join" here means self-service join-by-name against
+            // JoinGuildAsync(playerId, guildId) - the only guild-
+            // joining capability that actually exists server-side.
+            // There is no player-to-player invite/notification
+            // mechanism anywhere in this codebase (no pending-invite
+            // table, no accept/decline flow) - building one would be
+            // a materially larger, separate feature, not a wiring
+            // gap. The name->id resolution happens inline in the
+            // same request rather than as a separate GET+POST round
+            // trip (unlike Friends' username resolve), since there
+            // is no existing "browse guilds" UI that would want the
+            // id on its own.
+            if (requestPath == "/api/v1/guilds/join" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildJoin(context);
+                return;
+            }
+
+            // Modul: Play Mode audit fix. JoinGuildAsync has always
+            // filed a GuildApplication row for Application-Required
+            // guilds, but nothing anywhere ever reviewed one - see
+            // GuildManagementEngine.ListPendingApplicationsAsync/
+            // ApproveApplicationAsync/RejectApplicationAsync's own
+            // comment. GET is leader-only (returns an empty list
+            // for anyone else, matching HandleGuildRoster's
+            // no-guild convention rather than a 403).
+            if (requestPath == "/api/v1/guild/applications/pending" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildApplicationsPending(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guild/applications/approve" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildApplicationApprove(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guild/applications/reject" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildApplicationReject(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guilds/depot" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildDepot(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guilds/depot/donate" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildDepotDonate(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guilds/buffs/activate" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildBuffsActivate(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/achievements/snapshot" && context.Request.HttpMethod == "GET")
+            {
+                await HandleAchievementsSnapshot(context);
+                return;
+            }
+
+            // Modul: Phase - Full-Stack Production Polish, Part 1.2.
+            // MailboxAndBankEngine's Claim/Deposit/Withdraw commands
+            // already existed on the WebSocket wire protocol
+            // (ClaimMailItem/DepositToBank/WithdrawFromBank) - what
+            // was missing was any way for the client to discover
+            // WHICH ids exist to act on. Paginated-list snapshot
+            // endpoints, mirroring HandleForgeInventorySnapshot's
+            // exact shape (an authenticated, read-only, per-player
+            // list query) rather than StateUpdatePacket's fixed
+            // binary layout, for the same reason every other
+            // variable-length listing in this file uses HTTP.
+            // Modul: Production Release Hardening, Part 2. Both
+            // routes below carry fields removed from
+            // StateUpdatePacket to shrink the 10Hz hot-path packet
+            // (see that struct's own trailing doc comment) -
+            // low-frequency/static metadata that does not need a
+            // ~10-times-per-second broadcast. Mirrors every other
+            // REST-snapshot handler's exact shape.
+            if (requestPath == "/api/v1/player/metadata" && context.Request.HttpMethod == "GET")
+            {
+                await HandlePlayerMetadata(context);
+                return;
+            }
+
+            // Modul: the player's own answer to "may we email you".
+            // Opt-in: PlayerRecord.EmailNotificationsConsented starts
+            // false for every account and only this route sets it.
+            if (requestPath == "/api/v1/player/email-consent")
+            {
+                await HandleEmailConsent(context);
+                return;
+            }
+
+            // Modul: THE DEVICE TOKEN GOES OVER REST, NOT OVER
+            // OPCODE 33.
+            //
+            // `ClientCommandPacket.DeviceTokenBytes` is a fixed
+            // `byte[64]`. An FCM registration token is around 160
+            // characters, so Android push could never have travelled
+            // that path and iOS push fitted it with nothing to spare.
+            // The purchase receipt hit the same wall and took the same
+            // answer, for the same reason - see HandleBillingVerify.
+            //
+            // Awaited rather than dispatched: this one writes a single
+            // small row and the client is standing in Settings waiting
+            // to be told whether its device is registered.
+            if (requestPath == "/api/v1/player/push-token" && context.Request.HttpMethod == "POST")
+            {
+                await HandlePushTokenRegistration(context);
+                return;
+            }
+
+            // Modul: WHICH WEB BUNDLE A PHONE SHOULD BE RUNNING.
+            //
+            // The live-update plugin POSTs here on a cold start with
+            // the bundle it currently has, and this answers with the
+            // one it should have. UNAUTHENTICATED on purpose: it is
+            // asked before anybody signs in - that is the whole point,
+            // the player opens the app and the update is already
+            // arriving - and it reveals nothing but a version number
+            // and a URL that serves a public static file anyway.
+            if (requestPath == "/api/v1/app/bundle" && context.Request.HttpMethod == "POST")
+            {
+                await HandleLiveBundleManifest(context);
+                return;
+            }
+
+            // Modul: which explanations this player has already read.
+            // Was localStorage only, which taught a returning player
+            // the whole game again on a second device - see
+            // PlayerRecord.OnboardingSeenIds for why that trade stopped
+            // being worth it.
+            if (requestPath == "/api/v1/player/onboarding-seen")
+            {
+                await HandleOnboardingSeen(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/achievements/state" && context.Request.HttpMethod == "GET")
+            {
+                await HandleAchievementsState(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/mailbox/list" && context.Request.HttpMethod == "GET")
+            {
+                await HandleMailboxListSnapshot(context);
+                return;
+            }
+
+            // Modul: Phase - Full-Stack Production Polish Phase 2,
+            // Part 3.1. Exposes ContentRegistry.Balance.
+            // IapProductPrices (loaded from GameBalanceConfig.json)
+            // to the client's Store window - previously only read
+            // server-side (BillingVerificationEngine.
+            // ResolvePremiumDiamondsForProduct), with no way for a
+            // client to discover which packages exist or what they
+            // cost without hardcoding a second, driftable copy.
+            if (requestPath == "/api/v1/store/catalog" && context.Request.HttpMethod == "GET")
+            {
+                await HandleStoreCatalog(context);
+                return;
+            }
+
+            // Modul: Phase - Full-Stack Production Polish Phase 2,
+            // Part 3.1 (UiGuildRosterPanel). No prior endpoint
+            // exposed a guild's member list at all - guild UI so
+            // far (logistics/raid/war panels) only ever showed
+            // aggregate guild-wide numbers, never individual
+            // members or their Role.
+            if (requestPath == "/api/v1/guild/roster" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildRoster(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/leaderboard/global" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGlobalLeaderboard(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/leaderboard/guilds" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildLeaderboard(context);
+                return;
+            }
+
+            // The world boss damage board (owner, 2026-09-26): who dealt
+            // what this encounter, and the server's total. Read-only SQL;
+            // the payout ranks from the same rows (WorldBossBoard).
+            if (requestPath == "/api/v1/worldboss/board" && context.Request.HttpMethod == "GET")
+            {
+                await HandleWorldBossBoard(context);
+                return;
+            }
+
+            // The Deep's weekly board (task 37). Read-only SQL; pays nothing.
+            if (requestPath == "/api/v1/leaderboard/deepest" && context.Request.HttpMethod == "GET")
+            {
+                await HandleDeepestLeaderboard(context);
+                return;
+            }
+
+            // Titles (task 37): REST, not the wire - no StateUpdatePacket field.
+            if (requestPath == "/api/v1/player/titles" && context.Request.HttpMethod == "GET")
+            {
+                await HandleTitlesView(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/player/title" && context.Request.HttpMethod == "POST")
+            {
+                await HandleTitleSet(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/market/listings" && context.Request.HttpMethod == "GET")
+            {
+                await HandleMarketBrowserListings(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/market/history" && context.Request.HttpMethod == "GET")
+            {
+                await HandleMarketPriceHistory(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/support/tickets/create" && context.Request.HttpMethod == "POST")
+            {
+                await HandleSupportTicket(context);
+                return;
+            }
+
+            if (context.Request.IsWebSocketRequest)
+            {
+                var webSocketContext = await context.AcceptWebSocketAsync(null);
+                _ = HandleClientLoopAsync(webSocketContext.WebSocket);
+            }
+            else
+            {
+                context.Response.StatusCode = 400;
+                context.Response.Close();
             }
         }
 
@@ -2738,8 +3325,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+                var payload = JsonSerializer.Deserialize<JsonElement>(await ReadBodyAsync(context));
 
                 if (!payload.TryGetProperty("maxQualityTier", out var tierElement)
                     || tierElement.ValueKind != JsonValueKind.Number)
@@ -2847,10 +3433,7 @@ namespace FolkIdle.Server.Network
                 else if (method == "POST")
                 {
                     string body;
-                    using (var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding))
-                    {
-                        body = await reader.ReadToEndAsync();
-                    }
+                    body = await ReadBodyAsync(context);
 
                     try
                     {
@@ -2980,8 +3563,7 @@ namespace FolkIdle.Server.Network
                 }
                 else if (requestPath == "/api/v1/delve/door")
                 {
-                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                    string body = await reader.ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
 
                     int door;
                     try
@@ -3012,8 +3594,7 @@ namespace FolkIdle.Server.Network
                     // number and answers PriceChanged if that is higher. A
                     // missing or malformed quote is a 400, not a zero: a zero
                     // quote would just read as "price changed" for ever.
-                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                    string body = await reader.ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
 
                     long quotedStake;
                     try
@@ -3127,8 +3708,7 @@ namespace FolkIdle.Server.Network
 
                 if (context.Request.HttpMethod == "POST")
                 {
-                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                    string body = await reader.ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
 
                     int tier;
                     try
@@ -3217,8 +3797,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+                var payload = JsonSerializer.Deserialize<JsonElement>(await ReadBodyAsync(context));
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -3282,8 +3861,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+                var payload = JsonSerializer.Deserialize<JsonElement>(await ReadBodyAsync(context));
 
                 if (!payload.TryGetProperty("equipmentId", out var equipmentElement))
                 {
@@ -3909,8 +4487,7 @@ namespace FolkIdle.Server.Network
 
                 if (context.Request.HttpMethod == "POST")
                 {
-                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                    string body = await reader.ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
 
                     bool consent;
                     try
@@ -4071,8 +4648,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                string body = await reader.ReadToEndAsync();
+                string body = await ReadBodyAsync(context);
 
                 string token;
                 string platform;
@@ -4200,8 +4776,7 @@ namespace FolkIdle.Server.Network
 
                 if (context.Request.HttpMethod == "PUT" || context.Request.HttpMethod == "POST")
                 {
-                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                    string body = await reader.ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
 
                     string[] ids;
                     try
@@ -5674,8 +6249,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 if (!payload.TryGetProperty("withPlayerId", out var withProp)
@@ -6055,21 +6629,18 @@ namespace FolkIdle.Server.Network
                 }
 
                 string? slug;
-                using (var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding))
+                try
                 {
-                    try
-                    {
-                        using var parsed = JsonDocument.Parse(await reader.ReadToEndAsync());
-                        if (!parsed.RootElement.TryGetProperty("Slug", out var slugElement)) { context.Response.StatusCode = 400; return; }
-                        if (slugElement.ValueKind == JsonValueKind.Null) slug = null;
-                        else if (slugElement.ValueKind == JsonValueKind.String) slug = slugElement.GetString();
-                        else { context.Response.StatusCode = 400; return; }
-                    }
-                    catch (JsonException)
-                    {
-                        context.Response.StatusCode = 400;
-                        return;
-                    }
+                    using var parsed = JsonDocument.Parse(await ReadBodyAsync(context));
+                    if (!parsed.RootElement.TryGetProperty("Slug", out var slugElement)) { context.Response.StatusCode = 400; return; }
+                    if (slugElement.ValueKind == JsonValueKind.Null) slug = null;
+                    else if (slugElement.ValueKind == JsonValueKind.String) slug = slugElement.GetString();
+                    else { context.Response.StatusCode = 400; return; }
+                }
+                catch (JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    return;
                 }
 
                 using var scope = _serviceProvider.CreateScope();
@@ -6096,8 +6667,7 @@ namespace FolkIdle.Server.Network
                 long kickerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
                 if (kickerId <= 0) { context.Response.StatusCode = 401; context.Response.Close(); return; }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+                var payload = JsonSerializer.Deserialize<JsonElement>(await ReadBodyAsync(context));
                 if (!payload.TryGetProperty("targetPlayerId", out var targetEl)) { context.Response.StatusCode = 400; context.Response.Close(); return; }
                 long targetId = targetEl.GetInt64();
 
@@ -6124,8 +6694,7 @@ namespace FolkIdle.Server.Network
                 long promoterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
                 if (promoterId <= 0) { context.Response.StatusCode = 401; context.Response.Close(); return; }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+                var payload = JsonSerializer.Deserialize<JsonElement>(await ReadBodyAsync(context));
                 if (!payload.TryGetProperty("targetPlayerId", out var targetEl)) { context.Response.StatusCode = 400; context.Response.Close(); return; }
                 long targetId = targetEl.GetInt64();
 
@@ -6179,8 +6748,7 @@ namespace FolkIdle.Server.Network
                 long demoterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
                 if (demoterId <= 0) { context.Response.StatusCode = 401; context.Response.Close(); return; }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var payload = JsonSerializer.Deserialize<JsonElement>(await reader.ReadToEndAsync());
+                var payload = JsonSerializer.Deserialize<JsonElement>(await ReadBodyAsync(context));
                 if (!payload.TryGetProperty("targetPlayerId", out var targetEl)) { context.Response.StatusCode = 400; context.Response.Close(); return; }
                 long targetId = targetEl.GetInt64();
 
@@ -7582,8 +8150,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 if (!payload.TryGetProperty("guildName", out var guildNameElement))
@@ -7654,8 +8221,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 if (!payload.TryGetProperty("guildName", out var guildNameElement))
@@ -7791,8 +8357,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 if (!payload.TryGetProperty("applicationId", out var applicationIdElement))
@@ -7835,8 +8400,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 if (!payload.TryGetProperty("applicationId", out var applicationIdElement))
@@ -8214,8 +8778,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 // Modul: step-up gate, Task 10. A device-bearer session on an
@@ -8266,8 +8829,7 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 var accountId = payload.GetProperty("AccountId").GetGuid();
@@ -8308,8 +8870,7 @@ namespace FolkIdle.Server.Network
         {
             try
             {
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 var traceLog = payload.GetProperty("TraceLog").GetString();
@@ -8614,6 +9175,11 @@ namespace FolkIdle.Server.Network
                     bucketInf = metrics.TickDurationBucketCountInf;
                 }
 
+                // Task 43: a rolling-window p99 (see GetRecentTickPercentiles)
+                // and the checkpoint writer's back-pressure.
+                var recentTicks = _simulationEngine?.GetRecentTickPercentiles();
+                var checkpointWriter = _simulationEngine?.CheckpointManager.Writer;
+
                 long writeQueueLength = 0;
                 var redis = _serviceProvider.GetService<StackExchange.Redis.IConnectionMultiplexer>();
                 if (redis != null && redis.IsConnected)
@@ -8644,9 +9210,79 @@ namespace FolkIdle.Server.Network
                 body.Append("folkidle_tick_duration_milliseconds_sum ").Append(tickSumMs).Append('\n');
                 body.Append("folkidle_tick_duration_milliseconds_count ").Append(tickCount).Append('\n');
                 body.Append('\n');
+                if (recentTicks is { } rt)
+                {
+                    var inv = System.Globalization.CultureInfo.InvariantCulture;
+                    body.Append("# HELP folkidle_tick_duration_recent_milliseconds Tick duration over the last ").Append(SimulationEngine.RecentTickWindow).Append(" ticks.\n");
+                    body.Append("# TYPE folkidle_tick_duration_recent_milliseconds summary\n");
+                    body.Append("folkidle_tick_duration_recent_milliseconds{quantile=\"0.5\"} ").Append(rt.P50Ms.ToString("0.###", inv)).Append('\n');
+                    body.Append("folkidle_tick_duration_recent_milliseconds{quantile=\"0.95\"} ").Append(rt.P95Ms.ToString("0.###", inv)).Append('\n');
+                    body.Append("folkidle_tick_duration_recent_milliseconds{quantile=\"0.99\"} ").Append(rt.P99Ms.ToString("0.###", inv)).Append('\n');
+                    body.Append("folkidle_tick_duration_recent_milliseconds{quantile=\"1\"} ").Append(rt.MaxMs.ToString("0.###", inv)).Append('\n');
+                    body.Append("folkidle_tick_duration_recent_milliseconds_count ").Append(rt.Samples).Append('\n');
+                    body.Append('\n');
+                }
+                if (checkpointWriter != null)
+                {
+                    body.Append("# HELP folkidle_checkpoint_queue_depth Checkpoint jobs queued on CheckpointWriter.\n");
+                    body.Append("# TYPE folkidle_checkpoint_queue_depth gauge\n");
+                    body.Append("folkidle_checkpoint_queue_depth ").Append(checkpointWriter.QueueDepth).Append('\n');
+                    body.Append("# TYPE folkidle_checkpoint_flushes_committed_total counter\n");
+                    body.Append("folkidle_checkpoint_flushes_committed_total ").Append(checkpointWriter.FlushesCommitted).Append('\n');
+                    body.Append("# TYPE folkidle_checkpoint_flushes_failed_total counter\n");
+                    body.Append("folkidle_checkpoint_flushes_failed_total ").Append(checkpointWriter.FlushesFailed).Append('\n');
+                    body.Append("# HELP folkidle_checkpoint_dead_letters_total CHECKPOINT-DEADLETTER lines written (grep the server log).\n");
+                    body.Append("# TYPE folkidle_checkpoint_dead_letters_total counter\n");
+                    body.Append("folkidle_checkpoint_dead_letters_total ").Append(checkpointWriter.DeadLetters).Append('\n');
+                    body.Append('\n');
+                }
                 body.Append("# HELP folkidle_database_write_queue_length Players with state pending Redis write-behind flush.\n");
                 body.Append("# TYPE folkidle_database_write_queue_length gauge\n");
                 body.Append("folkidle_database_write_queue_length ").Append(writeQueueLength).Append('\n');
+
+                // Modul: task 41. The outbox's one remaining way to lose an
+                // event is a full queue (512, drop-oldest), so that drop is
+                // counted here - an uncounted drop would be the silent loss
+                // the outbox was built to end. The depth is summed across
+                // live sessions; a steadily high value means peers that are
+                // not keeping up.
+                long outboxDepth = 0;
+                foreach (var kvp in _connectedClients)
+                {
+                    outboxDepth += kvp.Value.PendingEventCount;
+                }
+                body.Append('\n');
+                body.Append("# HELP folkidle_outbox_events_dropped_total Event frames (loot, combat, chat) dropped because a session outbox was full.\n");
+                body.Append("# TYPE folkidle_outbox_events_dropped_total counter\n");
+                body.Append("folkidle_outbox_events_dropped_total ").Append(WebSocketSession.EventsDroppedTotal).Append('\n');
+                body.Append('\n');
+                body.Append("# HELP folkidle_outbox_queue_depth Event frames waiting in session outboxes, summed over connected sessions.\n");
+                body.Append("# TYPE folkidle_outbox_queue_depth gauge\n");
+                body.Append("folkidle_outbox_queue_depth ").Append(outboxDepth).Append('\n');
+
+                // Modul: task 46 (audit item 8, "8a - measure"). See
+                // StateFrameMetrics for what these count and why. Read
+                // straight off the static counters, the same pattern as
+                // folkidle_outbox_events_dropped_total above.
+                body.Append('\n');
+                body.Append("# HELP folkidle_state_frame_bytes_total Bytes of state frame (JSON serialize output, or the binary struct size) offered to a session, summed since start.\n");
+                body.Append("# TYPE folkidle_state_frame_bytes_total counter\n");
+                body.Append("folkidle_state_frame_bytes_total ").Append(StateFrameMetrics.BytesTotal).Append('\n');
+                body.Append('\n');
+                body.Append("# HELP folkidle_state_frames_total State frames (JSON or binary) offered to a session, summed since start.\n");
+                body.Append("# TYPE folkidle_state_frames_total counter\n");
+                body.Append("folkidle_state_frames_total ").Append(StateFrameMetrics.FramesTotal).Append('\n');
+                body.Append('\n');
+                body.Append("# HELP folkidle_state_frame_serialize_microseconds Time PacketJsonCodec.SerializeToUtf8 took to build one JSON state frame. Binary-path frames are not timed - see StateFrameMetrics.\n");
+                body.Append("# TYPE folkidle_state_frame_serialize_microseconds histogram\n");
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"100\"} ").Append(StateFrameMetrics.Bucket100Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"250\"} ").Append(StateFrameMetrics.Bucket250Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"500\"} ").Append(StateFrameMetrics.Bucket500Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"1000\"} ").Append(StateFrameMetrics.Bucket1000Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"2500\"} ").Append(StateFrameMetrics.Bucket2500Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"+Inf\"} ").Append(StateFrameMetrics.BucketInfUs).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_sum ").Append(StateFrameMetrics.SerializeSumMicroseconds).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_count ").Append(StateFrameMetrics.SerializeCount).Append('\n');
 
                 byte[] payload = System.Text.Encoding.UTF8.GetBytes(body.ToString());
                 context.Response.StatusCode = 200;
@@ -8713,8 +9349,7 @@ namespace FolkIdle.Server.Network
             {
                 var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                string body = await reader.ReadToEndAsync();
+                string body = await ReadBodyAsync(context);
 
                 string rawToken;
                 try
@@ -8814,8 +9449,7 @@ namespace FolkIdle.Server.Network
             {
                 var authOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                string body = await reader.ReadToEndAsync();
+                string body = await ReadBodyAsync(context);
 
                 string rawToken = string.Empty;
                 try
@@ -8894,8 +9528,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                string body = await reader.ReadToEndAsync();
+                string body = await ReadBodyAsync(context);
 
                 string deviceId = string.Empty;
                 string oauthProviderToken = string.Empty;
@@ -9080,8 +9713,7 @@ namespace FolkIdle.Server.Network
 
                 if (context.Request.HasEntityBody)
                 {
-                    using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                    string body = await reader.ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
                     try
                     {
                         using var document = System.Text.Json.JsonDocument.Parse(body);
@@ -9169,8 +9801,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                string body = await reader.ReadToEndAsync();
+                string body = await ReadBodyAsync(context);
 
                 string token = string.Empty;
                 string newPassword = string.Empty;
@@ -9273,8 +9904,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                string body = await reader.ReadToEndAsync();
+                string body = await ReadBodyAsync(context);
 
                 string email = string.Empty;
                 string username = string.Empty;
@@ -9376,8 +10006,7 @@ namespace FolkIdle.Server.Network
 
                 Guid accountId = await ResolveAccountIdAsync(playerId);
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                string body = await reader.ReadToEndAsync();
+                string body = await ReadBodyAsync(context);
 
                 string oauthProviderToken;
                 string suppliedPassword;
@@ -9799,6 +10428,11 @@ namespace FolkIdle.Server.Network
             }
             finally
             {
+                // Modul: the receive loop is over, so this session's outbox
+                // writer has nobody left to write to - stop it rather than
+                // leave it parked on its signal.
+                session?.Shutdown();
+
                 if (playerId != 0)
                 {
                     _connectedClients.TryRemove(playerId, out _);
@@ -9855,21 +10489,15 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
-            // Modul: JSON WebSocket mode, 2026-08-02. The binary path below is
-            // byte for byte what it always was, including its reusable
-            // per-session buffer - this is the single hottest path in the
-            // codebase (once per online player per 10Hz tick) and the JSON
-            // branch must not cost the Unity client anything but one already-
-            // loaded bool test.
             // Modul: a wedged socket is evicted, not written to forever.
             //
-            // SendAsync sets IsWedged when a frame times out, which means the
-            // peer has stopped reading altogether. Left alone that connection
-            // stays open and silent - the state the freeze report describes,
-            // where the server simulates correctly and the screen does not
-            // move. Dropping it gives the client something to react to, and its
-            // reconnect logic (500 ms backing off to 15 s, token re-sent) then
-            // does the rest.
+            // The session's writer sets IsWedged when a frame times out, which
+            // means the peer has stopped reading altogether. Left alone that
+            // connection stays open and silent - the state the freeze report
+            // describes, where the server simulates correctly and the screen
+            // does not move. Dropping it gives the client something to react
+            // to, and its reconnect logic (500 ms backing off to 15 s, token
+            // re-sent) then does the rest.
             if (session.IsWedged)
             {
                 Console.WriteLine($"Evicting wedged socket for player {playerId}: sends stopped completing.");
@@ -9877,32 +10505,35 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
-            // Fire-and-forget is intentional here - SendToPlayer is called
-            // once per player per broadcast tick and must not block the
-            // caller - but the fault is still observed and logged rather
-            // than silently dropped, matching this task's error-
-            // observability requirement. ContinueWith (not await/async) so
-            // this allocates zero Task/state-machine objects on the
-            // per-tick, per-player hot path - see _logSendFault's own doc
-            // comment.
+            // Modul: task 41. The snapshot is OFFERED, never sent from here -
+            // this runs once per online player per 10Hz tick and must not
+            // block the tick. The outbox keeps only the latest snapshot (an
+            // absolute state frame supersedes any older one still waiting) and
+            // the session's writer sends it after any queued events. Send
+            // faults are logged by the writer itself.
             //
-            // Both branches drop the frame rather than queue it when the socket
-            // is already busy - see WebSocketSession.SendAsync.
-            Task send;
+            // Modul: task 46 (8a - measure). The Stopwatch wraps ONLY
+            // SerializeToUtf8, not the OfferSnapshot call below it, so the
+            // recorded microseconds are the Utf8JsonWriter cost alone and not
+            // contaminated by the outbox's (cheap, non-blocking) enqueue.
+            // See StateFrameMetrics above for what this feeds on /metrics.
             if (session.UseJsonProtocol)
             {
-                var segment = new ArraySegment<byte>(PacketJsonCodec.SerializeToUtf8(ref packet));
-                send = session.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                long serializeStartTimestamp = Stopwatch.GetTimestamp();
+                byte[] json = PacketJsonCodec.SerializeToUtf8(ref packet);
+                long serializeElapsedUs = (Stopwatch.GetTimestamp() - serializeStartTimestamp) * 1_000_000L / Stopwatch.Frequency;
+                StateFrameMetrics.RecordJsonFrame(json.Length, serializeElapsedUs);
+                session.OfferSnapshot(json, WebSocketMessageType.Text);
             }
             else
             {
-                // Takes the lock before touching the reusable buffer - see
-                // SendStateFrameAsync for why the old order could splice two
-                // frames together.
-                send = session.SendStateFrameAsync(ref packet);
+                // A rented copy per offer, not a shared per-session buffer -
+                // see OfferStateFrame for the spliced-frame trap. The size is
+                // a compile-time constant for this unmanaged struct, so
+                // recording it costs nothing worth timing.
+                StateFrameMetrics.RecordBinaryFrame(Unsafe.SizeOf<StateUpdatePacket>());
+                session.OfferStateFrame(ref packet);
             }
-
-            send.ContinueWith(_logSendFault, playerId, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
 
         // Modul: Full-Stack Production Hardening Phase 3, Part 2. Static,
@@ -10092,7 +10723,7 @@ namespace FolkIdle.Server.Network
                 // player first clearing floor 10 by luck.
                 if (requestPath == "/api/v1/dev/titles/grant" && context.Request.HttpMethod == "POST")
                 {
-                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
                     string? slug = null;
                     try
                     {
@@ -10122,7 +10753,7 @@ namespace FolkIdle.Server.Network
 
                 if (requestPath == "/api/v1/dev/worldboss/window" && context.Request.HttpMethod == "POST")
                 {
-                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
                     var req = JsonSerializer.Deserialize<DevWorldBossWindowRequest>(
                         string.IsNullOrWhiteSpace(body) ? "{}" : body,
                         new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new DevWorldBossWindowRequest();
@@ -10224,7 +10855,7 @@ namespace FolkIdle.Server.Network
 
                 if (requestPath == "/api/v1/admin/profanity" && context.Request.HttpMethod == "POST")
                 {
-                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
                     var req = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, bool>>(body);
                     if (req != null && req.TryGetValue("enabled", out bool isEnabled))
                     {
@@ -10238,7 +10869,7 @@ namespace FolkIdle.Server.Network
 
                 if (requestPath == "/api/v1/admin/announce" && context.Request.HttpMethod == "POST")
                 {
-                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
                     var req = JsonSerializer.Deserialize<System.Collections.Generic.Dictionary<string, string>>(body);
                     if (req != null && req.TryGetValue("text", out string? message) && !string.IsNullOrWhiteSpace(message))
                     {
@@ -10260,25 +10891,17 @@ namespace FolkIdle.Server.Network
                             }
                         }
 
-                        byte[]? chatJson = null;
-                        var packetBytes = new byte[System.Runtime.InteropServices.Marshal.SizeOf<ResponseChatMessagePacket>()];
-                        System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateReadOnlySpan(ref packet, 1)).CopyTo(packetBytes);
-                        var segment = new ArraySegment<byte>(packetBytes);
-
-                        // Broadcast to everyone
+                        // Broadcast to everyone, through each outbox - the
+                        // same fan-out chat uses (see ChatFrames), so an
+                        // announcement is queued rather than dropped behind
+                        // a state frame and one stalled socket cannot hold
+                        // this request open.
+                        var frames = new ChatFrames(packet);
                         foreach (var target in _connectedClients.Values)
                         {
                             if (target.Socket.State == System.Net.WebSockets.WebSocketState.Open)
                             {
-                                if (target.UseJsonProtocol)
-                                {
-                                    chatJson ??= PacketJsonCodec.SerializeToUtf8(ref packet);
-                                    await target.SendAsync(new ArraySegment<byte>(chatJson), System.Net.WebSockets.WebSocketMessageType.Text, true, CancellationToken.None);
-                                }
-                                else
-                                {
-                                    await target.SendAsync(segment, System.Net.WebSockets.WebSocketMessageType.Binary, true, CancellationToken.None);
-                                }
+                                frames.EnqueueTo(target);
                             }
                         }
                         
@@ -10429,7 +11052,7 @@ namespace FolkIdle.Server.Network
 
                 if (requestPath == "/api/v1/admin/mail" && context.Request.HttpMethod == "POST")
                 {
-                    string body = await new System.IO.StreamReader(context.Request.InputStream).ReadToEndAsync();
+                    string body = await ReadBodyAsync(context);
                     var req = JsonSerializer.Deserialize<AdminMailRequest>(body);
                     if (req != null)
                     {
@@ -10586,8 +11209,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 string itemId = payload.GetProperty("itemId").GetString() ?? "";
@@ -10638,8 +11260,7 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                using var reader = new System.IO.StreamReader(context.Request.InputStream, context.Request.ContentEncoding);
-                var body = await reader.ReadToEndAsync();
+                var body = await ReadBodyAsync(context);
                 var payload = JsonSerializer.Deserialize<JsonElement>(body);
 
                 string buffType = payload.GetProperty("buffType").GetString() ?? "";

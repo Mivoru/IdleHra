@@ -420,15 +420,9 @@ namespace FolkIdle.Server.Engine
 
                 if (goldEarned > 0)
                 {
-                    var goldRecord = await db.CommodityRecords
-                        .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
-                        .SingleOrDefaultAsync();
-                    if (goldRecord == null)
-                    {
-                        goldRecord = new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 0L };
-                        db.CommodityRecords.Add(goldRecord);
-                    }
-                    goldRecord.Quantity += goldEarned;
+                    // Modul: an upsert (CommodityLedger), task 44. What banks
+                    // this gold is unchanged; only how the row is created.
+                    await CommodityLedger.AddAsync(db, playerId, "gold", goldEarned);
                 }
 
                 await db.SaveChangesAsync();
@@ -486,14 +480,10 @@ namespace FolkIdle.Server.Engine
                 return overflow;
             }
 
-            if (commodity == null)
-            {
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = itemId, Quantity = grantedAmount });
-            }
-            else
-            {
-                commodity.Quantity += grantedAmount;
-            }
+            // Modul: the FOR UPDATE read above stays, because the storage cap
+            // needs the current stack; the write is an upsert (task 44), since
+            // FOR UPDATE on a row that does not exist yet locks nothing.
+            await CommodityLedger.AddAsync(db, playerId, itemId, grantedAmount);
 
             return overflow;
         }
@@ -705,6 +695,10 @@ namespace FolkIdle.Server.Engine
 
             double totalKillsDouble = effectiveElapsedSeconds / secondsPerKillEstimate;
             long totalKills = (long)totalKillsDouble;
+
+            // Funnel step 2, the offline half: a first kill made while away is
+            // still a first kill. See FunnelRecorder.
+            if (totalKills > 0) FunnelRecorder.Record(payload.PlayerId, FunnelStep.FirstKill);
 
             long xpGained = totalKills * activeMonster.BaseXpReward;
             xpGained += xpGained * InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain) / 100L;
@@ -950,23 +944,12 @@ namespace FolkIdle.Server.Engine
 
             int rollsToExecute = Math.Min(rollCount, availableInventorySpace);
 
-            var grantedQuantities = new Dictionary<int, long>();
-            for (int r = 0; r < rollsToExecute; r++)
-            {
-                int roll = Random.Shared.Next(totalWeight);
-                int currentWeight = 0;
-                for (int i = 0; i < lootTable.Length; i++)
-                {
-                    currentWeight += lootTable[i].Weight + luckWeightBonus;
-                    if (roll < currentWeight)
-                    {
-                        grantedQuantities.TryGetValue(lootTable[i].ItemId, out long existing);
-                        grantedQuantities[lootTable[i].ItemId] = existing + 1;
-                        break;
-                    }
-                }
-            }
+            Dictionary<int, long> grantedQuantities = DrawLootCounts(lootTable, rollsToExecute, luckWeightBonus, Random.Shared);
 
+            // Modul: one multi-row upsert (CommodityLedger.AddManyAsync), task
+            // 44 - a single statement, so it is all-or-nothing even when a
+            // caller holds no transaction.
+            var materialDeltas = new List<KeyValuePair<string, long>>(grantedQuantities.Count);
             foreach (KeyValuePair<int, long> kvp in grantedQuantities)
             {
                 string materialName = ContentRegistry.GetMaterialString(kvp.Key);
@@ -974,24 +957,133 @@ namespace FolkIdle.Server.Engine
                 {
                     continue;
                 }
-
-                var commodity = await db.CommodityRecords
-                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, materialName)
-                    .SingleOrDefaultAsync();
-
-                if (commodity == null)
-                {
-                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = materialName, Quantity = kvp.Value });
-                }
-                else
-                {
-                    commodity.Quantity += kvp.Value;
-                }
+                materialDeltas.Add(new KeyValuePair<string, long>(materialName, kvp.Value));
             }
+            await CommodityLedger.AddManyAsync(db, playerId, materialDeltas);
 
             await db.SaveChangesAsync();
 
             return rollsToExecute;
+        }
+
+        // Modul: ONE DRAW PER TABLE ENTRY, NOT ONE PER ROLL.
+        //
+        // Offline catch-up used to make up to MaxOfflineLootRolls (200,000)
+        // weighted rolls one at a time, each a walk of the table - inside the
+        // login path, before the player sees anything. What those rolls
+        // produce is a multinomial: n rolls, entry i chosen with probability
+        // w_i / W. The same distribution is drawn as a chain of binomials,
+        // entry i taking Binomial(rolls still unassigned, w_i / weight still
+        // unassigned), and the last entry with weight taking whatever is left.
+        // So the counts still sum to exactly `rollCount` (the caps upstream
+        // mean what they meant), each entry's expected count is still
+        // n * w_i / W, and the work is one draw per entry whatever n is.
+        //
+        // Luck enters exactly as before - a flat bonus on every entry's weight
+        // - and duplicates of one ItemId across entries still add up.
+        internal static Dictionary<int, long> DrawLootCounts(LootTableEntry[] lootTable, int rollCount, int luckWeightBonus, Random rng)
+        {
+            var counts = new Dictionary<int, long>();
+            if (lootTable.Length == 0 || rollCount <= 0)
+            {
+                return counts;
+            }
+
+            long remainingWeight = 0;
+            int lastWeighted = -1;
+            for (int i = 0; i < lootTable.Length; i++)
+            {
+                long w = (long)lootTable[i].Weight + luckWeightBonus;
+                if (w > 0)
+                {
+                    remainingWeight += w;
+                    lastWeighted = i;
+                }
+            }
+
+            if (remainingWeight <= 0)
+            {
+                return counts;
+            }
+
+            int remainingRolls = rollCount;
+            for (int i = 0; i <= lastWeighted && remainingRolls > 0; i++)
+            {
+                long w = (long)lootTable[i].Weight + luckWeightBonus;
+                if (w <= 0)
+                {
+                    continue;
+                }
+
+                int drawn = i == lastWeighted
+                    ? remainingRolls
+                    : SampleBinomial(rng, remainingRolls, (double)w / remainingWeight);
+
+                remainingWeight -= w;
+                remainingRolls -= drawn;
+
+                if (drawn > 0)
+                {
+                    counts.TryGetValue(lootTable[i].ItemId, out long existing);
+                    counts[lootTable[i].ItemId] = existing + drawn;
+                }
+            }
+
+            return counts;
+        }
+
+        // Below this many expected successes (on the rarer side) the draw is
+        // exact inversion; above it a rounded normal, whose error at a mean of
+        // 30+ is far under a single unit of a stack in the hundreds.
+        private const double ExactBinomialMeanLimit = 30.0;
+
+        // Modul: exact where it matters, cheap where it does not. The rare
+        // entries - the ones a player actually reads on the welcome-back card -
+        // have a small n*p and are drawn by exact CDF inversion, which takes
+        // about n*p + 1 steps. Only a count expected in the dozens or more goes
+        // through the normal approximation, and there a rounding difference of
+        // one ore in a stack of hundreds is not observable. Mirrored around
+        // p = 0.5 so the inversion always walks the short tail.
+        internal static int SampleBinomial(Random rng, int n, double p)
+        {
+            if (n <= 0 || p <= 0.0) return 0;
+            if (p >= 1.0) return n;
+
+            if (p > 0.5)
+            {
+                return n - SampleBinomial(rng, n, 1.0 - p);
+            }
+
+            double mean = n * p;
+            if (mean < ExactBinomialMeanLimit)
+            {
+                // P(0) = q^n, then P(k+1) = P(k) * (n-k)/(k+1) * p/q. With
+                // mean < 30, q^n >= e^-(~31), so nothing underflows.
+                double q = 1.0 - p;
+                double ratio = p / q;
+                double pk = Math.Exp(n * Math.Log(q));
+                double u = rng.NextDouble();
+                double cumulative = pk;
+                int k = 0;
+                while (u > cumulative && k < n)
+                {
+                    pk *= (double)(n - k) / (k + 1) * ratio;
+                    k++;
+                    cumulative += pk;
+                    // Floating-point tail: the cdf can stall a hair under 1.
+                    if (pk <= 0.0) break;
+                }
+                return k;
+            }
+
+            // Box-Muller; 1 - NextDouble() keeps the log argument off zero.
+            double u1 = 1.0 - rng.NextDouble();
+            double u2 = rng.NextDouble();
+            double z = Math.Sqrt(-2.0 * Math.Log(u1)) * Math.Cos(2.0 * Math.PI * u2);
+            double sample = Math.Round(mean + z * Math.Sqrt(mean * (1.0 - p)));
+            if (sample < 0) return 0;
+            if (sample > n) return n;
+            return (int)sample;
         }
     }
 }

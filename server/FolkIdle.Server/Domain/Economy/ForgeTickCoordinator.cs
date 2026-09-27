@@ -67,9 +67,6 @@ namespace FolkIdle.Server.Domain.Economy
                 return;
             }
 
-            currentPayload.IsSuspended = true;
-            ctx.CheckpointManager.FlushStateAndAdvance(ref currentPayload);
-            
             long pId = currentPayload.PlayerId;
             long cTargetId = cmd.TargetId;
             long cSecId = cmd.SecondaryId;
@@ -77,14 +74,25 @@ namespace FolkIdle.Server.Domain.Economy
 
             var forgeEngine = ctx.ForgeEngine;
             var networkSystem = ctx.NetworkSystem;
-            ctx.SafeDispatch("Forge.Fusion", pId, async () => {
-                var result = await forgeEngine.ExecuteFusionAsync(pId, cTargetId, cSecId, cTerId);
-                if (result == ForgeSplicingResult.InvalidRequest)
-                {
-                    networkSystem.ForceDisconnect(pId);
-                    return;
-                }
-                networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+            var safeDispatch = ctx.SafeDispatch;
+
+            // Modul: checkpoints off the tick thread (task 43). Suspend, flush
+            // on CheckpointWriter, then dispatch the fusion from the flush's
+            // continuation - after the commit, never after a failure (the ack
+            // un-suspends and answers CheckpointFailed).
+            currentPayload.IsSuspended = true;
+            ctx.CheckpointManager.RequestFlush(ref currentPayload, FlushReason.Command, then: () =>
+            {
+                safeDispatch("Forge.Fusion", pId, async () => {
+                    var result = await forgeEngine.ExecuteFusionAsync(pId, cTargetId, cSecId, cTerId);
+                    if (result == ForgeSplicingResult.InvalidRequest)
+                    {
+                        networkSystem.ForceDisconnect(pId);
+                        return;
+                    }
+                    networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                });
+                return Task.CompletedTask;
             });
         }
 
@@ -101,9 +109,6 @@ namespace FolkIdle.Server.Domain.Economy
                 return;
             }
 
-            currentPayload.IsSuspended = true;
-            ctx.CheckpointManager.FlushStateAndAdvance(ref currentPayload);
-            
             long pId = currentPayload.PlayerId;
             long cTargetId = cmd.TargetId;
             int affixIndex = cmd.LimitPrice;
@@ -120,36 +125,47 @@ namespace FolkIdle.Server.Domain.Economy
 
             var rerollEngine = ctx.RerollEngine;
             var networkSystem = ctx.NetworkSystem;
-            ctx.SafeDispatch("Affix.Reroll", pId, async () => {
-                if (autoMaxAttempts == 0U)
-                {
-                    await rerollEngine.ExecuteRerollAsync(pId, cTargetId, affixIndex, rerollOperation);
-                }
-                else
-                {
-                    // The affix id is carried as a 1-based index into
-                    // AffixRegistry.Definitions rather than a string,
-                    // because the packet is fixed-layout. 0 means
-                    // "any stat".
-                    string? requiredAffixId = null;
-                    if (stopAffixIndex > 0 && stopAffixIndex <= Engine.AffixRegistry.Definitions.Length)
+            var safeDispatch = ctx.SafeDispatch;
+
+            // Modul: checkpoints off the tick thread (task 43) - same shape as
+            // the fusion above: the reroll is dispatched from the continuation
+            // of a flush that has committed. An auto-reroll run is dispatched,
+            // not awaited there, so it never holds the writer's partition.
+            currentPayload.IsSuspended = true;
+            ctx.CheckpointManager.RequestFlush(ref currentPayload, FlushReason.Command, then: () =>
+            {
+                safeDispatch("Affix.Reroll", pId, async () => {
+                    if (autoMaxAttempts == 0U)
                     {
-                        requiredAffixId = Engine.AffixRegistry.Definitions[stopAffixIndex - 1].Id;
+                        await rerollEngine.ExecuteRerollAsync(pId, cTargetId, affixIndex, rerollOperation);
+                    }
+                    else
+                    {
+                        // The affix id is carried as a 1-based index into
+                        // AffixRegistry.Definitions rather than a string,
+                        // because the packet is fixed-layout. 0 means
+                        // "any stat".
+                        string? requiredAffixId = null;
+                        if (stopAffixIndex > 0 && stopAffixIndex <= Engine.AffixRegistry.Definitions.Length)
+                        {
+                            requiredAffixId = Engine.AffixRegistry.Definitions[stopAffixIndex - 1].Id;
+                        }
+
+                        var stopCondition = new Engine.AutoRerollStopCondition(
+                            (Engine.AffixRarity)(stopMinRarity < 1 ? 1 : stopMinRarity),
+                            requiredAffixId);
+
+                        // The client's attempt count is a request, not a
+                        // bound - AutoRerollPlanner clamps it, because an
+                        // unbounded loop of Serializable transactions is a
+                        // self-inflicted denial of service.
+                        await rerollEngine.ExecuteAutoRerollAsync(
+                            pId, cTargetId, affixIndex, rerollOperation, stopCondition, (int)autoMaxAttempts);
                     }
 
-                    var stopCondition = new Engine.AutoRerollStopCondition(
-                        (Engine.AffixRarity)(stopMinRarity < 1 ? 1 : stopMinRarity),
-                        requiredAffixId);
-
-                    // The client's attempt count is a request, not a
-                    // bound - AutoRerollPlanner clamps it, because an
-                    // unbounded loop of Serializable transactions is a
-                    // self-inflicted denial of service.
-                    await rerollEngine.ExecuteAutoRerollAsync(
-                        pId, cTargetId, affixIndex, rerollOperation, stopCondition, (int)autoMaxAttempts);
-                }
-
-                networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                    networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                });
+                return Task.CompletedTask;
             });
         }
     }

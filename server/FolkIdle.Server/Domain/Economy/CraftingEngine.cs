@@ -321,6 +321,9 @@ namespace FolkIdle.Server.Domain.Economy
 
             if (success)
             {
+                // Funnel step 4, after the commit. See FunnelRecorder.
+                Engine.FunnelRecorder.Record(playerId, Engine.FunnelStep.FirstCraft);
+
                 // Enqueue completion
                 _playerRegistry.CraftingCompletionQueue.Enqueue(new CraftingCompletionNotification
                 {
@@ -399,18 +402,9 @@ namespace FolkIdle.Server.Domain.Economy
                 return;
             }
 
-            var existing = await context.CommodityRecords
-                .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {resultBaseId} FOR UPDATE")
-                .SingleOrDefaultAsync();
-
-            if (existing == null)
-            {
-                context.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = resultBaseId, Quantity = quantityProduced });
-            }
-            else
-            {
-                existing.Quantity += quantityProduced;
-            }
+            // Modul: an upsert, not "FOR UPDATE, then insert if missing" - see
+            // CommodityLedger for why the missing-row branch was a race.
+            await CommodityLedger.AddAsync(context, playerId, resultBaseId, quantityProduced);
         }
 
         private static int ResolveRegionTierForItem(int itemId)

@@ -337,15 +337,10 @@ namespace FolkIdle.Server.Engine
                             long payout = cuts[i];
                             if (payout > 0)
                             {
-                                var goldRow = await dbContext.CommodityRecords.FirstOrDefaultAsync(c => c.PlayerId == members[i].PlayerId && c.ItemId == "gold");
-                                if (goldRow != null)
-                                {
-                                    goldRow.Quantity += payout;
-                                }
-                                else
-                                {
-                                    dbContext.CommodityRecords.Add(new FolkIdle.Server.Models.CommodityRecord { PlayerId = members[i].PlayerId, ItemId = "gold", Quantity = payout });
-                                }
+                                // Modul: an upsert (CommodityLedger), task 44. This
+                                // was an unlocked read then an absolute write at
+                                // SaveChanges, which lost any credit landing between.
+                                await CommodityLedger.AddAsync(dbContext, members[i].PlayerId, "gold", payout);
                             }
                         }
                     }

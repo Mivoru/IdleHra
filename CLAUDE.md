@@ -129,6 +129,15 @@ The safety net was broken the same day: no client sends opcode 6, so the only
 `LogicEpochCounter` at 0, and the epoch gate answered it with
 `TerminateSessionForSecurity` - a disconnect that skips the flush. Ask which of
 the two paths carries a new field; adding to the frame alone is adding to a cache.
+Since task 43 the checkpoint itself is **asynchronous**: `RequestFlush` snapshots
+the payload onto `CheckpointWriter` (4 partitions, FIFO per player) and the
+commit comes back as a `FlushAck`. The snapshot's epoch is `LogicEpochCounter +
+FlushesInFlight` and the gold delta moves onto the job - so never stamp or flush
+a payload by hand around it, and never call `FlushStateAndAdvance` on the tick
+(`CheckpointOffTickGuardTests`; only login may). Engine work that must read the
+flushed rows goes in the `then:` continuation; a failed flush un-suspends with
+`CheckpointFailed` (44). A login awaits `WaitForPendingFlushesAsync` so it never
+reads the row a logout is still writing.
 
 **A list of owned items must be windowed.** `EquipmentInstances` grows with
 playtime and had reached **17,836 rows on one live account**. `VirtualList`
@@ -217,6 +226,19 @@ validator that returns false gets `TerminateSessionForSecurity`, and a phone
 reconnects quietly, so "the window closed a moment ago" and a double-tap inside
 `ValidateCommand`'s 100 ms rule both read as "I pressed it and nothing
 happened". Terminate a protocol violation. Answer a state race.
+
+**Mutating REST handlers run concurrently; the router's striped lock is what
+serialises them per account.** `ListenLoopAsync` used to await every handler
+inline, so one trickled body at the unauthenticated asset handshake froze the
+whole server — and that same one-at-a-time loop was, by accident, the only
+thing stopping a double-tapped sale from racing itself. Now each request runs
+on its own task (`RouteAsync`), and every non-GET request with a valid bearer
+token holds `AccountStripes[hash(accountId) & 1023]` for its whole handler
+(10 s wait, then a 429 with `Reason: AccountBusy`). **A GET is never locked,
+so a new handler that mutates on GET must say so and take the lock itself.**
+Bodies are read only through `ReadBodyAsync` (64 KB cap → 413, 30 s deadline →
+socket aborted); `HttpRouterConcurrencyTests` greps for any `ReadToEndAsync`
+that comes back. Caddy's `@api` handle buffers bodies before the app sees them.
 
 **A calendar-gated feature needs a way to open it, or it is untested most of
 the month.** The world boss window is the 1st-7th and 15th-22nd, and

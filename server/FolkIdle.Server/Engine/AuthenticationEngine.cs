@@ -596,7 +596,7 @@ namespace FolkIdle.Server.Engine
                     // CharacterGrantEngine.
                     CharacterGrantEngine.SeedStarterHumanPair(db, player.Id, characterId);
 
-                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
+                    await CommodityLedger.AddAsync(db, player.Id, "gold", 1000L);
 
                     // Modul: A NEW ACCOUNT NOW OWNS THE THREE BASIC TOOLS, and
                     // 25 copper ore no longer appears from nowhere.
@@ -621,6 +621,10 @@ namespace FolkIdle.Server.Engine
                     await transaction.CommitAsync();
 
                     Console.WriteLine($"Auto-provisioned new player {player.Id} for device login.");
+
+                    // Funnel step 1, after the commit: a registration that rolled
+                    // back is not a player. See FunnelRecorder.
+                    FunnelRecorder.Record(player.Id, FunnelStep.Registered);
                     return (player.Id, characterId);
                 }
                 catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)
@@ -849,7 +853,7 @@ namespace FolkIdle.Server.Engine
                     // CharacterGrantEngine.
                     CharacterGrantEngine.SeedStarterHumanPair(db, player.Id, characterId);
 
-                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
+                    await CommodityLedger.AddAsync(db, player.Id, "gold", 1000L);
                     // The same three tools the device path grants - see
                     // StarterEquipmentGrant. Seeding one registration route and
                     // not the other is exactly how accounts came to differ.
@@ -859,6 +863,9 @@ namespace FolkIdle.Server.Engine
                     await transaction.CommitAsync();
 
                     Console.WriteLine($"Registered new player {player.Id} via email.");
+
+                    // Funnel step 1 - the email route's half. See FunnelRecorder.
+                    FunnelRecorder.Record(player.Id, FunnelStep.Registered);
                     return (EmailRegisterOutcome.Success, player.Id, characterId);
                 }
                 catch (DbUpdateException ex) when (ex.InnerException is Npgsql.PostgresException pgEx && pgEx.SqlState == Npgsql.PostgresErrorCodes.UniqueViolation)

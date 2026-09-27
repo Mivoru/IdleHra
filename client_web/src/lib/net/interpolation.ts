@@ -136,6 +136,18 @@ export class SnapshotInterpolator {
     this.intervalEstimateMs = INITIAL_INTERVAL_ESTIMATE_MS;
   }
 
+  /**
+   * True when `sample(nowMs)` has reached the newest snapshot and will not move
+   * again until another one is pushed. The render loop stops on this and a
+   * push restarts it, so an idle screen costs no frames at all.
+   */
+  isSettled(nowMs: number): boolean {
+    if (this.current === null || this.previous === null) return true;
+    const span = this.current.arrivedAtMs - this.previous.arrivedAtMs;
+    if (span <= 0) return true;
+    return nowMs - this.renderDelayMs >= this.current.arrivedAtMs;
+  }
+
   /** The values to render at wall-clock `nowMs`. Null until a snapshot lands. */
   sample(nowMs: number): InterpolatedFields | null {
     if (this.current === null) return null;
@@ -168,4 +180,29 @@ export function extractInterpolated(packet: Record<string, unknown>): Interpolat
     out[field] = typeof value === 'number' ? value : 0;
   }
   return out;
+}
+
+/** Smallest change in any field worth waking the subscribers for. */
+export const VISUAL_PUBLISH_EPSILON = 0.5;
+
+/**
+ * Whether a freshly sampled frame is worth publishing over the last one.
+ *
+ * Modul: `visualState.set` used to run on every animation frame, and every set
+ * re-runs every subscriber's derivations - sixty times a second while nothing
+ * moved. Sub-half-unit motion is invisible on a bar or a rounded label, so it
+ * is skipped - EXCEPT on the settling frame, which must land exactly on the
+ * server's value or a bar could rest 0.4 short of it for good.
+ */
+export function shouldPublishVisual(
+  last: InterpolatedFields | null,
+  next: InterpolatedFields,
+  settled: boolean,
+): boolean {
+  if (last === null) return true;
+  const threshold = settled ? 0 : VISUAL_PUBLISH_EPSILON;
+  for (const field of INTERPOLATED_FIELD_NAMES) {
+    if (Math.abs(next[field] - last[field]) > threshold) return true;
+  }
+  return false;
 }

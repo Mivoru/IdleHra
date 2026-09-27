@@ -21,6 +21,8 @@
   import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
   import { triggerGdprPurge } from '../lib/net/commands';
   import { enablePushNotifications, pushUnavailableReason } from '../lib/net/push';
+  import { hapticsEnabled } from '../lib/net/haptics';
+  import { enableLocalNotifications, localNotifyUnavailableReason } from '../lib/net/localNotify';
   import { submitSupportTicket, scrubTrace, fetchAdminStatus, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent, fetchChestSettings, saveChestSettings } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
   import { rarityName } from '../lib/ui/rarity';
@@ -79,6 +81,29 @@
             : outcome.reason;
     } finally {
       pushBusy = false;
+    }
+  }
+
+  // Modul: task 45. The resting reminder's permission is asked HERE, on a
+  // press, never at launch - the same reasoning as push above. The reminder
+  // itself is scheduled by lifecycle.ts when the app goes to the background.
+  let reminderBusy = $state(false);
+  let reminderMessage = $state('');
+  const reminderBlocked = $derived(localNotifyUnavailableReason());
+
+  async function turnOnReminder() {
+    reminderBusy = true;
+    reminderMessage = '';
+    try {
+      const outcome = await enableLocalNotifications();
+      reminderMessage =
+        outcome === 'granted'
+          ? 'Done. When you leave the app, it will remind you an hour before your characters stop earning.'
+          : outcome === 'denied'
+            ? 'Notifications are turned off for FolkIdle in your device settings. Turn them on there first.'
+            : (reminderBlocked ?? 'Reminders are not available here.');
+    } finally {
+      reminderBusy = false;
     }
   }
 
@@ -366,7 +391,7 @@
   <section class="panel">
     <h2>Language</h2>
     <p class="dim small">
-      The same 28-key table the Unity client reads, served from /gamedata - one
+      The same 30-key table the Unity client reads, served from /gamedata - one
       table, not two. A blank translation falls back to English rather than
       showing nothing.
     </p>
@@ -392,7 +417,7 @@
         <li><span class="dim tiny">ActiveEventPrefix</span> {$t('ActiveEventPrefix')}</li>
       </ul>
       <p class="dim tiny">
-        Only 28 keys exist, so most of this client's text is not translated at
+        Only 30 keys exist, so most of this client's text is not translated at
         all - the table covers event names and a handful of labels. Stated
         rather than implied by a language picker that suggests full coverage.
       </p>
@@ -409,6 +434,11 @@
     <label class="check">
       <input type="checkbox" bind:checked={$muted} />
       Mute
+    </label>
+
+    <label class="check">
+      <input type="checkbox" bind:checked={$hapticsEnabled} />
+      {$t('SettingsHaptics')}
     </label>
 
     <label>
@@ -532,6 +562,15 @@
     {/if}
     {#if pushMessage}
       <p class="small">{pushMessage}</p>
+    {/if}
+
+    {#if !reminderBlocked}
+      <button disabled={reminderBusy} onclick={turnOnReminder}>
+        {$t('SettingsRestingReminder')}
+      </button>
+    {/if}
+    {#if reminderMessage}
+      <p class="small">{reminderMessage}</p>
     {/if}
 
     <h3>Email</h3>

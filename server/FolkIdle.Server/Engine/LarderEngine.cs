@@ -214,18 +214,10 @@ namespace FolkIdle.Server.Engine
         {
             if (quantity <= 0) return;
 
-            var existing = await context.CommodityRecords
-                .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {baseItemId} FOR UPDATE")
-                .SingleOrDefaultAsync();
-
-            if (existing == null)
-            {
-                context.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = baseItemId, Quantity = quantity });
-            }
-            else
-            {
-                existing.Quantity += quantity;
-            }
+            // Modul: an upsert (CommodityLedger), task 44. If this same
+            // request already took from the stack (a swap), the ledger rebases
+            // that tracked row so SaveChanges keeps both moves.
+            await CommodityLedger.AddAsync(context, playerId, baseItemId, quantity);
         }
 
         private static (int ItemId, int Count) ReadSlot(PlayerRecord player, int slotIndex) => slotIndex switch

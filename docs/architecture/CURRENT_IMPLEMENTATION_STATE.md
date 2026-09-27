@@ -143,6 +143,8 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 | NotableItemEvent               | notable_item_events             |
 | PlayerTitle                    | player_titles                   |
 | PlayerGoldDailyHigh            | player_gold_daily_high          |
+| PlayerFunnelEvent              | player_funnel_events            |
+| SplitBrainIncident             | split_brain_incidents           |
 
 **The Deep (task 37)** added the last two, in migration `AddTheDeep`:
 - `player_titles` is keyed `(PlayerId, TitleSlug)`, and grants are
@@ -151,10 +153,24 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
   is priced on. It is written inside `FlushState`'s transaction, never on
   the Redis frame path.
 
+**Task 42** added `split_brain_incidents` (migration `AddSplitBrainIncidents`),
+keyed `(PlayerId, DbEpoch)`. `FlushState`'s split-brain refusal inserts one
+row `ON CONFLICT DO NOTHING` and mails a flat
+`StateCheckpointManager.SplitBrainCompensationGold` (1,000) only when that
+inserted a row, so one incident pays once.
+
 The same migration added these columns:
 - `DelveRunRecords`: `IsDeep`, `StakeGold`, `LanternsBought`.
 - `PlayerRecords`: `DelveDeepestFloor`, `DelveDeepestThisWeek`,
   `DelveDeepestThisWeekAtUtc`, `ActiveTitleSlug`.
+
+**The new-player funnel (task 39)** added `player_funnel_events`, in migration
+`AddPlayerFunnelEvents`: one row per `(PlayerId, Step)`, the first time that
+player reached that step. Only `FunnelRecorder`'s cron worker writes it, as a
+batched `INSERT ... ON CONFLICT DO NOTHING`; producers only enqueue. Step 1
+(registered) is also the only record of when an account was created -
+`PlayerRecords` has no creation timestamp. The steps and their one writer
+each are listed on `FunnelRecorder`; the read side is `docs/ops/funnel.sql`.
 
 The routes:
 - `POST /api/v1/delve/deep/descend` and `/api/v1/delve/deep/lantern`. Both

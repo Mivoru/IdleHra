@@ -273,7 +273,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.HasIndex("PlayerId", "ItemId");
+                    b.HasIndex("PlayerId", "ItemId")
+                        .IsUnique();
 
                     b.ToTable("CommodityRecords");
                 });
@@ -1113,6 +1114,8 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("PlayerId");
+
                     b.ToTable("MailboxInstances");
                 });
 
@@ -1440,6 +1443,22 @@ namespace FolkIdle.Server.Migrations
                     b.HasIndex("PlayerId");
 
                     b.ToTable("PlayerDeviceRegistrations");
+                });
+
+            modelBuilder.Entity("FolkIdle.Server.Models.PlayerFunnelEvent", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<short>("Step")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PlayerId", "Step");
+
+                    b.ToTable("player_funnel_events");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerGoldDailyHigh", b =>
@@ -2139,6 +2158,22 @@ namespace FolkIdle.Server.Migrations
                     NpgsqlIndexBuilderExtensions.HasMethod(b.HasIndex("TargetCohort"), "btree");
 
                     b.ToTable("SegmentedStorefrontListings");
+                });
+
+            modelBuilder.Entity("FolkIdle.Server.Models.SplitBrainIncident", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("DbEpoch")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PlayerId", "DbEpoch");
+
+                    b.ToTable("split_brain_incidents");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.VillageInfrastructure", b =>

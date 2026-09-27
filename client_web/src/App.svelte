@@ -1,34 +1,9 @@
 <script lang="ts">
   import { QueryClientProvider } from '@tanstack/svelte-query';
   import Login from './routes/Login.svelte';
-  import Combat from './routes/Combat.svelte';
-  import Gathering from './routes/Gathering.svelte';
-  import Character from './routes/Character.svelte';
-  import Larder from './routes/Larder.svelte';
-  import Market from './routes/Market.svelte';
-  import Crafting from './routes/Crafting.svelte';
-  import Forge from './routes/Forge.svelte';
   import ChatDock from './lib/ui/ChatDock.svelte';
   import { screenRequest } from './lib/stores/navigation';
   import Hub from './routes/Hub.svelte';
-  import Social from './routes/Social.svelte';
-  import GuildOps from './routes/GuildOps.svelte';
-  import Progression from './routes/Progression.svelte';
-  import Leaderboards from './routes/Leaderboards.svelte';
-  import Village from './routes/Village.svelte';
-  import Codex from './routes/Codex.svelte';
-  import Breeding from './routes/Breeding.svelte';
-  import Ancestors from './routes/Ancestors.svelte';
-  import Store from './routes/Store.svelte';
-  import Delve from './routes/Delve.svelte';
-  import SkillsPanel from './lib/ui/SkillsPanel.svelte';
-  import Inheritance from './routes/Inheritance.svelte';
-  import Settings from './routes/Settings.svelte';
-  import Mailbox from './routes/Mailbox.svelte';
-  import Chest from './routes/Chest.svelte';
-  import WorldBoss from './routes/WorldBoss.svelte';
-  import Boosts from './routes/Boosts.svelte';
-  import Wiki from './routes/Wiki.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import VictoryCard from './lib/ui/VictoryCard.svelte';
   import DeathCard from './lib/ui/DeathCard.svelte';
@@ -68,7 +43,7 @@
   import WhatsNew from './lib/ui/WhatsNew.svelte';
   import { resolveNotesOnStartup, startUpdatePolling } from './lib/stores/version';
   import { coachTargetScreen } from './lib/stores/tutorial';
-  import { untrack } from 'svelte';
+  import { untrack, type Component } from 'svelte';
 
   initLanguage();
   void loadTranslations();
@@ -175,6 +150,79 @@
   // Chest's "Reroll" button publishes a request instead. See
   // stores/navigation.ts for why it carries a nonce.
   const ALL_SCREEN_KEYS = new Set<string>(GROUPS.flatMap((group) => group.screens.map((s) => s.key)));
+
+  // Modul: EVERY SCREEN BUT THE MAP IS LOADED ON FIRST VISIT.
+  //
+  // All 26 were static imports, so the first paint waited on one ~660 KB chunk
+  // holding the Wiki, the Forge and the guild war UI for a player who had only
+  // asked to see the map. Login and Hub stay static because one of them is
+  // always the first thing drawn; everything else is a dynamic import() and
+  // its own chunk.
+  //
+  // Resolved components are kept in a $state map rather than behind an
+  // {#await}: a second visit then renders synchronously, with no one-frame
+  // "Loading" flash between two screens the player has already seen.
+  //
+  // A failed load is almost always a deploy: the hashed chunk this tab's
+  // bundle names no longer exists on the server. That is answered with a
+  // reload button, not a blank screen - and not an automatic reload, which
+  // would loop if the network, rather than the deploy, is the cause.
+  type LazyScreen = Exclude<ScreenKey, 'hub'>;
+  const SCREEN_LOADERS: Record<LazyScreen, () => Promise<{ default: Component<any> }>> = {
+    combat: () => import('./routes/Combat.svelte'),
+    gathering: () => import('./routes/Gathering.svelte'),
+    character: () => import('./routes/Character.svelte'),
+    larder: () => import('./routes/Larder.svelte'),
+    crafting: () => import('./routes/Crafting.svelte'),
+    forge: () => import('./routes/Forge.svelte'),
+    market: () => import('./routes/Market.svelte'),
+    social: () => import('./routes/Social.svelte'),
+    guildops: () => import('./routes/GuildOps.svelte'),
+    village: () => import('./routes/Village.svelte'),
+    progression: () => import('./routes/Progression.svelte'),
+    codex: () => import('./routes/Codex.svelte'),
+    breeding: () => import('./routes/Breeding.svelte'),
+    ancestors: () => import('./routes/Ancestors.svelte'),
+    inheritance: () => import('./routes/Inheritance.svelte'),
+    delve: () => import('./routes/Delve.svelte'),
+    store: () => import('./routes/Store.svelte'),
+    settings: () => import('./routes/Settings.svelte'),
+    mailbox: () => import('./routes/Mailbox.svelte'),
+    chest: () => import('./routes/Chest.svelte'),
+    worldboss: () => import('./routes/WorldBoss.svelte'),
+    boosts: () => import('./routes/Boosts.svelte'),
+    leaderboards: () => import('./routes/Leaderboards.svelte'),
+    wiki: () => import('./routes/Wiki.svelte'),
+    // The skill tree has its own screen now. It lived inside the character
+    // sheet, wedged between the paper doll and the stat block, where it was
+    // both cramped and in the way of the thing that screen is actually for.
+    skills: () => import('./lib/ui/SkillsPanel.svelte'),
+  };
+
+  let loadedScreens = $state<Partial<Record<LazyScreen, Component<any>>>>({});
+  let failedScreen = $state<LazyScreen | null>(null);
+  const pendingLoads = new Set<LazyScreen>();
+
+  function ensureScreenLoaded(key: LazyScreen): void {
+    if (loadedScreens[key] || pendingLoads.has(key)) return;
+    pendingLoads.add(key);
+    SCREEN_LOADERS[key]()
+      .then((mod) => {
+        loadedScreens[key] = mod.default;
+        if (failedScreen === key) failedScreen = null;
+      })
+      .catch((err) => {
+        console.warn(`screen ${key} failed to load`, err);
+        failedScreen = key;
+      })
+      .finally(() => pendingLoads.delete(key));
+  }
+
+  $effect(() => {
+    if (screen !== 'hub') ensureScreenLoaded(screen);
+  });
+
+  const ActiveScreen = $derived(screen === 'hub' ? null : (loadedScreens[screen] ?? null));
 
   let navOpen = $state(false);
 
@@ -482,60 +530,15 @@
 
     {#if screen === 'hub'}
       <Hub onNavigate={(next) => goTo(next)} />
-    {:else if screen === 'combat'}
-      <Combat />
-    {:else if screen === 'gathering'}
-      <Gathering />
-    {:else if screen === 'character'}
-      <Character />
-    {:else if screen === 'larder'}
-      <Larder />
-    {:else if screen === 'crafting'}
-      <Crafting />
-    {:else if screen === 'forge'}
-      <Forge />
-    {:else if screen === 'market'}
-      <Market />
-    {:else if screen === 'social'}
-      <Social />
-    {:else if screen === 'guildops'}
-      <GuildOps />
-    {:else if screen === 'village'}
-      <Village />
-    {:else if screen === 'skills'}
-      <!-- Modul: the skill tree has its own screen now. It lived inside the
-           character sheet, wedged between the paper doll and the stat block,
-           where it was both cramped and in the way of the thing that screen is
-           actually for. -->
-      <SkillsPanel />
-    {:else if screen === 'progression'}
-      <Progression />
-    {:else if screen === 'codex'}
-      <Codex />
-    {:else if screen === 'breeding'}
-      <Breeding />
-    {:else if screen === 'ancestors'}
-      <Ancestors />
-    {:else if screen === 'inheritance'}
-      <Inheritance />
-    {:else if screen === 'delve'}
-      <Delve />
-    {:else if screen === 'store'}
-      <Store />
-    {:else if screen === 'settings'}
-      <Settings />
-    {:else if screen === 'mailbox'}
-      <Mailbox />
-    {:else if screen === 'chest'}
-      <Chest />
-    {:else if screen === 'worldboss'}
-      <WorldBoss />
-    {:else if screen === 'boosts'}
-      <Boosts />
-    {:else if screen === 'leaderboards'}
-      <Leaderboards />
-    {:else if screen === 'wiki'}
-      <Wiki />
+    {:else if ActiveScreen}
+      <ActiveScreen />
+    {:else if failedScreen === screen}
+      <section class="panel screen-load-failed">
+        <p>This screen could not be loaded - the game has probably been updated since this tab opened.</p>
+        <button onclick={() => location.reload()}>Reload</button>
+      </section>
+    {:else}
+      <p class="dim screen-loading">Loading...</p>
     {/if}
 
     <!-- Modul: A BANNER THAT DOES SOMETHING.

@@ -232,8 +232,8 @@ namespace FolkIdle.Server.Tests
             //
             // ValidateEpochSynchronization rejects any command whose
             // LogicEpochCounter drifts more than 5 from the live payload's -
-            // and FlushStateAndAdvance bumps that counter by 1 on every
-            // committed checkpoint. With no Redis registered (Global
+            // and every committed checkpoint bumps that counter by 1 (via its
+            // ack, since task 43). With no Redis registered (Global
             // Constraints), a fighting session's own auto-salvage gold forces
             // a checkpoint on nearly every kill, and SpendAttributePoint/
             // MarketListItem force one explicitly - so a command stream that
@@ -395,8 +395,14 @@ namespace FolkIdle.Server.Tests
             {
                 int sessionMax = kv.Value.Select(p => p.TicksSinceLastFlush).DefaultIfEmpty(0).Max();
                 worstTicksSinceLastFlush = Math.Max(worstTicksSinceLastFlush, sessionMax);
-                Assert.True(sessionMax < StateCheckpointManager.CheckpointBoundaryTicks,
-                    $"session {kv.Key} observed TicksSinceLastFlush={sessionMax}, at or past the {StateCheckpointManager.CheckpointBoundaryTicks}-tick contract, under a pool bounded to {PoolBound}");
+                // Modul: EXACTLY the boundary is not an age (task 43).
+                // SpendAttributePoint FORCES a checkpoint by setting the counter
+                // to CheckpointBoundaryTicks, and a player suspended by a market
+                // flush in flight - which now commits on CheckpointWriter rather
+                // than on the tick - is broadcast with that marker until the
+                // reload lands. A real overrun climbs past the boundary.
+                Assert.True(sessionMax <= StateCheckpointManager.CheckpointBoundaryTicks,
+                    $"session {kv.Key} observed TicksSinceLastFlush={sessionMax}, past the {StateCheckpointManager.CheckpointBoundaryTicks}-tick contract, under a pool bounded to {PoolBound}");
             }
             _o.WriteLine($"Worst observed TicksSinceLastFlush across {SessionCount} sessions: {worstTicksSinceLastFlush} (contract ceiling {StateCheckpointManager.CheckpointBoundaryTicks})");
 
@@ -411,7 +417,7 @@ namespace FolkIdle.Server.Tests
             // AuthenticationEngine's seeding comment and the checkpoint's own
             // "gold" writes), and this scenario forces a flush on nearly every
             // tick (no Redis registered, SpendAttributePoint's boundary trick,
-            // MarketListItem's synchronous FlushStateAndAdvance). Summing every
+            // MarketListItem's command checkpoint). Summing every
             // CommodityRecords row unfiltered would make this assertion pass
             // even with CombatLootEngine completely dead, because gold keeps
             // flowing on an entirely separate path - which is exactly the

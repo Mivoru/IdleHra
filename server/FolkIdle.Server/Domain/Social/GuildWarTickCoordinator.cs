@@ -49,13 +49,22 @@ namespace FolkIdle.Server.Domain.Social
 
             if (currentPayload.GuildId > 0 && currentPayload.ActiveGuildWarId > 0 && cmd.SecondaryId > 0 && cmd.TertiaryId > 0)
             {
-                currentPayload.IsSuspended = true;
-                ctx.CheckpointManager.FlushStateAndAdvance(ref currentPayload);
-                ctx.GuildWarEngine.SupplyChainQueue.Enqueue(new GuildWarSupplyContribution
+                // Modul: checkpoints off the tick thread (task 43). The burn
+                // is queued from the flush's continuation, after the commit and
+                // never after a failed flush - the order the synchronous flush
+                // gave, without the tick waiting on it.
+                var contribution = new GuildWarSupplyContribution
                 {
                     PlayerId = currentPayload.PlayerId,
                     CommodityId = cmd.SecondaryId,
                     QuantityToBurn = cmd.TertiaryId
+                };
+                var supplyChainQueue = ctx.GuildWarEngine.SupplyChainQueue;
+                currentPayload.IsSuspended = true;
+                ctx.CheckpointManager.RequestFlush(ref currentPayload, FlushReason.Command, then: () =>
+                {
+                    supplyChainQueue.Enqueue(contribution);
+                    return Task.CompletedTask;
                 });
             }
         }

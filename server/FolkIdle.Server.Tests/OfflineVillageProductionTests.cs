@@ -55,14 +55,14 @@ namespace FolkIdle.Server.Tests
         {
             const long playerId = 974_000_001L;
 
-            // Two rows for the same (PlayerId, ItemId = "gold") - legitimate
-            // seed data that reaches the same throw a live race would, without
-            // touching the schema or the connection.
+            // Modul: the poison used to be two gold rows for one player. Task
+            // 44 made (PlayerId, ItemId) unique, so that seed is now refused by
+            // the database itself. A gold row already at long.MaxValue does the
+            // same job: the gold upsert overflows bigint (22003) inside the
+            // grant's transaction, which is the throw this test needs.
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 0L });
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 0L });
-                await db.SaveChangesAsync();
+                await CommodityLedger.AddAsync(db, playerId, "gold", long.MaxValue);
             }
 
             long before = ReadFailureCounter();

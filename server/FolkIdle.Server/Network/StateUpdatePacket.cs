@@ -266,7 +266,14 @@ namespace FolkIdle.Server.Network
         // weak-hit answer or the damage card, so it is told to update over the
         // air. Answered, never TerminateSessionForSecurity - it is an honest
         // old client, not a protocol violation.
-        WorldBossUpdateRequired = 43
+        WorldBossUpdateRequired = 43,
+
+        // Modul: checkpoints off the tick thread (task 43). A market, forge,
+        // reroll or guild command now flushes on CheckpointWriter and runs
+        // its engine work only after the commit. When that flush fails the
+        // work never runs - and the player is told so, un-suspended, rather
+        // than left pressing a button that did nothing.
+        CheckpointFailed = 44
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -880,6 +887,15 @@ namespace FolkIdle.Server.Network
         // TicksSinceLastFlush / 10 is exactly the whole-second age of the
         // last successful save. Previously tracked only server-side.
         public int TicksSinceLastFlush;
+
+        // Modul: task 45, 801 -> 805. The effective offline-simulation cap in
+        // seconds (OfflineSimulationEngine.MaxOfflineSeconds, extended by the
+        // Vodnik mastery via RaceMasteryResolver.GetVodnikExtendedOfflineSeconds).
+        // The client schedules a local notification one hour before it runs
+        // out; it reads the cap here rather than keeping a second copy of the
+        // rule. No payload twin: computed at the boundary from
+        // VodnikMasteryLevel, which the login hydrates.
+        public int OfflineCapSeconds;
 
         // Modul: Production Release Hardening, Part 2. ClaimedMilestonesBitmask,
         // ActiveChroniclePassLevel, AccumulatedSeasonalXp,

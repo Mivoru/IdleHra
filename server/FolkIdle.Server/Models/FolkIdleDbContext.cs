@@ -100,6 +100,14 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerGoldDailyHigh> PlayerGoldDailyHighs { get; set; }
         public DbSet<PlayerTitle> PlayerTitles { get; set; }
 
+        // The new-player funnel (task 39): the first time each player reached
+        // each step. See PlayerFunnelEvent and FunnelRecorder.
+        public DbSet<PlayerFunnelEvent> PlayerFunnelEvents { get; set; }
+
+        // Task 42: one row per split-brain compensation, so it pays once.
+        // See SplitBrainIncident.
+        public DbSet<SplitBrainIncident> SplitBrainIncidents { get; set; }
+
         // The durable retry outbox. See PendingGrant.
         public DbSet<PendingGrant> PendingGrants { get; set; }
 
@@ -182,6 +190,13 @@ namespace FolkIdle.Server.Models
             modelBuilder.Entity<EventHorizonPremiumLedger>()
                 .HasIndex(p => p.PlayerId);
 
+            // Modul: every mailbox read is "this player's mail" - the screen,
+            // the market escrow's FOR UPDATE count, the world boss payout's
+            // duplicate check - and the table had only its primary key, so
+            // each one was a sequential scan of every player's mail (task 47).
+            modelBuilder.Entity<MailboxInstance>()
+                .HasIndex(m => m.PlayerId);
+
             modelBuilder.Entity<PlayerProductionRegistry>()
                 .HasKey(p => p.PlayerId);
 
@@ -244,8 +259,14 @@ namespace FolkIdle.Server.Models
             modelBuilder.Entity<PlayerGoldDailyHigh>()
                 .HasKey(h => new { h.PlayerId, h.DayUtc });
 
+            modelBuilder.Entity<SplitBrainIncident>()
+                .HasKey(i => new { i.PlayerId, i.DbEpoch });
+
             modelBuilder.Entity<PlayerTitle>()
                 .HasKey(t => new { t.PlayerId, t.TitleSlug });
+
+            modelBuilder.Entity<PlayerFunnelEvent>()
+                .HasKey(f => new { f.PlayerId, f.Step });
 
             modelBuilder.Entity<VillageResident>()
                 .HasKey(v => new { v.PlayerId, v.SlotIndex });
@@ -450,8 +471,15 @@ namespace FolkIdle.Server.Models
             // entries, race masteries, region completions, quests, village
             // infrastructure - already get this for free from the PK index and
             // are deliberately not repeated here.
+            // Modul: UNIQUE since task 44 (2026-09-27). It was a plain index,
+            // so a check-then-insert race could leave a player with two gold
+            // rows and half a balance on every FirstOrDefault. It is also the
+            // conflict target of CommodityLedger's upsert, which cannot exist
+            // without it. Migration MakeCommodityRecordsPlayerItemUnique
+            // merges any duplicates first.
             modelBuilder.Entity<CommodityRecord>()
-                .HasIndex(c => new { c.PlayerId, c.ItemId });
+                .HasIndex(c => new { c.PlayerId, c.ItemId })
+                .IsUnique();
 
             modelBuilder.Entity<EquipmentInstance>()
                 .HasIndex(e => e.PlayerId);
