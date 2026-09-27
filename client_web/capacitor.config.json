@@ -11,12 +11,11 @@
   },
   "plugins": {
     "CapacitorUpdater": {
-      "autoUpdate": "onLaunch",
+      "autoUpdate": "atInstall",
       "updateUrl": "https://folkidle.duckdns.org/api/v1/app/bundle",
       "statsUrl": "",
       "channelUrl": "",
-      "resetWhenUpdate": true,
-      "directUpdate": true
+      "resetWhenUpdate": true
     }
   }
 }

@@ -10,6 +10,20 @@
 // thing the plugin CANNOT do on its own, which is decide whether the bundle it
 // just installed actually works.
 //
+// Modul: WHEN A BUNDLE IS APPLIED - "atInstall", not "onLaunch" (2026-09-27).
+//
+// capacitor.config.json had autoUpdate "onLaunch" plus the deprecated
+// directUpdate: true ("always"): on a cold start after any deploy the plugin
+// downloaded the new bundle and swapped it in IMMEDIATELY, reloading the page
+// a few seconds into the session. Reported from the APK as "it shows my
+// offline drops, then relogs and only shows the few seconds I was away" - the
+// reload is a fresh page, so the offline summary and loot log were gone and
+// the second login's catch-up covered only the gap. "atInstall" applies at
+// once only after a fresh install or store update (so a new APK never runs a
+// stale bundle) and otherwise the next time the app goes to the background.
+// A deploy reaches a phone one app switch later; nobody's session reloads.
+// This lives in the APK: it takes effect from the next APK build, not OTA.
+
 // ------------------------------------------------------------------------
 // WHY notifyAppReady IS THE MOST IMPORTANT LINE IN THIS FILE
 // ------------------------------------------------------------------------
