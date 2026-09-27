@@ -247,7 +247,7 @@
           : '';
 
       if (sell) {
-        play('lootDropped');
+        play('itemSold');
         pushLocalNotice(
           `Sold ${result.RemovedCount.toLocaleString()} pieces for ${result.GoldGained.toLocaleString()}g.${kept}`,
           'info',
@@ -285,7 +285,7 @@
       if (!result || result.Success === false) {
         pushLocalNotice(`Could not ${sell ? 'sell' : 'bin'} ${label}.`);
       } else if (sell) {
-        play('lootDropped');
+        play('itemSold');
         pushLocalNotice(`Sold ${label} for ${result.GoldGained.toLocaleString()}g.`, 'info');
       } else {
         pushLocalNotice(`Binned ${label}.`, 'info');
@@ -343,6 +343,8 @@
   // share a helper.
   function equip(instanceId: number) {
     connection.send({ Command: CommandType.EquipItem, TargetId: instanceId });
+    // On send, like every command: a refusal answers with the error tone.
+    play('itemEquipped');
     setTimeout(refresh, 700);
   }
 

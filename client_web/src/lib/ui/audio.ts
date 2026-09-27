@@ -18,17 +18,25 @@ import { writable, get } from 'svelte/store';
 export const CLIPS = {
   buttonClick: 'ui_button_click.wav',
   windowOpen: 'ui_window_open.wav',
+  windowClose: 'ui_window_close.wav',
+  notification: 'notification.wav',
+  itemSold: 'item_sold.wav',
+  itemEquipped: 'item_equipped.wav',
+  delveDoor: 'delve_door_open.wav',
   playerHit: 'combat_player_hit.wav',
+  playerMiss: 'combat_miss.wav',
 
   // Modul: one hit sound for every weapon in the game is the same swing
-  // whether you are holding a claymore or a wand. These three are optional -
-  // playHit falls back to playerHit when a file is missing, so dropping the
-  // WAVs in later needs no code change and their absence is silence-free.
+  // whether you are holding a claymore or a wand. The three weapon clips
+  // exist since 2026-09-27; the crit clip still does not, and playHit falls
+  // back to playerHit for it, so dropping the WAV in later needs no code
+  // change and its absence is silence-free.
   hitMelee: 'combat_hit_melee.wav',
   hitRanged: 'combat_hit_ranged.wav',
   hitMagic: 'combat_hit_magic.wav',
   hitCrit: 'combat_hit_crit.wav',
   playerDied: 'combat_player_died.wav',
+  playerDiedFemale: 'combat_player_died_female.wav',
   bossFirstClear: 'combat_boss_first_clear.wav',
   monsterDefeated: 'combat_monster_defeated.wav',
   lootDropped: 'loot_dropped.wav',
@@ -132,9 +140,9 @@ async function loadClip(file: string): Promise<AudioBuffer | null> {
  * The hit sound for a weapon family, falling back to the one clip that has
  * always existed.
  *
- * A FALLBACK RATHER THAN A GAP. combat_hit_melee.wav and its siblings are not
- * in the repository yet - they need authoring, which is not something code can
- * do - and a missing clip resolves to silence in loadClip. Silence on every
+ * A FALLBACK RATHER THAN A GAP. combat_hit_crit.wav is not in the repository
+ * yet - it needs authoring, which is not something code can do - and a missing
+ * clip resolves to silence in loadClip. Silence on every
  * swing would be a worse combat feel than the single generic thump this
  * replaces, so the generic one is what plays until the specific file exists.
  */

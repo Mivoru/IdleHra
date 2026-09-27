@@ -33,6 +33,7 @@
     not diamonds, and the screen says so.
   */
   import { onMount } from 'svelte';
+  import { play } from '../lib/ui/audio';
   import Money from '../lib/ui/Money.svelte';
   import { formatCompact } from '../lib/ui/format';
 
@@ -351,7 +352,10 @@
                 class="door"
                 class:hidden={demand < 0}
                 disabled={busy}
-                onclick={() => act(() => chooseDelveDoor(i))}
+                onclick={() => {
+                  play('delveDoor');
+                  void act(() => chooseDelveDoor(i));
+                }}
               >
                 <span class="flavour">{demand < 0 ? HIDDEN_FLAVOUR : DOOR_FLAVOUR[demand]}</span>
                 <span class="demand">{demand < 0 ? 'Unknown' : ATTRIBUTE_NAMES[demand]}</span>

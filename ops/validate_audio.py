@@ -42,20 +42,32 @@ MINIMUM_PLAUSIBLE_BYTES = 1024
 
 LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/"
 
-# Every clip the client can ask for and that must exist. The six optional
-# per-weapon hit clips listed in the folder's README are NOT here on purpose:
-# they have never been authored and audio.ts falls back for them by design.
+# Every clip the client can ask for and that must exist. combat_hit_crit.wav
+# is NOT here on purpose: it has never been authored and audio.ts falls back
+# for it by design. The rest of the once-optional clips arrived 2026-09-27.
 REQUIRED_CLIPS = [
     "achievement_unlock.wav",
+    "combat_boss_first_clear.wav",
+    "combat_hit_magic.wav",
+    "combat_hit_melee.wav",
+    "combat_hit_ranged.wav",
+    "combat_miss.wav",
     "combat_monster_defeated.wav",
+    "combat_player_died.wav",
+    "combat_player_died_female.wav",
     "combat_player_hit.wav",
     "crafting_completed.wav",
+    "delve_door_open.wav",
     "error.wav",
+    "item_equipped.wav",
+    "item_sold.wav",
     "level_up.wav",
     "loot_dropped.wav",
     "loot_rare_dropped.wav",
+    "notification.wav",
     "race_unlocked.wav",
     "ui_button_click.wav",
+    "ui_window_close.wav",
     "ui_window_open.wav",
 ]
 
