@@ -10,6 +10,7 @@
 
 import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
+import { accountIdOf } from '../net/auth';
 import { watchAppLifecycle } from '../net/lifecycle';
 import { refreshDeviceTokenIfPermitted, watchNotificationTaps } from '../net/push';
 import { tap } from '../net/haptics';
@@ -537,17 +538,51 @@ async function raiseAchievementToasts(): Promise<void> {
 // Wiring
 // ---------------------------------------------------------------------------
 
-export function startSession(token: string): void {
-  interpolator.reset();
-  damageFeed.reset();
-  damageEvents.set([]);
-  // Modul: the loot log was never cleared by either of these, so signing out
-  // and back in - or into a DIFFERENT account - showed the previous session's
-  // drops as if they were this one's.
+// Modul: WHOSE session the loot log and the offline summary belong to.
+//
+// A new session is not always a new player. The server's security disconnect
+// (ForceDisconnect) closes with "... token no longer valid" on purpose, the
+// client reads that as signed out, App.svelte spends the refresh token, and the
+// new JWT restarts this whole session - a few seconds after login on a phone.
+// Clearing unconditionally here threw away the offline summary and the rare
+// drops the player had just been shown, and the second login's catch-up
+// replaced them with "the few seconds I was away". Reported from the APK.
+// The same player keeps both; a different account, or signing out
+// (forgetSession), still starts clean - which is what the clear was for.
+let sessionAccountId: string | null = null;
+
+/** Signing out: the next session starts clean even for the same account. */
+export function forgetSession(): void {
+  sessionAccountId = null;
   lootLogEquipment.set([]);
   lootLogMaterials.set([]);
   offlineSummary.set(null);
   lastOfflineSummaryTick = -1;
+}
+
+/** Whether a new session continues the previous one's player. */
+export function continuesSession(previousAccountId: string | null, nextAccountId: string | null): boolean {
+  return nextAccountId !== null && nextAccountId === previousAccountId;
+}
+
+export function startSession(token: string): void {
+  interpolator.reset();
+  damageFeed.reset();
+  damageEvents.set([]);
+  const accountId = accountIdOf(token);
+  const samePlayer = continuesSession(sessionAccountId, accountId);
+  sessionAccountId = accountId;
+  if (!samePlayer) {
+    // Modul: the loot log was never cleared by either of these, so signing
+    // out and back in - or into a DIFFERENT account - showed the previous
+    // session's drops as if they were this one's.
+    lootLogEquipment.set([]);
+    lootLogMaterials.set([]);
+    offlineSummary.set(null);
+    // Kept for the same player, so the restarted session's catch-up (a few
+    // seconds) is not "the first packet" and cannot replace an open summary.
+    lastOfflineSummaryTick = -1;
+  }
   victorySummary.set(null);
   lastVictoryTick = -1;
   deathSummary.set(null);
@@ -923,11 +958,11 @@ export function endSession(): void {
   interpolator.reset();
   damageFeed.reset();
   damageEvents.set([]);
-  lootLogEquipment.set([]);
-  lootLogMaterials.set([]);
+  // The loot log and the offline summary are NOT cleared here: this also runs
+  // when a refreshed token restarts the session, and startSession decides by
+  // account (see sessionAccountId). Signing out clears them via forgetSession.
   commandResultFeed.reset();
   commandResults.set([]);
-  offlineSummary.set(null);
   playerState.set(null);
   visualState.set(null);
   lastPublishedVisual = null;

@@ -60,6 +60,24 @@ export class AuthError extends Error {
   }
 }
 
+/**
+ * The account a JWT belongs to (its `aid` claim), or null when the token cannot
+ * be read. Decoded only, never verified - the server verifies; this is used to
+ * tell "the same player with a refreshed token" from "somebody else".
+ */
+export function accountIdOf(token: string): string | null {
+  try {
+    const part = token.split('.')[1];
+    if (!part) return null;
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+    const aid = (JSON.parse(atob(padded)) as { aid?: unknown }).aid;
+    return aid === undefined || aid === null || aid === '' ? null : String(aid);
+  } catch {
+    return null;
+  }
+}
+
 export function storedToken(): string | null {
   return tokenStore().getItem(TOKEN_KEY);
 }
