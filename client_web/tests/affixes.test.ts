@@ -21,6 +21,14 @@ import { describeBossGearRequirement } from '../src/lib/ui/victories';
 // discriminator wrong makes the client lie about what an item does.
 
 describe('parseAffixKey', () => {
+  it('reads the forge\'s old "<id>_<4 hex>" keys as the affix they are', () => {
+    expect(parseAffixKey('range_dmg_pct_7bda')).toEqual({ id: 'range_dmg_pct', stack: 1, rarity: LEGACY_AFFIX_RARITY });
+    expect(parseAffixKey('armor_pen_flat_37f6').id).toBe('armor_pen_flat');
+    // Not a known id, or not four hex digits: left alone.
+    expect(parseAffixKey('mystery_stat_7bda').id).toBe('mystery_stat_7bda');
+    expect(parseAffixKey('flat_hp_7bdz').id).toBe('flat_hp_7bdz');
+  });
+
   it('parses a bare id', () => {
     expect(parseAffixKey('flat_hp')).toEqual({ id: 'flat_hp', stack: 1, rarity: LEGACY_AFFIX_RARITY });
   });
