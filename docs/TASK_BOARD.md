@@ -4124,7 +4124,53 @@ server-computed field, so file it separately if wanted.
 ## 46. State-frame size (S to L) - plan item 8
 
 **Why:** web clients get JSON snapshots of about 230 fields, serialized on the
-tick thread with no WebSocket compression. **Not yet measured.**
+tick thread with no WebSocket compression.
+
+**Step 1 (8a - Measure): code done, `perf/state-frame-metrics` off
+`feat/session-outbox` (62bf676).** `/metrics` now carries
+`folkidle_state_frame_bytes_total`, `folkidle_state_frames_total` and
+`folkidle_state_frame_serialize_microseconds` (a histogram timed tightly
+around `PacketJsonCodec.SerializeToUtf8` alone, in `SendToPlayer`,
+`NetworkBroadcastSystem.cs`; binary-path frames count toward bytes/frames but
+are not timed - see `StateFrameMetrics`'s own remarks for why). A **week of
+live production numbers off that endpoint is still owed** before the actual
+go/no-go call below can be made - what follows is a synthetic measurement
+from `StateFrameSizeTests`, useful as an upper-bound estimate, not a
+replacement for it.
+
+**Measured (synthetic, 2026-09-27):**
+- A `StateUpdatePacket` with every field reflectively set to a representative
+  non-zero, multi-digit value (`StateFrameSizeTests.BuildRealisticMidGamePacket`,
+  standing in for a levelled, geared, mid-to-late-game character) serializes
+  to **6,205 bytes** of JSON. The 801-byte binary struct is not the right
+  comparison for JSON overhead - an **all-zero** packet already serializes to
+  **5,186 bytes**, because 230 PascalCase field names plus JSON punctuation is
+  a fixed cost paid before a single stat is written. Actual gameplay values
+  only add ~1 KB on top of that floor.
+- `SerializeToUtf8` itself: median ~42-48us, p99 ~63-116us over 2,000 warmed
+  runs on the realistic packet - tens of microseconds, not milliseconds.
+
+**Implied bandwidth (upper-bound ESTIMATE, not a production measurement):**
+send cadence is effectively **1 frame/second per connected session** - the
+broadcast pass only runs once every `BroadcastKeepaliveTicks` (10) ticks at
+10Hz, and that constant equals the loop's own cadence, so the keepalive
+branch in `ShouldDispatchStateUpdate` fires on essentially every pass
+regardless of the dirty-check (worth a separate look, but out of scope for
+8a). At 6,205 bytes/frame x 60 s: **~372 KB/player/minute** (≈364 KiB); even
+at the theoretical zero-value floor of 5,186 bytes/frame x 60 s: **~311
+KB/player/minute**. Both are **over the ~150 KB/player/minute threshold**,
+by roughly 2.1x-2.5x - the bandwidth trigger reads as crossed even before a
+week of real traffic confirms it.
+
+**Implied CPU cost:** all per-player serialization for a given broadcast
+pass happens inside the SAME 100ms tick (the once-per-10-ticks gate), so the
+10%-of-tick-budget (10ms) threshold is a per-tick concurrent-player count:
+roughly 86 simultaneously-online JSON sessions at the measured p99 (116us
+each), or ~208 at the median (48us each), before that tick's serialization
+alone would reach 10ms. Current registered population is far below that
+(memory notes: 61 registered accounts, 2026-09-25), so **the CPU trigger
+does not read as crossed** at today's population - this is an estimate, not
+a live count of concurrent sessions.
 
 **Steps:**
 1. **Measure (8a).** A week of `/metrics`, plus a test that asserts the frame size.

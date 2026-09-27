@@ -1,6 +1,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
@@ -64,6 +65,94 @@ namespace FolkIdle.Server.Network
     /// had nothing to reconnect FROM. The send timeout and IsWedged below are
     /// the second half of that fix, and they now live in the writer.
     /// </remarks>
+    // Modul: task 46 (audit item 8, "8a - measure"). Nothing on /metrics
+    // answered how big a JSON state frame actually is or how long
+    // PacketJsonCodec.SerializeToUtf8 takes on the tick thread, and
+    // docs/TASK_BOARD.md #46's go/no-go call - close the item, or add
+    // compression (8c) and maybe deltas (8b) - needs a week of real
+    // production numbers, not a guess. CLAUDE.md: "a number a test PRINTS is
+    // not a number a test CHECKS" applies to a dashboard nobody reads just
+    // as much as to a test nobody asserts on.
+    //
+    // Bytes count every frame actually handed to a session: the JSON
+    // serialize output, plus the binary struct's fixed size for the
+    // (retired-client) binary path - a memcpy of a constant-size unmanaged
+    // struct, cheap enough to fold into the byte total without its own
+    // timer. The microsecond histogram is JSON-only, wrapped tightly around
+    // SerializeToUtf8 itself, because that Utf8JsonWriter walk over ~230
+    // fields is the actual cost the CPU-budget threshold is about - timing
+    // the binary path would just measure noise.
+    //
+    // Plain Interlocked counters rather than a lock: written from the single
+    // tick thread (SendToPlayer runs once per online player per 10Hz tick),
+    // read from a concurrent HTTP scrape - the same shape as
+    // WebSocketSession.EventsDroppedTotal below.
+    public static class StateFrameMetrics
+    {
+        private static long s_bytesTotal;
+        private static long s_framesTotal;
+        private static long s_serializeSumUs;
+        private static long s_serializeCount;
+        private static long s_bucket100Us;
+        private static long s_bucket250Us;
+        private static long s_bucket500Us;
+        private static long s_bucket1000Us;
+        private static long s_bucket2500Us;
+        private static long s_bucketInfUs;
+
+        public static long BytesTotal => Interlocked.Read(ref s_bytesTotal);
+        public static long FramesTotal => Interlocked.Read(ref s_framesTotal);
+        public static long SerializeSumMicroseconds => Interlocked.Read(ref s_serializeSumUs);
+        public static long SerializeCount => Interlocked.Read(ref s_serializeCount);
+        public static long Bucket100Us => Interlocked.Read(ref s_bucket100Us);
+        public static long Bucket250Us => Interlocked.Read(ref s_bucket250Us);
+        public static long Bucket500Us => Interlocked.Read(ref s_bucket500Us);
+        public static long Bucket1000Us => Interlocked.Read(ref s_bucket1000Us);
+        public static long Bucket2500Us => Interlocked.Read(ref s_bucket2500Us);
+        public static long BucketInfUs => Interlocked.Read(ref s_bucketInfUs);
+
+        /// <summary>Records one JSON state frame: its wire size, and how long SerializeToUtf8 took to build it.</summary>
+        public static void RecordJsonFrame(int bytes, long serializeMicroseconds)
+        {
+            Interlocked.Add(ref s_bytesTotal, bytes);
+            Interlocked.Increment(ref s_framesTotal);
+            Interlocked.Add(ref s_serializeSumUs, serializeMicroseconds);
+            Interlocked.Increment(ref s_serializeCount);
+            if (serializeMicroseconds <= 100) Interlocked.Increment(ref s_bucket100Us);
+            if (serializeMicroseconds <= 250) Interlocked.Increment(ref s_bucket250Us);
+            if (serializeMicroseconds <= 500) Interlocked.Increment(ref s_bucket500Us);
+            if (serializeMicroseconds <= 1000) Interlocked.Increment(ref s_bucket1000Us);
+            if (serializeMicroseconds <= 2500) Interlocked.Increment(ref s_bucket2500Us);
+            Interlocked.Increment(ref s_bucketInfUs);
+        }
+
+        /// <summary>Records one binary state frame's fixed size. No serialize timer - see the class remarks.</summary>
+        public static void RecordBinaryFrame(int bytes)
+        {
+            Interlocked.Add(ref s_bytesTotal, bytes);
+            Interlocked.Increment(ref s_framesTotal);
+        }
+
+        // Modul: test-only reset. StateFrameMetrics is exercised directly by
+        // StateFrameSizeTests with no database or socket involved, and these
+        // are process-wide static counters (deliberately, like every other
+        // /metrics counter in this file) - without a reset, an earlier
+        // test's frames would leak into a later test's assertions.
+        internal static void ResetForTests()
+        {
+            Interlocked.Exchange(ref s_bytesTotal, 0);
+            Interlocked.Exchange(ref s_framesTotal, 0);
+            Interlocked.Exchange(ref s_serializeSumUs, 0);
+            Interlocked.Exchange(ref s_serializeCount, 0);
+            Interlocked.Exchange(ref s_bucket100Us, 0);
+            Interlocked.Exchange(ref s_bucket250Us, 0);
+            Interlocked.Exchange(ref s_bucket500Us, 0);
+            Interlocked.Exchange(ref s_bucket1000Us, 0);
+            Interlocked.Exchange(ref s_bucket2500Us, 0);
+            Interlocked.Exchange(ref s_bucketInfUs, 0);
+        }
+    }
+
     public class WebSocketSession
     {
         public WebSocket Socket { get; }
@@ -8936,6 +9025,30 @@ namespace FolkIdle.Server.Network
                 body.Append("# TYPE folkidle_outbox_queue_depth gauge\n");
                 body.Append("folkidle_outbox_queue_depth ").Append(outboxDepth).Append('\n');
 
+                // Modul: task 46 (audit item 8, "8a - measure"). See
+                // StateFrameMetrics for what these count and why. Read
+                // straight off the static counters, the same pattern as
+                // folkidle_outbox_events_dropped_total above.
+                body.Append('\n');
+                body.Append("# HELP folkidle_state_frame_bytes_total Bytes of state frame (JSON serialize output, or the binary struct size) offered to a session, summed since start.\n");
+                body.Append("# TYPE folkidle_state_frame_bytes_total counter\n");
+                body.Append("folkidle_state_frame_bytes_total ").Append(StateFrameMetrics.BytesTotal).Append('\n');
+                body.Append('\n');
+                body.Append("# HELP folkidle_state_frames_total State frames (JSON or binary) offered to a session, summed since start.\n");
+                body.Append("# TYPE folkidle_state_frames_total counter\n");
+                body.Append("folkidle_state_frames_total ").Append(StateFrameMetrics.FramesTotal).Append('\n');
+                body.Append('\n');
+                body.Append("# HELP folkidle_state_frame_serialize_microseconds Time PacketJsonCodec.SerializeToUtf8 took to build one JSON state frame. Binary-path frames are not timed - see StateFrameMetrics.\n");
+                body.Append("# TYPE folkidle_state_frame_serialize_microseconds histogram\n");
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"100\"} ").Append(StateFrameMetrics.Bucket100Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"250\"} ").Append(StateFrameMetrics.Bucket250Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"500\"} ").Append(StateFrameMetrics.Bucket500Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"1000\"} ").Append(StateFrameMetrics.Bucket1000Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"2500\"} ").Append(StateFrameMetrics.Bucket2500Us).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_bucket{le=\"+Inf\"} ").Append(StateFrameMetrics.BucketInfUs).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_sum ").Append(StateFrameMetrics.SerializeSumMicroseconds).Append('\n');
+                body.Append("folkidle_state_frame_serialize_microseconds_count ").Append(StateFrameMetrics.SerializeCount).Append('\n');
+
                 byte[] payload = System.Text.Encoding.UTF8.GetBytes(body.ToString());
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "text/plain; version=0.0.4";
@@ -10170,14 +10283,27 @@ namespace FolkIdle.Server.Network
             // absolute state frame supersedes any older one still waiting) and
             // the session's writer sends it after any queued events. Send
             // faults are logged by the writer itself.
+            //
+            // Modul: task 46 (8a - measure). The Stopwatch wraps ONLY
+            // SerializeToUtf8, not the OfferSnapshot call below it, so the
+            // recorded microseconds are the Utf8JsonWriter cost alone and not
+            // contaminated by the outbox's (cheap, non-blocking) enqueue.
+            // See StateFrameMetrics above for what this feeds on /metrics.
             if (session.UseJsonProtocol)
             {
-                session.OfferSnapshot(PacketJsonCodec.SerializeToUtf8(ref packet), WebSocketMessageType.Text);
+                long serializeStartTimestamp = Stopwatch.GetTimestamp();
+                byte[] json = PacketJsonCodec.SerializeToUtf8(ref packet);
+                long serializeElapsedUs = (Stopwatch.GetTimestamp() - serializeStartTimestamp) * 1_000_000L / Stopwatch.Frequency;
+                StateFrameMetrics.RecordJsonFrame(json.Length, serializeElapsedUs);
+                session.OfferSnapshot(json, WebSocketMessageType.Text);
             }
             else
             {
                 // A rented copy per offer, not a shared per-session buffer -
-                // see OfferStateFrame for the spliced-frame trap.
+                // see OfferStateFrame for the spliced-frame trap. The size is
+                // a compile-time constant for this unmanaged struct, so
+                // recording it costs nothing worth timing.
+                StateFrameMetrics.RecordBinaryFrame(Unsafe.SizeOf<StateUpdatePacket>());
                 session.OfferStateFrame(ref packet);
             }
         }
