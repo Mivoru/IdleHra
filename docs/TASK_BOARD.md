@@ -4117,6 +4117,15 @@ Three PRs:
 
 ## 44. `CommodityRecords` has no unique key; about 30 check-then-insert sites (M) - plan item 5
 
+**DONE (pending deploy), 2026-09-27, branch `fix/unique-commodity-rows`.**
+Production duplicate query returned 0 rows on 2026-09-27. Migration
+`MakeCommodityRecordsPlayerItemUnique` (not additive: merges duplicates into
+the lowest `Id`, repoints `MarketOrderRecords`/`historical_market_archives`,
+then makes the index unique). `Engine/CommodityLedger.cs` is the only writer
+(`AddAsync`, `AddManyAsync`); it rebases a row the context already tracks.
+`CommodityLedgerTests` is the guard. Still to do: `exercise.mjs` on the dev
+box, then re-run the duplicate query after deploy.
+
 **Why:** a second `gold` row splits a balance. `MarketTickCoordinator`'s
 settlement rescue (`:58-80`) inserts with no lock at all.
 

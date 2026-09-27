@@ -449,12 +449,10 @@ namespace FolkIdle.Server.Domain.Economy
                 }
                 else
                 {
-                    if (sellerGold == null)
-                    {
-                        sellerGold = new CommodityRecord { PlayerId = order.SellerId, ItemId = "gold", Quantity = 0 };
-                        db.CommodityRecords.Add(sellerGold);
-                    }
-                    sellerGold.Quantity += sellerProceeds;
+                    // Modul: an upsert (CommodityLedger). The ledger rebases
+                    // the tracked sellerGold row read above, so nothing at
+                    // SaveChanges writes a stale absolute over it.
+                    await CommodityLedger.AddAsync(db, order.SellerId, "gold", sellerProceeds);
                 }
 
                 // Archive matching order

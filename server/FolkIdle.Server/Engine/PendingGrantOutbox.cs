@@ -142,9 +142,12 @@ namespace FolkIdle.Server.Engine
                         var commodity = await db.CommodityRecords
                             .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {row.PlayerId} AND \"ItemId\" = {itemId} FOR UPDATE")
                             .SingleOrDefaultAsync();
+                        // Modul: only the missing-row branch is an upsert
+                        // (CommodityLedger, task 44); the existing-row branch
+                        // stays locked because it clamps at zero.
                         if (commodity == null)
                         {
-                            db.CommodityRecords.Add(new CommodityRecord { PlayerId = row.PlayerId, ItemId = itemId, Quantity = Math.Max(0L, amount) });
+                            await CommodityLedger.AddAsync(db, row.PlayerId, itemId, Math.Max(0L, amount));
                         }
                         else
                         {

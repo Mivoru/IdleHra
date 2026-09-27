@@ -451,12 +451,9 @@ namespace FolkIdle.Server.Engine
                         }
                         else
                         {
-                            if (sellerGold == null)
-                            {
-                                sellerGold = new CommodityRecord { PlayerId = sell.SellerId, ItemId = "gold", Quantity = 0 };
-                                db.CommodityRecords.Add(sellerGold);
-                            }
-                            sellerGold.Quantity += sellerProceeds;
+                            // Modul: an upsert (CommodityLedger), task 44. It
+                            // rebases the tracked sellerGold row read above.
+                            await CommodityLedger.AddAsync(db, sell.SellerId, "gold", sellerProceeds);
                         }
 
                         // Give buyer refund and notification
@@ -471,8 +468,11 @@ namespace FolkIdle.Server.Engine
                         }
                         else if (refundToBuyer > 0)
                         {
-                            var buyerGold = await db.CommodityRecords.FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", buy.SellerId).SingleOrDefaultAsync();
-                            if (buyerGold != null) buyerGold.Quantity += refundToBuyer;
+                            // Modul: this used to skip the refund outright when
+                            // the buyer had no gold row (`if (buyerGold != null)`),
+                            // so an offline buyer whose row was missing lost it
+                            // in silence. The upsert creates the row (task 44).
+                            await CommodityLedger.AddAsync(db, buy.SellerId, "gold", refundToBuyer);
                         }
 
                         // Archive matching order

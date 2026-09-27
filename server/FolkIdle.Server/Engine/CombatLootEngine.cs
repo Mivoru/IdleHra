@@ -1351,31 +1351,11 @@ namespace FolkIdle.Server.Engine
         {
             if (deltas.Count == 0) return;
 
-            var ids = new List<string>(deltas.Count);
-            foreach (var delta in deltas)
-            {
-                if (delta.Value > 0 && !string.IsNullOrEmpty(delta.Key)) ids.Add(delta.Key);
-            }
-            if (ids.Count == 0) return;
-
-            var idArray = ids.ToArray();
-            var rows = await dbContext.CommodityRecords
-                .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = ANY({idArray}) FOR UPDATE")
-                .ToListAsync();
-
-            foreach (string id in ids)
-            {
-                long quantity = deltas[id];
-                var row = rows.FirstOrDefault(r => r.ItemId == id);
-                if (row == null)
-                {
-                    dbContext.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = id, Quantity = quantity });
-                }
-                else
-                {
-                    row.Quantity += quantity;
-                }
-            }
+            // Modul: one multi-row upsert (CommodityLedger.AddManyAsync), run
+            // at once inside the caller's transaction. It used to be FOR UPDATE
+            // plus an insert for any row that was missing, which two workers
+            // could both do for the same new material (task 44).
+            await CommodityLedger.AddManyAsync(dbContext, playerId, deltas);
         }
 
         /// <summary>
@@ -1631,8 +1611,6 @@ namespace FolkIdle.Server.Engine
 
             if (byMaterial.Count == 0) return;
 
-            var materialIds = byMaterial.Keys.ToArray();
-
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             var strategy = dbContext.Database.CreateExecutionStrategy();
@@ -1644,27 +1622,9 @@ namespace FolkIdle.Server.Engine
                     dbContext.ChangeTracker.Clear();
                     using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
 
-                    var existingRows = await dbContext.CommodityRecords
-                        .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = ANY({materialIds}) FOR UPDATE")
-                        .ToListAsync();
-
-                    foreach (var material in byMaterial)
-                    {
-                        var row = existingRows.FirstOrDefault(r => r.ItemId == material.Key);
-                        if (row == null)
-                        {
-                            dbContext.CommodityRecords.Add(new CommodityRecord
-                            {
-                                PlayerId = playerId,
-                                ItemId = material.Key,
-                                Quantity = material.Value.Quantity
-                            });
-                        }
-                        else
-                        {
-                            row.Quantity += material.Value.Quantity;
-                        }
-                    }
+                    // Modul: one multi-row upsert (CommodityLedger), task 44.
+                    await CommodityLedger.AddManyAsync(dbContext, playerId,
+                        byMaterial.Select(m => new KeyValuePair<string, long>(m.Key, m.Value.Quantity)));
 
                     await dbContext.SaveChangesAsync();
                     await transaction.CommitAsync();
