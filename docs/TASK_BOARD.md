@@ -4083,6 +4083,21 @@ Three PRs:
 - `exercise.mjs` passes;
 - tick p99 in production is under 25 ms.
 
+**Status (2026-09-27, branch `perf/checkpoint-writer`, not yet merged or deployed):**
+- **2a done.** `Domain/Shared/CheckpointWriter.cs` (4 partitions, per-job guard,
+  logout retries + gold rescue + `CHECKPOINT-DEADLETTER` line, login fence),
+  `StateCheckpointManager.RequestFlush`, `CheckpointAckTickCoordinator`,
+  `TickStatePayload.FlushesInFlight`, `PlayerSessionRegistry.FlushAckQueue`,
+  `CommandResultCode.CheckpointFailed` (44). Tests (a)-(e) in `CheckpointWriterTests`.
+- **2b done.** TrackState, guild treasury + war supply, forge fusion + reroll, market
+  (3 handlers), ReloadState, Logout - one commit each; the `InventorySpaceRemaining`
+  boundary deleted. `CheckpointOffTickGuardTests` allows only the login call.
+- **2c done.** `AddActivePlayer` staggers the boundary by `PlayerId % 3000` (`CheckpointStaggerTests`).
+- `/metrics` now has `folkidle_tick_duration_recent_milliseconds{quantile="0.99"}`
+  (last 600 ticks) and checkpoint queue/failure/dead-letter gauges.
+- **Open:** 2d (fixed timestep, its own PR); `exercise.mjs` after merge; the
+  production p99 check after deploy.
+
 ## 44. `CommodityRecords` has no unique key; about 30 check-then-insert sites (M) - plan item 5
 
 **Why:** a second `gold` row splits a balance. `MarketTickCoordinator`'s
