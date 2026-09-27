@@ -149,12 +149,27 @@ export async function open({ width = 1500, height = 1000 } = {}) {
 }
 
 /**
+ * Closes the once-per-browser "FolkIdle is on Android" popup, if it is up.
+ *
+ * Modul: every checker starts from an empty browser, so every checker sees the
+ * popup on the login screen - and its backdrop swallows the Sign in click.
+ * Closed the way a player closes it, rather than pre-seeding localStorage, so
+ * the popup's own button is exercised on every run.
+ */
+export async function dismissAppPromo(page) {
+  await page.getByRole('button', { name: 'Play as guest' }).waitFor({ timeout: 25000 });
+  const notNow = page.getByRole('button', { name: 'Not now', exact: true });
+  if ((await notNow.count()) > 0) await notNow.click();
+}
+
+/**
  * Signs in as a throwaway guest. This is the one to use against PRODUCTION:
  * a guest owns nothing, so nothing a checker does can spend a real player's
  * items. It is useless for anything that needs possessions.
  */
 export async function signInAsGuest(page) {
   await page.goto(BASE, { waitUntil: 'networkidle' });
+  await dismissAppPromo(page);
   await page.getByRole('button', { name: 'Play as guest' }).click();
   await waitForShell(page);
   await page.waitForTimeout(500);
@@ -181,6 +196,7 @@ async function waitForShell(page) {
 /** Signs in as the stocked dev fixture and clears the offline summary. */
 export async function signIn(page) {
   await page.goto(BASE, { waitUntil: 'networkidle' });
+  await dismissAppPromo(page);
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.locator('input[type="email"]').fill(DEV_EMAIL);
   await page.locator('input[type="password"]').fill(DEV_PASSWORD);

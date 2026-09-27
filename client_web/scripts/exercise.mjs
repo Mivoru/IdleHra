@@ -118,6 +118,25 @@ async function apiPostStatus(path, body) {
 }
 await page.goto(BASE, { waitUntil: 'networkidle' });
 
+// --- the Android app offer ----------------------------------------------------
+// Once per browser: this is a fresh one, so the popup must be up, must close,
+// must stay closed after a reload, and the permanent link must remain.
+{
+  const promo = page.getByRole('dialog', { name: 'FolkIdle for Android' });
+  record('app popup shows on a first visit', (await promo.count()) === 1);
+  if ((await promo.count()) > 0) {
+    await page.getByRole('button', { name: 'Not now', exact: true }).click();
+    record('app popup closes on Not now', (await promo.count()) === 0);
+  }
+  await page.reload({ waitUntil: 'networkidle' });
+  record('app popup does not come back', (await promo.count()) === 0);
+  const link = page.getByRole('link', { name: 'Get the Android app' });
+  record(
+    'login screen keeps the app link',
+    (await link.count()) === 1 && (await link.getAttribute('href')) === '/download/folkidle.apk',
+  );
+}
+
 // --- sign in as the stocked fixture -----------------------------------------
 await page.getByRole('button', { name: 'Sign in' }).click();
 await page.locator('input[type="email"]').fill('dev@folkidle.local');
@@ -3049,6 +3068,9 @@ await go('Ancestors');
   const email = `exercise${stamp}@folkidle.local`;
 
   await fresh.goto(BASE, { waitUntil: 'networkidle' });
+  // A new browser context, so the Android popup is up again.
+  const notNow = fresh.getByRole('button', { name: 'Not now', exact: true });
+  if ((await notNow.count()) > 0) await notNow.click();
   await fresh.getByRole('button', { name: 'Create an account' }).click();
   await fresh.locator('input[type="email"]').fill(email);
   // The username field is the only text input that is neither email nor password.

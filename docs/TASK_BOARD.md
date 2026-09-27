@@ -34,7 +34,7 @@
 >    - 46 is step 1 only: frames measure ~5.3 KB (dev), an estimated
 >      310-370 KB/player/min against the 150 KB threshold. The go/no-go needs a
 >      week of production `/metrics` after the deploy.
->    - 45 needs the owner's phone: a crit vibrates, backgrounding schedules the
+>    - 45 needs the owner's phone, on a NEW APK: a first clear vibrates, backgrounding schedules the
 >      reminder.
 >    - Still owed: `docs/ops/funnel.sql` once new players arrive (0 rows at
 >      deploy, nobody online) and the week of frame-size `/metrics` for 46
@@ -4203,13 +4203,14 @@ duplicates, then adds a unique index.
 **Status (2026-09-27): code DONE; on-device check owed (owner's phone).**
 Branch `feat/haptics-local-notify`. `@capacitor/haptics` and
 `@capacitor/local-notifications` installed and synced (both in
-`nativeProjects.test.ts`); `haptics.ts` (crit light, kill medium, loot tier
+`nativeProjects.test.ts`); `haptics.ts` (boss first clear heavy - kill and crit dropped on the owner's playtest as noise; loot tier
 10+ success, parry window light, plate break heavy; 80 ms throttle; Settings
 toggle, default on); `localNotify.ts` (fixed id 4501, scheduled on background
 at `now + OfflineCapSeconds - 3600`, cancelled on resume, permission from a
 Settings button only). `OfflineCapSeconds` is on `StateUpdatePacket`
 (801 -> 805), computed from the hydrated `VodnikMasteryLevel`. Owed: on the
-phone, a crit vibrates, and backgrounding the app schedules the reminder.
+phone (an APK built after 2026-09-27 - the plugins are native), a plate break
+or a boss first clear vibrates, and backgrounding the app schedules the reminder.
 
 **Why:** neither plugin is installed, and local notifications need no Firebase.
 
@@ -4227,7 +4228,7 @@ server-computed field, so file it separately if wanted.
 **Done when:**
 - `nativeProjects.test.ts` lists both plugins;
 - the unit tests pass;
-- on the owner's Android phone, a crit vibrates and backgrounding schedules the notification.
+- on the owner's Android phone, a boss first clear or a plate break vibrates and backgrounding schedules the notification.
 
 ## 46. State-frame size (S to L) - plan item 8
 

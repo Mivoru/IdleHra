@@ -10,6 +10,13 @@
   } from '../lib/net/auth';
   import { configurationProblem } from '../lib/net/config';
   import { isNativePlatform } from '../lib/net/platform';
+  import {
+    APP_DOWNLOAD_PATH,
+    appDownloadUrl,
+    markPromoSeen,
+    promoSeen,
+    shouldOfferApp,
+  } from '../lib/net/appDownload';
 
   // Modul: a misconfigured native build fails as a connection timeout, which
   // reads like the server being down. Said plainly here instead - this is the
@@ -38,6 +45,18 @@
     linkedResetToken === null ? 'choose' : 'reset',
   );
   let resetToken = $state<string>(linkedResetToken ?? '');
+
+  // Modul: the Android app, offered in the browser only - see appDownload.ts.
+  // The link below the form is permanent; the popup shows once per browser and
+  // is marked seen the moment it opens, so closing the tab does not bring it
+  // back. Not during a password reset: that player came from an email link to
+  // do one thing.
+  const offerApp = shouldOfferApp();
+  let promoOpen = $state(offerApp && linkedResetToken === null && !promoSeen());
+  if (promoOpen) markPromoSeen();
+  // Already on the phone: the address to type elsewhere is noise.
+  const onAndroid = /Android/i.test(globalThis.navigator?.userAgent ?? '');
+
   let notice = $state('');
   let email = $state('');
   let password = $state('');
@@ -189,7 +208,36 @@
   {#if error}
     <p class="error">{error}</p>
   {/if}
+
+  {#if offerApp}
+    <a class="applink" href={APP_DOWNLOAD_PATH} download>Get the Android app</a>
+  {/if}
 </div>
+
+{#if promoOpen}
+  <div class="promobackdrop" role="dialog" aria-modal="true" aria-label="FolkIdle for Android">
+    <div class="promocard">
+      <h2>FolkIdle is on Android</h2>
+      <p>
+        The app keeps you signed in, and updates itself. Your account and your
+        characters are the same in both.
+      </p>
+      {#if !onAndroid}
+        <p class="promourl">On your phone, open <strong>{appDownloadUrl()}</strong></p>
+      {/if}
+      <div class="promorow">
+        <button onclick={() => (promoOpen = false)}>Not now</button>
+        <a
+          class="promoget"
+          href={APP_DOWNLOAD_PATH}
+          download
+          onclick={() => (promoOpen = false)}>Download</a
+        >
+      </div>
+      <p class="promonote">The link stays at the bottom of this screen.</p>
+    </div>
+  </div>
+{/if}
 
 <style>
   .shell {
@@ -262,5 +310,82 @@
   .hint {
     font-size: 0.75rem;
     color: var(--text-dim);
+  }
+
+  .applink {
+    justify-self: center;
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    margin-top: 0.4rem;
+    font-size: 0.85rem;
+    color: var(--brass-lit, var(--accent));
+  }
+
+  /* A fixed overlay needs its own insets: body's padding never reaches it. */
+  .promobackdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: max(1rem, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))
+      max(1rem, var(--safe-area-inset-right, env(safe-area-inset-right, 0px)))
+      max(1rem, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))
+      max(1rem, var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
+    background: rgba(0, 0, 0, 0.62);
+  }
+
+  .promocard {
+    width: min(22rem, 100%);
+    padding: 1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius, 8px);
+    background: var(--bg-panel);
+  }
+
+  .promocard h2 {
+    margin: 0 0 0.4rem;
+    font-size: 1.1rem;
+  }
+
+  .promocard p {
+    margin: 0 0 0.7rem;
+    color: var(--text-dim);
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+
+  .promocard .promourl {
+    overflow-wrap: anywhere;
+  }
+
+  .promocard .promonote {
+    margin: 0.7rem 0 0;
+    font-size: 0.75rem;
+  }
+
+  .promorow {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  /* 44px stated here: a scoped selector outranks app.css's touch floor. */
+  .promorow > * {
+    flex: 1 1 0;
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  .promoget {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--brass, var(--accent));
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+    color: inherit;
+    text-decoration: none;
   }
 </style>
