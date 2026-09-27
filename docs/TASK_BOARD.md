@@ -23,11 +23,22 @@
 >    the weak plate is drawn per strike and the armour regrows daily.
 > 4. **Task 38 (Guild Wars): parked** until the population nears the floor.
 >    Re-measure before starting.
-> 5. **Tasks 39-47, the 2026-09-26 architecture audit** (added 2026-09-27).
->    - Index at the bottom of this file; plan in
->      `docs/superpowers/plans/2026-09-26-audit-remediation.md`.
->    - Start with **39 (funnel telemetry)**.
->    - **40 (the HTTP loop handles one request at a time) is P0.**
+> 5. **Tasks 39-47, the 2026-09-26 architecture audit: BUILT 2026-09-27 on
+>    `integ/audit-remediation`, NOT YET DEPLOYED.** Suite 1190/1190,
+>    `exercise.mjs` 186/186, client vitest 590 passed, ratchet at baseline 4.
+>    - 43 is phases 2a-2c; **2d (fixed timestep) is still open** as its own PR.
+>    - 46 is step 1 only: frames measure ~5.3 KB (dev), an estimated
+>      310-370 KB/player/min against the 150 KB threshold. The go/no-go needs a
+>      week of production `/metrics` after the deploy.
+>    - 45 needs the owner's phone: a crit vibrates, backgrounding schedules the
+>      reminder.
+>    - After deploy: `docs/ops/funnel.sql` in production, the commodity
+>      duplicate query returns 0, `smoke:screens` against production, a
+>      trickled-body `curl` next to `/healthz`, tick p99 < 25 ms in `/metrics`,
+>      and the two-browser chat check (41).
+>    - `exercise.mjs`'s new player never lands a kill (onboarding only reaches
+>      "Fight"), so it produces funnel step 1 but not step 2; the kill hook is
+>      proven by the dev fixture's live kill and `FunnelRecorderTests`.
 > 6. **Backlog follow-ups** (not blocking, all pre-existing):
 >    - the Village "Got it" overlap;
 >    - a Forge row at the bottom edge (`check:touch`);
