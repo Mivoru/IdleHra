@@ -15,6 +15,10 @@ await page.goto('http://localhost:5173/', { waitUntil: 'networkidle' });
 await page.screenshot({ path: `${OUT}-1-login.png` });
 console.log('login screen:', await page.locator('h1').first().textContent());
 
+// The once-per-browser Android popup covers the login buttons on a fresh browser.
+const notNow = page.getByRole('button', { name: 'Not now', exact: true });
+if ((await notNow.count()) > 0) await notNow.click();
+
 // Play as guest -> real HTTP login -> real WebSocket JSON handshake.
 await page.getByRole('button', { name: 'Play as guest' }).click();
 await page.waitForSelector('text=Combat', { timeout: 20000 });

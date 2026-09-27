@@ -361,6 +361,35 @@ the most important line in it — see `client_web/MOBILE.md`.
     curl -s https://92-5-0-94.sslip.io/healthz
     curl -sI https://92-5-0-94.sslip.io/     # should be the client, 200 text/html
 
+## The Android APK download
+
+The web login screen links to `/download/folkidle.apk` and shows a one-time
+popup advertising it (never inside the app, never on iPhone/iPad). Caddy serves
+it from `ops/oracle/downloads/` on the box, a directory mounted into the
+container and ignored by git. The APK is not in the image.
+
+Publish from the owner's PC, from the repo root:
+
+```powershell
+.\ops\oracle\publish-apk.ps1
+```
+
+It builds a release APK pointed at production, refuses it unless it is signed
+with the FolkIdle upload key and unless `cap sync` left the committed native
+projects untouched (a plugin missing from `node_modules` is silently dropped),
+uploads it under a temporary name, renames it, and checks the live size.
+
+**The upload key** is `%USERPROFILE%\.folkidle\folkidle-upload.jks` with its
+passwords in `client_web/android/keystore.properties` (gitignored). A copy of
+both is in `D:\FolkIdleBackups\signing`; keep one more copy off this PC. The
+same key is the Play upload key. If it is lost, every installed copy has to be
+uninstalled before it can update.
+
+**When to publish:** only when the NATIVE side changes (a Capacitor plugin,
+the manifest, the icon). Game code reaches installed phones over the air on
+every deploy. The route exists from the first deploy of this change; the link
+answers 404 until the first publish puts a file behind it.
+
 ## Mail, and what happens without it
 
 `FOLKIDLE_RESEND_API_KEY` and `FOLKIDLE_MAIL_FROM` drive the password reset

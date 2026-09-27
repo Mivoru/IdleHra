@@ -69,3 +69,6 @@ __pycache__/
 # Playwright MCP scratch output - snapshots and console logs from driving the
 # client by hand. Never part of the build.
 .playwright-mcp/
+
+# The published APK (ops/oracle/publish-apk.ps1) - a build output, not source.
+ops/oracle/downloads/

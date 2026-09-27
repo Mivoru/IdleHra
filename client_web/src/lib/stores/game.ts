@@ -771,6 +771,7 @@ export function startSession(token: string): void {
           // Beating a boss for the first time is not the same event as
           // gaining a level and should not sound like one forever.
           playWithFallback('bossFirstClear', 'levelUp');
+          tap('heavy');
         }
       }
 
@@ -880,12 +881,11 @@ export function startSession(token: string): void {
       // Only the player's own blows float. A monster's hit moves the player's
       // health bar, which is its own feedback, and a screen that threw a number
       // for every event would be unreadable at this cadence.
-      // Modul: task 45 haptics, read off the same feed - a kill is a medium
-      // tap, a crit a light one. tap() throttles a fast fight to one per 80 ms.
+      // Modul: task 45 haptics used to tap on every kill and every crit off
+      // this feed. Both were dropped on the owner's playtest: in an idle fight
+      // they fire every second or two, which is noise rather than a moment.
+      // Combat vibrates once now, on a boss's first clear (see LastVictoryTick).
       const kind = Number(packet.EventKind);
-      if (kind === CombatEventKind.Kill) tap('medium');
-      else if (kind === CombatEventKind.PlayerHit && (Number(packet.Flags) & CombatEventFlag.Crit) !== 0) tap('light');
-
       if (kind !== CombatEventKind.PlayerHit) return;
 
       const hit = damageFeed.push(

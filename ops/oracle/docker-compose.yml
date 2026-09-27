@@ -158,6 +158,9 @@ services:
       # A directory mount follows renames, because the directory entry is what
       # changes.
       - ./caddy:/etc/caddy:ro
+      # The Android APK the login screen links to; see /download/* in the
+      # Caddyfile. Filled by publish-apk.ps1, never by the image build.
+      - ./downloads:/downloads:ro
       # Named, so the certificate survives a rebuild. Without this every
       # `docker compose up --build` would re-issue from Let's Encrypt and walk
       # straight into their rate limit.

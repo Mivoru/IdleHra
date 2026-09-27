@@ -128,6 +128,24 @@ folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	# answer a missing bundle with index.html and 200 - the plugin would then
 	# unzip a web page and brick itself. A 404 is the answer that lets it give
 	# up quietly.
+	# Modul: THE ANDROID APP, for a player who found the game in a browser.
+	# The login screen links here (client_web/src/lib/net/appDownload.ts). The
+	# APK is not in the web image and not in git: it is a release build, signed
+	# with the upload key that lives only on the owner's PC, copied to
+	# ops/oracle/downloads/ on the box by ops/oracle/publish-apk.ps1.
+	#
+	# no-cache, NOT immutable like /updates/*: the URL is fixed and the file
+	# behind it changes, so a cached copy would hand out an old APK for ever.
+	# Before the SPA fallback for the same reason as /updates/*: a missing APK
+	# must be a 404, not index.html saved as "folkidle.apk".
+	handle_path /download/* {
+		root * /downloads
+		header Cache-Control "no-cache"
+		header /folkidle.apk Content-Type "application/vnd.android.package-archive"
+		header /folkidle.apk Content-Disposition "attachment; filename=\"folkidle.apk\""
+		file_server
+	}
+
 	@updates path /updates/*
 	handle @updates {
 		root * /srv
