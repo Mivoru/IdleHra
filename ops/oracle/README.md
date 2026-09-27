@@ -136,6 +136,16 @@ to `/`, and `/` is also where `index.html` lives. The `Caddyfile` matches the
 upgrade by its **headers** before any path routing runs, so the order of those
 three blocks is a contract, not a style choice.
 
+**Dry-running a Caddyfile change locally.** `caddy validate` has called broken
+files valid here twice (see the Caddyfile's `handle` comment), so run it: copy
+`caddy/` to a scratch directory, replace the site address line with `:80 {`,
+put any HTTP server on a docker network under the alias `app` listening on
+8080, run `caddy:2-alpine` on the same network with `-p 8099:80` and the
+scratch directory mounted at `/etc/caddy`, and curl `localhost:8099`. Task 40
+checked `request_buffers` this way with a single-threaded stub upstream: a body
+trickled over 10 s delayed `/healthz` by 8.5 s with the old file and 0.02 s with
+the new one.
+
 `/gamedata` and `/audio` go to the app, not the file server: the client fetches
 its whole content registry from the former. Routing them to static files would
 give a client that loads and then knows about no items or monsters at all.

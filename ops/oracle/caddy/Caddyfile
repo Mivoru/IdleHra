@@ -140,9 +140,25 @@ folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	# audio.ts) - they are NOT part of the static bundle, and letting them fall
 	# through to the file server gives a client that loads and then knows about
 	# no items or monsters at all.
+	#
+	# Modul: BUFFERED AT THE EDGE (task 40). Caddy streams a request body to
+	# the upstream as it arrives by default, so a client trickling a body a
+	# byte at a time held one of the app's handlers for as long as it liked -
+	# and before the router went concurrent, the whole server. request_buffers
+	# makes Caddy read the whole body (up to 1MB) BEFORE it opens the upstream
+	# request, so a slow body occupies Caddy, which is built to take that, and
+	# the app only ever sees complete requests. request_body caps it: no API
+	# body is more than a few hundred bytes, and the app refuses past 64KB
+	# itself (ReadBodyAsync). NOT on the WebSocket handle above - an upgrade
+	# has no body to buffer and must stream both ways for hours.
 	@api path /api/* /healthz /health/* /metrics /gamedata /gamedata/* /audio /audio/*
 	handle @api {
-		reverse_proxy app:8080
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy app:8080 {
+			request_buffers 1MB
+		}
 	}
 
 	# The client, and the artwork with it. /sprites lives in the static bundle

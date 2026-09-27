@@ -4028,6 +4028,18 @@ concurrent.
 - `smoke:screens` passes against production;
 - CLAUDE.md gains the "per-account striped lock" rule.
 
+**DONE (pending deploy), branch `fix/concurrent-http-router`.** The accept loop
+only accepts; `RouteAsync` runs each request on its own task with a 500 guard;
+non-GET bearer requests hold a 1024-way striped per-account lock (10 s, then
+429 `AccountBusy`); all 37 `ReadToEndAsync` calls go through `ReadBodyAsync`
+(64 KB/413, 30 s deadline); Caddy's `@api` handle buffers bodies
+(`request_buffers 1MB`, `max_size 1MB`). `HttpRouterConcurrencyTests`' healthz
+case failed on main (the probe hit its 1 s timeout behind a stalled body) and
+passes now. Caddy was dry-run locally against a single-threaded stub upstream:
+a trickled body delayed `/healthz` 8.5 s with the old file and 0.02 s with the
+new one. Still open: `exercise.mjs`, the production `smoke:screens` and the
+production trickle `curl`, all after deploy.
+
 ## 41. Loot, combat and chat frames are dropped silently (M) - plan item 3
 
 **Why:** `WebSocketSession.SendAsync` (`:126`) drops a frame when the socket is

@@ -218,6 +218,19 @@ reconnects quietly, so "the window closed a moment ago" and a double-tap inside
 `ValidateCommand`'s 100 ms rule both read as "I pressed it and nothing
 happened". Terminate a protocol violation. Answer a state race.
 
+**Mutating REST handlers run concurrently; the router's striped lock is what
+serialises them per account.** `ListenLoopAsync` used to await every handler
+inline, so one trickled body at the unauthenticated asset handshake froze the
+whole server — and that same one-at-a-time loop was, by accident, the only
+thing stopping a double-tapped sale from racing itself. Now each request runs
+on its own task (`RouteAsync`), and every non-GET request with a valid bearer
+token holds `AccountStripes[hash(accountId) & 1023]` for its whole handler
+(10 s wait, then a 429 with `Reason: AccountBusy`). **A GET is never locked,
+so a new handler that mutates on GET must say so and take the lock itself.**
+Bodies are read only through `ReadBodyAsync` (64 KB cap → 413, 30 s deadline →
+socket aborted); `HttpRouterConcurrencyTests` greps for any `ReadToEndAsync`
+that comes back. Caddy's `@api` handle buffers bodies before the app sees them.
+
 **A calendar-gated feature needs a way to open it, or it is untested most of
 the month.** The world boss window is the 1st-7th and 15th-22nd, and
 `exercise.mjs` struck only `if (active)`, so on 13-16 days a month nothing
