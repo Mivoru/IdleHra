@@ -135,6 +135,17 @@ folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 		file_server
 	}
 
+	# Modul: /metrics IS NOT PUBLIC. It carries the tick profile, queue depths,
+	# session counts and checkpoint failures - nothing personal, but a map of
+	# the server for anyone probing it, and no one outside the box reads it.
+	# An explicit 404 here, BEFORE @api, rather than dropping it from the
+	# matcher: dropped, it would fall to the SPA fallback and answer 200 with
+	# index.html, which looks like a working endpoint. Read it on the box:
+	#   ssh folkidle-server 'curl -s $(docker inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" oracle-app-1):8080/metrics'
+	handle /metrics {
+		respond 404
+	}
+
 	# Everything the server owns. /gamedata and /audio are here because the
 	# client fetches both from the API (see config.ts GAMEDATA_BASE and
 	# audio.ts) - they are NOT part of the static bundle, and letting them fall
@@ -151,7 +162,7 @@ folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	# body is more than a few hundred bytes, and the app refuses past 64KB
 	# itself (ReadBodyAsync). NOT on the WebSocket handle above - an upgrade
 	# has no body to buffer and must stream both ways for hours.
-	@api path /api/* /healthz /health/* /metrics /gamedata /gamedata/* /audio /audio/*
+	@api path /api/* /healthz /health/* /gamedata /gamedata/* /audio /audio/*
 	handle @api {
 		request_body {
 			max_size 1MB

@@ -146,6 +146,11 @@ checked `request_buffers` this way with a single-threaded stub upstream: a body
 trickled over 10 s delayed `/healthz` by 8.5 s with the old file and 0.02 s with
 the new one.
 
+**`/metrics` answers 404 from outside** (Caddy, since 2026-09-27). Read it on
+the box: `ssh folkidle-server 'curl -s $(docker inspect -f "{{range
+.NetworkSettings.Networks}}{{.IPAddress}}{{end}}" oracle-app-1):8080/metrics'`.
+The app image has no curl, so `docker compose exec app curl` does not work.
+
 `/gamedata` and `/audio` go to the app, not the file server: the client fetches
 its whole content registry from the former. Routing them to static files would
 give a client that loads and then knows about no items or monsters at all.
