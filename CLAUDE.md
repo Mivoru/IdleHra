@@ -225,7 +225,14 @@ larder rule.) The inverse lie is a **disconnect for an honest client**. A
 validator that returns false gets `TerminateSessionForSecurity`, and a phone
 reconnects quietly, so "the window closed a moment ago" and a double-tap inside
 `ValidateCommand`'s 100 ms rule both read as "I pressed it and nothing
-happened". Terminate a protocol violation. Answer a state race.
+happened". Terminate a protocol violation. Answer a state race. The epoch
+gate was the biggest instance: a stale `LogicEpochCounter` (a phone back from
+the background, more than five checkpoints behind) terminated the session 556
+times on the owner's account alone, and because `ForceDisconnect`'s close
+reason says "token" the client read each one as signed out and restarted the
+session. It answers `StaleClientState` (45) now. Every forced disconnect also
+logs a `[kick]` line naming its handler and counts in
+`folkidle_forced_disconnects_total` - grep the app log before guessing.
 
 **Mutating REST handlers run concurrently; the router's striped lock is what
 serialises them per account.** `ListenLoopAsync` used to await every handler

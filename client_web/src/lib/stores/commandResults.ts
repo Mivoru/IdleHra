@@ -106,6 +106,7 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   // Modul: the checkpoint that must precede a trade, fusion, reroll or
   // donation failed, so the server did not do it (task 43).
   44: 'The server could not save your progress just then - nothing was spent. Try again.',
+  45: 'Your screen was a moment out of date, so that was not done - it has caught up now. Try again.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;

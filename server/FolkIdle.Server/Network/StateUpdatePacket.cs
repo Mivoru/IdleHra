@@ -273,7 +273,12 @@ namespace FolkIdle.Server.Network
         // its engine work only after the commit. When that flush fails the
         // work never runs - and the player is told so, un-suspended, rather
         // than left pressing a button that did nothing.
-        CheckpointFailed = 44
+        CheckpointFailed = 44,
+
+        // Modul: the epoch gate's answer (CommandGateVerdict.RefuseStale). The
+        // client acted on a screen several checkpoints old - typically just
+        // back from the background. It used to be a disconnect.
+        StaleClientState = 45
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
