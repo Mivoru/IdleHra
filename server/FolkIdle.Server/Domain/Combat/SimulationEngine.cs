@@ -1405,6 +1405,17 @@ namespace FolkIdle.Server.Domain.Combat
                         long tId = cmd.TargetId;
                         _playerRegistry.RegisterPlayer(tId);
                         SafeDispatchAsync("Login", tId, async () => {
+                            // Modul: A LOGIN READS THE ROW ONLY AFTER THE LAST
+                            // SESSION'S LOGOUT HAS WRITTEN IT (task 43). The
+                            // logout flush is queued on CheckpointWriter now,
+                            // not committed before this command is even read -
+                            // so an F5 (socket closes, socket opens) could load
+                            // the pre-logout row, and the logout's commit would
+                            // then leave this new session one epoch behind the
+                            // database: a false split-brain, mailed and
+                            // disconnected. The fence waits for this player's
+                            // queued jobs, and only theirs.
+                            await _checkpointManager.WaitForPendingFlushesAsync(tId);
                             var payload = await _checkpointManager.LoadPlayerState(tId);
 
                             long currentUnixTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -1734,7 +1745,14 @@ namespace FolkIdle.Server.Domain.Combat
                         // is SimulationEngine's job, not a coordinator's.
                         currentPayload.LastLogoutTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         currentPayload.IsDirty = true;
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
+                        // Modul: checkpoints off the tick thread (task 43). The
+                        // last flush of a session is queued like every other;
+                        // CheckpointWriter retries it (a logout has no next
+                        // tick to retry on), then banks its gold alone, then
+                        // writes a CHECKPOINT-DEADLETTER line - where a failed
+                        // synchronous flush here used to lose it in silence.
+                        // The next Login waits for it: see the Login branch.
+                        _checkpointManager.RequestFlush(ref currentPayload, FlushReason.Logout);
                         currentPayload.IsSuspended = true;
                         // Modul: RemoveActivePlayer now clears
                         // PlayerSessionRegistry registration itself - see
