@@ -1378,14 +1378,13 @@ namespace FolkIdle.Server.Domain.Shared
                 .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {state.PlayerId} AND \"ItemId\" = 'gold' FOR UPDATE")
                 .FirstOrDefaultAsync();
 
+            // Modul: only the missing-row branch is an upsert (CommodityLedger).
+            // The existing-row branch stays a locked += because it CLAMPS at
+            // zero, which a generic add cannot know to do. The delta passed
+            // here is clamped the same way the old insert was.
             if (gold == null)
             {
-                dbContext.CommodityRecords.Add(new CommodityRecord
-                {
-                    PlayerId = state.PlayerId,
-                    ItemId = "gold",
-                    Quantity = Math.Max(0L, state.RedisPendingGoldDelta)
-                });
+                await CommodityLedger.AddAsync(dbContext, state.PlayerId, "gold", Math.Max(0L, state.RedisPendingGoldDelta));
                 return;
             }
 

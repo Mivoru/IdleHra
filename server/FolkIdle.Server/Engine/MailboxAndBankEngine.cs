@@ -200,14 +200,8 @@ namespace FolkIdle.Server.Engine
 
                     if (mail.GoldAttachment > 0)
                     {
-                        var goldQuery = "SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE";
-                        var gold = await db.CommodityRecords.FromSqlRaw(goldQuery, mail.PlayerId).SingleOrDefaultAsync();
-                        if (gold == null)
-                        {
-                            gold = new CommodityRecord { PlayerId = mail.PlayerId, ItemId = "gold", Quantity = 0 };
-                            db.CommodityRecords.Add(gold);
-                        }
-                        gold.Quantity += mail.GoldAttachment;
+                        // Modul: an upsert (CommodityLedger), task 44.
+                        await CommodityLedger.AddAsync(db, mail.PlayerId, "gold", mail.GoldAttachment);
                     }
 
                     // Modul: this path never told the live session anything -

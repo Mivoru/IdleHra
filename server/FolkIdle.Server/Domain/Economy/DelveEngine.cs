@@ -758,19 +758,16 @@ namespace FolkIdle.Server.Domain.Economy
                 player.DelveDiamondsThisWeek += granted;
             }
 
-            var goldRow = await LockGoldRowAsync(db, playerId);
+            // Modul: the consolation is an upsert (CommodityLedger), then the
+            // row is locked and returned, because the descent path goes on to
+            // take its toll from this same row. Order matters: the ledger
+            // rebases a tracked row, but locking AFTER the add means the row
+            // is read fresh with the consolation already in it.
             if (consolation > 0)
             {
-                if (goldRow == null)
-                {
-                    goldRow = new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = consolation };
-                    db.CommodityRecords.Add(goldRow);
-                }
-                else
-                {
-                    goldRow.Quantity += consolation;
-                }
+                await CommodityLedger.AddAsync(db, playerId, "gold", consolation);
             }
+            var goldRow = await LockGoldRowAsync(db, playerId);
 
             return (granted, consolation, goldRow);
         }

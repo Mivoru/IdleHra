@@ -513,17 +513,10 @@ namespace FolkIdle.Server.Engine
         // commodity, which is why this is an upsert rather than a field write.
         private static async Task CreditGoldAsync(FolkIdleDbContext db, long playerId, long amount)
         {
-            var gold = await db.CommodityRecords
-                .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = 'gold' FOR UPDATE")
-                .FirstOrDefaultAsync();
-
-            if (gold == null)
-            {
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = amount });
-                return;
-            }
-
-            gold.Quantity += amount;
+            // Modul: now a real upsert (CommodityLedger), task 44. The chest
+            // sale path is the "engine already credited the row" gold path
+            // (ChestSaleGoldQueue moves CurrentGold only) - unchanged.
+            await CommodityLedger.AddAsync(db, playerId, "gold", amount);
         }
     }
 }

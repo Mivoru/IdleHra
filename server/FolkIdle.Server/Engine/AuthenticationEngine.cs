@@ -596,7 +596,7 @@ namespace FolkIdle.Server.Engine
                     // CharacterGrantEngine.
                     CharacterGrantEngine.SeedStarterHumanPair(db, player.Id, characterId);
 
-                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
+                    await CommodityLedger.AddAsync(db, player.Id, "gold", 1000L);
 
                     // Modul: A NEW ACCOUNT NOW OWNS THE THREE BASIC TOOLS, and
                     // 25 copper ore no longer appears from nowhere.
@@ -849,7 +849,7 @@ namespace FolkIdle.Server.Engine
                     // CharacterGrantEngine.
                     CharacterGrantEngine.SeedStarterHumanPair(db, player.Id, characterId);
 
-                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 1000L });
+                    await CommodityLedger.AddAsync(db, player.Id, "gold", 1000L);
                     // The same three tools the device path grants - see
                     // StarterEquipmentGrant. Seeding one registration route and
                     // not the other is exactly how accounts came to differ.

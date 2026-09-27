@@ -59,24 +59,12 @@ namespace FolkIdle.Server.Domain.Economy
                     {
                         await using var rescueDb = await contextFactory.CreateDbContextAsync();
 
-                        var goldRow = await rescueDb.CommodityRecords
-                            .FirstOrDefaultAsync(c => c.PlayerId == rescuePlayerId && c.ItemId == "gold");
-
-                        if (goldRow == null)
-                        {
-                            rescueDb.CommodityRecords.Add(new CommodityRecord
-                            {
-                                PlayerId = rescuePlayerId,
-                                ItemId = "gold",
-                                Quantity = rescueGold
-                            });
-                        }
-                        else
-                        {
-                            goldRow.Quantity += rescueGold;
-                        }
-
-                        await rescueDb.SaveChangesAsync();
+                        // Modul: this was an UNLOCKED read-modify-write (no
+                        // FOR UPDATE, no transaction), so a concurrent credit
+                        // between the read and SaveChanges was overwritten,
+                        // and a missing row could be inserted twice. One
+                        // upsert statement is atomic on its own (task 44).
+                        await CommodityLedger.AddAsync(rescueDb, rescuePlayerId, "gold", rescueGold);
                     });
                 }
             }

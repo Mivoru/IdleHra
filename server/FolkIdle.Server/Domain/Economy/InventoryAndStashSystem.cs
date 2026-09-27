@@ -151,20 +151,9 @@ namespace FolkIdle.Server.Domain.Economy
             // VillageStashInstances is drained by a migration and kept empty;
             // TryConsumeUnifiedAsync still reads it so a row that somehow
             // survives is spent rather than stranded.
-            var rows = await db.CommodityRecords
-                .FromSqlInterpolated($"SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {playerId} AND \"ItemId\" = {itemId} FOR UPDATE")
-                .ToListAsync();
-            var existing = rows.Count > 0 ? rows[0] : null;
-
-            if (existing == null)
-            {
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = itemId, Quantity = quantity });
-            }
-            else
-            {
-                existing.Quantity += quantity;
-                db.CommodityRecords.Update(existing);
-            }
+            // Modul: an upsert (CommodityLedger). It runs at once, inside the
+            // caller's transaction, not at the caller's SaveChanges.
+            await CommodityLedger.AddAsync(db, playerId, itemId, quantity);
 
             return 0L;
         }

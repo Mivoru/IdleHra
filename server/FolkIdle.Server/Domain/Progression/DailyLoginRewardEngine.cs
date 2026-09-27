@@ -154,16 +154,8 @@ namespace FolkIdle.Server.Domain.Progression
                     long goldReward = GetGoldReward(todayDateKey, newStreakDay);
                     int diamondReward = newStreakDay == 7 ? PremiumDiamondsOnDay7Completion : 0;
 
-                    var goldRecord = await context.CommodityRecords
-                        .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", player.Id)
-                        .SingleOrDefaultAsync();
-
-                    if (goldRecord == null)
-                    {
-                        goldRecord = new CommodityRecord { PlayerId = player.Id, ItemId = "gold", Quantity = 0L };
-                        context.CommodityRecords.Add(goldRecord);
-                    }
-                    goldRecord.Quantity += goldReward;
+                    // Modul: an upsert inside this transaction (CommodityLedger).
+                    await CommodityLedger.AddAsync(context, player.Id, "gold", goldReward);
 
                     if (diamondReward > 0)
                     {

@@ -280,7 +280,12 @@ namespace FolkIdle.Server.Models
         {
             if (string.IsNullOrEmpty(itemId)) return;
 
-            var row = await db.CommodityRecords.FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == itemId);
+            // Modul: the tracker is checked FIRST. (PlayerId, ItemId) is unique
+            // since task 44, and two calls for one id before SaveChanges (a
+            // material listed twice across the seed lists) used to add two
+            // rows, which the database now refuses and the seed would abort.
+            var row = db.CommodityRecords.Local.FirstOrDefault(c => c.PlayerId == playerId && c.ItemId == itemId)
+                      ?? await db.CommodityRecords.FirstOrDefaultAsync(c => c.PlayerId == playerId && c.ItemId == itemId);
             if (row == null)
             {
                 db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = itemId, Quantity = quantity });

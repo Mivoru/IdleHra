@@ -420,15 +420,9 @@ namespace FolkIdle.Server.Engine
 
                 if (goldEarned > 0)
                 {
-                    var goldRecord = await db.CommodityRecords
-                        .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
-                        .SingleOrDefaultAsync();
-                    if (goldRecord == null)
-                    {
-                        goldRecord = new CommodityRecord { PlayerId = playerId, ItemId = "gold", Quantity = 0L };
-                        db.CommodityRecords.Add(goldRecord);
-                    }
-                    goldRecord.Quantity += goldEarned;
+                    // Modul: an upsert (CommodityLedger), task 44. What banks
+                    // this gold is unchanged; only how the row is created.
+                    await CommodityLedger.AddAsync(db, playerId, "gold", goldEarned);
                 }
 
                 await db.SaveChangesAsync();
@@ -486,14 +480,10 @@ namespace FolkIdle.Server.Engine
                 return overflow;
             }
 
-            if (commodity == null)
-            {
-                db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = itemId, Quantity = grantedAmount });
-            }
-            else
-            {
-                commodity.Quantity += grantedAmount;
-            }
+            // Modul: the FOR UPDATE read above stays, because the storage cap
+            // needs the current stack; the write is an upsert (task 44), since
+            // FOR UPDATE on a row that does not exist yet locks nothing.
+            await CommodityLedger.AddAsync(db, playerId, itemId, grantedAmount);
 
             return overflow;
         }
@@ -967,6 +957,10 @@ namespace FolkIdle.Server.Engine
                 }
             }
 
+            // Modul: one multi-row upsert (CommodityLedger.AddManyAsync), task
+            // 44 - a single statement, so it is all-or-nothing even when a
+            // caller holds no transaction.
+            var materialDeltas = new List<KeyValuePair<string, long>>(grantedQuantities.Count);
             foreach (KeyValuePair<int, long> kvp in grantedQuantities)
             {
                 string materialName = ContentRegistry.GetMaterialString(kvp.Key);
@@ -974,20 +968,9 @@ namespace FolkIdle.Server.Engine
                 {
                     continue;
                 }
-
-                var commodity = await db.CommodityRecords
-                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, materialName)
-                    .SingleOrDefaultAsync();
-
-                if (commodity == null)
-                {
-                    db.CommodityRecords.Add(new CommodityRecord { PlayerId = playerId, ItemId = materialName, Quantity = kvp.Value });
-                }
-                else
-                {
-                    commodity.Quantity += kvp.Value;
-                }
+                materialDeltas.Add(new KeyValuePair<string, long>(materialName, kvp.Value));
             }
+            await CommodityLedger.AddManyAsync(db, playerId, materialDeltas);
 
             await db.SaveChangesAsync();
 

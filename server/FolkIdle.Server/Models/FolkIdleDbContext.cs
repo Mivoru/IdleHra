@@ -450,8 +450,15 @@ namespace FolkIdle.Server.Models
             // entries, race masteries, region completions, quests, village
             // infrastructure - already get this for free from the PK index and
             // are deliberately not repeated here.
+            // Modul: UNIQUE since task 44 (2026-09-27). It was a plain index,
+            // so a check-then-insert race could leave a player with two gold
+            // rows and half a balance on every FirstOrDefault. It is also the
+            // conflict target of CommodityLedger's upsert, which cannot exist
+            // without it. Migration MakeCommodityRecordsPlayerItemUnique
+            // merges any duplicates first.
             modelBuilder.Entity<CommodityRecord>()
-                .HasIndex(c => new { c.PlayerId, c.ItemId });
+                .HasIndex(c => new { c.PlayerId, c.ItemId })
+                .IsUnique();
 
             modelBuilder.Entity<EquipmentInstance>()
                 .HasIndex(e => e.PlayerId);
