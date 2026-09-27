@@ -144,6 +144,40 @@ namespace FolkIdle.Server.Domain.Combat
         private EngineMetricsPayload _metrics;
         public ref EngineMetricsPayload GetMetrics() => ref _metrics;
 
+        // Modul: TICK PERCENTILES FROM A ROLLING WINDOW (task 43). The
+        // histogram buckets are cumulative since boot and in whole
+        // milliseconds, so they can say "99% of all ticks ever were <= 25 ms"
+        // but not what p99 was over the last minute - which is the number the
+        // task's "tick p99 under 25 ms in production" is judged on, and the
+        // only one that moves after a deploy. The last 600 ticks (one minute at
+        // 10 Hz) in microseconds; written by the tick alone, copied and sorted
+        // by the /metrics scrape. A torn read of one slot mid-write costs one
+        // sample's accuracy, not correctness.
+        internal const int RecentTickWindow = 600;
+        private readonly int[] _recentTickMicros = new int[RecentTickWindow];
+        private long _recentTickCount;
+
+        internal readonly record struct TickPercentiles(int Samples, double P50Ms, double P95Ms, double P99Ms, double MaxMs);
+
+        internal TickPercentiles GetRecentTickPercentiles()
+        {
+            int n = (int)Math.Min(Interlocked.Read(ref _recentTickCount), RecentTickWindow);
+            return ComputeTickPercentiles(_recentTickMicros, n);
+        }
+
+        internal static TickPercentiles ComputeTickPercentiles(int[] micros, int n)
+        {
+            if (n == 0) return new TickPercentiles(0, 0, 0, 0, 0);
+            var copy = new int[n];
+            Array.Copy(micros, copy, n);
+            Array.Sort(copy);
+            double At(double q) => copy[Math.Min(n - 1, (int)Math.Ceiling(q * n) - 1)] / 1000.0;
+            return new TickPercentiles(n, At(0.50), At(0.95), At(0.99), copy[n - 1] / 1000.0);
+        }
+
+        // For /metrics: checkpoint back-pressure beside the tick time.
+        internal StateCheckpointManager CheckpointManager => _checkpointManager;
+
         public bool IsRunning => _isRunning;
 
         // Modul: inventory census. The base backpack size before
@@ -2375,6 +2409,9 @@ namespace FolkIdle.Server.Domain.Combat
 
                 stopwatch.Stop();
                 long tickEndTimestamp = Stopwatch.GetTimestamp();
+                long tickMicros = (tickEndTimestamp - tickStartTimestamp) * 1_000_000L / Stopwatch.Frequency;
+                _recentTickMicros[(int)(_recentTickCount % RecentTickWindow)] = (int)Math.Min(tickMicros, int.MaxValue);
+                Interlocked.Increment(ref _recentTickCount);
                 _metrics.TotalTicksProcessed++;
                 long tickElapsedForMetricsMs = stopwatch.ElapsedMilliseconds;
                 _metrics.LastExecutionTimeMs = tickElapsedForMetricsMs;
