@@ -32,6 +32,7 @@
     type StrikeResponse,
   } from '../lib/net/rest';
   import { worldBossResultSentence } from '../lib/game/worldBossResults';
+  import { tap } from '../lib/net/haptics';
 
   // Modul: THE SHIELD WHEEL (task 36). The server says which mode it runs
   // (FOLKIDLE_BOSS_MINIGAME); with it off, GET /challenge answers Disabled and
@@ -247,8 +248,10 @@
     play('playerHit');
     try {
       const answer = await strikeBoss({ Mode: 'Auto', Plate: selectedPlate });
-      if (answer && answer.Result === 'Landed') autoResult = answer;
-      else pushLocalNotice(answer ? worldBossResultSentence(answer.Result, answer.Damage) || 'The strike was not recorded.' : 'The strike could not be sent.');
+      if (answer && answer.Result === 'Landed') {
+        autoResult = answer;
+        if (answer.BrokePlate >= 0) tap('heavy');
+      } else pushLocalNotice(answer ? worldBossResultSentence(answer.Result, answer.Damage) || 'The strike was not recorded.' : 'The strike could not be sent.');
     } catch (err) {
       pushLocalNotice(err instanceof Error ? err.message : 'The strike could not be sent.');
     } finally {

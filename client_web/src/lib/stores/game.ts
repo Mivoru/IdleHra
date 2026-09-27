@@ -12,6 +12,8 @@ import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
 import { watchAppLifecycle } from '../net/lifecycle';
 import { refreshDeviceTokenIfPermitted, watchNotificationTaps } from '../net/push';
+import { tap } from '../net/haptics';
+import { noteOfflineCap } from '../net/localNotify';
 import { registerPlatformStore } from '../net/storeRegistration';
 import {
   SnapshotInterpolator,
@@ -604,6 +606,7 @@ export function startSession(token: string): void {
     },
 
     onStateUpdate: (packet: StateUpdate) => {
+      noteOfflineCap(packet.OfflineCapSeconds);
       const arrivedAtMs = performance.timeOrigin + performance.now();
       playerState.set(packet);
       observedMaxPlayerHp.update((seen) => Math.max(seen, packet.PlayerHp));
@@ -829,7 +832,13 @@ export function startSession(token: string): void {
       // Only the player's own blows float. A monster's hit moves the player's
       // health bar, which is its own feedback, and a screen that threw a number
       // for every event would be unreadable at this cadence.
-      if (Number(packet.EventKind) !== CombatEventKind.PlayerHit) return;
+      // Modul: task 45 haptics, read off the same feed - a kill is a medium
+      // tap, a crit a light one. tap() throttles a fast fight to one per 80 ms.
+      const kind = Number(packet.EventKind);
+      if (kind === CombatEventKind.Kill) tap('medium');
+      else if (kind === CombatEventKind.PlayerHit && (Number(packet.Flags) & CombatEventFlag.Crit) !== 0) tap('light');
+
+      if (kind !== CombatEventKind.PlayerHit) return;
 
       const hit = damageFeed.push(
         Number(packet.Amount),
@@ -853,6 +862,7 @@ export function startSession(token: string): void {
 
     onLootDrop: (packet: ResponseLootDrop) => {
       play(packet.QualityTier >= 10 ? 'lootRare' : 'lootDropped');
+      if (packet.QualityTier >= 10) tap('success');
 
 
       const entry: LootEntry = {

@@ -287,6 +287,22 @@ namespace FolkIdle.Server.Tests
                     + "so they ship as zero to every client: " + string.Join(", ", missing));
         }
 
+        /// <summary>
+        /// OfflineCapSeconds has no payload twin, so neither check above sees
+        /// it. It must be the EFFECTIVE cap (Vodnik extension included) and
+        /// come from the one rule, or the client's local notification is a
+        /// second copy of the 12 h rule under another name (task 45).
+        /// </summary>
+        [Fact]
+        public void OfflineCapSecondsComesFromTheOneRule()
+        {
+            string initializer = ReadInitializerSource();
+            Assert.Contains("OfflineCapSeconds = (int)RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(", initializer, StringComparison.Ordinal);
+            Assert.Contains("currentPayload.VodnikMasteryLevel, OfflineSimulationEngine.MaxOfflineSeconds)", initializer, StringComparison.Ordinal);
+            Assert.Equal(43200L, RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(0, OfflineSimulationEngine.MaxOfflineSeconds));
+            Assert.True(RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(25, OfflineSimulationEngine.MaxOfflineSeconds) > OfflineSimulationEngine.MaxOfflineSeconds);
+        }
+
         [Fact]
         public void TheFieldsThatCaughtThisAreCovered()
         {
