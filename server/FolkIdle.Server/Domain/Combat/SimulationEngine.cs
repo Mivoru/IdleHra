@@ -468,6 +468,14 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
+        internal int GetActivePlayerTicksSinceLastFlush(long playerId)
+        {
+            lock (_activePlayers)
+            {
+                return _activePlayers.TryGetValue(playerId, out var payload) ? payload.TicksSinceLastFlush : -1;
+            }
+        }
+
         internal bool IsActivePlayerPresent(long playerId)
         {
             lock (_activePlayers)
@@ -547,6 +555,17 @@ namespace FolkIdle.Server.Domain.Combat
         // path.
         private void AddActivePlayer(TickStatePayload payload)
         {
+            // Modul: STAGGERED CHECKPOINT BOUNDARIES (task 43, 2c). Every
+            // session used to start its five-minute clock at 0, so a reconnect
+            // wave - a deploy, a network blip - put every player on the same
+            // boundary tick, and every checkpoint in the game was queued at
+            // once, every five minutes, for ever. A fixed per-player phase
+            // spreads them over the whole window. A payload arriving with a
+            // counter already set (a forced boundary, a test) keeps it.
+            if (payload.TicksSinceLastFlush == 0)
+            {
+                payload.TicksSinceLastFlush = StateCheckpointManager.StaggeredStartTicks(payload.PlayerId);
+            }
             _activePlayers[payload.PlayerId] = payload;
             AddToGuildIndex(payload.GuildId, payload.PlayerId);
 

@@ -331,6 +331,14 @@ namespace FolkIdle.Server.Domain.Shared
         /// </summary>
         public const int CheckpointBoundaryTicks = 3000;
 
+        /// <summary>
+        /// Where a session's checkpoint clock starts: a fixed phase per player
+        /// in [0, CheckpointBoundaryTicks), so a crowd that logs in on one tick
+        /// reaches the boundary spread over the whole window (task 43, 2c).
+        /// </summary>
+        public static int StaggeredStartTicks(long playerId)
+            => (int)(((playerId % CheckpointBoundaryTicks) + CheckpointBoundaryTicks) % CheckpointBoundaryTicks);
+
         public void TrackState(ref TickStatePayload state)
         {
             // Modul: `|| state.InventorySpaceRemaining <= 0` was deleted here
