@@ -4416,6 +4416,23 @@ namespace FolkIdle.Server.Tests
 
                 Assert.Contains("# TYPE folkidle_database_write_queue_length gauge", body);
                 Assert.Contains("folkidle_database_write_queue_length", body);
+
+                // Modul: task 46 (8a - measure). No JSON session has connected
+                // in this test, so these read as pure zeros - proving the
+                // scrape still succeeds with an empty StateFrameMetrics is the
+                // same "defaults to 0 rather than failing" property the other
+                // three metrics above are pinned for.
+                Assert.Contains("# TYPE folkidle_state_frame_bytes_total counter", body);
+                Assert.Contains("folkidle_state_frame_bytes_total", body);
+
+                Assert.Contains("# TYPE folkidle_state_frames_total counter", body);
+                Assert.Contains("folkidle_state_frames_total", body);
+
+                Assert.Contains("# TYPE folkidle_state_frame_serialize_microseconds histogram", body);
+                Assert.Contains("folkidle_state_frame_serialize_microseconds_bucket{le=\"100\"}", body);
+                Assert.Contains("folkidle_state_frame_serialize_microseconds_bucket{le=\"+Inf\"}", body);
+                Assert.Contains("folkidle_state_frame_serialize_microseconds_sum", body);
+                Assert.Contains("folkidle_state_frame_serialize_microseconds_count", body);
             }
             finally
             {
