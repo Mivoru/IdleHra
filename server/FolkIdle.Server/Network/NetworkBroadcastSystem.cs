@@ -9162,10 +9162,13 @@ namespace FolkIdle.Server.Network
                 long tickCount = 0;
                 long tickSumMs = 0;
                 long bucket10 = 0, bucket25 = 0, bucket50 = 0, bucket100 = 0, bucket250 = 0, bucketInf = 0;
+                long ticksDropped = 0, catchUpTicks = 0;
                 if (_simulationEngine != null)
                 {
                     EngineMetricsPayload metrics = _simulationEngine.GetMetrics();
                     tickCount = metrics.TotalTicksProcessed;
+                    ticksDropped = metrics.TicksDropped;
+                    catchUpTicks = metrics.CatchUpTicks;
                     tickSumMs = metrics.TickDurationSumMs;
                     bucket10 = metrics.TickDurationBucketCount10Ms;
                     bucket25 = metrics.TickDurationBucketCount25Ms;
@@ -9209,6 +9212,13 @@ namespace FolkIdle.Server.Network
                 body.Append("folkidle_tick_duration_milliseconds_bucket{le=\"+Inf\"} ").Append(bucketInf).Append('\n');
                 body.Append("folkidle_tick_duration_milliseconds_sum ").Append(tickSumMs).Append('\n');
                 body.Append("folkidle_tick_duration_milliseconds_count ").Append(tickCount).Append('\n');
+                body.Append('\n');
+                body.Append("# HELP folkidle_ticks_catch_up_total Ticks started immediately because the fixed schedule was behind.\n");
+                body.Append("# TYPE folkidle_ticks_catch_up_total counter\n");
+                body.Append("folkidle_ticks_catch_up_total ").Append(catchUpTicks).Append('\n');
+                body.Append("# HELP folkidle_ticks_dropped_total Ticks owed beyond the catch-up cap and never run.\n");
+                body.Append("# TYPE folkidle_ticks_dropped_total counter\n");
+                body.Append("folkidle_ticks_dropped_total ").Append(ticksDropped).Append('\n');
                 body.Append('\n');
                 if (recentTicks is { } rt)
                 {

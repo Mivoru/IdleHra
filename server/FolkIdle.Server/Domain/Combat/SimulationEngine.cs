@@ -33,6 +33,10 @@ namespace FolkIdle.Server.Domain.Combat
         public long TickDurationBucketCount250Ms;
         public long TickDurationBucketCountInf;
         public long TickDurationSumMs;
+
+        // Task 43, 2d: see TickPacer.
+        public long TicksDropped;
+        public long CatchUpTicks;
     }
 
     public class SimulationEngine
@@ -951,6 +955,7 @@ namespace FolkIdle.Server.Domain.Combat
         private void EngineLoop()
         {
             Stopwatch stopwatch = new Stopwatch();
+            var pacer = new TickPacer(TickIntervalMs * Stopwatch.Frequency / 1000);
 
             int benchmarkTickCount = 0;
             long benchmarkStartAllocated = 0;
@@ -969,10 +974,12 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     while (_networkSystem.CommandQueue.TryDequeue(out _)) { }
                     Thread.Sleep(100);
+                    pacer.Reset();
                     continue;
                 }
 
                 long tickStartTimestamp = Stopwatch.GetTimestamp();
+                pacer.OnTickStarted(tickStartTimestamp);
                 stopwatch.Restart();
 
                 // Modul: THE TICK HOLDS THE LOCK EVERY OTHER READER TAKES.
@@ -2462,12 +2469,18 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
-                var elapsedMs = (int)stopwatch.ElapsedMilliseconds;
-                var sleepTime = TickIntervalMs - elapsedMs;
-
-                if (sleepTime > 0)
+                // Modul: Task 43, 2d. Paced against an absolute schedule, not
+                // "interval minus this tick's duration" - that lost every
+                // overrun and every oversleep for good, so live progress ran
+                // below 10 Hz whenever the box was busy. See TickPacer.
+                long delay = pacer.DelayUntilNextTick(Stopwatch.GetTimestamp());
+                _metrics.TicksDropped = pacer.TicksDropped;
+                _metrics.CatchUpTicks = pacer.CatchUpTicks;
+                if (delay > 0)
                 {
-                    Thread.Sleep(sleepTime);
+                    // Round up: waking early would start the tick before it is due.
+                    int sleepMs = (int)((delay * 1000 + Stopwatch.Frequency - 1) / Stopwatch.Frequency);
+                    Thread.Sleep(sleepMs);
                 }
             }
         }
