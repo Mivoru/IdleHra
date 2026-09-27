@@ -136,6 +136,27 @@ namespace FolkIdle.Server.Engine
             }
         }
 
+        // Modul: diagnostics only (task 42's split-brain log line). Returns the
+        // token currently holding this player's lock, or null when there is
+        // none or Redis cannot be asked - never throws, never decides anything.
+        public async Task<string?> PeekHolderAsync(long playerId)
+        {
+            if (!_redis.IsConnected)
+            {
+                return null;
+            }
+
+            try
+            {
+                RedisValue value = await _redis.GetDatabase().StringGetAsync(LockKey(playerId));
+                return value.HasValue ? value.ToString() : null;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private static RedisKey LockKey(long playerId) => $"lock:player:{playerId}";
     }
 }

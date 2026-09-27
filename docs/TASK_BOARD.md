@@ -4094,6 +4094,14 @@ demonstrated.
 - the past-payout count from production is in the PR;
 - the "flushed twice, mailed once" test passes.
 
+**DONE 2026-09-27** (branch `fix/split-brain-gold-cap`). Production before the
+change: `SELECT count(*), sum("GoldAttachment") FROM "MailboxInstances" WHERE
+"BaseItemId"='GOLD_COMPENSATION'` = **2 rows, 1,000 gold** - the path does
+fire. Now: table `split_brain_incidents` (migration `AddSplitBrainIncidents`),
+`INSERT ... ON CONFLICT DO NOTHING` in the same transaction as the mail, flat
+`SplitBrainCompensationGold = 1000`, and one log line per refusal with player,
+both epochs and the Redis lock holder. `SplitBrainCompensationTests` pins it.
+
 ## 43. Blocking database checkpoints on the 10 Hz tick thread (L, the riskiest) - plan item 2
 
 **Why:** `FlushStateAndAdvance` (`:172`) runs a Serializable transaction
@@ -4114,6 +4122,21 @@ Three PRs:
 - tests (a) to (e) pass, including gold banked exactly once while a flush is in flight;
 - `exercise.mjs` passes;
 - tick p99 in production is under 25 ms.
+
+**Status (2026-09-27, branch `perf/checkpoint-writer`, not yet merged or deployed):**
+- **2a done.** `Domain/Shared/CheckpointWriter.cs` (4 partitions, per-job guard,
+  logout retries + gold rescue + `CHECKPOINT-DEADLETTER` line, login fence),
+  `StateCheckpointManager.RequestFlush`, `CheckpointAckTickCoordinator`,
+  `TickStatePayload.FlushesInFlight`, `PlayerSessionRegistry.FlushAckQueue`,
+  `CommandResultCode.CheckpointFailed` (44). Tests (a)-(e) in `CheckpointWriterTests`.
+- **2b done.** TrackState, guild treasury + war supply, forge fusion + reroll, market
+  (3 handlers), ReloadState, Logout - one commit each; the `InventorySpaceRemaining`
+  boundary deleted. `CheckpointOffTickGuardTests` allows only the login call.
+- **2c done.** `AddActivePlayer` staggers the boundary by `PlayerId % 3000` (`CheckpointStaggerTests`).
+- `/metrics` now has `folkidle_tick_duration_recent_milliseconds{quantile="0.99"}`
+  (last 600 ticks) and checkpoint queue/failure/dead-letter gauges.
+- **Open:** 2d (fixed timestep, its own PR); `exercise.mjs` after merge; the
+  production p99 check after deploy.
 
 ## 44. `CommodityRecords` has no unique key; about 30 check-then-insert sites (M) - plan item 5
 

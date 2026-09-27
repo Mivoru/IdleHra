@@ -144,6 +144,9 @@ namespace FolkIdle.Server.Tests
             state.SetGold(77_000_000);
 
             manager.TrackState(ref state);
+            // Task 43: anything TrackState queued would run on the writer.
+            await manager.WhenWriterIdleAsync();
+            manager.DrainWriter(TimeSpan.FromSeconds(10));
 
             Assert.Empty(await RowsAsync(playerId));
         }

@@ -129,6 +129,15 @@ The safety net was broken the same day: no client sends opcode 6, so the only
 `LogicEpochCounter` at 0, and the epoch gate answered it with
 `TerminateSessionForSecurity` - a disconnect that skips the flush. Ask which of
 the two paths carries a new field; adding to the frame alone is adding to a cache.
+Since task 43 the checkpoint itself is **asynchronous**: `RequestFlush` snapshots
+the payload onto `CheckpointWriter` (4 partitions, FIFO per player) and the
+commit comes back as a `FlushAck`. The snapshot's epoch is `LogicEpochCounter +
+FlushesInFlight` and the gold delta moves onto the job - so never stamp or flush
+a payload by hand around it, and never call `FlushStateAndAdvance` on the tick
+(`CheckpointOffTickGuardTests`; only login may). Engine work that must read the
+flushed rows goes in the `then:` continuation; a failed flush un-suspends with
+`CheckpointFailed` (44). A login awaits `WaitForPendingFlushesAsync` so it never
+reads the row a logout is still writing.
 
 **A list of owned items must be windowed.** `EquipmentInstances` grows with
 playtime and had reached **17,836 rows on one live account**. `VirtualList`

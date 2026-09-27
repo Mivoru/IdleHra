@@ -56,9 +56,6 @@ namespace FolkIdle.Server.Domain.Social
                 return;
             }
 
-            currentPayload.IsSuspended = true;
-            ctx.CheckpointManager.FlushStateAndAdvance(ref currentPayload);
-
             long pId = currentPayload.PlayerId;
             // Modul: Play Mode audit fix. Previously trusted
             // cmd.SecondaryId as the target guild id directly -
@@ -74,16 +71,28 @@ namespace FolkIdle.Server.Domain.Social
 
             var guildEngine = ctx.GuildEngine;
             var networkSystem = ctx.NetworkSystem;
-            ctx.SafeDispatch("Guild.ContributeGoldOrEquipment", pId, async () => {
-                if (isGold)
-                {
-                    await guildEngine.ContributeGoldAsync(pId, guildId, goldAmount);
-                }
-                else
-                {
-                    await guildEngine.ContributeEquipmentAsync(pId, guildId, instanceId);
-                }
-                networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+            var safeDispatch = ctx.SafeDispatch;
+
+            // Modul: checkpoints off the tick thread (task 43). Suspend, flush,
+            // THEN the engine work that reads the flushed gold - the same order
+            // as before, but the flush commits on CheckpointWriter and the
+            // work is dispatched from its continuation, which never runs after
+            // a failed flush (the ack un-suspends and answers CheckpointFailed).
+            currentPayload.IsSuspended = true;
+            ctx.CheckpointManager.RequestFlush(ref currentPayload, FlushReason.Command, then: () =>
+            {
+                safeDispatch("Guild.ContributeGoldOrEquipment", pId, async () => {
+                    if (isGold)
+                    {
+                        await guildEngine.ContributeGoldAsync(pId, guildId, goldAmount);
+                    }
+                    else
+                    {
+                        await guildEngine.ContributeEquipmentAsync(pId, guildId, instanceId);
+                    }
+                    networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                });
+                return Task.CompletedTask;
             });
         }
 

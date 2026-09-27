@@ -39,6 +39,15 @@ namespace FolkIdle.Server.Engine
 
         public bool IsDirty;
         public int TicksSinceLastFlush;
+
+        // Modul: checkpoints off the tick thread (task 43). How many of this
+        // player's flushes are queued on CheckpointWriter and not yet
+        // acknowledged. RequestFlush stamps a snapshot's epoch as
+        // LogicEpochCounter + FlushesInFlight, so a second flush requested
+        // before the first commits can never look split-brained against it.
+        // Runtime-only: not on the wire, not persisted, carried across a
+        // reload by StateReloadMerge.
+        public int FlushesInFlight;
         public int CurrentLevel;
         public long CurrentXp;
         public int SelectedLineageId;

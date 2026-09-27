@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926234757_AddSplitBrainIncidents")]
+    partial class AddSplitBrainIncidents
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -273,8 +276,7 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasIndex("ItemId");
 
-                    b.HasIndex("PlayerId", "ItemId")
-                        .IsUnique();
+                    b.HasIndex("PlayerId", "ItemId");
 
                     b.ToTable("CommodityRecords");
                 });
@@ -1114,8 +1116,6 @@ namespace FolkIdle.Server.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PlayerId");
-
                     b.ToTable("MailboxInstances");
                 });
 
@@ -1443,22 +1443,6 @@ namespace FolkIdle.Server.Migrations
                     b.HasIndex("PlayerId");
 
                     b.ToTable("PlayerDeviceRegistrations");
-                });
-
-            modelBuilder.Entity("FolkIdle.Server.Models.PlayerFunnelEvent", b =>
-                {
-                    b.Property<long>("PlayerId")
-                        .HasColumnType("bigint");
-
-                    b.Property<short>("Step")
-                        .HasColumnType("smallint");
-
-                    b.Property<DateTime>("At")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("PlayerId", "Step");
-
-                    b.ToTable("player_funnel_events");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerGoldDailyHigh", b =>

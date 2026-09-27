@@ -49,10 +49,275 @@ namespace FolkIdle.Server.Domain.Shared
             _forceDisconnectCallback = callback;
         }
 
+        /// <summary>
+        /// Gold mailed once per split-brain incident (owner decision D1,
+        /// 2026-09-27), independent of how far apart the two epochs are.
+        /// </summary>
+        public const long SplitBrainCompensationGold = 1000;
+
+        // Test-only observability (via InternalsVisibleTo): the most recent
+        // fire-and-forget compensation, so a test can await it instead of
+        // polling the mailbox.
+        internal Task LastSplitBrainCompensation { get; private set; } = Task.CompletedTask;
+
+        // Modul: task 42. Records the incident and mails only when THIS call
+        // recorded it. The INSERT ... ON CONFLICT DO NOTHING and the mail share
+        // one transaction, so a failed mail rolls the incident back and a later
+        // refusal at the same DbEpoch can still pay it; a second refusal at the
+        // same DbEpoch (the same stale session flushed again, or a retry) finds
+        // the row and pays nothing. Never throws - it runs detached.
+        internal async Task CompensateSplitBrainAsync(long playerId, long dbEpoch, long sessionEpoch)
+        {
+            string lockHolder = "unknown";
+            try
+            {
+                var sessionLock = _serviceProvider.GetService<RedisPlayerSessionLock>();
+                if (sessionLock != null)
+                {
+                    lockHolder = await sessionLock.PeekHolderAsync(playerId) ?? "none";
+                }
+            }
+            catch
+            {
+                // Diagnostics only.
+            }
+
+            try
+            {
+                using var bgScope = _serviceProvider.CreateScope();
+                var bgDb = bgScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await using var bgTx = await bgDb.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+
+                int inserted = await bgDb.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO split_brain_incidents (\"PlayerId\", \"DbEpoch\", \"At\") VALUES ({0}, {1}, {2}) ON CONFLICT DO NOTHING",
+                    playerId, dbEpoch, DateTimeOffset.UtcNow);
+
+                bool mailed = inserted == 1;
+                if (mailed)
+                {
+                    bgDb.MailboxInstances.Add(new MailboxInstance
+                    {
+                        PlayerId = playerId,
+                        BaseItemId = "GOLD_COMPENSATION",
+                        QualityTier = 0,
+                        Quantity = 0,
+                        GoldAttachment = SplitBrainCompensationGold,
+                        IsClaimed = false,
+                        IsPending = false,
+                        ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                    });
+                    await bgDb.SaveChangesAsync();
+                }
+
+                await bgTx.CommitAsync();
+
+                Console.WriteLine($"Split-brain: player {playerId} db epoch {dbEpoch} > session epoch {sessionEpoch}, lock holder {lockHolder}, " +
+                    (mailed ? $"mailed {SplitBrainCompensationGold} gold" : "already compensated for this db epoch"));
+            }
+            catch (Exception bgEx)
+            {
+                Console.WriteLine($"Split-brain compensation failed for player {playerId} (db epoch {dbEpoch}, session epoch {sessionEpoch}, lock holder {lockHolder}): {bgEx.Message}");
+            }
+        }
+
         public StateCheckpointManager(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
             _redisSessionCache = serviceProvider.GetService<RedisSessionCache>();
+        }
+
+        // Modul: checkpoints off the tick thread (task 43). Where acks go. A
+        // manager on its own (a test) keeps them here; SimulationEngine binds
+        // PlayerSessionRegistry.FlushAckQueue at construction, before any flush
+        // can be requested.
+        private ConcurrentQueue<FlushAck> _ackQueue = new();
+
+        // Set by FlushState's split-brain branch, consumed by the writer, so a
+        // refused flush is not retried or rescued as if it were a transient one.
+        private readonly ConcurrentDictionary<long, byte> _splitBrainRefused = new();
+
+        private CheckpointWriter? _writer;
+
+        // Test-only (InternalsVisibleTo): stands in for FlushState on the
+        // writer, so a test can fail or delay one flush of a sequence.
+        internal Func<TickStatePayload, Task<bool>>? FlushOverrideForTests;
+        private readonly object _writerGate = new();
+
+        public void BindAckQueue(ConcurrentQueue<FlushAck> queue)
+        {
+            _ackQueue = queue;
+        }
+
+        internal ConcurrentQueue<FlushAck> AckQueue => _ackQueue;
+
+        /// <summary>
+        /// Started on first use, so a manager that only ever loads state (the
+        /// login tests, the cold-recovery path) never owns four idle tasks.
+        /// </summary>
+        public CheckpointWriter Writer
+        {
+            get
+            {
+                var writer = Volatile.Read(ref _writer);
+                if (writer != null)
+                {
+                    return writer;
+                }
+
+                lock (_writerGate)
+                {
+                    _writer ??= new CheckpointWriter(
+                        snapshot => FlushOverrideForTests?.Invoke(snapshot) ?? FlushState(snapshot),
+                        BankGoldDeltaAsync,
+                        playerId => _splitBrainRefused.TryRemove(playerId, out _),
+                        () => _ackQueue,
+                        playerId => _forceDisconnectCallback?.Invoke(playerId));
+                    return _writer;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Queues a checkpoint of <paramref name="state"/> on CheckpointWriter
+        /// and returns at once. Tick thread only: it mutates the live payload.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE EPOCH ARITHMETIC. FlushState refuses a snapshot whose
+        /// epoch is behind the database's and, on commit, writes db = snapshot
+        /// + 1. The live epoch only rises when an ack is applied, so a snapshot
+        /// taken while k flushes are still in flight is stamped live + k: each
+        /// queued flush is then exactly one ahead of the one before it, and a
+        /// FIFO partition can never refuse this player's own next flush. A
+        /// failed flush leaves a gap in the sequence, which is harmless -
+        /// epochs only have to increase, and the command gate has a drift
+        /// tolerance.
+        ///
+        /// Modul: THE GOLD MOVES WITH THE JOB. TryStoreFrame first (unchanged:
+        /// with Redis up it moves RedisPendingGoldDelta into Redis and zeroes
+        /// it), then whatever delta is left rides on the snapshot, and the live
+        /// payload is zeroed at once. Gold earned while the flush is in flight
+        /// accumulates from zero and goes with the NEXT flush; a failed flush's
+        /// delta comes back through the ack. Each coin is carried by exactly one
+        /// of them - which is the "two gold paths" rule held across threads.
+        ///
+        /// <paramref name="then"/> runs on the writer after the commit, never
+        /// after a failure (a reload excepted, see FlushJob.RunThenOnFailure).
+        /// It is how a command keeps "flush, then do the engine work that reads
+        /// the flushed rows" in that order without waiting on the tick.
+        /// </remarks>
+        public void RequestFlush(ref TickStatePayload state, FlushReason reason, Func<Task>? then = null)
+        {
+            _redisSessionCache?.TryStoreFrame(ref state);
+
+            var job = new FlushJob
+            {
+                Kind = FlushJobKind.Flush,
+                PlayerId = state.PlayerId,
+                Reason = reason,
+                Snapshot = state,
+                GoldDelta = state.RedisPendingGoldDelta,
+                Then = then,
+                RunThenOnFailure = reason == FlushReason.Reload
+            };
+            job.Snapshot.LogicEpochCounter = state.LogicEpochCounter + state.FlushesInFlight;
+
+            state.RedisPendingGoldDelta = 0L;
+            state.FlushesInFlight++;
+            state.IsDirty = false;
+            state.TicksSinceLastFlush = 0;
+            _dirtyStates.TryRemove(state.PlayerId, out _);
+
+            Writer.Enqueue(job);
+        }
+
+        /// <summary>
+        /// Banks a gold delta that lost its checkpoint - a logout that failed
+        /// every retry, or a failed flush whose player has gone by the time the
+        /// ack arrived. The same FOR UPDATE increment FlushState applies.
+        /// </summary>
+        internal async Task<bool> BankGoldDeltaAsync(long playerId, long delta)
+        {
+            var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
+            await using var dbContext = new FolkIdleDbContext(retryingOptions.Options);
+            var strategy = dbContext.Database.CreateExecutionStrategy();
+            try
+            {
+                await strategy.ExecuteAsync(async () =>
+                {
+                    dbContext.ChangeTracker.Clear();
+                    await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+                    await ApplyPendingGoldDeltaAsync(dbContext, new TickStatePayload { PlayerId = playerId, RedisPendingGoldDelta = delta });
+                    await dbContext.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Gold rescue failed for player {playerId} (delta {delta}): {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>Queues a gold-only rescue on the player's partition.</summary>
+        internal void RequestGoldRescue(long playerId, long delta)
+        {
+            if (delta == 0L)
+            {
+                return;
+            }
+            Writer.Enqueue(new FlushJob { Kind = FlushJobKind.GoldRescue, PlayerId = playerId, GoldDelta = delta });
+        }
+
+        /// <summary>
+        /// Completes once every checkpoint already queued for this player has
+        /// finished. A login awaits it before reading the database.
+        /// </summary>
+        public Task WaitForPendingFlushesAsync(long playerId)
+        {
+            var writer = Volatile.Read(ref _writer);
+            return writer == null ? Task.CompletedTask : writer.WaitForPlayerAsync(playerId);
+        }
+
+        /// <summary>
+        /// Shutdown: stops taking jobs and lets the queued ones finish. The
+        /// caller then drains FlushAckQueue into the live payloads, so the
+        /// batch flush that follows carries current epochs.
+        /// </summary>
+        public bool DrainWriter(TimeSpan timeout)
+        {
+            var writer = Volatile.Read(ref _writer);
+            return writer == null || writer.CompleteAndDrain(timeout);
+        }
+
+        // Test-only (InternalsVisibleTo): wait for the writer, then apply this
+        // player's acks to a payload the test holds, as the tick would.
+        internal async Task WhenWriterIdleAsync()
+        {
+            var writer = Volatile.Read(ref _writer);
+            if (writer != null)
+            {
+                await writer.WhenIdleAsync();
+            }
+        }
+
+        internal int ApplyPendingAcks(ref TickStatePayload state)
+        {
+            int applied = 0;
+            int pending = _ackQueue.Count;
+            for (int i = 0; i < pending && _ackQueue.TryDequeue(out var ack); i++)
+            {
+                if (ack.PlayerId == state.PlayerId)
+                {
+                    CheckpointAckTickCoordinator.Apply(ref state, in ack);
+                    applied++;
+                }
+                else
+                {
+                    _ackQueue.Enqueue(ack);
+                }
+            }
+            return applied;
         }
 
         /// <summary>
@@ -66,9 +331,23 @@ namespace FolkIdle.Server.Domain.Shared
         /// </summary>
         public const int CheckpointBoundaryTicks = 3000;
 
+        /// <summary>
+        /// Where a session's checkpoint clock starts: a fixed phase per player
+        /// in [0, CheckpointBoundaryTicks), so a crowd that logs in on one tick
+        /// reaches the boundary spread over the whole window (task 43, 2c).
+        /// </summary>
+        public static int StaggeredStartTicks(long playerId)
+            => (int)(((playerId % CheckpointBoundaryTicks) + CheckpointBoundaryTicks) % CheckpointBoundaryTicks);
+
         public void TrackState(ref TickStatePayload state)
         {
-            bool reachedCheckpointBoundary = state.TicksSinceLastFlush >= CheckpointBoundaryTicks || state.InventorySpaceRemaining <= 0;
+            // Modul: `|| state.InventorySpaceRemaining <= 0` was deleted here
+            // (task 43). The backpack is gone and the counter gates nothing
+            // (InventoryCensusTickCoordinator pins it at capacity), but the
+            // loot path still decrements it between censuses - so once it
+            // touched zero, every tick was a "boundary" and every tick queued
+            // a checkpoint.
+            bool reachedCheckpointBoundary = state.TicksSinceLastFlush >= CheckpointBoundaryTicks;
             if (_redisSessionCache != null && (state.IsDirty || state.RequiresRedisFlush || reachedCheckpointBoundary))
             {
                 // Modul: A REDIS FRAME IS NOT A CHECKPOINT, AND TREATING IT AS
@@ -121,38 +400,37 @@ namespace FolkIdle.Server.Domain.Shared
             // Forcing the checkpoint whenever Redis did not take the frame
             // gives gold the same durability as everything else. It matters
             // that this is the ref-owning path: FlushState applies the delta as
-            // an INCREMENT inside its transaction and this method zeroes it on
-            // the live payload only once that commits, so a market sale landing
-            // between two checkpoints is added to, never overwritten, and a
-            // failed flush retries instead of losing the coins.
+            // an INCREMENT inside its transaction, so a market sale landing
+            // between two checkpoints is added to, never overwritten. Since
+            // task 43 the delta rides on the queued job and the live payload
+            // is zeroed at request time; a failed flush's ack hands it back,
+            // so it still retries instead of losing the coins.
             bool redisUnavailable = _redisSessionCache == null || !_redisSessionCache.IsConnected;
-            if (redisUnavailable && state.RedisPendingGoldDelta != 0L)
-            {
-                reachedCheckpointBoundary = true;
-            }
+            bool goldOwedWithoutRedis = redisUnavailable && state.RedisPendingGoldDelta != 0L;
 
-            if (reachedCheckpointBoundary)
+            // Modul: CHECKPOINTS OFF THE TICK THREAD (task 43). This used to
+            // be FlushStateAndAdvance - a Serializable FOR UPDATE transaction
+            // run synchronously here, on the thread that simulates everybody.
+            // It is queued now, and the commit comes back as an ack
+            // (CheckpointAckTickCoordinator). A failed flush hands its gold
+            // back and re-arms the boundary there, so the retry is still "the
+            // next tick", as it was.
+            //
+            // The TICK boundary requests unconditionally: RequestFlush resets
+            // the counter, so it cannot fire twice, and a boundary a command
+            // forced (SpendAttributePoint sets the counter to the boundary) has
+            // to be honoured even behind another flush - it holds a choice the
+            // queued snapshot predates. SustainedLoadTests saw the counter pass
+            // 3000 when this waited.
+            //
+            // The Redis-down GOLD trigger is gated to one flush in flight:
+            // every tick that earns gold reaches it, and without the gate each
+            // of them would queue another flush behind the first. Gold earned
+            // meanwhile waits on the payload for the next one - see
+            // RequestFlush on why that banks it exactly once.
+            if (reachedCheckpointBoundary || (goldOwedWithoutRedis && state.FlushesInFlight == 0))
             {
-                bool committed = FlushStateAndAdvance(ref state);
-                if (committed)
-                {
-                    state.TicksSinceLastFlush = 0;
-                    state.IsDirty = false;
-                    _dirtyStates.TryRemove(state.PlayerId, out _);
-                }
-                else
-                {
-                    // The flush failed - either a Serializable conflict that
-                    // exhausted its retries, or another DbException. Never
-                    // silently discard progress here: TicksSinceLastFlush is
-                    // left as-is so the next TrackState call re-attempts the
-                    // checkpoint immediately, and IsDirty/_dirtyStates are
-                    // forced so this player is requeued for the next flush
-                    // cycle (including FlushAllGracefully at shutdown)
-                    // regardless of what IsDirty held on entry.
-                    state.IsDirty = true;
-                    _dirtyStates[state.PlayerId] = state;
-                }
+                RequestFlush(ref state, FlushReason.Periodic);
             }
             else if (state.IsDirty)
             {
@@ -169,10 +447,29 @@ namespace FolkIdle.Server.Domain.Shared
             _redisSessionCache?.TryStoreFrame(ref state);
             long pendingGold = state.RedisPendingGoldDelta;
 
-            bool committed = FlushState(state).GetAwaiter().GetResult();
+            // Modul: A SYNCHRONOUS FLUSH MUST QUEUE BEHIND THE WRITER'S (task
+            // 43). A flush still in flight on CheckpointWriter was stamped
+            // with this payload's epoch; committing this one first at the same
+            // epoch - or at a higher one ahead of it - makes the queued one
+            // look split-brained, which mails compensation gold and
+            // disconnects an honest player. SustainedLoadTests caught exactly
+            // that. So: wait for the player's queued flushes, then stamp past
+            // them, exactly as RequestFlush does. The login path, the one
+            // caller left, has nothing in flight and never waits.
+            if (state.FlushesInFlight > 0)
+            {
+                WaitForPendingFlushesAsync(state.PlayerId).GetAwaiter().GetResult();
+            }
+            var snapshot = state;
+            snapshot.LogicEpochCounter = state.LogicEpochCounter + state.FlushesInFlight;
+
+            bool committed = FlushState(snapshot).GetAwaiter().GetResult();
+            // The writer's split-brain mark is for the writer; this path has
+            // its answer already and must not leave one behind for it.
+            _splitBrainRefused.TryRemove(state.PlayerId, out _);
             if (committed)
             {
-                state.LogicEpochCounter++;
+                state.LogicEpochCounter = snapshot.LogicEpochCounter + 1;
                 state.IsDirty = false;
 
                 // Only now. If the flush failed the coins are still owed, and
@@ -261,10 +558,10 @@ namespace FolkIdle.Server.Domain.Shared
                         {
                             await transaction.RollbackAsync();
 
-                            // Calculate asset delta and compensate via Gold mailbox write (Module 31.2.2).
-                            long epochDelta = player.LogicEpochCounter - state.LogicEpochCounter;
-                            long compensationGold = epochDelta * 500L;
-
+                            // Modul: task 42. A flat SplitBrainCompensationGold, paid
+                            // once per (PlayerId, DbEpoch) - see SplitBrainIncident.
+                            // This used to mail epochDelta * 500 on every refused
+                            // flush: uncapped, and paid again for every race.
                             TelemetryStreamer.TryWrite(new TelemetryEvent
                             {
                                 PlayerId = state.PlayerId,
@@ -275,36 +572,14 @@ namespace FolkIdle.Server.Domain.Shared
                             });
 
                             long capturedPlayerId = state.PlayerId;
-                            long capturedGold = compensationGold;
-                            _ = Task.Run(async () =>
-                            {
-                                try
-                                {
-                                    using var bgScope = _serviceProvider.CreateScope();
-                                    var bgDb = bgScope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                                    using var bgTx = await bgDb.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-                                    bgDb.MailboxInstances.Add(new MailboxInstance
-                                    {
-                                        PlayerId = capturedPlayerId,
-                                        BaseItemId = "GOLD_COMPENSATION",
-                                        QualityTier = 0,
-                                        Quantity = 0,
-                                        GoldAttachment = capturedGold,
-                                        IsClaimed = false,
-                                        IsPending = false,
-                                        ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                                    });
-                                    await bgDb.SaveChangesAsync();
-                                    await bgTx.CommitAsync();
-                                }
-                                catch (Exception bgEx)
-                                {
-                                    Console.WriteLine($"Split-brain mailbox compensation failed for player {capturedPlayerId}: {bgEx.Message}");
-                                }
-                            });
+                            long capturedDbEpoch = player.LogicEpochCounter;
+                            long capturedSessionEpoch = state.LogicEpochCounter;
+                            LastSplitBrainCompensation = Task.Run(() =>
+                                CompensateSplitBrainAsync(capturedPlayerId, capturedDbEpoch, capturedSessionEpoch));
 
                             _forceDisconnectCallback?.Invoke(state.PlayerId);
                             _dirtyStates.TryRemove(state.PlayerId, out _);
+                            _splitBrainRefused[state.PlayerId] = 0;
                             return false;
                         }
 

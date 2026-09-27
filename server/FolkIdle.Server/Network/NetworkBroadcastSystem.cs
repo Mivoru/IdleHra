@@ -9175,6 +9175,11 @@ namespace FolkIdle.Server.Network
                     bucketInf = metrics.TickDurationBucketCountInf;
                 }
 
+                // Task 43: a rolling-window p99 (see GetRecentTickPercentiles)
+                // and the checkpoint writer's back-pressure.
+                var recentTicks = _simulationEngine?.GetRecentTickPercentiles();
+                var checkpointWriter = _simulationEngine?.CheckpointManager.Writer;
+
                 long writeQueueLength = 0;
                 var redis = _serviceProvider.GetService<StackExchange.Redis.IConnectionMultiplexer>();
                 if (redis != null && redis.IsConnected)
@@ -9205,6 +9210,32 @@ namespace FolkIdle.Server.Network
                 body.Append("folkidle_tick_duration_milliseconds_sum ").Append(tickSumMs).Append('\n');
                 body.Append("folkidle_tick_duration_milliseconds_count ").Append(tickCount).Append('\n');
                 body.Append('\n');
+                if (recentTicks is { } rt)
+                {
+                    var inv = System.Globalization.CultureInfo.InvariantCulture;
+                    body.Append("# HELP folkidle_tick_duration_recent_milliseconds Tick duration over the last ").Append(SimulationEngine.RecentTickWindow).Append(" ticks.\n");
+                    body.Append("# TYPE folkidle_tick_duration_recent_milliseconds summary\n");
+                    body.Append("folkidle_tick_duration_recent_milliseconds{quantile=\"0.5\"} ").Append(rt.P50Ms.ToString("0.###", inv)).Append('\n');
+                    body.Append("folkidle_tick_duration_recent_milliseconds{quantile=\"0.95\"} ").Append(rt.P95Ms.ToString("0.###", inv)).Append('\n');
+                    body.Append("folkidle_tick_duration_recent_milliseconds{quantile=\"0.99\"} ").Append(rt.P99Ms.ToString("0.###", inv)).Append('\n');
+                    body.Append("folkidle_tick_duration_recent_milliseconds{quantile=\"1\"} ").Append(rt.MaxMs.ToString("0.###", inv)).Append('\n');
+                    body.Append("folkidle_tick_duration_recent_milliseconds_count ").Append(rt.Samples).Append('\n');
+                    body.Append('\n');
+                }
+                if (checkpointWriter != null)
+                {
+                    body.Append("# HELP folkidle_checkpoint_queue_depth Checkpoint jobs queued on CheckpointWriter.\n");
+                    body.Append("# TYPE folkidle_checkpoint_queue_depth gauge\n");
+                    body.Append("folkidle_checkpoint_queue_depth ").Append(checkpointWriter.QueueDepth).Append('\n');
+                    body.Append("# TYPE folkidle_checkpoint_flushes_committed_total counter\n");
+                    body.Append("folkidle_checkpoint_flushes_committed_total ").Append(checkpointWriter.FlushesCommitted).Append('\n');
+                    body.Append("# TYPE folkidle_checkpoint_flushes_failed_total counter\n");
+                    body.Append("folkidle_checkpoint_flushes_failed_total ").Append(checkpointWriter.FlushesFailed).Append('\n');
+                    body.Append("# HELP folkidle_checkpoint_dead_letters_total CHECKPOINT-DEADLETTER lines written (grep the server log).\n");
+                    body.Append("# TYPE folkidle_checkpoint_dead_letters_total counter\n");
+                    body.Append("folkidle_checkpoint_dead_letters_total ").Append(checkpointWriter.DeadLetters).Append('\n');
+                    body.Append('\n');
+                }
                 body.Append("# HELP folkidle_database_write_queue_length Players with state pending Redis write-behind flush.\n");
                 body.Append("# TYPE folkidle_database_write_queue_length gauge\n");
                 body.Append("folkidle_database_write_queue_length ").Append(writeQueueLength).Append('\n');

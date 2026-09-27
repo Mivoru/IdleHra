@@ -517,6 +517,11 @@ namespace FolkIdle.Server.Engine
         // symptom was "deployed to Wild Boar, but nothing is happening".
         public ConcurrentQueue<TickStatePayload> StateReloadQueue { get; } = new();
 
+        // Modul: checkpoints off the tick thread (task 43). CheckpointWriter
+        // commits a flush on its own partition and reports back here; the tick
+        // drains this ahead of StateReloadQueue - see CheckpointAckTickCoordinator.
+        public ConcurrentQueue<FolkIdle.Server.Domain.Shared.FlushAck> FlushAckQueue { get; } = new();
+
         // Modul: larder - see LarderSlotUpdateNotification.
         public ConcurrentQueue<LarderSlotUpdateNotification> LarderSlotUpdateQueue { get; } = new();
 

@@ -103,6 +103,9 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   // Modul: the shield wheel replaced opcode 32 (task 36). Only an old bundle
   // still sends it, and restarting the app is how the OTA update lands.
   43: 'This version of the app cannot strike the boss any more. Restart the app to update it.',
+  // Modul: the checkpoint that must precede a trade, fusion, reroll or
+  // donation failed, so the server did not do it (task 43).
+  44: 'The server could not save your progress just then - nothing was spent. Try again.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;

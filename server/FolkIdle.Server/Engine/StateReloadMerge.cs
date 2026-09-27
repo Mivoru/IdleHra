@@ -49,7 +49,39 @@ namespace FolkIdle.Server.Engine
             reloaded.CommandResultRingWriteIndex = live.CommandResultRingWriteIndex;
             reloaded.CommandResultTickCounter = live.CommandResultTickCounter;
 
+            CarryCheckpointBookkeeping(in live, ref reloaded);
             CarryLiveActivity(in live, ref reloaded);
+        }
+
+        /// <summary>
+        /// Modul: CHECKPOINTS OFF THE TICK THREAD (task 43). The reload flush
+        /// used to commit synchronously, so the live payload had nothing in
+        /// flight and nothing owed by the time its replacement was built. Now
+        /// flushes finish on CheckpointWriter and report back later, so three
+        /// things on the live payload belong to no table and must survive the
+        /// swap:
+        /// - FlushesInFlight: acks for those flushes are still coming, and each
+        ///   one decrements it;
+        /// - the epoch, which may only go up (the loaded row already counts
+        ///   every committed flush, so the live one is at most equal);
+        /// - RedisPendingGoldDelta: coins earned since the last request, or
+        ///   handed back by a failed flush's ack. They are in no row the reload
+        ///   read, so they are added to the balance as well as carried as
+        ///   still owed - otherwise the next flush would bank coins the screen
+        ///   never showed, or the reload would drop them outright.
+        /// </summary>
+        private static void CarryCheckpointBookkeeping(in TickStatePayload live, ref TickStatePayload reloaded)
+        {
+            reloaded.FlushesInFlight = live.FlushesInFlight;
+            if (live.LogicEpochCounter > reloaded.LogicEpochCounter)
+            {
+                reloaded.LogicEpochCounter = live.LogicEpochCounter;
+            }
+            if (live.RedisPendingGoldDelta != 0L)
+            {
+                reloaded.RedisPendingGoldDelta += live.RedisPendingGoldDelta;
+                reloaded.AddGold(live.RedisPendingGoldDelta);
+            }
         }
 
         /// <summary>

@@ -144,6 +144,7 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 | PlayerTitle                    | player_titles                   |
 | PlayerGoldDailyHigh            | player_gold_daily_high          |
 | PlayerFunnelEvent              | player_funnel_events            |
+| SplitBrainIncident             | split_brain_incidents           |
 
 **The Deep (task 37)** added the last two, in migration `AddTheDeep`:
 - `player_titles` is keyed `(PlayerId, TitleSlug)`, and grants are
@@ -151,6 +152,12 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 - `player_gold_daily_high` is the 7-day gold high-water mark the Deep's stake
   is priced on. It is written inside `FlushState`'s transaction, never on
   the Redis frame path.
+
+**Task 42** added `split_brain_incidents` (migration `AddSplitBrainIncidents`),
+keyed `(PlayerId, DbEpoch)`. `FlushState`'s split-brain refusal inserts one
+row `ON CONFLICT DO NOTHING` and mails a flat
+`StateCheckpointManager.SplitBrainCompensationGold` (1,000) only when that
+inserted a row, so one incident pays once.
 
 The same migration added these columns:
 - `DelveRunRecords`: `IsDeep`, `StakeGold`, `LanternsBought`.
