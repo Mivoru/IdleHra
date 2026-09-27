@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260926235209_AddMailboxPlayerIdIndex")]
+    partial class AddMailboxPlayerIdIndex
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1442,22 +1445,6 @@ namespace FolkIdle.Server.Migrations
                     b.HasIndex("PlayerId");
 
                     b.ToTable("PlayerDeviceRegistrations");
-                });
-
-            modelBuilder.Entity("FolkIdle.Server.Models.PlayerFunnelEvent", b =>
-                {
-                    b.Property<long>("PlayerId")
-                        .HasColumnType("bigint");
-
-                    b.Property<short>("Step")
-                        .HasColumnType("smallint");
-
-                    b.Property<DateTime>("At")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("PlayerId", "Step");
-
-                    b.ToTable("player_funnel_events");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.PlayerGoldDailyHigh", b =>

@@ -6,6 +6,7 @@ import {
   INTERPOLATED_FIELD_NAMES,
   MIN_RENDER_DELAY_MS,
   MAX_RENDER_DELAY_MS,
+  shouldPublishVisual,
   type InterpolatedFields,
 } from '../src/lib/net/interpolation';
 
@@ -205,5 +206,47 @@ describe('extractInterpolated', () => {
     const extracted = extractInterpolated({ PlayerHp: 'Infinity' });
     expect(extracted.PlayerHp).toBe(0);
     expect(extracted.Gold).toBe(0);
+  });
+});
+
+// Modul: the render loop sleeps when nothing moves (stores/game.ts pump), so
+// "settled" must mean the sample IS the newest snapshot, and the publish test
+// must still land that final frame exactly.
+describe('the render loop may sleep', () => {
+  it('is settled with fewer than two snapshots', () => {
+    const interp = new SnapshotInterpolator();
+    expect(interp.isSettled(0)).toBe(true);
+    interp.push(fields({ CurrentMonsterHp: 100 }), 1, 1000);
+    expect(interp.isSettled(1000)).toBe(true);
+  });
+
+  it('is moving between two snapshots and settles once the render time passes the newest', () => {
+    const interp = new SnapshotInterpolator();
+    interp.push(fields({ CurrentMonsterHp: 100 }), 1, 1000);
+    interp.push(fields({ CurrentMonsterHp: 40 }), 1, 1000 + REAL_GAP_SHORT);
+    const newest = 1000 + REAL_GAP_SHORT;
+    expect(interp.isSettled(newest)).toBe(false);
+    expect(interp.isSettled(newest + interp.renderDelayMs - 1)).toBe(false);
+    expect(interp.isSettled(newest + interp.renderDelayMs)).toBe(true);
+    expect(interp.sample(newest + interp.renderDelayMs)?.CurrentMonsterHp).toBe(40);
+  });
+});
+
+describe('shouldPublishVisual', () => {
+  it('publishes the first frame', () => {
+    expect(shouldPublishVisual(null, fields(), false)).toBe(true);
+  });
+
+  it('skips sub-half-unit motion while moving, but not a real step', () => {
+    const last = fields({ CurrentMonsterHp: 50 });
+    expect(shouldPublishVisual(last, fields({ CurrentMonsterHp: 50.4 }), false)).toBe(false);
+    expect(shouldPublishVisual(last, fields({ CurrentMonsterHp: 50.6 }), false)).toBe(true);
+    expect(shouldPublishVisual(last, fields({ Gold: 1 }), false)).toBe(true);
+  });
+
+  it('always lands the settling frame exactly, however small the last step', () => {
+    const last = fields({ CurrentMonsterHp: 40.3 });
+    expect(shouldPublishVisual(last, fields({ CurrentMonsterHp: 40 }), true)).toBe(true);
+    expect(shouldPublishVisual(last, fields({ CurrentMonsterHp: 40.3 }), true)).toBe(false);
   });
 });

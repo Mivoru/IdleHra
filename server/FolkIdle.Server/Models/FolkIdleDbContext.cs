@@ -186,6 +186,13 @@ namespace FolkIdle.Server.Models
             modelBuilder.Entity<EventHorizonPremiumLedger>()
                 .HasIndex(p => p.PlayerId);
 
+            // Modul: every mailbox read is "this player's mail" - the screen,
+            // the market escrow's FOR UPDATE count, the world boss payout's
+            // duplicate check - and the table had only its primary key, so
+            // each one was a sequential scan of every player's mail (task 47).
+            modelBuilder.Entity<MailboxInstance>()
+                .HasIndex(m => m.PlayerId);
+
             modelBuilder.Entity<PlayerProductionRegistry>()
                 .HasKey(p => p.PlayerId);
 
