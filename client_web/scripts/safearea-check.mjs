@@ -170,8 +170,40 @@ async function intrude(insets, tolerance, { bottomMode }) {
         return null;
       };
 
+      // Modul: A ROTATED SHAPE IS NOT ITS BOUNDING BOX.
+      //
+      // getBoundingClientRect on an SVG shape inside a rotated <g> is the
+      // box around its ROTATED bounding rectangle, so the corners of that
+      // rectangle - empty space - swing out past the shape. The shield
+      // wheel's ring measured 346px across inside a 273px <svg>, and a plate
+      // was reported under the left system bar at 24px while the circle's
+      // real edge sat at ~70px. That false finding stood in the backlog as
+      // "the practice ring in landscape" for days. Measure a geometry element
+      // by points on its actual outline instead.
+      const outlineRect = (el) => {
+        const ctm = el.getScreenCTM?.();
+        if (!ctm || typeof el.getTotalLength !== 'function') return null;
+        let len;
+        try {
+          len = el.getTotalLength();
+        } catch {
+          return null;
+        }
+        if (!(len > 0)) return null;
+        let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+        const n = 96;
+        for (let k = 0; k <= n; k++) {
+          const p = el.getPointAtLength((len * k) / n).matrixTransform(ctm);
+          left = Math.min(left, p.x);
+          right = Math.max(right, p.x);
+          top = Math.min(top, p.y);
+          bottom = Math.max(bottom, p.y);
+        }
+        return { left, top, right, bottom, width: right - left, height: bottom - top };
+      };
+
       for (const el of new Set([...candidates, ...controls, ...scrollers])) {
-        const r = el.getBoundingClientRect();
+        const r = (el instanceof SVGGeometryElement && outlineRect(el)) || el.getBoundingClientRect();
         if (!visible(el, r)) continue;
         // Nothing off-screen: a list row scrolled out of view is not under the
         // clock, it is nowhere.

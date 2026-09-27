@@ -96,7 +96,8 @@
     display: grid;
     place-items: center;
     z-index: 60;
-    padding: 1rem;
+    padding: calc(1rem + var(--sa-top)) calc(1rem + var(--sa-right)) calc(1rem + var(--sa-bottom))
+      calc(1rem + var(--sa-left));
   }
 
   /* Modul: THE DISMISS BUTTON DOES NOT SCROLL AWAY.
@@ -180,10 +181,18 @@
      store screenshot where the handle sat on the end of every sentence. */
   .toast {
     position: fixed;
-    right: 1rem;
-    bottom: calc(1rem + var(--sa-bottom));
+    /* A fixed box never sees body's padding, so it carries the side insets
+       itself - in landscape the right one is a camera cutout or a gesture
+       bar, and the prompt sat 13px into it (check:safearea). */
+    right: calc(1rem + var(--sa-right));
+    /* Above the chat handle at EVERY width: ChatDock owns the same corner
+       (right 1rem, bottom 1rem) at desktop too, and this prompt used to be
+       lifted only on phones - so at desktop, whenever an update was out, it
+       sat on "Show chat" and swallowed its clicks. Found by a two-browser chat
+       check that could not open the dock. */
+    bottom: calc(4.25rem + var(--sa-bottom));
     z-index: 45;
-    width: min(22rem, calc(100vw - 2rem));
+    width: min(22rem, calc(100vw - 2rem - var(--sa-left) - var(--sa-right)));
     box-sizing: border-box;
     display: grid;
     gap: 0.35rem;
@@ -192,12 +201,6 @@
     border: 1px solid var(--accent);
     border-radius: 0.7rem;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-  }
-
-  @media (max-width: 40rem) {
-    .toast {
-      bottom: calc(4.25rem + var(--sa-bottom));
-    }
   }
 
   .line {

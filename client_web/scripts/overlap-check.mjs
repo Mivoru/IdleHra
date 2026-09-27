@@ -112,8 +112,19 @@ const findOverlaps = () =>
       // Anything else fixed and floating belongs here too, but it is matched by
       // POSITION rather than by class name so a rename cannot silently
       // reinstate the noise.
-      const coveredByFixedOverlay =
-        blockedBy && getComputedStyle(blockedBy.parentElement ?? blockedBy).position === 'fixed';
+      //
+      // ANY fixed ancestor, not only the parent: the onboarding coach's "Got
+      // it" sits two levels inside its fixed panel, so a parent-only test
+      // missed it and reported the Village's "Upgrade" at 1500px for weeks -
+      // measured, that button scrolls clear of the panel like everything else
+      // (the coach reserves its height through stores/bottomInset.ts).
+      const fixedAncestor = (n) => {
+        for (let a = n; a && a !== document.body; a = a.parentElement) {
+          if (getComputedStyle(a).position === 'fixed') return true;
+        }
+        return false;
+      };
+      const coveredByFixedOverlay = blockedBy && fixedAncestor(blockedBy);
 
       if (blockedCount >= 2 && !coveredByFixedOverlay) {
         hits.push(`${name(el)} is covered by ${name(blockedBy)} (${blockedCount}/5 probes)`);
