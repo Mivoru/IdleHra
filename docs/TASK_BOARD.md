@@ -23,8 +23,11 @@
 >    the weak plate is drawn per strike and the armour regrows daily.
 > 4. **Task 38 (Guild Wars): parked** until the population nears the floor.
 >    Re-measure before starting.
-> 5. **Tasks 39-47, the 2026-09-26 architecture audit: BUILT 2026-09-27 on
->    `integ/audit-remediation`, NOT YET DEPLOYED.** Suite 1190/1190,
+> 5. **Tasks 39-47, the 2026-09-26 architecture audit: DEPLOYED 2026-09-27 as
+>    1.0.795 (PR #56).** Checked live: migrations applied, the commodity
+>    unique index exists and 0 duplicates, `smoke:screens` 27/27, a trickled
+>    body did not delay `/healthz` (0.08 s), tick p99 < 10 ms, 0 failed
+>    checkpoints. Backup taken first: `folkidle-20260927T095853Z.dump`. Suite 1190/1190,
 >    `exercise.mjs` 186/186, client vitest 590 passed, ratchet at baseline 4.
 >    - 43 is phases 2a-2c; **2d (fixed timestep) is still open** as its own PR.
 >    - 46 is step 1 only: frames measure ~5.3 KB (dev), an estimated
@@ -32,10 +35,9 @@
 >      week of production `/metrics` after the deploy.
 >    - 45 needs the owner's phone: a crit vibrates, backgrounding schedules the
 >      reminder.
->    - After deploy: `docs/ops/funnel.sql` in production, the commodity
->      duplicate query returns 0, `smoke:screens` against production, a
->      trickled-body `curl` next to `/healthz`, tick p99 < 25 ms in `/metrics`,
->      and the two-browser chat check (41).
+>    - Still owed: `docs/ops/funnel.sql` once new players arrive (0 rows at
+>      deploy, nobody online), the two-browser chat check (41), and the
+>      week of frame-size `/metrics` for 46 (from 2026-09-27).
 >    - `exercise.mjs`'s new player never lands a kill (onboarding only reaches
 >      "Fight"), so it produces funnel step 1 but not step 2; the kill hook is
 >      proven by the dev fixture's live kill and `FunnelRecorderTests`.
