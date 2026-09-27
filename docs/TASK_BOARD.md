@@ -29,8 +29,8 @@
 >    body did not delay `/healthz` (0.08 s), tick p99 < 10 ms, 0 failed
 >    checkpoints. Backup taken first: `folkidle-20260927T095853Z.dump`. Suite 1190/1190,
 >    `exercise.mjs` 186/186, client vitest 590 passed, ratchet at baseline 4.
->    - 43 is phases 2a-2c; 2d (fixed timestep) is built on branch
-     `perf/fixed-timestep`, not yet merged or deployed.
+>    - 43 phase 2d (fixed timestep) DEPLOYED 2026-09-27 as 1.0.808 (PR #62,
+     together with #61). Live: tick p99 0.3 ms, 0 catch-up, 0 dropped.
 >    - 46 is step 1 only: frames measure ~5.3 KB (dev), an estimated
 >      310-370 KB/player/min against the 150 KB threshold. The go/no-go needs a
 >      week of production `/metrics` after the deploy.
@@ -4149,7 +4149,7 @@ Three PRs:
 - **2c done.** `AddActivePlayer` staggers the boundary by `PlayerId % 3000` (`CheckpointStaggerTests`).
 - `/metrics` now has `folkidle_tick_duration_recent_milliseconds{quantile="0.99"}`
   (last 600 ticks) and checkpoint queue/failure/dead-letter gauges.
-- **2d built (branch `perf/fixed-timestep`).** `Domain/Shared/TickPacer.cs`
+- **2d DEPLOYED 2026-09-27 as 1.0.808 (PR #62).** `Domain/Shared/TickPacer.cs`
   keeps an absolute 100 ms schedule: an overrun or an oversleep is caught up
   instead of lost, at most 5 ticks owed at once, the rest dropped and counted.
   `/metrics` gains `folkidle_ticks_catch_up_total` and
