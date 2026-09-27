@@ -1677,8 +1677,7 @@ namespace FolkIdle.Server.Domain.Combat
                         // it only banks the coins earned since the last flush.
                         // A second flush after an already-flushed command is a
                         // no-op, because the delta has been zeroed.
-                        _checkpointManager.FlushStateAndAdvance(ref currentPayload);
-
+                        //
                         // Modul: THE RESULT COMES BACK THROUGH A QUEUE, because
                         // the tick thread owns _activePlayers.
                         //
@@ -1694,11 +1693,28 @@ namespace FolkIdle.Server.Domain.Combat
                         // The player stays suspended until the reload lands,
                         // which is correct - their state is in flight - and the
                         // drain clears it.
+                        //
+                        // Modul: CHECKPOINTS OFF THE TICK THREAD (task 43). The
+                        // flush now commits on CheckpointWriter and the reload
+                        // is its continuation, so "flush first, then reload" is
+                        // still the order - the load runs on the writer after
+                        // the commit and sees every earlier checkpoint of this
+                        // player. A reload runs even when the flush fails
+                        // (FlushJob.RunThenOnFailure), as it always did: an
+                        // engine has already committed a change the player must
+                        // see. The failed flush's gold comes back via its ack,
+                        // which the tick applies BEFORE this payload lands, and
+                        // StateReloadMerge carries it across. A continuation
+                        // that throws disconnects the player, as SafeDispatch
+                        // did here before.
                         long reloadPlayerId = currentPayload.PlayerId;
-                        SafeDispatchAsync("ReloadState", reloadPlayerId, async () => {
-                            var reloaded = await _checkpointManager.LoadPlayerState(reloadPlayerId);
+                        var reloadCheckpoints = _checkpointManager;
+                        var reloadRegistry = _playerRegistry;
+                        _checkpointManager.RequestFlush(ref currentPayload, FlushReason.Reload, then: async () =>
+                        {
+                            var reloaded = await reloadCheckpoints.LoadPlayerState(reloadPlayerId);
                             reloaded.IsSuspended = false;
-                            _playerRegistry.StateReloadQueue.Enqueue(reloaded);
+                            reloadRegistry.StateReloadQueue.Enqueue(reloaded);
                         });
                     }
                     // CommandType.RegisterWorldBossDamage (19) was retired here.
