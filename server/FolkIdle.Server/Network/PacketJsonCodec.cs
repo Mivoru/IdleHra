@@ -431,7 +431,7 @@ namespace FolkIdle.Server.Network
         // ---------------------------------------------------------------
 
         // Allocates a fresh array per call. Deliberate and acceptable: the
-        // binary path (SendToPlayer's reusable per-session buffer) is
+        // binary path (SendToPlayer -> OfferStateFrame, a pooled buffer) is
         // untouched and keeps its zero-allocation property, and this one only
         // runs for connections that explicitly asked for JSON, where the
         // whole premise (see the port plan, 3.2) is that ~2 KB of JSON at

@@ -4053,6 +4053,18 @@ delays everyone for up to 20 s.
 - `exercise.mjs` passes;
 - a two-browser chat check under combat, done by hand, shows every message.
 
+**Status: DONE (pending deploy; manual two-browser chat check still owed; `exercise.mjs` not yet run).**
+`WebSocketSession` is now an outbox with one writer task per session: events
+(loot, combat, chat, announcements) queue in a bounded 512 drop-oldest channel,
+snapshots keep one latest-wins slot, the writer sends events before the snapshot
+of the same wake-up, and `CloseAsync` is a sentinel the writer honours. The three
+dispatch loops only enqueue. The 20 s timeout and `IsWedged` live in the writer.
+Binary state frames copy into a rented buffer (`DiagnosticSendBuffer` is gone).
+`/metrics` carries `folkidle_outbox_events_dropped_total` and
+`folkidle_outbox_queue_depth`. Tests: `SessionOutboxTests` (a)-(e) plus the close
+sentinel and a binary frame; `SocketBackpressureTests` rewritten against the new
+API.
+
 ## 42. The split-brain gold mail has no cap and pays more than once per incident (S) - plan item 6
 
 **Why:** `StateCheckpointManager.cs:265` mails `epochDelta * 500` gold, with no

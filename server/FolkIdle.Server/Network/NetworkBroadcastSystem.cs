@@ -1,12 +1,15 @@
 using System;
+using System.Buffers;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Net;
 using System.Net.WebSockets;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Channels;
 using System.Threading.Tasks;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
@@ -21,6 +24,46 @@ using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Network
 {
+    /// <summary>
+    /// One connected player's socket, and the only code that writes to it.
+    /// </summary>
+    /// <remarks>
+    /// Modul: A PER-SESSION OUTBOX (task 41, audit item 3, 2026-09-27).
+    ///
+    /// .NET forbids two outstanding send-family operations on one WebSocket,
+    /// and five independent call sites target the same socket: the 10 Hz state
+    /// broadcast, the loot feed, the combat feed, chat, and every disconnect
+    /// path. This class used to serialise them with a semaphore taken with a
+    /// ZERO timeout - which was the right call for snapshots (see
+    /// OfferSnapshot) and silently wrong for everything else. A loot line, a
+    /// combat blow or a private message that arrived while a state frame was
+    /// in flight was simply discarded, and at 10 Hz a state frame is in flight
+    /// a large share of the time. On top of that, each dispatch loop awaited
+    /// its sends one after another, so one peer that had stopped reading held
+    /// its loop - and every other player behind it - for up to the 20 s send
+    /// timeout.
+    ///
+    /// Now there is one writer task per session and nothing else touches the
+    /// socket. Producers never await and never block:
+    ///   - EnqueueEvent: a bounded FIFO (512, drop-OLDEST, counted). Events
+    ///     are deltas - each one is a line the player would otherwise never
+    ///     see - so they queue rather than drop.
+    ///   - OfferSnapshot / OfferStateFrame: one slot, latest wins. A state
+    ///     frame is an ABSOLUTE snapshot, so an older one still waiting when a
+    ///     newer one arrives is worth nothing. That is THE COMBAT FREEZE fix
+    ///     below, kept.
+    ///   - CloseAsync: a sentinel the writer honours before anything else, so
+    ///     a close never races a send.
+    ///
+    /// THE COMBAT FREEZE, for the record, because it is why snapshots keep
+    /// latest-wins semantics: the old lock was once taken with no timeout from
+    /// a fire-and-forget 10 Hz broadcast. When a peer stopped reading, TCP
+    /// back-pressure left one send pending forever, it kept the lock, and every
+    /// later frame queued behind it - nothing threw, nothing closed, the socket
+    /// stayed open and silent, and the client (whose reconnect logic is fine)
+    /// had nothing to reconnect FROM. The send timeout and IsWedged below are
+    /// the second half of that fix, and they now live in the writer.
+    /// </remarks>
     public class WebSocketSession
     {
         public WebSocket Socket { get; }
@@ -28,7 +71,6 @@ namespace FolkIdle.Server.Network
         public string RedisLockToken { get; }
         public TokenBucket TokenBucket;
         public TokenBucket ChatTokenBucket;
-        public byte[] DiagnosticSendBuffer { get; }
 
         // Modul: cached from the player's live TickStatePayload.GuildId
         // (see SimulationEngine.AddActivePlayer/UpdateSessionGuildId) so
@@ -45,37 +87,30 @@ namespace FolkIdle.Server.Network
         //
         // False is the default in the fullest sense: the Unity client sends a
         // binary AuthHandshakePacket, lands in the binary branch, and every
-        // send path below takes the same reusable-buffer, blittable-write
-        // route it always has. Nothing about the binary path changed to make
-        // room for this.
+        // send path below takes the blittable-write route it always has.
         public bool UseJsonProtocol { get; }
 
-        // Modul: .NET's WebSocket forbids more than one outstanding
-        // send-family operation (SendAsync or CloseAsync) in flight at a
-        // time on the same instance. State broadcasts (SendToPlayer, 1Hz),
-        // chat broadcasts (BroadcastChatMessage), and disconnects
-        // (ForceDisconnect, DisconnectAllClientsGracefullyAsync, stale-
-        // session eviction) are independent call sites that can all target
-        // the same socket - each individually well-behaved in isolation,
-        // but unsynchronized against each other, which is what let two of
-        // them race and throw "already one outstanding SendAsync call",
-        // silently aborting the socket with no error surfaced anywhere.
-        // Every send/close on this session's socket MUST go through
-        // SendAsync/CloseAsync below rather than Socket.SendAsync/
-        // Socket.CloseAsync directly, so exactly one send-family operation
-        // is ever in flight regardless of which caller issued it.
-        private readonly SemaphoreSlim _sendLock = new SemaphoreSlim(1, 1);
+        /// <summary>How many events one session may hold before the oldest is dropped.</summary>
+        public const int EventCapacity = 512;
 
-        public WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol = false)
-        {
-            Socket = socket;
-            RedisLockToken = redisLockToken;
-            UseJsonProtocol = useJsonProtocol;
-            Throttler = new ClientInputThrottler();
-            TokenBucket = NetworkThrottlingEngine.CreateBucket();
-            ChatTokenBucket = ChatEngine.CreateChatBucket();
-            DiagnosticSendBuffer = new byte[Marshal.SizeOf<StateUpdatePacket>()];
-        }
+        /// <summary>
+        /// Events dropped because an outbox was full, across every session
+        /// since start. Exposed on /metrics as
+        /// folkidle_outbox_events_dropped_total.
+        /// </summary>
+        /// <remarks>
+        /// Modul: a drop nobody counts is the silent loss this outbox exists
+        /// to end, so the one place it can still drop reports that it did.
+        /// </remarks>
+        public static long EventsDroppedTotal => Interlocked.Read(ref s_eventsDroppedTotal);
+        private static long s_eventsDroppedTotal;
+
+        /// <summary>Events dropped from THIS session's outbox.</summary>
+        public long EventsDropped => Interlocked.Read(ref _eventsDropped);
+        private long _eventsDropped;
+
+        /// <summary>Events waiting for this session's writer.</summary>
+        public int PendingEventCount => _events.Reader.Count;
 
         /// <summary>
         /// How long one frame may take before the socket is considered wedged.
@@ -84,157 +119,413 @@ namespace FolkIdle.Server.Network
         /// for a slow second. What it stops is the unbounded case: a peer that
         /// has stopped reading entirely, where the send never completes at all.
         /// </summary>
-        private static readonly TimeSpan SendTimeout = TimeSpan.FromSeconds(20);
+        public static readonly TimeSpan DefaultSendTimeout = TimeSpan.FromSeconds(20);
+        private readonly TimeSpan _sendTimeout;
 
         /// <summary>
-        /// True once a send has timed out. The broadcast loop reads it and
-        /// evicts the session, which is what lets the client's own reconnect
-        /// logic run - see SendAsync for why silence was worse than a
-        /// disconnect.
+        /// True once a send has timed out. SendToPlayer reads it and evicts
+        /// the session, which is what lets the client's own reconnect logic
+        /// run - a disconnect the client can act on beats a socket that is
+        /// open and silent.
         /// </summary>
         public volatile bool IsWedged;
 
-        /// <summary>
-        /// Sends one frame, or drops it if this socket is already busy.
-        ///
-        /// THIS IS THE COMBAT FREEZE.
-        ///
-        /// The lock is necessary - .NET forbids two outstanding sends on one
-        /// WebSocket - but it was taken with `WaitAsync(cancellationToken)`
-        /// where every caller passes CancellationToken.None, and the sends are
-        /// fire-and-forget from a 10 Hz broadcast. So when a peer stopped
-        /// reading, TCP back-pressure left `Socket.SendAsync` pending
-        /// indefinitely, that send kept the semaphore, and every following
-        /// tick's send queued behind it forever.
-        ///
-        /// Nothing threw. Nothing closed. The socket stayed open with no frames
-        /// arriving, so the client - whose reconnect logic is fine - never had
-        /// anything to reconnect FROM: it was not disconnected, it was being
-        /// ignored. HP stopped ticking, kills stopped appearing, and F5 fixed
-        /// it because a new socket has an uncontended lock. It also grew the
-        /// queue without bound for as long as the player left the tab open.
-        ///
-        /// Two changes, and the first is the one that matters. A state update
-        /// is an ABSOLUTE SNAPSHOT, not a delta, so a frame that cannot be sent
-        /// right now is worth nothing - the next tick carries the same truth,
-        /// only fresher. Taking the lock with a zero timeout turns a stalled
-        /// socket into dropped frames instead of an infinite queue. The second
-        /// bounds the underlying send, so a socket that is truly gone is torn
-        /// down and the client is told, rather than left watching a frozen
-        /// screen.
-        /// </summary>
-        public async Task SendAsync(ArraySegment<byte> segment, WebSocketMessageType messageType, bool endOfMessage, CancellationToken cancellationToken)
+        private readonly struct OutboundFrame
         {
-            // Zero timeout: do not queue behind an in-flight send.
-            if (!await _sendLock.WaitAsync(0, cancellationToken).ConfigureAwait(false))
+            public readonly byte[] Buffer;
+            public readonly WebSocketMessageType Type;
+
+            public OutboundFrame(byte[] buffer, WebSocketMessageType type)
             {
-                return;
+                Buffer = buffer;
+                Type = type;
             }
+        }
 
-            try
+        private sealed class CloseRequest
+        {
+            public readonly WebSocketCloseStatus Status;
+            public readonly string Description;
+            public readonly TaskCompletionSource Done = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            public CloseRequest(WebSocketCloseStatus status, string description)
             {
-                if (Socket.State != WebSocketState.Open) return;
+                Status = status;
+                Description = description;
+            }
+        }
 
-                using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                timeout.CancelAfter(SendTimeout);
+        private readonly Channel<OutboundFrame> _events;
 
-                try
+        // Modul: the snapshot slot is guarded by a plain lock rather than an
+        // Interlocked.Exchange of a frame object, so the binary path can hand
+        // over a rented buffer without allocating a holder per 10 Hz tick.
+        // Held for a few field writes only - never across an await.
+        private readonly object _snapshotGate = new();
+        private byte[]? _snapshotBuffer;
+        private int _snapshotLength;
+        private WebSocketMessageType _snapshotType;
+        private bool _snapshotRented;
+
+        private readonly object _lifecycleGate = new();
+        private CloseRequest? _closeRequest;
+        private bool _writerExited;
+        private volatile bool _shutdown;
+
+        // Modul: one wake-up per burst, not one per frame. A producer
+        // releases the semaphore only on the 0 -> 1 transition of this flag,
+        // and the writer clears it BEFORE it drains - so anything enqueued
+        // during the drain signals again and is picked up by the next pass
+        // rather than lost between a check and a wait.
+        private readonly SemaphoreSlim _signal = new(0);
+        private int _signalled;
+
+        private readonly Task _writer;
+
+        public WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol = false)
+            : this(socket, redisLockToken, useJsonProtocol, DefaultSendTimeout)
+        {
+        }
+
+        // Test seam: SessionOutboxTests drives the wedge path with a
+        // millisecond timeout rather than waiting twenty real seconds.
+        internal WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol, TimeSpan sendTimeout)
+        {
+            Socket = socket;
+            RedisLockToken = redisLockToken;
+            UseJsonProtocol = useJsonProtocol;
+            Throttler = new ClientInputThrottler();
+            TokenBucket = NetworkThrottlingEngine.CreateBucket();
+            ChatTokenBucket = ChatEngine.CreateChatBucket();
+            _sendTimeout = sendTimeout;
+
+            _events = Channel.CreateBounded<OutboundFrame>(
+                new BoundedChannelOptions(EventCapacity)
                 {
-                    await Socket.SendAsync(segment, messageType, endOfMessage, timeout.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (timeout.IsCancellationRequested && !cancellationToken.IsCancellationRequested)
+                    FullMode = BoundedChannelFullMode.DropOldest,
+                    SingleReader = true,
+                    SingleWriter = false,
+                    AllowSynchronousContinuations = false,
+                },
+                _ =>
                 {
-                    // The peer is not reading. Mark it so the broadcast loop
-                    // evicts the session - a disconnect the client can act on
-                    // beats a socket that is open and silent.
-                    IsWedged = true;
-                    throw new WebSocketException($"send timed out after {SendTimeout.TotalSeconds:F0}s");
-                }
-            }
-            finally
-            {
-                _sendLock.Release();
-            }
+                    Interlocked.Increment(ref _eventsDropped);
+                    Interlocked.Increment(ref s_eventsDroppedTotal);
+                });
+
+            _writer = Task.Run(WriterLoopAsync);
         }
 
         /// <summary>
-        /// Sends one state frame on the binary protocol without allocating.
-        ///
-        /// The lock is taken BEFORE the copy, which is the whole point. The
-        /// caller used to write this session's reusable buffer and then hand it
-        /// to a fire-and-forget send - so the next tick's write could land in
-        /// the buffer the previous send was still reading, and the client would
-        /// receive a frame spliced out of two. Acquiring first means a frame is
-        /// either copied and sent, or dropped before anything is touched.
-        ///
-        /// Synchronous Wait(0) rather than WaitAsync: it never blocks (zero
-        /// timeout) and it keeps the copy off an await boundary, where a Span
-        /// cannot go.
+        /// Queues one event frame. Never blocks, never awaits.
         /// </summary>
-        public Task SendStateFrameAsync(ref StateUpdatePacket packet)
+        /// <remarks>
+        /// The buffer is sent as-is at some later point, so the caller must
+        /// not write to it afterwards. One immutable buffer may be enqueued to
+        /// many sessions - chat does exactly that.
+        /// </remarks>
+        public void EnqueueEvent(byte[] frame, WebSocketMessageType messageType)
         {
-            if (!_sendLock.Wait(0))
-            {
-                return Task.CompletedTask;
-            }
-
-            try
-            {
-                if (Socket.State != WebSocketState.Open) return Task.CompletedTask;
-
-                ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
-                MemoryMarshal.AsBytes(span).CopyTo(DiagnosticSendBuffer);
-            }
-            catch
-            {
-                _sendLock.Release();
-                throw;
-            }
-
-            return SendHeldAsync(new ArraySegment<byte>(DiagnosticSendBuffer), WebSocketMessageType.Binary);
+            if (_shutdown) return;
+            _events.Writer.TryWrite(new OutboundFrame(frame, messageType));
+            Signal();
         }
 
-        /// <summary>Sends with the lock ALREADY held, and releases it.</summary>
-        private async Task SendHeldAsync(ArraySegment<byte> segment, WebSocketMessageType messageType)
+        /// <summary>Encodes one packet for this session's protocol and queues it as an event.</summary>
+        public void EnqueuePacket<T>(ref T packet) where T : unmanaged
         {
-            try
+            if (UseJsonProtocol)
             {
-                using var timeout = new CancellationTokenSource(SendTimeout);
-                try
-                {
-                    await Socket.SendAsync(segment, messageType, true, timeout.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (timeout.IsCancellationRequested)
-                {
-                    IsWedged = true;
-                    throw new WebSocketException($"send timed out after {SendTimeout.TotalSeconds:F0}s");
-                }
+                EnqueueEvent(PacketJsonCodec.SerializeToUtf8(ref packet), WebSocketMessageType.Text);
             }
-            finally
+            else
             {
-                _sendLock.Release();
+                EnqueueEvent(EncodeBinary(ref packet), WebSocketMessageType.Binary);
             }
         }
 
-        public async Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
+        /// <summary>A fresh blittable copy of one packet - owned by the caller, safe to share.</summary>
+        public static byte[] EncodeBinary<T>(ref T packet) where T : unmanaged
         {
-            // Bounded, like SendAsync: a close must never be the thing that
-            // hangs the eviction path for a socket that is already gone.
-            if (!await _sendLock.WaitAsync(SendTimeout, cancellationToken).ConfigureAwait(false))
+            ReadOnlySpan<T> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
+            return MemoryMarshal.AsBytes(span).ToArray();
+        }
+
+        /// <summary>
+        /// Offers a state snapshot. Replaces any snapshot still waiting - the
+        /// newer one carries the same truth, only fresher.
+        /// </summary>
+        public void OfferSnapshot(byte[] frame, WebSocketMessageType messageType)
+        {
+            SetSnapshot(frame, frame.Length, messageType, rented: false);
+        }
+
+        /// <summary>
+        /// Offers a state snapshot on the binary protocol.
+        /// </summary>
+        /// <remarks>
+        /// Modul: this used to copy into one per-session DiagnosticSendBuffer
+        /// and send from it, which is only safe while a lock guarantees the
+        /// previous send has finished reading. With a writer that sends later,
+        /// the next tick's copy would land in the buffer the writer is still
+        /// sending - a frame spliced out of two. So each offer copies into a
+        /// buffer rented from the shared pool, and whoever retires it (the
+        /// writer after sending, or a newer offer superseding it) returns it.
+        /// </remarks>
+        public void OfferStateFrame(ref StateUpdatePacket packet)
+        {
+            int size = Unsafe.SizeOf<StateUpdatePacket>();
+            byte[] rented = ArrayPool<byte>.Shared.Rent(size);
+            ReadOnlySpan<StateUpdatePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
+            MemoryMarshal.AsBytes(span).CopyTo(rented);
+            SetSnapshot(rented, size, WebSocketMessageType.Binary, rented: true);
+        }
+
+        private void SetSnapshot(byte[] buffer, int length, WebSocketMessageType type, bool rented)
+        {
+            if (_shutdown)
             {
+                if (rented) ArrayPool<byte>.Shared.Return(buffer);
                 return;
             }
 
+            byte[]? superseded;
+            bool supersededRented;
+            lock (_snapshotGate)
+            {
+                superseded = _snapshotBuffer;
+                supersededRented = _snapshotRented;
+                _snapshotBuffer = buffer;
+                _snapshotLength = length;
+                _snapshotType = type;
+                _snapshotRented = rented;
+            }
+
+            if (superseded != null && supersededRented)
+            {
+                ArrayPool<byte>.Shared.Return(superseded);
+            }
+
+            Signal();
+        }
+
+        /// <summary>
+        /// Asks the writer to close the socket. Completes when the close has
+        /// run (or the writer has already stopped).
+        /// </summary>
+        /// <remarks>
+        /// Modul: a sentinel rather than a direct Socket.CloseAsync, so a
+        /// close can never be the second outstanding send-family operation on
+        /// the socket. It jumps the queue: events still waiting are for a
+        /// connection that is going away. The first close requested wins - a
+        /// later one (say the shutdown sweep after an eviction) just waits on
+        /// the same result.
+        /// </remarks>
+        public Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken cancellationToken)
+        {
+            Task done;
+            lock (_lifecycleGate)
+            {
+                if (_writerExited) return Task.CompletedTask;
+                _closeRequest ??= new CloseRequest(closeStatus, statusDescription);
+                done = _closeRequest.Done.Task;
+            }
+
+            Signal();
+            return cancellationToken.CanBeCanceled ? done.WaitAsync(cancellationToken) : done;
+        }
+
+        /// <summary>
+        /// Stops the writer without closing - the connection has already
+        /// ended. Called once the receive loop for this socket has finished.
+        /// </summary>
+        public void Shutdown()
+        {
+            _shutdown = true;
+            Signal();
+        }
+
+        /// <summary>The writer task. Test-only observability.</summary>
+        internal Task WriterTask => _writer;
+
+        private void Signal()
+        {
+            if (Interlocked.Exchange(ref _signalled, 1) == 0)
+            {
+                _signal.Release();
+            }
+        }
+
+        private async Task WriterLoopAsync()
+        {
             try
             {
-                if (Socket.State != WebSocketState.Open) return;
-                await Socket.CloseAsync(closeStatus, statusDescription, cancellationToken).ConfigureAwait(false);
+                while (true)
+                {
+                    await _signal.WaitAsync().ConfigureAwait(false);
+                    Volatile.Write(ref _signalled, 0);
+
+                    if (await TryHonourCloseAsync().ConfigureAwait(false)) return;
+                    if (_shutdown || IsTerminal(Socket.State)) return;
+
+                    // Modul: EVENTS FIRST, then the snapshot, in the same
+                    // wake-up. The combat feed needs this order: a blow must
+                    // not arrive visibly after the health change it explains.
+                    //
+                    // And a BUDGET: at most one queue's worth per pass.
+                    // Draining `while (TryRead)` unbounded would let a producer
+                    // that never pauses starve the snapshot forever - the
+                    // exact shape that stopped equipment drops server-wide in
+                    // CombatLootEngine. The budget is a fixed bound rather
+                    // than the depth read at the top, deliberately: an event
+                    // that arrived while an earlier send was blocked is still
+                    // older news than the snapshot waiting behind it, so it
+                    // goes first. Whatever is left has signalled again and is
+                    // next pass's work.
+                    for (int i = 0; i < EventCapacity && _events.Reader.TryRead(out OutboundFrame frame); i++)
+                    {
+                        if (Volatile.Read(ref _closeRequest) != null || _shutdown) break;
+                        if (!await SendFrameAsync(new ArraySegment<byte>(frame.Buffer), frame.Type).ConfigureAwait(false)) return;
+                    }
+
+                    if (Volatile.Read(ref _closeRequest) != null || _shutdown)
+                    {
+                        Signal();
+                        continue;
+                    }
+
+                    byte[]? snapshot;
+                    int length;
+                    WebSocketMessageType type;
+                    bool rented;
+                    lock (_snapshotGate)
+                    {
+                        snapshot = _snapshotBuffer;
+                        length = _snapshotLength;
+                        type = _snapshotType;
+                        rented = _snapshotRented;
+                        _snapshotBuffer = null;
+                    }
+
+                    if (snapshot != null)
+                    {
+                        bool sent;
+                        try
+                        {
+                            sent = await SendFrameAsync(new ArraySegment<byte>(snapshot, 0, length), type).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            if (rented) ArrayPool<byte>.Shared.Return(snapshot);
+                        }
+
+                        if (!sent) return;
+                    }
+
+                    // Events left over by the budget were enqueued before
+                    // this pass cleared the signal, so nothing else will wake
+                    // the writer for them.
+                    if (_events.Reader.Count > 0) Signal();
+                }
+            }
+            catch (Exception ex)
+            {
+                // Modul: nothing escapes a writer - an unobserved fault here
+                // would be a player whose screen stops moving with no log.
+                Console.WriteLine($"Session writer stopped: {ex.GetBaseException().Message}");
             }
             finally
             {
-                _sendLock.Release();
+                ExitWriter();
             }
         }
+
+        /// <summary>Sends one frame. False means the writer must stop.</summary>
+        private async Task<bool> SendFrameAsync(ArraySegment<byte> segment, WebSocketMessageType type)
+        {
+            WebSocketState state = Socket.State;
+            if (state != WebSocketState.Open)
+            {
+                // CloseReceived: the peer is leaving and the receive loop is
+                // about to request the close - keep going so it can.
+                return !IsTerminal(state);
+            }
+
+            using var timeout = new CancellationTokenSource(_sendTimeout);
+            try
+            {
+                await Socket.SendAsync(segment, type, true, timeout.Token).ConfigureAwait(false);
+                return true;
+            }
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+            {
+                // The peer is not reading. Mark it so SendToPlayer evicts the
+                // session - a disconnect the client can act on beats a socket
+                // that is open and silent. A cancelled send has aborted the
+                // socket, so this writer has nothing left to do.
+                IsWedged = true;
+                Console.WriteLine($"Session send timed out after {_sendTimeout.TotalSeconds:F0}s; marked wedged.");
+                return false;
+            }
+            catch (Exception ex) when (ex is WebSocketException || ex is ObjectDisposedException || ex is InvalidOperationException)
+            {
+                Console.WriteLine($"Session send failed: {ex.Message}");
+                return !IsTerminal(Socket.State);
+            }
+        }
+
+        private async Task<bool> TryHonourCloseAsync()
+        {
+            CloseRequest? request = Volatile.Read(ref _closeRequest);
+            if (request == null) return false;
+
+            try
+            {
+                WebSocketState state = Socket.State;
+                if (state == WebSocketState.Open || state == WebSocketState.CloseReceived)
+                {
+                    // Bounded, like a send: a close must never be the thing
+                    // that hangs for a peer that is already gone.
+                    using var timeout = new CancellationTokenSource(_sendTimeout);
+                    await Socket.CloseAsync(request.Status, request.Description, timeout.Token).ConfigureAwait(false);
+                }
+
+                request.Done.TrySetResult();
+            }
+            catch (Exception ex)
+            {
+                request.Done.TrySetException(ex);
+            }
+
+            return true;
+        }
+
+        private void ExitWriter()
+        {
+            CloseRequest? pending;
+            lock (_lifecycleGate)
+            {
+                _writerExited = true;
+                pending = _closeRequest;
+            }
+
+            _shutdown = true;
+            pending?.Done.TrySetResult();
+
+            byte[]? snapshot;
+            bool rented;
+            lock (_snapshotGate)
+            {
+                snapshot = _snapshotBuffer;
+                rented = _snapshotRented;
+                _snapshotBuffer = null;
+            }
+
+            if (snapshot != null && rented) ArrayPool<byte>.Shared.Return(snapshot);
+        }
+
+        private static bool IsTerminal(WebSocketState state) =>
+            state == WebSocketState.Closed || state == WebSocketState.Aborted;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -270,18 +561,6 @@ namespace FolkIdle.Server.Network
         private PushNotificationTriggerEngine? _pushNotificationTriggerEngine;
         private PlayerSessionRegistry? _playerSessionRegistry;
         private readonly ChatEngine _chatEngine;
-
-        // Modul: Full-Stack Social Layer, Part 1. A single buffer is now
-        // sufficient - ChatEngine's dispatch worker drains
-        // OutboundDispatchQueue with exactly one background task, so at
-        // most one HandleChatDispatchAsync invocation (and therefore one
-        // buffer copy-then-send sequence) is ever in flight at a time,
-        // regardless of which channel (global/guild/whisper) an item came
-        // from. Previously two buffers were required because the global
-        // and guild Redis subscriptions could invoke their handlers
-        // concurrently with each other; that is no longer true once
-        // delivery is centralized behind one dispatch worker.
-        private readonly byte[] _chatDispatchBuffer = new byte[Marshal.SizeOf<ResponseChatMessagePacket>()];
 
         public NetworkBroadcastSystem(IServiceProvider serviceProvider, string jwtSecretKey, string uriPrefix = "http://localhost:8080/")
         {
@@ -379,22 +658,19 @@ namespace FolkIdle.Server.Network
         }
 
         // Modul: Loot Event Feed. Drains PlayerSessionRegistry.OutboundLootDropQueue
-        // and pushes each drop to the socket of the player it belongs to.
+        // and hands each drop to the outbox of the player it belongs to.
         //
         // Its own background loop rather than a hook on the 10Hz tick,
         // because drops are produced by CombatLootEngine's own 3-second cron
-        // (never on the tick thread) and a socket write must not be able to
-        // stall the simulation. Mirrors ChatEngine's dispatch worker shape
-        // exactly, including the 50ms idle sleep - loot is bursty and rare,
-        // so a tight spin would burn a core to deliver a handful of messages
-        // a minute.
+        // (never on the tick thread). The 50ms idle sleep stays - loot is
+        // bursty and rare, so a tight spin would burn a core to deliver a
+        // handful of messages a minute.
         //
-        // Allocation-free per drop: one reusable buffer, one blittable
-        // write, no strings anywhere on the path (the packet carries a
-        // numeric ContentRegistry item id which the client resolves through
-        // its own content mirror).
-        private readonly byte[] _lootDropDispatchBuffer = new byte[Marshal.SizeOf<ResponseLootDropPacket>()];
-
+        // Modul: task 41. This loop ENQUEUES and never awaits a socket. It
+        // used to await each send in turn, so one peer that had stopped
+        // reading held every other player's loot for up to the 20 s send
+        // timeout - and a drop that met a state frame in flight was thrown
+        // away. The session's own writer does the sending now.
         private async Task LootDropDispatchLoopAsync()
         {
             while (_isRunning)
@@ -406,27 +682,12 @@ namespace FolkIdle.Server.Network
                     continue;
                 }
 
-                if (!_connectedClients.TryGetValue(drop.PlayerId, out var session) || session.Socket.State != WebSocketState.Open)
-                {
-                    // The player logged off between the drop resolving and
-                    // this dispatch. The item is already persisted, so
-                    // dropping the notification loses nothing but the
-                    // on-screen line.
-                    continue;
-                }
-
                 try
                 {
-                    if (session.UseJsonProtocol)
-                    {
-                        byte[] json = PacketJsonCodec.SerializeToUtf8(ref drop);
-                        await session.SendAsync(new ArraySegment<byte>(json), WebSocketMessageType.Text, true, CancellationToken.None);
-                    }
-                    else
-                    {
-                        MemoryMarshal.Write(_lootDropDispatchBuffer, in drop);
-                        await session.SendAsync(new ArraySegment<byte>(_lootDropDispatchBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
-                    }
+                    // False when the player logged off between the drop
+                    // resolving and this dispatch. The item is already
+                    // persisted, so that loses nothing but the on-screen line.
+                    EnqueueEventTo(_connectedClients, drop.PlayerId, ref drop);
                 }
                 catch (Exception ex)
                 {
@@ -435,20 +696,37 @@ namespace FolkIdle.Server.Network
             }
         }
 
-        // Modul: Combat Event Feed. Drains Domain.Combat.CombatEventFeed and
-        // pushes each resolved blow to the socket of the player it belongs to.
-        //
-        // The same shape as the loot loop directly above, for the same reasons,
-        // with one difference worth knowing: combat events are produced by the
-        // 10Hz simulation tick itself rather than by a 3-second cron, so the
-        // idle sleep is shorter. At 50ms a burst of events resolved in one tick
-        // would be delivered over several hundred milliseconds and arrive
-        // visibly after the health change they explain.
-        //
-        // The queue is bounded and drops when full (see CombatEventFeed), so a
-        // client that cannot keep up costs the simulation nothing.
-        private readonly byte[] _combatEventDispatchBuffer = new byte[Marshal.SizeOf<ResponseCombatEventPacket>()];
+        /// <summary>
+        /// Queues one event packet on a connected player's outbox. Never awaits.
+        /// </summary>
+        /// <remarks>
+        /// Static over the session map so SessionOutboxTests can prove that a
+        /// dispatch returns at once even when the target's socket is stalled.
+        /// </remarks>
+        internal static bool EnqueueEventTo<T>(ConcurrentDictionary<long, WebSocketSession> clients, long playerId, ref T packet) where T : unmanaged
+        {
+            if (!clients.TryGetValue(playerId, out var session) || session.Socket.State != WebSocketState.Open)
+            {
+                return false;
+            }
 
+            session.EnqueuePacket(ref packet);
+            return true;
+        }
+
+        // Modul: Combat Event Feed. Drains Domain.Combat.CombatEventFeed and
+        // hands each resolved blow to the outbox of the player it belongs to.
+        //
+        // The same shape as the loot loop directly above, with one difference
+        // worth knowing: combat events are produced by the 10Hz simulation
+        // tick itself rather than by a 3-second cron, so the idle sleep is
+        // shorter. At 50ms a burst of events resolved in one tick would be
+        // delivered over several hundred milliseconds and arrive visibly after
+        // the health change they explain. The writer keeps the other half of
+        // that promise: it sends queued events BEFORE the pending snapshot.
+        //
+        // The feed is bounded and drops when full (see CombatEventFeed), so a
+        // client that cannot keep up costs the simulation nothing.
         private async Task CombatEventDispatchLoopAsync()
         {
             while (_isRunning)
@@ -459,26 +737,12 @@ namespace FolkIdle.Server.Network
                     continue;
                 }
 
-                if (!_connectedClients.TryGetValue(combatEvent.PlayerId, out var session) || session.Socket.State != WebSocketState.Open)
-                {
-                    // Nobody is watching. The blow already happened and is
-                    // already reflected in the authoritative state; only the
-                    // on-screen line is lost.
-                    continue;
-                }
-
                 try
                 {
-                    if (session.UseJsonProtocol)
-                    {
-                        byte[] json = PacketJsonCodec.SerializeToUtf8(ref combatEvent);
-                        await session.SendAsync(new ArraySegment<byte>(json), WebSocketMessageType.Text, true, CancellationToken.None);
-                    }
-                    else
-                    {
-                        MemoryMarshal.Write(_combatEventDispatchBuffer, in combatEvent);
-                        await session.SendAsync(new ArraySegment<byte>(_combatEventDispatchBuffer), WebSocketMessageType.Binary, true, CancellationToken.None);
-                    }
+                    // False when nobody is watching. The blow already happened
+                    // and is already reflected in the authoritative state;
+                    // only the on-screen line is lost.
+                    EnqueueEventTo(_connectedClients, combatEvent.PlayerId, ref combatEvent);
                 }
                 catch (Exception ex)
                 {
@@ -495,12 +759,16 @@ namespace FolkIdle.Server.Network
         // locally as a special case. Runs entirely off ChatEngine's own
         // background dispatch worker, never on the Redis message pump and
         // never on the 10Hz simulation tick - see ChatEngine's own doc
-        // comment on OutboundDispatchQueue for why. ChatEngine guarantees
-        // only one dispatch item is ever being processed at a time, so
-        // awaiting every SendAsync here in turn (and reusing one shared
-        // buffer) is both safe and required, matching the exact same
-        // constraint the old two-buffer/two-handler split existed to
-        // satisfy.
+        // comment on OutboundDispatchQueue for why.
+        //
+        // Modul: task 41. Every recipient's frame goes on that recipient's
+        // outbox; nothing here awaits a socket. Chat - private messages
+        // included - used to be dropped whenever the recipient had a state
+        // frame in flight, and one stalled recipient held the fan-out for
+        // everyone after it. The message is encoded at most once per protocol
+        // and the SAME immutable buffer is queued to every recipient, which is
+        // safe only because nothing writes to it afterwards (the old shared
+        // _chatDispatchBuffer is gone for exactly that reason).
         //
         // Modul: Full-Stack Social Layer, Part 2.2. Block filtering. One
         // query per dispatched message (not per recipient) fetches every
@@ -513,16 +781,8 @@ namespace FolkIdle.Server.Network
         {
             System.Collections.Generic.HashSet<long> blockedByRecipients = await GetPlayersWhoBlockedAsync(item.Packet.SenderPlayerId);
 
-            CopyChatPacketToDispatchBuffer(item.Packet);
-            var segment = new ArraySegment<byte>(_chatDispatchBuffer);
-
-            // Modul: JSON WebSocket mode, 2026-08-02. Encoded at most once
-            // per dispatched message no matter how many JSON recipients it
-            // has, and not at all when every recipient is on the binary
-            // protocol - which is the state of the world until a web client
-            // actually connects.
             ResponseChatMessagePacket chatPacket = item.Packet;
-            byte[]? chatJson = null;
+            var frames = new ChatFrames(chatPacket);
 
             if (item.DispatchMode == ChatEngine.DispatchModeWhisper)
             {
@@ -535,19 +795,11 @@ namespace FolkIdle.Server.Network
                 {
                     try
                     {
-                        if (targetSession.UseJsonProtocol)
-                        {
-                            chatJson ??= PacketJsonCodec.SerializeToUtf8(ref chatPacket);
-                            await targetSession.SendAsync(new ArraySegment<byte>(chatJson), WebSocketMessageType.Text, true, CancellationToken.None);
-                        }
-                        else
-                        {
-                            await targetSession.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
-                        }
+                        frames.EnqueueTo(targetSession);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Whisper send failed for player {item.TargetPlayerId}: {ex.Message}");
+                        Console.WriteLine($"Whisper dispatch failed for player {item.TargetPlayerId}: {ex.Message}");
                     }
                 }
                 return;
@@ -569,20 +821,43 @@ namespace FolkIdle.Server.Network
                 {
                     try
                     {
-                        if (kvp.Value.UseJsonProtocol)
-                        {
-                            chatJson ??= PacketJsonCodec.SerializeToUtf8(ref chatPacket);
-                            await kvp.Value.SendAsync(new ArraySegment<byte>(chatJson), WebSocketMessageType.Text, true, CancellationToken.None);
-                        }
-                        else
-                        {
-                            await kvp.Value.SendAsync(segment, WebSocketMessageType.Binary, true, CancellationToken.None);
-                        }
+                        frames.EnqueueTo(kvp.Value);
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Chat dispatch send failed for player {kvp.Key}: {ex.Message}");
+                        Console.WriteLine($"Chat dispatch failed for player {kvp.Key}: {ex.Message}");
                     }
+                }
+            }
+        }
+
+        /// <summary>
+        /// One chat message, encoded lazily and at most once per protocol, for
+        /// fan-out to many outboxes. The buffers are shared and never written
+        /// after encoding.
+        /// </summary>
+        private sealed class ChatFrames
+        {
+            private ResponseChatMessagePacket _packet;
+            private byte[]? _json;
+            private byte[]? _binary;
+
+            public ChatFrames(ResponseChatMessagePacket packet)
+            {
+                _packet = packet;
+            }
+
+            public void EnqueueTo(WebSocketSession session)
+            {
+                if (session.UseJsonProtocol)
+                {
+                    _json ??= PacketJsonCodec.SerializeToUtf8(ref _packet);
+                    session.EnqueueEvent(_json, WebSocketMessageType.Text);
+                }
+                else
+                {
+                    _binary ??= WebSocketSession.EncodeBinary(ref _packet);
+                    session.EnqueueEvent(_binary, WebSocketMessageType.Binary);
                 }
             }
         }
@@ -602,13 +877,6 @@ namespace FolkIdle.Server.Network
                 .ToListAsync();
 
             return new System.Collections.Generic.HashSet<long>(blockerIds);
-        }
-
-        private void CopyChatPacketToDispatchBuffer(ResponseChatMessagePacket packet)
-        {
-            ReadOnlySpan<ResponseChatMessagePacket> span = MemoryMarshal.CreateReadOnlySpan(ref packet, 1);
-            ReadOnlySpan<byte> bytes = MemoryMarshal.AsBytes(span);
-            bytes.CopyTo(_chatDispatchBuffer);
         }
 
         // Modul: one persistent pod-wide subscription (not one per
@@ -8852,6 +9120,26 @@ namespace FolkIdle.Server.Network
                 body.Append("# TYPE folkidle_database_write_queue_length gauge\n");
                 body.Append("folkidle_database_write_queue_length ").Append(writeQueueLength).Append('\n');
 
+                // Modul: task 41. The outbox's one remaining way to lose an
+                // event is a full queue (512, drop-oldest), so that drop is
+                // counted here - an uncounted drop would be the silent loss
+                // the outbox was built to end. The depth is summed across
+                // live sessions; a steadily high value means peers that are
+                // not keeping up.
+                long outboxDepth = 0;
+                foreach (var kvp in _connectedClients)
+                {
+                    outboxDepth += kvp.Value.PendingEventCount;
+                }
+                body.Append('\n');
+                body.Append("# HELP folkidle_outbox_events_dropped_total Event frames (loot, combat, chat) dropped because a session outbox was full.\n");
+                body.Append("# TYPE folkidle_outbox_events_dropped_total counter\n");
+                body.Append("folkidle_outbox_events_dropped_total ").Append(WebSocketSession.EventsDroppedTotal).Append('\n');
+                body.Append('\n');
+                body.Append("# HELP folkidle_outbox_queue_depth Event frames waiting in session outboxes, summed over connected sessions.\n");
+                body.Append("# TYPE folkidle_outbox_queue_depth gauge\n");
+                body.Append("folkidle_outbox_queue_depth ").Append(outboxDepth).Append('\n');
+
                 byte[] payload = System.Text.Encoding.UTF8.GetBytes(body.ToString());
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "text/plain; version=0.0.4";
@@ -9996,6 +10284,11 @@ namespace FolkIdle.Server.Network
             }
             finally
             {
+                // Modul: the receive loop is over, so this session's outbox
+                // writer has nobody left to write to - stop it rather than
+                // leave it parked on its signal.
+                session?.Shutdown();
+
                 if (playerId != 0)
                 {
                     _connectedClients.TryRemove(playerId, out _);
@@ -10052,21 +10345,15 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
-            // Modul: JSON WebSocket mode, 2026-08-02. The binary path below is
-            // byte for byte what it always was, including its reusable
-            // per-session buffer - this is the single hottest path in the
-            // codebase (once per online player per 10Hz tick) and the JSON
-            // branch must not cost the Unity client anything but one already-
-            // loaded bool test.
             // Modul: a wedged socket is evicted, not written to forever.
             //
-            // SendAsync sets IsWedged when a frame times out, which means the
-            // peer has stopped reading altogether. Left alone that connection
-            // stays open and silent - the state the freeze report describes,
-            // where the server simulates correctly and the screen does not
-            // move. Dropping it gives the client something to react to, and its
-            // reconnect logic (500 ms backing off to 15 s, token re-sent) then
-            // does the rest.
+            // The session's writer sets IsWedged when a frame times out, which
+            // means the peer has stopped reading altogether. Left alone that
+            // connection stays open and silent - the state the freeze report
+            // describes, where the server simulates correctly and the screen
+            // does not move. Dropping it gives the client something to react
+            // to, and its reconnect logic (500 ms backing off to 15 s, token
+            // re-sent) then does the rest.
             if (session.IsWedged)
             {
                 Console.WriteLine($"Evicting wedged socket for player {playerId}: sends stopped completing.");
@@ -10074,32 +10361,22 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
-            // Fire-and-forget is intentional here - SendToPlayer is called
-            // once per player per broadcast tick and must not block the
-            // caller - but the fault is still observed and logged rather
-            // than silently dropped, matching this task's error-
-            // observability requirement. ContinueWith (not await/async) so
-            // this allocates zero Task/state-machine objects on the
-            // per-tick, per-player hot path - see _logSendFault's own doc
-            // comment.
-            //
-            // Both branches drop the frame rather than queue it when the socket
-            // is already busy - see WebSocketSession.SendAsync.
-            Task send;
+            // Modul: task 41. The snapshot is OFFERED, never sent from here -
+            // this runs once per online player per 10Hz tick and must not
+            // block the tick. The outbox keeps only the latest snapshot (an
+            // absolute state frame supersedes any older one still waiting) and
+            // the session's writer sends it after any queued events. Send
+            // faults are logged by the writer itself.
             if (session.UseJsonProtocol)
             {
-                var segment = new ArraySegment<byte>(PacketJsonCodec.SerializeToUtf8(ref packet));
-                send = session.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                session.OfferSnapshot(PacketJsonCodec.SerializeToUtf8(ref packet), WebSocketMessageType.Text);
             }
             else
             {
-                // Takes the lock before touching the reusable buffer - see
-                // SendStateFrameAsync for why the old order could splice two
-                // frames together.
-                send = session.SendStateFrameAsync(ref packet);
+                // A rented copy per offer, not a shared per-session buffer -
+                // see OfferStateFrame for the spliced-frame trap.
+                session.OfferStateFrame(ref packet);
             }
-
-            send.ContinueWith(_logSendFault, playerId, TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously);
         }
 
         // Modul: Full-Stack Production Hardening Phase 3, Part 2. Static,
@@ -10457,25 +10734,17 @@ namespace FolkIdle.Server.Network
                             }
                         }
 
-                        byte[]? chatJson = null;
-                        var packetBytes = new byte[System.Runtime.InteropServices.Marshal.SizeOf<ResponseChatMessagePacket>()];
-                        System.Runtime.InteropServices.MemoryMarshal.AsBytes(System.Runtime.InteropServices.MemoryMarshal.CreateReadOnlySpan(ref packet, 1)).CopyTo(packetBytes);
-                        var segment = new ArraySegment<byte>(packetBytes);
-
-                        // Broadcast to everyone
+                        // Broadcast to everyone, through each outbox - the
+                        // same fan-out chat uses (see ChatFrames), so an
+                        // announcement is queued rather than dropped behind
+                        // a state frame and one stalled socket cannot hold
+                        // this request open.
+                        var frames = new ChatFrames(packet);
                         foreach (var target in _connectedClients.Values)
                         {
                             if (target.Socket.State == System.Net.WebSockets.WebSocketState.Open)
                             {
-                                if (target.UseJsonProtocol)
-                                {
-                                    chatJson ??= PacketJsonCodec.SerializeToUtf8(ref packet);
-                                    await target.SendAsync(new ArraySegment<byte>(chatJson), System.Net.WebSockets.WebSocketMessageType.Text, true, CancellationToken.None);
-                                }
-                                else
-                                {
-                                    await target.SendAsync(segment, System.Net.WebSockets.WebSocketMessageType.Binary, true, CancellationToken.None);
-                                }
+                                frames.EnqueueTo(target);
                             }
                         }
                         
