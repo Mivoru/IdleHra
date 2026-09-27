@@ -386,38 +386,37 @@ namespace FolkIdle.Server.Domain.Shared
             // Forcing the checkpoint whenever Redis did not take the frame
             // gives gold the same durability as everything else. It matters
             // that this is the ref-owning path: FlushState applies the delta as
-            // an INCREMENT inside its transaction and this method zeroes it on
-            // the live payload only once that commits, so a market sale landing
-            // between two checkpoints is added to, never overwritten, and a
-            // failed flush retries instead of losing the coins.
+            // an INCREMENT inside its transaction, so a market sale landing
+            // between two checkpoints is added to, never overwritten. Since
+            // task 43 the delta rides on the queued job and the live payload
+            // is zeroed at request time; a failed flush's ack hands it back,
+            // so it still retries instead of losing the coins.
             bool redisUnavailable = _redisSessionCache == null || !_redisSessionCache.IsConnected;
-            if (redisUnavailable && state.RedisPendingGoldDelta != 0L)
-            {
-                reachedCheckpointBoundary = true;
-            }
+            bool goldOwedWithoutRedis = redisUnavailable && state.RedisPendingGoldDelta != 0L;
 
-            if (reachedCheckpointBoundary)
+            // Modul: CHECKPOINTS OFF THE TICK THREAD (task 43). This used to
+            // be FlushStateAndAdvance - a Serializable FOR UPDATE transaction
+            // run synchronously here, on the thread that simulates everybody.
+            // It is queued now, and the commit comes back as an ack
+            // (CheckpointAckTickCoordinator). A failed flush hands its gold
+            // back and re-arms the boundary there, so the retry is still "the
+            // next tick", as it was.
+            //
+            // The TICK boundary requests unconditionally: RequestFlush resets
+            // the counter, so it cannot fire twice, and a boundary a command
+            // forced (SpendAttributePoint sets the counter to the boundary) has
+            // to be honoured even behind another flush - it holds a choice the
+            // queued snapshot predates. SustainedLoadTests saw the counter pass
+            // 3000 when this waited.
+            //
+            // The Redis-down GOLD trigger is gated to one flush in flight:
+            // every tick that earns gold reaches it, and without the gate each
+            // of them would queue another flush behind the first. Gold earned
+            // meanwhile waits on the payload for the next one - see
+            // RequestFlush on why that banks it exactly once.
+            if (reachedCheckpointBoundary || (goldOwedWithoutRedis && state.FlushesInFlight == 0))
             {
-                bool committed = FlushStateAndAdvance(ref state);
-                if (committed)
-                {
-                    state.TicksSinceLastFlush = 0;
-                    state.IsDirty = false;
-                    _dirtyStates.TryRemove(state.PlayerId, out _);
-                }
-                else
-                {
-                    // The flush failed - either a Serializable conflict that
-                    // exhausted its retries, or another DbException. Never
-                    // silently discard progress here: TicksSinceLastFlush is
-                    // left as-is so the next TrackState call re-attempts the
-                    // checkpoint immediately, and IsDirty/_dirtyStates are
-                    // forced so this player is requeued for the next flush
-                    // cycle (including FlushAllGracefully at shutdown)
-                    // regardless of what IsDirty held on entry.
-                    state.IsDirty = true;
-                    _dirtyStates[state.PlayerId] = state;
-                }
+                RequestFlush(ref state, FlushReason.Periodic);
             }
             else if (state.IsDirty)
             {
@@ -434,13 +433,29 @@ namespace FolkIdle.Server.Domain.Shared
             _redisSessionCache?.TryStoreFrame(ref state);
             long pendingGold = state.RedisPendingGoldDelta;
 
-            bool committed = FlushState(state).GetAwaiter().GetResult();
+            // Modul: A SYNCHRONOUS FLUSH MUST QUEUE BEHIND THE WRITER'S (task
+            // 43). A flush still in flight on CheckpointWriter was stamped
+            // with this payload's epoch; committing this one first at the same
+            // epoch - or at a higher one ahead of it - makes the queued one
+            // look split-brained, which mails compensation gold and
+            // disconnects an honest player. SustainedLoadTests caught exactly
+            // that. So: wait for the player's queued flushes, then stamp past
+            // them, exactly as RequestFlush does. The login path, the one
+            // caller left, has nothing in flight and never waits.
+            if (state.FlushesInFlight > 0)
+            {
+                WaitForPendingFlushesAsync(state.PlayerId).GetAwaiter().GetResult();
+            }
+            var snapshot = state;
+            snapshot.LogicEpochCounter = state.LogicEpochCounter + state.FlushesInFlight;
+
+            bool committed = FlushState(snapshot).GetAwaiter().GetResult();
             // The writer's split-brain mark is for the writer; this path has
             // its answer already and must not leave one behind for it.
             _splitBrainRefused.TryRemove(state.PlayerId, out _);
             if (committed)
             {
-                state.LogicEpochCounter++;
+                state.LogicEpochCounter = snapshot.LogicEpochCounter + 1;
                 state.IsDirty = false;
 
                 // Only now. If the flush failed the coins are still owed, and

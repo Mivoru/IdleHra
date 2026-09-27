@@ -3014,6 +3014,9 @@ namespace FolkIdle.Server.Tests
             };
 
             checkpointManager.TrackState(ref state);
+            // Task 43: the checkpoint is queued on CheckpointWriter now.
+            await checkpointManager.WhenWriterIdleAsync();
+            checkpointManager.DrainWriter(TimeSpan.FromSeconds(10));
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var player = await verifyDb.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == testPlayerId);
@@ -3089,6 +3092,11 @@ namespace FolkIdle.Server.Tests
             };
 
             checkpointManager.TrackState(ref state);
+            // Task 43: the flush runs on CheckpointWriter; its failure comes
+            // back as an ack, applied here the way the tick applies it.
+            await checkpointManager.WhenWriterIdleAsync();
+            checkpointManager.ApplyPendingAcks(ref state);
+            checkpointManager.DrainWriter(TimeSpan.FromSeconds(10));
 
             Assert.True(state.IsDirty, "A failed flush must leave IsDirty set so the state is requeued on the next cycle instead of being silently discarded.");
             Assert.Equal(3000, state.TicksSinceLastFlush);

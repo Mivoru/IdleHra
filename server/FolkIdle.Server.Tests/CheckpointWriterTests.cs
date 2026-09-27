@@ -187,6 +187,65 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        /// <summary>
+        /// (c) Redis down: gold earned while a flush is in flight stays on the
+        /// payload, is not flushed a second time by TrackState, and is banked
+        /// exactly once by the next checkpoint.
+        /// </summary>
+        [Fact]
+        public async Task RedisDownGoldEarnedDuringAnInFlightFlushIsBankedExactlyOnce()
+        {
+            const long playerId = 983000003L;
+            await SeedAsync(playerId, epoch: 5, gold: 1_000);
+            var manager = new StateCheckpointManager(_fixture.ServiceProvider);
+            var gate = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            int calls = 0;
+            manager.FlushOverrideForTests = async snapshot =>
+            {
+                if (Interlocked.Increment(ref calls) == 1) await gate.Task;
+                return await manager.FlushState(snapshot);
+            };
+
+            try
+            {
+                var holder = new[] { Live(playerId, 5, 1_000) };
+                holder[0].TicksSinceLastFlush = 5; // far from the boundary
+
+                Earn(ref holder[0], 100);
+                manager.TrackState(ref holder[0]);
+                Assert.Equal(1, holder[0].FlushesInFlight);
+                Assert.Equal(0L, holder[0].RedisPendingGoldDelta);
+
+                // Ten more ticks of earning while that flush is held open.
+                for (int tick = 0; tick < 10; tick++)
+                {
+                    Earn(ref holder[0], 5);
+                    manager.TrackState(ref holder[0]);
+                }
+                Assert.Equal(1, holder[0].FlushesInFlight);
+                Assert.Equal(50L, holder[0].RedisPendingGoldDelta);
+
+                gate.SetResult();
+                await SettleAsync(manager, holder);
+                Assert.Equal(1_100, (await ReadAsync(playerId)).Gold);
+
+                manager.TrackState(ref holder[0]);
+                await SettleAsync(manager, holder);
+
+                Assert.Equal(0L, holder[0].RedisPendingGoldDelta);
+                var db = await ReadAsync(playerId);
+                Assert.Equal(1_150, db.Gold);
+                Assert.Equal(1_150, holder[0].CurrentGold);
+                Assert.Equal(0, db.Incidents);
+                Assert.Equal(2, calls);
+            }
+            finally
+            {
+                gate.TrySetResult();
+                manager.DrainWriter(TimeSpan.FromSeconds(10));
+            }
+        }
+
         /// <summary>(d) A command whose flush fails never runs its continuation, and the player is un-suspended and told.</summary>
         [Fact]
         public async Task AFailedCommandFlushNeverRunsTheContinuationAndAnswersWithAResultCode()
