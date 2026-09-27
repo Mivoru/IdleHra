@@ -20,6 +20,7 @@
     playerState,
     offlineSummary,
     dismissOfflineSummary,
+    forgetSession,
     victorySummary,
     dismissVictory,
     deathSummary,
@@ -292,6 +293,7 @@
 
   function signOut() {
     endSession();
+    forgetSession();
     clearToken();
     // Modul: the refresh token is worth sixty days, so signing out has to end
     // it on the SERVER as well as here. Deliberately not awaited - the local
