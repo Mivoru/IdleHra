@@ -321,6 +321,9 @@ namespace FolkIdle.Server.Domain.Economy
 
             if (success)
             {
+                // Funnel step 4, after the commit. See FunnelRecorder.
+                Engine.FunnelRecorder.Record(playerId, Engine.FunnelStep.FirstCraft);
+
                 // Enqueue completion
                 _playerRegistry.CraftingCompletionQueue.Enqueue(new CraftingCompletionNotification
                 {

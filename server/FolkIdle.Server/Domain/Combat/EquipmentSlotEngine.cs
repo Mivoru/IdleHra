@@ -483,6 +483,9 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
 
+            // Funnel step 3: only a committed equip counts. See FunnelRecorder.
+            if (outcome.Committed) FunnelRecorder.Record(playerId, FunnelStep.FirstEquip);
+
             PublishOutcome(playerId, outcome);
         }
 

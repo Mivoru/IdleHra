@@ -624,6 +624,10 @@ achSvc.StartCron();
 ecoTelemetrySvc.StartCron();
 seasonEraSvc.StartCron();
 redisWriteBehindEngine.StartCron();
+// Modul: the new-player funnel (task 39). Producers only enqueue; this drains
+// FunnelRecorder.Queue into player_funnel_events. See docs/ops/funnel.sql.
+var funnelRecorder = new FunnelRecorder(serviceProvider);
+funnelRecorder.StartCron();
 // The world-first claim is settled in Redis, off the simulation tick - see
 // BossFirstClearAnnouncer for why the tick cannot ask the question itself.
 FolkIdle.Server.Domain.Combat.BossFirstClearAnnouncer.Redis = redisMultiplexer;

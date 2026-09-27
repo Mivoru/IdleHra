@@ -243,7 +243,7 @@ namespace FolkIdle.Server.Domain.Shared
             var strategy = dbContext.Database.CreateExecutionStrategy();
             try
             {
-                return await strategy.ExecuteAsync(async () =>
+                bool committed = await strategy.ExecuteAsync(async () =>
                 {
                     dbContext.ChangeTracker.Clear();
 
@@ -430,6 +430,14 @@ namespace FolkIdle.Server.Domain.Shared
                     await transaction.CommitAsync();
                     return true;
                 });
+
+                // Modul: funnel steps 5 and 7-9 (onboarding done, level
+                // 5/10/20), AFTER the commit. The checkpoint is the one place
+                // all three level paths - kill, warp, offline - pass through,
+                // so hooking levels here covers all of them at once. A
+                // split-brain refusal returned false above and records nothing.
+                if (committed) FunnelRecorder.RecordCheckpoint(in state);
+                return committed;
             }
             catch (Exception ex)
             {
