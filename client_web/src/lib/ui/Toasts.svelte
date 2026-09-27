@@ -22,6 +22,33 @@
     gap: 0.4rem;
     z-index: 60;
     max-width: min(24rem, 90vw);
+    /* Modul: A TOAST MUST NOT EAT THE TAP IT IS REPORTING ON. Every manual
+       reroll answers with a toast that lives 6 s, and on a phone the stack is
+       90vw wide over the bottom of the screen - exactly where the Forge's
+       Reroll button is - so the second reroll had to wait for the first
+       one's toast to leave. The layer is click-through; only the dismiss
+       button takes pointer events. */
+    pointer-events: none;
+  }
+
+  /* On a phone the actions live at the bottom of a screen, so the toasts go
+     to the top, under the status bar (fixed, so body's safe-area padding does
+     not reach it - the inset is its own). */
+  @media (max-width: 40rem) {
+    .toasts {
+      top: calc(0.5rem + var(--sa-top));
+      bottom: auto;
+      left: calc(0.5rem + var(--sa-left));
+      right: calc(0.5rem + var(--sa-right));
+      max-width: none;
+    }
+
+    /* Rerolling five times in six seconds stacked five toasts down the
+       screen, over the very button being pressed. The newest two are the
+       news; the older ones are still in the store and expire as before. */
+    .toast:nth-last-child(n + 3) {
+      display: none;
+    }
   }
 
   .toast {
@@ -50,6 +77,8 @@
     color: var(--text-dim);
     font-size: 1.1rem;
     line-height: 1;
+    pointer-events: auto;
+    flex-shrink: 0;
   }
 
   @keyframes slide-in {
