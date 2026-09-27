@@ -17,7 +17,10 @@ param(
     [string]$SshHost = 'folkidle-server'
 )
 
-$ErrorActionPreference = 'Stop'
+# NOT 'Stop': Windows PowerShell 5.1 turns every stderr line of a native tool
+# into an error record, so npm's own "npm notice run ..." ended the script
+# before it did anything. Every native call below checks $LASTEXITCODE instead.
+$ErrorActionPreference = 'Continue'
 $repo = Resolve-Path "$PSScriptRoot\..\.."
 $client = Join-Path $repo 'client_web'
 $apk = Join-Path $client 'android\app\build\outputs\apk\release\app-release.apk'
@@ -71,8 +74,11 @@ if ($LASTEXITCODE -ne 0 -or -not ($certs -match 'CN=FolkIdle')) {
 # Upload under a temporary name and rename, so a download that starts
 # mid-upload gets the old file whole rather than half of the new one.
 ssh $SshHost 'mkdir -p ~/folkidle/ops/oracle/downloads'
+if ($LASTEXITCODE -ne 0) { throw 'upload to the box failed' }
 scp $apk "${SshHost}:folkidle/ops/oracle/downloads/folkidle.apk.part"
+if ($LASTEXITCODE -ne 0) { throw 'upload to the box failed' }
 ssh $SshHost 'mv ~/folkidle/ops/oracle/downloads/folkidle.apk.part ~/folkidle/ops/oracle/downloads/folkidle.apk'
+if ($LASTEXITCODE -ne 0) { throw 'upload to the box failed' }
 
 $local = (Get-Item $apk).Length
 $head = curl.exe -sI "$Server/download/folkidle.apk"

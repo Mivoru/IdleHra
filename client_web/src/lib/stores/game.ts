@@ -28,6 +28,7 @@ import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } fr
 import { queryClient } from '../net/queryClient';
 import type { QueryClient } from '@tanstack/svelte-query';
 import { play, playHit, playWithFallback } from '../ui/audio';
+import { playDeathFor } from '../ui/deathSound';
 import { fetchAchievements, type AchievementEntry } from '../net/rest';
 import {
   createWatermark,
@@ -372,6 +373,7 @@ let lastOfflineSummaryTick = -1;
 
 export function dismissOfflineSummary(): void {
   offlineSummary.set(null);
+  play('windowClose');
 }
 
 // Modul: THE TWO MOMENTS THE GAME NEVER MARKED.
@@ -398,6 +400,7 @@ let lastVictoryTick = -1;
 
 export function dismissVictory(): void {
   victorySummary.set(null);
+  play('windowClose');
 }
 
 export interface DeathSummary {
@@ -409,6 +412,7 @@ let lastDeathTick = -1;
 
 export function dismissDeath(): void {
   deathSummary.set(null);
+  play('windowClose');
 }
 
 // ---------------------------------------------------------------------------
@@ -781,9 +785,10 @@ export function startSession(token: string): void {
 
         if (!isFirstPacket) {
           deathSummary.set({ monsterId: Number(packet.LastDeathMonsterId) });
-          // A dedicated clip when one exists, the generic error tone until
-          // then - dying is the one moment that must not be silent.
-          playWithFallback('playerDied', 'error');
+          // The fighting character's own voice - a man's or a woman's clip,
+          // looked up by who is in slot 1 (see deathSound.ts). Falls back to
+          // the error tone: dying is the one moment that must not be silent.
+          playDeathFor(String(packet.Slot1_CharacterId));
         }
       }
 
@@ -886,6 +891,10 @@ export function startSession(token: string): void {
       // they fire every second or two, which is noise rather than a moment.
       // Combat vibrates once now, on a boss's first clear (see LastVictoryTick).
       const kind = Number(packet.EventKind);
+
+      // A swing that found nothing is a whoosh. Quieter than a hit on purpose:
+      // it is the less interesting outcome and must not drown the next blow.
+      if (kind === CombatEventKind.PlayerMiss) play('playerMiss');
       if (kind !== CombatEventKind.PlayerHit) return;
 
       const hit = damageFeed.push(

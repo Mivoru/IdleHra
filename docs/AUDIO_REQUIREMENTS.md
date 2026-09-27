@@ -1,5 +1,11 @@
 # What FolkIdle needs to hear
 
+> **Status 2026-09-27:** the owner supplied 16 clips. Every sound-effect gap
+> this list named is filled except `combat_hit_crit.wav`, and four existing
+> clips were replaced. What plays when is in
+> `client/Assets/Resources/Audio/README.md`, which is the current record. Music
+> is still open, as below.
+
 A working list for generating the game's audio. Every row says what the file
 must be called, how long it should be, and what it should sound like — enough to
 paste into a generator.

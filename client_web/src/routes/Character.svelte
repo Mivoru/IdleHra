@@ -21,6 +21,7 @@
   // EMPTY_GUID is the sentinel the roster filter below tests against.
   import { raceName } from '../lib/ui/races';
   import { onMount } from 'svelte';
+  import { play } from '../lib/ui/audio';
 
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
   // Recipes carry no id of their own on the wire - the crafting activity id is
@@ -338,6 +339,8 @@
       TargetId: instanceId,
       TargetGuid: selected.id,
     });
+    // On send, like every command: a refusal answers with the error tone.
+    play('itemEquipped');
     pickerSlot = -1;
   }
 

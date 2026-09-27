@@ -3425,6 +3425,11 @@ record(
   otherMisses <= 1,
   `${otherMisses} lookup 404(s), ${audioMisses} optional audio clip(s) absent`,
 );
+// Since 2026-09-27 every clip audio.ts names exists except the crit hit, which
+// has never been authored. Any OTHER audio 404 is a clip that failed to reach
+// the server's publish output - the way the whole game was once silent.
+const unexpectedAudio = missedUrls.filter((u) => u.includes('/audio/') && !u.endsWith('/combat_hit_crit.wav'));
+record('every audio clip the client asked for exists', unexpectedAudio.length === 0, unexpectedAudio.slice(0, 3).join(' | '));
 
 await page.screenshot({ path: '/tmp/exercise-last.png', fullPage: true });
 await browser.close();

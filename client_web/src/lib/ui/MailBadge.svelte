@@ -12,6 +12,7 @@
 
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchMailbox } from '../net/rest';
+  import { play } from './audio';
 
   const mailbox = createQuery(() => ({
     queryKey: queryKeys.mailbox,
@@ -23,6 +24,16 @@
   }));
 
   const count = $derived(mailbox.data?.length ?? 0);
+
+  // A chime when mail ARRIVES - the count rising between two polls. Not on the
+  // first answer (that is mail already waiting, not news), and not when it
+  // falls (that is the player claiming it).
+  let lastCount: number | null = null;
+  $effect(() => {
+    if (mailbox.data === undefined) return;
+    if (lastCount !== null && count > lastCount) play('notification');
+    lastCount = count;
+  });
 </script>
 
 {#if count > 0}
