@@ -363,7 +363,39 @@ namespace FolkIdle.Server.Engine
             int separatorIndex = payloadKey.IndexOf(StackSeparator);
             if (separatorIndex >= 0 && separatorIndex < end) end = separatorIndex;
 
+            if (end == payloadKey.Length && TryStripLegacyFusionSuffix(payloadKey, out string legacyId))
+            {
+                return legacyId;
+            }
+
             return end == payloadKey.Length ? payloadKey : payloadKey.Substring(0, end);
+        }
+
+        // Modul: THE FORGE'S OWN KEY FORMAT. Until 2026-09-27 a fusion appended
+        // its new affix as "<id>_<4 hex>" ("range_dmg_pct_7bda"), a format
+        // nothing else in the game writes or reads. So the affix it added was
+        // refused by the reroll ("not in the registry") AND matched no case in
+        // EquipmentSlotEngine's totals - a fused item's extra line on the
+        // tooltip contributed nothing to combat. Reported by the owner as "the
+        // affix fusion adds cannot be rerolled". Fusion writes canonical keys
+        // now (RollOneAdditional); this reads the rows it wrote before, which
+        // a reroll then rewrites into the canonical shape. Only a registered
+        // id with exactly four lowercase hex digits after it qualifies, so no
+        // canonical key can be mistaken for one.
+        internal static bool TryStripLegacyFusionSuffix(string payloadKey, out string affixId)
+        {
+            affixId = string.Empty;
+            int at = payloadKey.Length - 5;
+            if (at <= 0 || payloadKey[at] != '_') return false;
+            for (int i = at + 1; i < payloadKey.Length; i++)
+            {
+                char c = payloadKey[i];
+                if (!((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f'))) return false;
+            }
+            string candidate = payloadKey.Substring(0, at);
+            if (!_indexById.ContainsKey(candidate)) return false;
+            affixId = candidate;
+            return true;
         }
 
         public static bool TryGetDefinition(string affixId, out AffixDefinition definition)
@@ -765,6 +797,77 @@ namespace FolkIdle.Server.Engine
         {
             string key = BuildPayloadKey(definition.Id, stackIndex, affixRarity);
             destination[key] = RollMagnitude(definition, regionTier, affixRarity);
+        }
+
+        /// <summary>
+        /// Rolls ONE more affix onto an item that already carries
+        /// <paramref name="existingKeys"/> - the forge's fusion, which raises
+        /// an item a tier and adds the affix that tier is owed. Same rules as a
+        /// drop: legal for the slot, a stat the item lacks preferred, rarity
+        /// biased by the item's tier, and a canonical key that stacks rather
+        /// than collides.
+        /// </summary>
+        public static bool TryRollOneAdditional(string baseItemId, int regionTier, int itemRarityTier,
+            IEnumerable<string> existingKeys, out string payloadKey, out int magnitude)
+        {
+            payloadKey = string.Empty;
+            magnitude = 0;
+
+            EquipmentSlotKind slot = ResolveSlot(baseItemId);
+            Span<int> legal = stackalloc int[16];
+            int legalCount = GetLegalAffixIndices(slot, legal);
+            if (legalCount == 0) return false;
+
+            var keys = new HashSet<string>(existingKeys, StringComparer.Ordinal);
+            var present = new HashSet<string>(StringComparer.Ordinal);
+            foreach (string key in keys) present.Add(StripStackSuffix(key));
+
+            int unused = 0;
+            for (int i = 0; i < legalCount; i++)
+            {
+                if (!present.Contains(_definitions[legal[i]].Id)) unused++;
+            }
+
+            int chosen;
+            if (unused > 0)
+            {
+                int target = Random.Shared.Next(unused);
+                chosen = legal[0];
+                for (int i = 0, seen = 0; i < legalCount; i++)
+                {
+                    if (present.Contains(_definitions[legal[i]].Id)) continue;
+                    if (seen++ == target) { chosen = legal[i]; break; }
+                }
+            }
+            else
+            {
+                chosen = legal[Random.Shared.Next(legalCount)];
+            }
+
+            var definition = _definitions[chosen];
+            AffixRarity rarity = RollAffixRarity(itemRarityTier);
+
+            // The next stack index free for this id, whatever rarity the
+            // existing instances carry - "flat_hp@3" and "flat_hp#2@3" are the
+            // same stat stacked, so a new one is #3 even at another rarity.
+            int stackIndex = 1;
+            while (StackIndexTaken(keys, definition.Id, stackIndex)) stackIndex++;
+
+            payloadKey = BuildPayloadKey(definition.Id, stackIndex, rarity);
+            magnitude = RollMagnitude(definition, regionTier, rarity);
+            return true;
+        }
+
+        private static bool StackIndexTaken(HashSet<string> keys, string affixId, int stackIndex)
+        {
+            string prefix = stackIndex <= 1
+                ? affixId
+                : affixId + StackSeparator + stackIndex.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            foreach (string key in keys)
+            {
+                if (key == prefix || key.StartsWith(prefix + RaritySeparator, StringComparison.Ordinal)) return true;
+            }
+            return false;
         }
 
         // Picks a replacement affix for a reroll: legal for the slot, and

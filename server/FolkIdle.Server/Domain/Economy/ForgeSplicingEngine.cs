@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Data;
 using System.Text.Json.Nodes;
 using System.Threading.Tasks;
@@ -330,31 +331,24 @@ namespace FolkIdle.Server.Domain.Economy
 
                     targetItem.QualityTier = currentTier + 1;
 
-                    // Append/roll new affix modifier
+                    // Modul: the new affix the higher tier is owed. The forge used
+                    // to write it as "<id>_<4 hex>" with its own magnitude
+                    // formula and no slot check - a key the reroll refused and
+                    // the stat totals never matched, so it could not be rerolled
+                    // and added nothing (and "range_dmg_pct" landed on leggings).
+                    // It is rolled by AffixRegistry now, the same way a drop is.
+                    // See AffixRegistry.TryStripLegacyFusionSuffix for the rows
+                    // written before.
                     JsonObject affixPayload = ParseAffixPayload(targetItem.AffixPayload);
-                    string newAffixType = AffixEngine.GetRandomAffixKey();
-                    int targetValue = 0;
-                    // Modul: forge region tier. This used to be
-                    // int.TryParse(targetItem.BaseItemId, ...), but BaseItemId
-                    // is ALWAYS a descriptive slug ("gilded_sabatons_boots_
-                    // armor_slot_base"), never a numeric string - every writer
-                    // of it goes through ContentRegistry.GetItemBaseId. So the
-                    // parse could never succeed, the lookup was dead code, and
-                    // every forge fusion in the game rolled its affix at region
-                    // tier 1 regardless of what was actually on the anvil.
-                    //
-                    // Seventh instance in this codebase of a numeric id being
-                    // used directly as a game-object identity. The value is now
-                    // the one already resolved for the tier cap above.
                     int regionTier = targetRegionTier;
+                    var existingKeys = new List<string>(affixPayload.Count);
+                    foreach (var pair in affixPayload) existingKeys.Add(pair.Key);
+                    if (AffixRegistry.TryRollOneAdditional(targetItem.BaseItemId, regionTier, currentTier + 1,
+                            existingKeys, out string newAffixKey, out int newAffixValue))
+                    {
+                        affixPayload[newAffixKey] = newAffixValue;
+                    }
 
-                    if (newAffixType == "flat_hp") targetValue = AffixEngine.CalculateFlatHp(regionTier, currentTier + 1);
-                    else if (newAffixType == "flat_armor") targetValue = AffixEngine.CalculateFlatArmor(regionTier, currentTier + 1);
-                    else targetValue = AffixEngine.CalculatePercentagePool(5, 2, currentTier + 1);
-
-                    string newAffixKey = $"{newAffixType}_{Guid.NewGuid().ToString().Substring(0, 4)}";
-                    affixPayload[newAffixKey] = targetValue;
-                    
                     targetItem.AffixPayload = affixPayload.ToJsonString();
 
                     // Modul: the Book of Deeds, chapter II. A lifetime count
@@ -373,10 +367,11 @@ namespace FolkIdle.Server.Domain.Economy
                     // whatever the tier: "was that Godly dropped or forged?" had
                     // to be reconstructed from affix-key shapes once, and that
                     // is a question a WHERE clause should answer. Same
-                    // transaction, beside ForgeFusionsCompleted.
+                    // transaction, beside ForgeFusionsCompleted. The row only,
+                    // not a count: the piece was counted when it dropped.
                     await DropRecord.RecordOneAsync(db, playerId, DropSource.Forge, regionTier,
                         targetItem, targetItem.BaseItemId, rolledTier: currentTier, finalTier: currentTier + 1,
-                        alwaysNotable: true);
+                        alwaysNotable: true, countPiece: false);
                     await transaction.CommitAsync();
 
                     _playerRegistry?.ForgeUpgradeQueue.Enqueue(new ForgeUpgradeNotification

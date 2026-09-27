@@ -107,6 +107,13 @@ export function parseAffixKey(key: string): ParsedAffixKey {
     rest = rest.slice(0, stackAt);
   }
 
+  // The forge's old key shape, "range_dmg_pct_7bda" - see the server's
+  // AffixRegistry.TryStripLegacyFusionSuffix. It rendered as "Range Dmg Pct
+  // 7bda +23", a raw number because the "_pct" test failed on the suffix.
+  // Only a known id followed by exactly four hex digits qualifies.
+  const legacy = /^(.+)_[0-9a-f]{4}$/.exec(rest);
+  if (legacy && KNOWN_AFFIX_IDS.includes(legacy[1])) rest = legacy[1];
+
   return { id: rest, stack, rarity };
 }
 

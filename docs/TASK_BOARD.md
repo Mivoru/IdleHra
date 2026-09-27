@@ -37,16 +37,30 @@
 >    - 45 needs the owner's phone: a crit vibrates, backgrounding schedules the
 >      reminder.
 >    - Still owed: `docs/ops/funnel.sql` once new players arrive (0 rows at
->      deploy, nobody online), the two-browser chat check (41), and the
->      week of frame-size `/metrics` for 46 (from 2026-09-27).
+>      deploy, nobody online) and the week of frame-size `/metrics` for 46
+>      (from 2026-09-27). The two-browser chat check (41) passed 2026-09-27.
 >    - `exercise.mjs`'s new player never lands a kill (onboarding only reaches
 >      "Fight"), so it produces funnel step 1 but not step 2; the kill hook is
 >      proven by the dev fixture's live kill and `FunnelRecorderTests`.
-> 6. **Backlog follow-ups** (not blocking, all pre-existing):
->    - the Village "Got it" overlap;
->    - a Forge row at the bottom edge (`check:touch`);
->    - the practice ring in landscape (`check:safearea`);
->    - the drop-record lows from #26.
+> 6. **Backlog follow-ups: CLOSED 2026-09-27** (branch `fix/backlog-ui-followups`):
+>    - the Village "Got it" overlap and the practice ring in landscape were
+>      CHECKER false positives: `check:overlap` exempted a fixed overlay only
+>      when it was the covering button's parent (the coach's button is two
+>      levels in; the Upgrade button scrolls clear), and `check:safearea`
+>      measured a rotated SVG shape by its rotated bounding box (the ring's real
+>      edge is at ~70px against a 44px inset). Both checkers fixed;
+>    - the Forge row already passed `check:touch`;
+>    - the real defect found on the way: the update prompt ignored the side
+>      insets (under the landscape cutout on every screen) and sat on the chat
+>      handle at desktop widths;
+>    - drop record: the outbox replays under the original source, offline boss
+>      drops are `OfflineBossGuarantee` (10), a fusion writes its row but no
+>      second count, and both tables are pruned at 180 days (EcoTelemetry loop).
+> 7. **Fusion affixes, reported by the owner 2026-09-27:** a fusion added its
+>    affix as `<id>_<4 hex>`, which the reroll refused and the stat totals never
+>    matched (17 items, one account, in production). Fusion rolls through
+>    `AffixRegistry.TryRollOneAdditional` now; old keys are read by
+>    `TryStripLegacyFusionSuffix` and rewritten by a reroll. `FusionAffixTests`.
 
 Seven tasks, restated against what the code actually does as of 2026-09-01.
 Every "today" claim below was checked in the source or the live database rather
@@ -4083,7 +4097,8 @@ delays everyone for up to 20 s.
 - `exercise.mjs` passes;
 - a two-browser chat check under combat, done by hand, shows every message.
 
-**Status: DONE (pending deploy; manual two-browser chat check still owed; `exercise.mjs` not yet run).**
+**Status: DONE.** Two-browser chat check done 2026-09-27 (scripted): a guest sent 12 messages at the rate limit to the dev fixture while it fought, and all 12 arrived.
+Earlier status: DONE (pending deploy; manual two-browser chat check still owed; `exercise.mjs` not yet run).
 `WebSocketSession` is now an outbox with one writer task per session: events
 (loot, combat, chat, announcements) queue in a bounded 512 drop-oldest channel,
 snapshots keep one latest-wins slot, the writer sends events before the snapshot
