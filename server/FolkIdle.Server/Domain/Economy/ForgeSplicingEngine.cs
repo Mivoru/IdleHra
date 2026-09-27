@@ -373,10 +373,11 @@ namespace FolkIdle.Server.Domain.Economy
                     // whatever the tier: "was that Godly dropped or forged?" had
                     // to be reconstructed from affix-key shapes once, and that
                     // is a question a WHERE clause should answer. Same
-                    // transaction, beside ForgeFusionsCompleted.
+                    // transaction, beside ForgeFusionsCompleted. The row only,
+                    // not a count: the piece was counted when it dropped.
                     await DropRecord.RecordOneAsync(db, playerId, DropSource.Forge, regionTier,
                         targetItem, targetItem.BaseItemId, rolledTier: currentTier, finalTier: currentTier + 1,
-                        alwaysNotable: true);
+                        alwaysNotable: true, countPiece: false);
                     await transaction.CommitAsync();
 
                     _playerRegistry?.ForgeUpgradeQueue.Enqueue(new ForgeUpgradeNotification

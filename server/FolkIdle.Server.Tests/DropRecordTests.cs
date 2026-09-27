@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -306,13 +307,83 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 var counts = await db.LootTierDailyCounts.AsNoTracking().Where(c => c.PlayerId == player.Id).ToListAsync();
-                Assert.All(counts, c => Assert.Equal((short)DropSource.OutboxRetry, c.Source));
+                // Replayed under the source the failed write would have used
+                // (the request above is a live kill), not as OutboxRetry.
+                Assert.All(counts, c => Assert.Equal((short)DropSource.LiveKill, c.Source));
                 Assert.Equal(grants, counts.Sum(c => c.Count));
                 Assert.All(counts, c => Assert.Equal(1, c.RegionTier));
                 var notables = await db.NotableItemEvents.AsNoTracking().Where(e => e.PlayerId == player.Id).ToListAsync();
                 Assert.Equal(grants, notables.Count);
-                Assert.All(notables, n => Assert.Equal((short)DropSource.OutboxRetry, n.Source));
+                Assert.All(notables, n => Assert.Equal((short)DropSource.LiveKill, n.Source));
             }
+        }
+
+        [Fact]
+        public async Task AnOfflineBossBatch_TagsTheGuaranteedPiece_AsOfflineBossGuarantee()
+        {
+            var player = await CreatePlayerAsync();
+            await RunAsync(new CombatLootDropRequest
+            {
+                PlayerId = player.Id,
+                MonsterId = RaceUnlockRegistry.GetRegionBossMonsterId(1),
+                Kills = 40,
+                SkipMaterialRoll = true,
+                Source = DropSource.Offline,
+            });
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var counts = await db.LootTierDailyCounts.AsNoTracking().Where(c => c.PlayerId == player.Id).ToListAsync();
+            // One guaranteed piece per boss kill, every one of them offline.
+            Assert.Equal(40, counts.Where(c => c.Source == (short)DropSource.OfflineBossGuarantee).Sum(c => c.Count));
+            Assert.DoesNotContain(counts, c => c.Source == (short)DropSource.BossGuarantee);
+            Assert.DoesNotContain(counts, c => c.Source == (short)DropSource.LiveKill);
+        }
+
+        [Fact]
+        public async Task AFusion_WritesItsRow_ButNoSecondCountForThePiece()
+        {
+            var player = await CreatePlayerAsync();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await DropRecord.RecordOneAsync(db, player.Id, DropSource.Forge, 2,
+                    instance: null, baseItemId: "forged_piece", rolledTier: 7, finalTier: 8,
+                    alwaysNotable: true, countPiece: false);
+            }
+
+            await using var check = await _fixture.DbContextFactory.CreateDbContextAsync();
+            Assert.False(await check.LootTierDailyCounts.AsNoTracking().AnyAsync(c => c.PlayerId == player.Id),
+                "a fusion changes a piece that was already counted when it dropped");
+            var row = Assert.Single(await check.NotableItemEvents.AsNoTracking().Where(e => e.PlayerId == player.Id).ToListAsync());
+            Assert.Equal((short)DropSource.Forge, row.Source);
+            Assert.Equal(7, row.RolledTier);
+            Assert.Equal(8, row.FinalTier);
+        }
+
+        [Fact]
+        public async Task Pruning_DropsRowsPastRetention_AndKeepsRecentOnes()
+        {
+            var player = await CreatePlayerAsync();
+            DateTime now = DateTime.UtcNow;
+            DateTime old = now.AddDays(-DropRecord.RetentionDays - 2);
+            DateTime recent = now.AddDays(-DropRecord.RetentionDays + 2);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                foreach (var when in new[] { old, recent })
+                {
+                    var tally = new DropTally();
+                    tally.Count(DropSource.LiveKill, 1, 3);
+                    tally.Notable(player.Id, DropSource.LiveKill, null, "pruned_piece", 12, 12, 0f, when);
+                    await DropRecord.WriteAsync(db, player.Id, tally, when);
+                }
+                await DropRecord.PruneAsync(db, now);
+            }
+
+            await using var check = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var day = Assert.Single(await check.LootTierDailyCounts.AsNoTracking().Where(c => c.PlayerId == player.Id).ToListAsync());
+            Assert.Equal(DropRecord.DayOf(recent), day.Day);
+            var notable = Assert.Single(await check.NotableItemEvents.AsNoTracking().Where(e => e.PlayerId == player.Id).ToListAsync());
+            Assert.True(notable.CreatedAtUtc > old.AddDays(1));
         }
 
         /// <summary>

@@ -51,6 +51,24 @@ namespace FolkIdle.Server.Engine
                     Console.WriteLine($"Eco telemetry audit failed: {ex.Message}");
                 }
 
+                // Modul: the drop record's retention rides this loop rather
+                // than a loop of its own (see CronWorkerGuardTests), in its own
+                // try so a failed audit never stops the pruning or vice versa.
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    await DropRecord.PruneAsync(db, DateTime.UtcNow, stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Drop record pruning failed: {ex.Message}");
+                }
+
                 await Task.Delay(TimeSpan.FromMinutes(10), stoppingToken);
             }
         }

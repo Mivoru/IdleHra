@@ -1152,7 +1152,7 @@ namespace FolkIdle.Server.Engine
                     {
                         salvage.Add(TryRollEquipment(dbContext, playerId, monsterId, monsterRegion, lootLuckPct,
                             1.0, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct,
-                            _dropTally, DropSource.BossGuarantee));
+                            _dropTally, source == DropSource.Offline ? DropSource.OfflineBossGuarantee : DropSource.BossGuarantee));
                     }
                 }
 

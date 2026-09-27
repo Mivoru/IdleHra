@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
@@ -19,6 +21,10 @@ namespace FolkIdle.Server.Engine
         WorldBoss = 7,
         ChroniclePass = 8,
         OutboxRetry = 9,
+        // A regional boss's guaranteed piece, won during offline catch-up.
+        // Before it existed these were BossGuarantee, so "online or away?"
+        // could not be asked of boss drops at all.
+        OfflineBossGuarantee = 10,
     }
 
     /// <summary>
@@ -75,7 +81,7 @@ namespace FolkIdle.Server.Engine
     /// plus the forge. Counts for every piece created, a row for every rare
     /// one, both written INSIDE the transaction that creates the piece, so a
     /// rolled-back drop leaves no count behind (the retry outbox then records
-    /// it as OutboxRetry when it replays).
+    /// it under its original source when it replays).
     ///
     /// COST. One upsert statement per call, whatever the number of pieces - an
     /// offline catch-up passes thousands of kills in one request and this must
@@ -83,9 +89,12 @@ namespace FolkIdle.Server.Engine
     ///
     /// EVERY SITE THAT CREATES AN EquipmentInstances ROW, and what it does here
     /// (`rg "EquipmentInstances.Add|new EquipmentInstance" server/FolkIdle.Server`):
-    ///   CombatLootEngine.TryRollEquipment     LiveKill / Offline / BossGuarantee
-    ///   PendingGrantOutbox.TryApplyOneAsync   OutboxRetry
-    ///   ForgeSplicingEngine (fusion)          Forge - upgrades in place, no Add
+    ///   CombatLootEngine.TryRollEquipment     LiveKill / Offline / BossGuarantee /
+    ///                                         OfflineBossGuarantee
+    ///   PendingGrantOutbox.TryApplyOneAsync   the original source (OutboxRetry
+    ///                                         only for rows older than it)
+    ///   ForgeSplicingEngine (fusion)          Forge - upgrades in place, no Add;
+    ///                                         a notable row, no count
     ///   CraftingEngine                        Craft
     ///   CodexEngine (first-clear trophy)      FirstClearTrophy
     ///   SimulationEngine (chronicle claim)    ChroniclePass
@@ -105,6 +114,23 @@ namespace FolkIdle.Server.Engine
         public const int NotableTier = RarityTier.Legendary;
 
         public static bool IsNotable(int finalTier) => finalTier >= NotableTier;
+
+        /// <summary>
+        /// How long both tables keep rows. The record answers "what dropped
+        /// lately and where from"; a count per player per day grows for ever
+        /// otherwise, and nothing ever read a row older than a season.
+        /// </summary>
+        public const int RetentionDays = 180;
+
+        /// <summary>Deletes counts and notable rows older than <see cref="RetentionDays"/>.</summary>
+        public static async Task<int> PruneAsync(FolkIdleDbContext db, DateTime nowUtc, CancellationToken token = default)
+        {
+            DateTime cutoff = nowUtc.AddDays(-RetentionDays);
+            DateOnly cutoffDay = DayOf(cutoff);
+            int counts = await db.LootTierDailyCounts.Where(c => c.Day < cutoffDay).ExecuteDeleteAsync(token);
+            int notables = await db.NotableItemEvents.Where(e => e.CreatedAtUtc < cutoff).ExecuteDeleteAsync(token);
+            return counts + notables;
+        }
 
         public static DateOnly DayOf(DateTime utc) => DateOnly.FromDateTime(utc);
 
@@ -172,14 +198,21 @@ namespace FolkIdle.Server.Engine
         /// chronicle): a count, plus a row when it is notable or
         /// <paramref name="alwaysNotable"/>.
         /// </summary>
+        /// <remarks>
+        /// <paramref name="countPiece"/> is false for a writer that changes an
+        /// existing piece rather than creating one (the forge's fusion): that
+        /// piece was already counted at its old tier when it dropped, so
+        /// counting it again at the new tier made one item two in the per-tier
+        /// totals. Its notable row still says what it became.
+        /// </remarks>
         public static Task RecordOneAsync(
             FolkIdleDbContext db, long playerId, DropSource source, int regionTier,
             EquipmentInstance? instance, string baseItemId, int rolledTier, int finalTier,
-            bool alwaysNotable = false)
+            bool alwaysNotable = false, bool countPiece = true)
         {
             var tally = new DropTally();
             DateTime now = DateTime.UtcNow;
-            tally.Count(source, regionTier, finalTier);
+            if (countPiece) tally.Count(source, regionTier, finalTier);
             if (alwaysNotable || IsNotable(finalTier))
             {
                 tally.Notable(playerId, source, instance, baseItemId, rolledTier, finalTier, 0f, now);

@@ -171,16 +171,19 @@ namespace FolkIdle.Server.Engine
                     // Modul: THE DROP RECORD (task 26). The failed transaction
                     // rolled its counts back with it, so without this the record
                     // under-counts exactly the drops the outbox saved. Recorded
-                    // as OutboxRetry in the caller's transaction, so it commits
-                    // with the piece. The original source is not lost: it is in
-                    // this row's payload, and the notable row keeps the roll's
-                    // own tier and luck.
+                    // in the caller's transaction, so it commits with the piece,
+                    // and under the source the failed write would have used: a
+                    // live kill replayed is still a live kill, and filing it as
+                    // OutboxRetry took it out of every per-source rate. Only a
+                    // row from before OriginalSource existed (0) falls back to
+                    // OutboxRetry.
+                    var source = grant.OriginalSource > 0 ? (DropSource)grant.OriginalSource : DropSource.OutboxRetry;
                     var tally = new DropTally();
                     DateTime now = DateTime.UtcNow;
-                    tally.Count(DropSource.OutboxRetry, grant.RegionTier, grant.QualityTier);
+                    tally.Count(source, grant.RegionTier, grant.QualityTier);
                     if (DropRecord.IsNotable(grant.QualityTier))
                     {
-                        tally.Notable(row.PlayerId, DropSource.OutboxRetry, instance, grant.BaseItemId,
+                        tally.Notable(row.PlayerId, source, instance, grant.BaseItemId,
                             grant.RolledTier > 0 ? grant.RolledTier : grant.QualityTier, grant.QualityTier, grant.LootLuckPct, now);
                     }
                     await DropRecord.WriteAsync(db, row.PlayerId, tally, now);
