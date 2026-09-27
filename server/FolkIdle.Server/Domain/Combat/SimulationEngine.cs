@@ -903,6 +903,26 @@ namespace FolkIdle.Server.Domain.Combat
                 long tickStartTimestamp = Stopwatch.GetTimestamp();
                 stopwatch.Restart();
 
+                // Modul: THE TICK HOLDS THE LOCK EVERY OTHER READER TAKES.
+                //
+                // Every off-thread accessor of _activePlayers (the test hooks
+                // below the constructor, InjectVirtualPlayer, the drain and
+                // shutdown paths) says lock (_activePlayers) - and the tick,
+                // the one thread that mutates it all the time, never did. So
+                // the locks excluded each other and nothing else. A test that
+                // called InjectVirtualPlayer while the engine ran added a key
+                // in the middle of the tick's foreach, and the next MoveNext
+                // threw "Collection was modified" OUTSIDE the per-player
+                // try/catch, which ended EngineLoop and, on a bare thread,
+                // the whole test host. Taken once per tick, uncontended in
+                // production (nothing else takes it while the engine runs);
+                // released before the sleep so a hook waits one tick at most.
+                // The body is deliberately not re-indented.
+                bool tickLockTaken = false;
+                Monitor.Enter(_activePlayers, ref tickLockTaken);
+                try
+                {
+
                 if (isBenchmarking)
                 {
                     FolkIdle.Server.Benchmark.EngineStressTester.InjectCommandFlood(this);
@@ -2265,6 +2285,15 @@ namespace FolkIdle.Server.Domain.Combat
 
                     long broadcastSnapshotElapsedMicroseconds = (Stopwatch.GetTimestamp() - broadcastSnapshotStartTimestamp) * 1_000_000L / Stopwatch.Frequency;
                     FolkIdleEventSource.Log.BroadcastSnapshotEnd(broadcastSnapshotElapsedMicroseconds, _activePlayers.Count);
+                }
+
+                }
+                finally
+                {
+                    if (tickLockTaken)
+                    {
+                        Monitor.Exit(_activePlayers);
+                    }
                 }
 
                 stopwatch.Stop();
