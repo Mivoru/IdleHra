@@ -333,7 +333,13 @@ namespace FolkIdle.Server.Domain.Shared
 
         public void TrackState(ref TickStatePayload state)
         {
-            bool reachedCheckpointBoundary = state.TicksSinceLastFlush >= CheckpointBoundaryTicks || state.InventorySpaceRemaining <= 0;
+            // Modul: `|| state.InventorySpaceRemaining <= 0` was deleted here
+            // (task 43). The backpack is gone and the counter gates nothing
+            // (InventoryCensusTickCoordinator pins it at capacity), but the
+            // loot path still decrements it between censuses - so once it
+            // touched zero, every tick was a "boundary" and every tick queued
+            // a checkpoint.
+            bool reachedCheckpointBoundary = state.TicksSinceLastFlush >= CheckpointBoundaryTicks;
             if (_redisSessionCache != null && (state.IsDirty || state.RequiresRedisFlush || reachedCheckpointBoundary))
             {
                 // Modul: A REDIS FRAME IS NOT A CHECKPOINT, AND TREATING IT AS
