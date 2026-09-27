@@ -15,7 +15,14 @@ namespace FolkIdle.Server.Domain.Shared
         Terminate,
 
         /// <summary>Caller must RequestShadowBan(playerId, 54, 2) and skip the command.</summary>
-        ShadowBan
+        ShadowBan,
+
+        /// <summary>
+        /// The client acted on a state that is several checkpoints old. Caller
+        /// skips the command and answers StaleClientState - it does NOT end the
+        /// session (see the epoch gate below).
+        /// </summary>
+        RefuseStale
     }
 
     /// <summary>
@@ -82,9 +89,30 @@ namespace FolkIdle.Server.Domain.Shared
             // rather than the save-generation counter. Both commands are
             // gone, so the exemption is too - and with it the only place
             // where that field meant two different things.
-            if (!isInternalCommand && !ClientCommandValidator.ValidateEpochSynchronization(ref currentPayload, ref cmd))
+            //
+            // Modul: A STALE EPOCH IS A STATE RACE, NOT A PROTOCOL VIOLATION
+            // (2026-09-27). This used to Terminate. A phone suspends its
+            // JavaScript in the background while the socket and the server's
+            // checkpoints carry on; on resume it replays buffered frames and
+            // acts before the fresh one lands, more than EpochDriftTolerance
+            // checkpoints behind. The owner's account alone had 556 of these,
+            // every other player 1 - each one a kick whose close reason says
+            // "token", which the client reads as signed out, so it refreshed
+            // and restarted the session: "the phone relogs a few seconds after
+            // login and my offline drops are gone". Refusing still keeps a
+            // desynchronized command from ever running; ending the session
+            // added nothing but the lie. CLAUDE.md: terminate a protocol
+            // violation, answer a state race.
+            //
+            // The challenge answer is exempt: JudgeAntiCheatChallengeResponse
+            // binds it to ActiveChallengeIssuedEpoch itself, and the client
+            // answers with the epoch of the frame that ASKED - which on resume
+            // is exactly an old one.
+            if (!isInternalCommand
+                && cmd.Command != CommandType.AntiCheatChallengeResponse
+                && !ClientCommandValidator.ValidateEpochSynchronization(ref currentPayload, ref cmd))
             {
-                return CommandGateVerdict.Terminate;
+                return CommandGateVerdict.RefuseStale;
             }
 
             if (!isInternalCommand && !ClientCommandValidator.ValidateCommand(ref currentPayload, (byte)cmd.Command))

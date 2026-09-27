@@ -9252,6 +9252,10 @@ namespace FolkIdle.Server.Network
                     outboxDepth += kvp.Value.PendingEventCount;
                 }
                 body.Append('\n');
+                body.Append("# HELP folkidle_forced_disconnects_total Sessions ended by ForceDisconnect (validator refusals, anti-cheat, rollbacks). The app log says which handler: grep [kick].\n");
+                body.Append("# TYPE folkidle_forced_disconnects_total counter\n");
+                body.Append("folkidle_forced_disconnects_total ").Append(ForcedDisconnectsTotal).Append('\n');
+                body.Append('\n');
                 body.Append("# HELP folkidle_outbox_events_dropped_total Event frames (loot, combat, chat) dropped because a session outbox was full.\n");
                 body.Append("# TYPE folkidle_outbox_events_dropped_total counter\n");
                 body.Append("folkidle_outbox_events_dropped_total ").Append(WebSocketSession.EventsDroppedTotal).Append('\n');
@@ -10579,8 +10583,36 @@ namespace FolkIdle.Server.Network
             Console.WriteLine($"State broadcast send failed for player {playerId}: {t.Exception?.GetBaseException().Message}");
         };
 
+        private static long _forcedDisconnectsTotal;
+        internal static long ForcedDisconnectsTotal => Interlocked.Read(ref _forcedDisconnectsTotal);
+
+        // Modul: A KICK MUST SAY WHO KICKED. Some fifty sites end a session
+        // through here (every validator refusal via TerminateSessionForSecurity,
+        // the epoch gate, anti-cheat, market/forge/guild rollbacks...) and none
+        // of them logged, so "the phone relogs a few seconds after login" had
+        // no server-side trace at all - the close reason is one shared string.
+        // TerminateSessionForSecurity reaches the coordinators as an
+        // Action<long>, so [CallerMemberName] cannot see through it; a short
+        // stack walk can, and a kick is rare enough that its cost is nothing.
+        // The line names the handler (e.g. ClientSessionTickCoordinator.
+        // HandleSwitchLanguage) - grep the app log for "[kick]".
+        internal static string DescribeKickOrigin(int skipFrames)
+        {
+            var frames = new StackTrace(skipFrames + 1, false).GetFrames();
+            var names = frames
+                .Select(f => f.GetMethod())
+                .Where(m => m?.DeclaringType?.Namespace?.StartsWith("FolkIdle", StringComparison.Ordinal) == true)
+                .Select(m => $"{m!.DeclaringType!.Name}.{m.Name}")
+                .Where(n => !n.StartsWith("SimulationEngine.TerminateSessionForSecurity", StringComparison.Ordinal))
+                .Distinct()
+                .Take(4);
+            return string.Join(" <- ", names);
+        }
+
         public void ForceDisconnect(long playerId)
         {
+            Interlocked.Increment(ref _forcedDisconnectsTotal);
+            Console.WriteLine($"[kick] player {playerId} force-disconnected by {DescribeKickOrigin(1)}");
             if (_connectedClients.TryRemove(playerId, out var session))
             {
                 if (_redisSessionLock != null && !string.IsNullOrEmpty(session.RedisLockToken))

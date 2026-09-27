@@ -1529,6 +1529,12 @@ namespace FolkIdle.Server.Domain.Combat
                         case CommandGateVerdict.ShadowBan:
                             _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 2);
                             continue;
+                        case CommandGateVerdict.RefuseStale:
+                            // The command never runs; the player is told, and
+                            // the next broadcast carries the current epoch.
+                            _playerRegistry.EnqueueCommandResult(routingPlayerId, (byte)CommandResultCode.StaleClientState);
+                            currentPayload.IsDirty = true;
+                            continue;
                     }
 
                     // Modul: the dispatch table is tried FIRST, then the

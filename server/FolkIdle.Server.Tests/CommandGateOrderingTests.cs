@@ -141,7 +141,11 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task StaleEpoch_SeversTheSession()
+        // Modul: this test used to be StaleEpoch_SeversTheSession. A stale epoch
+        // is a phone back from the background, not an attack; the kick it
+        // earned read as "signed out" on the client and restarted the whole
+        // session (556 times on the owner's account). Refused and answered now.
+        public async Task StaleEpoch_IsRefusedAndTheSessionSurvives()
         {
             const long playerId = 970009502L;
             var engine = CreateEngine();
@@ -157,8 +161,11 @@ namespace FolkIdle.Server.Tests
                 });
 
                 await WaitForConditionAsync(
-                    () => !engine.IsActivePlayerPresent(playerId),
-                    "A command carrying a stale LogicEpochCounter did not sever the session.");
+                    () => engine.GetActivePlayerCommandResultSlots(playerId)
+                        .Any(r => r.code == (byte)CommandResultCode.StaleClientState),
+                    "A command carrying a stale LogicEpochCounter was not answered StaleClientState.");
+                Assert.True(engine.IsActivePlayerPresent(playerId),
+                    "A stale LogicEpochCounter ended the session instead of being refused.");
             }
             finally
             {
@@ -269,9 +276,11 @@ namespace FolkIdle.Server.Tests
 
         /// <summary>
         /// THE ORDER GUARD. One packet failing both the epoch check
-        /// (terminate) and the anti-cheat payload check (shadow ban). Epoch
-        /// runs first, so the session is terminated. Any reorder that puts the
-        /// anti-cheat check first leaves the session alive.
+        /// (refused as stale, answered StaleClientState) and the anti-cheat
+        /// payload check (shadow ban, no answer). Epoch runs first, so the
+        /// player is told their screen was stale - and the session SURVIVES,
+        /// because a stale epoch is a state race, not a violation (2026-09-27).
+        /// A reorder that put the anti-cheat check first would answer nothing.
         /// </summary>
         [Fact]
         public async Task EpochCheck_RunsBeforeAntiCheatPayloadCheck()
@@ -291,8 +300,11 @@ namespace FolkIdle.Server.Tests
                 });
 
                 await WaitForConditionAsync(
-                    () => !engine.IsActivePlayerPresent(playerId),
-                    "A packet failing both the epoch and the anti-cheat payload checks was shadow-banned rather than terminated - the gate's order changed.");
+                    () => engine.GetActivePlayerCommandResultSlots(playerId)
+                        .Any(r => r.code == (byte)CommandResultCode.StaleClientState),
+                    "A packet failing both the epoch and the anti-cheat payload checks was not answered StaleClientState - the gate's order changed.");
+                Assert.True(engine.IsActivePlayerPresent(playerId),
+                    "A stale epoch ended the session. It is a state race and must be refused, not terminated.");
             }
             finally
             {
@@ -378,7 +390,7 @@ namespace FolkIdle.Server.Tests
             var payload = new TickStatePayload { PlayerId = 1L, LogicEpochCounter = 500L };
             var cmd = new ClientCommandPacket { Command = CommandType.ReportUiContextSwitch, LogicEpochCounter = 0L };
 
-            Assert.Equal(CommandGateVerdict.Terminate, CommandGate.Evaluate(ref payload, ref cmd));
+            Assert.Equal(CommandGateVerdict.RefuseStale, CommandGate.Evaluate(ref payload, ref cmd));
             Assert.NotEqual(0L, payload.LastClientCommandAtMs);
         }
 
@@ -391,7 +403,7 @@ namespace FolkIdle.Server.Tests
             var payload = new TickStatePayload { PlayerId = 1L, LogicEpochCounter = 500L };
             var cmd = new ClientCommandPacket { Command = CommandType.ChangeActivity, LogicEpochCounter = 0L };
 
-            Assert.Equal(CommandGateVerdict.Terminate, CommandGate.Evaluate(ref payload, ref cmd));
+            Assert.Equal(CommandGateVerdict.RefuseStale, CommandGate.Evaluate(ref payload, ref cmd));
             Assert.Equal(0L, payload.LastCommandTimestamp);
         }
 
@@ -407,12 +419,24 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void Evaluate_ChallengeAnswer_IsExemptFromTheEpochCheck()
+        {
+            // The client answers with the epoch of the frame that asked, which
+            // after a resume is an old one; the judge binds the answer to
+            // ActiveChallengeIssuedEpoch itself, so the gate must let it by.
+            var payload = new TickStatePayload { PlayerId = 1L, LogicEpochCounter = 500L };
+            var cmd = new ClientCommandPacket { Command = CommandType.AntiCheatChallengeResponse, LogicEpochCounter = 0L, ChallengeId = 7 };
+
+            Assert.Equal(CommandGateVerdict.Proceed, CommandGate.Evaluate(ref payload, ref cmd));
+        }
+
+        [Fact]
         public void Evaluate_EpochBeforeAntiCheatPayload()
         {
             var payload = new TickStatePayload { PlayerId = 1L, LogicEpochCounter = 500L };
             var cmd = new ClientCommandPacket { Command = CommandType.ReportUiContextSwitch, LogicEpochCounter = 0L, ChallengeId = 1 };
 
-            Assert.Equal(CommandGateVerdict.Terminate, CommandGate.Evaluate(ref payload, ref cmd));
+            Assert.Equal(CommandGateVerdict.RefuseStale, CommandGate.Evaluate(ref payload, ref cmd));
         }
 
         [Fact]
