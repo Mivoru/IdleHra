@@ -58,7 +58,7 @@
     right: calc(1rem + var(--sa-right));
     /* Clear of Toasts.svelte, which owns the bottom-right corner - and both
        stack on top of the home indicator, so both carry the same inset. */
-    bottom: calc(5.5rem + var(--sa-bottom));
+    bottom: calc(5.5rem + var(--sa-bottom) + var(--tabbar-h));
     display: grid;
     gap: 0.5rem;
     z-index: 61;

@@ -181,6 +181,13 @@ async function intrude(insets, tolerance, { bottomMode }) {
       // "the practice ring in landscape" for days. Measure a geometry element
       // by points on its actual outline instead.
       const outlineRect = (el) => {
+        // Modul: A HIDDEN SHAPE HAS NO OUTLINE ON SCREEN. getScreenCTM and
+        // getPointAtLength answer for an SVG inside `display: none` as if it
+        // were drawn at the page origin, so the phone tab bar's icons - hidden
+        // at landscape width - were reported under the left system bar at
+        // 3-5px. The browser's own box is empty for anything not rendered;
+        // trust that first.
+        if (el.getClientRects().length === 0) return null;
         const ctm = el.getScreenCTM?.();
         if (!ctm || typeof el.getTotalLength !== 'function') return null;
         let len;

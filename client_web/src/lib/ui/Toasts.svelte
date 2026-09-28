@@ -17,7 +17,7 @@
     position: fixed;
     /* Fixed to the viewport, so body's safe-area padding does not reach it. */
     right: calc(1rem + var(--sa-right));
-    bottom: calc(1rem + var(--sa-bottom));
+    bottom: calc(1rem + var(--sa-bottom) + var(--tabbar-h));
     display: grid;
     gap: 0.4rem;
     z-index: 60;

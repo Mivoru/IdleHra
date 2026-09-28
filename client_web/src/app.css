@@ -204,6 +204,17 @@
   --sa-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
   --sa-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   --sa-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  /* The phone's bottom tab bar (TabBar.svelte), NOT counting the gesture bar
+     under it - that is --sa-bottom, added separately. 0 where there is no bar,
+     so every "sit above the bar" rule is a no-op on a desktop. */
+  --tabbar-h: 0px;
+}
+
+@media (max-width: 40rem) {
+  :root {
+    /* 3.5rem of buttons plus the bar's 0.5rem floor under them (TabBar). */
+    --tabbar-h: 4rem;
+  }
 }
 
 body {
@@ -489,7 +500,7 @@ body {
      guarantee. That is the width where the dock is most in the way.
 
      One rule, both concerns, added together. */
-  padding-bottom: calc(4.5rem + var(--sa-bottom));
+  padding-bottom: calc(4.5rem + var(--sa-bottom) + var(--tabbar-h));
 }
 
 img,
