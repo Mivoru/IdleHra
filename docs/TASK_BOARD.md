@@ -4663,7 +4663,28 @@ add power (see `PowerCeilingTests`).
 **Done when:** it is written as a plan in `docs/superpowers/plans/`,
 agreed, and then built.
 
-## 55. Boss challenges
+## DONE - 55. Boss challenges
+
+**Built 2026-09-28.** Reward: a cosmetic chest per challenge, once - Rare for
+regions 1-2, Epic 3-4, Legendary 5 (Claude's recommendation; the owner said
+"continue" without picking). `BossChallengeRegistry` / `BossChallengeEngine`,
+`boss_challenge_completions`, judged off the tick by `CosmeticGrantEngine`
+(the weapon's tier is a database fact), listed under each region on Combat.
+
+**Measured, then asserted** (`BossChallengeCalibrationTests`, with
+`BossGearBenchmark.ProjectChallenge` - no food, and a weapon tier apart from the
+set): against a boss already beaten once, at the wall's required gear, the
+lowest winning level is 6 / 26 / 32 / 38 / 46 fed and 20 / 54 / 72 / 85 / 97
+unfed. So challenges count on ANY kill - unfed is impossible on Malakor's first
+clear at every level. Level caps are the midpoint to the reference level:
+15 / 35 / 45 / 60 / 75. A Common weapon wins every fight at the reference level
+because armour carries it, so "Humble blade" is the gentle one.
+
+**Not done:** the Book of Deeds line. Adding a deed to a chapter re-locks the
+Seal progress of anyone partway through it, and task 57 reworks the Book - do it
+there. Live kills only: the offline catch-up does not fight bosses one by one.
+
+Original task:
 
 Three optional conditions per region boss:
 - no food in the larder;

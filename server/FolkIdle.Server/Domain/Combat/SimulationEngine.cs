@@ -4044,6 +4044,7 @@ namespace FolkIdle.Server.Domain.Combat
                 ArmThundererIfBoss(ref payload);
                 payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
+                payload.AteThisFight = false;
             }
 
             payload.CombatTargetTickAccumulator++;
@@ -4579,6 +4580,7 @@ namespace FolkIdle.Server.Domain.Combat
                 if (bestFoodIndex > 0)
                 {
                     payload.AutoEatCooldownTicks = AutoEatCooldownTicks;
+                    payload.AteThisFight = true;
 
                     if (payload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood)
                     {
@@ -4702,6 +4704,9 @@ namespace FolkIdle.Server.Domain.Combat
                     0);
 
                 int seasonalCombatXp = activeMonster.BaseXpReward * finalXpMultiplier / 100;
+                // Task 55: the level the fight was WON at - before this kill's
+                // own XP can lift it past a challenge's cap.
+                int levelAtKill = payload.CurrentLevel;
                 long victoryXpBefore = payload.CurrentXp;
                 ProgressionEngine.ProcessMonsterDeath(ref payload, activeMonster.BaseXpReward, finalXpMultiplier, ActiveGlobalEventId, activeRaceId);
                 // Modul: what this ONE kill paid, for the victory card. Read as
@@ -4732,6 +4737,14 @@ namespace FolkIdle.Server.Domain.Combat
                 // the state before the boss died. Hydration reconciles from the
                 // codex; this keeps the live session honest in between.
                 int clearedBossRegion = RaceUnlockRegistry.GetRegionForBossMonsterId(activeMonster.Id);
+
+                // Task 55: the boss challenges, judged off the tick - the weapon's
+                // rarity is a database fact - from what this fight was.
+                if (clearedBossRegion > 0)
+                {
+                    CosmeticGrantEngine.NoteBossKill(payload.PlayerId, clearedBossRegion, activeMonster.Id,
+                        levelAtKill, payload.AteThisFight, payload.EquippedWeaponId);
+                }
 
                 // Task 51: every boss kill, first clear or farm, against the
                 // fastest so far. CombatTargetTickAccumulator is zeroed at the
@@ -4991,6 +5004,7 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.CurrentMonsterId = fallbackId;
                 payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
                 payload.CombatTargetTickAccumulator = 0;
+                payload.AteThisFight = false;
             }
         }
 

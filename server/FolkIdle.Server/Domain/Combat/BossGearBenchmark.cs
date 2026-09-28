@@ -140,12 +140,25 @@ namespace FolkIdle.Server.Domain.Combat
             int bossMonsterId, in ReferenceLoadout gear, double attackMultiplier)
             => Project(bossMonsterId, in gear, defeatedMask: 0, attackMultiplier);
 
+        /// <summary>
+        /// Task 55: a boss challenge, projected. The same fight with two knobs
+        /// the challenges turn - the larder can be empty, and the weapon can be
+        /// of a lower quality tier than the rest of the set (0 = the same).
+        /// BossChallengeCalibrationTests measures every threshold with it.
+        /// </summary>
+        public static BossFightProjection ProjectChallenge(
+            int bossMonsterId, in ReferenceLoadout gear, bool firstClear, bool withFood, int weaponQualityTier)
+            => Project(bossMonsterId, in gear,
+                firstClear ? (byte)0 : BossFirstClearRules.MarkDefeated(0, bossMonsterId),
+                attackMultiplierOverride: 0.0, withFood, weaponQualityTier);
+
         private static BossFightProjection Project(
-            int bossMonsterId, in ReferenceLoadout gear, byte defeatedMask, double attackMultiplierOverride)
+            int bossMonsterId, in ReferenceLoadout gear, byte defeatedMask, double attackMultiplierOverride,
+            bool withFood = true, int weaponQualityTier = 0)
         {
             MonsterDefinition boss = ContentRegistry.Monsters[bossMonsterId - 1];
 
-            CombatStats stats = BuildStats(in gear);
+            CombatStats stats = BuildStats(in gear, weaponQualityTier);
             long rawMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(
                 in stats, damageScalePerLevelPct: 0, level: gear.Level);
 
@@ -180,7 +193,7 @@ namespace FolkIdle.Server.Domain.Combat
             // and a fish's tier is the region it was caught in.
             int foodItemId = FoodRegistry.FirstRawFishOfTier(
                 Math.Clamp(boss.RegionTier, 1, FoodRegistry.TierCount));
-            int healPerBite = FoodRegistry.GetHealMilliHp(foodItemId, playerMaxMilliHp);
+            int healPerBite = withFood ? FoodRegistry.GetHealMilliHp(foodItemId, playerMaxMilliHp) : 0;
 
             double playerMilliHp = playerMaxMilliHp;
             double remainingBossMilliHp = bossMilliHp;
@@ -290,12 +303,12 @@ namespace FolkIdle.Server.Domain.Combat
         /// toward letting an invested player through, never toward walling one
         /// out.
         /// </summary>
-        private static CombatStats BuildStats(in ReferenceLoadout gear)
+        private static CombatStats BuildStats(in ReferenceLoadout gear, int weaponQualityTier = 0)
         {
             RaceAttributeGrowth.GetGrowthPerLevel(RaceIds.Human, out int str, out int dex, out int con, out int lck);
             int levels = gear.Level - 1;
 
-            EquippedAffixTotals totals = BuildEquippedTotals(in gear);
+            EquippedAffixTotals totals = BuildEquippedTotals(in gear, weaponQualityTier);
 
             return StatsCalculator.Calculate(
                 str * levels, dex * levels, con * levels, lck * levels,
@@ -311,11 +324,9 @@ namespace FolkIdle.Server.Domain.Combat
         /// grants - folded in by the SAME function the equip path uses, so a
         /// change to how an affix maps onto a stat cannot leave this behind.
         /// </summary>
-        private static EquippedAffixTotals BuildEquippedTotals(in ReferenceLoadout gear)
+        private static EquippedAffixTotals BuildEquippedTotals(in ReferenceLoadout gear, int weaponQualityTier = 0)
         {
             EquippedAffixTotals totals = default;
-            double qualityMultiplier = RarityTier.PowerMultiplier(gear.QualityTier);
-            int affixCount = RarityTier.GetAffixCount(gear.QualityTier);
 
             foreach (EquipmentSlotKind slot in ReferenceSlots)
             {
@@ -323,6 +334,10 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     continue;
                 }
+
+                int quality = slot == EquipmentSlotKind.Weapon && weaponQualityTier > 0 ? weaponQualityTier : gear.QualityTier;
+                double qualityMultiplier = RarityTier.PowerMultiplier(quality);
+                int affixCount = RarityTier.GetAffixCount(quality);
 
                 totals.FlatAttack += (int)Math.Round(definition.FlatAttackPower * qualityMultiplier);
                 totals.FlatDefense += (int)Math.Round(definition.FlatDefenseRating * qualityMultiplier);

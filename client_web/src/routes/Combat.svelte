@@ -1,4 +1,7 @@
 <script lang="ts">
+  import BossChallenges from '../lib/ui/BossChallenges.svelte';
+  import { bossChallengeKeys, fetchBossChallenges } from '../lib/net/cosmetics';
+  import { createQuery } from '@tanstack/svelte-query';
   import { locationName } from '../lib/ui/locations';
   import {
     firstClearHpMultiplier,
@@ -36,6 +39,14 @@
     CombatEventKind,
     CombatEventFlag,
   } from '../lib/stores/combatLog';
+
+  // Task 55: which boss challenges are done. Refreshed every minute while the
+  // screen is open, so one met at a kill ticks over without a reload.
+  const challenges = createQuery(() => ({
+    queryKey: bossChallengeKeys.all,
+    queryFn: fetchBossChallenges,
+    refetchInterval: 60_000,
+  }));
 
   const snap = $derived($playerState);
 
@@ -589,6 +600,10 @@
             </li>
           {/each}
         </ul>
+        {@const challengeRow = (challenges.data ?? []).find((c) => c.Region === index + 1)}
+        {#if challengeRow && index + 1 <= unlockedRegion}
+          <BossChallenges row={challengeRow} />
+        {/if}
         {/if}
       {/each}
       {#if registry.regions.length > lastListedRegion}

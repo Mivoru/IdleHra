@@ -40,6 +40,18 @@ namespace FolkIdle.Server.Engine
         // starts this worker must stop it in a finally.
         public static readonly ConcurrentQueue<LevelNote> Queue = new();
 
+        /// <summary>Task 55: a region boss died - judge its challenges.</summary>
+        public readonly record struct BossKillNote(
+            long PlayerId, int Region, int BossMonsterId, int Level, bool AteDuringFight, long WeaponInstanceId);
+
+        public static readonly ConcurrentQueue<BossKillNote> BossKills = new();
+
+        public static void NoteBossKill(long playerId, int region, int bossMonsterId, int level, bool ateDuringFight, long weaponInstanceId)
+        {
+            if (playerId <= 0 || region <= 0) return;
+            BossKills.Enqueue(new BossKillNote(playerId, region, bossMonsterId, level, ateDuringFight, weaponInstanceId));
+        }
+
         public const int MaxNotesPerCycle = 500;
 
         private readonly IServiceProvider _serviceProvider;
@@ -107,6 +119,60 @@ namespace FolkIdle.Server.Engine
         /// coalesced to the highest level per player. Returns the chests granted.
         /// </summary>
         internal async Task<int> DrainOneCycleAsync()
+        {
+            int granted = await DrainLevelNotesAsync();
+            granted += await DrainBossKillsAsync();
+            return granted;
+        }
+
+        /// <summary>
+        /// Task 55: judges each boss kill's challenges and pays a chest for each
+        /// one met for the first time. Budgeted like the level drain; a boss
+        /// kill is minutes apart per player, so nothing needs coalescing.
+        /// </summary>
+        private async Task<int> DrainBossKillsAsync()
+        {
+            int budget = Math.Min(BossKills.Count, MaxNotesPerCycle);
+            int grantedThisCycle = 0;
+            for (int i = 0; i < budget && BossKills.TryDequeue(out var kill); i++)
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    var grants = await Domain.Combat.BossChallengeEngine.JudgeKillAsync(
+                        db, kill.PlayerId, kill.Region, kill.Level, kill.AteDuringFight, kill.WeaponInstanceId, DateTime.UtcNow);
+                    grantedThisCycle += grants.Count;
+
+                    foreach (var grant in grants)
+                    {
+                        // On the loot feed like any chest; the boss's own id as
+                        // MonsterId, so the client can say which boss paid it.
+                        _playerRegistry?.OutboundLootDropQueue.Enqueue(new Network.ResponseLootDropPacket
+                        {
+                            PlayerId = kill.PlayerId,
+                            ItemId = 0,
+                            Quantity = 1,
+                            MonsterId = kill.BossMonsterId,
+                            QualityTier = (byte)grant.ChestRarity,
+                            DropKind = Network.ResponseLootDropPacket.DropKindCosmeticChest,
+                            InstanceId = grant.ChestId,
+                        });
+                        Console.WriteLine($"Boss challenge: player {kill.PlayerId} met {grant.Challenge} on region {kill.Region}'s boss.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Lost, not re-queued: the next kill that meets the same
+                    // challenge completes it, since nothing was written.
+                    Interlocked.Increment(ref _failed);
+                    Console.WriteLine($"Boss challenge judgement failed for {kill.PlayerId}: {ex.Message}");
+                }
+            }
+            return grantedThisCycle;
+        }
+
+        private async Task<int> DrainLevelNotesAsync()
         {
             int budget = Math.Min(Queue.Count, MaxNotesPerCycle);
             if (budget == 0) return 0;

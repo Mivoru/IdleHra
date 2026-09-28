@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COSMETIC_RESULT_SENTENCES, COSMETIC_MARKET_SENTENCES, MAX_COSMETIC_PRICE } from '../src/lib/net/cosmetics';
+import { COSMETIC_RESULT_SENTENCES, COSMETIC_MARKET_SENTENCES, MAX_COSMETIC_PRICE, bossChallengeKeys, cosmeticKeys } from '../src/lib/net/cosmetics';
 import { FRAME_DRAWINGS } from '../src/lib/ui/frames';
 import { MONSTER_ICONS } from '../src/lib/ui/sprites.generated';
 
@@ -52,6 +52,13 @@ describe('task 54 cosmetics mirrors', () => {
     expect(Object.keys(COSMETIC_MARKET_SENTENCES).sort()).toEqual([...names].sort());
     const max = registry.match(/MaxMarketPrice = ([\d_]+);/)?.[1]?.replace(/_/g, '');
     expect(Number(max)).toBe(MAX_COSMETIC_PRICE);
+  });
+
+  it('a chest arrival invalidates the keys the screens actually query', () => {
+    // game.ts spells the keys out (it cannot import the screens), so they are
+    // compared here: a renamed key would leave a stale tick on Combat.
+    expect(gameStore).toContain(`queryKey: ${JSON.stringify([...bossChallengeKeys.all]).replace(/"/g, "'")}`);
+    expect(gameStore).toContain(`queryKey: ${JSON.stringify([...cosmeticKeys.mine]).replace(/"/g, "'").replace(/,/g, ', ')}`);
   });
 
   it('reads the chest drop kind the server sends', () => {

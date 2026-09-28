@@ -145,6 +145,13 @@ namespace FolkIdle.Server.Engine
         // blitted onto the wire and a counter that ticks down survives a
         // process restart the way an Environment.TickCount64 deadline does not.
         public int AutoEatCooldownTicks;
+
+        // Modul: TASK 55 - whether auto-eat took a bite during the CURRENT fight,
+        // for the "Starved" boss challenge. Set at the bite, cleared at the two
+        // places a fight starts (the first spawn and the respawn after a kill).
+        // Runtime only: not on the wire, not checkpointed - a relogin starts a
+        // fresh fight, and a missed clear could only make the challenge harder.
+        public bool AteThisFight;
         public int Food1_ItemId;
         public int Food1_Count;
         public int Food2_ItemId;
