@@ -2108,7 +2108,7 @@ await go('The Delve');
   await page.waitForTimeout(1200);
   const shown = page.getByTestId('boss-challenges-1');
   const text = (await shown.count()) > 0 ? ((await shown.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
-  record("Combat shows region 1's boss challenges", /Starved/.test(text) && /Young blood/.test(text) && /Humble blade/.test(text), text.slice(0, 120));
+  record("Combat shows region 1's boss challenges", /Starved/.test(text) && /Young blood/.test(text) && /Swift/.test(text), text.slice(0, 120));
 }
 
 // --- the paper doll ----------------------------------------------------------

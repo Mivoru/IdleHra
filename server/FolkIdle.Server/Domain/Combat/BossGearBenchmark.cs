@@ -141,24 +141,23 @@ namespace FolkIdle.Server.Domain.Combat
             => Project(bossMonsterId, in gear, defeatedMask: 0, attackMultiplier);
 
         /// <summary>
-        /// Task 55: a boss challenge, projected. The same fight with two knobs
-        /// the challenges turn - the larder can be empty, and the weapon can be
-        /// of a lower quality tier than the rest of the set (0 = the same).
-        /// BossChallengeCalibrationTests measures every threshold with it.
+        /// Task 55: a boss challenge, projected - the same fight, with the larder
+        /// optionally empty. BossChallengeCalibrationTests measures every
+        /// threshold with it.
         /// </summary>
         public static BossFightProjection ProjectChallenge(
-            int bossMonsterId, in ReferenceLoadout gear, bool firstClear, bool withFood, int weaponQualityTier)
+            int bossMonsterId, in ReferenceLoadout gear, bool firstClear, bool withFood)
             => Project(bossMonsterId, in gear,
                 firstClear ? (byte)0 : BossFirstClearRules.MarkDefeated(0, bossMonsterId),
-                attackMultiplierOverride: 0.0, withFood, weaponQualityTier);
+                attackMultiplierOverride: 0.0, withFood);
 
         private static BossFightProjection Project(
             int bossMonsterId, in ReferenceLoadout gear, byte defeatedMask, double attackMultiplierOverride,
-            bool withFood = true, int weaponQualityTier = 0)
+            bool withFood = true)
         {
             MonsterDefinition boss = ContentRegistry.Monsters[bossMonsterId - 1];
 
-            CombatStats stats = BuildStats(in gear, weaponQualityTier);
+            CombatStats stats = BuildStats(in gear);
             long rawMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(
                 in stats, damageScalePerLevelPct: 0, level: gear.Level);
 
@@ -303,12 +302,12 @@ namespace FolkIdle.Server.Domain.Combat
         /// toward letting an invested player through, never toward walling one
         /// out.
         /// </summary>
-        private static CombatStats BuildStats(in ReferenceLoadout gear, int weaponQualityTier = 0)
+        private static CombatStats BuildStats(in ReferenceLoadout gear)
         {
             RaceAttributeGrowth.GetGrowthPerLevel(RaceIds.Human, out int str, out int dex, out int con, out int lck);
             int levels = gear.Level - 1;
 
-            EquippedAffixTotals totals = BuildEquippedTotals(in gear, weaponQualityTier);
+            EquippedAffixTotals totals = BuildEquippedTotals(in gear);
 
             return StatsCalculator.Calculate(
                 str * levels, dex * levels, con * levels, lck * levels,
@@ -324,9 +323,11 @@ namespace FolkIdle.Server.Domain.Combat
         /// grants - folded in by the SAME function the equip path uses, so a
         /// change to how an affix maps onto a stat cannot leave this behind.
         /// </summary>
-        private static EquippedAffixTotals BuildEquippedTotals(in ReferenceLoadout gear, int weaponQualityTier = 0)
+        private static EquippedAffixTotals BuildEquippedTotals(in ReferenceLoadout gear)
         {
             EquippedAffixTotals totals = default;
+            double qualityMultiplier = RarityTier.PowerMultiplier(gear.QualityTier);
+            int affixCount = RarityTier.GetAffixCount(gear.QualityTier);
 
             foreach (EquipmentSlotKind slot in ReferenceSlots)
             {
@@ -334,10 +335,6 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     continue;
                 }
-
-                int quality = slot == EquipmentSlotKind.Weapon && weaponQualityTier > 0 ? weaponQualityTier : gear.QualityTier;
-                double qualityMultiplier = RarityTier.PowerMultiplier(quality);
-                int affixCount = RarityTier.GetAffixCount(quality);
 
                 totals.FlatAttack += (int)Math.Round(definition.FlatAttackPower * qualityMultiplier);
                 totals.FlatDefense += (int)Math.Round(definition.FlatDefenseRating * qualityMultiplier);

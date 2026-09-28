@@ -18,8 +18,8 @@ namespace FolkIdle.Server.Domain.Combat
 
     /// <summary>
     /// Task 55: turning a boss kill into completed challenges and their chests.
-    /// Called off the tick by CosmeticGrantEngine, because the Humble challenge
-    /// needs the worn weapon's quality tier and that is a database fact.
+    /// Called off the tick by CosmeticGrantEngine, which owns the chest grant
+    /// and the loot-feed notice; the tick only records what the fight was.
     ///
     /// Raw SQL on snake_case tables with PascalCase quoted columns
     /// (CURRENT_IMPLEMENTATION_STATE.md §3).
@@ -27,21 +27,9 @@ namespace FolkIdle.Server.Domain.Combat
     public static class BossChallengeEngine
     {
         public static async Task<List<BossChallengeGrant>> JudgeKillAsync(
-            FolkIdleDbContext db, long playerId, int region, int level, bool ateDuringFight, long weaponInstanceId, DateTime utcNow)
+            FolkIdleDbContext db, long playerId, int region, int level, bool ateDuringFight, int fightTenths, DateTime utcNow)
         {
-            int weaponTier = 0;
-            if (weaponInstanceId > 0)
-            {
-                weaponTier = await db.EquipmentInstances.AsNoTracking()
-                    .Where(e => e.Id == weaponInstanceId && e.PlayerId == playerId)
-                    .Select(e => e.QualityTier)
-                    .FirstOrDefaultAsync();
-                // A weapon id the player no longer owns is not "no weapon": the
-                // fight was fought with something, so it cannot be judged Humble.
-                if (weaponTier == 0) weaponTier = int.MaxValue;
-            }
-
-            var met = BossChallengeRegistry.Met(region, level, ateDuringFight, weaponTier);
+            var met = BossChallengeRegistry.Met(region, level, ateDuringFight, fightTenths);
             var grants = new List<BossChallengeGrant>();
             if (met.Count == 0) return grants;
 

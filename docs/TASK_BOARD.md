@@ -4669,16 +4669,24 @@ agreed, and then built.
 regions 1-2, Epic 3-4, Legendary 5 (Claude's recommendation; the owner said
 "continue" without picking). `BossChallengeRegistry` / `BossChallengeEngine`,
 `boss_challenge_completions`, judged off the tick by `CosmeticGrantEngine`
-(the weapon's tier is a database fact), listed under each region on Combat.
+(the tick only records the fight), listed under each region on Combat.
 
 **Measured, then asserted** (`BossChallengeCalibrationTests`, with
-`BossGearBenchmark.ProjectChallenge` - no food, and a weapon tier apart from the
-set): against a boss already beaten once, at the wall's required gear, the
+`BossGearBenchmark.ProjectChallenge` - optionally with no food): against a boss already beaten once, at the wall's required gear, the
 lowest winning level is 6 / 26 / 32 / 38 / 46 fed and 20 / 54 / 72 / 85 / 97
 unfed. So challenges count on ANY kill - unfed is impossible on Malakor's first
 clear at every level. Level caps are the midpoint to the reference level:
-15 / 35 / 45 / 60 / 75. A Common weapon wins every fight at the reference level
-because armour carries it, so "Humble blade" is the gentle one.
+15 / 35 / 45 / 60 / 75.
+
+**Third challenge replaced before release (owner, 2026-09-28):** "Humble blade"
+(a Common weapon) asked nothing - a plain weapon still won every fight at the
+reference level, because armour carries it. It is **Swift** now, a time limit
+per boss: 80 / 110 / 120 / 110 / 110 s. Measured kill times on a beaten boss at
+the reference level: the wall's required gear takes 82 / 115 / 135 / 127 / 122 s
+(fails), the region's best gear at that level (quality +4) 76 / 106 / 117 / 105
+/ 100 s (makes it), and the next region's gear roughly halves the time. The
+fight's length is `CombatTargetTickAccumulator`, the same clock as the fastest
+boss kill record.
 
 **Not done:** the Book of Deeds line. Adding a deed to a chapter re-locks the
 Seal progress of anyone partway through it, and task 57 reworks the Book - do it

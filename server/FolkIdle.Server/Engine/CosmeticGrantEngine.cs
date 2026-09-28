@@ -42,14 +42,14 @@ namespace FolkIdle.Server.Engine
 
         /// <summary>Task 55: a region boss died - judge its challenges.</summary>
         public readonly record struct BossKillNote(
-            long PlayerId, int Region, int BossMonsterId, int Level, bool AteDuringFight, long WeaponInstanceId);
+            long PlayerId, int Region, int BossMonsterId, int Level, bool AteDuringFight, int FightTenths);
 
         public static readonly ConcurrentQueue<BossKillNote> BossKills = new();
 
-        public static void NoteBossKill(long playerId, int region, int bossMonsterId, int level, bool ateDuringFight, long weaponInstanceId)
+        public static void NoteBossKill(long playerId, int region, int bossMonsterId, int level, bool ateDuringFight, int fightTenths)
         {
             if (playerId <= 0 || region <= 0) return;
-            BossKills.Enqueue(new BossKillNote(playerId, region, bossMonsterId, level, ateDuringFight, weaponInstanceId));
+            BossKills.Enqueue(new BossKillNote(playerId, region, bossMonsterId, level, ateDuringFight, fightTenths));
         }
 
         public const int MaxNotesPerCycle = 500;
@@ -141,7 +141,7 @@ namespace FolkIdle.Server.Engine
                     using var scope = _serviceProvider.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                     var grants = await Domain.Combat.BossChallengeEngine.JudgeKillAsync(
-                        db, kill.PlayerId, kill.Region, kill.Level, kill.AteDuringFight, kill.WeaponInstanceId, DateTime.UtcNow);
+                        db, kill.PlayerId, kill.Region, kill.Level, kill.AteDuringFight, kill.FightTenths, DateTime.UtcNow);
                     grantedThisCycle += grants.Count;
 
                     foreach (var grant in grants)

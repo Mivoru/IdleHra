@@ -4738,12 +4738,13 @@ namespace FolkIdle.Server.Domain.Combat
                 // codex; this keeps the live session honest in between.
                 int clearedBossRegion = RaceUnlockRegistry.GetRegionForBossMonsterId(activeMonster.Id);
 
-                // Task 55: the boss challenges, judged off the tick - the weapon's
-                // rarity is a database fact - from what this fight was.
+                // Task 55: the boss challenges, judged off the tick from what this
+                // fight was. CombatTargetTickAccumulator is zeroed at the spawn
+                // and counts ticks, so it is the fight's length in tenths.
                 if (clearedBossRegion > 0)
                 {
                     CosmeticGrantEngine.NoteBossKill(payload.PlayerId, clearedBossRegion, activeMonster.Id,
-                        levelAtKill, payload.AteThisFight, payload.EquippedWeaponId);
+                        levelAtKill, payload.AteThisFight, (int)Math.Min(int.MaxValue, (long)payload.CombatTargetTickAccumulator));
                 }
 
                 // Task 51: every boss kill, first clear or farm, against the
