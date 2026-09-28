@@ -350,9 +350,10 @@ await page.waitForTimeout(4000);
   // Its own packet (ResponseLootDropPacket), its own two stores, so it can be
   // dead while everything around it works. Polled rather than sampled once:
   // gear drops on 15% of kills, so a single read a few seconds into a fight
-  // proves nothing either way.
+  // proves nothing either way. 60 s, not 25: two passing runs on 2026-09-28
+  // held exactly ONE row at 25 s, and the third held none - on a working feed.
   const lootPanel = await (async () => {
-    const deadline = Date.now() + 25000;
+    const deadline = Date.now() + 60000;
     let seen = { sections: [], rows: 0 };
     while (Date.now() < deadline) {
       seen = await page.evaluate(() => {
@@ -3313,6 +3314,18 @@ await go('Ancestors');
         .catch(() => false);
       const hp = () =>
         fresh.evaluate(() => Number(document.querySelector('.bar[role="progressbar"]')?.getAttribute('aria-valuenow') ?? -1));
+      // Modul: THIS PLAYER'S damage on the board, not the boss's HP. The HP is
+      // shared and LiveOps rescales it with the population every minute - a
+      // brand-new account coming online doubled it (75M -> 150M) inside this
+      // check's 10 s window, and a strike that landed read as "nothing
+      // happened" (2026-09-28, the same class as TASK_BOARD 53).
+      const myDamage = () =>
+        fresh.evaluate(async (base) => {
+          const token = sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token');
+          const res = await fetch(`${base}/api/v1/worldboss/board`, { headers: { Authorization: `Bearer ${token}` } });
+          if (!res.ok) return -1;
+          return Number((await res.json())?.Me?.Damage ?? 0);
+        }, API_BASE);
       // Under the wheel the one-press strike is the auto-strike. The screen
       // learns its mode from a REST call after it renders, so wait for it:
       // counting too early picked button.attack, which under the wheel opens
@@ -3331,6 +3344,7 @@ await go('Ancestors');
           await staleToasts.first().click().catch(() => {});
         }
         const before = await hp();
+        const damageBefore = await myDamage();
         await strike.click();
         await fresh
           .waitForFunction((n) => {
@@ -3342,11 +3356,18 @@ await go('Ancestors');
           }, before, { timeout: 10000 })
           .catch(() => {});
         const after = await hp();
+        let damageAfter = await myDamage();
+        for (let i = 0; i < 10 && damageAfter <= damageBefore; i++) {
+          await fresh.waitForTimeout(500);
+          damageAfter = await myDamage();
+        }
         const toastText = (await fresh.locator('.toast').allInnerTexts())
           .filter((t) => !/has been updated/i.test(t))
           .join(' | ');
-        landed = after >= 0 && after < before;
-        outcome = landed ? `hp ${before} -> ${after}` : toastText ? `told: ${toastText}` : `hp ${before} -> ${after}, no message`;
+        landed = damageBefore >= 0 && damageAfter > damageBefore;
+        outcome = landed
+          ? `my damage ${damageBefore} -> ${damageAfter} (hp ${before} -> ${after})`
+          : toastText ? `told: ${toastText}` : `my damage ${damageBefore} -> ${damageAfter}, hp ${before} -> ${after}, no message`;
       } else {
         const reason = await fresh.locator('.strike-reason').innerText().catch(() => '');
         outcome = reason ? `grey: ${reason}` : `window ${openStatus}, active ${active}, grey with no reason`;

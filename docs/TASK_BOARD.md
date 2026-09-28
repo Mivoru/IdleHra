@@ -4543,7 +4543,17 @@ Every item here is independent. Each is a sub-PR or all in one.
 
 **Done when:** `exercise` stays green and the geometry checkers stay clean.
 
-## 53. Flaky: Test_WorldBoss_AnOldSessionAndYesterdaysStrikeRefuseNothing
+## DONE - 53. Flaky: Test_WorldBoss_AnOldSessionAndYesterdaysStrikeRefuseNothing
+
+**Fixed 2026-09-28.** The test asserts on the player's own `TotalInflictedDamage`
+now, not on the shared boss HP. Two exercise checks had the same flaw:
+- the new-account strike read global HP, which LiveOps rescales within its
+  10 s window (seen both ways: 75M -> 150M and 75M -> 50M). It reads the
+  player's own row on `/worldboss/board` now;
+- the loot panel had 25 s to fill, and passing runs held exactly one row by
+  then. It has 60 s now.
+
+Original task:
 
 It failed once in a full run on 2026-09-28: the boss HP was off by exactly
 another test's 10,000-damage strike. It passes alone. The boss HP is
