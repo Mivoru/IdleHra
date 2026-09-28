@@ -38,7 +38,9 @@ export const CLIPS = {
   playerDied: 'combat_player_died.wav',
   playerDiedFemale: 'combat_player_died_female.wav',
   bossFirstClear: 'combat_boss_first_clear.wav',
-  lootDropped: 'loot_dropped.wav',
+  // Modul: NO PLAIN LOOT SOUND (owner, 2026-09-28): "I want the loot drop
+  // sound deleted and not played at all, only the rare loot." The clip and its
+  // file are gone; lootRare, pitched per tier, is the only loot sound.
   lootRare: 'loot_rare_dropped.wav',
   craftingCompleted: 'crafting_completed.wav',
   levelUp: 'level_up.wav',

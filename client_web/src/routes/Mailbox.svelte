@@ -11,7 +11,6 @@
   import { claimMailItem } from '../lib/net/commands';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
-  import { play } from '../lib/ui/audio';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
 
@@ -34,7 +33,6 @@
     const outcome = claimMailItem(entry.Id);
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
 
-    play('lootDropped');
   }
 
   function claimAll() {
@@ -48,7 +46,6 @@
     claimable.slice(0, 10).forEach((entry, index) => {
       setTimeout(() => claimMailItem(entry.Id), index * 250);
     });
-    play('lootDropped');
   }
 
   function received(epochSeconds: number): string {
