@@ -4866,3 +4866,24 @@ Delete the diamond packs too and just say the Store has nothing yet."
   price and no way to buy on the web. The Store says "Nothing here yet". The
   purchase path (`billing.ts`, `/api/v1/billing/*`, store registration) is
   untouched, for when payments are set up (Stripe is still parked).
+
+## DONE - 66. Background music, separate volumes, quiet Forge, centred World Boss (owner 2026-09-28)
+
+- **Music.** The owner's three soundtracks (`D:\FolkIdleSounds\soundtracks`)
+  live in `client/Assets/Resources/Audio/Music/` - NOT in LFS (the box has no
+  git-lfs; see `.gitattributes`), checked by `ops/validate_audio.py`. The server
+  lists them at `/audio/music` (the client keeps no track list) and streams
+  `/audio/music/<name>.mp3` with Range support. `lib/ui/music.ts` plays them
+  through one `<audio>` element everywhere in the game, starting on the first
+  gesture after sign-in, pausing when the app is hidden. Settings: separate
+  **Sound effects** and **Music** volumes (defaults 0.35 and 0.15), "play the
+  ticked songs in turn" or "repeat one song", a tick per track and a Play
+  button. Rules in `musicPlaylist.ts`, tested in `tests/music.test.ts`.
+- **Found on the way:** `audio.ts` read a MISSING volume as 0 (`Number(null)`),
+  so every new player started with sound effects silent and saved that 0. Read
+  fixed; the key moved to `folkidle.sfxVolume` so everyone gets the default once.
+- **The Forge is silent.** Result codes 10, 16, 19, 20, 23, 24, 25 make no tone
+  (`COMMAND_RESULT_SILENT_CODES`). The error tone also stopped firing on good
+  news (auto-reroll "stop condition met", a birth), which it did because it
+  tested `!== Success`. `tests/resultTones.test.ts`.
+- **World Boss** column centred on wide screens.

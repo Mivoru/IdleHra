@@ -155,6 +155,22 @@ export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
   35,
 ]);
 
+/**
+ * Results that make no sound at all (owner, 2026-09-28): "the auto-reroll
+ * notice plays the error sound whether it found the affix or not, and it is
+ * off-putting - I would leave the Forge's messages without sound".
+ *
+ * Every Forge answer: the auto-reroll run's three endings, and the refusals a
+ * Forge button can meet (top rarity, fusion's three-of-a-kind rule, the Forge
+ * level). The toast still says what happened; only the tone goes.
+ */
+export const COMMAND_RESULT_SILENT_CODES: ReadonlySet<number> = new Set([10, 16, 19, 20, 23, 24, 25]);
+
+/** Whether a batch of results deserves the error tone: a real refusal, not good news and not the Forge. */
+export function shouldPlayErrorTone(codes: readonly number[]): boolean {
+  return codes.some((code) => !COMMAND_RESULT_OK_CODES.has(code) && !COMMAND_RESULT_SILENT_CODES.has(code));
+}
+
 export interface CommandResultEntry {
   id: number;
   code: number;

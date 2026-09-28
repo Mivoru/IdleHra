@@ -521,9 +521,12 @@
 {/if}
 
 <style>
+  /* Centred on a wide screen (owner, 2026-09-28): a 34rem column hugging the
+     left edge of a 1900px window read as a layout that had not loaded. */
   .wrap {
     padding: 1rem;
     max-width: 34rem;
+    margin: 0 auto;
   }
 
   .panel {

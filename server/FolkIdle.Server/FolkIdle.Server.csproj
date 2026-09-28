@@ -39,6 +39,12 @@
       <Link>Audio/%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <!-- Background music (owner, 2026-09-28). Served at /audio/music/<name>.mp3
+         and listed at /audio/music, so the client keeps no track list. -->
+    <None Include="../../client/Assets/Resources/Audio/Music/*.mp3">
+      <Link>Audio/Music/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <!-- Modul: the generated 2D artwork, linked for the same reason as the audio

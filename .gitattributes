@@ -58,3 +58,9 @@
 # blanket *.wav rule for this one directory only. If music ever arrives it will
 # be large, will live somewhere else, and can go back into LFS on its own rule.
 client/Assets/Resources/Audio/*.wav !filter binary
+
+# Modul: THE MUSIC IS NOT AN LFS ASSET EITHER, for the same reason as the
+# clips above: the box has no git-lfs, so an LFS track would ship as a pointer
+# stub and play as silence. Three tracks, about 13 MB (owner's soundtracks,
+# 2026-09-28). Also last, to override the blanket *.mp3 rule.
+client/Assets/Resources/Audio/Music/*.mp3 !filter binary

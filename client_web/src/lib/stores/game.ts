@@ -28,7 +28,7 @@ import {
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
 import { pushCombatEvent, resetCombatLog, CombatEventKind, CombatEventFlag } from './combatLog';
-import { CommandResultFeed, COMMAND_RESULT_SUCCESS, type CommandResultEntry } from './commandResults';
+import { CommandResultFeed, COMMAND_RESULT_SUCCESS, shouldPlayErrorTone, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
 import type { QueryClient } from '@tanstack/svelte-query';
 import { play, playHit, playWithFallback } from '../ui/audio';
@@ -368,7 +368,10 @@ export function processCommandResults(
     commandResults.update((entries) => [...entries, ...results]);
     // One cue per batch, not per result: the ring buffer can deliver four
     // at once and four overlapping error tones is a noise, not a signal.
-    if (results.some((r) => r.code !== COMMAND_RESULT_SUCCESS)) play('error');
+    // Modul: and only for a real refusal. This tested `!== SUCCESS`, so the
+    // auto-reroll's "stop condition met" and a child's birth - both styled
+    // as good news - beeped as failures; the Forge is silent by request.
+    if (shouldPlayErrorTone(results.map((r) => r.code))) play('error');
     client.invalidateQueries();
   }
   return results;

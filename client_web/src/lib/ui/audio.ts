@@ -51,7 +51,13 @@ export const CLIPS = {
 
 export type ClipName = keyof typeof CLIPS;
 
-const VOLUME_KEY = 'folkidle.volume';
+// Modul: A NEW KEY, ON PURPOSE (2026-09-28). readNumber read a MISSING value as
+// 0 - Number(null) is 0, a valid volume - so every player who never touched the
+// slider started with sound effects at zero, and the subscription below then
+// saved that 0 back. Those saved zeros cannot be told apart from a real choice,
+// so the old 'folkidle.volume' key is simply no longer read: everyone gets the
+// default once, and Mute remains the way to silence the game.
+const VOLUME_KEY = 'folkidle.sfxVolume';
 const MUTED_KEY = 'folkidle.muted';
 
 // Declared before the subscriptions below, which fire SYNCHRONOUSLY at module
@@ -67,11 +73,15 @@ const pending = new Map<string, Promise<AudioBuffer | null>>();
 // expected to be in here until somebody authors the files; see playHit.
 const missing = new Set<string>();
 
-export const volume = writable(readNumber(VOLUME_KEY, 0.6));
+// Modul: 0.35, not 0.6, for a player who has never set it (owner, 2026-09-28:
+// "both not too loud by default, so they don't disturb"). A stored choice wins.
+export const volume = writable(readNumber(VOLUME_KEY, 0.35));
 export const muted = writable(localStorage.getItem(MUTED_KEY) === '1');
 
 function readNumber(key: string, fallback: number): number {
-  const raw = Number(localStorage.getItem(key));
+  const stored = localStorage.getItem(key);
+  if (stored === null || stored.trim() === '') return fallback;
+  const raw = Number(stored);
   return Number.isFinite(raw) && raw >= 0 && raw <= 1 ? raw : fallback;
 }
 
