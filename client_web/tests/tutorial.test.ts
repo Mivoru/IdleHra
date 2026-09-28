@@ -61,16 +61,19 @@ describe('what a new player is told next', () => {
     expect(prompt.index).toBe(1);
   });
 
-  it('moves to the fight once there is food to fight on', () => {
-    const prompt = nextTutorialStep(snapshot({ Food1_Count: 30 }))!;
-    expect(prompt.step).toBe(TutorialStep.WinAFight);
-    expect(prompt.screen).toBe('combat');
+  // 2026-09-28: the starter weapon is in the chest from the start, so wearing
+  // it comes BEFORE the fight rather than after the drop that used to be the
+  // first weapon.
+  it('moves to the weapon once there is food', () => {
+    const prompt = nextTutorialStep(snapshot({ Food1_Count: 10 }))!;
+    expect(prompt.step).toBe(TutorialStep.EquipADrop);
+    expect(prompt.screen).toBe('character');
   });
 
-  it('moves to gear once a level has been earned', () => {
-    expect(nextTutorialStep(snapshot({ Food1_Count: 30, CurrentLevel: 2 }))!.step).toBe(
-      TutorialStep.EquipADrop,
-    );
+  it('moves to the fight once there is food and a weapon', () => {
+    const prompt = nextTutorialStep(snapshot({ Food1_Count: 10, EquippedWeaponId: 41 }))!;
+    expect(prompt.step).toBe(TutorialStep.WinAFight);
+    expect(prompt.screen).toBe('combat');
   });
 
   it('falls silent when all three are done', () => {

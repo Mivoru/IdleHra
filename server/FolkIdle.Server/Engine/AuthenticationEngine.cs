@@ -619,6 +619,7 @@ namespace FolkIdle.Server.Engine
 
                     await db.SaveChangesAsync();
                     await StarterEquipmentGrant.EquipOnAsync(db, characterId, starterTools);
+                    await StarterEquipmentGrant.SeedStarterFoodAsync(db, player.Id);
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
 
@@ -863,6 +864,7 @@ namespace FolkIdle.Server.Engine
 
                     await db.SaveChangesAsync();
                     await StarterEquipmentGrant.EquipOnAsync(db, characterId, starterTools);
+                    await StarterEquipmentGrant.SeedStarterFoodAsync(db, player.Id);
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
 

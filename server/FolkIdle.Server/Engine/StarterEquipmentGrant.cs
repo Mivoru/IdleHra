@@ -36,10 +36,27 @@ namespace FolkIdle.Server.Engine
             "normal_fishing_rod_tool",
         };
 
+        /// <summary>
+        /// Modul: A WEAPON AND A LITTLE FOOD, 2026-09-28 - the owner's call,
+        /// reversing the 2026-09-23 "no starter weapon". A new player used to
+        /// open on "go fishing, or the first monster kills you", naked. Now the
+        /// chest holds a Normal region-1 claymore (region 1 asks no attribute,
+        /// see EquipmentAttributeGate) and a few fish, and the tutorial walks
+        /// the player through wearing one and loading the other - by hand,
+        /// because doing it is how they learn where those two things live.
+        /// Both go in the CHEST, not on the character, for exactly that reason.
+        ///
+        /// Ten fish, not a larder's worth: enough to win the first fights, few
+        /// enough that "fish, then load the larder" is still the lesson a few
+        /// minutes later.
+        /// </summary>
+        public const string StarterWeaponBaseId = "eq_steel_claymore_melee_weapon_slot_base";
+        public const int StarterFishCount = 10;
+
         public static List<EquipmentInstance> Seed(FolkIdleDbContext db, long playerId)
         {
-            var granted = new List<EquipmentInstance>(StarterToolBaseIds.Length);
-            foreach (string baseId in StarterToolBaseIds)
+            var granted = new List<EquipmentInstance>(StarterToolBaseIds.Length + 1);
+            foreach (string baseId in StarterToolBaseIds.Append(StarterWeaponBaseId))
             {
                 var rolled = new Dictionary<string, int>();
                 AffixRegistry.RollAffixes(
@@ -74,6 +91,16 @@ namespace FolkIdle.Server.Engine
         /// holding all three - the first thing they saw looked like a missing
         /// grant. Slots 8, 9 and 10 (CLAUDE.md "ELEVEN equipment slots").
         /// </remarks>
+        /// <summary>The starter fish, into the chest. See StarterFishCount.</summary>
+        public static async Task SeedStarterFoodAsync(FolkIdleDbContext db, long playerId)
+        {
+            int fishId = FoodRegistry.FirstRawFishOfTier(1);
+            if (fishId <= 0) return;
+            string fishBaseId = ContentRegistry.GetItemBaseId(fishId);
+            if (string.IsNullOrEmpty(fishBaseId)) return;
+            await CommodityLedger.AddAsync(db, playerId, fishBaseId, StarterFishCount);
+        }
+
         public static async Task EquipOnAsync(FolkIdleDbContext db, Guid characterId, IReadOnlyList<EquipmentInstance> tools)
         {
             var character = db.CharacterRecords.Local.FirstOrDefault(c => c.Id == characterId)

@@ -3919,15 +3919,23 @@ namespace FolkIdle.Server.Tests
                 // SOMETHING could be crafted on day one, which read to players
                 // as a glitch because a pile of ore appearing in an empty
                 // account is one.
+                // Since 2026-09-28 also ten region-1 fish (the owner's starter
+                // food), so two rows: gold and the fish.
                 int commodityCount = await verifyDb.CommodityRecords.AsNoTracking().CountAsync(c => c.PlayerId == playerId);
-                Assert.Equal(1, commodityCount);
+                Assert.Equal(2, commodityCount);
+                long fish = await verifyDb.CommodityRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == playerId && c.ItemId != "gold")
+                    .Select(c => c.Quantity)
+                    .SingleAsync();
+                Assert.Equal(StarterEquipmentGrant.StarterFishCount, fish);
 
                 // What replaced it: the three tools gathering actually needs.
                 // An account owning none of them could not usefully work any of
                 // the three professions the game opens on.
                 int toolCount = await verifyDb.EquipmentInstances.AsNoTracking()
                     .CountAsync(e => e.PlayerId == playerId);
-                Assert.Equal(StarterEquipmentGrant.StarterToolBaseIds.Length, toolCount);
+                // Plus the starter weapon.
+                Assert.Equal(StarterEquipmentGrant.StarterToolBaseIds.Length + 1, toolCount);
 
                 // And WORN, on the first character - slots 8, 9 and 10. They
                 // used to sit in the chest, so a new Character screen showed
@@ -3940,6 +3948,10 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal("normal_axe_tool", tools[main.EquippedAxeId!.Value]);
                 Assert.Equal("normal_pickaxe_tool", tools[main.EquippedPickaxeId!.Value]);
                 Assert.Equal("normal_fishing_rod_tool", tools[main.EquippedRodId!.Value]);
+                // The weapon stays in the chest: wearing it is the tutorial's
+                // second guided step, and doing it is the lesson.
+                Assert.Contains(StarterEquipmentGrant.StarterWeaponBaseId, tools.Values);
+                Assert.Null(main.EquippedWeaponId);
             }
         }
 

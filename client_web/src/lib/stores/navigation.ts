@@ -38,6 +38,22 @@ export function requestScreen(screen: string, options: { focusEquipmentId?: numb
 }
 
 /**
+ * The screen on show, published by App.svelte.
+ *
+ * Modul: only App held it (as local state), which was fine while nothing else
+ * needed to know. The guided tutorial does: it has to tell "the player is on
+ * the wrong screen - offer the way there" from "the player is here - light the
+ * control". Read-only outside App.
+ */
+const shownScreen = writable<string>('hub');
+
+export const currentScreen = { subscribe: shownScreen.subscribe };
+
+export function publishCurrentScreen(screen: string): void {
+  shownScreen.set(screen);
+}
+
+/**
  * Sign-out, asked for from a screen.
  *
  * Modul: on a phone Sign out is no longer in the header - it took a whole row

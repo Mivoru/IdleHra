@@ -56,20 +56,34 @@ export type TutorialStepValue = (typeof TutorialStep)[keyof typeof TutorialStep]
  * Equipment moves to last because that is also its real position: a weapon
  * comes off a corpse, so it cannot precede the kill that drops it.
  */
+/*
+ * Modul: 2026-09-28 - A STARTER KIT, AND THE WEAPON MOVES UP. The owner
+ * reversed "no starter weapon": a new account now starts with ten fish and a
+ * Normal claymore in the chest (StarterEquipmentGrant). So the order is
+ * larder, weapon, THEN the fight - the fight is winnable once both are done,
+ * and wearing the weapon no longer has to wait for a drop. The first two
+ * steps are GUIDED (guided.ts): the screen dims and only the one control the
+ * step needs can be pressed.
+ */
 const STEPS = [
   {
     step: TutorialStep.StockTheLarder,
-    // Modul: ALL THREE SLOTS. This read Food1_Count alone, so a player whose
-    // food sat in slot two or three was told to fill a larder that was full -
-    // caught by a screenshot where the banner asked for food beside a briefing
-    // reporting 1,609 bites. The larder is three slots and any of them counts.
     done: (s: StateUpdate) =>
       Number(s.Food1_Count) + Number(s.Food2_Count) + Number(s.Food3_Count) > 0,
     screen: 'larder' as const,
     title: 'Fill the larder',
     body:
-      'Start by fishing, then load the catch into Auto-Eat. It heals you mid-fight, and ' +
-      'without it the very first monster will kill you before you can kill it.',
+      'Your first fish are in the chest. Load them into Auto-Eat - it heals you mid-fight, ' +
+      'and without food the very first monster will kill you. When they run out, fish for more.',
+  },
+  {
+    step: TutorialStep.EquipADrop,
+    done: (s: StateUpdate) => Number(s.EquippedWeaponId) > 0,
+    screen: 'character' as const,
+    title: 'Wear your weapon',
+    body:
+      'A claymore is waiting in your chest. Open Character, tap the weapon slot and wear it - ' +
+      'gear is where nearly all of your power comes from, not levels.',
   },
   {
     step: TutorialStep.WinAFight,
@@ -80,15 +94,6 @@ const STEPS = [
     body:
       'Now open Combat and press Fight on Field Mouse. Your character keeps fighting on its ' +
       'own, even after you close the page.',
-  },
-  {
-    step: TutorialStep.EquipADrop,
-    done: (s: StateUpdate) => Number(s.EquippedWeaponId) > 0,
-    screen: 'character' as const,
-    title: 'Put something on',
-    body:
-      'Monsters drop equipment. Open Character and click a slot to wear it - gear is where ' +
-      'nearly all of your power comes from, not levels.',
   },
 ] as const;
 
