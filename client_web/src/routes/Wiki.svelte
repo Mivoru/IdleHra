@@ -611,6 +611,19 @@
             None of them could be obtained or spent, nobody held one, and they were removed.
           </p>
 
+          <h3 id="cosmetics">Cosmetics: chests, avatars and frames</h3>
+          <p>
+            A <strong>cosmetic chest</strong> comes in four rarities - Common, Rare, Epic and
+            Legendary - and opens into an avatar or a frame of the same rarity, in the
+            <strong>Wardrobe</strong>. Your avatar and frame show next to your name in chat, on
+            the leaderboards, in your guild and on your profile. None of it makes you stronger.
+          </p>
+          <ul class="styled-list">
+            <li><strong>Every fifth level</strong> pays one chest: 50% Common, 30% Rare, 15% Epic, 5% Legendary.</li>
+            <li><strong>Any monster</strong> can drop one, about as often as an item of the matching tier: Common like a Mythic item, Rare like Relic, Epic like Ancient, Legendary like Divine. Luck does not change these odds.</li>
+            <li>Avatars are the portraits of the world's monsters - the further in, the rarer; your own race's portrait is always free.</li>
+          </ul>
+
           <h3 id="database">Item database</h3>
           <p class="dim small">Every item in the catalogue, searchable.</p>
           <WikiItemDatabase {registry} />

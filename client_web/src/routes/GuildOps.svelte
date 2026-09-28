@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice, typicalHit } from '../lib/stores/game';
   import {
@@ -815,6 +816,7 @@
           {#each members as member (member.PlayerId)}
             <li>
               <span class="who" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
+                <PlayerAvatar playerId={member.PlayerId} size="sm" />
                 {nameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}
                 <span class="dim tiny">[{ROLE_NAMES[member.Role] ?? 'Unknown'}]</span>
                 {#if member.PlayerId === connection.currentPlayerId}

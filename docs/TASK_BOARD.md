@@ -4611,7 +4611,26 @@ world boss tests (their own collection) or assert on the damage this test's
 player dealt instead of a global HP delta. Read the CLAUDE.md paragraph on
 static queues first.
 
-## 54. Cosmetics: avatars and profile frames (DESIGN WITH THE OWNER FIRST)
+## 54. Cosmetics: avatars and profile frames - PHASES 1-3 BUILT, MARKET OPEN
+
+**Designed with the owner 2026-09-28**, plan:
+`docs/superpowers/plans/2026-09-28-task-54-cosmetics.md`. Built the same day:
+- `CosmeticRegistry` (4 chests, 25 monster-portrait avatars, 16 drawn frames),
+  `cosmetic_items`, and three `PlayerRecords` columns.
+- Chests from kills (live and offline, in the loot worker's transaction, at the
+  twin item tier's rate - about 1 in 2,622 kills for Common, 1 in 131,111 for
+  Legendary) and one per five levels (`CosmeticGrantEngine`, idempotent; the
+  first login after release is the backfill).
+- The Wardrobe screen, `Avatar`/`PlayerAvatar`, and faces in chat, both
+  boards, the guild roster, the world boss board, the profile and Character.
+- `CosmeticTests` (server), `tests/cosmetics.test.ts` (client mirrors),
+  `exercise.mjs` opens and wears a chest and restores the face.
+
+**Still open - phase 4, the market:** list/buy/cancel chests and cosmetics at
+the seller's price (no corridor, owner decision), with the equipment tax.
+
+Original task:
+
 
 This is the owner's replacement for the Chronicle pass: rewards that do not
 add power (see `PowerCeilingTests`).

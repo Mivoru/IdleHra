@@ -141,10 +141,11 @@ own header/Character figure. Not shown: the tab bar, the combat view, the
 loot list, market rows (only the item itself), and any row already at its
 touch-target height where a 32px portrait would not fit - these get nothing
 rather than a squeezed picture. One `Avatar.svelte` component (portrait +
-frame, sizes sm/md/lg) is used everywhere so the rule is in one place.
-The REST payloads that list players (leaderboards, guild roster, world boss
-board, profile) gain `AvatarId`/`FrameId`/`RaceId`; chat uses the batched
-`worn` lookup, cached.
+frame, sizes sm/md/tile/lg) is used everywhere so the rule is in one place.
+**As built:** every place uses the one batched `worn` lookup
+(`stores/worn.ts`, `PlayerAvatar.svelte`) rather than growing
+`AvatarId`/`FrameId`/`RaceId` on six different payloads - six copies of one
+fact would be the drift this codebase keeps paying for.
 
 ## The screen
 

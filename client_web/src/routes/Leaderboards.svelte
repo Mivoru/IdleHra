@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import {
     queryKeys,
@@ -57,6 +58,7 @@
             <li class:self={row.PlayerId === connection.currentPlayerId}>
               <span class="rank dim">#{row.Rank}</span>
               <button class="who who-btn" onclick={() => (inspectPlayerId = row.PlayerId)}>
+                <PlayerAvatar playerId={row.PlayerId} size="sm" />
                 {row.Name}
                 {#if row.Title}<span class="title tiny">{row.Title}</span>{/if}
               </button>
@@ -92,6 +94,7 @@
                  page's own text colour, so the decorated names stand out by
                  contrast rather than by shouting. -->
             <span class="who" style={tierNameStyle(row.TierId)} title={row.TierName}>
+              <PlayerAvatar playerId={row.PlayerId} size="sm" />
               {row.DisplayName}
             </span>
             {#if row.TierName}
@@ -144,6 +147,11 @@
 {/if}
 
 <style>
+  /* Task 54: the face sits inside the name cell, so the grid keeps its columns. */
+  .who :global(.avatar) {
+    margin-right: 0.3rem;
+  }
+
   .tabs {
     display: flex;
     gap: 0.5rem;

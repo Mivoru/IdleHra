@@ -2017,6 +2017,52 @@ await go('The Delve');
   }
 }
 
+// --- task 54: a cosmetic chest, opened and worn, then put back ---------------
+// A real chest is thousands of kills or five levels away, so the dev tool puts
+// one in the fixture's hands through the real insert. Everything after that is
+// the screen: the Open button, the reveal, Wear it. Round-trips the worn avatar
+// and frame so the next run starts from the same face.
+{
+  const before = await apiGet('/api/v1/cosmetics');
+  const cosmeticsHeld = (view) => (view?.Owned ?? []).filter((o) => o.Kind !== 0).length;
+  const granted = await apiPostStatus('/api/v1/dev/cosmetics/chest', { Rarity: 2 });
+  await go('Wardrobe');
+  await page.waitForTimeout(800);
+  const openButton = page.getByTestId('open-chest-2');
+  const openable = granted === 200 && (await openButton.count()) > 0 && (await openButton.isEnabled());
+  record('the Wardrobe offers the granted chest', openable, `grant ${granted}, button ${await openButton.count()}`);
+  if (openable) {
+    await openButton.click();
+    await page.waitForTimeout(1500);
+    const after = await apiGet('/api/v1/cosmetics');
+    record(
+      'opening a chest turns it into a cosmetic',
+      Boolean(after) && cosmeticsHeld(after) === cosmeticsHeld(before) + 1 && after.Chests[2] === (before?.Chests[2] ?? 0),
+      after ? `cosmetics ${cosmeticsHeld(before)} -> ${cosmeticsHeld(after)}, rare chests ${after.Chests[2]}` : 'no view',
+    );
+    const reveal = page.getByTestId('chest-reveal');
+    const revealed = (await reveal.count()) > 0 ? ((await reveal.textContent()) ?? '').trim().replace(/\s+/g, ' ') : '';
+    record('the reveal names what came out', revealed.length > 0, revealed);
+
+    await reveal.getByRole('button', { name: 'Wear it' }).click().catch(() => {});
+    await page.waitForTimeout(1200);
+    const worn = await apiGet('/api/v1/cosmetics');
+    const newest = [...(after?.Owned ?? [])].filter((o) => o.Kind !== 0).sort((a, b) => b.Id - a.Id)[0];
+    const wearing = newest?.Kind === 1 ? worn?.EquippedAvatarId : worn?.EquippedFrameId;
+    record('Wear it puts it on, on the server', Boolean(newest) && wearing === newest.DefinitionId, `${newest?.DefinitionId} worn as ${wearing}`);
+
+    // Put the face back as it was.
+    await apiPost('/api/v1/cosmetics/equip', { Kind: 1, Id: before?.EquippedAvatarId ?? null });
+    await apiPost('/api/v1/cosmetics/equip', { Kind: 2, Id: before?.EquippedFrameId ?? null });
+    const restored = await apiGet('/api/v1/cosmetics');
+    record(
+      'the fixture wears what it wore before',
+      restored?.EquippedAvatarId === (before?.EquippedAvatarId ?? null) && restored?.EquippedFrameId === (before?.EquippedFrameId ?? null),
+      `${restored?.EquippedAvatarId ?? 'default'} / ${restored?.EquippedFrameId ?? 'no frame'}`,
+    );
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character

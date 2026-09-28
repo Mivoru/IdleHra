@@ -8,6 +8,7 @@
   import VictoryCard from './lib/ui/VictoryCard.svelte';
   import TabBar from './lib/ui/TabBar.svelte';
   import { hotkeyTab } from './lib/ui/tabs';
+  import { refreshUnopenedChests } from './lib/stores/cosmeticChests';
   import { PREF_LAST_SCREEN, readPrefAs, writePref } from './lib/net/prefs';
   import DeathCard from './lib/ui/DeathCard.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
@@ -98,6 +99,8 @@
       name: 'Items',
       screens: [
         { key: 'character', label: 'Character' },
+        // Task 54: cosmetic chests, avatars and frames.
+        { key: 'wardrobe', label: 'Wardrobe' },
         { key: 'chest', label: 'Chest' },
         { key: 'larder', label: 'Auto-Eat' },
         { key: 'crafting', label: 'Crafting' },
@@ -206,6 +209,7 @@
     combat: () => import('./routes/Combat.svelte'),
     gathering: () => import('./routes/Gathering.svelte'),
     character: () => import('./routes/Character.svelte'),
+    wardrobe: () => import('./routes/Wardrobe.svelte'),
     larder: () => import('./routes/Larder.svelte'),
     crafting: () => import('./routes/Crafting.svelte'),
     forge: () => import('./routes/Forge.svelte'),
@@ -317,6 +321,8 @@
   $effect(() => {
     if (token) {
       startSession(token);
+      // Task 54: the level-chest backfill lands at login; count what waits.
+      refreshUnopenedChests();
       return () => endSession();
     }
   });

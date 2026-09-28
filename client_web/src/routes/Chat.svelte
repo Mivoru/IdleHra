@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   // Modul: this is the chat PANEL. It renders full-page on its own route and
   // inside the floating dock (see ChatDock.svelte) - the dock is where the
   // collapse state and the unread marker live, so this file stays a plain
@@ -341,6 +342,7 @@
             class:self={message.senderPlayerId === connection.currentPlayerId}
             onclick={(e) => openContextMenu(e, displayName(message.senderPlayerId), message.senderPlayerId)}
           >
+            {#if message.channelType !== ANNOUNCEMENT}<PlayerAvatar playerId={message.senderPlayerId} size="sm" />{/if}
             {displayName(message.senderPlayerId)}
           </button>
           <span class="text" class:announcement={message.channelType === ANNOUNCEMENT}>
@@ -425,6 +427,11 @@
 {/if}
 
 <style>
+  /* Task 54: the face sits inside the name cell, so the grid keeps its columns. */
+  .who :global(.avatar) {
+    margin-right: 0.3rem;
+  }
+
   .wrap {
     padding: 1rem;
   }
