@@ -4436,7 +4436,25 @@ Original task:
 - `GET /api/v1/admin/season` (owner token) answers `Paused: true`;
 - a new guest at 390px meets the guided larder step and the tab bar.
 
-## 49. Wear a drop from the loot list
+## DONE - 49. Wear a drop from the loot list
+
+**Built 2026-09-28.**
+- `ResponseLootDropPacket` carries `InstanceId` (22 -> 30 bytes), stamped
+  after SaveChanges, so Wear names the exact row that dropped. Before, it
+  would have had to guess among identical pieces.
+- `GET /api/v1/player/worn` returns the MAIN character's worn pieces (at most
+  11 rows), because that is who `EquipItem` with no target dresses. The
+  inventory route is 3.2 MB on a big chest.
+- `lootCompare.ts` scales base power by `powerMultiplier`, a mirror of
+  `RarityTier.PowerMultiplier` pinned in `serverMirrors.test.ts`. The row
+  says "+12 ATK · 2 tiers above your Rare".
+- Found on the way, and still open: `Affixes.svelte` shows a piece's base
+  Attack/Defence UNSCALED by rarity, so a Legendary and a Normal of one sword
+  read the same. Use `pieceTotals` there.
+- `exercise` wears a real drop, checks `/player/worn`, and puts the fixture's
+  own piece back (`__folkidleEquip`, dev only).
+
+Original task:
 
 **Problem.** A drop lands in `SessionLoot` (Combat, Gathering). Wearing it
 takes Character -> slot -> picker -> Wear, and nothing says whether it is
@@ -4458,7 +4476,20 @@ taps.
   worn item changes;
 - `check:touch` passes.
 
-## 50. A drop worth having looks like one
+## DONE - 50. A drop worth having looks like one
+
+**Built 2026-09-28.**
+- `lootFeel.ts` decides what a drop earns:
+  - Rare+ (tier 4): a row burst, at most one every 5 s;
+  - Legendary+ (tier 7): `LootReveal.svelte`, a non-modal card for 1.5 s
+    with Wear. It holds on pointer MOVEMENT, not pointerenter, because a card
+    that lands under a resting cursor otherwise never leaves;
+  - Rare+ plays `lootRare` at `playbackRate` 2^((tier-4)/12), one semitone
+    per tier. No new clip.
+- `__folkidleDemoDrop(tier)` (dev only) drives the real `acceptLootDrop`, and
+  `exercise` checks that the card appears and leaves.
+
+Original task:
 
 **Problem.** A Legendary arrives as one more row. The audit's "game feel"
 section asks for a reveal on Rare and better only.

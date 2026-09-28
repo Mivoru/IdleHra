@@ -177,13 +177,19 @@ function playBuffer(buffer: AudioBuffer): void {
   source.start();
 }
 
-export function play(name: ClipName): void {
+/**
+ * `rate` is playbackRate - it moves pitch and length together, which is what
+ * lets one rare-loot clip rise a step per rarity tier (lootFeel.ts) without a
+ * second recording.
+ */
+export function play(name: ClipName, rate = 1): void {
   if (get(muted) || !context || !masterGain) return;
 
   void loadClip(CLIPS[name]).then((buffer) => {
     if (!buffer || !context || !masterGain || get(muted)) return;
     const source = context.createBufferSource();
     source.buffer = buffer;
+    source.playbackRate.value = rate;
     source.connect(masterGain);
     source.start();
     // No pooling: an AudioBufferSourceNode is single-use by design and the

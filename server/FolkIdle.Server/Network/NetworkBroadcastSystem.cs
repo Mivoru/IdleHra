@@ -1919,6 +1919,16 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Modul: task 49. What the main character wears, and nothing else -
+            // the loot list compares a fresh drop against the piece it would
+            // replace, and the inventory route below is 3.2 MB on a long-played
+            // account. Eleven rows at most.
+            if (requestPath == "/api/v1/player/worn" && context.Request.HttpMethod == "GET")
+            {
+                await HandlePlayerWornSnapshot(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/player/inventory" && context.Request.HttpMethod == "GET")
             {
                 await HandlePlayerInventorySnapshot(context);
@@ -7159,6 +7169,93 @@ namespace FolkIdle.Server.Network
         /// rule below is the same one, for the same reason (see that type's
         /// comment on why the backpack/stash split is not exposed).
         /// </summary>
+        private sealed class WornPieceResponse
+        {
+            public long InstanceId { get; set; }
+            public string BaseItemId { get; set; } = string.Empty;
+            public int QualityTier { get; set; }
+            public int SlotIndex { get; set; }
+        }
+
+        // Modul: THE MAIN CHARACTER's gear, because that is who EquipItem with
+        // Guid.Empty dresses (ResolveCharacterForUpdateAsync: the character whose
+        // Id is PlayerRecords.PlayerGuid). The loot list's Wear sends no target,
+        // so comparing against anyone else would compare against a piece the
+        // press does not replace. All ELEVEN slots - the tools included.
+        private async Task HandlePlayerWornSnapshot(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var mainGuid = await db.PlayerRecords.AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => p.PlayerGuid)
+                    .FirstOrDefaultAsync();
+                var main = mainGuid == Guid.Empty
+                    ? null
+                    : await db.CharacterRecords.AsNoTracking()
+                        .FirstOrDefaultAsync(c => c.Id == mainGuid && c.PlayerId == playerId);
+
+                var pieces = new List<WornPieceResponse>(11);
+                if (main != null)
+                {
+                    var slotByInstance = new Dictionary<long, int>(11);
+                    void Worn(long? id, int slot)
+                    {
+                        if (id.HasValue) slotByInstance[id.Value] = slot;
+                    }
+                    Worn(main.EquippedWeaponId, EquipmentSlotEngine.SlotWeapon);
+                    Worn(main.EquippedHelmetId, EquipmentSlotEngine.SlotHelmet);
+                    Worn(main.EquippedChestId, EquipmentSlotEngine.SlotChest);
+                    Worn(main.EquippedGlovesId, EquipmentSlotEngine.SlotGloves);
+                    Worn(main.EquippedLeggingsId, EquipmentSlotEngine.SlotLeggings);
+                    Worn(main.EquippedBootsId, EquipmentSlotEngine.SlotBoots);
+                    Worn(main.EquippedAmuletId, EquipmentSlotEngine.SlotAmulet);
+                    Worn(main.EquippedRingId, EquipmentSlotEngine.SlotRing);
+                    Worn(main.EquippedAxeId, EquipmentSlotEngine.SlotAxe);
+                    Worn(main.EquippedPickaxeId, EquipmentSlotEngine.SlotPickaxe);
+                    Worn(main.EquippedRodId, EquipmentSlotEngine.SlotRod);
+
+                    var ids = slotByInstance.Keys.ToList();
+                    var rows = await db.EquipmentInstances.AsNoTracking()
+                        .Where(e => e.PlayerId == playerId && ids.Contains(e.Id))
+                        .Select(e => new { e.Id, e.BaseItemId, e.QualityTier })
+                        .ToListAsync();
+                    foreach (var row in rows)
+                    {
+                        pieces.Add(new WornPieceResponse
+                        {
+                            InstanceId = row.Id,
+                            BaseItemId = row.BaseItemId,
+                            QualityTier = row.QualityTier,
+                            SlotIndex = slotByInstance[row.Id]
+                        });
+                    }
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new { Pieces = pieces });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Player worn snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
         private async Task HandlePlayerMaterialsSnapshot(HttpListenerContext context)
         {
             try

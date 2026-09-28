@@ -1380,6 +1380,16 @@ export function equipRequirement(
   return { attribute, minimum: EQUIP_REQUIREMENT_PER_REGION_TIER * (regionTier - 1) };
 }
 
+/**
+ * Wear one equipment instance on the MAIN character (no TargetGuid - the
+ * server resolves Guid.Empty to the character whose Id is PlayerGuid). The loot
+ * list and the reveal card both compare against /player/worn, which is that
+ * same character, so the comparison and the press agree about who is dressed.
+ */
+export function wearOnMain(instanceId: number): void {
+  connection.send({ Command: CommandType.EquipItem, TargetId: instanceId });
+}
+
 /** Refund every placed point. Free - see the server handler for why. */
 export function respecAttributes(): CommandOutcome {
   connection.send({ Command: CommandType.RespecAttributes });

@@ -27,6 +27,13 @@
   import { itemName, type ContentRegistry } from '../net/content';
   import { rarityColor, shouldGlow, rarityName, killsPerRarity } from './rarity';
   import Burst from './Burst.svelte';
+  import { createQuery } from '@tanstack/svelte-query';
+  import { playerState } from '../stores/game';
+  import { lootFlash } from '../stores/game';
+  import { queryKeys, fetchWorn } from '../net/rest';
+  import { wearOnMain } from '../net/commands';
+  import { play } from './audio';
+  import { compareDrop, comparisonLine, dropRequirement, isUpgrade } from './lootCompare';
 
   interface Props {
     registry: ContentRegistry | null;
@@ -51,6 +58,8 @@
     quantity: number;
     count: number;
     newest: number;
+    /** Equipment rows only: the instances this row stands for, newest first. */
+    instanceIds: number[];
   }
 
   function aggregate(entries: LootEntry[]): Row[] {
@@ -65,6 +74,7 @@
         existing.quantity += entry.quantity;
         existing.count += 1;
         existing.newest = Math.max(existing.newest, entry.atMs);
+        if (entry.instanceId > 0) existing.instanceIds.push(entry.instanceId);
       } else {
         byKey.set(key, {
           key,
@@ -74,6 +84,7 @@
           quantity: entry.quantity,
           count: 1,
           newest: entry.atMs,
+          instanceIds: entry.instanceId > 0 ? [entry.instanceId] : [],
         });
       }
     }
@@ -85,6 +96,50 @@
 
   const equipmentRows = $derived(aggregate($lootLogEquipment as LootEntry[]));
   const materialRows = $derived(aggregate($lootLogMaterials as LootEntry[]));
+
+  // Modul: TASK 49 - WEAR IT FROM HERE. The game's main decision used to be
+  // four taps away (Character -> slot -> picker -> Wear) with nothing saying
+  // whether the drop beat what was worn. The row now says so and wears it.
+  //
+  // Wear sends EquipItem with NO TargetGuid, which the server resolves to the
+  // MAIN character - so the comparison is against /player/worn, which is that
+  // same character's gear. The instance id is the exact row that dropped
+  // (ResponseLootDropPacket.InstanceId), never a guess among identical pieces.
+  const worn = createQuery(() => ({
+    queryKey: queryKeys.worn,
+    queryFn: fetchWorn,
+    enabled: showEquipment && equipmentRows.some((r) => r.instanceIds.length > 0),
+  }));
+  const wornPieces = $derived(worn.data?.Pieces ?? []);
+  const wornIds = $derived(new Set(wornPieces.map((p) => p.InstanceId)));
+
+  // Pressed but not yet confirmed. Cleared whenever the worn list refetches
+  // (every command result invalidates it), so a refusal - the piece was swept,
+  // or sold - brings the button back beside the toast that explains it, rather
+  // than leaving a row that silently lost its button.
+  let pending = $state<number[]>([]);
+  $effect(() => {
+    void worn.dataUpdatedAt;
+    pending = [];
+  });
+
+  function requirementFor(itemId: number) {
+    const def = registry?.items.get(itemId);
+    return def ? dropRequirement(registry, def.BaseId, $playerState ?? {}) : null;
+  }
+
+  function comparisonFor(row: Row) {
+    const def = registry?.items.get(row.itemId);
+    if (!def || !worn.data) return null;
+    return compareDrop(registry, def.BaseId, row.qualityTier, wornPieces);
+  }
+
+  function wear(instanceId: number) {
+    pending = [...pending, instanceId];
+    wearOnMain(instanceId);
+    // On send, like every command: a refusal answers with the error tone.
+    play('itemEquipped');
+  }
 
   const equipmentCount = $derived(equipmentRows.reduce((n, r) => n + r.count, 0));
   const materialCount = $derived(materialRows.reduce((n, r) => n + r.quantity, 0));
@@ -129,7 +184,12 @@
       <ul>
         {#each equipmentRows as row (row.key)}
           {@const isRare = shouldGlow(row.qualityTier)}
-          <li class:rare={isRare} class:folk-sweep={isRare}>
+          {@const isWorn = row.instanceIds.some((id) => wornIds.has(id))}
+          {@const target = row.instanceIds.find((id) => !wornIds.has(id) && !pending.includes(id))}
+          {@const cmp = comparisonFor(row)}
+          {@const req = requirementFor(row.itemId)}
+          <li class="eq" class:rare={isRare} class:folk-sweep={isRare} data-loot-row={row.instanceIds[0] ?? 0}>
+            <div class="line">
             <!-- Modul: A TOP-TIER DROP LOOKED LIKE EVERY OTHER LINE OF TEXT.
                  Gated on shouldGlow - tier 10 and up - for the reason that
                  function exists: an effect on every drop is an effect on none. -->
@@ -137,6 +197,17 @@
               <span class="burstwrap">
                 <Burst color={rarityColor(row.qualityTier)} reach={2.4} count={10} />
               </span>
+            {/if}
+            <!-- Modul: TASK 50 - a Rare+ drop bursts on its own row, at most one
+                 every 5 s (lootFeel.ts). Keyed on the flash id so a second drop
+                 of the same piece bursts again rather than reusing the spent
+                 sparks. Hidden under reduced motion by app.css's rule. -->
+            {#if $lootFlash && $lootFlash.itemId === row.itemId && $lootFlash.qualityTier === row.qualityTier}
+              {#key $lootFlash.id}
+                <span class="burstwrap flash">
+                  <Burst color={rarityColor(row.qualityTier)} reach={1.8} count={8} />
+                </span>
+              {/key}
             {/if}
 
             <!-- Modul: NAME THE RARITY, do not only colour it.
@@ -150,6 +221,22 @@
             </span>
             <span class="tier" style="color: {rarityColor(row.qualityTier)}">{rarityName(row.qualityTier)}</span>
             <span class="qty">x{row.count}</span>
+            {#if isWorn}
+              <span class="worntag">Worn</span>
+            {:else if target !== undefined}
+              <button
+                class="wear"
+                data-loot-wear={target}
+                disabled={req !== null && !req.met}
+                title={req && !req.met ? `This piece ${req.text}.` : 'Wear it on your main character'}
+                onclick={() => wear(target)}>Wear</button>
+            {/if}
+            </div>
+            {#if cmp && !isWorn}
+              <div class="cmp" class:up={isUpgrade(cmp)} class:down={!isUpgrade(cmp)}>
+                {comparisonLine(cmp)}{#if req && !req.met}<span class="unmet"> · {req.text}</span>{/if}
+              </div>
+            {/if}
           </li>
         {/each}
       </ul>
@@ -263,6 +350,49 @@
        overflow from .folk-sweep - the sweep and the sparks overshoot the row
        on purpose and must be clipped. */
     flex: none;
+  }
+
+  li.eq {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.1rem;
+  }
+
+  .line {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .wear {
+    flex-shrink: 0;
+    font-size: 0.75rem;
+    padding: 0.15rem 0.6rem;
+  }
+
+  .worntag {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    opacity: 0.7;
+  }
+
+  .cmp {
+    font-size: 0.72rem;
+    opacity: 0.85;
+    overflow-wrap: anywhere;
+  }
+
+  .cmp.up {
+    color: var(--good);
+  }
+
+  .cmp.down {
+    color: var(--text-dim);
+  }
+
+  .unmet {
+    color: var(--danger);
   }
 
   .name {
