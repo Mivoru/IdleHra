@@ -4487,7 +4487,8 @@ taps.
   - Rare+ plays `lootRare` at `playbackRate` 2^((tier-4)/12), one semitone
     per tier. No new clip.
   - Below Rare, a drop is SILENT (owner, 2026-09-28: "I only want rare loot").
-    Mail claims keep `lootDropped`, because they follow a press.
+    The plain `lootDropped` clip is DELETED, the mail claim sound included:
+    the owner wants no loot sound but the rare one.
 - `__folkidleDemoDrop(tier)` (dev only) drives the real `acceptLootDrop`, and
   `exercise` checks that the card appears and leaves.
 
