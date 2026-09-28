@@ -4891,17 +4891,19 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 // Modul 03: 0.05% flat Premium Diamond drop from standard/elite
-                // monsters, guaranteed 10-diamond cluster from Regional Bosses
-                // (ContentRegistry.IsRegionalBoss, shared with Guild War
-                // Combat Vanguard WP above). PremiumCurrency is updated directly
-                // in-memory here (no DB access needed on the hot path) and
-                // persisted on the next checkpoint flush like gold.
-                if (isRegionalBoss)
-                {
-                    payload.SetPremiumCurrency(payload.PremiumCurrency + 10);
-                    payload.IsDirty = true;
-                }
-                else if (Random.Shared.NextDouble() < 0.0005)
+                // monsters. PremiumCurrency is updated directly in-memory here
+                // (no DB access needed on the hot path) and persisted on the
+                // next checkpoint flush like gold.
+                //
+                // Modul: REGIONAL BOSSES PAY NO DIAMONDS (owner, 2026-09-28).
+                // They paid a guaranteed 10 on EVERY kill, and a beaten boss
+                // stays at its normal stats - so a level-97 character parked on
+                // region 1's boss killed it every 2.3 s for about 10,900
+                // diamonds an hour, against the Delve's calibrated 60 a week
+                // (measured with BossGearBenchmark). The live account had
+                // already taken 1,160 from 116 kills of that one boss.
+                // BossDiamondTests keeps it gone.
+                if (!isRegionalBoss && Random.Shared.NextDouble() < 0.0005)
                 {
                     payload.SetPremiumCurrency(payload.PremiumCurrency + 1);
                     payload.IsDirty = true;
