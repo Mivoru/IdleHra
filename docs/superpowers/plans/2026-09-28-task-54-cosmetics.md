@@ -17,7 +17,7 @@ frame of that rarity; both chests and cosmetics can be traded on the market.
 | Chest rarities | Common, Rare, Epic, Legendary. |
 | Level chest roll | 50% Common / 30% Rare / 15% Epic / 5% Legendary. |
 | Monster drop rate | One rate PER chest rarity, matching an item tier: Common = Mythic, Rare = Relic, Epic = Ancient, Legendary = Divine. |
-| Market | Both unopened chests and owned, un-worn cosmetics are tradable. |
+| Market | Both unopened chests and owned, un-worn cosmetics are tradable, at whatever price the seller sets. |
 | Existing players | Backfilled: one chest per 5 levels already reached, granted once. (Today one account qualifies: level 96, 19 chests.) |
 | Art | Avatars from the 25 painted monster portraits; frames drawn as SVG in the client. The owner may replace the frames. |
 
@@ -42,11 +42,13 @@ this table or fails loudly.
 **Level chests.** One per multiple of 5 of `PlayerRecords.CurrentLevel`,
 rolled 50/30/15/5 at grant time.
 
-**Market corridor.** Cosmetics have no catalogue price, and the equipment
-corridor refuses anything "not in the catalogue and never traded". So each
-rarity gets a fixed corridor, the same for a chest and a cosmetic of that
-rarity: floor Common 1,000 / Rare 5,000 / Epic 25,000 / Legendary 100,000
-gold, ceiling 1,000x the floor. Same market tax as equipment.
+**Market price: the seller's choice (owner, 2026-09-28).** No corridor, unlike
+equipment. The only bounds are 1 gold and a technical ceiling of
+1,000,000,000 that keeps the arithmetic far from overflow. Same market tax as
+equipment. Known and accepted: a free price lets a player move gold between
+their own accounts by over-paying for a chest; at today's population the owner
+chose freedom over the guard. If that changes, a corridor is one check in the
+list handler.
 
 ## Content
 
@@ -162,8 +164,8 @@ a collection to complete. A dot on the Character tab when a chest is unopened.
    (`POST /api/v1/dev/cosmetics/chest`, 404 without `FOLKIDLE_DEV_TOOLS`),
    open it, assert the collection grew, wear it, assert the profile reports
    it, then restore the fixture's previous avatar.
-4. **Market**: listing/buying/cancelling chests and cosmetics with the
-   rarity corridor and the tax; the Market screen gets a "Cosmetics" tab.
+4. **Market**: listing/buying/cancelling chests and cosmetics at the
+   seller's price, with the tax; the Market screen gets a "Cosmetics" tab.
    `exercise.mjs` round-trips a listing (list, cancel, assert returned).
 
 Phases 1-3 ship together; 4 can ship after.
