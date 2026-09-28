@@ -243,7 +243,7 @@
     left: 50%;
     /* Fixed to the viewport. The coach carries buttons, so landing it under
        the gesture bar would make the tutorial itself unpressable. */
-    bottom: calc(0.75rem + var(--sa-bottom));
+    bottom: calc(0.75rem + var(--sa-bottom) + var(--tabbar-h));
     transform: translateX(-50%);
     width: max-content;
     max-width: min(38rem, calc(100vw - 1.5rem));
@@ -277,7 +277,8 @@
      never reaches the corner. */
   @media (max-width: 40rem) {
     .coach {
-      bottom: 4.25rem;
+      /* Above the chat handle, the gesture bar and the tab bar. */
+      bottom: calc(4.25rem + var(--sa-bottom) + var(--tabbar-h));
     }
   }
 

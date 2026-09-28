@@ -190,7 +190,7 @@
        lifted only on phones - so at desktop, whenever an update was out, it
        sat on "Show chat" and swallowed its clicks. Found by a two-browser chat
        check that could not open the dock. */
-    bottom: calc(4.25rem + var(--sa-bottom));
+    bottom: calc(4.25rem + var(--sa-bottom) + var(--tabbar-h));
     z-index: 45;
     width: min(22rem, calc(100vw - 2rem - var(--sa-left) - var(--sa-right)));
     box-sizing: border-box;

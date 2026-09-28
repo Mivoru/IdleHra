@@ -108,7 +108,7 @@
     right: calc(1rem + var(--sa-right));
     /* Fixed to the VIEWPORT, so body's padding does not move it - the handle
        would sit under the gesture bar on its own. */
-    bottom: calc(1rem + var(--sa-bottom));
+    bottom: calc(1rem + var(--sa-bottom) + var(--tabbar-h));
     z-index: 40;
     display: flex;
     flex-direction: column;

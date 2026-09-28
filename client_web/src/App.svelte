@@ -6,6 +6,7 @@
   import Hub from './routes/Hub.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import VictoryCard from './lib/ui/VictoryCard.svelte';
+  import TabBar from './lib/ui/TabBar.svelte';
   import DeathCard from './lib/ui/DeathCard.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import AchievementToast from './lib/ui/AchievementToast.svelte';
@@ -589,6 +590,7 @@
     <VictoryCard />
     <DeathCard />
     <ChatDock />
+    <TabBar current={screen} onNavigate={(next) => goTo(next as ScreenKey)} />
     <Toasts />
     <AchievementToast />
   {:else if restoring}
