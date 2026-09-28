@@ -1280,6 +1280,7 @@ await go('World Boss');
           states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
         }));
       const before = await read();
+      const boardBefore = Number((await apiGet('/api/v1/worldboss/board'))?.Me?.Damage ?? 0);
 
       await strike.click();
       await page
@@ -1293,7 +1294,11 @@ await go('World Boss');
       // missed the weak point - so the pip and the health are the honest
       // assertions and the plate change is reported rather than required.
       record('striking a plate spends an attempt', after.pips > before.pips, `${before.pips} -> ${after.pips} spent`);
-      record('the strike moved the boss HP', after.hp >= 0 && after.hp < before.hp, `${before.hp} -> ${after.hp}`);
+      // Modul: the fixture's OWN damage, not the boss's HP (TASK_BOARD 53).
+      // LiveOps rescales the shared HP with the population, and a run on
+      // 2026-09-28 saw it rise 50M -> 75M across a strike that had landed.
+      const boardAfter = Number((await apiGet('/api/v1/worldboss/board'))?.Me?.Damage ?? 0);
+      record('the strike adds to the fixture damage on the board', boardAfter > boardBefore, `${boardBefore} -> ${boardAfter} (hp ${before.hp} -> ${after.hp})`);
       record(
         'the strike is reflected on the boss',
         after.states.join() !== before.states.join() || after.pips > before.pips,
