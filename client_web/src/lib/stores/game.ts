@@ -234,10 +234,12 @@ export function acceptLootDrop(packet: ResponseLootDrop): void {
   const tier = Number(packet.QualityTier);
   const kind = Number(packet.DropKind);
 
-  // Modul: TASK 50. Rare+ rings the rare clip, a semitone higher per tier;
-  // anything below keeps the plain drop sound. Haptics stay on the top tiers.
+  // Modul: TASK 50. Rare+ rings the rare clip, a semitone higher per tier.
+  // EVERYTHING BELOW IS SILENT (owner, 2026-09-28: "why do I keep hearing the
+  // loot drop sound - I only want rare loot"). A gatherer lands a material
+  // every few seconds, so the plain drop clip was a metronome, and a sound on
+  // every drop is a sound on none. Haptics stay on the top tiers.
   if (kind === 1 && tier >= FLASH_MIN_TIER) play('lootRare', lootPitch(tier));
-  else play('lootDropped');
   if (tier >= 10) tap('success');
 
   // Task 51: a best-drop record (Rare+, against the durable baseline).
