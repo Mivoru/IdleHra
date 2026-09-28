@@ -4414,7 +4414,16 @@ These are the traps that cost time on 2026-09-28. CLAUDE.md has the rest.
 
 ---
 
-## 48. Deploy `main` (URGENT, before 2026-11-02)
+## DONE - 48. Deploy `main` (URGENT, before 2026-11-02)
+
+**DEPLOYED 2026-09-28 as 1.0.836.** Backup `folkidle-20260928T134022Z.dump` first.
+`SeasonalEraRecords` era 1: `IsActive = t`, `IsRolloverPaused = t`. `smoke:screens`
+27/27 against production, and a guest at 390px met the guided larder step and
+the tab bar. The first smoke run FAILED: the guided fence blocked every nav
+click for a new guest, so `signInAsGuest` now reports the guided layer and
+presses Skip.
+
+Original task:
 
 `main` holds #71-#74; production runs 1.0.826 (#68-#70).
 - **Migration `AddSeasonRolloverPause`**: adds a column, then

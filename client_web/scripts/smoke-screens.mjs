@@ -17,7 +17,8 @@ import { SCREENS, assertMatchesNav, go, open, signInAsGuest } from './screens.mj
 const OUT = process.argv[2] ?? 'screens';
 const { browser, page, errors } = await open({ width: 1440, height: 900 });
 
-await signInAsGuest(page);
+const { guided } = await signInAsGuest(page);
+console.log(guided ? 'ok   the new guest met the guided first step' : 'note: the new guest met no guided step');
 
 // Modul: the list is checked against the nav rather than trusted. Renaming a
 // destination used to leave this file asking for a button that no longer
