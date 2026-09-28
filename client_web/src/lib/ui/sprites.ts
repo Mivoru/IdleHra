@@ -113,3 +113,19 @@ export function initialsFor(displayName: string): string {
   if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
   return (words[0][0] + words[1][0]).toUpperCase();
 }
+
+/**
+ * Task 54: an avatar's portrait, by the monster name the cosmetic catalogue
+ * gives as its `Art`. Matched on the portrait's FILE name rather than on a
+ * monster id, because the catalogue is keyed by name and the art is too - so
+ * this needs no third table. tests/cosmetics.test.ts checks every avatar has
+ * a portrait.
+ */
+export function avatarIcon(art: string | null | undefined): string | null {
+  if (!art) return null;
+  const suffix = `/${art}.webp`;
+  for (const path of Object.values(MONSTER_ICONS)) {
+    if (path.endsWith(suffix)) return spriteUrl(path);
+  }
+  return null;
+}

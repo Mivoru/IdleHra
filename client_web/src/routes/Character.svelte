@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { requestScreen } from '../lib/stores/navigation';
+  import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
+  import { unopenedChests } from '../lib/stores/cosmeticChests';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState, visualState, pushLocalNotice } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
@@ -365,7 +368,20 @@
 {:else}
   <div class="grid">
     <section class="panel">
-      <h2>Character</h2>
+      <div class="char-head">
+        <!-- Task 54: the face other players see, and the way to the
+             Wardrobe - with a count when a chest is waiting. -->
+        <button class="face" onclick={() => requestScreen('wardrobe')} aria-label="Open the Wardrobe" data-testid="character-wardrobe">
+          <PlayerAvatar playerId={Number(snap.PlayerId)} size="md" />
+          {#if $unopenedChests > 0}<span class="chest-badge">{$unopenedChests}</span>{/if}
+        </button>
+        <h2>Character</h2>
+        {#if $unopenedChests > 0}
+          <button class="tiny-btn" onclick={() => requestScreen('wardrobe')}>
+            {$unopenedChests} chest{$unopenedChests === 1 ? '' : 's'} to open
+          </button>
+        {/if}
+      </div>
 
       <div class="vitals">
         <div class="hpblock">
@@ -715,6 +731,41 @@
 {/if}
 
 <style>
+  .char-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .char-head h2 {
+    margin: 0;
+    flex: 1;
+  }
+
+  .face {
+    position: relative;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    min-width: 44px;
+    min-height: 44px;
+    flex-shrink: 0;
+  }
+
+  .chest-badge {
+    position: absolute;
+    top: -2px;
+    right: -4px;
+    min-width: 1.1rem;
+    padding: 0 0.25rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #1a1510;
+    font-size: 0.7rem;
+    line-height: 1.1rem;
+  }
+
   /* The requirement on a gear row - dim when met, loud when not, because the
      only time it needs attention is when it is the reason Wear will refuse. */
   .req {

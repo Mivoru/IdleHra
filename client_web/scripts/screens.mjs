@@ -51,7 +51,7 @@ if (LANGUAGE_CODES.length === 0) {
 /** Every navigable destination, in the header's own order and grouping. */
 export const SCREENS = [
   'Map', 'Combat', 'Gathering', 'World Boss', 'Boosts', 'The Delve',
-  'Character', 'Chest', 'Auto-Eat', 'Crafting', 'Forge',
+  'Character', 'Wardrobe', 'Chest', 'Auto-Eat', 'Crafting', 'Forge',
   'Market', 'Friends', 'Guild', 'Mail', 'Leaderboards',
   'Breeding', 'Ancestors', 'Inheritance',
   'Village', 'Skill Tree', 'Progress', 'Codex', 'Store', 'Settings',

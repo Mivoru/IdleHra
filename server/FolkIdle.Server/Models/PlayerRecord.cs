@@ -292,6 +292,24 @@ namespace FolkIdle.Server.Models
         [System.ComponentModel.DataAnnotations.MaxLength(32)]
         public string? ActiveTitleSlug { get; set; }
 
+        // Modul: TASK 54 - the worn avatar and frame, by CosmeticRegistry id.
+        // Null means the default: the player's own race portrait, and no
+        // frame. Written ONLY by the cosmetics endpoints, which refuse an id
+        // the player owns no row of; never by the checkpoint, and not on the
+        // wire - other players' screens read it over REST.
+        [System.ComponentModel.DataAnnotations.MaxLength(48)]
+        public string? EquippedAvatarId { get; set; }
+
+        [System.ComponentModel.DataAnnotations.MaxLength(48)]
+        public string? EquippedFrameId { get; set; }
+
+        // Modul: TASK 54 - how many level chests (one per 5 levels) have been
+        // paid. The grant is idempotent against it: the worker pays
+        // CurrentLevel / 5 minus this, under a row lock, and writes it in the
+        // same transaction. It starts at 0 on every existing account, which IS
+        // the backfill. CosmeticGrantEngine is its only writer.
+        public int LevelChestsGranted { get; set; }
+
         // Modul: THE LEADERBOARD PAYOUT'S IDEMPOTENCY, in the same shape as the
         // Delve's two columns directly above - deliberately, because it is the
         // same problem and a second mechanism would be a second thing to get

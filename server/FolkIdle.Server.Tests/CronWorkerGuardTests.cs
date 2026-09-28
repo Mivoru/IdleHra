@@ -63,6 +63,7 @@ namespace FolkIdle.Server.Tests
                 ["OfflineCapNotifier"] = "mails players whose offline bank has filled",
                 ["SeasonalRotationEngine"] = "season rollover",
                 ["PendingGrantDrainEngine"] = "drains pending_grants - the retry half of the loot/gathering/offline-production outbox",
+                ["CosmeticGrantEngine"] = "pays level chests (task 54) - budgeted and coalesced, the try opens before the delay, and each player's grant has its own try around CreateScope",
                 ["FunnelRecorder"] = "drains the new-player funnel queue into player_funnel_events (task 39) - budgeted, and the try opens before the delay and before CreateScope",
             };
 

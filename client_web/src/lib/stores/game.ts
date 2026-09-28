@@ -8,6 +8,7 @@
 // from a value that is a rendering artefact rather than a fact. Anything that
 // decides reads `playerState`; anything that animates reads `visualState`.
 
+import { refreshUnopenedChests } from './cosmeticChests';
 import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
 import { FLASH_MIN_TIER, LootFeelGate, lootPitch, shouldReplaceReveal } from '../ui/lootFeel';
@@ -234,6 +235,15 @@ export function acceptLootDrop(packet: ResponseLootDrop): void {
   const tier = Number(packet.QualityTier);
   const kind = Number(packet.DropKind);
 
+  // Modul: TASK 54 - a cosmetic chest. Its QualityTier is the CHEST's rarity
+  // (1-4), not an item tier, and it has no item id - so it must not reach the
+  // loot logs, the record watch or the loot feel below, all of which would
+  // read tier 4 as "Rare equipment" and item 0 as a nameless material.
+  if (kind === DROP_KIND_COSMETIC_CHEST) {
+    acceptCosmeticChest(tier, Number(packet.MonsterId));
+    return;
+  }
+
   // Modul: TASK 50. Rare+ rings the rare clip, a semitone higher per tier.
   // EVERYTHING BELOW IS SILENT (owner, 2026-09-28: "why do I keep hearing the
   // loot drop sound - I only want rare loot"). A gatherer lands a material
@@ -274,6 +284,24 @@ export function acceptLootDrop(packet: ResponseLootDrop): void {
   if (feel.reveal && shouldReplaceReveal(get(lootReveal)?.qualityTier ?? null, tier)) lootReveal.set(entry);
 }
 
+
+/** ResponseLootDropPacket.DropKindCosmeticChest - pinned by tests/cosmetics.test.ts. */
+export const DROP_KIND_COSMETIC_CHEST = 3;
+const CHEST_NAMES = ['', 'Common', 'Rare', 'Epic', 'Legendary'];
+
+function acceptCosmeticChest(rarity: number, monsterId: number): void {
+  const name = CHEST_NAMES[rarity] ?? 'Cosmetic';
+  play('lootRare', lootPitch(Math.min(14, 7 + rarity)));
+  if (rarity >= 3) tap('success');
+  // MonsterId 0 is a level reward (every fifth level), anything else a kill.
+  pushLocalNotice(
+    monsterId === 0
+      ? `Level reward: a ${name} chest. Open it in the Wardrobe.`
+      : `A ${name} chest dropped! Open it in the Wardrobe.`,
+    'info',
+  );
+  refreshUnopenedChests();
+}
 
 /** Materials and salvage scrap. High volume, low individual interest. */
 export const lootLogMaterials = writable<LootEntry[]>([]);

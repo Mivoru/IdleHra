@@ -573,6 +573,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Larder', label: 'Larder', status: 'documented', tab: 'combat', note: 'Auto-eat and what counts as food.' },
   { screen: 'Character', label: 'Character', status: 'documented', tab: 'combat', note: 'The eleven equipment slots and armour set bonuses.' },
   { screen: 'Progression', label: 'Progression', status: 'documented', tab: 'skills', note: 'Skill points, the three rings, respec - and the Book of Deeds, which is on the Long Game page.' },
+  { screen: 'Wardrobe', label: 'Wardrobe', status: 'documented', tab: 'items', note: 'Cosmetic chests, avatars and frames - how each is earned. Nothing there adds power.' },
   { screen: 'Chest', label: 'Chest', status: 'documented', tab: 'items', note: 'Storage, selling and discarding; the item database is here too.' },
   { screen: 'Forge', label: 'Forge', status: 'documented', tab: 'forge', note: 'Fusion, the Forge level ceiling, and affix rerolls with their per-region price.' },
   { screen: 'Codex', label: 'Codex', status: 'documented', tab: 'map', note: 'Per-monster kill records and region completion.' },

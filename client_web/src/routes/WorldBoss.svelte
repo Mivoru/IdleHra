@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   // Modul: the world boss. A server-wide encounter that scales with how many
   // accounts are online and their combined race mastery, so its health bar is
   // shared by everyone - the one place in this game where a player's progress
@@ -473,7 +474,7 @@
         {#each board.Top.slice(0, 10) as row (row.PlayerId)}
           <li class:me={row.PlayerId === board.Me?.PlayerId}>
             <span class="rank">{row.Rank}</span>
-            <span class="who">{row.Name}{#if row.Title}<span class="dim tiny"> · {row.Title}</span>{/if}</span>
+            <span class="who"><PlayerAvatar playerId={row.PlayerId} size="sm" /> {row.Name}{#if row.Title}<span class="dim tiny"> · {row.Title}</span>{/if}</span>
             <span class="dmg">{row.Damage.toLocaleString()}</span>
           </li>
         {/each}

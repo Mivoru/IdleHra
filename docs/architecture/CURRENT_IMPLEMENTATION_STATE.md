@@ -142,6 +142,7 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 | LootTierDailyCount             | loot_tier_daily_counts          |
 | NotableItemEvent               | notable_item_events             |
 | PlayerTitle                    | player_titles                   |
+| CosmeticItem                   | cosmetic_items                  |
 | PlayerGoldDailyHigh            | player_gold_daily_high          |
 | PlayerFunnelEvent              | player_funnel_events            |
 | SplitBrainIncident             | split_brain_incidents           |

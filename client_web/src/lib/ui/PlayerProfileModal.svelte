@@ -1,4 +1,5 @@
 <script lang="ts">
+  import PlayerAvatar from './PlayerAvatar.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { authedGet } from '../net/auth';
   import ItemIcon from './ItemIcon.svelte';
@@ -97,6 +98,8 @@
 <div class="overlay" onclick={onClose}>
   <div class="modal" onclick={(e) => e.stopPropagation()}>
     <div class="header">
+      <!-- Task 54: the profile is where a face is shown largest. -->
+      <PlayerAvatar {playerId} size="lg" name={profile.data?.Username ?? ''} />
       <h3>
         {profile.data ? `${profile.data.Username}'s Profile` : 'Loading Profile...'}
         {#if profile.data?.ActiveTitle}
@@ -207,11 +210,14 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 0.75rem;
     padding: 1rem;
     border-bottom: 1px solid var(--border);
     background: var(--bg-dark);
   }
   .header h3 {
+    flex: 1;
+    min-width: 0;
     margin: 0;
     font-size: 1.1rem;
   }

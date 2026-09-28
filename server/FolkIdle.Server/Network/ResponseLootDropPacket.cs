@@ -30,6 +30,12 @@ namespace FolkIdle.Server.Network
         public const byte DropKindMaterial = 0;
         public const byte DropKindEquipment = 1;
         public const byte DropKindScrap = 2;
+        // Task 54: an unopened cosmetic chest. QualityTier carries the CHEST's
+        // rarity (1 Common - 4 Legendary, CosmeticRegistry), not an item tier;
+        // InstanceId is its cosmetic_items row; MonsterId 0 means it was a
+        // level reward rather than a kill. A new constant, not a new field -
+        // the layout is unchanged.
+        public const byte DropKindCosmeticChest = 3;
 
         public long PlayerId;
 

@@ -624,7 +624,7 @@ namespace FolkIdle.Server.Network
         public int MultiplierValue;
     }
 
-    public class NetworkBroadcastSystem
+    public partial class NetworkBroadcastSystem
     {
         private readonly HttpListener _httpListener;
         private readonly ConcurrentDictionary<long, WebSocketSession> _connectedClients = new();
@@ -2236,6 +2236,12 @@ namespace FolkIdle.Server.Network
             if (requestPath == "/api/v1/leaderboard/deepest" && context.Request.HttpMethod == "GET")
             {
                 await HandleDeepestLeaderboard(context);
+                return;
+            }
+
+            // Cosmetics (task 54) - see NetworkBroadcastSystem.Cosmetics.cs.
+            if (await TryHandleCosmeticsAsync(context, requestPath))
+            {
                 return;
             }
 
@@ -11033,6 +11039,14 @@ namespace FolkIdle.Server.Network
                     var delve = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Economy.DelveEngine>();
                     bool done = await delve.DevPutOutTheLanternAsync(playerId);
                     context.Response.StatusCode = done ? 200 : 409;
+                    return;
+                }
+
+                // Task 54: a cosmetic chest for the caller, so exercise.mjs can
+                // open one without thousands of kills first.
+                if (requestPath == "/api/v1/dev/cosmetics/chest" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevCosmeticChest(context, playerId);
                     return;
                 }
 

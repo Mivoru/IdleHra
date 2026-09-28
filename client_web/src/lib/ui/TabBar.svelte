@@ -19,6 +19,7 @@
   // names for one place.
   import { playerState } from '../stores/game';
   import { MAIN_TABS } from './tabs';
+  import { unopenedChests } from '../stores/cosmeticChests';
 
   interface Props {
     current: string;
@@ -32,7 +33,9 @@
   // A dot, not a number: it says "something here wants you", and the screen
   // says what. Halted = not earning; unspent points = power already owned.
   const combatAlert = $derived(snap ? Number(snap.ActivityHaltReason) !== 0 : false);
-  const characterAlert = $derived(snap ? Number(snap.UnspentAttributePoints) > 0 : false);
+  // Task 54: an unopened cosmetic chest also wants the player - the Wardrobe
+  // sits beside Character in the Menu, and Character links to it.
+  const characterAlert = $derived((snap ? Number(snap.UnspentAttributePoints) > 0 : false) || $unopenedChests > 0);
 
   const TABS = MAIN_TABS;
 
