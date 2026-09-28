@@ -1370,6 +1370,32 @@ export function adminToggleProfanity(enabled: boolean): Promise<null> {
   return authedPost<null>('/api/v1/admin/profanity', { enabled });
 }
 
+/** The active season as the admin sees it (SeasonalEraRecord). */
+export interface AdminSeason {
+  EraId: number;
+  /** Epoch seconds. */
+  EndTimestamp: number;
+  Paused: boolean;
+  /** An "end now" is queued and the rollover has not run yet. */
+  EndRequested: boolean;
+}
+
+export function fetchAdminSeason(): Promise<AdminSeason> {
+  return authedGet<AdminSeason>('/api/v1/admin/season');
+}
+
+export function adminSeasonAction(
+  action: 'pause' | 'resume' | 'setEnd',
+  endTimestamp?: number,
+): Promise<null> {
+  return authedPost<null>('/api/v1/admin/season', { action, endTimestamp });
+}
+
+/** Ends the season for every player. The server wants the phrase typed exactly. */
+export function adminEndSeasonNow(confirm: string): Promise<null> {
+  return authedPost<null>('/api/v1/admin/season/end-now', { confirm });
+}
+
 export function adminAnnounce(text: string): Promise<null> {
   return authedPost<null>('/api/v1/admin/announce', { text });
 }

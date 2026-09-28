@@ -11006,6 +11006,102 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // Modul: SEASON CONTROL (2026-09-28). The owner runs the
+                // season by hand: pause the rollover, move the end, or end it
+                // now. See SeasonalEraRecord.IsRolloverPaused.
+                if (requestPath == "/api/v1/admin/season" && context.Request.HttpMethod == "GET")
+                {
+                    var era = await db.SeasonalEraRecords.AsNoTracking()
+                        .Where(e => e.IsActive)
+                        .OrderBy(e => e.EndTimestamp)
+                        .FirstOrDefaultAsync();
+                    string json = JsonSerializer.Serialize(new
+                    {
+                        EraId = era?.EraId ?? 0,
+                        EndTimestamp = era?.EndTimestamp ?? 0L,
+                        Paused = era?.IsRolloverPaused ?? false,
+                        EndRequested = FolkIdle.Server.Engine.SeasonalRotationEngine.EndNowPending,
+                    });
+                    var bytes = System.Text.Encoding.UTF8.GetBytes(json);
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    await context.Response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
+                    return;
+                }
+
+                if (requestPath == "/api/v1/admin/season" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await ReadBodyAsync(context);
+                    using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                    string action = doc.RootElement.TryGetProperty("action", out var a) ? a.GetString() ?? string.Empty : string.Empty;
+
+                    var era = await db.SeasonalEraRecords
+                        .Where(e => e.IsActive)
+                        .OrderBy(e => e.EndTimestamp)
+                        .FirstOrDefaultAsync();
+                    if (era == null)
+                    {
+                        context.Response.StatusCode = 409;
+                        return;
+                    }
+
+                    long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    switch (action)
+                    {
+                        case "pause":
+                            era.IsRolloverPaused = true;
+                            break;
+                        case "resume":
+                            // Resuming a season whose end has already passed
+                            // would roll it over within five minutes, which is
+                            // "end now" by accident. Refused; move the end first.
+                            if (era.EndTimestamp <= nowEpoch)
+                            {
+                                context.Response.StatusCode = 409;
+                                return;
+                            }
+                            era.IsRolloverPaused = false;
+                            break;
+                        case "setEnd":
+                            long end = doc.RootElement.TryGetProperty("endTimestamp", out var e) && e.TryGetInt64(out long v) ? v : 0L;
+                            // At least an hour ahead: an end in the past on an
+                            // unpaused season is an immediate wipe.
+                            if (end < nowEpoch + 3600)
+                            {
+                                context.Response.StatusCode = 400;
+                                return;
+                            }
+                            era.EndTimestamp = end;
+                            break;
+                        default:
+                            context.Response.StatusCode = 400;
+                            return;
+                    }
+
+                    await db.SaveChangesAsync();
+                    Console.WriteLine($"[season] admin {requesterId}: {action} -> era {era.EraId} end {era.EndTimestamp} paused {era.IsRolloverPaused}");
+                    context.Response.StatusCode = 200;
+                    return;
+                }
+
+                if (requestPath == "/api/v1/admin/season/end-now" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await ReadBodyAsync(context);
+                    using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                    string phrase = doc.RootElement.TryGetProperty("confirm", out var c) ? c.GetString() ?? string.Empty : string.Empty;
+                    // Every player's level, gear and gold go. A typed phrase,
+                    // like account deletion, so a stray tap cannot do it.
+                    if (phrase != "END SEASON")
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+                    Console.WriteLine($"[season] admin {requesterId}: END NOW requested");
+                    FolkIdle.Server.Engine.SeasonalRotationEngine.RequestEndNow();
+                    context.Response.StatusCode = 202;
+                    return;
+                }
+
                 if (requestPath == "/api/v1/admin/profanity" && context.Request.HttpMethod == "POST")
                 {
                     string body = await ReadBodyAsync(context);

@@ -30,6 +30,69 @@ are listed for the owner, not built:
 | O4 | Bottom tab navigation + progressive screen unlocks (audit H-1/H-3) | Large client restructure that touches every geometry checker. Needs the owner to agree on the five tabs before anybody builds it. |
 | O5 | What the Chronicle pass should become (see 1.3) | This plan only hides it and records the defect. |
 
+## Owner answers, 2026-09-28 (second round)
+
+- **O3, seasons: pause the rollover, and give the owner full control of it.**
+  The owner wants to be able to reset or adjust a season whenever they like,
+  for example to test from zero with friends. Built first, as Phase S, because
+  the active season ends **2026-11-02 09:40 UTC** and would wipe the owner's
+  level-96 account.
+- **O2 + O1, start: food AND a weapon.** This REVERSES the 2026-09-23 "no
+  starter weapon" decision, and the owner made that call knowingly. The
+  tutorial must make the player do both actions by hand, in the guided style
+  of mobile-game tutorials: the screen is dimmed, one control is lit, and
+  nothing else can be pressed. Phase T.
+- **O4, navigation: yes to a five-tab bottom bar**, Village possibly among the
+  tabs. The owner asked for the design to be proposed to them, not built
+  blind. Phase N.
+- **O5, the Chronicle pass: stays hidden.** The owner's direction for later is
+  cosmetics - rare profile avatars, profile frames and skins - as rewards,
+  rather than a battle pass.
+
+### Phase S - season control (branch `feat/season-control`)
+
+- `SeasonalEraRecords.IsRolloverPaused`, an additive migration. The migration
+  sets it to TRUE on the active era, because pausing is the owner's decision
+  and a deploy must not depend on somebody remembering to press a button
+  before Nov 2. A new era inherits the flag of the era it replaces.
+- The cron skips a paused era. Nothing else reads the end date, and the
+  client shows none.
+- Admin only (`IsAdmin`), in Settings' admin panel:
+  - `GET /api/v1/admin/season`: era id, end, paused.
+  - `POST /api/v1/admin/season`: `pause` / `resume` / `setEnd` (epoch
+    seconds).
+  - `POST /api/v1/admin/season/end-now` with the typed phrase `END SEASON`:
+    runs the normal rollover immediately, through the same code path as the
+    cron. It wakes the cron instead of running in the request, because the
+    rollover disconnects every client, the caller included.
+- "Start from zero with friends" needs no wipe tool: a new account IS a start
+  from zero. A full wipe that also takes villages, diamonds and ancestors is
+  deliberately NOT built; that is a database restore, not a button.
+
+### Phase T - starter kit and a guided first minute (branch after S)
+
+- Registration grants a Normal region-1 weapon (unequipped, in the chest) and
+  a small stack of fish (in the chest, not in the larder). Both registration
+  paths, as with the tools.
+- The tutorial's first two steps become GUIDED: "put the fish into Auto-Eat"
+  and "wear your weapon". While a guided step runs, a full-screen dim layer
+  covers the app. The one control the step needs is lifted above it with a
+  pulsing ring and a short caption, every other click is swallowed, and the
+  step advances only when the server state proves the action happened (larder
+  count > 0, `EquippedWeaponId` > 0). There is always a small "Skip tutorial"
+  so a returning player is never trapped. Then "Pick a fight" stays a normal
+  coach step.
+- `tutorial.ts` already exports `isInteractionAllowed()`; check what it gates
+  before building a second mechanism.
+- `exercise.mjs`'s new-account section has to follow the guided path.
+
+### Phase N - five-tab navigation (proposal first)
+
+Build only after the owner approves a rendered proposal. The five tabs
+(proposal, see the chat for the reasoning): **Home - Fight - Gather -
+Character - Village**, and "More" through the header menu. The phone gets a
+bottom bar; the desktop keeps its header.
+
 ---
 
 ## Phase 1 - Truth and first-hour polish (branch `feat/audit-phase-1`)
