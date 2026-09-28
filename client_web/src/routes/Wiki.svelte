@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PREF_WIKI_TAB, readPref, writePref } from '../lib/net/prefs';
   // Modul: the wiki. Fifteen pages, a search across all of them, and a ledger
   // at the end saying which of the game's screens each one covers.
   //
@@ -102,7 +103,10 @@
   } from '../lib/ui/wikiData';
 
   let registry = $state<ContentRegistry | null>(null);
-  let activeTab = $state('basics');
+  // Task 52: the tab is remembered on this device. Validated against ALL_TABS
+  // below, because a stored id can outlive the tab it named.
+  let activeTab = $state(readPref(PREF_WIKI_TAB) ?? 'basics');
+  $effect(() => writePref(PREF_WIKI_TAB, activeTab));
   let search = $state('');
   let page = $state<HTMLElement | null>(null);
 
@@ -163,6 +167,7 @@
   ];
 
   const ALL_TABS = GROUPS.flatMap((g) => g.tabs);
+  if (!ALL_TABS.some((t) => t.id === activeTab)) activeTab = 'basics';
 
   const currentTab = $derived(ALL_TABS.find((t) => t.id === activeTab) ?? ALL_TABS[0]);
 

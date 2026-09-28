@@ -4555,7 +4555,23 @@ Use the `add-command` skill for any packet change.
 **Done when:** records survive a relogin (see CLAUDE.md, "a field on
 StateUpdatePacket must be loaded at login"), and a test pins each writer.
 
-## 52. QoL bundle
+## DONE - 52. QoL bundle
+
+**Built 2026-09-28.** All five, plus one leftover:
+- `lib/net/prefs.ts` wraps every storage access; the last screen (`App.svelte`),
+  the Chest's tab and rarity floor, and the Wiki tab are remembered and
+  validated on read. Sign-out writes `hub`, so the next account starts at the map.
+- Keys 1-5 follow `lib/ui/tabs.ts`, the same list the phone's TabBar draws;
+  ignored in any field and with a modifier held (`tests/qolBundle.test.ts`).
+- `OfflineSummary`: "Stock the larder" when halted for food or the larder is empty.
+- Delve: a player who cannot pay the gate gets one card with the price, their
+  gold and a progress bar; "How the Delve works" opens the full screen.
+- The chat handle shows the online count and fades at 0.
+- Leftover: `Affixes.svelte` showed an owned piece's AUTHORED Attack/Defence,
+  the same at every rarity. It now scales by quality through `pieceTotals`,
+  the arithmetic the loot comparison already used.
+
+Original task:
 
 Every item here is independent. Each is a sub-PR or all in one.
 - Remember the last screen, the Chest filters and the Wiki tab in

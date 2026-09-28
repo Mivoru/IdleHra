@@ -221,6 +221,16 @@
   const lanternOut = $derived(!!view?.IsDeep && view.ChargesRemaining === 0 && !view.AtLanding);
 
   const canAfford = $derived(!!view && view.CurrentGold >= view.EntryFeeForNextRun);
+
+  // Modul: TASK 52 - a player who cannot pay the gate met the whole screen:
+  // ledger, rules, odds, the Deep's titles - and one disabled button at the
+  // end of it. One card says the same thing. The full screen stays one press
+  // away for anyone who wants to read the rules before they can play.
+  let showFullWhilePoor = $state(false);
+  const teaser = $derived(!!view && !view.Active && !canAfford && !showFullWhilePoor);
+  const saved = $derived(
+    view && view.EntryFeeForNextRun > 0 ? Math.min(1, view.CurrentGold / view.EntryFeeForNextRun) : 0,
+  );
   const ceilingLeft = $derived(view ? Math.max(0, view.WeeklyDiamondCeiling - view.DiamondsEarnedThisWeek) : 0);
   const atBottom = $derived(!!view?.Active && view.AtLanding);
   const isDeep = $derived(!!view?.IsDeep);
@@ -256,6 +266,22 @@
     <p class="error">{loadError}</p>
   {:else if !view}
     <p class="muted">Reading the gate&hellip;</p>
+  {:else if teaser}
+    <section class="gate teaser" data-testid="delve-teaser">
+      <h2>The gate is shut to you, for now</h2>
+      <p>
+        Opens at <strong><Money amount={view.EntryFeeForNextRun} /></strong> &mdash; you have
+        <strong><Money amount={view.CurrentGold} /></strong>.
+      </p>
+      <div class="saving" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow={Math.round(saved * 100)}>
+        <span style="width: {saved * 100}%"></span>
+      </div>
+      <p class="muted small">
+        The price is about forty minutes of what you earn in region {view.HighestRegionReached}, so it
+        grows as you do. A run pays back in diamonds.
+      </p>
+      <button onclick={() => (showFullWhilePoor = true)}>How the Delve works</button>
+    </section>
   {:else}
     <section class="ledger">
       <div><span class="k">Your gold</span><span class="v"><Money amount={view.CurrentGold} /></span></div>
@@ -540,6 +566,20 @@
     padding: 10px 12px;
     margin-bottom: 16px;
     line-height: 1.45;
+  }
+
+  .saving {
+    height: 8px;
+    border-radius: 4px;
+    background: #2c251f;
+    overflow: hidden;
+    margin: 8px 0 10px;
+  }
+
+  .saving span {
+    display: block;
+    height: 100%;
+    background: var(--brass, #c9a227);
   }
 
   .gate,

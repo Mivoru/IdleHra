@@ -3,13 +3,16 @@
   import { toDisplayAffixes } from './affixes';
   import { loadContent, type ContentRegistry } from '../net/content';
   import { onMount } from 'svelte';
+  import { pieceTotals } from './lootCompare';
 
   interface Props {
     affixes: AffixMap;
     baseItemId?: string;
+    /** The piece's own quality tier; the base lines are scaled by it. */
+    qualityTier?: number;
   }
 
-  let { affixes, baseItemId }: Props = $props();
+  let { affixes, baseItemId, qualityTier = 1 }: Props = $props();
 
   let registry = $state<ContentRegistry | null>(null);
   onMount(async () => {
@@ -31,11 +34,13 @@
   const rows = $derived(toDisplayAffixes(affixes));
   const baseStats = $derived.by(() => {
     if (!registry || !baseItemId) return [];
-    const item = registry.itemsByBaseId.get(baseItemId);
-    if (!item) return [];
+    // Modul: scaled by the piece's quality exactly as EquipmentSlotEngine
+    // scales it. The authored number is the same at every rarity, so these
+    // lines used to read a Legendary sword and a Normal one as equal.
+    const totals = pieceTotals(registry, baseItemId, qualityTier);
     const stats = [];
-    if (item.FlatAttackPower > 0) stats.push({ label: 'Attack', value: item.FlatAttackPower });
-    if (item.FlatDefenseRating > 0) stats.push({ label: 'Defense', value: item.FlatDefenseRating });
+    if (totals.attack > 0) stats.push({ label: 'Attack', value: totals.attack });
+    if (totals.defense > 0) stats.push({ label: 'Defense', value: totals.defense });
     return stats;
   });
 </script>

@@ -68,12 +68,16 @@
     </div>
   {/if}
 
-  <button class="handle" onclick={toggle} aria-label={open ? 'Hide chat' : 'Show chat'}>
+  <!-- Task 52: how many are online, on the handle, so "is anyone here to
+       talk to?" is answered before opening it. Faded at 0, not hidden - an
+       empty game is also an answer. -->
+  <button class="handle" class:empty={onlineCount === 0} onclick={toggle} aria-label={open ? 'Hide chat' : `Show chat, ${onlineCount} online`}>
     <svg class="caret" class:up={!open} viewBox="0 0 12 12" aria-hidden="true">
       <path d="M2 4.5 L6 8.5 L10 4.5" fill="none" stroke="currentColor" stroke-width="1.8"
             stroke-linecap="round" stroke-linejoin="round" />
     </svg>
     Chat
+    <span class="handle-online" title="{onlineCount} online">· {onlineCount}</span>
     {#if !open && unread > 0}
       <span class="dot" aria-label="{unread} unread">
         {unread > 9 ? '9+' : unread}
@@ -167,6 +171,19 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  .handle-online {
+    color: var(--good, #6c6);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .handle.empty {
+    opacity: 0.6;
+  }
+
+  .handle.empty .handle-online {
+    color: inherit;
   }
 
   .online-indicator {

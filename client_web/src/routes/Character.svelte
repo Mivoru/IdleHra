@@ -589,7 +589,7 @@
                 <span>Wearing {prettifyBaseId(worn.BaseItemId)} [{rarityName(worn.QualityTier)}]</span>
                 <button class="tiny-btn" onclick={() => unequip(pickerSlot)}>Take off</button>
               </div>
-              <Affixes affixes={worn.Affixes} baseItemId={worn.BaseItemId} />
+              <Affixes affixes={worn.Affixes} baseItemId={worn.BaseItemId} qualityTier={worn.QualityTier} />
             {/if}
 
             {#if candidates.length === 0}
