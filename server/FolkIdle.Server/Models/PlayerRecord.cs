@@ -255,6 +255,22 @@ namespace FolkIdle.Server.Models
         // DelveDeepestThisWeekAtUtc breaks ties on the weekly board: the earlier
         // record ranks first.
         public int DelveDeepestFloor { get; set; }
+
+        // Modul: PERSONAL RECORDS (task 51) - see Domain/Progression/PersonalRecords.
+        // BestHit and the five boss times are tick facts: the checkpoint merges
+        // them in (max / fastest) and the login hydrates them. The three
+        // BestDrop columns have ONE writer, the loot worker, after its commit -
+        // the checkpoint never assigns them. A time of 0 means "never killed".
+        public int BestHit { get; set; }
+        public int BossBestKillTenthsR1 { get; set; }
+        public int BossBestKillTenthsR2 { get; set; }
+        public int BossBestKillTenthsR3 { get; set; }
+        public int BossBestKillTenthsR4 { get; set; }
+        public int BossBestKillTenthsR5 { get; set; }
+        public int BestDropTier { get; set; }
+        [System.ComponentModel.DataAnnotations.MaxLength(128)]
+        public string? BestDropBaseId { get; set; }
+        public System.DateTime? BestDropAtUtc { get; set; }
         public int DelveDeepestThisWeek { get; set; }
         public System.DateTime? DelveDeepestThisWeekAtUtc { get; set; }
 

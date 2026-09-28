@@ -8,6 +8,7 @@
     fetchLoginBonus,
     fetchRaceMastery,
     fetchStatistics,
+    fetchRecords,
     type AchievementEntry,
   } from '../lib/net/rest';
   import { claimAchievement } from '../lib/net/commands';
@@ -17,6 +18,9 @@
   import { RACE_NAMES, ALL_RACE_IDS, isRaceUnlocked } from '../lib/ui/races';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import BookOfDeeds from '../lib/ui/BookOfDeeds.svelte';
+  import { bossTimes, formatTenths } from '../lib/stores/records';
+  import { prettifyBaseId } from '../lib/net/content';
+  import { rarityColor, rarityName } from '../lib/ui/rarity';
 
   const client = useQueryClient();
   const achievements = createQuery(() => ({ queryKey: queryKeys.achievements, queryFn: fetchAchievements }));
@@ -33,6 +37,9 @@
   const loginBonus = createQuery(() => ({ queryKey: queryKeys.loginBonus, queryFn: fetchLoginBonus }));
   const raceMastery = createQuery(() => ({ queryKey: queryKeys.raceMastery, queryFn: fetchRaceMastery }));
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
+  // Task 51. The hit and boss times read the live stream (hydrated at login),
+  // the best drop and the Deep read the durable row.
+  const records = createQuery(() => ({ queryKey: queryKeys.records, queryFn: fetchRecords }));
 
   const snap = $derived($playerState);
   // Quarantine blocks every claim server-side, so the reason is stated rather
@@ -235,6 +242,26 @@
     {:else}
       <Skeleton />
     {/if}
+
+    <h3>Records</h3>
+    <dl class="stats" data-records>
+      <div><dt>Highest hit</dt><dd>{snap && snap.BestHit > 0 ? snap.BestHit.toLocaleString() : '-'}</dd></div>
+      <div>
+        <dt>Best drop</dt>
+        <dd>
+          {#if records.data && records.data.BestDropTier > 0}
+            <span style="color: {rarityColor(records.data.BestDropTier)}">{rarityName(records.data.BestDropTier)}</span>
+            {records.data.BestDropBaseId ? prettifyBaseId(records.data.BestDropBaseId) : ''}
+          {:else}-{/if}
+        </dd>
+      </div>
+      <div><dt>Deepest Delve floor</dt><dd>{records.data?.DelveDeepestFloor || '-'}</dd></div>
+      {#if snap}
+        {#each bossTimes(snap) as tenths, i}
+          <div><dt>Region {i + 1} boss, fastest</dt><dd>{formatTenths(tenths)}</dd></div>
+        {/each}
+      {/if}
+    </dl>
   </section>
 
   <!-- Modul: THE CHRONICLE PASS IS NOT SHOWN (2026-09-28). Its only claim UI

@@ -2971,6 +2971,21 @@ await go('Breeding');
 // asserted rather than the list.
 await go('Progress');
 {
+  // Modul: TASK 51 - personal records. The fixture has fought by now, so its
+  // highest hit is a real number on the live stream (hydrated at login), and
+  // the durable copy answers on /player/records.
+  const records = await apiGet('/api/v1/player/records');
+  record(
+    'personal records answer on /player/records',
+    !!records && Array.isArray(records.BossBestKillTenths) && records.BossBestKillTenths.length === 5,
+    records ? `hit ${records.BestHit}, drop tier ${records.BestDropTier}, deep ${records.DelveDeepestFloor}` : 'no answer',
+  );
+  const hitLine = await page
+    .locator('[data-records] div', { hasText: 'Highest hit' })
+    .first()
+    .innerText()
+    .catch(() => '');
+  record('the Progress screen shows a real highest hit', /Highest hit\s*[\d,\s]*[1-9]/.test(hitLine), hitLine.replace(/\s+/g, ' '));
   const text = await page.evaluate(() => document.body.innerText);
   record('the Book of Deeds is shown', /Book of Deeds/i.test(text));
   record(

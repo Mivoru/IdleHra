@@ -12,7 +12,7 @@ import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
 import { FLASH_MIN_TIER, LootFeelGate, lootPitch, shouldReplaceReveal } from '../ui/lootFeel';
 import { resolveSlotIndex } from '../ui/slots';
-import { loadContent } from '../net/content';
+import { loadContent, itemName } from '../net/content';
 import { accountIdOf } from '../net/auth';
 import { watchAppLifecycle } from '../net/lifecycle';
 import { refreshDeviceTokenIfPermitted, watchNotificationTaps } from '../net/push';
@@ -32,7 +32,8 @@ import { queryClient } from '../net/queryClient';
 import type { QueryClient } from '@tanstack/svelte-query';
 import { play, playHit, playWithFallback } from '../ui/audio';
 import { playDeathFor } from '../ui/deathSound';
-import { fetchAchievements, type AchievementEntry } from '../net/rest';
+import { fetchAchievements, fetchRecords, type AchievementEntry } from '../net/rest';
+import { RecordWatch, dropRecordMessage } from './records';
 import {
   createWatermark,
   observeTierTotal,
@@ -238,6 +239,13 @@ export function acceptLootDrop(packet: ResponseLootDrop): void {
   if (kind === 1 && tier >= FLASH_MIN_TIER) play('lootRare', lootPitch(tier));
   else play('lootDropped');
   if (tier >= 10) tap('success');
+
+  // Task 51: a best-drop record (Rare+, against the durable baseline).
+  if (recordWatch.observeDrop(tier, kind)) {
+    void loadContent()
+      .then((registry) => pushLocalNotice(dropRecordMessage(tier, itemName(registry, packet.ItemId)), 'info'))
+      .catch(() => pushLocalNotice(dropRecordMessage(tier, 'item'), 'info'));
+  }
 
   const entry: LootEntry = {
     id: ++lootSequence,
@@ -451,6 +459,9 @@ export interface VictorySummary {
 
 export const victorySummary = writable<VictorySummary | null>(null);
 let lastVictoryTick = -1;
+
+// Task 51: "New record" toasts - see stores/records.ts.
+const recordWatch = new RecordWatch();
 
 export function dismissVictory(): void {
   victorySummary.set(null);
@@ -680,6 +691,14 @@ export function startSession(token: string): void {
   }
   victorySummary.set(null);
   lastVictoryTick = -1;
+  // The next packet is a baseline, and the drop baseline is the durable one -
+  // a drop before it arrives says nothing rather than something false.
+  recordWatch.reset();
+  void fetchRecords()
+    .then((records) => {
+      if (records) recordWatch.seedDrop(Number(records.BestDropTier ?? 0));
+    })
+    .catch(() => {});
   deathSummary.set(null);
   lastDeathTick = -1;
   // A different account has different deeds. Resetting the watermark makes the
@@ -752,6 +771,7 @@ export function startSession(token: string): void {
       noteOfflineCap(packet.OfflineCapSeconds);
       const arrivedAtMs = performance.timeOrigin + performance.now();
       playerState.set(packet);
+      for (const message of recordWatch.observe(packet, arrivedAtMs)) pushLocalNotice(message, 'info');
 
       interpolator.push(
         extractInterpolated(packet as unknown as Record<string, unknown>),

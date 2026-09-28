@@ -627,6 +627,14 @@ namespace FolkIdle.Server.Engine
         // equipment drop wrote, null for a material. Its Id only exists after
         // SaveChanges, so the packet's InstanceId is stamped at publish time.
         private readonly List<EquipmentInstance?> _pendingDropInstances = new(8);
+        // Modul: task 51, the best-drop record. The best piece THIS request
+        // wrote, reset per request like _pendingDrops, and the best this worker
+        // has already recorded per player - so the conditional UPDATE after the
+        // commit runs only when a drop can actually be a record, a dozen times
+        // in an account's life rather than once per kill.
+        private int _requestBestTier;
+        private string _requestBestBaseId = string.Empty;
+        private readonly Dictionary<long, int> _recordedBestTier = new();
 
         // Modul: the drop record (task 26) - see DropRecord.
         private readonly DropTally _dropTally = new();
@@ -1063,6 +1071,8 @@ namespace FolkIdle.Server.Engine
             // once the list has grown to its steady-state size.
             _pendingDrops.Clear();
             _pendingDropInstances.Clear();
+            _requestBestTier = 0;
+            _requestBestBaseId = string.Empty;
 
             // Modul: the drop record's accumulator, reused like _pendingDrops
             // (this worker is single-threaded). Cleared here as well as by the
@@ -1227,6 +1237,24 @@ namespace FolkIdle.Server.Engine
                 }
                 _pendingDrops.Clear();
                 _pendingDropInstances.Clear();
+
+                // Task 51: after the commit, never inside it - see
+                // PersonalRecords.RecordBestDropAsync. Its own try: a record is
+                // decoration, and a failure here must not reach the catch below,
+                // which would queue the already-committed loot for a retry.
+                if (_requestBestTier > 0 && _requestBestTier > _recordedBestTier.GetValueOrDefault(playerId))
+                {
+                    try
+                    {
+                        await Domain.Progression.PersonalRecords.RecordBestDropAsync(
+                            dbContext, playerId, _requestBestTier, _requestBestBaseId, DateTime.UtcNow);
+                        _recordedBestTier[playerId] = _requestBestTier;
+                    }
+                    catch (Exception recordEx)
+                    {
+                        Console.WriteLine($"Best-drop record failed for {playerId}: {recordEx.Message}");
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -1473,6 +1501,11 @@ namespace FolkIdle.Server.Engine
                 IsAffixLocked = false
             };
             dbContext.EquipmentInstances.Add(instance);
+            if (tier > _requestBestTier)
+            {
+                _requestBestTier = tier;
+                _requestBestBaseId = baseItemId;
+            }
 
             if (tally != null)
             {

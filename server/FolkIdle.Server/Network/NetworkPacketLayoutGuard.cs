@@ -205,7 +205,12 @@ namespace FolkIdle.Server.Network
         // OfflineCapSeconds - the EFFECTIVE cap including the Vodnik
         // extension, so the client's local "stop earning in 1 h" notification
         // reads the rule instead of copying it.
-        public const int ExpectedStateUpdateSize = 805;
+        //
+        // Modul: personal records, 805 -> 819 (task 51). BestHit (int) plus
+        // five ushort boss kill times. They change a few times a session, but
+        // the "New record" toast is an edge on the stream, the same contract as
+        // LastVictoryTick; REST would need a poll to notice.
+        public const int ExpectedStateUpdateSize = 819;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

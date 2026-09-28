@@ -480,6 +480,17 @@ namespace FolkIdle.Server.Engine
         public long LastVictoryXp;
         public byte LastVictoryTick;
 
+        // Modul: personal records (task 51, PersonalRecords.cs). Lifetime bests
+        // the tick sees happen: the highest single hit in whole hit points, and
+        // each region boss's fastest kill in tenths of a second (0 = never).
+        // Hydrated at login and merged by the checkpoint - never reset.
+        public int BestHit;
+        public int BossBestKillTenthsR1;
+        public int BossBestKillTenthsR2;
+        public int BossBestKillTenthsR3;
+        public int BossBestKillTenthsR4;
+        public int BossBestKillTenthsR5;
+
         public int LastDeathMonsterId;
         public byte LastDeathTick;
 
