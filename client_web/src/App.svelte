@@ -278,17 +278,32 @@
     }
   });
 
-  // Browsers refuse to start an AudioContext before a user gesture, so the
-  // first click anywhere arms it. Registered once and then left alone - a
-  // context that never got a gesture plays nothing and says nothing.
-  function armAudioOnFirstGesture() {
+  // Browsers refuse to start an AudioContext before a user gesture, so a
+  // gesture arms it. EVERY gesture, not just the first: unlockAudio also
+  // resumes a context the browser suspended while the app was backgrounded.
+  //
+  // Modul: THE CLICK WAS HEARD ONCE PER SESSION. It lived only in the
+  // first-gesture handler above, which removed itself, so every button after
+  // the first was silent and the owner read the UI as having no sound at all.
+  // One delegated listener covers every button on every screen, including
+  // ones added later; a disabled button fires no click, so it stays silent.
+  function armAudio() {
     unlockAudio();
+  }
+  function clickSound(event: MouseEvent) {
+    const target = event.target;
+    if (!(target instanceof Element)) return;
+    const control = target.closest('button, [role="button"], a[href], summary');
+    if (!control || control.closest('[data-no-click-sound]')) return;
     play('buttonClick');
-    window.removeEventListener('pointerdown', armAudioOnFirstGesture);
   }
   $effect(() => {
-    window.addEventListener('pointerdown', armAudioOnFirstGesture);
-    return () => window.removeEventListener('pointerdown', armAudioOnFirstGesture);
+    window.addEventListener('pointerdown', armAudio, true);
+    window.addEventListener('click', clickSound, true);
+    return () => {
+      window.removeEventListener('pointerdown', armAudio, true);
+      window.removeEventListener('click', clickSound, true);
+    };
   });
 
   function signOut() {

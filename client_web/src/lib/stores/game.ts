@@ -77,7 +77,6 @@ let lastPublishedVisual: InterpolatedFields | null = null;
 // first packet of a session never fires a cue for progress made while away.
 let lastCraftedCount = -1;
 let lastLevel = 0;
-let lastMonsterHp = 0;
 // -1 so the FIRST packet of a session never counts as a change - a reconnect
 // would otherwise announce every race the player already had.
 let lastUnlockedRaceMask = -1;
@@ -602,7 +601,6 @@ export function startSession(token: string): void {
   resetCombatLog();
   lastCraftedCount = -1;
   lastLevel = 0;
-  lastMonsterHp = 0;
   lastUnlockedRaceMask = -1;
   lastHaltReason = 0;
   commandResultFeed.reset();
@@ -669,21 +667,6 @@ export function startSession(token: string): void {
         arrivedAtMs,
       );
 
-      // Fed from the AUTHORITATIVE packet, never the interpolated value - the
-      // smoothed number passes through every intermediate value on its way.
-      //
-      // Modul: THE DEATH SOUND STAYS ON THE SNAPSHOT, and the damage does not.
-      //
-      // A kill also arrives on the combat event feed, which is where the
-      // floating numbers now come from - but a monster whose health reaches
-      // zero on a snapshot that still names it is a second, independent witness
-      // to the same moment, and the sound is cheap enough that the belt and the
-      // braces are both worth having. Rate-limited by lastMonsterHp, so a
-      // stream of zero-health snapshots plays once.
-      if (lastMonsterHp > 0 && packet.CurrentMonsterHp <= 0 && packet.CurrentMonsterId > 0) {
-        play('monsterDefeated');
-      }
-      lastMonsterHp = packet.CurrentMonsterHp;
 
       // Turns every silently-rejected command into an explanation. Without
       // this the player presses a button, nothing happens, and nothing

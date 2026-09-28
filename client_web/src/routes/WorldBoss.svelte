@@ -245,7 +245,7 @@
     striking = true;
     attemptsAtStrike = attempts;
     autoResult = null;
-    play('playerHit');
+    play('hitMelee');
     try {
       const answer = await strikeBoss({ Mode: 'Auto', Plate: selectedPlate });
       if (answer && answer.Result === 'Landed') {
@@ -273,7 +273,7 @@
     attemptsAtStrike = attempts;
     clearTimeout(strikeTimer);
     strikeTimer = setTimeout(() => (striking = false), 5000);
-    play('playerHit');
+    play('hitMelee');
   }
 
   // Modul: WHY THE BUTTON IS GREY, said NEXT TO the button (task 25). The

@@ -43,16 +43,14 @@ loud for what is rare (the first-clear fanfare at -4).
 
 | File | Raised when |
 |---|---|
-| `ui_button_click.wav` | Any nav button - **2026-09-27** |
+| `ui_button_click.wav` | Every button press, app-wide (`App.svelte`; opt out with `data-no-click-sound`) - **2026-09-28** |
 | `ui_window_open.wav` | A chrono boost starts; Settings' sound check - **2026-09-27** |
 | `ui_window_close.wav` | The offline, victory or death card is closed - **2026-09-27** |
 | `notification.wav` | The unclaimed-mail count ROSE between two polls - **2026-09-27** |
-| `combat_player_hit.wav` | Fallback for the crit hit, and the world boss strike |
-| `combat_hit_melee.wav` | A landed hit, melee weapon - **2026-09-27** |
+| `combat_hit_melee.wav` | A landed hit, melee weapon; the world boss strike - **2026-09-27** |
 | `combat_hit_ranged.wav` | A landed hit, ranged weapon - **2026-09-27** |
 | `combat_hit_magic.wav` | A landed hit, magic weapon - **2026-09-27** |
 | `combat_miss.wav` | The player's swing missed - **2026-09-27** |
-| `combat_monster_defeated.wav` | A monster's health reached zero on an authoritative snapshot |
 | `combat_player_died.wav` | The fighting character (slot 1) died, a man - **2026-09-27** |
 | `combat_player_died_female.wav` | The same, a woman; sex read from the Hall (`deathSound.ts`) - **2026-09-27** |
 | `combat_boss_first_clear.wav` | A boss beaten for the first time - **2026-09-27** |
@@ -67,11 +65,15 @@ loud for what is rare (the first-clear fanfare at -4).
 | `achievement_unlock.wav` | An achievement tier crossed |
 | `error.wav` | Any rejection surfaced as a toast; the last fallback for a death - **2026-09-27** |
 
+`combat_player_hit.wav` and `combat_monster_defeated.wav` were removed
+2026-09-28 at the owner's request; a kill is now silent and nothing falls back
+to a generic hit.
+
 ## What does NOT exist yet, and what plays instead
 
 | File | Plays instead today | Wanted because |
 |---|---|---|
-| `combat_hit_crit.wav` | `combat_player_hit` | A crit is a stat players buy and could not hear |
+| `combat_hit_crit.wav` | The weapon's own hit clip | A crit is a stat players buy and could not hear |
 
 Adding it needs no code change, and `ops/validate_audio.py` deliberately does
 not require it. Every other clip above IS required there, and `exercise.mjs`
