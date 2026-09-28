@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState } from '../lib/stores/game';
+  import { requestScreen } from '../lib/stores/navigation';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchMaterials } from '../lib/net/rest';
@@ -208,9 +209,12 @@
     {#if inventory.isPending || !registry}
       <p class="dim">Checking the chest...</p>
     {:else if availableFood.length === 0}
-      <p class="dim">
-        No food in the chest. Cook something, or fish it up.
-      </p>
+      <!-- Modul: an empty state names the next step AND offers it. This said
+           "fish it up" and left the player to find where fishing lives. -->
+      <div class="empty">
+        <p class="dim">No food in the chest yet. Fish some up, then load it here.</p>
+        <button onclick={() => requestScreen('gathering')}>Go fishing</button>
+      </div>
     {:else}
       <div class="loader">
         <select bind:value={selectedFood}>
@@ -257,6 +261,22 @@
 </div>
 
 <style>
+  .empty {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.8rem;
+  }
+
+  .empty p {
+    margin: 0;
+    flex: 1 1 12rem;
+  }
+
+  .empty button {
+    flex-shrink: 0;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));

@@ -10,11 +10,11 @@
 // quietly disagrees with the game is worse than no wiki, because a player
 // trusts it and then loses an evening to a price that changed.
 //
-// The guard is not theoretical. `commands.ts`'s `villageCostLabel` carries a
-// display copy of VillageManagementEngine.TierMaterials' ore column and it is
-// WRONG for tiers 1, 2 and 4 - it names malachite / hematite / cobalt, the RARE
+// The guard is not theoretical. `commands.ts` carried a `villageCostLabel` with
+// a display copy of VillageManagementEngine.TierMaterials' ore column that was
+// WRONG for tiers 1, 2 and 4 - it named malachite / hematite / cobalt, the RARE
 // ores, where the server charges copper / iron / silver. Nothing held them
-// together, so nothing said so. VILLAGE_TIER_MATERIALS below is the server's
+// together, so nothing said so (deleted 2026-09-28). VILLAGE_TIER_MATERIALS below is the server's
 // own table and the test compares it entry by entry.
 //
 // SECOND: the coverage ledger at the bottom names every screen the game has.
@@ -335,7 +335,7 @@ export const DEED_CHAPTERS: readonly {
     title: 'The Village Road',
     reward: 'A Seal, and a set of Common tools',
     about:
-      'The tutorial, written as content: win a fight, wear a weapon, fill the larder, gather 100 wood, craft something, reach level 10. Done in order it has touched every loop the game has.',
+      'The tutorial, written as content: fill the larder, win a fight, wear a weapon, gather 100 wood, craft something, reach level 10. Done in order it has touched every loop the game has.',
   },
   {
     index: 2,

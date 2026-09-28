@@ -132,6 +132,68 @@ namespace FolkIdle.Server.Domain.Progression
             return TierMaterials[tier];
         }
 
+        public const string GoldItemId = "gold";
+
+        /// <summary>One thing the next level of a building costs.</summary>
+        public readonly record struct UpgradeCostLine(string ItemId, long Quantity);
+
+        public static bool IsStructuralBuilding(int buildingId)
+            => buildingId == TownHallBuildingId || buildingId == CraftingWorkshopBuildingId;
+
+        /// <summary>
+        /// Everything the upgrade from <paramref name="currentLevel"/> to the
+        /// next level costs, in the order the handler charges it.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE ONE PRICE LIST. The Village screen used to rebuild this
+        /// on the client from a hand-kept copy of TierMaterials, and the copy
+        /// had drifted: it still named the RARE ores (malachite, hematite,
+        /// cobalt) from the 2026-09-01 pass that the same day reverted to the
+        /// commons, priced Town Hall and the Workshop on the wrong tier, and
+        /// never mentioned the Workshop's golden logs. A player read a price
+        /// the server did not charge. ExecuteUpgradeBuildingAsync charges
+        /// exactly these lines and /api/v1/village/quote shows exactly these
+        /// lines, so the two cannot disagree; VillageQuoteTests holds them to
+        /// it.
+        /// </remarks>
+        public static UpgradeCostLine[] QuoteUpgrade(int buildingId, int currentLevel)
+        {
+            bool structural = IsStructuralBuilding(buildingId);
+            long cost = CalculateProductionUpgradeCost(currentLevel);
+
+            // Structural buildings walk one tier per TWO levels - see the
+            // comment in ExecuteUpgradeBuildingAsync for why.
+            var tierMats = structural
+                ? GetTierMaterials((currentLevel / 2) * 5)
+                : GetTierMaterials(currentLevel);
+
+            if (buildingId == CraftingWorkshopBuildingId)
+            {
+                return new[]
+                {
+                    new UpgradeCostLine(tierMats.Log, cost),
+                    new UpgradeCostLine(tierMats.Ore, cost),
+                    new UpgradeCostLine(tierMats.RareLog, Math.Max(1L, cost / 10L)),
+                };
+            }
+
+            if (structural)
+            {
+                return new[]
+                {
+                    new UpgradeCostLine(tierMats.Log, cost),
+                    new UpgradeCostLine(tierMats.Ore, cost),
+                };
+            }
+
+            return new[]
+            {
+                new UpgradeCostLine(tierMats.Log, cost),
+                new UpgradeCostLine(tierMats.Ore, cost),
+                new UpgradeCostLine(GoldItemId, CalculateUpgradeCost(currentLevel)),
+            };
+        }
+
         /// <summary>
         /// How often a production building pays its tier's RARE material
         /// instead of the common one, as a percentage.
@@ -372,13 +434,6 @@ namespace FolkIdle.Server.Domain.Progression
                     }
                 }
 
-                // Modul 16: the four passive-production buildings (Lumberjack/
-                // Quarry/Mine/Warehouse) are raw-material sinks - upgrading them
-                // costs Wood and Stone rather than the Gold the original four
-                // service buildings (Forge/Inn/Breeding/Academy) use.
-                bool isProductionBuilding = targetBuildingId == LumberjackBuildingId || targetBuildingId == MineBuildingId || targetBuildingId == WarehouseBuildingId;
-                long cost = CalculateProductionUpgradeCost(infrastructure.CurrentLevel);
-
                 // Modul: STRUCTURAL BUILDINGS NEVER LEFT TIER 0.
                 //
                 // GetTierMaterials(currentLevel) clamps currentLevel / 5, which is
@@ -412,29 +467,24 @@ namespace FolkIdle.Server.Domain.Progression
                 // a pass that deliberately CUT village costs because a wall had
                 // formed here; this is the smallest change that makes the tier
                 // ladder real without rebuilding that wall.
-                var tierMats = isStructuralBuilding
-                    ? GetTierMaterials((infrastructure.CurrentLevel / 2) * 5)
-                    : GetTierMaterials(infrastructure.CurrentLevel);
+                //
+                // The tier rule above lives in QuoteUpgrade now, which is also
+                // what /api/v1/village/quote shows - see its remarks.
+                var quote = QuoteUpgrade((int)targetBuildingId, infrastructure.CurrentLevel);
 
-                // ALL buildings consume tiered logs and ores now
-                if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, tierMats.Log, cost) ||
-                    !await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, tierMats.Ore, cost))
+                // ALL buildings consume tiered logs and ores now; the Workshop
+                // also takes its golden logs.
+                foreach (var line in quote)
                 {
-                    await transaction.RollbackAsync();
-                    Reject(playerId, FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
-                    return;
-                }
-
-                if (isStructuralBuilding && targetBuildingId == CraftingWorkshopBuildingId)
-                {
-                    long rareLogCost = Math.Max(1L, cost / 10L);
-                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, tierMats.RareLog, rareLogCost))
+                    if (line.ItemId == GoldItemId) continue;
+                    if (!await InventoryAndStashSystem.TryConsumeUnifiedAsync(db, playerId, line.ItemId, line.Quantity))
                     {
                         await transaction.RollbackAsync();
                         Reject(playerId, FolkIdle.Server.Network.CommandResultCode.InsufficientMaterials);
                         return;
                     }
                 }
+
                 // Modul: GOLD IS PART OF EVERY UPGRADE NOW, 2026-09-01.
                 //
                 // It used to fund only the four service buildings, which left
@@ -451,9 +501,13 @@ namespace FolkIdle.Server.Domain.Progression
                 // and doubling their price would deepen the very wall this
                 // change exists to remove.
                 long goldSpent = 0L;
-                if (!isStructuralBuilding)
+                long goldCost = 0L;
+                foreach (var line in quote)
                 {
-                    long goldCost = CalculateUpgradeCost(infrastructure.CurrentLevel);
+                    if (line.ItemId == GoldItemId) goldCost += line.Quantity;
+                }
+                if (goldCost > 0L)
+                {
                     var goldRecord = await db.CommodityRecords
                         .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
                         .SingleOrDefaultAsync();

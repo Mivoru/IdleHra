@@ -305,11 +305,10 @@
   <div class="professions">
     <section class="panel">
       <h2>Hauled this session</h2>
-      <p class="dim small">
-        What this character has actually pulled out of the ground and the water.
-        Combat has had this feed since the loot events landed; gathering showed
-        nothing, so a working node and a broken one looked identical.
-      </p>
+      <!-- Modul: this panel exists because gathering used to show nothing
+           at all while it ran, so a working node and a broken one looked
+           identical. That was the reason; the player only needs the what. -->
+      <p class="dim small">What this character has pulled out of the ground and the water.</p>
       <SessionLoot {registry} showEquipment={false} />
     </section>
 

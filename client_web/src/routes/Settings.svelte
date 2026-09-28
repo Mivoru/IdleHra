@@ -20,6 +20,7 @@
   import { CommandType } from '../lib/net/protocol.generated';
   import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
   import { triggerGdprPurge } from '../lib/net/commands';
+  import { requestSignOut } from '../lib/stores/navigation';
   import { enablePushNotifications, pushUnavailableReason } from '../lib/net/push';
   import { hapticsEnabled } from '../lib/net/haptics';
   import { enableLocalNotifications, localNotifyUnavailableReason } from '../lib/net/localNotify';
@@ -347,11 +348,10 @@
     try {
       await submitSupportTicket(buildTrace());
       supportSent = true;
-      // Modul: the handler writes ONE LINE TO THE SERVER CONSOLE and returns
-      // 200. It does not store a ticket, assign an id or produce a body. So
-      // this must not promise a reply - a 200 means "received", nothing more,
-      // and anything warmer is a lie the player discovers by waiting.
-      pushLocalNotice('Sent. There is no ticketing system behind this yet.', 'info');
+      // Modul: the handler logs the message as one `[support]` line and
+      // returns 200. It does not store a ticket or assign an id, so this must
+      // not promise a reply - only that it arrived where it can be read.
+      pushLocalNotice('Sent. Thank you - the developer reads these.', 'info');
     } catch {
       pushLocalNotice('Could not reach the server.');
     }
@@ -391,9 +391,7 @@
   <section class="panel">
     <h2>Language</h2>
     <p class="dim small">
-      The same 30-key table the Unity client reads, served from /gamedata - one
-      table, not two. A blank translation falls back to English rather than
-      showing nothing.
+      Where a line has no translation yet, it is shown in English.
     </p>
 
     <div class="langs">
@@ -702,11 +700,16 @@
 
     {#if supportSent}
       <p class="dim tiny">
-        Received by the server. There is no ticketing system behind this
-        endpoint yet, so nobody will reply to it - stated here rather than
-        implied by a reference number that does not exist.
+        Sent. The developer reads every message, but cannot answer you inside
+        the game yet - if you want a reply, include a way to reach you.
       </p>
     {/if}
+  </section>
+
+  <section class="panel">
+    <h2>Account</h2>
+    <p class="dim small">Your characters keep their jobs while you are away.</p>
+    <button onclick={requestSignOut}>Sign out</button>
   </section>
 
   <section class="panel danger-panel">

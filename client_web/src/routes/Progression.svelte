@@ -8,10 +8,9 @@
     fetchLoginBonus,
     fetchRaceMastery,
     fetchStatistics,
-    fetchMetadata,
     type AchievementEntry,
   } from '../lib/net/rest';
-  import { claimAchievement, claimBattlePassMilestone, purchaseBattlePass } from '../lib/net/commands';
+  import { claimAchievement } from '../lib/net/commands';
   import Bar from '../lib/ui/Bar.svelte';
   import Money from '../lib/ui/Money.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
@@ -45,18 +44,6 @@
   // entries, so anyone who unlocked Moosleute saw "Race 6".
   const unlockedMask = $derived(snap?.UnlockedRaceBitmask ?? 0);
 
-  // The three races whose mastery level rides on the hot path rather than
-  // waiting for the REST snapshot - they feed StatsCalculator directly.
-  const liveMastery = $derived(
-    snap
-      ? [
-          { raceId: 1, level: snap.HumanMasteryLevel },
-          { raceId: 2, level: snap.VilaMasteryLevel },
-          { raceId: 3, level: snap.DraugrMasteryLevel },
-        ]
-      : [],
-  );
-
   function claim(entry: AchievementEntry) {
     const outcome = claimAchievement(entry.AchievementId, quarantined);
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
@@ -66,33 +53,6 @@
   const claimable = $derived(
     (achievements.data ?? []).filter((a) => !a.IsClaimed && a.CompletedTier > 0),
   );
-
-  // --- season pass ----------------------------------------------------------
-  // Modul: MOVED HERE FROM THE BREEDING SCREEN (2026-09-13), where it sat under
-  // the Breed button with nothing to do with breeding - a player looking for
-  // how to marry somebody met "claim milestone by index 0-49" instead.
-  //
-  // ClaimedMilestonesBitmask was REMOVED from StateUpdatePacket along with the
-  // pass level and seasonal XP, so which milestones are already claimed is not
-  // readable anywhere this client can reach. Milestones are therefore offered
-  // without a claimed/unclaimed mark, and a repeat claim is the server's to
-  // reject - stating that rather than inventing a checkmark that would be a guess.
-  const metadata = createQuery(() => ({ queryKey: queryKeys.metadata, queryFn: fetchMetadata }));
-  const passLevel = $derived(metadata.data?.ChroniclePassLevel ?? 0);
-  const seasonalXp = $derived(metadata.data?.AccumulatedSeasonalXp ?? 0);
-
-  let milestone = $state(0);
-
-  function claimMilestone() {
-    const outcome = claimBattlePassMilestone(milestone, quarantined);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.metadata }), 900);
-  }
-
-  function buyPass() {
-    purchaseBattlePass();
-    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.metadata }), 900);
-  }
 
   function duration(seconds: number): string {
     const hours = Math.floor(seconds / 3600);
@@ -134,7 +94,7 @@
           {@const ready = !entry.IsClaimed && entry.CompletedTier > 0}
           <li class:ready>
             <div class="line">
-              <strong>Achievement #{entry.AchievementId}</strong>
+              <strong>{entry.Title || `Achievement ${entry.AchievementId}`}</strong>
               {#if entry.IsClaimed}
                 <span class="dim tiny">claimed</span>
               {:else if ready}
@@ -150,6 +110,9 @@
                 </button>
               {/if}
             </div>
+            {#if entry.Description}
+              <span class="dim tiny">{entry.Description}</span>
+            {/if}
             <Bar
               value={entry.CurrentProgress}
               max={Math.max(1, entry.NextTierTarget)}
@@ -236,17 +199,6 @@
       {/each}
     {/if}
 
-    {#if liveMastery.some((m) => m.level > 0)}
-      <p class="dim tiny">
-        <!-- These three come off the hot path rather than the REST snapshot,
-             so they can disagree with the bars above for a moment after a
-             level-up. Naming the source is cheaper than an unexplained
-             mismatch. -->
-        Live from the state feed:
-        {#each liveMastery as entry, index}{index > 0 ? ', ' : ''}{RACE_NAMES[entry.raceId]}
-          {entry.level}{/each}.
-      </p>
-    {/if}
   </section>
 
   <section class="panel">
@@ -285,59 +237,15 @@
     {/if}
   </section>
 
-  <section class="panel">
-    <h2>Chronicle pass</h2>
-
-    {#if metadata.isPending}
-      <Skeleton />
-    {:else}
-      <dl class="stats">
-        <div><dt>Pass level</dt><dd>{passLevel}</dd></div>
-        <div><dt>Seasonal XP</dt><dd>{seasonalXp.toLocaleString()}</dd></div>
-        <div><dt>Transactions</dt><dd>{metadata.data?.EventHorizonTransactionCount ?? 0}</dd></div>
-      </dl>
-
-      <button class="pass-btn" onclick={buyPass}>Unlock premium track</button>
-      <p class="dim tiny">
-        Spends PremiumDiamonds server-side - no real-money purchase is involved
-        in unlocking the track.
-      </p>
-
-      <h3>Claim a milestone</h3>
-      <div class="pass-row">
-        <input type="number" min="0" max="49" bind:value={milestone} />
-        <button disabled={quarantined} onclick={claimMilestone}>Claim</button>
-      </div>
-      <p class="dim tiny">
-        Which milestones you have already claimed is not exposed by any endpoint,
-        so they are claimed by index and a repeat is the server's to refuse.
-        Indices run 0-49.
-      </p>
-    {/if}
-  </section>
+  <!-- Modul: THE CHRONICLE PASS IS NOT SHOWN (2026-09-28). Its only claim UI
+       was a number box (0-49) beside text admitting the client cannot know
+       which milestones are taken, and the free track mints
+       `chronicle_free_{n}`, an item id items.json does not contain. The server
+       side is untouched; what the pass should become is an owner decision -
+       docs/superpowers/plans/2026-09-28-design-audit-phases.md, O5. -->
 </div>
 
 <style>
-  .pass-btn {
-    margin-top: 0.7rem;
-  }
-
-  .pass-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 0.4rem;
-  }
-
-  .pass-row input {
-    font: inherit;
-    color: inherit;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.4rem 0.5rem;
-    width: 100%;
-  }
-
   .progress {
     text-align: right;
     white-space: nowrap;

@@ -21,6 +21,7 @@
   } from '../lib/net/content';
   import { authedGet } from '../lib/net/auth';
   import { HALT_REASONS } from '../lib/ui/slots';
+  import { requestScreen } from '../lib/stores/navigation';
   import Bar from '../lib/ui/Bar.svelte';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import FloatingDamage from '../lib/ui/FloatingDamage.svelte';
@@ -165,6 +166,20 @@
   // is worse than showing an open one as locked for the moment before the
   // first packet lands.
   const unlockedRegion = $derived($playerState?.HighestUnlockedRegion || 1);
+
+  // Modul: THE NEXT REGION, NOT THE WHOLE MAP. A new player's Combat screen
+  // was 3,500px tall at 390px and four fifths of it was twenty locked monster
+  // rows. The region you can open next stays listed, dimmed, because it is the
+  // goal; everything past it folds into one line.
+  const lastListedRegion = $derived(unlockedRegion + 1);
+
+  // Modul: THE SAME THREE FIELDS THE TUTORIAL READS (tutorialSteps.ts). A
+  // fight without food is usually lost - at level 1 against the first monster
+  // it is lost in about thirty seconds - and the Fight button gave no sign of
+  // it. Advice, not a gate: the button stays enabled.
+  const larderEmpty = $derived(
+    snap ? Number(snap.Food1_Count) + Number(snap.Food2_Count) + Number(snap.Food3_Count) === 0 : false,
+  );
 
 
   let registry = $state<ContentRegistry | null>(null);
@@ -459,6 +474,9 @@
     <SessionLoot {registry} />
   </section>
 
+  <!-- Modul: only once a monster is chosen. With none, this was a heading
+       over nothing, between the loot and the monster list. -->
+  {#if dropPreviewFor > 0}
   <section class="panel">
     <h2>Drops</h2>
     {#if dropPreviewFor > 0}
@@ -501,9 +519,16 @@
     {/if}
 
   </section>
+  {/if}
 
   <section class="panel">
     <h2>Monsters</h2>
+    {#if larderEmpty}
+      <div class="larder-warning" role="note">
+        <p>Your larder is empty. Without food a fight is usually lost.</p>
+        <button onclick={() => requestScreen('larder')}>Stock the larder</button>
+      </div>
+    {/if}
     {#if registry}
     <!-- Modul: THE RULES OF THIS SCREEN, once, at the top.
          A new player meets a list of twenty-five monsters, five of them
@@ -518,6 +543,7 @@
       farmed at its normal stats. Dying stops combat but never gathering.
     </p>
       {#each registry.regions as region, index}
+        {#if index + 1 <= lastListedRegion}
         <!-- Modul: each location gets its painted scene as a banner. The art
              existed and nothing referenced it; a list of five identical
              headings is a much weaker sense of place than the thing the
@@ -563,7 +589,15 @@
             </li>
           {/each}
         </ul>
+        {/if}
       {/each}
+      {#if registry.regions.length > lastListedRegion}
+        {@const hidden = registry.regions.length - lastListedRegion}
+        <p class="dim beyond">
+          {hidden === 1 ? 'One more region lies' : `${hidden} more regions lie`} beyond. Each opens
+          when the boss of the one before it falls.
+        </p>
+      {/if}
     {:else if !contentError}
       <p class="dim">Loading content...</p>
     {/if}
@@ -571,6 +605,31 @@
 </div>
 
 <style>
+  .larder-warning {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.8rem;
+    padding: 0.5rem 0.7rem;
+    margin: 0 0 0.7rem;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+  }
+
+  .larder-warning p {
+    margin: 0;
+    flex: 1 1 12rem;
+  }
+
+  .larder-warning button {
+    flex-shrink: 0;
+  }
+
+  .beyond {
+    margin: 0.6rem 0 0;
+    font-size: 0.85rem;
+  }
+
   .levelcell {
     position: relative;
     border-radius: var(--radius);

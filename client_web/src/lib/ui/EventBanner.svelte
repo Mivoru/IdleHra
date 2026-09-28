@@ -78,6 +78,24 @@
     opacity: 0.8;
   }
 
+  strong {
+    font-size: inherit;
+  }
+
+  /* Modul: on a phone the chip is the event's NAME. Prefix and effect made it
+     a two-line banner on a row of its own; the effect stays in the title
+     tooltip and on the Wiki, and the colour still carries the flavour. */
+  @media (max-width: 40rem) {
+    .event {
+      order: 1;
+    }
+
+    .label,
+    .effect {
+      display: none;
+    }
+  }
+
   /* Colour carries the flavour; the effect text carries the meaning, so this
      is never colour-only. */
   .event[data-tone='good'] {

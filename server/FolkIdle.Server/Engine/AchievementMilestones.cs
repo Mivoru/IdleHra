@@ -53,6 +53,28 @@ namespace FolkIdle.Server.Engine
         // bonus reward track; Treasury/Forging remain diamonds-only.
         private static readonly int[] LogisticsStatBonusPctRewards = { 1, 2, 4, 8 };
 
+        // Modul: A NAME FOR EACH. The Progress screen listed these as
+        // "Achievement #1" to "#4" because nothing on the server named them -
+        // the ids were the only handle, and an id is not something a player
+        // can want. Kept here beside the thresholds they describe.
+        public static string TitleFor(int achievementId) => achievementId switch
+        {
+            MonsterKillAchievementId => "Monster Slayer",
+            TreasuryAchievementId => "Treasury",
+            ForgingAchievementId => "Master Smith",
+            LogisticsAchievementId => "Logistics",
+            _ => $"Achievement {achievementId}",
+        };
+
+        public static string DescriptionFor(int achievementId) => achievementId switch
+        {
+            MonsterKillAchievementId => "Kill ten thousand monsters.",
+            TreasuryAchievementId => "Hold gold at one time: 100,000, 5 million, 100 million, then 2.5 billion.",
+            ForgingAchievementId => "Fuse at the Forge 50, then 500 times; then fuse an item up to rarity 10, then 14.",
+            LogisticsAchievementId => "Gather 10,000 times, then 100,000, a million and ten million. Every tier also adds permanent gathering speed.",
+            _ => string.Empty,
+        };
+
         public static int EvaluateTreasuryTier(long currentGold)
         {
             int tier = 0;

@@ -38,6 +38,23 @@ export function requestScreen(screen: string, options: { focusEquipmentId?: numb
 }
 
 /**
+ * Sign-out, asked for from a screen.
+ *
+ * Modul: on a phone Sign out is no longer in the header - it took a whole row
+ * of a 390px screen for something a player does once a month - so Settings
+ * offers it. Only App.svelte holds the session, so, like `requestScreen`, a
+ * screen publishes the request and App carries it out. A counter so two
+ * presses are two requests.
+ */
+const signOutRequests = writable(0);
+
+export const signOutRequest = { subscribe: signOutRequests.subscribe };
+
+export function requestSignOut(): void {
+  signOutRequests.update((n) => n + 1);
+}
+
+/**
  * Read and clear the pending focus target. Consumed once: a player who
  * navigates to the Forge again by hand should not have the previous item
  * silently re-selected.

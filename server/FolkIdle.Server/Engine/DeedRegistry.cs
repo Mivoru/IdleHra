@@ -148,15 +148,23 @@ namespace FolkIdle.Server.Engine
                 // touched every loop the game has.
                 new DeedChapter(1, "The Village Road", "A Seal, and a set of Common tools", new List<Deed>
                 {
+                    // Modul: THE TUTORIAL'S ORDER, and the tutorial's words.
+                    // The larder comes first because without food the FIRST
+                    // monster wins (tutorialSteps.ts measured it at 29 s); this
+                    // chapter used to list it third and say "the fourth monster
+                    // of a region", so the Book and the coach disagreed on
+                    // screen at the same time.
+                    new("stock-larder", "Fill the larder",
+                        "Fish, then load the catch into Auto-Eat. It heals you mid-fight, and without it the very first monster will kill you.",
+                        "larder", 1, c => Math.Min(c.LarderStocked, 1)),
+                    // Counts a KILL. It used to count level 2 as its target, so
+                    // it read "1 / 2" before the player had fought at all.
                     new("first-blood", "Win your first fight",
                         "Open Combat and send your character at Field Mouse. It keeps fighting on its own, even after you close the page.",
-                        "combat", 2, c => Math.Min(c.Level, 2)),
+                        "combat", 1, c => Math.Min(c.TotalKills, 1)),
                     new("dress-up", "Wear a weapon",
                         "Monsters drop equipment. Open Character and click the weapon slot - gear is where nearly all of your power comes from, not levels.",
                         "character", 1, c => c.HasWeaponEquipped ? 1 : 0),
-                    new("stock-larder", "Fill the larder",
-                        "Load food into Auto-Eat. It heals you mid-fight, and without it the fourth monster of a region will kill you.",
-                        "larder", 1, c => Math.Min(c.LarderStocked, 1)),
                     new("hundred-logs", "Gather 100 wood",
                         "Open Gathering and set your character to chop. Wood is what the village and half of crafting are built from.",
                         "gathering", 100, c => Math.Min(c.WoodStock, 100)),

@@ -2,7 +2,7 @@
   import { QueryClientProvider } from '@tanstack/svelte-query';
   import Login from './routes/Login.svelte';
   import ChatDock from './lib/ui/ChatDock.svelte';
-  import { screenRequest } from './lib/stores/navigation';
+  import { screenRequest, signOutRequest } from './lib/stores/navigation';
   import Hub from './routes/Hub.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import VictoryCard from './lib/ui/VictoryCard.svelte';
@@ -271,6 +271,12 @@
     }
   });
 
+  // Settings' Sign out (see requestSignOut). The first value is the store's
+  // initial 0, which is not a request.
+  $effect(() => {
+    if ($signOutRequest > 0) untrack(() => signOut());
+  });
+
   $effect(() => {
     if (token) {
       startSession(token);
@@ -533,7 +539,7 @@
           ? ` (retry ${$connectionStatus.attempt})`
           : ''}
       </span>
-      <button onclick={signOut}>Sign out</button>
+      <button class="signout" onclick={signOut}>Sign out</button>
     </header>
 
     <!-- Modul: offline/reconnect UI. This was a one-line banner that printed
@@ -731,6 +737,36 @@
 
     nav button {
       min-height: 2.2rem;
+    }
+
+    /* Modul: THE HEADER GIVES THE SCREEN BACK. At 390px it measured about
+       230px of an 844px phone: the title, an event banner on its own row,
+       the wallet, the word "Live" and Sign out on a third, and the menu on a
+       fourth. Now: title and wallet on one row, the event chip and the menu
+       on the next. Sign out lives in Settings on a phone, and the connection
+       state only shows when it is NOT live - "Live" is the normal case and
+       ConnectionNotice already speaks up when it is not. */
+    .signout,
+    .phase[data-phase='live'] {
+      display: none;
+    }
+
+    .wallet {
+      order: 0;
+    }
+
+    /* The event chip and the halt badge (order 1) sit left of the menu. */
+    .halt {
+      order: 1;
+    }
+
+    .navtoggle {
+      order: 2;
+    }
+
+    nav.open {
+      order: 3;
+      width: 100%;
     }
   }
 

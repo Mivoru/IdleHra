@@ -384,13 +384,11 @@
              lib/ui/SkillsPanel.svelte, which is the skill tree now. -->
       </div>
 
-      <h3>Attributes</h3>
-      <dl class="stats">
-        <div><dt>STR</dt><dd>{snap.STR}</dd></div>
-        <div><dt>DEX</dt><dd>{snap.DEX}</dd></div>
-        <div><dt>CON</dt><dd>{snap.CON}</dd></div>
-        <div><dt>LCK</dt><dd>{snap.LCK}</dd></div>
-      </dl>
+      <!-- Modul: no STR/DEX/CON/LCK row here any more. It sat above the
+           attribute cards, which show the same four numbers as Might, Finesse,
+           Vigour and Fortune - one screen, two names for each stat, and two
+           headings both reading "Attributes". The cards are the ones a player
+           acts on, so they are the ones that stay. -->
 
       <!-- Modul: these three are the server-COMPUTED values actually used in
            combat resolution, not a client reconstruction from raw DEX/CON -
