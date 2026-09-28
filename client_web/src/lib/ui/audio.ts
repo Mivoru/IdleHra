@@ -93,6 +93,40 @@ volume.subscribe((value) => {
 muted.subscribe((value) => localStorage.setItem(MUTED_KEY, value ? '1' : '0'));
 
 /**
+ * Whether the game's window is the one the player is in (owner, 2026-09-29:
+ * "when I alt-tab the music stops but the sound effects don't - I want those to
+ * stop too when I'm not in the game's window").
+ *
+ * Hidden OR unfocused counts as away: alt-tabbing to another window blurs the
+ * page without always hiding it, and a phone going to the background does both.
+ * music.ts pauses on the same store, so the two can never disagree about
+ * whether the player is here.
+ */
+export const pageActive = writable(true);
+
+function readPageActive(): boolean {
+  if (typeof document === 'undefined') return true;
+  return !document.hidden && (typeof document.hasFocus !== 'function' || document.hasFocus());
+}
+
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  const update = () => pageActive.set(readPageActive());
+  document.addEventListener('visibilitychange', update);
+  window.addEventListener('blur', update);
+  window.addEventListener('focus', update);
+}
+
+// Effects are silenced by suspending the whole context, and play() refuses to
+// START one while away - a suspended context queues what is started on it, so
+// a fight left running in the background would otherwise come back as a burst
+// of every hit that landed meanwhile.
+pageActive.subscribe((active) => {
+  if (!context) return;
+  if (active) void context.resume();
+  else void context.suspend();
+});
+
+/**
  * Browsers refuse to start an AudioContext before a user gesture, so this is
  * called from the first click rather than at load. Calling it early does not
  * fail loudly - it produces a context stuck in "suspended" that silently plays
@@ -100,7 +134,7 @@ muted.subscribe((value) => localStorage.setItem(MUTED_KEY, value ? '1' : '0'));
  */
 export function unlockAudio(): void {
   if (context) {
-    if (context.state === 'suspended') void context.resume();
+    if (context.state === 'suspended' && get(pageActive)) void context.resume();
     return;
   }
 
@@ -170,7 +204,7 @@ export function playHit(weaponKind: number, isCrit: boolean): void {
  * keep in step with a directory.
  */
 export function playWithFallback(name: ClipName, fallback: ClipName): void {
-  if (get(muted) || !context || !masterGain) return;
+  if (get(muted) || !get(pageActive) || !context || !masterGain) return;
 
   void loadClip(CLIPS[name]).then((buffer) => {
     if (buffer) {
@@ -182,7 +216,7 @@ export function playWithFallback(name: ClipName, fallback: ClipName): void {
 }
 
 function playBuffer(buffer: AudioBuffer): void {
-  if (!context || !masterGain || get(muted)) return;
+  if (!context || !masterGain || get(muted) || !get(pageActive)) return;
   const source = context.createBufferSource();
   source.buffer = buffer;
   source.connect(masterGain);
@@ -195,10 +229,10 @@ function playBuffer(buffer: AudioBuffer): void {
  * second recording.
  */
 export function play(name: ClipName, rate = 1): void {
-  if (get(muted) || !context || !masterGain) return;
+  if (get(muted) || !get(pageActive) || !context || !masterGain) return;
 
   void loadClip(CLIPS[name]).then((buffer) => {
-    if (!buffer || !context || !masterGain || get(muted)) return;
+    if (!buffer || !context || !masterGain || get(muted) || !get(pageActive)) return;
     const source = context.createBufferSource();
     source.buffer = buffer;
     source.playbackRate.value = rate;
