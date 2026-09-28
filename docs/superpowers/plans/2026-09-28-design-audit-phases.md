@@ -244,6 +244,15 @@ Client only. `exercise.mjs` clicks the Map's plates; keep them.
 
 ### 2.3 Time to goal
 
+**BUILT 2026-09-28, differently from the sketch below.** The Goal card shows
+"about 3 h at this session's pace" (`lib/ui/pace.ts`, tested). It
+extrapolates the deed's OWN counter as it moves while the map is open,
+instead of modelling XP, kill or gathering rates, because that would copy
+three server formulas to the client. It says nothing until it has watched
+for 2 minutes and seen progress, and nothing past 30 days. The Village line
+ETA is not built, because it would need the gathering rate formula on the
+client.
+
 - [ ] Deeds and the Goal card show an ETA where a rate exists (kills/h from the
   session, gathering from the node's seconds per unit and mastery).
 - [ ] Village shows "at your current gathering rate: ~40 min" for a missing

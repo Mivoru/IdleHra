@@ -1,3 +1,8 @@
+<script lang="ts" module>
+  import type { PaceSample as Sample } from './pace';
+  const firstReadings = new Map<string, Sample>();
+</script>
+
 <script lang="ts">
   // Modul: THE MAP ANSWERS "WHERE", THESE ANSWER "WHAT NOW".
   //
@@ -16,6 +21,7 @@
   import { requestScreen } from '../stores/navigation';
   import { queryKeys, fetchDeeds } from '../net/rest';
   import { closestDeed } from './homeGoal';
+  import { etaSeconds, formatEta, type PaceSample } from './pace';
   import { loadContent, monsterName, type ContentRegistry } from '../net/content';
   import { EMPTY_GUID } from '../net/commands';
   import {
@@ -35,7 +41,9 @@
   });
 
   const snap = $derived($playerState);
-  const deeds = createQuery(() => ({ queryKey: queryKeys.deeds, queryFn: fetchDeeds }));
+  // Refetched while the map is open, so the goal's counter can be watched
+  // moving - that movement is the whole of the time estimate below.
+  const deeds = createQuery(() => ({ queryKey: queryKeys.deeds, queryFn: fetchDeeds, refetchInterval: 60_000 }));
 
   // ActivityHaltReason: 1 out of food, 2 died. The only two a player can fix
   // with one press; the rest (quarantine, no character) are explained on the
@@ -65,6 +73,20 @@
   });
 
   const goal = $derived(closestDeed(deeds.data?.Chapters ?? []));
+
+  // The first reading of each deed this tab has seen, kept at module level so
+  // it survives leaving the map and coming back. See lib/ui/pace.ts.
+  const eta = $derived.by((): string | null => {
+    if (!goal) return null;
+    const latest: PaceSample = { at: deeds.dataUpdatedAt, value: goal.Current };
+    const first = firstReadings.get(goal.Id);
+    if (!first || first.value > latest.value) {
+      firstReadings.set(goal.Id, latest);
+      return null;
+    }
+    const seconds = etaSeconds(first, latest, goal.Target);
+    return seconds === null ? null : formatEta(seconds);
+  });
 </script>
 
 {#if snap}
@@ -103,7 +125,9 @@
           label={`${Math.min(goal.Current, goal.Target).toLocaleString()} / ${goal.Target.toLocaleString()}`}
         />
         <div class="goal-row">
-          <span class="dim">From the Book of Deeds</span>
+          <span class="dim">
+            {eta ? `${eta} at this session's pace` : 'From the Book of Deeds'}
+          </span>
           <button onclick={() => requestScreen(goal.Screen)}>Go</button>
         </div>
       </section>
