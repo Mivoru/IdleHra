@@ -11,8 +11,12 @@ namespace FolkIdle.Server.Domain.Combat
         Starved = 1,
         /// <summary>At or below the region's level cap.</summary>
         Young = 2,
-        /// <summary>With a weapon of Common rarity or plainer - or none.</summary>
-        Humble = 3,
+        /// <summary>
+        /// Within the region's time limit. Replaced "Humble blade" (a Common
+        /// weapon) before it ever shipped: a plain weapon still won every
+        /// fight, so it asked nothing (owner, 2026-09-28).
+        /// </summary>
+        Swift = 3,
     }
 
     public sealed record BossChallengeDefinition(BossChallenge Id, string Title, string Description);
@@ -37,19 +41,36 @@ namespace FolkIdle.Server.Domain.Combat
     ///     5             46             97        75
     ///
     /// "Starved" is impossible on a FIRST clear of Malakor at any level, which
-    /// is why it counts on repeat kills too. "Humble" is the gentle one: a Normal
-    /// weapon still wins every fight at the region's reference level, because
-    /// the armour carries it - so it is a choice to make, not a wall to climb.
+    /// is why it counts on repeat kills too.
+    ///
+    /// "Swift" - a time limit - is set just under what the BEST gear of the
+    /// region does at the region's reference level (quality required + 4), and
+    /// above what the wall's own required gear does. Measured kill times, same
+    /// projection, boss already beaten:
+    ///
+    ///   region   required gear   best gear at level   limit   next region's gear
+    ///     1          82 s              76 s             80 s        34 s
+    ///     2         115 s             106 s            110 s        51 s
+    ///     3         135 s             117 s            120 s        48 s
+    ///     4         127 s             105 s            110 s        46 s
+    ///     5         122 s             105 s            110 s          -
+    ///
+    /// Quality within a region barely moves a boss fight, so in practice this
+    /// reads "the region's top gear, or come back stronger". The fight's length
+    /// is CombatTargetTickAccumulator, zeroed at the spawn - the same clock the
+    /// personal records' fastest boss kill reads.
     /// </summary>
     public static class BossChallengeRegistry
     {
         public static readonly IReadOnlyList<BossChallenge> All =
-            new[] { BossChallenge.Starved, BossChallenge.Young, BossChallenge.Humble };
+            new[] { BossChallenge.Starved, BossChallenge.Young, BossChallenge.Swift };
 
         private static readonly int[] LevelCapByRegion = { 15, 35, 45, 60, 75 };
 
-        /// <summary>The plainest weapon the Humble challenge allows: Common.</summary>
-        public const int HumbleMaxWeaponTier = RarityTier.Common;
+        private static readonly int[] TimeLimitSecondsByRegion = { 80, 110, 120, 110, 110 };
+
+        /// <summary>How many quality tiers above the wall's requirement "the region's best gear" is.</summary>
+        public const int SwiftCalibrationQualityStep = 4;
 
         private static readonly int[] RewardChestByRegion =
         {
@@ -61,27 +82,29 @@ namespace FolkIdle.Server.Domain.Combat
 
         public static int LevelCapFor(int region) => LevelCapByRegion[Index(region)];
 
+        public static int TimeLimitSecondsFor(int region) => TimeLimitSecondsByRegion[Index(region)];
+
         public static int RewardChestRarityFor(int region) => RewardChestByRegion[Index(region)];
 
         public static BossChallengeDefinition Describe(BossChallenge challenge, int region) => challenge switch
         {
             BossChallenge.Starved => new(challenge, "Starved", "Win without eating a single bite during the fight."),
             BossChallenge.Young => new(challenge, "Young blood", $"Win at level {LevelCapFor(region)} or lower."),
-            BossChallenge.Humble => new(challenge, "Humble blade", "Win with a Common weapon or plainer - or none at all."),
+            BossChallenge.Swift => new(challenge, "Swift", $"Win in {TimeLimitSecondsFor(region)} seconds or less."),
             _ => throw new ArgumentOutOfRangeException(nameof(challenge)),
         };
 
         /// <summary>
         /// Which challenges a kill met. Pure, so the rules are tested without a
         /// tick: the level at the kill, whether any food was eaten during the
-        /// fight, and the worn weapon's quality tier (0 for no weapon).
+        /// fight, and how long the fight took in tenths of a second.
         /// </summary>
-        public static List<BossChallenge> Met(int region, int level, bool ateDuringFight, int weaponQualityTier)
+        public static List<BossChallenge> Met(int region, int level, bool ateDuringFight, int fightTenths)
         {
             var met = new List<BossChallenge>(3);
             if (!ateDuringFight) met.Add(BossChallenge.Starved);
             if (level <= LevelCapFor(region)) met.Add(BossChallenge.Young);
-            if (weaponQualityTier <= HumbleMaxWeaponTier) met.Add(BossChallenge.Humble);
+            if (fightTenths > 0 && fightTenths <= TimeLimitSecondsFor(region) * 10) met.Add(BossChallenge.Swift);
             return met;
         }
     }

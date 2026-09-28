@@ -455,8 +455,9 @@
             Every region boss has three optional challenges, listed under its region on the
             Combat screen: <strong>Starved</strong> (win without eating a single bite during the
             fight), <strong>Young blood</strong> (win at or below a level cap - 15, 35, 45, 60 and
-            75 for the five regions) and <strong>Humble blade</strong> (win with a Common weapon or
-            plainer, or none). They count on any kill, not only the first, and each pays a cosmetic
+            75 for the five regions) and <strong>Swift</strong> (win within a time limit - 80, 110,
+            120, 110 and 110 seconds; the region's best gear at its level makes it, or come back
+            stronger). They count on any kill, not only the first, and each pays a cosmetic
             chest once: Rare for the first two regions, Epic for the next two, Legendary for
             Malakor. Every one was measured to be winnable with the gear the boss is tuned for.
           </p>
