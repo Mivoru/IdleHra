@@ -24,7 +24,7 @@
   import { enablePushNotifications, pushUnavailableReason } from '../lib/net/push';
   import { hapticsEnabled } from '../lib/net/haptics';
   import { enableLocalNotifications, localNotifyUnavailableReason } from '../lib/net/localNotify';
-  import { submitSupportTicket, scrubTrace, fetchAdminStatus, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent, fetchChestSettings, saveChestSettings } from '../lib/net/rest';
+  import { submitSupportTicket, scrubTrace, fetchAdminStatus, fetchAdminSeason, adminSeasonAction, adminEndSeasonNow, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent, fetchChestSettings, saveChestSettings } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
   import { rarityName } from '../lib/ui/rarity';
   import { runningBundleVersion } from '../lib/net/liveUpdate';
@@ -269,6 +269,64 @@
   let devMailGold = $state(0);
   let devMailMsg = $state('');
   
+  // --- season control (admin) -------------------------------------------------
+  // Modul: the owner runs the season by hand (2026-09-28): pause the rollover,
+  // move the end, or end it now for everybody. Ending takes a typed phrase,
+  // exactly like deleting an account, because it takes every player's level,
+  // gear and gold.
+  const seasonQuery = createQuery(() => ({
+    queryKey: ['adminSeason'],
+    queryFn: fetchAdminSeason,
+    enabled: isAdmin,
+    retry: false,
+  }));
+  const season = $derived(seasonQuery.data ?? null);
+  let seasonEndInput = $state('');
+  let seasonEndPhrase = $state('');
+  const SEASON_END_PHRASE = 'END SEASON';
+
+  function formatSeasonEnd(epoch: number): string {
+    return new Date(epoch * 1000).toLocaleString();
+  }
+
+  async function seasonAction(action: 'pause' | 'resume' | 'setEnd') {
+    try {
+      let end: number | undefined;
+      if (action === 'setEnd') {
+        const parsed = Date.parse(seasonEndInput);
+        if (Number.isNaN(parsed)) return pushLocalNotice('Pick a date and time first.');
+        end = Math.floor(parsed / 1000);
+      }
+      await adminSeasonAction(action, end);
+      pushLocalNotice(
+        action === 'pause' ? 'Season paused - it will not end on its own.'
+          : action === 'resume' ? 'Season resumed - it ends on its date.'
+            : 'Season end moved.',
+        'info',
+      );
+    } catch (error) {
+      const status = (error as { status?: number }).status;
+      pushLocalNotice(
+        status === 409 ? 'The end date has passed - move it before resuming, or the season would end at once.'
+          : status === 400 ? 'The new end must be at least an hour from now.'
+            : 'The server refused the change.',
+      );
+    } finally {
+      void seasonQuery.refetch();
+    }
+  }
+
+  async function endSeasonNow() {
+    if (seasonEndPhrase.trim() !== SEASON_END_PHRASE) return;
+    try {
+      await adminEndSeasonNow(SEASON_END_PHRASE);
+      seasonEndPhrase = '';
+      pushLocalNotice('Season ending - every player is disconnected while the rollover runs.', 'info');
+    } catch {
+      pushLocalNotice('The server refused to end the season.');
+    }
+  }
+
   async function toggleProfanity() {
     devProfanity = !devProfanity;
     await adminToggleProfanity(devProfanity);
@@ -633,6 +691,44 @@
         </p>
 
         <div class="admin-grid">
+          <div class="admin-card" style="grid-column: 1 / -1;">
+            <h3>Season</h3>
+            {#if season}
+              <p class="small">
+                Season {season.EraId} &middot;
+                {season.Paused ? 'PAUSED - will not end on its own' : `ends ${formatSeasonEnd(season.EndTimestamp)}`}
+                {#if season.Paused}<span class="dim"> (date on record: {formatSeasonEnd(season.EndTimestamp)})</span>{/if}
+              </p>
+              {#if season.EndRequested}
+                <p class="warn small">An end is queued; the rollover runs within seconds.</p>
+              {/if}
+              <div class="flex-row">
+                {#if season.Paused}
+                  <button onclick={() => seasonAction('resume')}>Resume</button>
+                {:else}
+                  <button onclick={() => seasonAction('pause')}>Pause</button>
+                {/if}
+                <input type="datetime-local" bind:value={seasonEndInput} aria-label="New season end" />
+                <button onclick={() => seasonAction('setEnd')}>Move end</button>
+              </div>
+              <p class="dim tiny">
+                Ending the season now resets every player's level, gear, gold and skill tree, exactly
+                like the date passing. Villages, ancestors, diamonds and Seals carry. Type
+                {SEASON_END_PHRASE} to enable it.
+              </p>
+              <div class="flex-row">
+                <input type="text" bind:value={seasonEndPhrase} placeholder={SEASON_END_PHRASE} aria-label="Confirmation phrase" />
+                <button
+                  style="color: var(--err)"
+                  disabled={seasonEndPhrase.trim() !== SEASON_END_PHRASE}
+                  onclick={endSeasonNow}
+                >End season now</button>
+              </div>
+            {:else}
+              <p class="dim small">Loading the season...</p>
+            {/if}
+          </div>
+
           <div class="admin-card">
             <h3>Global Profanity Filter</h3>
             <button onclick={toggleProfanity} class:active={devProfanity}>

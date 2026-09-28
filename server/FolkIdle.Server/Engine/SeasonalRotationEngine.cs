@@ -24,6 +24,30 @@ namespace FolkIdle.Server.Engine
         private readonly IServiceProvider _serviceProvider;
         private CancellationTokenSource _cts = new();
 
+        // Modul: THE ADMIN'S "END THE SEASON NOW" (2026-09-28). The request
+        // cannot run the rollover itself: the rollover disconnects every
+        // client, the caller included, and takes as long as the roster does.
+        // So it sets this and wakes the loop, and the rollover runs on the
+        // cron's own path - the one the tests already cover. Static because
+        // the HTTP layer has no reference to this instance; tests that set it
+        // must clear it (CLAUDE.md, "the queues are STATIC").
+        private static int _endNowRequested;
+        private static readonly SemaphoreSlim Wake = new(0, 1);
+
+        /// <summary>Ends the active season at the next loop pass, paused or not.</summary>
+        public static void RequestEndNow()
+        {
+            Interlocked.Exchange(ref _endNowRequested, 1);
+            if (Wake.CurrentCount == 0)
+            {
+                try { Wake.Release(); } catch (SemaphoreFullException) { }
+            }
+        }
+
+        internal static bool EndNowPending => Volatile.Read(ref _endNowRequested) == 1;
+
+        internal static void ClearEndNowForTests() => Interlocked.Exchange(ref _endNowRequested, 0);
+
         public SeasonalRotationEngine(IServiceProvider serviceProvider)
         {
             _serviceProvider = serviceProvider;
@@ -52,13 +76,15 @@ namespace FolkIdle.Server.Engine
                     Console.WriteLine($"Seasonal rotation failed: {ex.Message}");
                 }
 
-                await Task.Delay(TimeSpan.FromMinutes(5), stoppingToken);
+                // Five minutes, or at once when an admin asks for the end.
+                await Wake.WaitAsync(TimeSpan.FromMinutes(5), stoppingToken);
             }
         }
 
-        private async Task ExecuteEraCheckAsync(CancellationToken stoppingToken)
+        internal async Task ExecuteEraCheckAsync(CancellationToken stoppingToken)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            bool forced = Interlocked.Exchange(ref _endNowRequested, 0) == 1;
             int closedEraId = 0;
 
             using (var scope = _serviceProvider.CreateScope())
@@ -82,7 +108,7 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                if (activeEra.EndTimestamp > now)
+                if (!forced && (activeEra.IsRolloverPaused || activeEra.EndTimestamp > now))
                 {
                     await transaction.CommitAsync(stoppingToken);
                     return;
@@ -93,7 +119,11 @@ namespace FolkIdle.Server.Engine
                 db.SeasonalEraRecords.Add(new SeasonalEraRecord
                 {
                     EndTimestamp = now + EraDurationSeconds,
-                    IsActive = true
+                    IsActive = true,
+                    // A paused season that the admin ends by hand starts a
+                    // paused one - pausing is a standing decision, not a
+                    // one-season exception.
+                    IsRolloverPaused = activeEra.IsRolloverPaused
                 });
 
                 await db.SaveChangesAsync(stoppingToken);
