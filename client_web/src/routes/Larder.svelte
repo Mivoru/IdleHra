@@ -94,6 +94,34 @@
   //
   // Food id 0 with a positive quantity - an impossible combination before, so
   // it needed no new wire field. Id 0 with quantity 0 remains "empty the slot".
+  // Modul: ONE PRESS FROM CHEST TO LARDER. Loading took three controls - a
+  // native <select> (which Android's WebView draws as a dialog, see CLAUDE.md),
+  // an amount, then + on a slot - for the one thing every fighter needs. This
+  // loads the biggest food stack in the chest, all of it up to the slot's
+  // capacity, into the slot already holding that food or else the first empty
+  // one. ONE command per press on purpose: ValidateCommand's 100 ms rule reads
+  // a burst of commands as something other than a person.
+  const quickLoad = $derived.by(() => {
+    const food = [...availableFood].sort((a, b) => b.quantity - a.quantity)[0];
+    if (!food) return null;
+    const target = slots.find((sl) => sl.itemId === food.numericId) ?? slots.find((sl) => sl.itemId === 0);
+    if (!target) return null;
+    const room = SLOT_CAPACITY - (target.itemId === food.numericId ? target.count : 0);
+    const quantity = Math.min(food.quantity, room);
+    return quantity > 0 ? { food, slotIndex: target.index, quantity } : null;
+  });
+
+  function loadAll() {
+    const plan = quickLoad;
+    if (!plan) return;
+    connection.send({
+      Command: CommandType.StockFoodSlot,
+      ConsumableItemId: plan.food.numericId,
+      TargetSlotIndex: plan.slotIndex,
+      DepositQuantity: plan.quantity,
+    });
+  }
+
   function remove(slotIndex: number) {
     connection.send({
       Command: CommandType.StockFoodSlot,
@@ -216,6 +244,12 @@
         <button onclick={() => requestScreen('gathering')}>Go fishing</button>
       </div>
     {:else}
+      {#if quickLoad}
+        <button class="quickload" data-guide="larder-load" onclick={loadAll}>
+          Load all {prettifyBaseId(quickLoad.food.baseId)} ({quickLoad.quantity.toLocaleString()})
+          into slot {quickLoad.slotIndex + 1}
+        </button>
+      {/if}
       <div class="loader">
         <select bind:value={selectedFood}>
           <option value="">Choose food...</option>
@@ -261,6 +295,11 @@
 </div>
 
 <style>
+  .quickload {
+    width: 100%;
+    margin: 0 0 0.6rem;
+  }
+
   .empty {
     display: flex;
     flex-wrap: wrap;

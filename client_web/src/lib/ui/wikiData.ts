@@ -335,7 +335,7 @@ export const DEED_CHAPTERS: readonly {
     title: 'The Village Road',
     reward: 'A Seal, and a set of Common tools',
     about:
-      'The tutorial, written as content: fill the larder, win a fight, wear a weapon, gather 100 wood, craft something, reach level 10. Done in order it has touched every loop the game has.',
+      'The tutorial, written as content: fill the larder, wear a weapon, win a fight, gather 100 wood, craft something, reach level 10. Done in order it has touched every loop the game has.',
   },
   {
     index: 2,

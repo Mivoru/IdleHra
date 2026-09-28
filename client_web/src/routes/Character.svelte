@@ -490,6 +490,7 @@
               {@const item = wornBy(selected.slot, slot.index)}
               <button
                 class="gearslot"
+                data-guide="slot-{slot.index}"
                 class:filled={item !== null}
                 class:open={pickerSlot === slot.index}
                 onclick={() => (pickerSlot = pickerSlot === slot.index ? -1 : slot.index)}
@@ -523,6 +524,7 @@
               {@const item = wornBy(selected.slot, slot.index)}
               <button
                 class="gearslot"
+                data-guide="slot-{slot.index}"
                 class:filled={item !== null}
                 class:open={pickerSlot === slot.index}
                 onclick={() => (pickerSlot = pickerSlot === slot.index ? -1 : slot.index)}
@@ -594,7 +596,7 @@
               <p class="dim tiny">Nothing in the chest fits this slot.</p>
             {:else}
               <ul class="choices">
-                {#each candidates as candidate (candidate.Id)}
+                {#each candidates as candidate, candidateIndex (candidate.Id)}
                   <li>
                     <ItemIcon baseItemId={candidate.BaseItemId} name={prettifyBaseId(candidate.BaseItemId)} qualityTier={candidate.QualityTier} size="sm" />
                     <span
@@ -608,7 +610,11 @@
                         {req.minimum} {req.label}
                       </span>
                     {/if}
-                    <button class="tiny-btn" onclick={() => equipInstance(candidate.Id)}>Wear</button>
+                    <button
+                      class="tiny-btn"
+                      data-guide={candidateIndex === 0 ? 'wear-first' : undefined}
+                      onclick={() => equipInstance(candidate.Id)}
+                    >Wear</button>
                   </li>
                 {/each}
               </ul>

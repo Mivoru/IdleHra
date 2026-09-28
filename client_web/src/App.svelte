@@ -2,7 +2,7 @@
   import { QueryClientProvider } from '@tanstack/svelte-query';
   import Login from './routes/Login.svelte';
   import ChatDock from './lib/ui/ChatDock.svelte';
-  import { screenRequest, signOutRequest } from './lib/stores/navigation';
+  import { screenRequest, signOutRequest, publishCurrentScreen } from './lib/stores/navigation';
   import Hub from './routes/Hub.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import VictoryCard from './lib/ui/VictoryCard.svelte';
@@ -41,6 +41,7 @@
   import { initLanguage, loadTranslations } from './lib/ui/i18n';
   import { unlockAudio, play } from './lib/ui/audio';
   import OnboardingCoach from './lib/ui/OnboardingCoach.svelte';
+  import GuidedOverlay from './lib/ui/GuidedOverlay.svelte';
   import WhatsNew from './lib/ui/WhatsNew.svelte';
   import { resolveNotesOnStartup, startUpdatePolling } from './lib/stores/version';
   import { coachTargetScreen } from './lib/stores/tutorial';
@@ -269,6 +270,10 @@
       // itself on every navigation.
       untrack(() => goTo(request.screen as ScreenKey));
     }
+  });
+
+  $effect(() => {
+    publishCurrentScreen(screen);
   });
 
   // Settings' Sign out (see requestSignOut). The first value is the store's
@@ -575,6 +580,7 @@
          second, differently-shaped hint box would teach the player that hints
          come in kinds. -->
     <OnboardingCoach />
+    <GuidedOverlay />
 
     <!-- Modul: what changed since the player was last here, and whether the
          bundle this tab is running has been replaced since it loaded. Both

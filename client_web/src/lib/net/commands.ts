@@ -1372,8 +1372,12 @@ export function equipRequirement(
   regionTier: number,
 ): { attribute: number; minimum: number } | null {
   const attribute = REQUIREMENT_BY_SLOT_INDEX[slotIndex];
-  if (attribute === undefined || !regionTier || regionTier < 1) return null;
-  return { attribute, minimum: EQUIP_REQUIREMENT_PER_REGION_TIER * regionTier };
+  // Modul: REGION 1 ASKS FOR NOTHING, as EquipmentAttributeGate.RequirementFor
+  // says. This computed 20 x tier, so every region-1 weapon showed a red,
+  // unmet "20 Might" to a brand-new player whose attributes all start at zero -
+  // for gear the server lets them wear. Mirrored: 20 x (tier - 1) from tier 2.
+  if (attribute === undefined || !regionTier || regionTier < 2) return null;
+  return { attribute, minimum: EQUIP_REQUIREMENT_PER_REGION_TIER * (regionTier - 1) };
 }
 
 /** Refund every placed point. Free - see the server handler for why. */

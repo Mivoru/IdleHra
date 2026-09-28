@@ -286,6 +286,14 @@ describe('the numbers the client mirrors still match the server', () => {
       expect(attributeName[clientRequirement!.attribute], `${slotName}`).toBe(attribute);
     }
 
+    // The CURVE, not only the constant: region 1 asks nothing and each tier
+    // after it adds one step. The client used to charge region 1 too.
+    expect(gate).toMatch(/if \(regionTier < 2\) return 0;/);
+    expect(gate).toMatch(/RequirementPerRegionTier \* \(regionTier - 1\)/);
+    expect(equipRequirement(0, 1)).toBeNull();
+    expect(equipRequirement(0, 2)?.minimum).toBe(EQUIP_REQUIREMENT_PER_REGION_TIER);
+    expect(equipRequirement(0, 5)?.minimum).toBe(EQUIP_REQUIREMENT_PER_REGION_TIER * 4);
+
     // The three tool slots ask for nothing - gathering is not gated by a combat
     // stat, and a player who cannot equip an axe cannot craft their way out.
     for (const toolSlot of [8, 9, 10]) {

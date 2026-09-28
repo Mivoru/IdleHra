@@ -326,7 +326,7 @@
                it. -->
           <h3 id="the-loop">The core loop</h3>
           <ol class="steps">
-            <li><strong>Fill the larder first.</strong> Fish, then load the catch into Auto-Eat. It heals you mid-fight, and without it the very first monster kills you before you can kill it.</li>
+            <li><strong>Fill the larder and arm yourself first.</strong> You start with ten fish and a claymore in the chest. Load the fish into Auto-Eat - it heals you mid-fight, and without food the very first monster kills you before you can kill it - and wear the claymore. When the fish run out, catch more.</li>
             <li><strong>Fight.</strong> Kills pay experience, gold and — 15% of the time — a piece of equipment.</li>
             <li><strong>Wear what drops.</strong> Nearly all of your power is gear, not levels. A level gives a Warrior no health at all.</li>
             <li><strong>Gather.</strong> Logs and ore build the village; the village unlocks characters, breeding and offline income.</li>

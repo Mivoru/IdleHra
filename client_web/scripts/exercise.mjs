@@ -3155,26 +3155,70 @@ await go('Ancestors');
       first ? first.text.slice(0, 90) : '',
     );
 
-    // 2. "Take me there" navigates - and does NOT count as doing the step. A
-    //    tier-one step is a thing the player has to actually do, so arriving on
-    //    the screen must not dismiss it; that distinction is the whole reason
-    //    steps and discoveries are two kinds rather than one.
-    await fresh.getByRole('button', { name: 'Take me there', exact: true }).first().click();
+    // 2. THE GUIDED FIRST MINUTE (owner, 2026-09-28). A new account starts
+    //    with ten fish and a claymore in the chest, and the first two steps
+    //    are a walk-through: the screen dims, one control is lit, nothing else
+    //    can be pressed. Checked the way a player meets it - including that a
+    //    press ANYWHERE ELSE really does nothing, because a fence that leaks
+    //    teaches nothing and a fence with no way through traps someone.
+    const guided = () =>
+      fresh.evaluate(() => document.querySelector('[data-guided]')?.getAttribute('data-guided') ?? null);
+    await fresh.waitForFunction(() => document.querySelector('[data-guided]') !== null, null, { timeout: 8000 }).catch(() => {});
+    const layer = await guided();
+    record('a new account is walked through its first step, not just told', layer !== null, layer ?? 'no guided layer');
+
+    // A press on the nav while the layer is up lands on the cover. Pressed by
+    // coordinates, because Playwright (rightly) refuses to click a covered
+    // element - which is exactly what a thumb does not refuse.
+    const navBox = await fresh.locator('header').getByRole('button', { name: 'Gathering', exact: true }).first().boundingBox();
+    if (navBox) await fresh.mouse.click(navBox.x + navBox.width / 2, navBox.y + navBox.height / 2);
+    await fresh.waitForTimeout(800);
+    const fenced = !(await fresh.evaluate(() => /Hauled this session/i.test(document.body.innerText)));
+    record('while guided, only the lit control can be pressed', fenced, fenced ? '' : 'the nav press went through');
+
+    await fresh.locator('[data-guided-go]').click({ timeout: 5000 }).catch(() => {});
     await fresh.waitForTimeout(1500);
     const arrived = await fresh.evaluate(() => /Load up to three foods/i.test(document.body.innerText));
     const afterNav = await cue();
-    record('the coach can take you to the screen it is talking about', arrived, arrived ? 'the larder' : 'did not land on Auto-Eat');
+    record('the guided step takes you to the screen it is about', arrived, arrived ? 'the larder' : 'did not land on Auto-Eat');
     record(
       'being shown a step does not complete it',
       afterNav !== null && afterNav.id === first?.id,
       afterNav ? `still ${afterNav.id}` : 'the panel vanished on navigation',
     );
 
-    // Modul: A NEW PLAYER CAN STRIKE THE WORLD BOSS (task 25). Checked here,
-    // BEFORE this account stocks its larder, on purpose: the old rule
-    // discarded every strike from an empty larder in silence, so a brand-new
-    // account could not take part at all. The owner dropped the rule on
-    // 2026-09-24. Either the strike lands (health moved) or the screen names
+    // The starter fish, loaded with the one lit button.
+    await fresh.waitForFunction(() => document.querySelector('[data-guided="lit"]') !== null, null, { timeout: 8000 }).catch(() => {});
+    await fresh.locator('[data-guide="larder-load"]').click({ timeout: 5000 }).catch(() => {});
+    const loaded = await fresh
+      .waitForFunction((was) => document.querySelector('.coach')?.dataset.onboardingCue !== was, first?.id, { timeout: 20000 })
+      .then(() => true)
+      .catch(() => false);
+    const second = await cue();
+    record('loading the starter fish completes the first step', loaded && second !== null, second ? `${first?.id} -> ${second.id}` : 'the step did not move');
+    record('the second step is wearing the weapon', second !== null && /weapon|wear/i.test(second.text), second ? second.text.slice(0, 70) : '');
+
+    // The claymore: the way to Character, the weapon slot, then Wear.
+    await fresh.locator('[data-guided-go]').click({ timeout: 5000 }).catch(() => {});
+    await fresh.waitForTimeout(1500);
+    await fresh.locator('[data-guide="slot-0"]').first().click({ timeout: 8000 }).catch(() => {});
+    await fresh.waitForTimeout(800);
+    await fresh.locator('[data-guide="wear-first"]').click({ timeout: 8000 }).catch(() => {});
+    const worn = await fresh
+      .waitForFunction((was) => document.querySelector('.coach')?.dataset.onboardingCue !== was, second?.id, { timeout: 20000 })
+      .then(() => true)
+      .catch(() => false);
+    const third = await cue();
+    record('wearing the starter weapon completes the second step', worn && third !== null, third ? `${second?.id} -> ${third.id}` : 'the step did not move');
+    record('the third step is the fight, now that it can be won', third !== null && /Fight|Combat/i.test(third.text), third ? third.text.slice(0, 70) : '');
+    await fresh.waitForTimeout(600);
+    record('the guided layer lets go once both are done', (await guided()) === null);
+
+    // Modul: A NEW PLAYER CAN STRIKE THE WORLD BOSS (task 25). This used to run
+    // BEFORE the larder was stocked, to pin that the old empty-larder rule
+    // (dropped 2026-09-24) stayed dropped. Since the starter kit (2026-09-28)
+    // the guided steps stock the larder before the nav can be reached, so the
+    // check now proves a brand-new account can take part at all. Either the strike lands (health moved) or the screen names
     // the reason - never "nothing happened". The window is opened and closed
     // around the check, so the fixture is left as the calendar would leave it.
     {
@@ -3207,6 +3251,13 @@ await go('Ancestors');
       let outcome = 'nothing happened';
       let landed = false;
       if (active && !grey) {
+        // Earlier toasts first ("Done." from wearing the starter weapon): the
+        // wait below ends on ANY toast, so a stale one read as the strike's
+        // answer before the strike had landed.
+        const staleToasts = fresh.locator('.toast button[aria-label="Dismiss"], .toast button.ghost');
+        for (let i = await staleToasts.count(); i > 0; i--) {
+          await staleToasts.first().click().catch(() => {});
+        }
         const before = await hp();
         await strike.click();
         await fresh
@@ -3228,7 +3279,7 @@ await go('Ancestors');
         const reason = await fresh.locator('.strike-reason').innerText().catch(() => '');
         outcome = reason ? `grey: ${reason}` : `window ${openStatus}, active ${active}, grey with no reason`;
       }
-      record('a brand-new account can strike the world boss with an empty larder', landed, outcome);
+      record('a brand-new account can strike the world boss', landed, outcome);
       await freshWindow(false);
 
       // Task 36: a brand-new account can play shield wheel practice start to
@@ -3264,19 +3315,17 @@ await go('Ancestors');
     const reloaded = await cue();
     record(
       'onboarding survives a reload rather than restarting',
-      reloaded !== null && reloaded.id === first?.id,
+      reloaded !== null && reloaded.id === (third?.id ?? first?.id),
       reloaded ? reloaded.id : 'no cue after reload',
     );
 
-    // 4. THE CHAIN ACTUALLY ADVANCES. Everything above proves the panel is
-    //    wired; this proves the onboarding a new player is given can be
-    //    performed at all, which is the thing that was untrue. The account
-    //    fishes with the rod it was granted, loads the catch, and the step must
-    //    move on to the fight.
+    // 4. THE WAY TO MORE FOOD. The guided steps used the starter fish; the
+    //    lesson after them is that food is caught, not given. The account
+    //    fishes with the rod it was granted and the catch must reach the chest.
     //
-    //    It stops there deliberately: winning that fight is another two to five
-    //    minutes of real combat, and the claim worth holding here is that the
-    //    entrance opens, not how long region 1 takes.
+    //    It does not fight: winning is minutes of real combat, and the claim
+    //    worth holding here is that the entrance opens, not how long region 1
+    //    takes.
     await fresh.locator('header').getByRole('button', { name: 'Gathering', exact: true }).first().click();
     await fresh.waitForTimeout(1500);
     const rod = fresh
@@ -3295,35 +3344,11 @@ await go('Ancestors');
       await fresh.waitForTimeout(1500);
 
       const foodSelect = fresh.locator('select').first();
-      const caught = await foodSelect.evaluate((s) => [...s.options].length - 1);
+      // No select at all is the empty state - the guided step loaded every
+      // starter fish, so only a catch can bring it back.
+      const caught = (await foodSelect.count()) > 0 ? await foodSelect.evaluate((s) => [...s.options].length - 1) : 0;
       record('fishing puts food in the village chest', caught > 0, `${caught} kind(s) of fish offered`);
 
-      if (caught > 0) {
-        await foodSelect.selectOption({ index: 1 });
-        await fresh.waitForTimeout(400);
-        await fresh.getByRole('button', { name: '+', exact: true }).first().click();
-        await fresh.waitForTimeout(3000);
-
-        const advanced = await fresh
-          .waitForFunction(
-            (was) => document.querySelector('.coach')?.dataset.onboardingCue !== was,
-            first?.id,
-            { timeout: 20000 },
-          )
-          .then(() => true)
-          .catch(() => false);
-        const now = await cue();
-        record(
-          'stocking the larder completes the first step',
-          advanced && now !== null,
-          now ? `${first?.id} -> ${now.id}: ${now.text.slice(0, 50)}` : 'the step did not move',
-        );
-        record(
-          'the second step is the fight, now that it can be won',
-          now !== null && /Fight|Combat/i.test(now.text),
-          now ? now.text.slice(0, 70) : '',
-        );
-      }
     }
 
     // 5. Settings owns the off switch and the way back, and neither is
