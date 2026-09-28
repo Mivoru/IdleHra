@@ -4572,7 +4572,13 @@ Every item here is independent. Each is a sub-PR or all in one.
 
 ## DONE - 53. Flaky: Test_WorldBoss_AnOldSessionAndYesterdaysStrikeRefuseNothing
 
-**Fixed 2026-09-28.** The test asserts on the player's own `TotalInflictedDamage`
+**Fixed 2026-09-28, then fixed properly the same day.** The first fix made the
+test assert on the player's own `TotalInflictedDamage` rather than the shared
+boss HP - and it failed again on main at 16,000 vs 6,000. The real cause was
+the strike's default plate 0: the weak plate is re-seeded randomly on every
+`ActivateEventWindowAsync`, so one run in `PlateCount` tripled the blow. It
+now steps past the seeded weak plate, as the test above it already did. The
+test asserts on the player's own `TotalInflictedDamage`
 now, not on the shared boss HP. Two exercise checks had the same flaw:
 - the new-account strike read global HP, which LiveOps rescales within its
   10 s window (seen both ways: 75M -> 150M and 75M -> 50M). It reads the
