@@ -4782,3 +4782,55 @@ economy is measured (task 37 Phase 3), so do not change payouts.
   on the client, so ask for a server figure first.
 - Tag `smoke:screens` guests so the funnel excludes them. The owner knows the
   population is one, so this only matters once there are strangers.
+
+## 63. Armour set bonuses must actually pay (owner decision 2026-09-28) - NOT STARTED
+
+**Owner decision, 2026-09-28:** "I want armour sets to work, it feels only
+right. If we need to boost monsters later, we will do it." So: make the bonuses
+pay first, and retune the monster side afterwards only if the measurements say
+so. Do not hold the fix back to balance it in the same change.
+
+**What is actually true (checked 2026-09-28):**
+- `EquipmentSlotEngine.cs:737` builds `EquippedSetIds` from
+  `EquipmentInstance.SetId`, which **nothing ever writes** - 0 of 945 live
+  items carry one. That feeds `CachedSetIds` on the payload (live equip,
+  `StateCheckpointManager` hydration at ~1383 and ~1613, the parked-slot swap)
+  and `SetBonusEngine.Evaluate` inside every `StatsCalculator.Calculate` call.
+  So no set bonus has ever paid anyone.
+- `ArmourSetRegistry` already knows every piece's set family from its BaseId.
+  PR #79 fixed the "Wear two pieces of one set" deed by counting families
+  there instead of `SetId` (`DeedProgressSource.cs:188`). The bonus should read
+  the same source - one definition of "which set is this piece", not two.
+  `ArmourSetRegistry.cs:24` warns that its ids are NOT the same numbers as
+  `EquipmentInstance.SetId`, so check the numbering `SetBonusEngine` expects
+  before wiring them together.
+
+**Done when:**
+- a character wearing 2 / 4 pieces of one family gets the bonus
+  `SetBonusEngine` defines, on the live tick, after a relogin, on a parked
+  slot, and in the offline catch-up (all four call sites);
+- the Character screen shows the active bonus;
+- `PowerCeilingTests` is rerun and its set-bonus lever is read in the output
+  (it must still pass its shape rules), and `BossWallTests` /
+  `ProgressionRateTests` are rerun so the effect on the boss wall and pacing is
+  written down here;
+- a monster retune is a SEPARATE follow-up, only if those numbers ask for it.
+
+## 64. Ordinary kills: lower the diamond chance to 0.01% (owner decision 2026-09-28) - NOT STARTED
+
+**Owner decision, 2026-09-28:** the chance of 1 diamond on an ordinary
+(non-boss) kill goes from **0.05% to 0.01%**. Regional bosses pay none at all
+since PR #87.
+
+**Why:** at 0.05%, a character killing about one monster a second earns about
+300 diamonds a week - five times the Delve's calibrated 60 a week
+(`DelveRegistry.MaxDiamondsPerWeek`). At 0.01% that is about 60 a week at the
+same pace, in line with the Delve.
+
+**Where:** `SimulationEngine.cs`, the `Random.Shared.NextDouble() < 0.0005`
+roll beside the boss-diamond comment (after PR #87). The offline catch-up pays
+no diamonds, so there is no second site.
+
+**Done when:** the constant is named and says why, and a test pins it (for
+example: a large simulated run of ordinary kills stays within the expected
+band, and `BossDiamondTests` still passes).
