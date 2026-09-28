@@ -3,6 +3,7 @@
   import RaceIcon from './RaceIcon.svelte';
   import { raceName } from './races';
   import { HALT_REASONS } from './slots';
+  import { requestScreen } from '../stores/navigation';
 
   function duration(seconds: number): string {
     if (seconds < 60) return `${seconds} seconds`;
@@ -45,8 +46,19 @@
       Number(snap.Food1_Count ?? 0) + Number(snap.Food2_Count ?? 0) + Number(snap.Food3_Count ?? 0);
     const deployed = Number(snap.ActiveActivityId ?? 0) > 0;
 
-    return { halt, larderBites, deployed };
+    // Halt reason 1 is "out of food"; an empty larder is the same fix before
+    // it has stopped anything.
+    const needsFood = Number(snap.ActivityHaltReason) === 1 || larderBites === 0;
+
+    return { halt, larderBites, deployed, needsFood };
   });
+
+  // Task 52: the card said "load food into Auto-Eat" and then only offered
+  // Continue, so the fix was a hunt through the Menu. One press now.
+  function stockLarder() {
+    dismissOfflineSummary();
+    requestScreen('larder');
+  }
 </script>
 
 {#if summary}
@@ -156,6 +168,10 @@
               Larder: {rightNow.larderBites.toLocaleString()} bites left.
             </p>
           {/if}
+
+          {#if rightNow.needsFood}
+            <button class="stock" data-testid="offline-stock-larder" onclick={stockLarder}>Stock the larder</button>
+          {/if}
         </div>
       {/if}
 
@@ -176,6 +192,10 @@
     padding: 0.5rem 0.6rem;
     border-left: 2px solid var(--brass);
     background: rgba(201, 162, 39, 0.06);
+  }
+
+  .stock {
+    justify-self: start;
   }
 
   .warn-line {

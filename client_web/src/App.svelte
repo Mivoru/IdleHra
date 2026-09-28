@@ -7,6 +7,8 @@
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import VictoryCard from './lib/ui/VictoryCard.svelte';
   import TabBar from './lib/ui/TabBar.svelte';
+  import { hotkeyTab } from './lib/ui/tabs';
+  import { PREF_LAST_SCREEN, readPrefAs, writePref } from './lib/net/prefs';
   import DeathCard from './lib/ui/DeathCard.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import AchievementToast from './lib/ui/AchievementToast.svelte';
@@ -147,7 +149,35 @@
   // Modul: the map is where a session starts. Signing in used to drop the
   // player straight onto Combat with a wall of nav words above it; the painted
   // valley is both prettier and a better answer to "where am I".
-  let screen = $state<ScreenKey>('hub');
+  //
+  // Task 52: ...unless the player was somewhere else when they left. The last
+  // screen is remembered on this device and reopened, because a player who
+  // lives on Combat does not want the map between them and it every visit.
+  // Signing out writes 'hub', so the next account on the device starts at
+  // the map as before.
+  let screen = $state<ScreenKey>(
+    readPrefAs(
+      PREF_LAST_SCREEN,
+      (v): v is ScreenKey => GROUPS.some((g) => g.screens.some((s) => s.key === v)),
+      'hub' as ScreenKey,
+    ),
+  );
+  $effect(() => writePref(PREF_LAST_SCREEN, screen));
+
+  // Task 52: desktop hotkeys 1-5 for the five tab-bar screens (see tabs.ts
+  // for when a key is left alone).
+  function onHotkey(event: KeyboardEvent): void {
+    if (!token) return;
+    const next = hotkeyTab(event);
+    if (next && ALL_SCREEN_KEYS.has(next)) {
+      event.preventDefault();
+      goTo(next as ScreenKey);
+    }
+  }
+  $effect(() => {
+    window.addEventListener('keydown', onHotkey);
+    return () => window.removeEventListener('keydown', onHotkey);
+  });
 
   // Modul: cross-screen links. A screen that is not Hub has no way to change
   // `screen` - it is local state and only Hub is handed a setter - so the

@@ -539,7 +539,7 @@ ${scope}`)) return;
         >
           {prettifyBaseId(rerollItem.BaseItemId)}
         </span>
-        <Affixes affixes={rerollItem.Affixes} baseItemId={rerollItem.BaseItemId} />
+        <Affixes affixes={rerollItem.Affixes} baseItemId={rerollItem.BaseItemId} qualityTier={rerollItem.QualityTier} />
       </div>
 
       {#if rerollAffixRows.length === 0}

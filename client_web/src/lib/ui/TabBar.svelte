@@ -18,6 +18,7 @@
   // Labels are the nav's own words, so a player who uses both never meets two
   // names for one place.
   import { playerState } from '../stores/game';
+  import { MAIN_TABS } from './tabs';
 
   interface Props {
     current: string;
@@ -33,13 +34,7 @@
   const combatAlert = $derived(snap ? Number(snap.ActivityHaltReason) !== 0 : false);
   const characterAlert = $derived(snap ? Number(snap.UnspentAttributePoints) > 0 : false);
 
-  const TABS = [
-    { key: 'hub', label: 'Map', icon: 'map' },
-    { key: 'combat', label: 'Combat', icon: 'swords' },
-    { key: 'gathering', label: 'Gathering', icon: 'pick' },
-    { key: 'character', label: 'Character', icon: 'hero' },
-    { key: 'village', label: 'Village', icon: 'house' },
-  ] as const;
+  const TABS = MAIN_TABS;
 
   function alertFor(key: string): boolean {
     if (key === 'combat') return combatAlert;

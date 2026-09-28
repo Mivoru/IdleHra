@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PREF_CHEST_FILTER, PREF_CHEST_MIN_RARITY, readPrefAs, writePref } from '../lib/net/prefs';
   import { formatCompact } from '../lib/ui/format';
   // Modul: the village chest. Everything a character produces ends up here.
   //
@@ -69,7 +70,14 @@
 
   type Filter = 'all' | 'equipment' | 'weapons' | 'materials' | 'food';
 
-  let filter = $state<Filter>('all');
+  // Task 52: the tab and the rarity floor are remembered on this device, so a
+  // player who always sorts through weapons does not re-pick it every visit.
+  // The search box is not - it is a question asked once.
+  const FILTERS: readonly Filter[] = ['all', 'equipment', 'weapons', 'materials', 'food'];
+  let filter = $state<Filter>(
+    readPrefAs(PREF_CHEST_FILTER, (v): v is Filter => (FILTERS as readonly string[]).includes(v), 'all'),
+  );
+  $effect(() => writePref(PREF_CHEST_FILTER, filter));
   let busy = $state(false);
 
   // Modul: classified by the same BaseId markers the server uses, not by a
@@ -99,7 +107,10 @@
   // two. Deliberately additive: the tabs stay, and these narrow whatever the
   // tab already selected.
   let search = $state('');
-  let minRarity = $state(0);
+  let minRarity = $state(
+    Number(readPrefAs(PREF_CHEST_MIN_RARITY, (v) => /^(?:[0-9]|1[0-4])$/.test(v), '0')),
+  );
+  $effect(() => writePref(PREF_CHEST_MIN_RARITY, String(minRarity)));
 
   // Modul: the needle is lowercased ONCE, not once per item.
   //
