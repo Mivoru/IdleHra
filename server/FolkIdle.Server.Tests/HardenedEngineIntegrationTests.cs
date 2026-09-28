@@ -663,10 +663,15 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
 
-            long bossHpBefore = worldBossEngine.BossCurrentHp;
             await worldBossEngine.ExecuteAttackAsync(testPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000);
 
-            Assert.Equal(bossHpBefore - 5000, worldBossEngine.BossCurrentHp);
+            // Modul: TASK 53 - asserted on THIS player's row, not on the boss's
+            // HP. The HP is one shared WorldBossSnapshots row that every
+            // world-boss test in the "Postgres collection" writes to, and the
+            // engine reloads it inside the strike, so a global before/after
+            // delta read another test's 10,000-damage strike once in a full run
+            // (2026-09-28). The damage total below proves this strike landed
+            // and was not refused, which is the whole claim of the test.
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var attempt = await verifyDb.PlayerWorldBossAttempts.AsNoTracking()
