@@ -1929,6 +1929,15 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Modul: task 51. The personal records a screen lists. The hit and
+            // the boss times also ride StateUpdate (live, for the toast); this is
+            // the durable copy plus the two the stream does not carry.
+            if (requestPath == "/api/v1/player/records" && context.Request.HttpMethod == "GET")
+            {
+                await HandlePlayerRecords(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/player/inventory" && context.Request.HttpMethod == "GET")
             {
                 await HandlePlayerInventorySnapshot(context);
@@ -7250,6 +7259,65 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Player worn snapshot error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private async Task HandlePlayerRecords(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var row = await db.PlayerRecords.AsNoTracking()
+                    .Where(p => p.Id == playerId)
+                    .Select(p => new
+                    {
+                        p.BestHit,
+                        p.BossBestKillTenthsR1,
+                        p.BossBestKillTenthsR2,
+                        p.BossBestKillTenthsR3,
+                        p.BossBestKillTenthsR4,
+                        p.BossBestKillTenthsR5,
+                        p.BestDropTier,
+                        p.BestDropBaseId,
+                        p.BestDropAtUtc,
+                        p.DelveDeepestFloor,
+                    })
+                    .FirstOrDefaultAsync();
+
+                if (row == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new
+                {
+                    row.BestHit,
+                    BossBestKillTenths = new[] { row.BossBestKillTenthsR1, row.BossBestKillTenthsR2, row.BossBestKillTenthsR3, row.BossBestKillTenthsR4, row.BossBestKillTenthsR5 },
+                    row.BestDropTier,
+                    row.BestDropBaseId,
+                    row.BestDropAtUtc,
+                    row.DelveDeepestFloor,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Player records error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

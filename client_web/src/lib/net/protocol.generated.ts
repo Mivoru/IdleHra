@@ -90,7 +90,7 @@ export interface ClientCommand {
   BreedingSelectionMask: number;
 }
 
-/** StateUpdatePacket - 805 bytes on the binary wire. */
+/** StateUpdatePacket - 819 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -312,6 +312,12 @@ export interface StateUpdate {
   EquippedWeaponKind: number;
   TicksSinceLastFlush: number;
   OfflineCapSeconds: number;
+  BestHit: number;
+  BossBestKillTenthsR1: number;
+  BossBestKillTenthsR2: number;
+  BossBestKillTenthsR3: number;
+  BossBestKillTenthsR4: number;
+  BossBestKillTenthsR5: number;
 }
 
 /** RequestChatMessagePacket - 139 bytes on the binary wire. */
@@ -445,7 +451,7 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 341,
-  StateUpdate: 805,
+  StateUpdate: 819,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 30,

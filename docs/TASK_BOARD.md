@@ -4486,6 +4486,8 @@ taps.
     that lands under a resting cursor otherwise never leaves;
   - Rare+ plays `lootRare` at `playbackRate` 2^((tier-4)/12), one semitone
     per tier. No new clip.
+  - Below Rare, a drop is SILENT (owner, 2026-09-28: "I only want rare loot").
+    Mail claims keep `lootDropped`, because they follow a press.
 - `__folkidleDemoDrop(tier)` (dev only) drives the real `acceptLootDrop`, and
   `exercise` checks that the card appears and leaves.
 
@@ -4508,7 +4510,31 @@ section asks for a reveal on Rare and better only.
 - a forced Legendary drop on the fixture shows the card (dev tools mail
   endpoint, or a seeded drop).
 
-## 51. Personal records
+## DONE - 51. Personal records
+
+**Built 2026-09-28** (`Domain/Progression/PersonalRecords.cs`, migration
+`AddPersonalRecords`).
+- Highest hit and each region boss's fastest kill are tick facts:
+  - they live on the payload and ride `StateUpdate` (805 -> 819);
+  - they are merged by BOTH checkpoint paths (max / fastest, never a copy)
+    and hydrated at login.
+- Best drop: the loot worker writes it AFTER its commit, as one conditional
+  UPDATE, and only when the drop beats a per-player cache. The migration seeds
+  it from `notable_item_events` (drop sources 1, 2, 3, 9, 10 only).
+- Deepest Delve floor already existed. Gold per hour is left to 56, which
+  builds the hourly buckets.
+- `GET /api/v1/player/records`, and a Records block under Progress ->
+  Statistics.
+- "New record" toasts come from `stores/records.ts`:
+  - the first packet is a baseline;
+  - hit records are said at most once per 2 min;
+  - drops count only from Rare up, and only once the durable baseline has
+    loaded.
+- `PersonalRecordsTests` pins the rules, the round trip, the conditional
+  write, and every writer's call site plus the route. The route's first edit
+  was lost to a hook-blocked command and only exercise noticed.
+
+Original task:
 
 **Server:**
 - `PlayerRecords` columns (or a small table) for:

@@ -652,6 +652,8 @@ namespace FolkIdle.Server.Domain.Shared
                         player.PremiumDiamonds = state.PremiumCurrency;
                         player.AvailableSkillPoints = state.AvailableSkillPoints;
                         player.UnspentAttributePoints = state.UnspentAttributePoints;
+                        // Task 51: records only improve - max / fastest, never a copy.
+                        Domain.Progression.PersonalRecords.MergeInto(player, in state);
 
                         // Modul: larder. The auto-eat step consumes from these
                         // slots every time it fires, so the payload - not the
@@ -1449,7 +1451,15 @@ namespace FolkIdle.Server.Domain.Shared
                 AccumulatedSeasonalXp = (uint)Math.Max(0, chroniclePass?.AccumulatedXp ?? 0),
                 CachedClaimedMilestonesBitmask = chroniclePass?.ClaimedMilestonesBitmask ?? 0UL,
                 AvailableSkillPoints = player.AvailableSkillPoints,
-                UnspentAttributePoints = player.UnspentAttributePoints
+                UnspentAttributePoints = player.UnspentAttributePoints,
+                // Task 51: the records ride the wire, so they are loaded here or
+                // a relogin reads zero (StateUpdatePacketFieldCoverageTests).
+                BestHit = player.BestHit,
+                BossBestKillTenthsR1 = player.BossBestKillTenthsR1,
+                BossBestKillTenthsR2 = player.BossBestKillTenthsR2,
+                BossBestKillTenthsR3 = player.BossBestKillTenthsR3,
+                BossBestKillTenthsR4 = player.BossBestKillTenthsR4,
+                BossBestKillTenthsR5 = player.BossBestKillTenthsR5
             };
 
             payload.InitializeObfuscation(GenerateSessionXorKey(playerId, player.LogicEpochCounter));
@@ -1821,6 +1831,7 @@ namespace FolkIdle.Server.Domain.Shared
                         player.SelectedLineageId = state.SelectedLineageId;
                         player.LastLogoutTimestamp = state.LastLogoutTimestamp;
                         player.AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L);
+                        Domain.Progression.PersonalRecords.MergeInto(player, in state);
                         player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
                         player.OffensivePotionDurationMs = state.OffensivePotionDurationMs;
                         player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;

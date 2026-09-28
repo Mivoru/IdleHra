@@ -1280,6 +1280,7 @@ await go('World Boss');
           states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
         }));
       const before = await read();
+      const boardBefore = Number((await apiGet('/api/v1/worldboss/board'))?.Me?.Damage ?? 0);
 
       await strike.click();
       await page
@@ -1293,7 +1294,11 @@ await go('World Boss');
       // missed the weak point - so the pip and the health are the honest
       // assertions and the plate change is reported rather than required.
       record('striking a plate spends an attempt', after.pips > before.pips, `${before.pips} -> ${after.pips} spent`);
-      record('the strike moved the boss HP', after.hp >= 0 && after.hp < before.hp, `${before.hp} -> ${after.hp}`);
+      // Modul: the fixture's OWN damage, not the boss's HP (TASK_BOARD 53).
+      // LiveOps rescales the shared HP with the population, and a run on
+      // 2026-09-28 saw it rise 50M -> 75M across a strike that had landed.
+      const boardAfter = Number((await apiGet('/api/v1/worldboss/board'))?.Me?.Damage ?? 0);
+      record('the strike adds to the fixture damage on the board', boardAfter > boardBefore, `${boardBefore} -> ${boardAfter} (hp ${before.hp} -> ${after.hp})`);
       record(
         'the strike is reflected on the boss',
         after.states.join() !== before.states.join() || after.pips > before.pips,
@@ -2971,6 +2976,21 @@ await go('Breeding');
 // asserted rather than the list.
 await go('Progress');
 {
+  // Modul: TASK 51 - personal records. The fixture has fought by now, so its
+  // highest hit is a real number on the live stream (hydrated at login), and
+  // the durable copy answers on /player/records.
+  const records = await apiGet('/api/v1/player/records');
+  record(
+    'personal records answer on /player/records',
+    !!records && Array.isArray(records.BossBestKillTenths) && records.BossBestKillTenths.length === 5,
+    records ? `hit ${records.BestHit}, drop tier ${records.BestDropTier}, deep ${records.DelveDeepestFloor}` : 'no answer',
+  );
+  const hitLine = await page
+    .locator('[data-records] div', { hasText: 'Highest hit' })
+    .first()
+    .innerText()
+    .catch(() => '');
+  record('the Progress screen shows a real highest hit', /Highest hit\s*[\d,\s]*[1-9]/.test(hitLine), hitLine.replace(/\s+/g, ' '));
   const text = await page.evaluate(() => document.body.innerText);
   record('the Book of Deeds is shown', /Book of Deeds/i.test(text));
   record(

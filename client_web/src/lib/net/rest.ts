@@ -22,6 +22,7 @@ export const queryKeys = {
   materials: ['player', 'materials'] as const,
   /** The main character's worn pieces - see `fetchWorn`. */
   worn: ['player', 'worn'] as const,
+  records: ['player', 'records'] as const,
   chestSettings: ['player', 'chestSettings'] as const,
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
@@ -133,6 +134,21 @@ export interface WornPiece {
  */
 export function fetchWorn(): Promise<{ Pieces: WornPiece[] }> {
   return authedGet<{ Pieces: WornPiece[] }>('/api/v1/player/worn');
+}
+
+/** Task 51: the durable personal records (the hit and boss times also ride StateUpdate). */
+export interface PersonalRecordsView {
+  BestHit: number;
+  /** Tenths of a second per region boss, 1-5; 0 = never killed. */
+  BossBestKillTenths: number[];
+  BestDropTier: number;
+  BestDropBaseId: string | null;
+  BestDropAtUtc: string | null;
+  DelveDeepestFloor: number;
+}
+
+export function fetchRecords(): Promise<PersonalRecordsView> {
+  return authedGet<PersonalRecordsView>('/api/v1/player/records');
 }
 
 /** Just the stackable half of the chest - see `fetchMaterials`. */

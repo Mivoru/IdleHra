@@ -902,6 +902,18 @@ namespace FolkIdle.Server.Network
         // VodnikMasteryLevel, which the login hydrates.
         public int OfflineCapSeconds;
 
+        // Modul: personal records, 805 -> 819 (task 51). BestHit (int) and the
+        // five region bosses' fastest kills in tenths (ushort each, clamped -
+        // 109 minutes is past any boss fight). On the wire so the client can
+        // say "New record" on the edge, and hydrated at login so a relogin
+        // does not read zero (PersonalRecords.Hydrate).
+        public int BestHit;
+        public ushort BossBestKillTenthsR1;
+        public ushort BossBestKillTenthsR2;
+        public ushort BossBestKillTenthsR3;
+        public ushort BossBestKillTenthsR4;
+        public ushort BossBestKillTenthsR5;
+
         // Modul: Production Release Hardening, Part 2. ClaimedMilestonesBitmask,
         // ActiveChroniclePassLevel, AccumulatedSeasonalXp,
         // ClaimedAchievementFlags, TotalAchievementsClaimedCount, and

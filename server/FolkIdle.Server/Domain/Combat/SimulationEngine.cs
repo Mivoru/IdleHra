@@ -2353,6 +2353,13 @@ namespace FolkIdle.Server.Domain.Combat
                                 LastVictoryGold = currentPayload.LastVictoryGold,
                                 LastVictoryXp = currentPayload.LastVictoryXp,
                                 LastVictoryTick = currentPayload.LastVictoryTick,
+                                // Task 51: personal records, hydrated at login.
+                                BestHit = currentPayload.BestHit,
+                                BossBestKillTenthsR1 = (ushort)Math.Clamp(currentPayload.BossBestKillTenthsR1, 0, ushort.MaxValue),
+                                BossBestKillTenthsR2 = (ushort)Math.Clamp(currentPayload.BossBestKillTenthsR2, 0, ushort.MaxValue),
+                                BossBestKillTenthsR3 = (ushort)Math.Clamp(currentPayload.BossBestKillTenthsR3, 0, ushort.MaxValue),
+                                BossBestKillTenthsR4 = (ushort)Math.Clamp(currentPayload.BossBestKillTenthsR4, 0, ushort.MaxValue),
+                                BossBestKillTenthsR5 = (ushort)Math.Clamp(currentPayload.BossBestKillTenthsR5, 0, ushort.MaxValue),
                                 LastDeathMonsterId = currentPayload.LastDeathMonsterId,
                                 LastDeathTick = currentPayload.LastDeathTick,
                                 LastHitWasCrit = currentPayload.LastHitWasCrit,
@@ -4293,6 +4300,10 @@ namespace FolkIdle.Server.Domain.Combat
                     // Reported in whole hit points, and burn is folded into the
                     // hit that applied it - it is not a second swing, and a log
                     // that split it would read as one.
+                    // Task 51: the same whole-hit-point figure the feed reports,
+                    // so the record and the log line can never disagree.
+                    Domain.Progression.PersonalRecords.ObserveHit(ref payload, (int)((netDamage + burnDamageDealt) / 1000L));
+
                     CombatEventFeed.Publish(
                         payload.PlayerId,
                         payload.CurrentMonsterId,
@@ -4715,6 +4726,15 @@ namespace FolkIdle.Server.Domain.Combat
                 // the state before the boss died. Hydration reconciles from the
                 // codex; this keeps the live session honest in between.
                 int clearedBossRegion = RaceUnlockRegistry.GetRegionForBossMonsterId(activeMonster.Id);
+
+                // Task 51: every boss kill, first clear or farm, against the
+                // fastest so far. CombatTargetTickAccumulator is zeroed at the
+                // spawn and counts ticks, so it is this fight's length in tenths.
+                if (clearedBossRegion > 0)
+                {
+                    Domain.Progression.PersonalRecords.ObserveBossKill(
+                        ref payload, clearedBossRegion, (int)Math.Min(int.MaxValue, (long)payload.CombatTargetTickAccumulator));
+                }
                 if (clearedBossRegion > 0
                     && clearedBossRegion < RaceUnlockRegistry.LastRegion
                     && payload.HighestUnlockedRegion < clearedBossRegion + 1)
