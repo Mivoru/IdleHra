@@ -1511,6 +1511,11 @@ namespace FolkIdle.Server.Domain.Combat
                                 _checkpointManager.FlushStateAndAdvance(ref payload);
                             }
 
+                            // Task 54: any level chest the account is owed -
+                            // the backfill on a first login after release, and
+                            // anything a missed grant left behind. Idempotent.
+                            CosmeticGrantEngine.NoteLevel(payload.PlayerId, payload.CurrentLevel);
+
                             _readyLogins.Enqueue(payload);
                         });
                         continue;
@@ -2730,6 +2735,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId, levelsGained);
+            if (levelsGained > 0) CosmeticGrantEngine.NoteLevel(payload.PlayerId, payload.CurrentLevel);
 
             // Active Skill Tree: one skill point per level gained, spent via
             // RequestUnlockSkill (see ActiveSkillEngine).

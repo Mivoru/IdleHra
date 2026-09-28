@@ -886,6 +886,7 @@ namespace FolkIdle.Server.Engine
                     ? (int)(payload.Slot1_GeneticVector & 0xFF)
                     : 0;
                 RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId, levelsGained);
+                CosmeticGrantEngine.NoteLevel(payload.PlayerId, payload.CurrentLevel);
             }
         }
 

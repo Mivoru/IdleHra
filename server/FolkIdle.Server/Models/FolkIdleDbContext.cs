@@ -100,6 +100,9 @@ namespace FolkIdle.Server.Models
         public DbSet<PlayerGoldDailyHigh> PlayerGoldDailyHighs { get; set; }
         public DbSet<PlayerTitle> PlayerTitles { get; set; }
 
+        // Task 54: owned chests, avatars and frames. See CosmeticItem.
+        public DbSet<CosmeticItem> CosmeticItems { get; set; }
+
         // The new-player funnel (task 39): the first time each player reached
         // each step. See PlayerFunnelEvent and FunnelRecorder.
         public DbSet<PlayerFunnelEvent> PlayerFunnelEvents { get; set; }
@@ -264,6 +267,9 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<PlayerTitle>()
                 .HasKey(t => new { t.PlayerId, t.TitleSlug });
+
+            modelBuilder.Entity<CosmeticItem>()
+                .HasIndex(c => new { c.PlayerId, c.Kind, c.Rarity });
 
             modelBuilder.Entity<PlayerFunnelEvent>()
                 .HasKey(f => new { f.PlayerId, f.Step });

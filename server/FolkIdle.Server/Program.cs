@@ -628,6 +628,9 @@ redisWriteBehindEngine.StartCron();
 // FunnelRecorder.Queue into player_funnel_events. See docs/ops/funnel.sql.
 var funnelRecorder = new FunnelRecorder(serviceProvider);
 funnelRecorder.StartCron();
+// Task 54: the level chest, one per five levels. Producers only enqueue.
+var cosmeticGrantEngine = new CosmeticGrantEngine(serviceProvider, playerRegistry);
+cosmeticGrantEngine.StartCron();
 // The world-first claim is settled in Redis, off the simulation tick - see
 // BossFirstClearAnnouncer for why the tick cannot ask the question itself.
 FolkIdle.Server.Domain.Combat.BossFirstClearAnnouncer.Redis = redisMultiplexer;

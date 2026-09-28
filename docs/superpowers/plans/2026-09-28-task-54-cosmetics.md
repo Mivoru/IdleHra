@@ -25,14 +25,17 @@ frame of that rarity; both chests and cosmetics can be traded on the market.
 
 **Monster drops.** Per kill, independently of luck (a cosmetic economy should
 not inflate with Fortune; `PowerCeilingTests` is untouched because nothing here
-is power). Rates are `EquipmentDropChance (0.15) x tier weight / 100`:
+is power). Rates are `EquipmentDropChance (0.15) x RarityTier.BaseShare(tier)`,
+where the share is the tier's weight over the WHOLE weight table, Normal's flat
+100 included (total 196.67). The first draft of this table divided by 100 and
+overstated every rate twice over:
 
 | Chest | Like an item of | Chance per kill | About one in |
 |---|---|---|---|
-| Common | Mythic (0.5) | 7.5e-4 | 1,333 kills |
-| Rare | Relic (0.1) | 1.5e-4 | 6,667 |
-| Epic | Ancient (0.05) | 7.5e-5 | 13,333 |
-| Legendary | Divine (0.01) | 1.5e-5 | 66,667 |
+| Common | Mythic (0.5) | 3.81e-4 | 2,622 kills |
+| Rare | Relic (0.1) | 7.63e-5 | 13,111 |
+| Epic | Ancient (0.05) | 3.81e-5 | 26,222 |
+| Legendary | Divine (0.01) | 7.63e-6 | 131,111 |
 
 One roll per kill against the cumulative ladder, so at most one chest per kill.
 The constants live in one `CosmeticRegistry` and a test asserts them against

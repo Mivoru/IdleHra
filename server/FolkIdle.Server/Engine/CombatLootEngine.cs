@@ -125,6 +125,19 @@ namespace FolkIdle.Server.Engine
         // into higher rarity thresholds" without needing renormalization.
         public static int RollTier(float lootLuckPct) => RollTier(lootLuckPct, Random.Shared);
 
+        /// <summary>
+        /// A tier's share of all drops at zero luck, exactly as RollTier
+        /// weighs it (Normal's flat 100 included in the total). Task 54's
+        /// cosmetic chests drop "as rarely as" a tier, and read it here so the
+        /// two cannot drift apart.
+        /// </summary>
+        public static double BaseShare(int tier)
+        {
+            double total = 100.0;
+            for (int t = 2; t <= 14; t++) total += _explicitWeights[t];
+            return (tier == Normal ? 100.0 : _explicitWeights[tier]) / total;
+        }
+
         // Modul: the same roll with the random source passed in, so
         // RarityRollDistributionTests can seed it. The overload above is the
         // only production caller shape; both run this one body, so the test
@@ -1102,6 +1115,11 @@ namespace FolkIdle.Server.Engine
             var resolvedCommodityDeltas = new Dictionary<string, long>();
             var resolvedEquipmentGrants = new List<EquipmentGrantPayload>();
 
+            // Task 54: cosmetic chests this request rolled, by rarity. Declared
+            // out here for the same reason as the two above - the catch writes
+            // what was decided rather than losing it.
+            var rolledChests = new List<int>();
+
             try
             {
                 // Modul: THE BACKPACK IS GONE. Loot is routed by what it is,
@@ -1170,6 +1188,11 @@ namespace FolkIdle.Server.Engine
                             1.0, resolvedEquipmentGrants, bonusRarityTiers, autoSalvageBelowTier, rarityElevationPct,
                             _dropTally, source == DropSource.Offline ? DropSource.OfflineBossGuarantee : DropSource.BossGuarantee));
                     }
+
+                    // Roll 3 (task 54): a cosmetic chest, as rarely as a Mythic
+                    // to Divine item and unmoved by luck. At most one per kill.
+                    int chestRarity = Domain.Progression.CosmeticRegistry.RollMonsterChest(Random.Shared.NextDouble());
+                    if (chestRarity > 0) rolledChests.Add(chestRarity);
                 }
 
                 // Every material this request rolled, in one locked read and
@@ -1177,6 +1200,11 @@ namespace FolkIdle.Server.Engine
                 await ApplyCommodityDeltasAsync(dbContext, playerId, resolvedCommodityDeltas);
 
                 await dbContext.SaveChangesAsync();
+
+                List<long>? chestIds = rolledChests.Count > 0
+                    ? await Domain.Progression.CosmeticEngine.InsertChestsAsync(
+                        dbContext, playerId, rolledChests, Domain.Progression.CosmeticSource.Kill, DateTime.UtcNow)
+                    : null;
 
                 // Modul: THE DROP RECORD (task 26) - one upsert for the whole
                 // request, however many kills it carried, inside the same
@@ -1238,6 +1266,23 @@ namespace FolkIdle.Server.Engine
                 _pendingDrops.Clear();
                 _pendingDropInstances.Clear();
 
+                if (chestIds != null)
+                {
+                    for (int i = 0; i < chestIds.Count; i++)
+                    {
+                        _playerRegistry.OutboundLootDropQueue.Enqueue(new Network.ResponseLootDropPacket
+                        {
+                            PlayerId = playerId,
+                            ItemId = 0,
+                            Quantity = 1,
+                            MonsterId = monsterId,
+                            QualityTier = (byte)rolledChests[i],
+                            DropKind = Network.ResponseLootDropPacket.DropKindCosmeticChest,
+                            InstanceId = chestIds[i],
+                        });
+                    }
+                }
+
                 // Task 51: after the commit, never inside it - see
                 // PersonalRecords.RecordBestDropAsync. Its own try: a record is
                 // decoration, and a failure here must not reach the catch below,
@@ -1288,6 +1333,24 @@ namespace FolkIdle.Server.Engine
                     // drop came from (task 26's drop record).
                     await PendingGrantOutbox.EnqueueEquipmentGrantAsync(
                         dbContext, playerId, PendingGrantSourceType.CombatLoot, grant);
+                }
+
+                // Task 54: a chest this batch rolled is written directly rather
+                // than through the outbox, which has no cosmetic kind. One
+                // chance in thousands of kills - losing one to a rollback is
+                // the kind of silent loss this project keeps paying for. Its
+                // own try: the rollback above already ended the transaction.
+                if (rolledChests.Count > 0)
+                {
+                    try
+                    {
+                        await Domain.Progression.CosmeticEngine.InsertChestsAsync(
+                            dbContext, playerId, rolledChests, Domain.Progression.CosmeticSource.Kill, DateTime.UtcNow);
+                    }
+                    catch (Exception chestEx)
+                    {
+                        Console.WriteLine($"Cosmetic chest write after a failed loot batch lost {rolledChests.Count} chest(s) for {playerId}: {chestEx.Message}");
+                    }
                 }
             }
         }

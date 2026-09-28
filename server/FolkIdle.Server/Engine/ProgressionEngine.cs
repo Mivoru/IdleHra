@@ -215,6 +215,7 @@ namespace FolkIdle.Server.Engine
             if (leveledUp)
             {
                 RaceAttributeGrowth.ApplyLevelUpGrowth(ref payload, activeRaceId, levelsGained);
+                CosmeticGrantEngine.NoteLevel(payload.PlayerId, payload.CurrentLevel);
 
                 // Modul: ONE SKILL POINT PER LEVEL, granted HERE.
                 //
