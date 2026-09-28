@@ -4834,3 +4834,27 @@ no diamonds, so there is no second site.
 **Done when:** the constant is named and says why, and a test pins it (for
 example: a large simulated run of ordinary kills stays within the expected
 band, and `BossDiamondTests` still passes).
+
+## DONE - 65. Store: simulation speed and diamond packs removed (owner decision 2026-09-28)
+
+**Owner:** "Why is there a simulation speed option in the Store? We get the
+same XP and items offline and online, so delete simulation speed completely.
+Delete the diamond packs too and just say the Store has nothing yet."
+
+- **Simulation speed, removed end to end.** The 1x-4x buttons replayed
+  `AccumulatedTimeBankMs` at up to 4x - and nothing had filled that bank since
+  the chrono deletion (2026-09-02). Nine live accounts still held a leftover
+  balance, the largest ~584,000 s (6.8 days) of 4x progress. The 3x button never
+  worked at all (the server accepted 1, 2 and 4). Gone: the tick's extra
+  iterations, the validator's speed check, `TickStatePayload.SpeedMultiplier` /
+  `AccumulatedTimeBankMs`, the Redis frame field, the checkpoint writes, the
+  season-reset SQL, `StateUpdatePacket.AccumulatedTimeBankMs` and
+  `CurrentSimulationSpeedMultiplier` (819 -> 810), and the
+  `PlayerRecords.AccumulatedTimeBankSeconds` column (migration
+  `RemoveSimulationSpeedTimeBank` - **destructive, back up first**). Opcode 8 is
+  retired and ignored (`HandleRetiredSimulationSpeed`) so an old phone build
+  pressing it is not disconnected.
+- **Diamond packs, removed from the screen.** They listed products with no
+  price and no way to buy on the web. The Store says "Nothing here yet". The
+  purchase path (`billing.ts`, `/api/v1/billing/*`, store registration) is
+  untouched, for when payments are set up (Stripe is still parked).

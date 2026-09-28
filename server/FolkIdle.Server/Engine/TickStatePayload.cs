@@ -69,8 +69,6 @@ namespace FolkIdle.Server.Engine
         
         public int CachedMentorCount;
         public long LastLogoutTimestamp;
-        public long AccumulatedTimeBankMs;
-        public int SpeedMultiplier;
 
         // Combat mechanics
         public int CurrentMonsterId;

@@ -17,11 +17,10 @@ namespace FolkIdle.Server.Network
         ContributeToGuild = 5,
         Logout = 6,
         Login = 7,
-        // Modul: was ToggleChronoAcceleration. It never touched the chrono
-        // bank - it sets SpeedMultiplier, which is paid for out of
-        // AccumulatedTimeBankMs. Renamed when the bank was deleted so the
-        // name stops implying a system that no longer exists. Value unchanged;
-        // renaming a member does not move an opcode.
+        // Modul: RETIRED 2026-09-28 with simulation speed (owner). Was
+        // ToggleChronoAcceleration before that. Kept so an old client's press
+        // is recognised and ignored (HandleRetiredSimulationSpeed); the value
+        // is never reused.
         SetSimulationSpeed = 8,
         MarketListItem = 9,
         MarketBuyItem = 10,

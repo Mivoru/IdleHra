@@ -21,8 +21,8 @@ namespace FolkIdle.Server.Tests
     /// a copy-pasted wrong field - the same "silently assigns nothing useful"
     /// defect class the wire test guards, applied to this site; and (2) the
     /// frame's field COUNT and NAMES stay pinned to what this comment (and
-    /// CLAUDE.md's own description: "twelve fields - level, xp, lineage,
-    /// logout stamp, time bank, epoch, quarantine, gold, three counters")
+    /// CLAUDE.md's own description: "eleven fields - level, xp, lineage,
+    /// logout stamp, epoch, quarantine, gold, three counters")
     /// says it is, so a silent addition here - which would look like "the
     /// frame now covers this too" - forces a conscious decision instead,
     /// since CLAUDE.md's "A Redis frame is not a checkpoint" trap is
@@ -32,11 +32,12 @@ namespace FolkIdle.Server.Tests
     public class RedisFrameFieldCoverageTests
     {
         // The frame's field names, in the order TryStoreFrame declares them -
-        // the same twelve CLAUDE.md's "A Redis frame is not a checkpoint"
-        // trap names (level, xp, lineage, logout stamp, time bank, epoch,
-        // quarantine, gold, three counters - player_id/inventory_space/
+        // the same eleven CLAUDE.md's "A Redis frame is not a checkpoint"
+        // trap names (level, xp, lineage, logout stamp, epoch, quarantine,
+        // gold, three counters - player_id/inventory_space/
         // ticks_since_last_flush being the "three counters", updated_at the
-        // twelfth). Excludes the conditional gold/wood/stone/iron buffer
+        // eleventh). The time bank left the frame with simulation speed
+        // (owner, 2026-09-28). Excludes the conditional gold/wood/stone/iron buffer
         // writes below the main HashEntry array, which are their own
         // explicit if-guarded blocks rather than part of the fixed frame.
         private static readonly string[] ExpectedFrameFields =
@@ -46,7 +47,6 @@ namespace FolkIdle.Server.Tests
             "current_xp",
             "selected_lineage_id",
             "last_logout_ts",
-            "accumulated_time_bank_seconds",
             "logic_epoch_counter",
             "is_quarantined",
             "current_gold_frame",

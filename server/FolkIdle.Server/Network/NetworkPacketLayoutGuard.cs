@@ -210,7 +210,11 @@ namespace FolkIdle.Server.Network
         // five ushort boss kill times. They change a few times a session, but
         // the "New record" toast is an edge on the stream, the same contract as
         // LastVictoryTick; REST would need a poll to notice.
-        public const int ExpectedStateUpdateSize = 819;
+        //
+        // Modul: simulation speed removed, 819 -> 810 (owner, 2026-09-28).
+        // AccumulatedTimeBankMs (long) and CurrentSimulationSpeedMultiplier
+        // (byte) went with the Store's speed buttons and the bank they spent.
+        public const int ExpectedStateUpdateSize = 810;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

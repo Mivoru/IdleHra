@@ -119,8 +119,8 @@ at their struct.
 **A Redis frame is not a checkpoint, and the server's own Logout is not a
 client.** `TrackState` used to return whenever `RedisSessionCache.TryStoreFrame`
 took a frame - including at the boundary - so with Redis up (dev and production
-both) the periodic path never reached `FlushState`. The frame is twelve fields
-(level, xp, lineage, logout stamp, time bank, epoch, quarantine, gold, three
+both) the periodic path never reached `FlushState`. The frame is eleven fields
+(level, xp, lineage, logout stamp, epoch, quarantine, gold, three
 counters); the checkpoint writes everything else on `PlayerRecords` - the four
 attributes, `UnspentAttributePoints`, diamonds, skill points, the larder,
 potions, quests, the chronicle pass. None of that was durable on a live session.

@@ -90,7 +90,7 @@ export interface ClientCommand {
   BreedingSelectionMask: number;
 }
 
-/** StateUpdatePacket - 819 bytes on the binary wire. */
+/** StateUpdatePacket - 810 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -144,7 +144,6 @@ export interface StateUpdate {
   VilaMasteryLevel: number;
   DraugrMasteryLevel: number;
   VillagePopulation: number;
-  AccumulatedTimeBankMs: number;
   AutoEatThreshold: number;
   STR: number;
   DEX: number;
@@ -228,7 +227,6 @@ export interface StateUpdate {
   CurrentPopulationCount: number;
   ActiveChallengeSeed: number;
   ActiveLanguageState: number;
-  CurrentSimulationSpeedMultiplier: number;
   PremiumCurrencyBalance: number;
   ActiveAudioTrackId: number;
   TotalItemsCraftedCount: number;
@@ -451,7 +449,7 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 341,
-  StateUpdate: 819,
+  StateUpdate: 810,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 30,

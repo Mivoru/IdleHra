@@ -1853,18 +1853,4 @@ export function purchaseLegacyUnlock(unlockId: number): CommandOutcome {
   return OK;
 }
 
-/**
- * The requested multiplier rides on TargetId. 1 turns acceleration off.
- *
- * Modul: was toggleChronoAcceleration, and it never had anything to do with the
- * chrono bank - the server pays for every extra tick out of
- * AccumulatedTimeBankMs, so this can only replay time already owed. Renamed
- * with opcode 8 itself when the bank was deleted.
- */
-export function setSimulationSpeed(multiplier: number): CommandOutcome {
-  if (!Number.isInteger(multiplier) || multiplier < 1) return refuse('Multiplier must be at least 1.');
-  connection.send({ Command: CommandType.SetSimulationSpeed, TargetId: multiplier });
-  return OK;
-}
-
 // ---------------------------------------------------------------------------

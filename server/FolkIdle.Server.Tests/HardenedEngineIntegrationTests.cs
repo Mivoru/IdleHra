@@ -5635,7 +5635,6 @@ namespace FolkIdle.Server.Tests
                     CurrentMonsterHp = int.MaxValue / 2,
                     PlayerHp = int.MaxValue / 2,
                     CON = con,
-                    SpeedMultiplier = 1,
                     InventorySpaceRemaining = 1000
                 };
 

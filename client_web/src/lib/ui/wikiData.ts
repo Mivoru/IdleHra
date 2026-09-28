@@ -589,7 +589,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Chat', label: 'Chat', status: 'documented', tab: 'guilds', note: 'The three channels and what each reaches.' },
   { screen: 'Market', label: 'Market', status: 'documented', tab: 'economy', note: 'Listings, the wealth-scaled seller fee and the region gate on buying.' },
   { screen: 'Mailbox', label: 'Mailbox', status: 'documented', tab: 'economy', note: 'Where world boss rewards and undeliverable market goods land.' },
-  { screen: 'Store', label: 'Store', status: 'documented', tab: 'economy', note: 'Diamonds, and the two sinks worth spending them on.' },
+  { screen: 'Store', label: 'Store', status: 'no-page-needed', note: 'Empty for now (owner, 2026-09-28): it says so. Diamonds themselves are on the Economy page.' },
   { screen: 'Delve', label: 'The Delve', status: 'documented', tab: 'economy', note: 'The gold sink: the fee per region, the floor ladder, what Fortune buys and the weekly diamond ceiling.' },
   { screen: 'WorldBoss', label: 'World boss', status: 'documented', tab: 'events', note: 'The shared encounter, the shield wheel, one strike a day and the weekly payout by damage.' },
 ];

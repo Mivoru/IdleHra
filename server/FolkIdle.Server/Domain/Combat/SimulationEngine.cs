@@ -900,7 +900,7 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.TriggerGdprPurge] = ClientSessionTickCoordinator.HandleTriggerGdprPurge,
                 [CommandType.SwitchLanguage] = ClientSessionTickCoordinator.HandleSwitchLanguage,
                 [CommandType.ReportUiContextSwitch] = ClientSessionTickCoordinator.HandleReportUiContextSwitch,
-                [CommandType.SetSimulationSpeed] = ClientSessionTickCoordinator.HandleSetSimulationSpeed,
+                [CommandType.SetSimulationSpeed] = ClientSessionTickCoordinator.HandleRetiredSimulationSpeed,
             };
         }
 
@@ -2121,11 +2121,9 @@ namespace FolkIdle.Server.Domain.Combat
                                 VilaMasteryLevel = currentPayload.VilaMasteryLevel,
                                 DraugrMasteryLevel = currentPayload.DraugrMasteryLevel,
                                 VillagePopulation = currentPayload.VillagePopulation,
-                                AccumulatedTimeBankMs = currentPayload.AccumulatedTimeBankMs,
                                 LogicEpochCounter = (uint)(currentPayload.LogicEpochCounter & 0xFFFFFFFF),
                                 PremiumCurrencyBalance = (uint)currentPayload.PremiumCurrency,
                                 LegacyShardBalance = currentPayload.LegacyShardBalance,
-                                CurrentSimulationSpeedMultiplier = (byte)Math.Clamp(currentPayload.SpeedMultiplier, 1, 4),
                                 GlobalNodeRemainingHp = currentPayload.GlobalNodeRemainingHp <= 0L
                                     ? 0U
                                     : (currentPayload.GlobalNodeRemainingHp > uint.MaxValue ? uint.MaxValue : (uint)currentPayload.GlobalNodeRemainingHp),
@@ -3097,15 +3095,8 @@ namespace FolkIdle.Server.Domain.Combat
             int localXpMultiplier = GlobalEngineState.GlobalXpMultiplier;
             int localDropMultiplier = GlobalEngineState.GlobalDropMultiplier;
 
-            if (payload.SpeedMultiplier <= 0) payload.SpeedMultiplier = 1;
-
             long now = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            // All register operations are on unmanaged value-type fields — 0 allocations.
-            int extraIterations = payload.SpeedMultiplier > 4 ? 3 : payload.SpeedMultiplier - 1;
-            if (extraIterations < 0) extraIterations = 0;
-
-            // Normal tick (i = 0)
             if (payload.ActiveActivityId > 0 && payload.ActivityHaltReason != Network.ActivityHaltReason.OutOfFood)
             {
                 // Running and earning: whatever stopped the player last has
@@ -3132,35 +3123,14 @@ namespace FolkIdle.Server.Domain.Combat
             ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
             ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
 
-            // Modul: the chrono-funded 2x/4x branch used to sit here, running the
-            // whole sub-tick body N times for free and charging the bank. It is
-            // gone with the bank. What remains below is the OTHER acceleration
-            // path, which is unrelated and must not be confused with it: it pays
-            // for every extra iteration out of AccumulatedTimeBankMs at 100ms
-            // each, so it can only ever replay time the server already owed the
-            // player. SpeedMultiplier belongs to that path, not to chrono.
-            //
-            // Extra iterations (i > 0)
-            for (int i = 0; i < extraIterations; i++)
-            {
-                if (payload.ActiveActivityId > 0 && payload.InventorySpaceRemaining <= 0)
-                {
-                    payload.SpeedMultiplier = 1;
-                    break;
-                }
-
-                if (payload.AccumulatedTimeBankMs >= 100)
-                {
-                    payload.AccumulatedTimeBankMs -= 100;
-                    ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
-                    ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
-                }
-                else
-                {
-                    payload.SpeedMultiplier = 1;
-                    break;
-                }
-            }
+            // Modul: NO SIMULATION SPEED (owner, 2026-09-28). The chrono-funded
+            // 2x/4x branch went with the chrono bank; the second path that sat
+            // here replayed AccumulatedTimeBankMs at up to 4x, and nothing had
+            // filled that bank since the chrono deletion - only nine accounts
+            // still held a leftover balance (the largest about 6.8 days), which
+            // was 4x progress for as long as it lasted. Offline catch-up already
+            // pays the same XP and loot as being online, so the Store's speed
+            // buttons offered nothing honest. One tick is one tick.
         }
 
         // Modul 16: Village Infrastructure Passive Production & Warehouse Caps.

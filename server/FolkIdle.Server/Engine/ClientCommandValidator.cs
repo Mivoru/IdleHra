@@ -238,24 +238,6 @@ namespace FolkIdle.Server.Engine
                     return false;
                 }
 
-                // 2. Multiplier verification
-                // Modul: this used to also require BankedChronoSeconds <= 0,
-                // because a chrono-accelerated player legitimately ran above 1x
-                // with an empty time bank. With chrono gone there is only one
-                // way to be fast, so an empty bank at speed is the cheat.
-                if (payload.SpeedMultiplier > 1 && payload.AccumulatedTimeBankMs < 100)
-                {
-                    TelemetryStreamer.TryWrite(new TelemetryEvent 
-                    { 
-                        PlayerId = payload.PlayerId, 
-                        EventType = 3, 
-                        Value1 = commandType, 
-                        Value2 = 2, 
-                        Timestamp = currentTick 
-                    });
-                    return false;
-                }
-
                 payload.LastCommandTimestamp = currentTick;
             }
 

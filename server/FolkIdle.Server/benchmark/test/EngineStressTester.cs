@@ -26,8 +26,6 @@ namespace FolkIdle.Server.Benchmark
                     PlayerHp = 100000,
                     CurrentMonsterId = 1,
                     CurrentMonsterHp = 1000,
-                    SpeedMultiplier = 1,
-                    AccumulatedTimeBankMs = 0,
                     LastCommandTimestamp = 0
                 };
                 engine.InjectVirtualPlayer(payload);
@@ -44,7 +42,7 @@ namespace FolkIdle.Server.Benchmark
                 long targetPlayerId = random.Next(1, 2501);
                 var packet = new ClientCommandPacket
                 {
-                    Command = random.Next(2) == 0 ? CommandType.ChangeActivity : CommandType.SetSimulationSpeed,
+                    Command = random.Next(2) == 0 ? CommandType.ChangeActivity : CommandType.ReloadState,
                     TargetId = 1
                 };
                 engine.InjectBenchmarkCommand(targetPlayerId, packet);
