@@ -173,6 +173,20 @@ export async function signInAsGuest(page) {
   await page.getByRole('button', { name: 'Play as guest' }).click();
   await waitForShell(page);
   await page.waitForTimeout(500);
+  // Modul: a brand-new account is FENCED by the guided first minute
+  // (GuidedOverlay.svelte) - only the lit control can be pressed, so every nav
+  // click after this timed out at 30 s on a guest. The first post-deploy smoke
+  // run after that feature shipped failed on exactly that. Skip it, and report
+  // that it was there: a guest that meets no guided step is itself a finding.
+  const guided = await page
+    .waitForSelector('[data-guided]', { timeout: 8000 })
+    .then(() => true)
+    .catch(() => false);
+  if (guided) {
+    await page.getByRole('button', { name: 'Skip tutorial' }).first().click();
+    await page.waitForSelector('[data-guided]', { state: 'detached', timeout: 5000 }).catch(() => {});
+  }
+  return { guided };
 }
 
 /**
