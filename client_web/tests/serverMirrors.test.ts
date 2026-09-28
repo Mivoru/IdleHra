@@ -559,6 +559,18 @@ describe('the numbers the client mirrors still match the server', () => {
     );
   });
 
+  it('loot: the rarity power multiplier the Wear comparison scales by', () => {
+    // Task 49: the loot row says "+12 ATK" by scaling base power exactly as
+    // EquipmentSlotEngine does. A different top multiplier would put a wrong
+    // sign on the line.
+    const loot = read(serverRoot, 'Engine', 'CombatLootEngine.cs');
+    const rarity = read(clientRoot, 'lib', 'ui', 'rarity.ts');
+    expect(num(rarity, /TOP_TIER_POWER_MULTIPLIER = ([\d.]+)/, 'client multiplier')).toBe(
+      num(loot, /TopTierPowerMultiplier = ([\d.]+)/, 'server multiplier'),
+    );
+    expect(loot).toMatch(/Math\.Pow\(TopTierPowerMultiplier, \(tier - 1\) \/ 13\.0\)/);
+  });
+
   it('combat log: the event kinds and flags the server actually sends', () => {
     // The fight log decodes a numeric EventKind and a Flags bitmask into the
     // words a player reads. A mismatch here does not throw - it silently

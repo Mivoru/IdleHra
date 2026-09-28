@@ -48,5 +48,13 @@ namespace FolkIdle.Server.Network
         public byte QualityTier;
 
         public byte DropKind;
+
+        // Modul: THE ROW THIS DROP BECAME (task 49). EquipmentInstances.Id for
+        // an equipment drop, 0 for materials and scrap. Without it the loot list
+        // could name a drop but not act on it - "Wear" would have to guess
+        // which of several identical pieces in a 17,836-row chest was the one
+        // that just fell, and guessing an instance is how a command lands on
+        // the wrong item. Filled after SaveChanges, when the id exists.
+        public long InstanceId;
     }
 }

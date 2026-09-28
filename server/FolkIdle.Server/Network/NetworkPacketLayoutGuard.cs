@@ -213,19 +213,21 @@ namespace FolkIdle.Server.Network
         public const int ExpectedRequestChatMessageSize = 139;
         public const int ExpectedResponseChatMessageSize = 147;
 
-        // Modul: Loot Event Feed. 22 bytes: PlayerId(8) + ItemId(4) +
-        // Quantity(4) + MonsterId(4) + QualityTier(1) + DropKind(1).
+        // Modul: Loot Event Feed. 30 bytes: PlayerId(8) + ItemId(4) +
+        // Quantity(4) + MonsterId(4) + QualityTier(1) + DropKind(1) +
+        // InstanceId(8). Was 22 until task 49 (2026-09-28) added InstanceId so
+        // the loot list can wear the exact piece that dropped.
         // Deliberately nowhere near any other packet size on this wire, so
         // the size-based demultiplexing in both receive loops stays
         // unambiguous.
-        public const int ExpectedResponseLootDropSize = 22;
+        public const int ExpectedResponseLootDropSize = 30;
 
         // Modul: Combat Event Feed. 26 bytes: PlayerId(8) + MonsterId(4) +
         // Amount(4) + MonsterHpAfter(4) + Sequence(4) + EventKind(1) +
         // Flags(1).
         //
         // Without Sequence it would be 22 and collide exactly with the loot
-        // drop above, which the binary receive loops - demultiplexing on length
+        // drop above as it was before task 49, which the binary receive loops - demultiplexing on length
         // alone - could not tell apart. The check below is what caught that.
         public const int ExpectedResponseCombatEventSize = 26;
 

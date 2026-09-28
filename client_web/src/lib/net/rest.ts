@@ -20,6 +20,8 @@ export const queryKeys = {
   inventory: ['player', 'inventory'] as const,
   /** The stackable half only - see `fetchMaterials` for why it is separate. */
   materials: ['player', 'materials'] as const,
+  /** The main character's worn pieces - see `fetchWorn`. */
+  worn: ['player', 'worn'] as const,
   chestSettings: ['player', 'chestSettings'] as const,
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
@@ -114,6 +116,23 @@ export interface InventorySnapshot {
 
 export function fetchInventory(): Promise<InventorySnapshot> {
   return authedGet<InventorySnapshot>('/api/v1/player/inventory');
+}
+
+export interface WornPiece {
+  InstanceId: number;
+  BaseItemId: string;
+  QualityTier: number;
+  /** 0-10: the eight combat slots, then Axe, Pickaxe, Rod. */
+  SlotIndex: number;
+}
+
+/**
+ * What the MAIN character wears - the character a Wear with no target dresses.
+ * At most eleven rows; the loot list compares a drop against it without
+ * pulling the whole inventory (task 49).
+ */
+export function fetchWorn(): Promise<{ Pieces: WornPiece[] }> {
+  return authedGet<{ Pieces: WornPiece[] }>('/api/v1/player/worn');
 }
 
 /** Just the stackable half of the chest - see `fetchMaterials`. */

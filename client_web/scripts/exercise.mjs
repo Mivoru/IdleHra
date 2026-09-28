@@ -393,6 +393,78 @@ await page.waitForTimeout(4000);
     JSON.stringify(lootIsBeside),
   );
 
+  // Modul: TASK 49 - WEAR A DROP FROM THE LOOT LIST. The row names the exact
+  // instance that dropped (ResponseLootDropPacket.InstanceId); pressing Wear
+  // must change what /player/worn reports. Then the fixture gets its own piece
+  // back - a check that spends fixture state passes once and fails forever.
+  {
+    const deadline = Date.now() + 90000;
+    let target = null;
+    while (Date.now() < deadline) {
+      target = await page.evaluate(() => {
+        const button = [...document.querySelectorAll('[data-loot-wear]')].find((b) => !b.disabled);
+        return button ? Number(button.getAttribute('data-loot-wear')) : null;
+      });
+      if (target) break;
+      await page.waitForTimeout(1500);
+    }
+
+    if (!target) {
+      record('a drop can be worn from the loot list', false, 'no wearable equipment drop arrived in 90 s');
+    } else {
+      const line = await page.evaluate(
+        (id) => document.querySelector(`[data-loot-wear="${id}"]`)?.closest('li')?.querySelector('.cmp')?.textContent.trim() ?? null,
+        target,
+      );
+      record('a loot row compares the drop with what is worn', !!line, line ?? 'no comparison line');
+
+      const before = (await apiGet('/api/v1/player/worn'))?.Pieces ?? [];
+      await dismissToasts();
+      await page.locator(`[data-loot-wear="${target}"]`).click();
+
+      let worn = null;
+      for (let i = 0; i < 20 && !worn; i++) {
+        await page.waitForTimeout(500);
+        worn = ((await apiGet('/api/v1/player/worn'))?.Pieces ?? []).find((p) => p.InstanceId === target) ?? null;
+      }
+      record(
+        'wearing a drop from the loot list changes the worn item',
+        !!worn,
+        worn ? `instance ${target} now in slot ${worn.SlotIndex}` : (await toasts()).join(' | ') || 'the worn list never changed',
+      );
+
+      const previous = worn ? before.find((p) => p.SlotIndex === worn.SlotIndex) : null;
+      if (previous) {
+        await page.evaluate((id) => globalThis.__folkidleEquip?.(id), previous.InstanceId);
+        let restored = false;
+        for (let i = 0; i < 20 && !restored; i++) {
+          await page.waitForTimeout(500);
+          restored = ((await apiGet('/api/v1/player/worn'))?.Pieces ?? []).some((p) => p.InstanceId === previous.InstanceId);
+        }
+        record('the fixture gets its own piece back after the loot-row Wear', restored, `instance ${previous.InstanceId}`);
+      }
+    }
+  }
+
+  // Modul: TASK 50 - a Legendary+ drop is shown over the screen for a moment and
+  // then leaves on its own. Forced through the REAL drop handler
+  // (__folkidleDemoDrop -> acceptLootDrop): waiting for a live Legendary is one
+  // kill in about 1,300.
+  {
+    await page.evaluate(() => globalThis.__folkidleDemoDrop?.(8));
+    const shown = await page
+      .waitForSelector('[data-loot-reveal]', { timeout: 3000 })
+      .then(() => true)
+      .catch(() => false);
+    const text = shown ? (await page.locator('[data-loot-reveal]').innerText()).replace(/\s+/g, ' ') : '';
+    record('a Legendary+ drop shows the reveal card', shown && /mythic/i.test(text), text || 'no card');
+    const gone = await page
+      .waitForSelector('[data-loot-reveal]', { state: 'detached', timeout: 4000 })
+      .then(() => true)
+      .catch(() => false);
+    record('the reveal card leaves on its own', gone);
+  }
+
   record(
     'the log reports both sides of the fight',
     (logLines ?? []).some((l) => /^(Critical! )?You (hit|miss)/.test(l))

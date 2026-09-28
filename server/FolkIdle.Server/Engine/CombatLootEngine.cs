@@ -623,6 +623,11 @@ namespace FolkIdle.Server.Engine
         // ProcessMonsterLootDropAsync for why drops are held until commit.
         private readonly List<Network.ResponseLootDropPacket> _pendingDrops = new(8);
 
+        // Modul: parallel to _pendingDrops - the EquipmentInstance each staged
+        // equipment drop wrote, null for a material. Its Id only exists after
+        // SaveChanges, so the packet's InstanceId is stamped at publish time.
+        private readonly List<EquipmentInstance?> _pendingDropInstances = new(8);
+
         // Modul: the drop record (task 26) - see DropRecord.
         private readonly DropTally _dropTally = new();
 
@@ -1057,6 +1062,7 @@ namespace FolkIdle.Server.Engine
             // request at a time), so the feed costs no per-kill allocation
             // once the list has grown to its steady-state size.
             _pendingDrops.Clear();
+            _pendingDropInstances.Clear();
 
             // Modul: the drop record's accumulator, reused like _pendingDrops
             // (this worker is single-threaded). Cleared here as well as by the
@@ -1215,14 +1221,18 @@ namespace FolkIdle.Server.Engine
 
                 for (int i = 0; i < _pendingDrops.Count; i++)
                 {
-                    _playerRegistry.OutboundLootDropQueue.Enqueue(_pendingDrops[i]);
+                    var drop = _pendingDrops[i];
+                    drop.InstanceId = _pendingDropInstances[i]?.Id ?? 0L;
+                    _playerRegistry.OutboundLootDropQueue.Enqueue(drop);
                 }
                 _pendingDrops.Clear();
+                _pendingDropInstances.Clear();
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
                 _pendingDrops.Clear();
+                _pendingDropInstances.Clear();
                 Console.WriteLine($"Combat loot drop failed: {ex.Message} - queued for retry.");
 
                 // Modul: THE DURABLE RETRY OUTBOX (audit #18). Auto-salvage
@@ -1489,7 +1499,7 @@ namespace FolkIdle.Server.Engine
 
             _equipmentWritten++;
 
-            PublishLootDrop(playerId, monsterId, chosenItemId, 1, (byte)tier, Network.ResponseLootDropPacket.DropKindEquipment);
+            PublishLootDrop(playerId, monsterId, chosenItemId, 1, (byte)tier, Network.ResponseLootDropPacket.DropKindEquipment, instance);
 
             // Modul: A RARE DROP IS WORTH SAYING OUT LOUD.
             //
@@ -1660,10 +1670,11 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        private void PublishLootDrop(long playerId, int monsterId, int itemId, int quantity, byte qualityTier, byte dropKind)
+        private void PublishLootDrop(long playerId, int monsterId, int itemId, int quantity, byte qualityTier, byte dropKind, EquipmentInstance? instance = null)
         {
             if (itemId <= 0 || quantity <= 0) return;
 
+            _pendingDropInstances.Add(instance);
             _pendingDrops.Add(new Network.ResponseLootDropPacket
             {
                 PlayerId = playerId,

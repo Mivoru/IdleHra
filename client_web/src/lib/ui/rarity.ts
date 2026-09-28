@@ -63,6 +63,27 @@ export function rarityName(qualityTier: number): string {
   return RARITY_TIER_NAMES[qualityTier] ?? `Tier ${qualityTier}`;
 }
 
+/**
+ * RarityTier.TopTierPowerMultiplier (CombatLootEngine.cs): what a Transcendent
+ * piece's base Attack/Defence is multiplied by. Pinned by serverMirrors.test.ts.
+ */
+export const TOP_TIER_POWER_MULTIPLIER = 2.12;
+
+/**
+ * RarityTier.PowerMultiplier, the one place the server scales an item's base
+ * power by its quality. Geometric from 1.0 at Normal to the top multiplier.
+ *
+ * Modul: the item panels show a piece's AUTHORED base power, which is the same
+ * number at every rarity - so a Legendary and a Normal of one sword read as
+ * equal. A comparison that says "better" or "worse" must use what the server
+ * actually adds up (EquipmentSlotEngine), or it is a lie with a sign on it.
+ */
+export function powerMultiplier(qualityTier: number): number {
+  if (qualityTier <= 1) return 1;
+  if (qualityTier >= MAX_QUALITY_TIER) return TOP_TIER_POWER_MULTIPLIER;
+  return Math.pow(TOP_TIER_POWER_MULTIPLIER, (qualityTier - 1) / 13);
+}
+
 /** Only the top tiers glow, or the effect stops meaning anything. */
 export function shouldGlow(qualityTier: number): boolean {
   return qualityTier >= 10;

@@ -43,6 +43,7 @@
   import { unlockAudio, play } from './lib/ui/audio';
   import OnboardingCoach from './lib/ui/OnboardingCoach.svelte';
   import GuidedOverlay from './lib/ui/GuidedOverlay.svelte';
+  import LootReveal from './lib/ui/LootReveal.svelte';
   import WhatsNew from './lib/ui/WhatsNew.svelte';
   import { resolveNotesOnStartup, startUpdatePolling } from './lib/stores/version';
   import { coachTargetScreen } from './lib/stores/tutorial';
@@ -593,6 +594,8 @@
     <!-- Modul: the two moments the game never marked - a first boss
          clear and a death. Both are modal because both are things the
          player must not miss while looking at another screen. -->
+    <!-- Task 50: a Legendary+ drop, shown over any screen for a moment. -->
+    <LootReveal />
     <VictoryCard />
     <DeathCard />
     <ChatDock />

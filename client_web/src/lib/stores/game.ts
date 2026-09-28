@@ -10,6 +10,9 @@
 
 import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
+import { FLASH_MIN_TIER, LootFeelGate, lootPitch, shouldReplaceReveal } from '../ui/lootFeel';
+import { resolveSlotIndex } from '../ui/slots';
+import { loadContent } from '../net/content';
 import { accountIdOf } from '../net/auth';
 import { watchAppLifecycle } from '../net/lifecycle';
 import { refreshDeviceTokenIfPermitted, watchNotificationTaps } from '../net/push';
@@ -38,7 +41,7 @@ import {
   achievementName,
   type AchievementToast,
 } from './achievementToasts';
-import type { StateUpdate, ResponseChatMessage, ResponseLootDrop, ResponseCombatEvent } from '../net/protocol.generated';
+import { CommandType, type StateUpdate, type ResponseChatMessage, type ResponseLootDrop, type ResponseCombatEvent } from '../net/protocol.generated';
 
 // ---------------------------------------------------------------------------
 // Connection
@@ -164,6 +167,8 @@ export interface LootEntry {
   qualityTier: number;
   dropKind: number;
   atMs: number;
+  /** EquipmentInstances.Id of an equipment drop, 0 otherwise (task 49). */
+  instanceId: number;
 }
 
 // Modul: TWO BUFFERS, BECAUSE ONE LET MATERIALS EVICT EVERY PIECE OF GEAR.
@@ -209,6 +214,56 @@ let lootSequence = 0;
 
 /** Equipment only. Never evicted by material volume - see above. */
 export const lootLogEquipment = writable<LootEntry[]>([]);
+
+/** Task 50: the loot row that should burst right now (Rare+, one per 5 s). */
+export const lootFlash = writable<{ id: number; itemId: number; qualityTier: number } | null>(null);
+/** Task 50: the Legendary+ drop on the reveal card, or null. */
+export const lootReveal = writable<LootEntry | null>(null);
+const lootFeel = new LootFeelGate();
+
+export function dismissLootReveal(): void {
+  lootReveal.set(null);
+}
+
+/**
+ * One loot drop, from the wire or from the dev demo hook - the same path, so
+ * the demo proves the real handler rather than a copy of it.
+ */
+export function acceptLootDrop(packet: ResponseLootDrop): void {
+  const tier = Number(packet.QualityTier);
+  const kind = Number(packet.DropKind);
+
+  // Modul: TASK 50. Rare+ rings the rare clip, a semitone higher per tier;
+  // anything below keeps the plain drop sound. Haptics stay on the top tiers.
+  if (kind === 1 && tier >= FLASH_MIN_TIER) play('lootRare', lootPitch(tier));
+  else play('lootDropped');
+  if (tier >= 10) tap('success');
+
+  const entry: LootEntry = {
+    id: ++lootSequence,
+    itemId: packet.ItemId,
+    quantity: packet.Quantity,
+    monsterId: packet.MonsterId,
+    qualityTier: tier,
+    dropKind: packet.DropKind,
+    atMs: connection.serverNowMs(),
+    instanceId: Number(packet.InstanceId ?? 0),
+  };
+
+  // DropKind 1 is equipment; 0 material and 2 salvage scrap.
+  const isEquipment = kind === 1;
+  const target = isEquipment ? lootLogEquipment : lootLogMaterials;
+  const cap = isEquipment ? MAX_LOOT_ENTRIES_EQUIPMENT : MAX_LOOT_ENTRIES_MATERIALS;
+  target.update((entries) => {
+    const next = [entry, ...entries];
+    return next.length > cap ? next.slice(0, cap) : next;
+  });
+
+  const feel = lootFeel.accept(tier, kind, Date.now());
+  if (feel.flash) lootFlash.set({ id: entry.id, itemId: entry.itemId, qualityTier: tier });
+  if (feel.reveal && shouldReplaceReveal(get(lootReveal)?.qualityTier ?? null, tier)) lootReveal.set(entry);
+}
+
 
 /** Materials and salvage scrap. High volume, low individual interest. */
 export const lootLogMaterials = writable<LootEntry[]>([]);
@@ -467,6 +522,38 @@ if (import.meta.env.DEV) {
   // live drop packets, so every geometry checker saw "Nothing yet." - and the
   // squashed-top-row defect (task 27) needs MORE rows than 16rem holds, with
   // rare (tier >= 10) ones on top. Dev builds only, like the achievement demo.
+  // Modul: exercise.mjs's loot-row Wear check swaps the fixture's worn piece
+  // for a fresh drop, then puts the original back with this - a check that
+  // spends fixture state passes once and fails forever (CLAUDE.md).
+  (globalThis as Record<string, unknown>).__folkidleEquip = (instanceId: number) => {
+    connection.send({ Command: CommandType.EquipItem, TargetId: instanceId });
+  };
+
+  // Task 50: a forced drop through the REAL handler - the reveal card, the
+  // row burst and the pitched clip. Tier 7+ shows the card. Uses the first
+  // catalogued item with a slot, so the card shows a real name and icon. The
+  // instance id is fake, so its Wear is refused; it exists to be seen.
+  (globalThis as Record<string, unknown>).__folkidleDemoDrop = async (tier = 7) => {
+    const registry = await loadContent();
+    let itemId = 1;
+    for (const [id, item] of registry.items) {
+      if (resolveSlotIndex(item.BaseId) >= 0) {
+        itemId = id;
+        break;
+      }
+    }
+    acceptLootDrop({
+      type: 'ResponseLootDrop',
+      PlayerId: 0,
+      ItemId: itemId,
+      Quantity: 1,
+      MonsterId: 91,
+      QualityTier: tier,
+      DropKind: 1,
+      InstanceId: 900_000_999,
+    } as ResponseLootDrop);
+  };
+
   (globalThis as Record<string, unknown>).__folkidleDemoLoot = (rows = 40) => {
     const now = Date.now();
     lootLogEquipment.set(
@@ -478,6 +565,10 @@ if (import.meta.env.DEV) {
         qualityTier: i < 4 ? 13 - i : i % 10, // four glowing rows on top
         dropKind: 1,
         atMs: now - i * 1000,
+        // Non-zero so each row renders its Wear button for the geometry
+        // checkers (check:touch measures it). They only measure - pressing one
+        // would be refused, since no such instance exists.
+        instanceId: 900_000_000 + i,
       })),
     );
     lootLogMaterials.set(
@@ -489,6 +580,7 @@ if (import.meta.env.DEV) {
         qualityTier: 0,
         dropKind: 0,
         atMs: now - i * 1000,
+        instanceId: 0,
       })),
     );
   };
@@ -901,31 +993,7 @@ export function startSession(token: string): void {
       hitSparks.set({ id: hit.id, weaponKind: hit.weaponKind, isCrit: hit.isCrit });
     },
 
-    onLootDrop: (packet: ResponseLootDrop) => {
-      play(packet.QualityTier >= 10 ? 'lootRare' : 'lootDropped');
-      if (packet.QualityTier >= 10) tap('success');
-
-
-      const entry: LootEntry = {
-        id: ++lootSequence,
-        itemId: packet.ItemId,
-        quantity: packet.Quantity,
-        monsterId: packet.MonsterId,
-        qualityTier: packet.QualityTier,
-        dropKind: packet.DropKind,
-        atMs: connection.serverNowMs(),
-      };
-
-      // DropKind 1 is equipment; 0 material and 2 salvage scrap.
-      const isEquipment = Number(packet.DropKind) === 1;
-      const target = isEquipment ? lootLogEquipment : lootLogMaterials;
-      const cap = isEquipment ? MAX_LOOT_ENTRIES_EQUIPMENT : MAX_LOOT_ENTRIES_MATERIALS;
-      target.update((entries) => {
-        const next = [entry, ...entries];
-        return next.length > cap ? next.slice(0, cap) : next;
-      });
-    },
-
+    onLootDrop: (packet: ResponseLootDrop) => acceptLootDrop(packet),
     onChatMessage: (packet: ResponseChatMessage) => {
       chatLog.update((entries) => {
         const next: ChatEntry[] = [

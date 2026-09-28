@@ -333,7 +333,7 @@ export interface ResponseChatMessage {
   MessageText: string;
 }
 
-/** ResponseLootDropPacket - 22 bytes on the binary wire. */
+/** ResponseLootDropPacket - 30 bytes on the binary wire. */
 export interface ResponseLootDrop {
   readonly type: typeof PacketType.ResponseLootDrop;
   PlayerId: number;
@@ -342,6 +342,7 @@ export interface ResponseLootDrop {
   MonsterId: number;
   QualityTier: number;
   DropKind: number;
+  InstanceId: number;
 }
 
 /** ResponseCombatEventPacket - 26 bytes on the binary wire. */
@@ -447,7 +448,7 @@ export const PACKET_BYTE_SIZE = {
   StateUpdate: 805,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
-  ResponseLootDrop: 22,
+  ResponseLootDrop: 30,
   ResponseCombatEvent: 26,
 } as const;
 
