@@ -14,7 +14,7 @@
 // mode, which tracks are out - in localStorage, as a per-device preference.
 import { writable, get } from 'svelte/store';
 import { HTTP_BASE } from '../net/config';
-import { muted } from './audio';
+import { muted, pageActive } from './audio';
 import { readPref, writePref } from '../net/prefs';
 import { DEFAULT_MUSIC_VOLUME, nextInPlaylist, playlistFor, type MusicMode, type MusicTrack } from './musicPlaylist';
 
@@ -159,12 +159,11 @@ musicMode.subscribe(reconcile);
 musicOneTrack.subscribe(reconcile);
 musicExcluded.subscribe(reconcile);
 
-// A phone that goes to the background should not keep playing the game's
-// music over whatever the player switched to.
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
-    if (!element || !started || !get(nowPlaying)) return;
-    if (document.hidden) element.pause();
-    else void element.play().catch(() => {});
-  });
-}
+// Away from the game's window - alt-tabbed, minimised, a phone in the
+// background - the music pauses, on the same signal that silences the effects
+// (audio.ts pageActive), and picks up where it was on return.
+pageActive.subscribe((active) => {
+  if (!element || !started || !get(nowPlaying)) return;
+  if (active) void element.play().catch(() => {});
+  else element.pause();
+});
