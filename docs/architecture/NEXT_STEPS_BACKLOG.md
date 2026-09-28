@@ -19,7 +19,30 @@ do next.
 
 ---
 
-# HANDOFF 2026-09-26 (evening) - START HERE
+# HANDOFF 2026-09-28 - START HERE
+
+**The next work is `docs/TASK_BOARD.md` tasks 48-62** (its START HERE
+block). A design audit ran on 2026-09-28; its plan and every owner decision
+are in `docs/superpowers/plans/2026-09-28-design-audit-phases.md`.
+
+- **Production is 1.0.826** (PRs #68-#70).
+- **`main` is ahead** with #71-#74: goal ETA, **season control (the migration
+  pauses the active season)**, starter weapon and fish with a guided tutorial,
+  and the phone tab bar.
+- **Task 48, deploying `main`, is urgent:** the active season ends
+  2026-11-02 09:40 UTC and would wipe the owner's level-96 account.
+
+Defects found and fixed that day:
+- Village prices came from a drifted client table.
+- Support messages were discarded.
+- The Chronicle pass granted an item id that is not in the catalogue. It is
+  now hidden.
+- The client charged region-1 gear "20 Might".
+- An exercise check failed about 94% of runs during the Master Artisan week.
+
+---
+
+# HANDOFF 2026-09-26 (evening) - superseded by the block above
 
 **UPDATE, late: all of it is LIVE.**
 - Production is 1.0.756 with `FOLKIDLE_BOSS_MINIGAME=wheel`.

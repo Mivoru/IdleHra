@@ -1,6 +1,22 @@
 # FolkIdle Task Board
 
-> **START HERE (updated 2026-09-26, late). Tasks 1-37 are DONE and deployed;
+> **START HERE (updated 2026-09-28). The front of the board is TASKS 48-62,
+> at the bottom of this file: the follow-through of the 2026-09-28 design
+> audit.** Do them in the order of the table in that section. Task 48 (the
+> deploy) is URGENT: the active season ends on **2026-11-02 09:40 UTC**, and
+> only the deploy of `main` pauses it.
+>
+> Context for a fresh session, in this order:
+> 1. The table and "How to work" at the top of "Tasks 48-62" below.
+> 2. `docs/superpowers/plans/2026-09-28-design-audit-phases.md`: what was built
+>    on 2026-09-28, the owner's decisions, and why.
+> 3. The audit itself: claude.ai artifact TTYuzRgizz25WUbVWrHjkw (Czech; read
+>    it only for a task that points at an audit section).
+>
+> The block below this one is the previous START HERE (2026-09-26). Its
+> items 1-7 are done or are standing measurements.
+
+> **PREVIOUS START HERE (2026-09-26, late) - superseded by the block above. Tasks 1-37 are DONE and deployed;
 > production runs `main` (1.0.756) with the shield wheel LIVE
 > (`FOLKIDLE_BOSS_MINIGAME=wheel`, PRs #52 and #53).** The handoff with context
 > is at the top of `docs/architecture/NEXT_STEPS_BACKLOG.md`.
@@ -4302,3 +4318,318 @@ a live count of concurrent sessions.
 - **DONE (fix/audit-leftovers).** All 26 screens load at startup (`App.svelte:3-31`, one 644 KB chunk). Load the large ones with `import()`. *Login and Hub stay static; the other 25 are `import()`ed on first visit (`SCREEN_LOADERS`), with a Reload answer when a chunk is gone after a deploy. `npx vite build`: the entry chunk went from 659.00 kB (215.37 kB gzip) to 249.80 kB (84.93 kB gzip); the largest lazy chunk is the Wiki at 114.20 kB.*
 - Lock ordering in market matching (`MarketOrderBookEngine.cs:412-474`) only matters at a higher population. Record it and do nothing yet. *Recorded 2026-09-27, deliberately NOT fixed.* `MatchOrdersAsync` (`Engine/MarketOrderBookEngine.cs`, Serializable) takes its row locks in match order, not a global order: all BUY rows for the item/tier by price, then all SELL rows, then per match the SELLER's gold row, the escrowed `MarketEquipmentInstances` row, and (offline buyer with a refund) the BUYER's gold row. Two matches running at once for different items can therefore lock the same two players' gold rows in opposite orders (A sells to B in one, B sells to A in the other) and deadlock; Postgres aborts one with 40P01, and at Serializable a 40001 is just as likely. Harmless at today's population. The fix when it matters: collect every gold row a matching pass will touch, lock them up front in ascending `PlayerId` order, then match - and give the caller a retry on 40P01/40001 rather than a logged failure.
 - **Larder run-out notification** (split out of 45): needs a server-computed `ProjectedLarderSeconds` on the wire from `OfflineSimulationEngine`'s food model; the client cannot compute the drain honestly.
+
+---
+
+# Tasks 48-62: the 2026-09-28 design audit, what is left
+
+Added 2026-09-28. The audit covered the game as a player meets it: code,
+production data, and 17 screenshots of a fresh guest at 390px.
+
+**Already shipped from it, on `main` (PRs #68-#74), all in the plan doc:**
+- the Village shows the server's real prices;
+- support messages are logged;
+- the Chronicle pass is hidden;
+- achievements have names;
+- the phone header is compact;
+- the Map has "Right now" and "Closest goal" cards with an ETA;
+- the owner can pause and end a season from the admin panel;
+- a new account starts with a claymore and 10 fish, and the tutorial guides
+  its first two steps;
+- phones have a five-tab bottom bar.
+
+**Owner decisions in force (2026-09-28). Do not re-litigate them:**
+- A starter weapon IS given. This reverses the 2026-09-23 decision.
+- The first two tutorial steps are a fence the player cannot click past.
+- Season rollover is paused and run by hand.
+- The Chronicle pass stays hidden. Its future is **cosmetics** (rare
+  avatars, profile frames, skins), not a battle pass.
+- The owner is effectively the only player. The ~70 other accounts are
+  `smoke:screens` guests, so design for one real player plus friends.
+- **Answer the owner in Czech.** Write repo prose in English.
+
+## Order
+
+| # | Task | Size | Needs the owner? |
+|---|---|---|---|
+| 48 | **Deploy `main`** (season pause, guided start, tab bar, goal ETA) | 15 min | confirm the deploy |
+| 49 | Wear a drop from the loot list, compared with what is worn | S | no |
+| 50 | A drop worth having LOOKS like one (rare+ reveal) | S-M | no |
+| 51 | Personal records, and a toast when one falls | S | no |
+| 52 | QoL bundle: remember the screen, hotkeys, offline "continue", Delve lock card, chat count | S | no |
+| 53 | Fix the flaky world boss test | S | no |
+| 54 | **Cosmetics: avatars and profile frames** | M-L | **design with the owner first** |
+| 55 | Boss challenges (rewards = cosmetics) | M | after 54 |
+| 56 | Statistics that say how you play | M | no |
+| 57 | One book of goals: Deeds absorb achievements, plus a collection log | M-L | show the owner the shape first |
+| 58 | Regional contracts | M | the reward size, once |
+| 59 | Fewer menu entries: Boosts into Auto-Eat, genetics into one screen | S-M | yes, one line |
+| 60 | Screens unlock as they become useful | M | yes |
+| 61 | Weekly Deep seed | M | no |
+| 62 | Parked until there is a population | - | - |
+
+Recommended batches:
+- **48** alone, now.
+- **49 + 50 + 51** as one "loot" batch; these are felt every minute.
+- **52 + 53** whenever there is a spare hour.
+- **54 -> 55**, then **56 + 57**, then the rest.
+
+## How to work (read before any task)
+
+These are the traps that cost time on 2026-09-28. CLAUDE.md has the rest.
+
+- **One branch and one PR per task, cut from `main`, with the PR based on
+  `main`.** Never stack PRs: a stacked PR merged after its base lands on the
+  dead branch, not on `main` (#69 needed #70 to reach `main`).
+- **Verify in this order:**
+  1. the server test suite (Docker up; stop the server first).
+  2. `npm test` and `npx svelte-check --threshold error` (baseline: 4 errors,
+     all in GuildOps).
+  3. `run-dev.ps1`, then re-seed the fixture: `--seed-dev` with `--no-build`,
+     `FOLKIDLE_ALLOW_DEV_SEED=1` and `FOLKIDLE_DB_CONN` set.
+  4. `npm run exercise`.
+  5. `check:clipping`, `check:overlap`, `check:touch`, `check:safearea`.
+  6. Screenshot the change at 390px and look at it.
+- **The stale-build hook blocks the WHOLE shell command** when the command
+  text contains the words for building or testing the server while
+  `FolkIdle.Server.exe` runs. That includes a PR body or a document mentioning
+  them, and a kill command chained in front of it. Kill the server in its own
+  call first. Write PR bodies and long prose with the Write tool.
+- **A new migration must be applied locally by hand** (`--migrate`) before
+  `run-dev.ps1`.
+- **Editing files with Python heredocs:** many files are CRLF. Open with
+  `newline=''` and match the file's own line ending, or the anchor is not
+  found. Never put a backslash escape meant for C# into a Python string; it
+  lands as a real newline/CR (it broke the build once). Prefer the Edit tool
+  for anything with escapes.
+- **Admin endpoints** check `IsAdmin` (username `Mivoru`). The dev fixture
+  (`dev`) is NOT admin. To test locally: rename the local `Mivoru` row,
+  register a test account named `Mivoru`, test, and rename both back.
+- **The deploy** always goes through the `deploy` skill: SSH push, then
+  `deploy.sh`, then `smoke:screens` against production. Ask the owner before
+  each one.
+- **Geometry checkers have produced false positives** (hidden SVGs, rotated
+  boxes, the bottom-edge rule). Read the checker before "fixing" the page,
+  and fix the checker if it is the one that is wrong.
+
+---
+
+## 48. Deploy `main` (URGENT, before 2026-11-02)
+
+`main` holds #71-#74; production runs 1.0.826 (#68-#70).
+- **Migration `AddSeasonRolloverPause`**: adds a column, then
+  `UPDATE ... SET IsRolloverPaused = TRUE WHERE IsActive`. It is additive, but
+  take a backup first anyway, per the deploy skill.
+- Follow the `deploy` skill.
+
+**Done when:**
+- `smoke:screens` passes 27/27 against production;
+- `GET /api/v1/admin/season` (owner token) answers `Paused: true`;
+- a new guest at 390px meets the guided larder step and the tab bar.
+
+## 49. Wear a drop from the loot list
+
+**Problem.** A drop lands in `SessionLoot` (Combat, Gathering). Wearing it
+takes Character -> slot -> picker -> Wear, and nothing says whether it is
+better than what is worn. That is the game's main decision, spread over four
+taps.
+
+**Build:**
+- Each equipment row in `SessionLoot.svelte` gets "Wear".
+- It also gets a one-line comparison against the item in the same slot of
+  the fielded character: the attack or defence difference, and the rarity
+  step.
+- Equip through the same command `Character.svelte`'s `equipInstance` uses.
+  Resolve the slot with `resolveSlotIndex`, and mind the ELEVEN slots.
+- Show the attribute requirement exactly as the picker does
+  (`equipRequirement`, fixed 2026-09-28; region 1 needs nothing).
+
+**Done when:**
+- `exercise.mjs` wears a dropped item from the Combat loot list and the
+  worn item changes;
+- `check:touch` passes.
+
+## 50. A drop worth having looks like one
+
+**Problem.** A Legendary arrives as one more row. The audit's "game feel"
+section asks for a reveal on Rare and better only.
+
+**Build:**
+- Rare+ (use `rarity.ts` thresholds): a short burst in the rarity colour on
+  the loot row, at most one every 5 s.
+- Legendary+: a card over the screen for about 1.5 s, with the item and a
+  Wear button (reuse 49).
+- A rising tone per rarity step, through `audio.ts`. Only add clips that exist;
+  the owner's sound set is in `resources/`.
+- Respect `prefers-reduced-motion`.
+
+**Done when:**
+- `check:perf` does not regress;
+- a forced Legendary drop on the fixture shows the card (dev tools mail
+  endpoint, or a seeded drop).
+
+## 51. Personal records
+
+**Server:**
+- `PlayerRecords` columns (or a small table) for:
+  - the highest single hit;
+  - the fastest kill of each boss;
+  - the best drop, as rarity and base id;
+  - the deepest Delve floor (it exists already);
+  - the most gold earned in one hour.
+- Write them where the events already pass: the combat event feed, the loot
+  worker, Delve.
+- The "one hour" record needs hourly buckets. Keep it for 56 if that is
+  cheaper there.
+
+**Client:** a toast "New record: ..." from a new wire field or a REST poll.
+Use the `add-command` skill for any packet change.
+
+**Done when:** records survive a relogin (see CLAUDE.md, "a field on
+StateUpdatePacket must be loaded at login"), and a test pins each writer.
+
+## 52. QoL bundle
+
+Every item here is independent. Each is a sub-PR or all in one.
+- Remember the last screen, the Chest filters and the Wiki tab in
+  localStorage, wrapped in try/catch.
+- Desktop hotkeys: 1-5 for the five tabs' screens, only when no input has
+  focus.
+- `OfflineSummary`: when the halt reason is out of food, a button "Stock the
+  larder" (`requestScreen('larder')`).
+- Delve before the player can afford it: one card, "Opens at 7,000 g - you
+  have X", instead of the full screen.
+- The chat handle shows how many players are online and fades at 0.
+
+**Done when:** `exercise` stays green and the geometry checkers stay clean.
+
+## 53. Flaky: Test_WorldBoss_AnOldSessionAndYesterdaysStrikeRefuseNothing
+
+It failed once in a full run on 2026-09-28: the boss HP was off by exactly
+another test's 10,000-damage strike. It passes alone. The boss HP is
+static/shared across tests in the "Postgres collection". Either serialise the
+world boss tests (their own collection) or assert on the damage this test's
+player dealt instead of a global HP delta. Read the CLAUDE.md paragraph on
+static queues first.
+
+## 54. Cosmetics: avatars and profile frames (DESIGN WITH THE OWNER FIRST)
+
+This is the owner's replacement for the Chronicle pass: rewards that do not
+add power (see `PowerCeilingTests`).
+
+**Questions to settle with the owner before any code:**
+- Where cosmetics show: the profile modal, chat names, leaderboards, the
+  Character figure.
+- Where the art comes from: `client/` artwork, generated art, or CSS frames
+  first.
+- How they are earned: deeds, boss challenges (55), Deep titles, the world
+  boss payout.
+- Can any be bought? Store rules and IAP apply if yes.
+
+**Likely shape:**
+- A `player_cosmetics` table (owned ids) and an equipped avatar/frame on
+  `PlayerRecords`.
+- A catalogue in GameData JSON (content validation hook).
+- A picker on Character or Settings.
+
+**Done when:** it is written as a plan in `docs/superpowers/plans/`,
+agreed, and then built.
+
+## 55. Boss challenges
+
+Three optional conditions per region boss:
+- no food in the larder;
+- under level N;
+- weapon rarity at most R.
+
+The server evaluates them at the boss kill, where it already knows the
+level, larder and gear. The reward is a cosmetic (54) and a line in the Book
+of Deeds.
+
+**Check every challenge by simulation.** The larder is the difficulty
+ceiling (memory), so "no food" may be impossible for some bosses; measure it
+with `ProgressionRateTests`' model before shipping.
+
+## 56. Statistics that say how you play
+
+Progress -> Statistics is 12 flat numbers. Build:
+- **rates** over 10 min, 1 h and 24 h: gold/h, XP/h, kills/h, materials/h;
+- **records** (51);
+- **a timeline**, from `player_funnel_events` (12 milestones per player,
+  already written) plus deeds sealed;
+- **"your style"**: time split between combat, gathering and crafting, and
+  gold earned versus spent by category.
+
+The server needs hourly aggregates per player (about 24 rows a day). The
+same data can later feed an economy view.
+
+## 57. One book of goals, and a collection log
+
+Two parts:
+- **Achievements into the Book of Deeds.** The four tiered achievements
+  (Monster Slayer, Treasury, Master Smith, Logistics) become a "Lifetime"
+  chapter with named tiers. Pay rewards automatically; there is no claim
+  button, same as deeds. Add hidden deeds, shown as "???" with a category.
+- **A collection log.** For every canonical item, record the highest rarity
+  ever owned, written by the loot worker. Mind the drain budget and coalesce
+  writes. Add the Codex, and show a percentage per region.
+
+Show the owner a screenshot mock of the new Progress screen before building.
+
+## 58. Regional contracts
+
+Each unlocked region has 3 contracts, for example:
+- kill N of a monster;
+- deliver N of the region's log or ore;
+- craft or fuse an item of rarity R+.
+
+A finished contract is replaced; contracts never expire, and a region holds
+at most 3. The reward is gold and materials worth about 1.2-1.5x the farm
+time it costs; confirm the number with the owner once. Build it on the
+counters `DeedContext` already reads. This gives old regions and surplus
+gold a purpose (the Wiki itself says players end seasons with more gold than
+they spent).
+
+## 59. Fewer menu entries
+
+Both merges are client-only:
+- **Boosts into Auto-Eat**, as one "Supplies" screen with tabs. The chrono bank
+  is already gone, and Boosts is one small panel.
+- **Breeding, Ancestors and Inheritance into one "Bloodline" screen** with
+  three tabs.
+
+Update `screens.mjs` (`SCREENS`), the Wiki screen ledger (`wiki.test.ts`)
+and the geometry checkers' lists. Ask the owner first: it renames things
+they know.
+
+## 60. Screens unlock as they become useful
+
+A new player sees 27 destinations. Hide a screen from the Menu (show it
+greyed, with its condition) until it is useful:
+- Forge: two items for one slot;
+- Delve: 7,000 g;
+- Breeding: Breeding Grounds;
+- Market and Guild: level 10.
+
+Show a one-time "New: Forge - ..." card when one opens. Derive every rule
+from state, as the tutorial does; nothing stored. The fixture must see
+everything, which is a check in itself. Ask the owner which screens.
+
+## 61. Weekly Deep seed
+
+The Deep's floors come from a seed per ISO week, the same for everyone, so a
+player races their own last week (and friends, when there are some). Store
+the best result per week. Read task 37 and `DelveRegistry` first; the Deep's
+economy is measured (task 37 Phase 3), so do not change payouts.
+
+## 62. Parked until there is a population (about 30 active per week)
+
+- Seasons with a modifier (O3's later half).
+- The share of players holding each deed.
+- Guild Wars (task 38).
+- Larder auto-refill: demoted, because a slot holds 9,999 bites (plan doc
+  2.1).
+- A time estimate on Village cost lines: it needs the gathering rate formula
+  on the client, so ask for a server figure first.
+- Tag `smoke:screens` guests so the funnel excludes them. The owner knows the
+  population is one, so this only matters once there are strangers.
