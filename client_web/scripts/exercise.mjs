@@ -350,9 +350,10 @@ await page.waitForTimeout(4000);
   // Its own packet (ResponseLootDropPacket), its own two stores, so it can be
   // dead while everything around it works. Polled rather than sampled once:
   // gear drops on 15% of kills, so a single read a few seconds into a fight
-  // proves nothing either way.
+  // proves nothing either way. 60 s, not 25: two passing runs on 2026-09-28
+  // held exactly ONE row at 25 s, and the third held none - on a working feed.
   const lootPanel = await (async () => {
-    const deadline = Date.now() + 25000;
+    const deadline = Date.now() + 60000;
     let seen = { sections: [], rows: 0 };
     while (Date.now() < deadline) {
       seen = await page.evaluate(() => {
