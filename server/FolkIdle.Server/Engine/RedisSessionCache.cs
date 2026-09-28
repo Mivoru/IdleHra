@@ -65,7 +65,6 @@ namespace FolkIdle.Server.Engine
                     new("current_xp", state.CurrentXp),
                     new("selected_lineage_id", state.SelectedLineageId),
                     new("last_logout_ts", state.LastLogoutTimestamp),
-                    new("accumulated_time_bank_seconds", state.AccumulatedTimeBankMs / 1000L),
                     new("logic_epoch_counter", state.LogicEpochCounter),
                     new("is_quarantined", state.IsQuarantined || state.Quarantine_Active ? 1 : 0),
                     new("current_gold_frame", state.CurrentGold),

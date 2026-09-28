@@ -176,7 +176,6 @@ namespace FolkIdle.Server.Engine
             player.CurrentXp = ReadLong(entries, "current_xp", player.CurrentXp);
             player.SelectedLineageId = ReadInt(entries, "selected_lineage_id", player.SelectedLineageId);
             player.LastLogoutTimestamp = ReadLong(entries, "last_logout_ts", player.LastLogoutTimestamp);
-            player.AccumulatedTimeBankSeconds = ReadInt(entries, "accumulated_time_bank_seconds", player.AccumulatedTimeBankSeconds);
             player.LogicEpochCounter = Math.Max(player.LogicEpochCounter, ReadLong(entries, "logic_epoch_counter", player.LogicEpochCounter));
             bool isQuarantined = ReadInt(entries, "is_quarantined", player.IsQuarantined ? 1 : 0) != 0;
             player.IsQuarantined = isQuarantined;

@@ -1,260 +1,28 @@
 <script lang="ts">
-  import { createQuery } from '@tanstack/svelte-query';
-  import { playerState, pushLocalNotice } from '../lib/stores/game';
-  import { queryKeys, fetchStoreCatalog, fetchStorefront } from '../lib/net/rest';
-  import Money from '../lib/ui/Money.svelte';
-  import {
-    setSimulationSpeed,
-  } from '../lib/net/commands';
-  import { prettifyBaseId } from '../lib/net/content';
-  import { purchase, purchaseUnavailableReason, retryReceiptWithPassword } from '../lib/net/billing';
-  import { play } from '../lib/ui/audio';
-  import Skeleton from '../lib/ui/Skeleton.svelte';
-
-  const catalog = createQuery(() => ({ queryKey: queryKeys.storeCatalog, queryFn: fetchStoreCatalog }));
-
-  // Fetching the storefront has a SIDE EFFECT server-side - it upserts this
-  // player's segmentation profile - so it is pinned to one fetch per session
-  // rather than left on the default refetch behaviour. A cohort that changes
-  // because someone alt-tabbed would be a real bug in the pricing data.
-  const storefront = createQuery(() => ({
-    queryKey: queryKeys.storefront,
-    queryFn: fetchStorefront,
-    staleTime: Infinity,
-    refetchOnWindowFocus: false,
-  }));
-
-  // --- purchasing -----------------------------------------------------------
+  // Modul: THE STORE IS EMPTY ON PURPOSE (owner, 2026-09-28).
   //
-  // Computed once, not per-click: a screen that lets you press Buy and then
-  // explains why it could not is worse than one that disables the button and
-  // says so up front. Same reasoning as the guarded command layer.
-  const cannotBuy = purchaseUnavailableReason();
-
-  let buying = $state<string | null>(null);
-
-  // Modul: step-up. A device-bearer session (auto-relogin off a remembered
-  // device id, never a typed password) is refused a real-money purchase with
-  // 403 {StepUpRequired:true} rather than a plain rejection - the session is
-  // still valid, the server just wants proof of the password before it moves
-  // money. `stepUpPending` holds the receipt the store already produced so
-  // confirming does not re-run the platform purchase sheet a second time.
-  let stepUpPending = $state<{ productIdentifier: string; receipt: string } | null>(null);
-  let stepUpPassword = $state('');
-  let stepUpError = $state<string | null>(null);
-
-  async function buy(productIdentifier: string) {
-    buying = productIdentifier;
-    try {
-      const outcome = await purchase(productIdentifier);
-      if (outcome.kind === 'granted') {
-        play('levelUp');
-        pushLocalNotice('Purchase confirmed - your diamonds are on the way.', 'info');
-      } else if (outcome.kind === 'cancelled') {
-        // Deliberately silent. Changing your mind is not an event worth a
-        // notification, and telling someone about it every time reads as a
-        // complaint.
-      } else if (outcome.kind === 'stepUpRequired') {
-        if (outcome.receipt) {
-          stepUpPending = { productIdentifier, receipt: outcome.receipt };
-          stepUpPassword = '';
-          stepUpError = null;
-        }
-      } else {
-        pushLocalNotice(outcome.reason);
-      }
-    } finally {
-      buying = null;
-    }
-  }
-
-  async function confirmStepUp() {
-    if (!stepUpPending) return;
-    const { receipt } = stepUpPending;
-    const outcome = await retryReceiptWithPassword(receipt, stepUpPassword);
-    if (outcome.kind === 'granted') {
-      play('levelUp');
-      pushLocalNotice('Purchase confirmed - your diamonds are on the way.', 'info');
-      stepUpPending = null;
-    } else if (outcome.kind === 'stepUpRequired') {
-      stepUpError = 'Wrong password. Try again.';
-    } else if (outcome.kind === 'rejected') {
-      stepUpError = outcome.reason;
-    } else if (outcome.kind === 'unavailable') {
-      stepUpError = outcome.reason;
-    }
-  }
-
-  const snap = $derived($playerState);
-
-  // --- legacy shop ----------------------------------------------------------
-  // Modul: LegacyPerksBitmask packs three prestige perks at byte offsets
-  // 0/8/16 (LegacyPerkResolver) - XP multiplier, gold drop rate, combat speed.
-  // They gate real combat maths, so the ranks are read off the wire rather
-  // than tracked client-side.
-
-
-
-  // --- simulation speed -----------------------------------------------------
-  function setSpeed(value: number) {
-    const outcome = setSimulationSpeed(value);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
-  }
+  // It showed two panels. The diamond packages listed four products with no
+  // price and no way to buy on the web - the storefront below them said "No
+  // listings are offered to your account right now" - so it was a shop window
+  // with nothing in it, dressed as a shop. Simulation speed replayed a time
+  // bank nothing had filled since the chrono deletion, and offline catch-up
+  // already pays the same XP and loot as being online, so it offered nothing
+  // honest either; the server side went with it.
+  //
+  // The purchase path (lib/net/billing.ts, /api/v1/billing/*) is kept intact
+  // for when payments are set up; only this screen stops offering it.
 </script>
 
-{#if !snap}
-  <p class="dim pad">Waiting for state...</p>
-{:else}
-  <div class="grid">
-    <section class="panel">
-      <h2>Diamond packages</h2>
-      <p class="dim small">
-        You hold {snap.PremiumCurrencyBalance.toLocaleString()} diamonds.
-      </p>
-
-      {#if catalog.isPending}
-        <Skeleton />
-      {:else if catalog.isError}
-        <p class="err">{catalog.error?.message}</p>
-      {:else}
-        <ul class="rows">
-          {#each catalog.data ?? [] as entry (entry.ProductId)}
-            <li>
-              <span class="name">{prettifyBaseId(entry.ProductId)}</span>
-              <span class="amount">{entry.DiamondAmount.toLocaleString()} diamonds</span>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-
-      <!-- Modul: purchases ARE wired now - see lib/net/billing.ts. They go
-           through /api/v1/billing/verify-receipt, which validates the store's
-           signature, and never through opcode 39, which grants diamonds on an
-           unsigned transaction id. What is still missing is a store adapter
-           for a specific vendor, which is why the Buy buttons below disable
-           themselves and say so rather than pretending. -->
-      <p class="dim tiny">
-        The catalogue above carries no price - it only says how many diamonds
-        each product grants. Prices are personal and live in your storefront
-        below.
-      </p>
-
-      <h3>Your storefront</h3>
-
-      <!-- Modul: this list is NOT the same for every player.
-           Requesting it runs StorefrontSegmentationEngine, which sorts the
-           account into a cohort by lifetime spend, account age and days since
-           the last purchase, and returns only that cohort's listings. Two
-           players comparing screens will legitimately see different prices, so
-           nothing here may be described as "the" price.
-
-           Fetching it also WRITES - it upserts a PlayerSegmentationProfile row
-           - so it must never be polled or refetched on window focus. And any
-           query string on the URL force-disconnects the player's session. -->
-      {#if storefront.isPending}
-        <Skeleton rows={2} />
-      {:else if storefront.isError}
-        <p class="dim tiny">Could not load your storefront.</p>
-      {:else if (storefront.data ?? []).length === 0}
-        <p class="dim tiny">No listings are offered to your account right now.</p>
-      {:else}
-        {#if cannotBuy}
-          <p class="dim tiny buy-note">{cannotBuy}</p>
-        {/if}
-
-        <ul class="rows">
-          {#each storefront.data ?? [] as listing (listing.ListingId)}
-            <li>
-              <span class="name">{prettifyBaseId(listing.ProductIdentifier)}</span>
-              <span class="amount">
-                <Money amount={listing.DiamondPackageYield} kind="diamond" />
-              </span>
-              <span class="cash">{(listing.PriceInCents / 100).toFixed(2)}</span>
-              <button
-                class="tiny-btn"
-                disabled={cannotBuy !== null || buying === listing.ProductIdentifier}
-                onclick={() => buy(listing.ProductIdentifier)}
-              >
-                {buying === listing.ProductIdentifier ? 'Buying...' : 'Buy'}
-              </button>
-            </li>
-          {/each}
-        </ul>
-        <p class="dim tiny">
-          Prices are shown without a currency symbol because the server sends
-          cents with no currency code - guessing one would be wrong for most
-          players. These listings are chosen for your account specifically and
-          may differ from another player's.
-        </p>
-      {/if}
-
-      {#if stepUpPending}
-        <div class="step-up">
-          <p class="dim tiny">
-            This session was signed in automatically. Confirm your password to
-            finish this purchase.
-          </p>
-          <input
-            type="password"
-            bind:value={stepUpPassword}
-            placeholder="Password"
-            onkeydown={(e) => { if (e.key === 'Enter') confirmStepUp(); }}
-          />
-          {#if stepUpError}
-            <p class="err tiny">{stepUpError}</p>
-          {/if}
-          <div class="step-up-actions">
-            <button class="tiny-btn" onclick={confirmStepUp}>Confirm</button>
-            <button class="tiny-btn" onclick={() => (stepUpPending = null)}>Cancel</button>
-          </div>
-        </div>
-      {/if}
-    </section>
-
-    <!-- Modul: THE LEGACY SHOP IS GONE.
-         It sold three permanent bonuses - XP, gold rate, combat speed - for
-         prestige shards, which is the same job the Inheritance screen does for
-         diamonds across six stats. Two prestige systems, one of them buried in
-         the Store behind a currency most players never saw, and neither one
-         explaining itself in terms of the other.
-
-         The guild war used to pay victory TOKENS into a guild depot whose only
-         destination was this shop. It pays diamonds and shards to the members
-         directly now - see GuildWarEngine.DistributeVictoryTokensAsync. -->
-    <!-- Modul: this was the Chrono bank panel. The bank is gone; the speed
-         control is not, because it was never part of it - the server pays for
-         every extra tick out of AccumulatedTimeBankMs, the time it already owes
-         you for ticks it missed. So this can only ever catch you up, never run
-         you ahead, and the old copy claiming "banked seconds pay for the rest"
-         described the deleted system. -->
-    <section class="panel">
-      <h2>Simulation speed</h2>
-
-      <div class="speeds">
-        {#each [1, 2, 3, 4] as value}
-          <button
-            class:active={snap.CurrentSimulationSpeedMultiplier === value}
-            onclick={() => setSpeed(value)}
-          >
-            {value}x
-          </button>
-        {/each}
-      </div>
-      <p class="dim tiny">
-        Runs the simulation faster to catch up time the server owes you while it
-        lasts, then returns to 1x on its own. 1x turns it off.
-      </p>
-    </section>
-  </div>
-{/if}
+<div class="wrap">
+  <section class="panel" data-testid="store-empty">
+    <h2>Store</h2>
+    <p class="dim">Nothing here yet. Come back later.</p>
+  </section>
+</div>
 
 <style>
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
-    gap: 1rem;
+  .wrap {
     padding: 1rem;
-    align-items: start;
   }
 
   .panel {
@@ -262,6 +30,7 @@
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1rem;
+    max-width: 32rem;
   }
 
   h2 {
@@ -269,112 +38,7 @@
     font-size: 1.05rem;
   }
 
-  h3 {
-    margin: 1.1rem 0 0.4rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
-  }
-
-  .dim {
-    color: var(--text-dim);
-  }
-  .small {
-    font-size: 0.8rem;
-    margin: 0 0 0.7rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
-    margin: 0.4rem 0 0;
-  }
-  .pad {
-    padding: 1rem;
-  }
-  .err {
-    color: var(--danger);
-  }
-
-  .rows {
-    list-style: none;
+  p {
     margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.3rem;
-  }
-
-  .buy-note {
-    margin: 0 0 0.5rem;
-    color: var(--warn);
-  }
-
-  /* Flex rather than a fixed grid: the catalogue rows carry three children and
-     the storefront rows four (they have a Buy button), and a shared
-     grid-template would wrap the fourth onto its own line. */
-  .rows li {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-    font-size: 0.85rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.28rem;
-  }
-
-  .rows .name {
-    flex: 1;
-    min-width: 0;
-  }
-
-  /* Real money, so deliberately NOT coloured like an in-game currency - the
-     distinction between "spend diamonds" and "spend money" is the one this
-     screen must never blur. */
-  .cash {
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-    color: var(--text);
-  }
-
-  .name {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .amount {
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-  }
-
-  .speeds {
-    display: flex;
-    gap: 0.3rem;
-  }
-
-  .speeds button.active {
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-  }
-
-  .step-up {
-    margin-top: 0.6rem;
-    padding-top: 0.6rem;
-    border-top: 1px solid var(--border);
-    display: grid;
-    gap: 0.4rem;
-  }
-
-  .step-up input {
-    font-size: 0.85rem;
-    padding: 0.35rem 0.5rem;
-  }
-
-  .step-up-actions {
-    display: flex;
-    gap: 0.4rem;
   }
 </style>

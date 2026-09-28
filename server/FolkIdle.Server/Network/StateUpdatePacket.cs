@@ -435,7 +435,6 @@ namespace FolkIdle.Server.Network
         public int DraugrMasteryLevel;
         
         public int VillagePopulation;
-        public long AccumulatedTimeBankMs;
         public int AutoEatThreshold;
         public int STR;
         public int DEX;
@@ -634,7 +633,6 @@ namespace FolkIdle.Server.Network
         public byte CurrentPopulationCount;
         public uint ActiveChallengeSeed;
         public byte ActiveLanguageState;
-        public byte CurrentSimulationSpeedMultiplier;
         public uint PremiumCurrencyBalance;
         public byte ActiveAudioTrackId;
         // Lifetime crafted-item count, hydrated at login from

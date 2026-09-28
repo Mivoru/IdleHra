@@ -591,7 +591,6 @@ namespace FolkIdle.Server.Domain.Shared
                         ApplyLifetimeStatistics(player, state);
                         player.SelectedLineageId = state.SelectedLineageId;
                         player.LastLogoutTimestamp = state.LastLogoutTimestamp;
-                        player.AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L);
                         player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
                         player.OffensivePotionDurationMs = state.OffensivePotionDurationMs;
                         player.ActiveDefensivePotionId = state.ActiveDefensivePotionId;
@@ -692,7 +691,6 @@ namespace FolkIdle.Server.Domain.Shared
                             CurrentXp = state.CurrentXp,
                             SelectedLineageId = state.SelectedLineageId,
                             LastLogoutTimestamp = state.LastLogoutTimestamp,
-                            AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L),
                             LogicEpochCounter = state.LogicEpochCounter + 1,
                             // A row being created for the first time cannot
                             // already be quarantined, and the flags have one
@@ -767,7 +765,6 @@ namespace FolkIdle.Server.Domain.Shared
                     PlayerHp = 100000,
                     CurrentGold = 10000,
                     PremiumCurrency = 0,
-                    SpeedMultiplier = 1,
                     LogicEpochCounter = 0,
                     LegacyShardBalance = 0,
                     CitizenMultiSlotsUnlocked = 0,
@@ -1249,7 +1246,6 @@ namespace FolkIdle.Server.Domain.Shared
                 CurrentXp = player.CurrentXp,
                 SelectedLineageId = player.SelectedLineageId,
                 LastLogoutTimestamp = player.LastLogoutTimestamp,
-                AccumulatedTimeBankMs = player.AccumulatedTimeBankSeconds * 1000L,
                 // Modul: Deploy activation fix. Was hardcoded to 1. The block
                 // further down overwrites this with characters[0]'s real
                 // persisted activity, but ONLY when that query returned a
@@ -1301,7 +1297,6 @@ namespace FolkIdle.Server.Domain.Shared
                 PlayerHp = 100000,
                 CurrentGold = loadedGold,
                 PremiumCurrency = player.PremiumDiamonds,
-                SpeedMultiplier = 1,
                 GuildId = player.GuildId,
                 ActiveGuildWarId = activeGuildWarId,
                 ActiveCrossShardMatchId = activeCrossShardMatchId,
@@ -1830,7 +1825,6 @@ namespace FolkIdle.Server.Domain.Shared
                         ApplyLifetimeStatistics(player, state);
                         player.SelectedLineageId = state.SelectedLineageId;
                         player.LastLogoutTimestamp = state.LastLogoutTimestamp;
-                        player.AccumulatedTimeBankSeconds = (int)(state.AccumulatedTimeBankMs / 1000L);
                         Domain.Progression.PersonalRecords.MergeInto(player, in state);
                         player.ActiveOffensivePotionId = state.ActiveOffensivePotionId;
                         player.OffensivePotionDurationMs = state.OffensivePotionDurationMs;

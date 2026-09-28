@@ -108,26 +108,16 @@ namespace FolkIdle.Server.Domain.Shared
             currentPayload.IsDirty = true;
         }
 
-        // Moved verbatim from EngineLoop: else if (cmd.Command == CommandType.SetSimulationSpeed)
-        internal static void HandleSetSimulationSpeed(
+        internal static void HandleRetiredSimulationSpeed(
             ref TickStatePayload currentPayload,
             ref ClientCommandPacket cmd,
             in CommandCoordinatorContext ctx)
         {
-            int requestedMultiplier = (int)cmd.TargetId;
-            if (requestedMultiplier == 1 || requestedMultiplier == 2 || requestedMultiplier == 4)
-            {
-                if (currentPayload.AccumulatedTimeBankMs > 0)
-                {
-                    currentPayload.SpeedMultiplier = requestedMultiplier;
-                    currentPayload.IsDirty = true;
-                }
-                else if (requestedMultiplier == 1)
-                {
-                    currentPayload.SpeedMultiplier = 1;
-                    currentPayload.IsDirty = true;
-                }
-            }
+            // Modul: SIMULATION SPEED IS GONE (owner, 2026-09-28) - ignored,
+            // not rejected, the rule HandleRetiredMentorship follows. A client
+            // built before the removal (a phone that has not taken the update
+            // yet) still has the buttons, and pressing one must not read as a
+            // protocol violation and disconnect an honest player.
         }
     }
 }

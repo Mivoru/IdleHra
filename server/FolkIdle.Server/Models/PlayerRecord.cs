@@ -160,7 +160,6 @@ namespace FolkIdle.Server.Models
         // moment a day is skipped, since a fresh streak still counts today.
         public long LastLoginTimestamp { get; set; }
         public int LoginStreakDays { get; set; }
-        public int AccumulatedTimeBankSeconds { get; set; }
         public long GuildId { get; set; }
         public int ActiveOffensivePotionId { get; set; }
         public int OffensivePotionDurationMs { get; set; }
