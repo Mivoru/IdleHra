@@ -301,6 +301,10 @@ function acceptCosmeticChest(rarity: number, monsterId: number): void {
     'info',
   );
   refreshUnopenedChests();
+  // A chest can be a boss challenge's reward (task 55): the Combat screen's
+  // ticks and the Wardrobe both read it, so both are asked again.
+  void queryClient.invalidateQueries({ queryKey: ['bossChallenges'] });
+  void queryClient.invalidateQueries({ queryKey: ['cosmetics', 'mine'] });
 }
 
 /** Materials and salvage scrap. High volume, low individual interest. */

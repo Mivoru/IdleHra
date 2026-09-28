@@ -104,6 +104,9 @@ namespace FolkIdle.Server.Models
         public DbSet<CosmeticItem> CosmeticItems { get; set; }
         public DbSet<CosmeticListing> CosmeticListings { get; set; }
 
+        // Task 55: boss challenges met, once each. See BossChallengeCompletion.
+        public DbSet<BossChallengeCompletion> BossChallengeCompletions { get; set; }
+
         // The new-player funnel (task 39): the first time each player reached
         // each step. See PlayerFunnelEvent and FunnelRecorder.
         public DbSet<PlayerFunnelEvent> PlayerFunnelEvents { get; set; }
@@ -274,6 +277,9 @@ namespace FolkIdle.Server.Models
 
             // One listing per item, enforced by the database rather than by
             // hoping two concurrent list requests serialise.
+            modelBuilder.Entity<BossChallengeCompletion>()
+                .HasKey(b => new { b.PlayerId, b.Region, b.Challenge });
+
             modelBuilder.Entity<CosmeticListing>()
                 .HasIndex(l => l.CosmeticItemId)
                 .IsUnique();

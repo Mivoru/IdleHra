@@ -17,6 +17,8 @@ namespace FolkIdle.Server.Domain.Progression
         Kill = 0,
         Level = 1,
         Market = 2,
+        /// <summary>Task 55: a boss challenge's reward.</summary>
+        Challenge = 3,
         Dev = 9,
     }
 

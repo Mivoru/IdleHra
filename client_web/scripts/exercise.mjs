@@ -2092,6 +2092,25 @@ await go('The Delve');
   }
 }
 
+// --- task 55: the boss challenges are listed where bosses are fought --------
+// Meeting one needs a boss kill with conditions this script cannot arrange in
+// a fair time, so the judgement is covered by BossChallengeTests; this checks
+// the output side: the server answers for every region, and the Combat screen
+// shows region 1's three under region 1.
+{
+  const regions = (await apiGet('/api/v1/boss-challenges'))?.Regions ?? [];
+  record(
+    'the server lists three challenges for every region boss',
+    regions.length === 5 && regions.every((r) => r.Challenges.length === 3),
+    regions.map((r) => `${r.Region}:${r.Challenges.filter((c) => c.Completed).length}/${r.Challenges.length}`).join(' '),
+  );
+  await go('Combat');
+  await page.waitForTimeout(1200);
+  const shown = page.getByTestId('boss-challenges-1');
+  const text = (await shown.count()) > 0 ? ((await shown.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
+  record("Combat shows region 1's boss challenges", /Starved/.test(text) && /Young blood/.test(text) && /Humble blade/.test(text), text.slice(0, 120));
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character

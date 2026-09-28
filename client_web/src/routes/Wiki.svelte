@@ -450,6 +450,17 @@
             you have, and the game says so.
           </p>
 
+          <h3 id="boss-challenges">Boss challenges</h3>
+          <p>
+            Every region boss has three optional challenges, listed under its region on the
+            Combat screen: <strong>Starved</strong> (win without eating a single bite during the
+            fight), <strong>Young blood</strong> (win at or below a level cap - 15, 35, 45, 60 and
+            75 for the five regions) and <strong>Humble blade</strong> (win with a Common weapon or
+            plainer, or none). They count on any kill, not only the first, and each pays a cosmetic
+            chest once: Rare for the first two regions, Epic for the next two, Legendary for
+            Malakor. Every one was measured to be winnable with the gear the boss is tuned for.
+          </p>
+
           <h3 id="slots">The eleven equipment slots</h3>
           <p class="dim small">
             Eight combat slots and three tool slots. The tools are equipment in

@@ -197,3 +197,27 @@ export function buyCosmetic(listingId: number): Promise<CosmeticMarketResponse |
 export function cancelCosmeticListing(listingId: number): Promise<CosmeticMarketResponse | null> {
   return authedPost<CosmeticMarketResponse>('/api/v1/market/cosmetics/cancel', { ListingId: listingId });
 }
+
+// ---------------------------------------------------------------------------
+// Boss challenges (task 55) - their words and numbers are the server's.
+// ---------------------------------------------------------------------------
+
+export interface BossChallengeStatus {
+  Id: string;
+  Title: string;
+  Description: string;
+  Completed: boolean;
+}
+
+export interface BossChallengeRegion {
+  Region: number;
+  BossMonsterId: number;
+  ChestRarity: number;
+  Challenges: BossChallengeStatus[];
+}
+
+export const bossChallengeKeys = { all: ['bossChallenges'] as const };
+
+export function fetchBossChallenges(): Promise<BossChallengeRegion[]> {
+  return authedGet<{ Regions: BossChallengeRegion[] }>('/api/v1/boss-challenges').then((r) => r?.Regions ?? []);
+}

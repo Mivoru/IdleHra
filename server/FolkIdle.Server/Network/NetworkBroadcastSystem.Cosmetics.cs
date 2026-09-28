@@ -21,6 +21,13 @@ namespace FolkIdle.Server.Network
         {
             string method = context.Request.HttpMethod;
 
+            // Task 55: the boss challenges, and which are done.
+            if (requestPath == "/api/v1/boss-challenges" && method == "GET")
+            {
+                await HandleBossChallenges(context);
+                return true;
+            }
+
             if (requestPath.StartsWith("/api/v1/market/cosmetics", StringComparison.Ordinal))
             {
                 if (requestPath == "/api/v1/market/cosmetics" && method == "GET") { await HandleCosmeticListings(context); return true; }
@@ -220,6 +227,28 @@ namespace FolkIdle.Server.Network
         }
 
         private const int MaxWornLookup = 100;
+
+        private async Task HandleBossChallenges(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await WriteJsonAsync(context, new { Regions = await FolkIdle.Server.Domain.Combat.BossChallengeEngine.ViewAsync(db, playerId) });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Boss challenges error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
 
         /// <summary>?kind=0|1|2&amp;rarity=1-4 - the cheapest listings, plus all of mine.</summary>
         private async Task HandleCosmeticListings(HttpListenerContext context)
