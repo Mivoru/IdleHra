@@ -1,4 +1,5 @@
 <script lang="ts">
+  import CosmeticMarket from '../lib/ui/CosmeticMarket.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import {
     queryKeys,
@@ -229,8 +230,24 @@
 
     pushLocalNotice('Order placed. It rests until something matches it.', 'info');
   }
+
+  // Task 54: equipment and cosmetics are two markets with different rules
+  // (a price corridor against the seller's own price), so two tabs.
+  let marketTab = $state<'equipment' | 'cosmetics'>('equipment');
 </script>
 
+<div class="market-tabs" role="tablist">
+  <button role="tab" class:active={marketTab === 'equipment'} aria-selected={marketTab === 'equipment'} onclick={() => (marketTab = 'equipment')}>
+    Equipment
+  </button>
+  <button role="tab" class:active={marketTab === 'cosmetics'} aria-selected={marketTab === 'cosmetics'} onclick={() => (marketTab = 'cosmetics')} data-testid="market-tab-cosmetics">
+    Cosmetics
+  </button>
+</div>
+
+{#if marketTab === 'cosmetics'}
+  <CosmeticMarket {hasGuildLicense} />
+{:else}
 <div class="grid">
   <section class="panel browse">
     <header class="head">
@@ -577,8 +594,34 @@
     </p>
   </section>
 </div>
+{/if}
 
 <style>
+  .market-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 1rem 0;
+    flex-wrap: wrap;
+  }
+
+  .market-tabs button {
+    min-height: 44px;
+    flex-shrink: 0;
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .market-tabs button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+  }
+
   .browse .head {
     display: flex;
     align-items: baseline;

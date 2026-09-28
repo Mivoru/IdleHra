@@ -12205,12 +12205,28 @@ namespace FolkIdle.Server.Tests
 
             int publishedCount = 0;
             long publishedMaterialQuantity = 0L;
+            var publishedChestRows = new List<long>();
             while (_fixture.PlayerRegistry.OutboundLootDropQueue.TryDequeue(out FolkIdle.Server.Network.ResponseLootDropPacket drop))
             {
                 publishedCount++;
 
                 Assert.Equal(testPlayerId, drop.PlayerId);
                 Assert.Equal(monsterId, drop.MonsterId);
+
+                // Modul: TASK 54 - a cosmetic chest has no ContentRegistry item:
+                // ItemId 0, the CHEST's rarity (1-4) as QualityTier, and its
+                // cosmetic_items row as InstanceId. About one kill in 2,100
+                // drops one, so 200 kills met it in roughly one run in eleven
+                // and this assertion failed there. Checked on its own terms.
+                if (drop.DropKind == FolkIdle.Server.Network.ResponseLootDropPacket.DropKindCosmeticChest)
+                {
+                    Assert.Equal(0, drop.ItemId);
+                    Assert.InRange(drop.QualityTier, 1, 4);
+                    Assert.True(drop.InstanceId > 0, "A published chest must name its cosmetic_items row.");
+                    publishedChestRows.Add(drop.InstanceId);
+                    continue;
+                }
+
                 Assert.True(drop.ItemId > 0, "A published drop must carry a real ContentRegistry item id.");
                 Assert.True(drop.Quantity > 0, "A published drop must carry a positive quantity.");
 
@@ -12230,6 +12246,10 @@ namespace FolkIdle.Server.Tests
                 .SumAsync(c => (long?)c.Quantity) ?? 0L;
 
             Assert.Equal(publishedMaterialQuantity, storedMaterialQuantity);
+
+            int storedChests = await verifyDb.CosmeticItems.AsNoTracking()
+                .CountAsync(c => c.PlayerId == testPlayerId && publishedChestRows.Contains(c.Id));
+            Assert.Equal(publishedChestRows.Count, storedChests);
         }
 
         // Modul: Crafting Tree. ExecuteCraftingAsync used to look its

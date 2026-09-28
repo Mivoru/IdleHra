@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { COSMETIC_RESULT_SENTENCES } from '../src/lib/net/cosmetics';
+import { COSMETIC_RESULT_SENTENCES, COSMETIC_MARKET_SENTENCES, MAX_COSMETIC_PRICE } from '../src/lib/net/cosmetics';
 import { FRAME_DRAWINGS } from '../src/lib/ui/frames';
 import { MONSTER_ICONS } from '../src/lib/ui/sprites.generated';
 
@@ -17,6 +17,7 @@ const read = (...parts: string[]) => readFileSync(join(server, ...parts), 'utf8'
 const engine = read('Domain', 'Progression', 'CosmeticEngine.cs');
 const registry = read('Domain', 'Progression', 'CosmeticRegistry.cs');
 const packet = read('Network', 'ResponseLootDropPacket.cs');
+const market = read('Domain', 'Economy', 'CosmeticMarketEngine.cs');
 const gameStore = readFileSync(join(here, '..', 'src', 'lib', 'stores', 'game.ts'), 'utf8');
 
 function slug(name: string): string {
@@ -41,6 +42,16 @@ describe('task 54 cosmetics mirrors', () => {
       if (name === 'Ok') continue;
       expect(COSMETIC_RESULT_SENTENCES[name as keyof typeof COSMETIC_RESULT_SENTENCES]).toMatch(/\w{3,}/);
     }
+  });
+
+  it('knows exactly the market results the server can answer', () => {
+    const start = market.indexOf('public enum CosmeticMarketResult');
+    const body = market.slice(start, market.indexOf('}', start));
+    const names = [...body.matchAll(/^\s*(\w+)\s*(?:=\s*\d+)?,?\s*$/gm)].map((m) => m[1]);
+    expect(names.length).toBeGreaterThan(5);
+    expect(Object.keys(COSMETIC_MARKET_SENTENCES).sort()).toEqual([...names].sort());
+    const max = registry.match(/MaxMarketPrice = ([\d_]+);/)?.[1]?.replace(/_/g, '');
+    expect(Number(max)).toBe(MAX_COSMETIC_PRICE);
   });
 
   it('reads the chest drop kind the server sends', () => {

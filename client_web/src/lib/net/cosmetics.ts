@@ -119,3 +119,81 @@ export function fetchWorn(ids: readonly number[]): Promise<WornCosmetics[]> {
 export function rarityClass(rarity: number): string {
   return ['', 'common', 'rare', 'epic', 'legendary'][rarity] ?? 'common';
 }
+
+// ---------------------------------------------------------------------------
+// The cosmetic market (task 54 phase 4). The seller sets the price.
+// ---------------------------------------------------------------------------
+
+/** Mirrors CosmeticMarketResult in CosmeticMarketEngine.cs - pinned by tests/cosmetics.test.ts. */
+export type CosmeticMarketResult =
+  | 'Ok'
+  | 'NotFound'
+  | 'NotYours'
+  | 'Worn'
+  | 'AlreadyListed'
+  | 'InvalidPrice'
+  | 'NoGuildLicense'
+  | 'InsufficientGold'
+  | 'OwnListing'
+  | 'Quarantined'
+  | 'PlayerNotFound';
+
+export const COSMETIC_MARKET_SENTENCES: Record<CosmeticMarketResult, string> = {
+  Ok: '',
+  NotFound: 'That listing is gone - someone was quicker, or it was taken down.',
+  NotYours: "That isn't yours.",
+  Worn: "You're wearing your only copy. Take it off in the Wardrobe first.",
+  AlreadyListed: 'That is already on the market.',
+  InvalidPrice: 'Choose a price between 1 and 1,000,000,000 gold.',
+  NoGuildLicense: 'The market needs a guild - join one to trade.',
+  InsufficientGold: "You don't have enough gold for that.",
+  OwnListing: 'That is your own listing. Take it down instead.',
+  Quarantined: 'This account cannot trade while it is quarantined.',
+  PlayerNotFound: 'Your account could not be found. Try signing in again.',
+};
+
+/** The most a price can be (CosmeticRegistry.MaxMarketPrice). */
+export const MAX_COSMETIC_PRICE = 1_000_000_000;
+
+export interface CosmeticListing {
+  Id: number;
+  SellerId: number;
+  SellerName: string;
+  CosmeticItemId: number;
+  DefinitionId: string;
+  Kind: number;
+  Rarity: number;
+  Price: number;
+  IsMine: boolean;
+}
+
+export interface CosmeticMarketResponse {
+  Result: CosmeticMarketResult;
+  Cosmetics: CosmeticsView;
+}
+
+export const cosmeticMarketKeys = {
+  listings: (kind: number | null, rarity: number | null) => ['market', 'cosmetics', kind, rarity] as const,
+};
+
+export function fetchCosmeticListings(kind: number | null, rarity: number | null): Promise<CosmeticListing[]> {
+  const params = new URLSearchParams();
+  if (kind !== null) params.set('kind', String(kind));
+  if (rarity !== null) params.set('rarity', String(rarity));
+  const query = params.toString();
+  return authedGet<{ Listings: CosmeticListing[] }>(`/api/v1/market/cosmetics${query ? `?${query}` : ''}`).then(
+    (r) => r?.Listings ?? [],
+  );
+}
+
+export function listCosmetic(cosmeticItemId: number, price: number): Promise<CosmeticMarketResponse | null> {
+  return authedPost<CosmeticMarketResponse>('/api/v1/market/cosmetics/list', { CosmeticItemId: cosmeticItemId, Price: price });
+}
+
+export function buyCosmetic(listingId: number): Promise<CosmeticMarketResponse | null> {
+  return authedPost<CosmeticMarketResponse>('/api/v1/market/cosmetics/buy', { ListingId: listingId });
+}
+
+export function cancelCosmeticListing(listingId: number): Promise<CosmeticMarketResponse | null> {
+  return authedPost<CosmeticMarketResponse>('/api/v1/market/cosmetics/cancel', { ListingId: listingId });
+}

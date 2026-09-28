@@ -102,6 +102,7 @@ namespace FolkIdle.Server.Models
 
         // Task 54: owned chests, avatars and frames. See CosmeticItem.
         public DbSet<CosmeticItem> CosmeticItems { get; set; }
+        public DbSet<CosmeticListing> CosmeticListings { get; set; }
 
         // The new-player funnel (task 39): the first time each player reached
         // each step. See PlayerFunnelEvent and FunnelRecorder.
@@ -270,6 +271,12 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<CosmeticItem>()
                 .HasIndex(c => new { c.PlayerId, c.Kind, c.Rarity });
+
+            // One listing per item, enforced by the database rather than by
+            // hoping two concurrent list requests serialise.
+            modelBuilder.Entity<CosmeticListing>()
+                .HasIndex(l => l.CosmeticItemId)
+                .IsUnique();
 
             modelBuilder.Entity<PlayerFunnelEvent>()
                 .HasKey(f => new { f.PlayerId, f.Step });

@@ -391,11 +391,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 // Modul 40/51: wealth-scaled silver-sink tax burn, matching
                 // MarketOrderBookEngine.MatchOrdersAsync's brackets.
-                double totalFeeRate = 0.05;
-                if (sellerWealth > 5000000) totalFeeRate = 0.15;
-                else if (sellerWealth >= 500000) totalFeeRate = 0.08;
-
-                long fee = (long)(executionPrice * totalFeeRate);
+                long fee = (long)(executionPrice * WealthFeeRate(sellerWealth));
 
                 // Modul: Advanced Economy Refactoring, Part 2.5. Guild
                 // sales tax - the SELLER's guild takes its configured
@@ -407,34 +403,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // may have left since - in that case no guild tax applies,
                 // matching the license's own semantics (no guild, no
                 // market participation, no tax relationship).
-                long guildTax = 0L;
-                var sellerRecord = await db.PlayerRecords
-                    .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", order.SellerId)
-                    .SingleOrDefaultAsync();
-                if (sellerRecord != null && sellerRecord.GuildId > 0)
-                {
-                    var sellerGuild = await db.GuildRecords
-                        .FromSqlRaw("SELECT * FROM \"GuildRecords\" WHERE \"Id\" = {0} FOR UPDATE", sellerRecord.GuildId)
-                        .SingleOrDefaultAsync();
-                    if (sellerGuild != null)
-                    {
-                        int taxRatePct = Math.Clamp(sellerGuild.TaxRatePct, GuildRecord.MinTaxRatePct, GuildRecord.MaxTaxRatePct);
-                        guildTax = executionPrice * taxRatePct / 100L;
-
-                        if (guildTax > 0L)
-                        {
-                            var guildGoldLedger = await db.GuildMaterialSinkLedgers
-                                .FromSqlRaw("SELECT * FROM \"GuildMaterialSinkLedgers\" WHERE \"GuildId\" = {0} AND \"CommodityId\" = 'gold' FOR UPDATE", sellerRecord.GuildId)
-                                .SingleOrDefaultAsync();
-                            if (guildGoldLedger == null)
-                            {
-                                guildGoldLedger = new GuildMaterialSinkLedger { GuildId = sellerRecord.GuildId, CommodityId = "gold", TotalAmountContributed = 0 };
-                                db.GuildMaterialSinkLedgers.Add(guildGoldLedger);
-                            }
-                            guildGoldLedger.TotalAmountContributed += guildTax;
-                        }
-                    }
-                }
+                long guildTax = await ApplyGuildSalesTaxAsync(db, order.SellerId, executionPrice);
 
                 long sellerProceeds = executionPrice - fee - guildTax;
 
@@ -489,6 +458,57 @@ namespace FolkIdle.Server.Domain.Economy
                 await transaction.RollbackAsync();
                 Console.WriteLine($"MarketBuyItem failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// The burned market fee's rate by the seller's gold: 5%, 8% from
+        /// 500,000, 15% above 5,000,000. Shared by equipment and (task 54)
+        /// cosmetic sales so the two markets cannot tax differently.
+        /// </summary>
+        internal static double WealthFeeRate(long sellerWealth)
+        {
+            if (sellerWealth > 5000000) return 0.15;
+            if (sellerWealth >= 500000) return 0.08;
+            return 0.05;
+        }
+
+        /// <summary>
+        /// The seller's guild's sales tax on <paramref name="executionPrice"/>,
+        /// deposited into that guild's gold ledger on the caller's transaction.
+        /// Answers the amount taken; 0 when the seller has no guild.
+        /// </summary>
+        internal static async Task<long> ApplyGuildSalesTaxAsync(FolkIdleDbContext db, long sellerId, long executionPrice)
+        {
+            long guildTax = 0L;
+            var sellerRecord = await db.PlayerRecords
+                .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", sellerId)
+                .SingleOrDefaultAsync();
+            if (sellerRecord != null && sellerRecord.GuildId > 0)
+            {
+                var sellerGuild = await db.GuildRecords
+                    .FromSqlRaw("SELECT * FROM \"GuildRecords\" WHERE \"Id\" = {0} FOR UPDATE", sellerRecord.GuildId)
+                    .SingleOrDefaultAsync();
+                if (sellerGuild != null)
+                {
+                    int taxRatePct = Math.Clamp(sellerGuild.TaxRatePct, GuildRecord.MinTaxRatePct, GuildRecord.MaxTaxRatePct);
+                    guildTax = executionPrice * taxRatePct / 100L;
+
+                    if (guildTax > 0L)
+                    {
+                        var guildGoldLedger = await db.GuildMaterialSinkLedgers
+                            .FromSqlRaw("SELECT * FROM \"GuildMaterialSinkLedgers\" WHERE \"GuildId\" = {0} AND \"CommodityId\" = 'gold' FOR UPDATE", sellerRecord.GuildId)
+                            .SingleOrDefaultAsync();
+                        if (guildGoldLedger == null)
+                        {
+                            guildGoldLedger = new GuildMaterialSinkLedger { GuildId = sellerRecord.GuildId, CommodityId = "gold", TotalAmountContributed = 0 };
+                            db.GuildMaterialSinkLedgers.Add(guildGoldLedger);
+                        }
+                        guildGoldLedger.TotalAmountContributed += guildTax;
+                    }
+                }
+            }
+
+            return guildTax;
         }
     }
 }

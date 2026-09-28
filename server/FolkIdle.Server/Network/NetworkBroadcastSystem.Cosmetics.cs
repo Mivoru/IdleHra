@@ -19,8 +19,22 @@ namespace FolkIdle.Server.Network
         /// <summary>Routes /api/v1/cosmetics*; true when it answered.</summary>
         private async Task<bool> TryHandleCosmeticsAsync(HttpListenerContext context, string requestPath)
         {
-            if (!requestPath.StartsWith("/api/v1/cosmetics", StringComparison.Ordinal)) return false;
             string method = context.Request.HttpMethod;
+
+            if (requestPath.StartsWith("/api/v1/market/cosmetics", StringComparison.Ordinal))
+            {
+                if (requestPath == "/api/v1/market/cosmetics" && method == "GET") { await HandleCosmeticListings(context); return true; }
+                if (method == "POST" && (requestPath == "/api/v1/market/cosmetics/list"
+                    || requestPath == "/api/v1/market/cosmetics/buy"
+                    || requestPath == "/api/v1/market/cosmetics/cancel"))
+                {
+                    await HandleCosmeticMarketAction(context, requestPath);
+                    return true;
+                }
+                return false;
+            }
+
+            if (!requestPath.StartsWith("/api/v1/cosmetics", StringComparison.Ordinal)) return false;
 
             if (requestPath == "/api/v1/cosmetics/catalogue" && method == "GET") { await HandleCosmeticsCatalogue(context); return true; }
             if (requestPath == "/api/v1/cosmetics" && method == "GET") { await HandleCosmeticsView(context); return true; }
@@ -206,6 +220,115 @@ namespace FolkIdle.Server.Network
         }
 
         private const int MaxWornLookup = 100;
+
+        /// <summary>?kind=0|1|2&amp;rarity=1-4 - the cheapest listings, plus all of mine.</summary>
+        private async Task HandleCosmeticListings(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                int? kind = int.TryParse(query["kind"], out int k) ? k : null;
+                int? rarity = int.TryParse(query["rarity"], out int r) ? r : null;
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await WriteJsonAsync(context, new
+                {
+                    Listings = await FolkIdle.Server.Domain.Economy.CosmeticMarketEngine.ListingsAsync(db, playerId, kind, rarity),
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Cosmetic listings error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>
+        /// list { CosmeticItemId, Price } / buy { ListingId } / cancel { ListingId }.
+        /// Answers 200 with the Result and the caller's refreshed cosmetics, so
+        /// the screen can say why a refusal happened.
+        /// </summary>
+        private async Task HandleCosmeticMarketAction(HttpListenerContext context, string requestPath)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                long id, price = 0;
+                try
+                {
+                    using var parsed = JsonDocument.Parse(await ReadBodyAsync(context));
+                    var root = parsed.RootElement;
+                    string idField = requestPath.EndsWith("/list", StringComparison.Ordinal) ? "CosmeticItemId" : "ListingId";
+                    if (!root.TryGetProperty(idField, out var idEl) || !idEl.TryGetInt64(out id))
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+                    if (idField == "CosmeticItemId"
+                        && (!root.TryGetProperty("Price", out var priceEl) || !priceEl.TryGetInt64(out price)))
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+                }
+                catch (JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                FolkIdle.Server.Domain.Economy.CosmeticMarketResult result;
+
+                if (requestPath.EndsWith("/list", StringComparison.Ordinal))
+                {
+                    result = await FolkIdle.Server.Domain.Economy.CosmeticMarketEngine.ListAsync(db, playerId, id, price, DateTime.UtcNow);
+                }
+                else if (requestPath.EndsWith("/cancel", StringComparison.Ordinal))
+                {
+                    result = await FolkIdle.Server.Domain.Economy.CosmeticMarketEngine.CancelAsync(db, playerId, id);
+                }
+                else
+                {
+                    (result, _) = await FolkIdle.Server.Domain.Economy.CosmeticMarketEngine.BuyAsync(
+                        db, _playerSessionRegistry, playerId, id, DateTime.UtcNow);
+
+                    // The buyer's gold moved in the database, out of band from
+                    // the live payload - the Delve's reason for ReloadState.
+                    if (result == FolkIdle.Server.Domain.Economy.CosmeticMarketResult.Ok)
+                    {
+                        CommandQueue.Enqueue(new PlayerCommand
+                        {
+                            PlayerId = playerId,
+                            Packet = new ClientCommandPacket { Command = CommandType.ReloadState }
+                        });
+                    }
+                }
+
+                var view = await CosmeticEngine.ViewAsync(db, playerId);
+                await WriteJsonAsync(context, new { Result = result.ToString(), Cosmetics = view });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Cosmetic market error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
 
         /// <summary>
         /// Dev tool: { "Rarity": 1-4 } puts one chest in the caller's hands
