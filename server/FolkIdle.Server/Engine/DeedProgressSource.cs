@@ -33,7 +33,11 @@ namespace FolkIdle.Server.Engine
                 .OrderBy(c => c.SlotIndex)
                 .ToListAsync();
 
-            var main = characters.FirstOrDefault();
+            // Modul: THE MAIN CHARACTER is the one whose Id is PlayerGuid - the
+            // character EquipItem with no target dresses and the login hydrates
+            // into slot 1. "Lowest SlotIndex" agrees only until an ancestor is
+            // fielded into slot 0; kept as the fallback for a row with no match.
+            var main = characters.FirstOrDefault(c => c.Id == player.PlayerGuid) ?? characters.FirstOrDefault();
 
             long woodStock = await db.CommodityRecords.AsNoTracking()
                 .Where(c => c.PlayerId == playerId && c.ItemId == VillageManagementEngine.WoodCommodityId)
@@ -181,16 +185,30 @@ namespace FolkIdle.Server.Engine
 
             if (equippedIds.Count == 0) return 0;
 
-            // SetId is stored on the instance, so this is a count of equal
-            // ids rather than a re-derivation from the base item - the same
-            // number EquipmentSlotEngine feeds SetBonusEngine.
-            var setIds = await db.EquipmentInstances.AsNoTracking()
-                .Where(e => e.PlayerId == playerId && equippedIds.Contains(e.Id) && e.SetId > 0)
-                .Select(e => e.SetId)
+            // Modul: COUNTED BY FAMILY, NOT BY EquipmentInstance.SetId.
+            //
+            // Reported by the owner 2026-09-28: "Wear two pieces of one set"
+            // stayed open however the gear was taken off and put back on. The
+            // deed counted equal SetIds, and that column has never been written
+            // by anything - 0 of 945 items in production had one (see
+            // ArmourSetRegistry's own note). So both set deeds were
+            // uncompletable for every player since they shipped.
+            //
+            // The family comes from the catalogue's naming convention through
+            // ArmourSetRegistry, the one server authority on set membership and
+            // the same grouping the Character screen shows (getArmourFamily).
+            // Whether a set should also PAY a bonus is a separate, balance
+            // decision that this deliberately does not take.
+            var wornBaseIds = await db.EquipmentInstances.AsNoTracking()
+                .Where(e => e.PlayerId == playerId && equippedIds.Contains(e.Id))
+                .Select(e => e.BaseItemId)
                 .ToListAsync();
 
             int best = 0;
-            foreach (var group in setIds.GroupBy(id => id))
+            foreach (var group in wornBaseIds
+                .Select(ArmourSetRegistry.FamilyOf)
+                .Where(family => family.Length > 0)
+                .GroupBy(family => family))
             {
                 if (group.Count() > best) best = group.Count();
             }
