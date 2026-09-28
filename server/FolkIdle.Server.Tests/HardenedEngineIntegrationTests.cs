@@ -3928,6 +3928,18 @@ namespace FolkIdle.Server.Tests
                 int toolCount = await verifyDb.EquipmentInstances.AsNoTracking()
                     .CountAsync(e => e.PlayerId == playerId);
                 Assert.Equal(StarterEquipmentGrant.StarterToolBaseIds.Length, toolCount);
+
+                // And WORN, on the first character - slots 8, 9 and 10. They
+                // used to sit in the chest, so a new Character screen showed
+                // every slot empty and Gathering read "axe 0".
+                var tools = await verifyDb.EquipmentInstances.AsNoTracking()
+                    .Where(e => e.PlayerId == playerId)
+                    .ToDictionaryAsync(e => e.Id, e => e.BaseItemId);
+                var main = await verifyDb.CharacterRecords.AsNoTracking()
+                    .SingleAsync(c => c.PlayerId == playerId && c.SlotIndex == 0);
+                Assert.Equal("normal_axe_tool", tools[main.EquippedAxeId!.Value]);
+                Assert.Equal("normal_pickaxe_tool", tools[main.EquippedPickaxeId!.Value]);
+                Assert.Equal("normal_fishing_rod_tool", tools[main.EquippedRodId!.Value]);
             }
         }
 

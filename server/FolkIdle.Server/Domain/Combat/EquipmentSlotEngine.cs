@@ -152,7 +152,7 @@ namespace FolkIdle.Server.Domain.Combat
             _ => null
         };
 
-        private static void WriteSlot(CharacterRecord character, int slotIndex, long? itemInstanceId)
+        internal static void WriteSlot(CharacterRecord character, int slotIndex, long? itemInstanceId)
         {
             switch (slotIndex)
             {

@@ -1800,6 +1800,17 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Modul: what the next level of every building costs, and how much
+            // of each line the player holds. The Village screen used to price
+            // upgrades from its own copy of the tier table, and the copy had
+            // drifted from what the handler charges - see
+            // VillageManagementEngine.QuoteUpgrade. Read-only GET, no lock.
+            if (requestPath == "/api/v1/village/quote" && context.Request.HttpMethod == "GET")
+            {
+                await HandleVillageQuote(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/mastery/snapshot" && context.Request.HttpMethod == "GET")
             {
                 await HandleMasterySnapshot(context);
@@ -2311,6 +2322,8 @@ namespace FolkIdle.Server.Network
         private sealed class AchievementSnapshotEntryResponse
         {
             public int AchievementId { get; set; }
+            public string Title { get; set; } = string.Empty;
+            public string Description { get; set; } = string.Empty;
             public long CurrentProgress { get; set; }
             public int CompletedTier { get; set; }
             public long NextTierTarget { get; set; }
@@ -5242,6 +5255,89 @@ namespace FolkIdle.Server.Network
         /// deriving it client-side would mean mirroring
         /// VillagerArrivalRules.PopulationCapFor into TypeScript for one label.
         /// </summary>
+        private async Task HandleVillageQuote(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                // Matured upgrades are applied by the next command or login;
+                // the quote reads rows as they stand, which can trail a
+                // finished timer by one level for a moment. The screen asks
+                // again when the infrastructure notification lands.
+                var levels = await db.VillageInfrastructures
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId)
+                    .Select(v => new { v.BuildingId, v.CurrentLevel })
+                    .ToListAsync();
+
+                var buildings = new List<(int Id, int Level, Domain.Progression.VillageManagementEngine.UpgradeCostLine[] Lines)>();
+                var wanted = new HashSet<string>();
+                for (uint id = 1; id <= 10; id++)
+                {
+                    if (!Domain.Progression.VillageManagementEngine.IsValidBuildingId(id)) continue;
+                    int level = levels.FirstOrDefault(l => l.BuildingId == (int)id)?.CurrentLevel ?? 0;
+                    var lines = Domain.Progression.VillageManagementEngine.QuoteUpgrade((int)id, level);
+                    buildings.Add(((int)id, level, lines));
+                    foreach (var line in lines) wanted.Add(line.ItemId);
+                }
+
+                // The same two places TryConsumeUnifiedAsync spends from: the
+                // backpack (CommodityRecords) first, then the village stash.
+                var backpack = await db.CommodityRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId && wanted.Contains(c.ItemId))
+                    .Select(c => new { c.ItemId, c.Quantity })
+                    .ToListAsync();
+                var stash = await db.VillageStashInstances
+                    .AsNoTracking()
+                    .Where(v => v.PlayerId == playerId && wanted.Contains(v.ItemId))
+                    .Select(v => new { v.ItemId, v.Quantity })
+                    .ToListAsync();
+
+                var held = new Dictionary<string, long>();
+                foreach (var row in backpack) held[row.ItemId] = held.GetValueOrDefault(row.ItemId) + row.Quantity;
+                foreach (var row in stash) held[row.ItemId] = held.GetValueOrDefault(row.ItemId) + row.Quantity;
+
+                var payload = new
+                {
+                    Buildings = buildings.ConvertAll(b => new
+                    {
+                        BuildingId = b.Id,
+                        CurrentLevel = b.Level,
+                        Lines = Array.ConvertAll(b.Lines, line => new
+                        {
+                            line.ItemId,
+                            line.Quantity,
+                            // Gold here is the DURABLE balance; the client shows
+                            // the live one, which is what the header reads.
+                            Held = held.GetValueOrDefault(line.ItemId),
+                        }),
+                    }),
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, payload);
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Village quote error: {ex}");
+                context.Response.StatusCode = 500;
+                context.Response.Close();
+            }
+        }
+
         private async Task HandleVillageNewcomers(HttpListenerContext context)
         {
             try
@@ -8466,6 +8562,8 @@ namespace FolkIdle.Server.Network
                     response.Add(new AchievementSnapshotEntryResponse
                     {
                         AchievementId = entry.AchievementId,
+                        Title = AchievementMilestones.TitleFor(entry.AchievementId),
+                        Description = AchievementMilestones.DescriptionFor(entry.AchievementId),
                         CurrentProgress = entry.CurrentProgress,
                         CompletedTier = entry.CompletedTier,
                         NextTierTarget = AchievementMilestones.GetNextTierTarget(entry.AchievementId, entry.CompletedTier),
@@ -8485,6 +8583,8 @@ namespace FolkIdle.Server.Network
                     response.Add(new AchievementSnapshotEntryResponse
                     {
                         AchievementId = AchievementMilestones.MonsterKillAchievementId,
+                        Title = AchievementMilestones.TitleFor(AchievementMilestones.MonsterKillAchievementId),
+                        Description = AchievementMilestones.DescriptionFor(AchievementMilestones.MonsterKillAchievementId),
                         CurrentProgress = 0,
                         CompletedTier = 0,
                         NextTierTarget = AchievementMilestones.GetNextTierTarget(AchievementMilestones.MonsterKillAchievementId, 0),
@@ -8879,7 +8979,18 @@ namespace FolkIdle.Server.Network
                 // Or maybe we should scrub here too? The task says "collection boundary", meaning before sending, 
                 // but we also have to execute sanitization exclusively upon explicit ticket dispatch. So it runs on the client.
 
-                Console.WriteLine("Received Support Ticket with Trace Log.");
+                // Modul: THE MESSAGE USED TO BE THROWN AWAY. This line printed
+                // "Received Support Ticket" and nothing else, so whatever the
+                // player wrote reached no one - the Settings screen was honest
+                // that nobody would reply, but not that nobody could read it.
+                // It is logged now, on one grep-able line (`[support]`), with
+                // the account when the request carries a token. Newlines are
+                // escaped so one ticket stays one log line; the body cap is
+                // ReadBodyAsync's, the print cap is here.
+                long supportPlayerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                string text = string.Join(" | ", (traceLog ?? string.Empty).Split(new[] { (char)13, (char)10 }, StringSplitOptions.RemoveEmptyEntries));
+                if (text.Length > 4000) text = text.Substring(0, 4000) + " [truncated]";
+                Console.WriteLine($"[support] player={supportPlayerId} {text}");
                 
                 context.Response.StatusCode = 200;
             }

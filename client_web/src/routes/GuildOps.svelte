@@ -506,8 +506,10 @@
           <button onclick={contributeWar}>Burn</button>
         </div>
         <p class="dim tiny">
-          Contributions are burned into the war effort. The wire takes a numeric
-          commodity id here - there is no picker endpoint for it.
+          Contributions are burned into the war effort.
+          <!-- Modul: the command takes a numeric commodity id and there is no
+               picker for it yet; this panel is hidden with the rest of Guild
+               Wars until that is built. -->
         </p>
       {/if}
     </section>

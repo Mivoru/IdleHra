@@ -615,8 +615,10 @@ namespace FolkIdle.Server.Engine
                     // solved by the wrong end - it read as a glitch to the
                     // player, because a pile of ore appearing in an empty
                     // account is one.
-                    StarterEquipmentGrant.Seed(db, player.Id);
+                    var starterTools = StarterEquipmentGrant.Seed(db, player.Id);
 
+                    await db.SaveChangesAsync();
+                    await StarterEquipmentGrant.EquipOnAsync(db, characterId, starterTools);
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
 
@@ -857,8 +859,10 @@ namespace FolkIdle.Server.Engine
                     // The same three tools the device path grants - see
                     // StarterEquipmentGrant. Seeding one registration route and
                     // not the other is exactly how accounts came to differ.
-                    StarterEquipmentGrant.Seed(db, player.Id);
+                    var starterTools = StarterEquipmentGrant.Seed(db, player.Id);
 
+                    await db.SaveChangesAsync();
+                    await StarterEquipmentGrant.EquipOnAsync(db, characterId, starterTools);
                     await db.SaveChangesAsync();
                     await transaction.CommitAsync();
 

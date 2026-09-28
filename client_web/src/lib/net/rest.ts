@@ -30,6 +30,7 @@ export const queryKeys = {
   onlineStats: ['stats', 'online'] as const,
   achievements: ['meta', 'achievements'] as const,
   villageNewcomers: ['village', 'newcomers'] as const,
+  villageQuote: ['village', 'quote'] as const,
   loginBonus: ['meta', 'loginBonus'] as const,
   leaderboard: ['meta', 'leaderboard'] as const,
   guildLeaderboard: ['meta', 'leaderboard', 'guilds'] as const,
@@ -780,6 +781,9 @@ export function fetchMailbox(): Promise<MailboxEntry[]> {
 
 export interface AchievementEntry {
   AchievementId: number;
+  /** AchievementMilestones.TitleFor - the server names them. */
+  Title: string;
+  Description: string;
   CurrentProgress: number;
   CompletedTier: number;
   NextTierTarget: number;
@@ -833,6 +837,29 @@ export interface VillageNewcomersSnapshot {
 
 export function fetchVillageNewcomers(): Promise<VillageNewcomersSnapshot> {
   return authedGet<VillageNewcomersSnapshot>('/api/v1/village/newcomers');
+}
+
+/** One thing the next level of a building costs, and how much of it is held. */
+export interface VillageQuoteLine {
+  ItemId: string;
+  Quantity: number;
+  /** Backpack plus village stash. For gold, the durable balance - show the live one. */
+  Held: number;
+}
+
+export interface VillageQuoteBuilding {
+  BuildingId: number;
+  CurrentLevel: number;
+  Lines: VillageQuoteLine[];
+}
+
+/**
+ * Modul: THE SERVER'S PRICE LIST (VillageManagementEngine.QuoteUpgrade), the
+ * same lines the upgrade handler charges. The screen used to build its own from
+ * a copied tier table, and the copy named ores the server does not charge.
+ */
+export function fetchVillageQuote(): Promise<{ Buildings: VillageQuoteBuilding[] }> {
+  return authedGet<{ Buildings: VillageQuoteBuilding[] }>('/api/v1/village/quote');
 }
 
 export function fetchAchievements(): Promise<AchievementEntry[]> {

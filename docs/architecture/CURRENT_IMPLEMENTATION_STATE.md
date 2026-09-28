@@ -485,6 +485,20 @@ that has served `Up()`.
   ripped out because `GeneticVector` is a packed `long` shared across several
   call sites and removing three of its four fields mid-migration was judged
   higher-risk than an inert splice.
+- **The Chronicle pass has no client since 2026-09-28**, and its free track
+  cannot be claimed safely. `SimulationEngine`'s milestone claim grants
+  `BaseItemId = "chronicle_free_{n}"`, and **no such id exists in
+  `items.json`**, so every free claim would mint an equipment row the
+  catalogue does not know. The Progress panel was removed. Its only claim
+  control was a number box (0-49), next to text saying the client cannot tell
+  which milestones are taken, because `/api/v1/player/metadata` does not return
+  `ClaimedMilestonesBitmask`. Production on 2026-09-28: 73 pass rows, 0 with
+  any claim, 0 `chronicle_free_%` equipment rows, and one pass at level 50 with
+  all fifty milestones unclaimed. Seasonal XP still accrues
+  (`AddSeasonalXp`), and the diamond purchase still works server-side. What
+  the pass should become is owner decision O5 in
+  `docs/superpowers/plans/2026-09-28-design-audit-phases.md`. Do not re-expose
+  the claim before the reward item exists.
 
 ## 10. Explicitly Deferred This Pass
 

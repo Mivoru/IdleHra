@@ -1,4 +1,8 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using FolkIdle.Server.Domain.Combat;
 using System.Text.Json;
 using FolkIdle.Server.Models;
 
@@ -32,8 +36,9 @@ namespace FolkIdle.Server.Engine
             "normal_fishing_rod_tool",
         };
 
-        public static void Seed(FolkIdleDbContext db, long playerId)
+        public static List<EquipmentInstance> Seed(FolkIdleDbContext db, long playerId)
         {
+            var granted = new List<EquipmentInstance>(StarterToolBaseIds.Length);
             foreach (string baseId in StarterToolBaseIds)
             {
                 var rolled = new Dictionary<string, int>();
@@ -44,14 +49,42 @@ namespace FolkIdle.Server.Engine
                     affixCount: RarityTier.GetAffixCount(RarityTier.Normal),
                     destination: rolled);
 
-                db.EquipmentInstances.Add(new EquipmentInstance
+                var instance = new EquipmentInstance
                 {
                     BaseItemId = baseId,
                     PlayerId = playerId,
                     QualityTier = RarityTier.Normal,
                     AffixPayload = JsonSerializer.Serialize(rolled),
                     IsAffixLocked = false,
-                });
+                };
+                db.EquipmentInstances.Add(instance);
+                granted.Add(instance);
+            }
+            return granted;
+        }
+
+        /// <summary>
+        /// Puts the starter tools on the account's first character. Call after
+        /// the instances have been saved, so they have ids.
+        /// </summary>
+        /// <remarks>
+        /// Modul: WORN, NOT PACKED. The tools used to be granted into the chest
+        /// and left there, so a brand-new Character screen showed eleven empty
+        /// slots and Gathering read "axe 0 - pickaxe 0 - rod 0" to a player
+        /// holding all three - the first thing they saw looked like a missing
+        /// grant. Slots 8, 9 and 10 (CLAUDE.md "ELEVEN equipment slots").
+        /// </remarks>
+        public static async Task EquipOnAsync(FolkIdleDbContext db, Guid characterId, IReadOnlyList<EquipmentInstance> tools)
+        {
+            var character = db.CharacterRecords.Local.FirstOrDefault(c => c.Id == characterId)
+                ?? await db.CharacterRecords.FindAsync(characterId);
+            if (character == null) return;
+
+            foreach (var tool in tools)
+            {
+                int slot = EquipmentSlotEngine.ResolveSlotIndex(tool.BaseItemId);
+                if (slot < EquipmentSlotEngine.SlotAxe || slot > EquipmentSlotEngine.SlotRod) continue;
+                EquipmentSlotEngine.WriteSlot(character, slot, tool.Id);
             }
         }
     }

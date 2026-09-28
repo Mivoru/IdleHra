@@ -1,8 +1,9 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
-  import { queryKeys, fetchStatistics } from '../lib/net/rest';
-  import { BUILDINGS, upgradeBuilding, villageCostLabel, villageUpgradeDurationSeconds, formatDuration, villageUpgradeBlockedReason, TOWN_HALL_BUILDING_ID } from '../lib/net/commands';
+  import { queryKeys, fetchStatistics, fetchVillageQuote, type VillageQuoteLine } from '../lib/net/rest';
+  import { prettifyBaseId } from '../lib/net/content';
+  import { BUILDINGS, upgradeBuilding, villageUpgradeDurationSeconds, formatDuration, villageUpgradeBlockedReason, TOWN_HALL_BUILDING_ID } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import type { StateUpdate } from '../lib/net/protocol.generated';
   import VillageFolk from '../lib/ui/VillageFolk.svelte';
@@ -12,6 +13,42 @@
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
 
   const snap = $derived($playerState);
+
+  // Modul: THE PRICE COMES FROM THE SERVER (VillageManagementEngine
+  // .QuoteUpgrade), with how much of each line the player holds. The key
+  // carries every building's level and the pending slot, so a finished or
+  // started upgrade asks again by itself; the interval catches what gathering
+  // adds while the screen is open.
+  const levelSignature = $derived(
+    snap ? `${BUILDINGS.map((b) => levelOf(snap, b.stateField)).join('.')}:${snap.PendingUpgradeBuildingId}` : '',
+  );
+  const quote = createQuery(() => ({
+    queryKey: [...queryKeys.villageQuote, levelSignature] as const,
+    queryFn: fetchVillageQuote,
+    enabled: levelSignature !== '',
+    refetchInterval: 20_000,
+  }));
+
+  function linesFor(buildingId: number): VillageQuoteLine[] | null {
+    return quote.data?.Buildings.find((b) => b.BuildingId === buildingId)?.Lines ?? null;
+  }
+
+  /** Gold is read live, like the header; the quote's figure is the durable one. */
+  function heldOf(line: VillageQuoteLine): number {
+    return line.ItemId === 'gold' && snap ? Number(snap.Gold) : line.Held;
+  }
+
+  function lineName(line: VillageQuoteLine): string {
+    return line.ItemId === 'gold' ? 'gold' : prettifyBaseId(line.ItemId);
+  }
+
+  function shortfall(lines: VillageQuoteLine[] | null): string | null {
+    if (!lines) return null;
+    const missing = lines
+      .filter((line) => heldOf(line) < line.Quantity)
+      .map((line) => `${(line.Quantity - heldOf(line)).toLocaleString()} ${lineName(line)}`);
+    return missing.length > 0 ? `You need ${missing.join(', ')} more.` : null;
+  }
 
   function levelOf(state: StateUpdate, field: string): number {
     const value = (state as unknown as Record<string, unknown>)[field];
@@ -91,11 +128,10 @@
         </span>
       </div>
 
-      <dl class="stocks">
-        <div><dt>Wood</dt><dd>{Number(snap.CachedWoodStock).toLocaleString()}</dd></div>
-        <div><dt>Stone</dt><dd>{Number(snap.CachedStoneStock).toLocaleString()}</dd></div>
-        <div><dt>Iron ore</dt><dd>{Number(snap.CachedIronOreStock).toLocaleString()}</dd></div>
-      </dl>
+      <!-- Modul: no stock row. It showed Wood / Stone / Iron ore, legacy
+           stocks no upgrade spends, above prices in logs and ores that were
+           not in it - so a player could never check a price against the row.
+           Each cost line below says what is held of it instead. -->
 
       {#if pendingId !== 0}
         <!-- Modul: A BUILD TIMER HAS TO LOOK LIKE ONE.
@@ -136,6 +172,8 @@
                `{@const}` has to be an immediate child of the `{#each}`, which
                is why it sits here rather than beside the button it feeds. -->
           {@const blocked = villageUpgradeBlockedReason(building.id, level, townHallLevel)}
+          {@const lines = linesFor(building.id)}
+          {@const missing = shortfall(lines)}
           <li class:upgrading={building.id === pendingId}>
             <span class="name">
               <!-- Modul: the stopwatch marks WHICH building is busy. Greying
@@ -154,18 +192,37 @@
               <span class="what dim tiny">{building.what}</span>
             </span>
             <span class="lvl">{level}</span>
-            <span class="cost dim tiny">{villageCostLabel(building.costKind, level)}</span>
+            <span class="cost tiny">
+              {#if blocked !== null}
+                <span class="dim">{blocked}</span>
+              {:else if lines}
+                {#each lines as line (line.ItemId)}
+                  <span class="line" class:short={heldOf(line) < line.Quantity}>
+                    {Math.min(heldOf(line), line.Quantity).toLocaleString()}/{line.Quantity.toLocaleString()}
+                    {lineName(line)}
+                  </span>
+                {/each}
+              {:else}
+                <span class="dim">...</span>
+              {/if}
+            </span>
             <button
               class="tiny-btn"
-              disabled={pendingId !== 0 || blocked !== null}
+              disabled={pendingId !== 0 || blocked !== null || missing !== null}
               title={blocked !== null
                 ? blocked
                 : pendingId !== 0
                   ? 'Another upgrade is already in progress'
-                  : `Next level costs ${villageCostLabel(building.costKind, level)}`}
+                  : (missing ?? 'Upgrade to the next level')}
               onclick={() => upgrade(building.id)}
             >
-              {building.id === pendingId ? formatDuration(pendingRemaining) : blocked !== null ? 'Maxed' : 'Upgrade'}
+              {building.id === pendingId
+                ? formatDuration(pendingRemaining)
+                : blocked !== null
+                  ? 'Maxed'
+                  : missing !== null
+                    ? 'Not enough'
+                    : 'Upgrade'}
             </button>
           </li>
         {/each}
@@ -288,6 +345,20 @@
      as a smaller number than it is, is worse than a cost on two lines. */
   .cost {
     overflow-wrap: break-word;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.6rem;
+  }
+
+  .cost .line {
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The word carries it too ("Not enough" on the button, the shortfall in its
+     title), so this is never colour-only. */
+  .cost .line.short {
+    color: var(--danger);
   }
 
   .grid {
@@ -334,29 +405,6 @@
     border-radius: 4px;
     font-size: 0.82rem;
     margin: 0 0 0.6rem;
-  }
-
-  .stocks {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.5rem;
-    margin: 0 0 0.7rem;
-  }
-
-  .stocks div {
-    display: grid;
-    gap: 0.1rem;
-  }
-
-  dt {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-  }
-
-  dd {
-    margin: 0;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
   }
 
   .buildings,

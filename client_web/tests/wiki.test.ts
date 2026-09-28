@@ -35,12 +35,11 @@ import {
 // Modul: the wiki's two failure modes, both silent.
 //
 // The FIRST is drift: a page quoting a price or a material the server stopped
-// charging. That is not hypothetical here - `commands.ts`'s `villageCostLabel`
-// carries a display copy of the village's ore column and it names the RARE ore
-// for tiers 1, 2 and 4, where VillageManagementEngine charges the common one.
-// Its own comment says it was corrected; a second pass the same day moved the
-// server and the label did not follow. Nothing compared the two, so nothing
-// said so. Every table the wiki restates is compared here, entry by entry,
+// charging. That is not hypothetical here - `commands.ts` carried a
+// `villageCostLabel` whose ore column named the RARE ore for tiers 1, 2 and 4,
+// where VillageManagementEngine charges the common one, and the Village screen
+// showed it for weeks after this file noticed (deleted 2026-09-28; the screen
+// reads the server's quote now). Nothing compared the two, so nothing said so. Every table the wiki restates is compared here, entry by entry,
 // against the C# that owns it.
 //
 // The SECOND is a screen nobody documented. A wiki is only "complete" against

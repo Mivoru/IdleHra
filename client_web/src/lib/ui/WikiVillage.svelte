@@ -7,11 +7,10 @@
   // table in wikiData, which tests/wiki.test.ts holds against
   // VillageManagementEngine.TierMaterials.
   //
-  // Deliberately NOT `villageCostLabel` from commands.ts: that helper names the
-  // RARE ore for tiers 1, 2 and 4, where the server charges the common one. Its
-  // comment says it was fixed; a second pass the same day moved the server back
-  // and the label did not follow. Reusing it here would have spread one wrong
-  // answer to a second screen.
+  // There used to be a `villageCostLabel` in commands.ts that named the RARE
+  // ore for tiers 1, 2 and 4, where the server charges the common one. It was
+  // deleted on 2026-09-28; the Village screen now shows the server's own quote
+  // (/api/v1/village/quote). This page keeps its own tested table.
 
   import { createQuery } from '@tanstack/svelte-query';
   import ItemIcon from './ItemIcon.svelte';
