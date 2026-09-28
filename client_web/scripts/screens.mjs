@@ -58,6 +58,7 @@ export const SCREENS = [
   'Wiki',
   // Not a nav button: a STATE of one. See OVERLAYS below.
   'World Boss · shield wheel',
+  'Market · cosmetics',
 ];
 
 /**
@@ -80,6 +81,18 @@ export const OVERLAYS = {
       await practice.click();
       await page.locator('[data-schedule][data-t0]').waitFor({ timeout: 10000 }).catch(() => {});
       await page.waitForTimeout(400);
+      return true;
+    },
+  },
+  // Task 54: the cosmetic market is the Market's second tab, which a checker
+  // walking the nav lands beside and never opens.
+  'Market · cosmetics': {
+    screen: 'Market',
+    open: async (page) => {
+      const tab = page.getByTestId('market-tab-cosmetics');
+      if ((await tab.count()) === 0) return false;
+      await tab.click();
+      await page.waitForTimeout(1200);
       return true;
     },
   },
@@ -269,6 +282,17 @@ export async function go(page, label) {
       .waitForFunction(() => !document.body.innerText.includes('Waiting for the first state snapshot'), { timeout: 30000 })
       .catch(() => {});
     await page.waitForTimeout(800);
+  }
+
+  // Modul: THE "UPDATED" TOAST is closed the way a player closes it. On a dev
+  // box it appears whenever the server's version stamp (1.0.<commit count>)
+  // moves past the running Vite build - i.e. after any commit - and at 390px
+  // it sat over the shield wheel's Practice button, failing check:clipping
+  // with a click timeout on a screen with nothing wrong (2026-09-28).
+  const later = page.locator('[role="status"].toast').getByRole('button', { name: 'Later' }).first();
+  if (await later.isVisible().catch(() => false)) {
+    await later.click().catch(() => {});
+    await page.waitForTimeout(200);
   }
 
   if (label in OVERLAYS) {

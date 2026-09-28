@@ -143,6 +143,7 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 | NotableItemEvent               | notable_item_events             |
 | PlayerTitle                    | player_titles                   |
 | CosmeticItem                   | cosmetic_items                  |
+| CosmeticListing                | cosmetic_market_listings        |
 | PlayerGoldDailyHigh            | player_gold_daily_high          |
 | PlayerFunnelEvent              | player_funnel_events            |
 | SplitBrainIncident             | split_brain_incidents           |

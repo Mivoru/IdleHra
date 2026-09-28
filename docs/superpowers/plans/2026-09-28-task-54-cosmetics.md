@@ -127,7 +127,7 @@ picture.
 | `POST /api/v1/cosmetics/open {Rarity}` | Opens one of my chests of that rarity: deletes the chest row, inserts the rolled cosmetic, answers what it was. |
 | `POST /api/v1/cosmetics/equip {Kind, CosmeticItemId or null}` | Wear an owned avatar/frame, or go back to the default. |
 | `GET /api/v1/cosmetics/worn?ids=1,2,3` | Batched lookup of other players' equipped avatar/frame (and race), for chat. |
-| Phase 2: `POST /api/v1/market/cosmetics/list {CosmeticItemId, Price}`, `.../buy {OrderId}`, `.../cancel {OrderId}` | The market (below). |
+| Phase 4: `GET /api/v1/market/cosmetics?kind=&rarity=`, `POST /api/v1/market/cosmetics/list {CosmeticItemId, Price}`, `.../buy {ListingId}`, `.../cancel {ListingId}` | The market (below). As built: its own `cosmetic_market_listings` table. |
 
 Every POST holds the account stripe (the router already does) and every
 refusal answers a reason the screen shows as a sentence - no silent rollback.

@@ -2063,6 +2063,35 @@ await go('The Delve');
   }
 }
 
+// --- task 54 phase 4: a cosmetic on the market, and taken down again --------
+// Round-trips: whatever is listed is taken down, so the fixture keeps what it
+// owns. Uses the Market screen's own controls, at a price no corridor allows.
+{
+  const owned = (await apiGet('/api/v1/cosmetics'))?.Owned ?? [];
+  const spare = owned.find((o) => !o.IsListed && o.Kind !== 0);
+  await go('Market');
+  await page.getByTestId('market-tab-cosmetics').click();
+  await page.waitForTimeout(1200);
+  const pick = spare ? page.getByTestId(`cosmetic-sell-${spare.Id}`) : null;
+  if (!spare || !pick || (await pick.count()) === 0) {
+    record('the cosmetic market offers something to sell', false, `${owned.length} owned, spare ${spare?.Id ?? 'none'}`);
+  } else {
+    await pick.click();
+    await page.getByTestId('cosmetic-sell-price').fill('123456789');
+    await page.getByTestId('cosmetic-sell').click();
+    await page.waitForTimeout(1500);
+    const listed = ((await apiGet('/api/v1/market/cosmetics'))?.Listings ?? []).find((l) => l.CosmeticItemId === spare.Id && l.IsMine);
+    record('a cosmetic lists at the seller\'s own price', listed?.Price === 123456789, listed ? `${listed.DefinitionId} for ${listed.Price}` : 'no listing');
+
+    const takeDown = page.locator('[data-testid="cosmetic-listings"] li.mine', { hasText: '123' }).getByTestId('cosmetic-take-down').first();
+    if ((await takeDown.count()) > 0) await takeDown.click();
+    await page.waitForTimeout(1500);
+    const back = ((await apiGet('/api/v1/cosmetics'))?.Owned ?? []).find((o) => o.Id === spare.Id);
+    const stillListed = ((await apiGet('/api/v1/market/cosmetics'))?.Listings ?? []).some((l) => l.CosmeticItemId === spare.Id);
+    record('taking it down gives it back', Boolean(back) && !back.IsListed && !stillListed, back ? `listed=${back.IsListed}, on market=${stillListed}` : 'gone');
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character

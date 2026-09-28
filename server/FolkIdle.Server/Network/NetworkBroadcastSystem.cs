@@ -2239,7 +2239,7 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
-            // Cosmetics (task 54) - see NetworkBroadcastSystem.Cosmetics.cs.
+            // Cosmetics (task 54), and their market - see NetworkBroadcastSystem.Cosmetics.cs.
             if (await TryHandleCosmeticsAsync(context, requestPath))
             {
                 return;

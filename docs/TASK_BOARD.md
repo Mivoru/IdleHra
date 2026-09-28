@@ -4611,7 +4611,7 @@ world boss tests (their own collection) or assert on the damage this test's
 player dealt instead of a global HP delta. Read the CLAUDE.md paragraph on
 static queues first.
 
-## 54. Cosmetics: avatars and profile frames - PHASES 1-3 BUILT, MARKET OPEN
+## DONE - 54. Cosmetics: avatars and profile frames
 
 **Designed with the owner 2026-09-28**, plan:
 `docs/superpowers/plans/2026-09-28-task-54-cosmetics.md`. Built the same day:
@@ -4626,8 +4626,18 @@ static queues first.
 - `CosmeticTests` (server), `tests/cosmetics.test.ts` (client mirrors),
   `exercise.mjs` opens and wears a chest and restores the face.
 
-**Still open - phase 4, the market:** list/buy/cancel chests and cosmetics at
-the seller's price (no corridor, owner decision), with the equipment tax.
+Phases 1-3 DEPLOYED 2026-09-28 as 1.0.862.
+
+**Phase 4, the market (built 2026-09-28):** the Market's Cosmetics tab lists,
+buys and takes down chests and cosmetics at the seller's own price (no
+corridor, owner decision). `CosmeticMarketEngine`, its own
+`cosmetic_market_listings` table (not `MarketOrderRecords`, whose readers all
+assume equipment), the guild licence, and the fee and guild tax through
+helpers shared with the equipment market (`MarketEscrowEngine.WealthFeeRate`,
+`ApplyGuildSalesTaxAsync`). A listed item stays the seller's row with
+`IsListed`, so it cannot be opened, worn or listed twice. `CosmeticMarketTests`;
+`exercise.mjs` lists and takes down; the checkers visit the tab as the
+`Market · cosmetics` overlay.
 
 Original task:
 
