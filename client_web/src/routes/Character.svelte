@@ -7,7 +7,7 @@
   import { loadContent, prettifyBaseId, monsterName, getArmourFamily, type ContentRegistry } from '../lib/net/content';
   import { EQUIPMENT_SLOTS, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName, resolveSlotIndex, isCraftingActivity, craftingActivityId,
     SLOT_WEAPON, SLOT_HELMET, SLOT_CHEST, SLOT_GLOVES, SLOT_LEGGINGS, SLOT_BOOTS, SLOT_AMULET, SLOT_RING, SLOT_AXE, SLOT_PICKAXE, SLOT_ROD } from '../lib/ui/slots';
-  import { craftingProfessionName } from '../lib/ui/slots';
+  import { craftingProfessionName, SLOT_UNLOCK_TOWN_HALL } from '../lib/ui/slots';
   import { queryKeys as qk, fetchRecipes } from '../lib/net/rest';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import Affixes from '../lib/ui/Affixes.svelte';
@@ -152,7 +152,6 @@
   // and slot 3 at Town Hall 5 - but no screen ever named a character, so
   // characters 2 and 3 sat Idle permanently. Every other screen assigns work
   // to "you", which is always slot 1.
-  const SLOT_UNLOCK_TOWN_HALL = [0, 3, 5];
   const townHall = $derived(snap?.TownHallLevel ?? 0);
 
   const jobChoices = $derived.by(() => {
