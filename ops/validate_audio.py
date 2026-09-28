@@ -60,7 +60,6 @@ REQUIRED_CLIPS = [
     "item_equipped.wav",
     "item_sold.wav",
     "level_up.wav",
-    "loot_dropped.wav",
     "loot_rare_dropped.wav",
     "notification.wav",
     "race_unlocked.wav",

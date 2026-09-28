@@ -663,7 +663,19 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
 
-            await worldBossEngine.ExecuteAttackAsync(testPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000);
+            // Modul: struck on an ARMOURED plate, as the test above does. Plate 0
+            // was the default, and the weak plate is re-seeded randomly on every
+            // ActivateEventWindowAsync, so one run in PlateCount tripled the blow
+            // and read 16,000 against 6,000 (CI on main, 2026-09-28).
+            byte armouredPlate;
+            await using (var seedDb = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var seeded = await seedDb.WorldBossSnapshots.AsNoTracking()
+                    .SingleAsync(b => b.BossInstanceId == WorldBossEngine.ActiveBossInstanceId);
+                armouredPlate = (byte)((seeded.WeakPlateIndex + 1) % WorldBossEngine.PlateCount);
+            }
+
+            await worldBossEngine.ExecuteAttackAsync(testPlayerId, WorldBossEngine.ActiveBossInstanceId, 5000, armouredPlate);
 
             // Modul: TASK 53 - asserted on THIS player's row, not on the boss's
             // HP. The HP is one shared WorldBossSnapshots row that every
