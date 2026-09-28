@@ -10,6 +10,7 @@
   // Guild plate off its castle the moment the window changed size.
   import { backgroundUrl } from '../lib/ui/sprites';
   import type { ScreenKey } from '../lib/ui/screens';
+  import HomeCards from '../lib/ui/HomeCards.svelte';
 
   interface Props {
     onNavigate: (screen: ScreenKey) => void;
@@ -45,6 +46,8 @@
       </button>
     {/each}
   </div>
+
+  <HomeCards />
 </div>
 
 <style>

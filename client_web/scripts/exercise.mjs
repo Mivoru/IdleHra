@@ -760,10 +760,17 @@ await go('Crafting');
       await enabled.click();
       await page.waitForTimeout(2500);
       const after = await countEquipment();
+      // Modul: THE MASTER ARTISAN WEEK. That event (EventBanner, id 3) gives
+      // every craft a 25% chance of one extra item, so ten crafts produce ten
+      // to twenty - and "exactly ten" failed about 94% of runs for a whole week
+      // in four, on a crafting path that was working. Ten is still the floor;
+      // the ceiling moves only while the event is on.
+      const artisan = await page.evaluate(() => /Master Artisan/.test(document.body.innerText));
+      const made = after - before;
       record(
         'a x10 craft produces ten items in one press',
-        before >= 0 && after - before === 10,
-        `${before} -> ${after}`,
+        before >= 0 && (artisan ? made >= 10 && made <= 20 : made === 10),
+        `${before} -> ${after}${artisan ? ' (Master Artisan week)' : ''}`,
       );
     } else {
       record('a x10 craft produces ten items in one press', true, 'no recipe affordable at x10 - skipped');
@@ -2914,6 +2921,28 @@ await go('Progress');
     /sealed/i.test(text),
     (text.match(/(\d+) Seals?/) ?? ['no seals'])[0],
   );
+}
+
+// --- the home screen: what everybody is doing, and the closest goal ----------
+//
+// Modul: the map used to say where things are and nothing about what was
+// happening. The cards under it must name every working character's job and
+// offer the nearest deed - and its Go must actually leave the map, because a
+// card whose button renders but goes nowhere is this project's oldest bug.
+await go('Map');
+{
+  await page.waitForFunction(() => /Right now/.test(document.body.innerText), null, { timeout: 10000 }).catch(() => {});
+  const text = await page.evaluate(() => document.body.innerText);
+  record('the home screen says what the characters are doing', /Right now/.test(text) && /(Fighting|Idle|Crafting| in )/.test(text));
+  const goalCard = page.locator('section.card', { hasText: 'Closest goal' });
+  if ((await goalCard.count()) > 0) {
+    await goalCard.getByRole('button', { name: 'Go', exact: true }).click();
+    await page.waitForTimeout(800);
+    const left = !(await page.evaluate(() => /Right now/.test(document.body.innerText)));
+    record('the closest goal takes you to where it is done', left);
+  } else {
+    record('the closest goal takes you to where it is done', false, 'no goal card - every open deed finished?');
+  }
 }
 
 // --- the Hall of Ancestors ---------------------------------------------------

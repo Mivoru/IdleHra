@@ -227,6 +227,12 @@ different food and never touches a slot the player emptied by hand.
 
 ### 2.2 The Map becomes a home screen
 
+**BUILT 2026-09-28 (PR on `feat/audit-phase-2`).** Two cards, not three:
+"Right now" and "Closest goal" (`HomeCards.svelte`, `homeGoal.ts`). "Next" was
+dropped because the onboarding coach already ranks exactly that, and a second
+list would have been a second source for one truth. `exercise.mjs` checks the
+cards and that Go leaves the map. 2.3 (ETA) is not built yet.
+
 **Design.** Keep the painted map, smaller, and add three cards under it:
 - **Now** - each character: what it is doing, rate, and the halt reason with
   one fixing action.

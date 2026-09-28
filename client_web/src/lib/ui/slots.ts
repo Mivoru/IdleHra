@@ -260,6 +260,9 @@ export const HALT_REASONS: Record<number, string> = {
   5: 'This account is quarantined by the anti-cheat, so nothing will run. Contact support if you believe this is a mistake.',
 };
 
+/** The Town Hall level each character slot opens at (slot 1 is always open). */
+export const SLOT_UNLOCK_TOWN_HALL: readonly number[] = [0, 3, 5];
+
 export const HALT_REASON_SHORT: Record<number, string> = {
   0: '',
   1: 'Out of food',
