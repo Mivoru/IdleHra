@@ -48,8 +48,7 @@ forge, a town hall. Sound design should follow that:
 
 These eleven are in the game and working. Listed so nothing is duplicated.
 
-`ui_button_click` · `ui_window_open` · `combat_player_hit` ·
-`combat_monster_defeated` · `loot_dropped` · `loot_rare_dropped` ·
+`ui_button_click` · `ui_window_open` · `loot_dropped` · `loot_rare_dropped` ·
 `crafting_completed` · `level_up` · `race_unlocked` · `achievement_unlock` ·
 `error`
 
@@ -61,7 +60,7 @@ same folder.
 ## 2. Wired but missing — **generate these first**
 
 The code already calls all six. They are fetched, 404, and fall back to silence
-or to `combat_player_hit`. Dropping the file in is the entire job.
+or to the weapon's own hit clip. Dropping the file in is the entire job.
 
 | File | Length | How it should sound |
 |---|---|---|

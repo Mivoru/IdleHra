@@ -23,14 +23,14 @@ export const CLIPS = {
   itemSold: 'item_sold.wav',
   itemEquipped: 'item_equipped.wav',
   delveDoor: 'delve_door_open.wav',
-  playerHit: 'combat_player_hit.wav',
   playerMiss: 'combat_miss.wav',
 
   // Modul: one hit sound for every weapon in the game is the same swing
   // whether you are holding a claymore or a wand. The three weapon clips
   // exist since 2026-09-27; the crit clip still does not, and playHit falls
-  // back to playerHit for it, so dropping the WAV in later needs no code
-  // change and its absence is silence-free.
+  // back to the weapon's own clip for it, so dropping the WAV in later needs
+  // no code change and its absence is silence-free. The generic
+  // combat_player_hit clip was removed 2026-09-28 at the owner's request.
   hitMelee: 'combat_hit_melee.wav',
   hitRanged: 'combat_hit_ranged.wav',
   hitMagic: 'combat_hit_magic.wav',
@@ -38,7 +38,6 @@ export const CLIPS = {
   playerDied: 'combat_player_died.wav',
   playerDiedFemale: 'combat_player_died_female.wav',
   bossFirstClear: 'combat_boss_first_clear.wav',
-  monsterDefeated: 'combat_monster_defeated.wav',
   lootDropped: 'loot_dropped.wav',
   lootRare: 'loot_rare_dropped.wav',
   craftingCompleted: 'crafting_completed.wav',
@@ -137,25 +136,18 @@ async function loadClip(file: string): Promise<AudioBuffer | null> {
 }
 
 /**
- * The hit sound for a weapon family, falling back to the one clip that has
- * always existed.
+ * The hit sound for a weapon family.
  *
  * A FALLBACK RATHER THAN A GAP. combat_hit_crit.wav is not in the repository
  * yet - it needs authoring, which is not something code can do - and a missing
- * clip resolves to silence in loadClip. Silence on every
- * swing would be a worse combat feel than the single generic thump this
- * replaces, so the generic one is what plays until the specific file exists.
+ * clip resolves to silence in loadClip. A silent crit would be a worse combat
+ * feel than an ordinary hit, so a crit plays the weapon's own clip until the
+ * crit file exists.
  */
 export function playHit(weaponKind: number, isCrit: boolean): void {
-  const specific: ClipName = isCrit
-    ? 'hitCrit'
-    : weaponKind === 1
-      ? 'hitRanged'
-      : weaponKind === 2
-        ? 'hitMagic'
-        : 'hitMelee';
-
-  playWithFallback(specific, 'playerHit');
+  const weapon: ClipName = weaponKind === 1 ? 'hitRanged' : weaponKind === 2 ? 'hitMagic' : 'hitMelee';
+  if (isCrit) playWithFallback('hitCrit', weapon);
+  else play(weapon);
 }
 
 /**
