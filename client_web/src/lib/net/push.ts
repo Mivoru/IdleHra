@@ -61,6 +61,26 @@ export type PushOutcome =
   | { kind: 'unavailable'; reason: string }
   | { kind: 'failed'; reason: string };
 
+/**
+ * Modul: PUSH IS OFF UNTIL FIREBASE IS SET UP, and it has to be (owner,
+ * 2026-09-29: "when I turn on notifications on the phone the game crashes, and
+ * then it crashes on every launch until I turn notifications off again").
+ *
+ * On Android, register() goes straight to Firebase Messaging, and this build
+ * has no google-services.json - so the NATIVE plugin throws "Default
+ * FirebaseApp is not initialized" on its own thread and the app dies. No
+ * try/catch here can see that. And because refreshDeviceTokenIfPermitted
+ * re-registers at every sign-in once permission is granted, one press became a
+ * crash on every launch.
+ *
+ * So register() is never called unless the build says Firebase is configured:
+ * VITE_FOLKIDLE_PUSH=1, set only in a build that ships google-services.json
+ * (and its iOS twin). Read on each call rather than once, so a test can flip it.
+ */
+export function pushConfigured(): boolean {
+  return import.meta.env?.VITE_FOLKIDLE_PUSH === '1';
+}
+
 /** Whether asking is even possible, phrased for a player rather than a log. */
 export function pushUnavailableReason(): string | null {
   if (!isNativePlatform()) {
@@ -68,6 +88,9 @@ export function pushUnavailableReason(): string | null {
   }
   if (plugin() === null) {
     return `No notification support is built into this ${platformName()} build.`;
+  }
+  if (!pushConfigured()) {
+    return 'Push notifications are not set up yet. The resting reminder below tells you when your characters stop earning.';
   }
   return null;
 }

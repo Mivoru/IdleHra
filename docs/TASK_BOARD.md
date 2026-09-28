@@ -4887,3 +4887,22 @@ Delete the diamond packs too and just say the Store has nothing yet."
   news (auto-reroll "stop condition met", a birth), which it did because it
   tested `!== Success`. `tests/resultTones.test.ts`.
 - **World Boss** column centred on wide screens.
+
+## DONE - 67. Turning on notifications crashed the Android app, on every launch after (owner 2026-09-29)
+
+**Cause:** the build has no `google-services.json`, so `PushNotifications.register()`
+throws "Default FirebaseApp is not initialized" inside the NATIVE plugin and
+kills the app - no JavaScript catch can see it. `refreshDeviceTokenIfPermitted`
+re-registers at every sign-in once permission is granted, so one press became a
+crash on every launch until the permission was revoked in Android settings.
+
+**Fix:** `push.ts` never calls `register()` unless the build sets
+`VITE_FOLKIDLE_PUSH=1`; without it the Settings button is replaced by "Push
+notifications are not set up yet" (the local resting reminder, which needs no
+Firebase, stays). `tests/push.test.ts` pins that `register` is never reached.
+
+**To turn push on later:** add `android/app/google-services.json` (and
+`GoogleService-Info.plist` for iOS) from a Firebase project, give the server its
+FCM credentials, and build with `VITE_FOLKIDLE_PUSH=1` - the phone bundle is
+built by Docker on the box, so the variable goes in `ops/oracle/docker-compose.yml`
+beside `VITE_FOLKIDLE_SERVER`.

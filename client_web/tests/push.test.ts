@@ -73,10 +73,13 @@ beforeEach(async () => {
   platform = 'android';
   native = true;
   vi.resetModules();
+  // Firebase configured - the case every test below except the crash guard is about.
+  vi.stubEnv('VITE_FOLKIDLE_PUSH', '1');
   push = await import('../src/lib/net/push');
 });
 
 afterEach(() => {
+  vi.unstubAllEnvs();
   delete (globalThis as { Capacitor?: unknown }).Capacitor;
 });
 
@@ -91,6 +94,18 @@ describe('whether push can be offered at all', () => {
     native = true;
     platform = 'android';
     expect(push.pushUnavailableReason()).toMatch(/no notification support/i);
+  });
+
+  it('never registers when Firebase is not configured - register() crashes the app natively (owner, 2026-09-29)', async () => {
+    vi.stubEnv('VITE_FOLKIDLE_PUSH', '');
+    native = true;
+    platform = 'android';
+    const { plugin } = installPlugin({ checkPermissions: vi.fn(async () => ({ receive: 'granted' })) });
+    expect(push.pushUnavailableReason()).toMatch(/not set up yet/i);
+    expect(await push.enablePushNotifications()).toMatchObject({ kind: 'unavailable' });
+    // The launch path: permission already granted from an earlier press.
+    await push.refreshDeviceTokenIfPermitted();
+    expect(plugin.register).not.toHaveBeenCalled();
   });
 
   it('is available when the shell injected the plugin', () => {
