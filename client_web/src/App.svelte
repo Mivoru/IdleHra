@@ -44,6 +44,7 @@
   import { HALT_REASON_SHORT } from './lib/ui/slots';
   import { initLanguage, loadTranslations } from './lib/ui/i18n';
   import { unlockAudio, play } from './lib/ui/audio';
+  import { startMusic, stopMusic } from './lib/ui/music';
   import OnboardingCoach from './lib/ui/OnboardingCoach.svelte';
   import GuidedOverlay from './lib/ui/GuidedOverlay.svelte';
   import LootReveal from './lib/ui/LootReveal.svelte';
@@ -338,6 +339,9 @@
   // ones added later; a disabled button fires no click, so it stays silent.
   function armAudio() {
     unlockAudio();
+    // Background music starts on the same gesture - browsers refuse sound
+    // before one - and only in the game, not on the sign-in screen.
+    if (token) void startMusic();
   }
   function clickSound(event: MouseEvent) {
     const target = event.target;
@@ -356,6 +360,7 @@
   });
 
   function signOut() {
+    stopMusic();
     endSession();
     forgetSession();
     clearToken();

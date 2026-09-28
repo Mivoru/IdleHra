@@ -113,13 +113,32 @@ def main():
     for file_name in REQUIRED_CLIPS:
         validate_clip(args.path, file_name, errors)
 
+    # The background music (owner, 2026-09-28): every track in Music/ must be a
+    # real MP3 - an ID3 tag or an MPEG frame sync - not a Git LFS pointer, and
+    # there must be at least one, or the game plays silence without a word.
+    music_dir = os.path.join(args.path, "Music")
+    tracks = sorted(f for f in os.listdir(music_dir) if f.endswith(".mp3")) if os.path.isdir(music_dir) else []
+    if not tracks:
+        errors.append("Music/: no .mp3 tracks - the background music would be silent")
+    for track in tracks:
+        path = os.path.join(music_dir, track)
+        size = os.path.getsize(path)
+        with open(path, "rb") as handle:
+            head = handle.read(64)
+        if head.startswith(LFS_POINTER_PREFIX):
+            errors.append(f"Music/{track}: is a Git LFS POINTER STUB ({size} bytes) - see the music rule in .gitattributes.")
+        elif not (head[0:3] == b"ID3" or (head[0] == 0xFF and (head[1] & 0xE0) == 0xE0)):
+            errors.append(f"Music/{track}: not an MP3 ({size} bytes, starts {head[0:4]!r})")
+        elif size < 100_000:
+            errors.append(f"Music/{track}: implausibly small for a track at {size} bytes")
+
     if errors:
         print(f"validate_audio: {len(errors)} violation(s) found in '{args.path}':")
         for error in errors:
             print(f"  - {error}")
         return 1
 
-    print(f"validate_audio: all {len(REQUIRED_CLIPS)} clips in '{args.path}' are real WAV data.")
+    print(f"validate_audio: all {len(REQUIRED_CLIPS)} clips in '{args.path}' are real WAV data, and {len(tracks)} music track(s) are real MP3s.")
     return 0
 
 

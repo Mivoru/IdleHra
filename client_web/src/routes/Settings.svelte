@@ -12,6 +12,16 @@
     pendingNotes.set([RELEASE_NOTES[0]]);
   }
   import { volume, muted, unlockAudio, play, preloadAll, CLIPS, type ClipName } from '../lib/ui/audio';
+  import {
+    musicVolume,
+    musicMode,
+    musicOneTrack,
+    musicExcluded,
+    musicTracks,
+    nowPlaying,
+    playNow,
+    startMusic,
+  } from '../lib/ui/music';
   import { tutorialPrompt, skipTutorial, unskipTutorial, onboardingDismissed } from '../lib/stores/tutorial';
   import { DISCOVERY_MOMENTS } from '../lib/stores/tutorialDiscoveries';
   import { ALL_OBJECTIVES } from '../lib/stores/tutorialObjectives';
@@ -209,6 +219,17 @@
     unlockAudio();
     play(name);
   }
+
+  // Music (owner, 2026-09-28): take a track out of the cycle, or loop one.
+  function toggleInCycle(file: string, include: boolean) {
+    musicExcluded.update((list) => (include ? list.filter((f) => f !== file) : [...new Set([...list, file])]));
+  }
+
+  $effect(() => {
+    // The list comes from the server; ask for it when Settings opens, so the
+    // controls exist even before the first track has started.
+    void startMusic();
+  });
 
   async function enableAudio() {
     unlockAudio();
@@ -483,8 +504,7 @@
   <section class="panel">
     <h2>Sound</h2>
     <p class="dim small">
-      The same ten effects the Unity client plays - the server serves them from
-      its Resources folder rather than keeping a second copy.
+      Sound effects and music have their own volume, and both start quiet.
     </p>
 
     <label class="check">
@@ -498,9 +518,53 @@
     </label>
 
     <label>
-      Volume
-      <input type="range" min="0" max="1" step="0.05" bind:value={$volume} disabled={$muted} />
+      Sound effects - attacks, buttons, announcements
+      <input type="range" min="0" max="1" step="0.05" bind:value={$volume} disabled={$muted} data-testid="sfx-volume" />
     </label>
+
+    <label>
+      Music
+      <input type="range" min="0" max="1" step="0.05" bind:value={$musicVolume} disabled={$muted} data-testid="music-volume" />
+    </label>
+
+    <h3>Music</h3>
+    {#if $nowPlaying}
+      <p class="dim small">Now playing: <strong>{$nowPlaying.Title}</strong></p>
+    {/if}
+    <div class="music-mode" role="radiogroup" aria-label="How the music plays">
+      <label class="check">
+        <input type="radio" name="music-mode" value="cycle" bind:group={$musicMode} />
+        Play the ticked songs in turn
+      </label>
+      <label class="check">
+        <input type="radio" name="music-mode" value="one" bind:group={$musicMode} />
+        Repeat one song
+      </label>
+    </div>
+    <ul class="tracks" data-testid="music-tracks">
+      {#each $musicTracks as track (track.File)}
+        <li>
+          {#if $musicMode === 'cycle'}
+            <label class="check">
+              <input
+                type="checkbox"
+                checked={!$musicExcluded.includes(track.File)}
+                onchange={(e) => toggleInCycle(track.File, (e.currentTarget as HTMLInputElement).checked)}
+              />
+              {track.Title}
+            </label>
+          {:else}
+            <label class="check">
+              <input type="radio" name="music-one" value={track.File} bind:group={$musicOneTrack} />
+              {track.Title}
+            </label>
+          {/if}
+          <button class="tiny-btn" onclick={() => playNow(track.File)} aria-label="Play {track.Title} now">Play</button>
+        </li>
+      {:else}
+        <li class="dim small">The music is loading.</li>
+      {/each}
+    </ul>
 
     <!-- Browsers refuse to start an AudioContext before a user gesture, so
          audio is armed by a button rather than at load - starting early gives
@@ -862,6 +926,30 @@
 </div>
 
 <style>
+  .tracks {
+    list-style: none;
+    margin: 0.25rem 0 0.75rem;
+    padding: 0;
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  .tracks li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .tracks li .tiny-btn {
+    flex-shrink: 0;
+  }
+
+  .music-mode {
+    display: grid;
+    gap: 0.15rem;
+  }
+
   .version {
     margin: 0;
     display: flex;

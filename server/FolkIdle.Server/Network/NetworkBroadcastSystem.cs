@@ -1374,6 +1374,19 @@ namespace FolkIdle.Server.Network
             // than copied - see that link's own comment. Unauthenticated
             // for the same reason the content files are: they ship
             // inside the Unity app bundle already.
+            // Background music (owner, 2026-09-28): the track list, then a track.
+            if (requestPath == "/audio/music" && context.Request.HttpMethod == "GET")
+            {
+                await HandleMusicManifest(context);
+                return;
+            }
+
+            if (requestPath.StartsWith("/audio/music/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
+            {
+                await HandleMusicFile(context, requestPath.Substring("/audio/music/".Length));
+                return;
+            }
+
             if (requestPath.StartsWith("/audio/", StringComparison.Ordinal) && context.Request.HttpMethod == "GET")
             {
                 await HandleAudioFile(context, requestPath.Substring("/audio/".Length));
@@ -7731,6 +7744,120 @@ namespace FolkIdle.Server.Network
             }
 
             context.Response.Close();
+        }
+
+        // Modul: BACKGROUND MUSIC (owner, 2026-09-28) - tracks of about 4 MB,
+        // so unlike the clips they are served with Range support: an <audio>
+        // element streams a track and seeks with byte ranges, and a server
+        // that ignores Range makes Chromium refuse to seek or loop it cleanly.
+        // Names are validated, never sanitized, exactly as the clips are.
+        private static readonly System.Text.RegularExpressions.Regex MusicFileNamePattern =
+            new(@"^[A-Za-z0-9_\-]+\.mp3$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+        private static string MusicDirectory => System.IO.Path.Combine(AudioDirectory, "Music");
+
+        private async Task HandleMusicManifest(HttpListenerContext context)
+        {
+            try
+            {
+                var files = System.IO.Directory.Exists(MusicDirectory)
+                    ? System.IO.Directory.GetFiles(MusicDirectory, "*.mp3")
+                        .Select(f => System.IO.Path.GetFileName(f))
+                        .Where(n => MusicFileNamePattern.IsMatch(n))
+                        .OrderBy(n => n, StringComparer.Ordinal)
+                        .ToList()
+                    : new System.Collections.Generic.List<string>();
+
+                var tracks = files.Select(f => new
+                {
+                    File = f,
+                    // "Where_the_Path_Begins.mp3" -> "Where the Path Begins".
+                    Title = System.IO.Path.GetFileNameWithoutExtension(f).Replace('_', ' '),
+                });
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                context.Response.Headers["Cache-Control"] = "public, max-age=3600";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new { Tracks = tracks });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Music manifest error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private async Task HandleMusicFile(HttpListenerContext context, string fileName)
+        {
+            try
+            {
+                if (!MusicFileNamePattern.IsMatch(fileName))
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                string fullPath = System.IO.Path.Combine(MusicDirectory, fileName);
+                if (!System.IO.File.Exists(fullPath))
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                long length = new System.IO.FileInfo(fullPath).Length;
+                long start = 0, end = length - 1;
+                bool partial = false;
+
+                string? range = context.Request.Headers["Range"];
+                if (range != null && range.StartsWith("bytes=", StringComparison.Ordinal))
+                {
+                    string[] bounds = range.Substring(6).Split('-', 2);
+                    if (bounds.Length == 2 && long.TryParse(bounds[0], out long rangeStart) && rangeStart >= 0 && rangeStart < length)
+                    {
+                        start = rangeStart;
+                        end = long.TryParse(bounds[1], out long rangeEnd) && rangeEnd >= start && rangeEnd < length ? rangeEnd : length - 1;
+                        partial = true;
+                    }
+                    else
+                    {
+                        context.Response.StatusCode = 416;
+                        context.Response.Headers["Content-Range"] = $"bytes */{length}";
+                        context.Response.Close();
+                        return;
+                    }
+                }
+
+                long count = end - start + 1;
+                context.Response.StatusCode = partial ? 206 : 200;
+                context.Response.ContentType = "audio/mpeg";
+                context.Response.Headers["Accept-Ranges"] = "bytes";
+                context.Response.Headers["Cache-Control"] = "public, max-age=86400";
+                if (partial) context.Response.Headers["Content-Range"] = $"bytes {start}-{end}/{length}";
+                context.Response.ContentLength64 = count;
+
+                await using var stream = new System.IO.FileStream(fullPath, System.IO.FileMode.Open, System.IO.FileAccess.Read, System.IO.FileShare.Read);
+                stream.Seek(start, System.IO.SeekOrigin.Begin);
+                byte[] buffer = new byte[64 * 1024];
+                long remaining = count;
+                while (remaining > 0)
+                {
+                    int read = await stream.ReadAsync(buffer, 0, (int)Math.Min(buffer.Length, remaining));
+                    if (read <= 0) break;
+                    await context.Response.OutputStream.WriteAsync(buffer, 0, read);
+                    remaining -= read;
+                }
+            }
+            catch (Exception ex)
+            {
+                // A listener that closed the tab mid-track lands here too - one line, not an alarm.
+                Console.WriteLine($"Music file '{fileName}': {ex.Message}");
+            }
+
+            try { context.Response.Close(); } catch { }
         }
 
         // Modul: the generated 2D artwork, served the same way the audio is.
