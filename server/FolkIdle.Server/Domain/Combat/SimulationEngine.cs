@@ -61,8 +61,8 @@ namespace FolkIdle.Server.Domain.Combat
         // what actually landed. Both are deliberately fractions of a real
         // number already computed on the same path, so neither needs its own
         // scaling curve to stay relevant across the five regions.
-        private const float BurnDamageFraction = 0.25f;
-        private const float ThornsReflectionFraction = 0.20f;
+        internal const float BurnDamageFraction = 0.25f;
+        internal const float ThornsReflectionFraction = 0.20f;
 
         // The Eternal Dreadnought 4-piece's cooldown reduction. Applied to the
         // cooldown stamped after a successful cast.
@@ -73,7 +73,7 @@ namespace FolkIdle.Server.Domain.Combat
         // five consecutive hits from full, which is the point: it buys the
         // auto-eat larder the window it needs to respond, without making the
         // wearer immortal against sustained damage.
-        private const float SetDamageCapMaxHpFraction = 0.20f;
+        internal const float SetDamageCapMaxHpFraction = 0.20f;
 
         // Modul: the floor a clamped health subtraction lands on. PlayerHp is an
         // int in milli-HP and incoming damage is a long since the boss wall went
@@ -1186,6 +1186,8 @@ namespace FolkIdle.Server.Domain.Combat
                 VillageChestTickCoordinator.DrainChestSaleGold(_playerRegistry, _activePlayers);
 
                 VillageChestTickCoordinator.DrainChestSettings(_playerRegistry, _activePlayers);
+
+                PayloadSnapshotTickCoordinator.Drain(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.ShardAttackResultQueue.TryDequeue(out var shardAttackResult))
                 {
@@ -3526,7 +3528,104 @@ namespace FolkIdle.Server.Domain.Combat
         /// The crit multiplier is NOT applied here: it is rolled per swing and
         /// belongs to the swing, not to the character.
         /// </summary>
-        private static long EffectiveMilliAttackFor(ref TickStatePayload payload, in CombatStats combatStats, int damageScalePerLevelPct)
+        internal static LineageDefinition LineageOf(in TickStatePayload payload)
+        {
+            int lineageId = payload.SelectedLineageId;
+            if (lineageId < 0 || lineageId >= ProgressionEngine.Lineages.Length) lineageId = 0;
+            return ProgressionEngine.Lineages[lineageId];
+        }
+
+        /// <summary>The active character's race: slot 1's genetic vector, low byte.</summary>
+        internal static int ActiveRaceId(in TickStatePayload payload)
+            => payload.Slot1_CharacterId != System.Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
+
+        /// <summary>
+        /// The combat stats the live tick fights with. ONE derivation, shared by
+        /// RunCombatTick and the hunting advisor (HuntingProjection).
+        /// </summary>
+        internal static CombatStats LiveCombatStats(in TickStatePayload payload)
+        {
+            int activeAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
+            return StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, ActiveRaceId(in payload), payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
+        }
+
+        /// <summary>
+        /// The combat health bar, in milli-HP. Moved out of RunCombatTick
+        /// unchanged (task 78) so the hunting advisor reads the same bar.
+        /// </summary>
+        internal static long EffectiveMaxMilliHpFor(in TickStatePayload payload, in CombatStats combatStats)
+        {
+            var lineage = LineageOf(in payload);
+
+            // Modul: the base pool is a CURVE now, not a constant - see
+            // ProgressionEngine.BaseMilliHpForLevel. A flat 100 against monster
+            // attack that goes up 4.2x a region is why region 5 one-shot
+            // everybody.
+            long baseMilliHp = ProgressionEngine.BaseMilliHpForLevel(payload.CurrentLevel);
+            long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
+            // Modul: inheritance, applied to the whole pool for the same reason
+            // the damage bonus is applied last - a flat addition would stop
+            // mattering.
+            effectiveMilliHp += effectiveMilliHp * InheritanceRegistry.GetBonusPct(payload.Inherit_MaxHp) / 100L;
+            // Modul: Fortitude, the Cruelty bough - more health, layered the
+            // same additive-percent way inheritance is just above.
+            effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
+                SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
+
+            // Modul: the bloodline's health - Endurance, then health traits -
+            // layered the same additive-percent way as inheritance and the tree
+            // above. Shared with the offline projection: see BloodlineBonuses.
+            return BloodlineBonuses.ApplyMaxHp(effectiveMilliHp, payload.Aptitude_Endurance, TraitTotals.From(payload.TraitMask));
+        }
+
+        /// <summary>The live swing interval: the stat, then Relentless.</summary>
+        internal static int LiveAttackIntervalMs(in TickStatePayload payload, in CombatStats combatStats)
+        {
+            int playerAttackSpeedMs = CombatDamageModel.AttackIntervalMs(in combatStats);
+            if (payload.Skill_Relentless > 0)
+            {
+                float faster = SkillTreeRegistry.GetBonusPercent(
+                    SkillTreeRegistry.BoughRelentless, payload.Skill_Relentless) / 100f;
+                playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - faster)));
+            }
+            return playerAttackSpeedMs;
+        }
+
+        /// <summary>Crit chance in percent, with the Precision branch, clamped.</summary>
+        internal static float LiveCritChancePct(in TickStatePayload payload, in CombatStats combatStats)
+            => Math.Clamp(
+                combatStats.CritChancePct
+                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance),
+                0f,
+                MaxCritChancePct);
+
+        /// <summary>A crit's multiplier before Double Strike: the stat, Cruelty, Guile.</summary>
+        internal static float LiveCritMultiplier(in TickStatePayload payload, in CombatStats combatStats)
+            => StatsCalculator.ComputeCritMultiplier(combatStats)
+                + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, payload.Skill_CritDamage) / 100f)
+                + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughGuile, payload.Skill_Guile) / 100f);
+
+        /// <summary>
+        /// The XP multiplier a live kill pays at, in percent, before the
+        /// global-event and mentorship-penalty terms ProcessMonsterDeath adds.
+        /// </summary>
+        internal static int LiveKillXpMultiplierPct(in TickStatePayload payload, int localXpMultiplier)
+        {
+            int finalXpMultiplier = localXpMultiplier;
+            if (payload.CurrentLevel < 50 && payload.CachedMentorCount > 0)
+            {
+                finalXpMultiplier += payload.CachedMentorCount * 5;
+            }
+
+            finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
+            finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
+            finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
+            finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
+            finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
+            return finalXpMultiplier;
+        }
+
+        internal static long EffectiveMilliAttackFor(ref TickStatePayload payload, in CombatStats combatStats, int damageScalePerLevelPct)
         {
             long effective = StatsCalculator.ComputeEffectiveMilliAttack(
                 in combatStats,
@@ -3555,7 +3654,7 @@ namespace FolkIdle.Server.Domain.Combat
             return effective;
         }
 
-        private static bool HasCrossedInterval(int tickAccumulator, int intervalMs)
+        internal static bool HasCrossedInterval(int tickAccumulator, int intervalMs)
         {
             if (intervalMs <= 0) return false;
             if (tickAccumulator <= 0) return false;
@@ -3929,7 +4028,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// character's gear, HP and activity "active" for every subsequent
         /// read after any throw in here.
         /// </summary>
-        private static void RunCombatTick(
+        internal static void RunCombatTick(
             ref TickStatePayload payload,
             int localXpMultiplier,
             int localDropMultiplier,
@@ -3938,39 +4037,14 @@ namespace FolkIdle.Server.Domain.Combat
         {
             int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
 
-            int lineageId = payload.SelectedLineageId;
-            if (lineageId < 0 || lineageId >= ProgressionEngine.Lineages.Length) lineageId = 0;
-            var lineage = ProgressionEngine.Lineages[lineageId];
+            var lineage = LineageOf(in payload);
+            int activeRaceId = ActiveRaceId(in payload);
 
-            int activeAgePhase = 1;
-            int activeRaceId = 0;
-            if (payload.Slot1_CharacterId != System.Guid.Empty)
-            {
-                activeAgePhase = payload.Slot1_AgePhase;
-                activeRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
-            }
-
-            var combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
-
-            // Modul: the base pool is a CURVE now, not a constant - see
-            // ProgressionEngine.BaseMilliHpForLevel. A flat 100 against monster
-            // attack that goes up 4.2x a region is why region 5 one-shot
-            // everybody.
-            long baseMilliHp = ProgressionEngine.BaseMilliHpForLevel(payload.CurrentLevel);
-            long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
-            // Modul: inheritance, applied to the whole pool for the same reason
-            // the damage bonus is applied last - a flat addition would stop
-            // mattering.
-            effectiveMilliHp += effectiveMilliHp * InheritanceRegistry.GetBonusPct(payload.Inherit_MaxHp) / 100L;
-            // Modul: Fortitude, the Cruelty bough - more health, layered the
-            // same additive-percent way inheritance is just above.
-            effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
-                SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
-
-            // Modul: the bloodline's health - Endurance, then health traits -
-            // layered the same additive-percent way as inheritance and the tree
-            // above. Shared with the offline projection: see BloodlineBonuses.
-            effectiveMilliHp = BloodlineBonuses.ApplyMaxHp(effectiveMilliHp, payload.Aptitude_Endurance, TraitTotals.From(payload.TraitMask));
+            // Modul: the stats and the health bar are computed by helpers now
+            // (task 78) - the hunting advisor projects a fight from the same
+            // payload and must not hold a second copy of either.
+            var combatStats = LiveCombatStats(in payload);
+            long effectiveMilliHp = EffectiveMaxMilliHpFor(in payload, in combatStats);
             int effectiveMaxHp = (int)effectiveMilliHp;
 
             // Modul: and the client is told what the bar's maximum IS. Every
@@ -4040,7 +4114,7 @@ namespace FolkIdle.Server.Domain.Combat
             // read it as a fraction, so every character past about DEX 20 sat
             // on the 200 ms floor at seven and a half times the intended swing
             // rate.
-            int playerAttackSpeedMs = CombatDamageModel.AttackIntervalMs(in combatStats);
+            int playerAttackSpeedMs = LiveAttackIntervalMs(in payload, in combatStats);
 
             // Modul: Relentless, the Precision bough - you swing faster, and
             // everything else in this loop scales off how often you hit.
@@ -4051,12 +4125,7 @@ namespace FolkIdle.Server.Domain.Combat
             // itself enforces - a swing rate the tick cannot deliver would
             // just silently round away, and the pacing model does not know
             // about sub-tick swings.
-            if (payload.Skill_Relentless > 0)
-            {
-                float faster = SkillTreeRegistry.GetBonusPercent(
-                    SkillTreeRegistry.BoughRelentless, payload.Skill_Relentless) / 100f;
-                playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - faster)));
-            }
+            // (Applied inside LiveAttackIntervalMs, shared with the hunting advisor.)
 
             // Modul: attack cadence fix, 2026-08-02.
             //
@@ -4109,11 +4178,7 @@ namespace FolkIdle.Server.Domain.Combat
                     // anyone (you cannot crit more often than always), and it
                     // makes the excess visible to the ledger instead of
                     // silently wasted.
-                    float treeCritChance = Math.Clamp(
-                        combatStats.CritChancePct
-                            + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance),
-                        0f,
-                        MaxCritChancePct);
+                    float treeCritChance = LiveCritChancePct(in payload, in combatStats);
 
                     // Modul: and the client is told, so a crit can look like
                     // one. Cleared on every swing rather than only set, or a
@@ -4123,12 +4188,9 @@ namespace FolkIdle.Server.Domain.Combat
                     if (Random.Shared.NextDouble() <= (treeCritChance / 100.0f))
                     {
                         payload.LastHitWasCrit = 1;
-                        critMult = StatsCalculator.ComputeCritMultiplier(combatStats)
-                            + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, payload.Skill_CritDamage) / 100f)
-                            // Modul: Guile, the Precision bough. Stacks with
-                            // Cruelty rather than replacing it - a player who
-                            // took the crit fork should feel both.
-                            + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughGuile, payload.Skill_Guile) / 100f);
+                        // Modul: Guile, the Precision bough, stacks with Cruelty
+                        // rather than replacing it - see LiveCritMultiplier.
+                        critMult = LiveCritMultiplier(in payload, in combatStats);
 
                         // Modul: Double Strike, the Precision crown. Expressed
                         // as extra multiplier rather than a second swing,
@@ -4649,17 +4711,9 @@ namespace FolkIdle.Server.Domain.Combat
                 // leaks onto the next monster.
                 payload.TargetStatusEffectBitmask = 0;
 
-                int finalXpMultiplier = localXpMultiplier;
-                if (payload.CurrentLevel < 50 && payload.CachedMentorCount > 0)
-                {
-                    finalXpMultiplier += payload.CachedMentorCount * 5;
-                }
+                // Shared with the hunting advisor - see LiveKillXpMultiplierPct.
+                int finalXpMultiplier = LiveKillXpMultiplierPct(in payload, localXpMultiplier);
 
-                finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
-            finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
-            finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
-            finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
-            finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
 
                 // Modul: and the same removal on the live-kill path. Two copies
                 // of one bonus, which is why it is worth saying twice that the

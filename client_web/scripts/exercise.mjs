@@ -544,6 +544,19 @@ await go('Combat');
     /full set of region-\d gear/.test(wallText) && /You wear \d of 8/.test(wallText),
     wallText.slice(0, 140) || 'no requirement shown (fixture may have every region open)',
   );
+
+  // Task 78: every open monster carries the server's estimate, and the line
+  // on screen is the API's numbers, not a client guess.
+  const projection = await apiGet('/api/v1/combat/projection');
+  const estimateRows = page.getByTestId('hunting-estimate');
+  await estimateRows.first().waitFor({ timeout: 10000 }).catch(() => {});
+  const shown = await estimateRows.count();
+  const firstLine = shown > 0 ? (await estimateRows.first().innerText()).replace(/\s+/g, ' ') : '';
+  record(
+    'each open monster shows a hunting estimate from the server',
+    projection !== null && (projection.Monsters ?? []).length === 25 && shown > 0 && firstLine.startsWith('Estimate:'),
+    `${shown} rows; first: ${firstLine.slice(0, 110)}`,
+  );
 }
 
 // --- forge: fusion and reroll ------------------------------------------------

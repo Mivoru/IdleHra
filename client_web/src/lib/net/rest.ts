@@ -26,6 +26,8 @@ export const queryKeys = {
   chestSettings: ['player', 'chestSettings'] as const,
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
+  /** Task 78: the hunting advisor, per character slot. */
+  combatProjection: (slot: number) => ['combat', 'projection', slot] as const,
   friends: ['social', 'friends'] as const,
   conversations: ['social', 'conversations'] as const,
   conversationHistory: (withPlayerId: number) =>
@@ -2020,4 +2022,40 @@ export function strikeBoss(
     | { Mode: 'Auto'; Plate: number },
 ): Promise<StrikeResponse | null> {
   return authedPost<StrikeResponse>('/api/v1/worldboss/strike', body);
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/combat/projection (task 78)
+// ---------------------------------------------------------------------------
+
+/**
+ * What one monster is worth to this character: the SERVER's projection from
+ * the live payload (HuntingProjection), checked against the real tick by
+ * HuntingProjectionTests. The client formats it and computes nothing.
+ */
+export interface HuntingEstimate {
+  MonsterId: number;
+  /** False when no swing can hurt it; the other fields are then 0. */
+  CanDamage: boolean;
+  SecondsPerKill: number;
+  /** An 80% band around SecondsPerKill, from the hit and crit rolls. */
+  SecondsPerKillLow: number;
+  SecondsPerKillHigh: number;
+  XpPerHour: number;
+  GoldPerHour: number;
+  /** Survives an hour of back-to-back fights on the larder it holds. */
+  SurvivesWithFood: boolean;
+  SurvivesWithoutFood: boolean;
+  KillsBeforeDeathWithoutFood: number;
+  FoodPerHour: number;
+}
+
+export interface CombatProjection {
+  Slot: number;
+  Monsters: HuntingEstimate[];
+}
+
+/** 409 when there is no live session to project from - the caller shows nothing. */
+export function fetchCombatProjection(slot = 0): Promise<CombatProjection> {
+  return authedGet<CombatProjection>(`/api/v1/combat/projection?slot=${slot}`);
 }

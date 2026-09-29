@@ -8,9 +8,10 @@
 > (parked).
 >
 > **Status at the end of 2026-09-29:** 68-72 DONE and 74 partly (PRs
-> #102-#107, merged; deploy recorded in NEXT_STEPS_BACKLOG's handoff). Next
-> without the owner: **77** (wiring-auditor on Village Work slots), **78**
-> (hunting advisor), **81** (Chest rules). Show the owner a screenshot first:
+> #102-#107, merged; deploy recorded in NEXT_STEPS_BACKLOG's handoff). **77,
+> 81 and 78 are BUILT** (PRs #109, #110 and the 78 PR, which is stacked on
+> #110; none deployed, and #110 carries a migration). Nothing is left
+> without the owner. Show the owner a screenshot first:
 > **73** (Home), **82** (desktop header). Owner decisions waiting: **75, 76,
 > 79 (Treasury), 80**, and the designs **83-88**. Left from 74: one number
 > format, reroll history.
@@ -5319,6 +5320,34 @@ on expand. No formula on the client.
 
 **Done when:** a server test pins the projection against a simulated fight
 within a tolerance; the line reads "estimate"; `check:perf` does not regress.
+
+**DONE 2026-09-29.**
+- **Engine.** `HuntingProjection` is a tick-by-tick simulation of expected
+  values. It uses RunCombatTick's order: player swing, monster swing,
+  auto-eat, death, kill, and a swing clock reset on respawn. It covers one
+  hour of back-to-back fights, with food and without. It calls the tick's own
+  helpers, which were moved out of `RunCombatTick` unchanged: `LiveCombatStats`,
+  `EffectiveMaxMilliHpFor`, `LiveAttackIntervalMs`, `LiveCritChancePct`,
+  `LiveCritMultiplier`, `LiveKillXpMultiplierPct`, and the now-internal
+  `EffectiveMilliAttackFor` and `HasCrossedInterval`. The result is kill
+  time as an 80% band, XP/h, gold/h, whether an hour is survived with and
+  without food, and food per hour.
+- **Guard.** `HuntingProjectionTests` runs the real `RunCombatTick` for an
+  hour. Kills/h landed within 3-5% on three rows and food within 10%. The
+  test asserts ±10% on kills.
+- **Route.** `GET /api/v1/combat/projection?slot=N` gets a copy of the live
+  payload taken on the tick thread (`PayloadSnapshotOrder`). It swaps in
+  slot N, projects all 25 canonical monsters, and caches the result for 60 s.
+  It answers 409 `NoSession` when nothing is live.
+- **Client.** Each open Combat row shows "Estimate: 7-9 s a kill · XP/h ·
+  g/h · safe / needs food / you would die". Drops were already on expand.
+- **Left out on purpose:** the food buff's regen, Death Ward, Last Stand and
+  Thunderer. All four only help the player, so the estimate errs toward
+  caution.
+- **Found on the way, not fixed:** the offline projection's incoming damage
+  ignores dodge and block, which the live tick applies
+  (`OfflineSimulationEngine`, around line 630). The live and offline
+  projections now disagree there.
 
 ## 79. Gold ledger and material flow; Treasury counts gold spent
 
