@@ -3201,6 +3201,7 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.TownHallGoldAccumulator -= wholeGold * 36000L;
                     payload.AddGold(wholeGold);
                     payload.RedisPendingGoldDelta += wholeGold;
+                    GoldLedger.TallyIncome(ref payload, GoldIncomeSource.TownHall, wholeGold);
                     payload.RequiresRedisFlush = true;
                     payload.IsDirty = true;
                 }
@@ -4886,6 +4887,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     payload.AddGold(goldReward);
                     payload.RedisPendingGoldDelta += goldReward;
+                    GoldLedger.TallyIncome(ref payload, GoldIncomeSource.Combat, goldReward);
                     payload.RequiresRedisFlush = true;
                     payload.IsDirty = true;
                 }

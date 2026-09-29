@@ -218,6 +218,7 @@ namespace FolkIdle.Server.Engine
 
                 // Dedup inventory
                 playerCommodity.Quantity -= quantity;
+                await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.Spent, itemId, quantity); // task 79
                 if (playerCommodity.Quantity <= 0)
                 {
                     db.CommodityRecords.Remove(playerCommodity);

@@ -30,6 +30,7 @@ namespace FolkIdle.Server.Domain.Economy
                 ref var currentPayload = ref System.Runtime.InteropServices.CollectionsMarshal.GetValueRefOrNullRef(activePlayers, notification.PlayerId);
                 if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                 {
+                    // GoldLedger: display only - the sale was recorded as income by its engine.
                     currentPayload.AddGold(notification.GoldDelta);
                     currentPayload.IsDirty = true;
                 }
@@ -64,6 +65,7 @@ namespace FolkIdle.Server.Domain.Economy
                         // between the read and SaveChanges was overwritten,
                         // and a missing row could be inserted twice. One
                         // upsert statement is atomic on its own (task 44).
+                        // GoldLedger: counted at the sale, not at its rescue.
                         await CommodityLedger.AddAsync(rescueDb, rescuePlayerId, "gold", rescueGold);
                     });
                 }

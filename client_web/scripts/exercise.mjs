@@ -2723,10 +2723,23 @@ await go('Chest');
     ledger !== null && ledger.LifetimeSpent > 0 && categories.includes('Fusion'),
     `${ledger?.LifetimeSpent ?? '?'} spent; ${categories.join(', ') || 'no categories'}`,
   );
+  // Phase 2: gold IN by source. Kill gold is tallied on the payload and
+  // written by the next checkpoint (periodic, a command's, a reload's), and
+  // the combat step ran long before this. No single source is required:
+  // which ones exist depends on the day.
+  const income = ledger?.Income ?? [];
+  record(
+    'the gold ledger records income by source',
+    ledger !== null && ledger.IncomeRecordedSince !== null && income.some((c) => c.SinceRecorded > 0),
+    `${income.map((c) => `${c.Category} ${c.SinceRecorded}`).join(', ') || 'no sources'}; since ${ledger?.IncomeRecordedSince ?? '?'}`,
+  );
   await go('Progress');
   await page.locator('[data-progress-tab="stats"]').first().click().catch(() => {});
   await page.locator('[data-gold-ledger]').first().waitFor({ timeout: 10000 }).catch(() => {});
   record('Progress shows where the gold went', (await page.locator('[data-gold-ledger] li').count()) > 0);
+  if (income.some((c) => c.Last30Days > 0)) {
+    record('Progress shows where the gold came from', (await page.locator('[data-gold-income] li').count()) > 0);
+  }
 }
 
 // --- auto-salvage: the drain at the source -----------------------------------

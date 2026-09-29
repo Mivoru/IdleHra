@@ -2086,6 +2086,26 @@ export interface GoldLedger {
   RecordedSince: string | null;
   /** Biggest all-time sink first. */
   Categories: GoldLedgerCategory[];
+  /**
+   * Phase 2. First UTC day with an income row. Income began recording later
+   * than spending, so it has its own date rather than sharing RecordedSince.
+   */
+  IncomeRecordedSince: string | null;
+  /** Gold in, by source. `Category` holds the server's GoldIncomeSource name, e.g. "Combat", "ChestSale". */
+  Income: GoldLedgerCategory[];
+  MaterialsRecordedSince: string | null;
+  /** Biggest all-time flow first. */
+  Materials: MaterialFlow[];
+}
+
+export interface MaterialFlow {
+  /** The CommodityRecords item id - a gathering slug or a catalogued id. */
+  ItemId: string;
+  /** The server's MaterialFlowDirection name: Gathered, Spent, LostToWarehouseCap, Sold or Discarded. */
+  Direction: string;
+  Last7Days: number;
+  Last30Days: number;
+  SinceRecorded: number;
 }
 
 export function fetchGoldLedger(): Promise<GoldLedger> {

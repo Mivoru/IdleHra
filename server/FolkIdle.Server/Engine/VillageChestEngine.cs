@@ -229,6 +229,9 @@ namespace FolkIdle.Server.Engine
                 {
                     await CreditGoldAsync(db, playerId, gold);
                 }
+                // Task 79: the material flow, in this transaction.
+                await MaterialLedger.RecordAsync(db, playerId,
+                    sell ? MaterialFlowDirection.Sold : MaterialFlowDirection.Discarded, itemId, sold);
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -517,6 +520,7 @@ namespace FolkIdle.Server.Engine
             // sale path is the "engine already credited the row" gold path
             // (ChestSaleGoldQueue moves CurrentGold only) - unchanged.
             await CommodityLedger.AddAsync(db, playerId, "gold", amount);
+            await GoldLedger.RecordIncomeAsync(db, playerId, GoldIncomeSource.ChestSale, amount);
         }
     }
 }

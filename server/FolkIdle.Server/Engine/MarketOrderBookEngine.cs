@@ -445,6 +445,9 @@ namespace FolkIdle.Server.Engine
                         equip.PlayerId = buy.SellerId; 
                         equip.IsLockedInEscrow = false;
 
+                        // Task 79: the seller's income, whichever branch pays it.
+                        await GoldLedger.RecordIncomeAsync(db, sell.SellerId, GoldIncomeSource.Market, sellerProceeds);
+
                         // Give seller gold
                         if (_playerRegistry.IsPlayerOnline(sell.SellerId))
                         {
@@ -459,6 +462,7 @@ namespace FolkIdle.Server.Engine
                         {
                             // Modul: an upsert (CommodityLedger), task 44. It
                             // rebases the tracked sellerGold row read above.
+                            // GoldLedger: recorded as Market income above, for both branches.
                             await CommodityLedger.AddAsync(db, sell.SellerId, "gold", sellerProceeds);
                         }
 
@@ -478,6 +482,7 @@ namespace FolkIdle.Server.Engine
                             // the buyer had no gold row (`if (buyerGold != null)`),
                             // so an offline buyer whose row was missing lost it
                             // in silence. The upsert creates the row (task 44).
+                            // GoldLedger: the unused part of the buyer's own escrow, not income.
                             await CommodityLedger.AddAsync(db, buy.SellerId, "gold", refundToBuyer);
                         }
 
