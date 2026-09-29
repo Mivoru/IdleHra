@@ -42,7 +42,7 @@ const SHOTS = [
   { screen: 'Character', label: '2-character', caption: 'Eleven slots, and gear that matters' },
   { screen: 'Gathering', label: '3-gathering', caption: 'Every trade advances on its own' },
   { screen: 'Village', label: '4-village', caption: 'A village that grows with you' },
-  { screen: 'Ancestors', label: '5-ancestors', caption: 'A bloodline that outlives a season' },
+  { screen: 'Bloodline · Ancestors', label: '5-ancestors', caption: 'A bloodline that outlives a season' },
   { screen: 'Codex', label: '6-codex', caption: 'Learn a monster by killing enough of them' },
 ];
 

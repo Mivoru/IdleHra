@@ -103,8 +103,13 @@ describe('the objective track', () => {
   });
 
   it('raises the market when the bags are nearly full, not when they are empty', () => {
-    expect(idsDueOn({ InventorySpaceRemaining: 100 })).not.toContain('sell_on_the_market');
-    expect(idsDueOn({ InventorySpaceRemaining: 4 })).toContain('sell_on_the_market');
+    expect(idsDueOn({ CurrentLevel: 10, InventorySpaceRemaining: 100 })).not.toContain('sell_on_the_market');
+    expect(idsDueOn({ CurrentLevel: 10, InventorySpaceRemaining: 4 })).toContain('sell_on_the_market');
+  });
+
+  // Task 60: an objective never points at a greyed menu button.
+  it('does not send a player to the Market before it opens at level 10', () => {
+    expect(idsDueOn({ CurrentLevel: 3, InventorySpaceRemaining: 4 })).not.toContain('sell_on_the_market');
   });
 
   it('names the Town Hall only when it is the thing in the way', () => {

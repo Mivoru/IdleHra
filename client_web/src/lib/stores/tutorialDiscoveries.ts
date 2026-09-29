@@ -22,6 +22,19 @@
 // The full step list, the reasoning behind each predicate, and the four
 // triggers the packet CANNOT express are in docs/onboarding_steps.md.
 import type { StateUpdate } from '../net/protocol.generated';
+// Task 60: the systems whose screen unlocks share their predicate with the
+// moment that announces it - see ui/unlocks.ts.
+import {
+  forgeOpen,
+  delveOpen,
+  marketOpen,
+  breedingGroundsBuilt,
+  characterIsAgeing,
+  canBuyInheritance,
+  DELVE_FIRST_ENTRY_GOLD,
+  FORGE_OPEN_LEVEL,
+  MARKET_OPEN_LEVEL,
+} from '../ui/unlocks';
 
 /**
  * The facts a moment needs that are NOT on the state packet.
@@ -52,6 +65,7 @@ export type DiscoveryId =
   | 'village'
   | 'region2'
   | 'market'
+  | 'delve'
   | 'forge'
   | 'town_hall'
   | 'guild'
@@ -79,12 +93,6 @@ interface DiscoveryRule extends DiscoveryMoment {
 
 /** WorldBossEventState. Mirrors BossEventState in net/commands.ts. */
 const BOSS_ACTIVE = 1;
-
-/** AGE_PHASES in ui/slots.ts is Child / Adult / Veteran / Elder. */
-const AGE_PHASE_VETERAN = 2;
-
-/** inheritanceUpgradeCost(0) - the cheapest thing that screen can sell. */
-const CHEAPEST_INHERITANCE_LEVEL = 40;
 
 /**
  * Modul: VillageManagementEngine.GetMaxBuildingLevelCeiling, mirrored.
@@ -207,26 +215,40 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     id: 'market',
     system: 'Market',
     screen: 'market',
-    title: 'Gold worth spending',
-    // Modul: market activity is entirely REST, so "has listed" and "has
-    // bought" are both unavailable here. Wealth is the honest packet-side
-    // stand-in, and it is also the moment the screen becomes interesting.
-    reached: (s) => Number(s.Gold) >= 5000,
+    title: 'The Market and guilds are open',
+    // Task 60: was Gold >= 5000 (market activity is REST-only, so wealth
+    // stood in for it). It is now the rule that un-greys the Market and
+    // Guild buttons, so this card is their "new" card.
+    reached: marketOpen,
     body:
-      'The Market is gear other players listed, at prices they set. The seller pays a ' +
-      'wealth-scaled burn out of the sale, so what you pay is not what they keep - which is ' +
-      'why listings undercut each other less than you would expect.',
+      `From level ${MARKET_OPEN_LEVEL} the Market and Guilds are yours. The Market is gear ` +
+      'other players listed, at prices they set; the seller pays a wealth-scaled burn out of ' +
+      'the sale, so what you pay is not what they keep. A guild pays every member buffs ' +
+      'funded by what the members donate.',
+  },
+  {
+    id: 'delve',
+    system: 'The Delve',
+    screen: 'delve',
+    title: 'The Delve is open',
+    reached: delveOpen,
+    body:
+      `A dive costs gold - ${DELVE_FIRST_ENTRY_GOLD.toLocaleString('en-US')} in the first region - ` +
+      'and pays diamonds if your nerve holds. Eight floors, three doors each; bank what you ' +
+      'have or push on, and three failures lose the lot.',
   },
   {
     id: 'forge',
     system: 'Forge',
     screen: 'forge',
-    title: 'The Forge fuses and rerolls',
-    reached: (s) => Number(s.ForgeLevel) >= 1,
+    title: 'The Forge is open',
+    // Task 60: the rule that un-greys the Forge button (level 5 or a built
+    // Forge). Rerolls need no building; fusion does.
+    reached: forgeOpen,
     body:
-      'Fusion turns two items into one better item; a reroll changes the affixes on a single ' +
-      'item, and you can lock the affix you want to keep. The Forge BUILDING level is the ' +
-      'rarity ceiling: a level 5 Forge cannot fuse past rarity 5.',
+      'A reroll changes the affixes on an item you own, and you can lock the one you want to ' +
+      'keep. Fusion turns three identical items into one of the next rarity, and needs a ' +
+      `Forge in the village: its level is the rarity ceiling. Opens at level ${FORGE_OPEN_LEVEL}.`,
   },
   {
     id: 'town_hall',
@@ -260,7 +282,7 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     system: 'Breeding',
     screen: 'breeding',
     title: 'The Breeding Grounds are built',
-    reached: (s) => Number(s.BreedingLevel) >= 1,
+    reached: breedingGroundsBuilt,
     body:
       'Pair two of your characters, or one of them with a villager, and the child inherits ' +
       'their aptitudes. Rarer races come out of exactly this - breeding is the only way to ' +
@@ -309,9 +331,7 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     // Modul: age phase, not "a second character exists". AGE_PHASES is
     // Child / Adult / Veteran / Elder, so >= 2 is "someone is getting old",
     // which is when the rollover cull stops being abstract.
-    reached: (s) =>
-      Math.max(Number(s.Slot1_AgePhase), Number(s.Slot2_AgePhase), Number(s.Slot3_AgePhase)) >=
-      AGE_PHASE_VETERAN,
+    reached: characterIsAgeing,
     body:
       'Levels, gear, gold and the village all reset at the end of a season. The Hall of ' +
       'Ancestors is the short list of people who carry through it, and anyone you have not ' +
@@ -325,7 +345,7 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     // Modul: gated on being able to AFFORD one. Telling a player about a shop
     // they cannot buy from is how the old step two - "craft something", on an
     // account with no materials - became an instruction nobody could follow.
-    reached: (s) => Number(s.PremiumCurrencyBalance) >= CHEAPEST_INHERITANCE_LEVEL,
+    reached: canBuyInheritance,
     body:
       'Inheritance bonuses are bought with diamonds and are the one thing a season reset ' +
       'leaves completely untouched. Everything else you own is temporary.',
