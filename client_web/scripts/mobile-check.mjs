@@ -12,7 +12,7 @@ const BASE = process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/';
 const WIDTHS = [320, 360, 414];
 const SCREENS = [
   'Character', 'Chest', 'Combat', 'Gathering', 'Forge', 'Market',
-  'Village', 'Progress', 'Skill Tree', 'Supplies', 'Crafting', 'Store',
+  'Village', 'Progress', 'Skill Tree', 'Supplies', 'Crafting',
   'Codex', 'Bloodline', 'Settings', 'Social', 'Guild',
   'World Boss', 'Map', 'Mail',
 ];

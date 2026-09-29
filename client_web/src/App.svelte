@@ -2,6 +2,7 @@
   import { QueryClientProvider } from '@tanstack/svelte-query';
   import Login from './routes/Login.svelte';
   import ChatDock from './lib/ui/ChatDock.svelte';
+  import { chatHandleInHeader } from './lib/stores/chatDock';
   import { screenRequest, signOutRequest, publishCurrentScreen } from './lib/stores/navigation';
   import Hub from './routes/Hub.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
@@ -147,6 +148,14 @@
       ],
     },
   ] as const;
+
+  // Modul: TASK 71 - A MENU ENTRY THAT LEADS TO "NOTHING HERE YET" IS NOT AN
+  // ENTRY. The Store has no product (owner, 2026-09-28: simulation speed and
+  // the diamond packs removed, Stripe parked), so its button only ever opened
+  // an empty page. The screen, its key and its route stay - the purchase path
+  // is intact for when payments are set up - and the day it sells something,
+  // it comes off this list.
+  const MENU_HIDDEN: ReadonlySet<string> = new Set(['store']);
 
   // Modul: SCREENS REACHED THROUGH A TAB, not a menu entry (task 59). Each
   // keeps its own key, so everything that names a screen - the tutorial's
@@ -585,6 +594,7 @@
                      menu says what is coming. A link from another screen
                      still opens it; this only declutters the menu. -->
                 {@const locked = $screenLocks(item.key)}
+                {#if !MENU_HIDDEN.has(item.key)}
                 <button
                   class:active={menuKeyOf(screen) === item.key}
                   class:coachmark={menuKeyOf($coachTargetScreen) === item.key}
@@ -603,6 +613,7 @@
                   {#if locked}<span class="lock-req">{locked}</span>{/if}
                   {#if item.key === 'mailbox'}<MailBadge />{/if}
                 </button>
+                {/if}
               {/each}
             </div>
           </div>
@@ -626,6 +637,13 @@
                that renders as nothing reads as a missing feature. -->
           <Money amount={snap.PremiumCurrencyBalance} kind="diamond" icon />
         </span>
+      {/if}
+
+      {#if $chatHandleInHeader}
+        <!-- Task 71: the chat's quiet home. See stores/chatDock.ts. -->
+        <button class="chat-head" onclick={() => chatDockOpen.set(true)} aria-label="Show chat, nobody online">
+          Chat
+        </button>
       {/if}
 
       <span class="phase" data-phase={$connectionStatus.phase}>
@@ -898,8 +916,10 @@
       order: 0;
     }
 
-    /* The event chip and the halt badge (order 1) sit left of the menu. */
-    .halt {
+    /* The event chip, the halt badge and the quiet chat button (order 1)
+       sit left of the menu. */
+    .halt,
+    .chat-head {
       order: 1;
     }
 
@@ -927,6 +947,12 @@
     align-items: baseline;
     gap: 0.6rem;
     font-size: 0.85rem;
+  }
+
+  .chat-head {
+    font-size: 0.8rem;
+    width: auto;
+    opacity: 0.8;
   }
 
   .phase {

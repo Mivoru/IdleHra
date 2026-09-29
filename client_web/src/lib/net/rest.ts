@@ -335,10 +335,14 @@ export interface OnlineStats {
   OnlineCount: number;
 }
 
-export async function fetchOnlineStats() {
-  const res = await fetch('/api/v1/stats/online');
-  if (!res.ok) throw new Error('Failed to fetch online stats');
-  return res.json() as Promise<OnlineStats>;
+// Modul: THROUGH authedGet, LIKE EVERY OTHER CALL. This was a bare relative
+// `fetch('/api/v1/stats/online')`, which asks the PAGE's origin - the same
+// host as the API behind Caddy on the web, but Vite on a dev box and the
+// bundled files inside the phone app, both of which answer with HTML. The
+// count therefore read 0 everywhere but the website (found in task 71, when
+// the chat handle's "nobody online" state depended on it loading at all).
+export function fetchOnlineStats(): Promise<OnlineStats> {
+  return authedGet<OnlineStats>('/api/v1/stats/online');
 }
 
 // ---------------------------------------------------------------------------
