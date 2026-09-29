@@ -39,8 +39,10 @@
     },
     4: {
       key: 'EventDiamondStar',
-      // ForgeSplicingEngine: `baseProbability += 0.05`.
-      effect: '+5 percentage points forge success',
+      // ForgeSplicingEngine: `feeDiscount + 0.05`. Fusion has had no roll
+      // since 2026-09-06, so the old "+5 percentage points forge success"
+      // promised a chance that does not exist; the event is a fee discount.
+      effect: '5% off fusion fees',
       tone: 'accent',
     },
   };

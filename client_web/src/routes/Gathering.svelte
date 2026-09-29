@@ -244,8 +244,8 @@
     <section class="panel">
       <h3>Mastery</h3>
       <p class="dim small">
-        Each profession levels on its own. Higher mastery cuts two ticks per
-        gather off that profession's nodes.
+        Each profession levels on its own. Mastery makes that profession's
+        nodes faster, most of all in the first levels.
       </p>
       <dl class="mastery">
         {#each MASTERY_TRACKS as track (track.id)}
@@ -276,8 +276,12 @@
         <div>
           <dt>Mastery</dt>
           <dd class="bonus">
-            -{masteryLevelOf(0) * 2} wood, -{masteryLevelOf(1) * 2} mining,
-            -{masteryLevelOf(2) * 2} fish
+            <!-- Modul: this printed `-level * 2` ("-112 mining") for weeks after
+                 mastery stopped subtracting ticks - the retired rule, shown
+                 beside rates that already used the new one. The label reads
+                 the same masterySpeedPct the rates do, so the two cannot part. -->
+            +{masterySpeedPct(masteryLevelOf(0))}% wood, +{masterySpeedPct(masteryLevelOf(1))}% mining,
+            +{masterySpeedPct(masteryLevelOf(2))}% fish speed
           </dd>
         </div>
         <div>
