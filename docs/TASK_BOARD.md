@@ -1,6 +1,13 @@
 # FolkIdle Task Board
 
-> **START HERE (updated 2026-09-28). The front of the board is TASKS 48-62,
+> **START HERE (updated 2026-09-29). The front of the board is TASKS 68-88,
+> at the bottom of this file: the second design audit (2026-09-29).** Work
+> them in the order of that section's table; the "How to work" rules of tasks
+> 48-62 still apply. The audit itself is the claude.ai artifact
+> 5di35DqxEfb5zpNUh5Sxsy (Czech). Tasks 48-67 below are done except 62
+> (parked).
+>
+> **PREVIOUS START HERE (2026-09-28). The front of the board was TASKS 48-62,
 > at the bottom of this file: the follow-through of the 2026-09-28 design
 > audit.** Do them in the order of the table in that section. Task 48 (the
 > deploy) is URGENT: the active season ends on **2026-11-02 09:40 UTC**, and
@@ -5047,3 +5054,323 @@ Firebase, stays). `tests/push.test.ts` pins that `register` is never reached.
 FCM credentials, and build with `VITE_FOLKIDLE_PUSH=1` - the phone bundle is
 built by Docker on the box, so the variable goes in `ops/oracle/docker-compose.yml`
 beside `VITE_FOLKIDLE_SERVER`.
+
+---
+
+# Tasks 68-88: the 2026-09-29 second design audit
+
+Added 2026-09-29 from the second audit (claude.ai artifact
+5di35DqxEfb5zpNUh5Sxsy, Czech). It was built from the code, 51 screenshots
+(dev fixture at 390 and 1366 px, a new guest) and read-only production
+queries. It builds on 48-67 and does not repeat them.
+
+**The two findings everything below hangs on (production, 2026-09-29):**
+- **The top of the economy stops asking questions.** The owner's account
+  (level 97, 77 h online) holds 202,420,654 gold, 1,831,272 frostpine logs,
+  1,670,862 silver ore and ten more stacks over 100,000. The most expensive
+  village level costs `100 * 1.5^(level mod 5)`, at most 507 of a material.
+  Lifetime: 31,981 affix rerolls, 387 fusions, 57 crafts. The endgame is one
+  loop, the reroll.
+- **Six of 24 menu entries wait for players who are not there.** Market,
+  Guild, Friends, Leaderboards, Chat and the world boss percentiles. The
+  population is the owner plus friends (owner, 2026-09-28).
+
+**Owner decisions in force:** everything listed under "Owner decisions in
+force (2026-09-28)" in the 48-62 section. Answer the owner in Czech; repo
+prose in English. Loot below Rare stays silent.
+
+## Order
+
+| # | Task | Size | Needs the owner? |
+|---|---|---|---|
+| 68 | Three screens state rules the game does not have - **PR #102** | S | no |
+| 69 | Fuse a whole stack in one action - **PR #103** | S-M | no |
+| 70 | "New" cards stop covering the screen - **premise corrected, see the task** | S | no |
+| 71 | Chat handle off the controls; empty Store out of the menu | S | no |
+| 72 | A locked region says what is missing; Continue and Again buttons | S | no |
+| 73 | Home answers "what now" before the painting | M | show a screenshot first |
+| 74 | Small bundle: rarity tooltip, points badge, number format, reroll history, material names | S-M | no |
+| 75 | Book of Deeds: chapters II-IV open together | S | **yes, one line** |
+| 76 | One "Community" menu entry | S | **yes, one line** (renames) |
+| 77 | Village "Work slots": verify, then remove or collapse | S | no |
+| 78 | Hunting advisor: honest estimates on every monster | M-L | no |
+| 79 | Gold ledger and material flow; Treasury counts gold spent | M | Treasury: **yes** |
+| 80 | Breeding Grounds above level 1 | S | **yes, which option** |
+| 81 | Chest rules and row actions | M | no |
+| 82 | Desktop header as five groups | S-M | show a screenshot first |
+| 83 | Workshop commissions (the material sink) | L | **design with the owner** |
+| 84 | Great Works (the long material sink) | L | **design with the owner** |
+| 85 | Orders: automation rules as a reward | L | **design with the owner** |
+| 86 | A deterministic affix step beside the reroll | M | **design with the owner** |
+| 87 | Boss Ascension ladder | M | reward shape, once |
+| 88 | Rebirth on demand instead of a calendar season | XL | **owner decision (O3)** |
+
+Recommended batches: **68 + 69 + 70** first (felt every session, no owner
+input), then **71 + 72 + 74**, then **73 + 82** (one look at the shell), then
+**78**, then the design tasks 83-88 one conversation at a time.
+
+---
+
+## 68. Three screens state rules the game does not have
+
+**What is actually true:**
+- `Gathering.svelte` prints the Mastery line as `-{level * 2}` ("-112
+  mining") and says mastery "cuts two ticks per gather". That rule was
+  retired; the server adds `40 * sqrt(level)` percent speed
+  (`GatheringToolEngine.GetMasterySpeedBonusPct`), and the same screen's rates
+  already use it (`masterySpeedPct`, pinned by `serverMirrors.test.ts`).
+  Mastery 56 is +299 %, not "-112".
+- `EventBanner.svelte` says Diamond Star gives "+5 percentage points forge
+  success". Fusion has no roll since 2026-09-06; `ForgeSplicingEngine` turns
+  the event into 5 % off the fee (`feeDiscount + 0.05`).
+- `OfflineSummary.svelte` advises "leave a harder monster running and this
+  goes up". XP and gold per kill are proportional to monster HP, so the rate
+  is the player's DPS; a harder monster's armour and dodge lower it.
+
+**Build:** correct all three. The mastery line reads `masterySpeedPct`. Add a
+vitest in the style of `wiki.test.ts` that reads the event effect out of
+`ForgeSplicingEngine.cs` and fails if the banner's text drifts from it.
+
+**Done when:** the three texts are true, the guard test passes, and a grep for
+`forge success` and `two ticks` in `client_web/src` finds only comments.
+
+## 69. Fuse a whole stack in one action
+
+**What is actually true:** fusion is three selects and a button, one fusion
+per press (`ExecuteFusionAsync(target, sac1, sac2)`). The Forge lists "Ready to
+fuse" chips; the audit said they do nothing when clicked, which was WRONG -
+they fill the single fusion (`pickSet`). The dev fixture holds 7,550 Normal
+Birch Axes; fusion is deterministic 3:1, so the only decision is how far up.
+
+**Build:**
+- Server: a batch that fuses one BaseItemId from rarity A up to rarity B (at
+  most the Forge's ceiling), in one transaction, charging each step's fee
+  through the same code the single fusion uses. It never consumes a locked or
+  equipped item, and it stops cleanly when gold runs out. It returns what it
+  made (counts per rarity, gold spent).
+- A preview (read-only) of the same plan: fusions, gold, the result.
+- Client: a click on a chip fills the single fusion; each chip also gets
+  "Fuse up to..." with the preview and one confirm.
+- Use the `add-command` skill if it goes over the wire; a REST POST under the
+  account stripe lock is also fine (CLAUDE.md, mutating REST handlers).
+
+**Done when:** a server test fuses 30 Normals up to Rare in one call (3 Rare,
+the right gold charged, locked pieces untouched, one row per result);
+`exercise.mjs` fuses a stack and the chest count moves by the expected amount
+and is restored; `check:touch` passes.
+
+## 70. "New" cards stop covering the screen
+
+**CORRECTED 2026-09-29, before building.** The audit said the card sits "in
+the middle of every screen". It does not: `OnboardingCoach` is
+`position: fixed` at the BOTTOM, reserves body padding, and starts folded on a
+phone. The audit's full-page screenshots drew the fixed panel at its viewport
+offset, mid-page - the same artefact the 2026-09-28 plan already recorded as a
+correction. So the toast redesign below was dropped.
+
+**What IS true (a viewport screenshot at 1366x900):** on a desktop an
+expanded discovery or objective card stays open across every screen until
+"Got it", covering the bottom ~135 px of the view (Gathering's node lists, the
+Forge's list) until the player scrolls.
+
+**Built instead (small):** once the player moves to another screen, a
+discovery or objective card folds to its title line (one tap re-opens it).
+Tutorial steps are untouched. `exercise.mjs` opens a folded card by its
+header before pressing "Got it".
+
+The original task follows.
+
+**Build:** a discovery becomes a toast in the corner (about 4 s, held while
+the pointer moves over it, like `LootReveal`) with "Take me there", and it is
+listed under a "New (n)" entry until opened. The guided first two tutorial
+steps are NOT touched (owner decision: a fence).
+
+**Done when:** no discovery covers a control (`check:overlap` clean on every
+screen with a pending discovery), the seen-set still syncs, `exercise.mjs`
+stays green.
+
+## 71. Chat handle off the controls; empty Store out of the menu
+
+- The floating "Chat · 0" handle sits over Gathering's Gather button at
+  1366 px. At 0 online it becomes a header icon; otherwise the main column
+  reserves the corner.
+- The Store says "Nothing here yet" (owner, 2026-09-28). Hide its menu entry
+  until it has a product; keep the route.
+
+**Done when:** no chat handle overlaps a button at 390 / 1366 px (measure it;
+`check:overlap` does not see the handle as a page control, so extend it), and
+`screens.mjs` / the Wiki ledger reflect the Store change.
+
+## 72. A locked region says what is missing; Continue and Again buttons
+
+- A locked region's banner names the boss and the gear it asks for, against
+  what the player wears ("Magma Wyrm asks for Mythic gear; you wear Epic").
+  The requirement is already server data (`BossFirstClearRules`); send it, do
+  not copy it into the client.
+- Combat's idle state ("Not in combat.") offers "Continue: <last monster>"
+  for the fielded character (remember it in `prefs.ts`).
+- The death card offers "Again" (same monster) and "One easier" beside the
+  existing Auto-Eat / Combat links.
+
+**Done when:** `exercise.mjs` presses Continue and a fight starts; a new
+account's locked region shows the requirement.
+
+## 73. Home answers "what now" before the painting
+
+**What is actually true:** at 1366 px the painted map is ~745 px tall and the
+"Right now" / "Closest goal" cards are below the fold. "Right now" shows race
+names ("Human · Idle"), not the characters' names, and "Give a job" goes to
+Character's native select plus Assign (a known Android trap,
+`client_web/CLAUDE.md`).
+
+**Build:** cards first, map as a short strip below them. Character names.
+"Give a job" = one tap for the character's last activity, two for a picker
+(no native `<select>`). Add an offline-cap line ("the 12 h offline limit fills
+in 9 h 40 min") and a "Next unlock" line (the next region's boss and what it
+asks for, from 72's data). `exercise.mjs` clicks the map plates; keep them.
+
+**Done when:** at 390 and 1366 px the cards are in the first viewport; the
+owner has seen a screenshot; the geometry checkers are clean.
+
+## 74. Small bundle
+
+Each is independent:
+- Rarity tooltip everywhere a rarity is named: name, tier number, power
+  multiplier (from the mirrored `powerMultiplier`).
+- A badge on the Character tab while any character has unspent attribute
+  points.
+- One number format (`format.ts`): whole numbers with a thin space up to
+  100,000, compact above, exact in the title; separator by UI language.
+- Reroll history: the last 20 results on a piece and its best roll, client
+  side from the command results.
+- Rename the "Mat ..." items in `items.json` (dev prefix shown to players);
+  decide whether the old gathering primitives (Raw Log, Wood, Oak Log) are
+  converted or listed under "Old materials". Mind the two namespaces
+  (server/CLAUDE.md).
+
+**Done when:** `npm test`, the ratchet and `exercise.mjs` are green; content
+validation passes.
+
+## 75. Book of Deeds: chapters II-IV open together
+
+**What is actually true:** chapters open in sequence, so Hunters waits on
+Smiths' "Fuse fifty times". Chapter I already teaches the loops in order.
+
+**Build:** after chapter I is sealed, II, III and IV are open together; V
+opens at two Seals. Seals and their skill points are unchanged. Server
+(`DeedRegistry` open rule), because a Seal pays permanent points.
+
+**Ask the owner first:** it lets Seals come faster for a player who plays one
+loop. **Done when:** `SealEngine` tests cover the new open rule.
+
+## 76. One "Community" menu entry
+
+Market, Friends, Guild and Leaderboards become tabs of one entry
+(`TAB_FAMILIES`, as Supplies and Bloodline did). Mail stays its own entry
+(world boss rewards land there). Update `screens.mjs`, the Wiki ledger and
+the unlock rules (Market/Guild at level 10 lock their tabs, not the entry).
+
+**Ask the owner first** (it renames things they know).
+
+## 77. Village "Work slots": verify, then remove or collapse
+
+The Village lists "Work slots" - 168 rows of "Slot N · idle" on the fixture
+("production slots, not people"). Run the `wiring-auditor` agent on it: if no
+server code reads those rows, remove the panel (and note the table under
+"Known dead code"); if something does, collapse it to one summary line.
+
+## 78. Hunting advisor: honest estimates on every monster
+
+**What is actually true:** a monster row shows HP and XP only. Because XP and
+gold scale with HP, where to farm is a function of gear alone: survival and
+the loot table. The server can already simulate a fight
+(`BossGearBenchmark.ProjectChallenge`).
+
+**Build:** `GET /api/v1/combat/projection?slot=N` - for each unlocked monster:
+kill time as a range, XP/h, gold/h, wins with food / without, food per hour.
+Cached per character for a minute. Combat shows one line per row and the drops
+on expand. No formula on the client.
+
+**Done when:** a server test pins the projection against a simulated fight
+within a tolerance; the line reads "estimate"; `check:perf` does not regress.
+
+## 79. Gold ledger and material flow; Treasury counts gold spent
+
+- Count gold out by category at the places it is charged (reroll, fusion,
+  village, Delve/Deep, recruit, market fee) and in by source (kill, Town Hall,
+  sale). Progress -> Statistics shows the split.
+- Material flow per day: gathered, spent, lost to the Warehouse cap.
+- Treasury (Lifetime) pays for HOLDING gold, which discourages spending in an
+  economy that already under-spends. **Ask the owner** whether it moves to
+  gold spent; tiers already paid stay paid.
+
+**Done when:** the ledger survives a relogin and a test pins each writer.
+
+## 80. Breeding Grounds above level 1
+
+The Wiki says it outright: "nothing above level 1 has an additional effect".
+**Owner picks one:** a breeding cooldown cut per level (for example 5 % a
+level, floor 50 %), or a cap at level 1 with "complete" on the card. Either
+way the player stops paying for nothing.
+
+## 81. Chest rules and row actions
+
+- Five buttons per equipment row (Unequip, Reroll, Lock, Sell, Bin) become one
+  primary action plus the existing `ContextMenu`.
+- Saved rules ("sell everything below tier X from region Y; locked never")
+  that run on each drop - an extension of `AutoSalvageBelowTier`. Mind the two
+  gold paths (server/CLAUDE.md).
+- A 5 s undo on a sale (the client delays the send; no server change).
+
+## 82. Desktop header as five groups
+
+24 buttons in two rows plus the event chip take ~215 px. Collapse to five
+dropdown groups (Play / Items / Village / You / Community) at desktop widths;
+keys 1-5 stay. Show the owner a screenshot first.
+
+## 83. Workshop commissions (the material sink) - design with the owner
+
+The Crafting Workshop's level is read by nothing and crafting always makes a
+Normal (57 crafts, lifetime). Proposal: a commission makes a region piece with
+a rarity FLOOR set by the Workshop level (T2-T6) and one chosen affix at
+Common, for materials in the tens of thousands, taking real time to finish
+(`PlayerCraftingSlot.CompletionEpoch` exists and nothing writes it). Prices
+come from `GatheringEconomyTests`, not guesses. The floor must stay below the
+region's median drop, checked in `PowerCeilingTests`. Time to region 5 (~26
+days, LONG_GAME_SPEC section 7) must not drop below ~20.
+
+## 84. Great Works (the long material sink) - design with the owner
+
+Village monuments in five stages, each stage eating 50,000 to 2,000,000 of one
+region's materials, each visibly changing the Home map, each paying a small
+permanent bonus that survives the season (for example +1 % gathering, +1 h
+offline limit, a Hall slot, a frame). The owner's task 38 notes already name
+"Great Works"; this is the solo version. Every bonus goes into
+`PowerCeilingTests` with a cap.
+
+## 85. Orders: automation rules as a reward - design with the owner
+
+Up to three rules per character, unlocked by progress: when the larder runs
+dry, fish in X; after a death, one monster easier; fuse stacks up to tier N.
+Server-side on the halt event, and the offline path must know the rules too
+("three paths grow a level" is the same lesson).
+
+## 86. A deterministic affix step beside the reroll - design with the owner
+
+For region materials, add or replace one CHOSEN affix at Common rarity, so
+randomness stays in magnitude only. Also: an auto-reroll stop on a
+combination, and the reroll history from 74.
+
+## 87. Boss Ascension ladder
+
+Boss challenges become a ladder of 10 per boss, each step adding one modifier
+(boss attack +15 %, one larder slot, time limit -10 %), calibrated with
+`BossChallengeCalibrationTests`. Rewards are cosmetics and titles only.
+
+## 88. Rebirth on demand instead of a calendar season - owner decision
+
+Seasons are paused by hand because the calendar would wipe the owner's level
+96. Proposal: the player triggers the rollover (prestige), seeing what carries
+(Seals, the Hall, aptitudes, Inheritance, shards) against what is lost. It is
+the same question as O3 and changes what a season means, so it is not built
+without the owner.
