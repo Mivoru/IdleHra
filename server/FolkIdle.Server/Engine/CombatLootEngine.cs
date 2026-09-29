@@ -528,7 +528,14 @@ namespace FolkIdle.Server.Engine
                 Kills = kills,
                 BonusRarityTiers = bonusRarityTiers,
                 SkipMaterialRoll = skipMaterialRoll,
-                AutoSalvageBelowTier = payload.AutoSalvageBelowTier,
+                // Modul: the per-region rules are folded in HERE (task 81), so
+                // the request still carries one tier and the worker's salvage
+                // test is unchanged. The region is the monster's region, the
+                // same one ProcessMonsterLootDropAsync stamps on the piece.
+                AutoSalvageBelowTier = ChestSalvageRules.EffectiveTier(
+                    payload.AutoSalvageBelowTier,
+                    payload.AutoSalvageRegionTiers,
+                    ContentRegistry.GetMonsterRegionTier(monsterId)),
                 Source = source,
                 HasGoldenFleece = payload.Skill_GoldenFleece > 0,
 

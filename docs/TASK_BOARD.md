@@ -5348,6 +5348,23 @@ way the player stops paying for nothing.
   gold paths (server/CLAUDE.md).
 - A 5 s undo on a sale (the client delays the send; no server change).
 
+**DONE 2026-09-29.**
+- **Row.** The row keeps Equip/Unequip. Reroll in Forge, Lock/Unlock, Sell and
+  Bin moved to a "More" menu. `ContextMenu` is generic now and Chat uses the
+  same component. A locked piece shows a "Locked" badge on the row, and a
+  phone row is one line (56px, down from 78).
+- **Rules.** The Chest has an "Auto-sell rules" panel: one floor for all
+  regions plus one per region. A region rule can only RAISE the floor,
+  because the server takes the larger (`ChestSalvageRules`). The rules are
+  stored packed on `PlayerRecord.AutoSalvageRegionTiers` (migration
+  `AddAutoSalvageRegionRules`) and folded into the request's one tier in
+  `CombatLootDropRequest.Build`. The worker and both gold paths are
+  unchanged. Settings only points to the Chest now.
+- **Undo.** Sell and Sell all wait 5 s with an Undo button. Leaving the screen
+  sends the sale. Closing the tab keeps the item.
+- **Not "locked never".** A rule runs before the row exists, so there is
+  nothing locked for it to skip.
+
 ## 82. Desktop header as five groups
 
 24 buttons in two rows plus the event chip take ~215 px. Collapse to five

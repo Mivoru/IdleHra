@@ -27,6 +27,7 @@
     toggleChestLock,
     bulkClearChest,
     fetchChestSettings,
+    saveChestSettings,
     type InventoryEquipment,
     type InventoryStack,
   } from '../lib/net/rest';
@@ -43,14 +44,17 @@
   import { requestScreen, setPendingFocusEquipment } from '../lib/stores/navigation';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import { isNarrow } from '../lib/ui/media';
+  import ContextMenu, { type MenuItem } from '../lib/ui/ContextMenu.svelte';
+  import { onDestroy } from 'svelte';
+  import { SvelteMap } from 'svelte/reactivity';
 
   // Modul: TWO NUMBERS FOR ONE CONTRACT, because the row has two shapes.
   //
   // VirtualList positions rows by arithmetic, so whatever `.row` actually
-  // renders as, this has to match it. Below 40rem the action buttons take a
-  // line of their own (see the .actions wrapper in the markup and the 40rem
-  // media block in this file's styles), which is one 44px touch row plus the
-  // name line plus the gaps between them.
+  // renders as, this has to match it. Below 40rem the name and rarity stack
+  // into two short lines beside the two 44px buttons (see `.label` in the
+  // 40rem media block), so the row is one touch target plus its padding. It
+  // was 78 while the row carried five buttons on a second line of their own.
   //
   // Modul: do NOT write a literal style or script tag in a comment here. The
   // Svelte parser scans this block as raw text looking for its closing tag,
@@ -62,7 +66,7 @@
   // and this number have to agree, and two literals a reader can compare are
   // easier to keep honest than one indirection they have to resolve.
   const ROW_H_WIDE = 34;
-  const ROW_H_NARROW = 78;
+  const ROW_H_NARROW = 56;
   const equipmentRowHeight = $derived($isNarrow ? ROW_H_NARROW : ROW_H_WIDE);
 
   const client = useQueryClient();
@@ -372,9 +376,190 @@
   }
 
   // Binning is irreversible and sits next to a button that is not, so it asks
-  // once. Selling does not - the gold is a receipt and the market still has
-  // the item's value written down.
+  // once. Selling does not ask, because it has an undo (below).
   let confirming = $state<string | null>(null);
+
+  // ---------------------------------------------------------------------------
+  // The row menu (task 81)
+  // ---------------------------------------------------------------------------
+
+  // Modul: ONE ACTION ON THE ROW, THE REST IN A MENU. A row carried five
+  // buttons (Equip/Unequip, Reroll, Lock, Sell, Bin), and on a phone they took
+  // a second line of their own. The row keeps the action a player takes most,
+  // wearing the piece, and the others open from the "More" button in the
+  // shared ContextMenu. The lock state could only be read off its button
+  // before, so it is a badge on the row now. A lock you cannot see is a lock
+  // you have to click to check.
+  let menu = $state<{ x: number; y: number; item: InventoryEquipment } | null>(null);
+
+  function openMenu(e: MouseEvent, item: InventoryEquipment) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    confirming = null;
+    menu = { x: rect.left, y: rect.bottom + 4, item };
+  }
+
+  const menuItems = $derived.by((): MenuItem[] => {
+    if (!menu) return [];
+    const item = menu.item;
+    const label = prettifyBaseId(item.BaseItemId);
+    const blocked = item.IsEquipped ? 'Worn - take it off first' : item.IsAffixLocked ? 'Locked - unlock it first' : '';
+    const binKey = `eq:${item.Id}`;
+    return [
+      { label: 'Reroll in Forge', title: "Reroll this piece's affixes in the Forge", onSelect: () => openRerollInForge(item.Id) },
+      {
+        label: item.IsAffixLocked ? 'Unlock' : 'Lock',
+        title: item.IsAffixLocked
+          ? 'Locked - cannot be sold, binned, swept, rerolled or fused. Unlock it.'
+          : 'Lock this piece so nothing can sell, bin, sweep, reroll or fuse it',
+        onSelect: () => toggleLock(item.Id, label),
+      },
+      {
+        label: 'Sell',
+        disabled: busy || blocked !== '',
+        title: blocked,
+        onSelect: () => queueSale({ equipmentId: item.Id }, label, `eq:${item.Id}`),
+      },
+      confirming === binKey
+        ? {
+            label: 'Really bin',
+            danger: true,
+            separated: true,
+            disabled: busy,
+            onSelect: () => {
+              confirming = null;
+              act({ equipmentId: item.Id }, false, label);
+            },
+          }
+        : {
+            label: 'Bin',
+            separated: true,
+            disabled: busy || item.IsEquipped,
+            title: item.IsEquipped ? 'Worn - take it off first' : '',
+            keepOpen: true,
+            onSelect: () => (confirming = binKey),
+          },
+    ];
+  });
+
+  // ---------------------------------------------------------------------------
+  // Undo on a sale (task 81)
+  // ---------------------------------------------------------------------------
+
+  // Modul: THE CLIENT HOLDS THE SALE FOR FIVE SECONDS, AND THE SERVER NEVER
+  // KNOWS. A sale is final on the server and a mis-tap on a crowded row sold
+  // the wrong piece. Instead of a server-side undo (a second write path for
+  // gold, see server/CLAUDE.md "Two gold paths"), the request is not sent until
+  // the window closes. Undo just forgets it.
+  //
+  // Leaving the screen SENDS what is pending (onDestroy), because navigating
+  // away is not changing your mind. Closing the tab inside the window sends
+  // nothing, which keeps the item. That is the safe direction to fail in.
+  const UNDO_MS = 5000;
+  type SaleTarget = { equipmentId: number } | { itemId: string; quantity: number };
+  const pendingSales = new SvelteMap<string, { target: SaleTarget; label: string; deadline: number; timer: ReturnType<typeof setTimeout> }>();
+  let now = $state(Date.now());
+
+  function queueSale(target: SaleTarget, label: string, key: string) {
+    if (pendingSales.has(key)) return;
+    const timer = setTimeout(() => commitSale(key), UNDO_MS);
+    pendingSales.set(key, { target, label, deadline: Date.now() + UNDO_MS, timer });
+    now = Date.now();
+  }
+
+  function commitSale(key: string) {
+    const pending = pendingSales.get(key);
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    pendingSales.delete(key);
+    void act(pending.target, true, pending.label);
+  }
+
+  function undoSale(key: string) {
+    const pending = pendingSales.get(key);
+    if (!pending) return;
+    clearTimeout(pending.timer);
+    pendingSales.delete(key);
+    pushLocalNotice(`Kept ${pending.label}.`, 'info');
+  }
+
+  function secondsLeft(key: string): number {
+    const pending = pendingSales.get(key);
+    return pending ? Math.max(0, Math.ceil((pending.deadline - now) / 1000)) : 0;
+  }
+
+  // The countdown's clock, ticking only while something is pending.
+  $effect(() => {
+    if (pendingSales.size === 0) return;
+    const id = setInterval(() => (now = Date.now()), 250);
+    return () => clearInterval(id);
+  });
+
+  onDestroy(() => {
+    for (const key of [...pendingSales.keys()]) commitSale(key);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Auto-sell rules (task 81)
+  // ---------------------------------------------------------------------------
+
+  // Modul: THE RULES ARE THE AUTO-SALVAGE FLOOR, PER REGION. They moved here
+  // from Settings, because this is where the junk they stop is seen. The server
+  // takes the larger of the all-regions floor and a region's own
+  // (ChestSalvageRules), so a region rule can only sell MORE there. That is
+  // why its options at or below the all-regions floor are disabled. They would
+  // be rules that do nothing.
+  //
+  // A rule runs as a piece DROPS, before it is a row, so nothing already in
+  // the chest changes and a locked piece is never touched. "Clear out the
+  // junk" is still the tool for what has piled up.
+  const REGIONS = [1, 2, 3, 4, 5] as const;
+  let rulesOpen = $state(false);
+  let rulesSaving = $state(false);
+  let draft = $state<{ global: number; regions: number[] } | null>(null);
+
+  $effect(() => {
+    const data = chestSettings.data;
+    if (data && draft === null) {
+      draft = { global: data.AutoSalvageBelowTier, regions: [...(data.AutoSalvageRegionTiers ?? [0, 0, 0, 0, 0])] };
+    }
+  });
+
+  const rulesDirty = $derived(
+    draft !== null &&
+      chestSettings.data !== undefined &&
+      (draft.global !== chestSettings.data.AutoSalvageBelowTier ||
+        draft.regions.some((t, i) => t !== (chestSettings.data?.AutoSalvageRegionTiers?.[i] ?? 0))),
+  );
+
+  const rulesSummary = $derived.by(() => {
+    const data = chestSettings.data;
+    if (!data) return '';
+    const regionRules = (data.AutoSalvageRegionTiers ?? []).filter((t) => t > data.AutoSalvageBelowTier).length;
+    if (data.AutoSalvageBelowTier === 0 && regionRules === 0) return 'off - every drop is kept';
+    const parts: string[] = [];
+    if (data.AutoSalvageBelowTier > 0) parts.push(`${rarityName(data.AutoSalvageBelowTier)} and worse everywhere`);
+    if (regionRules > 0) parts.push(`${regionRules} region ${regionRules === 1 ? 'rule' : 'rules'}`);
+    return parts.join(', ');
+  });
+
+  async function saveRules() {
+    if (!draft) return;
+    rulesSaving = true;
+    try {
+      const saved = await saveChestSettings(draft.global, draft.regions);
+      if (!saved) {
+        pushLocalNotice('The rules did not save. Try again in a moment.');
+        return;
+      }
+      client.setQueryData(queryKeys.chestSettings, saved);
+      draft = { global: saved.AutoSalvageBelowTier, regions: [...saved.AutoSalvageRegionTiers] };
+      pushLocalNotice('Auto-sell rules saved. They apply to the next drop.', 'info');
+    } catch {
+      pushLocalNotice('Could not reach the server.');
+    } finally {
+      rulesSaving = false;
+    }
+  }
 </script>
 
 <div class="wrap">
@@ -500,8 +685,64 @@
 
         <p class="dim tiny">
           Legendary and above is never cleared this way - use the per-item
-          buttons for those. Set an automatic floor in Settings to stop the junk
-          arriving in the first place.
+          menu for those. An auto-sell rule below stops the junk arriving in the
+          first place.
+        </p>
+      </div>
+      {/if}
+    </section>
+
+    <section class="rules">
+      <button
+        class="sweeptoggle"
+        aria-expanded={rulesOpen}
+        onclick={() => (rulesOpen = !rulesOpen)}
+      >
+        <svg class="caret" class:right={!rulesOpen} viewBox="0 0 12 12" aria-hidden="true">
+          <path d="M2 4.5 L6 8.5 L10 4.5" fill="none" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        Auto-sell rules
+        {#if rulesSummary}<span class="dim">- {rulesSummary}</span>{/if}
+      </button>
+
+      {#if rulesOpen && draft}
+      <div class="sweepbody">
+        <p class="dim tiny">
+          A drop at or below the rarity you pick is sold the moment it lands, for
+          the same gold this chest pays. Pieces already here are not touched,
+          and locked pieces never are.
+        </p>
+        <div class="rulegrid">
+          <label>
+            <span>All regions</span>
+            <select bind:value={draft.global} disabled={rulesSaving} aria-label="Auto-sell in every region up to">
+              <option value={0}>Off - keep everything</option>
+              {#each Array(maxSweepTier) as _, i}
+                <option value={i + 1}>{rarityName(i + 1)} and worse</option>
+              {/each}
+            </select>
+          </label>
+          {#each REGIONS as region, index (region)}
+            <label>
+              <span>Region {region}</span>
+              <select bind:value={draft.regions[index]} disabled={rulesSaving} aria-label={`Auto-sell in region ${region} up to`}>
+                <option value={0}>Same as all</option>
+                {#each Array(maxSweepTier) as _, i}
+                  <option value={i + 1} disabled={i + 1 <= draft.global}>{rarityName(i + 1)} and worse</option>
+                {/each}
+              </select>
+            </label>
+          {/each}
+        </div>
+        <div class="sweepbtns">
+          <button disabled={!rulesDirty || rulesSaving} onclick={saveRules}>
+            {rulesSaving ? 'Saving...' : 'Save rules'}
+          </button>
+        </div>
+        <p class="dim tiny">
+          A region rule can only sell more there, never less. Legendary and above
+          is never sold automatically.
         </p>
       </div>
       {/if}
@@ -526,112 +767,62 @@
              180,000 DOM nodes to display about twenty. See ui/VirtualList. -->
         <VirtualList items={sortedEquipment} rowHeight={equipmentRowHeight} label="Equipment in the chest">
           {#snippet row(item: InventoryEquipment)}
-            <div class="row">
+            {@const saleKey = `eq:${item.Id}`}
+            <div class="row" class:pending={pendingSales.has(saleKey)} data-equipment-id={item.Id}>
               <ItemIcon
                 baseItemId={item.BaseItemId}
                 name={prettifyBaseId(item.BaseItemId)}
                 qualityTier={item.QualityTier}
                 size="sm"
               />
-              <span
-                class="name"
-                style="color: {rarityColor(item.QualityTier)}"
-                class:rarity-glow={shouldGlow(item.QualityTier)}
-              >
-                {prettifyBaseId(item.BaseItemId)}
+              <span class="label">
+                <span
+                  class="name"
+                  style="color: {rarityColor(item.QualityTier)}"
+                  class:rarity-glow={shouldGlow(item.QualityTier)}
+                >
+                  {prettifyBaseId(item.BaseItemId)}
+                </span>
+                <span class="meta dim tiny">
+                  <span title={rarityTitle(item.QualityTier)}>{rarityName(item.QualityTier)}</span>
+                  {#if item.IsAffixLocked}
+                    <span class="lockbadge" title="Locked - cannot be sold, binned, swept, rerolled or fused">Locked</span>
+                  {/if}
+                </span>
               </span>
-              <span class="dim tiny" title={rarityTitle(item.QualityTier)}>{rarityName(item.QualityTier)}</span>
 
-              <!-- Modul: THE ACTIONS ARE A GROUP, so a phone can put them on
-                   their own line instead of crushing the name to nothing.
-
-                   Measured at 360px before this wrapper existed: the name span
-                   was 0 wide (scrollWidth 99 - the item had a name, there was
-                   simply no room for it) and the rarity label was 0 wide and
-                   121 TALL, wrapped to six lines inside a row pinned to 34px.
-                   Five 44px buttons that may not shrink - the touch floor is
-                   deliberate - plus an icon is already wider than the row, so
-                   flex took every pixel from the only two children that could
-                   give any. The player saw a nameless row and a column of
-                   single letters.
-
-                   Wrapping cannot be done by letting `.row` wrap freely,
-                   because VirtualList positions by arithmetic and a taller row
-                   overlaps its neighbour. So the break is explicit (this group
-                   takes the full width below 40rem) and the height it implies
-                   is passed to the list as `rowHeight`. One number, both
-                   halves. -->
+              <!-- Modul: ONE PRIMARY ACTION AND A MENU (task 81). This group
+                   held five buttons, and at 360px they crushed the name to 0
+                   wide. That was fixed once by putting them on a second line.
+                   With two buttons the row fits on one line again, and the
+                   name and rarity stack instead (see ROW_H_NARROW). A
+                   pending sale takes the group's place with its countdown
+                   and Undo, so nothing else can be pressed on a piece that is
+                   about to go. -->
               <div class="actions">
-              {#if item.IsEquipped}
-                <button class="tiny-btn" onclick={() => unequip(item.BaseItemId)}>Unequip</button>
-              {:else}
-                <button class="tiny-btn" onclick={() => equip(item.Id)}>Equip</button>
-              {/if}
-
-              <!-- Modul: the reroll is in the Forge and players did not find
-                   it, because the thing being rerolled is an item and items
-                   are here. This does not move it - fusion needs the Forge
-                   building and the reroll sits beside it - it just puts the
-                   door where the player is standing, with the item already
-                   chosen when they arrive. -->
-              <button
-                class="tiny-btn"
-                title="Reroll this piece's affixes in the Forge"
-                onclick={() => openRerollInForge(item.Id)}
-              >
-                Reroll
-              </button>
-
-              <!-- Modul: the lock is a BUTTON rather than a checkbox because
-                   it is an action with a consequence, and because the server
-                   answers with the state it ended in - a checkbox would
-                   have to predict that. -->
-              <button
-                class="tiny-btn"
-                class:locked={item.IsAffixLocked}
-                disabled={busy}
-                title={item.IsAffixLocked
-                  ? 'Locked - cannot be sold, binned, swept, rerolled or fused. Click to unlock.'
-                  : 'Lock this piece so nothing can sell, bin, sweep, reroll or fuse it'}
-                onclick={() => toggleLock(item.Id, prettifyBaseId(item.BaseItemId))}
-              >
-                {item.IsAffixLocked ? 'Locked' : 'Lock'}
-              </button>
-
-              <button
-                class="tiny-btn"
-                disabled={busy || item.IsEquipped || item.IsAffixLocked}
-                title={item.IsEquipped
-                  ? 'Worn - take it off first'
-                  : item.IsAffixLocked
-                    ? 'Locked - unlock it first'
-                    : ''}
-                onclick={() => act({ equipmentId: item.Id }, true, prettifyBaseId(item.BaseItemId))}
-              >
-                Sell
-              </button>
-
-              {#if confirming === `eq:${item.Id}`}
-                <button
-                  class="tiny-btn danger"
-                  disabled={busy}
-                  onclick={() => {
-                    confirming = null;
-                    act({ equipmentId: item.Id }, false, prettifyBaseId(item.BaseItemId));
-                  }}
-                >
-                  Really bin
-                </button>
-              {:else}
-                <button
-                  class="tiny-btn"
-                  disabled={busy || item.IsEquipped}
-                  title={item.IsEquipped ? 'Worn - take it off first' : ''}
-                  onclick={() => (confirming = `eq:${item.Id}`)}
-                >
-                  Bin
-                </button>
-              {/if}
+                {#if pendingSales.has(saleKey)}
+                  <span class="dim tiny">Selling in {secondsLeft(saleKey)}s</span>
+                  <button class="tiny-btn" onclick={() => undoSale(saleKey)}>Undo</button>
+                {:else}
+                  {#if item.IsEquipped}
+                    <button class="tiny-btn" onclick={() => unequip(item.BaseItemId)}>Unequip</button>
+                  {:else}
+                    <button class="tiny-btn" onclick={() => equip(item.Id)}>Equip</button>
+                  {/if}
+                  <button
+                    class="tiny-btn more"
+                    aria-label="More"
+                    aria-haspopup="menu"
+                    title="Reroll, lock, sell or bin"
+                    onclick={(e) => openMenu(e, item)}
+                  >
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <circle cx="3" cy="8" r="1.6" fill="currentColor" />
+                      <circle cx="8" cy="8" r="1.6" fill="currentColor" />
+                      <circle cx="13" cy="8" r="1.6" fill="currentColor" />
+                    </svg>
+                  </button>
+                {/if}
               </div>
             </div>
           {/snippet}
@@ -648,10 +839,14 @@
               <span class="name">{prettifyBaseId(stack.ItemId)}</span>
               <span class="qty" data-exact={total} title={total.toLocaleString()}>{formatCompact(total)}</span>
 
+              {#if pendingSales.has(`mat:${stack.ItemId}`)}
+                <span class="dim tiny">Selling in {secondsLeft(`mat:${stack.ItemId}`)}s</span>
+                <button class="tiny-btn" onclick={() => undoSale(`mat:${stack.ItemId}`)}>Undo</button>
+              {:else}
               <button
                 class="tiny-btn"
                 disabled={busy}
-                onclick={() => act({ itemId: stack.ItemId, quantity: total }, true, prettifyBaseId(stack.ItemId))}
+                onclick={() => queueSale({ itemId: stack.ItemId, quantity: total }, prettifyBaseId(stack.ItemId), `mat:${stack.ItemId}`)}
               >
                 Sell all
               </button>
@@ -672,6 +867,7 @@
                   Bin
                 </button>
               {/if}
+              {/if}
             </li>
           {/each}
         </ul>
@@ -687,6 +883,16 @@
     </p>
   </section>
 </div>
+
+{#if menu}
+  <ContextMenu
+    x={menu.x}
+    y={menu.y}
+    title={prettifyBaseId(menu.item.BaseItemId)}
+    items={menuItems}
+    onClose={() => { menu = null; confirming = null; }}
+  />
+{/if}
 
 <style>
   .finders {
@@ -818,38 +1024,73 @@
     display: flex;
     align-items: center;
     gap: 0.4rem;
+    flex-shrink: 0;
   }
 
-  /* Modul: THE SECOND LINE. See the .actions wrapper in the markup for the
-     measurements that forced this.
+  /* Name and rarity side by side on a wide row, stacked on a narrow one. The
+     label is the only child allowed to shrink, and it ellipsises rather than
+     collapsing (`min-width: 0` is what once produced a 0-wide name). */
+  .label {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
 
-     `flex-basis: 100%` on a flex item forces it onto its own line, which is
-     the whole mechanism - the row still does not wrap arbitrarily, it wraps in
-     exactly one place, so the height stays predictable and ROW_H_NARROW can
-     match it.
+  .meta {
+    display: inline-flex;
+    gap: 0.4rem;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
 
-     The name then gets the first line to itself and is given an ellipsis
-     rather than being allowed to collapse: `min-width: 0` lets a flex item
-     shrink below its content, which is what produced a 0-wide name in the
-     first place, so the overflow has to be handled deliberately. */
+  /* Modul: a locked piece has to READ as locked at a glance, or the player
+     has to open each menu to find out - the opposite of what a lock is for
+     when there are thousands of rows. */
+  .lockbadge {
+    color: var(--warn, #e8b339);
+    font-weight: 600;
+  }
+
+  .more svg {
+    width: 14px;
+    height: 14px;
+    display: block;
+  }
+
+  .row.pending {
+    opacity: 0.6;
+  }
+
+  .rulegrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    gap: 0.4rem 0.8rem;
+    margin: 0.5rem 0;
+    font-size: 0.82rem;
+  }
+
+  .rulegrid label {
+    display: grid;
+    grid-template-columns: 5.5rem 1fr;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .rulegrid select {
+    min-width: 0;
+  }
+
+  /* Modul: ONE LINE AGAIN (task 81). This block used to force a five-button
+     actions group onto a second line. With two buttons the row fits, and the
+     name and rarity stack instead - two short lines beside a 44px button, so
+     the height is set by the button and ROW_H_NARROW matches it. */
   @media (max-width: 40rem) {
-    .row {
-      flex-wrap: wrap;
-      align-content: center;
-      row-gap: 0.3rem;
-    }
-
-    .row .name {
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .actions {
-      flex-basis: 100%;
-      justify-content: flex-start;
+    .label {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.1rem;
     }
 
     /* The materials list has the same squeeze - icon, name, quantity and two
@@ -870,7 +1111,8 @@
     }
   }
 
-  .sweep {
+  .sweep,
+  .rules {
     margin: 0.5rem 0 0.9rem;
     padding: 0.5rem 0.6rem;
     background: var(--bg-raised);
@@ -934,14 +1176,6 @@
     color: var(--text-dim);
   }
 
-  /* Modul: a locked piece has to READ as locked at a glance, or the player
-     has to click each one to find out - which is the opposite of what a lock
-     is for when there are thousands of rows. */
-  .tiny-btn.locked {
-    border-color: var(--warn, #e8b339);
-    color: var(--warn, #e8b339);
-    font-weight: 600;
-  }
 
   .tiny-btn {
     font-size: 0.7rem;

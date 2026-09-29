@@ -238,6 +238,11 @@ export function bulkClearChest(
 export interface ChestSettings {
   /** 0 is off. A drop at or below this tier is sold on the way in. */
   AutoSalvageBelowTier: number;
+  /**
+   * One floor per region, region 1 first (task 81). 0 is no rule. A region's
+   * floor can only RAISE AutoSalvageBelowTier - the server takes the larger.
+   */
+  AutoSalvageRegionTiers: number[];
   /** The server's own ceiling, so the dropdown cannot offer what it refuses. */
   MaxSweepableQualityTier: number;
 }
@@ -246,9 +251,14 @@ export function fetchChestSettings(): Promise<ChestSettings> {
   return authedGet<ChestSettings>('/api/v1/chest/settings');
 }
 
-export function saveChestSettings(autoSalvageBelowTier: number): Promise<ChestSettings | null> {
+/** Omitting `regionTiers` leaves the stored region rules as they are. */
+export function saveChestSettings(
+  autoSalvageBelowTier: number,
+  regionTiers?: number[],
+): Promise<ChestSettings | null> {
   return authedPost<ChestSettings>('/api/v1/chest/settings', {
     AutoSalvageBelowTier: autoSalvageBelowTier,
+    ...(regionTiers ? { AutoSalvageRegionTiers: regionTiers } : {}),
   });
 }
 

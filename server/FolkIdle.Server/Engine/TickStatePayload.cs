@@ -37,6 +37,13 @@ namespace FolkIdle.Server.Engine
         // the chest needed a drain at all.
         public int AutoSalvageBelowTier;
 
+        // Modul: the per-region auto-sell rules (task 81), packed as
+        // ChestSalvageRules describes. Mirrored from
+        // PlayerRecord.AutoSalvageRegionTiers at hydration, for the same reason
+        // as the field above. CombatLootDropRequest.Build folds the two into one
+        // tier, so the loot engine never reads this.
+        public int AutoSalvageRegionTiers;
+
         public bool IsDirty;
         public int TicksSinceLastFlush;
 

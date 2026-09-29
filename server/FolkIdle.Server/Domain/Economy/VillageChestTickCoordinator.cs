@@ -109,6 +109,7 @@ namespace FolkIdle.Server.Domain.Economy
         internal static void ApplyChestSettings(ref TickStatePayload chestSettingsPayload, in ChestSettingsNotification chestSettings)
         {
             chestSettingsPayload.AutoSalvageBelowTier = chestSettings.AutoSalvageBelowTier;
+            chestSettingsPayload.AutoSalvageRegionTiers = chestSettings.AutoSalvageRegionTiers;
             chestSettingsPayload.IsDirty = true;
         }
     }

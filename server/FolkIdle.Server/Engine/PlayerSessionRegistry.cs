@@ -69,6 +69,8 @@ namespace FolkIdle.Server.Engine
     {
         public long PlayerId;
         public int AutoSalvageBelowTier;
+        /// <summary>Packed per-region floors - see ChestSalvageRules.</summary>
+        public int AutoSalvageRegionTiers;
     }
 
     public struct AchievementClaimRequest

@@ -1256,39 +1256,66 @@ await page.waitForTimeout(600);
 // ceiling cannot express "keep THIS Epic sword".
 await go('Chest');
 {
-  const lockButton = page.getByRole('button', { name: /^(Lock|Locked)$/ }).first();
-  const present = (await lockButton.count()) > 0;
+  // Task 81: the lock moved into the row's "More" menu, and its state is a
+  // "Locked" badge on the row. The row is addressed by its equipment id so a
+  // refetch that re-renders the list cannot swap the piece under the check.
+  const firstRow = page.locator('.row[data-equipment-id]').first();
+  const present = (await firstRow.count()) > 0;
   record('the chest offers a lock on each piece', present);
 
   if (present) {
-    const before = await lockButton.innerText();
-    await lockButton.click();
-    // The toggle is a REST round trip and the list refetches after it, so wait
-    // for the label to change rather than for a fixed delay.
-    await page
-      .waitForFunction(
-        (prev) => {
-          const b = [...document.querySelectorAll('button')].find((x) => /^(Lock|Locked)$/.test(x.textContent.trim()));
-          return b && b.textContent.trim() !== prev;
-        },
-        before.trim(),
-        { timeout: 15000 },
-      )
-      .catch(() => {});
+    const id = await firstRow.getAttribute('data-equipment-id');
+    const row = page.locator(`.row[data-equipment-id="${id}"]`);
+    const isLocked = async () => (await row.locator('.lockbadge').count()) > 0;
+    const toggleLock = async () => {
+      await row.getByRole('button', { name: 'More', exact: true }).click();
+      await page.getByRole('menuitem', { name: /^(Lock|Unlock)$/ }).click();
+    };
+    const waitFor = async (want) => {
+      for (let i = 0; i < 30 && (await isLocked()) !== want; i++) await page.waitForTimeout(500);
+      return isLocked();
+    };
 
-    const after = await page.getByRole('button', { name: /^(Lock|Locked)$/ }).first().innerText();
-    record('locking a piece changes its state on the server', after.trim() !== before.trim(), `${before.trim()} -> ${after.trim()}`);
+    const before = await isLocked();
+    await toggleLock();
+    const after = await waitFor(!before);
+    record('locking a piece changes its state on the server', after !== before, `${before} -> ${after}`);
 
     // Modul: AND PUT IT BACK. A check that leaves the fixture locked would
     // change what every later run of this script is looking at - the same
     // discipline the Ancestors "Keep" and the village steps had to learn.
-    await page.getByRole('button', { name: /^(Lock|Locked)$/ }).first().click();
-    await page.waitForTimeout(2000);
-    const restored = await page.getByRole('button', { name: /^(Lock|Locked)$/ }).first().innerText();
-    record('the lock round-trips both ways', restored.trim() === before.trim(), `back to ${restored.trim()}`);
+    await toggleLock();
+    const restored = await waitFor(before);
+    record('the lock round-trips both ways', restored === before, `back to ${restored}`);
+  }
+
+  // --- undo on a sale (task 81) ---------------------------------------------
+  //
+  // The client holds a sale for five seconds before sending it. Asserted as a
+  // round trip that spends nothing: sell, undo, wait past the window, and the
+  // piece must still be on the SERVER - not just still on the screen.
+  const sellableId = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.row[data-equipment-id]')];
+    const row = rows.find(
+      (r) => !r.querySelector('.lockbadge') && [...r.querySelectorAll('button')].some((b) => b.textContent.trim() === 'Equip'),
+    );
+    return row ? row.getAttribute('data-equipment-id') : null;
+  });
+  if (sellableId === null) {
+    record('a sale can be undone', false, 'no unworn, unlocked piece in view to try it on');
+  } else {
+    const row = page.locator(`.row[data-equipment-id="${sellableId}"]`);
+    await row.getByRole('button', { name: 'More', exact: true }).click();
+    await page.getByRole('menuitem', { name: 'Sell', exact: true }).click();
+    const undo = row.getByRole('button', { name: 'Undo', exact: true });
+    const offered = (await undo.count()) > 0;
+    if (offered) await undo.click();
+    await page.waitForTimeout(6500);
+    const inv = await apiGet('/api/v1/player/inventory');
+    const stillThere = (inv?.Equipment ?? []).some((e) => String(e.Id) === sellableId);
+    record('a sale can be undone', offered && stillThere, offered ? `piece ${sellableId} kept: ${stillThere}` : 'no Undo button appeared');
   }
 }
-
 // --- the Wiki's odds line (task 26) -------------------------------------------
 //
 // Modul: the line is the SERVER's arithmetic over the luck its loot worker last
@@ -2541,11 +2568,15 @@ await go('Chest');
   // for it did not find it because the thing being rerolled is an item and
   // items are here. Asserted because a link nobody can see is the bug that was
   // being fixed.
-  record(
-    'the chest offers a route to the reroll',
-    (await page.getByRole('button', { name: 'Reroll', exact: true }).count()) > 0,
-    'every equipment row links to the Forge',
-  );
+  // Task 81: it sits in the row's "More" menu now.
+  let rerollOffered = false;
+  const moreBtn = page.getByRole('button', { name: 'More', exact: true }).first();
+  if ((await moreBtn.count()) > 0) {
+    await moreBtn.click();
+    rerollOffered = (await page.getByRole('menuitem', { name: 'Reroll in Forge' }).count()) > 0;
+    await page.keyboard.press('Escape');
+  }
+  record('the chest offers a route to the reroll', rerollOffered, 'every equipment row menu links to the Forge');
 
   // Modul: THE CHEST'S ONLY DRAIN.
   //
@@ -2700,15 +2731,41 @@ await go('Chest');
       `HTTP ${tooHigh}`,
     );
 
+    // Task 81: the per-region rules. Posting only the global floor (above)
+    // must leave them alone, and posting them must be read back as posted.
+    const beforeRegions = before.AutoSalvageRegionTiers ?? [0, 0, 0, 0, 0];
+    record(
+      'a floor-only save leaves the region rules alone',
+      JSON.stringify(readBack?.AutoSalvageRegionTiers) === JSON.stringify(beforeRegions),
+      `${JSON.stringify(beforeRegions)} -> ${JSON.stringify(readBack?.AutoSalvageRegionTiers)}`,
+    );
+    const regionTarget = beforeRegions.map((t, i) => (i === 0 ? (t === 3 ? 4 : 3) : t));
+    const regionSaved = await apiPost('/api/v1/chest/settings', {
+      AutoSalvageBelowTier: target,
+      AutoSalvageRegionTiers: regionTarget,
+    });
+    record(
+      'a region auto-sell rule can be saved',
+      JSON.stringify(regionSaved?.AutoSalvageRegionTiers) === JSON.stringify(regionTarget),
+      `sent ${JSON.stringify(regionTarget)}, server says ${JSON.stringify(regionSaved?.AutoSalvageRegionTiers)}`,
+    );
+    const badRegions = await apiPostStatus('/api/v1/chest/settings', {
+      AutoSalvageRegionTiers: [0, 0, before.MaxSweepableQualityTier + 1, 0, 0],
+    });
+    record('a region rule above the ceiling is refused', badRegions === 400, `HTTP ${badRegions}`);
+
     // Put it back. See above - this is the restore half of the round trip.
     await apiPost('/api/v1/chest/settings', {
       AutoSalvageBelowTier: before.AutoSalvageBelowTier,
+      AutoSalvageRegionTiers: beforeRegions,
     });
     const restored = await apiGet('/api/v1/chest/settings');
     record(
       'the auto-salvage check restores what it changed',
-      restored !== null && restored.AutoSalvageBelowTier === before.AutoSalvageBelowTier,
-      `back to ${restored?.AutoSalvageBelowTier}`,
+      restored !== null &&
+        restored.AutoSalvageBelowTier === before.AutoSalvageBelowTier &&
+        JSON.stringify(restored.AutoSalvageRegionTiers) === JSON.stringify(beforeRegions),
+      `back to ${restored?.AutoSalvageBelowTier} / ${JSON.stringify(restored?.AutoSalvageRegionTiers)}`,
     );
   }
 }

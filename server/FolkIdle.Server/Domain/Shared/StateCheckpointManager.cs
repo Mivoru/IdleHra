@@ -1293,6 +1293,7 @@ namespace FolkIdle.Server.Domain.Shared
                 // to salvage a player's Legendaries.
                 AutoSalvageBelowTier = System.Math.Clamp(
                     player.AutoSalvageBelowTier, 0, Engine.VillageChestEngine.MaxSweepableQualityTier),
+                AutoSalvageRegionTiers = Engine.ChestSalvageRules.Sanitise(player.AutoSalvageRegionTiers),
 
                 PlayerHp = 100000,
                 CurrentGold = loadedGold,
