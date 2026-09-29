@@ -8,9 +8,10 @@
 > (parked).
 >
 > **Status at the end of 2026-09-29:** 68-72 DONE and 74 partly (PRs
-> #102-#107, merged; deploy recorded in NEXT_STEPS_BACKLOG's handoff). Next
-> without the owner: **77** (wiring-auditor on Village Work slots), **78**
-> (hunting advisor), **81** (Chest rules). Show the owner a screenshot first:
+> #102-#107, merged; deploy recorded in NEXT_STEPS_BACKLOG's handoff). **77,
+> 81 and 78 are BUILT** (PRs #109, #110 and the 78 PR, which is stacked on
+> #110; none deployed, and #110 carries a migration). Nothing is left
+> without the owner. Show the owner a screenshot first:
 > **73** (Home), **82** (desktop header). Owner decisions waiting: **75, 76,
 > 79 (Treasury), 80**, and the designs **83-88**. Left from 74: one number
 > format, reroll history.

@@ -48,10 +48,26 @@ chips always filled the fusion; the coach card is fixed at the bottom (a
 full-page screenshot artefact - the second time; take VIEWPORT screenshots
 before claiming anything about a fixed element).
 
+**Later the same evening: 77, 81 and 78 were built, as PRs #109, #110 and
+the 78 PR.** 78 is stacked on 81, so merge 81 first. None of them is
+deployed. **81 carries a migration** (`AddAutoSalvageRegionRules`, one
+additive int column). Take the backup first as usual. The TASK_BOARD entries
+say what each PR did.
+- **77:** the panel was not dead, it was mislabelled. Its rows were the
+  character roster, so it was removed. `VillageResidents` and
+  `EvictVillager` are now under Known dead code.
+- **81:** a row menu, per-region auto-sell rules, and a 5 s undo on a sale.
+  `ContextMenu` was dark-on-dark in the light theme; that is fixed too.
+- **78:** `HuntingProjection` plus `/api/v1/combat/projection`, held within
+  10% of the real `RunCombatTick` by `HuntingProjectionTests`. On the way it
+  found that the offline projection ignores dodge and block (not fixed,
+  recorded on the board).
+- **New trap:** `dotnet ef migrations add` builds BEFORE it writes the
+  migration. So `--migrate --no-build` straight afterwards applies nothing,
+  and sign-in then answers 500. Build first.
+
 **Next, in order (the board's START HERE has the same list):**
-1. Without the owner: **77** (run `wiring-auditor` on the Village "Work
-   slots" panel), **78** (hunting advisor: server projection per monster),
-   **81** (Chest rules and row actions).
+1. ~~Without the owner: 77, 78, 81~~ - built, see above.
 2. Screenshot to the owner first: **73** (Home), **82** (desktop header).
 3. Owner decisions: **75** (parallel deed chapters), **76** (one Community
    entry), **79** (Treasury on gold spent), **80** (Breeding Grounds above 1),
