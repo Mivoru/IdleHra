@@ -105,9 +105,13 @@
         {#if perHour}
           <p class="rate dim small">
             That is <strong>{perHour.gold.toLocaleString()} gold</strong> and
-            <strong>{perHour.xp.toLocaleString()} XP</strong> an hour. Leave a
-            harder monster running and this goes up - leave one that kills you
-            and it goes to nothing.
+            <strong>{perHour.xp.toLocaleString()} XP</strong> an hour. Better
+            gear raises it; a monster that kills you drops it to nothing.
+            <!-- Modul: this used to say "leave a harder monster running and
+                 this goes up". Every monster pays XP and gold in proportion to
+                 its health, so the rate is your damage per second - and a
+                 harder monster's armour and dodge LOWER it. Only its loot
+                 table is better. -->
           </p>
         {/if}
 
