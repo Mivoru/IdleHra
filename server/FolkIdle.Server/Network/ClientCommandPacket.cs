@@ -232,7 +232,16 @@ namespace FolkIdle.Server.Network
         // it for a season. Priced rather than free so the choice still means
         // something - the server computes the cost, as it does for every other
         // price in this game.
-        RespecAttributes = 77
+        RespecAttributes = 77,
+
+        // Modul: FuseStack (task 69) fuses every eligible piece of one stack in
+        // one transaction. TargetId is ANY piece of the stack (its BaseItemId
+        // and tier say which stack and where to start); QualityTier is the
+        // tier to stop at. The server decides everything else - which pieces
+        // are eligible (not locked, not worn), the Forge-level ceiling, every
+        // fee - with the single fusion's own rules. See
+        // ForgeSplicingEngine.ExecuteStackFusionAsync.
+        FuseStack = 78
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

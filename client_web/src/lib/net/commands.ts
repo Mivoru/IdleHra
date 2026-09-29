@@ -514,6 +514,36 @@ export function executeForgeFusion(
   return OK;
 }
 
+/**
+ * Task 69: fuse every eligible piece of one stack up to `toTier`, in one
+ * command. `sampleId` is any piece of the stack - its item and rarity say
+ * which stack and where to start. The server picks the pieces (never a locked
+ * or worn one), clamps to the Forge level and charges each step's fee.
+ */
+export function fuseStack(sampleId: number, fromTier: number, toTier: number, forgeLevel: number): CommandOutcome {
+  if (forgeLevel <= 0) {
+    return refuse('Build a Forge in your village first.');
+  }
+  if (sampleId <= 0) {
+    return refuse('Pick the stack to fuse.');
+  }
+  if (toTier <= fromTier) {
+    return refuse('Pick a rarity above the one the stack is at.');
+  }
+  if (fromTier + 1 > forgeLevel) {
+    return refuse(
+      `Your Forge is level ${forgeLevel} and the first fusion produces rarity ${fromTier + 1}. Upgrade the Forge in your village first.`,
+    );
+  }
+
+  connection.send({
+    Command: CommandType.FuseStack,
+    TargetId: sampleId,
+    QualityTier: toTier,
+  });
+  return OK;
+}
+
 // ---------------------------------------------------------------------------
 // Character assignment
 // ---------------------------------------------------------------------------

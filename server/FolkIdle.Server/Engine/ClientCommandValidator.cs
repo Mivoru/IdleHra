@@ -181,7 +181,7 @@ namespace FolkIdle.Server.Engine
             return true;
         }
 
-        private static bool HasLockedAffixPayload(string payload)
+        internal static bool HasLockedAffixPayload(string payload)
         {
             if (string.IsNullOrWhiteSpace(payload))
             {
