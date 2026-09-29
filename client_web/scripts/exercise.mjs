@@ -506,6 +506,46 @@ await page.waitForTimeout(4000);
   );
 }
 
+// --- combat: the way back, and what opens the next region (task 72) ----------
+// "Not in combat" offers the last monster; pressing it must put the character
+// back in a fight. Round trip: if the fixture was fighting, it is fighting again
+// afterwards; if it was idle, it is stood down again.
+await go('Combat');
+{
+  const stopButton = page.getByRole('button', { name: 'Stop fighting' });
+  const wasFighting = (await stopButton.count()) > 0;
+  if (wasFighting) {
+    await stopButton.first().click();
+    await page.getByTestId('combat-continue').waitFor({ timeout: 10000 }).catch(() => {});
+  }
+
+  const cont = page.getByTestId('combat-continue');
+  const offered = (await cont.count()) > 0;
+  let resumed = false;
+  if (offered) {
+    await cont.first().click();
+    resumed = await stopButton
+      .first()
+      .waitFor({ timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+  }
+  record(
+    '"Not in combat" offers the last monster, and it resumes the fight',
+    offered && resumed,
+    offered ? (resumed ? 'fighting again' : 'pressed, no fight started') : 'no Continue button',
+  );
+  if (resumed && !wasFighting) await stopButton.first().click();
+
+  const wall = page.getByTestId('region-wall');
+  const wallText = (await wall.count()) > 0 ? (await wall.first().innerText()).replace(/\s+/g, ' ') : '';
+  record(
+    'the next region says what its boss asks for and what you wear',
+    /full set of region-\d gear/.test(wallText) && /You wear \d of 8/.test(wallText),
+    wallText.slice(0, 140) || 'no requirement shown (fixture may have every region open)',
+  );
+}
+
 // --- forge: fusion and reroll ------------------------------------------------
 await go('Forge');
 {

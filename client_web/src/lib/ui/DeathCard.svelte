@@ -11,7 +11,9 @@
   // one of two fixable things - an empty larder, or a monster out of the
   // character's league - so the card names the cause and points at the fix
   // rather than just reporting the fact.
-  import { deathSummary, dismissDeath, playerState } from '../stores/game';
+  import { deathSummary, dismissDeath, playerState, pushLocalNotice } from '../stores/game';
+  import { assignCharacterActivity, EMPTY_GUID } from '../net/commands';
+  import { writePref, PREF_LAST_MONSTER } from '../net/prefs';
   import { onMount } from 'svelte';
   import { loadContent, monsterName, type ContentRegistry } from '../net/content';
   import { requestScreen } from '../stores/navigation';
@@ -40,6 +42,29 @@
       ? Number(snap.Food1_Count ?? 0) + Number(snap.Food2_Count ?? 0) + Number(snap.Food3_Count ?? 0)
       : 0,
   );
+
+  // Modul: TASK 72 - THE WAY BACK IS ONE PRESS. "Back to the fight" only
+  // opened the Combat screen, where the player then had to find the monster
+  // again. With food in the larder the two real choices are the same fight
+  // or an easier one, so the card offers both and sends the main character
+  // straight there. "One easier" is the monster before it in the same region
+  // (the canon runs 91-115, five a region, boss last); the first of a region
+  // has none, and a region the player can see is a region they have opened.
+  const easierId = $derived.by(() => {
+    const id = death?.monsterId ?? 0;
+    const offset = id - 91;
+    if (offset < 0 || offset >= 25 || offset % 5 === 0) return 0;
+    return id - 1;
+  });
+
+  function refight(monsterId: number) {
+    const character = snap?.Slot1_CharacterId ?? EMPTY_GUID;
+    const outcome = assignCharacterActivity(character, monsterId);
+    dismissDeath();
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    writePref(PREF_LAST_MONSTER, String(monsterId));
+    requestScreen('combat');
+  }
 </script>
 
 {#if death}
@@ -86,6 +111,15 @@
           >
             Fill the larder
           </button>
+        {:else if death.monsterId > 0}
+          <button class="primary" data-testid="death-again" onclick={() => refight(death.monsterId)}>
+            Again
+          </button>
+          {#if easierId > 0}
+            <button data-testid="death-easier" onclick={() => refight(easierId)}>
+              One easier: {monsterName(registry, easierId)}
+            </button>
+          {/if}
         {:else}
           <button
             class="primary"
@@ -154,6 +188,7 @@
 
   .row {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.4rem;
     margin-top: 0.5rem;
   }
