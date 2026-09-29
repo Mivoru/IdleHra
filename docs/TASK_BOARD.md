@@ -5284,6 +5284,18 @@ opens at two Seals. Seals and their skill points are unchanged. Server
 **Ask the owner first:** it lets Seals come faster for a player who plays one
 loop. **Done when:** `SealEngine` tests cover the new open rule.
 
+**DONE 2026-09-29 (the owner left it to Claude: yes).**
+- **The rule** is `DeedRegistry.IsOpen(chapter, doneMask)`: I first, then
+  II-IV together, and V at two of those three. A chapter counts as done
+  once it is sealed or complete.
+- **The route** sends `IsOpen` and a new `OpensWhen` sentence, so the book
+  no longer says "the chapter above".
+- **Tested** in `DeedRegistryTests`.
+- **Seals were never gated.** `SealEngine.AwardCompletedChaptersAsync` has
+  always sealed ANY complete chapter, open or not. The worry above ("Seals
+  come faster") was never a live constraint; the sequence was only what the
+  book showed. Awarding is unchanged.
+
 ## 76. One "Community" menu entry
 
 Market, Friends, Guild and Leaderboards become tabs of one entry

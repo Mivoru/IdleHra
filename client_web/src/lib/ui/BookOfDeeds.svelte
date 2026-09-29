@@ -129,7 +129,7 @@
             {#if chapter.HasSeal}
               sealed &middot; {chapter.Reward}
             {:else if !chapter.IsOpen}
-              opens when the chapter above is finished
+              {chapter.OpensWhen}
             {:else}
               {chapter.Reward}
             {/if}
