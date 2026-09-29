@@ -97,7 +97,7 @@ export function unlocksFor(monsterId: number): VictoryUnlocks {
  * element. Do not edit one side alone.
  */
 export const FIRST_CLEAR_HP_MULTIPLIERS: readonly number[] = [3, 4, 6, 9, 14];
-export const FIRST_CLEAR_ATTACK_MULTIPLIERS: readonly number[] = [3.7, 2.6, 5.7, 11.4, 21.4];
+export const FIRST_CLEAR_ATTACK_MULTIPLIERS: readonly number[] = [3.7, 2.78, 5.7, 11.4, 21.4];
 
 /**
  * The gear each boss is calibrated to need, as QualityTier, in the boss's OWN
@@ -108,7 +108,7 @@ export const FIRST_CLEAR_ATTACK_MULTIPLIERS: readonly number[] = [3.7, 2.6, 5.7,
  * with no explanation is indistinguishable from a bug, which is how the
  * ORIGINAL defect here got reported.
  */
-export const BOSS_REQUIRED_QUALITY_TIER: readonly number[] = [4, 7, 8, 10, 11];
+export const BOSS_REQUIRED_QUALITY_TIER: readonly number[] = [4, 8, 8, 10, 11];
 
 /** Affix rarity each boss expects, as AffixRarity (1 Common .. 5 Legendary). */
 export const BOSS_REQUIRED_AFFIX_RARITY: readonly number[] = [1, 1, 3, 4, 5];

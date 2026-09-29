@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Domain.Shared;
@@ -294,10 +294,12 @@ namespace FolkIdle.Server.Tests
 
         private static Span<int> FullSet()
         {
-            // Seven worn pieces of one set, which is the largest tier
-            // SetBonusEngine defines.
+            // Every slot in the offensive Linen set at Transcendent - the top
+            // tier at the quality ceiling. Was the bare id 1 at quality 0,
+            // which the engine floors to MinQualityScale, so the ledger read
+            // the WEAKEST full set as the ceiling (task 63).
             var ids = new int[EquippedSetIds.SlotCount];
-            for (int i = 0; i < ids.Length; i++) ids[i] = 1;
+            for (int i = 0; i < ids.Length; i++) ids[i] = EquippedSetIds.Pack(SetBonusEngine.LinenSetId, RarityTier.Transcendent);
             return ids;
         }
     }

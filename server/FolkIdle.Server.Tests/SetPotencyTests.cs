@@ -37,7 +37,7 @@ namespace FolkIdle.Server.Tests
             return ids;
         }
 
-        private const int Chiming = SetBonusEngine.ChimingSteelSetId;
+        private const int Chiming = SetBonusEngine.LinenSetId;
         private const int Dread = SetBonusEngine.EternalDreadnoughtSetId;
 
         [Theory]

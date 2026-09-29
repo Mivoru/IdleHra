@@ -7,7 +7,7 @@
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchInventory, type InventoryEquipment } from '../lib/net/rest';
-  import { loadContent, prettifyBaseId, monsterName, getArmourFamily, type ContentRegistry } from '../lib/net/content';
+  import { loadContent, prettifyBaseId, monsterName, type ContentRegistry } from '../lib/net/content';
   import { EQUIPMENT_SLOTS, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName, resolveSlotIndex, isCraftingActivity, craftingActivityId,
     SLOT_WEAPON, SLOT_HELMET, SLOT_CHEST, SLOT_GLOVES, SLOT_LEGGINGS, SLOT_BOOTS, SLOT_AMULET, SLOT_RING, SLOT_AXE, SLOT_PICKAXE, SLOT_ROD } from '../lib/ui/slots';
   import { craftingProfessionName, SLOT_UNLOCK_TOWN_HALL } from '../lib/ui/slots';
@@ -117,20 +117,12 @@
     inventory.data?.RosterCombatStats?.find((s) => s.SlotIndex === selectedSlot - 1) ?? null,
   );
 
-  const activeSets = $derived.by(() => {
-    const counts = new Map<string, number>();
-    for (const item of inventory.data?.Equipment ?? []) {
-      if (item.EquippedByCharacterSlot !== selectedSlot - 1) continue;
-      const family = getArmourFamily(item.BaseItemId);
-      if (family) {
-        counts.set(family, (counts.get(family) ?? 0) + 1);
-      }
-    }
-    // Filter sets that have at least 2 pieces (Tier 1 set bonus)
-    return Array.from(counts.entries())
-      .filter(([_, count]) => count >= 2)
-      .sort((a, b) => b[1] - a[1]);
-  });
+  // Modul: set bonuses are READ from the server (task 63). This used to count
+  // families here and print "+10% armour / +15% damage / unique passive" for
+  // every one of them, while the server paid nothing at all - it read a SetId
+  // column nothing ever wrote. The numbers below are the server's own
+  // SetBonusEngine evaluation of this character's gear.
+  const activeSets = $derived(selectedCombatStats?.ActiveSets ?? []);
 
   const candidatesBySlot = $derived.by(() => {
     const bySlot = new Map<number, InventoryEquipment[]>();
@@ -440,21 +432,32 @@
       />
 
       {#if activeSets.length > 0}
-        <h3>Active Set Bonuses</h3>
-        <dl class="stats">
-          {#each activeSets as [familyName, count]}
-            <div style="flex-direction: column; align-items: flex-start; gap: 0.25rem; padding-bottom: 0.5rem;">
-              <dt style="text-transform: capitalize; width: 100%; border-bottom: 1px solid var(--border); padding-bottom: 0.2rem; margin-bottom: 0.2rem;">
-                {familyName} Set <span class="dim tiny" style="float: right;">{count}/5</span>
-              </dt>
-              <dd style="text-align: left; width: 100%;">
-                {#if count >= 2}<div class="dim tiny" style="color: var(--good)">+10% Base Armor</div>{/if}
-                {#if count >= 3}<div class="dim tiny" style="color: var(--good)">+15% Base Damage</div>{/if}
-                {#if count >= 5}<div class="dim tiny" style="color: var(--accent)">+Unique passive effect</div>{/if}
-              </dd>
-            </div>
+        <h3>Set bonuses</h3>
+        <ul class="sets">
+          {#each activeSets as set (set.SetId)}
+            <li class="set-row">
+              <div class="set-head">
+                <strong class="set-name">{set.Family}</strong>
+                <span class="dim tiny">{set.Offensive ? 'offence' : 'defence'} · {set.Pieces}/5</span>
+              </div>
+              <div class="set-pay">
+                {#if set.DamagePct > 0}<span class="good">+{set.DamagePct}% damage</span>{/if}
+                {#if set.ArmorPct > 0}<span class="good">+{set.ArmorPct}% armour</span>{/if}
+                {#if set.Burn}<span class="accent">Burn: each hit adds a quarter again as fire</span>{/if}
+                {#if set.Thorns}<span class="accent">Thorns: a fifth of each hit taken is returned</span>{/if}
+                {#if set.DamageCap}<span class="accent">Bulwark: no single hit takes more than 20% of your health</span>{/if}
+              </div>
+              <div class="dim tiny">
+                {#if set.NextTierPieces > 0}
+                  {set.NextTierPieces - set.Pieces} more piece{set.NextTierPieces - set.Pieces === 1 ? '' : 's'} for the next tier.
+                {:else}
+                  Top tier.
+                {/if}
+                Rarity scales it: ×{set.QualityScale.toFixed(2)}.
+              </div>
+            </li>
           {/each}
-        </dl>
+        </ul>
       {/if}
 
       <!-- Modul: skills sit with the character now. They spend mana, they have
@@ -1052,6 +1055,42 @@
     font-size: 0.78rem;
   }
 
+  .sets {
+    list-style: none;
+    margin: 0 0 0.75rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .set-row {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 0.4rem 0.55rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+  .set-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+  }
+  .set-name {
+    text-transform: capitalize;
+  }
+  .set-pay {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.85rem;
+  }
+  .set-pay .good {
+    color: var(--good);
+  }
+  .set-pay .accent {
+    color: var(--accent);
+  }
   .stats {
     display: grid;
     grid-template-columns: repeat(4, 1fr);

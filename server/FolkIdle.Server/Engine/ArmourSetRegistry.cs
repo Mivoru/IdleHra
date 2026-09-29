@@ -21,18 +21,75 @@ namespace FolkIdle.Server.Engine
     /// other. `ArmourSetTests` asserts the outcome (two families of five per
     /// tier, ten in all) rather than trusting the rule.
     ///
-    /// NOT THE SAME NUMBER AS EquipmentInstance.SetId, and that is worth
-    /// stating plainly: that column exists, SetBonusEngine reads it, and
-    /// NOTHING IN THIS SERVER HAS EVER WRITTEN IT - nine places construct an
-    /// EquipmentInstance and not one assigns a set. So set bonuses do not fire
-    /// on any item any player owns. This registry is what a fix would be built
-    /// from; wiring it into the drops is a balance change and is deliberately
-    /// not done here.
+    /// THE ONLY SOURCE OF A PIECE'S SET ID (task 63, owner 2026-09-28).
+    /// EquipmentInstance.SetId exists as a column, but nothing in this server
+    /// ever wrote it - 0 of 945 live items carried one - so no set bonus had
+    /// ever paid anyone while the Character screen advertised them.
+    /// EquipmentSlotEngine.ComputeEquippedTotalsAsync now asks SetIdOf here
+    /// instead of reading the column, which leaves one definition of "which
+    /// set is this piece" for the bonus, the deed and the screen. The column is
+    /// dead; do not start writing it, or there are two again.
+    ///
+    /// SET IDS: (tier - 1) * 2 + 1 for the tier's light family (offensive) and
+    /// + 2 for its heavy one (defensive), so 1..10 with odd = offensive -
+    /// SetBonusEngine.IsOffensiveSet relies on exactly that.
     /// </summary>
     public static class ArmourSetRegistry
     {
         /// <summary>Sets per region tier. The catalogue authors two, always.</summary>
         public const int SetsPerTier = 2;
+
+        /// <summary>
+        /// Each tier authors a light family and a heavy one. The light one is
+        /// the OFFENSIVE set (a damage bonus), the heavy one the DEFENSIVE set
+        /// (armour). Written out rather than derived: nothing in items.json
+        /// says which is which, and ArmourSetTests asserts every tier has
+        /// exactly one of each.
+        /// </summary>
+        private static readonly HashSet<string> OffensiveFamilies =
+            new(StringComparer.Ordinal) { "linen", "hunter", "magus", "brawler", "doom" };
+
+        public static bool IsOffensiveFamily(string family) => OffensiveFamilies.Contains(family);
+
+        private static readonly Lazy<Dictionary<string, int>> _setIdByBaseId =
+            new(BuildSetIds, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
+
+        /// <summary>
+        /// The set id a worn piece counts toward (1..10), or 0 for anything that
+        /// is not authored armour. See the class comment for the numbering.
+        /// </summary>
+        public static int SetIdOf(string baseItemId)
+        {
+            if (string.IsNullOrEmpty(baseItemId)) return 0;
+            return _setIdByBaseId.Value.TryGetValue(baseItemId, out int id) ? id : 0;
+        }
+
+        /// <summary>The family name ("linen", "dread") behind a set id, or "".</summary>
+        public static string FamilyOfSetId(int setId)
+        {
+            foreach (var (baseId, id) in _setIdByBaseId.Value)
+            {
+                if (id == setId) return FamilyOf(baseId);
+            }
+            return string.Empty;
+        }
+
+        private static Dictionary<string, int> BuildSetIds()
+        {
+            var result = new Dictionary<string, int>(StringComparer.Ordinal);
+            ReadOnlySpan<ItemDefinition> items = ContentRegistry.ItemDefinitions;
+
+            for (int i = 0; i < items.Length; i++)
+            {
+                string baseItemId = ContentRegistry.GetItemBaseId(items[i].Id);
+                string family = FamilyOf(baseItemId);
+                if (family.Length == 0 || items[i].RegionTier < 1) continue;
+
+                result[baseItemId] = (items[i].RegionTier - 1) * SetsPerTier + (IsOffensiveFamily(family) ? 1 : 2);
+            }
+
+            return result;
+        }
 
         private static readonly Lazy<Dictionary<string, string>> _familyByBaseId =
             new(Build, System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);

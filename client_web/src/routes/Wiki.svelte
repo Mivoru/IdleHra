@@ -485,7 +485,29 @@
           <h3 id="sets">Armour set bonuses</h3>
           <p class="dim small">
             Wearing several pieces of one family pays a bonus at
-            <strong>2, 3 and 5 pieces</strong>. The families in the catalogue:
+            <strong>2, 3 and 5 pieces</strong>. Every region has a light family
+            (<strong>offence</strong>) and a heavy one (<strong>defence</strong>):
+          </p>
+          <div class="scroll">
+            <table>
+              <thead>
+                <tr><th>Set</th><th class="num">2 pieces</th><th class="num">3 pieces</th><th class="num">5 pieces</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>Offence — linen, hunter, magus, brawler, doom</td><td class="num">+8% damage</td><td class="num">+15% damage</td><td class="num">+26% damage and burn</td></tr>
+                <tr><td>Defence — steel, sentry, obsidian, monolith, dread</td><td class="num">+10% armour</td><td class="num">+18% armour</td><td class="num">+32% armour, thorns and bulwark</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="dim small">
+            The numbers are for Rare pieces. The average rarity of the pieces you
+            wear scales them, from ×0.4 for Normal up to ×2 at the top. Two
+            families can pay at once — three of one and two of another gives both.
+            <strong>Burn</strong> adds a quarter of each hit again as fire,
+            <strong>thorns</strong> returns a fifth of each hit taken, and
+            <strong>bulwark</strong> stops any single hit taking more than 20% of
+            your health. The Character screen shows what your sets pay right now.
+            The families in the catalogue:
           </p>
           <div class="badge-list">
             {#each armourFamilies as fam (fam)}

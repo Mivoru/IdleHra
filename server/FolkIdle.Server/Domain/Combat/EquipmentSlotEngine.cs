@@ -734,7 +734,10 @@ namespace FolkIdle.Server.Domain.Combat
 
                 if (pieceSlotIndex >= 0)
                 {
-                    setIds.SetBySlotIndex(pieceSlotIndex, piece.SetId, piece.QualityTier);
+                    // Modul: the set comes from the piece's BaseId (task 63), not
+                    // from EquipmentInstance.SetId - nothing ever wrote that
+                    // column, so no bonus had ever paid. See ArmourSetRegistry.
+                    setIds.SetBySlotIndex(pieceSlotIndex, ArmourSetRegistry.SetIdOf(piece.BaseItemId), piece.QualityTier);
                 }
             }
 
@@ -764,6 +767,19 @@ namespace FolkIdle.Server.Domain.Combat
             int vilaMastery,
             int draugrMastery,
             int completedAreaFlags)
+            => (await ComputeCharacterCombatStatsWithSetsAsync(db, player, character, humanMastery, vilaMastery, draugrMastery, completedAreaFlags)).Stats;
+
+        // Task 63: the same computation, also handing back the worn set ids so
+        // the Character screen can list what each set pays from the server's
+        // own evaluation instead of a second copy of the catalogue.
+        public static async Task<(CombatStats Stats, EquippedSetIds SetIds)> ComputeCharacterCombatStatsWithSetsAsync(
+            FolkIdleDbContext db,
+            PlayerRecord player,
+            CharacterRecord character,
+            int humanMastery,
+            int vilaMastery,
+            int draugrMastery,
+            int completedAreaFlags)
         {
             int activeAgePhase = character.AgePhase;
             int activeRaceId = 0;
@@ -779,12 +795,12 @@ namespace FolkIdle.Server.Domain.Combat
 
             (EquippedAffixTotals totals, EquippedSetIds setIds) = await ComputeEquippedTotalsAsync(db, character);
 
-            return StatsCalculator.Calculate(
+            return (StatsCalculator.Calculate(
                 player.BaseStrength, player.BaseDexterity, player.BaseConstitution, player.BaseLuck,
                 player.ActiveOffensivePotionId, player.ActiveDefensivePotionId,
                 activeAgePhase, completedAreaFlags, activeRaceId,
                 humanMastery, vilaMastery, draugrMastery,
-                totals, isEpicMutation, traits, setIds);
+                totals, isEpicMutation, traits, setIds), setIds);
         }
 
         // Modul: Affix System Unification. Reads GDD affix ids

@@ -4791,7 +4791,52 @@ economy is measured (task 37 Phase 3), so do not change payouts.
 - Tag `smoke:screens` guests so the funnel excludes them. The owner knows the
   population is one, so this only matters once there are strangers.
 
-## 63. Armour set bonuses must actually pay (owner decision 2026-09-28) - NOT STARTED
+## DONE - 63. Armour set bonuses must actually pay (owner decision 2026-09-28)
+
+**Built 2026-09-29.**
+- `ArmourSetRegistry.SetIdOf(baseId)` is the ONLY source of a piece's set id:
+  `(tier - 1) * 2 + 1` for the tier's light family (offence), `+ 2` for the
+  heavy one (defence). `EquipmentSlotEngine.ComputeEquippedTotalsAsync` reads
+  it instead of the dead `EquipmentInstance.SetId` column, which feeds all four
+  call sites (live equip, relogin hydration, parked slot, offline catch-up).
+- A second defect on the way: `SetBonusEngine` only knew TWO set ids (1 and
+  10) while items.json authors TEN families, so eight would have paid nothing
+  even with the id written. Every family now pays its archetype: offence
+  +8/15/26% damage, burn at 5; defence +10/18/32% armour, thorns and bulwark
+  at 5; times the average-rarity scale (0.4-2.0).
+- The Character screen used to invent "+10% armour / +15% damage / unique
+  passive" for every family. It now reads `RosterCombatStats[].ActiveSets`
+  from `/api/v1/player/inventory` - the server's own evaluation. Wiki updated.
+- Tests: `ArmourSetTests` (one offence + one defence per tier, all ten ids pay
+  through `StatsCalculator`), the two equip-pipeline tests now use real BaseIds
+  and no `SetId` column. Full suite 1306/1306, exercise 214/214.
+
+**Measured (for the owner's retune decision - NOT acted on):**
+- `PowerCeilingTests`: its set lever read the WEAKEST full set (id 1 at quality
+  0, floored to x0.4). Now Transcendent Linen: **1.52x** (was 1.10x); total
+  ceiling 4,324x, 5.8x headroom over the 750x monster ladder. Passes its shapes.
+- `BossWallTests.SetBonusEffectOnTheWall_Report` (5-piece set at the boss's
+  required quality): an offence set cuts kill time about a third (region 5:
+  1190 s -> 783 s); a defence set changes nothing at the requirement (the
+  reference character already never dies there).
+- **The one wall that moves:** a region-1 DEFENCE set at Transcendent now beats
+  the region-2 boss (384 s, never dies) - bare it dies in 16 s. Regions 3-5
+  still hold one region behind with either set (defence only survives longer:
+  38 / 96 / 22 s).
+- **Retuned 2026-09-29 (owner: "make the monsters and bosses harder, then"):**
+  only the region-2 wall needed it. At quality 7 there was NO attack
+  multiplier where region-2 gear at the bar won and a region-1 Transcendent
+  defence set lost (the fights are binary: the larder sustains you or it
+  does not). Region 2 now asks for quality 8 and its first-clear attack is
+  2.78x (was 2.6x; measured window 2.75-2.80). `BossWallTests` now asserts
+  the "one region behind loses" rule WITH both of that region's sets at
+  every quality. Regions 1, 3, 4, 5 already held with sets - unchanged.
+- **Regular monsters NOT retuned, on purpose.** Sets only speed kills (up to
+  1.52x at Transcendent, about 1.26x at Rare), and the progression gate is
+  the boss wall, which now holds. Faster farming with a finished set is the
+  reward for building it.
+- `ProgressionRateTests`' model wears no set, so its pacing figures do not
+  move; a real player with an offence set kills up to 1.52x faster.
 
 **Owner decision, 2026-09-28:** "I want armour sets to work, it feels only
 right. If we need to boost monsters later, we will do it." So: make the bonuses
