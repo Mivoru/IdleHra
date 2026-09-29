@@ -159,6 +159,34 @@ export function describeBossGearRequirement(region: number): string {
   return text;
 }
 
+/**
+ * Task 72: how much of a boss's gear requirement the player already wears.
+ *
+ * The wall is calibrated on all EIGHT combat slots (0-7; tools are 8-10) in the
+ * boss's region gear at BOSS_REQUIRED_QUALITY_TIER. A piece counts when it sits
+ * in a combat slot, comes from that region or a later one, and is at that
+ * rarity or better - the same reading describeBossGearRequirement states in
+ * words. The locked region on Combat says "you wear 3 of 8" instead of leaving
+ * the player to learn the rule by dying to the boss in two seconds.
+ */
+export const BOSS_COMBAT_SLOTS = 8;
+
+export function bossGearProgress(
+  region: number,
+  pieces: readonly { SlotIndex: number; QualityTier: number; BaseItemId: string }[],
+  regionTierOf: (baseItemId: string) => number,
+): { meets: number; of: number; tier: number } {
+  const tier = BOSS_REQUIRED_QUALITY_TIER[region - 1] ?? BOSS_REQUIRED_QUALITY_TIER[0];
+  const meeting = new Set<number>();
+  for (const piece of pieces) {
+    if (piece.SlotIndex < 0 || piece.SlotIndex >= BOSS_COMBAT_SLOTS) continue;
+    if (piece.QualityTier < tier) continue;
+    if (regionTierOf(piece.BaseItemId) < region) continue;
+    meeting.add(piece.SlotIndex);
+  }
+  return { meets: meeting.size, of: BOSS_COMBAT_SLOTS, tier };
+}
+
 /** The first-clear health multiplier for a boss's region, 1-based. */
 export function firstClearHpMultiplier(region: number): number {
   return FIRST_CLEAR_HP_MULTIPLIERS[region - 1] ?? FIRST_CLEAR_HP_MULTIPLIERS[0];

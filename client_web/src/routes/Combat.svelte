@@ -8,7 +8,13 @@
     firstClearAttackMultiplier,
     describeBossGearRequirement,
     bossRegionOf,
+    bossGearProgress,
+    FIRST_CLEAR_HP_MULTIPLIERS,
+    FIRST_CLEAR_ATTACK_MULTIPLIERS,
   } from '../lib/ui/victories';
+  import { rarityName } from '../lib/ui/rarity';
+  import { queryKeys, fetchWorn } from '../lib/net/rest';
+  import { readPref, writePref, PREF_LAST_MONSTER } from '../lib/net/prefs';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
   import { onMount } from 'svelte';
@@ -296,8 +302,42 @@
     selectMonster(monster);
     // See Gathering.svelte: a bare TargetId does not persist.
     const outcome = assignCharacterActivity(activeCharacterId, monster.Id);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    writePref(PREF_LAST_MONSTER, String(monster.Id));
+    lastMonsterId = monster.Id;
   }
+
+  // Modul: TASK 72 - "NOT IN COMBAT" OFFERS THE WAY BACK. The idle state was a
+  // sentence and nothing to press, so going back to the fight you had meant
+  // finding the monster again in a list of twenty-five. The last monster the
+  // main character fought is remembered on this device (prefs.ts) and offered
+  // - only while its region is still open, which a season reset can change.
+  let lastMonsterId = $state(Number(readPref(PREF_LAST_MONSTER) ?? 0));
+  const lastMonster = $derived.by((): MonsterDefinition | null => {
+    if (!registry || lastMonsterId <= 0) return null;
+    for (let index = 0; index < registry.regions.length; index++) {
+      const found = registry.regions[index].find((m) => m.Id === lastMonsterId);
+      if (found) return index + 1 <= unlockedRegion ? found : null;
+    }
+    return null;
+  });
+
+  // Task 72: what the next region's boss asks for, against what the main
+  // character wears. Read from /player/worn (at most eleven rows), refreshed
+  // while the screen is open so wearing a piece moves the count.
+  const worn = createQuery(() => ({ queryKey: queryKeys.worn, queryFn: fetchWorn, refetchInterval: 30_000 }));
+  const wallProgress = $derived.by(() => {
+    if (!registry || !worn.data) return null;
+    const content = registry;
+    return bossGearProgress(unlockedRegion, worn.data.Pieces, (id) => content.itemsByBaseId.get(id)?.RegionTier ?? 1);
+  });
+
+  // The first-clear multipliers as a range, for the rules paragraph - read
+  // from the mirrored tables (serverMirrors.test.ts) rather than written in
+  // words that can go stale, which is what "five times its health and twice
+  // its damage" did when the wall became per-region.
+  const hpRange = `${Math.min(...FIRST_CLEAR_HP_MULTIPLIERS)}x to ${Math.max(...FIRST_CLEAR_HP_MULTIPLIERS)}x`;
+  const attackRange = `${Math.min(...FIRST_CLEAR_ATTACK_MULTIPLIERS)}x to ${Math.max(...FIRST_CLEAR_ATTACK_MULTIPLIERS)}x`;
 
   function stop() {
     const outcome = assignCharacterActivity(activeCharacterId, 0);
@@ -449,6 +489,11 @@
         <button onclick={stop}>Stand down</button>
       {:else}
         <p class="dim">Not in combat.</p>
+        {#if lastMonster}
+          <button class="continue" data-testid="combat-continue" onclick={() => fight(lastMonster)}>
+            Continue: {lastMonster.Name}
+          </button>
+        {/if}
       {/if}
 
       {#if haltMessage}
@@ -549,9 +594,10 @@
     <p class="dim small ruleset">
       Each region has four monsters and a boss, and they get harder left to
       right. A region opens when you beat the previous region's boss. A boss you
-      have never beaten is <strong>five times its listed health and twice its
-      damage</strong> for that first kill only - after it falls once it can be
-      farmed at its normal stats. Dying stops combat but never gathering.
+      have never beaten is <strong>far stronger for that first kill</strong> -
+      {hpRange} its listed health and {attackRange} its damage, rising region by
+      region - and after it falls once it can be farmed at its normal stats.
+      Dying stops combat but never gathering.
     </p>
       {#each registry.regions as region, index}
         {#if index + 1 <= lastListedRegion}
@@ -572,6 +618,17 @@
             >
           {/if}
         </h3>
+        {#if index + 1 > unlockedRegion && index + 1 === unlockedRegion + 1}
+          <!-- Task 72: the next region says what opens it, in numbers the
+               player can act on, instead of only naming the boss. -->
+          <p class="wall" data-testid="region-wall">
+            {describeBossGearRequirement(unlockedRegion)}
+            {#if wallProgress}
+              <strong>You wear {wallProgress.meets} of {wallProgress.of}</strong>
+              at region {unlockedRegion} {rarityName(wallProgress.tier)} or better.
+            {/if}
+          </p>
+        {/if}
         <ul class="monsters" class:locked={index + 1 > unlockedRegion}>
           {#each region as monster}
             <li class:selected={selectedMonsterId === monster.Id}>
@@ -620,6 +677,17 @@
 </div>
 
 <style>
+  .wall {
+    font-size: 0.82rem;
+    margin: 0.3rem 0 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-left: 2px solid var(--border);
+  }
+
+  .continue {
+    margin-top: 0.4rem;
+  }
+
   .larder-warning {
     display: flex;
     flex-wrap: wrap;
