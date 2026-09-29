@@ -5305,6 +5305,20 @@ the unlock rules (Market/Guild at level 10 lock their tabs, not the entry).
 
 **Ask the owner first** (it renames things they know).
 
+**DONE 2026-09-29 (the owner left it to Claude: yes).**
+- **Menu:** Community is one entry that opens Friends (never locked). Its tabs
+  are Friends, Market, Guild and Leaderboards (`TAB_FAMILIES.social`). Mail
+  stays its own entry.
+- **Locks:** tabs now carry their screen's lock the way menu entries do
+  (`data-locked` and the "Level 10" text). Market and Guild lock their tabs,
+  not the entry.
+- **Checks:** `screens.mjs` reaches the four tabs as sub-tabs; a locked tab
+  is reported, not clicked. `exercise.mjs` checks a new account's Market tab
+  is greyed at "Level 10" while Community stays open, and that the fixture
+  sees no greyed tab.
+- **No route changed,** so every `requestScreen('market')` and the map's
+  plates still land where they did.
+
 ## 77. Village "Work slots": verify, then remove or collapse
 
 The Village lists "Work slots" - 168 rows of "Slot N · idle" on the fixture

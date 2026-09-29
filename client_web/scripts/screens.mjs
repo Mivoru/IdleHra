@@ -52,7 +52,9 @@ if (LANGUAGE_CODES.length === 0) {
 export const SCREENS = [
   'Map', 'Combat', 'Gathering', 'World Boss', 'The Delve',
   'Character', 'Wardrobe', 'Chest', 'Supplies', 'Crafting', 'Forge',
-  'Market', 'Friends', 'Guild', 'Mail', 'Leaderboards',
+  // Task 76: one Community entry; Friends, Market, Guild and Leaderboards
+  // are its tabs, reached through OVERLAYS below.
+  'Community', 'Friends', 'Market', 'Guild', 'Mail', 'Leaderboards',
   // 'Store' left the menu while it sells nothing (task 71); the route stays.
   'Village', 'Bloodline', 'Skill Tree', 'Progress', 'Codex', 'Settings',
   'Wiki',
@@ -74,6 +76,10 @@ function subTab(screen, key) {
     open: async (page) => {
       const tab = page.locator(`[data-subtab="${key}"]`).first();
       if ((await tab.count()) === 0) return false;
+      // Task 76: a tab can be locked the way a menu entry can (Market and
+      // Guild at level 10). Report it rather than time out on a disabled tab.
+      const locked = await tab.getAttribute('data-locked');
+      if (locked !== null) return { locked };
       await tab.click();
       await page
         .waitForFunction(() => !/\bLoading\.\.\./.test(document.body.innerText), { timeout: 15000 })
@@ -99,6 +105,10 @@ export const OVERLAYS = {
   'Supplies · Boosts': subTab('Supplies', 'boosts'),
   'Bloodline · Ancestors': subTab('Bloodline', 'ancestors'),
   'Bloodline · Inheritance': subTab('Bloodline', 'inheritance'),
+  'Friends': subTab('Community', 'social'),
+  'Market': subTab('Community', 'market'),
+  'Guild': subTab('Community', 'guildops'),
+  'Leaderboards': subTab('Community', 'leaderboards'),
   'World Boss · shield wheel': {
     screen: 'World Boss',
     open: async (page) => {
@@ -329,7 +339,8 @@ export async function go(page, label) {
     const overlay = OVERLAYS[label];
     const base = await go(page, overlay.screen);
     if (base?.locked) return base;
-    await overlay.open(page);
+    const opened = await overlay.open(page);
+    if (opened?.locked) return opened;
     return;
   }
 
