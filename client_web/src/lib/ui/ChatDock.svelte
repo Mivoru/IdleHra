@@ -1,6 +1,6 @@
 <script lang="ts">
   import { chatLog, type ChatEntry } from '../stores/game';
-  import { chatDockOpen } from '../stores/chatDock';
+  import { chatDockOpen, chatHandleInHeader } from '../stores/chatDock';
   import Chat from '../../routes/Chat.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { fetchOnlineStats, queryKeys } from '../net/rest';
@@ -48,6 +48,22 @@
     refetchInterval: 10000
   }));
   const onlineCount = $derived(onlineStatsQuery.data?.OnlineCount ?? 0);
+
+  // Task 71: a handle that floats over the page corner has to be worth its
+  // footprint. With nobody online and nothing unread it has nothing to say,
+  // so it moves into the header (App.svelte) and gives the corner back. Only
+  // once the count has actually loaded - a handle that blinks away and back
+  // on every sign-in is worse than one that stays.
+  //
+  // THE COUNT INCLUDES YOU. A signed-in player is always one of the online
+  // sessions, so "nobody to talk to" is a count of one - the handle's fade
+  // (task 52) tested for zero and so, on the live server with one real
+  // player, never faded at all.
+  const nobodyElse = $derived(onlineCount <= 1);
+  const quiet = $derived(onlineStatsQuery.isSuccess && nobodyElse && unread === 0 && !open);
+  $effect(() => {
+    chatHandleInHeader.set(quiet);
+  });
 </script>
 
 <div class="dock" class:open>
@@ -71,7 +87,8 @@
   <!-- Task 52: how many are online, on the handle, so "is anyone here to
        talk to?" is answered before opening it. Faded at 0, not hidden - an
        empty game is also an answer. -->
-  <button class="handle" class:empty={onlineCount === 0} onclick={toggle} aria-label={open ? 'Hide chat' : `Show chat, ${onlineCount} online`}>
+  {#if !quiet}
+  <button class="handle" class:empty={nobodyElse} onclick={toggle} aria-label={open ? 'Hide chat' : `Show chat, ${onlineCount} online`}>
     <svg class="caret" class:up={!open} viewBox="0 0 12 12" aria-hidden="true">
       <path d="M2 4.5 L6 8.5 L10 4.5" fill="none" stroke="currentColor" stroke-width="1.8"
             stroke-linecap="round" stroke-linejoin="round" />
@@ -84,6 +101,7 @@
       </span>
     {/if}
   </button>
+  {/if}
 </div>
 
 <style>

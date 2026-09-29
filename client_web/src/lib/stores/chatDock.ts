@@ -18,3 +18,12 @@ import { writable } from 'svelte/store';
  * why.
  */
 export const chatDockOpen = writable(false);
+
+/**
+ * Task 71: true while the chat has nothing to say - nobody online, nothing
+ * unread, window shut. ChatDock then drops its floating handle, which sat on
+ * the corner of whatever control a screen ended with (Gathering's Gather
+ * button at 1366px), and App.svelte shows a small Chat button in the header
+ * instead. Written by ChatDock only, which is the one that knows both counts.
+ */
+export const chatHandleInHeader = writable(false);

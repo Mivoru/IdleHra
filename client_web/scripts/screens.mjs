@@ -53,7 +53,8 @@ export const SCREENS = [
   'Map', 'Combat', 'Gathering', 'World Boss', 'The Delve',
   'Character', 'Wardrobe', 'Chest', 'Supplies', 'Crafting', 'Forge',
   'Market', 'Friends', 'Guild', 'Mail', 'Leaderboards',
-  'Village', 'Bloodline', 'Skill Tree', 'Progress', 'Codex', 'Store', 'Settings',
+  // 'Store' left the menu while it sells nothing (task 71); the route stays.
+  'Village', 'Bloodline', 'Skill Tree', 'Progress', 'Codex', 'Settings',
   'Wiki',
   // Not a nav button: a STATE of one. See OVERLAYS below.
   'World Boss · shield wheel',
@@ -127,7 +128,9 @@ export const OVERLAYS = {
  * Header buttons that are not destinations, and so are not expected in SCREENS.
  * Named rather than pattern-matched, so a new one has to be looked at once.
  */
-const NON_DESTINATIONS = ['Menu · Map', 'Sign out'];
+// 'Chat': task 71 - the chat's header button while nobody is online. It opens
+// the dock, it is not a screen.
+const NON_DESTINATIONS = ['Menu · Map', 'Sign out', 'Chat'];
 
 export const BASE = process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/';
 
