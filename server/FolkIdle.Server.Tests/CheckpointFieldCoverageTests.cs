@@ -68,6 +68,7 @@ namespace FolkIdle.Server.Tests
             ("QuestSlot1Progress", "daily quests, via QuestEngine.UpsertDailyQuestProgressAsync"),
             ("QuestSlot2Progress", "daily quests, via QuestEngine.UpsertDailyQuestProgressAsync"),
             ("ActiveChroniclePassLevel", "the chronicle pass, via UpsertChroniclePassAsync"),
+            ("PendingGoldIncome", "task 79: the tick's income tally, written to gold_income_daily via GoldLedger.RecordIncomeTallyAsync"),
         };
 
         private static string LocateSource(string relativeDir, string fileName)

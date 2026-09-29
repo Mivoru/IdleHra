@@ -5422,6 +5422,51 @@ within a tolerance; the line reads "estimate"; `check:perf` does not regress.
   lost to the Warehouse cap). Income is harder, because combat gold is
   banked by the checkpoint as a delta rather than at a single site.
 
+**PHASE 2 DONE 2026-09-29 (gold in by source; material flow per day).**
+- **Two income writers.** An engine that credits the gold row itself calls
+  `GoldLedger.RecordIncomeAsync` in its own transaction: chest sales,
+  market and cosmetic sales (net, in the sale's transaction, for both the
+  online and offline seller), login reward, mail claim, guild payout, Delve
+  consolation, starting gold, offline Town Hall, and the retry outbox when a
+  delayed grant lands. Gold on `RedisPendingGoldDelta` (kill, live Town Hall,
+  auto-salvage, kills while away) is tallied with `GoldLedger.TallyIncome`
+  onto `TickStatePayload.PendingGoldIncome`, and the CHECKPOINT writes it.
+- **Why the checkpoint, and why once.** That gold is banked by Redis
+  write-behind or by the checkpoint, depending on whether Redis is up, so a
+  bank is not one place. The tally rides the job as the gold delta does:
+  `RequestFlush` zeroes it live, `FlushState` writes the snapshot's copy in
+  its transaction, and a failed ack hands it back. It also rides
+  `FlushStateAndAdvance` (login), `FlushBatch` (shutdown, past the epoch
+  sieve, which is what stops SIGTERM's second `ShutdownGracefully` counting it
+  again) and `StateReloadMerge`. A frame never touches it. Lost, never
+  doubled: a logout that fails every retry drops the tally, not the gold.
+- **Material flow.** `material_flow_daily` (player, UTC day, item,
+  direction), written by `Engine.MaterialLedger` inside the stack's own
+  transaction. Gathered: live gathering, offline gathering, live village
+  production (at write-behind) and offline production. Spent:
+  `TryConsumeUnifiedAsync` (crafting, buildings, larder) and the three guild
+  donations. Sold and Discarded: the chest. LostToWarehouseCap: the offline
+  grant only, both its window ceiling and the live-storage clamp. The live
+  tick PAUSES production at the cap, so nothing is thrown away there, and
+  the screen says so.
+- **Guard.** `GoldIncomeLedgerTests` reads the source. Each credit shape (a
+  "gold" upsert, `gold….Quantity +=`, `RedisPendingGoldDelta +=`,
+  `["gold"] =`, `.AddGold(`) needs a record, a tally or a `// GoldLedger:`
+  reason within 3 lines, and each checkpoint hop is pinned by name.
+  `GoldIncomeLedgerPostgresTests` pins the writers, one flush, a failed flush
+  and its retry, and a relogin. Migration `AddGoldIncomeAndMaterialFlow` is
+  additive.
+- **Screen.** The same route adds `Income`, `Materials` and their own
+  "since" dates. Progress -> Statistics shows "Where your gold came from",
+  "Where your gold went" and a Materials table. It says tallied income lands
+  at the next save, about five minutes.
+- **Found, not fixed.** An ONLINE seller's market and cosmetic proceeds go
+  through `MarketMatchQueue`, whose drain only moves `CurrentGold` (no
+  `RedisPendingGoldDelta`), so nothing banks them. They are counted as
+  income, but they appear to be lost at the next relogin. Separately,
+  `FlushBatch` never applies `RedisPendingGoldDelta`, so gold still owed
+  at shutdown with Redis down is dropped.
+
 ## 80. Breeding Grounds above level 1
 
 The Wiki says it outright: "nothing above level 1 has an additional effect".

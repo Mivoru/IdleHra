@@ -108,6 +108,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 commodity.Quantity -= quantity;
+                await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.Spent, itemId, quantity); // task 79
                 depot.CurrentStock += quantity;
                 ledger.LifetimeContributed += quantity;
 

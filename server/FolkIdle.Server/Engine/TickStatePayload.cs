@@ -737,6 +737,13 @@ namespace FolkIdle.Server.Engine
         // Redis write-behind session flags. Internal only; never serialized into network packets.
         public bool RequiresRedisFlush;
         public long RedisPendingGoldDelta;
+
+        // Modul: task 79, phase 2. Gold earned on the tick, by source, not yet
+        // written to gold_income_daily. Moves with the checkpoint job exactly
+        // as RedisPendingGoldDelta does, but never through Redis - see
+        // GoldIncomeTally. Every `RedisPendingGoldDelta +=` that is new income
+        // has a GoldLedger.TallyIncome beside it (GoldIncomeLedgerTests).
+        public GoldIncomeTally PendingGoldIncome;
         public FolkIdle.Server.Models.ObfuscatedInt64 ObfuscatedGold;
         public FolkIdle.Server.Models.ObfuscatedInt32 ObfuscatedPremiumCurrency;
         public FolkIdle.Server.Models.ObfuscatedInt32 ObfuscatedLegacyShards;

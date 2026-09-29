@@ -202,6 +202,7 @@ namespace FolkIdle.Server.Engine
                     {
                         // Modul: an upsert (CommodityLedger), task 44.
                         await CommodityLedger.AddAsync(db, mail.PlayerId, "gold", mail.GoldAttachment);
+                        await GoldLedger.RecordIncomeAsync(db, mail.PlayerId, GoldIncomeSource.Mail, mail.GoldAttachment);
                     }
 
                     // Modul: this path never told the live session anything -

@@ -109,6 +109,11 @@ namespace FolkIdle.Server.Domain.Economy
                 }
             }
 
+            // Task 79: crafting, building upgrades and the larder all spend
+            // through here, so this is where "spent" is recorded - in the
+            // caller's transaction, so a rolled-back craft records nothing.
+            await Engine.MaterialLedger.RecordAsync(db, playerId, Engine.MaterialFlowDirection.Spent, itemId, requiredCost);
+
             return true;
         }
 

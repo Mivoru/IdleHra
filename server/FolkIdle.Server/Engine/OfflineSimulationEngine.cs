@@ -231,7 +231,7 @@ namespace FolkIdle.Server.Engine
                     if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
                     {
                         LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, earningSeconds);
-                        slotDrops += await GrantProjectedLootAsync(db, payload.PlayerId, projection, MaxOfflineLootRolls);
+                        slotDrops += await GrantProjectedLootAsync(db, payload.PlayerId, projection, MaxOfflineLootRolls, recordAsGathered: true);
                     }
                     else if (payload.ActiveActivityId > 0)
                     {
@@ -286,12 +286,12 @@ namespace FolkIdle.Server.Engine
             return payload;
         }
 
-        private static async Task<int> GrantProjectedLootAsync(FolkIdleDbContext db, long playerId, LootProjection projection, int availableInventorySpace)
+        private static async Task<int> GrantProjectedLootAsync(FolkIdleDbContext db, long playerId, LootProjection projection, int availableInventorySpace, bool recordAsGathered = false)
         {
             // ReadOnlySpan<T> cannot be a parameter of an async method, so the span is
             // materialized into a plain array before the first await.
             LootTableEntry[] lootTable = ContentRegistry.GetLootTable(projection.LootTableId).ToArray();
-            return await GrantAnalyticalLootAsync(db, playerId, lootTable, projection.LootRolls, availableInventorySpace, projection.LootLuckPct);
+            return await GrantAnalyticalLootAsync(db, playerId, lootTable, projection.LootRolls, availableInventorySpace, projection.LootLuckPct, recordAsGathered);
         }
 
         // Modul: THIS PATH HAD NO OBSERVABILITY AT ALL - the exact shape
@@ -361,6 +361,11 @@ namespace FolkIdle.Server.Engine
 
             long woodEarned = Math.Min(elapsedSeconds * woodRatePerHour / 3600L, maxStoragePerItem);
             long oreEarned = Math.Min(elapsedSeconds * ironRatePerHour / 3600L, maxStoragePerItem);
+            // Task 79: what that window ceiling discarded is lost to the
+            // Warehouse cap too - it is the same storage figure. Recorded
+            // against the common material, inside the transaction below.
+            long woodClampedByWindow = elapsedSeconds * woodRatePerHour / 3600L - woodEarned;
+            long oreClampedByWindow = elapsedSeconds * ironRatePerHour / 3600L - oreEarned;
 
             // Modul: A SHARE OF THE YIELD IS THE TIER'S RARE MATERIAL,
             // 2026-09-01, in the same 90/10 the gathering loot tables use for
@@ -418,11 +423,21 @@ namespace FolkIdle.Server.Engine
                     materialsLostToFullWarehouse += await GrantSingleCommodityProductionAsync(db, playerId, mineMats.RareOre, rareOre, maxStoragePerItem);
                 }
 
+                if (woodClampedByWindow > 0)
+                {
+                    await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.LostToWarehouseCap, lumberjackMats.Log, woodClampedByWindow);
+                }
+                if (oreClampedByWindow > 0)
+                {
+                    await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.LostToWarehouseCap, mineMats.Ore, oreClampedByWindow);
+                }
+
                 if (goldEarned > 0)
                 {
                     // Modul: an upsert (CommodityLedger), task 44. What banks
                     // this gold is unchanged; only how the row is created.
                     await CommodityLedger.AddAsync(db, playerId, "gold", goldEarned);
+                    await GoldLedger.RecordIncomeAsync(db, playerId, GoldIncomeSource.TownHall, goldEarned);
                 }
 
                 await db.SaveChangesAsync();
@@ -447,6 +462,7 @@ namespace FolkIdle.Server.Engine
                 if (oreEarned > 0) deltas[mineMats.Ore] = oreEarned;
                 if (rareWood > 0) deltas[lumberjackMats.RareLog] = rareWood;
                 if (rareOre > 0) deltas[mineMats.RareOre] = rareOre;
+                // GoldLedger: counted when the outbox applies it (PendingGrantOutbox).
                 if (goldEarned > 0) deltas["gold"] = goldEarned;
 
                 await PendingGrantOutbox.EnqueueCommodityDeltasAsync(
@@ -475,6 +491,9 @@ namespace FolkIdle.Server.Engine
             long currentStorage = commodity?.Quantity ?? 0L;
             long grantedAmount = Math.Min(amountToGrant, Math.Max(0L, maxStorage - currentStorage));
             long overflow = amountToGrant - grantedAmount;
+
+            // Task 79: the material flow, in the caller's transaction.
+            await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.LostToWarehouseCap, itemId, overflow);
             if (grantedAmount <= 0)
             {
                 return overflow;
@@ -484,6 +503,7 @@ namespace FolkIdle.Server.Engine
             // needs the current stack; the write is an upsert (task 44), since
             // FOR UPDATE on a row that does not exist yet locks nothing.
             await CommodityLedger.AddAsync(db, playerId, itemId, grantedAmount);
+            await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.Gathered, itemId, grantedAmount);
 
             return overflow;
         }
@@ -713,6 +733,7 @@ namespace FolkIdle.Server.Engine
             {
                 payload.AddGold(totalGoldGained);
                 payload.RedisPendingGoldDelta += totalGoldGained;
+                GoldLedger.TallyIncome(ref payload, GoldIncomeSource.CombatAway, totalGoldGained);
                 payload.RequiresRedisFlush = true;
             }
 
@@ -922,7 +943,7 @@ namespace FolkIdle.Server.Engine
         // for a low-weight (rare) entry than a high-weight (common) one, so
         // higher luck shifts the selection distribution toward rare drops
         // without changing the total number of rolls.
-        internal static async Task<int> GrantAnalyticalLootAsync(FolkIdleDbContext db, long playerId, LootTableEntry[] lootTable, int rollCount, int availableInventorySpace, float lootLuckPct = 0f)
+        internal static async Task<int> GrantAnalyticalLootAsync(FolkIdleDbContext db, long playerId, LootTableEntry[] lootTable, int rollCount, int availableInventorySpace, float lootLuckPct = 0f, bool recordAsGathered = false)
         {
             if (lootTable.Length == 0 || rollCount <= 0 || availableInventorySpace <= 0)
             {
@@ -960,9 +981,33 @@ namespace FolkIdle.Server.Engine
                 }
                 materialDeltas.Add(new KeyValuePair<string, long>(materialName, kvp.Value));
             }
-            await CommodityLedger.AddManyAsync(db, playerId, materialDeltas);
+            if (!recordAsGathered)
+            {
+                await CommodityLedger.AddManyAsync(db, playerId, materialDeltas);
+                await db.SaveChangesAsync();
+                return rollsToExecute;
+            }
 
-            await db.SaveChangesAsync();
+            // Modul: task 79. Gathering while away is gathering (a combat
+            // projection's material drops are loot, not the material flow).
+            // The ledger row is a SECOND statement, so the pair runs in a
+            // transaction when the caller has none - otherwise a ledger
+            // failure would throw out of the login AFTER the grant landed, and
+            // the offline window (not yet stamped) would grant it again.
+            var ownTransaction = db.Database.CurrentTransaction == null
+                ? await db.Database.BeginTransactionAsync()
+                : null;
+            try
+            {
+                await CommodityLedger.AddManyAsync(db, playerId, materialDeltas);
+                await MaterialLedger.RecordManyAsync(db, playerId, MaterialFlowDirection.Gathered, materialDeltas);
+                await db.SaveChangesAsync();
+                if (ownTransaction != null) await ownTransaction.CommitAsync();
+            }
+            finally
+            {
+                if (ownTransaction != null) await ownTransaction.DisposeAsync();
+            }
 
             return rollsToExecute;
         }

@@ -27,6 +27,7 @@ namespace FolkIdle.Server.Domain.Social
                 if (!System.Runtime.CompilerServices.Unsafe.IsNullRef(ref currentPayload))
                 {
                     {
+                        // GoldLedger: display only - CommitMailClaimAsync credits and records it.
                         currentPayload.AddGold(req.GoldAttachment);
                         currentPayload.IsDirty = true;
                         safeDispatch("MailClaim.Accept", req.PlayerId, async () => { await mailboxEngine.CommitMailClaimAsync(req.PlayerId, req.MailId, true); });

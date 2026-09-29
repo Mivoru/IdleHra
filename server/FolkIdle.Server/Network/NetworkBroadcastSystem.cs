@@ -3398,12 +3398,33 @@ namespace FolkIdle.Server.Network
             /// <summary>The first UTC day with a row, so the screen can say "since"; null when empty.</summary>
             public string? RecordedSince { get; set; }
             public List<GoldLedgerCategoryResponse> Categories { get; set; } = new();
+
+            // Task 79, phase 2. Income has its own "since": it began recording
+            // later than spending, and a screen that shared one date would
+            // claim income was counted before it was.
+            public string? IncomeRecordedSince { get; set; }
+            /// <summary>Category holds the GoldIncomeSource name.</summary>
+            public List<GoldLedgerCategoryResponse> Income { get; set; } = new();
+            public string? MaterialsRecordedSince { get; set; }
+            public List<MaterialFlowResponse> Materials { get; set; } = new();
+        }
+
+        private sealed class MaterialFlowResponse
+        {
+            public string ItemId { get; set; } = string.Empty;
+            /// <summary>The MaterialFlowDirection name: Gathered, Spent, LostToWarehouseCap, Sold, Discarded.</summary>
+            public string Direction { get; set; } = string.Empty;
+            public long Last7Days { get; set; }
+            public long Last30Days { get; set; }
+            public long SinceRecorded { get; set; }
         }
 
         /// <summary>
         /// Task 79: GET /api/v1/player/gold-ledger. Spending by category over 7
         /// days, 30 days and since recording began, read from gold_spend_daily
         /// (GoldLedger). Sorted by the all-time amount, biggest sink first.
+        /// Phase 2 adds income by source (gold_income_daily) and the material
+        /// flow (material_flow_daily), each with its own "recorded since".
         /// </summary>
         private async Task HandleGoldLedger(HttpListenerContext context)
         {
@@ -3441,6 +3462,36 @@ namespace FolkIdle.Server.Network
                         .OrderByDescending(c => c.SinceRecorded)
                         .ToList(),
                 };
+
+                // Task 79, phase 2: income by source, and the material flow.
+                var incomeRows = await db.GoldIncomeDaily.AsNoTracking().Where(g => g.PlayerId == playerId).ToListAsync();
+                response.IncomeRecordedSince = incomeRows.Count == 0 ? null : incomeRows.Min(r => r.Day).ToString("yyyy-MM-dd");
+                response.Income = incomeRows
+                    .GroupBy(r => r.Source)
+                    .Select(g => new GoldLedgerCategoryResponse
+                    {
+                        Category = Enum.IsDefined(typeof(GoldIncomeSource), g.Key) ? ((GoldIncomeSource)g.Key).ToString() : $"Other{g.Key}",
+                        Last7Days = g.Where(r => r.Day > today.AddDays(-7)).Sum(r => r.Amount),
+                        Last30Days = g.Where(r => r.Day > today.AddDays(-30)).Sum(r => r.Amount),
+                        SinceRecorded = g.Sum(r => r.Amount),
+                    })
+                    .OrderByDescending(c => c.SinceRecorded)
+                    .ToList();
+
+                var materialRows = await db.MaterialFlowDaily.AsNoTracking().Where(m => m.PlayerId == playerId).ToListAsync();
+                response.MaterialsRecordedSince = materialRows.Count == 0 ? null : materialRows.Min(r => r.Day).ToString("yyyy-MM-dd");
+                response.Materials = materialRows
+                    .GroupBy(r => (r.ItemId, r.Direction))
+                    .Select(g => new MaterialFlowResponse
+                    {
+                        ItemId = g.Key.ItemId,
+                        Direction = Enum.IsDefined(typeof(MaterialFlowDirection), g.Key.Direction) ? ((MaterialFlowDirection)g.Key.Direction).ToString() : $"Other{g.Key.Direction}",
+                        Last7Days = g.Where(r => r.Day > today.AddDays(-7)).Sum(r => r.Amount),
+                        Last30Days = g.Where(r => r.Day > today.AddDays(-30)).Sum(r => r.Amount),
+                        SinceRecorded = g.Sum(r => r.Amount),
+                    })
+                    .OrderByDescending(m => m.SinceRecorded)
+                    .ToList();
 
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";

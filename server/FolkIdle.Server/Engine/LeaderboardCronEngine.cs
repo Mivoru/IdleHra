@@ -341,6 +341,7 @@ namespace FolkIdle.Server.Engine
                                 // was an unlocked read then an absolute write at
                                 // SaveChanges, which lost any credit landing between.
                                 await CommodityLedger.AddAsync(dbContext, members[i].PlayerId, "gold", payout);
+                                await GoldLedger.RecordIncomeAsync(dbContext, members[i].PlayerId, GoldIncomeSource.GuildPayout, payout);
                             }
                         }
                     }

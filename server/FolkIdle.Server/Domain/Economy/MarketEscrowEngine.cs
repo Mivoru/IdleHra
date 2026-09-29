@@ -408,6 +408,11 @@ namespace FolkIdle.Server.Domain.Economy
 
                 long sellerProceeds = executionPrice - fee - guildTax;
 
+                // Task 79: the sale is income whichever branch pays it, and it
+                // is counted here, in the sale's transaction, never at the
+                // tick's display-only AddGold or the rescue.
+                await GoldLedger.RecordIncomeAsync(db, order.SellerId, GoldIncomeSource.Market, sellerProceeds);
+
                 if (_playerRegistry.IsPlayerOnline(order.SellerId))
                 {
                     _playerRegistry.MarketMatchQueue.Enqueue(new MarketMatchNotification
@@ -422,6 +427,7 @@ namespace FolkIdle.Server.Domain.Economy
                     // Modul: an upsert (CommodityLedger). The ledger rebases
                     // the tracked sellerGold row read above, so nothing at
                     // SaveChanges writes a stale absolute over it.
+                    // GoldLedger: recorded as Market income above, for both branches.
                     await CommodityLedger.AddAsync(db, order.SellerId, "gold", sellerProceeds);
                 }
 

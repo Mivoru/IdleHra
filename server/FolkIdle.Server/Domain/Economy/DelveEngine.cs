@@ -810,6 +810,7 @@ namespace FolkIdle.Server.Domain.Economy
             if (consolation > 0)
             {
                 await CommodityLedger.AddAsync(db, playerId, "gold", consolation);
+                await GoldLedger.RecordIncomeAsync(db, playerId, GoldIncomeSource.Delve, consolation);
             }
             var goldRow = await LockGoldRowAsync(db, playerId);
 
