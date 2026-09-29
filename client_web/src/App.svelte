@@ -114,15 +114,15 @@
     {
       name: 'Community',
       screens: [
-        { key: 'market', label: 'Market' },
-        { key: 'social', label: 'Friends' },
-        { key: 'guildops', label: 'Guild' },
+        // Task 76: Friends, Market, Guild and Leaderboards are one
+        // "Community" entry with four tabs - see TAB_FAMILIES. The entry
+        // opens Friends, the one tab nobody has to unlock first.
+        { key: 'social', label: 'Community' },
         // Modul: Mail belongs here, not under Items - and for a while it
         // belonged NOWHERE. Moving it out of Items dropped the entry without
         // adding it back, which left the route and its unread badge reachable
         // only by a cross-screen navigation request. There was no button.
         { key: 'mailbox', label: 'Mail' },
-        { key: 'leaderboards', label: 'Leaderboards' },
       ],
     },
     {
@@ -172,8 +172,16 @@
       { key: 'ancestors', label: 'Ancestors' },
       { key: 'inheritance', label: 'Inheritance' },
     ],
+    // Task 76. Mail stays its own entry: world boss rewards land there, and
+    // a badge on a tab inside another entry is a badge nobody sees.
+    social: [
+      { key: 'social', label: 'Friends' },
+      { key: 'market', label: 'Market' },
+      { key: 'guildops', label: 'Guild' },
+      { key: 'leaderboards', label: 'Leaderboards' },
+    ],
   };
-  const TAB_ONLY_KEYS = ['boosts', 'ancestors', 'inheritance'] as const;
+  const TAB_ONLY_KEYS = ['boosts', 'ancestors', 'inheritance', 'market', 'guildops', 'leaderboards'] as const;
 
   type ScreenKey =
     | (typeof GROUPS)[number]['screens'][number]['key']
@@ -670,12 +678,20 @@
     {#if activeTabs}
       <div class="screen-tabs" role="tablist" aria-label={currentScreenLabel}>
         {#each activeTabs as tab (tab.key)}
+          {@const tabLock = $screenLocks(tab.key)}
+          <!-- Task 76: a tab carries the lock its screen would have had as a
+               menu entry (Market and Guild at level 10), so the entry itself
+               stays open for the tabs that are. -->
           <button
             role="tab"
             class:active={screen === tab.key}
+            class:locked={tabLock !== null}
             aria-selected={screen === tab.key}
+            disabled={tabLock !== null && screen !== tab.key}
+            title={tabLock ? `Opens at: ${tabLock}` : undefined}
             data-subtab={tab.key}
-            onclick={() => goTo(tab.key as ScreenKey)}>{tab.label}</button
+            data-locked={tabLock ?? undefined}
+            onclick={() => goTo(tab.key as ScreenKey)}>{tab.label}{#if tabLock}<span class="lock-req">{tabLock}</span>{/if}</button
           >
         {/each}
       </div>
@@ -789,7 +805,8 @@
     color: var(--accent);
     font-weight: 700;
   }
-  nav button.locked {
+  nav button.locked,
+  .screen-tabs button.locked {
     opacity: 0.55;
     cursor: not-allowed;
   }

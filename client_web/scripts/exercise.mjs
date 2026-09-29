@@ -44,6 +44,11 @@ const SUB_TABS = {
   Breeding: ['Bloodline', 'breeding'],
   Ancestors: ['Bloodline', 'ancestors'],
   Inheritance: ['Bloodline', 'inheritance'],
+  // Task 76: one Community entry, four tabs.
+  Friends: ['Community', 'social'],
+  Market: ['Community', 'market'],
+  Guild: ['Community', 'guildops'],
+  Leaderboards: ['Community', 'leaderboards'],
 };
 
 const go = async (label) => {
@@ -915,6 +920,11 @@ await go('Auto-Eat');
     [...document.querySelectorAll('header button[data-locked]')].map((b) => b.dataset.label),
   );
   record('the dev fixture sees no greyed menu entry', greyed.length === 0, greyed.join(', ') || 'none');
+  // Task 76: and no greyed tab either - the fixture is past level 10.
+  const greyedTabs = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-subtab][data-locked]')].map((b) => b.getAttribute('data-subtab')),
+  );
+  record('the dev fixture sees no greyed tab', greyedTabs.length === 0, greyedTabs.join(', ') || 'none');
   const tabs = await page.evaluate(() =>
     [...document.querySelectorAll('[data-subtab]')].map((b) => b.getAttribute('data-subtab')),
   );
@@ -3588,11 +3598,23 @@ await go('Ancestors');
           (b) => `${b.dataset.label}=${b.dataset.locked}`,
         ),
       );
-      const market = locked.find((l) => l.startsWith('Market='));
+      // Task 76: the Market is a TAB of Community now, so the lock is on the
+      // tab and the entry stays open for Friends and Leaderboards.
+      const community = locked.find((l) => l.startsWith('Community='));
+      // A DOM click, not a pointer one: a brand-new account has onboarding
+      // overlays up at this point, and what is checked is the lock state,
+      // not whether the button can be reached through them.
+      await fresh.evaluate(() => document.querySelector('header button[data-nav="social"]')?.click());
+      await fresh.waitForTimeout(800);
+      const marketTab = await fresh
+        .locator('[data-subtab="market"]')
+        .first()
+        .getAttribute('data-locked')
+        .catch(() => null);
       record(
-        'a new account sees the Market greyed until level 10',
-        market === 'Market=Level 10',
-        locked.join(', ') || 'nothing greyed',
+        'a new account sees the Market tab greyed until level 10, Community open',
+        community === undefined && marketTab === 'Level 10',
+        `Community ${community ?? 'open'}; Market tab ${marketTab ?? 'open'}`,
       );
       record(
         'a new account keeps Combat, Character and Supplies open',
