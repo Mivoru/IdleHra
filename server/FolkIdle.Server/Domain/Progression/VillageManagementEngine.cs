@@ -519,6 +519,7 @@ namespace FolkIdle.Server.Domain.Progression
                         return;
                     }
                     goldRecord.Quantity -= goldCost;
+                    await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Village, goldCost);
                     goldSpent = goldCost;
                 }
 

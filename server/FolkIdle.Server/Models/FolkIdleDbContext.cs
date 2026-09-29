@@ -132,6 +132,9 @@ namespace FolkIdle.Server.Models
         public DbSet<LootTierDailyCount> LootTierDailyCounts { get; set; }
         public DbSet<NotableItemEvent> NotableItemEvents { get; set; }
 
+        // Task 79: where the gold went. Written only through Engine.GoldLedger.
+        public DbSet<GoldSpendDaily> GoldSpendDaily { get; set; }
+
         public FolkIdleDbContext(DbContextOptions<FolkIdleDbContext> options) : base(options)
         {
         }
@@ -530,6 +533,10 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<NotableItemEvent>()
                 .HasIndex(e => new { e.PlayerId, e.CreatedAtUtc });
+
+            // Task 79. The key IS GoldLedger's ON CONFLICT target.
+            modelBuilder.Entity<GoldSpendDaily>()
+                .HasKey(g => new { g.PlayerId, g.Day, g.Category });
         }
     }
 }

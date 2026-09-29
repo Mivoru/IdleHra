@@ -238,6 +238,7 @@ namespace FolkIdle.Server.Domain.Economy
 
             long price = listing.Price;
             buyerGold.Quantity -= price;
+            await GoldLedger.RecordSpendAsync(db, buyerId, GoldSpendCategory.Cosmetics, price);
 
             item.PlayerId = buyerId;
             item.IsListed = false;

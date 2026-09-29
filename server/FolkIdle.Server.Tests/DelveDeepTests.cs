@@ -695,6 +695,8 @@ namespace FolkIdle.Server.Tests
                 nameof(PlayerRecord.ActiveTitleSlug),
                 // What the tolls came to - its own test pins the amount.
                 nameof(PlayerRecord.DelveDeepGoldSpent),
+                // Task 79: the gold ledger's lifetime total - the tolls are spends.
+                nameof(PlayerRecord.LifetimeGoldSpent),
             };
 
             foreach (var property in typeof(PlayerRecord).GetProperties())

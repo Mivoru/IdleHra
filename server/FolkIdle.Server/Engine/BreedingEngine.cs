@@ -156,6 +156,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 goldRecord.Quantity -= breedingCost;
+                await GoldLedger.RecordSpendAsync(dbContext, playerId, GoldSpendCategory.Breeding, breedingCost);
 
                 // Modul: RELATEDNESS, two generations deep and from ONE place.
                 // This was an inline nine-clause copy that stopped at siblings,
@@ -382,6 +383,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 goldRecord.Quantity -= breedingCost;
+                await GoldLedger.RecordSpendAsync(dbContext, playerId, GoldSpendCategory.Breeding, breedingCost);
 
                 // A HERO x VILLAGER PAIRING IS NEVER INBRED, and no relatedness
                 // check runs here. A newcomer has no parents in this world and

@@ -151,6 +151,16 @@ namespace FolkIdle.Server.Models
         // Legendary in the game, which is not a setting, it is a trap.
         public int AutoSalvageBelowTier { get; set; }
 
+        // Modul: every gold coin this account has ever spent (task 79), and
+        // what the Treasury deed pays on - it paid for HOLDING gold, which
+        // told players to hoard in an economy that already under-spends.
+        // Incremented only by Engine.GoldLedger, in raw SQL inside the spend's
+        // own transaction, so it is never written from the payload; the
+        // checkpoint only reads it. Starts at 0 for everyone: nothing recorded
+        // spending before this column existed, and tiers already paid stay
+        // paid.
+        public long LifetimeGoldSpent { get; set; }
+
         // Modul: the chest's per-region auto-sell rules (task 81): one floor
         // for each region, four bits a region. A region's floor can only raise
         // AutoSalvageBelowTier above, never lower it. ChestSalvageRules owns the
