@@ -43,6 +43,17 @@ namespace FolkIdle.Server.Domain.Combat
     {
         private const int TickIntervalMs = 100; // 10 Hz
 
+        // Modul: the chance of 1 diamond on an ORDINARY (non-boss) kill. Owner
+        // decision 2026-09-28: 0.05% -> 0.01%. At 0.05% a character killing about
+        // one monster a second earned ~300 diamonds a week, five times the
+        // Delve's calibrated DelveRegistry.MaxDiamondsPerWeek (60). At 0.01% the
+        // same pace pays ~60. Regional bosses pay none (BossDiamondTests), and
+        // the offline catch-up pays no diamonds, so this is the only site.
+        // OrdinaryKillDiamondTests pins it.
+        internal const double OrdinaryKillDiamondChance = 0.0001;
+
+        internal static bool OrdinaryKillPaysDiamond(double roll) => roll < OrdinaryKillDiamondChance;
+
         // Modul: set bonuses made real. Magnitudes for the 4-piece effects,
         // which had none because nothing consumed them. Chosen to be worth
         // chasing without eclipsing the flat 2-piece core: a burn adding a
@@ -4874,8 +4885,8 @@ namespace FolkIdle.Server.Domain.Combat
                     });
                 }
 
-                // Modul 03: 0.05% flat Premium Diamond drop from standard/elite
-                // monsters. PremiumCurrency is updated directly in-memory here
+                // Modul 03: a flat Premium Diamond drop (OrdinaryKillDiamondChance)
+                // from standard/elite monsters. PremiumCurrency is updated directly in-memory here
                 // (no DB access needed on the hot path) and persisted on the
                 // next checkpoint flush like gold.
                 //
@@ -4887,7 +4898,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // (measured with BossGearBenchmark). The live account had
                 // already taken 1,160 from 116 kills of that one boss.
                 // BossDiamondTests keeps it gone.
-                if (!isRegionalBoss && Random.Shared.NextDouble() < 0.0005)
+                if (!isRegionalBoss && OrdinaryKillPaysDiamond(Random.Shared.NextDouble()))
                 {
                     payload.SetPremiumCurrency(payload.PremiumCurrency + 1);
                     payload.IsDirty = true;

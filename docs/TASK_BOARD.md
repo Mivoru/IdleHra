@@ -4824,7 +4824,11 @@ so. Do not hold the fix back to balance it in the same change.
   written down here;
 - a monster retune is a SEPARATE follow-up, only if those numbers ask for it.
 
-## 64. Ordinary kills: lower the diamond chance to 0.01% (owner decision 2026-09-28) - NOT STARTED
+## DONE - 64. Ordinary kills: lower the diamond chance to 0.01% (owner decision 2026-09-28)
+
+**Built 2026-09-29:** `SimulationEngine.OrdinaryKillDiamondChance = 0.0001`, read through
+`OrdinaryKillPaysDiamond`; `OrdinaryKillDiamondTests` pins the constant and a seeded week of
+one kill a second (~60, the Delve's ceiling). `BossDiamondTests` still passes.
 
 **Owner decision, 2026-09-28:** the chance of 1 diamond on an ordinary
 (non-boss) kill goes from **0.05% to 0.01%**. Regional bosses pay none at all
