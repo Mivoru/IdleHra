@@ -24,6 +24,8 @@
   import { locationName, nodeLocation } from '../lib/ui/locations';
   // EMPTY_GUID is the sentinel the roster filter below tests against.
   import { raceName } from '../lib/ui/races';
+  import { writePref } from '../lib/net/prefs';
+  import { lastActivityKey } from '../lib/ui/homeNow';
   import { onMount } from 'svelte';
   import { play } from '../lib/ui/audio';
 
@@ -199,6 +201,8 @@
       takenBy: occupiedBy(activityId, slot),
     });
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    // Task 73: Home's "Continue" resumes whatever was given last, wherever.
+    if (activityId > 0) writePref(lastActivityKey(characterId), String(activityId));
   }
 
   function stopWork(slot: number, characterId: string) {

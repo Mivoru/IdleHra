@@ -18,9 +18,18 @@
   // and a second list with its own opinion would be two sources for one truth.
   import { onMount } from 'svelte';
   import { createQuery } from '@tanstack/svelte-query';
-  import { playerState } from '../stores/game';
+  import { playerState, pushLocalNotice } from '../stores/game';
   import { requestScreen } from '../stores/navigation';
-  import { queryKeys, fetchDeeds } from '../net/rest';
+  import { queryKeys, fetchDeeds, fetchWorn, fetchBreedingRoster } from '../net/rest';
+  import { assignCharacterActivity } from '../net/commands';
+  import { writePref } from '../net/prefs';
+  import { bossRegionOf } from './victories';
+  import {
+    formatOfflineCap,
+    lastActivityKey,
+    nextUnlockLine,
+    rememberedActivity,
+  } from './homeNow';
   import { closestDeed } from './homeGoal';
   import { etaSeconds, formatEta, type PaceSample } from './pace';
   import { loadContent, monsterName, type ContentRegistry } from '../net/content';
@@ -73,6 +82,70 @@
     ].filter((w) => w.id !== EMPTY_GUID && townHall >= SLOT_UNLOCK_TOWN_HALL[w.slot - 1]);
   });
 
+  // Modul: TASK 73 - CHARACTERS HAVE NAMES. The card said "Human" three times;
+  // the breeding roster is where the server publishes a character's name.
+  const roster = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster, staleTime: 60_000 }));
+  const nameById = $derived(new Map((roster.data ?? []).map((c) => [c.CharacterId, c.Name])));
+  function who(worker: { id: string; raceId: number }): string {
+    return nameById.get(worker.id) || raceName(worker.raceId);
+  }
+
+  // Every job a character can be given from here. Crafting stays on the
+  // Character screen (its list needs the recipe query); "More jobs" goes there.
+  const jobGroups = $derived.by(() => {
+    if (!registry) return [] as { title: string; jobs: { id: number; label: string }[] }[];
+    const open = snap?.HighestUnlockedRegion || 1;
+    return [
+      {
+        title: 'Fight',
+        jobs: registry.regions.slice(0, open).flat().map((m) => ({ id: m.Id, label: m.Name })),
+      },
+      {
+        title: 'Gather',
+        jobs: registry.gatheringNodes.map((node) => ({
+          id: node.ActivityId,
+          label: `${professionName(node.ProfessionType)} - ${locationName(nodeLocation(node.ActivityId))}`,
+        })),
+      },
+    ];
+  });
+
+  function activityLabelFor(id: number): string {
+    return jobLabel(id);
+  }
+
+  function takenBy(activityId: number, bySlot: number): string | null {
+    if (!snap) return null;
+    if (bySlot !== 1 && Number(snap.ActiveActivityId) === activityId) return 'Slot 1';
+    if (bySlot !== 2 && snap.Slot2ActivityId === activityId) return 'Slot 2';
+    if (bySlot !== 3 && snap.Slot3ActivityId === activityId) return 'Slot 3';
+    return null;
+  }
+
+  let pickerSlot = $state(0);
+  let pickerGroup = $state(0);
+
+  function assign(worker: { slot: number; id: string }, activityId: number) {
+    const outcome = assignCharacterActivity(worker.id, activityId, { takenBy: takenBy(activityId, worker.slot) });
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    writePref(lastActivityKey(worker.id), String(activityId));
+    pickerSlot = 0;
+  }
+
+  // Task 73: the offline limit is the server's own effective figure
+  // (OfflineCapSeconds). How long the player has already been away is not on
+  // the wire, so the line says what the limit IS and never a countdown.
+  const offlineCap = $derived(formatOfflineCap(Number(snap?.OfflineCapSeconds ?? 0)));
+
+  const worn = createQuery(() => ({ queryKey: queryKeys.worn, queryFn: fetchWorn, refetchInterval: 60_000 }));
+  const unlock = $derived.by((): string | null => {
+    if (!registry || !snap) return null;
+    const content = registry;
+    const region = snap.HighestUnlockedRegion || 1;
+    const boss = content.regions[region - 1]?.find((m) => bossRegionOf(m.Id) === region)?.Name ?? null;
+    return nextUnlockLine(region, content.regions.length, boss, worn.data?.Pieces ?? null, (id) => content.itemsByBaseId.get(id)?.RegionTier ?? 1);
+  });
+
   const goal = $derived(closestDeed(deeds.data?.Chapters ?? []));
 
   // The first reading of each deed this tab has seen, kept at module level so
@@ -100,7 +173,7 @@
           {@const fix = HALT_FIX[worker.halt]}
           <li>
             <div class="who">
-              <strong>{raceName(worker.raceId)}</strong>
+              <strong data-testid="home-worker-name">{who(worker)}</strong>
               <span class:idle={worker.activity === 0}>{jobLabel(worker.activity)}</span>
               {#if halt}
                 <span class="halt">{halt}</span>
@@ -108,12 +181,45 @@
             </div>
             {#if fix}
               <button onclick={() => requestScreen(fix.screen)}>{fix.label}</button>
-            {:else if worker.activity === 0}
-              <button onclick={() => requestScreen('character')}>Give a job</button>
+            {/if}
+            {#if worker.activity === 0}
+              {@const last = rememberedActivity(worker.id, worker.slot)}
+              {#if last > 0 && !takenBy(last, worker.slot)}
+                <button data-testid="home-continue" onclick={() => assign(worker, last)}>
+                  Continue: {activityLabelFor(last)}
+                </button>
+              {/if}
+              <button data-testid="home-give-job" onclick={() => (pickerSlot = pickerSlot === worker.slot ? 0 : worker.slot)}>
+                {last > 0 ? 'Other job' : 'Give a job'}
+              </button>
+            {/if}
+            {#if pickerSlot === worker.slot}
+              <div class="picker" data-testid="home-job-picker">
+                <div class="tabs">
+                  {#each jobGroups as group, index (group.title)}
+                    <button class:on={pickerGroup === index} onclick={() => (pickerGroup = index)}>{group.title}</button>
+                  {/each}
+                  <button onclick={() => requestScreen('character')}>Crafting...</button>
+                </div>
+                <div class="jobs">
+                  {#each jobGroups[pickerGroup]?.jobs ?? [] as job (job.id)}
+                    {@const taken = takenBy(job.id, worker.slot)}
+                    <button disabled={!!taken} onclick={() => assign(worker, job.id)}>
+                      {job.label}{taken ? ` (${taken})` : ''}
+                    </button>
+                  {/each}
+                </div>
+              </div>
             {/if}
           </li>
         {/each}
       </ul>
+      {#if offlineCap}
+        <p class="dim" data-testid="home-offline-cap">Offline progress is kept for up to {offlineCap}.</p>
+      {/if}
+      {#if unlock}
+        <p class="dim" data-testid="home-next-unlock"><strong>Next unlock:</strong> {unlock}</p>
+      {/if}
     </section>
 
     {#if goal}
@@ -141,7 +247,7 @@
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
     gap: 1rem;
-    margin-top: 1rem;
+    margin-bottom: 0;
   }
 
   .card {
@@ -186,6 +292,32 @@
   .workers button,
   .goal-row button {
     flex-shrink: 0;
+  }
+
+  .picker {
+    flex: 1 1 100%;
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .tabs,
+  .jobs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .jobs {
+    max-height: 14rem;
+    overflow-y: auto;
+  }
+
+  .tabs .on {
+    border-color: var(--accent, currentColor);
+  }
+
+  .card p {
+    margin: 0;
   }
 
   .idle {

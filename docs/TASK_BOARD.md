@@ -5251,6 +5251,16 @@ asks for, from 72's data). `exercise.mjs` clicks the map plates; keep them.
 **Done when:** at 390 and 1366 px the cards are in the first viewport; the
 owner has seen a screenshot; the geometry checkers are clean.
 
+**BUILT 2026-09-30, awaiting the owner's look at a screenshot.** Cards render
+before the map; the map is a capped 40 rem strip below (plates and `.scene`/
+`.place` selectors unchanged). "Right now" shows character names (breeding
+roster). Idle characters get "Continue: <last job>" (per-character pref, slot 1
+falls back to Combat's last monster) and a button picker (Fight/Gather; crafting
+sends to Character). Offline line is the server's `OfflineCapSeconds` only -
+time already away is NOT on the wire, so the "fills in 9 h 40 min" countdown is
+left out. "Next unlock" comes from `bossGearProgress`. Geometry checkers not run
+(need the server).
+
 ## PARTLY DONE - 74. Small bundle
 
 **Built 2026-09-29, PR #107:** rarity tooltips (`rarityTitle`), the desktop Character dot, `mat_` stripped from names. **Number format done:** one `formatNumber` in `ui/format.ts` (thin space to 100,000, `k`/`M`/`B`/`T` above, exact in `title`/`data-exact`, decimal mark by UI language); every `.toLocaleString()` on a quantity swept onto it, `exercise.mjs` reads `data-exact` instead of parsing. **Left open:** reroll history (auto-reroll reports only its end state; needs server-side roll results - do it with 86). The old gathering primitives (Raw Log, Wood, Oak Log) are left for 83/86.
