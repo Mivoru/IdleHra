@@ -529,6 +529,66 @@ await go('Forge');
   record('forge exposes selects for fusion and reroll', count >= 3, `${count} selects`);
 }
 
+// --- forge: a whole stack in one press (task 69) --------------------------------
+// The dev route hands the fixture nine Normal Doom Gorgets - a region-5 piece
+// it holds none of - so the stack is exactly 9 -> 3 Common -> 1 Uncommon. The
+// Uncommon is binned afterwards: a round trip, never a bite out of the
+// fixture's own piles (CLAUDE.md: a check that spends fixture state passes
+// once and fails forever).
+{
+  const stack = await apiPost('/api/v1/dev/forge/stack', {});
+  const base = stack?.BaseItemId;
+  const held = async () =>
+    ((await apiGet('/api/v1/forge/inventory'))?.OwnedEquipment ?? []).filter((i) => i.BaseItemId === base);
+
+  if (!base) {
+    record('a stack fuses in one press', false, 'the dev route gave no stack');
+  } else {
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1200);
+    await dismissOfflineSummary(3000);
+    await go('Forge');
+    await page.waitForTimeout(1200);
+
+    const chip = page.locator('button.settag', { hasText: 'Doom Gorget' }).filter({ hasText: 'Normal' }).first();
+    let planText = '';
+    if ((await chip.count()) > 0) {
+      await chip.click();
+      await page.getByTestId('fuse-stack-to').selectOption({ label: 'Uncommon' }).catch(() => {});
+      planText = await page
+        .getByTestId('fuse-stack-plan')
+        .innerText({ timeout: 10000 })
+        .catch(() => '');
+    }
+    record(
+      'the stack preview quotes the plan before anything is spent',
+      /^4 fusions/.test(planText.trim()) && /1× Uncommon/.test(planText),
+      planText.trim() || 'no plan shown',
+    );
+
+    let after = [];
+    if (planText) {
+      await page.getByTestId('fuse-stack-go').click();
+      const deadline = Date.now() + 15000;
+      while (Date.now() < deadline) {
+        after = await held();
+        if (after.length === 1) break;
+        await page.waitForTimeout(500);
+      }
+    }
+    record(
+      'a stack fuses in one press',
+      after.length === 1 && after[0].QualityTier === 3,
+      after.map((i) => `T${i.QualityTier}`).join(', ') || 'nothing left',
+    );
+
+    // Restore: bin whatever of the dev stack remains.
+    for (const piece of await held()) {
+      await apiPost('/api/v1/chest/discard', { equipmentId: piece.Id });
+    }
+  }
+}
+
 // --- market ------------------------------------------------------------------
 await go('Market');
 {

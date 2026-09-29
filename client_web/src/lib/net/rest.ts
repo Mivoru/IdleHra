@@ -459,6 +459,30 @@ export function fetchForge(): Promise<ForgeSnapshot> {
   return authedGet<ForgeSnapshot>('/api/v1/forge/inventory');
 }
 
+/**
+ * Task 69: what fusing a whole stack up to a rarity would do, computed by the
+ * same planner and fee the fusion itself uses (ForgeSplicingEngine.PlanStack),
+ * so the screen never quotes one price and the anvil charges another.
+ */
+export interface ForgeStackPreview {
+  BaseItemId: string;
+  FromTier: number;
+  /** The requested tier clamped to the Forge level and the top of the ladder. */
+  CeilingTier: number;
+  ForgeLevel: number;
+  TotalFusions: number;
+  GoldCost: number;
+  GoldAvailable: number;
+  StoppedByGold: boolean;
+  StoppedByCap: boolean;
+  /** Pieces per tier afterwards; at the ceiling it counts only what was made. */
+  Result: { Tier: number; Count: number }[];
+}
+
+export function fetchForgeStackPreview(itemId: number, toTier: number): Promise<ForgeStackPreview> {
+  return authedGet<ForgeStackPreview>(`/api/v1/forge/stack-preview?item=${itemId}&to=${toTier}`);
+}
+
 // ---------------------------------------------------------------------------
 // /api/v1/market/listings
 // ---------------------------------------------------------------------------

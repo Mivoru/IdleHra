@@ -96,6 +96,43 @@ namespace FolkIdle.Server.Domain.Economy
             });
         }
 
+        // Modul: task 69, the stack fusion. The same shape as the single fusion
+        // above - flush, then the engine from the continuation, then a
+        // ReloadState so the session's gold and chest match the database - and
+        // like it, a refusal is ANSWERED (a command result), never a
+        // disconnect: every input is a pick from the player's own screen.
+        internal static void HandleFuseStack(
+            ref TickStatePayload currentPayload,
+            ref ClientCommandPacket cmd,
+            in CommandCoordinatorContext ctx)
+        {
+            if (cmd.TargetId <= 0 || cmd.QualityTier < 2 || cmd.QualityTier > ForgeSplicingEngine.MaxQualityTier)
+            {
+                ctx.PlayerRegistry.EnqueueCommandResult(
+                    currentPayload.PlayerId,
+                    (byte)Network.CommandResultCode.GenericValidationFailure);
+                return;
+            }
+
+            long pId = currentPayload.PlayerId;
+            long sampleId = cmd.TargetId;
+            int toTier = cmd.QualityTier;
+
+            var forgeEngine = ctx.ForgeEngine;
+            var networkSystem = ctx.NetworkSystem;
+            var safeDispatch = ctx.SafeDispatch;
+
+            currentPayload.IsSuspended = true;
+            ctx.CheckpointManager.RequestFlush(ref currentPayload, FlushReason.Command, then: () =>
+            {
+                safeDispatch("Forge.FuseStack", pId, async () => {
+                    await forgeEngine.ExecuteStackFusionAsync(pId, sampleId, toTier);
+                    networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
+                });
+                return Task.CompletedTask;
+            });
+        }
+
         // Moved verbatim from EngineLoop: else if (cmd.Command == CommandType.RerollItemAffix)
         internal static void HandleRerollItemAffix(
             ref TickStatePayload currentPayload,

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
-  import { queryKeys, fetchForge, type ForgeEquipment } from '../lib/net/rest';
+  import { queryKeys, fetchForge, fetchForgeStackPreview, type ForgeEquipment } from '../lib/net/rest';
   import { prettifyBaseId, loadContent, type ContentRegistry } from '../lib/net/content';
-  import { executeForgeFusion, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
+  import { executeForgeFusion, fuseStack, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
   import Burst from '../lib/ui/Burst.svelte';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
@@ -207,6 +207,49 @@
 
     const outcome = executeForgeFusion(fusionTarget, fusionSacOne, fusionSacTwo, forgeLevel, match);
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    fusionSacOne = 0;
+    fusionSacTwo = 0;
+    fusionFlash++;
+    refresh();
+  }
+
+  // --- whole stack (task 69) -------------------------------------------------
+  //
+  // Fusion is deterministic 3:1, so a pile of identical pieces holds one
+  // decision: how far up. The dev fixture carries 7,550 Normal Birch Axes -
+  // about 2,500 presses of the single fusion above for no choice at all. The
+  // plan and its price come from the server (the same planner the fusion
+  // runs), never from a copy of the fee curve here.
+  const stackMaxReach = $derived(Math.min(forgeLevel, MAX_QUALITY_TIER));
+  const stackTiers = $derived(
+    fusionTargetItem
+      ? Array.from(
+          { length: Math.max(0, stackMaxReach - fusionTargetItem.QualityTier) },
+          (_, i) => fusionTargetItem.QualityTier + 1 + i,
+        )
+      : [],
+  );
+  let stackTo = $state(0);
+  let stackFor = 0;
+  $effect(() => {
+    const id = fusionTargetItem?.Id ?? 0;
+    if (id !== stackFor) {
+      stackFor = id;
+      stackTo = stackTiers.length > 0 ? stackTiers[stackTiers.length - 1] : 0;
+    }
+  });
+
+  const stackPreview = createQuery(() => ({
+    queryKey: ['forge', 'stack-preview', fusionTarget, stackTo] as const,
+    queryFn: () => fetchForgeStackPreview(fusionTarget, stackTo),
+    enabled: fusionTarget > 0 && stackTo > 0,
+  }));
+
+  function fuseWholeStack() {
+    if (!fusionTargetItem) return;
+    const outcome = fuseStack(fusionTargetItem.Id, fusionTargetItem.QualityTier, stackTo, forgeLevel);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    fusionTarget = 0;
     fusionSacOne = 0;
     fusionSacTwo = 0;
     fusionFlash++;
@@ -467,6 +510,52 @@ ${scope}`)) return;
     >
       Fuse
     </button>
+
+    {#if fusionTargetItem && stackTiers.length > 0}
+      {@const plan = stackPreview.data}
+      <div class="stack" data-testid="fuse-stack">
+        <h3>The whole stack</h3>
+        <label>
+          Fuse every {prettifyBaseId(fusionTargetItem.BaseItemId)} up to
+          <select bind:value={stackTo} data-testid="fuse-stack-to">
+            {#each stackTiers as tier (tier)}
+              <option value={tier}>{rarityName(tier)}</option>
+            {/each}
+          </select>
+        </label>
+        {#if stackPreview.isPending}
+          <p class="dim tiny">Working it out...</p>
+        {:else if plan}
+          {#if plan.TotalFusions === 0}
+            <p class="blocked small">
+              {plan.StoppedByGold ? 'Not enough gold for even one fusion.' : 'Nothing in this stack can be fused that far.'}
+            </p>
+          {:else}
+            <p class="small" data-testid="fuse-stack-plan">
+              {plan.TotalFusions.toLocaleString()} fusions &middot;
+              <b>{plan.GoldCost.toLocaleString()}g</b> &rarr;
+              {#each plan.Result.filter((r) => r.Count > 0).reverse() as row, i (row.Tier)}
+                {i > 0 ? ', ' : ''}<span style="color: {rarityColor(row.Tier)}">{row.Count.toLocaleString()}&times; {rarityName(row.Tier)}</span>
+              {/each}
+            </p>
+            {#if plan.StoppedByGold}
+              <p class="dim tiny">Your gold runs out part way; this is as far as it reaches.</p>
+            {/if}
+            {#if plan.StoppedByCap}
+              <p class="dim tiny">One press fuses at most 10,000 times; press again for the rest.</p>
+            {/if}
+            <p class="dim tiny">Locked pieces and anything a character wears are left alone.</p>
+          {/if}
+        {/if}
+        <button
+          onclick={fuseWholeStack}
+          data-testid="fuse-stack-go"
+          disabled={!plan || plan.TotalFusions === 0}
+        >
+          Fuse the stack{plan && plan.TotalFusions > 0 ? ` · ${plan.GoldCost.toLocaleString()}g` : ''}
+        </button>
+      </div>
+    {/if}
 
     {#if fusionFlash > 0}
       {#key fusionFlash}
@@ -898,6 +987,17 @@ ${scope}`)) return;
   .preview {
     font-size: 0.85rem;
     margin: 0 0 0.6rem;
+  }
+
+  .stack {
+    margin-top: 1rem;
+    padding-top: 0.8rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .stack h3 {
+    margin: 0 0 0.4rem;
+    font-size: 0.95rem;
   }
 
 </style>

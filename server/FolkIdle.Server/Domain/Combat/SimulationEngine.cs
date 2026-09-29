@@ -873,6 +873,7 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.UnblockPlayer] = RelationshipTickCoordinator.HandleUnblockPlayer,
                 [CommandType.ExecuteForgeFusion] = ForgeTickCoordinator.HandleExecuteForgeFusion,
                 [CommandType.RerollItemAffix] = ForgeTickCoordinator.HandleRerollItemAffix,
+                [CommandType.FuseStack] = ForgeTickCoordinator.HandleFuseStack,
                 [CommandType.ExecuteBreeding] = BreedingTickCoordinator.HandleExecuteBreeding,
                 [CommandType.ExecuteVillagerBreeding] = BreedingTickCoordinator.HandleExecuteVillagerBreeding,
                 [CommandType.InitializeCrafting] = CraftingTickCoordinator.HandleInitializeCrafting,

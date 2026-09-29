@@ -1670,6 +1670,14 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Task 69: what "fuse this stack up to tier N" would do, before the
+            // player commits to it. Read-only; the fusion itself is opcode 78.
+            if (requestPath == "/api/v1/forge/stack-preview" && context.Request.HttpMethod == "GET")
+            {
+                await HandleForgeStackPreview(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/chest/settings")
             {
                 await HandleChestSettings(context);
@@ -3402,6 +3410,94 @@ namespace FolkIdle.Server.Network
         /// sent 14 would otherwise sweep away every Legendary the player owns,
         /// and there is no undo for that.
         /// </summary>
+        private sealed class ForgeStackPreviewResponse
+        {
+            public string BaseItemId { get; set; } = string.Empty;
+            public int FromTier { get; set; }
+            public int CeilingTier { get; set; }
+            public int ForgeLevel { get; set; }
+            public int TotalFusions { get; set; }
+            public long GoldCost { get; set; }
+            public long GoldAvailable { get; set; }
+            public bool StoppedByGold { get; set; }
+            public bool StoppedByCap { get; set; }
+            /// <summary>Pieces per tier after the fusion, tiers FromTier..CeilingTier, non-zero only.</summary>
+            public List<ForgeStackTierCount> Result { get; set; } = new();
+        }
+
+        private sealed class ForgeStackTierCount
+        {
+            public int Tier { get; set; }
+            public int Count { get; set; }
+        }
+
+        /// <summary>
+        /// Task 69: the plan a stack fusion would carry out now, from the same
+        /// planner and the same fee the fusion uses (ForgeSplicingEngine
+        /// .PlanStack / FusionFee), so the preview cannot quote one price and
+        /// the anvil charge another. A GET, so no stripe lock - it writes
+        /// nothing.
+        /// </summary>
+        private async Task HandleForgeStackPreview(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (!long.TryParse(context.Request.QueryString["item"], out long sampleId) || sampleId <= 0
+                    || !int.TryParse(context.Request.QueryString["to"], out int toTier)
+                    || toTier < 2 || toTier > ForgeSplicingEngine.MaxQualityTier)
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                var preview = await new ForgeSplicingEngine(_serviceProvider).PreviewStackFusionAsync(playerId, sampleId, toTier);
+                if (preview == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                var (baseItemId, plan) = preview.Value;
+                var response = new ForgeStackPreviewResponse
+                {
+                    BaseItemId = baseItemId,
+                    FromTier = plan.FromTier,
+                    CeilingTier = plan.CeilingTier,
+                    ForgeLevel = plan.ForgeLevel,
+                    TotalFusions = plan.TotalFusions,
+                    GoldCost = plan.GoldCost,
+                    GoldAvailable = plan.GoldAvailable,
+                    StoppedByGold = plan.StoppedByGold,
+                    StoppedByCap = plan.StoppedByCap,
+                };
+                for (int tier = plan.FromTier; tier <= Math.Max(plan.FromTier, plan.CeilingTier) && tier < plan.CountsAfter.Length; tier++)
+                {
+                    if (plan.CountsAfter[tier] > 0) response.Result.Add(new ForgeStackTierCount { Tier = tier, Count = plan.CountsAfter[tier] });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Forge stack preview error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
         private async Task HandleChestBulkAction(HttpListenerContext context, bool sell)
         {
             try
@@ -11325,6 +11421,26 @@ namespace FolkIdle.Server.Network
                 if (requestPath == "/api/v1/dev/cosmetics/chest" && context.Request.HttpMethod == "POST")
                 {
                     await HandleDevCosmeticChest(context, playerId);
+                    return;
+                }
+
+                // Task 69: nine Normal pieces of one region-5 item the fixture
+                // does not otherwise hold, so exercise.mjs can fuse a whole
+                // stack (9 -> 3 -> 1) and bin the result - a round trip that
+                // leaves the fixture as it found it, instead of eating the
+                // fixture's own piles one run at a time.
+                if (requestPath == "/api/v1/dev/forge/stack" && context.Request.HttpMethod == "POST")
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    long[] ids = await DevFixtureSeeder.GrantForgeStackAsync(db, playerId);
+                    context.Response.StatusCode = 200;
+                    context.Response.ContentType = "application/json";
+                    await JsonSerializer.SerializeAsync(context.Response.OutputStream, new
+                    {
+                        BaseItemId = DevFixtureSeeder.DevStackBaseId,
+                        Ids = ids,
+                    });
                     return;
                 }
 

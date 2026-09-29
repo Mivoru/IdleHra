@@ -66,6 +66,29 @@ namespace FolkIdle.Server.Models
         // launch. The column is gone and so is this constant; see
         // CharacterRecord and BreedingGateRules.
 
+        /// <summary>The region-5 piece the dev forge-stack route hands out.
+        /// The fixture holds none of it, so the stack is exactly what was
+        /// granted and exercise.mjs can predict the fusion.</summary>
+        public const string DevStackBaseId = "eq_doom_gorget_amulet_slot_base";
+
+        /// <summary>
+        /// Task 69: nine Normal <see cref="DevStackBaseId"/> for the caller -
+        /// 9 -> 3 -> 1 through the stack fusion. Lives here, not in the route,
+        /// because it is dev-only equipment creation: DropRecord's creation-site
+        /// guard already excludes this file for exactly that reason, and a
+        /// grant for a test is not a drop worth recording. Only reachable
+        /// through /api/v1/dev/*, which 404s without FOLKIDLE_DEV_TOOLS.
+        /// </summary>
+        public static async Task<long[]> GrantForgeStackAsync(FolkIdleDbContext db, long playerId)
+        {
+            var pieces = Enumerable.Range(0, 9)
+                .Select(_ => new EquipmentInstance { PlayerId = playerId, BaseItemId = DevStackBaseId, QualityTier = 1 })
+                .ToList();
+            db.EquipmentInstances.AddRange(pieces);
+            await db.SaveChangesAsync();
+            return pieces.Select(p => p.Id).ToArray();
+        }
+
         public static async Task<long> SeedAsync(FolkIdleDbContext db)
         {
             string normalizedEmail = Email.ToLowerInvariant();
