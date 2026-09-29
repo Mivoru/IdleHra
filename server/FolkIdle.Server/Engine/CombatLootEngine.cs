@@ -649,6 +649,14 @@ namespace FolkIdle.Server.Engine
         private string _requestBestBaseId = string.Empty;
         private readonly Dictionary<long, int> _recordedBestTier = new();
 
+        // Modul: task 57, the collection log. The best tier THIS request wrote
+        // per piece, and what this worker has already recorded per player and
+        // piece - so the upsert after the commit runs only for a piece that can
+        // raise the log, which is rare after the first few hours: COALESCED,
+        // per the drain budget, not one write per drop.
+        private readonly Dictionary<string, int> _requestCollection = new();
+        private readonly Dictionary<(long, string), int> _recordedCollection = new();
+
         // Modul: the drop record (task 26) - see DropRecord.
         private readonly DropTally _dropTally = new();
 
@@ -1086,6 +1094,7 @@ namespace FolkIdle.Server.Engine
             _pendingDropInstances.Clear();
             _requestBestTier = 0;
             _requestBestBaseId = string.Empty;
+            _requestCollection.Clear();
 
             // Modul: the drop record's accumulator, reused like _pendingDrops
             // (this worker is single-threaded). Cleared here as well as by the
@@ -1298,6 +1307,21 @@ namespace FolkIdle.Server.Engine
                     catch (Exception recordEx)
                     {
                         Console.WriteLine($"Best-drop record failed for {playerId}: {recordEx.Message}");
+                    }
+                }
+
+                // Task 57: the collection log, same rules - after the commit,
+                // its own try, and only for pieces that can raise the log.
+                if (_requestCollection.Count > 0)
+                {
+                    try
+                    {
+                        await CollectionLog.RecordAsync(dbContext, playerId, _requestCollection, DateTime.UtcNow);
+                        foreach (var (baseId, t) in _requestCollection) _recordedCollection[(playerId, baseId)] = t;
+                    }
+                    catch (Exception collectionEx)
+                    {
+                        Console.WriteLine($"Collection record failed for {playerId}: {collectionEx.Message}");
                     }
                 }
             }
@@ -1568,6 +1592,11 @@ namespace FolkIdle.Server.Engine
             {
                 _requestBestTier = tier;
                 _requestBestBaseId = baseItemId;
+            }
+            if (tier > _requestCollection.GetValueOrDefault(baseItemId)
+                && tier > _recordedCollection.GetValueOrDefault((playerId, baseItemId)))
+            {
+                _requestCollection[baseItemId] = tier;
             }
 
             if (tally != null)

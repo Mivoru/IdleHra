@@ -20,7 +20,15 @@ namespace FolkIdle.Server.Engine
         // "0 / MAX".
         public const int MonsterKillAchievementId = 1;
         public const long MonsterKillThreshold = 10_000L;
-        public const int MonsterKillReward = 500;
+        // Modul: 100, not the 500 first written here (task 57, 2026-09-29).
+        // The 500 was never paid - the claim path's reward table was empty -
+        // so moving it cost nobody anything. Against the diamond economy it was
+        // far too much for a mid-game milestone: the Delve's calibrated tap is
+        // 60 a week (DelveRegistry.MaxDiamondsPerWeek), ordinary kills pay about
+        // the same, and the day-7 login bonus is 100. 500 would have been two
+        // months of Delve for ten thousand kills. 100 sits beside the tier-II
+        // rewards of the other three (Treasury 50, Master Smith 75, Logistics 50).
+        public const int MonsterKillReward = 100;
 
         public const int TreasuryAchievementId = 2;
         public const int ForgingAchievementId = 3;
@@ -74,6 +82,49 @@ namespace FolkIdle.Server.Engine
             LogisticsAchievementId => "Gather 10,000 times, then 100,000, a million and ten million. Every tier also adds permanent gathering speed.",
             _ => string.Empty,
         };
+
+        // Modul: THE LIFETIME CHAPTER (task 57). The four achievements moved
+        // into the Book of Deeds as named tiers, paid automatically - there is
+        // no claim button any more, same as deeds. The names live here beside
+        // the thresholds and rewards they describe, and the goals and diamonds
+        // are READ from those tables, so the book cannot quote a number the
+        // award does not pay.
+        public sealed record LifetimeTier(string Name, string Goal, int Diamonds);
+
+        public static readonly int[] LifetimeAchievementIds =
+        {
+            MonsterKillAchievementId, TreasuryAchievementId, ForgingAchievementId, LogisticsAchievementId,
+        };
+
+        private static readonly string[] TreasuryTierNames = { "Purse", "Coffer", "Vault", "Hoard" };
+        private static readonly string[] ForgingTierNames = { "Apprentice", "Journeyman", "Master", "Grandmaster" };
+        private static readonly string[] LogisticsTierNames = { "Porter", "Carter", "Quartermaster", "Logistician" };
+
+        public static System.Collections.Generic.IReadOnlyList<LifetimeTier> TiersFor(int achievementId)
+        {
+            var tiers = new System.Collections.Generic.List<LifetimeTier>(4);
+            switch (achievementId)
+            {
+                case MonsterKillAchievementId:
+                    tiers.Add(new LifetimeTier("Monster Slayer", $"{MonsterKillThreshold:N0} kills", MonsterKillReward));
+                    break;
+                case TreasuryAchievementId:
+                    for (int i = 0; i < TreasuryThresholds.Length; i++)
+                        tiers.Add(new LifetimeTier(TreasuryTierNames[i], $"Hold {TreasuryThresholds[i]:N0} gold at once", TreasuryRewards[i]));
+                    break;
+                case ForgingAchievementId:
+                    for (int i = 0; i < ForgingUpgradeCountThresholds.Length; i++)
+                        tiers.Add(new LifetimeTier(ForgingTierNames[i], $"{ForgingUpgradeCountThresholds[i]:N0} fusions", ForgingRewards[i]));
+                    for (int i = 0; i < ForgingSynthesisTierThresholds.Length; i++)
+                        tiers.Add(new LifetimeTier(ForgingTierNames[i + 2], $"Fuse a piece up to rarity {ForgingSynthesisTierThresholds[i]}", ForgingRewards[i + 2]));
+                    break;
+                case LogisticsAchievementId:
+                    for (int i = 0; i < LogisticsThresholds.Length; i++)
+                        tiers.Add(new LifetimeTier(LogisticsTierNames[i], $"{LogisticsThresholds[i]:N0} harvests, +{LogisticsStatBonusPctRewards[i]}% gathering speed", LogisticsRewards[i]));
+                    break;
+            }
+            return tiers;
+        }
 
         public static int EvaluateTreasuryTier(long currentGold)
         {

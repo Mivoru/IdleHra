@@ -77,9 +77,9 @@ export function tierLabel(tier: number): string {
 
 /** Mirrors AchievementMilestones' ids. */
 export const ACHIEVEMENT_NAMES: Record<number, string> = {
-  1: 'Monster Hunter',
+  1: 'Monster Slayer',
   2: 'Treasury',
-  3: 'Forging',
+  3: 'Master Smith',
   4: 'Logistics',
 };
 

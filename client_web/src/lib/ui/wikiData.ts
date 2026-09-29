@@ -514,10 +514,10 @@ export const ACHIEVEMENTS: readonly {
   rewards: string;
 }[] = [
   {
-    name: 'Monster hunter',
+    name: 'Monster Slayer',
     metric: 'Monsters killed',
     thresholds: '10,000',
-    rewards: '500 diamonds, claimed by hand on the Progression screen',
+    rewards: '100 diamonds, paid when the Book of Deeds next opens',
   },
   {
     name: 'Treasury',
@@ -526,7 +526,7 @@ export const ACHIEVEMENTS: readonly {
     rewards: '10 / 50 / 250 / 1,000 diamonds',
   },
   {
-    name: 'Forging',
+    name: 'Master Smith',
     metric: 'Fusions, then the highest rarity ever fused',
     thresholds: '50 / 500 fusions, then rarity 10 / rarity 14',
     rewards: '15 / 75 / 200 / 1,500 diamonds',

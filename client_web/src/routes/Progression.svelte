@@ -1,18 +1,21 @@
+<script module lang="ts">
+  // The tab survives leaving Progress and coming back within a session.
+  let lastTab: 'goals' | 'collection' | 'stats' | 'daily' = 'goals';
+</script>
+
 <script lang="ts">
-  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { playerState, pushLocalNotice } from '../lib/stores/game';
+  import { createQuery } from '@tanstack/svelte-query';
+  import { playerState } from '../lib/stores/game';
   import {
     queryKeys,
-    fetchAchievements,
-    fetchAchievementsState,
     fetchLoginBonus,
     fetchRaceMastery,
     fetchStatistics,
     fetchRecords,
-    type AchievementEntry,
   } from '../lib/net/rest';
-  import { claimAchievement } from '../lib/net/commands';
   import Bar from '../lib/ui/Bar.svelte';
+  import CollectionLog from '../lib/ui/CollectionLog.svelte';
+  import PlayerInsights from '../lib/ui/PlayerInsights.svelte';
   import Money from '../lib/ui/Money.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import { RACE_NAMES, ALL_RACE_IDS, isRaceUnlocked } from '../lib/ui/races';
@@ -22,18 +25,25 @@
   import { prettifyBaseId } from '../lib/net/content';
   import { rarityColor, rarityName } from '../lib/ui/rarity';
 
-  const client = useQueryClient();
-  const achievements = createQuery(() => ({ queryKey: queryKeys.achievements, queryFn: fetchAchievements }));
+  // Modul: ONE SCREEN, FOUR TABS (tasks 56, 57). Progress was four panels in
+  // a grid: the Book, an Achievements list with claim buttons, the daily login
+  // and races, and twelve flat statistics. The Achievements list is gone into
+  // the Book's Lifetime chapter - where every tier pays itself, because a
+  // claim there paid three of the four a second time - and the collection log
+  // and the "how you play" statistics are new, so the screen is split by the
+  // question a player comes with: what to do next, what have I found, how am
+  // I doing, and today's login.
+  const TABS = [
+    { key: 'goals', label: 'Goals' },
+    { key: 'collection', label: 'Collection' },
+    { key: 'stats', label: 'Statistics' },
+    { key: 'daily', label: 'Daily & races' },
+  ] as const;
+  let tab = $state<(typeof TABS)[number]['key']>(lastTab);
+  $effect(() => {
+    lastTab = tab;
+  });
 
-  // Modul: /achievements/state and /achievements/snapshot are DIFFERENT
-  // endpoints answering different questions. The snapshot above says how far
-  // along each achievement is; this says how many rewards have actually been
-  // taken, across the account's whole lifetime rather than the current set.
-  // Neither is derivable from the other.
-  const achievementsState = createQuery(() => ({
-    queryKey: [...queryKeys.achievements, 'state'] as const,
-    queryFn: fetchAchievementsState,
-  }));
   const loginBonus = createQuery(() => ({ queryKey: queryKeys.loginBonus, queryFn: fetchLoginBonus }));
   const raceMastery = createQuery(() => ({ queryKey: queryKeys.raceMastery, queryFn: fetchRaceMastery }));
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
@@ -42,24 +52,11 @@
   const records = createQuery(() => ({ queryKey: queryKeys.records, queryFn: fetchRecords }));
 
   const snap = $derived($playerState);
-  // Quarantine blocks every claim server-side, so the reason is stated rather
-  // than leaving buttons that silently do nothing.
-  const quarantined = $derived(snap ? snap.Quarantine_Active !== 0 : false);
 
   // Race names and the unlock bitmask both live in lib/ui/races.ts - this
   // screen used to carry its own copy and it had already gone stale at five
   // entries, so anyone who unlocked Moosleute saw "Race 6".
   const unlockedMask = $derived(snap?.UnlockedRaceBitmask ?? 0);
-
-  function claim(entry: AchievementEntry) {
-    const outcome = claimAchievement(entry.AchievementId, quarantined);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
-    setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.achievements }), 800);
-  }
-
-  const claimable = $derived(
-    (achievements.data ?? []).filter((a) => !a.IsClaimed && a.CompletedTier > 0),
-  );
 
   function duration(seconds: number): string {
     const hours = Math.floor(seconds / 3600);
@@ -68,74 +65,81 @@
   }
 </script>
 
+<div class="progress-tabs" role="tablist" aria-label="Progress">
+  {#each TABS as t (t.key)}
+    <button role="tab" class:active={tab === t.key} aria-selected={tab === t.key} data-progress-tab={t.key} onclick={() => (tab = t.key)}>
+      {t.label}
+    </button>
+  {/each}
+</div>
+
 <div class="grid">
-  <!-- Modul: the first chapter leads, because it is the onboarding. A new
-       player opening Progress should meet six things they can do today, not a
-       Treasury tier asking for 100,000 gold they have never seen. -->
-  <BookOfDeeds />
-
+  {#if tab === 'goals'}
+    <!-- Modul: the first chapter leads, because it is the onboarding. A new
+         player opening Progress should meet six things they can do today, not a
+         Treasury tier asking for 100,000 gold they have never seen. -->
+    <BookOfDeeds />
+  {:else if tab === 'collection'}
+    <CollectionLog />
+  {:else if tab === 'stats'}
+    <PlayerInsights />
   <section class="panel">
-    <div class="head">
-      <h2>Achievements</h2>
-      <span class="dim tiny">
-        {claimable.length} ready to claim
-        {#if achievementsState.data}
-          &middot; {achievementsState.data.TotalAchievementsClaimedCount} claimed for good
-        {/if}
-      </span>
-    </div>
-
-    {#if quarantined}
-      <p class="warn">Your account is restricted, so rewards cannot be claimed.</p>
-    {/if}
-
-    {#if achievements.isPending}
-      <Skeleton />
-    {:else if achievements.isError}
-      <p class="err">{achievements.error?.message}</p>
-    {:else if (achievements.data ?? []).length === 0}
-      <p class="dim">No achievements tracked yet.</p>
+    <h2>Statistics</h2>
+    {#if statistics.data}
+      {@const st = statistics.data}
+      <dl class="stats">
+        <div><dt>Level</dt><dd>{st.Level}</dd></div>
+        <!-- Modul: ONE gold figure per screen.
+             This read st.Gold, which is CommodityRecords - the durable balance,
+             refreshed when this query runs. The header beside it reads the live
+             state feed. The two are the same number at rest and different
+             numbers whenever the session has earned since the last checkpoint,
+             so the screen showed 27,287g and 2,091,564g at once and gave a
+             player no way to know which was theirs.
+             The live feed wins: it is what every other screen shows and it is
+             what the player just earned. It falls back to the persisted figure
+             only before the first packet arrives. -->
+        <div><dt>Gold</dt><dd><Money amount={snap ? snap.Gold : st.Gold} /></dd></div>
+        <div><dt>Diamonds</dt><dd><Money amount={snap ? snap.PremiumCurrencyBalance : st.PremiumDiamonds} kind="diamond" /></dd></div>
+        <div><dt>Login streak</dt><dd>{st.LoginStreakDays}</dd></div>
+        <div><dt>Kills</dt><dd>{st.TotalKills.toLocaleString()}</dd></div>
+        <div><dt>Bosses</dt><dd>{st.BossesSlain.toLocaleString()}</dd></div>
+        <div><dt>Crafted</dt><dd>{st.TotalItemsCrafted.toLocaleString()}</dd></div>
+        <div><dt>Deaths</dt><dd>{st.TotalDeaths.toLocaleString()}</dd></div>
+        <div><dt>Regions done</dt><dd>{st.RegionsCompletedCount}</dd></div>
+        <div><dt>Achievements</dt><dd>{st.AchievementsClaimedCount}</dd></div>
+        <div><dt>Characters</dt><dd>{st.CharacterCount}</dd></div>
+        <div><dt>Played</dt><dd>{duration(st.TotalPlayTimeSeconds)}</dd></div>
+      </dl>
+      {#if st.GuildName}
+        <p class="dim tiny">Guild: {st.GuildName}</p>
+      {/if}
     {:else}
-      <ul class="rows">
-        {#each achievements.data ?? [] as entry (entry.AchievementId)}
-          {@const ready = !entry.IsClaimed && entry.CompletedTier > 0}
-          <li class:ready>
-            <div class="line">
-              <strong>{entry.Title || `Achievement ${entry.AchievementId}`}</strong>
-              {#if entry.IsClaimed}
-                <span class="dim tiny">claimed</span>
-              {:else if ready}
-                <!-- Modul: the button deliberately does NOT show a number.
-                     NextTierReward is the reward for the tier NOT yet reached,
-                     while claiming pays out the tiers already earned - a
-                     Treasury claim at tier 2 paid 60 while the field read 250.
-                     The client cannot compute the real total (the reward
-                     tables are server-side), so promising a figure here would
-                     be guessing at the player's payout. -->
-                <button class="tiny-btn" disabled={quarantined} onclick={() => claim(entry)}>
-                  Claim tier {entry.CompletedTier}
-                </button>
-              {/if}
-            </div>
-            {#if entry.Description}
-              <span class="dim tiny">{entry.Description}</span>
-            {/if}
-            <Bar
-              value={entry.CurrentProgress}
-              max={Math.max(1, entry.NextTierTarget)}
-              color={ready ? 'var(--good)' : 'var(--accent)'}
-              label={`${entry.CurrentProgress.toLocaleString()} / ${entry.NextTierTarget.toLocaleString()}`}
-            />
-            <span class="dim tiny">
-              tier {entry.CompletedTier}
-              {#if !entry.IsClaimed}&middot; next tier pays {entry.NextTierReward}{/if}
-            </span>
-          </li>
-        {/each}
-      </ul>
+      <Skeleton />
     {/if}
+
+    <h3>Records</h3>
+    <dl class="stats" data-records>
+      <div><dt>Highest hit</dt><dd>{snap && snap.BestHit > 0 ? snap.BestHit.toLocaleString() : '-'}</dd></div>
+      <div>
+        <dt>Best drop</dt>
+        <dd>
+          {#if records.data && records.data.BestDropTier > 0}
+            <span style="color: {rarityColor(records.data.BestDropTier)}">{rarityName(records.data.BestDropTier)}</span>
+            {records.data.BestDropBaseId ? prettifyBaseId(records.data.BestDropBaseId) : ''}
+          {:else}-{/if}
+        </dd>
+      </div>
+      <div><dt>Deepest Delve floor</dt><dd>{records.data?.DelveDeepestFloor || '-'}</dd></div>
+      {#if snap}
+        {#each bossTimes(snap) as tenths, i}
+          <div><dt>Region {i + 1} boss, fastest</dt><dd>{formatTenths(tenths)}</dd></div>
+        {/each}
+      {/if}
+    </dl>
   </section>
 
+  {:else}
   <section class="panel">
     <h2>Daily login</h2>
     {#if loginBonus.data}
@@ -208,61 +212,7 @@
 
   </section>
 
-  <section class="panel">
-    <h2>Statistics</h2>
-    {#if statistics.data}
-      {@const st = statistics.data}
-      <dl class="stats">
-        <div><dt>Level</dt><dd>{st.Level}</dd></div>
-        <!-- Modul: ONE gold figure per screen.
-             This read st.Gold, which is CommodityRecords - the durable balance,
-             refreshed when this query runs. The header beside it reads the live
-             state feed. The two are the same number at rest and different
-             numbers whenever the session has earned since the last checkpoint,
-             so the screen showed 27,287g and 2,091,564g at once and gave a
-             player no way to know which was theirs.
-             The live feed wins: it is what every other screen shows and it is
-             what the player just earned. It falls back to the persisted figure
-             only before the first packet arrives. -->
-        <div><dt>Gold</dt><dd><Money amount={snap ? snap.Gold : st.Gold} /></dd></div>
-        <div><dt>Diamonds</dt><dd><Money amount={snap ? snap.PremiumCurrencyBalance : st.PremiumDiamonds} kind="diamond" /></dd></div>
-        <div><dt>Login streak</dt><dd>{st.LoginStreakDays}</dd></div>
-        <div><dt>Kills</dt><dd>{st.TotalKills.toLocaleString()}</dd></div>
-        <div><dt>Bosses</dt><dd>{st.BossesSlain.toLocaleString()}</dd></div>
-        <div><dt>Crafted</dt><dd>{st.TotalItemsCrafted.toLocaleString()}</dd></div>
-        <div><dt>Deaths</dt><dd>{st.TotalDeaths.toLocaleString()}</dd></div>
-        <div><dt>Regions done</dt><dd>{st.RegionsCompletedCount}</dd></div>
-        <div><dt>Achievements</dt><dd>{st.AchievementsClaimedCount}</dd></div>
-        <div><dt>Characters</dt><dd>{st.CharacterCount}</dd></div>
-        <div><dt>Played</dt><dd>{duration(st.TotalPlayTimeSeconds)}</dd></div>
-      </dl>
-      {#if st.GuildName}
-        <p class="dim tiny">Guild: {st.GuildName}</p>
-      {/if}
-    {:else}
-      <Skeleton />
-    {/if}
-
-    <h3>Records</h3>
-    <dl class="stats" data-records>
-      <div><dt>Highest hit</dt><dd>{snap && snap.BestHit > 0 ? snap.BestHit.toLocaleString() : '-'}</dd></div>
-      <div>
-        <dt>Best drop</dt>
-        <dd>
-          {#if records.data && records.data.BestDropTier > 0}
-            <span style="color: {rarityColor(records.data.BestDropTier)}">{rarityName(records.data.BestDropTier)}</span>
-            {records.data.BestDropBaseId ? prettifyBaseId(records.data.BestDropBaseId) : ''}
-          {:else}-{/if}
-        </dd>
-      </div>
-      <div><dt>Deepest Delve floor</dt><dd>{records.data?.DelveDeepestFloor || '-'}</dd></div>
-      {#if snap}
-        {#each bossTimes(snap) as tenths, i}
-          <div><dt>Region {i + 1} boss, fastest</dt><dd>{formatTenths(tenths)}</dd></div>
-        {/each}
-      {/if}
-    </dl>
-  </section>
+  {/if}
 
   <!-- Modul: THE CHRONICLE PASS IS NOT SHOWN (2026-09-28). Its only claim UI
        was a number box (0-49) beside text admitting the client cannot know
@@ -273,12 +223,31 @@
 </div>
 
 <style>
-  .progress {
-    text-align: right;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+  .progress-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 1rem 1rem 0;
+    flex-wrap: wrap;
   }
+
+  .progress-tabs button {
+    min-height: 44px;
+    flex-shrink: 0;
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .progress-tabs button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+  }
+
 
   .week li.collected {
     opacity: 0.55;
@@ -310,12 +279,6 @@
     padding: 1rem;
   }
 
-  .head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 1rem;
-  }
 
   h2 {
     margin: 0 0 0.5rem;
@@ -340,49 +303,11 @@
   .tiny {
     font-size: 0.72rem;
   }
-  .err {
-    color: var(--danger);
-  }
 
-  .warn {
-    padding: 0.5rem 0.65rem;
-    background: rgba(224, 85, 63, 0.12);
-    border-left: 3px solid var(--danger);
-    border-radius: 4px;
-    font-size: 0.82rem;
-    margin: 0 0 0.7rem;
-  }
 
-  .rows {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.5rem;
-    max-height: 28rem;
-    overflow-y: auto;
-  }
 
-  .rows li {
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.45rem 0.55rem;
-    opacity: 0.75;
-  }
 
-  .rows li.ready {
-    opacity: 1;
-    border-color: var(--good);
-  }
 
-  .line {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    margin-bottom: 0.25rem;
-  }
 
   /* Modul: the week WRAPS. Seven fixed columns cannot be narrower than their
      content ("10 000g" plus a state word), so in a panel sized by the page's
@@ -489,8 +414,4 @@
     font-size: 0.9rem;
   }
 
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-  }
 </style>

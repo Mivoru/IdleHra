@@ -129,6 +129,28 @@ namespace FolkIdle.Server.Engine
         /// Enqueue <paramref name="step"/> for <paramref name="playerId"/>,
         /// once per session. Safe on the tick thread.
         /// </summary>
+        /// <summary>
+        /// The step as a player reads it, for the Progress screen's timeline
+        /// (task 56). Lives HERE because FunnelRecorderTests counts every
+        /// `FunnelStep.X` outside this file as a writer.
+        /// </summary>
+        public static string DisplayText(FunnelStep step) => step switch
+        {
+            FunnelStep.Registered => "Arrived in the valley",
+            FunnelStep.FirstKill => "First kill",
+            FunnelStep.FirstEquip => "First piece of gear worn",
+            FunnelStep.FirstCraft => "First thing crafted",
+            FunnelStep.OnboardingDone => "Finished the first steps",
+            FunnelStep.Region1Boss => "Beat region 1's boss",
+            FunnelStep.Level5 => "Reached level 5",
+            FunnelStep.Level10 => "Reached level 10",
+            FunnelStep.Level20 => "Reached level 20",
+            FunnelStep.JoinedGuild => "Joined a guild",
+            FunnelStep.ReturnedD1 => "Came back the next day",
+            FunnelStep.ReturnedD7 => "Came back a week later",
+            _ => string.Empty,
+        };
+
         public static void Record(long playerId, FunnelStep step)
         {
             if (playerId <= 0) return;

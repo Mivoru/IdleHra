@@ -111,6 +111,12 @@ namespace FolkIdle.Server.Models
         // each step. See PlayerFunnelEvent and FunnelRecorder.
         public DbSet<PlayerFunnelEvent> PlayerFunnelEvents { get; set; }
 
+        // Task 57: the collection log - see PlayerCollectionEntry.
+        public DbSet<PlayerCollectionEntry> PlayerCollectionEntries { get; set; }
+
+        // Task 56: ten-minute samples of the lifetime counters - see StatSampler.
+        public DbSet<PlayerStatSample> PlayerStatSamples { get; set; }
+
         // Task 42: one row per split-brain compensation, so it pays once.
         // See SplitBrainIncident.
         public DbSet<SplitBrainIncident> SplitBrainIncidents { get; set; }
@@ -286,6 +292,12 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<PlayerFunnelEvent>()
                 .HasKey(f => new { f.PlayerId, f.Step });
+
+            modelBuilder.Entity<PlayerCollectionEntry>()
+                .HasKey(c => new { c.PlayerId, c.BaseItemId });
+
+            modelBuilder.Entity<PlayerStatSample>()
+                .HasKey(s => new { s.PlayerId, s.AtUtc });
 
             modelBuilder.Entity<VillageResident>()
                 .HasKey(v => new { v.PlayerId, v.SlotIndex });

@@ -1777,6 +1777,24 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Task 57: the collection log. A GET that WRITES, and says so: it
+            // folds the Chest into player_collection first. Safe without the
+            // account stripe because the only write is an upsert that can only
+            // raise a tier (CollectionLog.RecordAsync) - two at once agree.
+            if (requestPath == "/api/v1/player/collection" && context.Request.HttpMethod == "GET")
+            {
+                await HandleCollection(context);
+                return;
+            }
+
+            // Task 56: rates, style and timeline, from StatSampler's samples.
+            // Read-only.
+            if (requestPath == "/api/v1/player/insights" && context.Request.HttpMethod == "GET")
+            {
+                await HandleInsights(context);
+                return;
+            }
+
             // Modul: the Hall of Ancestors. The breeding roster answers
             // "who can I pair"; this answers "who carries into next
             // season, and where do they stand" - the cap, the marks,
@@ -5522,6 +5540,22 @@ namespace FolkIdle.Server.Network
 
                 int newlyAwarded = await Engine.SealEngine.AwardCompletedChaptersAsync(db, player, progress);
 
+                // Task 57: the Lifetime chapter. Monster Slayer is paid here, on
+                // read, like a Seal; the other three are paid by the checkpoint.
+                var (lifetimePaid, diamondBalance) = await Engine.LifetimeAchievementBank.BankMonsterSlayerAsync(db, playerId, progress.TotalKills);
+                if (lifetimePaid > 0)
+                {
+                    // The live payload owns PremiumCurrency and the next
+                    // checkpoint assigns it back - hand it the new balance, the
+                    // same way AchievementEngine's sweep does.
+                    _playerSessionRegistry?.BillingSyncQueue.Enqueue(new BillingSyncNotification
+                    {
+                        PlayerId = playerId,
+                        PremiumDiamondsBalance = diamondBalance
+                    });
+                }
+                var lifetime = await Engine.LifetimeAchievementBank.ReadAsync(db, playerId, progress.TotalKills);
+
                 var chapters = Engine.DeedRegistry.Chapters;
                 bool previousComplete = true;
 
@@ -5535,6 +5569,21 @@ namespace FolkIdle.Server.Network
                     // client can celebrate the moment rather than noticing a
                     // number changed.
                     NewlySealedMask = newlyAwarded,
+                    Lifetime = lifetime,
+                    LifetimeDiamondsPaidNow = lifetimePaid,
+                    // Hidden deeds say only their category until they are done.
+                    Hidden = Engine.DeedRegistry.Hidden.Select(h =>
+                    {
+                        bool done = h.Progress(progress) >= h.Target;
+                        return new
+                        {
+                            h.Id,
+                            h.Category,
+                            Title = done ? h.Title : "???",
+                            Body = done ? h.Body : string.Empty,
+                            Done = done,
+                        };
+                    }).ToList(),
                     Chapters = chapters.Select(chapter =>
                     {
                         bool isOpen = previousComplete;
@@ -5582,6 +5631,64 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"HandleDeedsSnapshot failed: {ex.Message}");
+                context.Response.StatusCode = 500;
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleCollection(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var view = await Engine.CollectionLog.BuildAsync(db, playerId, DateTime.UtcNow);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, view);
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"HandleCollection failed: {ex.Message}");
+                context.Response.StatusCode = 500;
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleInsights(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var view = await Engine.StatSampler.BuildInsightsAsync(db, playerId, DateTime.UtcNow);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, view);
+                context.Response.Close();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"HandleInsights failed: {ex.Message}");
                 context.Response.StatusCode = 500;
                 context.Response.Close();
             }
@@ -8907,7 +9014,10 @@ namespace FolkIdle.Server.Network
                         CompletedTier = entry.CompletedTier,
                         NextTierTarget = AchievementMilestones.GetNextTierTarget(entry.AchievementId, entry.CompletedTier),
                         NextTierReward = AchievementMilestones.GetNextTierReward(entry.AchievementId, entry.CompletedTier),
-                        IsClaimed = entry.IsClaimed
+                        // Task 57: every achievement pays itself now. A tier the
+                        // checkpoint already paid reads as claimed, so an old
+                        // client does not offer a button that used to pay it twice.
+                        IsClaimed = entry.IsClaimed || entry.CompletedTier > 0
                     });
                 }
 

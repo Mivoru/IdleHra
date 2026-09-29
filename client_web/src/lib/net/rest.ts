@@ -44,6 +44,10 @@ export const queryKeys = {
   traits: ['meta', 'traits'] as const,
   ancestorsHall: ['meta', 'ancestors'] as const,
   deeds: ['meta', 'deeds'] as const,
+  /** Task 57: the collection log. */
+  collection: ['player', 'collection'] as const,
+  /** Task 56: rates, style and timeline. */
+  insights: ['player', 'insights'] as const,
   breedingPreview: (a: string, b: string) => ['meta', 'breeding', 'preview', a, b] as const,
   villagerBreedingPreview: (heroId: string, newcomerId: number) =>
     ['meta', 'breeding', 'preview', 'village', heroId, newcomerId] as const,
@@ -1181,10 +1185,111 @@ export interface DeedsSnapshot {
    * than noticed as a number that changed. */
   NewlySealedMask: number;
   Chapters: DeedChapterEntry[];
+  /** Task 57: the four lifetime achievements as named tiers, paid automatically. */
+  Lifetime?: LifetimeAchievement[];
+  /** Diamonds this very read paid (Monster Slayer), so the moment can be announced once. */
+  LifetimeDiamondsPaidNow?: number;
+  /** Task 57: deeds nobody is told about - "???" and a category until done. */
+  Hidden?: HiddenDeedEntry[];
+}
+
+export interface LifetimeTier {
+  Name: string;
+  Goal: string;
+  Diamonds: number;
+  Reached: boolean;
+}
+
+export interface LifetimeAchievement {
+  Id: number;
+  Title: string;
+  Description: string;
+  Progress: number;
+  CompletedTier: number;
+  Tiers: LifetimeTier[];
+}
+
+export interface HiddenDeedEntry {
+  Id: string;
+  Category: string;
+  Title: string;
+  Body: string;
+  Done: boolean;
 }
 
 export function fetchDeeds(): Promise<DeedsSnapshot> {
   return authedGet<DeedsSnapshot>('/api/v1/deeds/snapshot');
+}
+
+/** Task 57: every catalogued piece's best rarity ever owned, and the codex, per region. */
+export interface CollectionPiece {
+  BaseItemId: string;
+  /** 0 = never owned. */
+  BestTier: number;
+}
+
+export interface CollectionRegion {
+  Region: number;
+  PiecesOwned: number;
+  PiecesTotal: number;
+  RarityPercent: number;
+  MonstersRecorded: number;
+  MonstersTotal: number;
+  Pieces: CollectionPiece[];
+}
+
+export interface CollectionView {
+  PiecesOwned: number;
+  PiecesTotal: number;
+  MonstersRecorded: number;
+  MonstersTotal: number;
+  Percent: number;
+  Regions: CollectionRegion[];
+}
+
+export function fetchCollection(): Promise<CollectionView> {
+  return authedGet<CollectionView>('/api/v1/player/collection');
+}
+
+/** Task 56: from StatSampler's ten-minute samples. */
+export interface InsightRate {
+  Window: string;
+  WindowSeconds: number;
+  /** 0 = not enough readings in this window yet. */
+  CoveredSeconds: number;
+  KillsPerHour: number;
+  XpPerHour: number;
+  HarvestsPerHour: number;
+  CraftsPerHour: number;
+  GoldEarnedPerHour: number;
+  GoldEarned: number;
+  GoldSpent: number;
+}
+
+export interface InsightStyle {
+  Window: string;
+  Samples: number;
+  FightingPct: number;
+  GatheringPct: number;
+  CraftingPct: number;
+  IdlePct: number;
+}
+
+export interface InsightTimelineEntry {
+  AtUtc: string;
+  Kind: string;
+  Text: string;
+}
+
+export interface InsightsView {
+  SampleIntervalMinutes: number;
+  Rates: InsightRate[];
+  Style: InsightStyle[];
+  Timeline: InsightTimelineEntry[];
+}
+
+export function fetchInsights(): Promise<InsightsView> {
+  return authedGet<InsightsView>('/api/v1/player/insights');
 }
 
 export interface GeneLocusPreview {
