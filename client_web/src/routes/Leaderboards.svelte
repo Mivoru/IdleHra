@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import {
@@ -109,7 +110,7 @@
             <span class="progress dim tiny">
               {#if row.HardestMonsterName}
                 {row.HardestMonsterName}
-                {#if row.KillsOfHardest > 0}&times;{row.KillsOfHardest.toLocaleString()}{/if}
+                {#if row.KillsOfHardest > 0}&times;{formatNumber(row.KillsOfHardest)}{/if}
               {:else}
                 no kills yet
               {/if}
@@ -133,7 +134,7 @@
             <span class="rank dim">#{row.Rank}</span>
             <span class="who">{row.Name}</span>
             <span class="dim tiny">tier {row.GuildTier}</span>
-            <span class="xp">{row.GuildMMR.toLocaleString()} MMR</span>
+            <span class="xp">{formatNumber(row.GuildMMR)} MMR</span>
           </li>
         {/each}
       </ol>

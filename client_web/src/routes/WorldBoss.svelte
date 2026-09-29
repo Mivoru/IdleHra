@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   // Modul: the world boss. A server-wide encounter that scales with how many
   // accounts are online and their combined race mastery, so its health bar is
@@ -316,7 +317,7 @@
       <div class="bar" role="progressbar" aria-valuenow={currentHp} aria-valuemin="0" aria-valuemax={maxHp}>
         <div class="bar-fill boss" style="width: {hpPct * 100}%"></div>
         <span class="bar-label">
-          {currentHp.toLocaleString()} / {maxHp.toLocaleString()}
+          {formatNumber(currentHp)} / {formatNumber(maxHp)}
           ({(hpPct * 100).toFixed(1)}%)
         </span>
       </div>
@@ -451,7 +452,7 @@
         {:else if autoResult.BrokePlate >= 0}
           You broke plate {autoResult.BrokePlate + 1} for everyone:
         {/if}
-        <strong>{autoResult.Damage.toLocaleString()}</strong> damage ({autoResult.Played.toFixed(2)}x).
+        <strong title={numberTitle(autoResult.Damage)}>{formatNumber(autoResult.Damage)}</strong> damage ({autoResult.Played.toFixed(2)}x).
       </p>
     {/if}
 
@@ -459,12 +460,12 @@
     {#if board && board.Participants > 0}
       <p class="small together" data-testid="boss-total">
         Together, {board.Participants} {board.Participants === 1 ? 'player has' : 'players have'} dealt
-        <strong>{board.TotalDamage.toLocaleString()}</strong> damage{#if board.BossMaxHp > 0}
+        <strong title={numberTitle(board.TotalDamage)}>{formatNumber(board.TotalDamage)}</strong> damage{#if board.BossMaxHp > 0}
           &nbsp;({((board.TotalDamage / board.BossMaxHp) * 100).toFixed(2)}% of its health){/if}.
       </p>
       {#if board.Me}
         <p class="small" data-testid="boss-me">
-          You are <strong>#{board.Me.Rank}</strong> with {board.Me.Damage.toLocaleString()} damage -
+          You are <strong>#{board.Me.Rank}</strong> with {formatNumber(board.Me.Damage)} damage -
           {board.MyBracket} right now.
         </p>
       {:else}
@@ -475,7 +476,7 @@
           <li class:me={row.PlayerId === board.Me?.PlayerId}>
             <span class="rank">{row.Rank}</span>
             <span class="who"><PlayerAvatar playerId={row.PlayerId} size="sm" /> {row.Name}{#if row.Title}<span class="dim tiny"> · {row.Title}</span>{/if}</span>
-            <span class="dmg">{row.Damage.toLocaleString()}</span>
+            <span class="dmg" title={numberTitle(row.Damage)}>{formatNumber(row.Damage)}</span>
           </li>
         {/each}
       </ol>

@@ -25,6 +25,7 @@
 import { connection } from './connection';
 import { CommandType } from './protocol.generated';
 import { computeGdprConfirmationHash } from './antiCheat';
+import { formatNumber } from '../ui/format';
 
 export interface CommandRefusal {
   ok: false;
@@ -1437,7 +1438,7 @@ export function spendAttributePoint(attributeId: number, amount: number, availab
   if (!ATTRIBUTES.some((a) => a.id === attributeId)) return refuse('Unknown attribute.');
   if (!Number.isInteger(amount) || amount <= 0) return refuse('Pick how many points to spend.');
   if (amount > available) {
-    return refuse(`You have ${available.toLocaleString()} point${available === 1 ? '' : 's'} to spend.`);
+    return refuse(`You have ${formatNumber(available)} point${available === 1 ? '' : 's'} to spend.`);
   }
 
   // Which attribute rides on TargetId and the amount on LimitPrice - the same
@@ -1580,7 +1581,7 @@ export function purchaseInheritanceLevel(statId: number, currentLevel: number, d
   if (currentLevel >= INHERITANCE_MAX_LEVEL) return refuse('That bonus is already at its maximum.');
 
   const cost = inheritanceUpgradeCost(currentLevel);
-  if (diamonds < cost) return refuse(`Needs ${cost.toLocaleString()} diamonds; you have ${diamonds.toLocaleString()}.`);
+  if (diamonds < cost) return refuse(`Needs ${formatNumber(cost)} diamonds; you have ${formatNumber(diamonds)}.`);
 
   connection.send({ Command: CommandType.PurchaseInheritanceLevel, TargetId: statId });
   return { ok: true };

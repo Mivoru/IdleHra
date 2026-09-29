@@ -4,6 +4,7 @@
 </script>
 
 <script lang="ts">
+  import { formatNumber } from './format';
   // Modul: THE MAP ANSWERS "WHERE", THESE ANSWER "WHAT NOW".
   //
   // A player coming back to an idle game asks two things: is everybody still
@@ -122,7 +123,7 @@
         <Bar
           value={Math.min(goal.Current, goal.Target)}
           max={Math.max(1, goal.Target)}
-          label={`${Math.min(goal.Current, goal.Target).toLocaleString()} / ${goal.Target.toLocaleString()}`}
+          label={`${formatNumber(Math.min(goal.Current, goal.Target))} / ${formatNumber(goal.Target)}`}
         />
         <div class="goal-row">
           <span class="dim">

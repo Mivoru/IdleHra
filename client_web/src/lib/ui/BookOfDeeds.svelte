@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from './format';
   // Modul: THE BOOK OF DEEDS, all five chapters.
   //
   // Chapter I is the onboarding: it replaces a three-step tooltip run that a
@@ -170,7 +171,7 @@
                       <span style={`width: ${(deed.Current / deed.Target) * 100}%`}></span>
                     </div>
                     <span class="count dim tiny">
-                      {deed.Current.toLocaleString()} / {deed.Target.toLocaleString()}
+                      {formatNumber(deed.Current)} / {formatNumber(deed.Target)}
                     </span>
                   {/if}
                 </div>
@@ -212,7 +213,7 @@
                 {#if next}
                   <p class="body">Next: <strong>{next.Name}</strong> - {next.Goal}. Pays {next.Diamonds} diamonds.</p>
                   {#if a.Progress > 0}
-                    <span class="sofar dim tiny">So far: {a.Progress.toLocaleString()}</span>
+                    <span class="sofar dim tiny">So far: {formatNumber(a.Progress)}</span>
                   {/if}
                 {:else}
                   <p class="body">Every tier reached.</p>

@@ -4,6 +4,7 @@
 </script>
 
 <script lang="ts">
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState } from '../lib/stores/game';
   import {
@@ -102,10 +103,10 @@
         <div><dt>Gold</dt><dd><Money amount={snap ? snap.Gold : st.Gold} /></dd></div>
         <div><dt>Diamonds</dt><dd><Money amount={snap ? snap.PremiumCurrencyBalance : st.PremiumDiamonds} kind="diamond" /></dd></div>
         <div><dt>Login streak</dt><dd>{st.LoginStreakDays}</dd></div>
-        <div><dt>Kills</dt><dd>{st.TotalKills.toLocaleString()}</dd></div>
-        <div><dt>Bosses</dt><dd>{st.BossesSlain.toLocaleString()}</dd></div>
-        <div><dt>Crafted</dt><dd>{st.TotalItemsCrafted.toLocaleString()}</dd></div>
-        <div><dt>Deaths</dt><dd>{st.TotalDeaths.toLocaleString()}</dd></div>
+        <div><dt>Kills</dt><dd title={numberTitle(st.TotalKills)}>{formatNumber(st.TotalKills)}</dd></div>
+        <div><dt>Bosses</dt><dd title={numberTitle(st.BossesSlain)}>{formatNumber(st.BossesSlain)}</dd></div>
+        <div><dt>Crafted</dt><dd title={numberTitle(st.TotalItemsCrafted)}>{formatNumber(st.TotalItemsCrafted)}</dd></div>
+        <div><dt>Deaths</dt><dd title={numberTitle(st.TotalDeaths)}>{formatNumber(st.TotalDeaths)}</dd></div>
         <div><dt>Regions done</dt><dd>{st.RegionsCompletedCount}</dd></div>
         <div><dt>Achievements</dt><dd>{st.AchievementsClaimedCount}</dd></div>
         <div><dt>Characters</dt><dd>{st.CharacterCount}</dd></div>
@@ -120,7 +121,7 @@
 
     <h3>Records</h3>
     <dl class="stats" data-records>
-      <div><dt>Highest hit</dt><dd>{snap && snap.BestHit > 0 ? snap.BestHit.toLocaleString() : '-'}</dd></div>
+      <div><dt>Highest hit</dt><dd>{snap && snap.BestHit > 0 ? formatNumber(snap.BestHit) : '-'}</dd></div>
       <div>
         <dt>Best drop</dt>
         <dd>
@@ -204,7 +205,7 @@
             value={race.Experience}
             max={Math.max(1, race.NextLevelExperience)}
             color="var(--rarity-6)"
-            label={`${race.Experience.toLocaleString()} / ${race.NextLevelExperience.toLocaleString()}`}
+            label={`${formatNumber(race.Experience)} / ${formatNumber(race.NextLevelExperience)}`}
           />
         </div>
       {/each}

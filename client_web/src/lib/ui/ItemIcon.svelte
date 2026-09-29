@@ -12,6 +12,7 @@
   // than a generic box that reads as a broken image.
 
   import { itemIcon, initialsFor } from './sprites';
+  import { formatNumber, numberTitle } from './format';
   import { rarityColor, rarityName, shouldGlow } from './rarity';
   // Modul: the SHARED registry, not a per-instance load.
   //
@@ -61,7 +62,7 @@
   {/if}
 
   {#if quantity !== undefined && quantity > 1}
-    <span class="qty">{quantity > 9999 ? `${Math.floor(quantity / 1000)}k` : quantity}</span>
+    <span class="qty" data-exact={quantity} title={numberTitle(quantity, 9_999)}>{formatNumber(quantity, 9_999)}</span>
   {/if}
 
   {#if regionTier > 0}

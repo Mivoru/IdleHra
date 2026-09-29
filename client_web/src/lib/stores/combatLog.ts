@@ -27,6 +27,7 @@
 // stores/game.ts lootLogEquipment / lootLogMaterials.
 import { writable } from 'svelte/store';
 import type { ResponseCombatEvent } from '../net/protocol.generated';
+import { formatNumber } from '../ui/format';
 
 /** Mirrors ResponseCombatEventPacket's Kind constants. */
 export const CombatEventKind = {
@@ -148,7 +149,7 @@ export function describeCombatLine(line: CombatLogLine, monsterName: string): st
   const blocked = (line.flags & CombatEventFlag.Blocked) !== 0;
   const burn = (line.flags & CombatEventFlag.Burn) !== 0;
   const thorns = (line.flags & CombatEventFlag.Thorns) !== 0;
-  const amount = line.amount.toLocaleString();
+  const amount = formatNumber(line.amount);
 
   switch (line.kind) {
     case CombatEventKind.PlayerHit:

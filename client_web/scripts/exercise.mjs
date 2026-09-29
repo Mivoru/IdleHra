@@ -1501,7 +1501,7 @@ await go('World Boss');
         const total = await page.locator('[data-testid="boss-total"]').innerText().catch(() => '');
         record(
           'the damage board shows your place and what everyone dealt together',
-          /#\d+/.test(me) && new RegExp(damage.toLocaleString('en-US').replace(/,/g, '[,\\s\\u00a0.]?')).test(me) && /dealt/.test(total),
+          /#\d+/.test(me) && (damage > 100000 ? /\d\s*[kMBT]\b/.test(me) : me.replace(/[\s\u00a0\u202f,.]/g, '').includes(String(damage))) && /dealt/.test(total),
           `"${me.trim()}" / "${total.trim()}"`,
         );
         const grey = await page.locator('[data-testid="wheel-strike"]').isDisabled();
@@ -2883,7 +2883,8 @@ await go('Village');
 
   const before = await tally();
   const feastButton = page.getByRole('button', { name: /^Throw a feast/ });
-  const price = async () => Number((await feastButton.first().innerText()).replace(/[^\d]/g, ''));
+  // Modul: read the published exact price - the label compacts above 100,000 (task 74).
+  const price = async () => Number(await feastButton.first().getAttribute('data-exact'));
 
   const offered = (await feastButton.count()) > 0;
   record('the village offers a feast with a price', offered,
@@ -3154,12 +3155,12 @@ await go('Breeding');
     );
     // On a failure the screen's own refusal is the useful detail - it is a
     // sentence now rather than a server code, so it says what to fix.
-    const priced = /Costs [\d,]+g/.test(preview);
+    const priced = /Costs [\d,.\s]+[kMBT]?g/.test(preview);
     record(
       'the preview quotes a price',
       priced,
       priced
-        ? (preview.match(/Costs [\d,\s]+g/) ?? [''])[0]
+        ? (preview.match(/Costs [\d,.\s]+[kMBT]?g/) ?? [''])[0]
         : (await page.locator('.panel .warn').allInnerTexts()).join(' | ') || 'no reason shown',
     );
 
@@ -3327,7 +3328,7 @@ await go('Progress');
     .first()
     .innerText()
     .catch(() => '');
-  record('the Progress screen shows a real highest hit', /Highest hit\s*[\d,\s]*[1-9]/.test(hitLine), hitLine.replace(/\s+/g, ' '));
+  record('the Progress screen shows a real highest hit', /Highest hit\s*[\d,.\s]*[1-9]/.test(hitLine), hitLine.replace(/\s+/g, ' '));
 
   // Task 56: the rates table and the style come from the server's samples.
   const insights = await apiGet('/api/v1/player/insights');

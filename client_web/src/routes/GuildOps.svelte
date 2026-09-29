@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice, typicalHit } from '../lib/stores/game';
@@ -495,7 +496,7 @@
               value={axis.ours}
               max={total}
               color={axis.ours >= axis.theirs ? 'var(--good)' : 'var(--danger)'}
-              label={`${axis.ours.toLocaleString()} vs ${axis.theirs.toLocaleString()}`}
+              label={`${formatNumber(axis.ours)} vs ${formatNumber(axis.theirs)}`}
             />
           </div>
         {/each}
@@ -534,7 +535,7 @@
           value={Number(snap.GuildRaidBossCurrentHp)}
           max={Number(snap.GuildRaidBossMaxHp)}
           color="var(--danger)"
-          label={`${Number(snap.GuildRaidBossCurrentHp).toLocaleString()} / ${Number(snap.GuildRaidBossMaxHp).toLocaleString()}`}
+          label={`${formatNumber(Number(snap.GuildRaidBossCurrentHp))} / ${formatNumber(Number(snap.GuildRaidBossMaxHp))}`}
         />
       {:else}
         <p class="dim">No raid boss active.</p>
@@ -557,7 +558,7 @@
           value={Number(snap.GuildLogisticsCurrentStock)}
           max={Math.max(1, Number(snap.GuildLogisticsTargetRequirement))}
           color="var(--accent)"
-          label={`${Number(snap.GuildLogisticsCurrentStock).toLocaleString()} / ${Number(snap.GuildLogisticsTargetRequirement).toLocaleString()}`}
+          label={`${formatNumber(Number(snap.GuildLogisticsCurrentStock))} / ${formatNumber(Number(snap.GuildLogisticsTargetRequirement))}`}
         />
       </div>
     </section>
@@ -589,7 +590,7 @@
                   value={stock}
                   max={required}
                   color={met ? 'var(--good)' : 'var(--accent)'}
-                  label={`${stock.toLocaleString()} / ${Number(row.TargetRequirement).toLocaleString()}`}
+                  label={`${formatNumber(stock)} / ${formatNumber(Number(row.TargetRequirement))}`}
                 />
               </li>
             {/each}
@@ -717,13 +718,13 @@
                       <div class="mat-req">
                         <span class="mat-name">{prettifyBaseId(td.commonWood)}</span>
                         <span class="mat-stock" class:mat-ok={getDepotQty(td.commonWood) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.commonWood) < BUFF_COST_PER_MAT}>
-                          {getDepotQty(td.commonWood).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
+                          {formatNumber(getDepotQty(td.commonWood))} / {formatNumber(BUFF_COST_PER_MAT)}
                         </span>
                       </div>
                       <div class="mat-req">
                         <span class="mat-name">{prettifyBaseId(td.commonOre)}</span>
                         <span class="mat-stock" class:mat-ok={getDepotQty(td.commonOre) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.commonOre) < BUFF_COST_PER_MAT}>
-                          {getDepotQty(td.commonOre).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
+                          {formatNumber(getDepotQty(td.commonOre))} / {formatNumber(BUFF_COST_PER_MAT)}
                         </span>
                       </div>
                       <button
@@ -737,13 +738,13 @@
                       <div class="mat-req">
                         <span class="mat-name rare-mat">{prettifyBaseId(td.rareWood)}</span>
                         <span class="mat-stock" class:mat-ok={getDepotQty(td.rareWood) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.rareWood) < BUFF_COST_PER_MAT}>
-                          {getDepotQty(td.rareWood).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
+                          {formatNumber(getDepotQty(td.rareWood))} / {formatNumber(BUFF_COST_PER_MAT)}
                         </span>
                       </div>
                       <div class="mat-req">
                         <span class="mat-name rare-mat">{prettifyBaseId(td.rareOre)}</span>
                         <span class="mat-stock" class:mat-ok={getDepotQty(td.rareOre) >= BUFF_COST_PER_MAT} class:mat-low={getDepotQty(td.rareOre) < BUFF_COST_PER_MAT}>
-                          {getDepotQty(td.rareOre).toLocaleString()} / {BUFF_COST_PER_MAT.toLocaleString()}
+                          {formatNumber(getDepotQty(td.rareOre))} / {formatNumber(BUFF_COST_PER_MAT)}
                         </span>
                       </div>
                       <button
@@ -792,7 +793,7 @@
                     {member.Name}
                     {#if member.PlayerId === connection.currentPlayerId}<span class="dim tiny">you</span>{/if}
                   </span>
-                  <span class="dim">{member.WeeklyContributionPoints.toLocaleString()} pts</span>
+                  <span class="dim">{formatNumber(member.WeeklyContributionPoints)} pts</span>
                 </li>
               {/each}
             </ul>

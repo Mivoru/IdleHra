@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   // Modul: the mailbox. Absent from this client entirely until the 2026-08-02
   // protocol audit - which mattered more than a missing screen usually does,
   // because mail is how the server delivers things it could not put straight
@@ -87,7 +88,7 @@
       <div class="actions">
         <button onclick={claimAll}>Claim up to 10</button>
         {#if totalGold > 0}
-          <span class="gold">{totalGold.toLocaleString()}g waiting</span>
+          <span class="gold">{formatNumber(totalGold)}g waiting</span>
         {/if}
       </div>
 
@@ -121,7 +122,7 @@
               {/if}
 
               {#if entry.GoldAttachment > 0}
-                <span class="gold">+{Number(entry.GoldAttachment).toLocaleString()}g</span>
+                <span class="gold">+{formatNumber(Number(entry.GoldAttachment))}g</span>
               {/if}
             </div>
 
