@@ -13,7 +13,7 @@
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchGoldLedger, type GoldLedgerCategory } from '../net/rest';
   import { prettifyBaseId } from '../net/content';
-  import { formatCompact } from './format';
+  import { formatNumber } from './format';
   import Money from './Money.svelte';
 
   const ledger = createQuery(() => ({ queryKey: queryKeys.goldLedger, queryFn: fetchGoldLedger }));
@@ -97,7 +97,7 @@
   });
 
   function num(n: number): string {
-    return n > 0 ? formatCompact(n) : '-';
+    return n > 0 ? formatNumber(n) : '-';
   }
 </script>
 
