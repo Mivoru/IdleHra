@@ -6,6 +6,7 @@ import {
   SCREEN_COVERAGE,
   WIKI_SEARCH_INDEX,
   VILLAGE_TIER_MATERIALS,
+  VILLAGE_BUILDINGS,
   GUILD_BUFF_TIERS,
   REROLL_GOLD_BY_REGION,
   GUILD_BUFF_COST_PER_MATERIAL,
@@ -304,6 +305,29 @@ describe('the tables the wiki restates still match the server', () => {
     expect(HALL_MAX_SLOTS).toBe(num(hall, /MaxSlots = (\d+)/, 'hall max slots'));
   });
 
+  // Task 80: the Breeding Grounds row said "nothing above level 1 has an
+  // additional effect" for months after the level was wired into breeding.
+  // The row now quotes the server's numbers, and this holds it to them.
+  it('village: what each Breeding Grounds level buys', () => {
+    const aptitudes = read(serverRoot, 'Engine', 'BreedingAptitudes.cs');
+    const traits = read(serverRoot, 'Engine', 'BreedingTraits.cs');
+    const row = VILLAGE_BUILDINGS.find((b) => b.name === 'Breeding Grounds');
+    expect(row, 'a Breeding Grounds row').toBeDefined();
+    const text = row!.effect;
+
+    expect(text).toContain(`base ${num(aptitudes, /MutationUpPercent = (\d+)/, 'up-mutation base')}%`);
+    expect(text).toContain(`base ${num(traits, /BaseMutationPercent = (\d+)/, 'trait mutation base')}%`);
+    expect(num(traits, /MutationPercentPerGroundsLevel = (\d+)/, 'trait % per level')).toBe(1);
+    expect(aptitudes).toMatch(/MutationUpPercent \+ Math\.Max\(0, groundsLevel\)/);
+
+    const thresholds = [...after(aptitudes, 'static int SelectableCount', 'SelectableCount')
+      .matchAll(/groundsLevel >= (\d+)\) return (\d+)/g)]
+      .map((m) => [Number(m[1]), Number(m[2])])
+      .sort((a, b) => a[0] - b[0]);
+    expect(thresholds).toEqual([[4, 1], [7, 2], [10, 3]]);
+    expect(text).toContain('levels 4, 7 and 10');
+    expect(text).not.toMatch(/nothing above level 1/i);
+  });
   it('events: the world boss and the day-7 diamond bonus', () => {
     const boss = read(serverRoot, 'Engine', 'WorldBossEngine.cs');
     const daily = read(serverRoot, 'Domain', 'Progression', 'DailyLoginRewardEngine.cs');

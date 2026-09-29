@@ -150,8 +150,13 @@ export const VILLAGE_BUILDINGS: readonly {
     costKind: 'service',
     cap: null,
     effect:
-      'Level 1 or better is required to breed at all - below that the server refuses the command. Nothing above level 1 has an additional effect today.',
-    source: 'BreedingEngine.ExecuteBreedingAsync',
+      // Task 80: this used to say "nothing above level 1 has an additional
+      // effect today", which had stopped being true when the breeding rework
+      // wired the level into the mutation rolls and the aptitude selection.
+      // The board task that quoted it was about to add a cooldown cut to a
+      // building that already paid for its levels.
+      'Level 1 is required to breed at all. Every level adds 1% to each aptitude\'s chance to come out one higher (base 25%) and 1% to a child\'s chance of a brand-new trait (base 4%). At levels 4, 7 and 10 you choose 1, 2 or 3 aptitudes that take the better parent\'s value outright.',
+    source: 'BreedingEngine, BreedingAptitudes.UpMutationPercentFor / SelectableCount, BreedingTraits.MutationPercentFor',
   },
   {
     id: 5,

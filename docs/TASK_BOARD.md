@@ -5368,6 +5368,21 @@ The Wiki says it outright: "nothing above level 1 has an additional effect".
 level, floor 50 %), or a cap at level 1 with "complete" on the card. Either
 way the player stops paying for nothing.
 
+**DONE 2026-09-29 - the premise was false. No gameplay change.** The owner
+left the choice to Claude, and checking the code showed the player was not
+paying for nothing. The breeding rework (2026-09-12) had already wired the
+level in:
+- +1 % a level to each aptitude's up-mutation chance (base 25 %,
+  `BreedingAptitudes.UpMutationPercentFor`);
+- +1 % a level to a new-trait mutation (base 4 %, `BreedingTraits`);
+- 1, 2 or 3 aptitudes chosen outright at levels 4, 7 and 10
+  (`SelectableCount`).
+
+Only the Wiki row was stale, and the Village card already said part of it.
+The breeding cooldown is one hour, so a percentage cut of it would buy almost
+nothing. The Wiki row now quotes the real numbers, and `wiki.test.ts` holds
+it to the server constants.
+
 ## 81. Chest rules and row actions
 
 - Five buttons per equipment row (Unequip, Reroll, Lock, Sell, Bin) become one
