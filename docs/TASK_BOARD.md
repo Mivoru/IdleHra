@@ -7,6 +7,14 @@
 > 5di35DqxEfb5zpNUh5Sxsy (Czech). Tasks 48-67 below are done except 62
 > (parked).
 >
+> **Status at the end of 2026-09-29:** 68-72 DONE and 74 partly (PRs
+> #102-#107, merged; deploy recorded in NEXT_STEPS_BACKLOG's handoff). Next
+> without the owner: **77** (wiring-auditor on Village Work slots), **78**
+> (hunting advisor), **81** (Chest rules). Show the owner a screenshot first:
+> **73** (Home), **82** (desktop header). Owner decisions waiting: **75, 76,
+> 79 (Treasury), 80**, and the designs **83-88**. Left from 74: one number
+> format, reroll history.
+>
 > **PREVIOUS START HERE (2026-09-28). The front of the board was TASKS 48-62,
 > at the bottom of this file: the follow-through of the 2026-09-28 design
 > audit.** Do them in the order of the table in that section. Task 48 (the
@@ -5083,13 +5091,13 @@ prose in English. Loot below Rare stays silent.
 
 | # | Task | Size | Needs the owner? |
 |---|---|---|---|
-| 68 | Three screens state rules the game does not have - **PR #102** | S | no |
-| 69 | Fuse a whole stack in one action - **PR #103** | S-M | no |
-| 70 | "New" cards stop covering the screen - **premise corrected, see the task** | S | no |
-| 71 | Chat handle off the controls; empty Store out of the menu | S | no |
-| 72 | A locked region says what is missing; Continue and Again buttons | S | no |
+| 68 | ~~Three screens state rules the game does not have~~ **DONE, PR #102** | S | no |
+| 69 | ~~Fuse a whole stack in one action~~ **DONE, PR #103** | S-M | no |
+| 70 | ~~"New" cards stop covering the screen~~ **DONE (narrowed), PR #104** | S | no |
+| 71 | ~~Chat handle off the controls; empty Store out of the menu~~ **DONE, PR #105** | S | no |
+| 72 | ~~A locked region says what is missing; Continue and Again buttons~~ **DONE, PR #106** | S | no |
 | 73 | Home answers "what now" before the painting | M | show a screenshot first |
-| 74 | Small bundle: rarity tooltip, points badge, number format, reroll history, material names | S-M | no |
+| 74 | Small bundle - **3 of 5 DONE, PR #107**; number format and reroll history left (see the task) | S-M | no |
 | 75 | Book of Deeds: chapters II-IV open together | S | **yes, one line** |
 | 76 | One "Community" menu entry | S | **yes, one line** (renames) |
 | 77 | Village "Work slots": verify, then remove or collapse | S | no |
@@ -5111,7 +5119,9 @@ input), then **71 + 72 + 74**, then **73 + 82** (one look at the shell), then
 
 ---
 
-## 68. Three screens state rules the game does not have
+## DONE - 68. Three screens state rules the game does not have
+
+**Built 2026-09-29, PR #102.** All three texts corrected; `tests/truthfulTexts.test.ts` reads ForgeSplicingEngine.cs and the Svelte files so the next drift fails.
 
 **What is actually true:**
 - `Gathering.svelte` prints the Mastery line as `-{level * 2}` ("-112
@@ -5134,7 +5144,9 @@ vitest in the style of `wiki.test.ts` that reads the event effect out of
 **Done when:** the three texts are true, the guard test passes, and a grep for
 `forge success` and `two ticks` in `client_web/src` finds only comments.
 
-## 69. Fuse a whole stack in one action
+## DONE - 69. Fuse a whole stack in one action
+
+**Built 2026-09-29, PR #103.** Opcode 78 `FuseStack` (TargetId = any piece of the stack, QualityTier = stop tier), `ForgeSplicingEngine.PlanStack` (pure) + `ExecuteStackFusionAsync` (one Serializable transaction, the single fusion's fee/ceiling/lock rules, max 10,000 fusions), `GET /api/v1/forge/stack-preview`, the Forge's "The whole stack" panel, dev route `/api/v1/dev/forge/stack` (grants 9 Normal Doom Gorgets via DevFixtureSeeder). `ForgeStackFusionTests`; exercise fuses 9 -> 1 and bins it. Side effect: one press on a big stack reaches Master Smith / "Fuse fifty times" at once.
 
 **What is actually true:** fusion is three selects and a button, one fusion
 per press (`ExecuteFusionAsync(target, sac1, sac2)`). The Forge lists "Ready to
@@ -5159,7 +5171,9 @@ the right gold charged, locked pieces untouched, one row per result);
 `exercise.mjs` fuses a stack and the chest count moves by the expected amount
 and is restored; `check:touch` passes.
 
-## 70. "New" cards stop covering the screen
+## DONE (narrowed) - 70. "New" cards stop covering the screen
+
+**Built 2026-09-29, PR #104:** a discovery/objective card folds to its title line on the next screen.
 
 **CORRECTED 2026-09-29, before building.** The audit said the card sits "in
 the middle of every screen". It does not: `OnboardingCoach` is
@@ -5189,7 +5203,9 @@ steps are NOT touched (owner decision: a fence).
 screen with a pending discovery), the seen-set still syncs, `exercise.mjs`
 stays green.
 
-## 71. Chat handle off the controls; empty Store out of the menu
+## DONE - 71. Chat handle off the controls; empty Store out of the menu
+
+**Built 2026-09-29, PR #105.** Quiet chat (nobody ELSE online - the count includes you - and nothing unread) moves to a header button; Store hidden via `MENU_HIDDEN`. Found on the way: `fetchOnlineStats` was a bare relative fetch, so the count read 0 on the dev box and in the APK; it uses `authedGet` now.
 
 - The floating "Chat · 0" handle sits over Gathering's Gather button at
   1366 px. At 0 online it becomes a header icon; otherwise the main column
@@ -5201,7 +5217,9 @@ stays green.
 `check:overlap` does not see the handle as a page control, so extend it), and
 `screens.mjs` / the Wiki ledger reflect the Store change.
 
-## 72. A locked region says what is missing; Continue and Again buttons
+## DONE - 72. A locked region says what is missing; Continue and Again buttons
+
+**Built 2026-09-29, PR #106.** `bossGearProgress` (victories.ts) + "You wear N of 8" under the locked region; Combat's rules text read the retired flat 5x/2x wall and now reads the mirrored first-clear ranges; "Continue: <last monster>"; death card Again / One easier (not exercised - a death is random).
 
 - A locked region's banner names the boss and the gear it asks for, against
   what the player wears ("Magma Wyrm asks for Mythic gear; you wear Epic").
@@ -5232,7 +5250,9 @@ asks for, from 72's data). `exercise.mjs` clicks the map plates; keep them.
 **Done when:** at 390 and 1366 px the cards are in the first viewport; the
 owner has seen a screenshot; the geometry checkers are clean.
 
-## 74. Small bundle
+## PARTLY DONE - 74. Small bundle
+
+**Built 2026-09-29, PR #107:** rarity tooltips (`rarityTitle`), the desktop Character dot, `mat_` stripped from names. **Left open:** one number format (a sweep of every screen, do it alone) and reroll history (auto-reroll reports only its end state; needs server-side roll results - do it with 86). The old gathering primitives (Raw Log, Wood, Oak Log) are left for 83/86.
 
 Each is independent:
 - Rarity tooltip everywhere a rarity is named: name, tier number, power
