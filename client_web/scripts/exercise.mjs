@@ -1718,6 +1718,14 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
       break;
     }
 
+    // Task 70: a card already read folds to its title line on the next
+    // screen, so open it the way a player would - by its header - first.
+    const head = panel.locator('button.head[aria-expanded="false"]');
+    if ((await head.count()) > 0) {
+      await head.first().click();
+      await page.waitForTimeout(150);
+    }
+
     const gotIt = panel.getByRole('button', { name: /^Got it$/ });
     if ((await gotIt.count()) === 0) break;
     await gotIt.first().click();
@@ -1735,6 +1743,8 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
   // nothing, which is the same class as the screen lists that rotted in three
   // separate checkers.
   if (reachedObjective) {
+    const folded = page.locator('.coach button.head[aria-expanded="false"]');
+    if ((await folded.count()) > 0) await folded.first().click();
     await page.locator('.coach').first().getByRole('button', { name: /Take me there/i }).click();
     await page.waitForTimeout(900);
     const arrived = await page.evaluate(() => document.body.innerText.length > 0);

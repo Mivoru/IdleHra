@@ -23,7 +23,7 @@
   // without you must not fence the player inside a tutorial.
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchStatistics } from '../net/rest';
-  import { requestScreen } from '../stores/navigation';
+  import { requestScreen, currentScreen } from '../stores/navigation';
   import {
     onboardingCue,
     acknowledgeCue,
@@ -120,11 +120,34 @@
   // A new cue is a new thing to say, so it drops the player's fold choice and
   // goes back to whatever the viewport says.
   let lastCueId = $state('');
+  let lastScreen = '';
   $effect(() => {
     if (cue && cue.id !== lastCueId) {
       lastCueId = cue.id;
+      lastScreen = $currentScreen;
       userToggled = null;
     }
+  });
+
+  /*
+    Modul: TASK 70 - A HINT THAT HAS BEEN READ FOLDS ON THE NEXT SCREEN.
+
+    On a desktop the panel starts expanded, and a discovery or an objective
+    stays on show until "Got it" - so it followed the player from screen to
+    screen and sat over the bottom ~135px of every one of them (the Forge's
+    list, the Chest's rows, Gathering's node lists), reachable only by
+    scrolling past it. The phone already starts folded.
+
+    Once the player has moved to another screen they have seen the whole
+    card once; from there it folds to its title line - the tag, the title and
+    one tap to open it again. Tutorial STEPS are left alone: they are the
+    fence the first minutes are built on, not a hint to glance at.
+  */
+  $effect(() => {
+    const screen = $currentScreen;
+    if (!cue || screen === lastScreen) return;
+    lastScreen = screen;
+    if (cue.kind !== 'step') userToggled = true;
   });
 
   $effect(() => {
