@@ -112,6 +112,28 @@
       ],
     },
     {
+      name: 'Village',
+      screens: [
+        { key: 'village', label: 'Village' },
+        // Task 59: Breeding, the Hall of Ancestors and Inheritance were a
+        // three-entry "Genetics" group. They are one family's story - who is
+        // born, who is kept through the season, what the line has bought -
+        // so they are one "Bloodline" entry with three tabs.
+        { key: 'breeding', label: 'Bloodline' },
+        { key: 'codex', label: 'Codex' },
+      ],
+    },
+    {
+      name: 'You',
+      screens: [
+        { key: 'skills', label: 'Skill Tree' },
+        { key: 'progression', label: 'Progress' },
+        { key: 'store', label: 'Store' },
+        { key: 'settings', label: 'Settings' },
+        { key: 'wiki', label: 'Wiki' },
+      ],
+    },
+    {
       name: 'Community',
       screens: [
         // Task 76: Friends, Market, Guild and Leaderboards are one
@@ -123,28 +145,6 @@
         // adding it back, which left the route and its unread badge reachable
         // only by a cross-screen navigation request. There was no button.
         { key: 'mailbox', label: 'Mail' },
-      ],
-    },
-    {
-      name: 'You',
-      screens: [
-        { key: 'village', label: 'Village' },
-        // Task 59: Breeding, the Hall of Ancestors and Inheritance were a
-        // three-entry "Genetics" group. They are one family's story - who is
-        // born, who is kept through the season, what the line has bought -
-        // so they are one "Bloodline" entry with three tabs.
-        { key: 'breeding', label: 'Bloodline' },
-        { key: 'skills', label: 'Skill Tree' },
-        { key: 'progression', label: 'Progress' },
-        { key: 'codex', label: 'Codex' },
-        { key: 'store', label: 'Store' },
-        { key: 'settings', label: 'Settings' },
-      ],
-    },
-    {
-      name: 'Others',
-      screens: [
-        { key: 'wiki', label: 'Wiki' },
       ],
     },
   ] as const;
@@ -314,6 +314,47 @@
   const ActiveScreen = $derived(screen === 'hub' ? null : (loadedScreens[screen] ?? null));
 
   let navOpen = $state(false);
+
+  // Modul: TASK 82 - ON A DESKTOP THE HEADER IS FIVE DROPDOWNS, not 24 buttons.
+  // The entries stay in the DOM (a phone shows them as the flat menu, and the
+  // scripts navigate by data-nav / data-label); CSS hides a closed group's
+  // panel above the phone breakpoint. Only one group is open at a time.
+  let openGroup = $state('');
+  function closeGroups(refocus = false): void {
+    const was = openGroup;
+    openGroup = '';
+    if (refocus && was) {
+      document.querySelector<HTMLElement>(`[data-group-toggle="${was}"]`)?.focus();
+    }
+  }
+  function onWindowKey(event: KeyboardEvent): void {
+    if (event.key === 'Escape' && openGroup) {
+      event.preventDefault();
+      closeGroups(true);
+    }
+  }
+  function onWindowPointer(event: Event): void {
+    if (!openGroup) return;
+    const target = event.target as Element | null;
+    if (!target?.closest?.('.group')) closeGroups();
+  }
+  function onGroupFocusOut(event: FocusEvent): void {
+    const next = event.relatedTarget as Node | null;
+    if (next && !(event.currentTarget as HTMLElement).contains(next)) closeGroups();
+  }
+  function onToggleKey(event: KeyboardEvent, name: string): void {
+    if (event.key !== 'ArrowDown') return;
+    event.preventDefault();
+    openGroup = name;
+    queueMicrotask(() => {
+      document
+        .querySelector<HTMLElement>(`.group[aria-label="${name}"] .group-buttons button:not(:disabled)`)
+        ?.focus();
+    });
+  }
+  function groupHolds(group: { screens: readonly { key: string }[] }, key: string | null): boolean {
+    return key !== null && group.screens.some((s) => s.key === key);
+  }
 
   // Modul: THE ROUTE THE PLAYER TOOK, kept so the Android back button has
   // something to walk. See lib/net/backButton.ts for why back needed to stop
@@ -568,6 +609,8 @@
   <title>FolkIdle</title>
 </svelte:head>
 
+<svelte:window onkeydown={onWindowKey} onpointerdown={onWindowPointer} />
+
 <QueryClientProvider client={queryClient}>
   {#if token}
     <header>
@@ -592,8 +635,31 @@
 
       <nav class:open={navOpen}>
         {#each GROUPS as group}
-          <div class="group" role="group" aria-label={group.name}>
+          <div
+            class="group"
+            class:open={openGroup === group.name}
+            role="group"
+            aria-label={group.name}
+            onfocusout={onGroupFocusOut}
+          >
             <span class="group-name">{group.name}</span>
+            <!-- Task 82: the desktop face of the group. aria-label says "menu"
+                 so a button named exactly "Village" or "Community" still means
+                 the ENTRY inside it. -->
+            <button
+              class="group-toggle"
+              class:active={groupHolds(group, menuKeyOf(screen))}
+              class:coachmark={groupHolds(group, menuKeyOf($coachTargetScreen))}
+              aria-haspopup="true"
+              aria-expanded={openGroup === group.name}
+              aria-label={`${group.name} menu`}
+              data-group-toggle={group.name}
+              onclick={() => (openGroup = openGroup === group.name ? '' : group.name)}
+              onkeydown={(e) => onToggleKey(e, group.name)}
+            >
+              {group.name}
+              <span class="caret" aria-hidden="true">&#9662;</span>
+            </button>
             <div class="group-buttons">
               {#each group.screens as item}
                 <!-- Modul: THE COACH-MARK. The onboarding panel does not float a
@@ -618,6 +684,7 @@
                   onclick={() => {
                     goTo(item.key);
                     navOpen = false;
+                    openGroup = '';
                   }}
                 >
                   {item.label}
@@ -890,6 +957,57 @@
      the whole nav and hiding it there would be a step backwards. */
   .navtoggle {
     display: none;
+  }
+
+  /* Task 82: above the phone breakpoint a group is a dropdown. The label
+     span is the phone's; the toggle is this one's. */
+  @media (min-width: 40.01rem) {
+    .group {
+      position: relative;
+    }
+    .group-name {
+      display: none;
+    }
+    .group-toggle {
+      border-color: var(--border);
+      color: var(--text);
+    }
+    .group-toggle.active {
+      background: var(--bg-raised);
+    }
+    .group-toggle[aria-expanded='true'] {
+      border-color: var(--accent);
+    }
+    .caret {
+      font-size: 0.7em;
+    }
+    .group:not(.open) .group-buttons {
+      display: none;
+    }
+    .group.open .group-buttons {
+      position: absolute;
+      top: calc(100% + 0.2rem);
+      left: 0;
+      z-index: 60;
+      flex-direction: column;
+      min-width: 11rem;
+      padding: 0.3rem;
+      gap: 0.15rem;
+      background: var(--bg-panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+    }
+    .group.open .group-buttons button {
+      justify-content: flex-start;
+      text-align: left;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .group-toggle {
+      display: none;
+    }
   }
 
   @media (max-width: 52rem) {

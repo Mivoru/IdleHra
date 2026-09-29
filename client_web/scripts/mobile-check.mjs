@@ -7,6 +7,7 @@
 // 360px is the common Android logical width; 320 is the narrowest phone still
 // worth supporting.
 import { chromium } from 'playwright';
+import { navButton } from './screens.mjs';
 
 const BASE = process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/';
 const WIDTHS = [320, 360, 414];
@@ -67,7 +68,7 @@ for (const width of WIDTHS) {
       await page.waitForTimeout(150);
     }
 
-    const nav = page.locator('header').getByRole('button', { name: screen, exact: true }).first();
+    const nav = await navButton(page, screen);
     if ((await nav.count()) === 0) continue;
     await nav.click().catch(() => {});
     await page.waitForTimeout(350);

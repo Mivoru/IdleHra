@@ -21,7 +21,7 @@
 // Modul: the screen list is SHARED now (scripts/screens.mjs). This file kept
 // its own copy, which had drifted its own way: it still said 'Social' where the
 // nav says 'Friends', and it never visited Leaderboards or Wiki at all.
-import { SCREENS, assertMatchesNav, go, open, signIn } from './screens.mjs';
+import { SCREENS, assertMatchesNav, go, navButton, open, signIn } from './screens.mjs';
 
 const OVERLAP_RATIO = 0.18;   // ignore hairline touches
 const MIN_AREA = 120;         // ignore slivers
@@ -144,7 +144,7 @@ for (const width of [1500, 390]) {
         if ((await menu.count()) > 0) await menu.click();
         await page.waitForTimeout(200);
       }
-      const nav = page.locator('header').getByRole('button', { name: label, exact: true }).first();
+      const nav = await navButton(page, label);
       if ((await nav.count()) === 0) { continue; }
       await nav.click({ timeout: 5000 });
       await page.waitForFunction(() => !/\bLoading\.\.\./.test(document.body.innerText), { timeout: 12000 });

@@ -5476,6 +5476,16 @@ it to the server constants.
 dropdown groups (Play / Items / Village / You / Community) at desktop widths;
 keys 1-5 stay. Show the owner a screenshot first.
 
+**BUILT 2026-09-30, awaiting the owner's look at a screenshot.** Above 40 rem
+the header is five dropdown toggles (Play / Items / Village / You / Community;
+Codex moved to Village, Wiki and Settings to You). Escape, a click outside,
+focus leaving the group, and ArrowDown on a toggle are handled; entries keep
+`data-nav`/`data-label`. Phone menu and hotkeys 1-5 (tab bar, `tabs.ts`) are
+untouched. Scripts navigate through one `navButton()` in `screens.mjs`, which
+opens the phone Menu or the group first. Screenshot of the open Items group:
+`docs/screenshots/2026-09-30/header-dropdown-1366.png` (rendered with a stub
+token and no server, so the header only).
+
 ## 83. Workshop commissions (the material sink) - design with the owner
 
 The Crafting Workshop's level is read by nothing and crafting always makes a

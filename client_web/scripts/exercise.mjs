@@ -9,6 +9,7 @@
 // nothing and every "does forge fusion work" question answers itself with
 // "there is nothing to fuse".
 import { chromium } from 'playwright';
+import { navButton } from './screens.mjs';
 
 const results = [];
 function record(name, ok, detail) {
@@ -57,7 +58,7 @@ const go = async (label) => {
   // "Market", "Guild" and so on too, and an unscoped lookup resolved to
   // whichever came first in the DOM - which is the map, and only while the map
   // is the screen being shown. Navigation has to mean the nav.
-  await page.locator('header').getByRole('button', { name: menuLabel, exact: true }).first().click();
+  await (await navButton(page, menuLabel)).click();
   if (subTab) await page.locator(`[data-subtab="${subTab}"]`).first().click();
   await page.waitForFunction(
     () => !/\bLoading\.\.\./.test(document.body.innerText),
@@ -3689,7 +3690,12 @@ await go('Ancestors');
     // A press on the nav while the layer is up lands on the cover. Pressed by
     // coordinates, because Playwright (rightly) refuses to click a covered
     // element - which is exactly what a thumb does not refuse.
-    const navBox = await fresh.locator('header').getByRole('button', { name: 'Gathering', exact: true }).first().boundingBox();
+    // Task 82: on a desktop 'Gathering' sits behind the Play dropdown, so the
+    // thing pressed is whichever of the two is on screen.
+    const gatherNav = fresh.locator('header nav').getByRole('button', { name: 'Gathering', exact: true }).first();
+    const navBox = (await gatherNav.isVisible().catch(() => false))
+      ? await gatherNav.boundingBox()
+      : await fresh.locator('header [data-group-toggle="Play"]').first().boundingBox();
     if (navBox) await fresh.mouse.click(navBox.x + navBox.width / 2, navBox.y + navBox.height / 2);
     await fresh.waitForTimeout(800);
     const fenced = !(await fresh.evaluate(() => /Hauled this session/i.test(document.body.innerText)));
@@ -3753,7 +3759,7 @@ await go('Ancestors');
         return res.status;
       };
       const openStatus = await freshWindow(true);
-      await fresh.locator('header').getByRole('button', { name: 'World Boss', exact: true }).first().click();
+      await (await navButton(fresh, 'World Boss')).click();
       const active = await fresh
         .waitForFunction(() => (document.querySelector('.state')?.textContent ?? '').trim() === 'Active', null, { timeout: 70000 })
         .then(() => true)
@@ -3865,7 +3871,7 @@ await go('Ancestors');
     //    It does not fight: winning is minutes of real combat, and the claim
     //    worth holding here is that the entrance opens, not how long region 1
     //    takes.
-    await fresh.locator('header').getByRole('button', { name: 'Gathering', exact: true }).first().click();
+    await (await navButton(fresh, 'Gathering')).click();
     await fresh.waitForTimeout(1500);
     const rod = fresh
       .locator('.panel')
@@ -3879,7 +3885,7 @@ await go('Ancestors');
       await rod.click();
       await fresh.waitForTimeout(45000);
 
-      await fresh.locator('header').getByRole('button', { name: 'Supplies', exact: true }).first().click();
+      await (await navButton(fresh, 'Supplies')).click();
       await fresh.waitForTimeout(1500);
 
       const foodSelect = fresh.locator('select').first();
@@ -3892,7 +3898,7 @@ await go('Ancestors');
 
     // 5. Settings owns the off switch and the way back, and neither is
     //    reachable only once.
-    await fresh.locator('header').getByRole('button', { name: 'Settings', exact: true }).first().click();
+    await (await navButton(fresh, 'Settings')).click();
     await fresh.waitForTimeout(1200);
     const explanations = await fresh.locator('.explanations li').count();
     record(
