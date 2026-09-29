@@ -315,6 +315,8 @@ namespace FolkIdle.Server.Engine
                     var player = await db.PlayerRecords.FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId).SingleOrDefaultAsync();
                     bool isQuarantined = (player?.Quarantine_Active ?? false) || (player?.IsQuarantined ?? false);
 
+                    // GoldLedger: escrow, not a spend - a cancel refunds it, so
+                    // the spend is recorded at the match, at the price paid.
                     goldRecord.Quantity -= price;
 
                     var order = new MarketOrderRecord
@@ -433,6 +435,10 @@ namespace FolkIdle.Server.Engine
                         long fee = (long)(executionPrice * totalFeeRate);
                         long sellerProceeds = executionPrice - fee;
                         long refundToBuyer = buy.Price - executionPrice;
+
+                        // Task 79: the buyer's escrow became a purchase at the
+                        // execution price; the rest comes back below.
+                        await GoldLedger.RecordSpendAsync(db, buy.SellerId, GoldSpendCategory.Market, executionPrice);
 
                         // Transfer equipment (Always safe to DB write as item tables are not flushed via standard tick cache)
                         var equip = await db.MarketEquipmentInstances.FromSqlRaw("SELECT * FROM \"MarketEquipmentInstances\" WHERE \"Id\" = {0} FOR UPDATE", (object)(sell.EquipmentInstanceId ?? 0)).SingleAsync();

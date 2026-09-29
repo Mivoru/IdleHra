@@ -1236,6 +1236,9 @@ namespace FolkIdle.Server.Domain.Shared
                 }
             }
 
+            // Task 79: the wire's Treasury term reads this, not the payload.
+            GoldLedger.NoteLifetimeSpent(player.Id, player.LifetimeGoldSpent);
+
             var payload = new TickStatePayload
             {
                 CachedCodexYieldMultiplier = codexYieldMultiplier,
@@ -1721,8 +1724,12 @@ namespace FolkIdle.Server.Domain.Shared
         // client claim action required.
         private static async Task UpsertLifetimeAchievementsAsync(FolkIdleDbContext dbContext, PlayerRecord player, TickStatePayload state)
         {
+            // Task 79: the Treasury pays on gold SPENT, read from the row the
+            // ledger increments (never from the payload). Tiers already paid for
+            // holding gold stay paid - the award only ever moves CompletedTier up.
+            GoldLedger.NoteLifetimeSpent(state.PlayerId, player.LifetimeGoldSpent);
             await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.TreasuryAchievementId,
-                AchievementMilestones.EvaluateTreasuryTier(state.CurrentGold), state.CurrentGold);
+                AchievementMilestones.EvaluateTreasuryTier(player.LifetimeGoldSpent), player.LifetimeGoldSpent);
 
             await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.ForgingAchievementId,
                 AchievementMilestones.EvaluateForgingTier(state.ForgeUpgradeCount, state.HighestForgeSynthesisTier), state.ForgeUpgradeCount);

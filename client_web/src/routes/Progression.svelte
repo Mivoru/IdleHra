@@ -21,6 +21,7 @@
   import { RACE_NAMES, ALL_RACE_IDS, isRaceUnlocked } from '../lib/ui/races';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import BookOfDeeds from '../lib/ui/BookOfDeeds.svelte';
+  import GoldLedgerPanel from '../lib/ui/GoldLedgerPanel.svelte';
   import { bossTimes, formatTenths } from '../lib/stores/records';
   import { prettifyBaseId } from '../lib/net/content';
   import { rarityColor, rarityName } from '../lib/ui/rarity';
@@ -137,6 +138,8 @@
         {/each}
       {/if}
     </dl>
+
+    <GoldLedgerPanel />
   </section>
 
   {:else}

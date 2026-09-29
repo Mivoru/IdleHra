@@ -5361,6 +5361,31 @@ within a tolerance; the line reads "estimate"; `check:perf` does not regress.
 
 **Done when:** the ledger survives a relogin and a test pins each writer.
 
+**PHASE 1 DONE 2026-09-29 (gold out + Treasury; the owner said yes).**
+- **Ledger.** `Engine.GoldLedger.RecordSpendAsync` runs inside each debit's
+  own transaction. It upserts `gold_spend_daily` (player, UTC day, category)
+  and increments `PlayerRecord.LifetimeGoldSpent` in raw SQL. That is
+  migration `AddGoldLedger`, which is additive.
+- **Sites.** All 15 debit sites are wired: reroll, fusion and stack fusion,
+  village, recruit, breeding (both), Delve, Deep (lantern and toll), market
+  (escrow buy, and the order-book match at the execution price), cosmetics,
+  guild (gold contribution and the depot's gold) and guild raid. The
+  order-book ESCROW itself is marked `// GoldLedger:` as not a spend,
+  because a cancel refunds it.
+- **Guard.** `GoldLedgerTests.EveryGoldDebit_IsRecordedOrSaysWhyNot` reads
+  the source. It flags gold-named debits, plus any `.Quantity -=` within 30
+  lines of a "gold" literal, which is how it caught the depot.
+- **Treasury.** The deed and the legacy 100k flag now pay on
+  `LifetimeGoldSpent`, with the same thresholds. Tiers already paid stay
+  paid. The wire's toast term reads `GoldLedger.KnownLifetimeSpent`, which
+  login seeds and every checkpoint refreshes.
+- **Screen.** `GET /api/v1/player/gold-ledger` returns 7 d / 30 d / all by
+  category. Progress -> Statistics shows "Where your gold went".
+- **Phase 2 is still open:** gold IN by source (kill, Town Hall, sale,
+  salvage, login, mail) and the material flow per day (gathered, spent,
+  lost to the Warehouse cap). Income is harder, because combat gold is
+  banked by the checkpoint as a delta rather than at a single site.
+
 ## 80. Breeding Grounds above level 1
 
 The Wiki says it outright: "nothing above level 1 has an additional effect".

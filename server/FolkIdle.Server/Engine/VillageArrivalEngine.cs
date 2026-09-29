@@ -122,6 +122,7 @@ namespace FolkIdle.Server.Engine
             long cost = VillagerArrivalRules.RecruitCostGold(player.VillagerRecruitmentsThisSeason);
             gold!.Quantity -= cost;
             player.VillagerRecruitmentsThisSeason++;
+            await GoldLedger.RecordSpendAsync(db, player.Id, GoldSpendCategory.Recruit, cost);
 
             byte[] races = await UnlockedRacesAsync(db, player.Id);
             db.VillageNewcomers.Add(Roll(player.Id, innLevel, nowEpoch, races));

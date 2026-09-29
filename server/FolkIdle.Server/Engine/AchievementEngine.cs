@@ -131,11 +131,11 @@ namespace FolkIdle.Server.Engine
                     int newFlags = currentFlags;
                     int diamondsToAward = 0;
 
-                    // Treasury: CurrentGold >= 100000
-                    var goldRecord = await dbContext.CommodityRecords
-                        .FirstOrDefaultAsync(c => c.PlayerId == player.Id && c.ItemId == "gold", stoppingToken);
-                    long currentGold = goldRecord?.Quantity ?? 0;
-                    if ((currentFlags & (1 << 0)) == 0 && currentGold >= 100000)
+                    // Treasury: 100,000 gold SPENT (task 79). It read the gold
+                    // row, i.e. rewarded holding, the same incentive the
+                    // Treasury deed dropped. A flag already set stays set.
+                    long lifetimeGoldSpent = player.LifetimeGoldSpent;
+                    if ((currentFlags & (1 << 0)) == 0 && lifetimeGoldSpent >= 100000)
                     {
                         newFlags |= (1 << 0);
                         diamondsToAward += 100;

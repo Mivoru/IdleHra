@@ -521,7 +521,8 @@ export const ACHIEVEMENTS: readonly {
   },
   {
     name: 'Treasury',
-    metric: 'Gold held at once',
+    // Task 79: it counted gold HELD, which rewarded hoarding.
+    metric: 'Gold spent, in total (tiers already paid stay paid)',
     thresholds: '100k / 5M / 100M / 2.5B',
     rewards: '10 / 50 / 250 / 1,000 diamonds',
   },

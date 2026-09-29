@@ -2701,6 +2701,24 @@ await go('Chest');
   }
 }
 
+// --- the gold ledger (task 79) ------------------------------------------------
+//
+// The stack fusion above spends gold (and the Delve/Deep steps do too). The
+// ledger must have recorded it by category, and Progress must draw the split.
+{
+  const ledger = await apiGet('/api/v1/player/gold-ledger');
+  const categories = (ledger?.Categories ?? []).map((c) => c.Category);
+  record(
+    'the gold ledger records spending by category',
+    ledger !== null && ledger.LifetimeSpent > 0 && categories.includes('Fusion'),
+    `${ledger?.LifetimeSpent ?? '?'} spent; ${categories.join(', ') || 'no categories'}`,
+  );
+  await go('Progress');
+  await page.locator('[data-progress-tab="stats"]').first().click().catch(() => {});
+  await page.locator('[data-gold-ledger]').first().waitFor({ timeout: 10000 }).catch(() => {});
+  record('Progress shows where the gold went', (await page.locator('[data-gold-ledger] li').count()) > 0);
+}
+
 // --- auto-salvage: the drain at the source -----------------------------------
 //
 // Modul: the bulk sweep clears a backlog; this stops one forming. A drop at or

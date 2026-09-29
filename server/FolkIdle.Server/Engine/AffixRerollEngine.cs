@@ -404,6 +404,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 currencyRecord.Quantity -= cost;
+                await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Reroll, cost);
 
                 // Modul: the Book of Deeds, chapter II. Counted where the gold
                 // is spent, inside the same transaction, so the number matches

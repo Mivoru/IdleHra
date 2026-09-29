@@ -77,7 +77,7 @@ namespace FolkIdle.Server.Engine
         public static string DescriptionFor(int achievementId) => achievementId switch
         {
             MonsterKillAchievementId => "Kill ten thousand monsters.",
-            TreasuryAchievementId => "Hold gold at one time: 100,000, 5 million, 100 million, then 2.5 billion.",
+            TreasuryAchievementId => "Spend gold, in total: 100,000, 5 million, 100 million, then 2.5 billion. Every sink counts - rerolls, the forge, the village, the Delve, the market.",
             ForgingAchievementId => "Fuse at the Forge 50, then 500 times; then fuse an item up to rarity 10, then 14.",
             LogisticsAchievementId => "Gather 10,000 times, then 100,000, a million and ten million. Every tier also adds permanent gathering speed.",
             _ => string.Empty,
@@ -110,7 +110,7 @@ namespace FolkIdle.Server.Engine
                     break;
                 case TreasuryAchievementId:
                     for (int i = 0; i < TreasuryThresholds.Length; i++)
-                        tiers.Add(new LifetimeTier(TreasuryTierNames[i], $"Hold {TreasuryThresholds[i]:N0} gold at once", TreasuryRewards[i]));
+                        tiers.Add(new LifetimeTier(TreasuryTierNames[i], $"Spend {TreasuryThresholds[i]:N0} gold in total", TreasuryRewards[i]));
                     break;
                 case ForgingAchievementId:
                     for (int i = 0; i < ForgingUpgradeCountThresholds.Length; i++)
@@ -126,12 +126,15 @@ namespace FolkIdle.Server.Engine
             return tiers;
         }
 
-        public static int EvaluateTreasuryTier(long currentGold)
+        // Task 79: measured in gold SPENT (PlayerRecord.LifetimeGoldSpent). It
+        // paid for holding gold, which rewarded hoarding in an economy that
+        // already under-spends. Same thresholds; tiers already paid stay paid.
+        public static int EvaluateTreasuryTier(long lifetimeGoldSpent)
         {
             int tier = 0;
             for (int i = 0; i < TreasuryThresholds.Length; i++)
             {
-                if (currentGold >= TreasuryThresholds[i]) tier = i + 1;
+                if (lifetimeGoldSpent >= TreasuryThresholds[i]) tier = i + 1;
             }
             return tier;
         }
