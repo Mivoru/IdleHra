@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace FolkIdle.Server.Domain.Combat
 {
@@ -15,8 +16,19 @@ namespace FolkIdle.Server.Domain.Combat
     // tier of the other.
     public static class SetBonusEngine
     {
-        public const int ChimingSteelSetId = 1;
+        // Modul: TEN SETS, numbered by ArmourSetRegistry.SetIdOf (task 63).
+        // The catalogue used to name exactly two - "Chiming Steel" (1) and
+        // "Eternal Dreadnought" (10) - while items.json authors ten families,
+        // so even once pieces carried a set id, eight of the ten would have
+        // paid nothing. Each region tier has a light family (odd id, the
+        // OFFENSIVE set) and a heavy one (even id, the DEFENSIVE set); the two
+        // archetypes are the two sets this catalogue always had, and every
+        // family now pays its archetype's tiers.
+        public const int LinenSetId = 1;
         public const int EternalDreadnoughtSetId = 10;
+        public const int MaxSetId = 10;
+
+        public static bool IsOffensiveSet(int setId) => setId >= 1 && setId <= MaxSetId && (setId & 1) == 1;
 
         // Bounds the fixed-size local scratch buffers below so the scan
         // never allocates regardless of how many slots a caller passes -
@@ -225,6 +237,51 @@ namespace FolkIdle.Server.Domain.Combat
             return result;
         }
 
+        /// <summary>One worn set, for the Character screen: what it pays right now.</summary>
+        public struct ActiveSet
+        {
+            public int SetId;
+            public int Pieces;
+            public int Tier;
+            public float QualityScale;
+            public SetBonusResult Bonus;
+        }
+
+        /// <summary>
+        /// The same evaluation as Evaluate, split per set, so the screen shows
+        /// what the server pays rather than a second copy of the numbers.
+        /// Sets with fewer than two pieces are left out.
+        /// </summary>
+        public static List<ActiveSet> DescribeActive(in FolkIdle.Server.Engine.EquippedSetIds equippedSetIds)
+        {
+            Span<int> packed = stackalloc int[FolkIdle.Server.Engine.EquippedSetIds.SlotCount];
+            equippedSetIds.CopyTo(packed);
+
+            var bySet = new Dictionary<int, (int Pieces, int QualitySum)>();
+            for (int i = 0; i < packed.Length; i++)
+            {
+                int setId = FolkIdle.Server.Engine.EquippedSetIds.SetIdOf(packed[i]);
+                if (setId <= 0) continue;
+                int quality = Math.Max(1, FolkIdle.Server.Engine.EquippedSetIds.QualityOf(packed[i]));
+                bySet.TryGetValue(setId, out var entry);
+                bySet[setId] = (entry.Pieces + 1, entry.QualitySum + quality);
+            }
+
+            var result = new List<ActiveSet>();
+            foreach (var (setId, entry) in bySet)
+            {
+                int tier = TierOf(entry.Pieces);
+                if (tier <= 0) continue;
+                float scale = QualityScaleOf(entry.QualitySum, entry.Pieces);
+                var bonus = new SetBonusResult();
+                ApplySetTiers(setId, tier, scale, ref bonus);
+                result.Add(new ActiveSet { SetId = setId, Pieces = entry.Pieces, Tier = tier, QualityScale = scale, Bonus = bonus });
+            }
+
+            result.Sort((a, b) => b.Pieces != a.Pieces ? b.Pieces - a.Pieces : a.SetId - b.SetId);
+            return result;
+        }
+
         /// <summary>
         /// The catalogue. Each set names what its three tiers give; the
         /// numbers are multiplied by the quality scale before they land.
@@ -239,9 +296,14 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
 
-            switch (setId)
+            if (setId < 1 || setId > MaxSetId)
             {
-                case ChimingSteelSetId:
+                return;
+            }
+
+            switch (IsOffensiveSet(setId))
+            {
+                case true:
                     // Offensive: fire damage at every tier, the burn at the top.
                     result.FireDamageMultiplierPct += tier switch
                     {
@@ -255,7 +317,7 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                     break;
 
-                case EternalDreadnoughtSetId:
+                case false:
                     // Defensive: armour at every tier, the bulwark at the top.
                     result.TotalArmorMultiplierPct += tier switch
                     {

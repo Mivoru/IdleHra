@@ -105,6 +105,28 @@ export interface RosterCombatStats {
   Accuracy: number;
   Armor: number;
   BlockPct: number;
+  /** Every worn armour set with two or more pieces, AS THE SERVER PAYS IT
+   *  (task 63). Never recompute these numbers on the client. */
+  ActiveSets?: ActiveArmourSet[];
+}
+
+export interface ActiveArmourSet {
+  SetId: number;
+  Family: string;
+  /** Light family = damage bonus; heavy family = armour bonus. */
+  Offensive: boolean;
+  Pieces: number;
+  /** 1, 2 or 3 - reached at 2, 3 and 5 pieces. */
+  Tier: number;
+  /** Pieces needed for the next tier, 0 at the top. */
+  NextTierPieces: number;
+  /** Average rarity of the pieces against Rare, clamped 0.4..2. */
+  QualityScale: number;
+  DamagePct: number;
+  ArmorPct: number;
+  Burn: boolean;
+  Thorns: boolean;
+  DamageCap: boolean;
 }
 
 export interface InventorySnapshot {

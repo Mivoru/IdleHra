@@ -19,8 +19,13 @@ namespace FolkIdle.Server.Domain.Combat
         public readonly int QualityTier;
         public readonly AffixRarity AffixRarity;
 
-        public ReferenceLoadout(int level, int gearRegionTier, int qualityTier, AffixRarity affixRarity)
+        // Task 63: the worn set pieces, for measuring what a set bonus does to
+        // the wall. Default (no set) is what the ladder is calibrated against.
+        public readonly EquippedSetIds Sets;
+
+        public ReferenceLoadout(int level, int gearRegionTier, int qualityTier, AffixRarity affixRarity, EquippedSetIds sets = default)
         {
+            Sets = sets;
             Level = level < 1 ? 1 : level;
             GearRegionTier = gearRegionTier < 1 ? 1 : gearRegionTier;
             QualityTier = Math.Clamp(qualityTier, 1, RarityTier.Transcendent);
@@ -314,7 +319,7 @@ namespace FolkIdle.Server.Domain.Combat
                 activeOffensivePotionId: 0, activeDefensivePotionId: 0,
                 activeAgePhase: 1, completedAreaFlags: 0, activeRaceId: RaceIds.Human,
                 humanMastery: 0, vilaMastery: 0, draugrMastery: 0,
-                equippedAffixTotals: totals);
+                equippedAffixTotals: totals, equippedSetIds: gear.Sets);
         }
 
         /// <summary>

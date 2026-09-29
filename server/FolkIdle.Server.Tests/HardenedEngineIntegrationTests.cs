@@ -8631,12 +8631,12 @@ namespace FolkIdle.Server.Tests
             var chimingFourPiece = StatsCalculator.Calculate(str: 10, dex: 10, con: 10, lck: 10,
                 equippedSetIds: new EquippedSetIds
                 {
-                    Helmet = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
-                    Chest = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
-                    Gloves = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
-                    Boots = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4),
+                    Helmet = EquippedSetIds.Pack(SetBonusEngine.LinenSetId, 4),
+                    Chest = EquippedSetIds.Pack(SetBonusEngine.LinenSetId, 4),
+                    Gloves = EquippedSetIds.Pack(SetBonusEngine.LinenSetId, 4),
+                    Boots = EquippedSetIds.Pack(SetBonusEngine.LinenSetId, 4),
                     // Five, not four: four is deliberately not a tier.
-                    Leggings = EquippedSetIds.Pack(SetBonusEngine.ChimingSteelSetId, 4)
+                    Leggings = EquippedSetIds.Pack(SetBonusEngine.LinenSetId, 4)
                 });
 
             Assert.True(chimingFourPiece.SetBurnApplicationActive);
@@ -12406,8 +12406,10 @@ namespace FolkIdle.Server.Tests
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = setBonusMainCharacterId, AuthenticatorToken = Guid.NewGuid(), CurrentLevel = 60 });
                 SeedAllRegionBossKills(db, testPlayerId);
                 db.CharacterRecords.Add(new CharacterRecord { Id = setBonusMainCharacterId, PlayerId = testPlayerId, AgePhase = 1, SlotIndex = 0 });
-                var weapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "bronze_dagger_melee_weapon_slot_base", QualityTier = 4, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
-                var armor = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "iron_breastplate_chest_armor_slot_base", QualityTier = 4, AffixPayload = "{}", SetId = SetBonusEngine.ChimingSteelSetId };
+                // Task 63: two real Linen pieces and NO SetId column - the set
+                // must come from the BaseId, since nothing ever wrote the column.
+                var weapon = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_linen_sandals_boots_armor_slot_base", QualityTier = 4, AffixPayload = "{}" };
+                var armor = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "eq_linen_shroud_chest_armor_slot_base", QualityTier = 4, AffixPayload = "{}" };
                 db.EquipmentInstances.Add(weapon);
                 db.EquipmentInstances.Add(armor);
                 await db.SaveChangesAsync();
@@ -12428,8 +12430,8 @@ namespace FolkIdle.Server.Tests
             // slot now. Under the old weapon/armour/leggings triple it went
             // into a generic "armor" slot that also stood in for helmet, gloves
             // and boots.
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Weapon));
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Chest));
+            Assert.Equal(SetBonusEngine.LinenSetId, EquippedSetIds.SetIdOf(setIds.Boots));
+            Assert.Equal(SetBonusEngine.LinenSetId, EquippedSetIds.SetIdOf(setIds.Chest));
 
             int[] setIdSpan = new int[EquippedSetIds.SlotCount];
             setIds.CopyTo(setIdSpan);
@@ -12493,8 +12495,7 @@ namespace FolkIdle.Server.Tests
                         // worth nothing to a set, and this test is about the
                         // equip pipeline rather than about junk gear.
                         QualityTier = 4,
-                        AffixPayload = "{}",
-                        SetId = SetBonusEngine.ChimingSteelSetId
+                        AffixPayload = "{}"
                     };
                     db.EquipmentInstances.Add(piece);
                     await db.SaveChangesAsync();
@@ -12514,10 +12515,13 @@ namespace FolkIdle.Server.Tests
             (_, EquippedSetIds setIds) = await EquipmentSlotEngine.ComputeEquippedTotalsAsync(verify, character);
 
             // All four landed in distinct slots rather than overwriting one.
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Helmet));
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Chest));
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Gloves));
-            Assert.Equal(SetBonusEngine.ChimingSteelSetId, EquippedSetIds.SetIdOf(setIds.Boots));
+            // Sentry is tier 2's heavy family: set id 4, defensive.
+            int sentry = ArmourSetRegistry.SetIdOf(pieces[0]);
+            Assert.Equal(4, sentry);
+            Assert.Equal(sentry, EquippedSetIds.SetIdOf(setIds.Helmet));
+            Assert.Equal(sentry, EquippedSetIds.SetIdOf(setIds.Chest));
+            Assert.Equal(sentry, EquippedSetIds.SetIdOf(setIds.Gloves));
+            Assert.Equal(sentry, EquippedSetIds.SetIdOf(setIds.Boots));
 
             int[] setIdSpan = new int[EquippedSetIds.SlotCount];
             setIds.CopyTo(setIdSpan);
@@ -12528,7 +12532,7 @@ namespace FolkIdle.Server.Tests
             // is really about: that four distinct slots survive the equip
             // pipeline without collapsing onto one another, which they did not
             // before EquippedSetIds widened.
-            Assert.True(result.FireDamageMultiplierPct > 0f);
+            Assert.True(result.TotalArmorMultiplierPct > 0f);
             Assert.Equal(2, SetBonusEngine.TierOf(4));
         }
 

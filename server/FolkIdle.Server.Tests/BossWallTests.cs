@@ -96,6 +96,44 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
+        /// Task 63 measurement, not a rule: what a full five-piece set does to
+        /// the wall now that sets pay. The ladder is calibrated with NO set, so
+        /// this prints each boss at its requirement and one region behind at
+        /// Transcendent, bare / offensive set / defensive set. The owner's
+        /// decision was to let sets pay first and retune monsters only if these
+        /// numbers ask for it (TASK_BOARD 63).
+        /// </summary>
+        [Fact]
+        public void SetBonusEffectOnTheWall_Report()
+        {
+            var table = new StringBuilder();
+            table.AppendLine("boss  gear            set        kill s     die s    outcome");
+
+            for (int region = RaceUnlockRegistry.FirstRegion; region <= RaceUnlockRegistry.LastRegion; region++)
+            {
+                int bossId = BossOf(region);
+                int required = BossFirstClearRules.RequiredQualityTierFor(region);
+                AffixRarity rarity = BossFirstClearRules.RequiredAffixRarityFor(region);
+
+                foreach (var (label, gearRegion, tier) in new[] { ("req", region, required), ("behind", region - 1, RarityTier.Transcendent) })
+                {
+                    if (gearRegion < 1) continue;
+                    int offensive = (gearRegion - 1) * 2 + 1;
+                    foreach (var (setLabel, setId) in new[] { ("none", 0), ("offensive", offensive), ("defensive", offensive + 1) })
+                    {
+                        int piece = setId == 0 ? 0 : EquippedSetIds.Pack(setId, tier);
+                        var sets = new EquippedSetIds { Helmet = piece, Chest = piece, Gloves = piece, Leggings = piece, Boots = piece };
+                        var gear = new ReferenceLoadout(BossGearBenchmark.ReferenceLevelForRegion(region), gearRegion, tier, rarity, sets);
+                        var p = BossGearBenchmark.ProjectFirstClear(bossId, gear);
+                        table.AppendLine($"{region}     {label,-6} r{gearRegion} T{tier,-2}  {setLabel,-9}  {p.SecondsToKillBoss,8:F0}  {p.SecondsToPlayerDeath,8:F0}   {(p.PlayerWins ? "WIN" : "lose")}");
+                    }
+                }
+            }
+
+            _output.WriteLine(table.ToString());
+        }
+
+        /// <summary>
         /// The clause with real teeth. The developer's region-4 set was winning
         /// against a region-5 boss; gear a whole region behind must lose at ANY
         /// quality tier, including tiers above the ladder's own requirement.

@@ -2474,6 +2474,26 @@ namespace FolkIdle.Server.Network
             public long Accuracy { get; set; }
             public long Armor { get; set; }
             public double BlockPct { get; set; }
+            // Task 63: every worn set with two or more pieces, as the server
+            // pays it. The screen used to invent "+10% armour, +15% damage"
+            // for every family while the server paid nothing at all.
+            public System.Collections.Generic.List<ActiveSetResponse> ActiveSets { get; set; } = new();
+        }
+
+        private sealed class ActiveSetResponse
+        {
+            public int SetId { get; set; }
+            public string Family { get; set; } = string.Empty;
+            public bool Offensive { get; set; }
+            public int Pieces { get; set; }
+            public int Tier { get; set; }
+            public int NextTierPieces { get; set; }
+            public double QualityScale { get; set; }
+            public double DamagePct { get; set; }
+            public double ArmorPct { get; set; }
+            public bool Burn { get; set; }
+            public bool Thorns { get; set; }
+            public bool DamageCap { get; set; }
         }
 
         private sealed class PlayerInventorySnapshotResponse
@@ -7062,15 +7082,36 @@ namespace FolkIdle.Server.Network
                 {
                     foreach (var rosterCharacter in rosterCharacters)
                     {
-                        CombatStats stats = await EquipmentSlotEngine.ComputeCharacterCombatStatsAsync(
+                        (CombatStats stats, EquippedSetIds wornSets) = await EquipmentSlotEngine.ComputeCharacterCombatStatsWithSetsAsync(
                             db, player, rosterCharacter, humanMastery, vilaMastery, draugrMastery, completedAreaFlags);
+
+                        var activeSets = new System.Collections.Generic.List<ActiveSetResponse>();
+                        foreach (var set in SetBonusEngine.DescribeActive(wornSets))
+                        {
+                            activeSets.Add(new ActiveSetResponse
+                            {
+                                SetId = set.SetId,
+                                Family = ArmourSetRegistry.FamilyOfSetId(set.SetId),
+                                Offensive = SetBonusEngine.IsOffensiveSet(set.SetId),
+                                Pieces = set.Pieces,
+                                Tier = set.Tier,
+                                NextTierPieces = set.Tier == 1 ? SetBonusEngine.TierTwoPieces : set.Tier == 2 ? SetBonusEngine.TierThreePieces : 0,
+                                QualityScale = Math.Round(set.QualityScale, 2),
+                                DamagePct = Math.Round(set.Bonus.FireDamageMultiplierPct, 1),
+                                ArmorPct = Math.Round(set.Bonus.TotalArmorMultiplierPct, 1),
+                                Burn = set.Bonus.BurnApplicationActive,
+                                Thorns = set.Bonus.ThornsReflectionActive,
+                                DamageCap = set.Bonus.DamageCapActive,
+                            });
+                        }
 
                         rosterCombatStats.Add(new RosterCombatStatsResponse
                         {
                             SlotIndex = rosterCharacter.SlotIndex,
                             Accuracy = stats.AccuracyRating,
                             Armor = stats.FlatPhysicalArmor,
-                            BlockPct = stats.BlockStrengthPct
+                            BlockPct = stats.BlockStrengthPct,
+                            ActiveSets = activeSets
                         });
                     }
                 }
