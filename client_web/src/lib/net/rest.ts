@@ -1545,6 +1545,12 @@ export interface DelveRunView {
   LanternsBought: number;
   DeepestFloor: number;
   DeepestThisWeek: number;
+  /** Task 61: best Deep floor of the week before - the time to beat on this week's course. */
+  DeepestLastWeek: number;
+  /** Task 61: the ISO week (year * 100 + week) whose seed lays out the Deep. */
+  DeepWeekKey: number;
+  /** Task 61: when this week's course is replaced (ISO string, UTC Monday 00:00). */
+  DeepWeekEndsUtc: string;
   /** In the Deep with the light out: what the next lantern costs. 0 otherwise. */
   LanternPrice: number;
   LanternRefillsLeft: number;

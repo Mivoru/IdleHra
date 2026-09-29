@@ -69,6 +69,41 @@ namespace FolkIdle.Server.Engine
         public const int MaxDiamondsPerWeek = 60;
 
         /// <summary>
+        /// The random source for one Deep floor's doors (task 61): the SAME for
+        /// every player in an ISO week, so the Deep is a course a player can
+        /// race - their own last week, and friends when there are some.
+        ///
+        /// Modul: WHAT IS SEEDED AND WHAT IS NOT. The doors (what each wants,
+        /// and the numbers the reveal is compared against) come from here. The
+        /// PASS roll does not - it stays on the run's own random source - so a
+        /// memorised course tells you which door to try, never that it will
+        /// open. Tolls, lanterns and payouts are untouched; the Deep's economy
+        /// was measured (task 37) and this does not move a price.
+        ///
+        /// `attempt` separates the re-rolls on one floor (a failure and a fresh
+        /// lantern both re-roll it): the run's charges and lanterns at the
+        /// moment of rolling, so two players in the same state meet the same
+        /// doors. Floors 1-8 are NOT seeded: they pay diamonds, and a layout
+        /// learnable over a week would buy more of them than the reveal chance
+        /// was calibrated for.
+        ///
+        /// System.Random with a seed is the framework's legacy algorithm, which
+        /// is fixed across runtimes - DelveWeeklySeedTests pins a layout so a
+        /// change would be noticed rather than silently reshuffling a week.
+        /// </summary>
+        public static Random WeeklyDeepFloorRandom(int weekKey, int floor, int attempt)
+        {
+            unchecked
+            {
+                int seed = 17;
+                seed = seed * 31 + weekKey;
+                seed = seed * 31 + floor;
+                seed = seed * 31 + attempt;
+                return new Random(seed ^ 0x2F6B_1D3A);
+            }
+        }
+
+        /// <summary>
         /// What a run pays once the weekly ceiling is reached: this fraction of
         /// the entry fee back, scaled by how deep the run went.
         ///

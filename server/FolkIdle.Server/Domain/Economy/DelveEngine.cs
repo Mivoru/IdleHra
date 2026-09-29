@@ -147,6 +147,15 @@ namespace FolkIdle.Server.Domain.Economy
         public int DeepestFloor { get; set; }
         public int DeepestThisWeek { get; set; }
 
+        /// <summary>Task 61: the best Deep floor of the week before this one - the time to beat on this week's course.</summary>
+        public int DeepestLastWeek { get; set; }
+
+        /// <summary>Task 61: the ISO week whose seed lays out this week's Deep (year * 100 + week).</summary>
+        public int DeepWeekKey { get; set; }
+
+        /// <summary>When this week's course is replaced, UTC (Monday 00:00).</summary>
+        public DateTime DeepWeekEndsUtc { get; set; }
+
         /// <summary>
         /// In the Deep with the lantern out and refills left: what the next
         /// lantern costs (stake x 2^bought). 0 otherwise. The client never sends
@@ -246,6 +255,12 @@ namespace FolkIdle.Server.Domain.Economy
             int weekKey = CurrentWeekKey(utcNow);
             if (player.DelveWeekKey == weekKey) return;
 
+            // Task 61: this week's best becomes last week's, but only if the
+            // stored week really was the one before - a player back after a
+            // month has no "last week".
+            player.DelveDeepestLastWeek = player.DelveWeekKey == CurrentWeekKey(utcNow.AddDays(-7))
+                ? player.DelveDeepestThisWeek
+                : 0;
             player.DelveWeekKey = weekKey;
             player.DelveDiamondsThisWeek = 0;
             player.DelveDeepestThisWeek = 0;
@@ -301,6 +316,25 @@ namespace FolkIdle.Server.Domain.Economy
         /// admits it. See DelveRegistry.DoorRevealChance for why Fortune is the
         /// stat that buys knowing.
         /// </summary>
+        /// <summary>
+        /// Task 61: a Deep floor's doors, from the weekly seed of the week the
+        /// RUN started in - a descent that crosses midnight on Sunday stays on
+        /// the course it began, rather than changing floors under the player.
+        /// </summary>
+        private static (int packed, int revealedMask) RollDeepFloor(int fortune, DelveRunRecord run)
+        {
+            int weekKey = CurrentWeekKey(DateTimeOffset.FromUnixTimeSeconds(run.StartedAtEpoch).UtcDateTime);
+            int attempt = run.LanternsBought * 100 + run.ChargesRemaining;
+            return RollFloor(fortune, DelveRegistry.WeeklyDeepFloorRandom(weekKey, run.CurrentFloor, attempt));
+        }
+
+        /// <summary>Monday 00:00 UTC after <paramref name="utcNow"/> - when the ISO week, and the Deep's course, turn over.</summary>
+        public static DateTime WeekEndsUtc(DateTime utcNow)
+        {
+            int daysSinceMonday = ((int)utcNow.DayOfWeek + 6) % 7;
+            return utcNow.Date.AddDays(7 - daysSinceMonday);
+        }
+
         private static (int packed, int revealedMask) RollFloor(int fortune, Random rng)
         {
             var demands = new int[DelveRegistry.DoorsPerFloor];
@@ -377,6 +411,13 @@ namespace FolkIdle.Server.Domain.Economy
             view.DeepEnabled = _deep.Enabled;
             view.DeepestFloor = player.DelveDeepestFloor;
             view.DeepestThisWeek = thisWeek ? player.DelveDeepestThisWeek : 0;
+            // A stale key means RollWeek has not run this week: what it WOULD
+            // carry over is shown, without writing (this is a read).
+            view.DeepestLastWeek = thisWeek
+                ? player.DelveDeepestLastWeek
+                : player.DelveWeekKey == CurrentWeekKey(utcNow.AddDays(-7)) ? player.DelveDeepestThisWeek : 0;
+            view.DeepWeekKey = CurrentWeekKey(utcNow);
+            view.DeepWeekEndsUtc = WeekEndsUtc(utcNow);
             view.ActiveTitle = TitleRegistry.DisplayNameFor(player.ActiveTitleSlug);
             var next = TitleRegistry.NextDeepTitle(player.DelveDeepestFloor);
             view.NextTitle = next == null ? null : new DelveNextTitle { Slug = next.Slug, Name = next.DisplayName, Floor = next.DeepFloor };
@@ -710,7 +751,9 @@ namespace FolkIdle.Server.Domain.Economy
                     // you and the doors behind it are different ones - which
                     // keeps a bad draw recoverable and makes the charge a
                     // resource to spend rather than a strike against you.
-                    var (packed, mask) = RollFloor(player.BaseLuck, rng);
+                    var (packed, mask) = run.IsDeep
+                        ? RollDeepFloor(player.BaseLuck, run)
+                        : RollFloor(player.BaseLuck, rng);
                     run.PackedDoorDemands = packed;
                     run.RevealedDoorMask = mask;
                     outcome.Result = DelveResult.ChargeLost;
@@ -901,8 +944,9 @@ namespace FolkIdle.Server.Domain.Economy
                 player.DelveDeepGoldSpent += price;
                 run!.LanternsBought++;
                 run.ChargesRemaining = 1;
-                // A fresh light shows the floor afresh.
-                var (packed, mask) = RollFloor(player.BaseLuck, Random.Shared);
+                // A fresh light shows the floor afresh - from the weekly
+                // course, like every Deep floor (task 61).
+                var (packed, mask) = RollDeepFloor(player.BaseLuck, run);
                 run.PackedDoorDemands = packed;
                 run.RevealedDoorMask = mask;
 
@@ -1078,7 +1122,8 @@ namespace FolkIdle.Server.Domain.Economy
 
                 run.CurrentFloor = nextFloor;
                 run.FloorsCleared = nextFloor - 1;
-                var (packed, mask) = RollFloor(player!.BaseLuck, rng);
+                // Task 61: every Deep floor comes from this week's seed.
+                var (packed, mask) = RollDeepFloor(player!.BaseLuck, run);
                 run.PackedDoorDemands = packed;
                 run.RevealedDoorMask = mask;
 

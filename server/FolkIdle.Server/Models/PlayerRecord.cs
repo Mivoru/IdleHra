@@ -273,6 +273,13 @@ namespace FolkIdle.Server.Models
         public int DelveDeepestThisWeek { get; set; }
         public System.DateTime? DelveDeepestThisWeekAtUtc { get; set; }
 
+        // Modul: THE WEEKLY SEED (task 61). Every Deep floor is the same for
+        // everyone within an ISO week, so last week's best is the time a
+        // player races. Carried over by DelveEngine.RollWeek - the same one
+        // place the weekly columns turn over - and 0 when the last week the
+        // player dived was not the week before this one.
+        public int DelveDeepestLastWeek { get; set; }
+
         // Modul: WHAT THE DEEP HAS TAKEN, lifetime, in gold: every toll and
         // every lantern, added in the same transaction as the debit.
         //

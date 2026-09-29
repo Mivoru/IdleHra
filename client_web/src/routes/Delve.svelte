@@ -235,6 +235,18 @@
   const atBottom = $derived(!!view?.Active && view.AtLanding);
   const isDeep = $derived(!!view?.IsDeep);
 
+  // Task 61: when the weekly course turns over, in the player's own clock.
+  const courseEnds = $derived(
+    view?.DeepWeekEndsUtc
+      ? new Date(view.DeepWeekEndsUtc).toLocaleString('en-GB', {
+          weekday: 'long',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZoneName: 'short',
+        })
+      : 'Monday'
+  );
+
   function oddsLabel(odds: number): string {
     return odds < 0 ? '???' : `${Math.round(odds * 100)}%`;
   }
@@ -290,8 +302,24 @@
       {#if view.DeepEnabled}
         <div><span class="k">Deepest floor</span><span class="v">{view.DeepestFloor}</span></div>
         <div><span class="k">Deepest this week</span><span class="v">{view.DeepestThisWeek}</span></div>
+        <div><span class="k">Last week</span><span class="v">{view.DeepestLastWeek > 0 ? view.DeepestLastWeek : '-'}</span></div>
       {/if}
     </section>
+
+    {#if view.DeepEnabled}
+      <!-- Task 61: the Deep's floors come from a seed per ISO week, the same
+           for everyone - so the number to beat is your own last week. What
+           is fixed is the doors; whether one opens is still a roll. -->
+      <p class="weekly-course" data-testid="deep-weekly-course">
+        This week's Deep is the same course for everyone: every floor past the eighth has
+        the same doors until {courseEnds}. Whether a door opens is still up to you.
+        {#if view.DeepestLastWeek > 0}
+          {view.DeepestThisWeek > view.DeepestLastWeek
+            ? `You are past last week's floor ${view.DeepestLastWeek}.`
+            : `Last week you reached floor ${view.DeepestLastWeek}.`}
+        {/if}
+      </p>
+    {/if}
 
     {#if ceilingLeft === 0}
       <!-- Modul: the ceiling is STATED, not discovered. A player who earns
@@ -557,6 +585,18 @@
   .v {
     font-variant-numeric: tabular-nums;
     font-weight: 600;
+  }
+
+  /* Task 61. Same dark card as .capped: this screen's text colours are
+     written for its dark panels, and on the bare parchment it vanished. */
+  .weekly-course {
+    background: #2b2418;
+    border: 1px solid #5c4a22;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 16px;
+    line-height: 1.45;
+    font-size: 0.9rem;
   }
 
   .capped {
