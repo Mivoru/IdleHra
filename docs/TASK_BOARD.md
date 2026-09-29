@@ -5299,6 +5299,12 @@ The Village lists "Work slots" - 168 rows of "Slot N · idle" on the fixture
 server code reads those rows, remove the panel (and note the table under
 "Known dead code"); if something does, collapse it to one summary line.
 
+**DONE 2026-09-29 - removed.** Neither branch applied as written: the rows
+were live, but they were `CharacterRecords` - the roster under a false
+caption. A summary line would have kept the lie, so the panel went, with
+the `Villagers` list on `/api/v1/player/statistics`. `VillageResidents` and
+`EvictVillager` are under Known dead code.
+
 ## 78. Hunting advisor: honest estimates on every monster
 
 **What is actually true:** a monster row shows HP and XP only. Because XP and

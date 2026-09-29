@@ -502,6 +502,19 @@ that has served `Up()`.
   the pass should become is owner decision O5 in
   `docs/superpowers/plans/2026-09-28-design-audit-phases.md`. Do not re-expose
   the claim before the reward item exists.
+- **`VillageResidents` has no writer, and eviction targets it.** Checked
+  2026-09-29 (task 77). The table, the `VillageResident` entity and its
+  `DbSet`/mapping in `FolkIdleDbContext` (lines ~33 and ~302) remain, but
+  nothing INSERTs or UPDATEs a row. Only `CompliancePurgeEngine` deletes from
+  it. `CommandType.EvictVillager` → `VillageTickCoordinator` →
+  `VillageManagementEngine.ExecuteEvictVillagerAsync` runs a
+  `SELECT … FOR UPDATE` against it, finds nothing and returns, which makes it a
+  permanent no-op. No client sends it; `evictVillager` in `commands.ts` has no
+  caller. The Village screen's "Work slots" panel and the `Villagers` list on
+  `/api/v1/player/statistics` that fed it were removed in the same task. They
+  had been repointed at `CharacterRecords` and listed every character as a
+  "production slot", so the panel only repeated the roster. Removing the table
+  takes a migration. The opcode sits in the fixed-layout command enum.
 
 ## 10. Explicitly Deferred This Pass
 

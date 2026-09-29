@@ -36,7 +36,8 @@ nothing else.
 
 The old Village screen also had a panel called "Villagers" that listed
 identity-less work slots — a different concept wearing the gene pool's name on
-the same screen. It is now **Work slots**.
+the same screen. It was renamed **Work slots**, then removed on 2026-09-29
+(task 77): its rows were the character roster under another name.
 
 ---
 

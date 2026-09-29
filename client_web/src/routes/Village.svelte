@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
-  import { queryKeys, fetchStatistics, fetchVillageQuote, type VillageQuoteLine } from '../lib/net/rest';
+  import { queryKeys, fetchVillageQuote, type VillageQuoteLine } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
   import { BUILDINGS, upgradeBuilding, villageUpgradeDurationSeconds, formatDuration, villageUpgradeBlockedReason, TOWN_HALL_BUILDING_ID } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
@@ -10,7 +10,6 @@
   import Stopwatch from '../lib/ui/Stopwatch.svelte';
 
 
-  const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
 
   const snap = $derived($playerState);
 
@@ -99,10 +98,10 @@
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
   }
 
-  // Modul: evict() is gone with the button that called it - see the Villagers
-  // panel. evictVillager still exists in commands.ts and still has a live
-  // server handler; what it does not have is a target, because the table it
-  // names has no rows and never did.
+  // Modul: evict() is gone with the button that called it, and the panel it
+  // sat in is gone too (task 77, in the markup). evictVillager still exists in
+  // commands.ts and still has a live server handler; what it does not have is a
+  // target, because the table it names has no rows and never did.
 
   // Modul: skills moved to the Character screen - they are combat abilities
   // that spend mana and have cooldowns, and they lived here between the
@@ -242,39 +241,16 @@
       </p>
     </section>
 
-    <!-- Modul: your villagers ARE your characters. This panel used to read a
-         table nothing in the server ever writes, so it said "No villagers yet"
-         to a player the Character screen was telling they had two. Same
-         question, two tables, two honest answers.
-
-         The Evict button is gone with it. It sent a slot index at that dead
-         table, so it never did anything - and now that the roster is real,
-         wiring it up would mean deleting a character, which is a different and
-         permanent thing that deserves its own decision rather than inheriting
-         a button that happened to be here. -->
-    <section class="panel">
-      <!-- Modul: RENAMED FROM "Villagers" - it was the same word as the gene
-           pool panel directly above it, on the same screen, for a different
-           concept. These are the old identity-less production slots; the people
-           you marry are NEWCOMERS and ELDERS. One word, one meaning; see
-           docs/breeding_model.md section 0. -->
-      <h2>Work slots</h2>
-      <p class="dim tiny">
-        Production slots, not people. Nobody here can be married into your line.
-      </p>
-      {#if (statistics.data?.Villagers ?? []).length === 0}
-        <p class="dim">No work slots in use.</p>
-      {:else}
-        <ul class="villagers">
-          {#each statistics.data?.Villagers ?? [] as villager (villager.SlotIndex)}
-            <li>
-              <span class="name">Slot {villager.SlotIndex + 1}</span>
-              <span class="dim tiny">{villager.IsActive ? 'working' : 'idle'}</span>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
+    <!-- Modul: THE "WORK SLOTS" PANEL IS GONE (task 77), and it was not dead -
+         it was mislabelled. It started as "Villagers" over VillageResidents, a
+         table nothing in the server ever writes; it was repointed at the
+         character roster, renamed "Work slots" and captioned "production slots,
+         not people". The rows were people - the same characters the Character
+         screen and the breeding pickers show - and "working" meant only that a
+         character had any activity at all, combat included. On the dev fixture
+         it was a 168-row un-windowed list saying nothing true. The roster lives
+         on the Character screen; VillageFolk above already draws the village's
+         people. -->
 
 
     <!-- Modul: TWO PANELS REMOVED HERE - "Gathering tool" and "Mentor slots".
@@ -408,7 +384,6 @@
   }
 
   .buildings,
-  .villagers,
   .slots {
     list-style: none;
     margin: 0;
@@ -418,7 +393,6 @@
   }
 
   .buildings li,
-  .villagers li,
   .slots li {
     display: grid;
     grid-template-columns: 1fr auto auto;
@@ -532,9 +506,7 @@
      upgrading it does. nowrap is inherited, so that whole sentence was laid
      out on one line and `overflow: hidden` then cut it off: "Raises the level
      ceiling every other building i". 512px of the explanation was invisible on
-     every row, and the explanation is the only reason the row is there.
-     A second, shorter use of `.name` is the "Slot 3" label in Work slots,
-     which never needed truncating either. */
+     every row, and the explanation is the only reason the row is there. */
   .name {
     min-width: 0;
     overflow-wrap: break-word;
