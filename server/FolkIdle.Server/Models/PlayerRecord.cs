@@ -151,6 +151,13 @@ namespace FolkIdle.Server.Models
         // Legendary in the game, which is not a setting, it is a trap.
         public int AutoSalvageBelowTier { get; set; }
 
+        // Modul: the chest's per-region auto-sell rules (task 81): one floor
+        // for each region, four bits a region. A region's floor can only raise
+        // AutoSalvageBelowTier above, never lower it. ChestSalvageRules owns the
+        // layout, and nothing else should shift these bits. Zero means no region
+        // rule, which is the default, the same opt-in as the field above.
+        public int AutoSalvageRegionTiers { get; set; }
+
         // Modul: daily login reward tracking (DailyLoginRewardEngine).
         // LastLoginTimestamp is the epoch second of the last login that was
         // actually credited a reward - compared against the current UTC day

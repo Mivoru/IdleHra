@@ -3388,6 +3388,12 @@ namespace FolkIdle.Server.Network
         {
             public int AutoSalvageBelowTier { get; set; }
             /// <summary>
+            /// One floor per region, region 1 first (task 81). 0 is no rule.
+            /// A region's floor can only raise AutoSalvageBelowTier (see
+            /// ChestSalvageRules).
+            /// </summary>
+            public int[] AutoSalvageRegionTiers { get; set; } = new int[ChestSalvageRules.RegionCount];
+            /// <summary>
             /// The ceiling the server will accept, published so the client
             /// builds its dropdown from the server's rule rather than a second
             /// copy of it that can drift. Legendary and above is never
@@ -3895,20 +3901,64 @@ namespace FolkIdle.Server.Network
                 {
                     string body = await ReadBodyAsync(context);
 
-                    int tier;
+                    // Modul: BOTH FIELDS ARE OPTIONAL, AND AT LEAST ONE IS
+                    // REQUIRED. The Settings screen and exercise.mjs post only
+                    // AutoSalvageBelowTier. The Chest's rules panel (task 81)
+                    // posts both. A field that is absent keeps its stored
+                    // value, so an older caller cannot wipe the region rules
+                    // just by not knowing about them.
+                    int tier = player.AutoSalvageBelowTier;
+                    int regionTiers = player.AutoSalvageRegionTiers;
                     try
                     {
                         using var parsed = JsonDocument.Parse(body);
-                        if (!parsed.RootElement.TryGetProperty("AutoSalvageBelowTier", out var tierElement)
-                            || tierElement.ValueKind != JsonValueKind.Number)
+                        bool hasTier = parsed.RootElement.TryGetProperty("AutoSalvageBelowTier", out var tierElement);
+                        bool hasRegions = parsed.RootElement.TryGetProperty("AutoSalvageRegionTiers", out var regionsElement);
+                        if (!hasTier && !hasRegions)
                         {
                             context.Response.StatusCode = 400;
                             context.Response.Close();
                             return;
                         }
-                        tier = tierElement.GetInt32();
+
+                        if (hasTier)
+                        {
+                            if (tierElement.ValueKind != JsonValueKind.Number)
+                            {
+                                context.Response.StatusCode = 400;
+                                context.Response.Close();
+                                return;
+                            }
+                            tier = tierElement.GetInt32();
+                        }
+
+                        if (hasRegions)
+                        {
+                            var perRegion = new List<int>();
+                            if (regionsElement.ValueKind == JsonValueKind.Array)
+                            {
+                                foreach (var element in regionsElement.EnumerateArray())
+                                {
+                                    if (element.ValueKind != JsonValueKind.Number) { perRegion = null; break; }
+                                    perRegion.Add(element.GetInt32());
+                                }
+                            }
+                            else
+                            {
+                                perRegion = null;
+                            }
+
+                            // TryPack refuses a wrong count or an out-of-range
+                            // tier, for the same reason as the check below.
+                            if (perRegion == null || !ChestSalvageRules.TryPack(perRegion, out regionTiers))
+                            {
+                                context.Response.StatusCode = 400;
+                                context.Response.Close();
+                                return;
+                            }
+                        }
                     }
-                    catch (System.Text.Json.JsonException)
+                    catch (Exception ex) when (ex is System.Text.Json.JsonException or FormatException or InvalidOperationException)
                     {
                         context.Response.StatusCode = 400;
                         context.Response.Close();
@@ -3926,6 +3976,7 @@ namespace FolkIdle.Server.Network
                     }
 
                     player.AutoSalvageBelowTier = tier;
+                    player.AutoSalvageRegionTiers = regionTiers;
                     await db.SaveChangesAsync();
 
                     // The loot engine reads this off the live payload (see
@@ -3936,7 +3987,8 @@ namespace FolkIdle.Server.Network
                     _playerSessionRegistry?.ChestSettingsQueue.Enqueue(new ChestSettingsNotification
                     {
                         PlayerId = playerId,
-                        AutoSalvageBelowTier = tier
+                        AutoSalvageBelowTier = tier,
+                        AutoSalvageRegionTiers = regionTiers
                     });
                 }
 
@@ -3945,6 +3997,7 @@ namespace FolkIdle.Server.Network
                 await JsonSerializer.SerializeAsync(context.Response.OutputStream, new ChestSettingsResponse
                 {
                     AutoSalvageBelowTier = player.AutoSalvageBelowTier,
+                    AutoSalvageRegionTiers = ChestSalvageRules.Unpack(player.AutoSalvageRegionTiers),
                     MaxSweepableQualityTier = VillageChestEngine.MaxSweepableQualityTier
                 });
             }

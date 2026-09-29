@@ -30,13 +30,12 @@
   import { CommandType } from '../lib/net/protocol.generated';
   import { playerState, pushLocalNotice, commandResults, connectionStatus } from '../lib/stores/game';
   import { triggerGdprPurge } from '../lib/net/commands';
-  import { requestSignOut } from '../lib/stores/navigation';
+  import { requestScreen, requestSignOut } from '../lib/stores/navigation';
   import { enablePushNotifications, pushUnavailableReason } from '../lib/net/push';
   import { hapticsEnabled } from '../lib/net/haptics';
   import { enableLocalNotifications, localNotifyUnavailableReason } from '../lib/net/localNotify';
-  import { submitSupportTicket, scrubTrace, fetchAdminStatus, fetchAdminSeason, adminSeasonAction, adminEndSeasonNow, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent, fetchChestSettings, saveChestSettings } from '../lib/net/rest';
+  import { submitSupportTicket, scrubTrace, fetchAdminStatus, fetchAdminSeason, adminSeasonAction, adminEndSeasonNow, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
-  import { rarityName } from '../lib/ui/rarity';
   import { runningBundleVersion } from '../lib/net/liveUpdate';
 
   const snap = $derived($playerState);
@@ -44,7 +43,6 @@
   onMount(() => {
     void loadTranslations();
     void loadEmailConsent();
-    void loadChestSettings();
     void runningBundleVersion().then((v) => (bundleVersion = v));
   });
 
@@ -129,60 +127,6 @@
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Auto-salvage
-  // ---------------------------------------------------------------------------
-
-  // Modul: THE CHEST'S DRAIN, at the source.
-  //
-  // Equipment drops on 15% of kills and nothing removed it, so the table grew
-  // for as long as the account was played - 17,836 rows on the worst-affected
-  // live account, at which point the chest screen was too slow to open and the
-  // only cleanup tool in the game was on it.
-  //
-  // The chest's bulk sweep clears a backlog. This stops one forming: at or
-  // below the chosen rarity a drop is sold on the way in for the same gold the
-  // chest would have paid, and never becomes a row.
-  //
-  // OFF BY DEFAULT and stored on the ACCOUNT, not in this browser - the loot
-  // engine reads it on the server while the tab may be closed, so a
-  // localStorage flag would be a flag nobody can ask. Same reasoning as email
-  // consent above.
-  let autoSalvageTier = $state(0);
-  let maxSalvageTier = $state(6);
-  let salvageBusy = $state(false);
-  let salvageError = $state('');
-
-  async function loadChestSettings() {
-    try {
-      const state = await fetchChestSettings();
-      autoSalvageTier = state.AutoSalvageBelowTier;
-      // The server publishes its own ceiling so this dropdown cannot offer a
-      // tier the POST would refuse - two copies of that rule would drift.
-      maxSalvageTier = state.MaxSweepableQualityTier;
-    } catch {
-      // Leave it off and leave the control at its default. A failed read here
-      // must not look like "auto-salvage is on".
-      autoSalvageTier = 0;
-    }
-  }
-
-  async function saveAutoSalvage(next: number) {
-    salvageBusy = true;
-    salvageError = '';
-    try {
-      const state = await saveChestSettings(next);
-      if (state) {
-        autoSalvageTier = state.AutoSalvageBelowTier;
-      } else {
-        salvageError = 'That did not save. Try again in a moment.';
-      }
-    } catch {
-      salvageError = 'That did not save. Try again in a moment.';
-    } finally {
-      salvageBusy = false;
-    }
-  }
 
   async function toggleEmailConsent(next: boolean) {
     emailBusy = true;
@@ -627,42 +571,15 @@
     </ul>
     <button onclick={forgetAllSeen}>Reset all explanations</button>
 
+    <!-- Modul: AUTO-SALVAGE MOVED TO THE CHEST (task 81). It grew per-region
+         rules there, and one setting edited from two screens would be two
+         copies of one truth. This line keeps the old address findable. -->
     <h3>Auto-salvage</h3>
     <p class="dim small">
-      Equipment drops from roughly one kill in seven, and the village chest has
-      no limit - so left alone it fills up with thousands of pieces you will
-      never wear, and the chest screen gets slower the longer you play. Turn
-      this on and anything at or below the rarity you pick is sold the moment it
-      drops, for the same gold the chest would have paid.
+      Selling junk drops the moment they land now lives in the Chest, under
+      "Auto-sell rules", where it can be set per region.
     </p>
-    <label class="row">
-      <span>Sell drops up to</span>
-      <select
-        value={autoSalvageTier}
-        disabled={salvageBusy}
-        onchange={(e) => saveAutoSalvage(Number(e.currentTarget.value))}
-        aria-label="Automatically sell drops up to this rarity"
-      >
-        <option value={0}>Off - keep everything</option>
-        {#each Array(maxSalvageTier) as _, i}
-          <option value={i + 1}>{rarityName(i + 1)}</option>
-        {/each}
-      </select>
-    </label>
-    <p class="dim small">
-      {#if autoSalvageTier > 0}
-        Anything {rarityName(autoSalvageTier)} or worse is sold on the way in.
-        Everything above it still reaches your chest.
-      {:else}
-        Every drop is kept. Fine to start with - come back here when the chest
-        gets crowded.
-      {/if}
-      Legendary and above can never be salvaged automatically. To clear what has
-      already piled up, use "Clear out the junk" on the chest screen.
-    </p>
-    {#if salvageError}
-      <p class="small" style="color: var(--bad)">{salvageError}</p>
-    {/if}
+    <button onclick={() => requestScreen('chest')}>Open the Chest</button>
 
     <h3>Notifications</h3>
     <p class="dim small">

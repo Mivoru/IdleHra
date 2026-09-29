@@ -409,13 +409,14 @@
   <ContextMenu
     x={contextMenuX}
     y={contextMenuY}
-    username={contextMenuUsername}
-    playerId={contextMenuPlayerId}
+    title={contextMenuUsername}
     onClose={() => (contextMenuOpen = false)}
-    onWhisper={handleWhisper}
-    onAddFriend={handleAddFriend}
-    onBlock={handleBlock}
-    onViewProfile={handleViewProfile}
+    items={[
+      { label: 'Whisper', onSelect: () => handleWhisper(contextMenuUsername) },
+      { label: 'Add Friend', onSelect: () => handleAddFriend(contextMenuPlayerId) },
+      { label: 'View Profile', onSelect: () => handleViewProfile(contextMenuPlayerId) },
+      { label: 'Block', danger: true, separated: true, onSelect: () => handleBlock(contextMenuPlayerId) },
+    ]}
   />
 {/if}
 
