@@ -142,8 +142,8 @@ namespace FolkIdle.Server.Domain.Combat
         /// production calls this.
         /// </summary>
         public static BossFightProjection ProjectFirstClearWithAttackMultiplier(
-            int bossMonsterId, in ReferenceLoadout gear, double attackMultiplier)
-            => Project(bossMonsterId, in gear, defeatedMask: 0, attackMultiplier);
+            int bossMonsterId, in ReferenceLoadout gear, double attackMultiplier, double hpMultiplier = 0.0)
+            => Project(bossMonsterId, in gear, defeatedMask: 0, attackMultiplier, hpMultiplierOverride: hpMultiplier);
 
         /// <summary>
         /// Task 55: a boss challenge, projected - the same fight, with the larder
@@ -158,7 +158,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         private static BossFightProjection Project(
             int bossMonsterId, in ReferenceLoadout gear, byte defeatedMask, double attackMultiplierOverride,
-            bool withFood = true)
+            bool withFood = true, double hpMultiplierOverride = 0.0)
         {
             MonsterDefinition boss = ContentRegistry.Monsters[bossMonsterId - 1];
 
@@ -174,6 +174,15 @@ namespace FolkIdle.Server.Domain.Combat
             long bossMilliHp = BossFirstClearRules.MaxHpFor(
                 defeatedMask, bossMonsterId,
                 SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.BoughFirstBlood)) * 1000L;
+            if (hpMultiplierOverride > 0.0)
+            {
+                // Calibration only: the wall's HP multiplier replaced, softened by
+                // First Blood exactly as MaxHpFor softens the real one.
+                float relief = SkillTreeRegistry.GetBonusPercent(
+                    SkillTreeRegistry.BoughFirstBlood, SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.BoughFirstBlood)) / 100f;
+                double softened = 1.0 + (hpMultiplierOverride - 1.0) * Math.Max(0f, 1f - relief);
+                bossMilliHp = (long)(ContentRegistry.GetScaledMonsterMaxHp(bossMonsterId) * Math.Max(1.0, softened)) * 1000L;
+            }
             long bossAttackPower = attackMultiplierOverride > 0.0
                 ? (long)(ContentRegistry.GetScaledMonsterAttackPower(bossMonsterId) * attackMultiplierOverride)
                 : BossFirstClearRules.AttackPowerFor(defeatedMask, bossMonsterId);

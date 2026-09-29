@@ -151,6 +151,22 @@ namespace FolkIdle.Server.Tests
 
                 for (int qualityTier = 1; qualityTier <= RarityTier.Transcendent; qualityTier++)
                 {
+                    // Task 63: sets pay now, so the rule must hold for the
+                    // behind region's offence AND defence set at this quality,
+                    // not only for bare gear.
+                    int offence = (region - 2) * 2 + 1;
+                    foreach (int setId in new[] { offence, offence + 1 })
+                    {
+                        int piece = EquippedSetIds.Pack(setId, qualityTier);
+                        var sets = new EquippedSetIds { Helmet = piece, Chest = piece, Gloves = piece, Leggings = piece, Boots = piece };
+                        var withSet = BossGearBenchmark.ProjectFirstClear(bossId,
+                            new ReferenceLoadout(BossGearBenchmark.ReferenceLevelForRegion(region), region - 1, qualityTier, rarity, sets));
+                        Assert.False(withSet.PlayerWins,
+                            $"the region-{region} boss was beaten one region behind by a full region-{region - 1} " +
+                            $"{(SetBonusEngine.IsOffensiveSet(setId) ? "offence" : "defence")} set at quality {qualityTier} " +
+                            $"in {withSet.SecondsToKillBoss:F0}s.");
+                    }
+
                     var behind = BossGearBenchmark.ProjectFirstClear(bossId, Gear(region - 1, qualityTier, rarity));
 
                     if (qualityTier % 4 == 0 || qualityTier == RarityTier.Transcendent)

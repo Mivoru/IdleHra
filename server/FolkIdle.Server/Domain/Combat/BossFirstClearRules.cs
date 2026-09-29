@@ -50,7 +50,13 @@ namespace FolkIdle.Server.Domain.Combat
         // onboarding stalled there forever" is a defect this repo has already
         // shipped once.
         private static readonly float[] _hpMultiplierByRegion = { 3.0f, 4.0f, 6.0f, 9.0f, 14.0f };
-        private static readonly float[] _attackMultiplierByRegion = { 3.7f, 2.6f, 5.7f, 11.4f, 21.4f };
+        // Modul: region 2 went 2.6 -> 2.78 when set bonuses started paying
+        // (task 63). A region-1 DEFENCE set at Transcendent (+64% armour) had
+        // become as tough as region-2 gear at the old bar, so it beat this
+        // boss one region behind. Measured window with every set in the game
+        // applied: 2.75-2.80 (the fights are binary - the larder either
+        // sustains you or it does not - so only the attack moves the line).
+        private static readonly float[] _attackMultiplierByRegion = { 3.7f, 2.78f, 5.7f, 11.4f, 21.4f };
 
         // The gear each boss is calibrated to need: all eight combat slots of
         // the boss's OWN RegionTier, at this QualityTier, with affixes of at
@@ -68,7 +74,12 @@ namespace FolkIdle.Server.Domain.Combat
         // a requirement. Seven is the first tier that carries a third affix, so
         // the bar lands on a step the game actually has. Every other row already
         // crossed one.
-        private static readonly int[] _requiredQualityTierByRegion = { 4, 7, 8, 10, 11 };
+        //
+        // Modul: and 8 since task 63. At 7 there was NO attack multiplier at all
+        // under which region-2 gear at the bar won and a region-1 Transcendent
+        // defence set lost - the set had caught the bar up. At 8 the window
+        // opens (see the attack row above). Still three affixes, like 7.
+        private static readonly int[] _requiredQualityTierByRegion = { 4, 8, 8, 10, 11 };
 
         private static readonly Engine.AffixRarity[] _requiredAffixRarityByRegion =
         {

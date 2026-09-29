@@ -4822,8 +4822,19 @@ economy is measured (task 37 Phase 3), so do not change payouts.
 - **The one wall that moves:** a region-1 DEFENCE set at Transcendent now beats
   the region-2 boss (384 s, never dies) - bare it dies in 16 s. Regions 3-5
   still hold one region behind with either set (defence only survives longer:
-  38 / 96 / 22 s). If the owner wants the "one region behind always loses"
-  rule to hold with sets, the region-2 boss's attack is the lever.
+  38 / 96 / 22 s).
+- **Retuned 2026-09-29 (owner: "make the monsters and bosses harder, then"):**
+  only the region-2 wall needed it. At quality 7 there was NO attack
+  multiplier where region-2 gear at the bar won and a region-1 Transcendent
+  defence set lost (the fights are binary: the larder sustains you or it
+  does not). Region 2 now asks for quality 8 and its first-clear attack is
+  2.78x (was 2.6x; measured window 2.75-2.80). `BossWallTests` now asserts
+  the "one region behind loses" rule WITH both of that region's sets at
+  every quality. Regions 1, 3, 4, 5 already held with sets - unchanged.
+- **Regular monsters NOT retuned, on purpose.** Sets only speed kills (up to
+  1.52x at Transcendent, about 1.26x at Rare), and the progression gate is
+  the boss wall, which now holds. Faster farming with a finished set is the
+  reward for building it.
 - `ProgressionRateTests`' model wears no set, so its pacing figures do not
   move; a real player with an offence set kills up to 1.52x faster.
 
