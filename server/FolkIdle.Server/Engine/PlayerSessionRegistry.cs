@@ -459,6 +459,10 @@ namespace FolkIdle.Server.Engine
         // does NOT bank the delta, and AutoSalvageQueue's does.
         public ConcurrentQueue<ChestSaleGoldNotification> ChestSaleGoldQueue { get; } = new();
         public ConcurrentQueue<ChestSettingsNotification> ChestSettingsQueue { get; } = new();
+
+        // Task 78: a REST handler's request for a copy of the live payload -
+        // see PayloadSnapshotOrder.
+        public ConcurrentQueue<FolkIdle.Server.Domain.Combat.PayloadSnapshotOrder> PayloadSnapshotQueue { get; } = new();
         public ConcurrentQueue<AchievementClaimRequest> AchievementClaimQueue { get; } = new();
         public ConcurrentQueue<ForgeUpgradeNotification> ForgeUpgradeQueue { get; } = new();
         public ConcurrentQueue<EquipmentSlotUpdateNotification> EquipmentSlotUpdateQueue { get; } = new();

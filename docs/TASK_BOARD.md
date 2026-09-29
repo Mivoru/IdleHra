@@ -5314,6 +5314,34 @@ on expand. No formula on the client.
 **Done when:** a server test pins the projection against a simulated fight
 within a tolerance; the line reads "estimate"; `check:perf` does not regress.
 
+**DONE 2026-09-29.**
+- **Engine.** `HuntingProjection` is a tick-by-tick simulation of expected
+  values. It uses RunCombatTick's order: player swing, monster swing,
+  auto-eat, death, kill, and a swing clock reset on respawn. It covers one
+  hour of back-to-back fights, with food and without. It calls the tick's own
+  helpers, which were moved out of `RunCombatTick` unchanged: `LiveCombatStats`,
+  `EffectiveMaxMilliHpFor`, `LiveAttackIntervalMs`, `LiveCritChancePct`,
+  `LiveCritMultiplier`, `LiveKillXpMultiplierPct`, and the now-internal
+  `EffectiveMilliAttackFor` and `HasCrossedInterval`. The result is kill
+  time as an 80% band, XP/h, gold/h, whether an hour is survived with and
+  without food, and food per hour.
+- **Guard.** `HuntingProjectionTests` runs the real `RunCombatTick` for an
+  hour. Kills/h landed within 3-5% on three rows and food within 10%. The
+  test asserts ±10% on kills.
+- **Route.** `GET /api/v1/combat/projection?slot=N` gets a copy of the live
+  payload taken on the tick thread (`PayloadSnapshotOrder`). It swaps in
+  slot N, projects all 25 canonical monsters, and caches the result for 60 s.
+  It answers 409 `NoSession` when nothing is live.
+- **Client.** Each open Combat row shows "Estimate: 7-9 s a kill · XP/h ·
+  g/h · safe / needs food / you would die". Drops were already on expand.
+- **Left out on purpose:** the food buff's regen, Death Ward, Last Stand and
+  Thunderer. All four only help the player, so the estimate errs toward
+  caution.
+- **Found on the way, not fixed:** the offline projection's incoming damage
+  ignores dodge and block, which the live tick applies
+  (`OfflineSimulationEngine`, around line 630). The live and offline
+  projections now disagree there.
+
 ## 79. Gold ledger and material flow; Treasury counts gold spent
 
 - Count gold out by category at the places it is charged (reroll, fusion,

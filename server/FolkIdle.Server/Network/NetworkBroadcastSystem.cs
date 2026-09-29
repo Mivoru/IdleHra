@@ -1678,6 +1678,14 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Task 78: the hunting advisor - per monster, what this character's
+            // kills take, pay and cost. Read-only; see HuntingProjection.
+            if (requestPath == "/api/v1/combat/projection" && context.Request.HttpMethod == "GET")
+            {
+                await HandleCombatProjection(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/chest/settings")
             {
                 await HandleChestSettings(context);
@@ -3867,6 +3875,128 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
+        private sealed class HuntingEstimateResponse
+        {
+            public int MonsterId { get; set; }
+            public bool CanDamage { get; set; }
+            public double SecondsPerKill { get; set; }
+            public double SecondsPerKillLow { get; set; }
+            public double SecondsPerKillHigh { get; set; }
+            public long XpPerHour { get; set; }
+            public long GoldPerHour { get; set; }
+            public bool SurvivesWithFood { get; set; }
+            public bool SurvivesWithoutFood { get; set; }
+            public int KillsBeforeDeathWithoutFood { get; set; }
+            public double FoodPerHour { get; set; }
+        }
+
+        private sealed class CombatProjectionResponse
+        {
+            public int Slot { get; set; }
+            public List<HuntingEstimateResponse> Monsters { get; set; } = new();
+        }
+
+        // Modul: ONE MINUTE PER CHARACTER. The projection is ~2M cheap ticks of
+        // arithmetic, and the Combat screen asks every time it opens. Gear and
+        // levels change on a scale of minutes, and a stale estimate is still
+        // labelled "estimate". A fresh one comes after the next equip at worst
+        // a minute late.
+        private static readonly System.Collections.Concurrent.ConcurrentDictionary<(long PlayerId, int Slot), (DateTime At, CombatProjectionResponse Body)> _projectionCache = new();
+
+        /// <summary>
+        /// Task 78: GET /api/v1/combat/projection?slot=N (0-based, default 0).
+        /// Every canonical monster, projected against this character's live
+        /// payload. 409 with Reason NoSession when the player has no running
+        /// session, because there is nothing live to project from.
+        /// </summary>
+        private async Task HandleCombatProjection(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                int slot = 0;
+                string? slotText = context.Request.QueryString["slot"];
+                if (slotText != null && (!int.TryParse(slotText, out slot) || slot < 0 || slot > 2))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                CombatProjectionResponse body;
+                if (_projectionCache.TryGetValue((playerId, slot), out var cached) && DateTime.UtcNow - cached.At < TimeSpan.FromMinutes(1))
+                {
+                    body = cached.Body;
+                }
+                else
+                {
+                    if (_playerSessionRegistry == null)
+                    {
+                        context.Response.StatusCode = 503;
+                        context.Response.Close();
+                        return;
+                    }
+
+                    var order = new Domain.Combat.PayloadSnapshotOrder { PlayerId = playerId };
+                    _playerSessionRegistry.PayloadSnapshotQueue.Enqueue(order);
+                    var finished = await Task.WhenAny(order.Completion.Task, Task.Delay(3000));
+                    var snapshot = finished == order.Completion.Task ? order.Completion.Task.Result : null;
+                    if (snapshot == null)
+                    {
+                        context.Response.StatusCode = 409;
+                        context.Response.ContentType = "application/json";
+                        await JsonSerializer.SerializeAsync(context.Response.OutputStream, new { Reason = "NoSession" });
+                        context.Response.Close();
+                        return;
+                    }
+
+                    var payload = snapshot.Value.Payload;
+                    // Slots 2 and 3 are parked beside the register; swap the
+                    // COPY so the projection fights in that character's gear.
+                    Domain.Combat.SimulationEngine.SwapSlotIntoActiveRegister(ref payload, slot);
+
+                    body = new CombatProjectionResponse { Slot = slot };
+                    for (int id = ContentRegistry.FirstCanonicalMonsterId; id <= ContentRegistry.Monsters.Length; id++)
+                    {
+                        var e = Domain.Combat.HuntingProjection.Project(
+                            in payload, id, snapshot.Value.GlobalXpMultiplier, snapshot.Value.ActiveGlobalEventId);
+                        body.Monsters.Add(new HuntingEstimateResponse
+                        {
+                            MonsterId = e.MonsterId,
+                            CanDamage = e.CanDamage,
+                            SecondsPerKill = Math.Round(e.SecondsPerKill, 1),
+                            SecondsPerKillLow = Math.Round(e.SecondsPerKillLow, 1),
+                            SecondsPerKillHigh = Math.Round(e.SecondsPerKillHigh, 1),
+                            XpPerHour = e.XpPerHour,
+                            GoldPerHour = e.GoldPerHour,
+                            SurvivesWithFood = e.SurvivesWithFood,
+                            SurvivesWithoutFood = e.SurvivesWithoutFood,
+                            KillsBeforeDeathWithoutFood = e.KillsBeforeDeathWithoutFood,
+                            FoodPerHour = Math.Round(e.FoodPerHour, 1),
+                        });
+                    }
+                    _projectionCache[(playerId, slot)] = (DateTime.UtcNow, body);
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, body);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Combat projection error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
         /// <summary>
         /// Reads (GET) or sets (POST) the auto-salvage floor.
         ///

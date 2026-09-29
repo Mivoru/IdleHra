@@ -13,7 +13,9 @@
     FIRST_CLEAR_ATTACK_MULTIPLIERS,
   } from '../lib/ui/victories';
   import { rarityName } from '../lib/ui/rarity';
-  import { queryKeys, fetchWorn } from '../lib/net/rest';
+  import { queryKeys, fetchWorn, fetchCombatProjection, type HuntingEstimate } from '../lib/net/rest';
+  import { estimateLine, killTimeText, safety } from '../lib/ui/huntingEstimate';
+  import { formatCompact } from '../lib/ui/format';
   import { readPref, writePref, PREF_LAST_MONSTER } from '../lib/net/prefs';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
@@ -282,6 +284,23 @@
     lastSeenLevel = level;
   });
 
+  // Modul: THE HUNTING ADVISOR (task 78). A row used to say HP and XP, and
+  // because XP and gold both scale with HP, the row could not answer the
+  // question it is read for: which of these can I farm, and how fast. The
+  // server projects each fight from the live payload (HuntingProjection,
+  // held to the real tick by HuntingProjectionTests) and caches it for a
+  // minute. This side only words it. A 409 (no session) shows nothing.
+  const projection = createQuery(() => ({
+    queryKey: queryKeys.combatProjection(0),
+    queryFn: () => fetchCombatProjection(0),
+    enabled: $connectionStatus.phase === 'live',
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+    retry: false,
+  }));
+  const estimates = $derived(
+    new Map<number, HuntingEstimate>((projection.data?.Monsters ?? []).map((e) => [e.MonsterId, e])),
+  );
   async function selectMonster(monster: MonsterDefinition) {
     selectedMonsterId = monster.Id;
     if (dropPreviewFor !== monster.Id) {
@@ -646,6 +665,21 @@
                     title="Never beaten: {firstClearHpMultiplier(bossRegion)}x health and {firstClearAttackMultiplier(bossRegion)}x damage until it falls once, then it drops to its normal stats for good. {describeBossGearRequirement(bossRegion)}"
                   >first clear</span>
                 {/if}
+                {#if index + 1 <= unlockedRegion && estimates.has(monster.Id)}
+                  {@const est = estimates.get(monster.Id)!}
+                  {@const verdict = safety(est)}
+                  <span class="estimate" data-testid="hunting-estimate" title={estimateLine(est)}>
+                    {#if est.CanDamage}
+                      <span class="dim">Estimate:</span>
+                      {killTimeText(est)} a kill · {formatCompact(est.XpPerHour)} XP/h ·
+                      {formatCompact(est.GoldPerHour)} g/h ·
+                      <span class="verdict {verdict.tone}">{verdict.text}</span>
+                    {:else}
+                      <span class="dim">Estimate:</span>
+                      <span class="verdict danger">you cannot hurt it yet</span>
+                    {/if}
+                  </span>
+                {/if}
               </button>
               <button
                 class="fight"
@@ -928,6 +962,26 @@
     white-space: nowrap;
   }
 
+  /* Task 78: the advisor's line takes a row of its own under the name, and
+     it may wrap - the class selector keeps it out of the nowrap rule above. */
+  .row > span.estimate {
+    flex: 1 1 100%;
+    white-space: normal;
+    font-size: 0.75rem;
+  }
+
+  .verdict.safe {
+    color: var(--good, #4c8a3a);
+  }
+
+  .verdict.food {
+    color: var(--warn, #b8860b);
+  }
+
+  .verdict.danger {
+    color: var(--danger);
+    font-weight: 600;
+  }
   /* The portrait sits beside the health bar rather than above it, so the
      fight reads as one thing at a glance. */
   .fighting {
