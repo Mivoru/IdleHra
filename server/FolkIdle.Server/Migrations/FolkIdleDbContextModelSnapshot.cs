@@ -626,6 +626,44 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("feature_unlocks");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.GoldIncomeDaily", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<short>("Source")
+                        .HasColumnType("smallint");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PlayerId", "Day", "Source");
+
+                    b.ToTable("gold_income_daily");
+                });
+
+            modelBuilder.Entity("FolkIdle.Server.Models.GoldSpendDaily", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<short>("Category")
+                        .HasColumnType("smallint");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PlayerId", "Day", "Category");
+
+                    b.ToTable("gold_spend_daily");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.GuildActiveBuff", b =>
                 {
                     b.Property<long>("Id")
@@ -1307,6 +1345,28 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("MarketOrderRecords");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.MaterialFlowDaily", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateOnly>("Day")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ItemId")
+                        .HasColumnType("text");
+
+                    b.Property<short>("Direction")
+                        .HasColumnType("smallint");
+
+                    b.Property<long>("Amount")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("PlayerId", "Day", "ItemId", "Direction");
+
+                    b.ToTable("material_flow_daily");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.MonsterCodexEntry", b =>
                 {
                     b.Property<long>("PlayerId")
@@ -1934,6 +1994,9 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<int>("LevelChestsGranted")
                         .HasColumnType("integer");
+
+                    b.Property<long>("LifetimeGoldSpent")
+                        .HasColumnType("bigint");
 
                     b.Property<long>("LogicEpochCounter")
                         .HasColumnType("bigint");

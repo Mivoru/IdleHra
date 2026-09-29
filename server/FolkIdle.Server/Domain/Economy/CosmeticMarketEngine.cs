@@ -238,6 +238,7 @@ namespace FolkIdle.Server.Domain.Economy
 
             long price = listing.Price;
             buyerGold.Quantity -= price;
+            await GoldLedger.RecordSpendAsync(db, buyerId, GoldSpendCategory.Cosmetics, price);
 
             item.PlayerId = buyerId;
             item.IsListed = false;
@@ -255,6 +256,8 @@ namespace FolkIdle.Server.Domain.Economy
             // tick pays it (the payload holds unbanked gold, so a row credit
             // here would double-pay at the next checkpoint); offline, the row.
             bool sellerOnline = registry?.IsPlayerOnline(listing.SellerId) ?? false;
+            // Task 79: income whichever branch pays it, in the sale's transaction.
+            await GoldLedger.RecordIncomeAsync(db, listing.SellerId, GoldIncomeSource.Market, proceeds);
             if (!sellerOnline && proceeds > 0L)
             {
                 await CommodityLedger.AddAsync(db, listing.SellerId, "gold", proceeds);

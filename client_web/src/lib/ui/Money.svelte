@@ -1,6 +1,6 @@
 <script lang="ts">
   import { currencyIcon } from './sprites';
-  import { formatCompact, formatExact, isCompacted } from './format';
+  import { formatNumber, formatExact, isCompacted } from './format';
   // Modul: one way to render a currency amount.
   //
   // Gold and diamonds appear on nine screens and were formatted nine different
@@ -82,7 +82,7 @@
   const compacted = $derived(isCompacted(value));
 
   const formatted = $derived.by(() => {
-    const abs = formatCompact(Math.abs(value));
+    const abs = formatNumber(Math.abs(value));
     if (!signed) return abs;
     return value < 0 ? `-${abs}` : `+${abs}`;
   });

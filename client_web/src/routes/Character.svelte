@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   import { requestScreen } from '../lib/stores/navigation';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import { unopenedChests } from '../lib/stores/cosmeticChests';
@@ -23,6 +24,8 @@
   import { locationName, nodeLocation } from '../lib/ui/locations';
   // EMPTY_GUID is the sentinel the roster filter below tests against.
   import { raceName } from '../lib/ui/races';
+  import { writePref } from '../lib/net/prefs';
+  import { lastActivityKey } from '../lib/ui/homeNow';
   import { onMount } from 'svelte';
   import { play } from '../lib/ui/audio';
 
@@ -198,6 +201,8 @@
       takenBy: occupiedBy(activityId, slot),
     });
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    // Task 73: Home's "Continue" resumes whatever was given last, wherever.
+    if (activityId > 0) writePref(lastActivityKey(characterId), String(activityId));
   }
 
   function stopWork(slot: number, characterId: string) {
@@ -382,7 +387,7 @@
             value={visual?.PlayerHp ?? snap.PlayerHp}
             max={playerMaxHp}
             color="var(--good)"
-            label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp).toLocaleString()} / ${playerMaxHp.toLocaleString()}`}
+            label={`${formatNumber(Math.round(visual?.PlayerHp ?? snap.PlayerHp))} / ${formatNumber(playerMaxHp)}`}
           />
         </div>
         <!-- Modul: the mana bar went with the four active skills. It measured
@@ -408,11 +413,11 @@
       <dl class="stats">
         <div>
           <dt>Accuracy</dt>
-          <dd>{(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating).toLocaleString()}</dd>
+          <dd title={numberTitle(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating)}>{formatNumber(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating)}</dd>
         </div>
         <div>
           <dt>Armor</dt>
-          <dd>{(selectedCombatStats?.Armor ?? snap.PlayerArmorRating).toLocaleString()}</dd>
+          <dd title={numberTitle(selectedCombatStats?.Armor ?? snap.PlayerArmorRating)}>{formatNumber(selectedCombatStats?.Armor ?? snap.PlayerArmorRating)}</dd>
         </div>
         <div>
           <dt>Block</dt>

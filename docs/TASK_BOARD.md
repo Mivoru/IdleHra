@@ -5251,16 +5251,26 @@ asks for, from 72's data). `exercise.mjs` clicks the map plates; keep them.
 **Done when:** at 390 and 1366 px the cards are in the first viewport; the
 owner has seen a screenshot; the geometry checkers are clean.
 
+**BUILT 2026-09-30, awaiting the owner's look at a screenshot.** Cards render
+before the map; the map is a capped 40 rem strip below (plates and `.scene`/
+`.place` selectors unchanged). "Right now" shows character names (breeding
+roster). Idle characters get "Continue: <last job>" (per-character pref, slot 1
+falls back to Combat's last monster) and a button picker (Fight/Gather; crafting
+sends to Character). Offline line is the server's `OfflineCapSeconds` only -
+time already away is NOT on the wire, so the "fills in 9 h 40 min" countdown is
+left out. "Next unlock" comes from `bossGearProgress`. Geometry checkers not run
+(need the server).
+
 ## PARTLY DONE - 74. Small bundle
 
-**Built 2026-09-29, PR #107:** rarity tooltips (`rarityTitle`), the desktop Character dot, `mat_` stripped from names. **Left open:** one number format (a sweep of every screen, do it alone) and reroll history (auto-reroll reports only its end state; needs server-side roll results - do it with 86). The old gathering primitives (Raw Log, Wood, Oak Log) are left for 83/86.
+**Built 2026-09-29, PR #107:** rarity tooltips (`rarityTitle`), the desktop Character dot, `mat_` stripped from names. **Number format done:** one `formatNumber` in `ui/format.ts` (thin space to 100,000, `k`/`M`/`B`/`T` above, exact in `title`/`data-exact`, decimal mark by UI language); every `.toLocaleString()` on a quantity swept onto it, `exercise.mjs` reads `data-exact` instead of parsing. **Left open:** reroll history (auto-reroll reports only its end state; needs server-side roll results - do it with 86). The old gathering primitives (Raw Log, Wood, Oak Log) are left for 83/86.
 
 Each is independent:
 - Rarity tooltip everywhere a rarity is named: name, tier number, power
   multiplier (from the mirrored `powerMultiplier`).
 - A badge on the Character tab while any character has unspent attribute
   points.
-- One number format (`format.ts`): whole numbers with a thin space up to
+- DONE: One number format (`format.ts`): whole numbers with a thin space up to
   100,000, compact above, exact in the title; separator by UI language.
 - Reroll history: the last 20 results on a piece and its best roll, client
   side from the command results.
@@ -5387,6 +5397,76 @@ within a tolerance; the line reads "estimate"; `check:perf` does not regress.
 
 **Done when:** the ledger survives a relogin and a test pins each writer.
 
+**PHASE 1 DONE 2026-09-29 (gold out + Treasury; the owner said yes).**
+- **Ledger.** `Engine.GoldLedger.RecordSpendAsync` runs inside each debit's
+  own transaction. It upserts `gold_spend_daily` (player, UTC day, category)
+  and increments `PlayerRecord.LifetimeGoldSpent` in raw SQL. That is
+  migration `AddGoldLedger`, which is additive.
+- **Sites.** All 15 debit sites are wired: reroll, fusion and stack fusion,
+  village, recruit, breeding (both), Delve, Deep (lantern and toll), market
+  (escrow buy, and the order-book match at the execution price), cosmetics,
+  guild (gold contribution and the depot's gold) and guild raid. The
+  order-book ESCROW itself is marked `// GoldLedger:` as not a spend,
+  because a cancel refunds it.
+- **Guard.** `GoldLedgerTests.EveryGoldDebit_IsRecordedOrSaysWhyNot` reads
+  the source. It flags gold-named debits, plus any `.Quantity -=` within 30
+  lines of a "gold" literal, which is how it caught the depot.
+- **Treasury.** The deed and the legacy 100k flag now pay on
+  `LifetimeGoldSpent`, with the same thresholds. Tiers already paid stay
+  paid. The wire's toast term reads `GoldLedger.KnownLifetimeSpent`, which
+  login seeds and every checkpoint refreshes.
+- **Screen.** `GET /api/v1/player/gold-ledger` returns 7 d / 30 d / all by
+  category. Progress -> Statistics shows "Where your gold went".
+- **Phase 2 is still open:** gold IN by source (kill, Town Hall, sale,
+  salvage, login, mail) and the material flow per day (gathered, spent,
+  lost to the Warehouse cap). Income is harder, because combat gold is
+  banked by the checkpoint as a delta rather than at a single site.
+
+**PHASE 2 DONE 2026-09-29 (gold in by source; material flow per day).**
+- **Two income writers.** An engine that credits the gold row itself calls
+  `GoldLedger.RecordIncomeAsync` in its own transaction: chest sales,
+  market and cosmetic sales (net, in the sale's transaction, for both the
+  online and offline seller), login reward, mail claim, guild payout, Delve
+  consolation, starting gold, offline Town Hall, and the retry outbox when a
+  delayed grant lands. Gold on `RedisPendingGoldDelta` (kill, live Town Hall,
+  auto-salvage, kills while away) is tallied with `GoldLedger.TallyIncome`
+  onto `TickStatePayload.PendingGoldIncome`, and the CHECKPOINT writes it.
+- **Why the checkpoint, and why once.** That gold is banked by Redis
+  write-behind or by the checkpoint, depending on whether Redis is up, so a
+  bank is not one place. The tally rides the job as the gold delta does:
+  `RequestFlush` zeroes it live, `FlushState` writes the snapshot's copy in
+  its transaction, and a failed ack hands it back. It also rides
+  `FlushStateAndAdvance` (login), `FlushBatch` (shutdown, past the epoch
+  sieve, which is what stops SIGTERM's second `ShutdownGracefully` counting it
+  again) and `StateReloadMerge`. A frame never touches it. Lost, never
+  doubled: a logout that fails every retry drops the tally, not the gold.
+- **Material flow.** `material_flow_daily` (player, UTC day, item,
+  direction), written by `Engine.MaterialLedger` inside the stack's own
+  transaction. Gathered: live gathering, offline gathering, live village
+  production (at write-behind) and offline production. Spent:
+  `TryConsumeUnifiedAsync` (crafting, buildings, larder) and the three guild
+  donations. Sold and Discarded: the chest. LostToWarehouseCap: the offline
+  grant only, both its window ceiling and the live-storage clamp. The live
+  tick PAUSES production at the cap, so nothing is thrown away there, and
+  the screen says so.
+- **Guard.** `GoldIncomeLedgerTests` reads the source. Each credit shape (a
+  "gold" upsert, `gold….Quantity +=`, `RedisPendingGoldDelta +=`,
+  `["gold"] =`, `.AddGold(`) needs a record, a tally or a `// GoldLedger:`
+  reason within 3 lines, and each checkpoint hop is pinned by name.
+  `GoldIncomeLedgerPostgresTests` pins the writers, one flush, a failed flush
+  and its retry, and a relogin. Migration `AddGoldIncomeAndMaterialFlow` is
+  additive.
+- **Screen.** The same route adds `Income`, `Materials` and their own
+  "since" dates. Progress -> Statistics shows "Where your gold came from",
+  "Where your gold went" and a Materials table. It says tallied income lands
+  at the next save, about five minutes.
+- **Found, not fixed.** An ONLINE seller's market and cosmetic proceeds go
+  through `MarketMatchQueue`, whose drain only moves `CurrentGold` (no
+  `RedisPendingGoldDelta`), so nothing banks them. They are counted as
+  income, but they appear to be lost at the next relogin. Separately,
+  `FlushBatch` never applies `RedisPendingGoldDelta`, so gold still owed
+  at shutdown with Redis down is dropped.
+
 ## 80. Breeding Grounds above level 1
 
 The Wiki says it outright: "nothing above level 1 has an additional effect".
@@ -5440,6 +5520,16 @@ it to the server constants.
 24 buttons in two rows plus the event chip take ~215 px. Collapse to five
 dropdown groups (Play / Items / Village / You / Community) at desktop widths;
 keys 1-5 stay. Show the owner a screenshot first.
+
+**BUILT 2026-09-30, awaiting the owner's look at a screenshot.** Above 40 rem
+the header is five dropdown toggles (Play / Items / Village / You / Community;
+Codex moved to Village, Wiki and Settings to You). Escape, a click outside,
+focus leaving the group, and ArrowDown on a toggle are handled; entries keep
+`data-nav`/`data-label`. Phone menu and hotkeys 1-5 (tab bar, `tabs.ts`) are
+untouched. Scripts navigate through one `navButton()` in `screens.mjs`, which
+opens the phone Menu or the group first. Screenshot of the open Items group:
+`docs/screenshots/2026-09-30/header-dropdown-1366.png` (rendered with a stub
+token and no server, so the header only).
 
 ## 83. Workshop commissions (the material sink) - design with the owner
 

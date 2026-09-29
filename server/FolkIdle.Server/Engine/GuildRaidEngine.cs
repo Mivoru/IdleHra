@@ -157,6 +157,7 @@ namespace FolkIdle.Server.Engine
                 }
 
                 goldRecord.Quantity -= cost;
+                await GoldLedger.RecordSpendAsync(db, requestingPlayerId, GoldSpendCategory.GuildRaid, cost);
 
                 long newMaxHp = (long)(RaidBossBaseHp * Math.Pow(1.5, nextTier));
 

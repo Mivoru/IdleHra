@@ -1,6 +1,6 @@
 <script lang="ts">
   import { PREF_CHEST_FILTER, PREF_CHEST_MIN_RARITY, readPrefAs, writePref } from '../lib/net/prefs';
-  import { formatCompact } from '../lib/ui/format';
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   // Modul: the village chest. Everything a character produces ends up here.
   //
   // It replaces the backpack, which capped at twenty shared slots and stopped
@@ -264,11 +264,11 @@
       if (sell) {
         play('itemSold');
         pushLocalNotice(
-          `Sold ${result.RemovedCount.toLocaleString()} pieces for ${result.GoldGained.toLocaleString()}g.${kept}`,
+          `Sold ${formatNumber(result.RemovedCount)} pieces for ${formatNumber(result.GoldGained)}g.${kept}`,
           'info',
         );
       } else {
-        pushLocalNotice(`Binned ${result.RemovedCount.toLocaleString()} pieces.${kept}`, 'info');
+        pushLocalNotice(`Binned ${formatNumber(result.RemovedCount)} pieces.${kept}`, 'info');
       }
 
       refresh();
@@ -301,7 +301,7 @@
         pushLocalNotice(`Could not ${sell ? 'sell' : 'bin'} ${label}.`);
       } else if (sell) {
         play('itemSold');
-        pushLocalNotice(`Sold ${label} for ${result.GoldGained.toLocaleString()}g.`, 'info');
+        pushLocalNotice(`Sold ${label} for ${formatNumber(result.GoldGained)}g.`, 'info');
       } else {
         pushLocalNotice(`Binned ${label}.`, 'info');
       }
@@ -643,7 +643,7 @@
           </label>
 
           <span class="dim tiny">
-            {sweepCount.toLocaleString()}
+            {formatNumber(sweepCount)}
             {sweepCount === 1 ? 'piece' : 'pieces'}
           </span>
         </div>
@@ -668,7 +668,7 @@
                just because it paid. -->
           <p class="confirm">
             {confirmingSweep === 'sell' ? 'Sell' : 'Permanently bin'}
-            {sweepCount.toLocaleString()}
+            {formatNumber(sweepCount)}
             {sweepCount === 1 ? 'piece' : 'pieces'} up to {rarityName(sweepTier)}? Worn gear is kept.
           </p>
           <div class="sweepbtns">
@@ -757,7 +757,7 @@
         <h3>
           Equipment
           <span class="dim tiny">
-            {sortedEquipment.length.toLocaleString()} shown
+            {formatNumber(sortedEquipment.length)} shown
           </span>
         </h3>
 
@@ -837,7 +837,7 @@
             <li>
               <ItemIcon baseItemId={stack.ItemId} name={prettifyBaseId(stack.ItemId)} size="sm" />
               <span class="name">{prettifyBaseId(stack.ItemId)}</span>
-              <span class="qty" data-exact={total} title={total.toLocaleString()}>{formatCompact(total)}</span>
+              <span class="qty" data-exact={total} title={numberTitle(total)}>{formatNumber(total)}</span>
 
               {#if pendingSales.has(`mat:${stack.ItemId}`)}
                 <span class="dim tiny">Selling in {secondsLeft(`mat:${stack.ItemId}`)}s</span>

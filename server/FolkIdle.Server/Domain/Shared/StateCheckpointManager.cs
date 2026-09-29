@@ -222,6 +222,10 @@ namespace FolkIdle.Server.Domain.Shared
             job.Snapshot.LogicEpochCounter = state.LogicEpochCounter + state.FlushesInFlight;
 
             state.RedisPendingGoldDelta = 0L;
+            // Task 79: the income tally goes with the snapshot the same way
+            // (FlushState writes job.Snapshot.PendingGoldIncome; a failed ack
+            // hands it back). Earnings from here on start from zero.
+            state.PendingGoldIncome = default;
             state.FlushesInFlight++;
             state.IsDirty = false;
             state.TicksSinceLastFlush = 0;
@@ -478,6 +482,9 @@ namespace FolkIdle.Server.Domain.Shared
                 {
                     state.RedisPendingGoldDelta = 0L;
                 }
+
+                // Task 79: the snapshot's tally is in gold_income_daily now.
+                state.PendingGoldIncome.Subtract(snapshot.PendingGoldIncome);
             }
             return committed;
         }
@@ -668,6 +675,10 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LarderSlot3Count = state.Food3_Count;
                         player.AutoEatThresholdPct = state.AutoEatThreshold;
                         await ApplyPendingGoldDeltaAsync(dbContext, state);
+                        // Task 79: where the tick's gold came from, in THIS
+                        // transaction - a refused or rolled-back flush counts
+                        // nothing, and its ack hands the tally back.
+                        await GoldLedger.RecordIncomeTallyAsync(dbContext, state.PlayerId, state.PendingGoldIncome);
                         // Modul: THE DEEP'S 7-DAY HIGH-WATER MARK (task 37), in
                         // THIS transaction so a flush that rolls back records
                         // nothing. CurrentGold is the live balance, which
@@ -1236,6 +1247,9 @@ namespace FolkIdle.Server.Domain.Shared
                 }
             }
 
+            // Task 79: the wire's Treasury term reads this, not the payload.
+            GoldLedger.NoteLifetimeSpent(player.Id, player.LifetimeGoldSpent);
+
             var payload = new TickStatePayload
             {
                 CachedCodexYieldMultiplier = codexYieldMultiplier,
@@ -1673,10 +1687,12 @@ namespace FolkIdle.Server.Domain.Shared
             // here is clamped the same way the old insert was.
             if (gold == null)
             {
+                // GoldLedger: banks the delta; its income was tallied where it was earned.
                 await CommodityLedger.AddAsync(dbContext, state.PlayerId, "gold", Math.Max(0L, state.RedisPendingGoldDelta));
                 return;
             }
 
+            // GoldLedger: banks the delta; its income was tallied where it was earned.
             gold.Quantity += state.RedisPendingGoldDelta;
             if (gold.Quantity < 0L) gold.Quantity = 0L;
         }
@@ -1721,8 +1737,12 @@ namespace FolkIdle.Server.Domain.Shared
         // client claim action required.
         private static async Task UpsertLifetimeAchievementsAsync(FolkIdleDbContext dbContext, PlayerRecord player, TickStatePayload state)
         {
+            // Task 79: the Treasury pays on gold SPENT, read from the row the
+            // ledger increments (never from the payload). Tiers already paid for
+            // holding gold stay paid - the award only ever moves CompletedTier up.
+            GoldLedger.NoteLifetimeSpent(state.PlayerId, player.LifetimeGoldSpent);
             await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.TreasuryAchievementId,
-                AchievementMilestones.EvaluateTreasuryTier(state.CurrentGold), state.CurrentGold);
+                AchievementMilestones.EvaluateTreasuryTier(player.LifetimeGoldSpent), player.LifetimeGoldSpent);
 
             await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.ForgingAchievementId,
                 AchievementMilestones.EvaluateForgingTier(state.ForgeUpgradeCount, state.HighestForgeSynthesisTier), state.ForgeUpgradeCount);
@@ -1857,6 +1877,13 @@ namespace FolkIdle.Server.Domain.Shared
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
                         await UpsertChroniclePassAsync(dbContext, state);
+                        // Task 79: the shutdown flush counts the tick's income
+                        // too. Written only past the epoch sieve above, which
+                        // is what keeps it once: SIGTERM runs ShutdownGracefully
+                        // and then ProcessExit runs it again over the same
+                        // payloads, and the second pass is skipped there
+                        // because the first already advanced the epoch.
+                        await GoldLedger.RecordIncomeTallyAsync(dbContext, state.PlayerId, state.PendingGoldIncome);
 
                         if (state.Slot1_CharacterId != System.Guid.Empty)
                         {

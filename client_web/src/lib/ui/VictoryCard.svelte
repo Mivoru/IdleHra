@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from './format';
   // Modul: THE FIRST CLEAR, ACKNOWLEDGED.
   //
   // Until a boss is put down once it carries FIVE times its health and TWICE
@@ -73,8 +74,8 @@
 
       <dl class="stats">
         <div><dt>Fight lasted</dt><dd>{formatFightDuration(victory.durationSeconds)}</dd></div>
-        <div><dt>Gold</dt><dd>{victory.gold.toLocaleString()}</dd></div>
-        <div><dt>Experience</dt><dd>{victory.xp.toLocaleString()}</dd></div>
+        <div><dt>Gold</dt><dd title={numberTitle(victory.gold)}>{formatNumber(victory.gold)}</dd></div>
+        <div><dt>Experience</dt><dd title={numberTitle(victory.xp)}>{formatNumber(victory.xp)}</dd></div>
       </dl>
 
       <h3>What it opened</h3>

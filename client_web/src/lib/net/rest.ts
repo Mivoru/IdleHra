@@ -24,6 +24,8 @@ export const queryKeys = {
   worn: ['player', 'worn'] as const,
   records: ['player', 'records'] as const,
   chestSettings: ['player', 'chestSettings'] as const,
+  /** Task 79: where this player's gold went. */
+  goldLedger: ['player', 'goldLedger'] as const,
   statistics: ['player', 'statistics'] as const,
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
   /** Task 78: the hunting advisor, per character slot. */
@@ -2063,4 +2065,49 @@ export interface CombatProjection {
 /** 409 when there is no live session to project from - the caller shows nothing. */
 export function fetchCombatProjection(slot = 0): Promise<CombatProjection> {
   return authedGet<CombatProjection>(`/api/v1/combat/projection?slot=${slot}`);
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/player/gold-ledger (task 79)
+// ---------------------------------------------------------------------------
+
+export interface GoldLedgerCategory {
+  /** The server's GoldSpendCategory name, e.g. "Reroll", "Village". */
+  Category: string;
+  Last7Days: number;
+  Last30Days: number;
+  SinceRecorded: number;
+}
+
+export interface GoldLedger {
+  /** Every coin spent since the ledger began - what the Treasury deed pays on. */
+  LifetimeSpent: number;
+  /** First UTC day with a row (yyyy-mm-dd), or null when nothing is recorded yet. */
+  RecordedSince: string | null;
+  /** Biggest all-time sink first. */
+  Categories: GoldLedgerCategory[];
+  /**
+   * Phase 2. First UTC day with an income row. Income began recording later
+   * than spending, so it has its own date rather than sharing RecordedSince.
+   */
+  IncomeRecordedSince: string | null;
+  /** Gold in, by source. `Category` holds the server's GoldIncomeSource name, e.g. "Combat", "ChestSale". */
+  Income: GoldLedgerCategory[];
+  MaterialsRecordedSince: string | null;
+  /** Biggest all-time flow first. */
+  Materials: MaterialFlow[];
+}
+
+export interface MaterialFlow {
+  /** The CommodityRecords item id - a gathering slug or a catalogued id. */
+  ItemId: string;
+  /** The server's MaterialFlowDirection name: Gathered, Spent, LostToWarehouseCap, Sold or Discarded. */
+  Direction: string;
+  Last7Days: number;
+  Last30Days: number;
+  SinceRecorded: number;
+}
+
+export function fetchGoldLedger(): Promise<GoldLedger> {
+  return authedGet<GoldLedger>('/api/v1/player/gold-ledger');
 }

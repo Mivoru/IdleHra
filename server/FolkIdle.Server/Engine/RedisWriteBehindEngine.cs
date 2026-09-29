@@ -195,6 +195,8 @@ namespace FolkIdle.Server.Engine
 
             // Modul: an upsert (CommodityLedger), task 44. Same increment, same
             // transaction; only the row creation is race-free now.
+            // GoldLedger: banks the delta; its income was tallied where it was
+            // earned and is written by the checkpoint, not here.
             await CommodityLedger.AddAsync(db, playerId, "gold", delta);
             return delta;
         }
@@ -211,6 +213,10 @@ namespace FolkIdle.Server.Engine
             }
 
             await CommodityLedger.AddAsync(db, playerId, itemId, delta);
+            // Task 79: live village production is gathered material, recorded
+            // where it is banked - the buffer is reversed only after this
+            // transaction commits, so the row follows the stack exactly.
+            await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.Gathered, itemId, delta);
             appliedDeltas.Add((bufferKey, delta));
         }
 

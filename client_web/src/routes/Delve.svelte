@@ -35,7 +35,7 @@
   import { onMount } from 'svelte';
   import { play } from '../lib/ui/audio';
   import Money from '../lib/ui/Money.svelte';
-  import { formatCompact } from '../lib/ui/format';
+  import { formatNumber } from '../lib/ui/format';
 
   /*
     Modul: SVG, NOT A GLYPH. This screen shipped with ◆ and ● in its markup,
@@ -140,7 +140,7 @@
     switch (outcome.Result) {
       case 'NotEnoughGold':
         return outcome.View.AtLanding
-          ? `Not enough gold for the toll of ${formatCompact(outcome.View.DescendQuote)}. Nothing was charged.`
+          ? `Not enough gold for the toll of ${formatNumber(outcome.View.DescendQuote)}. Nothing was charged.`
           : 'Not enough gold for the gate.';
       case 'RunAlreadyInProgress':
         return 'You are already down there.';
@@ -163,7 +163,7 @@
           ? 'The bottom of the Delve. Climb out with what you have, or pay to go deeper.'
           : 'The bottom. There is nothing below this - take what you have and climb.';
       case 'PriceChanged':
-        return `Your purse grew since the price was shown. The stake is now ${formatCompact(outcome.View.StakeGold)} gold. Nothing was charged.`;
+        return `Your purse grew since the price was shown. The stake is now ${formatNumber(outcome.View.StakeGold)} gold. Nothing was charged.`;
       case 'NotAtTheBottom':
         return 'There are still doors in front of you. Descending waits until the floor is clear.';
       case 'DeepDisabled':
@@ -192,16 +192,16 @@
           // A descent: say what was banked on the way down and what the toll took.
           const banked: string[] = [];
           if (outcome.DiamondsGranted > 0) banked.push(`${outcome.DiamondsGranted} diamonds`);
-          if (outcome.GoldReturned > 0) banked.push(`${formatCompact(outcome.GoldReturned)} gold`);
+          if (outcome.GoldReturned > 0) banked.push(`${formatNumber(outcome.GoldReturned)} gold`);
           notice =
             fn === lightLantern
-              ? `You pay ${formatCompact(outcome.GoldCharged)} gold and the lantern burns again.`
+              ? `You pay ${formatNumber(outcome.GoldCharged)} gold and the lantern burns again.`
               : (banked.length ? `Floors 1-8 banked: ${banked.join(' and ')}. ` : '') +
-                `You pay ${formatCompact(outcome.GoldCharged)} gold and go down to floor ${outcome.View.CurrentFloor}.`;
+                `You pay ${formatNumber(outcome.GoldCharged)} gold and go down to floor ${outcome.View.CurrentFloor}.`;
         } else if (outcome.Result === 'Ok' && (outcome.DiamondsGranted > 0 || outcome.GoldReturned > 0)) {
           const parts: string[] = [];
           if (outcome.DiamondsGranted > 0) parts.push(`${outcome.DiamondsGranted} diamonds`);
-          if (outcome.GoldReturned > 0) parts.push(`${formatCompact(outcome.GoldReturned)} gold`);
+          if (outcome.GoldReturned > 0) parts.push(`${formatNumber(outcome.GoldReturned)} gold`);
           notice = `You climb out with ${parts.join(' and ')}.`;
         }
       } else {
@@ -384,8 +384,8 @@
               onclick={() => act(lightLantern)}
             >
               {view.CurrentGold < view.LanternPrice
-                ? `Not enough gold for a lantern: ${formatCompact(view.LanternPrice)}`
-                : `Light another lantern: ${formatCompact(view.LanternPrice)}`}
+                ? `Not enough gold for a lantern: ${formatNumber(view.LanternPrice)}`
+                : `Light another lantern: ${formatNumber(view.LanternPrice)}`}
             </button>
             <p class="muted small">
               Each lantern costs twice the last. {view.LanternRefillsLeft} left on this run.
@@ -430,7 +430,7 @@
               disabled={busy || view.CurrentGold + view.ConsolationGoldIfCapped < view.DescendQuote}
               onclick={() => act(() => descendDeep(view!.StakeGold))}
             >
-              {isDeep ? `Descend to floor ${view.NextDeepFloor}` : 'Descend into the Deep'}: toll {formatCompact(view.DescendQuote)}
+              {isDeep ? `Descend to floor ${view.NextDeepFloor}` : 'Descend into the Deep'}: toll {formatNumber(view.DescendQuote)}
             </button>
             <p class="muted small">
               {#if isDeep}
@@ -448,7 +448,7 @@
               Walk out
             {:else}
               Climb out with {view.DiamondsAfterCeiling}{@render Diamond()}{view.ConsolationGoldIfCapped > 0
-                ? ` + ${formatCompact(view.ConsolationGoldIfCapped)} gold`
+                ? ` + ${formatNumber(view.ConsolationGoldIfCapped)} gold`
                 : ''}
             {/if}
           </button>

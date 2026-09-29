@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   import { locationName } from '../lib/ui/locations';
   import { onMount } from 'svelte';
   import { createQuery } from '@tanstack/svelte-query';
@@ -90,8 +91,8 @@
       <p class="dim tiny">No region requirements are defined.</p>
     {:else}
       <p class="dim tiny reg-note">
-        Each region needs {regions[0].RequiredKills.toLocaleString()} kills of every
-        ordinary monster and {regions[0].RequiredBossKills.toLocaleString()} of its
+        Each region needs {formatNumber(regions[0].RequiredKills)} kills of every
+        ordinary monster and {formatNumber(regions[0].RequiredBossKills)} of its
         boss. The bar tracks your <em>least</em>-killed ordinary monster, not your
         total. Finishing one grants +{LOOT_LUCK_PER_REGION_PCT}% loot luck
         permanently.
@@ -109,10 +110,10 @@
               value={Math.min(region.CurrentKills, region.RequiredKills)}
               max={Math.max(1, region.RequiredKills)}
               color={region.IsCompleted ? 'var(--good)' : 'var(--rarity-6)'}
-              label={`${region.CurrentKills.toLocaleString()} / ${region.RequiredKills.toLocaleString()}`}
+              label={`${formatNumber(region.CurrentKills)} / ${formatNumber(region.RequiredKills)}`}
             />
             <span class="dim tiny">
-              Boss {region.BossKills.toLocaleString()} / {region.RequiredBossKills.toLocaleString()}
+              Boss {formatNumber(region.BossKills)} / {formatNumber(region.RequiredBossKills)}
             </span>
           </li>
         {/each}
@@ -148,7 +149,7 @@
                 <span class="name">{monster.Name}</span>
                 <span class="dim tiny">
                   {#if entry && entry.Kills > 0}
-                    lv {entry.Level} &middot; {entry.Kills.toLocaleString()} kills
+                    lv {entry.Level} &middot; {formatNumber(entry.Kills)} kills
                   {:else}
                     never encountered
                   {/if}
@@ -159,13 +160,13 @@
                   value={entry.Kills}
                   max={Math.max(1, entry.NextLevelKills)}
                   color="var(--rarity-6)"
-                  label={`${entry.Kills.toLocaleString()} / ${entry.NextLevelKills.toLocaleString()}`}
+                  label={`${formatNumber(entry.Kills)} / ${formatNumber(entry.NextLevelKills)}`}
                 />
               {/if}
               <div class="dim tiny stats">
-                {monster.MaxHp.toLocaleString()} HP &middot;
-                {monster.AttackPower.toLocaleString()} atk &middot;
-                {monster.BaseXpReward.toLocaleString()} xp
+                {formatNumber(monster.MaxHp)} HP &middot;
+                {formatNumber(monster.AttackPower)} atk &middot;
+                {formatNumber(monster.BaseXpReward)} xp
               </div>
             </li>
           {/each}

@@ -153,6 +153,19 @@ namespace FolkIdle.Server.Engine
                         {
                             commodity.Quantity = Math.Max(0L, commodity.Quantity + amount);
                         }
+
+                        // Task 79: a delayed grant is counted when it LANDS -
+                        // the original credit rolled back and counted nothing.
+                        // Same transaction as the credit, like every writer.
+                        if (itemId == "gold")
+                        {
+                            await GoldLedger.RecordIncomeAsync(db, row.PlayerId, GoldLedger.SourceForPendingGrant(row.SourceType), amount);
+                        }
+                        else if (row.SourceType == PendingGrantSourceType.Gathering
+                                 || row.SourceType == PendingGrantSourceType.OfflineVillageProduction)
+                        {
+                            await MaterialLedger.RecordAsync(db, row.PlayerId, MaterialFlowDirection.Gathered, itemId, amount);
+                        }
                     }
                     return true;
 

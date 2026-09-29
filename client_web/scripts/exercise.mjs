@@ -9,6 +9,7 @@
 // nothing and every "does forge fusion work" question answers itself with
 // "there is nothing to fuse".
 import { chromium } from 'playwright';
+import { navButton } from './screens.mjs';
 
 const results = [];
 function record(name, ok, detail) {
@@ -57,7 +58,7 @@ const go = async (label) => {
   // "Market", "Guild" and so on too, and an unscoped lookup resolved to
   // whichever came first in the DOM - which is the map, and only while the map
   // is the screen being shown. Navigation has to mean the nav.
-  await page.locator('header').getByRole('button', { name: menuLabel, exact: true }).first().click();
+  await (await navButton(page, menuLabel)).click();
   if (subTab) await page.locator(`[data-subtab="${subTab}"]`).first().click();
   await page.waitForFunction(
     () => !/\bLoading\.\.\./.test(document.body.innerText),
@@ -1501,7 +1502,7 @@ await go('World Boss');
         const total = await page.locator('[data-testid="boss-total"]').innerText().catch(() => '');
         record(
           'the damage board shows your place and what everyone dealt together',
-          /#\d+/.test(me) && new RegExp(damage.toLocaleString('en-US').replace(/,/g, '[,\\s\\u00a0.]?')).test(me) && /dealt/.test(total),
+          /#\d+/.test(me) && (damage > 100000 ? /\d\s*[kMBT]\b/.test(me) : me.replace(/[\s\u00a0\u202f,.]/g, '').includes(String(damage))) && /dealt/.test(total),
           `"${me.trim()}" / "${total.trim()}"`,
         );
         const grey = await page.locator('[data-testid="wheel-strike"]').isDisabled();
@@ -2711,6 +2712,37 @@ await go('Chest');
   }
 }
 
+// --- the gold ledger (task 79) ------------------------------------------------
+//
+// The stack fusion above spends gold (and the Delve/Deep steps do too). The
+// ledger must have recorded it by category, and Progress must draw the split.
+{
+  const ledger = await apiGet('/api/v1/player/gold-ledger');
+  const categories = (ledger?.Categories ?? []).map((c) => c.Category);
+  record(
+    'the gold ledger records spending by category',
+    ledger !== null && ledger.LifetimeSpent > 0 && categories.includes('Fusion'),
+    `${ledger?.LifetimeSpent ?? '?'} spent; ${categories.join(', ') || 'no categories'}`,
+  );
+  // Phase 2: gold IN by source. Kill gold is tallied on the payload and
+  // written by the next checkpoint (periodic, a command's, a reload's), and
+  // the combat step ran long before this. No single source is required:
+  // which ones exist depends on the day.
+  const income = ledger?.Income ?? [];
+  record(
+    'the gold ledger records income by source',
+    ledger !== null && ledger.IncomeRecordedSince !== null && income.some((c) => c.SinceRecorded > 0),
+    `${income.map((c) => `${c.Category} ${c.SinceRecorded}`).join(', ') || 'no sources'}; since ${ledger?.IncomeRecordedSince ?? '?'}`,
+  );
+  await go('Progress');
+  await page.locator('[data-progress-tab="stats"]').first().click().catch(() => {});
+  await page.locator('[data-gold-ledger]').first().waitFor({ timeout: 10000 }).catch(() => {});
+  record('Progress shows where the gold went', (await page.locator('[data-gold-ledger] li').count()) > 0);
+  if (income.some((c) => c.Last30Days > 0)) {
+    record('Progress shows where the gold came from', (await page.locator('[data-gold-income] li').count()) > 0);
+  }
+}
+
 // --- auto-salvage: the drain at the source -----------------------------------
 //
 // Modul: the bulk sweep clears a backlog; this stops one forming. A drop at or
@@ -2883,7 +2915,8 @@ await go('Village');
 
   const before = await tally();
   const feastButton = page.getByRole('button', { name: /^Throw a feast/ });
-  const price = async () => Number((await feastButton.first().innerText()).replace(/[^\d]/g, ''));
+  // Modul: read the published exact price - the label compacts above 100,000 (task 74).
+  const price = async () => Number(await feastButton.first().getAttribute('data-exact'));
 
   const offered = (await feastButton.count()) > 0;
   record('the village offers a feast with a price', offered,
@@ -3154,12 +3187,12 @@ await go('Breeding');
     );
     // On a failure the screen's own refusal is the useful detail - it is a
     // sentence now rather than a server code, so it says what to fix.
-    const priced = /Costs [\d,]+g/.test(preview);
+    const priced = /Costs [\d,.\s]+[kMBT]?g/.test(preview);
     record(
       'the preview quotes a price',
       priced,
       priced
-        ? (preview.match(/Costs [\d,\s]+g/) ?? [''])[0]
+        ? (preview.match(/Costs [\d,.\s]+[kMBT]?g/) ?? [''])[0]
         : (await page.locator('.panel .warn').allInnerTexts()).join(' | ') || 'no reason shown',
     );
 
@@ -3327,7 +3360,7 @@ await go('Progress');
     .first()
     .innerText()
     .catch(() => '');
-  record('the Progress screen shows a real highest hit', /Highest hit\s*[\d,\s]*[1-9]/.test(hitLine), hitLine.replace(/\s+/g, ' '));
+  record('the Progress screen shows a real highest hit', /Highest hit\s*[\d,.\s]*[1-9]/.test(hitLine), hitLine.replace(/\s+/g, ' '));
 
   // Task 56: the rates table and the style come from the server's samples.
   const insights = await apiGet('/api/v1/player/insights');
@@ -3670,7 +3703,12 @@ await go('Ancestors');
     // A press on the nav while the layer is up lands on the cover. Pressed by
     // coordinates, because Playwright (rightly) refuses to click a covered
     // element - which is exactly what a thumb does not refuse.
-    const navBox = await fresh.locator('header').getByRole('button', { name: 'Gathering', exact: true }).first().boundingBox();
+    // Task 82: on a desktop 'Gathering' sits behind the Play dropdown, so the
+    // thing pressed is whichever of the two is on screen.
+    const gatherNav = fresh.locator('header nav').getByRole('button', { name: 'Gathering', exact: true }).first();
+    const navBox = (await gatherNav.isVisible().catch(() => false))
+      ? await gatherNav.boundingBox()
+      : await fresh.locator('header [data-group-toggle="Play"]').first().boundingBox();
     if (navBox) await fresh.mouse.click(navBox.x + navBox.width / 2, navBox.y + navBox.height / 2);
     await fresh.waitForTimeout(800);
     const fenced = !(await fresh.evaluate(() => /Hauled this session/i.test(document.body.innerText)));
@@ -3734,7 +3772,7 @@ await go('Ancestors');
         return res.status;
       };
       const openStatus = await freshWindow(true);
-      await fresh.locator('header').getByRole('button', { name: 'World Boss', exact: true }).first().click();
+      await (await navButton(fresh, 'World Boss')).click();
       const active = await fresh
         .waitForFunction(() => (document.querySelector('.state')?.textContent ?? '').trim() === 'Active', null, { timeout: 70000 })
         .then(() => true)
@@ -3846,7 +3884,7 @@ await go('Ancestors');
     //    It does not fight: winning is minutes of real combat, and the claim
     //    worth holding here is that the entrance opens, not how long region 1
     //    takes.
-    await fresh.locator('header').getByRole('button', { name: 'Gathering', exact: true }).first().click();
+    await (await navButton(fresh, 'Gathering')).click();
     await fresh.waitForTimeout(1500);
     const rod = fresh
       .locator('.panel')
@@ -3860,7 +3898,7 @@ await go('Ancestors');
       await rod.click();
       await fresh.waitForTimeout(45000);
 
-      await fresh.locator('header').getByRole('button', { name: 'Supplies', exact: true }).first().click();
+      await (await navButton(fresh, 'Supplies')).click();
       await fresh.waitForTimeout(1500);
 
       const foodSelect = fresh.locator('select').first();
@@ -3873,7 +3911,7 @@ await go('Ancestors');
 
     // 5. Settings owns the off switch and the way back, and neither is
     //    reachable only once.
-    await fresh.locator('header').getByRole('button', { name: 'Settings', exact: true }).first().click();
+    await (await navButton(fresh, 'Settings')).click();
     await fresh.waitForTimeout(1200);
     const explanations = await fresh.locator('.explanations li').count();
     record(

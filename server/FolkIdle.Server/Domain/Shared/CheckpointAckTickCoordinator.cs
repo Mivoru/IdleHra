@@ -94,7 +94,10 @@ namespace FolkIdle.Server.Domain.Shared
             // way a failed synchronous flush always did. CurrentGold already
             // includes these coins - only the "still owed to the database"
             // counter moves.
+            // GoldLedger: coins handed back by a failed flush - owed again,
+            // not new income. Their tally comes back beside them, uncounted.
             payload.RedisPendingGoldDelta += ack.GoldDelta;
+            payload.PendingGoldIncome.Add(in ack.Income);
             payload.IsDirty = true;
             if (payload.TicksSinceLastFlush < StateCheckpointManager.CheckpointBoundaryTicks)
             {

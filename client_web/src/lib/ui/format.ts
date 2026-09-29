@@ -6,13 +6,19 @@
 // five they can read at speed. The dev fixture is sitting on five million gold
 // and every screen prints it in full.
 //
-// WHY THE THRESHOLD IS A MILLION AND NOT A THOUSAND.
+// WHY THE THRESHOLD IS 100,000 AND NOT A THOUSAND.
 //
 // Compacting early destroys information a player actually uses. A Delve gate
-// costs 17,000 and a reroll 2,000; rendered as "17.0K" and "2.0K" those two
-// stop being comparable at a glance, and the trailing zero is a lie about
-// precision. Six digits and under are still readable in groups - the separator
-// is doing its job there. Seven and up are not, and that is where this starts.
+// costs 17,000 and a reroll 2,000; rendered as "17 k" and "2 k" they would
+// lose their real precision. Up to 100,000 the thin-space grouping is still
+// doing its job. Above it the digits have to be counted, so it becomes
+// "123 k" / "5.04 M" (task 74: this was a million until the sweep made every
+// screen go through here; the six-digit band read worse than the compact form).
+//
+// ONE FORMATTER: every quantity on every screen (gold, diamonds, xp, hp,
+// materials, counts) goes through formatNumber. A raw `.toLocaleString()` on a
+// quantity is now a bug - it prints "5,042,484" in one place and "5.04 M" in
+// the next, and separates by the DEVICE's locale rather than the UI language.
 //
 // WHY THE EXACT VALUE NEVER GOES AWAY.
 //
@@ -25,57 +31,102 @@
 // be changed, so the exact value is published as data rather than inferred
 // from text.
 
-/** Below this, a number is written out in full with locale separators. */
-export const COMPACT_THRESHOLD = 1_000_000;
+import { get } from 'svelte/store';
+import { language } from './i18n';
+
+/** Up to and including this, a number is written out in full. */
+export const COMPACT_THRESHOLD = 100_000;
+
+/** Narrow no-break space (U+202F, a thin space that never wraps mid-number): the group separator in every UI language. */
+export const GROUP_SEPARATOR = '\u202F';
 
 const UNITS = [
   { value: 1e12, suffix: 'T' },
   { value: 1e9, suffix: 'B' },
   { value: 1e6, suffix: 'M' },
+  { value: 1e3, suffix: 'k' },
 ] as const;
 
-/** The full figure, with this locale's group separators. Never compacted. */
-export function formatExact(value: number | bigint | string): string {
-  const n = typeof value === 'bigint' ? value : Number(value);
-  if (typeof n === 'number' && !Number.isFinite(n)) return '0';
-  return n.toLocaleString();
+// Modul: the decimal mark follows the UI language (the picker in Settings),
+// NOT navigator.language - the same reason i18n stopped reading the device.
+// The group separator is the thin space everywhere, so only the point moves.
+// Read at call time (not subscribed): the language changes from Settings, and
+// every screen re-renders from server pushes within a second anyway.
+function decimalMark(): string {
+  return get(language) === 'En' ? '.' : ',';
 }
 
-/**
- * The figure as a player should read it: full up to a million, then compacted
- * to three significant figures.
- *
- * 999,999 -> "999,999"   1,000,000 -> "1M"   5,042,484 -> "5.04M"
- * 152,100,000 -> "152M"  1,240,000,000 -> "1.24B"
- *
- * Modul: THREE SIGNIFICANT FIGURES, not a fixed decimal count. "1.00M" and
- * "152.10M" carry the same information as "1M" and "152M" while being longer
- * and implying a precision the compaction has already thrown away. Trailing
- * zeros after the point are dropped for the same reason.
- */
-export function formatCompact(value: number | bigint | string): string {
+function toNumber(value: number | bigint | string): number {
   const n = Number(value);
-  if (!Number.isFinite(n)) return '0';
+  return Number.isFinite(n) ? n : 0;
+}
 
-  const abs = Math.abs(n);
-  if (abs < COMPACT_THRESHOLD) return formatExact(n);
+function group(digits: string): string {
+  return digits.replace(/\B(?=(\d{3})+(?!\d))/g, GROUP_SEPARATOR);
+}
 
-  for (const unit of UNITS) {
-    if (abs < unit.value) continue;
-
-    const scaled = abs / unit.value;
-    // 3 significant figures: 5.04, 15.2, 152. parseFloat drops the trailing
-    // zeros toFixed leaves behind, so 1.00 becomes 1.
-    const digits = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
-    const body = parseFloat(scaled.toFixed(digits)).toString();
-    return `${n < 0 ? '-' : ''}${body}${unit.suffix}`;
-  }
-
-  return formatExact(n);
+/** The full figure, rounded to a whole number, thin-space grouped. Never compacted. */
+export function formatExact(value: number | bigint | string): string {
+  const n = toNumber(value);
+  const r = Math.round(Math.abs(n));
+  // Rounds to zero: no "-0".
+  const sign = n < 0 && r !== 0 ? '-' : '';
+  return sign + group(r.toLocaleString('en-US', { useGrouping: false }));
 }
 
 /** Whether this value would actually be shortened - i.e. whether the exact figure is worth publishing. */
-export function isCompacted(value: number | bigint | string): boolean {
-  const n = Number(value);
-  return Number.isFinite(n) && Math.abs(n) >= COMPACT_THRESHOLD;
+export function isCompacted(value: number | bigint | string, from: number = COMPACT_THRESHOLD): boolean {
+  return Math.abs(toNumber(value)) > from;
+}
+
+/**
+ * THE number format. Whole numbers with a thin-space group separator up to
+ * 100,000, compact above with three significant figures:
+ *
+ * 99,999 -> "99 999"   100,000 -> "100 000"   100,001 -> "100 k"
+ * 34,500 -> "34 500"   1,240,000 -> "1.24 M"   152,100,000 -> "152 M"
+ *
+ * Three significant figures, trailing zeros dropped ("1 M", not "1.00 M"),
+ * because the extra digits imply a precision the compaction threw away.
+ * Where compacted, pair it with numberTitle() so the exact value is one hover
+ * away; Money.svelte also publishes `data-exact` for machines.
+ *
+ * `compactFrom` exists for the one place that has no room for six digits: the
+ * item-icon quantity badge (compacts above 9,999). Same format, earlier cut.
+ */
+export function formatNumber(value: number | bigint | string, compactFrom: number = COMPACT_THRESHOLD): string {
+  const n = toNumber(value);
+  if (!isCompacted(n, compactFrom)) return formatExact(n);
+
+  const abs = Math.abs(n);
+  let i = UNITS.findIndex((u) => abs >= u.value);
+  let scaled = abs / UNITS[i].value;
+  let text = roundSig(scaled);
+  // 999,999 -> 1000 k must carry into 1 M.
+  if (parseFloat(text) >= 1000 && i > 0) {
+    i -= 1;
+    scaled = abs / UNITS[i].value;
+    text = roundSig(scaled);
+  }
+  const mark = decimalMark();
+  return `${n < 0 ? '-' : ''}${mark === '.' ? text : text.replace('.', mark)}${GROUP_SEPARATOR}${UNITS[i].suffix}`;
+}
+
+function roundSig(scaled: number): string {
+  const digits = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
+  return parseFloat(scaled.toFixed(digits)).toString();
+}
+
+/** The `title` for a number: the exact figure when formatNumber shortened it, else undefined (no tooltip). */
+export function numberTitle(value: number | bigint | string, compactFrom: number = COMPACT_THRESHOLD): string | undefined {
+  return isCompacted(value, compactFrom) ? formatExact(value) : undefined;
+}
+
+/** A non-integer rate ("1.5 per hour"), grouped and decimal-marked like everything else. */
+export function formatDecimal(value: number, maxFractionDigits = 1): string {
+  const n = toNumber(value);
+  const fixed = parseFloat(Math.abs(n).toFixed(maxFractionDigits)).toString();
+  const [whole, frac] = fixed.split('.');
+  const sign = n < 0 && parseFloat(fixed) !== 0 ? '-' : '';
+  return sign + group(whole) + (frac ? decimalMark() + frac : '');
 }

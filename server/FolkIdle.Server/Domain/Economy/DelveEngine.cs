@@ -586,6 +586,7 @@ namespace FolkIdle.Server.Domain.Economy
                 }
 
                 goldRow.Quantity -= fee;
+                await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Delve, fee);
 
                 var (packed, mask) = RollFloor(player.BaseLuck, rng);
                 var run = new DelveRunRecord
@@ -809,6 +810,7 @@ namespace FolkIdle.Server.Domain.Economy
             if (consolation > 0)
             {
                 await CommodityLedger.AddAsync(db, playerId, "gold", consolation);
+                await GoldLedger.RecordIncomeAsync(db, playerId, GoldIncomeSource.Delve, consolation);
             }
             var goldRow = await LockGoldRowAsync(db, playerId);
 
@@ -942,6 +944,7 @@ namespace FolkIdle.Server.Domain.Economy
                 var player = await db.PlayerRecords.SingleAsync(p => p.Id == playerId);
                 goldRow!.Quantity -= price;
                 player.DelveDeepGoldSpent += price;
+                await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Deep, price);
                 run!.LanternsBought++;
                 run.ChargesRemaining = 1;
                 // A fresh light shows the floor afresh - from the weekly
@@ -1112,6 +1115,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 goldRow.Quantity -= toll;
                 player!.DelveDeepGoldSpent += toll;
+                await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Deep, toll);
 
                 if (!run.IsDeep)
                 {

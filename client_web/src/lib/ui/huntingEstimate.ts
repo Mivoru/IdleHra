@@ -4,7 +4,7 @@
 // model this codebase has had to delete.
 
 import type { HuntingEstimate } from '../net/rest';
-import { formatCompact } from './format';
+import { formatNumber } from './format';
 
 function seconds(s: number): string {
   if (s >= 90) return `${Math.round(s / 60)} min`;
@@ -25,7 +25,7 @@ export function safety(e: HuntingEstimate): { tone: SafetyTone; text: string } {
   if (e.SurvivesWithoutFood) return { tone: 'safe', text: 'safe' };
   if (e.SurvivesWithFood) {
     const bites = Math.ceil(e.FoodPerHour);
-    return { tone: 'food', text: `needs food (~${bites.toLocaleString()}/h)` };
+    return { tone: 'food', text: `needs food (~${formatNumber(bites)}/h)` };
   }
   return { tone: 'danger', text: 'you would die' };
 }
@@ -33,5 +33,5 @@ export function safety(e: HuntingEstimate): { tone: SafetyTone; text: string } {
 /** The whole line, for a title attribute and for tests. */
 export function estimateLine(e: HuntingEstimate): string {
   if (!e.CanDamage) return 'Estimate: you cannot hurt it yet';
-  return `Estimate: ${killTimeText(e)} a kill · ${formatCompact(e.XpPerHour)} XP/h · ${formatCompact(e.GoldPerHour)} g/h · ${safety(e).text}`;
+  return `Estimate: ${killTimeText(e)} a kill · ${formatNumber(e.XpPerHour)} XP/h · ${formatNumber(e.GoldPerHour)} g/h · ${safety(e).text}`;
 }

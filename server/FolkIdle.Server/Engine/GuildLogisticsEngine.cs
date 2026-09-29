@@ -66,6 +66,7 @@ namespace FolkIdle.Server.Engine
 
                 // Deduct material
                 commodity.Quantity -= quantity;
+                await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.Spent, materialName, quantity); // task 79
 
                 // Atomic addition for GuildDepotBalances (Upsert pattern since it might not exist)
                 var upsertDepotQuery = @"

@@ -1350,6 +1350,7 @@ namespace FolkIdle.Server.Engine
                 // still lands in the player's chest/bank.
                 if (salvage.Gold > 0L)
                 {
+                    // GoldLedger: counted when the outbox applies it (PendingGrantOutbox).
                     resolvedCommodityDeltas["gold"] = resolvedCommodityDeltas.GetValueOrDefault("gold") + salvage.Gold;
                 }
 
@@ -1766,6 +1767,11 @@ namespace FolkIdle.Server.Engine
 
                     // Modul: one multi-row upsert (CommodityLedger), task 44.
                     await CommodityLedger.AddManyAsync(dbContext, playerId,
+                        byMaterial.Select(m => new KeyValuePair<string, long>(m.Key, m.Value.Quantity)));
+                    // Task 79: the material flow, in the same transaction (and
+                    // inside the retried delegate, so a retry after a rollback
+                    // counts once).
+                    await MaterialLedger.RecordManyAsync(dbContext, playerId, MaterialFlowDirection.Gathered,
                         byMaterial.Select(m => new KeyValuePair<string, long>(m.Key, m.Value.Quantity)));
 
                     await dbContext.SaveChangesAsync();

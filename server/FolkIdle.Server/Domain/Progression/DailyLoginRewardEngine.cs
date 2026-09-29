@@ -156,6 +156,7 @@ namespace FolkIdle.Server.Domain.Progression
 
                     // Modul: an upsert inside this transaction (CommodityLedger).
                     await CommodityLedger.AddAsync(context, player.Id, "gold", goldReward);
+                    await GoldLedger.RecordIncomeAsync(context, player.Id, GoldIncomeSource.LoginReward, goldReward);
 
                     if (diamondReward > 0)
                     {

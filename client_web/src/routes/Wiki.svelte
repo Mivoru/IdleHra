@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   import { PREF_WIKI_TAB, readPref, writePref } from '../lib/net/prefs';
   // Modul: the wiki. Fifteen pages, a search across all of them, and a ledger
   // at the end saying which of the game's screens each one covers.
@@ -344,7 +345,7 @@
             server extrapolates what they would have done, up to a cap. You get a
             summary of the loot and experience on your return. The Town Hall pays
             gold and the Lumberjack and Mine produce materials over the same
-            window, capped by the Warehouse at {WAREHOUSE_PER_LEVEL.toLocaleString()} per level per
+            window, capped by the Warehouse at {formatNumber(WAREHOUSE_PER_LEVEL)} per level per
             material — a Warehouse at level 0 banks nothing at all.
           </p>
 
@@ -699,8 +700,8 @@
                 {#each LOCATION_NAMES as name, index (name)}
                   <tr>
                     <td>{index + 1}. {name}</td>
-                    <td class="num">{REROLL_GOLD_BY_REGION[index + 1].toLocaleString()}</td>
-                    <td class="num">{Math.round(regionGold[index] ?? 0).toLocaleString()}g</td>
+                    <td class="num" title={numberTitle(REROLL_GOLD_BY_REGION[index + 1])}>{formatNumber(REROLL_GOLD_BY_REGION[index + 1])}</td>
+                    <td class="num">{formatNumber(Math.round(regionGold[index] ?? 0))}g</td>
                     <td class="num">{rerollInKills[index] ?? '—'}</td>
                   </tr>
                 {/each}
@@ -709,7 +710,7 @@
           </div>
           <p class="dim tiny">
             Worked example: a reroll on a Scorched Wasteland item costs
-            {REROLL_GOLD_BY_REGION[3].toLocaleString()} gold, which is about
+            {formatNumber(REROLL_GOLD_BY_REGION[3])} gold, which is about
             {rerollInKills[2] ?? '—'} kills of an average Scorched Wasteland
             regular — a few minutes. The chase for a Legendary affix is measured in
             hundreds of attempts, which is exactly why the price is flat: an
@@ -839,11 +840,11 @@
                     <div class="monster-info">
                       <strong>{monster.Name}</strong>
                       <span class="dim tiny">
-                        {monster.MaxHp.toLocaleString()} hp · {monster.AttackPower} dmg ·
+                        {formatNumber(monster.MaxHp)} hp · {monster.AttackPower} dmg ·
                         {monster.Armor} armour · {monster.DodgeRating} dodge
                       </span>
                       <span class="dim tiny">
-                        {monster.BaseGoldReward.toLocaleString()}g · {monster.BaseXpReward.toLocaleString()} xp
+                        {formatNumber(monster.BaseGoldReward)}g · {formatNumber(monster.BaseXpReward)} xp
                       </span>
                     </div>
                   </div>
@@ -1248,7 +1249,7 @@
             Everyone you have bred lives on the Hall's roster. It holds
             <strong>{HALL_BASE_SLOTS}</strong>, plus one per diamond slot bought,
             hard cap <strong>{HALL_MAX_SLOTS}</strong>. Slots cost
-            {HALL_SLOT_COSTS.map((c) => c.toLocaleString()).join(' / ')} diamonds.
+            {HALL_SLOT_COSTS.map((c) => formatNumber(c)).join(' / ')} diamonds.
           </p>
           <p class="dim small">
             The Hall is also where you <strong>field</strong> a character into one
@@ -1294,11 +1295,11 @@
                 {#each [1, 5, 10, 15, 20] as level (level)}
                   <tr>
                     <td class="num">{level}</td>
-                    <td class="num">{inheritanceUpgradeCost(level - 1).toLocaleString()}</td>
+                    <td class="num" title={numberTitle(inheritanceUpgradeCost(level - 1))}>{formatNumber(inheritanceUpgradeCost(level - 1))}</td>
                     <td class="num">
-                      {Array.from({ length: level }, (_, i) => inheritanceUpgradeCost(i))
-                        .reduce((a, b) => a + b, 0)
-                        .toLocaleString()}
+                      {formatNumber(
+                        Array.from({ length: level }, (_, i) => inheritanceUpgradeCost(i)).reduce((a, b) => a + b, 0),
+                      )}
                     </td>
                     <td class="num">+{level * INHERITANCE_PCT_PER_LEVEL}%</td>
                   </tr>
@@ -1309,7 +1310,7 @@
           <p class="dim tiny">
             A full stat runs to roughly 25,000 diamonds. That is the sink the
             premium currency exists for, and it is why the Hall slots — four of
-            them for {HALL_SLOT_COSTS.reduce((a, b) => a + b, 0).toLocaleString()} —
+            them for {formatNumber(HALL_SLOT_COSTS.reduce((a, b) => a + b, 0))} —
             are a real competing choice rather than an obvious one.
           </p>
 
@@ -1410,7 +1411,7 @@
           </p>
           <ul class="styled-list">
             <li><strong>Inheritance levels</strong> — the six permanent percentage bonuses. Roughly 25,000 for a full stat.</li>
-            <li><strong>Hall of Ancestors slots</strong> — four of them, {HALL_SLOT_COSTS.reduce((a, b) => a + b, 0).toLocaleString()} in total, taking the roster from {HALL_BASE_SLOTS} to {HALL_MAX_SLOTS}.</li>
+            <li><strong>Hall of Ancestors slots</strong> — four of them, {formatNumber(HALL_SLOT_COSTS.reduce((a, b) => a + b, 0))} in total, taking the roster from {HALL_BASE_SLOTS} to {HALL_MAX_SLOTS}.</li>
             <li><strong>Affix rarity upgrades</strong> — one step, on one affix, from 5 diamonds at the bottom to 196 at the top.</li>
           </ul>
 
@@ -1455,7 +1456,7 @@
           <h3 id="worldboss">The world boss</h3>
           <p class="dim small">
             A server-wide encounter with a single shared health bar —
-            {WORLD_BOSS_HP.toLocaleString()} to start — that everybody online chips
+            {formatNumber(WORLD_BOSS_HP)} to start — that everybody online chips
             at together. It is the one place your progress is visible to strangers
             in real time.
           </p>
@@ -1481,7 +1482,7 @@
               base multiplier, and a played strike is never worth less than auto-striking the best plate
               it hit. Practice is free and deals no damage.
             </li>
-            <li>Your hit is your character's real attack power, floored at {WORLD_BOSS_DAMAGE_FLOOR.toLocaleString()} before any multiplier - an account that has never fought still contributes something.</li>
+            <li>Your hit is your character's real attack power, floored at {formatNumber(WORLD_BOSS_DAMAGE_FLOOR)} before any multiplier - an account that has never fought still contributes something.</li>
             <li>A strike eats nothing: an empty larder does not stop you swinging.</li>
             <li>
               <strong>The boss does not have to fall.</strong> When the week ends - or sooner, if it
@@ -1498,7 +1499,7 @@
                   <tr>
                     <td>{row.bracket}</td>
                     <td class="num">{row.tokens}</td>
-                    <td class="num">{row.gold.toLocaleString()}</td>
+                    <td class="num" title={numberTitle(row.gold)}>{formatNumber(row.gold)}</td>
                   </tr>
                 {/each}
               </tbody>
@@ -1535,7 +1536,7 @@
                   <tr>
                     <td>{['A', 'B', 'C'][index]}</td>
                     {#each matrix as gold, day (day)}
-                      <td class="num">{gold.toLocaleString()}</td>
+                      <td class="num" title={numberTitle(gold)}>{formatNumber(gold)}</td>
                     {/each}
                   </tr>
                 {/each}

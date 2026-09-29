@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from './format';
   import { damageEvents, typicalHit } from '../stores/game';
   import { DAMAGE_TEXT_LIFETIME_MS } from '../stores/damage';
 
@@ -37,7 +38,7 @@
       data-size={magnitude(event.amount)}
       style="left: {8 + event.offset * 78}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms"
     >
-      -{event.amount.toLocaleString()}
+      -{formatNumber(event.amount)}
     </span>
   {/each}
 </div>

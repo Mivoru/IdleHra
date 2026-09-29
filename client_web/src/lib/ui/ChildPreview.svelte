@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from './format';
   // Modul: THE PREVIEW IS THE TEACHING MOMENT.
   //
   // Breeding is the densest system in the game and had the least explanation.
@@ -172,7 +173,7 @@
   {/if}
   {#if generation !== null}
     The price is 500g per generation: generation {generation}, so
-    {breedingCostFor(generation).toLocaleString()}g.
+    {formatNumber(breedingCostFor(generation))}g.
   {/if}
 </p>
 

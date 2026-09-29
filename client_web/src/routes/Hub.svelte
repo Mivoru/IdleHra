@@ -35,6 +35,9 @@
 </script>
 
 <div class="hub">
+  <!-- Modul: TASK 73 - THE ANSWER COMES BEFORE THE PAINTING. -->
+  <HomeCards />
+
   <div class="scene" style="background-image: url('{scene}')">
     {#each PLACES as place (place.key)}
       <button
@@ -46,8 +49,6 @@
       </button>
     {/each}
   </div>
-
-  <HomeCards />
 </div>
 
 <style>
@@ -58,6 +59,11 @@
   .scene {
     position: relative;
     width: 100%;
+    /* A strip under the cards, not the page: capped and centred so it stays
+       about 350px tall on a desktop. The plates are percentages of THIS box,
+       so shrinking it keeps them on their landmarks. */
+    max-width: 40rem;
+    margin: 1rem auto 0;
     /* The painting's own proportions, so the plates stay on their landmarks. */
     aspect-ratio: 1920 / 1072;
     background-size: cover;

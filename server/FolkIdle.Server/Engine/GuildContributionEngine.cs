@@ -81,6 +81,7 @@ namespace FolkIdle.Server.Engine
 
                 // Delete gold to create deflationary sink
                 goldRecord.Quantity -= goldAmount;
+                await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Guild, goldAmount);
 
                 var ledgerQuery = "SELECT * FROM \"GuildMaterialSinkLedgers\" WHERE \"GuildId\" = {0} AND \"CommodityId\" = 'gold' FOR UPDATE";
                 var ledger = await db.GuildMaterialSinkLedgers.FromSqlRaw(ledgerQuery, guildId).SingleOrDefaultAsync();
@@ -164,6 +165,7 @@ namespace FolkIdle.Server.Engine
                     if (playerCommodity == null || playerCommodity.Quantity < quantity) return false;
                     
                     playerCommodity.Quantity -= quantity;
+                    await GoldLedger.RecordSpendAsync(db_gold, playerId, GoldSpendCategory.Guild, quantity);
                     if (playerCommodity.Quantity <= 0)
                     {
                         db_gold.CommodityRecords.Remove(playerCommodity);
@@ -216,6 +218,7 @@ namespace FolkIdle.Server.Engine
 
                 // Dedup inventory
                 playerCommodity.Quantity -= quantity;
+                await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.Spent, itemId, quantity); // task 79
                 if (playerCommodity.Quantity <= 0)
                 {
                     db.CommodityRecords.Remove(playerCommodity);

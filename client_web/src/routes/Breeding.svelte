@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import {
@@ -368,7 +369,7 @@
         <p class="warn">{p.IneligibleReason ? refusal(p.IneligibleReason) : 'These two cannot pair.'}</p>
       {:else}
         <p class="cost" class:short={!p.HasSufficientGold}>
-          Costs {p.BreedingCostGold.toLocaleString()}g
+          Costs {formatNumber(p.BreedingCostGold)}g
           {#if !p.HasSufficientGold}&middot; not enough gold{/if}
           {#if p.IsInbredRisk}&middot; <span class="risk">related pair</span>{/if}
         </p>

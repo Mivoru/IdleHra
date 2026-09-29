@@ -73,6 +73,12 @@ namespace FolkIdle.Server.Domain.Shared
         // Non-zero only on a failure the tick must undo: the coins go back on
         // the live payload, or into a rescue if the player has gone.
         public long GoldDelta;
+
+        // Task 79: the job's income tally, on the same terms as GoldDelta -
+        // non-empty only when the flush did not commit and there is a live
+        // payload to hand it back to. Never rescued on its own: a lost tally
+        // under-counts the ledger and costs the player nothing.
+        public GoldIncomeTally Income;
         public FlushReason Reason;
         public bool SplitBrain;
     }
@@ -334,6 +340,7 @@ namespace FolkIdle.Server.Domain.Shared
             }
 
             long goldForTick = committed ? 0L : job.GoldDelta;
+            GoldIncomeTally incomeForTick = committed ? default : job.Snapshot.PendingGoldIncome;
             if (!committed && job.Reason == FlushReason.Logout)
             {
                 // Nobody is left to hand the coins back to. Split-brain gold is
@@ -352,6 +359,7 @@ namespace FolkIdle.Server.Domain.Shared
                     DeadLetter(job.PlayerId, job.GoldDelta, "Logout", $"flush failed {attempts}x");
                 }
                 goldForTick = 0L;
+                incomeForTick = default;
             }
 
             // Modul: THE ACK GOES BEFORE THE CONTINUATION. The tick drains acks
@@ -365,6 +373,7 @@ namespace FolkIdle.Server.Domain.Shared
                 Committed = committed,
                 CommittedDbEpoch = committed ? job.Snapshot.LogicEpochCounter + 1 : 0L,
                 GoldDelta = goldForTick,
+                Income = incomeForTick,
                 Reason = job.Reason,
                 SplitBrain = splitBrain
             });

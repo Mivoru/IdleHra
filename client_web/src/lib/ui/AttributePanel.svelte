@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from './format';
   /*
     THE ATTRIBUTE ALLOCATION WINDOW.
 
@@ -80,19 +81,19 @@
    */
   function derivedLines(key: string, value: number): string[] {
     if (key === 'STR') {
-      return [`${(value * 2).toLocaleString()} attack power`, `${value.toLocaleString()} armour penetration`];
+      return [`${formatNumber(value * 2)} attack power`, `${formatNumber(value)} armour penetration`];
     }
     if (key === 'DEX') {
       return [
-        `${value.toLocaleString()} accuracy`,
+        `${formatNumber(value)} accuracy`,
         `${diminishedPercent(ATTRIBUTE_CURVES.critChancePerRootPoint, value).toFixed(1)}% crit chance`,
         `${diminishedPercent(ATTRIBUTE_CURVES.attackSpeedPerRootPoint, value).toFixed(1)}% attack speed`,
       ];
     }
     if (key === 'CON') {
       return [
-        `${(value * 15).toLocaleString()} max health`,
-        `${value.toLocaleString()} armour`,
+        `${formatNumber(value * 15)} max health`,
+        `${formatNumber(value)} armour`,
         `${diminishedPercent(ATTRIBUTE_CURVES.blockStrengthPerRootPoint, value).toFixed(1)}% block`,
       ];
     }
@@ -135,10 +136,10 @@
   <header>
     <div>
       <h3>Attributes</h3>
-      <p class="dim tiny">Every level pays 7 points. {totalPlaced.toLocaleString()} placed so far.</p>
+      <p class="dim tiny">Every level pays 7 points. {formatNumber(totalPlaced)} placed so far.</p>
     </div>
     <div class="pool" class:ready={unspent > 0}>
-      <strong>{unspent.toLocaleString()}</strong>
+      <strong title={numberTitle(unspent)}>{formatNumber(unspent)}</strong>
       <span>points to spend</span>
     </div>
   </header>
@@ -154,7 +155,7 @@
             <h4>{attribute.label}</h4>
             <span class="dim tiny">{attribute.tagline}</span>
           </div>
-          <div class="value">{value.toLocaleString()}</div>
+          <div class="value" title={numberTitle(value)}>{formatNumber(value)}</div>
         </div>
 
         <ul class="derived">

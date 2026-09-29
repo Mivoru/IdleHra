@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from './format';
   // Modul: what this session actually produced, in TWO lists.
   //
   // Reported as "in all that time nothing better than Rare dropped from the Ice
@@ -175,7 +176,7 @@
     </div>
 
     <p class="dim tiny odds">
-      {#each odds as row, i}{i > 0 ? ' · ' : ''}{rarityName(row.tier)}+ about 1 in {row.kills.toLocaleString()} kills{/each}
+      {#each odds as row, i}{i > 0 ? ' · ' : ''}{rarityName(row.tier)}+ about 1 in {formatNumber(row.kills)} kills{/each}
     </p>
 
     {#if equipmentRows.length === 0}
@@ -248,7 +249,7 @@
     <div class="head">
       <h3>Materials</h3>
       {#if materialCount > 0}
-        <span class="dim tiny">{materialCount.toLocaleString()}</span>
+        <span class="dim tiny" title={numberTitle(materialCount)}>{formatNumber(materialCount)}</span>
       {/if}
     </div>
 
@@ -259,7 +260,7 @@
         {#each materialRows as row (row.key)}
           <li>
             <span class="name">{itemName(registry, row.itemId)}</span>
-            <span class="qty">{row.quantity.toLocaleString()}</span>
+            <span class="qty" title={numberTitle(row.quantity)}>{formatNumber(row.quantity)}</span>
           </li>
         {/each}
       </ul>

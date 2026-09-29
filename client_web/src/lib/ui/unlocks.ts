@@ -1,3 +1,4 @@
+import { formatNumber } from './format';
 // Modul: SCREENS UNLOCK AS THEY BECOME USEFUL (task 60).
 //
 // A brand-new player saw every destination in the game - the Market, a
@@ -86,7 +87,7 @@ export const UNLOCK_RULES: readonly UnlockRule[] = [
   },
   {
     screens: ['delve'],
-    requirement: `${DELVE_FIRST_ENTRY_GOLD.toLocaleString('en-US')} gold`,
+    requirement: `${formatNumber(DELVE_FIRST_ENTRY_GOLD)} gold`,
     open: delveOpen,
     discoveries: ['delve'],
   },

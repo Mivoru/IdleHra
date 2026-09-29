@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from './format';
   import { createQuery } from '@tanstack/svelte-query';
   import { rarityName, rarityColor } from './rarity';
   import { queryKeys, fetchLootOdds } from '../net/rest';
@@ -10,7 +11,7 @@
   const odds = createQuery(() => ({ queryKey: queryKeys.lootOdds, queryFn: fetchLootOdds }));
 
   function oneIn(share: number): string {
-    return share > 0 ? Math.round(1 / share).toLocaleString() : '—';
+    return share > 0 ? formatNumber(Math.round(1 / share)) : '—';
   }
 
   // Base weights matching FolkIdle.Server/Engine/CombatLootEngine.cs

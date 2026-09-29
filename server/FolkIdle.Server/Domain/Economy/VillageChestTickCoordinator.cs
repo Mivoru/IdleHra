@@ -50,6 +50,7 @@ namespace FolkIdle.Server.Domain.Economy
         {
             salvagePayload.AddGold(salvage.GoldGained);
             salvagePayload.RedisPendingGoldDelta += salvage.GoldGained;
+            GoldLedger.TallyIncome(ref salvagePayload, GoldIncomeSource.AutoSalvage, salvage.GoldGained);
             salvagePayload.RequiresRedisFlush = true;
             salvagePayload.IsDirty = true;
         }
@@ -82,6 +83,8 @@ namespace FolkIdle.Server.Domain.Economy
 
         internal static void ApplyChestSaleGold(ref TickStatePayload chestSalePayload, in ChestSaleGoldNotification chestSale)
         {
+            // GoldLedger: display only - VillageChestEngine (or the outbox)
+            // credited the row and recorded the income beside that credit.
             chestSalePayload.AddGold(chestSale.GoldGained);
             chestSalePayload.IsDirty = true;
         }

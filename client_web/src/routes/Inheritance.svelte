@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   // Modul: what a season leaves behind, and the only real thing diamonds buy.
   //
   // The season wipes levels, gear, gold and materials every three months. Three
@@ -108,7 +109,7 @@
               {:else}
                 <button
                   disabled={!row.affordable}
-                  title={row.affordable ? '' : `Needs ${row.cost.toLocaleString()} diamonds`}
+                  title={row.affordable ? '' : `Needs ${formatNumber(row.cost)} diamonds`}
                   onclick={() => buy(row.id, row.level)}
                 >
                   Buy +{INHERITANCE_PCT_PER_LEVEL}% for

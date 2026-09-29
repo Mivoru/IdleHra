@@ -79,9 +79,14 @@ namespace FolkIdle.Server.Engine
             }
             if (live.RedisPendingGoldDelta != 0L)
             {
+                // GoldLedger: carried coins, not new income - their tally is
+                // carried just below.
                 reloaded.RedisPendingGoldDelta += live.RedisPendingGoldDelta;
                 reloaded.AddGold(live.RedisPendingGoldDelta);
             }
+            // Task 79: the income tally is in no row either (the reload flush
+            // took what it had; this is what arrived since, or came back).
+            reloaded.PendingGoldIncome.Add(in live.PendingGoldIncome);
         }
 
         /// <summary>

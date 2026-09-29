@@ -55,18 +55,14 @@ namespace FolkIdle.Server.Tests
             return player;
         }
 
-        // The Treasury achievement (bit 0) fires at 100k gold and is the
-        // cheapest observable side effect of having been swept.
+        // The Treasury achievement (bit 0) fires at 100k gold SPENT (task 79 -
+        // it was gold held) and is the cheapest observable side effect of
+        // having been swept.
         private async Task GiveTreasuryQualifyingGoldAsync(long playerId)
         {
             await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
-            db.CommodityRecords.Add(new CommodityRecord
-            {
-                PlayerId = playerId,
-                ItemId = "gold",
-                Quantity = 250_000L,
-            });
-            await db.SaveChangesAsync();
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $@"UPDATE ""PlayerRecords"" SET ""LifetimeGoldSpent"" = 250000 WHERE ""Id"" = {playerId}");
         }
 
         private async Task<int> ClaimedFlagsAsync(long playerId)

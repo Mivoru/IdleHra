@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { queryKeys, fetchVillageQuote, type VillageQuoteLine } from '../lib/net/rest';
@@ -45,7 +46,7 @@
     if (!lines) return null;
     const missing = lines
       .filter((line) => heldOf(line) < line.Quantity)
-      .map((line) => `${(line.Quantity - heldOf(line)).toLocaleString()} ${lineName(line)}`);
+      .map((line) => `${formatNumber(line.Quantity - heldOf(line))} ${lineName(line)}`);
     return missing.length > 0 ? `You need ${missing.join(', ')} more.` : null;
   }
 
@@ -197,7 +198,7 @@
               {:else if lines}
                 {#each lines as line (line.ItemId)}
                   <span class="line" class:short={heldOf(line) < line.Quantity}>
-                    {Math.min(heldOf(line), line.Quantity).toLocaleString()}/{line.Quantity.toLocaleString()}
+                    {formatNumber(Math.min(heldOf(line), line.Quantity))}/{formatNumber(line.Quantity)}
                     {lineName(line)}
                   </span>
                 {/each}

@@ -294,7 +294,7 @@ export async function assertMatchesNav(page) {
   // Task 60: a greyed entry carries its condition after the label ("Market
   // Level 10"), so the label is read from data-label where there is one.
   const navLabels = await page.evaluate(() =>
-    [...document.querySelectorAll('header button')]
+    [...document.querySelectorAll('header button:not([data-group-toggle])')]
       .map((b) => b.dataset.label ?? b.textContent.trim().replace(/\s*\d+$/, ''))
       .filter((t) => t.length > 0),
   );
@@ -302,6 +302,38 @@ export async function assertMatchesNav(page) {
     missing: SCREENS.filter((s) => !(s in OVERLAYS) && !navLabels.includes(s)),
     unvisited: navLabels.filter((n) => !SCREENS.includes(n) && !NON_DESTINATIONS.includes(n)),
   };
+}
+
+/**
+ * The header button for a destination, REVEALED. A phone folds the nav behind
+ * "Menu", and (task 82) a desktop folds each group behind a dropdown toggle
+ * (`[data-group-toggle]`), so a closed group's entries are display:none and an
+ * unrevealed click times out for thirty seconds. Every script that navigates
+ * through the header goes through this one function.
+ *
+ * `name` is a string (exact, a badge count tolerated) or a RegExp.
+ */
+export async function navButton(page, name) {
+  const pattern =
+    name instanceof RegExp
+      ? name
+      : new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s+\\d+)?$`);
+  const target = page.locator('header nav').getByRole('button', { name: pattern }).first();
+  if (!(await target.isVisible().catch(() => false))) {
+    const menu = page.locator('header').getByRole('button', { name: /^Menu( ·|$)/ }).first();
+    if (await menu.isVisible().catch(() => false)) {
+      await menu.click();
+      await page.waitForTimeout(300);
+    }
+  }
+  if (!(await target.isVisible().catch(() => false))) {
+    const toggle = page.locator('header .group', { has: target }).locator('[data-group-toggle]').first();
+    if (await toggle.isVisible().catch(() => false)) {
+      await toggle.click({ timeout: 5000 });
+      await page.waitForTimeout(150);
+    }
+  }
+  return target;
 }
 
 /**
@@ -357,15 +389,8 @@ export async function go(page, label) {
   // mailbox and timed out the moment the fixture had a message waiting - which
   // took every geometry check down with it, on a client with nothing wrong.
   // Anchored at both ends so "Guild" still cannot match "Guild Ops".
-  const badged = new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s+\\d+)?$`);
-  const target = page.locator('header').getByRole('button', { name: badged }).first();
-  if (!(await target.isVisible().catch(() => false))) {
-    const menu = page.locator('header').getByRole('button', { name: /^Menu( ·|$)/ }).first();
-    if ((await menu.count()) > 0) {
-      await menu.click();
-      await page.waitForTimeout(300);
-    }
-  }
+  // (navButton also opens the phone's Menu or the desktop's group dropdown.)
+  const target = await navButton(page, label);
   await target.click();
   await page
     .waitForFunction(() => !/\bLoading\.\.\./.test(document.body.innerText), { timeout: 15000 })
