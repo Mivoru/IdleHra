@@ -32,6 +32,9 @@ describe('prettifyBaseId', () => {
 
   it('strips non-equipment scaffolding', () => {
     expect(prettifyBaseId('gold_ore_crafting_material')).toBe('Gold Ore');
+    // Task 74: `mat_` is a namespace prefix, like `eq_`.
+    expect(prettifyBaseId('mat_mouse_fur')).toBe('Mouse Fur');
+    expect(prettifyBaseId('mat_wolf_essence')).toBe('Wolf Essence');
     expect(prettifyBaseId('kelpie_mane_unique_regional_boss_material')).toBe('Kelpie Mane');
     expect(prettifyBaseId('cooked_canyon_catfish_t8_food')).toBe('Cooked Canyon Catfish');
     expect(prettifyBaseId('searing_tonic_offensive_potion_consumable')).toBe('Searing Tonic');

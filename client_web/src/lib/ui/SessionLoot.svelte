@@ -25,7 +25,7 @@
 
   import { lootLogEquipment, lootLogMaterials, type LootEntry } from '../stores/game';
   import { itemName, type ContentRegistry } from '../net/content';
-  import { rarityColor, shouldGlow, rarityName, killsPerRarity } from './rarity';
+  import { rarityColor, shouldGlow, rarityName, rarityTitle, killsPerRarity } from './rarity';
   import Burst from './Burst.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState } from '../stores/game';
@@ -219,7 +219,7 @@
             <span class="name" style="color: {rarityColor(row.qualityTier)}" class:rarity-glow={isRare}>
               {itemName(registry, row.itemId)}
             </span>
-            <span class="tier" style="color: {rarityColor(row.qualityTier)}">{rarityName(row.qualityTier)}</span>
+            <span class="tier" style="color: {rarityColor(row.qualityTier)}" title={rarityTitle(row.qualityTier)}>{rarityName(row.qualityTier)}</span>
             <span class="qty">x{row.count}</span>
             {#if isWorn}
               <span class="worntag">Worn</span>

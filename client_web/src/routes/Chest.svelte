@@ -33,7 +33,7 @@
   import { invalidateOwnedItems } from '../lib/net/queryClient';
   import VirtualList from '../lib/ui/VirtualList.svelte';
   import { prettifyBaseId, isFood, consumableKind } from '../lib/net/content';
-  import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
+  import { rarityColor, rarityName, rarityTitle, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { pushLocalNotice } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
@@ -540,7 +540,7 @@
               >
                 {prettifyBaseId(item.BaseItemId)}
               </span>
-              <span class="dim tiny">{rarityName(item.QualityTier)}</span>
+              <span class="dim tiny" title={rarityTitle(item.QualityTier)}>{rarityName(item.QualityTier)}</span>
 
               <!-- Modul: THE ACTIONS ARE A GROUP, so a phone can put them on
                    their own line instead of crushing the name to nothing.

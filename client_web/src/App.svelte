@@ -9,7 +9,7 @@
   import VictoryCard from './lib/ui/VictoryCard.svelte';
   import TabBar from './lib/ui/TabBar.svelte';
   import { hotkeyTab } from './lib/ui/tabs';
-  import { refreshUnopenedChests } from './lib/stores/cosmeticChests';
+  import { refreshUnopenedChests, unopenedChests } from './lib/stores/cosmeticChests';
   import { PREF_LAST_SCREEN, readPrefAs, writePref } from './lib/net/prefs';
   import DeathCard from './lib/ui/DeathCard.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
@@ -546,6 +546,9 @@
   });
 
   const snap = $derived($playerState);
+  // Task 74: the same rule TabBar dots Character with - unspent attribute
+  // points or an unopened cosmetic chest.
+  const characterWants = $derived((snap ? Number(snap.UnspentAttributePoints) > 0 : false) || $unopenedChests > 0);
 
   // Surfaced in the header rather than only on the screen that caused it: a
   // halted character earns nothing, and the player may well be looking at the
@@ -600,7 +603,7 @@
                   class:coachmark={menuKeyOf($coachTargetScreen) === item.key}
                   class:locked={locked !== null}
                   disabled={locked !== null}
-                  title={locked ? `Opens at: ${locked}` : undefined}
+                  title={locked ? `Opens at: ${locked}` : item.key === 'character' && characterWants ? 'Points to spend or a chest to open' : undefined}
                   data-nav={item.key}
                   data-label={item.label}
                   data-locked={locked ?? undefined}
@@ -612,6 +615,7 @@
                   {item.label}
                   {#if locked}<span class="lock-req">{locked}</span>{/if}
                   {#if item.key === 'mailbox'}<MailBadge />{/if}
+                  {#if item.key === 'character' && characterWants}<span class="navdot" aria-hidden="true"></span>{/if}
                 </button>
                 {/if}
               {/each}
@@ -789,6 +793,18 @@
     opacity: 0.55;
     cursor: not-allowed;
   }
+  /* Task 74: the phone's tab bar already dots Character (TabBar.svelte); the
+     desktop header said nothing about 24 unspent points. Same rule, same dot. */
+  .navdot {
+    display: inline-block;
+    width: 0.45rem;
+    height: 0.45rem;
+    margin-left: 0.3rem;
+    border-radius: 50%;
+    background: var(--danger);
+    vertical-align: 0.15em;
+  }
+
   .lock-req {
     margin-left: 0.35rem;
     font-size: 0.72em;
