@@ -156,7 +156,15 @@ function blank(fields: Record<string, number> = {}): any {
 }
 
 /** Every moment, the packet that should fire it, and the fact set it needs. */
-const TRIGGERS: readonly { id: DiscoveryId; fields: Record<string, number>; hasGuild?: boolean }[] =
+// `also`: moments the same packet legitimately reaches too. Task 60 tied the
+// Market's moment to level 10, and a level-10 packet has also passed the
+// Forge's level 5 - that is the unlock order, not a leak.
+const TRIGGERS: readonly {
+  id: DiscoveryId;
+  fields: Record<string, number>;
+  hasGuild?: boolean;
+  also?: DiscoveryId[];
+}[] =
   [
     { id: 'gathering', fields: { FishingMasteryXp: 1 } },
     { id: 'backpack_full', fields: { InventorySpaceRemaining: 0 } },
@@ -165,7 +173,8 @@ const TRIGGERS: readonly { id: DiscoveryId; fields: Record<string, number>; hasG
     { id: 'skills', fields: { AvailableSkillPoints: 1 } },
     { id: 'village', fields: { VillagePopulation: 1 } },
     { id: 'region2', fields: { HighestUnlockedRegion: 2 } },
-    { id: 'market', fields: { Gold: 5000 } },
+    { id: 'market', fields: { CurrentLevel: 10 }, also: ['forge'] },
+    { id: 'delve', fields: { Gold: 7000 } },
     // Modul: ForgeLevel 1 with TownHallLevel 0 gives a ceiling of 2, which the
     // forge has NOT reached - so this fires 'forge' alone and not 'town_hall'.
     { id: 'forge', fields: { ForgeLevel: 1 } },
@@ -201,7 +210,7 @@ describe('discovery moments: each fires on its own trigger and nothing else', ()
     it(`${trigger.id} fires on its own trigger, and only it`, () => {
       const facts = { hasGuild: trigger.hasGuild ?? false };
       const reached = reachedDiscoveries(blank(trigger.fields), facts);
-      expect(reached).toEqual([trigger.id]);
+      expect([...reached].sort()).toEqual([trigger.id, ...(trigger.also ?? [])].sort());
     });
 
     it(`${trigger.id} does not fire on a packet that has not reached it`, () => {
@@ -243,19 +252,19 @@ describe('the Town Hall ceiling, which is the least obvious rule in the game', (
 
 describe('choosing which one to show', () => {
   it('hands over the earliest reached moment that has not been seen', () => {
-    // Reached: gathering (first in the table) and market (much later).
+    // Reached: gathering (first in the table) and the Delve (much later).
     const packet = blank({ FishingMasteryXp: 10, Gold: 9000 });
     expect(nextDiscovery(packet, NO_FACTS, new Set())!.id).toBe('gathering');
   });
 
   it('moves on to the next once one has been acknowledged', () => {
     const packet = blank({ FishingMasteryXp: 10, Gold: 9000 });
-    expect(nextDiscovery(packet, NO_FACTS, new Set(['gathering']))!.id).toBe('market');
+    expect(nextDiscovery(packet, NO_FACTS, new Set(['gathering']))!.id).toBe('delve');
   });
 
   it('falls silent once everything reached has been seen', () => {
     const packet = blank({ FishingMasteryXp: 10, Gold: 9000 });
-    const seen = new Set(['gathering', 'market']);
+    const seen = new Set(['gathering', 'delve']);
     expect(nextDiscovery(packet, NO_FACTS, seen)).toBeNull();
   });
 
@@ -289,7 +298,7 @@ describe('the table itself', () => {
   // which is this repo's dominant defect class in miniature.
   it('points every moment at a real screen', () => {
     const screens = new Set([
-      'hub', 'combat', 'gathering', 'worldboss', 'boosts', 'character', 'chest', 'larder',
+      'hub', 'combat', 'gathering', 'worldboss', 'boosts', 'delve', 'character', 'chest', 'larder',
       'crafting', 'forge', 'market', 'social', 'guildops', 'mailbox', 'leaderboards',
       'breeding', 'ancestors', 'inheritance', 'village', 'skills', 'progression', 'codex',
       'store', 'settings', 'wiki',

@@ -50,7 +50,7 @@
   import LootReveal from './lib/ui/LootReveal.svelte';
   import WhatsNew from './lib/ui/WhatsNew.svelte';
   import { resolveNotesOnStartup, startUpdatePolling } from './lib/stores/version';
-  import { coachTargetScreen } from './lib/stores/tutorial';
+  import { coachTargetScreen, screenLocks } from './lib/stores/tutorial';
   import { untrack, type Component } from 'svelte';
 
   initLanguage();
@@ -92,7 +92,6 @@
         { key: 'combat', label: 'Combat' },
         { key: 'gathering', label: 'Gathering' },
         { key: 'worldboss', label: 'World Boss' },
-        { key: 'boosts', label: 'Boosts' },
         { key: 'delve', label: 'The Delve' },
       ],
     },
@@ -103,7 +102,10 @@
         // Task 54: cosmetic chests, avatars and frames.
         { key: 'wardrobe', label: 'Wardrobe' },
         { key: 'chest', label: 'Chest' },
-        { key: 'larder', label: 'Auto-Eat' },
+        // Task 59: Auto-Eat and Boosts are one "Supplies" entry with two tabs
+        // - both are what you take into a fight, and Boosts was one small
+        // panel once the chrono bank went. See TAB_FAMILIES.
+        { key: 'larder', label: 'Supplies' },
         { key: 'crafting', label: 'Crafting' },
         { key: 'forge', label: 'Forge' },
       ],
@@ -123,17 +125,14 @@
       ],
     },
     {
-      name: 'Genetics',
-      screens: [
-        { key: 'breeding', label: 'Breeding' },
-        { key: 'ancestors', label: 'Ancestors' },
-        { key: 'inheritance', label: 'Inheritance' },
-      ],
-    },
-    {
       name: 'You',
       screens: [
         { key: 'village', label: 'Village' },
+        // Task 59: Breeding, the Hall of Ancestors and Inheritance were a
+        // three-entry "Genetics" group. They are one family's story - who is
+        // born, who is kept through the season, what the line has bought -
+        // so they are one "Bloodline" entry with three tabs.
+        { key: 'breeding', label: 'Bloodline' },
         { key: 'skills', label: 'Skill Tree' },
         { key: 'progression', label: 'Progress' },
         { key: 'codex', label: 'Codex' },
@@ -149,7 +148,36 @@
     },
   ] as const;
 
-  type ScreenKey = (typeof GROUPS)[number]['screens'][number]['key'];
+  // Modul: SCREENS REACHED THROUGH A TAB, not a menu entry (task 59). Each
+  // keeps its own key, so everything that names a screen - the tutorial's
+  // coach-marks, the guided first minute's 'larder' step, requestScreen() from
+  // a death card, the back stack, the remembered last screen - still works
+  // unchanged. Only the menu folds them together.
+  const TAB_FAMILIES: Record<string, readonly { key: string; label: string }[]> = {
+    larder: [
+      { key: 'larder', label: 'Auto-Eat' },
+      { key: 'boosts', label: 'Boosts' },
+    ],
+    breeding: [
+      { key: 'breeding', label: 'Breeding' },
+      { key: 'ancestors', label: 'Ancestors' },
+      { key: 'inheritance', label: 'Inheritance' },
+    ],
+  };
+  const TAB_ONLY_KEYS = ['boosts', 'ancestors', 'inheritance'] as const;
+
+  type ScreenKey =
+    | (typeof GROUPS)[number]['screens'][number]['key']
+    | (typeof TAB_ONLY_KEYS)[number];
+
+  /** The menu entry a screen lives under - itself, unless it is a tab. */
+  function menuKeyOf(key: string | null): string | null {
+    if (key === null) return null;
+    for (const [owner, tabs] of Object.entries(TAB_FAMILIES)) {
+      if (tabs.some((t) => t.key === key)) return owner;
+    }
+    return key;
+  }
   // Modul: the map is where a session starts. Signing in used to drop the
   // player straight onto Combat with a wall of nav words above it; the painted
   // valley is both prettier and a better answer to "where am I".
@@ -162,7 +190,9 @@
   let screen = $state<ScreenKey>(
     readPrefAs(
       PREF_LAST_SCREEN,
-      (v): v is ScreenKey => GROUPS.some((g) => g.screens.some((s) => s.key === v)),
+      (v): v is ScreenKey =>
+        GROUPS.some((g) => g.screens.some((s) => s.key === v)) ||
+        (TAB_ONLY_KEYS as readonly string[]).includes(v),
       'hub' as ScreenKey,
     ),
   );
@@ -187,7 +217,10 @@
   // `screen` - it is local state and only Hub is handed a setter - so the
   // Chest's "Reroll" button publishes a request instead. See
   // stores/navigation.ts for why it carries a nonce.
-  const ALL_SCREEN_KEYS = new Set<string>(GROUPS.flatMap((group) => group.screens.map((s) => s.key)));
+  const ALL_SCREEN_KEYS = new Set<string>([
+    ...GROUPS.flatMap((group) => group.screens.map((s) => s.key)),
+    ...TAB_ONLY_KEYS,
+  ]);
 
   // Modul: EVERY SCREEN BUT THE MAP IS LOADED ON FIRST VISIT.
   //
@@ -296,8 +329,10 @@
     (group) => group.screens as readonly { key: ScreenKey; label: string }[],
   );
   const currentScreenLabel = $derived(
-    ALL_SCREENS.find((item) => item.key === screen)?.label ?? 'Menu',
+    ALL_SCREENS.find((item) => item.key === menuKeyOf(screen))?.label ?? 'Menu',
   );
+
+  const activeTabs = $derived(TAB_FAMILIES[menuKeyOf(screen) ?? ''] ?? null);
 
   $effect(() => {
     const request = $screenRequest;
@@ -545,16 +580,27 @@
                      bubble next to this button, it makes the button itself
                      pulse - same "look here", none of the positioning maths
                      that clips at a narrow width. -->
+                <!-- Task 60: a screen that is not useful yet is greyed, with
+                     what opens it beside the label, rather than hidden - the
+                     menu says what is coming. A link from another screen
+                     still opens it; this only declutters the menu. -->
+                {@const locked = $screenLocks(item.key)}
                 <button
-                  class:active={screen === item.key}
-                  class:coachmark={$coachTargetScreen === item.key}
+                  class:active={menuKeyOf(screen) === item.key}
+                  class:coachmark={menuKeyOf($coachTargetScreen) === item.key}
+                  class:locked={locked !== null}
+                  disabled={locked !== null}
+                  title={locked ? `Opens at: ${locked}` : undefined}
                   data-nav={item.key}
+                  data-label={item.label}
+                  data-locked={locked ?? undefined}
                   onclick={() => {
                     goTo(item.key);
                     navOpen = false;
                   }}
                 >
                   {item.label}
+                  {#if locked}<span class="lock-req">{locked}</span>{/if}
                   {#if item.key === 'mailbox'}<MailBadge />{/if}
                 </button>
               {/each}
@@ -598,6 +644,20 @@
          itself when the phase goes back to live. Presentation only: the
          reconnect loop it reports on is untouched. -->
     <ConnectionNotice />
+
+    {#if activeTabs}
+      <div class="screen-tabs" role="tablist" aria-label={currentScreenLabel}>
+        {#each activeTabs as tab (tab.key)}
+          <button
+            role="tab"
+            class:active={screen === tab.key}
+            aria-selected={screen === tab.key}
+            data-subtab={tab.key}
+            onclick={() => goTo(tab.key as ScreenKey)}>{tab.label}</button
+          >
+        {/each}
+      </div>
+    {/if}
 
     {#if screen === 'hub'}
       <Hub onNavigate={(next) => goTo(next)} />
@@ -686,6 +746,37 @@
 </QueryClientProvider>
 
 <style>
+  .screen-tabs {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem 0;
+    flex-wrap: wrap;
+  }
+  .screen-tabs button {
+    min-height: 44px;
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .screen-tabs button.active {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  nav button.locked {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .lock-req {
+    margin-left: 0.35rem;
+    font-size: 0.72em;
+    opacity: 0.9;
+  }
+
   header {
     display: flex;
     align-items: center;

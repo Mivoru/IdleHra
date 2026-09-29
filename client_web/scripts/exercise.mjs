@@ -34,12 +34,26 @@ page.on('response', (r) => { if (r.status() === 404) missedUrls.push(r.url()); }
 // screens open on a query, and a cold server answers the first one slowly
 // enough that a fixed wait passes locally and fails on a fresh boot - which is
 // a flaky test pretending to be a bug report.
+// Task 59: these screens are tabs under one menu entry now - Supplies holds
+// Auto-Eat and Boosts, Bloodline holds Breeding, Ancestors and Inheritance.
+// A step still names the screen it means; go() takes the menu entry and then
+// the tab, the way a player would.
+const SUB_TABS = {
+  'Auto-Eat': ['Supplies', 'larder'],
+  Boosts: ['Supplies', 'boosts'],
+  Breeding: ['Bloodline', 'breeding'],
+  Ancestors: ['Bloodline', 'ancestors'],
+  Inheritance: ['Bloodline', 'inheritance'],
+};
+
 const go = async (label) => {
+  const [menuLabel, subTab] = SUB_TABS[label] ?? [label, null];
   // Modul: scoped to the NAV. The hub map's plates are buttons named "Combat",
   // "Market", "Guild" and so on too, and an unscoped lookup resolved to
   // whichever came first in the DOM - which is the map, and only while the map
   // is the screen being shown. Navigation has to mean the nav.
-  await page.locator('header').getByRole('button', { name: label, exact: true }).first().click();
+  await page.locator('header').getByRole('button', { name: menuLabel, exact: true }).first().click();
+  if (subTab) await page.locator(`[data-subtab="${subTab}"]`).first().click();
   await page.waitForFunction(
     () => !/\bLoading\.\.\./.test(document.body.innerText),
     { timeout: 15000 },
@@ -781,6 +795,18 @@ await go('Gathering');
 // and be told by the larder that they had no food. Cooking is not in the
 // design list; a fish IS the meal.
 await go('Auto-Eat');
+// Task 59/60: the fixture is level 40 with every building, so nothing in its
+// menu may be greyed - a greyed entry here is a rule nobody can reach.
+{
+  const greyed = await page.evaluate(() =>
+    [...document.querySelectorAll('header button[data-locked]')].map((b) => b.dataset.label),
+  );
+  record('the dev fixture sees no greyed menu entry', greyed.length === 0, greyed.join(', ') || 'none');
+  const tabs = await page.evaluate(() =>
+    [...document.querySelectorAll('[data-subtab]')].map((b) => b.getAttribute('data-subtab')),
+  );
+  record('Supplies opens on Auto-Eat with a Boosts tab beside it', tabs.join(',') === 'larder,boosts', tabs.join(','));
+}
 {
   const text = await page.evaluate(() => document.body.innerText);
   record(
@@ -3310,6 +3336,27 @@ await go('Ancestors');
   if (registered) {
     await fresh.waitForTimeout(2500);
 
+    // Task 60: a new account sees the screens that are no use to it yet
+    // greyed, with what opens them - and the Market says "Level 10".
+    {
+      const locked = await fresh.evaluate(() =>
+        [...document.querySelectorAll('header button[data-locked]')].map(
+          (b) => `${b.dataset.label}=${b.dataset.locked}`,
+        ),
+      );
+      const market = locked.find((l) => l.startsWith('Market='));
+      record(
+        'a new account sees the Market greyed until level 10',
+        market === 'Market=Level 10',
+        locked.join(', ') || 'nothing greyed',
+      );
+      record(
+        'a new account keeps Combat, Character and Supplies open',
+        !locked.some((l) => /^(Combat|Character|Supplies|Map)=/.test(l)),
+        locked.join(', ') || 'nothing greyed',
+      );
+    }
+
     const cue = () =>
       fresh.evaluate(() => {
         const panel = document.querySelector('.coach');
@@ -3547,7 +3594,7 @@ await go('Ancestors');
       await rod.click();
       await fresh.waitForTimeout(45000);
 
-      await fresh.locator('header').getByRole('button', { name: 'Auto-Eat', exact: true }).first().click();
+      await fresh.locator('header').getByRole('button', { name: 'Supplies', exact: true }).first().click();
       await fresh.waitForTimeout(1500);
 
       const foodSelect = fresh.locator('select').first();

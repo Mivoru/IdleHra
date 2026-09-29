@@ -28,6 +28,7 @@
 //   3. Tier one still wins outright, then tier two, then this. A player who has
 //      not yet won a fight is not asked to think about guild buffs.
 import type { StateUpdate } from '../net/protocol.generated';
+import { DELVE_FIRST_ENTRY_GOLD, lockedRequirement } from '../ui/unlocks';
 import type { OnboardingFacts } from './tutorialDiscoveries';
 
 export type ObjectiveId =
@@ -66,7 +67,7 @@ interface ObjectiveRule extends Objective {
  * price. Being a little early here costs nothing - being wrong about the price
  * on a button would cost a refused run.
  */
-const CHEAPEST_DELVE_ENTRY = 7000;
+const CHEAPEST_DELVE_ENTRY = DELVE_FIRST_ENTRY_GOLD;
 
 /**
  * Ordered by what is worth doing first, not by when it unlocks.
@@ -206,6 +207,9 @@ export function nextObjective(
   for (const rule of OBJECTIVES) {
     if (seen.has(rule.id)) continue;
     if (!rule.due(snapshot, facts)) continue;
+    // Task 60: never point at a greyed menu button. "Sell on the market"
+    // fires on a nearly full bag, which a level-3 player can have.
+    if (lockedRequirement(rule.screen, snapshot, facts, seen) !== null) continue;
     const { due: _due, ...objective } = rule;
     return objective;
   }

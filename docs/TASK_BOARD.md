@@ -4733,7 +4733,9 @@ Two parts:
 
 Show the owner a screenshot mock of the new Progress screen before building.
 
-## 58. Regional contracts
+## DROPPED - 58. Regional contracts
+
+**Owner, 2026-09-29: "regionální zakázky bych nedělal" - not doing it.** Kept below for the record.
 
 Each unlocked region has 3 contracts, for example:
 - kill N of a monster;
@@ -4747,7 +4749,18 @@ counters `DeedContext` already reads. This gives old regions and surplus
 gold a purpose (the Wiki itself says players end seasons with more gold than
 they spent).
 
-## 59. Fewer menu entries
+## DONE - 59. Fewer menu entries
+
+**Built 2026-09-29 (owner: "souhlasím").** Supplies = Auto-Eat + Boosts (under
+Items); Bloodline = Breeding + Ancestors + Inheritance (under You; the Genetics
+group is gone). Client-only: each screen KEEPS its key and becomes a tab under
+one menu entry (`TAB_FAMILIES` in App.svelte), so the tutorial, the guided
+'larder' step, `requestScreen`, the back stack and the remembered screen all
+work unchanged. 27 -> 24 menu entries. `screens.mjs` visits the tabs as
+overlays ('Supplies · Boosts', 'Bloodline · Ancestors', 'Bloodline ·
+Inheritance'); `exercise.mjs`'s `go('Breeding')` etc. take the entry then the
+tab. The Wiki ledger is keyed by route file, which did not change.
+
 
 Both merges are client-only:
 - **Boosts into Auto-Eat**, as one "Supplies" screen with tabs. The chrono bank
@@ -4759,7 +4772,22 @@ Update `screens.mjs` (`SCREENS`), the Wiki screen ledger (`wiki.test.ts`)
 and the geometry checkers' lists. Ask the owner first: it renames things
 they know.
 
-## 60. Screens unlock as they become useful
+## DONE - 60. Screens unlock as they become useful
+
+**Built 2026-09-29.** Owner: "not sure anything should be locked, but if so,
+do it". Greyed in the menu with the condition beside the label, never hidden:
+Forge (level 5 or a built Forge), The Delve (7,000 gold), Market and Guild
+(level 10, or already in a guild), Bloodline (Breeding Grounds, a Veteran
+character, or 40 diamonds). The rules live in `lib/ui/unlocks.ts` and are the
+SAME predicates as the discovery moments, so each moment is that screen's
+one-time "new" card (Market's moment moved from 5,000 gold to level 10; a
+Delve moment was added). A screen whose card was seen stays open, because gold
+and a season reset go back down; the seen-set is already server-synced. It is
+a menu decision only - links from other screens still open a locked screen,
+and objectives never point at a greyed entry. `smoke:screens` reports a locked
+entry as "locked for this account" instead of clicking it; exercise asserts
+the fixture sees nothing greyed and a new account sees Market = Level 10.
+
 
 A new player sees 27 destinations. Hide a screen from the Menu (show it
 greyed, with its condition) until it is useful:

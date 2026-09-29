@@ -37,6 +37,7 @@ import {
   type OnboardingFacts,
 } from './tutorialDiscoveries';
 import { nextObjective, type Objective } from './tutorialObjectives';
+import { lockedRequirement } from '../ui/unlocks';
 import {
   adoptPlayer,
   markAllSeen,
@@ -237,6 +238,19 @@ export function acknowledgeCue(): void {
  * container width, which is precisely the bug class an anchored bubble creates.
  */
 export const coachTargetScreen = derived(onboardingCue, (cue) => cue?.screen ?? null);
+
+/**
+ * Task 60: why a menu entry is greyed, as a function of its nav key (null =
+ * open). The rules are in ui/unlocks.ts; this only binds them to the live
+ * packet, the guild fact and the synced seen-set. Unknown facts count as "no
+ * guild", so the Guild entry falls back to its level rule.
+ */
+export const screenLocks = derived(
+  [playerState, facts, seenExplanations],
+  ([snapshot, factValue, seen]) =>
+    (screen: string): string | null =>
+      lockedRequirement(screen, snapshot, factValue ?? { hasGuild: false }, seen),
+);
 
 /**
  * The current step, or null when there is nothing to say.

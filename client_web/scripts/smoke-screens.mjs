@@ -41,7 +41,12 @@ for (const label of missing) {
 for (const label of SCREENS) {
   if (missing.includes(label)) continue;
   const before = errors.length;
-  await go(page, label);
+  const outcome = await go(page, label);
+  if (outcome?.locked) {
+    // Task 60: greyed for a new account on purpose - not a render failure.
+    console.log(`ok   ${label} (locked for this account: ${outcome.locked})`);
+    continue;
+  }
   // Long enough for a query to resolve and a $effect to run - a crash on
   // mount usually surfaces within one frame, but a crash in a query callback
   // needs the round trip.

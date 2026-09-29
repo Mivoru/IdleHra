@@ -50,16 +50,38 @@ if (LANGUAGE_CODES.length === 0) {
 
 /** Every navigable destination, in the header's own order and grouping. */
 export const SCREENS = [
-  'Map', 'Combat', 'Gathering', 'World Boss', 'Boosts', 'The Delve',
-  'Character', 'Wardrobe', 'Chest', 'Auto-Eat', 'Crafting', 'Forge',
+  'Map', 'Combat', 'Gathering', 'World Boss', 'The Delve',
+  'Character', 'Wardrobe', 'Chest', 'Supplies', 'Crafting', 'Forge',
   'Market', 'Friends', 'Guild', 'Mail', 'Leaderboards',
-  'Breeding', 'Ancestors', 'Inheritance',
-  'Village', 'Skill Tree', 'Progress', 'Codex', 'Store', 'Settings',
+  'Village', 'Bloodline', 'Skill Tree', 'Progress', 'Codex', 'Store', 'Settings',
   'Wiki',
   // Not a nav button: a STATE of one. See OVERLAYS below.
   'World Boss · shield wheel',
   'Market · cosmetics',
+  'Supplies · Boosts',
+  'Bloodline · Ancestors',
+  'Bloodline · Inheritance',
 ];
+
+/**
+ * Task 59: Supplies and Bloodline are one menu entry each, with the other
+ * screens behind a tab strip. A tab is opened the way a player opens it.
+ */
+function subTab(screen, key) {
+  return {
+    screen,
+    open: async (page) => {
+      const tab = page.locator(`[data-subtab="${key}"]`).first();
+      if ((await tab.count()) === 0) return false;
+      await tab.click();
+      await page
+        .waitForFunction(() => !/\bLoading\.\.\./.test(document.body.innerText), { timeout: 15000 })
+        .catch(() => {});
+      await page.waitForTimeout(600);
+      return true;
+    },
+  };
+}
 
 /**
  * Destinations that are a screen with something opened on top of it, so the
@@ -73,6 +95,9 @@ export const SCREENS = [
  * smoke:screens.
  */
 export const OVERLAYS = {
+  'Supplies · Boosts': subTab('Supplies', 'boosts'),
+  'Bloodline · Ancestors': subTab('Bloodline', 'ancestors'),
+  'Bloodline · Inheritance': subTab('Bloodline', 'inheritance'),
   'World Boss · shield wheel': {
     screen: 'World Boss',
     open: async (page) => {
@@ -253,9 +278,11 @@ export async function assertMatchesNav(page) {
   // with something unclaimed; this read the raw text, so every geometry check
   // printed "FAIL nav has no button for: Mail" and then "ok Mail" on the next
   // line - whenever a previous exercise run had left the fixture a message.
+  // Task 60: a greyed entry carries its condition after the label ("Market
+  // Level 10"), so the label is read from data-label where there is one.
   const navLabels = await page.evaluate(() =>
     [...document.querySelectorAll('header button')]
-      .map((b) => b.textContent.trim().replace(/\s*\d+$/, ''))
+      .map((b) => b.dataset.label ?? b.textContent.trim().replace(/\s*\d+$/, ''))
       .filter((t) => t.length > 0),
   );
   return {
@@ -297,9 +324,18 @@ export async function go(page, label) {
 
   if (label in OVERLAYS) {
     const overlay = OVERLAYS[label];
-    await go(page, overlay.screen);
+    const base = await go(page, overlay.screen);
+    if (base?.locked) return base;
     await overlay.open(page);
     return;
+  }
+
+  // Task 60: a screen that is not useful yet is a DISABLED menu entry. Clicking
+  // it would wait thirty seconds and throw, so it is reported instead - a
+  // fresh guest (smoke:screens against production) has five of them.
+  const lockedEntry = page.locator(`header button[data-label="${label}"][data-locked]`).first();
+  if ((await lockedEntry.count()) > 0) {
+    return { locked: await lockedEntry.getAttribute('data-locked') };
   }
 
   // Modul: a destination's button may carry a BADGE. Mail renders as "Mail 3"
