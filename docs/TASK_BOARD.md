@@ -5083,9 +5083,9 @@ prose in English. Loot below Rare stays silent.
 
 | # | Task | Size | Needs the owner? |
 |---|---|---|---|
-| 68 | Three screens state rules the game does not have | S | no |
-| 69 | Fuse a whole stack in one action | S-M | no |
-| 70 | "New" cards stop covering the screen | S | no |
+| 68 | Three screens state rules the game does not have - **PR #102** | S | no |
+| 69 | Fuse a whole stack in one action - **PR #103** | S-M | no |
+| 70 | "New" cards stop covering the screen - **premise corrected, see the task** | S | no |
 | 71 | Chat handle off the controls; empty Store out of the menu | S | no |
 | 72 | A locked region says what is missing; Continue and Again buttons | S | no |
 | 73 | Home answers "what now" before the painting | M | show a screenshot first |
@@ -5138,7 +5138,8 @@ vitest in the style of `wiki.test.ts` that reads the event effect out of
 
 **What is actually true:** fusion is three selects and a button, one fusion
 per press (`ExecuteFusionAsync(target, sac1, sac2)`). The Forge lists "Ready to
-fuse" chips that do nothing when clicked. The dev fixture holds 7,550 Normal
+fuse" chips; the audit said they do nothing when clicked, which was WRONG -
+they fill the single fusion (`pickSet`). The dev fixture holds 7,550 Normal
 Birch Axes; fusion is deterministic 3:1, so the only decision is how far up.
 
 **Build:**
@@ -5160,10 +5161,24 @@ and is restored; `check:touch` passes.
 
 ## 70. "New" cards stop covering the screen
 
-**What is actually true:** a discovery card ("The Delve is open") sits in the
-middle of every screen until dismissed, covering the Forge's list, the Chest's
-rows and the boss challenges on Combat. A new player meets five or six of them
-in the first hour.
+**CORRECTED 2026-09-29, before building.** The audit said the card sits "in
+the middle of every screen". It does not: `OnboardingCoach` is
+`position: fixed` at the BOTTOM, reserves body padding, and starts folded on a
+phone. The audit's full-page screenshots drew the fixed panel at its viewport
+offset, mid-page - the same artefact the 2026-09-28 plan already recorded as a
+correction. So the toast redesign below was dropped.
+
+**What IS true (a viewport screenshot at 1366x900):** on a desktop an
+expanded discovery or objective card stays open across every screen until
+"Got it", covering the bottom ~135 px of the view (Gathering's node lists, the
+Forge's list) until the player scrolls.
+
+**Built instead (small):** once the player moves to another screen, a
+discovery or objective card folds to its title line (one tap re-opens it).
+Tutorial steps are untouched. `exercise.mjs` opens a folded card by its
+header before pressing "Got it".
+
+The original task follows.
 
 **Build:** a discovery becomes a toast in the corner (about 4 s, held while
 the pointer moves over it, like `LootReveal`) with "Take me there", and it is
