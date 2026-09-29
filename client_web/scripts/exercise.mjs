@@ -1961,7 +1961,18 @@ await go('The Delve');
       }
 
       const goldInTheDeep = (await apiGet('/api/v1/delve'))?.CurrentGold;
+      // Modul: WHAT WALKING OUT PAID is read off the server's own answer to the
+      // click. The gold balance alone drifted by a few hundred between the two
+      // reads whenever the fixture was still fighting - the reload below is a
+      // relogin, and the catch-up pays the seconds in between - so it failed on
+      // a Deep that paid exactly nothing (checked by hand against the API,
+      // 2026-09-29).
+      const bankAnswer = page
+        .waitForResponse((r) => r.url().includes('/api/v1/delve/bank'), { timeout: 10000 })
+        .then((r) => r.json())
+        .catch(() => null);
       await page.getByRole('button', { name: /^\s*Walk out\s*$/i }).first().click();
+      const walkedOut = await bankAnswer;
       await page.waitForTimeout(1200);
 
       await page.reload({ waitUntil: 'networkidle' });
@@ -1971,8 +1982,10 @@ await go('The Delve');
       const out = await apiGet('/api/v1/delve');
       record(
         'walking out of the Deep closes the run and pays nothing',
-        Boolean(out) && !out.Active && out.CurrentGold === goldInTheDeep,
-        out ? `active=${out.Active}, gold ${goldInTheDeep?.toLocaleString()} -> ${out.CurrentGold.toLocaleString()}` : '',
+        Boolean(out) && !out.Active && walkedOut?.GoldReturned === 0 && walkedOut?.DiamondsGranted === 0,
+        out
+          ? `active=${out.Active}, paid ${walkedOut?.GoldReturned}g + ${walkedOut?.DiamondsGranted} diamonds; balance ${goldInTheDeep?.toLocaleString()} -> ${out.CurrentGold.toLocaleString()} (passive income included)`
+          : '',
       );
       record(
         'the Deep minted no diamonds: only the floors-1-8 bank moved the weekly count',
@@ -1984,6 +1997,17 @@ await go('The Delve');
         Boolean(out) && out.DeepestFloor >= 8 && out.DeepestThisWeek >= 8,
         out ? `deepest ${out.DeepestFloor}, this week ${out.DeepestThisWeek}` : '',
       );
+
+      // Task 61: the Deep is one seeded course per ISO week, and the screen
+      // says so - with when it turns over.
+      {
+        const course = await page.locator('[data-testid="deep-weekly-course"]').first().innerText().catch(() => '');
+        record(
+          'the Deep names this week as one course for everyone',
+          Boolean(out) && out.DeepWeekKey > 202600 && /same course for everyone/i.test(course),
+          `week ${out?.DeepWeekKey}, ends ${out?.DeepWeekEndsUtc}: ${course.slice(0, 80)}`,
+        );
+      }
 
       // --- the Deepest board shows the record, on the screen -----------------
       await go('Leaderboards');

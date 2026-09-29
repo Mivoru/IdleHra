@@ -4800,7 +4800,32 @@ Show a one-time "New: Forge - ..." card when one opens. Derive every rule
 from state, as the tutorial does; nothing stored. The fixture must see
 everything, which is a check in itself. Ask the owner which screens.
 
-## 61. Weekly Deep seed
+## DONE - 61. Weekly Deep seed
+
+**Built 2026-09-29.** Every Deep floor (9+) takes its doors from
+`DelveRegistry.WeeklyDeepFloorRandom(weekKey, floor, attempt)`, keyed on the
+ISO week the RUN started in (a descent across Sunday midnight keeps its
+course) and on the run's charges/lanterns at the roll, so two players in the
+same state meet the same doors. Seeded: what each door wants and the number
+its reveal is compared against. NOT seeded: the pass roll (a memorised
+course says which door to try, never that it opens), and every price -
+tolls, lanterns, payouts are untouched. Floors 1-8 are NOT seeded: they pay
+diamonds, and a layout learnable over a week would beat the reveal chance
+the diamond tap was calibrated on.
+- Best of the week already existed (`DelveDeepestThisWeek`, the weekly
+  board). Added `DelveDeepestLastWeek` (migration `AddDelveDeepestLastWeek`,
+  additive), carried over in `RollWeek` only when the stored week is the one
+  before; the view also carries `DeepWeekKey` and `DeepWeekEndsUtc`.
+- The Delve screen shows "Last week" and a line saying this week's Deep is
+  one course for everyone until Monday.
+- `DelveWeeklySeedTests` (same week = same floors for two players, next week
+  differs, the generator is pinned, last-week carry-over, a month away = no
+  last week). Full suite 1299/1299, exercise 215/215.
+- exercise's "walking out of the Deep pays nothing" read the gold BALANCE
+  across a relogin, which drifts with passive income; it failed twice on a
+  Deep that paid exactly 0 (checked against the API by hand). It now reads
+  the server's answer to the Walk out click.
+
 
 The Deep's floors come from a seed per ISO week, the same for everyone, so a
 player races their own last week (and friends, when there are some). Store
