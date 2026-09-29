@@ -5820,7 +5820,20 @@ namespace FolkIdle.Server.Network
                 var lifetime = await Engine.LifetimeAchievementBank.ReadAsync(db, playerId, progress.TotalKills);
 
                 var chapters = Engine.DeedRegistry.Chapters;
-                bool previousComplete = true;
+
+                // A chapter is DONE once sealed or complete - see
+                // DeedRegistry.IsOpen for why sealed counts. The open rule
+                // itself (task 75: II-IV together, V at two of them) lives
+                // there, not here.
+                int doneMask = 0;
+                foreach (var chapter in chapters)
+                {
+                    if (Engine.DeedRegistry.HasSeal(player.SealsEarnedMask, chapter.Index)
+                        || Engine.DeedRegistry.IsComplete(chapter, progress))
+                    {
+                        doneMask |= 1 << (chapter.Index - 1);
+                    }
+                }
 
                 var payload = new
                 {
@@ -5849,20 +5862,8 @@ namespace FolkIdle.Server.Network
                     }).ToList(),
                     Chapters = chapters.Select(chapter =>
                     {
-                        bool isOpen = previousComplete;
+                        bool isOpen = Engine.DeedRegistry.IsOpen(chapter.Index, doneMask);
                         bool isComplete = Engine.DeedRegistry.IsComplete(chapter, progress);
-
-                        // A CHAPTER STAYS OPEN ONCE ITS PREDECESSOR IS SEALED,
-                        // even if that predecessor's deeds later read as
-                        // undone. Several are STATE rather than history - "wear
-                        // a weapon" and "fill the larder" both go false the
-                        // moment a player changes their mind - so keying the
-                        // next chapter on live completeness would slam it shut
-                        // behind somebody who swapped a sword. The Seal is the
-                        // record that the chapter happened, and it is
-                        // permanent; this is what it records.
-                        previousComplete = isComplete
-                            || Engine.DeedRegistry.HasSeal(player.SealsEarnedMask, chapter.Index);
 
                         return new
                         {
@@ -5870,6 +5871,10 @@ namespace FolkIdle.Server.Network
                             chapter.Title,
                             chapter.Reward,
                             IsOpen = isOpen,
+                            // What a closed chapter waits for, so the client
+                            // does not restate the rule (it said "the chapter
+                            // above", which stopped being true with task 75).
+                            OpensWhen = isOpen ? string.Empty : Engine.DeedRegistry.OpensWhen(chapter.Index),
                             IsComplete = isComplete,
                             HasSeal = Engine.DeedRegistry.HasSeal(player.SealsEarnedMask, chapter.Index),
                             Deeds = chapter.Deeds.Select(deed => new

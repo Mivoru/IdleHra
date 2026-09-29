@@ -7,7 +7,7 @@ function deed(id: string, current: number, target: number, done = false): DeedEn
 }
 
 function chapter(index: number, deeds: DeedEntry[], open = true, complete = false): DeedChapterEntry {
-  return { Index: index, Title: `c${index}`, Reward: '', IsOpen: open, IsComplete: complete, HasSeal: complete, Deeds: deeds };
+  return { Index: index, Title: `c${index}`, Reward: '', IsOpen: open, OpensWhen: open ? '' : 'Opens later.', IsComplete: complete, HasSeal: complete, Deeds: deeds };
 }
 
 describe('the home screen goal', () => {

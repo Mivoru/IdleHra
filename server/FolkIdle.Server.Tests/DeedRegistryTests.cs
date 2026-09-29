@@ -218,5 +218,36 @@ namespace FolkIdle.Server.Tests
                 Assert.False(DeedRegistry.IsComplete(DeedRegistry.Chapters[i], firstHour));
             }
         }
+
+        // Task 75: II-IV open together after I; V at two of them.
+        [Theory]
+        [InlineData(0b00000, 1, true)]
+        [InlineData(0b00000, 2, false)]
+        [InlineData(0b00000, 5, false)]
+        [InlineData(0b00001, 2, true)]
+        [InlineData(0b00001, 3, true)]
+        [InlineData(0b00001, 4, true)]
+        [InlineData(0b00001, 5, false)]
+        [InlineData(0b00011, 5, false)] // one loop chapter is not enough
+        [InlineData(0b00101, 5, false)]
+        [InlineData(0b01011, 5, true)]  // Smiths + Stewards
+        [InlineData(0b01101, 5, true)]  // Hunters + Stewards, Smiths never touched
+        [InlineData(0b01100, 5, true)]  // V follows the loop chapters alone
+        public void ChaptersOpenByTheLoopRule(int doneMask, int chapter, bool open)
+        {
+            Assert.Equal(open, DeedRegistry.IsOpen(chapter, doneMask));
+        }
+
+        [Fact]
+        public void AClosedChapterSaysWhatItWaitsFor()
+        {
+            Assert.Equal(string.Empty, DeedRegistry.OpensWhen(1));
+            Assert.Contains(DeedRegistry.Chapters[0].Title, DeedRegistry.OpensWhen(3));
+            string finale = DeedRegistry.OpensWhen(5);
+            for (int c = DeedRegistry.FirstLoopChapter; c <= DeedRegistry.LastLoopChapter; c++)
+            {
+                Assert.Contains(DeedRegistry.Chapters[c - 1].Title, finale);
+            }
+        }
     }
 }

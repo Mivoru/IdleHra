@@ -1238,7 +1238,9 @@
           {/each}
           <p class="dim tiny">
             The live counters are on the <a href="#/progression">Progression screen</a>.
-            A chapter opens when the one before it completes.
+            The Village Road comes first. Once it is finished, Smiths, Hunters and
+            Stewards are open together, and the Ledger of Legends opens when two of
+            those three are done - so no loop you dislike blocks the others.
           </p>
 
           <h3 id="hall">The Hall of Ancestors, and the cull</h3>

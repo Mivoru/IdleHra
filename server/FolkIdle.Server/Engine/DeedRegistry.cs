@@ -162,11 +162,52 @@ namespace FolkIdle.Server.Engine
 
         public static int SkillPointsFrom(int sealsMask) => SealCount(sealsMask) * SkillPointsPerSeal;
 
+        // Modul: THE OPEN RULE (task 75). Chapters used to open strictly in
+        // sequence, so a combat-first player sat on Hunters until they had
+        // fused fifty times for Smiths. Chapter I is still the tutorial and
+        // still comes first. After it, the three loop chapters - Smiths,
+        // Hunters, Stewards - are open together, and the Ledger opens at two
+        // of those three.
+        //
+        // This changes what the book SHOWS, not what it pays: SealEngine has
+        // always awarded a Seal for any complete chapter, open or not (a deed
+        // counts history, and history does not wait for a chapter to open).
+        // Seals and their skill points are unchanged.
+        public const int FirstLoopChapter = 2;
+        public const int LastLoopChapter = 4;
+        public const int FinaleChapter = 5;
+        public const int LoopChaptersToOpenFinale = 2;
+
         /// <summary>
-        /// Whether every deed in a chapter is done.
-        ///
-        /// A CHAPTER OPENS WHEN THE ONE BEFORE IT COMPLETES, which is the
-        /// caller's business; this answers only "is this one finished".
+        /// Whether a chapter is open, given which chapters are DONE - sealed, or
+        /// complete right now. Sealed counts because several deeds are state
+        /// ("wear a weapon") and must not slam a chapter shut behind a player
+        /// who changed their mind.
+        /// </summary>
+        public static bool IsOpen(int chapterIndex, int doneMask)
+        {
+            if (chapterIndex <= 1) return true;
+            if (chapterIndex <= LastLoopChapter) return (doneMask & 1) != 0;
+
+            int loopsDone = 0;
+            for (int c = FirstLoopChapter; c <= LastLoopChapter; c++)
+            {
+                if ((doneMask & (1 << (c - 1))) != 0) loopsDone++;
+            }
+            return loopsDone >= LoopChaptersToOpenFinale;
+        }
+
+        /// <summary>What a closed chapter is waiting for, in the book's words.</summary>
+        public static string OpensWhen(int chapterIndex)
+        {
+            if (chapterIndex <= 1) return string.Empty;
+            if (chapterIndex <= LastLoopChapter) return $"Opens when {Chapters[0].Title} is finished.";
+            return $"Opens when two of {Chapters[1].Title}, {Chapters[2].Title} and {Chapters[3].Title} are finished.";
+        }
+
+        /// <summary>
+        /// Whether every deed in a chapter is done. Whether it is OPEN is
+        /// IsOpen's question.
         /// </summary>
         public static bool IsComplete(DeedChapter chapter, DeedContext context)
         {

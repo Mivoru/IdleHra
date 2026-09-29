@@ -1202,8 +1202,13 @@ export interface DeedChapterEntry {
   Index: number;
   Title: string;
   Reward: string;
-  /** A chapter opens when the one before it completes. */
+  /**
+   * Task 75: chapter I first, then II-IV together, V at two of those three.
+   * The rule is the server's (DeedRegistry.IsOpen); read it, do not restate it.
+   */
   IsOpen: boolean;
+  /** What a closed chapter waits for, in the book's words; empty when open. */
+  OpensWhen: string;
   IsComplete: boolean;
   HasSeal: boolean;
   Deeds: DeedEntry[];
