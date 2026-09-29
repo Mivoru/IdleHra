@@ -19,7 +19,63 @@ do next.
 
 ---
 
-# HANDOFF 2026-09-28 - START HERE
+# HANDOFF 2026-09-29 (evening) - START HERE
+
+**Production is 1.0.911** = `main` at `757b014` (PRs #101-#107), deployed
+2026-09-29 through the deploy skill. Backup first:
+`folkidle-20260929T173129Z.dump`. No migration in this range. Checked live:
+`/healthz` 200, `/api/v1/forge/stack-preview` 401 (present),
+`/api/v1/stats/online` 200, `smoke:screens` 28/28 with the guided first step.
+
+**What happened today:** a second design audit (claude.ai artifact
+5di35DqxEfb5zpNUh5Sxsy, Czech) became `docs/TASK_BOARD.md` tasks 68-88, and
+the first seven were built:
+- **68** three screens stated rules the game does not have (mastery
+  "-112", Diamond Star "forge success", the Welcome back advice) + a guard
+  test;
+- **69** fuse a whole stack in one action (opcode 78 `FuseStack`,
+  `ForgeSplicingEngine.PlanStack`, `/api/v1/forge/stack-preview`, dev route
+  `/api/v1/dev/forge/stack`);
+- **70** narrowed: a coach card that has been read folds on the next screen;
+- **71** quiet chat moves to the header, the empty Store leaves the menu;
+  `fetchOnlineStats` read 0 in the APK (bare relative fetch) - fixed;
+- **72** "You wear N of 8" under the locked region, Continue, death-card
+  Again / One easier, and Combat's stale 5x/2x wall text;
+- **74** partly: rarity tooltips, desktop Character dot, no "Mat" prefix.
+
+**Two audit claims were wrong and are corrected on the board:** the Forge
+chips always filled the fusion; the coach card is fixed at the bottom (a
+full-page screenshot artefact - the second time; take VIEWPORT screenshots
+before claiming anything about a fixed element).
+
+**Next, in order (the board's START HERE has the same list):**
+1. Without the owner: **77** (run `wiring-auditor` on the Village "Work
+   slots" panel), **78** (hunting advisor: server projection per monster),
+   **81** (Chest rules and row actions).
+2. Screenshot to the owner first: **73** (Home), **82** (desktop header).
+3. Owner decisions: **75** (parallel deed chapters), **76** (one Community
+   entry), **79** (Treasury on gold spent), **80** (Breeding Grounds above 1),
+   then the designs **83-88** one conversation at a time.
+4. Left from 74: one number format; reroll history (needs server-side roll
+   results, pair it with 86).
+
+**Standing traps met today:**
+- **A flaky server test:** `HardenedEngineIntegrationTests.Test_ChatEngine_BlockedListener_DoesNotReceiveWorldChat_WhileBystanderDoes`
+  failed CI on the #104 merge (a client-only change) and passed on the next
+  two runs. Watch it; fix it if it fails again.
+- **`exercise.mjs` "a drop can be worn from the loot list"** is RNG-bound
+  (90 s for a wearable drop) and failed once in six runs.
+- **After ~6 exercise runs in a day** the Bloodline checks skip with "pool
+  spent" even after `--seed-dev`; the count drops from 226 to 216.
+- **Never `git reset --hard` in the main tree** - the owner keeps
+  uncommitted work there (it wiped their CLAUDE.md rewrite today; restored).
+  Test merges go in a `git worktree`.
+- **Run the post-deploy smoke from an up-to-date `main`** - a stale local
+  branch's `screens.mjs` reported a removed Store as a failure.
+
+---
+
+# HANDOFF 2026-09-28 - superseded by the block above
 
 **The next work is `docs/TASK_BOARD.md` tasks 48-62** (its START HERE
 block). A design audit ran on 2026-09-28; its plan and every owner decision
