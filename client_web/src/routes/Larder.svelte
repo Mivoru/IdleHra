@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   import { onMount } from 'svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState } from '../lib/stores/game';
@@ -184,7 +185,7 @@
           <span class="idx dim">Slot {slot.index + 1}</span>
           {#if slot.itemId > 0}
             <span class="name">{foodName(slot.itemId)}</span>
-            <span class="count">{slot.count.toLocaleString()}</span>
+            <span class="count" title={numberTitle(slot.count)}>{formatNumber(slot.count)}</span>
             <span class="pm">
               <button
                 class="tiny-btn"
@@ -246,7 +247,7 @@
     {:else}
       {#if quickLoad}
         <button class="quickload" data-guide="larder-load" onclick={loadAll}>
-          Load all {prettifyBaseId(quickLoad.food.baseId)} ({quickLoad.quantity.toLocaleString()})
+          Load all {prettifyBaseId(quickLoad.food.baseId)} ({formatNumber(quickLoad.quantity)})
           into slot {quickLoad.slotIndex + 1}
         </button>
       {/if}
@@ -255,13 +256,13 @@
           <option value="">Choose food...</option>
           {#each availableFood as food}
             <option value={food.baseId}>
-              {prettifyBaseId(food.baseId)} ({food.quantity.toLocaleString()})
+              {prettifyBaseId(food.baseId)} ({formatNumber(food.quantity)})
             </option>
           {/each}
         </select>
         <input type="number" min="1" max={SLOT_CAPACITY} bind:value={amount} />
       </div>
-      <p class="dim tiny">Slots hold at most {SLOT_CAPACITY.toLocaleString()}; larger requests are clamped.</p>
+      <p class="dim tiny">Slots hold at most {formatNumber(SLOT_CAPACITY)}; larger requests are clamped.</p>
     {/if}
   </section>
 

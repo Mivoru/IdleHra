@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from './format';
   import { offlineSummary, dismissOfflineSummary, playerState } from '../stores/game';
   import RaceIcon from './RaceIcon.svelte';
   import { raceName } from './races';
@@ -85,9 +86,9 @@
         </p>
       {:else}
         <dl>
-          <div><dt>Gold</dt><dd>+{summary.goldEarned.toLocaleString()}</dd></div>
-          <div><dt>XP</dt><dd>+{summary.xpEarned.toLocaleString()}</dd></div>
-          <div><dt>Materials</dt><dd>+{summary.materialDropsGranted.toLocaleString()}</dd></div>
+          <div><dt>Gold</dt><dd>+{formatNumber(summary.goldEarned)}</dd></div>
+          <div><dt>XP</dt><dd>+{formatNumber(summary.xpEarned)}</dd></div>
+          <div><dt>Materials</dt><dd>+{formatNumber(summary.materialDropsGranted)}</dd></div>
         </dl>
 
         {#if summary.materialsLostToFullWarehouse > 0}
@@ -96,7 +97,7 @@
                like a broken one. Shown as a warning, not a stat: it is telling
                the player what to fix, not celebrating a number. -->
           <p class="warn-line lost">
-            Your warehouse was full - {summary.materialsLostToFullWarehouse.toLocaleString()}
+            Your warehouse was full - {formatNumber(summary.materialsLostToFullWarehouse)}
             more material{summary.materialsLostToFullWarehouse === 1 ? '' : 's'} were produced but had nowhere
             to go. Upgrade the Warehouse or spend down your stock.
           </p>
@@ -104,8 +105,8 @@
 
         {#if perHour}
           <p class="rate dim small">
-            That is <strong>{perHour.gold.toLocaleString()} gold</strong> and
-            <strong>{perHour.xp.toLocaleString()} XP</strong> an hour. Better
+            That is <strong>{formatNumber(perHour.gold)} gold</strong> and
+            <strong>{formatNumber(perHour.xp)} XP</strong> an hour. Better
             gear raises it; a monster that kills you drops it to nothing.
             <!-- Modul: this used to say "leave a harder monster running and
                  this goes up". Every monster pays XP and gold in proportion to
@@ -131,9 +132,9 @@
                     <span>Slot {worker.slot}</span>
                     <span class="dim">{raceName(worker.raceId)}</span>
                   </td>
-                  <td>{worker.gold.toLocaleString()}</td>
-                  <td>{worker.xp.toLocaleString()}</td>
-                  <td>{worker.drops.toLocaleString()}</td>
+                  <td title={numberTitle(worker.gold)}>{formatNumber(worker.gold)}</td>
+                  <td title={numberTitle(worker.xp)}>{formatNumber(worker.xp)}</td>
+                  <td title={numberTitle(worker.drops)}>{formatNumber(worker.drops)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -169,7 +170,7 @@
             </p>
           {:else}
             <p class="dim tiny">
-              Larder: {rightNow.larderBites.toLocaleString()} bites left.
+              Larder: {formatNumber(rightNow.larderBites)} bites left.
             </p>
           {/if}
 

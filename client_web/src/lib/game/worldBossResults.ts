@@ -5,6 +5,7 @@
 // world_boss_results.json), so a new server result without a sentence fails
 // the client build rather than reaching a player as a blank.
 import type { WorldBossStrikeResult } from '../net/rest';
+import { formatNumber } from '../ui/format';
 
 /**
  * What to tell the player. `{damage}` is filled in where the server reports
@@ -45,5 +46,5 @@ export const SILENT_WORLD_BOSS_RESULTS: ReadonlySet<WorldBossStrikeResult> = new
 
 export function worldBossResultSentence(result: WorldBossStrikeResult, damage?: number): string {
   const sentence = WORLD_BOSS_RESULT_SENTENCES[result] ?? '';
-  return sentence.replace('{damage}', damage === undefined ? '0' : damage.toLocaleString());
+  return sentence.replace('{damage}', damage === undefined ? '0' : formatNumber(damage));
 }

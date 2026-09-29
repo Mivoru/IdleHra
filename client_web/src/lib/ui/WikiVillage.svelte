@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from './format';
   // Modul: the village page's numbers, GENERATED rather than typed.
   //
   // Every row below is computed from the same two functions the Village screen
@@ -74,7 +75,7 @@
           <td>Level {row.level}</td>
           <td class="num">{row.ceiling}</td>
           <td class="num">{row.slots}</td>
-          <td class="num">{row.gold.toLocaleString()}/h</td>
+          <td class="num">{formatNumber(row.gold)}/h</td>
         </tr>
       {/each}
     </tbody>
@@ -182,11 +183,11 @@
       {#each rows as row, level}
         <tr class:tier-start={level % 5 === 0}>
           <td>{row.level}</td>
-          {#if costKind !== 'structural'}<td class="num">{row.gold.toLocaleString()}</td>{/if}
-          <td class="num">{row.materials.toLocaleString()} <span class="dim tiny">{prettifyBaseId(row.log)}</span></td>
-          <td class="num">{row.materials.toLocaleString()} <span class="dim tiny">{prettifyBaseId(row.ore)}</span></td>
+          {#if costKind !== 'structural'}<td class="num" title={numberTitle(row.gold)}>{formatNumber(row.gold)}</td>{/if}
+          <td class="num">{formatNumber(row.materials)} <span class="dim tiny">{prettifyBaseId(row.log)}</span></td>
+          <td class="num">{formatNumber(row.materials)} <span class="dim tiny">{prettifyBaseId(row.ore)}</span></td>
           {#if costKind === 'structural'}
-            <td class="num">{row.rareLog.toLocaleString()} <span class="dim tiny">{prettifyBaseId(row.rareLogId)}</span></td>
+            <td class="num">{formatNumber(row.rareLog)} <span class="dim tiny">{prettifyBaseId(row.rareLogId)}</span></td>
           {/if}
           <td class="num">{duration(row.seconds)}</td>
         </tr>

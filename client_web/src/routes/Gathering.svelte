@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatCompact } from '../lib/ui/format';
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   import { onMount } from 'svelte';
   import { playerState, visualState, pushLocalNotice } from '../lib/stores/game';
   import { loadContent, type ContentRegistry, type GatheringNodeDefinition } from '../lib/net/content';
@@ -259,7 +259,7 @@
                    against digits and separators - so a compacted "1.2M" would
                    have been read as 12. data-exact is what makes the display
                    free to change. -->
-              <span data-exact={masteryXpOf(track.id)}>{formatCompact(masteryXpOf(track.id))}</span> xp
+              <span data-exact={masteryXpOf(track.id)} title={numberTitle(masteryXpOf(track.id))}>{formatNumber(masteryXpOf(track.id))}</span> xp
             </dd>
           </div>
         {/each}

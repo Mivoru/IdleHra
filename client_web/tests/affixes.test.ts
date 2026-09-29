@@ -10,6 +10,7 @@ import {
   describeStopCondition,
 } from '../src/lib/ui/affixes';
 import { describeBossGearRequirement } from '../src/lib/ui/victories';
+import { formatNumber } from '../src/lib/ui/format';
 
 // Modul: this file exists because the first version was wrong in production
 // and the browser caught it. Real payload keys arrive as "crit_dmg_pct@2" -
@@ -95,11 +96,11 @@ describe('unit selection', () => {
   });
 
   it('renders flat affixes as whole points', () => {
-    // Grouped by the viewer's locale, so the expectation is derived rather
+    // Grouped by the UI language, derived from the one formatter rather
     // than hardcoded - "+1,250" and "+1 250" are both correct depending on
     // where the browser is, and pinning one makes this test fail on a Czech
     // machine for no reason.
-    expect(formatAffixValue('flat_hp', 1250)).toBe(`+${(1250).toLocaleString()}`);
+    expect(formatAffixValue('flat_hp', 1250)).toBe(`+${formatNumber(1250)}`);
     expect(formatAffixValue('armor_pen_flat', 3)).toBe('+3');
   });
 });

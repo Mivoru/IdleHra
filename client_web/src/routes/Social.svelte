@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import {
     queryKeys,
@@ -289,7 +290,7 @@
             <span class="dot" class:online={member.IsOnline} title={member.IsOnline ? 'Online' : 'Offline'}></span>
             <span class="name">{rosterNameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}</span>
             <span class="dim tiny">{ROLE_NAMES[member.Role] ?? `Role ${member.Role}`}</span>
-            <span class="dim tiny">{member.ContributionPoints.toLocaleString()} pts</span>
+            <span class="dim tiny">{formatNumber(member.ContributionPoints)} pts</span>
           </li>
         {/each}
       </ul>

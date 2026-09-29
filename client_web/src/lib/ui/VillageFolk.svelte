@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from './format';
   // Modul: THE VILLAGE GENE POOL, shown.
   //
   // Breeding takes each aptitude from one parent, so a child can never exceed
@@ -142,8 +143,8 @@
     {/if}
 
     <div class="feast">
-      <button disabled={data.RecruitBlockedReason !== ''} onclick={feast}>
-        Throw a feast &middot; {data.RecruitCostGold.toLocaleString()}g
+      <button disabled={data.RecruitBlockedReason !== ''} onclick={feast} data-exact={data.RecruitCostGold} title={numberTitle(data.RecruitCostGold)}>
+        Throw a feast &middot; {formatNumber(data.RecruitCostGold)}g
       </button>
       <p class="dim tiny">
         {#if data.RecruitBlockedReason}

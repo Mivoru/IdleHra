@@ -1,3 +1,4 @@
+import { formatNumber } from './format';
 // Modul: affix display. Mirrors AffixRegistry's key encoding and its twelve
 // definitions.
 //
@@ -124,7 +125,7 @@ export function isPercentageAffix(affixId: string): boolean {
 /** Formats a magnitude for a BARE id - call parseAffixKey first. */
 export function formatAffixValue(affixId: string, magnitude: number): string {
   if (isPercentageAffix(affixId)) return `+${(magnitude / 10).toFixed(1)}%`;
-  return `+${magnitude.toLocaleString()}`;
+  return `+${formatNumber(magnitude)}`;
 }
 
 export function affixLabel(affixId: string): string {

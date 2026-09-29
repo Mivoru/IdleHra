@@ -14,6 +14,7 @@
  * Common "beating" its Normal is not a record anyone asked to hear about.
  */
 import { rarityName } from '../ui/rarity';
+import { formatNumber } from '../ui/format';
 
 export const HIT_TOAST_INTERVAL_MS = 120_000;
 export const DROP_RECORD_MIN_TIER = 4; // Rare
@@ -74,7 +75,7 @@ export class RecordWatch {
       this.pendingHit = true;
     }
     if (this.pendingHit && nowMs - this.lastHitToastAt >= HIT_TOAST_INTERVAL_MS) {
-      out.push(`New record: highest hit ${this.hit.toLocaleString()}`);
+      out.push(`New record: highest hit ${formatNumber(this.hit)}`);
       this.lastHitToastAt = nowMs;
       this.pendingHit = false;
     }

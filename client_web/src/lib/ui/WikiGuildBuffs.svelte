@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from './format';
   // Modul: the guild buff tiers, from the same table the server charges
   // against - GuildContributionEngine.BuffTierMaterials, mirrored in wikiData
   // and guarded by tests/wiki.test.ts.
@@ -37,9 +38,9 @@
 
   <p class="dim small">
     An officer or the leader spends
-    <strong>{GUILD_BUFF_COST_PER_MATERIAL.toLocaleString()}</strong> of the wood
-    <em>and</em> {GUILD_BUFF_COST_PER_MATERIAL.toLocaleString()} of the ore out
-    of the guild depot — {(GUILD_BUFF_COST_PER_MATERIAL * 2).toLocaleString()} materials
+    <strong title={numberTitle(GUILD_BUFF_COST_PER_MATERIAL)}>{formatNumber(GUILD_BUFF_COST_PER_MATERIAL)}</strong> of the wood
+    <em>and</em> {formatNumber(GUILD_BUFF_COST_PER_MATERIAL)} of the ore out
+    of the guild depot — {formatNumber(GUILD_BUFF_COST_PER_MATERIAL * 2)} materials
     a buff. The two paths cost the same; the rare one lasts nine times as long,
     which is the whole reason to hoard rare drops in the depot rather than sell
     them. Ordinary members can donate but cannot activate.

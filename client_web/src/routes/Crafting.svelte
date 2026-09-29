@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { queryKeys, fetchRecipes, type CraftingRecipe } from '../lib/net/rest';
@@ -243,13 +244,13 @@
               {#if recipe.Mat1Id !== 0}
                 <span class:short={recipe.Mat1CurrentStock < recipe.Mat1Count}>
                   {prettifyBaseId(recipe.Mat1BaseItemId)}
-                  {recipe.Mat1CurrentStock.toLocaleString()}/{recipe.Mat1Count.toLocaleString()}
+                  {formatNumber(recipe.Mat1CurrentStock)}/{formatNumber(recipe.Mat1Count)}
                 </span>
               {/if}
               {#if recipe.Mat2Id !== 0}
                 <span class:short={recipe.Mat2CurrentStock < recipe.Mat2Count}>
                   {prettifyBaseId(recipe.Mat2BaseItemId)}
-                  {recipe.Mat2CurrentStock.toLocaleString()}/{recipe.Mat2Count.toLocaleString()}
+                  {formatNumber(recipe.Mat2CurrentStock)}/{formatNumber(recipe.Mat2Count)}
                 </span>
               {/if}
             </div>

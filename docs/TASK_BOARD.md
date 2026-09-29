@@ -5253,14 +5253,14 @@ owner has seen a screenshot; the geometry checkers are clean.
 
 ## PARTLY DONE - 74. Small bundle
 
-**Built 2026-09-29, PR #107:** rarity tooltips (`rarityTitle`), the desktop Character dot, `mat_` stripped from names. **Left open:** one number format (a sweep of every screen, do it alone) and reroll history (auto-reroll reports only its end state; needs server-side roll results - do it with 86). The old gathering primitives (Raw Log, Wood, Oak Log) are left for 83/86.
+**Built 2026-09-29, PR #107:** rarity tooltips (`rarityTitle`), the desktop Character dot, `mat_` stripped from names. **Number format done:** one `formatNumber` in `ui/format.ts` (thin space to 100,000, `k`/`M`/`B`/`T` above, exact in `title`/`data-exact`, decimal mark by UI language); every `.toLocaleString()` on a quantity swept onto it, `exercise.mjs` reads `data-exact` instead of parsing. **Left open:** reroll history (auto-reroll reports only its end state; needs server-side roll results - do it with 86). The old gathering primitives (Raw Log, Wood, Oak Log) are left for 83/86.
 
 Each is independent:
 - Rarity tooltip everywhere a rarity is named: name, tier number, power
   multiplier (from the mirrored `powerMultiplier`).
 - A badge on the Character tab while any character has unspent attribute
   points.
-- One number format (`format.ts`): whole numbers with a thin space up to
+- DONE: One number format (`format.ts`): whole numbers with a thin space up to
   100,000, compact above, exact in the title; separator by UI language.
 - Reroll history: the last 20 results on a piece and its best roll, client
   side from the command results.

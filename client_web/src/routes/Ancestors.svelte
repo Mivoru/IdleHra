@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   // Modul: THE HALL OF ANCESTORS - the roster that outlives a season.
   //
   // Levels, gear, gold and the village all reset every ninety days. What
@@ -146,7 +147,7 @@
       {#if data.NextSlotCostDiamonds > 0}
         <div class="buy">
           <button disabled={data.Diamonds < data.NextSlotCostDiamonds} onclick={buySlot}>
-            One more slot &middot; {data.NextSlotCostDiamonds.toLocaleString()} diamonds
+            One more slot &middot; {formatNumber(data.NextSlotCostDiamonds)} diamonds
           </button>
           <p class="dim tiny">
             {data.SlotsPurchased} of {data.MaxCap - (data.Cap - data.SlotsPurchased)} bought.

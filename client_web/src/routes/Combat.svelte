@@ -15,7 +15,7 @@
   import { rarityName } from '../lib/ui/rarity';
   import { queryKeys, fetchWorn, fetchCombatProjection, type HuntingEstimate } from '../lib/net/rest';
   import { estimateLine, killTimeText, safety } from '../lib/ui/huntingEstimate';
-  import { formatCompact } from '../lib/ui/format';
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   import { readPref, writePref, PREF_LAST_MONSTER } from '../lib/net/prefs';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
@@ -412,11 +412,11 @@
         </div>
         <div>
           <span class="dim">XP</span>
-          <strong>{Math.floor(visual?.CurrentXp ?? snap.CurrentXp).toLocaleString()}</strong>
+          <strong title={numberTitle(Math.floor(visual?.CurrentXp ?? snap.CurrentXp))}>{formatNumber(Math.floor(visual?.CurrentXp ?? snap.CurrentXp))}</strong>
         </div>
         <div>
           <span class="dim">Gold</span>
-          <strong>{Math.floor(visual?.Gold ?? snap.Gold).toLocaleString()}</strong>
+          <strong title={numberTitle(Math.floor(visual?.Gold ?? snap.Gold))}>{formatNumber(Math.floor(visual?.Gold ?? snap.Gold))}</strong>
         </div>
 
       </div>
@@ -427,7 +427,7 @@
           value={visual?.PlayerHp ?? snap.PlayerHp}
           max={playerMaxHp}
           color="var(--good)"
-          label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp).toLocaleString()} / ${playerMaxHp.toLocaleString()}`}
+          label={`${formatNumber(Math.round(visual?.PlayerHp ?? snap.PlayerHp))} / ${formatNumber(playerMaxHp)}`}
         />
       </div>
 
@@ -454,7 +454,7 @@
               value={visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp}
               max={activeMaxHp(activeMonster)}
               color="var(--danger)"
-              label={`${Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp).toLocaleString()} / ${activeMaxHp(activeMonster).toLocaleString()}`}
+              label={`${formatNumber(Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp))} / ${formatNumber(activeMaxHp(activeMonster))}`}
             />
           </div>
         </div>
@@ -655,9 +655,9 @@
                 <MonsterPortrait monsterId={monster.Id} name={monster.Name} size="sm" />
                 <span class="name">{monster.Name}</span>
                 <span class="dim" class:firstclear={isFirstClearPending(monster.Id)}>
-                  {shownMaxHp(monster).toLocaleString()} HP
+                  {formatNumber(shownMaxHp(monster))} HP
                 </span>
-                <span class="dim">{monster.BaseXpReward.toLocaleString()} XP</span>
+                <span class="dim">{formatNumber(monster.BaseXpReward)} XP</span>
                 {#if isFirstClearPending(monster.Id)}
                   {@const bossRegion = bossRegionOf(monster.Id)}
                   <span
@@ -671,8 +671,8 @@
                   <span class="estimate" data-testid="hunting-estimate" title={estimateLine(est)}>
                     {#if est.CanDamage}
                       <span class="dim">Estimate:</span>
-                      {killTimeText(est)} a kill · {formatCompact(est.XpPerHour)} XP/h ·
-                      {formatCompact(est.GoldPerHour)} g/h ·
+                      {killTimeText(est)} a kill · {formatNumber(est.XpPerHour)} XP/h ·
+                      {formatNumber(est.GoldPerHour)} g/h ·
                       <span class="verdict {verdict.tone}">{verdict.text}</span>
                     {:else}
                       <span class="dim">Estimate:</span>

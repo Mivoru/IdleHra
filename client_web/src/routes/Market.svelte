@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber } from '../lib/ui/format';
   import CosmeticMarket from '../lib/ui/CosmeticMarket.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import {
@@ -253,7 +254,7 @@
     <header class="head">
       <h2>Market</h2>
       <span class="dim tiny">
-        {totalCount.toLocaleString()} listing{totalCount === 1 ? '' : 's'}
+        {formatNumber(totalCount)} listing{totalCount === 1 ? '' : 's'}
       </span>
     </header>
 
@@ -359,7 +360,7 @@
                 {slotLabel(listing.BaseItemId)} &middot; {rarityName(listing.QualityTier)}
               </span>
             </div>
-            <span class="price">{listing.Price.toLocaleString()}g</span>
+            <span class="price">{formatNumber(listing.Price)}g</span>
             <button class="tiny-btn" disabled={!hasGuildLicense} onclick={() => buy(listing.OrderId)}>
               Buy
             </button>
@@ -428,15 +429,15 @@
           <div class="quote-head">
             <div>
               <span class="dim tiny">Last sold</span>
-              <strong>{h.LastPrice.toLocaleString()}g</strong>
+              <strong>{formatNumber(h.LastPrice)}g</strong>
             </div>
             <div>
               <span class="dim tiny">Average</span>
-              <strong>{h.AveragePrice.toLocaleString()}g</strong>
+              <strong>{formatNumber(h.AveragePrice)}g</strong>
             </div>
             <div>
               <span class="dim tiny">Range</span>
-              <strong>{h.LowPrice.toLocaleString()} - {h.HighPrice.toLocaleString()}g</strong>
+              <strong>{formatNumber(h.LowPrice)} - {formatNumber(h.HighPrice)}g</strong>
             </div>
           </div>
 
@@ -456,7 +457,7 @@
             {/each}
           </div>
 
-          <p class="dim tiny">{h.TradeCount.toLocaleString()} trades in the last 30 days.</p>
+          <p class="dim tiny">{formatNumber(h.TradeCount)} trades in the last 30 days.</p>
 
           <button class="tiny-btn" onclick={() => (sellPrice = Math.max(1, h.LastPrice))}>
             Use last price
@@ -486,17 +487,17 @@
       {@const fee = Math.floor((sellPrice * history.data.FeePct) / 100)}
       {@const guildCut = Math.floor((sellPrice * history.data.GuildTaxPct) / 100)}
       <dl class="payout">
-        <div><dt>Asking</dt><dd>{sellPrice.toLocaleString()}g</dd></div>
-        <div><dt>Market fee ({history.data.FeePct}%)</dt><dd class="minus">-{fee.toLocaleString()}g</dd></div>
+        <div><dt>Asking</dt><dd>{formatNumber(sellPrice)}g</dd></div>
+        <div><dt>Market fee ({history.data.FeePct}%)</dt><dd class="minus">-{formatNumber(fee)}g</dd></div>
         {#if history.data.GuildTaxPct > 0}
           <div>
             <dt>Guild cut ({history.data.GuildTaxPct}%)</dt>
-            <dd class="minus">-{guildCut.toLocaleString()}g</dd>
+            <dd class="minus">-{formatNumber(guildCut)}g</dd>
           </div>
         {/if}
         <div class="total">
           <dt>You receive</dt>
-          <dd>{Math.max(0, sellPrice - fee - guildCut).toLocaleString()}g</dd>
+          <dd>{formatNumber(Math.max(0, sellPrice - fee - guildCut))}g</dd>
         </div>
       </dl>
     {/if}
@@ -506,7 +507,7 @@
          offering it and explaining afterwards. NoGuildLicense is a rejection
          code rather than a disconnect, so this is UX rather than safety. -->
     <button onclick={sell} disabled={!hasGuildLicense || sellInstanceId === 0 || sellPrice < 1}>
-      List for {Math.max(1, sellPrice).toLocaleString()}g
+      List for {formatNumber(Math.max(1, sellPrice))}g
     </button>
 
     {#if sellable.length === 0}
@@ -585,7 +586,7 @@
         orderPrice < 1 ||
         (orderSide === 'buy' ? orderDefinitionId === 0 : orderInstanceId === 0)}
     >
-      Place {orderSide} order at {Math.max(1, orderPrice).toLocaleString()}g
+      Place {orderSide} order at {formatNumber(Math.max(1, orderPrice))}g
     </button>
 
     <p class="dim tiny">

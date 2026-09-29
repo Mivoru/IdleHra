@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { formatNumber, numberTitle } from '../lib/ui/format';
   import { requestScreen } from '../lib/stores/navigation';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import { unopenedChests } from '../lib/stores/cosmeticChests';
@@ -382,7 +383,7 @@
             value={visual?.PlayerHp ?? snap.PlayerHp}
             max={playerMaxHp}
             color="var(--good)"
-            label={`${Math.round(visual?.PlayerHp ?? snap.PlayerHp).toLocaleString()} / ${playerMaxHp.toLocaleString()}`}
+            label={`${formatNumber(Math.round(visual?.PlayerHp ?? snap.PlayerHp))} / ${formatNumber(playerMaxHp)}`}
           />
         </div>
         <!-- Modul: the mana bar went with the four active skills. It measured
@@ -408,11 +409,11 @@
       <dl class="stats">
         <div>
           <dt>Accuracy</dt>
-          <dd>{(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating).toLocaleString()}</dd>
+          <dd title={numberTitle(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating)}>{formatNumber(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating)}</dd>
         </div>
         <div>
           <dt>Armor</dt>
-          <dd>{(selectedCombatStats?.Armor ?? snap.PlayerArmorRating).toLocaleString()}</dd>
+          <dd title={numberTitle(selectedCombatStats?.Armor ?? snap.PlayerArmorRating)}>{formatNumber(selectedCombatStats?.Armor ?? snap.PlayerArmorRating)}</dd>
         </div>
         <div>
           <dt>Block</dt>

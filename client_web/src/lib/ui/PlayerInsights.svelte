@@ -5,7 +5,7 @@
   // from the live packet: a rate needs history, and the server keeps it.
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchInsights, type InsightRate, type InsightStyle } from '../net/rest';
-  import { formatCompact } from './format';
+  import { formatNumber, formatDecimal } from './format';
   import Skeleton from './Skeleton.svelte';
 
   const insights = createQuery(() => ({
@@ -26,7 +26,7 @@
 
   function cell(rate: InsightRate, value: number): string {
     if (rate.CoveredSeconds === 0) return '-';
-    return value >= 1000 ? formatCompact(Math.round(value)) : value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+    return value >= 1000 ? formatNumber(Math.round(value)) : formatDecimal(value, 1);
   }
 
   function minutes(seconds: number): string {
@@ -109,8 +109,8 @@
     {/each}
     {#if day && day.CoveredSeconds > 0}
       <p class="dim small gold">
-        Gold in the last day: <strong>+{formatCompact(day.GoldEarned)}</strong> earned,
-        <strong>-{formatCompact(day.GoldSpent)}</strong> spent.
+        Gold in the last day: <strong>+{formatNumber(day.GoldEarned)}</strong> earned,
+        <strong>-{formatNumber(day.GoldSpent)}</strong> spent.
         <span class="tiny">(From the rises and falls of your purse between readings.)</span>
       </p>
     {/if}

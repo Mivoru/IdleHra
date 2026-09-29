@@ -22,6 +22,7 @@
 // The full step list, the reasoning behind each predicate, and the four
 // triggers the packet CANNOT express are in docs/onboarding_steps.md.
 import type { StateUpdate } from '../net/protocol.generated';
+import { formatNumber } from '../ui/format';
 // Task 60: the systems whose screen unlocks share their predicate with the
 // moment that announces it - see ui/unlocks.ts.
 import {
@@ -233,7 +234,7 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     title: 'The Delve is open',
     reached: delveOpen,
     body:
-      `A dive costs gold - ${DELVE_FIRST_ENTRY_GOLD.toLocaleString('en-US')} in the first region - ` +
+      `A dive costs gold - ${formatNumber(DELVE_FIRST_ENTRY_GOLD)} in the first region - ` +
       'and pays diamonds if your nerve holds. Eight floors, three doors each; bank what you ' +
       'have or push on, and three failures lose the lot.',
   },
