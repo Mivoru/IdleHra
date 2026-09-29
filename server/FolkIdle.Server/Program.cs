@@ -628,6 +628,9 @@ redisWriteBehindEngine.StartCron();
 // FunnelRecorder.Queue into player_funnel_events. See docs/ops/funnel.sql.
 var funnelRecorder = new FunnelRecorder(serviceProvider);
 funnelRecorder.StartCron();
+// Task 56: ten-minute samples of every online account's lifetime counters.
+var statSampler = new StatSampler(serviceProvider, playerRegistry);
+statSampler.StartCron();
 // Task 54: the level chest, one per five levels. Producers only enqueue.
 var cosmeticGrantEngine = new CosmeticGrantEngine(serviceProvider, playerRegistry);
 cosmeticGrantEngine.StartCron();

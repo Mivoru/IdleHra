@@ -222,126 +222,37 @@ namespace FolkIdle.Server.Engine
             return activePlayers.Count;
         }
 
+        // Modul: CLAIMS PAY NOTHING ANY MORE (task 57). Treasury, Master Smith
+        // and Logistics are paid by the checkpoint the moment a tier is crossed
+        // (StateCheckpointManager.UpsertLifetimeAchievementsAsync), and this
+        // path then paid the SAME tiers again, once, off the claim button the
+        // Progress screen offered because IsClaimed was never set for them.
+        // Monster Slayer's reward table was empty, so its claim paid nothing at
+        // all. All four are automatic now - the Book of Deeds pays Monster
+        // Slayer on read (LifetimeAchievementBank) - so a claim from an old
+        // client is drained and ignored rather than left to grow the queue.
         private async Task ProcessClaimsQueueAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
-                if (_registry.AchievementClaimQueue.TryDequeue(out var req))
+                try
                 {
-                    try
+                    if (_registry.AchievementClaimQueue.TryDequeue(out var req))
                     {
-                        var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
-                        await using var dbContext = new FolkIdleDbContext(retryingOptions.Options);
-
-                        var strategy = dbContext.Database.CreateExecutionStrategy();
-                        await strategy.ExecuteAsync(async () =>
-                        {
-                            dbContext.ChangeTracker.Clear();
-
-                            // IsolationLevel.Serializable and FOR UPDATE (simulated via EF Core)
-                            using var transaction = await dbContext.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, stoppingToken);
-
-                            // Aggregating volatile Redis state (session) with DB state
-                            var achievement = await dbContext.PlayerLifetimeAchievements
-                                .FirstOrDefaultAsync(a => a.PlayerId == req.PlayerId && a.AchievementId == req.AchievementId, stoppingToken);
-
-                            if (achievement == null)
-                            {
-                                achievement = new PlayerLifetimeAchievement
-                                {
-                                    PlayerId = req.PlayerId,
-                                    AchievementId = (int)req.AchievementId,
-                                    CurrentProgress = 0,
-                                    IsClaimed = false
-                                };
-                                dbContext.PlayerLifetimeAchievements.Add(achievement);
-                            }
-
-                            if (!achievement.IsClaimed)
-                            {
-                                // Modul: 2026-08-02. This handled exactly ONE
-                                // of the four achievements, under a comment
-                                // reading "Other achievements mapped here in
-                                // future..." - so Treasury, Forging and
-                                // Logistics could be requested, were accepted
-                                // by the validator, and then silently did
-                                // nothing. /api/v1/achievements/snapshot has
-                                // always reported all four with real progress
-                                // and a real NextTierReward, so a client shows
-                                // a claim button that pays out for one id in
-                                // four and says nothing for the rest.
-                                //
-                                // Nothing here is invented. Every threshold and
-                                // reward is already authored in
-                                // AchievementMilestones, and
-                                // GetDiamondsForTiersCrossed exists precisely
-                                // to total the payout between two tiers - this
-                                // is the mapping the comment promised, written
-                                // generically so a fifth achievement needs no
-                                // change here at all.
-                                int rewardTier = achievement.CompletedTier;
-
-                                // The monster-kill achievement keeps its own
-                                // path: its progress lives partly in the live
-                                // session (kills since the last flush) rather
-                                // than only in CurrentProgress, so its
-                                // completion cannot be read off the row alone.
-                                if (req.AchievementId == AchievementMilestones.MonsterKillAchievementId)
-                                {
-                                    long volatileKillCount = req.LiveSession.GetCurrentMonsterKills();
-                                    if ((achievement.CurrentProgress + volatileKillCount) >= AchievementMilestones.MonsterKillThreshold)
-                                    {
-                                        rewardTier = Math.Max(rewardTier, 1);
-                                    }
-                                }
-
-                                if (rewardTier > 0)
-                                {
-                                    int diamonds = AchievementMilestones.GetDiamondsForTiersCrossed(
-                                        (int)req.AchievementId, 0, rewardTier);
-
-                                    if (diamonds > 0)
-                                    {
-                                        achievement.IsClaimed = true;
-                                        achievement.CompletedTier = rewardTier;
-
-                                        var playerRecord = await dbContext.PlayerRecords.FindAsync(new object[] { req.PlayerId }, stoppingToken);
-                                        if (playerRecord != null)
-                                        {
-                                            playerRecord.PremiumDiamonds += diamonds;
-
-                                            // Modul: writing PlayerRecords is
-                                            // not enough for an ONLINE player -
-                                            // the live payload owns
-                                            // PremiumCurrency and the next
-                                            // checkpoint flush assigns it back
-                                            // over the top, silently erasing
-                                            // the reward. Same shape as the
-                                            // sweep's own reward-sync fix
-                                            // above, and fixed the same way.
-                                            _registry?.BillingSyncQueue.Enqueue(new BillingSyncNotification
-                                            {
-                                                PlayerId = req.PlayerId,
-                                                PremiumDiamondsBalance = playerRecord.PremiumDiamonds
-                                            });
-                                        }
-                                    }
-                                }
-
-                                await dbContext.SaveChangesAsync(stoppingToken);
-                            }
-
-                            await transaction.CommitAsync(stoppingToken);
-                        });
+                        Console.WriteLine($"[AchievementEngine] ignored a retired claim for achievement {req.AchievementId} from player {req.PlayerId}");
                     }
-                    catch (Exception ex)
+                    else
                     {
-                        Console.WriteLine($"[AchievementEngine] Failed to process claim: {ex.Message}");
+                        await Task.Delay(250, stoppingToken);
                     }
                 }
-                else
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
-                    await Task.Delay(10, stoppingToken);
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[AchievementEngine] claim drain failed: {ex.Message}");
                 }
             }
         }

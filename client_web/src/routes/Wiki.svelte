@@ -1521,8 +1521,11 @@
 
           <h3 id="achievements">Achievements</h3>
           <p class="dim small">
-            Four of them. Three run in tiers I–IV and pay out automatically as you
-            cross each threshold; the oldest one is claimed by hand.
+            Four of them, in the Book of Deeds' <strong>Lifetime</strong> chapter
+            on the Progress screen. Every tier has a name and pays itself the
+            moment you reach it - there is no claim button. The book also holds
+            a handful of <strong>hidden deeds</strong>, shown as "???" with only a
+            category until you have done them.
           </p>
           <div class="scroll">
             <table>

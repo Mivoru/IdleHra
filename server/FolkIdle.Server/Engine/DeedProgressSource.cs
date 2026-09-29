@@ -138,6 +138,9 @@ namespace FolkIdle.Server.Engine
                 BestCodexRegionCompletion: bestCodexRegion,
                 BestSeasonRank: player.BestSeasonRank,
                 ChildrenBred: childrenBred,
+                TotalDeaths: player.TotalDeaths,
+                DelveDeepestFloor: player.DelveDeepestFloor,
+                BestHit: player.BestHit,
                 EpicChildrenBred: epicChildren,
                 BestAptitudeTotal: bestAptitude);
         }

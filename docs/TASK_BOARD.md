@@ -4707,7 +4707,20 @@ of Deeds.
 ceiling (memory), so "no food" may be impossible for some bosses; measure it
 with `ProgressionRateTests`' model before shipping.
 
-## 56. Statistics that say how you play
+## DONE - 56. Statistics that say how you play
+
+**Built 2026-09-29 (with 57, one PR - both rebuild the Progress screen).**
+`StatSampler` writes a ten-minute sample of every ONLINE account's cumulative
+counters (kills from the codex, XP as level + progress, gold balance, harvests
+from the Logistics row, crafts) plus what its three played characters are
+doing, into `player_stat_samples` (kept 8 days). `/api/v1/player/insights`
+turns them into per-hour rates over 10 min / 1 h / 24 h (closed by a reading
+taken at request time), "your style" (fighting / gathering / crafting / idle
+over 24 h and 7 d), gold earned vs spent (rises and falls of the balance -
+honest label; a per-category gold ledger is NOT built) and a timeline from
+`player_funnel_events` plus the best drop. Progress -> Statistics tab.
+Offline players are not sampled; their away earnings land in the next window.
+
 
 Progress -> Statistics is 12 flat numbers. Build:
 - **rates** over 10 min, 1 h and 24 h: gold/h, XP/h, kills/h, materials/h;
@@ -4720,7 +4733,32 @@ Progress -> Statistics is 12 flat numbers. Build:
 The server needs hourly aggregates per player (about 24 rows a day). The
 same data can later feed an economy view.
 
-## 57. One book of goals, and a collection log
+## DONE - 57. One book of goals, and a collection log
+
+**Built 2026-09-29 (owner: "make the best design you can and implement it; I
+will critique it after").** Progress is four tabs: Goals / Collection /
+Statistics / Daily & races.
+- **Goals**: the Book of Deeds plus a **Lifetime** chapter - the four
+  achievements as named tiers (Treasury: Purse/Coffer/Vault/Hoard, Master
+  Smith: Apprentice..Grandmaster, Logistics: Porter..Logistician, Monster
+  Slayer), goals and diamonds read from `AchievementMilestones`' own tables.
+  No claim button. A **boss challenges** line (x / 15, link to Combat), and
+  six **hidden deeds** shown as "???" + category until done (no reward).
+- **DEFECT FOUND AND FIXED:** tiers 2-4 were paid by the checkpoint AND the
+  Progress screen still offered "Claim tier N" (IsClaimed never set), and the
+  claim paid the same tiers a second time. Monster Slayer's reward table was
+  empty, so its claim paid nothing. Now: the claim queue is drained and
+  ignored; Monster Slayer (500 diamonds at 10,000 codex kills) is paid once
+  on reading the Book (conditional UPDATE, safe for concurrent GETs); the old
+  snapshot reports a paid tier as claimed. Worth checking prod for how many
+  double payouts happened (player_lifetime_achievements IsClaimed = true on
+  ids 2-4).
+- **Collection**: `player_collection` keeps the best rarity ever owned of each
+  of the 75 `eq_` pieces. Written by the loot worker after its commit
+  (coalesced per worker) and folded from the Chest on read, so crafted, fused
+  and bought pieces count. Per region: pieces x/15, a rarity bar, codex x/5,
+  and one headline percentage.
+
 
 Two parts:
 - **Achievements into the Book of Deeds.** The four tiered achievements

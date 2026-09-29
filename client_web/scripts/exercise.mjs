@@ -3079,13 +3079,53 @@ await go('Progress');
     !!records && Array.isArray(records.BossBestKillTenths) && records.BossBestKillTenths.length === 5,
     records ? `hit ${records.BestHit}, drop tier ${records.BestDropTier}, deep ${records.DelveDeepestFloor}` : 'no answer',
   );
+  // Tasks 56/57: Progress is four tabs; the records live under Statistics.
+  await page.locator('[data-progress-tab="stats"]').first().click();
+  await page.waitForTimeout(1500);
   const hitLine = await page
     .locator('[data-records] div', { hasText: 'Highest hit' })
     .first()
     .innerText()
     .catch(() => '');
   record('the Progress screen shows a real highest hit', /Highest hit\s*[\d,\s]*[1-9]/.test(hitLine), hitLine.replace(/\s+/g, ' '));
+
+  // Task 56: the rates table and the style come from the server's samples.
+  const insights = await apiGet('/api/v1/player/insights');
+  const rateRows = await page.locator('[data-testid="player-insights"] table.rates tbody tr').count();
+  record(
+    'Statistics shows per-hour rates over three windows',
+    !!insights && insights.Rates?.length === 3 && rateRows === 5,
+    insights ? `${insights.Rates.map((r) => `${r.Window}: ${r.KillsPerHour} kills/h over ${r.CoveredSeconds}s`).join('; ')}` : 'no answer',
+  );
+
+  // Task 57: the collection log - every catalogued piece, the fixture owns some.
+  await page.locator('[data-progress-tab="collection"]').first().click();
+  await page.waitForTimeout(1500);
+  const collection = await apiGet('/api/v1/player/collection');
+  const pieceIcons = await page.locator('[data-testid="collection-log"] .pieces li').count();
+  record(
+    'the collection lists all 75 pieces and records what the fixture owns',
+    !!collection && collection.PiecesTotal === 75 && collection.PiecesOwned > 0 && pieceIcons === 75,
+    collection ? `${collection.PiecesOwned}/${collection.PiecesTotal} pieces, ${collection.MonstersRecorded}/${collection.MonstersTotal} monsters, ${collection.Percent}%` : 'no answer',
+  );
+
+  await page.locator('[data-progress-tab="goals"]').first().click();
+  await page.waitForTimeout(1500);
   const text = await page.evaluate(() => document.body.innerText);
+
+  // Task 57: the achievements are the Book's Lifetime chapter now, paid
+  // automatically - and nothing on Progress offers a claim any more (a claim
+  // used to pay three of the four a second time).
+  const lifetimeRows = await page.locator('[data-testid="deeds-lifetime"] li').count();
+  const claimButtons = await page.getByRole('button', { name: /^Claim/ }).count();
+  record('the Book has a Lifetime chapter of four named achievements', lifetimeRows === 4, `${lifetimeRows} rows`);
+  record('Progress offers no claim button', claimButtons === 0, `${claimButtons} claim button(s)`);
+  const hiddenText = await page.locator('[data-testid="deeds-hidden"]').first().innerText().catch(() => '');
+  record(
+    'hidden deeds are listed by category, unnamed until done',
+    /Hidden deeds/.test(hiddenText) && /(\?\?\?|Every throne|One enormous blow)/.test(hiddenText),
+    hiddenText.replace(/\s+/g, ' ').slice(0, 90),
+  );
   record('the Book of Deeds is shown', /Book of Deeds/i.test(text));
   record(
     'all five chapters are listed',

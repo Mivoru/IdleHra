@@ -36,7 +36,25 @@ namespace FolkIdle.Server.Engine
         int BestSeasonRank,
         int ChildrenBred,
         int EpicChildrenBred,
-        int BestAptitudeTotal);
+        int BestAptitudeTotal,
+        // Task 57: read only by the hidden deeds.
+        long TotalDeaths = 0,
+        int DelveDeepestFloor = 0,
+        int BestHit = 0);
+
+    /// <summary>
+    /// A deed nobody is told about until it is done (task 57). Shown as "???"
+    /// with its category - so a player knows there is something in Combat to
+    /// find - and revealed, title and all, the moment it completes. No Seal
+    /// and no reward: the surprise is the point.
+    /// </summary>
+    public sealed record HiddenDeed(
+        string Id,
+        string Category,
+        string Title,
+        string Body,
+        long Target,
+        Func<DeedContext, long> Progress);
 
     /// <summary>
     /// One deed: a thing to do, and a number that says how far along it is.
@@ -99,6 +117,29 @@ namespace FolkIdle.Server.Engine
         public const int SkillPointsPerSeal = 2;
 
         public static IReadOnlyList<DeedChapter> Chapters { get; } = Build();
+
+        /// <summary>The hidden deeds (task 57), in the order the book lists them.</summary>
+        public static IReadOnlyList<HiddenDeed> Hidden { get; } = new List<HiddenDeed>
+        {
+            new("every-throne", "Combat", "Every throne",
+                "All five region bosses, put down at least once.",
+                5, c => System.Numerics.BitOperations.PopCount((uint)c.DefeatedRegionBossMask)),
+            new("one-blow", "Combat", "One enormous blow",
+                "A single hit of 100,000 damage.",
+                100_000, c => Math.Min(c.BestHit, 100_000)),
+            new("hundred-falls", "Combat", "A hundred falls",
+                "Died a hundred times. Every one of them was a lesson, apparently.",
+                100, c => Math.Min(c.TotalDeaths, 100)),
+            new("floor-twenty", "The Delve", "Twenty floors down",
+                "Cleared floor 20 of the Deep.",
+                20, c => Math.Min(c.DelveDeepestFloor, 20)),
+            new("transcendent", "Forge", "Past the top of the ladder",
+                "Owned a Transcendent piece - the fourteenth rarity.",
+                14, c => Math.Min(c.HighestRarityOwned, 14)),
+            new("full-house", "Bloodline", "A full house",
+                "Bred ten children.",
+                10, c => Math.Min(c.ChildrenBred, 10)),
+        };
 
         /// <summary>Whether this chapter's Seal is already held.</summary>
         public static bool HasSeal(int sealsMask, int chapterIndex)
