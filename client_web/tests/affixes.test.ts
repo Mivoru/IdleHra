@@ -239,8 +239,9 @@ describe('describeBossGearRequirement', () => {
   it('names the quality tier as a tier, not just a word', () => {
     const text = describeBossGearRequirement(2);
     expect(text).toContain('region-2');
-    expect(text).toMatch(/rarity 7|tier 7/);
-    expect(text).toContain('Legendary');
+    // Region 2 asks for quality 8 since task 63 (the set-bonus retune).
+    expect(text).toMatch(/rarity 8|tier 8/);
+    expect(text).toContain('Mythic');
   });
 
   it('says nothing about affixes when any affix will do', () => {
