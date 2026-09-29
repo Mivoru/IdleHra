@@ -4748,7 +4748,8 @@ Statistics / Daily & races.
   Progress screen still offered "Claim tier N" (IsClaimed never set), and the
   claim paid the same tiers a second time. Monster Slayer's reward table was
   empty, so its claim paid nothing. Now: the claim queue is drained and
-  ignored; Monster Slayer (500 diamonds at 10,000 codex kills) is paid once
+  ignored; Monster Slayer (100 diamonds at 10,000 codex kills - lowered from
+  an unpaid 500, see AchievementMilestones.MonsterKillReward) is paid once
   on reading the Book (conditional UPDATE, safe for concurrent GETs); the old
   snapshot reports a paid tier as claimed. Worth checking prod for how many
   double payouts happened (player_lifetime_achievements IsClaimed = true on

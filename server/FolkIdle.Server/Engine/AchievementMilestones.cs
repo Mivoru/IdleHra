@@ -20,7 +20,15 @@ namespace FolkIdle.Server.Engine
         // "0 / MAX".
         public const int MonsterKillAchievementId = 1;
         public const long MonsterKillThreshold = 10_000L;
-        public const int MonsterKillReward = 500;
+        // Modul: 100, not the 500 first written here (task 57, 2026-09-29).
+        // The 500 was never paid - the claim path's reward table was empty -
+        // so moving it cost nobody anything. Against the diamond economy it was
+        // far too much for a mid-game milestone: the Delve's calibrated tap is
+        // 60 a week (DelveRegistry.MaxDiamondsPerWeek), ordinary kills pay about
+        // the same, and the day-7 login bonus is 100. 500 would have been two
+        // months of Delve for ten thousand kills. 100 sits beside the tier-II
+        // rewards of the other three (Treasury 50, Master Smith 75, Logistics 50).
+        public const int MonsterKillReward = 100;
 
         public const int TreasuryAchievementId = 2;
         public const int ForgingAchievementId = 3;

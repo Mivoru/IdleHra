@@ -517,7 +517,7 @@ export const ACHIEVEMENTS: readonly {
     name: 'Monster Slayer',
     metric: 'Monsters killed',
     thresholds: '10,000',
-    rewards: '500 diamonds, paid when the Book of Deeds next opens',
+    rewards: '100 diamonds, paid when the Book of Deeds next opens',
   },
   {
     name: 'Treasury',
