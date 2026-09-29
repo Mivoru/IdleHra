@@ -2342,7 +2342,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 // payload, so this costs three comparisons
                                 // and no DB read. See StateUpdatePacket.
                                 AchievementTierTotal = (byte)(
-                                    Engine.AchievementMilestones.EvaluateTreasuryTier(currentPayload.CurrentGold)
+                                    Engine.AchievementMilestones.EvaluateTreasuryTier(Engine.GoldLedger.KnownLifetimeSpent(currentPayload.PlayerId))
                                     + Engine.AchievementMilestones.EvaluateForgingTier(
                                         currentPayload.ForgeUpgradeCount, currentPayload.HighestForgeSynthesisTier)
                                     + Engine.AchievementMilestones.EvaluateLogisticsTier(currentPayload.HarvestLoopCount)),

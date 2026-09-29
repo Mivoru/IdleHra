@@ -327,6 +327,7 @@ namespace FolkIdle.Server.Domain.Economy
                 }
 
                 buyerGold.Quantity -= order.Price;
+                await GoldLedger.RecordSpendAsync(db, buyerId, GoldSpendCategory.Market, order.Price);
 
                 if (hasSpace)
                 {

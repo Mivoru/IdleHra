@@ -63,6 +63,8 @@ namespace FolkIdle.Server.Engine
                 // that has nothing to do.
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"MarketOrderRecords\" WHERE \"SellerId\" = {0}", new object[] { playerId }, timeout.Token);
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PlayerDeviceRegistrations\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
+                // Task 79: the gold ledger is per-player history.
+                await db.Database.ExecuteSqlRawAsync("DELETE FROM gold_spend_daily WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
 
                 // Modul: A PURGED ACCOUNT MUST NOT LEAVE A WORKING CREDENTIAL
                 // BEHIND, and a refresh token is one.

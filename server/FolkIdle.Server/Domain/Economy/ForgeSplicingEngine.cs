@@ -308,6 +308,7 @@ namespace FolkIdle.Server.Domain.Economy
 
                 // Deduct cost
                 goldRecord.Quantity -= cost;
+                await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Fusion, cost);
 
                 {
                     db.EquipmentInstances.Remove(sac1);
@@ -681,6 +682,7 @@ namespace FolkIdle.Server.Domain.Economy
                 }
 
                 if (goldRecord != null) goldRecord.Quantity -= plan.GoldCost;
+                if (goldRecord != null) await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Fusion, plan.GoldCost);
                 if (player != null) player.ForgeFusionsCompleted += plan.TotalFusions;
                 await db.SaveChangesAsync();
 

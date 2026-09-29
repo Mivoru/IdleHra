@@ -2020,6 +2020,13 @@ namespace FolkIdle.Server.Network
             // PlayerRecord, gold via CommodityRecords, claimed
             // achievements, region completions, character count,
             // guild membership) into one read-only snapshot.
+            // Task 79: where this player's gold went, by category.
+            if (requestPath == "/api/v1/player/gold-ledger" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGoldLedger(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/player/statistics" && context.Request.HttpMethod == "GET")
             {
                 await HandlePlayerStatistics(context);
@@ -3376,6 +3383,77 @@ namespace FolkIdle.Server.Network
             public int SkippedWornCount { get; set; }
         }
 
+        private sealed class GoldLedgerCategoryResponse
+        {
+            public string Category { get; set; } = string.Empty;
+            public long Last7Days { get; set; }
+            public long Last30Days { get; set; }
+            public long SinceRecorded { get; set; }
+        }
+
+        private sealed class GoldLedgerResponse
+        {
+            /// <summary>Every coin spent since the ledger began - what the Treasury deed pays on.</summary>
+            public long LifetimeSpent { get; set; }
+            /// <summary>The first UTC day with a row, so the screen can say "since"; null when empty.</summary>
+            public string? RecordedSince { get; set; }
+            public List<GoldLedgerCategoryResponse> Categories { get; set; } = new();
+        }
+
+        /// <summary>
+        /// Task 79: GET /api/v1/player/gold-ledger. Spending by category over 7
+        /// days, 30 days and since recording began, read from gold_spend_daily
+        /// (GoldLedger). Sorted by the all-time amount, biggest sink first.
+        /// </summary>
+        private async Task HandleGoldLedger(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                long lifetime = await db.PlayerRecords.AsNoTracking()
+                    .Where(p => p.Id == playerId).Select(p => p.LifetimeGoldSpent).FirstOrDefaultAsync();
+                var rows = await db.GoldSpendDaily.AsNoTracking().Where(g => g.PlayerId == playerId).ToListAsync();
+
+                var today = DateOnly.FromDateTime(DateTime.UtcNow);
+                var response = new GoldLedgerResponse
+                {
+                    LifetimeSpent = lifetime,
+                    RecordedSince = rows.Count == 0 ? null : rows.Min(r => r.Day).ToString("yyyy-MM-dd"),
+                    Categories = rows
+                        .GroupBy(r => r.Category)
+                        .Select(g => new GoldLedgerCategoryResponse
+                        {
+                            Category = Enum.IsDefined(typeof(GoldSpendCategory), g.Key) ? ((GoldSpendCategory)g.Key).ToString() : $"Other{g.Key}",
+                            Last7Days = g.Where(r => r.Day > today.AddDays(-7)).Sum(r => r.Amount),
+                            Last30Days = g.Where(r => r.Day > today.AddDays(-30)).Sum(r => r.Amount),
+                            SinceRecorded = g.Sum(r => r.Amount),
+                        })
+                        .OrderByDescending(c => c.SinceRecorded)
+                        .ToList(),
+                };
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Gold ledger error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
         private sealed class ChestSettingsResponse
         {
             public int AutoSalvageBelowTier { get; set; }
