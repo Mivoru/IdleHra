@@ -15,7 +15,7 @@
    */
   import ItemIcon from './ItemIcon.svelte';
   import VirtualList from './VirtualList.svelte';
-  import { rarityColor, rarityName, MAX_QUALITY_TIER } from './rarity';
+  import { rarityColor, rarityName, rarityTitle, MAX_QUALITY_TIER } from './rarity';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from './slots';
   import { prettifyBaseId } from '../net/content';
 
@@ -174,7 +174,7 @@
             <span class="meta dim tiny">
               {slotLabel(item.BaseItemId)}
               &middot;
-              <span class="rar" style="color: {rarityColor(item.QualityTier)}">
+              <span class="rar" style="color: {rarityColor(item.QualityTier)}" title={rarityTitle(item.QualityTier)}>
                 {rarityName(item.QualityTier)}
               </span>
             </span>

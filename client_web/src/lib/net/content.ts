@@ -275,7 +275,11 @@ export function prettifyBaseId(baseId: string): string {
   const memo = prettifiedBaseIds.get(baseId);
   if (memo !== undefined) return memo;
 
-  let stem = baseId.replace(/^eq_/, '');
+  // Modul: `mat_` is a namespace prefix like `eq_`, not part of the name.
+  // Leaving it in showed players "Mat Mouse Fur", "Mat Wolf Essence" in the
+  // Chest (task 74). The sprite map keys on the full id, so only the label
+  // changes.
+  let stem = baseId.replace(/^(eq|mat)_/, '');
 
   for (const suffix of STRUCTURAL_SUFFIXES) {
     const stripped = stem.replace(suffix, '');

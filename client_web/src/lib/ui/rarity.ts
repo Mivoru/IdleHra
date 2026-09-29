@@ -84,6 +84,18 @@ export function powerMultiplier(qualityTier: number): number {
   return Math.pow(TOP_TIER_POWER_MULTIPLIER, (qualityTier - 1) / 13);
 }
 
+/**
+ * Task 74: the hover/long-press text for a rarity name. Fourteen colours are
+ * not fourteen distinguishable colours, and "Relic" says nothing about where
+ * it sits or what it is worth - so the name carries its place on the ladder
+ * and the base-power multiplier the server applies (powerMultiplier, pinned by
+ * serverMirrors.test.ts).
+ */
+export function rarityTitle(qualityTier: number): string {
+  if (qualityTier < 1 || qualityTier > MAX_QUALITY_TIER) return rarityName(qualityTier);
+  return `${rarityName(qualityTier)} - tier ${qualityTier} of ${MAX_QUALITY_TIER}, base power x${powerMultiplier(qualityTier).toFixed(2)}`;
+}
+
 /** Only the top tiers glow, or the effect stops meaning anything. */
 export function shouldGlow(qualityTier: number): boolean {
   return qualityTier >= 10;

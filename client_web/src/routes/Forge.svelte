@@ -8,7 +8,7 @@
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
 
-  import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
+  import { rarityColor, rarityName, rarityTitle, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import {
     toDisplayAffixes,
     AFFIX_RARITY_NAMES,
@@ -436,7 +436,7 @@ ${scope}`)) return;
           {#each fusableSets as set (set.base + set.tier)}
             <button class="settag" onclick={() => pickSet(set.base, set.tier)}>
               <span style="color: {rarityColor(set.tier)}">{prettifyBaseId(set.base)}</span>
-              <span class="dim tiny">{rarityName(set.tier)} &times;{set.count}</span>
+              <span class="dim tiny" title={rarityTitle(set.tier)}>{rarityName(set.tier)} &times;{set.count}</span>
             </button>
           {/each}
         </div>
