@@ -21,7 +21,10 @@ if ((await notNow.count()) > 0) await notNow.click();
 
 // Play as guest -> real HTTP login -> real WebSocket JSON handshake.
 await page.getByRole('button', { name: 'Play as guest' }).click();
-await page.waitForSelector('text=Combat', { timeout: 20000 });
+// Modul: not 'text=Combat' - since task 82 the desktop header folds Combat
+// into the Play dropdown, so the label exists but is never visible. The
+// header plus the first state packet (below) is what signed in means.
+await page.waitForSelector('header', { timeout: 20000 });
 await page.waitForFunction(
   () => !document.body.innerText.includes('Waiting for the first state snapshot'),
   { timeout: 20000 },

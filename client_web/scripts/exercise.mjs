@@ -162,7 +162,10 @@ await page.getByRole('button', { name: 'Sign in' }).click();
 await page.locator('input[type="email"]').fill('dev@folkidle.local');
 await page.locator('input[type="password"]').fill('FolkIdleDev123!');
 await page.getByRole('button', { name: 'Sign in', exact: true }).last().click();
-await page.waitForSelector('text=Combat', { timeout: 20000 });
+// Modul: not 'text=Combat' - since task 82 the desktop header folds Combat
+// into the Play dropdown, so the label exists but is never visible. The
+// header plus the first state packet (below) is what signed in means.
+await page.waitForSelector('header', { timeout: 20000 });
 await page.waitForFunction(
   () => !document.body.innerText.includes('Waiting for the first state snapshot'),
   { timeout: 20000 },
@@ -3612,8 +3615,11 @@ await go('Ancestors');
 
   const registered = await fresh
     .waitForFunction(
+      // Modul: the Combat ENTRY, not the word. innerText skips display:none,
+      // and since task 82 a desktop header keeps Combat in the closed Play
+      // group - the account was in the game and the check said it was not.
       () => !document.body.innerText.includes('Waiting for the first state snapshot')
-        && /\bCombat\b/.test(document.body.innerText),
+        && document.querySelector('header [data-nav="combat"]') !== null,
       { timeout: 25000 },
     )
     .then(() => true)
@@ -4035,7 +4041,7 @@ const otherMisses = missedUrls.filter((u) => !u.includes('/audio/')).length;
 record(
   'the only failed request is the deliberate unknown-player lookup',
   otherMisses <= 1,
-  `${otherMisses} lookup 404(s), ${audioMisses} optional audio clip(s) absent`,
+  `${otherMisses} lookup 404(s), ${audioMisses} optional audio clip(s) absent${otherMisses > 1 ? ': ' + missedUrls.filter((u) => !u.includes('/audio/')).join(' ') : ''}`,
 );
 // Since 2026-09-27 every clip audio.ts names exists except the crit hit, which
 // has never been authored. Any OTHER audio 404 is a clip that failed to reach
