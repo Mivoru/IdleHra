@@ -2580,14 +2580,6 @@ namespace FolkIdle.Server.Network
             public int AvailableSkillPoints { get; set; }
             public string GuildName { get; set; } = string.Empty;
 
-            // Modul: villager roster. Who actually lives in the village.
-            // Carried on the statistics snapshot rather than as its own route
-            // because it is small, read-only, and read at exactly the same
-            // moment - and because CommandType.EvictVillager was implemented
-            // and validated server-side with no way for a client to know WHICH
-            // slots are occupied, so the command was unreachable in practice.
-            public List<VillagerSlotResponse> Villagers { get; set; } = new List<VillagerSlotResponse>();
-
             // Modul: lifetime statistics.
             public long TotalKills { get; set; }
             public long BossesSlain { get; set; }
@@ -2600,14 +2592,6 @@ namespace FolkIdle.Server.Network
         // region across monster ids 91-115. A static array rather than an
         // inline literal so the "every fifth id from 95" rule is stated once.
         private static readonly int[] CanonicalBossMonsterIds = { 95, 100, 105, 110, 115 };
-
-        // Modul: villager roster. One occupied village slot.
-        private sealed class VillagerSlotResponse
-        {
-            public int SlotIndex { get; set; }
-            public bool IsActive { get; set; }
-            public double EfficiencyModifier { get; set; }
-        }
 
         private sealed class GuildCreateResponse
         {
@@ -8700,33 +8684,11 @@ namespace FolkIdle.Server.Network
                     .Where(e => e.PlayerId == playerId && CanonicalBossMonsterIds.Contains(e.MonsterId))
                     .SumAsync(e => (long)e.KillCount);
 
-                // Modul: THE ROSTER READ A TABLE NOTHING WRITES.
-                //
-                // This listed VillageResidents, and VillageResidents has no
-                // INSERT anywhere in the codebase - two other comments in this
-                // repository already say so, in StateCheckpointManager and
-                // AchievementEngine. So the Village screen said "No villagers
-                // yet" forever while the Character screen said 2/10, and both
-                // were reporting honestly from different tables.
-                //
-                // The count moved to CharacterRecords when someone decided the
-                // people who live in your village ARE your characters. The list
-                // did not move with it. It does now, so one question has one
-                // answer.
-                //
-                // SlotIndex carries through because that is what the roster
-                // shows and what an eviction would have to name.
-                var villagerRows = await db.CharacterRecords
-                    .AsNoTracking()
-                    .Where(c => c.PlayerId == playerId && !c.IsLockedInEscrow)
-                    .OrderBy(c => c.SlotIndex)
-                    .Select(c => new VillagerSlotResponse
-                    {
-                        SlotIndex = c.SlotIndex,
-                        IsActive = c.ActiveActivityId > 0,
-                        EfficiencyModifier = 1.0
-                    })
-                    .ToListAsync();
+                // Modul: there was a `Villagers` roster here - every character,
+                // as "Slot N · working/idle" - feeding the Village screen's
+                // "Work slots" panel, which called those people "production
+                // slots". Removed with the panel (task 77); the Character screen
+                // owns the roster and CharacterCount above is the number.
 
                 await transaction.CommitAsync();
 
@@ -8753,8 +8715,7 @@ namespace FolkIdle.Server.Network
                     BossesSlain = bossesSlain,
                     TotalItemsCrafted = player.TotalItemsCrafted,
                     TotalDeaths = player.TotalDeaths,
-                    TotalPlayTimeSeconds = player.TotalPlayTimeSeconds,
-                    Villagers = villagerRows
+                    TotalPlayTimeSeconds = player.TotalPlayTimeSeconds
                 };
 
                 context.Response.StatusCode = 200;

@@ -302,12 +302,6 @@ export function saveOnboardingSeen(seen: readonly string[]): Promise<OnboardingS
 // /api/v1/player/statistics
 // ---------------------------------------------------------------------------
 
-export interface VillagerSlot {
-  SlotIndex: number;
-  IsActive: boolean;
-  EfficiencyModifier: number;
-}
-
 export interface PlayerStatistics {
   Level: number;
   Xp: number;
@@ -319,7 +313,6 @@ export interface PlayerStatistics {
   CharacterCount: number;
   AvailableSkillPoints: number;
   GuildName: string;
-  Villagers: VillagerSlot[];
   TotalKills: number;
   BossesSlain: number;
   TotalItemsCrafted: number;
