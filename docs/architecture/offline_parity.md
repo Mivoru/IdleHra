@@ -91,6 +91,18 @@ branch had not been pushed to `origin` when this was checked, so this change
 does not duplicate it. Until it lands, the door opens at the next login from
 the codex events.
 
+## Automation rules (task 85)
+
+The three "Orders" act on both paths through the same functions
+(`Domain.Combat.AutomationRules`): a death steps down inside
+`ApplyCombatDeath`, a dry larder sends the character fishing through
+`TryGoFishing` (live at the next combat tick, offline at the starving tick,
+where `HuntingProjection.FightState.StopWhenStarved` ends the fight), and the
+fusion tier rides `CombatLootDropRequest.Build`. Offline, a combat slot's
+window is a sequence of legs (`OfflineSimulationEngine.ProjectCombatLegs`).
+`AutomationRuleParityTests` holds the legs against the live tick. See
+`docs/superpowers/specs/2026-09-30-automation-rules.md`.
+
 ## Approximations that remain (documented, second-order)
 
 - `GlobalDropMultiplier`, `GlobalXpMultiplier` and `ActiveGlobalEventId`
@@ -103,3 +115,12 @@ the codex events.
   counting and crafts again once materials arrive, so the totals agree.
 - Runaway guards: 200,000 kills per slot per window and 200,000 gathering
   actions or rolls. The 12-hour cap keeps any real window below both.
+
+## Great Works (task 84)
+
+Two permanent bonuses read on BOTH paths, each through the one composition: the
+gathering yield through `SimulationEngine.GatheringYieldFor` (whole roll-percent
+points, `GreatWorksRegistry.YieldPct`) and the away-time cap through
+`OfflineSimulationEngine.EffectiveOfflineCapSeconds` (called by the offline
+window, the wire's `OfflineCapSeconds` and `OfflineCapNotifier`). See
+`docs/superpowers/specs/2026-09-30-great-works.md`.

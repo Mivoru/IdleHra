@@ -899,6 +899,7 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.UpdateAutoEatThreshold] = LarderTickCoordinator.HandleUpdateAutoEatThreshold,
                 [CommandType.SpendAttributePoint] = AttributeTickCoordinator.HandleSpendAttributePoint,
                 [CommandType.StartBossAscension] = BossAscensionTickCoordinator.HandleStartBossAscension,
+                [CommandType.DepositGreatWork] = GreatWorksTickCoordinator.HandleDepositGreatWork,
                 [CommandType.RespecAttributes] = AttributeTickCoordinator.HandleRespecAttributes,
                 [CommandType.PurchaseSkillTreeLevel] = SkillTreeTickCoordinator.HandlePurchaseSkillTreeLevel,
                 [CommandType.RespecSkillTree] = SkillTreeTickCoordinator.HandleRespecSkillTree,
@@ -1210,6 +1211,8 @@ namespace FolkIdle.Server.Domain.Combat
 
                 VillageChestTickCoordinator.DrainChestSettings(_playerRegistry, _activePlayers);
 
+                AutomationRulesTickCoordinator.Drain(_playerRegistry, _activePlayers);
+
                 PayloadSnapshotTickCoordinator.Drain(_playerRegistry, _activePlayers);
 
                 while (_playerRegistry.ShardAttackResultQueue.TryDequeue(out var shardAttackResult))
@@ -1289,6 +1292,8 @@ namespace FolkIdle.Server.Domain.Combat
                 GuildFanoutTickCoordinator.DrainGuildUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
                 VillageTickCoordinator.DrainInfrastructureUpdates(_playerRegistry, _activePlayers);
+
+                GreatWorksTickCoordinator.DrainUpdates(_activePlayers);
 
                 VillageTickCoordinator.DrainRecruitmentUpdates(_playerRegistry, _activePlayers);
 
@@ -2442,8 +2447,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 // never mirrors the 12 h rule itself. Derived
                                 // from VodnikMasteryLevel, which the login
                                 // hydrates, so a relogin cannot read it as 0.
-                                OfflineCapSeconds = (int)RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(
-                                    currentPayload.VodnikMasteryLevel, OfflineSimulationEngine.MaxOfflineSeconds)
+                                OfflineCapSeconds = (int)OfflineSimulationEngine.EffectiveOfflineCapSeconds(
+                                    currentPayload.VodnikMasteryLevel, currentPayload.GreatWorksStagesPacked)
                             };
                             // Modul: this packet carries currentPayload's own
                             // private data (gold, stats, equipment, mana,
@@ -3168,7 +3173,9 @@ namespace FolkIdle.Server.Domain.Combat
 
             long now = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            if (payload.ActiveActivityId > 0 && payload.ActivityHaltReason != Network.ActivityHaltReason.OutOfFood)
+            // Task 85: the automation notes (6, 7) are exempt for the same
+            // reason - a rule acted and the player should get to see that.
+            if (payload.ActiveActivityId > 0 && !Network.ActivityHaltReason.IsStandingNote(payload.ActivityHaltReason))
             {
                 // Running and earning: whatever stopped the player last has
                 // been resolved, so the reason must not linger.
@@ -3875,6 +3882,13 @@ namespace FolkIdle.Server.Domain.Combat
             // Ward branch) is not a death and is not counted.
             payload.LifetimeDeaths++;
             payload.IsDirty = true;
+
+            // Modul: task 85, rule 2 - HERE, not in RunCombatTick, because this
+            // is the one death both the live tick and the offline projection
+            // reach. The death above is still a death (counted, carded, the
+            // Ascension disarmed); the rule only decides where the character
+            // goes next instead of idle.
+            AutomationRules.TryStepDownAfterDeath(ref payload, deathMonsterId);
         }
 
         /// <summary>
@@ -3967,6 +3981,8 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.GatheringProgressTicks, ref parked.GatheringProgressTicks);
             Swap(ref payload.HarvestLoopCount, ref parked.HarvestLoopCount);
             Swap(ref payload.ActivityHaltReason, ref parked.ActivityHaltReason);
+            // Task 85: a character's rules go where the character goes.
+            Swap(ref payload.AutomationRules, ref parked.AutomationRules);
 
             // Modul: per-character equipment. Gear and its derived totals travel
             // with the character, or every slot would fight in slot 1's armour.
@@ -4329,6 +4345,21 @@ namespace FolkIdle.Server.Domain.Combat
             System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent> guildWarPointQueue,
             System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext> liveSessionContexts)
         {
+            // Modul: task 85, rule 1. Auto-eat raised OutOfFood on an earlier
+            // tick (the larder ran dry mid-fight); if this character has the
+            // rule, it leaves the fight now and fishes. Answered at the top of
+            // the NEXT tick rather than inside the eat branch, because that
+            // branch sits above the death and kill blocks - switching activity
+            // there would let the kill block pay a phantom kill against the
+            // cleared monster. The offline fight stops at the same tick
+            // (HuntingProjection.FightState.StopWhenStarved) and calls the same
+            // function.
+            if (payload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood
+                && AutomationRules.TryGoFishing(ref payload))
+            {
+                return;
+            }
+
             int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
 
             var lineage = LineageOf(in payload);
@@ -5532,6 +5563,13 @@ namespace FolkIdle.Server.Domain.Combat
             // 2026-09-13 - percentage points of extra harvest rolls, the
             // same units as the race-mastery bonuses above.
             additionalYieldBonus += BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask));
+
+            // Modul: task 84 - the Great Works. Whole percentage points from
+            // every built stage, capped at GreatWorksRegistry.MaxYieldPct
+            // (PowerCeilingTests). It is added HERE, in the one composition, so
+            // the live harvest and the offline projection both pay it, and it
+            // survives a rebirth because the stages live in their own table.
+            additionalYieldBonus += GreatWorksRegistry.YieldPct(payload.GreatWorksStagesPacked);
 
             // Modul: LootLuckPct no longer multiplies the roll COUNT
             // (which previously inflated absolute yield of every

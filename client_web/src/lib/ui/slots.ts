@@ -258,7 +258,19 @@ export const HALT_REASONS: Record<number, string> = {
   // Modul: the server returned from the tick silently on a quarantined
   // account, so the screen said "nothing is happening" and had nothing to add.
   5: 'This account is quarantined by the anti-cheat, so nothing will run. Contact support if you believe this is a mistake.',
+  // Task 85: an automation rule ("Orders", on the Character screen) acted.
+  6: 'The larder ran dry, so your order sent this character fishing.',
+  7: 'Died - your order sent this character one monster down the ladder.',
 };
+
+/**
+ * Task 85: the reasons that report an automation rule acting, not a stop.
+ * Mirrors the server's `ActivityHaltReason.AutomationFishing/SteppedDown`.
+ * The character is still earning, so these do not buzz or dot the tab.
+ */
+export function isAutomationNote(reason: number): boolean {
+  return reason === 6 || reason === 7;
+}
 
 /** The Town Hall level each character slot opens at (slot 1 is always open). */
 export const SLOT_UNLOCK_TOWN_HALL: readonly number[] = [0, 3, 5];
@@ -270,6 +282,8 @@ export const HALT_REASON_SHORT: Record<number, string> = {
   3: '',
   4: 'No character',
   5: 'Quarantined',
+  6: 'Order: fishing',
+  7: 'Order: stepped down',
 };
 
 // ---------------------------------------------------------------------------

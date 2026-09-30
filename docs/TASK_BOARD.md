@@ -5111,9 +5111,9 @@ prose in English. Loot below Rare stays silent.
 | 80 | Breeding Grounds above level 1 | S | **yes, which option** |
 | 81 | Chest rules and row actions | M | no |
 | 82 | Desktop header as five groups | S-M | show a screenshot first |
-| 83 | Workshop commissions (the material sink) | L | **design with the owner** |
-| 84 | Great Works (the long material sink) | L | **design with the owner** |
-| 85 | Orders: automation rules as a reward | L | **design with the owner** |
+| 83 | **BUILT** (branch `claude/tasks-83-84-85`) - Workshop commissions (the material sink) | L | decided 2026-09-30 |
+| 84 | **BUILT** (branch `claude/tasks-83-84-85`) - Great Works (the long material sink) | L | decided 2026-09-30 |
+| 85 | **BUILT** (branch `claude/tasks-83-84-85`) - Orders: automation rules as a reward | L | decided 2026-09-30 |
 | 86 | A deterministic affix step beside the reroll | M | **design with the owner** |
 | 87 | Boss Ascension ladder | M | reward shape, once |
 | 88 | **BUILT** (branch `feat/88-rebirth`) - Rebirth on demand instead of a calendar season | XL | decided 2026-09-30 |
@@ -5593,7 +5593,31 @@ opens the phone Menu or the group first. Screenshot of the open Items group:
 `docs/screenshots/2026-09-30/header-dropdown-1366.png` (rendered with a stub
 token and no server, so the header only).
 
-## 83. Workshop commissions (the material sink) - design with the owner
+## BUILT - 83. Workshop commissions (the material sink)
+
+**BUILT 2026-09-30, not merged or deployed.** Spec with the price derivation:
+`docs/superpowers/specs/2026-09-30-workshop-commissions.md`. A commission makes
+one of the 75 canonical region pieces (regions the player has opened) at a
+rarity floor of Common-Epic by Workshop level 1-5, capped two tiers below the
+region's boss-wall requirement (only region 1 is capped: Common), with one
+chosen affix at Common; the tier is `max(floor, zero-luck drop roll)`. 1 h
+(Common) to 8 h (Epic), one at a time, wall-clock `CompletionEpoch` so it
+finishes while the player is away. Price = what the region's reference
+gatherer (GatheringEconomyTests' own profiles) harvests of its log, ore, golden
+log and rare ore in those hours: 6,600 (region 1) to 144,400 (region 5 Epic).
+REST (`GET /api/v1/workshop`, `POST .../commission`, `POST .../collect`, dev
+`POST /api/v1/dev/workshop/finish`), no opcode, no packet field; migration
+`AddWorkshopCommissions` (three additive columns on the formerly writerless
+`PlayerCraftingSlots`). Rebirth and account purge delete a running order.
+Guards: `WorkshopCommissionTests`, `PowerCeilingTests
+.TheWorkshopCommissionFloorStaysBelowEveryRegionsUsualDrop` (floor < the wall at
+every Workshop level, and a full commissioned wardrobe LOSES every first clear,
+so time to region 5 cannot move), `GatheringEconomyTests
+.Test_WorkshopCommission_IsPricedFromThisSupply`; `exercise.mjs` places,
+collects and bins one on the fixture and restores its stock.
+
+The original proposal:
+
 
 The Crafting Workshop's level is read by nothing and crafting always makes a
 Normal (57 crafts, lifetime). Proposal: a commission makes a region piece with
@@ -5604,21 +5628,70 @@ come from `GatheringEconomyTests`, not guesses. The floor must stay below the
 region's median drop, checked in `PowerCeilingTests`. Time to region 5 (~26
 days, LONG_GAME_SPEC section 7) must not drop below ~20.
 
-## 84. Great Works (the long material sink) - design with the owner
+## DONE - 84. Great Works (the long material sink)
 
-Village monuments in five stages, each stage eating 50,000 to 2,000,000 of one
-region's materials, each visibly changing the Home map, each paying a small
-permanent bonus that survives the season (for example +1 % gathering, +1 h
-offline limit, a Hall slot, a frame). The owner's task 38 notes already name
-"Great Works"; this is the solo version. Every bonus goes into
+**Built 2026-09-30 (owner decision 2026-09-30: solo, 5 stages, small permanent
+capped bonuses that survive rebirth).** Five monuments, one per region; each
+stage eats that region's common log or ore (any mix) and pays a bonus:
+Birchwood Cairn and Acacia Gate +1 % gathering yield a stage, Willow Hearth and
+Frostpine Beacon +15 min offline limit a stage, The Ebon Crown both. Stage costs
+50k / 150k / 400k / 1M / 2M. Ceilings: +15 % yield, +225 min offline, both in
+`PowerCeilingTests`. Migration `AddGreatWorks`, opcode `DepositGreatWork = 82`,
+result codes 60-62. The Village panel deposits, and the Map draws a landmark that
+grows a layer per built stage. Spec and the open items (Hall slot, frame bonuses
+NOT built): `docs/superpowers/specs/2026-09-30-great-works.md`.
+
+Original brief, kept: Village monuments in five stages, each stage eating 50,000
+to 2,000,000 of one region's materials, each visibly changing the Home map, each
+paying a small permanent bonus that survives the season (for example +1 %
+gathering, +1 h offline limit, a Hall slot, a frame). The owner's task 38 notes
+already name "Great Works"; this is the solo version. Every bonus goes into
 `PowerCeilingTests` with a cap.
 
-## 85. Orders: automation rules as a reward - design with the owner
+## BUILT - 85. Orders: automation rules as a reward
 
-Up to three rules per character, unlocked by progress: when the larder runs
-dry, fish in X; after a death, one monster easier; fuse stacks up to tier N.
-Server-side on the halt event, and the offline path must know the rules too
-("three paths grow a level" is the same lesson).
+**Owner decision 2026-09-30, built the same day on `claude/automation-rules-85`,
+not deployed.** Design and status: `docs/superpowers/specs/2026-09-30-automation-rules.md`.
+
+Up to three rules per character, one slot opening at each of level 20, 40 and
+60 (the account level; the game has no per-character level). A slot above the
+level keeps its rule but it is inert, so a rebirth re-locks them until the
+level returns.
+
+- **When the larder runs dry, fish at X.** Auto-eat wants a bite and has none
+  (OutOfFood); the next combat tick sends the character to the chosen fishing
+  spot, if it has been reached and no other slot works it. Halt reason 6.
+- **After a death, one monster easier.** `ApplyCombatDeath` (the one death
+  both paths share) respawns the character on the previous regular of the
+  canonical ladder (a boss steps to its region's strongest regular; a
+  region's first regular skips the boss behind it; 91 has nothing below).
+  Halt reason 7. The death is still counted and carded.
+- **Fuse stacks up to tier N.** The drop request carries the tier
+  (`CombatLootDropRequest.Build`, live and offline); after each loot-worker
+  cycle the stacks the drops landed in are fused from tier 1 to N through
+  `ForgeSplicingEngine.FuseStackInTransactionAsync` - the Forge button's
+  own path, extracted rather than copied. Gold comes off the row; the session
+  follows through `ChestSaleGoldQueue` (display only).
+- **Offline = online.** `OfflineSimulationEngine.ProjectCombatLegs` spends a
+  window as legs: the fight stops at a death or (with the rule) the starving
+  tick, the rule acts through the same function, and the rest of the window is
+  spent where it sent the character. `AutomationRuleParityTests` runs the real
+  tick beside it: the fishing switch within 10% of the live second, fishing XP
+  within 5%, and the step-down ending on the same rung after the same number
+  of deaths.
+- **Storage and wire.** `characters."AutomationRules"` (bigint, migration
+  `AddAutomationRules`), swapped with the character in the tick's register.
+  No packet field and no opcode: `GET/POST /api/v1/automation-rules`, then
+  `AutomationRulesQueue` to the tick. The "Orders" panel is on the Character
+  screen; `exercise.mjs` sets an order through it, reads it back, checks a
+  locked slot is refused with `SlotLocked`, and restores the fixture's rules.
+
+**Not done, on purpose:** a restocked larder does not send the fisher back to
+the fight (the player redeploys). **Open, pre-existing:** slots 2 and 3's
+activity change (a rule's, and a death's before it) is live-only until the
+next redeploy - only the fielded character's activity is written by the
+checkpoint (`PersistFieldedActivityAsync`), so a relogin puts slot 2 back on
+the monster it was deployed to.
 
 ## 86. A deterministic affix step beside the reroll - design with the owner
 

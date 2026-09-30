@@ -22,6 +22,20 @@ namespace FolkIdle.Server.Engine
         // is exactly the drift that made offline loot worse than online loot.
         public const long MaxOfflineSeconds = 43200L;
 
+        /// <summary>
+        /// The away-time cap a player really has: the universal 12 h, Vodnik's
+        /// extension, and the minutes their built Great Works add (task 84).
+        /// Modul: THE ONE COMPOSITION. The offline window below, the wire's
+        /// OfflineCapSeconds and OfflineCapNotifier's email all call this, so the
+        /// number the client shows, the number the mail names and the number the
+        /// projection enforces cannot come apart. Great Works stack ON TOP of
+        /// Vodnik (a bonus, not a competing cap) and are bounded by
+        /// GreatWorksRegistry.MaxOfflineMinutes, which PowerCeilingTests holds.
+        /// </summary>
+        public static long EffectiveOfflineCapSeconds(int vodnikMasteryLevel, int greatWorksStagesPacked)
+            => RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(vodnikMasteryLevel, MaxOfflineSeconds)
+               + Domain.Progression.GreatWorksRegistry.OfflineMinutes(greatWorksStagesPacked) * 60L;
+
         // Modul: what a projection resolved, as MATERIALS BY BASEID rather
         // than as a roll count against a loot table id (offline parity,
         // 2026-09-30). The roll count was granted through GetMaterialString,
@@ -77,6 +91,10 @@ namespace FolkIdle.Server.Engine
         // estimate cannot ask the loot engine for an unbounded loop.
         private const long MaxOfflineKillsPerSlot = 200_000L;
 
+        // Task 85: how many fights one window may chain through automation
+        // rules - one per rung of the 25-monster ladder, plus the fishing leg.
+        private const int MaxAutomationLegs = 32;
+
         private static bool SlotHoldsCharacter(ref TickStatePayload payload, int slotIndex)
         {
             return slotIndex switch
@@ -112,7 +130,7 @@ namespace FolkIdle.Server.Engine
             }
 
             // Modul 13: Vodnik Mastery extends the universal offline cap.
-            long effectiveMaxOfflineSeconds = RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(payload.VodnikMasteryLevel, MaxOfflineSeconds);
+            long effectiveMaxOfflineSeconds = EffectiveOfflineCapSeconds(payload.VodnikMasteryLevel, payload.GreatWorksStagesPacked);
 
             // Modul: TIME BEYOND THE CAP IS DISCARDED, DELIBERATELY. This Min is
             // where it goes, and nothing downstream ever sees rawDeltaSeconds
@@ -236,11 +254,12 @@ namespace FolkIdle.Server.Engine
                     }
                     else if (payload.ActiveActivityId > 0)
                     {
-                        LootProjection projection = CalculateCombatProjection(ref payload, earningSeconds);
-                        if (projection.IsValid)
+                        // Task 85: the fight, and wherever an automation rule
+                        // sends the character after it - see ProjectCombatLegs.
+                        foreach (OfflineLeg leg in ProjectCombatLegs(ref payload, earningSeconds, Random.Shared))
                         {
-                            slotDrops += projection.Drops;
-                            await GrantMaterialDeltasAsync(db, payload.PlayerId, projection.MaterialDeltas, recordAsGathered: false);
+                            slotDrops += leg.Projection.Drops;
+                            await GrantMaterialDeltasAsync(db, payload.PlayerId, leg.Projection.MaterialDeltas, recordAsGathered: leg.IsGathering);
                         }
                     }
 
@@ -582,8 +601,74 @@ namespace FolkIdle.Server.Engine
             return deltas;
         }
 
-        private static LootProjection CalculateCombatProjection(ref TickStatePayload payload, long elapsedSeconds)
+        /// <summary>One stretch of an offline window spent on one activity.</summary>
+        internal readonly struct OfflineLeg
         {
+            public LootProjection Projection { get; init; }
+            /// <summary>A gathering leg (the fishing an automation rule sent the character to).</summary>
+            public bool IsGathering { get; init; }
+            public long ActivityId { get; init; }
+            public long Seconds { get; init; }
+        }
+
+        /// <summary>
+        /// A combat slot's offline window: the fight, and - when an automation
+        /// rule moved the character - the rest of the window where it went.
+        /// Mutates the payload as the live tick would; grants nothing (the
+        /// caller writes each leg's materials). Internal and taking its Random
+        /// so AutomationRuleParityTests can hold it against the live tick.
+        /// </summary>
+        /// <remarks>
+        /// Modul: task 85 - A WINDOW IS A SEQUENCE OF LEGS. A fight ends at the
+        /// window's end, a death, or (with the fishing rule) a dry larder. The
+        /// rules themselves act INSIDE ProjectCombat, through the functions the
+        /// live tick calls (ApplyCombatDeath's step-down, TryGoFishing), so this
+        /// loop only asks where the character is now and spends the rest of the
+        /// window there: another fight one monster down, or the fishing spot.
+        /// Without a rule the first leg is the whole window, exactly as before.
+        /// Bounded by MaxAutomationLegs - the ladder has 25 rungs.
+        /// </remarks>
+        internal static List<OfflineLeg> ProjectCombatLegs(ref TickStatePayload payload, long elapsedSeconds, Random rng)
+        {
+            var legs = new List<OfflineLeg>(1);
+            long remainingSeconds = elapsedSeconds;
+            for (int leg = 0; leg < MaxAutomationLegs && remainingSeconds > 0; leg++)
+            {
+                long activityBefore = payload.ActiveActivityId;
+                LootProjection projection = CalculateCombatProjection(ref payload, remainingSeconds, out long secondsFought);
+                if (!projection.IsValid)
+                {
+                    break;
+                }
+
+                legs.Add(new OfflineLeg { Projection = projection, ActivityId = activityBefore, Seconds = Math.Min(remainingSeconds, secondsFought) });
+                remainingSeconds -= Math.Max(1L, secondsFought);
+                if (payload.ActiveActivityId <= 0 || payload.ActiveActivityId == activityBefore)
+                {
+                    break;
+                }
+
+                if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition fishingNode))
+                {
+                    if (remainingSeconds > 0)
+                    {
+                        legs.Add(new OfflineLeg
+                        {
+                            Projection = CalculateGatheringProjection(ref payload, fishingNode, remainingSeconds, rng),
+                            IsGathering = true,
+                            ActivityId = fishingNode.ActivityId,
+                            Seconds = remainingSeconds,
+                        });
+                    }
+                    break;
+                }
+            }
+            return legs;
+        }
+
+        private static LootProjection CalculateCombatProjection(ref TickStatePayload payload, long elapsedSeconds, out long secondsFought)
+        {
+            secondsFought = elapsedSeconds;
             int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
             if (fallbackId <= 0 || fallbackId > ContentRegistry.Monsters.Length)
             {
@@ -597,6 +682,10 @@ namespace FolkIdle.Server.Engine
             {
                 return new LootProjection(false);
             }
+
+            // Whole seconds the fight used, rounded up so a leg that follows
+            // never gets time this one already spent.
+            secondsFought = (long)Math.Ceiling(outcome.SecondsFought);
 
             long totalKills = outcome.Kills;
 
@@ -740,6 +829,8 @@ namespace FolkIdle.Server.Engine
             public double KillsExact { get; init; }
             public double SecondsFought { get; init; }
             public bool Died { get; init; }
+            /// <summary>The larder ran dry mid-fight (the live OutOfFood).</summary>
+            public bool Starved { get; init; }
             public long FoodEaten { get; init; }
             public long XpGained { get; init; }
             public long GoldGained { get; init; }
@@ -801,6 +892,10 @@ namespace FolkIdle.Server.Engine
 
             var state = HuntingProjection.FightState.Begin(in payload, in setup, payload.PlayerHp, withFood: true);
 
+            // Task 85: a character that will leave for the fishing spot when
+            // the larder runs dry stops fighting at that tick, as live.
+            state.StopWhenStarved = AutomationRules.CanGoFishing(in payload, out _);
+
             // The server-wide XP terms the live kill reads when it lands.
             int globalXpMultiplier = GlobalEngineState.GlobalXpMultiplier;
             int globalEventId = SimulationEngine.ActiveGlobalEventId;
@@ -809,7 +904,7 @@ namespace FolkIdle.Server.Engine
             long totalGold = 0;
             long totalKills = 0;
             long totalPaidKills = 0;
-            while (remainingTicks > 0 && !state.Died)
+            while (remainingTicks > 0 && !state.Died && !(state.Starved && state.StopWhenStarved))
             {
                 int stretch = (int)Math.Min(remainingTicks, CombatStretchTicks);
                 long killsBefore = state.Kills;
@@ -889,6 +984,18 @@ namespace FolkIdle.Server.Engine
                 payload.CurrentMonsterId = 0;
                 payload.CurrentMonsterHp = 0;
                 payload.CombatTargetTickAccumulator = 0;
+
+                if (state.Starved)
+                {
+                    // The live auto-eat's warning, raised where it would have
+                    // been - and then, with the rule, the live combat tick's
+                    // answer to it (RunCombatTick calls the same function).
+                    payload.ActivityHaltReason = Network.ActivityHaltReason.OutOfFood;
+                    if (state.StopWhenStarved)
+                    {
+                        AutomationRules.TryGoFishing(ref payload);
+                    }
+                }
             }
 
             return new OfflineCombatOutcome
@@ -899,6 +1006,7 @@ namespace FolkIdle.Server.Engine
                 KillsExact = totalKills,
                 SecondsFought = state.Ticks / 10.0,
                 Died = state.Died,
+                Starved = state.Starved,
                 FoodEaten = foodBefore - ((long)payload.Food1_Count + payload.Food2_Count + payload.Food3_Count),
                 XpGained = XpBetween(startLevel, startXp, payload.CurrentLevel, payload.CurrentXp),
                 GoldGained = totalGold,

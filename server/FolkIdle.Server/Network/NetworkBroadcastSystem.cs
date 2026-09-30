@@ -2320,6 +2320,18 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Task 85: the automation rules - see NetworkBroadcastSystem.AutomationRules.cs.
+            if (await TryHandleAutomationRulesAsync(context, requestPath))
+            {
+                return;
+            }
+
+            // Workshop commissions (task 83) - see NetworkBroadcastSystem.Workshop.cs.
+            if (await TryHandleWorkshopAsync(context, requestPath))
+            {
+                return;
+            }
+
             // Titles (task 37): REST, not the wire - no StateUpdatePacket field.
             if (requestPath == "/api/v1/player/titles" && context.Request.HttpMethod == "GET")
             {
@@ -11851,6 +11863,15 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // Task 83: finish the running Workshop commission now, and with
+                // {"Refund": true} give its price back - so exercise.mjs can
+                // place, collect and discard one without spending the fixture.
+                if (requestPath == "/api/v1/dev/workshop/finish" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevWorkshopFinish(context, playerId);
+                    return;
+                }
+
                 // Task 54: a cosmetic chest for the caller, so exercise.mjs can
                 // open one without thousands of kills first.
                 if (requestPath == "/api/v1/dev/cosmetics/chest" && context.Request.HttpMethod == "POST")
@@ -11935,6 +11956,48 @@ namespace FolkIdle.Server.Network
                     {
                         var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                         await FolkIdle.Server.Domain.Combat.BossAscensionEngine.DevRestoreAsync(db, playerId, region, step, bossDefeated);
+                    }
+                    CommandQueue.Enqueue(new PlayerCommand
+                    {
+                        PlayerId = playerId,
+                        Packet = new ClientCommandPacket { Command = CommandType.ReloadState }
+                    });
+                    await WriteJsonAsync(context, new { Ok = true });
+                    return;
+                }
+
+                // Task 84: put one Great Work back to (Stage, Progress) and move the
+                // stock of one material by a signed StockDelta, so exercise.mjs can
+                // deposit and leave the fixture as it found it. Body {Region, Stage,
+                // Progress, Material (0 log, 1 ore), StockDelta}; reloads the session
+                // so the tick's cache of the stages agrees with the table again.
+                if (requestPath == "/api/v1/dev/great-works/restore" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await ReadBodyAsync(context);
+                    int region = 0, stage = 0, material = 0;
+                    long progress = 0, stockDelta = 0;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                        if (parsed.RootElement.TryGetProperty("Region", out var r) && r.TryGetInt32(out int rv)) region = rv;
+                        if (parsed.RootElement.TryGetProperty("Stage", out var st) && st.TryGetInt32(out int sv)) stage = sv;
+                        if (parsed.RootElement.TryGetProperty("Material", out var mt) && mt.TryGetInt32(out int mv)) material = mv;
+                        if (parsed.RootElement.TryGetProperty("Progress", out var pr) && pr.TryGetInt64(out long pv)) progress = pv;
+                        if (parsed.RootElement.TryGetProperty("StockDelta", out var sd) && sd.TryGetInt64(out long sdv)) stockDelta = sdv;
+                    }
+                    catch (JsonException) { }
+
+                    if (!FolkIdle.Server.Domain.Progression.GreatWorksRegistry.IsValidRegion(region)
+                        || !FolkIdle.Server.Domain.Progression.GreatWorksRegistry.IsValidMaterialKind(material))
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                        await FolkIdle.Server.Domain.Progression.GreatWorksEngine.DevRestoreAsync(db, playerId, region, stage, progress, material, stockDelta);
                     }
                     CommandQueue.Enqueue(new PlayerCommand
                     {

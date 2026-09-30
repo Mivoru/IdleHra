@@ -1444,6 +1444,24 @@ export function startBossAscension(region: number, step: number): CommandOutcome
 }
 
 /**
+ * Task 84: put materials into a Great Work. `material` is 0 for the region's
+ * common log and 1 for its common ore - the server names the item, and clamps
+ * the amount to what the current stage still needs. `quantity` 0 means "all I
+ * hold, up to that". Every answer, good or bad, arrives as a command result.
+ */
+export function depositGreatWork(region: number, material: 0 | 1, quantity = 0): CommandOutcome {
+  if (!Number.isInteger(region) || region < 1 || region > 5) return refuse('Pick a monument.');
+  if (!Number.isInteger(quantity) || quantity < 0) return refuse('Pick how much to deposit.');
+  connection.send({
+    Command: CommandType.DepositGreatWork,
+    TargetId: region,
+    SecondaryId: material,
+    DepositQuantity: quantity,
+  });
+  return OK;
+}
+
+/**
  * Spend attribute points earned by levelling.
  *
  * The server owns the balance: it re-checks the amount against its own copy and

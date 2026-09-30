@@ -298,8 +298,8 @@ namespace FolkIdle.Server.Tests
         public void OfflineCapSecondsComesFromTheOneRule()
         {
             string initializer = ReadInitializerSource();
-            Assert.Contains("OfflineCapSeconds = (int)RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(", initializer, StringComparison.Ordinal);
-            Assert.Contains("currentPayload.VodnikMasteryLevel, OfflineSimulationEngine.MaxOfflineSeconds)", initializer, StringComparison.Ordinal);
+            Assert.Contains("OfflineCapSeconds = (int)OfflineSimulationEngine.EffectiveOfflineCapSeconds(", initializer, StringComparison.Ordinal);
+            Assert.Contains("currentPayload.VodnikMasteryLevel, currentPayload.GreatWorksStagesPacked)", initializer, StringComparison.Ordinal);
             Assert.Equal(43200L, RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(0, OfflineSimulationEngine.MaxOfflineSeconds));
             Assert.True(RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(25, OfflineSimulationEngine.MaxOfflineSeconds) > OfflineSimulationEngine.MaxOfflineSeconds);
         }

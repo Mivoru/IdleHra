@@ -56,6 +56,13 @@ namespace FolkIdle.Server.Models
         public long AgeTicks { get; set; } = 0;
         public bool IsLockedInEscrow { get; set; }
 
+        // Modul: task 85, "Orders" - this character's up to three automation
+        // rules, packed (Domain.Combat.AutomationRules: three 16-bit slots, type
+        // low, parameter high). 0 is no rules, the default for every existing
+        // row. Written only by POST /api/v1/automation-rules; hydrated onto the
+        // payload's register at login and swapped with the character.
+        public long AutomationRules { get; set; }
+
         // Modul: breeding pairs. A character's sex. There was no such concept:
         // ExecuteBreedingAsync simply took two character ids and labelled them
         // "paternal" and "maternal", so a character could be bred with itself's

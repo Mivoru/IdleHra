@@ -252,7 +252,16 @@ namespace FolkIdle.Server.Network
         // refusal answers AscensionBossNotDefeated or AscensionStepLocked - see
         // BossAscensionTickCoordinator. Deploys the active character to the boss
         // and arms the step on it; no database on the tick thread.
-        StartBossAscension = 79
+        StartBossAscension = 79,
+
+        // Modul: DepositGreatWork (task 84) puts materials into a Great Work.
+        // TargetId is the monument (its REGION, 1-5), SecondaryId which of that region's
+        // materials (0 its common log, 1 its common ore) and DepositQuantity how
+        // many - 0 meaning "all I hold, up to what the stage still needs". The
+        // server decides everything else: the item, the stage's cost, the clamp
+        // to what the stage still needs, and the bonus. See
+        // GreatWorksTickCoordinator. Every refusal is a command result.
+        DepositGreatWork = 80
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

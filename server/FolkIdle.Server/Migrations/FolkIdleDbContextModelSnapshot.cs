@@ -225,6 +225,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long>("AgeTicks")
                         .HasColumnType("bigint");
 
+                    b.Property<long>("AutomationRules")
+                        .HasColumnType("bigint");
+
                     b.Property<long>("BreedingCooldownEndEpoch")
                         .HasColumnType("bigint");
 
@@ -681,6 +684,28 @@ namespace FolkIdle.Server.Migrations
                     b.HasKey("PlayerId", "Day", "Category");
 
                     b.ToTable("gold_spend_daily");
+                });
+
+            modelBuilder.Entity("FolkIdle.Server.Models.GreatWorkProgress", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("Region")
+                        .HasColumnType("smallint");
+
+                    b.Property<long>("Progress")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte>("Stage")
+                        .HasColumnType("smallint");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PlayerId", "Region");
+
+                    b.ToTable("great_works_progress");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildActiveBuff", b =>
@@ -1607,11 +1632,22 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("ActiveRecipeId")
                         .HasColumnType("integer");
 
+                    b.Property<string>("ChosenAffixId")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<long>("CompletionEpoch")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("FloorTier")
+                        .HasColumnType("integer");
+
                     b.Property<bool>("IsReady")
                         .HasColumnType("boolean");
+
+                    b.Property<long>("StartedEpoch")
+                        .HasColumnType("bigint");
 
                     b.HasKey("PlayerId", "SlotIndex");
 

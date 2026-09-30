@@ -37,6 +37,12 @@ namespace FolkIdle.Server.Network
                 return true;
             }
 
+            if (requestPath == "/api/v1/great-works" && method == "GET")
+            {
+                await HandleGreatWorks(context);
+                return true;
+            }
+
             if (requestPath.StartsWith("/api/v1/market/cosmetics", StringComparison.Ordinal))
             {
                 if (requestPath == "/api/v1/market/cosmetics" && method == "GET") { await HandleCosmeticListings(context); return true; }
@@ -251,6 +257,30 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Boss challenges error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        // Task 84: the Great Works - read-only. A DEPOSIT is the DepositGreatWork
+        // command: the materials leave in the same transaction that raises the stage.
+        private async Task HandleGreatWorks(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await WriteJsonAsync(context, await FolkIdle.Server.Domain.Progression.GreatWorksEngine.ViewAsync(db, playerId));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Great works error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally

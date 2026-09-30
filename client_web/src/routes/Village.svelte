@@ -8,6 +8,7 @@
   import { connection } from '../lib/net/connection';
   import type { StateUpdate } from '../lib/net/protocol.generated';
   import VillageFolk from '../lib/ui/VillageFolk.svelte';
+  import GreatWorks from '../lib/ui/GreatWorks.svelte';
   import Stopwatch from '../lib/ui/Stopwatch.svelte';
 
 
@@ -241,6 +242,10 @@
         level. Buildings survive the season; the people in the village do not.
       </p>
     </section>
+
+    <!-- Task 84: the long material sink. Buildings survive a rebirth and so
+         do these; they are the destination for the stacks a rebirth deletes. -->
+    <GreatWorks />
 
     <!-- Modul: THE "WORK SLOTS" PANEL IS GONE (task 77), and it was not dead -
          it was mislabelled. It started as "Villagers" over VillageResidents, a

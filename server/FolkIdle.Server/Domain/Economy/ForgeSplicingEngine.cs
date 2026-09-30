@@ -581,6 +581,112 @@ namespace FolkIdle.Server.Domain.Economy
             return (sample.BaseItemId, plan);
         }
 
+        /// <summary>What one stack fusion did, inside the caller's transaction.</summary>
+        internal readonly struct StackFusionResult
+        {
+            public StackFusionPlan Plan { get; init; }
+            /// <summary>The highest tier a piece came out of the anvil at; 0 when nothing fused.</summary>
+            public int BestTier { get; init; }
+        }
+
+        /// <summary>
+        /// THE stack fusion: loads the eligible pieces of one stack (FOR UPDATE),
+        /// plans with <see cref="PlanStack"/>, and - when the plan fuses anything -
+        /// removes the sacrifices, raises the targets with one affix roll per
+        /// step, takes the fee off the locked gold row, counts the lifetime
+        /// fusions and writes the drop record. All inside the CALLER's
+        /// transaction, which the caller commits or rolls back.
+        /// </summary>
+        /// <remarks>
+        /// Modul: ONE FUSION PATH, TWO CALLERS (task 85). The Forge's "fuse
+        /// stack" button (ExecuteStackFusionAsync) and the automation rule
+        /// "fuse stacks up to tier N" (AutoFuseStacksAsync, run by the loot
+        /// worker) both land here, so the rule cannot price, filter or roll a
+        /// fusion differently from the button a player can press.
+        /// </remarks>
+        internal static async Task<StackFusionResult> FuseStackInTransactionAsync(
+            FolkIdleDbContext db, long playerId, string baseItemId, int fromTier, int requestedTier, int forgeLevel)
+        {
+            int ceiling = Math.Min(Math.Min(requestedTier, forgeLevel), MaxQualityTier);
+            var rows = await LoadStackAsync(db, playerId, baseItemId, fromTier, ceiling, forUpdate: true);
+
+            var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
+            var goldRecord = await db.CommodityRecords
+                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
+                .SingleOrDefaultAsync();
+            long gold = goldRecord?.Quantity ?? 0L;
+
+            var plan = PlanStack(CountByTier(rows), fromTier, requestedTier, forgeLevel,
+                FeeDiscountFor(player?.BaseLuck), gold);
+
+            if (plan.TotalFusions == 0)
+            {
+                return new StackFusionResult { Plan = plan };
+            }
+
+            int regionTier = ContentRegistry.TryGetItemDefinitionByBaseId(baseItemId, out var definition)
+                ? definition.RegionTier
+                : 1;
+
+            // Pieces per tier, oldest first. A fusion takes the first three:
+            // the first keeps its affixes and gains one, the other two go.
+            var byTier = new Queue<EquipmentInstance>[MaxQualityTier + 1];
+            for (int t = 0; t <= MaxQualityTier; t++) byTier[t] = new Queue<EquipmentInstance>();
+            foreach (var row in rows) byTier[row.QualityTier].Enqueue(row);
+
+            var originalTier = new Dictionary<long, int>();
+            var consumed = new HashSet<long>();
+            for (int tier = Math.Max(1, fromTier); tier < plan.CeilingTier; tier++)
+            {
+                for (int n = 0; n < plan.FusionsByTier[tier]; n++)
+                {
+                    var target = byTier[tier].Dequeue();
+                    var sac1 = byTier[tier].Dequeue();
+                    var sac2 = byTier[tier].Dequeue();
+                    db.EquipmentInstances.Remove(sac1);
+                    db.EquipmentInstances.Remove(sac2);
+                    consumed.Add(sac1.Id);
+                    consumed.Add(sac2.Id);
+
+                    if (!originalTier.ContainsKey(target.Id)) originalTier[target.Id] = tier;
+                    target.QualityTier = tier + 1;
+
+                    JsonObject affixPayload = ParseAffixPayload(target.AffixPayload);
+                    var existingKeys = new List<string>(affixPayload.Count);
+                    foreach (var pair in affixPayload) existingKeys.Add(pair.Key);
+                    if (AffixRegistry.TryRollOneAdditional(target.BaseItemId, regionTier, tier + 1,
+                            existingKeys, out string newAffixKey, out int newAffixValue))
+                    {
+                        affixPayload[newAffixKey] = newAffixValue;
+                    }
+                    target.AffixPayload = affixPayload.ToJsonString();
+
+                    byTier[tier + 1].Enqueue(target);
+                }
+            }
+
+            if (goldRecord != null) goldRecord.Quantity -= plan.GoldCost;
+            if (goldRecord != null) await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Fusion, plan.GoldCost);
+            if (player != null) player.ForgeFusionsCompleted += plan.TotalFusions;
+            await db.SaveChangesAsync();
+
+            // The drop record: one notable row per piece that came out of
+            // the anvil changed - what the single fusion writes per fusion,
+            // minus the rows for pieces a later step consumed. One write.
+            var tally = new DropTally();
+            DateTime now = DateTime.UtcNow;
+            int bestTier = 0;
+            foreach (var row in rows)
+            {
+                if (consumed.Contains(row.Id) || !originalTier.TryGetValue(row.Id, out int from)) continue;
+                tally.Notable(playerId, DropSource.Forge, row, row.BaseItemId, from, row.QualityTier, 0f, now);
+                if (row.QualityTier > bestTier) bestTier = row.QualityTier;
+            }
+            await DropRecord.WriteAsync(db, playerId, tally, now);
+
+            return new StackFusionResult { Plan = plan, BestTier = bestTier };
+        }
+
         /// <summary>
         /// Fuses the stack <paramref name="sampleItemId"/> belongs to, from the
         /// sample's tier up to <paramref name="requestedTier"/>, in one
@@ -619,16 +725,8 @@ namespace FolkIdle.Server.Domain.Economy
                     return null;
                 }
 
-                var rows = await LoadStackAsync(db, playerId, sample.BaseItemId, sample.QualityTier, ceiling, forUpdate: true);
-
-                var player = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
-                var goldRecord = await db.CommodityRecords
-                    .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE", playerId)
-                    .SingleOrDefaultAsync();
-                long gold = goldRecord?.Quantity ?? 0L;
-
-                var plan = PlanStack(CountByTier(rows), sample.QualityTier, requestedTier, forgeLevel,
-                    FeeDiscountFor(player?.BaseLuck), gold);
+                var result = await FuseStackInTransactionAsync(db, playerId, sample.BaseItemId, sample.QualityTier, requestedTier, forgeLevel);
+                var plan = result.Plan;
 
                 if (plan.TotalFusions == 0)
                 {
@@ -640,72 +738,13 @@ namespace FolkIdle.Server.Domain.Economy
                     return plan;
                 }
 
-                int regionTier = ContentRegistry.TryGetItemDefinitionByBaseId(sample.BaseItemId, out var definition)
-                    ? definition.RegionTier
-                    : 1;
-
-                // Pieces per tier, oldest first. A fusion takes the first three:
-                // the first keeps its affixes and gains one, the other two go.
-                var byTier = new Queue<EquipmentInstance>[MaxQualityTier + 1];
-                for (int t = 0; t <= MaxQualityTier; t++) byTier[t] = new Queue<EquipmentInstance>();
-                foreach (var row in rows) byTier[row.QualityTier].Enqueue(row);
-
-                var originalTier = new Dictionary<long, int>();
-                var consumed = new HashSet<long>();
-                for (int tier = sample.QualityTier; tier < plan.CeilingTier; tier++)
-                {
-                    for (int n = 0; n < plan.FusionsByTier[tier]; n++)
-                    {
-                        var target = byTier[tier].Dequeue();
-                        var sac1 = byTier[tier].Dequeue();
-                        var sac2 = byTier[tier].Dequeue();
-                        db.EquipmentInstances.Remove(sac1);
-                        db.EquipmentInstances.Remove(sac2);
-                        consumed.Add(sac1.Id);
-                        consumed.Add(sac2.Id);
-
-                        if (!originalTier.ContainsKey(target.Id)) originalTier[target.Id] = tier;
-                        target.QualityTier = tier + 1;
-
-                        JsonObject affixPayload = ParseAffixPayload(target.AffixPayload);
-                        var existingKeys = new List<string>(affixPayload.Count);
-                        foreach (var pair in affixPayload) existingKeys.Add(pair.Key);
-                        if (AffixRegistry.TryRollOneAdditional(target.BaseItemId, regionTier, tier + 1,
-                                existingKeys, out string newAffixKey, out int newAffixValue))
-                        {
-                            affixPayload[newAffixKey] = newAffixValue;
-                        }
-                        target.AffixPayload = affixPayload.ToJsonString();
-
-                        byTier[tier + 1].Enqueue(target);
-                    }
-                }
-
-                if (goldRecord != null) goldRecord.Quantity -= plan.GoldCost;
-                if (goldRecord != null) await GoldLedger.RecordSpendAsync(db, playerId, GoldSpendCategory.Fusion, plan.GoldCost);
-                if (player != null) player.ForgeFusionsCompleted += plan.TotalFusions;
-                await db.SaveChangesAsync();
-
-                // The drop record: one notable row per piece that came out of
-                // the anvil changed - what the single fusion writes per fusion,
-                // minus the rows for pieces a later step consumed. One write.
-                var tally = new DropTally();
-                DateTime now = DateTime.UtcNow;
-                int bestTier = 0;
-                foreach (var row in rows)
-                {
-                    if (consumed.Contains(row.Id) || !originalTier.TryGetValue(row.Id, out int from)) continue;
-                    tally.Notable(playerId, DropSource.Forge, row, row.BaseItemId, from, row.QualityTier, 0f, now);
-                    if (row.QualityTier > bestTier) bestTier = row.QualityTier;
-                }
-                await DropRecord.WriteAsync(db, playerId, tally, now);
                 await transaction.CommitAsync();
 
                 Console.WriteLine($"Stack fusion: player {playerId} fused {plan.TotalFusions}x {sample.BaseItemId} for {plan.GoldCost} gold.");
                 _playerRegistry?.ForgeUpgradeQueue.Enqueue(new ForgeUpgradeNotification
                 {
                     PlayerId = playerId,
-                    ResultingQualityTier = bestTier
+                    ResultingQualityTier = result.BestTier
                 });
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
                 return plan;
@@ -717,6 +756,55 @@ namespace FolkIdle.Server.Domain.Economy
                 _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                 return null;
             }
+        }
+
+        /// <summary>What an automatic fusion pass did for one player.</summary>
+        internal readonly struct AutoFuseOutcome
+        {
+            public int TotalFusions { get; init; }
+            public long GoldCost { get; init; }
+            public int BestTier { get; init; }
+        }
+
+        /// <summary>
+        /// Task 85, rule 3: fuses each named stack from tier 1 up to
+        /// <paramref name="toTier"/>, in ONE transaction, through
+        /// <see cref="FuseStackInTransactionAsync"/> - the button's own path.
+        /// A stack that cannot fuse (too few pieces, no gold, the Forge level)
+        /// is simply left; nothing here answers a command, because no command
+        /// was sent. Called by CombatLootEngine after a cycle's drops commit.
+        /// </summary>
+        internal static async Task<AutoFuseOutcome> AutoFuseStacksAsync(
+            FolkIdleDbContext db, long playerId, IReadOnlyCollection<string> baseItemIds, int toTier)
+        {
+            if (baseItemIds.Count == 0 || toTier < 2) return default;
+
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            int forgeLevel = await ForgeLevelOfAsync(db, playerId);
+            int fusions = 0;
+            long cost = 0;
+            int best = 0;
+            var ordered = new List<string>(baseItemIds);
+            ordered.Sort(StringComparer.Ordinal);
+            foreach (string baseItemId in ordered)
+            {
+                var result = await FuseStackInTransactionAsync(db, playerId, baseItemId, 1, toTier, forgeLevel);
+                fusions += result.Plan.TotalFusions;
+                cost += result.Plan.GoldCost;
+                if (result.BestTier > best) best = result.BestTier;
+                // Gold is the one budget the stacks share; once it has stopped
+                // one stack it will stop the rest.
+                if (result.Plan.StoppedByGold) break;
+            }
+
+            if (fusions == 0)
+            {
+                await transaction.RollbackAsync();
+                return default;
+            }
+
+            await transaction.CommitAsync();
+            return new AutoFuseOutcome { TotalFusions = fusions, GoldCost = cost, BestTier = best };
         }
 
         private static JsonObject ParseAffixPayload(string payload)

@@ -49,6 +49,22 @@ namespace FolkIdle.Server.Network
         // bug report. This codebase has already learned that once, from an
         // anti-cheat that banned fast clickers permanently.
         public const byte Quarantined = 5;
+
+        // Modul: task 85, the automation rules. NOT stops - notes that a rule
+        // acted, so a character that is suddenly fishing, or fighting something
+        // smaller, is explained rather than mysterious. Like OutOfFood the tick
+        // does not clear them while the activity runs (SimulationEngine.
+        // ProcessTick); a redeploy does. See Domain.Combat.AutomationRules.
+        //
+        // The larder ran dry and the rule sent the character fishing.
+        public const byte AutomationFishing = 6;
+
+        // The character died and the rule sent it one monster down the ladder.
+        public const byte AutomationSteppedDown = 7;
+
+        /// <summary>A reason that reports a rule acting rather than a stop.</summary>
+        public static bool IsStandingNote(byte reason) =>
+            reason == OutOfFood || reason == AutomationFishing || reason == AutomationSteppedDown;
     }
 
     // Modul: larder. Per-slot cap on stocked food. Chosen so a slot count
@@ -298,7 +314,16 @@ namespace FolkIdle.Server.Network
         // The step was cleared but its reward could not be saved (a database
         // blip). Nothing is lost: the next cleared step pays every step between
         // what is stored and what it cleared.
-        AscensionRewardNotSaved = 50
+        AscensionRewardNotSaved = 50,
+
+        // Modul: THE GREAT WORKS (task 84). 60 a deposit landed, 61 it also
+        // finished a stage (both are GOOD news), 62 the monument is already
+        // complete. A short stock answers InsufficientMaterials (3) and a save
+        // that failed CheckpointFailed (44). 51-59 are left for the parallel
+        // tasks 83 and 85, which number their codes independently.
+        GreatWorkDeposited = 60,
+        GreatWorkStageBuilt = 61,
+        GreatWorkComplete = 62
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

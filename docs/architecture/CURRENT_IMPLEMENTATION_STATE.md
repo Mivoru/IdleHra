@@ -146,6 +146,7 @@ override and must be referenced unquoted or snake_case-quoted in raw SQL:
 | CosmeticListing                | cosmetic_market_listings        |
 | BossChallengeCompletion        | boss_challenge_completions      |
 | BossAscensionProgress          | boss_ascension_progress         |
+| GreatWorkProgress              | great_works_progress            |
 | PlayerGoldDailyHigh            | player_gold_daily_high          |
 | PlayerFunnelEvent              | player_funnel_events            |
 | SplitBrainIncident             | split_brain_incidents           |

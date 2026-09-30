@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Domain.Shared;
 using FolkIdle.Server.Engine;
 using Xunit;
@@ -239,7 +240,15 @@ namespace FolkIdle.Server.Tests
                 // so this is a CAP, not a curve.
                 new("scholar crown", ScholarRate.MaxMultiplier,
                     "ScholarRate.MaxMultiplier - a CAP (crowns have one level)"),
+                // Modul: task 84, the Great Works. Whole percentage points of
+                // extra harvest rolls, paid by GatheringYieldFor (so live and
+                // offline alike) and surviving a rebirth. It is five stages of a
+                // fixed figure on three monuments, so it is a hard CAP.
+                new("great works: yield", 1.0 + GreatWorksRegistry.MaxYieldPct / 100.0,
+                    "GreatWorksRegistry.MaxYieldPct - a CAP (every monument complete)"),
             };
+
+            Assert.InRange(GreatWorksRegistry.MaxYieldPct, 1, 25);
 
             Assert.Equal(1, SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.CrownScholar));
             Assert.InRange(ScholarRate.MaxMultiplier, 1.0, 1.5);
@@ -279,6 +288,29 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void TheGreatWorksOfflineBonusIsACapAndLeavesTheOfflineWindowUnderADay()
+        {
+            // Modul: task 84. The other Great Works bonus is not a multiplier but
+            // MINUTES on the away-time cap, which scales every offline reward
+            // linearly (offline = online, so an hour more away is an hour more of
+            // every stream). Vodnik's 18 h is the ceiling that exists today; the
+            // monuments stack on it, so the ledger line is the whole window.
+            long vodnik = RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(25, OfflineSimulationEngine.MaxOfflineSeconds);
+            int all = 0;
+            for (int r = GreatWorksRegistry.FirstRegion; r <= GreatWorksRegistry.LastRegion; r++) all = GreatWorksRegistry.WithStage(all, r, GreatWorksRegistry.StageCount);
+            long max = OfflineSimulationEngine.EffectiveOfflineCapSeconds(25, all);
+
+            double factor = (double)max / OfflineSimulationEngine.MaxOfflineSeconds;
+            _o.WriteLine($"offline window: base {OfflineSimulationEngine.MaxOfflineSeconds / 3600.0:F1} h, Vodnik {vodnik / 3600.0:F1} h, "
+                + $"+ Great Works {GreatWorksRegistry.MaxOfflineMinutes} min = {max / 3600.0:F2} h ({factor:F2}x the base)");
+
+            Assert.Equal(vodnik + GreatWorksRegistry.MaxOfflineMinutes * 60L, max);
+            Assert.InRange(GreatWorksRegistry.MaxOfflineMinutes, 1, 300);   // the monuments alone add at most five hours
+            Assert.True(max < 24 * 3_600L, "a maxed player must still be cut off before a full day away");
+            Assert.True(factor < 2.0, $"the offline window is {factor:F2}x the base - that is a doubling, not a bonus");
+        }
+
+        [Fact]
         public void EveryUnboundedMultiplierIsAStatedCurve()
         {
             // Modul: the rule this file exists to enforce, as a property.
@@ -310,6 +342,59 @@ namespace FolkIdle.Server.Tests
                 Assert.True(growth < 10.0,
                     $"{name} grows at least linearly - ten times the input paid {growth:F1}x. "
                     + "Cap it or curve it before it becomes the whole game.");
+            }
+        }
+
+        /// <summary>
+        /// Task 83: a Workshop commission buys a rarity FLOOR, and the owner's
+        /// rule is that the floor stays below the region's usual drop - so that
+        /// the Workshop is a sink with a reward, never a shortcut past the
+        /// ladder. Time to region 5 (~26 days, LONG_GAME_SPEC section 7) must
+        /// not fall below ~20, and region progress is gated by the boss walls.
+        /// </summary>
+        /// <remarks>
+        /// Modul: "USUAL DROP" IS THE TIER THE REGION'S BOSS WALL ASSUMES.
+        /// The median SINGLE drop is Normal everywhere (ItemRarityPowerTests
+        /// .PrintTheDropDistribution_AndWhereItsMedianFalls) and every floor is
+        /// above that by construction, so it cannot be the anchor. A player
+        /// wears the best of many drops, and BossFirstClearRules writes down
+        /// what that best is per region. Two things are asserted against it:
+        /// the floor is strictly below it at every Workshop level, and a full
+        /// wardrobe of commissioned pieces at the best floor - Common affixes
+        /// on everything, not only the chosen one, which is the pessimistic
+        /// side - LOSES the region's first clear. A Workshop can never open a
+        /// region, so it cannot shorten the climb to region 5.
+        /// </remarks>
+        [Fact]
+        public void TheWorkshopCommissionFloorStaysBelowEveryRegionsUsualDrop()
+        {
+            _o.WriteLine("region  usual (wall)  best floor   full set at the floor vs the first clear");
+            for (int region = RaceUnlockRegistry.FirstRegion; region <= RaceUnlockRegistry.LastRegion; region++)
+            {
+                int usual = BossFirstClearRules.RequiredQualityTierFor(region);
+
+                int best = 0;
+                for (int workshop = 0; workshop <= Domain.Progression.VillageManagementEngine.MaxStructuralBuildingLevel + 2; workshop++)
+                {
+                    int floor = Domain.Economy.WorkshopCommissionRules.FloorTierFor(workshop, region);
+                    Assert.True(floor < usual,
+                        $"region {region}: Workshop {workshop} commissions at {RarityTier.GetName(floor)} ({floor}), "
+                        + $"not below the {RarityTier.GetName(usual)} ({usual}) the region's gear is calibrated to.");
+                    Assert.InRange(floor, 0, RarityTier.Epic); // the owner's T2-T6
+                    best = Math.Max(best, floor);
+                }
+
+                var wardrobe = new ReferenceLoadout(BossGearBenchmark.ReferenceLevelForRegion(region), region, best, AffixRarity.Common);
+                var fight = BossGearBenchmark.ProjectFirstClear(RaceUnlockRegistry.GetRegionBossMonsterId(region), in wardrobe);
+
+                _o.WriteLine($"  {region}     {RarityTier.GetName(usual),-12}  {RarityTier.GetName(best),-10}   "
+                    + (fight.PlayerWins ? "WINS" : "loses")
+                    + $" (kill {fight.SecondsToKillBoss:F0} s, dies {fight.SecondsToPlayerDeath:F0} s)"
+                    + $"  power {RarityTier.PowerMultiplier(best):F2}x vs {RarityTier.PowerMultiplier(usual):F2}x");
+
+                Assert.False(fight.PlayerWins,
+                    $"region {region}: eight commissioned pieces at {RarityTier.GetName(best)} beat the boss wall - "
+                    + "the Workshop has become a way past the ladder, and time to region 5 moves with it.");
             }
         }
 

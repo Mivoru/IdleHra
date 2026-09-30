@@ -958,6 +958,118 @@ await go('Auto-Eat');
   );
 }
 
+// --- Workshop commissions (task 83) ------------------------------------------
+// Modul: THIS RUNS BEFORE "crafting as a job". That step puts a character to
+// work on a recipe, and the worker then eats birch log and copper ore every
+// few seconds - the same stock this step proves it gave back, so the round
+// trip came out 20 log and 10 ore short on a Workshop that refunds exactly.
+// The material sink: one region piece at the Workshop's rarity floor, with an
+// affix the player picks, for hours and tens of thousands of materials. Proved
+// by what CHANGED - the quoted materials leave the stock, a clock starts, and
+// collecting puts a piece in the chest carrying the chosen affix at Common.
+//
+// ROUND-TRIPS the fixture: the dev route finishes the order at once AND gives
+// its price back, and the collected piece is binned - so the stock and the
+// chest end where they started and this passes on every run, not once.
+await go('Crafting');
+{
+  const panel = page.locator('[data-testid="workshop-commissions"]');
+  const shown = await panel.waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+  record('the Crafting screen offers Workshop commissions', shown);
+
+  let view = await apiGet('/api/v1/workshop');
+  // A run interrupted mid-step leaves an order standing; clear it first so the
+  // check below starts from an empty Workshop (refund, collect, bin).
+  if (view?.Commission) {
+    await apiPost('/api/v1/dev/workshop/finish', { Refund: true });
+    const leftover = await apiPost('/api/v1/workshop/collect', {});
+    if (leftover?.Collected) await apiPost('/api/v1/chest/discard', { equipmentId: leftover.Collected.InstanceId });
+    view = await apiGet('/api/v1/workshop');
+  }
+
+  // Region 1, always: it is open to every account, and its Common floor costs
+  // a few thousand of what the fixture is seeded with - a deeper region the
+  // fixture happens to have opened would ask for ten times its stock.
+  const region = (view?.Regions ?? []).find((r) => r.Region === 1 && r.Unlocked);
+  if (!view || !region) {
+    record('a commission spends its quoted materials and starts the clock', false, '/api/v1/workshop did not answer');
+  } else if (view.WorkshopLevel === 0 || region.FloorTier === 0) {
+    record('a commission spends its quoted materials and starts the clock', false, 'the fixture has no Workshop - re-seed');
+  } else if (!region.Affordable) {
+    record(
+      'a commission spends its quoted materials and starts the clock',
+      false,
+      `the fixture cannot pay ${region.Cost.map((l) => `${l.Quantity} ${l.ItemId} (has ${l.Held})`).join(', ')} - re-seed`,
+    );
+  } else {
+    const piece = region.Pieces[0];
+    const affix = piece.Affixes[0];
+    const heldBefore = Object.fromEntries(region.Cost.map((l) => [l.ItemId, l.Held]));
+
+    const regionChip = panel.locator('button.chip', { hasText: /^\s*Region 1\s*$/ });
+    if ((await regionChip.count()) > 0) await regionChip.first().click();
+    await panel.locator('[data-testid="workshop-pieces"] button').first().click();
+    await panel.locator('[data-testid="workshop-affixes"] button').first().click();
+    await panel.locator('[data-testid="workshop-commission"]').click();
+    const started = await panel
+      .locator('[data-testid="workshop-running"]')
+      .waitFor({ timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+
+    const placed = await apiGet('/api/v1/workshop');
+    const placedRegion = placed?.Regions.find((r) => r.Region === region.Region);
+    const charged = (placedRegion?.Cost ?? []).every((l) => l.Held === heldBefore[l.ItemId] - l.Quantity);
+    const countdown = await panel.locator('[data-testid="workshop-countdown"]').innerText().catch(() => '');
+    record(
+      'a commission spends its quoted materials and starts the clock',
+      started && charged && placed?.Commission?.ItemId === piece.ItemId && placed.Commission.ChosenAffixId === affix
+        && !placed.Commission.Ready && /Ready in/.test(countdown),
+      `${piece.BaseItemId} + ${affix}, floor ${placed?.Commission?.FloorName}, "${countdown}"`,
+    );
+
+    // Finish it now and give the price back, then collect it in the UI.
+    await apiPost('/api/v1/dev/workshop/finish', { Refund: true });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1200);
+    await dismissOfflineSummary(3000);
+    await go('Crafting');
+
+    const inventoryBefore = ((await apiGet('/api/v1/player/inventory'))?.Equipment ?? []).map((e) => e.Id);
+    const collectBtn = panel.locator('[data-testid="workshop-collect"]');
+    const enabled = await collectBtn
+      .and(page.locator('button:not([disabled])'))
+      .waitFor({ timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+    if (enabled) await collectBtn.click();
+    const collectedLine = await panel
+      .locator('[data-testid="workshop-collected"]')
+      .waitFor({ timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+
+    const inventoryAfter = (await apiGet('/api/v1/player/inventory'))?.Equipment ?? [];
+    const fresh = inventoryAfter.filter((e) => !inventoryBefore.includes(e.Id));
+    const made = fresh.find((e) => e.BaseItemId === piece.BaseItemId);
+    record(
+      'collecting a commission puts the piece in the chest with the chosen affix at Common',
+      enabled && collectedLine && !!made && made.QualityTier >= region.FloorTier && `${affix}@1` in (made.Affixes ?? {}),
+      made ? `T${made.QualityTier} ${Object.keys(made.Affixes ?? {}).join(', ')}` : `nothing new of ${piece.BaseItemId}`,
+    );
+
+    // Restore: bin the piece; the refund already put the stock back.
+    if (made) await apiPost('/api/v1/chest/discard', { equipmentId: made.Id });
+    const after = await apiGet('/api/v1/workshop');
+    const afterRegion = after?.Regions.find((r) => r.Region === region.Region);
+    record(
+      'the commission check leaves the fixture as it found it',
+      !after?.Commission && (afterRegion?.Cost ?? []).every((l) => l.Held === heldBefore[l.ItemId]),
+      (afterRegion?.Cost ?? []).map((l) => `${l.ItemId} ${heldBefore[l.ItemId]} -> ${l.Held}`).join(', '),
+    );
+  }
+}
+
 // --- crafting as a job -------------------------------------------------------
 // Crafting used to be instant and needed no character: every recipe carried a
 // CraftingTimeMs that nothing read. It is now an activity in its own band, so
@@ -2456,6 +2568,95 @@ await go('The Delve');
   }
 }
 
+// --- task 84: the Great Works -------------------------------------------------
+// The output side, end to end: the server lists five monuments of five stages,
+// the Village panel's Deposit button spends the region's materials and the
+// monument's progress MOVES, and a built stage puts a landmark on the Map.
+// ROUND TRIP: the check grants itself 2,000 birch logs (a signed StockDelta on
+// the dev-tools route), deposits, and puts monument 1 and the stock back exactly
+// - so it never permanently spends the fixture and passes on every run.
+{
+  const view = await apiGet('/api/v1/great-works');
+  const works = view?.Works ?? [];
+  record(
+    'the server lists five Great Works of five stages, with the two ceilings',
+    works.length === 5 && works.every((w) => w.Stages.length === 5 && w.BonusPerStage && w.LogItem && w.OreItem)
+      && view.MaxYieldPct > 0 && view.MaxOfflineMinutes > 0,
+    works.map((w) => `${w.Region}:${w.Stage}/5`).join(' '),
+  );
+
+  const w1 = works.find((w) => w.Region === 1);
+  const origStage = w1?.Stage ?? 0;
+  const origProgress = w1?.Progress ?? 0;
+  if (w1 && origStage === 0) {
+    const granted = await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: 0, Progress: origProgress, Material: 0, StockDelta: 2000 });
+    await page.waitForTimeout(2500);
+    const held = (await apiGet('/api/v1/great-works'))?.Works?.find((w) => w.Region === 1);
+
+    await go('Village');
+    await page.waitForTimeout(1200);
+    const panel = page.getByTestId('great-work-1');
+    record('the Village draws the Great Works panel', (await panel.count()) > 0, `${(await page.getByTestId('great-works').count())} panel(s)`);
+
+    const deposit = page.getByTestId('great-work-deposit-1-log');
+    const enabled = (await deposit.count()) > 0 && (await deposit.isEnabled());
+    record('Deposit is enabled while the region\'s log is held', enabled, `held ${held?.HeldLog}`);
+    const box = (await deposit.count()) > 0 ? await deposit.boundingBox() : null;
+    record('the Deposit button is at least 44px tall', Boolean(box) && box.height >= 43.5, box ? `${Math.round(box.width)}x${Math.round(box.height)}` : 'no box');
+
+    let moved = null;
+    if (enabled) {
+      await deposit.click();
+      for (let i = 0; i < 16 && !moved; i++) {
+        await page.waitForTimeout(500);
+        const now = (await apiGet('/api/v1/great-works'))?.Works?.find((w) => w.Region === 1);
+        if (now && (now.Progress > origProgress || now.Stage > 0)) moved = now;
+      }
+    }
+    const spent = held && moved ? held.HeldLog - moved.HeldLog : 0;
+    record(
+      'depositing moved the monument and took exactly that much material',
+      Boolean(moved) && spent > 0 && (moved.Stage > 0 || moved.Progress - origProgress === spent),
+      moved ? `progress ${moved.Progress} (was ${origProgress}), stage ${moved.Stage}, spent ${spent}` : 'nothing moved',
+    );
+    if (moved) {
+      const text = ((await panel.textContent()) ?? '').replace(/\s+/g, ' ');
+      record('the panel shows the new progress', /\/\s*50\D?000/.test(text) || moved.Stage > 0, text.slice(0, 140));
+    }
+
+    // Put everything back: the monument as found, the stock as found (what was
+    // spent comes back, the 2,000 granted goes away).
+    await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: origStage, Progress: origProgress, Material: 0, StockDelta: spent - 2000 });
+    await page.waitForTimeout(2500);
+    const after = (await apiGet('/api/v1/great-works'))?.Works?.find((w) => w.Region === 1);
+    record(
+      'the monument and its stock are back where they started',
+      after?.Stage === origStage && after?.Progress === origProgress && after?.HeldLog === (held?.HeldLog ?? 0) - 2000,
+      `stage ${after?.Stage}, progress ${after?.Progress}, held ${after?.HeldLog} (was ${(held?.HeldLog ?? 0) - 2000})`,
+    );
+
+    // A built stage is a landmark on the Map; an unbuilt monument is not there.
+    await go('Map');
+    await page.waitForTimeout(800);
+    const before = await page.getByTestId('hub-monument-1').count();
+    await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: 2, Progress: 0, Material: 0, StockDelta: 0 });
+    await page.waitForTimeout(500);
+    await go('Village');
+    await go('Map');
+    await page.waitForTimeout(1500);
+    const marker = page.getByTestId('hub-monument-1');
+    record(
+      'a built stage puts the monument on the Map',
+      before === 0 && (await marker.count()) === 1 && (await marker.getAttribute('data-stage')) === '2',
+      `before ${before}, after ${await marker.count()} at stage ${await marker.getAttribute('data-stage').catch(() => null)}`,
+    );
+    await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: origStage, Progress: origProgress, Material: 0, StockDelta: 0 });
+    await page.waitForTimeout(500);
+  } else {
+    record('Great Works round trip skipped (monument 1 already started on this account)', true, `stage ${origStage}`);
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character
@@ -3734,6 +3935,92 @@ await go('Ancestors');
   }
 }
 
+// --- orders: automation rules, round-tripped (task 85) -----------------------
+//
+// Modul: SET, READ BACK, RESTORE. The fixture is level 40, so slots 1 and 2 are
+// open and slot 3 (level 60) is not. This gives slot 1 of the first fielded
+// character an order THROUGH THE PANEL, reads it back from the server, asks
+// the server for an order in the locked slot and expects the refusal to be
+// ANSWERED (200 + Result, never a silent no-op), and then puts the character's
+// three rules back exactly as they were - a check that left an order behind
+// would change how the fixture fights in every later run.
+{
+  await dismissToasts();
+  const before = await apiGet('/api/v1/automation-rules');
+  const first = before?.Characters?.[0];
+  record(
+    'orders: the rules answer, with three slots per fielded character',
+    before !== null && Array.isArray(before.UnlockLevels) && before.UnlockLevels.length === 3
+      && first !== undefined && first.Rules.length === 3,
+    before ? `level ${before.Level}, ${before.Characters.length} characters, unlocks ${before.UnlockLevels.join('/')}` : 'no answer',
+  );
+
+  if (first) {
+    const original = first.Rules.map((r) => ({ Type: r.Type, Param: r.Param }));
+    await go('Character');
+    const block = page.locator(`[data-testid="orders-character"][data-character-id="${first.CharacterId}"]`);
+    await block.waitFor({ timeout: 10000 }).catch(() => {});
+
+    // The locked slot says so, and offers no control.
+    const locked = block.locator('[data-testid="orders-slot"][data-open="false"]');
+    const expectLocked = before.UnlockLevels.filter((l) => before.Level < l).length;
+    record(
+      'orders: a slot above the level shows its unlock level, not a control',
+      (await locked.count()) === expectLocked
+        && (expectLocked === 0 || /Opens at level \d+/.test(await locked.first().innerText().catch(() => ''))),
+      `${await locked.count()} locked of 3 at level ${before.Level}`,
+    );
+
+    // Give slot 1 an order it does not already have, through the panel.
+    const wanted = original[0].Type === 2 ? 1 : 2;
+    const typeSelect = block.locator('[data-testid="orders-slot"][data-slot="0"] [data-testid="orders-type"]');
+    if ((await typeSelect.count()) > 0) {
+      // The other slot may already hold the order we want; free it first.
+      if (original.some((r, i) => i !== 0 && r.Type === wanted)) {
+        await apiPost('/api/v1/automation-rules', {
+          CharacterId: first.CharacterId,
+          Rules: original.map((r, i) => (i !== 0 && r.Type === wanted ? { Type: 0, Param: 0 } : r)),
+        });
+        await page.reload({ waitUntil: 'networkidle' });
+        await go('Character');
+        await block.waitFor({ timeout: 10000 }).catch(() => {});
+      }
+      await typeSelect.selectOption(String(wanted));
+      await block.locator('[data-testid="orders-save"]').click();
+      let saved = null;
+      for (let i = 0; i < 20; i++) {
+        await page.waitForTimeout(300);
+        const now = await apiGet('/api/v1/automation-rules');
+        saved = now?.Characters?.find((c) => c.CharacterId === first.CharacterId)?.Rules?.[0] ?? null;
+        if (saved?.Type === wanted) break;
+      }
+      record('orders: an order set on the panel is what the server holds', saved?.Type === wanted,
+        saved ? `slot 1 type ${saved.Type} param ${saved.Param}` : 'not read back');
+    } else {
+      record('orders: an order set on the panel is what the server holds', false, 'slot 1 has no control (level below 20?)');
+    }
+
+    // A locked slot is refused out loud.
+    if (before.Level < before.UnlockLevels[2]) {
+      const refused = await apiPost('/api/v1/automation-rules', {
+        CharacterId: first.CharacterId,
+        Rules: [{ Type: 0, Param: 0 }, { Type: 0, Param: 0 }, { Type: 2, Param: 0 }],
+      });
+      record('orders: a rule in a locked slot is refused with a reason', refused?.Result === 'SlotLocked', refused?.Result ?? 'no answer');
+    }
+
+    // Restore, and prove it.
+    const restored = await apiPost('/api/v1/automation-rules', { CharacterId: first.CharacterId, Rules: original });
+    const back = restored?.Characters?.find((c) => c.CharacterId === first.CharacterId)?.Rules ?? [];
+    record(
+      'orders: the fixture ends with the rules it started with',
+      restored?.Result === 'Ok' && back.length === 3 && back.every((r, i) => r.Type === original[i].Type && r.Param === original[i].Param),
+      restored ? `${restored.Result}: ${JSON.stringify(back)}` : 'no answer',
+    );
+    await dismissToasts();
+  }
+}
+
 // --- rebirth: the PREVIEW only, on the fixture (task 88) ---------------------
 //
 // Modul: THE FIXTURE IS NEVER REBORN. A rebirth takes its level, gear, gold and
@@ -3742,6 +4029,10 @@ await go('Ancestors');
 // against the server's own preview, and CANCELS; the real rebirth is pressed on
 // the throwaway account below, which exists to be spent.
 {
+  // Modul: the panel lives in the Hall of Ancestors. This step once relied on
+  // the step before it having left the page there; the orders step (task 85)
+  // goes to Character, so it navigates for itself now.
+  await go('Ancestors');
   await dismissToasts();
   const panel = page.locator('[data-testid="rebirth-panel"]');
   await panel.waitFor({ timeout: 10000 }).catch(() => {});

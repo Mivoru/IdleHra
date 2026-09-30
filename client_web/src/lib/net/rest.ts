@@ -50,6 +50,10 @@ export const queryKeys = {
   ancestorsHall: ['meta', 'ancestors'] as const,
   /** Task 88: what a rebirth would keep and take, right now. */
   rebirthPreview: ['meta', 'rebirth'] as const,
+  /** Task 85: each fielded character's automation rules. */
+  automationRules: ['player', 'automationRules'] as const,
+  /** Task 83: the Workshop's commissions - catalogue, prices and the running order. */
+  workshop: ['crafting', 'workshop'] as const,
   deeds: ['meta', 'deeds'] as const,
   /** Task 57: the collection log. */
   collection: ['player', 'collection'] as const,
@@ -2116,6 +2120,44 @@ export function fetchGoldLedger(): Promise<GoldLedger> {
 }
 
 // ---------------------------------------------------------------------------
+// Automation rules, "Orders" (task 85)
+// ---------------------------------------------------------------------------
+
+/** Mirrors `AutomationRules` on the server: 0 none, 1 fish when the larder runs dry, 2 step down after a death, 3 fuse stacks up to tier N. */
+export const AUTOMATION_RULE = { None: 0, FishWhenLarderDry: 1, StepDownOnDeath: 2, AutoFuseToTier: 3 } as const;
+
+/** One rule as the API speaks it: a fishing rule's Param is the spot's activity id (3001-3005), a fusion rule's is the tier. */
+export interface AutomationRule {
+  Type: number;
+  Param: number;
+}
+
+export interface AutomationRulesView {
+  /** 'Ok', or why a POST was refused (SlotLocked, DuplicateRule, NotAFishingSpot, TierOutOfRange, NotFielded...). */
+  Result: string;
+  Level: number;
+  /** The level each of the three slots opens at. */
+  UnlockLevels: number[];
+  MaxFuseTier: number;
+  FishingSpots: { ActivityId: number; Location: number }[];
+  Characters: { CharacterId: string; Name: string; Slot: number; Rules: AutomationRule[] }[];
+}
+
+/**
+ * The server's view of every fielded character's rules. The panel renders it
+ * and decides nothing: the level gate, which spot is a fishing spot and which
+ * tier is allowed are all the server's (`AutomationRules.Validate`).
+ */
+export function fetchAutomationRules(): Promise<AutomationRulesView> {
+  return authedGet<AutomationRulesView>('/api/v1/automation-rules');
+}
+
+/** Replaces one character's three rules. A refusal answers 200 with its Result. */
+export function saveAutomationRules(characterId: string, rules: AutomationRule[]): Promise<AutomationRulesView | null> {
+  return authedPost<AutomationRulesView>('/api/v1/automation-rules', { CharacterId: characterId, Rules: rules });
+}
+
+// ---------------------------------------------------------------------------
 // Rebirth on demand (task 88)
 // ---------------------------------------------------------------------------
 
@@ -2198,4 +2240,106 @@ export async function requestRebirth(expectedRebirthCount: number): Promise<Rebi
     }
   }
   throw new AuthError(`POST /api/v1/rebirth failed (HTTP ${response.status})`, response.status);
+}
+
+// ---------------------------------------------------------------------------
+// Workshop commissions (task 83)
+// ---------------------------------------------------------------------------
+
+/** One material line of a commission's price, with what the player holds (backpack + village stash). */
+export interface WorkshopCostLine {
+  ItemId: string;
+  Quantity: number;
+  Held: number;
+}
+
+/** A region piece the Workshop can make, and the affixes its slot may carry. */
+export interface WorkshopPiece {
+  ItemId: number;
+  BaseItemId: string;
+  /** AffixRegistry ids legal for the slot - sent back unchanged as `AffixId`. */
+  Affixes: string[];
+}
+
+export interface WorkshopRegion {
+  Region: number;
+  Unlocked: boolean;
+  /** 0 when the Workshop is unbuilt. */
+  FloorTier: number;
+  FloorName: string;
+  DurationSeconds: number;
+  Cost: WorkshopCostLine[];
+  Affordable: boolean;
+  Pieces: WorkshopPiece[];
+}
+
+export interface WorkshopCommission {
+  ItemId: number;
+  BaseItemId: string;
+  ChosenAffixId: string;
+  FloorTier: number;
+  FloorName: string;
+  StartedEpoch: number;
+  CompletionEpoch: number;
+  SecondsRemaining: number;
+  Ready: boolean;
+}
+
+export interface WorkshopCollected {
+  InstanceId: number;
+  BaseItemId: string;
+  QualityTier: number;
+  RarityName: string;
+  AffixPayload: string;
+}
+
+export type WorkshopResultName =
+  | 'Ok'
+  | 'WorkshopNotBuilt'
+  | 'UnknownPiece'
+  | 'RegionLocked'
+  | 'IllegalAffix'
+  | 'Busy'
+  | 'NotEnoughMaterials'
+  | 'Restricted'
+  | 'NothingToCollect'
+  | 'NotReady'
+  | 'NotFound';
+
+/**
+ * The Workshop as the SERVER sees it (`WorkshopCommissionEngine.ViewAsync`):
+ * every floor, duration and price is computed there. The screen renders it and
+ * decides nothing - a client copy of the price list is how the Village screen
+ * once quoted a price the server did not charge.
+ */
+export interface WorkshopView {
+  /** Set on the answer to a POST: why it did or did not happen. */
+  Result: WorkshopResultName | null;
+  WorkshopLevel: number;
+  WorkshopFloorTier: number;
+  MaxWorkshopLevel: number;
+  HighestUnlockedRegion: number;
+  /** The server's clock when this was read - the countdown runs from it. */
+  NowEpoch: number;
+  Regions: WorkshopRegion[];
+  Commission: WorkshopCommission | null;
+  Collected: WorkshopCollected | null;
+}
+
+export function fetchWorkshop(): Promise<WorkshopView> {
+  return authedGet<WorkshopView>('/api/v1/workshop');
+}
+
+/** Places a commission. A refusal still answers 200 with the view and its `Result`. */
+export async function placeCommission(itemId: number, affixId: string): Promise<WorkshopView> {
+  const view = await authedPost<WorkshopView>('/api/v1/workshop/commission', { ItemId: itemId, AffixId: affixId });
+  if (!view) throw new AuthError('POST /api/v1/workshop/commission answered nothing', 500);
+  return view;
+}
+
+/** Collects a finished commission; `Collected` on the answer is the new piece. */
+export async function collectCommission(): Promise<WorkshopView> {
+  const view = await authedPost<WorkshopView>('/api/v1/workshop/collect', {});
+  if (!view) throw new AuthError('POST /api/v1/workshop/collect answered nothing', 500);
+  return view;
 }

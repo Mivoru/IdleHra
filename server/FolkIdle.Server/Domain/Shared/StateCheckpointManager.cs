@@ -1196,6 +1196,10 @@ namespace FolkIdle.Server.Domain.Shared
             // tick's cache of boss_ascension_progress, for start-step validation.
             int bossAscensionPacked = await BossAscensionEngine.LoadPackedAsync(dbContext, playerId);
 
+            // Task 84: the built stages of each Great Work, packed - the cache
+            // the gathering yield and the offline cap read (they survive rebirth).
+            int greatWorksPacked = await Domain.Progression.GreatWorksEngine.LoadPackedAsync(dbContext, playerId);
+
             // Modul: SETTLE THE VILLAGE ARRIVAL CLOCK on the way in.
             //
             // Arrivals are hours apart, so checking them on a 10 Hz loop would
@@ -1350,6 +1354,7 @@ namespace FolkIdle.Server.Domain.Shared
                 HighestUnlockedRegion = highestUnlockedRegion,
                 DefeatedRegionBossMask = defeatedRegionBossMask,
                 BossAscensionPacked = bossAscensionPacked,
+                GreatWorksStagesPacked = greatWorksPacked,
                 WorldBossAttemptCount = worldBossAttemptCount,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,
@@ -1536,6 +1541,8 @@ namespace FolkIdle.Server.Domain.Shared
                 // every subsequent broadcast kept reporting activity 0/1 and
                 // combat never resolved (CurrentMonsterHp stayed 0 forever).
                 payload.ActiveActivityId = characters[0].ActiveActivityId;
+                // Task 85: the rules belong to the character, hydrated with it.
+                payload.AutomationRules = characters[0].AutomationRules;
 
                 // Modul 13.4.3: lineage flags and traits for the active (Slot1)
                 // character only - combat/growth are always evaluated against
@@ -1561,6 +1568,7 @@ namespace FolkIdle.Server.Domain.Shared
                 // login idle regardless of what the player had assigned, and
                 // nothing simulated them anyway. Both halves are fixed now.
                 payload.Slot2Activity.ActiveActivityId = characters[1].ActiveActivityId;
+                payload.Slot2Activity.AutomationRules = characters[1].AutomationRules;
                 payload.Slot2Activity.PlayerHp = CharacterSlotDefaults.MilliHp;
                 payload.Slot2Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
                 payload.Slot2Activity = await HydrateSlotEquipmentAsync(dbContext, characters[1], payload.Slot2Activity);
@@ -1573,6 +1581,7 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot3_GeneticVector = characters[2].Lineage?.GeneticVector ?? 0;
 
                 payload.Slot3Activity.ActiveActivityId = characters[2].ActiveActivityId;
+                payload.Slot3Activity.AutomationRules = characters[2].AutomationRules;
                 payload.Slot3Activity.PlayerHp = CharacterSlotDefaults.MilliHp;
                 payload.Slot3Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
                 payload.Slot3Activity = await HydrateSlotEquipmentAsync(dbContext, characters[2], payload.Slot3Activity);
