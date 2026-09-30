@@ -90,6 +90,6 @@ character ends on and the halt reason to the live result.
 
 - The larder being restocked does not send a fisher back to the fight; the
   player redeploys. A rule answers one event, it does not plan.
-- Slot 2 and 3's activity change is live-only until the next redeploy, as a
-  death already was: only the fielded character's activity is written by the
-  checkpoint (`PersistFieldedActivityAsync`). Recorded in the task board.
+- (Fixed 2026-09-30.) Slot 2 and 3's activity change used to be live-only,
+  as a death's already was: the checkpoint wrote only slot 1's activity. It
+  now writes all three (`PersistFieldedActivitiesAsync`).
