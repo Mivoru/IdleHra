@@ -5380,10 +5380,21 @@ within a tolerance; the line reads "estimate"; `check:perf` does not regress.
 - **Left out on purpose:** the food buff's regen, Death Ward, Last Stand and
   Thunderer. All four only help the player, so the estimate errs toward
   caution.
-- **Found on the way, not fixed:** the offline projection's incoming damage
-  ignores dodge and block, which the live tick applies
-  (`OfflineSimulationEngine`, around line 630). The live and offline
-  projections now disagree there.
+- **Found on the way, fixed 2026-09-30:** the offline projection's incoming
+  damage ignored dodge and block (and the 1,000 floor and the Dreadnought
+  cap), which the live tick applies. The monster swing is now one set of
+  helpers in `SimulationEngine` (`MonsterHitChance`, `LandedMonsterMilliDamage`,
+  `ExpectedMonsterMilliDamagePerSwing`) that `RunCombatTick` rolls and that
+  `HuntingProjection` and `OfflineSimulationEngine.ProjectCombatSustain` take
+  the expectation of; offline also reads the live health bar
+  (`EffectiveMaxMilliHpFor`) instead of its copy. Offline was charging
+  1.11-1.43x the live tick per swing; it is now within 1.1%
+  (`OfflineDefenceParityTests`, which runs the real tick). So a
+  food-limited offline window now lasts 11-43% longer - and earns that much
+  more XP and gold - than before; a fed one eats 11-30% less. **Still
+  different, not fixed:** offline charges a monster swing every interval,
+  while the live tick restarts the monster's swing clock at each kill, so
+  offline still overstates food for fast killers (up to 1.65x on region 1).
 
 ## 79. Gold ledger and material flow; Treasury counts gold spent
 

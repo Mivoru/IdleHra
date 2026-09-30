@@ -1886,43 +1886,15 @@ namespace FolkIdle.Server.Tests
             double secondsPerKill = CombatDamageModel.ExpectedSecondsPerKill(
                 in combatStats, in monster, effectiveMilliAttack, multipliers.DamageMultiplier);
 
-            // Modul: replicate the engine's incoming-damage/food-depletion model
-            // exactly (expected-value monster crit + Vodnik mitigation, a "free"
-            // max-HP absorption buffer before food is needed, then Food1-3
-            // healing capacity) since payload here has zero food stocked - the
-            // test character can only sustain a fraction of the raw offline
-            // window before combat halts, matching the live tick's Auto-Eat halt
-            // behavior when food runs out.
-            // Also asked of the registry rather than re-derived - the engine
-            // calls GetMonsterRegionTier, and the arithmetic that used to sit
-            // here was a third copy of a rule that has since changed shape.
-            int monsterRegionTier = ContentRegistry.GetMonsterRegionTier(monsterId);
-            float monsterCritChance = 0.05f + (monsterRegionTier * 0.005f);
-            float mitigatedCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
-            float expectedCritMultiplier = 1.0f + monsterCritChance * (mitigatedCritMult - 1.0f);
-            long rawIncomingMilliDamage = (long)(monster.AttackPower * 1000 * expectedCritMultiplier);
-            long netIncomingMilliDamage = Math.Max(1000L, rawIncomingMilliDamage - (combatStats.FlatPhysicalArmor * 1000L));
-            double monsterAttacksPerSecond = monster.AttackIntervalMs > 0 ? 1000.0 / monster.AttackIntervalMs : 0.0;
-            double expectedIncomingMilliDps = netIncomingMilliDamage * monsterAttacksPerSecond;
-
-            long effectiveMilliHp = 100000L + (combatStats.MaxHp * 1000L);
-            double effectiveElapsedSeconds = elapsedOfflineSeconds;
-            if (expectedIncomingMilliDps > 0.0)
-            {
-                double totalIncomingMilliDamage = expectedIncomingMilliDps * elapsedOfflineSeconds;
-                // Modul: asked of FoodRegistry, not the old flat 50 HP per
-                // unit. The engine stopped healing a fixed number of points
-                // when food became a share of max HP; this line was the last
-                // copy of the constant it replaced, and it made the projection
-                // disagree with the engine by three orders of magnitude.
-                double healPerUnitMilliHp = FoodRegistry.GetHealMilliHp(FirstEdibleItemId(), effectiveMilliHp);
-                double totalHealCapacityMilliHp = effectiveMilliHp + (100000.0 * healPerUnitMilliHp); // matches payload.Food1_Count above
-                if (totalIncomingMilliDamage > totalHealCapacityMilliHp)
-                {
-                    effectiveElapsedSeconds = totalHealCapacityMilliHp / expectedIncomingMilliDps;
-                    if (effectiveElapsedSeconds < 0.0) effectiveElapsedSeconds = 0.0;
-                }
-            }
+            // Modul: the engine's incoming-damage/food-depletion model, ASKED,
+            // not replicated. This block was a copy of it - and a stale one,
+            // still subtracting armour flat and knowing nothing of dodge or
+            // block - that only agreed because the ample larder above means the
+            // window is never food-limited. The sustain model is pinned against
+            // the live tick in OfflineDefenceParityTests; this test is about
+            // kills becoming XP, levels and loot.
+            double effectiveElapsedSeconds = OfflineSimulationEngine.ProjectCombatSustain(
+                in payload, in combatStats, monsterId, elapsedOfflineSeconds).SustainedSeconds;
 
             double totalKillsDouble = effectiveElapsedSeconds / secondsPerKill;
             long expectedKills = (long)totalKillsDouble;

@@ -3606,6 +3606,73 @@ namespace FolkIdle.Server.Domain.Combat
                 + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, payload.Skill_CritDamage) / 100f)
                 + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughGuile, payload.Skill_Guile) / 100f);
 
+        // Modul: THE MONSTER'S SWING, ONE DEFINITION FOR EVERY PATH THAT PRICES IT.
+        //
+        // RunCombatTick rolls these; HuntingProjection and the offline
+        // projection (OfflineSimulationEngine) take their expectation. The
+        // offline path used to hold its own copy of the incoming side that had
+        // never learned about dodge, block, the 1,000 floor or the Dreadnought
+        // cap, so an hour away priced every monster swing 10-25% dearer than
+        // the live tick did (task 78, "found on the way"). The helpers below
+        // are the tick's own steps, moved out unchanged.
+
+        /// <summary>Step 1: the monster's chance to connect. Monsters carry no accuracy; the player's dodge is the only term.</summary>
+        internal static float MonsterHitChance(in CombatStats combatStats)
+            => Math.Clamp(100f / (100f + combatStats.DodgeChancePct), 0.05f, 0.95f);
+
+        /// <summary>Step 2: 5% base + 0.5% per region tier.</summary>
+        internal static float MonsterCritChance(int monsterRegionTier)
+            => 0.05f + (monsterRegionTier * 0.005f);
+
+        /// <summary>A monster crit's multiplier, less Vodnik's CritMitigationPct, floored at 1.0.</summary>
+        internal static float MonsterCritMultiplier(in CombatStats combatStats)
+            => Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
+
+        /// <summary>The share of a post-armour hit the player's block takes off, capped at 75%.</summary>
+        internal static float PlayerBlockFraction(in CombatStats combatStats)
+            => Math.Clamp(combatStats.BlockStrengthPct / 100f, 0f, 0.75f);
+
+        /// <summary>
+        /// Steps 3-5 of a CONNECTING monster swing: armour, then block, then the
+        /// 1,000 milli-HP floor, then the Eternal Dreadnought per-hit ceiling.
+        /// </summary>
+        internal static long LandedMonsterMilliDamage(
+            long attackPower, float monsterCritMult, in CombatStats combatStats, int monsterRegionTier, long effectiveMaxMilliHp)
+        {
+            long rawDamage = (long)(attackPower * 1000L * monsterCritMult);
+            long armorMitigatedDamage = CombatDamageModel.Mitigate(
+                rawDamage,
+                combatStats.FlatPhysicalArmor,
+                CombatDamageModel.PlayerArmourHalvingConstant(monsterRegionTier));
+            long finalDamage = Math.Max(1000L, (long)(armorMitigatedDamage * (1f - PlayerBlockFraction(in combatStats))));
+            if (combatStats.SetDamageCapActive)
+            {
+                long damageCeiling = (long)(effectiveMaxMilliHp * SetDamageCapMaxHpFraction);
+                if (damageCeiling > 0 && finalDamage > damageCeiling)
+                {
+                    finalDamage = damageCeiling;
+                }
+            }
+            return finalDamage;
+        }
+
+        /// <summary>
+        /// One monster swing in expectation: the hit roll and the crit roll
+        /// replaced by their probabilities, each outcome landed through
+        /// LandedMonsterMilliDamage. What the hunting advisor and the offline
+        /// projection both charge per swing.
+        /// </summary>
+        internal static double ExpectedMonsterMilliDamagePerSwing(
+            in CombatStats combatStats, int monsterId, byte defeatedRegionBossMask, long effectiveMaxMilliHp)
+        {
+            int region = ContentRegistry.GetMonsterRegionTier(monsterId);
+            long attackPower = BossFirstClearRules.AttackPowerFor(defeatedRegionBossMask, monsterId);
+            float critChance = MonsterCritChance(region);
+            double normal = LandedMonsterMilliDamage(attackPower, 1.0f, in combatStats, region, effectiveMaxMilliHp);
+            double crit = LandedMonsterMilliDamage(attackPower, MonsterCritMultiplier(in combatStats), in combatStats, region, effectiveMaxMilliHp);
+            return MonsterHitChance(in combatStats) * (((1.0 - critChance) * normal) + (critChance * crit));
+        }
+
         /// <summary>
         /// The XP multiplier a live kill pays at, in percent, before the
         /// global-event and mentorship-penalty terms ProcessMonsterDeath adds.
@@ -4407,9 +4474,8 @@ namespace FolkIdle.Server.Domain.Combat
                 // fixed baseline; combatStats.DodgeChancePct (defensive
                 // potions, Vila's innate racial passive) is the player's own
                 // defensive stat and was already wired here.
-                float attackerAccuracy = 100f;
-                float defenderDodge = 100f + combatStats.DodgeChancePct;
-                float hitChance = Math.Clamp(attackerAccuracy / defenderDodge, 0.05f, 0.95f);
+                // (MonsterHitChance - shared with the two projections.)
+                float hitChance = MonsterHitChance(in combatStats);
 
                 if (Random.Shared.NextDouble() <= hitChance)
                 {
@@ -4422,11 +4488,11 @@ namespace FolkIdle.Server.Domain.Combat
                     // damage multiplier, floored at 1.0 so mitigation can never
                     // make a crit deal less than a normal hit.
                     int monsterRegionTier = ContentRegistry.GetMonsterRegionTier(payload.CurrentMonsterId);
-                    float monsterCritChance = 0.05f + (monsterRegionTier * 0.005f);
+                    float monsterCritChance = MonsterCritChance(monsterRegionTier);
                     float monsterCritMult = 1.0f;
                     if (Random.Shared.NextDouble() <= monsterCritChance)
                     {
-                        monsterCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
+                        monsterCritMult = MonsterCritMultiplier(in combatStats);
                     }
 
                     // Computed in long, then saturated. AttackPower * 1000 * 1.5
@@ -4450,50 +4516,31 @@ namespace FolkIdle.Server.Domain.Combat
                     // Nothing downstream needs an int: Mitigate already takes a
                     // long, and the only int in the chain is PlayerHp, which is
                     // assigned through a clamped subtraction below.
-                    long rawDamage = (long)(BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId) * 1000L * monsterCritMult);
-
-                    // Step 3+4 (Armor then Block, combined): armor subtracts
-                    // flat milli-damage, BlockStrengthPct (CON-derived, see
-                    // StatsCalculator) then reduces what remains
-                    // multiplicatively - a shield/bulk stat that shaves a
-                    // fraction off whatever armor did not already stop,
-                    // rather than stacking as another flat subtraction.
-                    // Clamped below 100% so a high-CON build can reduce a hit
-                    // close to the floor but never to true zero damage.
-                    float blockStrengthFraction = Math.Clamp(combatStats.BlockStrengthPct / 100f, 0f, 0.75f);
-                    // Modul: armour REDUCES. See CombatDamageModel.Mitigate -
-                    // this was `raw - armour * 1000`, which meant a player one
-                    // tier behind took the full hit and a player in best-in-slot
-                    // took the 1 HP floor, with nothing in between.
-                    long armorMitigatedDamage = CombatDamageModel.Mitigate(
-                        rawDamage,
-                        combatStats.FlatPhysicalArmor,
-                        CombatDamageModel.PlayerArmourHalvingConstant(monsterRegionTier));
-                    long finalDamage = Math.Max(1000L, (long)(armorMitigatedDamage * (1f - blockStrengthFraction)));
-
-                    // Modul: set effect rework. The Eternal Dreadnought 4-piece
-                    // caps any single hit at a share of max HP.
                     //
-                    // This replaced CcImmunityActive, which could never fire
-                    // because the game has no player-facing crowd control. The
-                    // cap targets the failure mode this game actually has:
-                    // burst. Region bosses sit at ~2.5x the attack power of
-                    // their region's regular monsters, so what ends a run is one
-                    // large hit, not accumulated chip damage - and the auto-eat
-                    // larder can only respond BETWEEN hits, never during one.
+                    // Step 3+4 (Armor then Block, combined): armor REDUCES (see
+                    // CombatDamageModel.Mitigate - this was once `raw - armour *
+                    // 1000`, full hit or 1 HP with nothing between), then
+                    // BlockStrengthPct (CON-derived, see StatsCalculator) shaves
+                    // a fraction off what armour did not stop, clamped below
+                    // 100% so a high-CON build nears the floor but never zero.
                     //
-                    // Applied after armour and block so it is a true ceiling
-                    // rather than another mitigation term, and before the
-                    // subtraction so thorns below reflects the capped figure -
-                    // the set cannot turn its own defence into extra offence.
-                    if (combatStats.SetDamageCapActive)
-                    {
-                        long damageCeiling = (long)(effectiveMaxHp * SetDamageCapMaxHpFraction);
-                        if (damageCeiling > 0 && finalDamage > damageCeiling)
-                        {
-                            finalDamage = damageCeiling;
-                        }
-                    }
+                    // Step 5, the Eternal Dreadnought 4-piece: any single hit is
+                    // capped at a share of max HP. It replaced CcImmunityActive,
+                    // which could never fire (the game has no player-facing crowd
+                    // control); it targets burst, since the larder can only
+                    // respond BETWEEN hits. Applied after armour and block so it
+                    // is a true ceiling, and before the subtraction so thorns
+                    // below reflects the capped figure.
+                    //
+                    // Modul: all of it in LandedMonsterMilliDamage, which the
+                    // hunting advisor and the offline projection price from too.
+                    float blockStrengthFraction = PlayerBlockFraction(in combatStats);
+                    long finalDamage = LandedMonsterMilliDamage(
+                        BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId),
+                        monsterCritMult,
+                        in combatStats,
+                        monsterRegionTier,
+                        effectiveMaxHp);
 
                     // Modul: clamped, because finalDamage is a long now and
                     // PlayerHp is an int. Any value at or below zero is death, so

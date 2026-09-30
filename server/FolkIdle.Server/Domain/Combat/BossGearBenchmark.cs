@@ -337,7 +337,7 @@ namespace FolkIdle.Server.Domain.Combat
         /// grants - folded in by the SAME function the equip path uses, so a
         /// change to how an affix maps onto a stat cannot leave this behind.
         /// </summary>
-        private static EquippedAffixTotals BuildEquippedTotals(in ReferenceLoadout gear)
+        internal static EquippedAffixTotals BuildEquippedTotals(in ReferenceLoadout gear)
         {
             EquippedAffixTotals totals = default;
             double qualityMultiplier = RarityTier.PowerMultiplier(gear.QualityTier);

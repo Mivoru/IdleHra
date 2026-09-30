@@ -572,6 +572,87 @@ namespace FolkIdle.Server.Engine
             return new LootProjection(true, node.ActivityId, lootRolls, 0, gatherProjectionStats.LootLuckPct);
         }
 
+        /// <summary>
+        /// How long an offline window's fighting lasts on the character's own
+        /// health bar plus its larder, and what it eats doing so.
+        /// </summary>
+        internal readonly struct OfflineCombatSustain
+        {
+            /// <summary>Seconds of the window the character stays alive to fight.</summary>
+            public double SustainedSeconds { get; init; }
+            public long FoodUnitsConsumed { get; init; }
+            /// <summary>Milli-HP a second the monster lands, in expectation.</summary>
+            public double IncomingMilliDps { get; init; }
+            public long EffectiveMaxMilliHp { get; init; }
+        }
+
+        /// <summary>One monster swing in expectation - the live tick's own steps.</summary>
+        internal static double ExpectedIncomingMilliDamagePerSwing(in TickStatePayload payload, in CombatStats combatStats, int monsterId, long effectiveMaxMilliHp)
+            // Modul: THE LIVE TICK'S SWING, not a copy of it (task 78 found this
+            // path's copy). The copy took the crit blend and armour but not the
+            // player's dodge, block, the 1,000 floor or the Dreadnought cap, so
+            // every offline swing landed as though the 5% built-in miss and the
+            // CON-derived block did not exist - an hour away cost 10-25% more
+            // health than the same hour watched, and a food-limited window
+            // ended that much sooner. It also read the authored AttackPower
+            // through an int multiply, which wraps past 2.1M attack.
+            => SimulationEngine.ExpectedMonsterMilliDamagePerSwing(
+                in combatStats, monsterId, payload.DefeatedRegionBossMask, effectiveMaxMilliHp);
+
+        internal static OfflineCombatSustain ProjectCombatSustain(in TickStatePayload payload, in CombatStats combatStats, int monsterId, long elapsedSeconds)
+        {
+            MonsterDefinition monster = ContentRegistry.Monsters[monsterId - 1];
+
+            // Modul: the player's own max-HP pool is a "free" absorption buffer
+            // before any food is ever needed (mirrors the live tick, where
+            // Auto-Eat only triggers once HP drops below AutoEatThreshold, not
+            // at the very first point of damage) - without this, a character
+            // with simply no food stocked (Food1-3 all zero, the common case
+            // for most players) would be treated as unable to survive any
+            // combat time at all, which is wrong.
+            //
+            // The bar is the live tick's (EffectiveMaxMilliHpFor). This path
+            // held a line-for-line copy of it until the defence fix above.
+            long effectiveMilliHp = SimulationEngine.EffectiveMaxMilliHpFor(in payload, in combatStats);
+
+            double netIncomingMilliDamage = ExpectedIncomingMilliDamagePerSwing(in payload, in combatStats, monsterId, effectiveMilliHp);
+            double monsterAttacksPerSecond = monster.AttackIntervalMs > 0 ? 1000.0 / monster.AttackIntervalMs : 0.0;
+            double expectedIncomingMilliDps = netIncomingMilliDamage * monsterAttacksPerSecond;
+
+            double sustainedSeconds = elapsedSeconds;
+            long foodUnitsConsumed = 0;
+            if (expectedIncomingMilliDps > 0.0)
+            {
+                double totalIncomingMilliDamage = expectedIncomingMilliDps * elapsedSeconds;
+                long totalFoodUnits = payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
+                double healPerUnitMilliHp = AverageHealPerFoodUnitMilliHp(in payload, effectiveMilliHp);
+                double totalHealCapacityMilliHp = effectiveMilliHp + ((double)totalFoodUnits * healPerUnitMilliHp);
+
+                if (totalIncomingMilliDamage > totalHealCapacityMilliHp)
+                {
+                    // Modul: food stock depletes before the full offline
+                    // window is survived - sustain only as much combat time as
+                    // available food allows, bank the remainder as overflow
+                    // seconds (same mechanic already used when inventory space
+                    // caps gathering actions), and consume all available food.
+                    sustainedSeconds = Math.Max(0.0, totalHealCapacityMilliHp / expectedIncomingMilliDps);
+                    foodUnitsConsumed = totalFoodUnits;
+                }
+                else if (healPerUnitMilliHp > 0.0)
+                {
+                    foodUnitsConsumed = (long)Math.Ceiling(totalIncomingMilliDamage / healPerUnitMilliHp);
+                }
+            }
+
+            return new OfflineCombatSustain
+            {
+                SustainedSeconds = sustainedSeconds,
+                FoodUnitsConsumed = foodUnitsConsumed,
+                IncomingMilliDps = expectedIncomingMilliDps,
+                EffectiveMaxMilliHp = effectiveMilliHp,
+            };
+        }
+
         private static LootProjection CalculateCombatProjection(ref TickStatePayload payload, long elapsedSeconds)
         {
             int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
@@ -641,77 +722,9 @@ namespace FolkIdle.Server.Engine
                 return new LootProjection(false, 0, 0);
             }
 
-            // Modul: expected incoming damage, mirroring the live tick's
-            // "Monster attacks player" block and monster crit formula (5% base
-            // + 0.5% per region tier, 1.5x crit multiplier, Vodnik's
-            // CritMitigationPct subtracted from that multiplier). Uses an
-            // expected-value blend of crit/non-crit hits rather than replaying
-            // per-swing RNG, consistent with the rest of this analytical path.
-            int monsterRegionTier = ContentRegistry.GetMonsterRegionTier(fallbackId);
-            float monsterCritChance = 0.05f + (monsterRegionTier * 0.005f);
-            float mitigatedCritMult = Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
-            float expectedCritMultiplier = 1.0f + monsterCritChance * (mitigatedCritMult - 1.0f);
-
-            long rawIncomingMilliDamage = (long)(activeMonster.AttackPower * 1000 * expectedCritMultiplier);
-            long netIncomingMilliDamage = CombatDamageModel.Mitigate(
-                rawIncomingMilliDamage,
-                combatStats.FlatPhysicalArmor,
-                CombatDamageModel.PlayerArmourHalvingConstant(monsterRegionTier));
-
-            double monsterAttacksPerSecond = activeMonster.AttackIntervalMs > 0 ? 1000.0 / activeMonster.AttackIntervalMs : 0.0;
-            double expectedIncomingMilliDps = (netIncomingMilliDamage) * monsterAttacksPerSecond;
-
-            // Modul: the player's own max-HP pool is a "free" absorption buffer
-            // before any food is ever needed (mirrors the live tick, where
-            // Auto-Eat only triggers once HP drops below AutoEatThreshold, not
-            // at the very first point of damage) - without this, a character
-            // with simply no food stocked (Food1-3 all zero, the common case
-            // for most players) would be treated as unable to survive any
-            // combat time at all, which is wrong.
-            // Modul: the base pool is a CURVE now, not a constant - see
-            // ProgressionEngine.BaseMilliHpForLevel. A flat 100 against monster
-            // attack that goes up 4.2x a region is why region 5 one-shot
-            // everybody.
-            long baseMilliHp = ProgressionEngine.BaseMilliHpForLevel(payload.CurrentLevel);
-            long effectiveMilliHp = baseMilliHp + (baseMilliHp * lineage.HpScalePerLevelPct * payload.CurrentLevel / 100) + (combatStats.MaxHp * 1000L);
-            effectiveMilliHp += effectiveMilliHp * InheritanceRegistry.GetBonusPct(payload.Inherit_MaxHp) / 100L;
-            // Modul: Fortitude, the Cruelty bough - more health, layered the
-            // same additive-percent way inheritance is just above.
-            effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
-                SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
-
-            // Modul: the same bloodline health formula as the live tick - see
-            // BloodlineBonuses. The two health formulas diverging is a bug this
-            // codebase has already shipped once, in gathering.
-            effectiveMilliHp = BloodlineBonuses.ApplyMaxHp(effectiveMilliHp, payload.Aptitude_Endurance, TraitTotals.From(payload.TraitMask));
-
-            double effectiveElapsedSeconds = elapsedSeconds;
-            if (expectedIncomingMilliDps > 0.0)
-            {
-                double totalIncomingMilliDamage = expectedIncomingMilliDps * elapsedSeconds;
-                long totalFoodUnits = payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
-                double healPerUnitMilliHp = AverageHealPerFoodUnitMilliHp(in payload, effectiveMilliHp);
-                double totalHealCapacityMilliHp = effectiveMilliHp + ((double)totalFoodUnits * healPerUnitMilliHp);
-
-                if (totalIncomingMilliDamage > totalHealCapacityMilliHp)
-                {
-                    // Modul: food stock depletes before the full offline
-                    // window is survived - sustain only as much combat time as
-                    // available food allows, bank the remainder as overflow
-                    // seconds (same mechanic already used when inventory space
-                    // caps gathering actions), and consume all available food.
-                    effectiveElapsedSeconds = totalHealCapacityMilliHp / expectedIncomingMilliDps;
-                    if (effectiveElapsedSeconds < 0.0) effectiveElapsedSeconds = 0.0;
-
-
-                    ConsumeFoodStock(ref payload, totalFoodUnits);
-                }
-                else if (healPerUnitMilliHp > 0.0)
-                {
-                    long foodUnitsConsumed = (long)Math.Ceiling(totalIncomingMilliDamage / healPerUnitMilliHp);
-                    ConsumeFoodStock(ref payload, foodUnitsConsumed);
-                }
-            }
+            OfflineCombatSustain sustain = ProjectCombatSustain(in payload, in combatStats, fallbackId, elapsedSeconds);
+            ConsumeFoodStock(ref payload, sustain.FoodUnitsConsumed);
+            double effectiveElapsedSeconds = sustain.SustainedSeconds;
 
             double totalKillsDouble = effectiveElapsedSeconds / secondsPerKillEstimate;
             long totalKills = (long)totalKillsDouble;

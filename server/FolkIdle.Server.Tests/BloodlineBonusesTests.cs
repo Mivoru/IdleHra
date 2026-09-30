@@ -53,7 +53,11 @@ namespace FolkIdle.Server.Tests
             {
                 string source = SourceOf(path);
                 Assert.Contains("BloodlineBonuses.ApplyAttack(", source);
-                Assert.Contains("BloodlineBonuses.ApplyMaxHp(", source);
+                // Offline reads the live bar itself now (EffectiveMaxMilliHpFor,
+                // which calls ApplyMaxHp) rather than a copy that also calls it.
+                Assert.True(
+                    source.Contains("BloodlineBonuses.ApplyMaxHp(") || source.Contains("SimulationEngine.EffectiveMaxMilliHpFor("),
+                    $"{path} neither applies the bloodline health formula nor reads the live bar");
                 Assert.Contains("BloodlineBonuses.GatherSpeedBonusPct(", source);
                 Assert.Contains("BloodlineBonuses.GatherYieldBonusPct(", source);
                 Assert.DoesNotContain("BonusPercentFor(payload.Aptitude_", source);

@@ -159,7 +159,7 @@ namespace FolkIdle.Server.Domain.Combat
             in TickStatePayload payload, in CombatStats stats, in MonsterDefinition monster, PlayerSwing swing,
             int playerIntervalMs, long monsterMaxMilliHp, long maxMilliHp, bool withFood)
         {
-            double monsterSwing = ExpectedMonsterMilliDamage(in stats, in monster, payload.DefeatedRegionBossMask, maxMilliHp);
+            double monsterSwing = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monster.Id, payload.DefeatedRegionBossMask, maxMilliHp);
             double thornsPerSwing = stats.SetThornsReflectionActive
                 ? monsterSwing * SimulationEngine.ThornsReflectionFraction
                 : 0.0;
@@ -229,38 +229,6 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             return new SimResult { Kills = kills, TicksFought = HorizonTicks, Died = false, Bites = bites };
-        }
-
-        /// <summary>
-        /// The monster's swing, averaged over its hit and crit rolls, in the live
-        /// tick's order: dodge, crit, armour, block, the 1,000 floor, then the
-        /// Eternal Dreadnought cap.
-        /// </summary>
-        private static double ExpectedMonsterMilliDamage(in CombatStats stats, in MonsterDefinition monster, byte defeatedMask, long maxMilliHp)
-        {
-            float hitChance = Math.Clamp(100f / (100f + stats.DodgeChancePct), 0.05f, 0.95f);
-            int region = ContentRegistry.GetMonsterRegionTier(monster.Id);
-            float critChance = 0.05f + (region * 0.005f);
-            float critMult = Math.Max(1.0f, 1.5f - (stats.CritMitigationPct / 100f));
-            long attackPower = BossFirstClearRules.AttackPowerFor(defeatedMask, monster.Id);
-
-            double normal = Landed(attackPower, 1.0f, in stats, region, maxMilliHp);
-            double crit = Landed(attackPower, critMult, in stats, region, maxMilliHp);
-            return hitChance * (((1.0 - critChance) * normal) + (critChance * crit));
-        }
-
-        private static double Landed(long attackPower, float critMult, in CombatStats stats, int region, long maxMilliHp)
-        {
-            long raw = (long)(attackPower * 1000L * critMult);
-            float block = Math.Clamp(stats.BlockStrengthPct / 100f, 0f, 0.75f);
-            long armoured = CombatDamageModel.Mitigate(raw, stats.FlatPhysicalArmor, CombatDamageModel.PlayerArmourHalvingConstant(region));
-            long final = Math.Max(1000L, (long)(armoured * (1f - block)));
-            if (stats.SetDamageCapActive)
-            {
-                long ceiling = (long)(maxMilliHp * SimulationEngine.SetDamageCapMaxHpFraction);
-                if (ceiling > 0 && final > ceiling) final = ceiling;
-            }
-            return final;
         }
 
         /// <summary>
