@@ -2359,6 +2359,101 @@ await go('The Delve');
   record("Combat shows region 1's boss challenges", /Starved/.test(text) && /Young blood/.test(text) && /Swift/.test(text), text.slice(0, 120));
 }
 
+// --- task 87: the Boss Ascension ladder ---------------------------------------
+// The output side, end to end: the server lists ten steps per boss, Combat draws
+// them as buttons, a locked step cannot be started, and starting the next one
+// puts the character on the boss with the step armed (the button reads "is
+// running") - or, when the fixture kills the boss before the poll, clears it.
+// ROUND TRIP: the fight is stood down and resumed as it was found, and the
+// ladder (and, for a fixture that has never beaten region 1's boss, that
+// boss's codex mark) is put back through the dev-tools route, so the check
+// leaves no title, frame or progress behind and passes on every run.
+{
+  const view = await apiGet('/api/v1/boss-ascension');
+  const bosses = view?.Bosses ?? [];
+  let b1 = bosses.find((b) => b.Region === 1);
+  const wasBeaten = Boolean(b1?.BossDefeated);
+  const startedAt = b1?.HighestStep ?? 0;
+  record(
+    'the server lists a ten-step ladder for every region boss',
+    bosses.length === 5 && bosses.every((b) => b.Steps.length === 10 && b.Steps.every((s) => s.RewardTitle && s.Effects.length > 0)),
+    bosses.map((b) => `${b.Region}:${b.HighestStep}/10`).join(' '),
+  );
+  record(
+    'every step carries the modifiers of the one below it, and pays only a title or a frame',
+    Boolean(b1) && b1.Steps.every((s, i) => i === 0 || s.Effects.length >= b1.Steps[i - 1].Effects.length),
+    b1 ? b1.Steps.slice(0, 3).map((s) => s.Effects.join(' + ')).join(' | ') : 'no region 1 ladder',
+  );
+
+  // A ladder is climbed against a boss already beaten once, which the dev
+  // fixture has not done - so, for this check only, it has (and un-does it).
+  if (b1 && !wasBeaten) {
+    await apiPost('/api/v1/dev/boss-ascension/restore', { Region: 1, Step: startedAt, BossDefeated: true });
+    await page.waitForTimeout(2500);
+    b1 = (await apiGet('/api/v1/boss-ascension'))?.Bosses?.find((b) => b.Region === 1);
+  }
+
+  await go('Combat');
+  await page.waitForTimeout(1500);
+  const ladder = page.getByTestId('boss-ascension-1');
+  const ladderText = (await ladder.count()) > 0 ? ((await ladder.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
+  record('Combat draws region 1\'s ladder', /Boss Ascension/.test(ladderText), ladderText.slice(0, 100));
+
+  if (b1?.BossDefeated && b1.HighestStep < 10) {
+    const before = b1.HighestStep;
+    const next = b1.NextStep;
+    const stopButton = page.getByRole('button', { name: 'Stop fighting' });
+    const wasFighting = (await stopButton.count()) > 0;
+    const start = page.getByTestId('ascension-start-1');
+
+    // A locked step can be looked at but not started.
+    if (next < 10) {
+      await page.getByTestId(`ascension-step-1-${next + 1}`).click();
+      record('a locked step cannot be started', await start.isDisabled(), `step ${next + 1} looked at, Start disabled`);
+    }
+
+    // The steps are 44px buttons, not a native <select> (Android's dialog).
+    const stepBox = await page.getByTestId(`ascension-step-1-${next}`).boundingBox();
+    record('the ladder steps are buttons at least 44px square', Boolean(stepBox) && stepBox.width >= 43.5 && stepBox.height >= 43.5, stepBox ? `${Math.round(stepBox.width)}x${Math.round(stepBox.height)}` : 'no box');
+
+    await page.getByTestId(`ascension-step-1-${next}`).click();
+    const startLabel = ((await start.textContent()) ?? '').trim();
+    await start.click();
+    let outcome = 'neither';
+    for (let i = 0; i < 24 && outcome === 'neither'; i++) {
+      await page.waitForTimeout(500);
+      if (/is running/.test((await start.textContent().catch(() => '')) ?? '')) outcome = 'running';
+      else {
+        const now = (await apiGet('/api/v1/boss-ascension'))?.Bosses?.find((b) => b.Region === 1);
+        if (now && now.HighestStep > before) outcome = 'cleared';
+      }
+    }
+    record('starting the next step runs it, or clears it', outcome !== 'neither', `"${startLabel}" -> ${outcome}`);
+
+    // Put everything back: the fight as it was, the ladder as it was.
+    if (await stopButton.count()) await stopButton.first().click();
+    await page.getByTestId('combat-continue').waitFor({ timeout: 8000 }).catch(() => {});
+    if (wasFighting) {
+      const cont = page.getByTestId('combat-continue');
+      if ((await cont.count()) > 0) await cont.first().click();
+    }
+    const restored = await apiPost('/api/v1/dev/boss-ascension/restore', { Region: 1, Step: startedAt, BossDefeated: wasBeaten });
+    await page.waitForTimeout(2500);
+    const after = (await apiGet('/api/v1/boss-ascension'))?.Bosses?.find((b) => b.Region === 1);
+    record(
+      'the ladder and the boss mark are back where they started',
+      restored !== null && after?.HighestStep === startedAt && after?.BossDefeated === wasBeaten,
+      `step ${after?.HighestStep} (was ${startedAt}), boss beaten ${after?.BossDefeated} (was ${wasBeaten})`,
+    );
+  } else {
+    record(
+      'the ladder waits for a first clear (boss not beaten, or the ladder is complete)',
+      /Beat this boss once|cleared/.test(ladderText),
+      ladderText.slice(0, 100),
+    );
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character

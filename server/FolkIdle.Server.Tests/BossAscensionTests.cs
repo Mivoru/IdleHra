@@ -359,6 +359,36 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task TheDevRestorePutsALadderBackExactly()
+        {
+            const long playerId = 957000004L;
+            await SeedAsync(playerId);
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            await BossAscensionEngine.RecordClearAsync(db, playerId, 1, 2, DateTime.UtcNow);
+            await BossAscensionEngine.RecordClearAsync(db, playerId, 1, 6, DateTime.UtcNow);
+            Assert.Single(await db.CosmeticItems.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync());
+
+            await BossAscensionEngine.DevRestoreAsync(db, playerId, 1, 2);
+
+            Assert.Equal(2, BossAscensionRegistry.HighestStepOf(await BossAscensionEngine.LoadPackedAsync(db, playerId), 1));
+            Assert.Equal(new[] { "ascension_r1_s1", "ascension_r1_s2" },
+                (await TitleEngine.ListAsync(db, playerId)).Select(t => t.Slug).OrderBy(s => s));
+            Assert.Empty(await db.CosmeticItems.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync());
+
+            // The boss can be marked beaten for a run and un-marked after it.
+            int boss1 = RaceUnlockRegistry.GetRegionBossMonsterId(1);
+            await BossAscensionEngine.DevRestoreAsync(db, playerId, 1, 2, bossDefeated: true);
+            Assert.True((await BossAscensionEngine.ViewAsync(db, playerId)).Single(b => b.Region == 1).BossDefeated);
+            await BossAscensionEngine.DevRestoreAsync(db, playerId, 1, 2, bossDefeated: false);
+            Assert.False(await db.MonsterCodexEntries.AsNoTracking().AnyAsync(c => c.PlayerId == playerId && c.MonsterId == boss1));
+
+            // Back to nothing, and the ladder pays again from the start.
+            await BossAscensionEngine.DevRestoreAsync(db, playerId, 1, 0);
+            Assert.Empty(await TitleEngine.ListAsync(db, playerId));
+            Assert.Single(await BossAscensionEngine.RecordClearAsync(db, playerId, 1, 1, DateTime.UtcNow));
+        }
+
+        [Fact]
         public async Task TheLadderViewSaysWhatIsClearedAndWhatCanBeStarted()
         {
             const long playerId = 957000002L;
