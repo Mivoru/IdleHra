@@ -1442,6 +1442,8 @@ namespace FolkIdle.Server.Domain.Shared
                 Inherit_GoldGain = inheritanceLevels[InheritanceRegistry.StatGoldGain],
                 Inherit_GatheringYield = inheritanceLevels[InheritanceRegistry.StatGatheringYield],
                 Inherit_LootLuck = inheritanceLevels[InheritanceRegistry.StatLootLuck],
+                // Task 88: RebirthEngine's column, read-only here.
+                RenownedRebirths = player.RenownedRebirths,
                 Skill_LootRarity = skillTreeLevels[SkillTreeRegistry.BranchLootRarity],
                 Skill_WorldBossDamage = skillTreeLevels[SkillTreeRegistry.BranchWorldBossDamage],
                 Skill_CritChance = skillTreeLevels[SkillTreeRegistry.BranchCritChance],

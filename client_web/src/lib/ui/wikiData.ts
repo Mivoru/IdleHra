@@ -368,7 +368,7 @@ export const DEED_CHAPTERS: readonly {
     title: 'The Ledger of Legends',
     reward: 'A Seal',
     about:
-      'A top-fifty season finish, five pieces of one set, level 100, Malakor down, a child raised and an epic child bred. Nobody finishes this in their first season.',
+      'A renowned rebirth, five pieces of one set, level 100, Malakor down, a child raised and an epic child bred. Nobody finishes this in their first run.',
   },
 ];
 
@@ -390,13 +390,19 @@ export const CULL_ORDER: readonly string[] = [
   'Then the later generation, and finally a stable tiebreak so a rollover is reproducible.',
 ];
 
-/** SeasonalRotationEngine, via docs/breeding_model.md section 5. */
+/**
+ * SeasonalRotationEngine.ResetPlayersAsync - which a REBIRTH runs for one
+ * player (task 88), so these two lists describe both.
+ */
 export const SEASON_CARRIES: readonly string[] = [
   'The Hall of Ancestors roster, up to its cap - aptitudes, genes, generation, epic marks and recorded parents.',
   'Village buildings, including the Inn and the Breeding Grounds.',
   'Race masteries and unlocked races.',
   'Diamonds, purchased Inheritance levels and purchased Hall slots.',
-  'Seals, and the +2 permanent skill points each one pays every season.',
+  'Seals, and the +2 permanent skill points each one pays every run.',
+  'Shards, and the Legacy perks they bought.',
+  'Gathering masteries, the monster codex and your deeds.',
+  'Renown - the permanent damage bonus a renowned rebirth raises.',
   'Your best season rank, and any paid respec grants.',
 ];
 
@@ -404,7 +410,8 @@ export const SEASON_LOST: readonly string[] = [
   'Every character’s level - everyone is reset to level 1 and to Adult.',
   'All gear, all gold and every other material.',
   'The market and the chronicle pass.',
-  'Every point spent in the skill tree.',
+  'Every point spent in the skill tree, and every attribute point.',
+  'Every activity - all characters go idle.',
   'The entire gene pool - newcomers and elders alike, along with the arrival clock and the escalating feast price.',
 ];
 
@@ -670,7 +677,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'breeding', anchor: 'inherits', title: 'What a child inherits', keywords: 'aptitude drift epic mutation genes dominant recessive band preview' },
   { tab: 'breeding', anchor: 'genepool', title: 'The Inn and the gene pool', keywords: 'newcomer arrival interval capacity feast elder marry' },
 
-  { tab: 'longgame', anchor: 'season', title: 'What a season resets', keywords: 'rollover reset carries lost season end wipe' },
+  { tab: 'longgame', anchor: 'season', title: 'What a rebirth resets', keywords: 'rebirth prestige rollover reset carries lost season end wipe renown' },
   { tab: 'longgame', anchor: 'deeds', title: 'The Book of Deeds and Seals', keywords: 'deeds chapters seals skill points permanent' },
   { tab: 'longgame', anchor: 'hall', title: 'The Hall of Ancestors and the cull', keywords: 'ancestors slots keep mark cull survive field roster' },
   { tab: 'longgame', anchor: 'inheritance', title: 'Inheritance', keywords: 'diamonds permanent damage health experience gold gathering luck 2% 20 levels' },

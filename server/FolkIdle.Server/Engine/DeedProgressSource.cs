@@ -146,6 +146,7 @@ namespace FolkIdle.Server.Engine
                 TotalDeaths: player.TotalDeaths,
                 DelveDeepestFloor: player.DelveDeepestFloor,
                 BestHit: player.BestHit,
+                RenownedRebirths: player.RenownedRebirths,
                 EpicChildrenBred: epicChildren,
                 BestAptitudeTotal: bestAptitude);
         }

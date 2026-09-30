@@ -3637,6 +3637,57 @@ await go('Ancestors');
   }
 }
 
+// --- rebirth: the PREVIEW only, on the fixture (task 88) ---------------------
+//
+// Modul: THE FIXTURE IS NEVER REBORN. A rebirth takes its level, gear, gold and
+// skill tree - every later step and every later run would be testing a level-1
+// account with nothing. So on the fixture this opens step one, reads the terms
+// against the server's own preview, and CANCELS; the real rebirth is pressed on
+// the throwaway account below, which exists to be spent.
+{
+  await dismissToasts();
+  const panel = page.locator('[data-testid="rebirth-panel"]');
+  await panel.waitFor({ timeout: 10000 }).catch(() => {});
+  const before = await apiGet('/api/v1/rebirth/preview');
+  record(
+    'the rebirth preview answers',
+    before !== null && typeof before.RebirthCount === 'number' && typeof before.ShardsEarned === 'number',
+    before ? `rebirths ${before.RebirthCount}, level ${before.Level}, ${before.ShardsEarned} shards, renowned ${before.Renowned}` : 'no answer',
+  );
+
+  const renown = await panel.locator('[data-testid="rebirth-renown"]').innerText().catch(() => '');
+  record('the Rebirth panel shows Renown', /Renown \d+/.test(renown), renown.replace(/\s+/g, ' ').slice(0, 90));
+
+  const open = panel.locator('button.rebirth-open');
+  if ((await open.count()) > 0) {
+    await open.click();
+    const terms = await panel.locator('[data-testid="rebirth-terms"]').innerText().catch(() => '');
+    record(
+      'step one opens the terms: what you lose, what you keep',
+      /You lose/.test(terms) && /You keep/.test(terms) && before !== null && terms.includes(`level ${before.Level}`),
+      terms.replace(/\s+/g, ' ').slice(0, 120),
+    );
+    record(
+      'step one does not rebirth - step two is its own button',
+      (await panel.locator('button.rebirth-confirm').count()) === 1,
+    );
+
+    await panel.locator('button.rebirth-cancel').click();
+    await page.waitForTimeout(500);
+    const after = await apiGet('/api/v1/rebirth/preview');
+    record(
+      'cancel changes nothing',
+      after !== null && before !== null
+        && after.RebirthCount === before.RebirthCount
+        && after.Level === before.Level
+        && (await panel.locator('[data-testid="rebirth-terms"]').count()) === 0,
+      after ? `rebirths ${after.RebirthCount}, level ${after.Level}` : 'no answer',
+    );
+  } else {
+    record('step one opens the terms: what you lose, what you keep', false, 'no Rebirth button rendered');
+  }
+}
+
 // --- onboarding, on an account that has never played -------------------------
 //
 // Modul: A BRAND-NEW ACCOUNT, in its own browser context, and this is the only
@@ -4054,6 +4105,51 @@ await go('Ancestors');
       localSeen === null
         ? 'nothing stored locally'
         : `local ${localSeen.length}, server ${serverSeen ? serverSeen.Seen.length : 0}`,
+    );
+  }
+
+  // --- rebirth, pressed for real, on the throwaway (task 88) ------------------
+  //
+  // Modul: THE ONLY ACCOUNT THIS SCRIPT MAY REBIRTH. It is online (this page
+  // holds its socket), so this drives the live path end to end: the tick
+  // suspends and flushes the session, the rebirth runs as the flush's
+  // continuation, and the reset payload is reloaded under the open socket.
+  // Then the same preview is submitted again, which must be REFUSED rather
+  // than rebirth twice - the double-tap guard, measured rather than assumed.
+  {
+    const token = await fresh.evaluate(
+      () => sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token'),
+    );
+    const call = async (method, path, body) => {
+      const res = await fetch(`${API_BASE}${path}`, {
+        method,
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return { status: res.status, json: await res.json().catch(() => null) };
+    };
+
+    const before = await call('GET', '/api/v1/rebirth/preview');
+    const count = before.json?.RebirthCount ?? -1;
+    const first = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count });
+    record(
+      'a throwaway account is reborn, live',
+      first.status === 200 && first.json?.Result === 'Ok' && first.json?.RebirthCount === count + 1,
+      `HTTP ${first.status} ${JSON.stringify(first.json)}`,
+    );
+
+    const second = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count });
+    record(
+      'the same preview submitted twice is refused, not a second rebirth',
+      second.status === 409 && second.json?.Result === 'AlreadyReborn',
+      `HTTP ${second.status} ${JSON.stringify(second.json)}`,
+    );
+
+    const after = await call('GET', '/api/v1/rebirth/preview');
+    record(
+      'after the rebirth the preview reads level 1 and one rebirth more',
+      after.json?.Level === 1 && after.json?.RebirthCount === count + 1 && after.json?.Gold === 0,
+      JSON.stringify({ Level: after.json?.Level, RebirthCount: after.json?.RebirthCount, Gold: after.json?.Gold }),
     );
   }
 

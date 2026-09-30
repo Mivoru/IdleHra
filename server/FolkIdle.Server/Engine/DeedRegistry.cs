@@ -40,7 +40,9 @@ namespace FolkIdle.Server.Engine
         // Task 57: read only by the hidden deeds.
         long TotalDeaths = 0,
         int DelveDeepestFloor = 0,
-        int BestHit = 0);
+        int BestHit = 0,
+        // Task 88: rebirths taken at RebirthRules.RenownLevel or above.
+        int RenownedRebirths = 0);
 
     /// <summary>
     /// A deed nobody is told about until it is done (task 57). Shown as "???"
@@ -338,9 +340,16 @@ namespace FolkIdle.Server.Engine
                 // things a season leaves behind.
                 new DeedChapter(5, "The Ledger of Legends", "A Seal", new List<Deed>
                 {
-                    new("top-fifty", "Finish a season in the top fifty",
-                        "Ranked by level, then by the hardest monster you ever put down.",
-                        "progression", 1, c => c.BestSeasonRank > 0 && c.BestSeasonRank <= 50 ? 1 : 0),
+                    // Modul: task 88. This was "finish a season in the top
+                    // fifty", and seasons no longer end on a date - so the
+                    // deed, and with it this chapter's Seal, would have been
+                    // unearnable for good. Rebirth is what now ends a run, so
+                    // a renowned one is the deed. The id is kept (clients key
+                    // on it) and a top-fifty finish already on record still
+                    // counts, because a deed that un-happens is not a record.
+                    new("top-fifty", "Be reborn at level 50 or above",
+                        "End a run on your own terms, halfway to level 100 or later. It is what carries the bloodline into the next one.",
+                        "progression", 1, c => c.RenownedRebirths > 0 || (c.BestSeasonRank > 0 && c.BestSeasonRank <= 50) ? 1 : 0),
                     new("five-piece", "Wear five pieces of one set",
                         "A full set. The bonus steps at two, three and five.",
                         "character", 5, c => Math.Min(c.LargestActiveSetBonus, 5)),

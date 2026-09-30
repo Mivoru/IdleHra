@@ -1,8 +1,9 @@
 <script lang="ts">
   import { formatNumber } from '../lib/ui/format';
-  // Modul: THE HALL OF ANCESTORS - the roster that outlives a season.
+  // Modul: THE HALL OF ANCESTORS - the roster that outlives a run.
   //
-  // Levels, gear, gold and the village all reset every ninety days. What
+  // Levels, gear, gold and the village's gene pool reset at a rebirth, which
+  // the player now triggers themselves (task 88) instead of a 90-day date. What
   // survives is a handful of people and the aptitudes bred into them, and a cap
   // is what turns that into a choice: without one, a season accumulates every
   // child ever born and its last week is worth as much as its first.
@@ -26,6 +27,7 @@
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import TraitBadge from '../lib/ui/TraitBadge.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import RebirthPanel from '../lib/ui/RebirthPanel.svelte';
 
   const client = useQueryClient();
   const hall = createQuery(() => ({ queryKey: queryKeys.ancestorsHall, queryFn: fetchAncestorsHall }));
@@ -98,8 +100,8 @@
       <div>
         <h2>Hall of Ancestors</h2>
         <p class="dim small">
-          A season takes back your levels, your gear and your village. It does
-          not take these. When the season turns, only
+          A rebirth takes back your levels, your gear and your gold. It does
+          not take these. When you are reborn, only
           <strong>{data?.Cap ?? 10}</strong> of them carry.
         </p>
       </div>
@@ -125,10 +127,11 @@
         bought.
       </p>
       <p class="dim tiny">
-        <strong>What the season takes:</strong> every level (all back to 1, all
-        adult), all gear, all gold and materials, the skill tree, and the whole
-        village gene pool &mdash; newcomers and elders alike. Next season's Inn
-        deals a new hand.
+        <strong>What a rebirth takes:</strong> every level (all back to 1, all
+        adult), all gear, all gold and materials, the skill tree, placed
+        attribute points, and the whole village gene pool &mdash; newcomers and
+        elders alike. The next run's Inn deals a new hand. You choose when; the
+        Rebirth panel below shows the exact terms first.
       </p>
       <p class="dim tiny">
         <strong>What the cull deletes:</strong> anybody past the
@@ -151,7 +154,7 @@
           </button>
           <p class="dim tiny">
             {data.SlotsPurchased} of {data.MaxCap - (data.Cap - data.SlotsPurchased)} bought.
-            Slots survive the season, like everything else diamonds buy.
+            Slots survive a rebirth, like everything else diamonds buy.
           </p>
         </div>
       {:else}
@@ -240,12 +243,14 @@
 
       {#if members.length > data.Cap}
         <p class="dim tiny">
-          Faded rows are the ones the rollover would let go. Marked members go
+          Faded rows are the ones a rebirth would let go. Marked members go
           first, then the strongest blood.
         </p>
       {/if}
     {/if}
   </section>
+
+  <RebirthPanel />
 </div>
 
 <style>

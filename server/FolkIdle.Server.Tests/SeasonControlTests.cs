@@ -13,9 +13,9 @@ namespace FolkIdle.Server.Tests
 {
     // Modul: THE OWNER DECIDES WHEN A SEASON ENDS (2026-09-28).
     //
-    // A paused season must survive its own end date, an unpaused one must still
-    // roll over as before, and the admin's "end now" must roll over even a
-    // paused one - and hand the pause on to the season it starts.
+    // A season must survive its own end date, paused OR NOT - since task 88 the
+    // calendar ends nobody's run - and the admin's "end now" must still roll
+    // over even a paused one, and hand the pause on to the season it starts.
     //
     // Own container, not the shared fixture: the rollover wipes EVERY player's
     // gold and gear (see Test_SeasonalRotation_ClearsEquippedItemIds...), which
@@ -23,7 +23,7 @@ namespace FolkIdle.Server.Tests
     public class SeasonControlTests
     {
         [Fact]
-        public async Task PauseHoldsTheSeason_ResumeLetsItEnd_EndNowOverridesAPause()
+        public async Task TheCalendarNeverEndsASeason_EndNowStillDoes()
         {
             await using var container = new PostgreSqlBuilder("postgres:16")
                 .WithDatabase("folkidle_test_season_control")
@@ -63,8 +63,11 @@ namespace FolkIdle.Server.Tests
                     Assert.True(eras[0].IsActive);
                 }
 
-                // 2. Resumed: the overdue season rolls over, and the new one is
-                //    not paused, because the old one was not.
+                // 2. Resumed, and still overdue: NOTHING happens either (task
+                //    88, owner decision 2026-09-30). The calendar no longer ends
+                //    a season - a player ends their own run with a rebirth - so
+                //    an unpaused era past its date must survive too. This is
+                //    the half that protects the live era, due 2026-11-02.
                 await using (var db = await factory.CreateDbContextAsync())
                 {
                     var era = await db.SeasonalEraRecords.SingleAsync(e => e.IsActive);
@@ -76,13 +79,12 @@ namespace FolkIdle.Server.Tests
                 await using (var db = await factory.CreateDbContextAsync())
                 {
                     var active = await db.SeasonalEraRecords.AsNoTracking().SingleAsync(e => e.IsActive);
-                    Assert.Equal(2, await db.SeasonalEraRecords.CountAsync());
-                    Assert.False(active.IsRolloverPaused);
-                    Assert.True(active.EndTimestamp > DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+                    Assert.Equal(1, await db.SeasonalEraRecords.CountAsync());
+                    Assert.True(active.EndTimestamp < DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "the era is overdue and still standing");
                     secondEraId = active.EraId;
                 }
 
-                // 3. Paused again, far from its end - and the admin ends it now.
+                // 3. Paused again - and the admin ends it now, by hand.
                 await using (var db = await factory.CreateDbContextAsync())
                 {
                     var era = await db.SeasonalEraRecords.SingleAsync(e => e.IsActive);
