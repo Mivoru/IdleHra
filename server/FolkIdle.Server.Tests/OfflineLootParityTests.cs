@@ -376,8 +376,10 @@ namespace FolkIdle.Server.Tests
         // Gathering: codex yield above 1, a monolith, luck, and rising mastery
         // ------------------------------------------------------------------
 
-        [Fact]
-        public void Gathering_ANodeWithCodexYieldAndMastery_YieldsTheSamePerHour_OnlineAndOffline()
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        public void Gathering_ANodeWithCodexYieldAndMastery_YieldsTheSamePerHour_OnlineAndOffline(byte scholar)
         {
             Assert.Equal(100, GlobalEngineState.GlobalDropMultiplier);
             const long seconds = 4 * 3600L;
@@ -393,10 +395,14 @@ namespace FolkIdle.Server.Tests
                 CachedWoodcuttingMonolithLevel = 30,
                 STR = 50, DEX = 50, CON = 50, LCK = 400,
                 InventorySpaceRemaining = int.MaxValue,
+                // Scholar: +25% of every harvest's pay, online and away.
+                Skill_Scholar = scholar,
             };
+            double b = ScholarRate.BonusPermille(scholar) / 1000.0;
+            Assert.Equal(scholar > 0 ? 0.25 : 0.0, b);
 
             // LIVE: the tick itself, for four hours of ticks.
-            var live = Build(-9_300_101L);
+            var live = Build(-9_300_101L - scholar * 10L);
             var yieldAtStart = SimulationEngine.GatheringYieldFor(ref live, in node, 100);
             Assert.True(yieldAtStart.MultiplierPct > 200, "the fixture has no codex/monolith yield to test");
             Assert.True(yieldAtStart.LuckWeightBonus > 0, "the fixture has no luck to test");
@@ -414,40 +420,134 @@ namespace FolkIdle.Server.Tests
                 .ToDictionary(g => g.Key, g => g.Sum(x => (long)x.Quantity));
 
             // OFFLINE: the projection the login runs, for the same four hours.
-            var offline = Build(-9_300_102L);
+            var offline = Build(-9_300_102L - scholar * 10L);
             var projection = OfflineSimulationEngine.CalculateGatheringProjection(ref offline, node, seconds, new Random(20260930));
 
-            // SPEED AND MASTERY are deterministic on both sides: the same
-            // harvests (to within the one partial harvest at the end of each
-            // mastery level) and the same mastery reached. Mastery DOES rise
-            // over four hours here, so a projection frozen at the logout level
-            // would fall short.
-            _output.WriteLine($"harvests live {live.HarvestLoopCount}, offline {projection.Actions}; mastery live {live.WoodcuttingMasteryLevel}, offline {offline.WoodcuttingMasteryLevel}; roll-percent {yieldAtStart.MultiplierPct}, luck weight {yieldAtStart.LuckWeightBonus}");
+            // SPEED AND MASTERY. Without Scholar both are deterministic: the
+            // same harvests (to within the one partial harvest at the end of
+            // each mastery level) and the same mastery reached. Mastery DOES
+            // rise over four hours here, so a projection frozen at the logout
+            // level would fall short. With Scholar the mastery XP is a draw on
+            // both sides, so the level may land one apart and the harvest count
+            // (which the level speeds up) within a percent.
+            _output.WriteLine($"scholar {scholar}: harvests live {live.HarvestLoopCount}, offline {projection.Actions} (paid {projection.RewardActions}); mastery live {live.WoodcuttingMasteryLevel}, offline {offline.WoodcuttingMasteryLevel}; roll-percent {yieldAtStart.MultiplierPct}, luck weight {yieldAtStart.LuckWeightBonus}");
             Assert.True(live.WoodcuttingMasteryLevel > 3, "mastery never rose - the fixture does not test the speed-up");
-            Assert.Equal(live.WoodcuttingMasteryLevel, offline.WoodcuttingMasteryLevel);
             long levelSteps = live.WoodcuttingMasteryLevel - 3 + 1;
-            Assert.InRange(projection.Actions, (long)live.HarvestLoopCount - levelSteps, (long)live.HarvestLoopCount + levelSteps);
+            if (scholar == 0)
+            {
+                Assert.Equal(live.WoodcuttingMasteryLevel, offline.WoodcuttingMasteryLevel);
+                Assert.Equal(projection.Actions, projection.RewardActions);
+                Assert.InRange(projection.Actions, (long)live.HarvestLoopCount - levelSteps, (long)live.HarvestLoopCount + levelSteps);
+            }
+            else
+            {
+                Assert.InRange(offline.WoodcuttingMasteryLevel, live.WoodcuttingMasteryLevel - 1, live.WoodcuttingMasteryLevel + 1);
+                Assert.InRange(projection.Actions, (long)(live.HarvestLoopCount * 0.99) - levelSteps, (long)(live.HarvestLoopCount * 1.01) + levelSteps);
+                // Paid harvests: H + Binomial(H, b), sd sqrt(H b (1-b)).
+                AssertWithinBand("offline paid harvests", projection.RewardActions,
+                    projection.Actions * (1 + b), Math.Sqrt(projection.Actions * b * (1 - b)));
+            }
 
-            // YIELD per item. With H harvests at m roll-percent, R rolls are
-            // H x floor(m/100) + Binomial(H, frac); an entry's count is
-            // Binomial(R, w_i / W) with luck in the weights; every entry of this
-            // table grants one unit. Mean E_i = H x m/100 x share_i; variance
-            // is at most E_i (the multinomial cell) + E_i x share_i (the roll
-            // count's own spread) <= 2 E_i. Each side within 5 sigma of E_i.
+            // YIELD per item. A harvest makes R = (1 + B)(w + F) rolls, B ~
+            // Bernoulli(b) the Scholar extra and F ~ Bernoulli(f) the fractional
+            // roll (w, f the whole and fractional parts of m/100); an entry's
+            // count is then a Binomial(R, s_i) thinning, s_i its luck-weighted
+            // share, one unit each. Over H harvests, by total variance,
+            //   E_i   = H E[R] s_i
+            //   Var_i = H (Var(R) s_i^2 + E[R] s_i (1 - s_i))
+            // with E[R] = (1 + b)(w + f) and E[R^2] = (1 + 3b)(w^2 + 2wf + f).
+            // Each side within 5 sigma of its own E_i - the old offline path
+            // paid 0 (every item "unknown"), and its roll count was 26% short.
             var table = ContentRegistry.GetLootTable(node.ActivityId).ToArray();
             Assert.All(table, e => Assert.True(e.MaxQuantity <= e.MinQuantity, "the band below assumes single-unit entries"));
             double weight = table.Sum(e => (double)(e.Weight + yieldAtStart.LuckWeightBonus));
+            double w = yieldAtStart.MultiplierPct / 100, f = yieldAtStart.MultiplierPct % 100 / 100.0;
+            double meanR = (1 + b) * (w + f);
+            double varR = (1 + 3 * b) * (w * w + 2 * w * f + f) - meanR * meanR;
             foreach (var entry in table)
             {
                 string baseId = ContentRegistry.GetItemBaseId(entry.ItemId);
-                double expectedLive = live.HarvestLoopCount * yieldAtStart.MultiplierPct / 100.0 * (entry.Weight + yieldAtStart.LuckWeightBonus) / weight;
-                double expectedOffline = projection.Actions * yieldAtStart.MultiplierPct / 100.0 * (entry.Weight + yieldAtStart.LuckWeightBonus) / weight;
-                AssertWithinBand($"live {baseId}", liveByItem.GetValueOrDefault(baseId), expectedLive, Math.Sqrt(2 * expectedLive));
-                AssertWithinBand($"offline {baseId}", projection.MaterialDeltas.GetValueOrDefault(baseId), expectedOffline, Math.Sqrt(2 * expectedOffline));
+                double s = (entry.Weight + yieldAtStart.LuckWeightBonus) / weight;
+                foreach (var (side, harvests, observed) in new[]
+                {
+                    ("live", (double)live.HarvestLoopCount, liveByItem.GetValueOrDefault(baseId)),
+                    ("offline", (double)projection.Actions, projection.MaterialDeltas.GetValueOrDefault(baseId)),
+                })
+                {
+                    double expected = harvests * meanR * s;
+                    double sigma = Math.Sqrt(harvests * (varR * s * s + meanR * s * (1 - s)));
+                    AssertWithinBand($"{side} {baseId}", observed, expected, sigma);
+                }
             }
             Assert.Equal(liveByItem.Keys.OrderBy(k => k), projection.MaterialDeltas.Keys.OrderBy(k => k));
         }
 
+        // ------------------------------------------------------------------
+        // Scholar on a fight: a quarter more pay per kill, online and away
+        // ------------------------------------------------------------------
+
+        [Fact]
+        public async Task Scholar_PaysAQuarterMorePerKill_OnlineAndOffline()
+        {
+            int monsterId = ContentRegistry.FirstCanonicalMonsterId;
+            var monster = ContentRegistry.Monsters[monsterId - 1];
+            double b = ScholarRate.BonusPermille(1) / 1000.0;
+            Assert.Equal(0.25, b);
+
+            // LIVE: 2,000 fights. Each is paid as 1 + Bernoulli(b) kills, and
+            // every stream reads that one number - the codex event's Kills,
+            // the loot requests' kills, the gold.
+            var live = StrongFighter(-9_300_301L, monsterId);
+            live.Skill_Scholar = 1;
+            var warQueue = new ConcurrentQueue<GuildWarPointEvent>();
+            var contexts = new ConcurrentDictionary<long, LiveSessionContext>();
+            var events = new List<KillEvent>();
+            var requests = new List<CombatLootDropRequest>();
+            for (int tick = 0; tick < 2_000_000 && events.Count < 2000; tick++)
+            {
+                SimulationEngine.ProcessSubTick(ref live, 100, 100, warQueue, contexts);
+                events.AddRange(Take(CodexEngine.KillEventQueue, k => k.PlayerId == live.PlayerId));
+                requests.AddRange(Take(CombatLootEngine.DropRequestQueue, r => r.PlayerId == live.PlayerId));
+            }
+            while (warQueue.TryDequeue(out _)) { }
+            int fights = events.Count;
+            long paid = events.Sum(k => (long)Math.Max(1, k.Kills));
+            Assert.True(fights >= 2000);
+            // Paid kills = fights + Binomial(fights, b).
+            AssertWithinBand("live paid kills", paid, fights * (1 + b), Math.Sqrt(fights * b * (1 - b)));
+            Assert.Equal(paid, requests.Sum(r => (long)Math.Max(1, r.Kills)));
+
+            // OFFLINE: the same hour with and without the crown. The fight is
+            // the same (time and food run on honest seconds), so the kills
+            // FOUGHT are identical and the crown only raises what they pay.
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            async Task<(long Kills, long Gold)> AwayAsync(byte crown)
+            {
+                long id = await CreatePlayerAsync();
+                var p = StrongFighter(id, monsterId);
+                p.Skill_Scholar = crown;
+                p.LastLogoutTimestamp = now - 3600;
+                await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                {
+                    p = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, p, now);
+                }
+                var window = Assert.Single(Take(CodexEngine.KillEventQueue, k => k.PlayerId == id));
+                Take(CombatLootEngine.DropRequestQueue, r => r.PlayerId == id);
+                return (window.Kills, p.OfflineGoldEarned);
+            }
+
+            var (fought, plainGold) = await AwayAsync(0);
+            var (paidAway, scholarGold) = await AwayAsync(1);
+            AssertWithinBand("offline paid kills", paidAway, fought * (1 + b), Math.Sqrt(fought * b * (1 - b)));
+
+            // GOLD is per PAID kill on both paths - one figure per kill,
+            // recovered from the plain window and required of the other two.
+            Assert.True(fought > 0 && plainGold > 0);
+            Assert.Equal(0L, plainGold % fought);
+            long goldPerKill = plainGold / fought;
+            Assert.Equal(paidAway * goldPerKill, scholarGold);
+            Assert.Equal(paid * goldPerKill, live.CurrentGold);
+        }
         // ------------------------------------------------------------------
         // Crafting: the job, not monster 1
         // ------------------------------------------------------------------
@@ -529,39 +629,102 @@ namespace FolkIdle.Server.Tests
         // Village production
         // ------------------------------------------------------------------
 
-        // Modul: GOLD ONLY, deliberately. The Town Hall's gold is one rate on
-        // both paths and is asserted here to the coin. The Lumberjack and Mine
-        // are NOT: the live tick produces the legacy "wood" / "iron_ore" rows at
-        // 0.1 and 0.05 a second per level, and the offline window produces the
-        // region's catalogued logs and ores (plus a 10% rare share) at
-        // (level + 1) x 100 an hour. Which of the two is the game is a design
-        // decision, recorded in docs/architecture/offline_parity.md, and a test
-        // that pinned either would be pinning a guess.
-        [Fact]
-        public async Task VillageProduction_TownHallGold_IsTheSamePerHour_OnlineAndOffline()
+        // Modul: ONE RULE, owner decision 2026-09-30 - the offline rule (the
+        // region's catalogued log and ore at (level + 1) x 100 an hour, a tenth
+        // of it rare, the Warehouse cap and the material ledger) is the game,
+        // and the live tick now calls it. Everything here is deterministic
+        // integer arithmetic on both paths, so the assertion is EQUALITY, per
+        // material and to the coin: an hour live and an hour away write the
+        // same rows. Covered with and without Scholar (a rate on both paths),
+        // and with a Warehouse small enough that the cap bites mid-hour.
+        [Theory]
+        [InlineData(0, 20)]
+        [InlineData(1, 20)]
+        [InlineData(0, 1)]
+        [InlineData(1, 1)]
+        public async Task VillageProduction_IsTheSamePerHour_OnlineAndOffline(byte scholar, int warehouseLevel)
         {
-            const int townHallLevel = 3;
+            const int lumberjackLevel = 12, mineLevel = 7, townHallLevel = 3;
             const long seconds = 3600L;
 
-            var live = new TickStatePayload { PlayerId = -9_300_201L, TownHallLevel = townHallLevel };
+            // LIVE: an hour of the passive village tick, its minute batches
+            // (and the session-end remainder) written by the drain's own write.
+            long livePlayer = await CreatePlayerAsync();
+            var live = new TickStatePayload
+            {
+                PlayerId = livePlayer,
+                TownHallLevel = townHallLevel,
+                LumberjackLevel = lumberjackLevel,
+                MineLevel = mineLevel,
+                WarehouseLevel = (byte)warehouseLevel,
+                Skill_Scholar = scholar,
+            };
             live.SetGold(0);
             long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var batches = new List<VillageProductionGrant>();
             for (long tick = 0; tick < seconds * 10L; tick++)
             {
                 SimulationEngine.ProcessPassiveVillageTick(ref live, 0.1, nowEpoch);
+                if (tick % 600 == 599) batches.AddRange(Take(SimulationEngine.VillageProductionQueue, g => g.PlayerId == livePlayer));
+            }
+            SimulationEngine.EnqueuePendingVillageProduction(ref live);
+            batches.AddRange(Take(SimulationEngine.VillageProductionQueue, g => g.PlayerId == livePlayer));
+            Assert.True(batches.Count >= 60, $"only {batches.Count} production batches in an hour");
+            foreach (var batch in batches)
+            {
+                await VillageTickCoordinator.WriteProductionGrantAsync(_fixture.DbContextFactory, batch);
             }
 
+            // OFFLINE: the same hour away.
             long offlinePlayer = await CreatePlayerAsync();
+            long lostOffline;
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                await OfflineSimulationEngine.GrantVillagePassiveProductionAsync(
-                    db, offlinePlayer, lumberjackLevel: 0, mineLevel: 0, warehouseLevel: 0, townHallLevel: townHallLevel, elapsedSeconds: seconds);
+                lostOffline = await OfflineSimulationEngine.GrantVillagePassiveProductionAsync(
+                    db, offlinePlayer, lumberjackLevel, mineLevel, warehouseLevel, townHallLevel, seconds,
+                    ScholarRate.BonusPermille(scholar));
             }
+
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            async Task<Dictionary<string, long>> StockAsync(long player) => await verify.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == player && c.ItemId != "gold")
+                .ToDictionaryAsync(c => c.ItemId, c => c.Quantity);
+            async Task<long> LostAsync(long player) => await verify.MaterialFlowDaily.AsNoTracking()
+                .Where(r => r.PlayerId == player && r.Direction == (short)MaterialFlowDirection.LostToWarehouseCap)
+                .SumAsync(r => r.Amount);
+
+            var liveStock = await StockAsync(livePlayer);
+            var offlineStock = await StockAsync(offlinePlayer);
+            _output.WriteLine($"scholar {scholar}, warehouse {warehouseLevel}: live {string.Join(", ", liveStock.OrderBy(k => k.Key))} / offline {string.Join(", ", offlineStock.OrderBy(k => k.Key))}, lost offline {lostOffline}");
+
+            // The rule, stated: (level + 1) x 100 an hour at 1000 + Scholar
+            // permille, a tenth rare, each material capped at the Warehouse.
+            int permille = 1000 + ScholarRate.BonusPermille(scholar);
+            long cap = VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel);
+            var logs = VillageManagementEngine.GetTierMaterials(lumberjackLevel);
+            var ores = VillageManagementEngine.GetTierMaterials(mineLevel);
+            long logUnits = (lumberjackLevel + 1) * 100L * permille / 1000L;
+            long oreUnits = (mineLevel + 1) * 100L * permille / 1000L;
+            var expected = new Dictionary<string, long>
+            {
+                [logs.Log] = Math.Min(cap, logUnits - logUnits / 10),
+                [logs.RareLog] = Math.Min(cap, logUnits / 10),
+                [ores.Ore] = Math.Min(cap, oreUnits - oreUnits / 10),
+                [ores.RareOre] = Math.Min(cap, oreUnits / 10),
+            };
+            Assert.Equal(expected.OrderBy(k => k.Key), offlineStock.OrderBy(k => k.Key));
+            Assert.Equal(expected.OrderBy(k => k.Key), liveStock.OrderBy(k => k.Key));
+            Assert.False(liveStock.ContainsKey(VillageManagementEngine.WoodCommodityId), "the live tick still produces \"wood\"");
+            // ("iron_ore" is not asserted absent: it is ALSO region 2's
+            // catalogued common ore, which a level 5-9 Mine rightly produces -
+            // the legacy constant and the real item share one key.)
+            if (warehouseLevel == 1) Assert.True(lostOffline > 0, "the small Warehouse never capped - the fixture does not test the cap");
+            Assert.Equal(await LostAsync(offlinePlayer), await LostAsync(livePlayer));
+
+            // Town Hall gold, to the coin.
             long offlineGold = await verify.CommodityRecords.AsNoTracking()
                 .Where(c => c.PlayerId == offlinePlayer && c.ItemId == "gold").SumAsync(c => c.Quantity);
-
-            long perHour = VillageManagementEngine.GetTownHallGoldRatePerHour(townHallLevel);
+            long perHour = VillageManagementEngine.GetTownHallGoldRatePerHour(townHallLevel) * permille / 1000L;
             Assert.Equal(perHour, live.CurrentGold);
             Assert.Equal(perHour, offlineGold);
         }

@@ -329,7 +329,7 @@ namespace FolkIdle.Server.Tests
             {
                 long overflow = await OfflineSimulationEngine.GrantVillagePassiveProductionAsync(
                     db, player.Id, lumberjackLevel: 1, mineLevel: 0, warehouseLevel: 1, townHallLevel: 1, elapsedSeconds: 36000L);
-                Assert.Equal(890L, overflow);
+                Assert.Equal(1_790L, overflow);
             }
 
             long expectedGold = 36000L * VillageManagementEngine.GetTownHallGoldRatePerHour(1) / 3600L;
@@ -337,9 +337,11 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(expectedGold, (await IncomeAsync(player.Id))[GoldIncomeSource.TownHall]);
 
             Assert.Equal(10, await FlowAsync(player.Id, "birch_log", MaterialFlowDirection.Gathered));
-            Assert.Equal(100, await FlowAsync(player.Id, "golden_birch_log", MaterialFlowDirection.Gathered));
-            // 1,000 cut by the window + 890 that did not fit.
-            Assert.Equal(1_890, await FlowAsync(player.Id, "birch_log", MaterialFlowDirection.LostToWarehouseCap));
+            Assert.Equal(200, await FlowAsync(player.Id, "golden_birch_log", MaterialFlowDirection.Gathered));
+            // 2,000 produced, 200 of it rare: of the 1,800 common only 10 fit.
+            // (Before 2026-09-30 a window ceiling also cut 1,000 first - a
+            // second cap the live building never had, since removed.)
+            Assert.Equal(1_790, await FlowAsync(player.Id, "birch_log", MaterialFlowDirection.LostToWarehouseCap));
             Assert.Equal(0, await FlowAsync(player.Id, "golden_birch_log", MaterialFlowDirection.LostToWarehouseCap));
         }
 
