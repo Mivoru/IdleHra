@@ -5391,10 +5391,57 @@ within a tolerance; the line reads "estimate"; `check:perf` does not regress.
   1.11-1.43x the live tick per swing; it is now within 1.1%
   (`OfflineDefenceParityTests`, which runs the real tick). So a
   food-limited offline window now lasts 11-43% longer - and earns that much
-  more XP and gold - than before; a fed one eats 11-30% less. **Still
-  different, not fixed:** offline charges a monster swing every interval,
-  while the live tick restarts the monster's swing clock at each kill, so
-  offline still overstates food for fast killers (up to 1.65x on region 1).
+  more XP and gold - than before; a fed one eats 11-30% less. (The swing
+  clock residue noted here - offline charging a monster swing every interval
+  - is closed by the parity work below.)
+- **Offline combat parity, 2026-09-30 (owner rule: offline and online pay
+  the SAME per hour).** `OfflineSimulationEngine.ProjectCombat` no longer has
+  a model of its own: it runs `HuntingProjection`'s fight (`FightSetup`,
+  `FightState`, `Advance`) tick by tick for the whole window, re-deriving the
+  character every 5 minutes of game time when a level lands. Closed, each by
+  reusing the live helper and deleting offline's copy:
+  - *Kill speed:* `LiveAttackIntervalMs` (Relentless), `LiveCritChancePct`,
+    `LiveCritMultiplier` (Precision, Cruelty, Guile), Double Strike, burn and
+    set fire, and `SimulationEngine.EffectiveMilliAttackFor` (offline's copy,
+    now deleted, lacked the guild Damage buff and the legacy speed perk).
+    How many swings a fight takes is the exact distribution of the live rolls
+    (`HuntingProjection.SwingsToKill`), walked along a golden-ratio sequence,
+    not a mean divided into the health.
+  - *Swing clock:* reset at each kill, as `RunCombatTick` does.
+  - *First-clear boss:* one fight at `BossFirstClearRules` health and attack,
+    every respawn after it farmable (offline used first-clear ATTACK for the
+    whole window and farm HEALTH, `ExpectedSecondsPerKill` reading the
+    registry by id); the kill marks the mask and opens the region
+    (`SimulationEngine.ApplyKillProgression`, shared with the live kill).
+  - *Healing:* lifesteal (1% cap) and Bloodthirst per swing; the food buff's
+    regen and a Death Ward (spent through `ConsumableEngine`); auto-eat as the
+    tick does it - threshold, best heal first, cooldown - instead of a pool.
+  - *Death:* a window that dies ends the activity and records the death
+    (`SimulationEngine.ApplyCombatDeath`, shared); the old model stopped
+    counting and left the character deployed.
+  - *XP:* `HuntingProjection.XpPerKill` - the global multiplier, Blood Moon,
+    mentors, Human mastery, legacy perk, inheritance, skill tree, guild Exp
+    buff and the mentorship penalty, truncated per kill. Offline took only
+    inheritance. Also the seasonal pass XP and the kill-quest progress the
+    live kill pays. Gold was already `CombatGoldReward.PerKill`.
+  - **Guard:** `OfflineCombatParityTests` runs the REAL `RunCombatTick` for
+    six hours per row and the offline projection for one: bare and geared in
+    regions 1-5, fed and hungry, a fast killer, first-clear bosses, lifesteal,
+    the skill tree with a burning set, thorns, the food buff with a ward, a
+    levelling Warrior. Kills, XP, gold, food and seconds alive must agree
+    within 5% (one kill, three bites or five seconds where 5% is less than one
+    event), and the survival verdict must match. All 31 rows land within 1-3%
+    except a 13-kill hungry row at 0.92 (one kill). Before: skill-tree
+    characters earned 0.52-0.74x the live XP, lifesteal and buffed hungry
+    characters 0.04-0.05x (they died where the live tick sustains), hungry
+    windows 0.79-0.95x, and first-clear boss food ran 4-4.5x.
+  - **Still different, not closed:** a kill away pays no diamond roll, no
+    codex kill, no guild war points and no boss-challenge/personal-record
+    notes; potions and the food buff that EXPIRE inside the window are
+    already gone at hydration, so offline runs the window without them;
+    three fighting slots are projected one after another on one larder,
+    where the live tick interleaves them (and shares one eat cooldown);
+    Scholar pays offline 25% more by design.
 
 ## 79. Gold ledger and material flow; Treasury counts gold spent
 
