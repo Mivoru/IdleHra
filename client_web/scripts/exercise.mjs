@@ -2456,6 +2456,95 @@ await go('The Delve');
   }
 }
 
+// --- task 84: the Great Works -------------------------------------------------
+// The output side, end to end: the server lists five monuments of five stages,
+// the Village panel's Deposit button spends the region's materials and the
+// monument's progress MOVES, and a built stage puts a landmark on the Map.
+// ROUND TRIP: the check grants itself 2,000 birch logs (a signed StockDelta on
+// the dev-tools route), deposits, and puts monument 1 and the stock back exactly
+// - so it never permanently spends the fixture and passes on every run.
+{
+  const view = await apiGet('/api/v1/great-works');
+  const works = view?.Works ?? [];
+  record(
+    'the server lists five Great Works of five stages, with the two ceilings',
+    works.length === 5 && works.every((w) => w.Stages.length === 5 && w.BonusPerStage && w.LogItem && w.OreItem)
+      && view.MaxYieldPct > 0 && view.MaxOfflineMinutes > 0,
+    works.map((w) => `${w.Region}:${w.Stage}/5`).join(' '),
+  );
+
+  const w1 = works.find((w) => w.Region === 1);
+  const origStage = w1?.Stage ?? 0;
+  const origProgress = w1?.Progress ?? 0;
+  if (w1 && origStage === 0) {
+    const granted = await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: 0, Progress: origProgress, Material: 0, StockDelta: 2000 });
+    await page.waitForTimeout(2500);
+    const held = (await apiGet('/api/v1/great-works'))?.Works?.find((w) => w.Region === 1);
+
+    await go('Village');
+    await page.waitForTimeout(1200);
+    const panel = page.getByTestId('great-work-1');
+    record('the Village draws the Great Works panel', (await panel.count()) > 0, `${(await page.getByTestId('great-works').count())} panel(s)`);
+
+    const deposit = page.getByTestId('great-work-deposit-1-log');
+    const enabled = (await deposit.count()) > 0 && (await deposit.isEnabled());
+    record('Deposit is enabled while the region\'s log is held', enabled, `held ${held?.HeldLog}`);
+    const box = (await deposit.count()) > 0 ? await deposit.boundingBox() : null;
+    record('the Deposit button is at least 44px tall', Boolean(box) && box.height >= 43.5, box ? `${Math.round(box.width)}x${Math.round(box.height)}` : 'no box');
+
+    let moved = null;
+    if (enabled) {
+      await deposit.click();
+      for (let i = 0; i < 16 && !moved; i++) {
+        await page.waitForTimeout(500);
+        const now = (await apiGet('/api/v1/great-works'))?.Works?.find((w) => w.Region === 1);
+        if (now && (now.Progress > origProgress || now.Stage > 0)) moved = now;
+      }
+    }
+    const spent = held && moved ? held.HeldLog - moved.HeldLog : 0;
+    record(
+      'depositing moved the monument and took exactly that much material',
+      Boolean(moved) && spent > 0 && (moved.Stage > 0 || moved.Progress - origProgress === spent),
+      moved ? `progress ${moved.Progress} (was ${origProgress}), stage ${moved.Stage}, spent ${spent}` : 'nothing moved',
+    );
+    if (moved) {
+      const text = ((await panel.textContent()) ?? '').replace(/\s+/g, ' ');
+      record('the panel shows the new progress', /\/\s*50\D?000/.test(text) || moved.Stage > 0, text.slice(0, 140));
+    }
+
+    // Put everything back: the monument as found, the stock as found (what was
+    // spent comes back, the 2,000 granted goes away).
+    await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: origStage, Progress: origProgress, Material: 0, StockDelta: spent - 2000 });
+    await page.waitForTimeout(2500);
+    const after = (await apiGet('/api/v1/great-works'))?.Works?.find((w) => w.Region === 1);
+    record(
+      'the monument and its stock are back where they started',
+      after?.Stage === origStage && after?.Progress === origProgress && after?.HeldLog === (held?.HeldLog ?? 0) - 2000,
+      `stage ${after?.Stage}, progress ${after?.Progress}, held ${after?.HeldLog} (was ${(held?.HeldLog ?? 0) - 2000})`,
+    );
+
+    // A built stage is a landmark on the Map; an unbuilt monument is not there.
+    await go('Map');
+    await page.waitForTimeout(800);
+    const before = await page.getByTestId('hub-monument-1').count();
+    await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: 2, Progress: 0, Material: 0, StockDelta: 0 });
+    await page.waitForTimeout(500);
+    await go('Village');
+    await go('Map');
+    await page.waitForTimeout(1500);
+    const marker = page.getByTestId('hub-monument-1');
+    record(
+      'a built stage puts the monument on the Map',
+      before === 0 && (await marker.count()) === 1 && (await marker.getAttribute('data-stage')) === '2',
+      `before ${before}, after ${await marker.count()} at stage ${await marker.getAttribute('data-stage').catch(() => null)}`,
+    );
+    await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: origStage, Progress: origProgress, Material: 0, StockDelta: 0 });
+    await page.waitForTimeout(500);
+  } else {
+    record('Great Works round trip skipped (monument 1 already started on this account)', true, `stage ${origStage}`);
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character

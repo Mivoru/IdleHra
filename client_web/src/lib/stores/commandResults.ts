@@ -116,6 +116,11 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   48: 'Ascension step cleared! Its reward is on the ladder - titles under Delve, frames in the Wardrobe.',
   49: "Too slow - that kill missed the step's time limit. The boss is back; the attempt is still on.",
   50: 'Step cleared, but saving its reward failed. It is paid with your next cleared step.',
+  // Modul: the Great Works (task 84). 60 and 61 are good news; a short stock
+  // answers 3 and a failed save 44, which already have sentences.
+  60: 'Deposited into the Great Work.',
+  61: 'A stage of the Great Work is built! Its bonus is yours for good - it survives a rebirth.',
+  62: 'That Great Work is already complete.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;
@@ -164,6 +169,10 @@ export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
   35,
   // A cleared Ascension step is good news.
   48,
+  // A Great Work deposit, a finished stage, and "already complete" (task 84).
+  60,
+  61,
+  62,
 ]);
 
 /**

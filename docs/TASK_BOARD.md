@@ -5112,7 +5112,7 @@ prose in English. Loot below Rare stays silent.
 | 81 | Chest rules and row actions | M | no |
 | 82 | Desktop header as five groups | S-M | show a screenshot first |
 | 83 | Workshop commissions (the material sink) | L | **design with the owner** |
-| 84 | Great Works (the long material sink) | L | **design with the owner** |
+| 84 | **BUILT** (branch `worktree-agent-ace8317640d015906`) - Great Works (the long material sink) | L | decided 2026-09-30 |
 | 85 | Orders: automation rules as a reward | L | **design with the owner** |
 | 86 | A deterministic affix step beside the reroll | M | **design with the owner** |
 | 87 | Boss Ascension ladder | M | reward shape, once |
@@ -5604,13 +5604,24 @@ come from `GatheringEconomyTests`, not guesses. The floor must stay below the
 region's median drop, checked in `PowerCeilingTests`. Time to region 5 (~26
 days, LONG_GAME_SPEC section 7) must not drop below ~20.
 
-## 84. Great Works (the long material sink) - design with the owner
+## DONE - 84. Great Works (the long material sink)
 
-Village monuments in five stages, each stage eating 50,000 to 2,000,000 of one
-region's materials, each visibly changing the Home map, each paying a small
-permanent bonus that survives the season (for example +1 % gathering, +1 h
-offline limit, a Hall slot, a frame). The owner's task 38 notes already name
-"Great Works"; this is the solo version. Every bonus goes into
+**Built 2026-09-30 (owner decision 2026-09-30: solo, 5 stages, small permanent
+capped bonuses that survive rebirth).** Five monuments, one per region; each
+stage eats that region's common log or ore (any mix) and pays a bonus:
+Birchwood Cairn and Acacia Gate +1 % gathering yield a stage, Willow Hearth and
+Frostpine Beacon +15 min offline limit a stage, The Ebon Crown both. Stage costs
+50k / 150k / 400k / 1M / 2M. Ceilings: +15 % yield, +225 min offline, both in
+`PowerCeilingTests`. Migration `AddGreatWorks`, opcode `DepositGreatWork = 82`,
+result codes 60-62. The Village panel deposits, and the Map draws a landmark that
+grows a layer per built stage. Spec and the open items (Hall slot, frame bonuses
+NOT built): `docs/superpowers/specs/2026-09-30-great-works.md`.
+
+Original brief, kept: Village monuments in five stages, each stage eating 50,000
+to 2,000,000 of one region's materials, each visibly changing the Home map, each
+paying a small permanent bonus that survives the season (for example +1 %
+gathering, +1 h offline limit, a Hall slot, a frame). The owner's task 38 notes
+already name "Great Works"; this is the solo version. Every bonus goes into
 `PowerCeilingTests` with a cap.
 
 ## 85. Orders: automation rules as a reward - design with the owner

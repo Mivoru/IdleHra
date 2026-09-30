@@ -11,6 +11,9 @@
   import { backgroundUrl } from '../lib/ui/sprites';
   import type { ScreenKey } from '../lib/ui/screens';
   import HomeCards from '../lib/ui/HomeCards.svelte';
+  import MonumentGlyph from '../lib/ui/MonumentGlyph.svelte';
+  import { createQuery } from '@tanstack/svelte-query';
+  import { fetchGreatWorks, greatWorksKeys } from '../lib/net/greatWorks';
 
   interface Props {
     onNavigate: (screen: ScreenKey) => void;
@@ -32,6 +35,29 @@
 
   const scene = backgroundUrl('main_hub');
   const plate = backgroundUrl('button_round');
+
+  // Modul: TASK 84 - THE GREAT WORKS STAND IN THE VALLEY. Each monument is a
+  // landmark on the map and grows a layer per built stage; a monument with no
+  // stage built is not drawn at all, so the first deposit that completes a
+  // stage is what visibly changes the Home map. Centres are percentages of the
+  // painting like the plates above, picked on open grass away from every plate.
+  // The stage count and names are the server's (the query below); only WHERE
+  // each stands is a fact about the painting, so it lives here.
+  const MONUMENT_SPOTS: Record<number, { x: number; y: number }> = {
+    1: { x: 43, y: 32 },
+    2: { x: 60, y: 24 },
+    3: { x: 67, y: 67 },
+    4: { x: 12, y: 48 },
+    5: { x: 91, y: 58 },
+  };
+
+  const greatWorks = createQuery(() => ({
+    queryKey: greatWorksKeys.all,
+    queryFn: fetchGreatWorks,
+    refetchInterval: 60_000,
+  }));
+
+  const built = $derived((greatWorks.data?.Works ?? []).filter((w) => w.Stage > 0 && MONUMENT_SPOTS[w.Region]));
 </script>
 
 <div class="hub">
@@ -39,6 +65,17 @@
   <HomeCards />
 
   <div class="scene" style="background-image: url('{scene}')">
+    {#each built as work (work.Region)}
+      <span
+        class="monument-spot"
+        data-testid="hub-monument-{work.Region}"
+        data-stage={work.Stage}
+        title="{work.Name} - stage {work.Stage} of {work.Stages.length}"
+        style="left: {MONUMENT_SPOTS[work.Region].x}%; top: {MONUMENT_SPOTS[work.Region].y}%"
+      >
+        <MonumentGlyph stage={work.Stage} size="100%" label="{work.Name}, stage {work.Stage} of {work.Stages.length}" />
+      </span>
+    {/each}
     {#each PLACES as place (place.key)}
       <button
         class="place"
@@ -70,6 +107,18 @@
     background-position: center;
     border-radius: var(--radius, 8px);
     overflow: hidden;
+  }
+
+  /* Task 84: a landmark, not a control - it never takes a tap, so it can sit
+     anywhere on the painting without burying a plate. */
+  .monument-spot {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    width: 7%;
+    min-width: 1.6rem;
+    aspect-ratio: 1;
+    pointer-events: none;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
   }
 
   .place {

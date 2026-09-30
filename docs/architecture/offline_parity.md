@@ -103,3 +103,12 @@ the codex events.
   counting and crafts again once materials arrive, so the totals agree.
 - Runaway guards: 200,000 kills per slot per window and 200,000 gathering
   actions or rolls. The 12-hour cap keeps any real window below both.
+
+## Great Works (task 84)
+
+Two permanent bonuses read on BOTH paths, each through the one composition: the
+gathering yield through `SimulationEngine.GatheringYieldFor` (whole roll-percent
+points, `GreatWorksRegistry.YieldPct`) and the away-time cap through
+`OfflineSimulationEngine.EffectiveOfflineCapSeconds` (called by the offline
+window, the wire's `OfflineCapSeconds` and `OfflineCapNotifier`). See
+`docs/superpowers/specs/2026-09-30-great-works.md`.
