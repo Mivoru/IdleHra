@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
@@ -409,6 +410,8 @@ namespace FolkIdle.Server.Engine
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
             using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            // Display credits for online players, sent only once the match commits.
+            var displayCredits = new List<MarketMatchNotification>();
             try
             {
                 var buyQuery = "SELECT * FROM \"MarketOrderRecords\" WHERE \"Status\" = 0 AND \"OrderType\" = 'BUY' AND \"BaseItemId\" = {0} AND \"QualityTier\" = {1} ORDER BY \"Price\" DESC FOR UPDATE";
@@ -448,35 +451,29 @@ namespace FolkIdle.Server.Engine
                         // Task 79: the seller's income, whichever branch pays it.
                         await GoldLedger.RecordIncomeAsync(db, sell.SellerId, GoldIncomeSource.Market, sellerProceeds);
 
-                        // Give seller gold
+                        // Modul: THE ROWS, ONLINE OR NOT (2026-09-30). Both
+                        // online branches used to post to MarketMatchQueue
+                        // only, whose drain moves CurrentGold and nothing
+                        // else - and nothing persists CurrentGold, so an online
+                        // seller's proceeds and an online buyer's refund
+                        // vanished at the next relogin. Each row is credited
+                        // here, in the match's transaction; an online player's
+                        // display moves after the commit (the chest-sale path
+                        // of CLAUDE.md's "two gold paths").
+                        // The upsert rebases the tracked sellerGold row read above.
+                        // GoldLedger: recorded as Market income above.
+                        await CommodityLedger.AddAsync(db, sell.SellerId, "gold", sellerProceeds);
                         if (_playerRegistry.IsPlayerOnline(sell.SellerId))
                         {
-                            _playerRegistry.MarketMatchQueue.Enqueue(new MarketMatchNotification
+                            displayCredits.Add(new MarketMatchNotification
                             {
                                 PlayerId = sell.SellerId,
                                 GoldDelta = sellerProceeds,
                                 NewEquipmentInstanceId = null
                             });
                         }
-                        else
-                        {
-                            // Modul: an upsert (CommodityLedger), task 44. It
-                            // rebases the tracked sellerGold row read above.
-                            // GoldLedger: recorded as Market income above, for both branches.
-                            await CommodityLedger.AddAsync(db, sell.SellerId, "gold", sellerProceeds);
-                        }
 
-                        // Give buyer refund and notification
-                        if (_playerRegistry.IsPlayerOnline(buy.SellerId))
-                        {
-                            _playerRegistry.MarketMatchQueue.Enqueue(new MarketMatchNotification
-                            {
-                                PlayerId = buy.SellerId,
-                                GoldDelta = refundToBuyer,
-                                NewEquipmentInstanceId = sell.EquipmentInstanceId
-                            });
-                        }
-                        else if (refundToBuyer > 0)
+                        if (refundToBuyer > 0)
                         {
                             // Modul: this used to skip the refund outright when
                             // the buyer had no gold row (`if (buyerGold != null)`),
@@ -484,6 +481,15 @@ namespace FolkIdle.Server.Engine
                             // in silence. The upsert creates the row (task 44).
                             // GoldLedger: the unused part of the buyer's own escrow, not income.
                             await CommodityLedger.AddAsync(db, buy.SellerId, "gold", refundToBuyer);
+                        }
+                        if (_playerRegistry.IsPlayerOnline(buy.SellerId))
+                        {
+                            displayCredits.Add(new MarketMatchNotification
+                            {
+                                PlayerId = buy.SellerId,
+                                GoldDelta = refundToBuyer,
+                                NewEquipmentInstanceId = sell.EquipmentInstanceId
+                            });
                         }
 
                         // Archive matching order
@@ -517,6 +523,12 @@ namespace FolkIdle.Server.Engine
                 }
 
                 await transaction.CommitAsync();
+                // After the commit, never inside it: a display credit for a
+                // match that then rolled back would be gold the row never got.
+                foreach (var credit in displayCredits)
+                {
+                    _playerRegistry.MarketMatchQueue.Enqueue(credit);
+                }
             }
             catch (Exception ex)
             {

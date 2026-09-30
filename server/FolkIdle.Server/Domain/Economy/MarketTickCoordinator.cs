@@ -34,41 +34,13 @@ namespace FolkIdle.Server.Domain.Economy
                     currentPayload.AddGold(notification.GoldDelta);
                     currentPayload.IsDirty = true;
                 }
-                else if (notification.GoldDelta != 0L)
-                {
-                    // Modul: market settlement rescue, 2026-08-01.
-                    //
-                    // MarketEscrowEngine chooses between crediting the
-                    // database directly and posting here, based on whether
-                    // the seller was online AT THAT MOMENT. If they logged
-                    // out between that check and this drain - a window of up
-                    // to one tick plus the escrow transaction's tail - this
-                    // used to dequeue the notification, find no payload, and
-                    // silently drop it. The database was never credited on
-                    // that path, so the seller permanently lost the proceeds
-                    // of a completed sale with no error and no telemetry.
-                    //
-                    // Falling back to the offline path closes it. Crediting
-                    // the row directly is safe precisely because the player
-                    // is NOT active: nothing holds a live CurrentGold that
-                    // this could race, and hydration reads this row at their
-                    // next login.
-                    long rescuePlayerId = notification.PlayerId;
-                    long rescueGold = notification.GoldDelta;
-
-                    safeDispatch("Market.SettlementRescue", 0L, async () =>
-                    {
-                        await using var rescueDb = await contextFactory.CreateDbContextAsync();
-
-                        // Modul: this was an UNLOCKED read-modify-write (no
-                        // FOR UPDATE, no transaction), so a concurrent credit
-                        // between the read and SaveChanges was overwritten,
-                        // and a missing row could be inserted twice. One
-                        // upsert statement is atomic on its own (task 44).
-                        // GoldLedger: counted at the sale, not at its rescue.
-                        await CommodityLedger.AddAsync(rescueDb, rescuePlayerId, "gold", rescueGold);
-                    });
-                }
+                // Modul: NO RESCUE CREDIT ANY MORE (2026-09-30). Every market
+                // engine now credits the row inside the sale's own transaction
+                // and posts here only to move a live display. A player who
+                // logged out between the post and this drain has nothing to
+                // display and nothing owed - the row already holds it, and
+                // hydration reads it at their next login. The old rescue
+                // credited the row a second time.
             }
         }
 
