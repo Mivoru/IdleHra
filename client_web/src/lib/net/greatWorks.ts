@@ -31,6 +31,11 @@ export interface GreatWork {
   /** What ONE stage of this monument pays, as the server words it. */
   BonusPerStage: string;
   Stages: GreatWorkStage[];
+  /** What completing the fifth stage pays, as the server words it: a bound
+   * frame, and on The Ebon Crown a Hall of Ancestors slot as well. */
+  CompletionReward: string;
+  FrameId: string;
+  FrameOwned: boolean;
 }
 
 export interface GreatWorks {
@@ -38,6 +43,8 @@ export interface GreatWorks {
   MaxYieldPct: number;
   OfflineMinutes: number;
   MaxOfflineMinutes: number;
+  /** Hall of Ancestors slots the monuments pay (0 or 1). */
+  HallSlots: number;
   Works: GreatWork[];
 }
 

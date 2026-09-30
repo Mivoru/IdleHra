@@ -66,6 +66,28 @@ namespace FolkIdle.Server.Domain.Progression
 
         public static bool IsValidRegion(int region) => region >= FirstRegion && region <= LastRegion;
 
+        // Modul: THE COMPLETION REWARDS. Finishing a monument's fifth stage
+        // costs 3.6M materials, and a sixth +1% would not read as the end of
+        // anything. So completion pays something you can SEE: a bound frame
+        // per monument (cosmetic, never on the market, like the Ascension
+        // frames), and The Ebon Crown - the last and dearest - one Hall of
+        // Ancestors slot above the diamond ceiling (HallOfAncestorsRules).
+        public const int HallSlotRegion = LastRegion;
+
+        public static string FrameId(int region) => $"frame_monument_r{region}";
+
+        public static string FrameName(int region) => $"{MonumentOf(region).Name} Frame";
+
+        /// <summary>Hall of Ancestors slots the built stages pay: one once
+        /// The Ebon Crown is complete.</summary>
+        public static int HallSlots(int packed)
+            => StageOf(packed, HallSlotRegion) >= StageCount ? 1 : 0;
+
+        public static string DescribeCompletion(int region)
+            => region == HallSlotRegion
+                ? $"{FrameName(region)} and +1 Hall of Ancestors slot"
+                : FrameName(region);
+
         public static GreatWorkDefinition MonumentOf(int region) => Monuments[region - FirstRegion];
 
         /// <summary>Which material a deposit names: 0 the region's common log, 1 its common ore.</summary>

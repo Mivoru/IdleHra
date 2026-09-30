@@ -21,6 +21,8 @@ namespace FolkIdle.Server.Domain.Progression
         Challenge = 3,
         /// <summary>Task 87: a Boss Ascension frame.</summary>
         Ascension = 4,
+        /// <summary>Task 84: a completed Great Work's frame.</summary>
+        GreatWork = 5,
         Dev = 9,
     }
 
@@ -115,6 +117,13 @@ namespace FolkIdle.Server.Domain.Progression
                         step >= Combat.BossAscensionRegistry.MaxStep ? Legendary : Epic,
                         Combat.BossAscensionRegistry.FrameName(region, step), null, Bound: true));
                 }
+            }
+            // Task 84: a completed Great Work's frame, bound like the Ascension ones.
+            for (int region = GreatWorksRegistry.FirstRegion; region <= GreatWorksRegistry.LastRegion; region++)
+            {
+                list.Add(new CosmeticDefinition(
+                    GreatWorksRegistry.FrameId(region), CosmeticKind.Frame, Legendary,
+                    GreatWorksRegistry.FrameName(region), null, Bound: true));
             }
             return list;
         }

@@ -160,6 +160,11 @@
       {:else}
         <p class="dim tiny">All four extra slots bought - {data.MaxCap} is the ceiling.</p>
       {/if}
+      {#if data.GreatWorkSlots > 0}
+        <p class="dim tiny" data-testid="hall-great-work-slot">
+          +{data.GreatWorkSlots} slot from The Ebon Crown, above the diamond ceiling.
+        </p>
+      {/if}
 
       <!-- Modul: FIELDING IS ALSO HOW A CHILD GROWS UP, and nothing said so.
            ProcessAgeSlot only ages the three played slots and a newborn is put

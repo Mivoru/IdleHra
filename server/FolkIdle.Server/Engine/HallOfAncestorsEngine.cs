@@ -267,7 +267,8 @@ namespace FolkIdle.Server.Engine
             for (int i = 0; i < players.Count; i++)
             {
                 var player = players[i];
-                int cap = HallOfAncestorsRules.CapFor(player.AncestorSlotsPurchased);
+                int cap = HallOfAncestorsRules.CapFor(player.AncestorSlotsPurchased,
+                    await Domain.Progression.GreatWorksEngine.HallSlotsAsync(db, player.Id));
 
                 var characters = await db.CharacterRecords
                     .Where(c => c.PlayerId == player.Id)
@@ -359,7 +360,8 @@ namespace FolkIdle.Server.Engine
                 .FirstOrDefaultAsync(cancellationToken);
             if (player == null) return new List<string>();
 
-            int cap = HallOfAncestorsRules.CapFor(player.AncestorSlotsPurchased);
+            int cap = HallOfAncestorsRules.CapFor(player.AncestorSlotsPurchased,
+                await Domain.Progression.GreatWorksEngine.HallSlotsAsync(db, playerId));
             var characters = await db.CharacterRecords.AsNoTracking()
                 .Where(c => c.PlayerId == playerId)
                 .ToListAsync(cancellationToken);

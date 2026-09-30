@@ -28,9 +28,25 @@ namespace FolkIdle.Server.Engine
         public const int MaxSlots = 14;
         public const int MaxPurchases = MaxSlots - BaseSlots;
 
-        /// <summary>Slots this player has, given how many they have bought.</summary>
-        public static int CapFor(int purchasedSlots)
-            => Math.Clamp(BaseSlots + Math.Max(0, purchasedSlots), BaseSlots, MaxSlots);
+        // Modul: THE GREAT WORKS SLOT (task 84) sits ABOVE the diamond ceiling,
+        // not inside it. Counted inside, a player who had already bought all
+        // four would get nothing for 3.6M materials, and everyone else would
+        // just be spared one purchase - the monument would devalue diamonds
+        // instead of rewarding the work. One slot, from one monument
+        // (GreatWorksRegistry.HallSlotRegion); PowerCeilingTests holds 15.
+        public const int MaxGreatWorkSlots = 1;
+        public const int AbsoluteMaxSlots = MaxSlots + MaxGreatWorkSlots;
+
+        /// <summary>Slots this player has, given how many they have bought and
+        /// the Hall slots their Great Works pay (GreatWorksRegistry.HallSlots).</summary>
+        public static int CapFor(int purchasedSlots, int greatWorkSlots = 0)
+            => BaseSlots + Math.Clamp(purchasedSlots, 0, MaxPurchases)
+               + Math.Clamp(greatWorkSlots, 0, MaxGreatWorkSlots);
+
+        /// <summary>The ceiling this player can reach by buying: the diamond
+        /// ceiling plus whatever the Great Works already pay.</summary>
+        public static int MaxCapFor(int greatWorkSlots)
+            => MaxSlots + Math.Clamp(greatWorkSlots, 0, MaxGreatWorkSlots);
 
         // 250 diamonds, doubling. Four slots run to 3,750 - the same order as a
         // deep inheritance stat (~6,000 for twenty levels), which is the

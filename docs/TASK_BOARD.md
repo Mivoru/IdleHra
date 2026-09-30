@@ -5636,10 +5636,11 @@ stage eats that region's common log or ore (any mix) and pays a bonus:
 Birchwood Cairn and Acacia Gate +1 % gathering yield a stage, Willow Hearth and
 Frostpine Beacon +15 min offline limit a stage, The Ebon Crown both. Stage costs
 50k / 150k / 400k / 1M / 2M. Ceilings: +15 % yield, +225 min offline, both in
-`PowerCeilingTests`. Migration `AddGreatWorks`, opcode `DepositGreatWork = 82`,
+`PowerCeilingTests`. Migration `AddGreatWorks`, opcode `DepositGreatWork = 80`,
 result codes 60-62. The Village panel deposits, and the Map draws a landmark that
-grows a layer per built stage. Spec and the open items (Hall slot, frame bonuses
-NOT built): `docs/superpowers/specs/2026-09-30-great-works.md`.
+grows a layer per built stage. **Completion** (added the same day) pays a bound
+frame per monument and, for The Ebon Crown, one Hall of Ancestors slot above the
+diamond ceiling (14 -> 15). Spec: `docs/superpowers/specs/2026-09-30-great-works.md`.
 
 Original brief, kept: Village monuments in five stages, each stage eating 50,000
 to 2,000,000 of one region's materials, each visibly changing the Home map, each

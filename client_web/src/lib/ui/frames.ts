@@ -52,4 +52,12 @@ export const FRAME_DRAWINGS: Readonly<Record<string, FrameDrawing>> = {
   frame_ascent_r4_s10: { style: 'crown', color: '#5fb0e6', accent: '#ffffff', glow: true },
   frame_ascent_r5_s5: { style: 'knot', color: '#8f1f2e', accent: '#ff9aa6' },
   frame_ascent_r5_s10: { style: 'crown', color: '#c2263c', accent: '#ffd0d6', glow: true },
+
+  // Task 84: a completed Great Work's frame - bound, one per monument, in its
+  // region's timber.
+  frame_monument_r1: { style: 'band', color: '#e6dfd0', accent: '#b89b5e', glow: true },
+  frame_monument_r2: { style: 'rope', color: '#7d8f5a', accent: '#d9e6b0', glow: true },
+  frame_monument_r3: { style: 'studs', color: '#b5652b', accent: '#ffd49a', glow: true },
+  frame_monument_r4: { style: 'knot', color: '#6f9fb8', accent: '#e8f7ff', glow: true },
+  frame_monument_r5: { style: 'crown', color: '#2b2230', accent: '#d9b25c', glow: true },
 };

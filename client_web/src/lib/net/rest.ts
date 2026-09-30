@@ -1176,7 +1176,10 @@ export interface HallMember {
 
 export interface HallSnapshot {
   Cap: number;
+  /** The diamond ceiling plus any slot the Great Works pay (task 84). */
   MaxCap: number;
+  /** Slots from the Great Works, above the diamond ceiling (0 or 1). */
+  GreatWorkSlots: number;
   SlotsPurchased: number;
   NextSlotCostDiamonds: number;
   Diamonds: number;

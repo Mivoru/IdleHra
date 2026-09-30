@@ -41,6 +41,9 @@ function work(stage: number, progress: number): GreatWork {
     HeldOre: 0,
     BonusPerStage: '+1% gathering yield',
     Stages: costs.map((cost, i) => ({ Stage: i + 1, Name: `s${i + 1}`, Cost: cost, Built: i < stage })),
+    CompletionReward: 'Test Cairn Frame',
+    FrameId: 'frame_monument_r1',
+    FrameOwned: stage >= 5,
   };
 }
 
