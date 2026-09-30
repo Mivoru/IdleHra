@@ -2232,6 +2232,15 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void Test_Village_PassiveProductionAndWarehouseCap()
         {
+            // Modul: REWRITTEN 2026-09-30, when the live tick stopped producing
+            // "wood" / "iron_ore" at 0.1 / 0.05 a second per level and took the
+            // offline rule instead (owner decision): (level + 1) x 100 an hour
+            // of the region's catalogued log and ore, a tenth of it rare. The
+            // Warehouse cap is applied where the batch is WRITTEN
+            // (VillageManagementEngine.GrantProductionAsync, pinned with the
+            // cap biting in OfflineLootParityTests), so this pins the tick's
+            // half: the units and the split. Numbers written out, not
+            // recomputed, so it stays an oracle.
             const long testPlayerId = 995000001L;
 
             var payload = new TickStatePayload
@@ -2240,8 +2249,6 @@ namespace FolkIdle.Server.Tests
                 LumberjackLevel = 5,
                 MineLevel = 2,
                 WarehouseLevel = 1,
-                CachedWoodStock = 995L,
-                CachedIronOreStock = 100L
             };
 
             // 1000 physical 10 Hz ticks (0.1s each) simulate 100 seconds of active play.
@@ -2249,18 +2256,28 @@ namespace FolkIdle.Server.Tests
             {
                 SimulationEngine.ProcessPassiveVillageTick(ref payload, 0.1, 0L);
             }
+            SimulationEngine.EnqueuePendingVillageProduction(ref payload);
 
-            // Wood_Rate = 5 * 0.1 = 0.5/sec. The warehouse cap (Level 1 = 1000) chokes
-            // production after exactly 5 more wood (995 -> 1000), well before the
-            // 100 second window ends, so no more accumulates past the cap.
-            Assert.Equal(1000L, payload.CachedWoodStock);
-            Assert.Equal(5L, payload.PendingWoodDelta);
+            long log = 0, rareLog = 0, ore = 0, rareOre = 0;
+            var others = new List<VillageProductionGrant>();
+            while (SimulationEngine.VillageProductionQueue.TryDequeue(out var grant))
+            {
+                if (grant.PlayerId != testPlayerId) { others.Add(grant); continue; }
+                log += grant.Log; rareLog += grant.RareLog; ore += grant.Ore; rareOre += grant.RareOre;
+            }
+            foreach (var other in others) SimulationEngine.VillageProductionQueue.Enqueue(other);
 
-            // Iron_Rate = 2 * 0.05 = 0.1/sec * 100s = 10 iron; nowhere near the cap.
-            Assert.Equal(110L, payload.CachedIronOreStock);
-            Assert.Equal(10L, payload.PendingIronDelta);
+            // Lumberjack 5 = 600 an hour: 100 s is 16.67, so 16 whole units,
+            // and the tenth unit was rare. Mine 2 = 300 an hour: 8 units, none
+            // rare yet.
+            Assert.Equal(15L, log);
+            Assert.Equal(1L, rareLog);
+            Assert.Equal(8L, ore);
+            Assert.Equal(0L, rareOre);
 
-            Assert.True(payload.IsDirty);
+            // Nothing lands in the legacy rows any more.
+            Assert.Equal(0L, payload.PendingWoodDelta);
+            Assert.Equal(0L, payload.PendingIronDelta);
         }
 
         // Modul: REWRITTEN for the production model of 2026-08-12, which
@@ -2535,12 +2552,17 @@ namespace FolkIdle.Server.Tests
             //   12 hours    -> 6,000 produced
             //   warehouse 1 -> (1 + 1) * 100 * 5 = 1,000 stored
             //
-            // So 5,000 of the 6,000 is lost to storage.
             // A tenth of the yield arrives as the tier's RARE ore, matching the
-            // 90/10 the gathering loot tables use for the same pair - so the
-            // 1,000 the warehouse permits splits 900 common / 100 rare.
-            const long expectedOreGain = 900L;
-            const long expectedRareOreGain = 100L;
+            // 90/10 the gathering loot tables use for the same pair: 5,400
+            // common and 600 rare. The warehouse caps EACH material at 1,000,
+            // so the common ore fills (4,400 lost) and the rare fits.
+            //
+            // Modul: 2026-09-30 - this used to be 900 / 100, because the
+            // offline window first clamped the whole 6,000 to one Warehouse
+            // and then split it. The live building never had that second cap,
+            // and the live tick now runs this same rule, so it went.
+            const long expectedOreGain = 1000L;
+            const long expectedRareOreGain = 600L;
 
             // Which commodity a tier produces is asserted by
             // Test_VillageManagementEngine_ProductionUpgradeCost_ScalesExponentially;

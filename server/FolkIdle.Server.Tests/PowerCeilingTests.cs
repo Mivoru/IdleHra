@@ -224,7 +224,16 @@ namespace FolkIdle.Server.Tests
                 new("traits: gathering yield",
                     1.0 + TraitTotals.From(TraitRegistry.MaskOf(TraitRegistry.GreenThumb)).GatherYieldPct / 100.0,
                     "Green Thumb, the only yield trait"),
+                // Modul: Scholar became an ONLINE rate too on 2026-09-30 (it
+                // was offline-only), so it multiplies what an hour pays on
+                // every path and belongs in this ledger. A crown has one level,
+                // so this is a CAP, not a curve.
+                new("scholar crown", ScholarRate.MaxMultiplier,
+                    "ScholarRate.MaxMultiplier - a CAP (crowns have one level)"),
             };
+
+            Assert.Equal(1, SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.CrownScholar));
+            Assert.InRange(ScholarRate.MaxMultiplier, 1.0, 1.5);
 
             double product = 1.0;
             _o.WriteLine("lever                        multiplier   running   source");

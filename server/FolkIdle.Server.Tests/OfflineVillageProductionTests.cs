@@ -80,7 +80,7 @@ namespace FolkIdle.Server.Tests
                 // level <= 1), so 3600 elapsed seconds earns exactly 50 gold
                 // and reaches the duplicate-row read above.
                 await (Task)GrantVillagePassiveProductionMethod.Invoke(
-                    null, new object[] { db, playerId, 0, 0, 1, 0, 3600L })!;
+                    null, new object[] { db, playerId, 0, 0, 1, 0, 3600L, 0 })!;
             }
             finally
             {

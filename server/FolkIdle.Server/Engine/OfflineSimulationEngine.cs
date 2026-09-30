@@ -36,15 +36,18 @@ namespace FolkIdle.Server.Engine
             public readonly Dictionary<string, long> MaterialDeltas;
             /// <summary>How many drops that is, for the welcome-back card (rolls won, not units).</summary>
             public readonly int Drops;
-            /// <summary>Gathering: harvests completed. Combat: kills made.</summary>
+            /// <summary>Gathering: harvests completed. Combat: kills paid for.</summary>
             public readonly long Actions;
+            /// <summary>Gathering: harvests PAID for, Scholar's extra ones included.</summary>
+            public readonly long RewardActions;
 
-            public LootProjection(bool isValid, Dictionary<string, long>? materialDeltas = null, int drops = 0, long actions = 0)
+            public LootProjection(bool isValid, Dictionary<string, long>? materialDeltas = null, int drops = 0, long actions = 0, long rewardActions = 0)
             {
                 IsValid = isValid;
                 MaterialDeltas = materialDeltas ?? new Dictionary<string, long>();
                 Drops = drops;
                 Actions = actions;
+                RewardActions = rewardActions;
             }
         }
 
@@ -161,22 +164,14 @@ namespace FolkIdle.Server.Engine
             // and it is a balance decision rather than a cleanup.
             long elapsedSeconds = Math.Min(effectiveMaxOfflineSeconds, rawDeltaSeconds);
 
-            // Modul: Scholar, the Insight crown - everything earned while away
-            // comes in a quarter faster.
-            //
-            // A SEPARATE NUMBER from elapsedSeconds, deliberately. Inflating
-            // the elapsed time itself would also age the character faster and
-            // would make the morning card report a night longer than the one
-            // the player actually slept. What Scholar buys is the RATE, so
-            // only the projections read this; aging, the overflow bank and
-            // OfflineElapsedSeconds all keep the honest number.
+            // Modul: Scholar, the Insight crown, is a RATE on the rewards now
+            // (ScholarRate, owner decision 2026-09-30), applied by each
+            // projection exactly as the live tick applies it - never to time.
+            // It used to inflate this window's seconds instead, which paid it
+            // only while away, fed the fight a quarter more time than the
+            // player was gone, and ate a quarter more food doing so.
+            // Everything below runs on the honest elapsedSeconds.
             long earningSeconds = elapsedSeconds;
-            if (payload.Skill_Scholar > 0)
-            {
-                float bonus = SkillTreeRegistry.GetBonusPercent(
-                    SkillTreeRegistry.CrownScholar, payload.Skill_Scholar) / 100f;
-                earningSeconds = (long)(elapsedSeconds * (1f + bonus));
-            }
 
             // Modul: active (Slot1) character aging for the offline period, at
             // the live tick's 10-AgeTicks-per-real-second rate (the tick adds 1
@@ -195,7 +190,7 @@ namespace FolkIdle.Server.Engine
                 payload.Slot1_AgePhase = AgePhaseCurve.PhaseFor(payload.Slot1_AgeTicks);
             }
 
-            payload.OfflineMaterialsLostToFullWarehouse = await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds);
+            payload.OfflineMaterialsLostToFullWarehouse = await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds, ScholarRate.BonusPermille(payload.Skill_Scholar));
 
             // Modul: Phase - Full-Stack Production Polish, Part 1.1 (Offline
             // "Welcome Back" flow). Captured before the projection branches
@@ -258,7 +253,10 @@ namespace FolkIdle.Server.Engine
 
                     if (isCraftingJob)
                     {
-                        long attempts = earningSeconds * 10L / SimulationEngine.CraftTicksFor(in craftingRecipe);
+                        // Scholar: each completion pays one more with its
+                        // chance, as the live job's tick does.
+                        long attempts = ScholarRate.RewardUnits(Random.Shared,
+                            earningSeconds * 10L / SimulationEngine.CraftTicksFor(in craftingRecipe), payload.Skill_Scholar);
                         var crafted = await CraftingEngine.ExecuteOfflineCraftsAsync(db, payload.PlayerId, craftingRecipe, attempts, Random.Shared);
                         // Mirrors CraftingTickCoordinator.DrainCraftingCompletions:
                         // the wire counter tracks what the engine just added to
@@ -398,63 +396,46 @@ namespace FolkIdle.Server.Engine
         // ExtrapolateOfflineProgressAsync (which needs a whole populated
         // slot/character payload just to reach it) - the same seam
         // GrantAnalyticalLootAsync already uses for the same reason.
-        internal static async Task<long> GrantVillagePassiveProductionAsync(FolkIdleDbContext db, long playerId, int lumberjackLevel, int mineLevel, int warehouseLevel, int townHallLevel, long elapsedSeconds)
+        internal static async Task<long> GrantVillagePassiveProductionAsync(FolkIdleDbContext db, long playerId, int lumberjackLevel, int mineLevel, int warehouseLevel, int townHallLevel, long elapsedSeconds, int scholarBonusPermille = 0)
         {
             if (elapsedSeconds <= 0)
             {
                 return 0L;
             }
 
-            long goldRatePerHour = VillageManagementEngine.GetTownHallGoldRatePerHour(townHallLevel);
-            long goldEarned = elapsedSeconds * goldRatePerHour / 3600L;
-
-            // Modul: OUTPUT ONLY EVER GOES UP, 2026-09-01.
+            // Modul: THE RULE THE LIVE TICK CALLS (owner decision 2026-09-30).
+            // Rates, the tick-exact accrual, the rare share and the Warehouse
+            // cap are all VillageManagementEngine's, and
+            // SimulationEngine.ProcessPassiveVillageTick asks the same four
+            // functions a tenth of a second at a time - so an hour away pays
+            // what an hour watched pays, to the unit.
             //
-            // These read `level % 5`, so every fifth upgrade RESET the building
-            // to its weakest band: a Mine went from 500 ore an hour at level 4
-            // to 100 at level 5, and a Warehouse from 2,500 storage to 500.
-            // Upgrading made the building worse, and the cost reset alongside
-            // it - so it read as a bargain right up until the output halved.
+            // Scholar is a RATE here as it is live (ScholarRate): 1000 + its
+            // permille of each hourly rate, over the honest elapsed time.
+            long ticks = elapsedSeconds * 10L;
+            int ratePermille = 1000 + scholarBonusPermille;
+            long goldAccumulator = 0L, woodAccumulator = 0L, oreAccumulator = 0L;
+            long goldEarned = VillageManagementEngine.AccrueProduction(ref goldAccumulator,
+                VillageManagementEngine.GetTownHallGoldRatePerHour(townHallLevel), ticks, ratePermille);
+            long woodEarned = VillageManagementEngine.AccrueProduction(ref woodAccumulator,
+                VillageManagementEngine.ProductionRatePerHour(lumberjackLevel), ticks, ratePermille);
+            long oreEarned = VillageManagementEngine.AccrueProduction(ref oreAccumulator,
+                VillageManagementEngine.ProductionRatePerHour(mineLevel), ticks, ratePermille);
+
+            // Modul: THE WINDOW CEILING IS GONE, 2026-09-30. This clamped the
+            // whole window's production to one Warehouse's worth BEFORE the
+            // rare split and before the per-material cap below - a second,
+            // stricter cap the live building never had. Live, the common
+            // material fills to the cap and the rare one keeps arriving; with
+            // the ceiling, offline stopped both at 90% / 10% of one cap. The
+            // Warehouse cap below, against what is actually stored, is the rule.
             //
-            // The tier idea was sound and is kept, but it belongs to the COST
-            // and the MATERIALS, which still band by five (see
-            // CalculateProductionUpgradeCost and GetTierMaterials). What a
-            // building produces is not a thing an upgrade may reduce.
-            long woodRatePerHour = lumberjackLevel > 0 ? (lumberjackLevel + 1) * 100L : 0;
-            long ironRatePerHour = mineLevel > 0 ? (mineLevel + 1) * 100L : 0;
-
-            var lumberjackMats = VillageManagementEngine.GetTierMaterials(lumberjackLevel);
-            var mineMats = VillageManagementEngine.GetTierMaterials(mineLevel);
-
-            // One formula for storage, asked of the authority that owns it -
-            // this used to compute its own (warehouseLevel % 5 + 1) * 500 while
-            // CalculateWarehouseMaxStorage said level * 1000, so the offline
-            // path and the live path disagreed about how much a warehouse holds.
-            long maxStoragePerItem = VillageManagementEngine.CalculateWarehouseMaxStorage(warehouseLevel);
-
-            long woodEarned = Math.Min(elapsedSeconds * woodRatePerHour / 3600L, maxStoragePerItem);
-            long oreEarned = Math.Min(elapsedSeconds * ironRatePerHour / 3600L, maxStoragePerItem);
-            // Task 79: what that window ceiling discarded is lost to the
-            // Warehouse cap too - it is the same storage figure. Recorded
-            // against the common material, inside the transaction below.
-            long woodClampedByWindow = elapsedSeconds * woodRatePerHour / 3600L - woodEarned;
-            long oreClampedByWindow = elapsedSeconds * ironRatePerHour / 3600L - oreEarned;
-
-            // Modul: A SHARE OF THE YIELD IS THE TIER'S RARE MATERIAL,
-            // 2026-09-01, in the same 90/10 the gathering loot tables use for
-            // the same pairs. A Mine automates mining and should pay out what
-            // mining pays out.
-            //
-            // Split rather than added: the building's throughput is unchanged
-            // and a tenth of it simply arrives as the better material. Adding
-            // it on top would make a Mine strictly better than the activity it
-            // represents, which is a balance decision and not this fix.
-            //
-            // Computed as a share of the WHOLE window rather than rolled per
-            // unit - this path is analytic by design and a per-unit loop over
-            // twelve hours of production is exactly what it exists to avoid.
-            long rareWood = woodEarned * VillageManagementEngine.RareYieldPercent / 100L;
-            long rareOre = oreEarned * VillageManagementEngine.RareYieldPercent / 100L;
+            // A SHARE OF THE YIELD IS THE TIER'S RARE MATERIAL, in the same
+            // 90/10 the gathering loot tables use for the same pairs. Split
+            // rather than added: the throughput is unchanged and a tenth of it
+            // arrives as the better material.
+            long rareWood = VillageManagementEngine.RareShareOf(0L, woodEarned);
+            long rareOre = VillageManagementEngine.RareShareOf(0L, oreEarned);
             woodEarned -= rareWood;
             oreEarned -= rareOre;
 
@@ -464,46 +445,21 @@ namespace FolkIdle.Server.Engine
                 return 0L;
             }
 
+            var lumberjackMats = VillageManagementEngine.GetTierMaterials(lumberjackLevel);
+            var mineMats = VillageManagementEngine.GetTierMaterials(mineLevel);
+
             // Modul: summed inside the transaction, before commit - if the
-            // transaction rolls back (see the catch below, which this task
-            // does not touch - that failure path is task #17's own
-            // counter/log), nothing was actually granted OR clamped, so
-            // reporting a nonzero figure in that case would misattribute a
-            // transient DB failure as "your warehouse was full". `committed`
-            // gates the return on the same success path the catch's absence
-            // of a rethrow already implies, without needing to read anything
-            // out of the catch block itself.
+            // transaction rolls back, nothing was actually granted OR clamped,
+            // so reporting a nonzero figure in that case would misattribute a
+            // transient DB failure as "your warehouse was full".
             long materialsLostToFullWarehouse = 0L;
             bool committed = false;
 
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
-                if (woodEarned > 0)
-                {
-                    materialsLostToFullWarehouse += await GrantSingleCommodityProductionAsync(db, playerId, lumberjackMats.Log, woodEarned, maxStoragePerItem);
-                }
-                if (oreEarned > 0)
-                {
-                    materialsLostToFullWarehouse += await GrantSingleCommodityProductionAsync(db, playerId, mineMats.Ore, oreEarned, maxStoragePerItem);
-                }
-                if (rareWood > 0)
-                {
-                    materialsLostToFullWarehouse += await GrantSingleCommodityProductionAsync(db, playerId, lumberjackMats.RareLog, rareWood, maxStoragePerItem);
-                }
-                if (rareOre > 0)
-                {
-                    materialsLostToFullWarehouse += await GrantSingleCommodityProductionAsync(db, playerId, mineMats.RareOre, rareOre, maxStoragePerItem);
-                }
-
-                if (woodClampedByWindow > 0)
-                {
-                    await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.LostToWarehouseCap, lumberjackMats.Log, woodClampedByWindow);
-                }
-                if (oreClampedByWindow > 0)
-                {
-                    await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.LostToWarehouseCap, mineMats.Ore, oreClampedByWindow);
-                }
+                materialsLostToFullWarehouse = await VillageManagementEngine.GrantProductionAsync(
+                    db, playerId, lumberjackLevel, mineLevel, warehouseLevel, woodEarned, rareWood, oreEarned, rareOre);
 
                 if (goldEarned > 0)
                 {
@@ -545,42 +501,6 @@ namespace FolkIdle.Server.Engine
             return committed ? materialsLostToFullWarehouse : 0L;
         }
 
-        // Modul: returns what this call could NOT grant. This is the clamp
-        // that matters to the player - the caller's own window-ceiling clamp
-        // (elapsedSeconds * rate / 3600, capped at maxStoragePerItem) is a
-        // theoretical bound that rarely binds; THIS one reflects what the
-        // warehouse actually had room for, against live storage, at grant
-        // time. The caller sums this across all four materials into
-        // TickStatePayload.OfflineMaterialsLostToFullWarehouse, so a full
-        // warehouse stops silently discarding production with no record.
-        private static async Task<long> GrantSingleCommodityProductionAsync(FolkIdleDbContext db, long playerId, string itemId, long amountToGrant, long maxStorage)
-        {
-            if (amountToGrant <= 0) return 0L;
-
-            var commodity = await db.CommodityRecords
-                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, itemId)
-                .SingleOrDefaultAsync();
-
-            long currentStorage = commodity?.Quantity ?? 0L;
-            long grantedAmount = Math.Min(amountToGrant, Math.Max(0L, maxStorage - currentStorage));
-            long overflow = amountToGrant - grantedAmount;
-
-            // Task 79: the material flow, in the caller's transaction.
-            await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.LostToWarehouseCap, itemId, overflow);
-            if (grantedAmount <= 0)
-            {
-                return overflow;
-            }
-
-            // Modul: the FOR UPDATE read above stays, because the storage cap
-            // needs the current stack; the write is an upsert (task 44), since
-            // FOR UPDATE on a row that does not exist yet locks nothing.
-            await CommodityLedger.AddAsync(db, playerId, itemId, grantedAmount);
-            await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.Gathered, itemId, grantedAmount);
-
-            return overflow;
-        }
-
         // Modul: THE LIVE HARVEST, IN EXPECTATION AND IN BULK (offline parity,
         // 2026-09-30). Every term is asked of the function the live tick
         // calls - SimulationEngine.RequiredGatherTicks for the speed,
@@ -607,6 +527,11 @@ namespace FolkIdle.Server.Engine
             // level at a time instead - a handful of steps, not a tick loop.
             long remainingTicks = elapsedSeconds * 10L;
             long allowedActions = 0;
+            // Scholar: harvests that PAY - each completed harvest pays one more
+            // with the crown's chance (ScholarRate), mastery XP and rolls alike,
+            // exactly as RunGatheringTick pays it.
+            long rewardActions = 0;
+            int scholarPermille = ScholarRate.BonusPermille(payload.Skill_Scholar);
             while (remainingTicks > 0 && allowedActions < MaxOfflineGatherActions)
             {
                 int requiredTicks = Domain.Combat.SimulationEngine.RequiredGatherTicks(ref payload, in node);
@@ -619,19 +544,22 @@ namespace FolkIdle.Server.Engine
                 if (node.BaseMasteryXpReward > 0)
                 {
                     long xpToNext = Domain.Combat.SimulationEngine.MasteryXpToNextLevel(ref payload, node.ProfessionType);
-                    long actionsToNext = (xpToNext + node.BaseMasteryXpReward - 1) / node.BaseMasteryXpReward;
+                    long xpPerActionPermille = (long)node.BaseMasteryXpReward * (1000 + scholarPermille);
+                    long actionsToNext = (xpToNext * 1000L + xpPerActionPermille - 1) / xpPerActionPermille;
                     step = Math.Min(affordable, Math.Max(1L, actionsToNext));
                 }
 
-                ApplyGatheringMasteryXp(ref payload, node.ProfessionType, step * node.BaseMasteryXpReward);
+                long rewardStep = ScholarRate.RewardUnits(rng, step, payload.Skill_Scholar);
+                ApplyGatheringMasteryXp(ref payload, node.ProfessionType, rewardStep * node.BaseMasteryXpReward);
                 allowedActions += step;
+                rewardActions += rewardStep;
                 remainingTicks -= step * requiredTicks;
             }
 
             LootTableEntry[] lootTable = ContentRegistry.GetLootTable(node.ActivityId).ToArray();
             if (allowedActions <= 0 || lootTable.Length == 0)
             {
-                return new LootProjection(true, actions: allowedActions);
+                return new LootProjection(true, actions: allowedActions, rewardActions: rewardActions);
             }
 
             Domain.Combat.SimulationEngine.GatheringYield yield =
@@ -643,12 +571,12 @@ namespace FolkIdle.Server.Engine
             // drawn once.
             long whole = yield.MultiplierPct / 100;
             double fraction = (yield.MultiplierPct % 100) / 100.0;
-            int cappedActions = (int)Math.Min(allowedActions, int.MaxValue);
-            long rolls = allowedActions * whole + SampleBinomial(rng, cappedActions, fraction);
+            int cappedActions = (int)Math.Min(rewardActions, int.MaxValue);
+            long rolls = rewardActions * whole + SampleBinomial(rng, cappedActions, fraction);
             int rollCount = (int)Math.Min(rolls, MaxOfflineLootRolls);
 
             Dictionary<string, long> deltas = DrawGatheringMaterials(lootTable, rollCount, yield.LuckWeightBonus, rng);
-            return new LootProjection(true, deltas, rollCount, allowedActions);
+            return new LootProjection(true, deltas, rollCount, allowedActions, rewardActions);
         }
 
         /// <summary>
@@ -846,6 +774,11 @@ namespace FolkIdle.Server.Engine
 
             double totalKillsDouble = effectiveElapsedSeconds / secondsPerKillEstimate;
             long totalKills = (long)totalKillsDouble;
+
+            // Modul: Scholar pays per KILL, as the live kill does (ScholarRate):
+            // every kill below - XP, gold, loot, codex, diamonds - is a kill
+            // paid for. The fight itself (time, food) ran on honest seconds.
+            totalKills = ScholarRate.RewardUnits(Random.Shared, totalKills, payload.Skill_Scholar);
 
             // Funnel step 2, the offline half: a first kill made while away is
             // still a first kill. See FunnelRecorder.
