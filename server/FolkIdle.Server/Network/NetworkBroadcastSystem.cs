@@ -11945,6 +11945,48 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // Task 84: put one Great Work back to (Stage, Progress) and move the
+                // stock of one material by a signed StockDelta, so exercise.mjs can
+                // deposit and leave the fixture as it found it. Body {Region, Stage,
+                // Progress, Material (0 log, 1 ore), StockDelta}; reloads the session
+                // so the tick's cache of the stages agrees with the table again.
+                if (requestPath == "/api/v1/dev/great-works/restore" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await ReadBodyAsync(context);
+                    int region = 0, stage = 0, material = 0;
+                    long progress = 0, stockDelta = 0;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                        if (parsed.RootElement.TryGetProperty("Region", out var r) && r.TryGetInt32(out int rv)) region = rv;
+                        if (parsed.RootElement.TryGetProperty("Stage", out var st) && st.TryGetInt32(out int sv)) stage = sv;
+                        if (parsed.RootElement.TryGetProperty("Material", out var mt) && mt.TryGetInt32(out int mv)) material = mv;
+                        if (parsed.RootElement.TryGetProperty("Progress", out var pr) && pr.TryGetInt64(out long pv)) progress = pv;
+                        if (parsed.RootElement.TryGetProperty("StockDelta", out var sd) && sd.TryGetInt64(out long sdv)) stockDelta = sdv;
+                    }
+                    catch (JsonException) { }
+
+                    if (!FolkIdle.Server.Domain.Progression.GreatWorksRegistry.IsValidRegion(region)
+                        || !FolkIdle.Server.Domain.Progression.GreatWorksRegistry.IsValidMaterialKind(material))
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                        await FolkIdle.Server.Domain.Progression.GreatWorksEngine.DevRestoreAsync(db, playerId, region, stage, progress, material, stockDelta);
+                    }
+                    CommandQueue.Enqueue(new PlayerCommand
+                    {
+                        PlayerId = playerId,
+                        Packet = new ClientCommandPacket { Command = CommandType.ReloadState }
+                    });
+                    await WriteJsonAsync(context, new { Ok = true });
+                    return;
+                }
+
                 if (_worldBossEngine == null)
                 {
                     context.Response.StatusCode = 503;

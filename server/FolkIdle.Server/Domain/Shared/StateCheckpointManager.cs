@@ -1196,6 +1196,10 @@ namespace FolkIdle.Server.Domain.Shared
             // tick's cache of boss_ascension_progress, for start-step validation.
             int bossAscensionPacked = await BossAscensionEngine.LoadPackedAsync(dbContext, playerId);
 
+            // Task 84: the built stages of each Great Work, packed - the cache
+            // the gathering yield and the offline cap read (they survive rebirth).
+            int greatWorksPacked = await Domain.Progression.GreatWorksEngine.LoadPackedAsync(dbContext, playerId);
+
             // Modul: SETTLE THE VILLAGE ARRIVAL CLOCK on the way in.
             //
             // Arrivals are hours apart, so checking them on a 10 Hz loop would
@@ -1350,6 +1354,7 @@ namespace FolkIdle.Server.Domain.Shared
                 HighestUnlockedRegion = highestUnlockedRegion,
                 DefeatedRegionBossMask = defeatedRegionBossMask,
                 BossAscensionPacked = bossAscensionPacked,
+                GreatWorksStagesPacked = greatWorksPacked,
                 WorldBossAttemptCount = worldBossAttemptCount,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,

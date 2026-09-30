@@ -22,6 +22,20 @@ namespace FolkIdle.Server.Engine
         // is exactly the drift that made offline loot worse than online loot.
         public const long MaxOfflineSeconds = 43200L;
 
+        /// <summary>
+        /// The away-time cap a player really has: the universal 12 h, Vodnik's
+        /// extension, and the minutes their built Great Works add (task 84).
+        /// Modul: THE ONE COMPOSITION. The offline window below, the wire's
+        /// OfflineCapSeconds and OfflineCapNotifier's email all call this, so the
+        /// number the client shows, the number the mail names and the number the
+        /// projection enforces cannot come apart. Great Works stack ON TOP of
+        /// Vodnik (a bonus, not a competing cap) and are bounded by
+        /// GreatWorksRegistry.MaxOfflineMinutes, which PowerCeilingTests holds.
+        /// </summary>
+        public static long EffectiveOfflineCapSeconds(int vodnikMasteryLevel, int greatWorksStagesPacked)
+            => RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(vodnikMasteryLevel, MaxOfflineSeconds)
+               + Domain.Progression.GreatWorksRegistry.OfflineMinutes(greatWorksStagesPacked) * 60L;
+
         // Modul: what a projection resolved, as MATERIALS BY BASEID rather
         // than as a roll count against a loot table id (offline parity,
         // 2026-09-30). The roll count was granted through GetMaterialString,
@@ -112,7 +126,7 @@ namespace FolkIdle.Server.Engine
             }
 
             // Modul 13: Vodnik Mastery extends the universal offline cap.
-            long effectiveMaxOfflineSeconds = RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(payload.VodnikMasteryLevel, MaxOfflineSeconds);
+            long effectiveMaxOfflineSeconds = EffectiveOfflineCapSeconds(payload.VodnikMasteryLevel, payload.GreatWorksStagesPacked);
 
             // Modul: TIME BEYOND THE CAP IS DISCARDED, DELIBERATELY. This Min is
             // where it goes, and nothing downstream ever sees rawDeltaSeconds

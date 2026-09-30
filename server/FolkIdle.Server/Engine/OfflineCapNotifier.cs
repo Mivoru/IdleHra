@@ -124,12 +124,23 @@ namespace FolkIdle.Server.Engine
                 .Where(m => candidateIds.Contains(m.PlayerId) && m.RaceId == RaceIds.Vodnik)
                 .ToDictionaryAsync(m => m.PlayerId, m => m.MasteryLevel, cancellationToken);
 
+            // Task 84: a built Great Work lengthens the real cap, so the mail must
+            // name the same number the offline projection enforces.
+            var greatWorks = new Dictionary<long, int>();
+            foreach (var row in await db.GreatWorkProgress.AsNoTracking()
+                .Where(g => candidateIds.Contains(g.PlayerId))
+                .ToListAsync(cancellationToken))
+            {
+                greatWorks.TryGetValue(row.PlayerId, out int packed);
+                greatWorks[row.PlayerId] = Domain.Progression.GreatWorksRegistry.WithStage(packed, row.Region, row.Stage);
+            }
+
             int sent = 0;
             foreach (var player in candidates)
             {
                 vodnikLevels.TryGetValue(player.Id, out int vodnikLevel);
-                long capSeconds = RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(
-                    vodnikLevel, OfflineSimulationEngine.MaxOfflineSeconds);
+                greatWorks.TryGetValue(player.Id, out int greatWorksPacked);
+                long capSeconds = OfflineSimulationEngine.EffectiveOfflineCapSeconds(vodnikLevel, greatWorksPacked);
 
                 if (nowEpoch - player.LastLogoutTimestamp < capSeconds) continue;
 

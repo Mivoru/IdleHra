@@ -298,7 +298,16 @@ namespace FolkIdle.Server.Network
         // The step was cleared but its reward could not be saved (a database
         // blip). Nothing is lost: the next cleared step pays every step between
         // what is stored and what it cleared.
-        AscensionRewardNotSaved = 50
+        AscensionRewardNotSaved = 50,
+
+        // Modul: THE GREAT WORKS (task 84). 60 a deposit landed, 61 it also
+        // finished a stage (both are GOOD news), 62 the monument is already
+        // complete. A short stock answers InsufficientMaterials (3) and a save
+        // that failed CheckpointFailed (44). 51-59 are left for the parallel
+        // tasks 83 and 85, which number their codes independently.
+        GreatWorkDeposited = 60,
+        GreatWorkStageBuilt = 61,
+        GreatWorkComplete = 62
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

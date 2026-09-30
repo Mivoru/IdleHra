@@ -169,6 +169,14 @@ namespace FolkIdle.Server.Engine
         // it, because the payload's fight register is swapped per slot and a
         // second character standing at the same boss must not inherit it.
         public int BossAscensionPacked;
+
+        // Modul: TASK 84 - the Great Works. A CACHE of great_works_progress (the
+        // authority), three bits a region holding how many stages are built,
+        // filled at login and refreshed by GreatWorksTickCoordinator.DrainUpdates
+        // after a deposit commits. The bonuses are DERIVED from it on every read
+        // (GreatWorksRegistry.YieldPct / OfflineMinutes), never stored, so there
+        // is no second copy to drift. Not on the wire: the panel reads REST.
+        public int GreatWorksStagesPacked;
         public byte AscensionStep;
         public byte AscensionRegion;
         public System.Guid AscensionCharacterId;

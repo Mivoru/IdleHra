@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Domain.Shared;
 using FolkIdle.Server.Engine;
 using Xunit;
@@ -239,7 +240,15 @@ namespace FolkIdle.Server.Tests
                 // so this is a CAP, not a curve.
                 new("scholar crown", ScholarRate.MaxMultiplier,
                     "ScholarRate.MaxMultiplier - a CAP (crowns have one level)"),
+                // Modul: task 84, the Great Works. Whole percentage points of
+                // extra harvest rolls, paid by GatheringYieldFor (so live and
+                // offline alike) and surviving a rebirth. It is five stages of a
+                // fixed figure on three monuments, so it is a hard CAP.
+                new("great works: yield", 1.0 + GreatWorksRegistry.MaxYieldPct / 100.0,
+                    "GreatWorksRegistry.MaxYieldPct - a CAP (every monument complete)"),
             };
+
+            Assert.InRange(GreatWorksRegistry.MaxYieldPct, 1, 25);
 
             Assert.Equal(1, SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.CrownScholar));
             Assert.InRange(ScholarRate.MaxMultiplier, 1.0, 1.5);
@@ -276,6 +285,29 @@ namespace FolkIdle.Server.Tests
                     $"'{lever.Name}' is {lever.Multiplier:F1}x against {everythingElse:F1}x for the rest - "
                     + "that is the 71.9x codex yield defect of 2026-09-06, again.");
             }
+        }
+
+        [Fact]
+        public void TheGreatWorksOfflineBonusIsACapAndLeavesTheOfflineWindowUnderADay()
+        {
+            // Modul: task 84. The other Great Works bonus is not a multiplier but
+            // MINUTES on the away-time cap, which scales every offline reward
+            // linearly (offline = online, so an hour more away is an hour more of
+            // every stream). Vodnik's 18 h is the ceiling that exists today; the
+            // monuments stack on it, so the ledger line is the whole window.
+            long vodnik = RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(25, OfflineSimulationEngine.MaxOfflineSeconds);
+            int all = 0;
+            for (int r = GreatWorksRegistry.FirstRegion; r <= GreatWorksRegistry.LastRegion; r++) all = GreatWorksRegistry.WithStage(all, r, GreatWorksRegistry.StageCount);
+            long max = OfflineSimulationEngine.EffectiveOfflineCapSeconds(25, all);
+
+            double factor = (double)max / OfflineSimulationEngine.MaxOfflineSeconds;
+            _o.WriteLine($"offline window: base {OfflineSimulationEngine.MaxOfflineSeconds / 3600.0:F1} h, Vodnik {vodnik / 3600.0:F1} h, "
+                + $"+ Great Works {GreatWorksRegistry.MaxOfflineMinutes} min = {max / 3600.0:F2} h ({factor:F2}x the base)");
+
+            Assert.Equal(vodnik + GreatWorksRegistry.MaxOfflineMinutes * 60L, max);
+            Assert.InRange(GreatWorksRegistry.MaxOfflineMinutes, 1, 300);   // the monuments alone add at most five hours
+            Assert.True(max < 24 * 3_600L, "a maxed player must still be cut off before a full day away");
+            Assert.True(factor < 2.0, $"the offline window is {factor:F2}x the base - that is a doubling, not a bonus");
         }
 
         [Fact]

@@ -109,6 +109,7 @@ namespace FolkIdle.Server.Models
 
         // Task 87: the highest Boss Ascension step cleared per player per boss.
         public DbSet<BossAscensionProgress> BossAscensionProgress { get; set; }
+        public DbSet<GreatWorkProgress> GreatWorkProgress { get; set; }
 
         // The new-player funnel (task 39): the first time each player reached
         // each step. See PlayerFunnelEvent and FunnelRecorder.
@@ -298,6 +299,9 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<BossAscensionProgress>()
                 .HasKey(b => new { b.PlayerId, b.Region });
+
+            modelBuilder.Entity<GreatWorkProgress>()
+                .HasKey(g => new { g.PlayerId, g.Region });
 
             modelBuilder.Entity<CosmeticListing>()
                 .HasIndex(l => l.CosmeticItemId)

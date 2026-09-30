@@ -899,6 +899,7 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.UpdateAutoEatThreshold] = LarderTickCoordinator.HandleUpdateAutoEatThreshold,
                 [CommandType.SpendAttributePoint] = AttributeTickCoordinator.HandleSpendAttributePoint,
                 [CommandType.StartBossAscension] = BossAscensionTickCoordinator.HandleStartBossAscension,
+                [CommandType.DepositGreatWork] = GreatWorksTickCoordinator.HandleDepositGreatWork,
                 [CommandType.RespecAttributes] = AttributeTickCoordinator.HandleRespecAttributes,
                 [CommandType.PurchaseSkillTreeLevel] = SkillTreeTickCoordinator.HandlePurchaseSkillTreeLevel,
                 [CommandType.RespecSkillTree] = SkillTreeTickCoordinator.HandleRespecSkillTree,
@@ -1289,6 +1290,8 @@ namespace FolkIdle.Server.Domain.Combat
                 GuildFanoutTickCoordinator.DrainGuildUpdates(_playerRegistry, _activePlayers, _guildMembersIndex);
 
                 VillageTickCoordinator.DrainInfrastructureUpdates(_playerRegistry, _activePlayers);
+
+                GreatWorksTickCoordinator.DrainUpdates(_activePlayers);
 
                 VillageTickCoordinator.DrainRecruitmentUpdates(_playerRegistry, _activePlayers);
 
@@ -2442,8 +2445,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 // never mirrors the 12 h rule itself. Derived
                                 // from VodnikMasteryLevel, which the login
                                 // hydrates, so a relogin cannot read it as 0.
-                                OfflineCapSeconds = (int)RaceMasteryResolver.GetVodnikExtendedOfflineSeconds(
-                                    currentPayload.VodnikMasteryLevel, OfflineSimulationEngine.MaxOfflineSeconds)
+                                OfflineCapSeconds = (int)OfflineSimulationEngine.EffectiveOfflineCapSeconds(
+                                    currentPayload.VodnikMasteryLevel, currentPayload.GreatWorksStagesPacked)
                             };
                             // Modul: this packet carries currentPayload's own
                             // private data (gold, stats, equipment, mana,
@@ -5532,6 +5535,13 @@ namespace FolkIdle.Server.Domain.Combat
             // 2026-09-13 - percentage points of extra harvest rolls, the
             // same units as the race-mastery bonuses above.
             additionalYieldBonus += BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask));
+
+            // Modul: task 84 - the Great Works. Whole percentage points from
+            // every built stage, capped at GreatWorksRegistry.MaxYieldPct
+            // (PowerCeilingTests). It is added HERE, in the one composition, so
+            // the live harvest and the offline projection both pay it, and it
+            // survives a rebirth because the stages live in their own table.
+            additionalYieldBonus += GreatWorksRegistry.YieldPct(payload.GreatWorksStagesPacked);
 
             // Modul: LootLuckPct no longer multiplies the roll COUNT
             // (which previously inflated absolute yield of every
