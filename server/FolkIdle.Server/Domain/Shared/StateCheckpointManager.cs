@@ -1884,6 +1884,22 @@ namespace FolkIdle.Server.Domain.Shared
                         // payloads, and the second pass is skipped there
                         // because the first already advanced the epoch.
                         await GoldLedger.RecordIncomeTallyAsync(dbContext, state.PlayerId, state.PendingGoldIncome);
+                        // Modul: THE SHUTDOWN FLUSH NEVER BANKED THE GOLD
+                        // (2026-09-30). This recorded the tally above and
+                        // dropped the coins it tallies: with Redis down,
+                        // RedisPendingGoldDelta is the only record of gold
+                        // earned since the last checkpoint - and of gold a
+                        // failed flush's ack handed back during
+                        // DrainCheckpointWriterForShutdown. Every deploy lost it
+                        // while gold_income_daily said it had been earned. Same
+                        // increment FlushState applies, and kept once by the
+                        // same epoch sieve as the tally. With Redis up the
+                        // delta is almost always zero here (TrackState moved it
+                        // into the buffer, which StopAndFlushAsync banks after
+                        // this); whatever is still on the payload never
+                        // reached Redis, so banking it cannot pay twice.
+                        // ShutdownGoldBankingTests.
+                        await ApplyPendingGoldDeltaAsync(dbContext, state);
 
                         if (state.Slot1_CharacterId != System.Guid.Empty)
                         {
