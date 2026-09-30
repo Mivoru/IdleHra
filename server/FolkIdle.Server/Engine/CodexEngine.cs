@@ -21,6 +21,15 @@ namespace FolkIdle.Server.Engine
         public int MonsterId;
         public int RaceId;
         public long GainedXp;
+
+        // Modul: how many kills this event carries. ZERO MEANS ONE, the same
+        // convention as CombatLootDropRequest.Kills, so every live-tick site
+        // that builds a KillEvent without naming it still counts one kill. The
+        // offline catch-up sends its whole window as ONE event (owner rule
+        // 2026-09-30: offline codex progress equals online), rather than
+        // thousands of rows through a queue whose batches are lost whole on a
+        // failed commit. GainedXp is then the window's total, not one kill's.
+        public int Kills;
     }
 
     public class CodexEngine
@@ -253,7 +262,7 @@ namespace FolkIdle.Server.Engine
                 foreach (var group in killsToProcess.GroupBy(k => new { k.PlayerId, k.MonsterId }))
                 {
                     var key = new { group.Key.PlayerId, group.Key.MonsterId };
-                    int kills = group.Count();
+                    int kills = group.Sum(k => k.Kills > 0 ? k.Kills : 1);
 
                     // Captured BEFORE the increment below: a boss whose
                     // codex entry did not exist, or existed at zero, has

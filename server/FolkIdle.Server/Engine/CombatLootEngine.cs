@@ -1425,20 +1425,62 @@ namespace FolkIdle.Server.Engine
             long playerId, int monsterId, LootTableEntry[] lootTable,
             float materialQuantityPct, Dictionary<string, long> resolvedCommodityDeltas)
         {
+            if (!TryPickMaterialDrop(Random.Shared, lootTable, materialQuantityPct, out LootTableEntry entry, out int quantity))
+            {
+                return;
+            }
+
+            // Modul: GetMaterialString only covers the original 6
+            // hardcoded gathering materials (ids 1-6) and falls back
+            // to "unknown" for everything else - the 501-525 monster
+            // loot range (ids 250+) needs GetItemBaseId, the same
+            // full-catalog lookup equipment drops already use.
+            string materialItemId = ContentRegistry.GetItemBaseId(entry.ItemId);
+            if (string.IsNullOrEmpty(materialItemId)) return;
+
+            // Modul: THE ONE ACCUMULATOR. It is both what the write applies
+            // (ApplyCommodityDeltasAsync, after the kill loop) and what the
+            // durable retry outbox (audit #18) persists if that write
+            // throws, so the two cannot disagree about what was rolled.
+            resolvedCommodityDeltas.TryGetValue(materialItemId, out long existingDelta);
+            resolvedCommodityDeltas[materialItemId] = existingDelta + quantity;
+
+            PublishLootDrop(playerId, monsterId, entry.ItemId, quantity, qualityTier: 0, Network.ResponseLootDropPacket.DropKindMaterial);
+        }
+
+        /// <summary>
+        /// One weighted material pick from a monster's table and the quantity
+        /// it pays, Plenty included. What a kill's material roll grants once it
+        /// has passed <see cref="MaterialDropChance"/>.
+        /// </summary>
+        /// <remarks>
+        /// Modul: split out 2026-09-30 so the offline catch-up rolls the SAME
+        /// pick (<see cref="RollMaterialsForKills"/>). Its own copy granted one
+        /// unit per roll, scaled the roll count by the codex yield and the
+        /// global drop multiplier - neither of which a live kill's materials
+        /// read - and resolved the id through GetMaterialString, which names
+        /// only six legacy slugs, so every monster material was "unknown" and
+        /// an offline window's combat materials were silently discarded.
+        /// </remarks>
+        internal static bool TryPickMaterialDrop(Random rng, LootTableEntry[] lootTable, float materialQuantityPct, out LootTableEntry entry, out int quantity)
+        {
+            entry = default;
+            quantity = 0;
+
             int totalWeight = 0;
             for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
-            if (totalWeight <= 0) return;
+            if (totalWeight <= 0) return false;
 
-            int roll = Random.Shared.Next(totalWeight);
+            int roll = rng.Next(totalWeight);
             int cumulative = 0;
             for (int i = 0; i < lootTable.Length; i++)
             {
                 cumulative += lootTable[i].Weight;
                 if (roll >= cumulative) continue;
 
-                var entry = lootTable[i];
-                int quantity = entry.MaxQuantity > 0
-                    ? Random.Shared.Next(Math.Max(1, entry.MinQuantity), entry.MaxQuantity + 1)
+                entry = lootTable[i];
+                quantity = entry.MaxQuantity > 0
+                    ? rng.Next(Math.Max(1, entry.MinQuantity), entry.MaxQuantity + 1)
                     : 1;
 
                 // Modul: Plenty, the Fortune bough. Scales the drawn quantity
@@ -1452,24 +1494,47 @@ namespace FolkIdle.Server.Engine
                     quantity = (int)Math.Ceiling(quantity * (1f + materialQuantityPct / 100f));
                 }
 
-                // Modul: GetMaterialString only covers the original 6
-                // hardcoded gathering materials (ids 1-6) and falls back
-                // to "unknown" for everything else - the 501-525 monster
-                // loot range (ids 250+) needs GetItemBaseId, the same
-                // full-catalog lookup equipment drops already use.
-                string materialItemId = ContentRegistry.GetItemBaseId(entry.ItemId);
-                if (string.IsNullOrEmpty(materialItemId)) return;
-
-                // Modul: THE ONE ACCUMULATOR. It is both what the write applies
-                // (ApplyCommodityDeltasAsync, after the kill loop) and what the
-                // durable retry outbox (audit #18) persists if that write
-                // throws, so the two cannot disagree about what was rolled.
-                resolvedCommodityDeltas.TryGetValue(materialItemId, out long existingDelta);
-                resolvedCommodityDeltas[materialItemId] = existingDelta + quantity;
-
-                PublishLootDrop(playerId, monsterId, entry.ItemId, quantity, qualityTier: 0, Network.ResponseLootDropPacket.DropKindMaterial);
-                return;
+                return true;
             }
+
+            return false;
+        }
+
+        /// <summary>
+        /// The material rolls of <paramref name="kills"/> kills of one monster,
+        /// exactly as the kill loop in ProcessMonsterLootDropAsync makes them
+        /// (a <see cref="MaterialDropChance"/> gate, then
+        /// <see cref="TryPickMaterialDrop"/>), summed by BaseId into
+        /// <paramref name="deltas"/>. Returns how many kills dropped one.
+        /// </summary>
+        /// <remarks>
+        /// Modul: the offline catch-up's materials, 2026-09-30. Rolled per kill
+        /// rather than as an expectation because the kill count is bounded
+        /// (OfflineSimulationEngine.MaxOfflineKillsPerSlot) and a loop of
+        /// Random calls is cheap; the result is then a sample of the live
+        /// distribution, not an approximation of it.
+        /// </remarks>
+        internal static int RollMaterialsForKills(Random rng, int monsterId, long kills, float materialQuantityPct, Dictionary<string, long> deltas)
+        {
+            if (kills <= 0) return 0;
+            LootTableEntry[] lootTable = ContentRegistry.GetLootTable(GetMonsterLootTableId(monsterId)).ToArray();
+            if (lootTable.Length == 0) return 0;
+
+            int drops = 0;
+            for (long kill = 0; kill < kills; kill++)
+            {
+                if (rng.NextDouble() >= MaterialDropChance) continue;
+                if (!TryPickMaterialDrop(rng, lootTable, materialQuantityPct, out LootTableEntry entry, out int quantity)) continue;
+
+                string materialItemId = ContentRegistry.GetItemBaseId(entry.ItemId);
+                if (string.IsNullOrEmpty(materialItemId)) continue;
+
+                deltas.TryGetValue(materialItemId, out long existing);
+                deltas[materialItemId] = existing + quantity;
+                drops++;
+            }
+
+            return drops;
         }
 
         /// <summary>

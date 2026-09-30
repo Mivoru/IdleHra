@@ -183,30 +183,9 @@ namespace FolkIdle.Server.Domain.Economy
                 var player = await context.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
                 if (player == null) return (false, 0);
 
-                var charRecord = await context.CharacterRecords.FirstOrDefaultAsync(c => c.PlayerId == playerId && c.Id == player.PlayerGuid);
-                long geneticVector = 0;
-                if (charRecord != null)
-                {
-                    var lineage = await context.CharacterLineages.FirstOrDefaultAsync(l => l.CharacterId == charRecord.Id);
-                    if (lineage != null)
-                    {
-                        geneticVector = lineage.GeneticVector;
-                    }
-                }
+                byte race = await ReadCrafterRaceAsync(context, player);
 
-                var gv = new GeneticVector(geneticVector);
-                byte race = gv.LocusRace.Dominant;
-
-                int quantityProduced = batchSize;
-
-                // Kobold passive: 10% chance to duplicate bar outcome in smelting (Prof 2)
-                if (recipe.ProfessionType == 2 && race == RaceIds.Kobold)
-                {
-                    if (Random.Shared.Next(100) < 10)
-                    {
-                        quantityProduced++;
-                    }
-                }
+                int quantityProduced = batchSize + KoboldExtraUnits(Random.Shared, in recipe, race);
 
                 // Modul: the Vodník passive used to be pointed at from here,
                 // "moved to the item metadata payload in
@@ -252,14 +231,8 @@ namespace FolkIdle.Server.Domain.Economy
                 // craft was free" is a thing a player can notice, while "one of
                 // your two inputs was refunded" is a rounding error they will
                 // never see.
-                int craftLevel = await context.PlayerSkillTreeNodes
-                    .Where(n => n.PlayerId == playerId && n.BranchId == Engine.SkillTreeRegistry.BoughCraft)
-                    .Select(n => n.Level)
-                    .FirstOrDefaultAsync();
-
-                bool materialsRefunded = craftLevel > 0
-                    && Random.Shared.NextDouble() * 100.0 < Engine.SkillTreeRegistry.GetBonusPercent(
-                        Engine.SkillTreeRegistry.BoughCraft, craftLevel);
+                int craftLevel = await ReadCraftBoughLevelAsync(context, playerId);
+                bool materialsRefunded = CraftIsFree(Random.Shared, craftLevel);
 
                 // Modul: the cost scales with the batch and the whole thing is
                 // one transaction, so a batch a player cannot afford consumes
@@ -303,7 +276,7 @@ namespace FolkIdle.Server.Domain.Economy
                 // Granted inside the same Serializable transaction as the
                 // consumption, so a craft is all-or-nothing rather than able
                 // to eat materials and then fail to pay out.
-                await GrantCraftedOutputAsync(context, playerId, recipe, quantityProduced);
+                await GrantCraftedOutputAsync(context, playerId, recipe, quantityProduced + MasterArtisanExtraUnits(Random.Shared));
 
                 // Modul: lifetime statistics. Counted inside the same
                 // transaction as the grant, so the counter cannot disagree with
@@ -350,20 +323,11 @@ namespace FolkIdle.Server.Domain.Economy
 
         private static async Task GrantCraftedOutputAsync(FolkIdleDbContext context, long playerId, ContentRegistry.RecipeDefinition recipe, int quantityProduced)
         {
+            // Modul: the MasterArtisan unit is the CALLER's now
+            // (MasterArtisanExtraUnits), rolled once per craft, so the offline
+            // catch-up - which grants a whole window's crafts in one call -
+            // rolls it as often as the live job does rather than once.
             if (quantityProduced <= 0 || recipe.ResultItemId <= 0) return;
-
-            // Modul: MasterArtisan finally does something. GlobalEventType 3
-            // was scheduled by the rotation like any other event, but no code
-            // anywhere on the server read it - for a quarter of every rotation
-            // the game announced an event with no effect, and the client
-            // banner had to say so. This mirrors DiamondStar's hook in
-            // ForgeSplicingEngine: one comparison, at the point the bonus
-            // applies.
-            if (SimulationEngine.ActiveGlobalEventId == MasterArtisanEventId &&
-                Random.Shared.Next(100) < MasterArtisanBonusYieldPct)
-            {
-                quantityProduced++;
-            }
 
             string resultBaseId = ContentRegistry.GetItemBaseId(recipe.ResultItemId);
             if (string.IsNullOrEmpty(resultBaseId)) return;
@@ -405,6 +369,160 @@ namespace FolkIdle.Server.Domain.Economy
             // Modul: an upsert, not "FOR UPDATE, then insert if missing" - see
             // CommodityLedger for why the missing-row branch was a race.
             await CommodityLedger.AddAsync(context, playerId, resultBaseId, quantityProduced);
+        }
+
+        // Modul: MasterArtisan finally does something. GlobalEventType 3 was
+        // scheduled by the rotation like any other event, but no code anywhere
+        // on the server read it - for a quarter of every rotation the game
+        // announced an event with no effect, and the client banner had to say
+        // so. This mirrors DiamondStar's hook in ForgeSplicingEngine: one
+        // comparison, at the point the bonus applies.
+        internal static int MasterArtisanExtraUnits(Random rng)
+            => SimulationEngine.ActiveGlobalEventId == MasterArtisanEventId
+               && rng.Next(100) < MasterArtisanBonusYieldPct ? 1 : 0;
+
+        // Kobold passive: 10% chance to duplicate bar outcome in smelting (Prof 2).
+        private const int KoboldSmeltingDuplicationPct = 10;
+
+        internal static int KoboldExtraUnits(Random rng, in ContentRegistry.RecipeDefinition recipe, byte race)
+            => recipe.ProfessionType == 2 && race == RaceIds.Kobold
+               && rng.Next(100) < KoboldSmeltingDuplicationPct ? 1 : 0;
+
+        /// <summary>Craft, the Insight bough: whether this craft costs nothing.</summary>
+        internal static bool CraftIsFree(Random rng, int craftBoughLevel)
+            => craftBoughLevel > 0
+               && rng.NextDouble() * 100.0 < Engine.SkillTreeRegistry.GetBonusPercent(
+                   Engine.SkillTreeRegistry.BoughCraft, craftBoughLevel);
+
+        private static Task<int> ReadCraftBoughLevelAsync(FolkIdleDbContext context, long playerId)
+            => context.PlayerSkillTreeNodes
+                .Where(n => n.PlayerId == playerId && n.BranchId == Engine.SkillTreeRegistry.BoughCraft)
+                .Select(n => n.Level)
+                .FirstOrDefaultAsync();
+
+        // The race a craft is judged by: the account's MAIN character
+        // (PlayerGuid), whichever slot holds the job - which is what the live
+        // job has always read.
+        private static async Task<byte> ReadCrafterRaceAsync(FolkIdleDbContext context, PlayerRecord player)
+        {
+            var charRecord = await context.CharacterRecords.FirstOrDefaultAsync(c => c.PlayerId == player.Id && c.Id == player.PlayerGuid);
+            long geneticVector = 0;
+            if (charRecord != null)
+            {
+                var lineage = await context.CharacterLineages.FirstOrDefaultAsync(l => l.CharacterId == charRecord.Id);
+                if (lineage != null)
+                {
+                    geneticVector = lineage.GeneticVector;
+                }
+            }
+
+            return new GeneticVector(geneticVector).LocusRace.Dominant;
+        }
+
+        /// <summary>What an offline window of a crafting job produced.</summary>
+        internal readonly record struct OfflineCraftResult(long Crafts, long UnitsProduced, long UnitsGranted);
+
+        /// <summary>
+        /// An offline window of the crafting JOB: <paramref name="attempts"/>
+        /// craft completions, each judged exactly as
+        /// <see cref="ExecuteCraftingAsync"/> judges one live completion (a
+        /// batch of one) - the Craft bough's free roll, the material check, the
+        /// Kobold unit, the MasterArtisan unit - against one locked read of the
+        /// two materials, then consumed, granted and counted in one write.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE OFFLINE CRAFTER USED TO FIGHT MONSTER 1, 2026-09-30.
+        ///
+        /// OfflineSimulationEngine asked TryGetGatheringNode and otherwise ran
+        /// the combat projection - so a character left crafting fell into
+        /// CalculateCombatProjection with an ActiveActivityId of 5000+, past the
+        /// monster table, and fought fallback monster 1 for the whole window:
+        /// gold, XP and loot for a fight it never had, and not one craft. The
+        /// defect PR #7 fixed in the live tick (ProcessSubTickDispatchTests),
+        /// alive in the path that runs while the player is away.
+        ///
+        /// A refused craft does not stop the job, live or here: the tick keeps
+        /// counting, and a later completion whose free roll succeeds still
+        /// crafts. So the loop runs every attempt rather than breaking at the
+        /// first shortfall - unless no free roll is possible at all.
+        /// </remarks>
+        internal static async Task<OfflineCraftResult> ExecuteOfflineCraftsAsync(
+            FolkIdleDbContext context, long playerId, ContentRegistry.RecipeDefinition recipe, long attempts, Random rng)
+        {
+            if (attempts <= 0 || recipe.ResultItemId <= 0) return default;
+
+            var ownTransaction = context.Database.CurrentTransaction == null
+                ? await context.Database.BeginTransactionAsync(IsolationLevel.Serializable)
+                : null;
+            try
+            {
+                var player = await context.PlayerRecords.FirstOrDefaultAsync(p => p.Id == playerId);
+                if (player == null) return default;
+
+                byte race = await ReadCrafterRaceAsync(context, player);
+                int craftLevel = await ReadCraftBoughLevelAsync(context, playerId);
+
+                string? mat1 = recipe.Mat1Id > 0 && recipe.Mat1Count > 0 ? ContentRegistry.GetItemBaseId(recipe.Mat1Id) : null;
+                string? mat2 = recipe.Mat2Id > 0 && recipe.Mat2Count > 0 ? ContentRegistry.GetItemBaseId(recipe.Mat2Id) : null;
+                bool sharedMaterial = mat1 != null && mat1 == mat2;
+                long have1 = mat1 != null ? (await InventoryAndStashSystem.LockAndReadBalanceAsync(context, playerId, mat1)).Total : 0L;
+                long have2 = mat2 != null && !sharedMaterial ? (await InventoryAndStashSystem.LockAndReadBalanceAsync(context, playerId, mat2)).Total : 0L;
+
+                long spent1 = 0L, spent2 = 0L, crafts = 0L, produced = 0L, artisan = 0L;
+                for (long attempt = 0; attempt < attempts; attempt++)
+                {
+                    if (!CraftIsFree(rng, craftLevel))
+                    {
+                        long need1 = mat1 != null ? recipe.Mat1Count : 0L;
+                        long need2 = mat2 != null ? recipe.Mat2Count : 0L;
+                        bool affordable = sharedMaterial
+                            ? have1 - spent1 - spent2 >= need1 + need2
+                            : have1 - spent1 >= need1 && have2 - spent2 >= need2;
+                        if (!affordable)
+                        {
+                            if (craftLevel <= 0) break;
+                            continue;
+                        }
+                        spent1 += need1;
+                        spent2 += need2;
+                    }
+
+                    crafts++;
+                    produced += 1 + KoboldExtraUnits(rng, in recipe, race);
+                    artisan += MasterArtisanExtraUnits(rng);
+                }
+
+                if (crafts == 0)
+                {
+                    return default;
+                }
+
+                // One consume per material for the whole window. Cannot fail
+                // against the balance read above, which is locked FOR UPDATE
+                // in this same transaction - but if it ever does, nothing is
+                // granted either.
+                if ((spent1 > 0 && !await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat1!, spent1))
+                    || (spent2 > 0 && !await InventoryAndStashSystem.TryConsumeUnifiedAsync(context, playerId, mat2!, spent2)))
+                {
+                    if (ownTransaction != null) await ownTransaction.RollbackAsync();
+                    context.ChangeTracker.Clear();
+                    return default;
+                }
+
+                long granted = produced + artisan;
+                await GrantCraftedOutputAsync(context, playerId, recipe, (int)Math.Min(int.MaxValue, granted));
+                player.TotalItemsCrafted += produced;
+
+                await context.SaveChangesAsync();
+                if (ownTransaction != null) await ownTransaction.CommitAsync();
+
+                Engine.FunnelRecorder.Record(playerId, Engine.FunnelStep.FirstCraft);
+                return new OfflineCraftResult(crafts, produced, granted);
+            }
+            finally
+            {
+                if (ownTransaction != null) await ownTransaction.DisposeAsync();
+            }
         }
 
         private static int ResolveRegionTierForItem(int itemId)

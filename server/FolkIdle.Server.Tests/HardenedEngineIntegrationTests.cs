@@ -1785,10 +1785,14 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public async Task Test_GatheringLootLuck_ShiftsWeightTowardRareEntry()
         {
+            // Catalogue ids (copper_ore common, malachite_ore rare) - the id
+            // space every real loot table and the analytic grant use.
+            Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("copper_ore", out var common));
+            Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("malachite_ore", out var rare));
             var lootTable = new LootTableEntry[]
             {
-                new LootTableEntry { ItemId = 1, Weight = 90 },
-                new LootTableEntry { ItemId = 3, Weight = 10 }
+                new LootTableEntry { ItemId = common.Id, Weight = 90 },
+                new LootTableEntry { ItemId = rare.Id, Weight = 10 }
             };
 
             const long lowLuckPlayerId = 950000012L;
@@ -1804,7 +1808,7 @@ namespace FolkIdle.Server.Tests
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
 
-            string rareMaterialName = ContentRegistry.GetMaterialString(3);
+            string rareMaterialName = ContentRegistry.GetItemBaseId(rare.Id);
             long lowLuckRareQuantity = await verifyDb.CommodityRecords.AsNoTracking()
                 .Where(c => c.PlayerId == lowLuckPlayerId && c.ItemId == rareMaterialName)
                 .Select(c => (long?)c.Quantity).SingleOrDefaultAsync() ?? 0L;
@@ -1899,7 +1903,10 @@ namespace FolkIdle.Server.Tests
             double totalKillsDouble = effectiveElapsedSeconds / secondsPerKill;
             long expectedKills = (long)totalKillsDouble;
             long expectedXpGained = expectedKills * monster.BaseXpReward;
-            int expectedLootRolls = (int)(totalKillsDouble * multipliers.YieldMultiplier);
+            // Modul: a roll per kill, NOT kills x codex yield (offline parity,
+            // 2026-09-30). A live kill's material roll never read the codex
+            // yield; the offline copy did, and this line pinned the copy.
+            int expectedLootRolls = (int)expectedKills;
 
             long expectedXp = expectedXpGained;
             int expectedLevel = 1;
@@ -1940,21 +1947,21 @@ namespace FolkIdle.Server.Tests
             // computed, so the DB commit and quantity math are still exercised for real.
             await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var lootTable = new[] { new LootTableEntry { ItemId = 1, Weight = 100 } };
+                Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("copper_ore", out var copperOre));
+                var lootTable = new[] { new LootTableEntry { ItemId = copperOre.Id, Weight = 100 } };
                 int granted = await OfflineSimulationEngine.GrantAnalyticalLootAsync(verifyDb, testPlayerId, lootTable, expectedLootRolls, 1000);
 
                 Assert.Equal(expectedLootRolls, granted);
 
-                // Modul: GetMaterialString, NOT GetItemBaseId. Analytical loot
-                // resolves its ids through the six-slug gathering namespace, so
-                // loot table id 1 lands in "copper_ore" - which is a different
-                // thing from the catalogue's item id 1 (once
-                // gold_ore_crafting_material, retired 2026-09-24 and now a
-                // hole) and a different thing again from
-                // the village's tier ore. Three namespaces, one number; this
-                // line names the one the granting path actually writes.
+                // Modul: GetItemBaseId, the CATALOGUE (offline parity,
+                // 2026-09-30). This line used to say GetMaterialString and
+                // table id 1 - pinning the six-slug namespace the analytic
+                // grant resolved through, under which every id in a real loot
+                // table (all catalogue ids) came back "unknown" and was
+                // skipped. The grant now writes the key the live gathering
+                // grant writes.
                 var commodity = await verifyDb.CommodityRecords.AsNoTracking()
-                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == ContentRegistry.GetMaterialString(1));
+                    .SingleAsync(c => c.PlayerId == testPlayerId && c.ItemId == ContentRegistry.GetItemBaseId(copperOre.Id));
                 Assert.Equal(expectedLootRolls, commodity.Quantity);
             }
         }

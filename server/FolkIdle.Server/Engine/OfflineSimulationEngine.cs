@@ -22,21 +22,29 @@ namespace FolkIdle.Server.Engine
         // is exactly the drift that made offline loot worse than online loot.
         public const long MaxOfflineSeconds = 43200L;
 
-        private readonly struct LootProjection
+        // Modul: what a projection resolved, as MATERIALS BY BASEID rather
+        // than as a roll count against a loot table id (offline parity,
+        // 2026-09-30). The roll count was granted through GetMaterialString,
+        // which names six legacy slugs, so every catalogued id in a real loot
+        // table came back "unknown" and was skipped: an offline window's
+        // gathering and combat materials were silently thrown away, and the
+        // welcome-back card still counted them as drops.
+        internal readonly struct LootProjection
         {
             public readonly bool IsValid;
-            public readonly int LootTableId;
-            public readonly int LootRolls;
-            public readonly int EquipmentDropsGranted;
-            public readonly float LootLuckPct;
+            /// <summary>What the window granted, by chest BaseId.</summary>
+            public readonly Dictionary<string, long> MaterialDeltas;
+            /// <summary>How many drops that is, for the welcome-back card (rolls won, not units).</summary>
+            public readonly int Drops;
+            /// <summary>Gathering: harvests completed. Combat: kills made.</summary>
+            public readonly long Actions;
 
-            public LootProjection(bool isValid, int lootTableId, int lootRolls, int equipmentDropsGranted = 0, float lootLuckPct = 0f)
+            public LootProjection(bool isValid, Dictionary<string, long>? materialDeltas = null, int drops = 0, long actions = 0)
             {
                 IsValid = isValid;
-                LootTableId = lootTableId;
-                LootRolls = lootRolls;
-                EquipmentDropsGranted = equipmentDropsGranted;
-                LootLuckPct = lootLuckPct;
+                MaterialDeltas = materialDeltas ?? new Dictionary<string, long>();
+                Drops = drops;
+                Actions = actions;
             }
         }
 
@@ -214,6 +222,14 @@ namespace FolkIdle.Server.Engine
             // two descriptions of it.
             int unlockedSlots = CharacterSlotEngine.GetUnlockedSlotCount(payload.TownHallLevel);
 
+            // Modul: TWO PASSES - every other job first, crafting last
+            // (offline parity, 2026-09-30). Live, a crafter and a gatherer run
+            // side by side and a craft refused for want of materials is simply
+            // retried at the next completion, so over a window the crafter
+            // spends what it started with PLUS what the others brought in.
+            // Crafting after them is that total; crafting first would starve
+            // the crafter of everything its own village gathered overnight.
+            for (int pass = 0; pass < 2; pass++)
             for (int slotIndex = 0; slotIndex < unlockedSlots; slotIndex++)
             {
                 if (slotIndex > 0 && !SlotHoldsCharacter(ref payload, slotIndex))
@@ -224,25 +240,45 @@ namespace FolkIdle.Server.Engine
                 SimulationEngine.SwapSlotIntoActiveRegister(ref payload, slotIndex);
                 try
                 {
+                    // Modul: the live tick's dispatch ORDER - crafting, then
+                    // gathering, then combat (SimulationEngine.ProcessSubTick).
+                    // This asked for a gathering node and otherwise ran the
+                    // combat projection, so a crafter (activity 5000+, past the
+                    // monster table) fought monster 1 all night and crafted
+                    // nothing - PR #7's defect, still alive in this path.
+                    bool isCraftingJob = ContentRegistry.TryGetRecipeByActivityId(payload.ActiveActivityId, out ContentRegistry.RecipeDefinition craftingRecipe);
+                    if (isCraftingJob != (pass == 1))
+                    {
+                        continue;
+                    }
+
                     long slotGoldBefore = payload.CurrentGold;
                     long slotXpBefore = payload.CurrentXp;
                     int slotDrops = 0;
 
-                    if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
+                    if (isCraftingJob)
                     {
-                        LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, earningSeconds);
-                        slotDrops += await GrantProjectedLootAsync(db, payload.PlayerId, projection, MaxOfflineLootRolls, recordAsGathered: true);
+                        long attempts = earningSeconds * 10L / SimulationEngine.CraftTicksFor(in craftingRecipe);
+                        var crafted = await CraftingEngine.ExecuteOfflineCraftsAsync(db, payload.PlayerId, craftingRecipe, attempts, Random.Shared);
+                        // Mirrors CraftingTickCoordinator.DrainCraftingCompletions:
+                        // the wire counter tracks what the engine just added to
+                        // PlayerRecords.TotalItemsCrafted.
+                        payload.LifetimeItemsCrafted += crafted.UnitsProduced;
+                        slotDrops += ClampToInt(crafted.UnitsGranted);
+                    }
+                    else if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out GatheringNodeDefinition gatheringNode))
+                    {
+                        LootProjection projection = CalculateGatheringProjection(ref payload, gatheringNode, earningSeconds, Random.Shared);
+                        slotDrops += projection.Drops;
+                        await GrantMaterialDeltasAsync(db, payload.PlayerId, projection.MaterialDeltas, recordAsGathered: true);
                     }
                     else if (payload.ActiveActivityId > 0)
                     {
                         LootProjection projection = CalculateCombatProjection(ref payload, earningSeconds);
                         if (projection.IsValid)
                         {
-                            slotDrops += projection.EquipmentDropsGranted;
-                            slotDrops += await GrantProjectedLootAsync(db, payload.PlayerId, projection, MaxOfflineLootRolls);
-                        }
-                        else if (slotIndex == 0)
-                        {
+                            slotDrops += projection.Drops;
+                            await GrantMaterialDeltasAsync(db, payload.PlayerId, projection.MaterialDeltas, recordAsGathered: false);
                         }
                     }
 
@@ -286,12 +322,49 @@ namespace FolkIdle.Server.Engine
             return payload;
         }
 
-        private static async Task<int> GrantProjectedLootAsync(FolkIdleDbContext db, long playerId, LootProjection projection, int availableInventorySpace, bool recordAsGathered = false)
+        // Modul: one multi-row upsert (CommodityLedger.AddManyAsync), task
+        // 44 - a single statement, so it is all-or-nothing even when a caller
+        // holds no transaction. Gathering while away is gathering, so it is
+        // also written to the material flow (task 79); a combat window's
+        // materials are loot, exactly as CombatLootEngine writes a live kill's.
+        internal static async Task GrantMaterialDeltasAsync(FolkIdleDbContext db, long playerId, Dictionary<string, long> deltas, bool recordAsGathered)
         {
-            // ReadOnlySpan<T> cannot be a parameter of an async method, so the span is
-            // materialized into a plain array before the first await.
-            LootTableEntry[] lootTable = ContentRegistry.GetLootTable(projection.LootTableId).ToArray();
-            return await GrantAnalyticalLootAsync(db, playerId, lootTable, projection.LootRolls, availableInventorySpace, projection.LootLuckPct, recordAsGathered);
+            var materialDeltas = new List<KeyValuePair<string, long>>(deltas.Count);
+            foreach (KeyValuePair<string, long> kvp in deltas)
+            {
+                if (kvp.Value > 0 && !string.IsNullOrEmpty(kvp.Key)) materialDeltas.Add(kvp);
+            }
+            if (materialDeltas.Count == 0)
+            {
+                return;
+            }
+
+            if (!recordAsGathered)
+            {
+                await CommodityLedger.AddManyAsync(db, playerId, materialDeltas);
+                await db.SaveChangesAsync();
+                return;
+            }
+
+            // Modul: task 79. The ledger row is a SECOND statement, so the pair
+            // runs in a transaction when the caller has none - otherwise a
+            // ledger failure would throw out of the login AFTER the grant
+            // landed, and the offline window (not yet stamped) would grant it
+            // again.
+            var ownTransaction = db.Database.CurrentTransaction == null
+                ? await db.Database.BeginTransactionAsync()
+                : null;
+            try
+            {
+                await CommodityLedger.AddManyAsync(db, playerId, materialDeltas);
+                await MaterialLedger.RecordManyAsync(db, playerId, MaterialFlowDirection.Gathered, materialDeltas);
+                await db.SaveChangesAsync();
+                if (ownTransaction != null) await ownTransaction.CommitAsync();
+            }
+            finally
+            {
+                if (ownTransaction != null) await ownTransaction.DisposeAsync();
+            }
         }
 
         // Modul: THIS PATH HAD NO OBSERVABILITY AT ALL - the exact shape
@@ -508,68 +581,113 @@ namespace FolkIdle.Server.Engine
             return overflow;
         }
 
-        private static LootProjection CalculateGatheringProjection(ref TickStatePayload payload, GatheringNodeDefinition node, long elapsedSeconds)
+        // Modul: THE LIVE HARVEST, IN EXPECTATION AND IN BULK (offline parity,
+        // 2026-09-30). Every term is asked of the function the live tick
+        // calls - SimulationEngine.RequiredGatherTicks for the speed,
+        // GatheringYieldFor for the roll count and luck, RollGatherQuantity
+        // for each winner's stack - so there is no second copy here to drift.
+        //
+        // What this used to do instead: roll count = actions x codex yield x
+        // yield trait, which dropped the monolith, both race bonuses, the
+        // Golden Harvest event and the global drop multiplier; one unit per
+        // roll whatever the entry's authored range; and a grant through
+        // GetMaterialString, under which every real gathering item was
+        // "unknown" and skipped. A night of gathering paid mastery XP and no
+        // materials at all.
+        //
+        // Internal, and taking its Random, so OfflineLootParityTests can hold
+        // it against the live tick directly.
+        internal static LootProjection CalculateGatheringProjection(ref TickStatePayload payload, GatheringNodeDefinition node, long elapsedSeconds, Random rng)
         {
-            // Modul: the same two-branch bug, one line up from the XP one -
-            // this decides the SPEED a fishing node gathers at, and it read the
-            // player's mining level to do it. Asked of SimulationEngine, which
-            // owns the mapping.
-            int masteryLevel = Domain.Combat.SimulationEngine.GetMasteryLevel(ref payload, node.ProfessionType);
-
-            // Modul: THE SAME FUNCTION THE LIVE TICK CALLS, at last.
-            //
-            // This kept its own private copy of the formula, and the copy was
-            // the version from before the live one was fixed: it read
-            // CachedCurrentToolTier, which is the FORGE BUILDING'S level rather
-            // than any tool, so an hour offline gathered at a speed set by a
-            // building - no matching tool, no percentage curve, no village
-            // production bonus, no affixes. A player logging out mid-fishing
-            // came back to a different game than the one they left.
-            int toolTier = node.ProfessionType switch
+            // Modul: MASTERY RISES DURING THE WINDOW, and it speeds the node up.
+            // The live tick re-reads the speed on every harvest, so a level
+            // gained at 02:00 makes the rest of the night faster; projecting
+            // the whole window at the level the player logged out with paid
+            // the slow rate for all of it. The window is walked one mastery
+            // level at a time instead - a handful of steps, not a tick loop.
+            long remainingTicks = elapsedSeconds * 10L;
+            long allowedActions = 0;
+            while (remainingTicks > 0 && allowedActions < MaxOfflineGatherActions)
             {
-                0 => payload.AxeToolTier,
-                1 => payload.PickaxeToolTier,
-                _ => payload.RodToolTier
-            };
-            int villageProductionLevel = node.ProfessionType switch
-            {
-                0 => payload.LumberjackLevel,
-                1 => payload.MineLevel,
-                _ => 0
-            };
-            int requiredTicks = Domain.Shared.GatheringToolEngine.ComputeRequiredTicks(
-                node.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel,
-                payload.ToolGatherSpeedPct
-                + SkillTreeRegistry.GetBonusTenthsOfPercent(
-                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
-                + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask)));
+                int requiredTicks = Domain.Combat.SimulationEngine.RequiredGatherTicks(ref payload, in node);
+                if (requiredTicks <= 0) break;
 
-            double actionIntervalSeconds = requiredTicks / 10.0;
-            double totalActionsDouble = elapsedSeconds / actionIntervalSeconds;
+                long affordable = Math.Min(remainingTicks / requiredTicks, MaxOfflineGatherActions - allowedActions);
+                if (affordable <= 0) break;
 
-            long allowedActions = (long)Math.Min(totalActionsDouble, MaxOfflineGatherActions);
-            double usedSeconds = allowedActions * actionIntervalSeconds;
+                long step = affordable;
+                if (node.BaseMasteryXpReward > 0)
+                {
+                    long xpToNext = Domain.Combat.SimulationEngine.MasteryXpToNextLevel(ref payload, node.ProfessionType);
+                    long actionsToNext = (xpToNext + node.BaseMasteryXpReward - 1) / node.BaseMasteryXpReward;
+                    step = Math.Min(affordable, Math.Max(1L, actionsToNext));
+                }
 
-            long masteryXpGained = allowedActions * node.BaseMasteryXpReward;
-            ApplyGatheringMasteryXp(ref payload, node.ProfessionType, masteryXpGained);
-
-            // Modul: yield traits (BloodlineBonuses) still scale roll
-            // COUNT. LootLuckPct no longer does - it now shifts per-item weight
-            // distribution toward rare entries inside GrantAnalyticalLootAsync,
-            // instead of inflating the absolute volume of every entry
-            // (including common trash) in fixed proportion.
-            int gatherProjectionAgePhase = 1;
-            int gatherProjectionRaceId = 0;
-            if (payload.Slot1_CharacterId != Guid.Empty)
-            {
-                gatherProjectionAgePhase = payload.Slot1_AgePhase;
-                gatherProjectionRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
+                ApplyGatheringMasteryXp(ref payload, node.ProfessionType, step * node.BaseMasteryXpReward);
+                allowedActions += step;
+                remainingTicks -= step * requiredTicks;
             }
-            CombatStats gatherProjectionStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherProjectionAgePhase, payload.CompletedAreaFlags, gatherProjectionRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
-            double traitYieldFactor = 1.0 + BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask)) / 100.0;
 
-            int lootRolls = (int)(allowedActions * payload.CachedCodexYieldMultiplier * traitYieldFactor);
-            return new LootProjection(true, node.ActivityId, lootRolls, 0, gatherProjectionStats.LootLuckPct);
+            LootTableEntry[] lootTable = ContentRegistry.GetLootTable(node.ActivityId).ToArray();
+            if (allowedActions <= 0 || lootTable.Length == 0)
+            {
+                return new LootProjection(true, actions: allowedActions);
+            }
+
+            Domain.Combat.SimulationEngine.GatheringYield yield =
+                Domain.Combat.SimulationEngine.GatheringYieldFor(ref payload, in node, GlobalEngineState.GlobalDropMultiplier);
+
+            // The live harvest makes MultiplierPct / 100 rolls, plus one more
+            // with probability (MultiplierPct % 100) / 100. Over n harvests
+            // that is n * whole + Binomial(n, fraction): the same distribution,
+            // drawn once.
+            long whole = yield.MultiplierPct / 100;
+            double fraction = (yield.MultiplierPct % 100) / 100.0;
+            int cappedActions = (int)Math.Min(allowedActions, int.MaxValue);
+            long rolls = allowedActions * whole + SampleBinomial(rng, cappedActions, fraction);
+            int rollCount = (int)Math.Min(rolls, MaxOfflineLootRolls);
+
+            Dictionary<string, long> deltas = DrawGatheringMaterials(lootTable, rollCount, yield.LuckWeightBonus, rng);
+            return new LootProjection(true, deltas, rollCount, allowedActions);
+        }
+
+        /// <summary>
+        /// <paramref name="rollCount"/> live gathering rolls against one table:
+        /// which entry each roll picks (weight + the flat luck bonus, drawn as
+        /// a multinomial by <see cref="DrawLootCountsByEntry"/>) and the stack
+        /// each winner grants (<c>SimulationEngine.RollGatherQuantity</c>),
+        /// summed by chest BaseId - the key the live grant writes
+        /// (CombatLootEngine.GrantGatheredMaterialsAsync resolves through
+        /// GetItemBaseId).
+        /// </summary>
+        internal static Dictionary<string, long> DrawGatheringMaterials(LootTableEntry[] lootTable, int rollCount, int luckWeightBonus, Random rng)
+        {
+            var deltas = new Dictionary<string, long>();
+            long[] perEntry = DrawLootCountsByEntry(lootTable, rollCount, luckWeightBonus, rng);
+            for (int i = 0; i < perEntry.Length; i++)
+            {
+                if (perEntry[i] <= 0) continue;
+                string baseId = ContentRegistry.GetItemBaseId(lootTable[i].ItemId);
+                if (string.IsNullOrEmpty(baseId)) continue;
+
+                long quantity;
+                if (lootTable[i].MaxQuantity > lootTable[i].MinQuantity)
+                {
+                    quantity = 0;
+                    for (long k = 0; k < perEntry[i]; k++)
+                    {
+                        quantity += Domain.Combat.SimulationEngine.RollGatherQuantity(rng, in lootTable[i]);
+                    }
+                }
+                else
+                {
+                    quantity = perEntry[i];
+                }
+
+                deltas.TryGetValue(baseId, out long existing);
+                deltas[baseId] = existing + quantity;
+            }
+            return deltas;
         }
 
         /// <summary>
@@ -658,7 +776,7 @@ namespace FolkIdle.Server.Engine
             int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
             if (fallbackId <= 0 || fallbackId > ContentRegistry.Monsters.Length)
             {
-                return new LootProjection(false, 0, 0);
+                return new LootProjection(false);
             }
 
             MonsterDefinition activeMonster = ContentRegistry.Monsters[fallbackId - 1];
@@ -719,7 +837,7 @@ namespace FolkIdle.Server.Engine
 
             if (double.IsInfinity(secondsPerKillEstimate) || secondsPerKillEstimate <= 0.0 || activeMonster.MaxHp <= 0)
             {
-                return new LootProjection(false, 0, 0);
+                return new LootProjection(false);
             }
 
             OfflineCombatSustain sustain = ProjectCombatSustain(in payload, in combatStats, fallbackId, elapsedSeconds);
@@ -750,19 +868,57 @@ namespace FolkIdle.Server.Engine
                 payload.RequiresRedisFlush = true;
             }
 
-            // Modul: OFFLINE EQUIPMENT NOW ROLLS EXACTLY AS ONLINE DOES.
-            //
-            // This used to enqueue ONE REQUEST PER KILL, capped at 500, each
-            // costing its own scope, SERIALIZABLE transaction and commit. The
-            // cap was there for that cost - but equipment drops at 5% a kill,
-            // so 500 requests is 25 pieces however long you were away. A twelve
-            // hour window at fifteen seconds a kill earns 144 pieces online and
-            // paid 25, and the materials beside them were uncapped, which is
-            // precisely the reported "offline drops me nothing good".
-            //
-            // One request now carries the whole window and the loot engine
-            // rolls it inside a single transaction, so the rate is the online
-            // rate and the cost is one transaction rather than thousands.
+            // Everything a kill drops, for this window's kills - see
+            // ProjectCombatLoot. The kill COUNT is this method's; what each
+            // kill pays is the live kill's.
+            return ProjectCombatLoot(ref payload, in combatStats, fallbackId, totalKills, Random.Shared);
+        }
+
+        /// <summary>
+        /// What <paramref name="totalKills"/> kills of one monster drop, by the
+        /// live kill's own rules - every stream a live kill produces besides
+        /// its gold and XP.
+        /// </summary>
+        /// <remarks>
+        /// Modul: OFFLINE PARITY, owner rule 2026-09-30: offline and online give
+        /// the same per hour, drops included. Per stream:
+        ///
+        /// EQUIPMENT, the boss guarantee and COSMETIC CHESTS - one
+        /// CombatLootDropRequest carrying the window's kills, built by the same
+        /// CombatLootDropRequest.Build the live tick uses, rolled by the same
+        /// kill loop in CombatLootEngine. It used to enqueue one request per
+        /// kill capped at 500, which is 25 pieces however long you were away;
+        /// the loot engine now rolls the whole window in one transaction.
+        ///
+        /// MATERIALS - CombatLootEngine.RollMaterialsForKills, the live kill
+        /// loop's own gate and pick. This path used to grant
+        /// kills x codex yield x global drop multiplier rolls, one unit each,
+        /// through GetMaterialString - three differences from a live kill, and
+        /// the last one discarded every monster material as "unknown". Rolled
+        /// here at login rather than on the loot engine's thread (the requests
+        /// skip their material roll) so the welcome-back card can count them.
+        ///
+        /// DIAMONDS - Binomial(kills, OrdinaryKillDiamondChance), bosses none;
+        /// the offline catch-up paid none at all before.
+        ///
+        /// CODEX - one KillEvent carrying the window's kills, so codex levels,
+        /// region completion, the race unlock and the first-clear trophy all
+        /// see a kill made while away. They saw none.
+        ///
+        /// Internal and taking its Random so OfflineLootParityTests can drive it.
+        /// </remarks>
+        internal static LootProjection ProjectCombatLoot(ref TickStatePayload payload, in CombatStats combatStats, int monsterId, long totalKills, Random rng)
+        {
+            if (totalKills <= 0 || monsterId < 1 || monsterId > ContentRegistry.Monsters.Length)
+            {
+                return new LootProjection(true);
+            }
+
+            MonsterDefinition monster = ContentRegistry.Monsters[monsterId - 1];
+
+            // Modul: a RUNAWAY GUARD on how many kills one login may hand the
+            // loot engine - see MaxOfflineKillsPerSlot. Every stream below uses
+            // this same count, so none of them can disagree about the window.
             long killsToRoll = Math.Min(totalKills, MaxOfflineKillsPerSlot);
 
             // Golden Fleece across the window. The counter advances on every
@@ -776,41 +932,61 @@ namespace FolkIdle.Server.Engine
             long fleeceKills = payload.Skill_GoldenFleece > 0 ? fleeceProcs : 0L;
             long plainKills = killsToRoll - fleeceKills;
 
-            // Materials are skipped on these requests because this method's own
-            // projection below already grants the window's materials in bulk.
-            // Rolling them here as well was a double grant, hidden by the cap.
+            CombatLootDropRequest plainRequest = CombatLootDropRequest.Build(
+                in payload, in combatStats, monsterId,
+                kills: (int)plainKills, bonusRarityTiers: 0, skipMaterialRoll: true, source: DropSource.Offline);
             if (plainKills > 0)
             {
-                CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
-                    in payload, in combatStats, fallbackId,
-                    kills: (int)plainKills, bonusRarityTiers: 0, skipMaterialRoll: true, source: DropSource.Offline));
+                CombatLootEngine.DropRequestQueue.Enqueue(plainRequest);
             }
             if (fleeceKills > 0)
             {
                 CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
-                    in payload, in combatStats, fallbackId,
+                    in payload, in combatStats, monsterId,
                     kills: (int)fleeceKills,
                     bonusRarityTiers: Domain.Combat.SimulationEngine.GoldenFleeceBonusTiers,
                     skipMaterialRoll: true,
                     source: DropSource.Offline));
             }
 
-            // Modul: the global drop multiplier reaches offline play too. The
-            // live tick scales its loot rolls by GlobalEngineState
-            // .GlobalDropMultiplier (100 = normal, raised by an admin for an
-            // event); this path ignored it, so a double-drop weekend paid
-            // double only to players who sat and watched.
-            int lootRolls = (int)(totalKillsDouble
-                * payload.CachedCodexYieldMultiplier
-                * (GlobalEngineState.GlobalDropMultiplier / 100.0));
+            // Materials: the live roll, per kill. Plenty comes off the request
+            // Build composed, so it is the figure a live kill's request carries.
+            var materialDeltas = new Dictionary<string, long>();
+            int materialDrops = CombatLootEngine.RollMaterialsForKills(
+                rng, monsterId, killsToRoll, plainRequest.MaterialQuantityPct, materialDeltas);
 
-            // Modul: the equipment component of this count is 0, not a guess.
-            // Equipment is rolled later, on CombatLootEngine's own thread, so
-            // nothing here knows how many pieces fell. It used to report the
-            // REQUEST count, which overstated the truth twentyfold - a 5% roll
-            // reported as a drop. The summary counts what this method actually
-            // granted; the gear arrives in the chest either way.
-            return new LootProjection(true, activeMonster.LootTableId, lootRolls, 0, combatStats.LootLuckPct);
+            // Diamonds: the same chance a live ordinary kill rolls, drawn once
+            // for the window.
+            if (Domain.Combat.SimulationEngine.KillCanPayDiamond(monsterId))
+            {
+                long diamonds = SampleBinomial(rng, (int)killsToRoll, Domain.Combat.SimulationEngine.OrdinaryKillDiamondChance);
+                if (diamonds > 0)
+                {
+                    payload.SetPremiumCurrency((int)Math.Min(int.MaxValue, (long)payload.PremiumCurrency + diamonds));
+                    payload.IsDirty = true;
+                }
+            }
+
+            // Codex: the live kill's KillEvent, carrying the window. GainedXp is
+            // what the live kill sends per kill (the seasonal figure,
+            // BaseXpReward at the live XP multiplier), times the kills.
+            int codexRaceId = payload.Slot1_CharacterId != Guid.Empty ? (int)(payload.Slot1_GeneticVector & 0xFF) : 0;
+            int finalXpMultiplier = Domain.Combat.SimulationEngine.LiveKillXpMultiplierPct(in payload, GlobalEngineState.GlobalXpMultiplier);
+            long seasonalXpPerKill = (long)monster.BaseXpReward * finalXpMultiplier / 100L;
+            CodexEngine.KillEventQueue.Enqueue(new KillEvent
+            {
+                PlayerId = payload.PlayerId,
+                MonsterId = monsterId,
+                RaceId = codexRaceId,
+                GainedXp = seasonalXpPerKill * killsToRoll,
+                Kills = (int)killsToRoll,
+            });
+
+            // Modul: the equipment component of the drop count is 0, not a
+            // guess. Equipment is rolled later, on CombatLootEngine's own
+            // thread, so nothing here knows how many pieces fell. It used to
+            // report the REQUEST count, which overstated the truth twentyfold.
+            return new LootProjection(true, materialDeltas, materialDrops, killsToRoll);
         }
 
         // Modul: extracted out of CalculateCombatProjection, 2026-09-16, to
@@ -945,17 +1121,22 @@ namespace FolkIdle.Server.Engine
             Domain.Combat.SimulationEngine.ApplyBulkMasteryXp(ref payload, professionType, xpGained);
         }
 
-        // Isolated so it can be tested directly against a hand-built loot table,
-        // since ContentRegistry's real loot tables currently carry no entries.
+        // Isolated so it can be tested directly against a hand-built loot table.
         //
-        // Modul: LootLuckPct no longer scales rollCount (that inflated the
+        // Modul: LootLuckPct does not scale rollCount (that inflated the
         // absolute volume of every entry, common trash and rare drops alike,
-        // in fixed proportion). It now adds a flat weight bonus to every
-        // entry's selection weight, mirroring the live-tick gathering roll's
-        // identical fix - a fixed addition is a far larger relative increase
-        // for a low-weight (rare) entry than a high-weight (common) one, so
-        // higher luck shifts the selection distribution toward rare drops
-        // without changing the total number of rolls.
+        // in fixed proportion). It adds a flat weight bonus to every entry's
+        // selection weight - GatheringYield.LuckWeightBonusFor, the live
+        // harvest's own conversion - so higher luck shifts the selection
+        // toward rare drops without changing the total number of rolls.
+        //
+        // Modul: THE CATALOGUE, NOT THE SIX SLUGS (offline parity,
+        // 2026-09-30). Ids resolve through GetItemBaseId, the key the live
+        // gathering grant writes. They went through GetMaterialString, which
+        // knows ids 1-6 as legacy slugs and everything else as "unknown", so
+        // every item in every real gathering table was skipped - and ids 1-6
+        // landed in the wrong namespace. The tests that pinned that id space
+        // had pinned the defect.
         internal static async Task<int> GrantAnalyticalLootAsync(FolkIdleDbContext db, long playerId, LootTableEntry[] lootTable, int rollCount, int availableInventorySpace, float lootLuckPct = 0f, bool recordAsGathered = false)
         {
             if (lootTable.Length == 0 || rollCount <= 0 || availableInventorySpace <= 0)
@@ -963,65 +1144,16 @@ namespace FolkIdle.Server.Engine
                 return 0;
             }
 
-            int luckWeightBonus = (int)(lootLuckPct * 0.1f);
-            if (luckWeightBonus < 0) luckWeightBonus = 0;
+            int rollsToExecute = Math.Min(rollCount, availableInventorySpace);
+            int luckWeightBonus = Domain.Combat.SimulationEngine.GatheringYield.LuckWeightBonusFor(lootLuckPct);
 
-            int totalWeight = 0;
-            for (int i = 0; i < lootTable.Length; i++)
-            {
-                totalWeight += lootTable[i].Weight + luckWeightBonus;
-            }
-
-            if (totalWeight <= 0)
+            Dictionary<string, long> deltas = DrawGatheringMaterials(lootTable, rollsToExecute, luckWeightBonus, Random.Shared);
+            if (deltas.Count == 0)
             {
                 return 0;
             }
 
-            int rollsToExecute = Math.Min(rollCount, availableInventorySpace);
-
-            Dictionary<int, long> grantedQuantities = DrawLootCounts(lootTable, rollsToExecute, luckWeightBonus, Random.Shared);
-
-            // Modul: one multi-row upsert (CommodityLedger.AddManyAsync), task
-            // 44 - a single statement, so it is all-or-nothing even when a
-            // caller holds no transaction.
-            var materialDeltas = new List<KeyValuePair<string, long>>(grantedQuantities.Count);
-            foreach (KeyValuePair<int, long> kvp in grantedQuantities)
-            {
-                string materialName = ContentRegistry.GetMaterialString(kvp.Key);
-                if (materialName == "unknown")
-                {
-                    continue;
-                }
-                materialDeltas.Add(new KeyValuePair<string, long>(materialName, kvp.Value));
-            }
-            if (!recordAsGathered)
-            {
-                await CommodityLedger.AddManyAsync(db, playerId, materialDeltas);
-                await db.SaveChangesAsync();
-                return rollsToExecute;
-            }
-
-            // Modul: task 79. Gathering while away is gathering (a combat
-            // projection's material drops are loot, not the material flow).
-            // The ledger row is a SECOND statement, so the pair runs in a
-            // transaction when the caller has none - otherwise a ledger
-            // failure would throw out of the login AFTER the grant landed, and
-            // the offline window (not yet stamped) would grant it again.
-            var ownTransaction = db.Database.CurrentTransaction == null
-                ? await db.Database.BeginTransactionAsync()
-                : null;
-            try
-            {
-                await CommodityLedger.AddManyAsync(db, playerId, materialDeltas);
-                await MaterialLedger.RecordManyAsync(db, playerId, MaterialFlowDirection.Gathered, materialDeltas);
-                await db.SaveChangesAsync();
-                if (ownTransaction != null) await ownTransaction.CommitAsync();
-            }
-            finally
-            {
-                if (ownTransaction != null) await ownTransaction.DisposeAsync();
-            }
-
+            await GrantMaterialDeltasAsync(db, playerId, deltas, recordAsGathered);
             return rollsToExecute;
         }
 
@@ -1043,6 +1175,22 @@ namespace FolkIdle.Server.Engine
         internal static Dictionary<int, long> DrawLootCounts(LootTableEntry[] lootTable, int rollCount, int luckWeightBonus, Random rng)
         {
             var counts = new Dictionary<int, long>();
+            long[] perEntry = DrawLootCountsByEntry(lootTable, rollCount, luckWeightBonus, rng);
+            for (int i = 0; i < perEntry.Length; i++)
+            {
+                if (perEntry[i] <= 0) continue;
+                counts.TryGetValue(lootTable[i].ItemId, out long existing);
+                counts[lootTable[i].ItemId] = existing + perEntry[i];
+            }
+            return counts;
+        }
+
+        // The same draw, kept per ENTRY rather than per ItemId, because two
+        // entries for one item can carry different quantity ranges and the
+        // stack each winner grants belongs to its entry.
+        internal static long[] DrawLootCountsByEntry(LootTableEntry[] lootTable, int rollCount, int luckWeightBonus, Random rng)
+        {
+            var counts = new long[lootTable.Length];
             if (lootTable.Length == 0 || rollCount <= 0)
             {
                 return counts;
@@ -1080,12 +1228,7 @@ namespace FolkIdle.Server.Engine
 
                 remainingWeight -= w;
                 remainingRolls -= drawn;
-
-                if (drawn > 0)
-                {
-                    counts.TryGetValue(lootTable[i].ItemId, out long existing);
-                    counts[lootTable[i].ItemId] = existing + drawn;
-                }
+                counts[i] += drawn;
             }
 
             return counts;

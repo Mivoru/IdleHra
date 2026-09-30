@@ -58,8 +58,15 @@ namespace FolkIdle.Server.Tests
                 Assert.True(
                     source.Contains("BloodlineBonuses.ApplyMaxHp(") || source.Contains("SimulationEngine.EffectiveMaxMilliHpFor("),
                     $"{path} neither applies the bloodline health formula nor reads the live bar");
-                Assert.Contains("BloodlineBonuses.GatherSpeedBonusPct(", source);
-                Assert.Contains("BloodlineBonuses.GatherYieldBonusPct(", source);
+                // Offline asks the live tick's own gathering functions now
+                // (offline parity, 2026-09-30) rather than holding a copy that
+                // also calls the bloodline terms.
+                Assert.True(
+                    source.Contains("BloodlineBonuses.GatherSpeedBonusPct(") || source.Contains("SimulationEngine.RequiredGatherTicks("),
+                    $"{path} neither applies the bloodline gather speed nor asks the live speed");
+                Assert.True(
+                    source.Contains("BloodlineBonuses.GatherYieldBonusPct(") || source.Contains("SimulationEngine.GatheringYieldFor("),
+                    $"{path} neither applies the bloodline gather yield nor asks the live yield");
                 Assert.DoesNotContain("BonusPercentFor(payload.Aptitude_", source);
                 Assert.DoesNotContain("LocusYield", source);
             }

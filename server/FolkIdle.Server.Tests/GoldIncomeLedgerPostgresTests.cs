@@ -347,8 +347,10 @@ namespace FolkIdle.Server.Tests
         public async Task OfflineGathering_IsGathered_ButOfflineCombatLoot_IsNot()
         {
             var player = await CreatePlayerAsync();
-            // The analytic path's own id space (ContentRegistry.GetMaterialString).
-            var table = new[] { new LootTableEntry { ItemId = ContentRegistry.GetMaterialId("copper_ore"), Weight = 100 } };
+            // The catalogue id space, which the analytic grant resolves through
+            // (GetItemBaseId) since offline parity, 2026-09-30.
+            Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("copper_ore", out var copperOre));
+            var table = new[] { new LootTableEntry { ItemId = copperOre.Id, Weight = 100 } };
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
