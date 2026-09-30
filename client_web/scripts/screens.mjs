@@ -327,7 +327,14 @@ export async function navButton(page, name) {
     }
   }
   if (!(await target.isVisible().catch(() => false))) {
-    const toggle = page.locator('header .group', { has: target }).locator('[data-group-toggle]').first();
+    // Modul: `has:` is evaluated INSIDE each .group, so it must be a relative
+    // locator - `target` starts at `header nav`, which is never inside a
+    // group, and matched nothing: every desktop navigation timed out. And
+    // includeHidden, because a closed group's entries are display: none.
+    const toggle = page
+      .locator('header .group', { has: page.getByRole('button', { name: pattern, includeHidden: true }) })
+      .locator('[data-group-toggle]')
+      .first();
     if (await toggle.isVisible().catch(() => false)) {
       await toggle.click({ timeout: 5000 });
       await page.waitForTimeout(150);

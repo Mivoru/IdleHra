@@ -162,7 +162,10 @@ await page.getByRole('button', { name: 'Sign in' }).click();
 await page.locator('input[type="email"]').fill('dev@folkidle.local');
 await page.locator('input[type="password"]').fill('FolkIdleDev123!');
 await page.getByRole('button', { name: 'Sign in', exact: true }).last().click();
-await page.waitForSelector('text=Combat', { timeout: 20000 });
+// Modul: not 'text=Combat' - since task 82 the desktop header folds Combat
+// into the Play dropdown, so the label exists but is never visible. The
+// header plus the first state packet (below) is what signed in means.
+await page.waitForSelector('header', { timeout: 20000 });
 await page.waitForFunction(
   () => !document.body.innerText.includes('Waiting for the first state snapshot'),
   { timeout: 20000 },
@@ -463,6 +466,21 @@ await page.waitForTimeout(4000);
           restored = ((await apiGet('/api/v1/player/worn'))?.Pieces ?? []).some((p) => p.InstanceId === previous.InstanceId);
         }
         record('the fixture gets its own piece back after the loot-row Wear', restored, `instance ${previous.InstanceId}`);
+      }
+      // Modul: THE SLOT WAS EMPTY BEFORE. The round-trip above only ran when the
+      // main character already wore something there, so on a main that was
+      // unarmed (a fixture whose gear sat on another roster slot) the drop
+      // stayed worn for good and the state was never restored. Restoring what
+      // was touched means taking the drop off again, on the same character
+      // (the Wear and this both use no TargetGuid = the main character).
+      if (worn && !previous) {
+        await page.evaluate((slot) => globalThis.__folkidleUnequip?.(slot), worn.SlotIndex);
+        let cleared = false;
+        for (let i = 0; i < 20 && !cleared; i++) {
+          await page.waitForTimeout(500);
+          cleared = !((await apiGet('/api/v1/player/worn'))?.Pieces ?? []).some((p) => p.SlotIndex === worn.SlotIndex);
+        }
+        record('an empty slot is emptied again after the loot-row Wear', cleared, `slot ${worn.SlotIndex}`);
       }
     }
   }
@@ -1195,16 +1213,35 @@ await page.waitForTimeout(600);
   record('chat offers a whispers channel', hasWhispers);
 
   if (hasWhispers) {
+    // Modul: the recipient must exist on ANY database, not only the owner's
+    // (the old hardcoded name was an account that lives in one dev DB, so a
+    // fresh one failed both checks below and added a 404). Register a
+    // throwaway over the same REST the client uses - it is a second account
+    // by construction, which whispering to yourself would not be.
+    const whisperStamp = Date.now();
+    const whisperName = `exercise${(whisperStamp + 7) % 1_000_000}`;
+    const whisperReg = await fetch(`${API_BASE}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: `${whisperName}w${whisperStamp}@folkidle.local`,
+        password: 'FolkIdleExercise123!',
+        username: whisperName,
+        deviceId: `exercise-whisper-${whisperStamp}`,
+      }),
+    }).then((r) => r.status).catch(() => 0);
+    record('a whisper recipient account can be registered', whisperReg >= 200 && whisperReg < 300, `${whisperName} -> HTTP ${whisperReg}`);
+
     await whisperTab.first().click();
     await page.waitForTimeout(400);
 
     // The recipient is resolved by NAME to a player id before the message is
-    // sent, so this needs a real second account - the local database has one.
+    // sent, so this needs a real second account - registered just above.
     const target = page.getByPlaceholder(/who|player|name/i).first();
     const composer = page.getByPlaceholder(/Say something|Message|whisper/i).last();
 
     if ((await target.count()) > 0 && (await composer.count()) > 0) {
-      await target.fill('michal');
+      await target.fill(whisperName);
       await composer.fill(stamp);
       await composer.press('Enter');
       await page.waitForTimeout(1500);
@@ -1241,9 +1278,9 @@ await page.waitForTimeout(600);
       await page.getByRole('button', { name: 'Whispers', exact: true }).first().click();
       await page.waitForTimeout(1200);
 
-      const listed = page.locator('.thread', { hasText: 'michal' }).first();
+      const listed = page.locator('.thread', { hasText: whisperName }).first();
       const inList = (await listed.count()) > 0;
-      record('the whisper list survives a reload', inList, inList ? 'michal listed' : 'no thread rendered');
+      record('the whisper list survives a reload', inList, inList ? `${whisperName} listed` : 'no thread rendered');
 
       if (inList) {
         await listed.click();
@@ -3559,6 +3596,17 @@ await go('Ancestors');
     // a slot badge.
     const row = page.locator('.panel li').filter({ has: page.locator('.acts .field') }).first();
     const fingerprint = (await row.locator('.apts').innerText()).replace(/\s+/g, ' ').trim();
+    // Modul: WHO SLOT 1 BELONGED TO, so the swap can be undone. It used to be
+    // left in place: the main character (the fixture's only armed one) went to
+    // the bench, the fielded ancestor wore nothing, and the tutorial's "wear
+    // your weapon" step then fenced every screen for the geometry checkers
+    // and every later run until a --seed-dev.
+    const displacedId = await page
+      .locator('.panel li')
+      .filter({ has: page.locator('.fielded', { hasText: /^slot 1$/ }) })
+      .first()
+      .getAttribute('data-character-id')
+      .catch(() => null);
 
     await row.locator('.field-slot').first().click();
     await page.waitForTimeout(3000);
@@ -3570,6 +3618,22 @@ await go('Ancestors');
       `${fingerprint} -> ${nowFielded.length} fielded`,
     );
     await dismissToasts();
+
+    // Put slot 1 back the way it was. Not a click: the ancestor now in slot 1
+    // wears nothing, so the tutorial's guided fence covers the Hall at once.
+    if (displacedId !== null) {
+      await page.evaluate((id) => globalThis.__folkidleAssignSlot?.(id, 0), displacedId);
+      let back = -1;
+      for (let i = 0; i < 20 && back !== 0; i++) {
+        await page.waitForTimeout(500);
+        const hall = await apiGet('/api/v1/ancestors/hall');
+        back = (hall?.Members ?? []).find((m) => m.CharacterId === displacedId)?.PlayableSlot ?? -1;
+      }
+      record('fielding is undone: slot 1 holds who it held before', back === 0, back === 0 ? '' : `playable slot ${back}`);
+      await dismissToasts();
+    } else {
+      record('fielding is undone: slot 1 holds who it held before', false, 'slot 1 was empty or not found before the swap');
+    }
   }
 }
 
@@ -3612,8 +3676,11 @@ await go('Ancestors');
 
   const registered = await fresh
     .waitForFunction(
+      // Modul: the Combat ENTRY, not the word. innerText skips display:none,
+      // and since task 82 a desktop header keeps Combat in the closed Play
+      // group - the account was in the game and the check said it was not.
       () => !document.body.innerText.includes('Waiting for the first state snapshot')
-        && /\bCombat\b/.test(document.body.innerText),
+        && document.querySelector('header [data-nav="combat"]') !== null,
       { timeout: 25000 },
     )
     .then(() => true)
@@ -4035,7 +4102,7 @@ const otherMisses = missedUrls.filter((u) => !u.includes('/audio/')).length;
 record(
   'the only failed request is the deliberate unknown-player lookup',
   otherMisses <= 1,
-  `${otherMisses} lookup 404(s), ${audioMisses} optional audio clip(s) absent`,
+  `${otherMisses} lookup 404(s), ${audioMisses} optional audio clip(s) absent${otherMisses > 1 ? ': ' + missedUrls.filter((u) => !u.includes('/audio/')).join(' ') : ''}`,
 );
 // Since 2026-09-27 every clip audio.ts names exists except the crit hit, which
 // has never been authored. Any OTHER audio 404 is a clip that failed to reach

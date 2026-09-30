@@ -136,7 +136,15 @@
     text-transform: uppercase;
     /* A little more of the disc, now that the wood is smaller. */
     max-width: 90%;
-    overflow-wrap: break-word;
+    /* Modul: NEVER BREAK INSIDE A WORD. Since task 73 the map is a strip capped
+       at 40rem, so the plates (10.5% of it) are smaller than the label was
+       sized for, and break-word split COMBAT into "COMBA / T" and VILLAGE into
+       "VILLAG / E". A word wider than its plate now overhangs the wood by a
+       pixel or two (the span's overflow is visible) instead; only the space in
+       a multi-word label ("World Boss") is a place to wrap. */
+    overflow-wrap: normal;
+    word-break: keep-all;
+    hyphens: none;
     /* The label carries its own line breaks - "World\nBoss" is two lines by
        authorship, not by the box happening to be narrow. */
     white-space: pre-line;
