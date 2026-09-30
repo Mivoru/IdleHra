@@ -3596,6 +3596,17 @@ await go('Ancestors');
     // a slot badge.
     const row = page.locator('.panel li').filter({ has: page.locator('.acts .field') }).first();
     const fingerprint = (await row.locator('.apts').innerText()).replace(/\s+/g, ' ').trim();
+    // Modul: WHO SLOT 1 BELONGED TO, so the swap can be undone. It used to be
+    // left in place: the main character (the fixture's only armed one) went to
+    // the bench, the fielded ancestor wore nothing, and the tutorial's "wear
+    // your weapon" step then fenced every screen for the geometry checkers
+    // and every later run until a --seed-dev.
+    const displacedId = await page
+      .locator('.panel li')
+      .filter({ has: page.locator('.fielded', { hasText: /^slot 1$/ }) })
+      .first()
+      .getAttribute('data-character-id')
+      .catch(() => null);
 
     await row.locator('.field-slot').first().click();
     await page.waitForTimeout(3000);
@@ -3607,6 +3618,18 @@ await go('Ancestors');
       `${fingerprint} -> ${nowFielded.length} fielded`,
     );
     await dismissToasts();
+
+    // Put slot 1 back the way it was.
+    if (displacedId !== null) {
+      const home = page.locator(`.panel li[data-character-id="${displacedId}"]`);
+      await home.locator('.field-slot', { hasText: /^1$/ }).first().click({ timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(3000);
+      const back = (await home.locator('.fielded').innerText().catch(() => '')).trim();
+      record('fielding is undone: slot 1 holds who it held before', back === 'slot 1', back || 'not fielded');
+      await dismissToasts();
+    } else {
+      record('fielding is undone: slot 1 holds who it held before', false, 'slot 1 was empty or not found before the swap');
+    }
   }
 }
 
