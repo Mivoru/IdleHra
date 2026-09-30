@@ -8,6 +8,7 @@
   import { craftingActivityId } from '../lib/ui/slots';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { craftingProfessionName } from '../lib/ui/slots';
+  import WorkshopCommissions from '../lib/ui/WorkshopCommissions.svelte';
 
   const client = useQueryClient();
   const recipes = createQuery(() => ({ queryKey: queryKeys.recipes, queryFn: fetchRecipes }));
@@ -152,6 +153,11 @@
 </script>
 
 <div class="wrap">
+  <!-- Task 83: the Workshop's commissions - one region piece at a rarity floor,
+       for materials and hours. Above the tool tree because it is the Workshop
+       level the header reports that decides it. -->
+  <WorkshopCommissions />
+
   <section class="panel">
     <div class="head">
       <h2>Crafting</h2>

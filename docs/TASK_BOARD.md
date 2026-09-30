@@ -5111,7 +5111,7 @@ prose in English. Loot below Rare stays silent.
 | 80 | Breeding Grounds above level 1 | S | **yes, which option** |
 | 81 | Chest rules and row actions | M | no |
 | 82 | Desktop header as five groups | S-M | show a screenshot first |
-| 83 | Workshop commissions (the material sink) | L | **design with the owner** |
+| 83 | **BUILT** (branch, not merged) - Workshop commissions (the material sink) | L | decided 2026-09-30 |
 | 84 | Great Works (the long material sink) | L | **design with the owner** |
 | 85 | Orders: automation rules as a reward | L | **design with the owner** |
 | 86 | A deterministic affix step beside the reroll | M | **design with the owner** |
@@ -5593,7 +5593,31 @@ opens the phone Menu or the group first. Screenshot of the open Items group:
 `docs/screenshots/2026-09-30/header-dropdown-1366.png` (rendered with a stub
 token and no server, so the header only).
 
-## 83. Workshop commissions (the material sink) - design with the owner
+## BUILT - 83. Workshop commissions (the material sink)
+
+**BUILT 2026-09-30, not merged or deployed.** Spec with the price derivation:
+`docs/superpowers/specs/2026-09-30-workshop-commissions.md`. A commission makes
+one of the 75 canonical region pieces (regions the player has opened) at a
+rarity floor of Common-Epic by Workshop level 1-5, capped two tiers below the
+region's boss-wall requirement (only region 1 is capped: Common), with one
+chosen affix at Common; the tier is `max(floor, zero-luck drop roll)`. 1 h
+(Common) to 8 h (Epic), one at a time, wall-clock `CompletionEpoch` so it
+finishes while the player is away. Price = what the region's reference
+gatherer (GatheringEconomyTests' own profiles) harvests of its log, ore, golden
+log and rare ore in those hours: 6,600 (region 1) to 144,400 (region 5 Epic).
+REST (`GET /api/v1/workshop`, `POST .../commission`, `POST .../collect`, dev
+`POST /api/v1/dev/workshop/finish`), no opcode, no packet field; migration
+`AddWorkshopCommissions` (three additive columns on the formerly writerless
+`PlayerCraftingSlots`). Rebirth and account purge delete a running order.
+Guards: `WorkshopCommissionTests`, `PowerCeilingTests
+.TheWorkshopCommissionFloorStaysBelowEveryRegionsUsualDrop` (floor < the wall at
+every Workshop level, and a full commissioned wardrobe LOSES every first clear,
+so time to region 5 cannot move), `GatheringEconomyTests
+.Test_WorkshopCommission_IsPricedFromThisSupply`; `exercise.mjs` places,
+collects and bins one on the fixture and restores its stock.
+
+The original proposal:
+
 
 The Crafting Workshop's level is read by nothing and crafting always makes a
 Normal (57 crafts, lifetime). Proposal: a commission makes a region piece with

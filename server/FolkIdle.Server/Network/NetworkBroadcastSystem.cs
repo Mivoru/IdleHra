@@ -2320,6 +2320,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Workshop commissions (task 83) - see NetworkBroadcastSystem.Workshop.cs.
+            if (await TryHandleWorkshopAsync(context, requestPath))
+            {
+                return;
+            }
+
             // Titles (task 37): REST, not the wire - no StateUpdatePacket field.
             if (requestPath == "/api/v1/player/titles" && context.Request.HttpMethod == "GET")
             {
@@ -11848,6 +11854,15 @@ namespace FolkIdle.Server.Network
                     var delve = _serviceProvider.GetRequiredService<FolkIdle.Server.Domain.Economy.DelveEngine>();
                     bool done = await delve.DevPutOutTheLanternAsync(playerId);
                     context.Response.StatusCode = done ? 200 : 409;
+                    return;
+                }
+
+                // Task 83: finish the running Workshop commission now, and with
+                // {"Refund": true} give its price back - so exercise.mjs can
+                // place, collect and discard one without spending the fixture.
+                if (requestPath == "/api/v1/dev/workshop/finish" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevWorkshopFinish(context, playerId);
                     return;
                 }
 
