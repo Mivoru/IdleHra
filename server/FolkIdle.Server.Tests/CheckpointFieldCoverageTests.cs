@@ -69,6 +69,10 @@ namespace FolkIdle.Server.Tests
             ("QuestSlot2Progress", "daily quests, via QuestEngine.UpsertDailyQuestProgressAsync"),
             ("ActiveChroniclePassLevel", "the chronicle pass, via UpsertChroniclePassAsync"),
             ("PendingGoldIncome", "task 79: the tick's income tally, written to gold_income_daily via GoldLedger.RecordIncomeTallyAsync"),
+            ("RedisPendingGoldDelta", "gold Redis did not take, incremented onto CommodityRecords[gold] via ApplyPendingGoldDeltaAsync (FlushState and FlushBatch)"),
+            ("PendingWoodDelta", "live village production Redis did not take, via ApplyPendingVillageProductionAsync"),
+            ("PendingStoneDelta", "live village production Redis did not take, via ApplyPendingVillageProductionAsync"),
+            ("PendingIronDelta", "live village production Redis did not take, via ApplyPendingVillageProductionAsync"),
         };
 
         private static string LocateSource(string relativeDir, string fileName)

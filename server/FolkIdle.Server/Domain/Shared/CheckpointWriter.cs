@@ -79,6 +79,13 @@ namespace FolkIdle.Server.Domain.Shared
         // payload to hand it back to. Never rescued on its own: a lost tally
         // under-counts the ledger and costs the player nothing.
         public GoldIncomeTally Income;
+
+        // Live village production the job carried (job.Snapshot.Pending*Delta),
+        // on the same terms as GoldDelta: non-zero only when the flush did not
+        // commit, so the tick hands it back to the live payload.
+        public long WoodDelta;
+        public long StoneDelta;
+        public long IronDelta;
         public FlushReason Reason;
         public bool SplitBrain;
     }
@@ -341,6 +348,9 @@ namespace FolkIdle.Server.Domain.Shared
 
             long goldForTick = committed ? 0L : job.GoldDelta;
             GoldIncomeTally incomeForTick = committed ? default : job.Snapshot.PendingGoldIncome;
+            long woodForTick = committed ? 0L : job.Snapshot.PendingWoodDelta;
+            long stoneForTick = committed ? 0L : job.Snapshot.PendingStoneDelta;
+            long ironForTick = committed ? 0L : job.Snapshot.PendingIronDelta;
             if (!committed && job.Reason == FlushReason.Logout)
             {
                 // Nobody is left to hand the coins back to. Split-brain gold is
@@ -358,8 +368,15 @@ namespace FolkIdle.Server.Domain.Shared
                 {
                     DeadLetter(job.PlayerId, job.GoldDelta, "Logout", $"flush failed {attempts}x");
                 }
+                if (woodForTick != 0L || stoneForTick != 0L || ironForTick != 0L)
+                {
+                    // Not rescued on its own the way gold is: recorded so a
+                    // manual credit is possible, same as the rest of the state.
+                    DeadLetter(job.PlayerId, 0L, "Logout", $"village production lost: wood={woodForTick} stone={stoneForTick} iron_ore={ironForTick}");
+                }
                 goldForTick = 0L;
                 incomeForTick = default;
+                woodForTick = stoneForTick = ironForTick = 0L;
             }
 
             // Modul: THE ACK GOES BEFORE THE CONTINUATION. The tick drains acks
@@ -374,6 +391,9 @@ namespace FolkIdle.Server.Domain.Shared
                 CommittedDbEpoch = committed ? job.Snapshot.LogicEpochCounter + 1 : 0L,
                 GoldDelta = goldForTick,
                 Income = incomeForTick,
+                WoodDelta = woodForTick,
+                StoneDelta = stoneForTick,
+                IronDelta = ironForTick,
                 Reason = job.Reason,
                 SplitBrain = splitBrain
             });
