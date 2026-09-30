@@ -467,6 +467,21 @@ await page.waitForTimeout(4000);
         }
         record('the fixture gets its own piece back after the loot-row Wear', restored, `instance ${previous.InstanceId}`);
       }
+      // Modul: THE SLOT WAS EMPTY BEFORE. The round-trip above only ran when the
+      // main character already wore something there, so on a main that was
+      // unarmed (a fixture whose gear sat on another roster slot) the drop
+      // stayed worn for good and the state was never restored. Restoring what
+      // was touched means taking the drop off again, on the same character
+      // (the Wear and this both use no TargetGuid = the main character).
+      if (worn && !previous) {
+        await page.evaluate((slot) => globalThis.__folkidleUnequip?.(slot), worn.SlotIndex);
+        let cleared = false;
+        for (let i = 0; i < 20 && !cleared; i++) {
+          await page.waitForTimeout(500);
+          cleared = !((await apiGet('/api/v1/player/worn'))?.Pieces ?? []).some((p) => p.SlotIndex === worn.SlotIndex);
+        }
+        record('an empty slot is emptied again after the loot-row Wear', cleared, `slot ${worn.SlotIndex}`);
+      }
     }
   }
 

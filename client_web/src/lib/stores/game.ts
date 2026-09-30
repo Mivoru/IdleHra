@@ -576,6 +576,12 @@ if (import.meta.env.DEV) {
   (globalThis as Record<string, unknown>).__folkidleEquip = (instanceId: number) => {
     connection.send({ Command: CommandType.EquipItem, TargetId: instanceId });
   };
+  // Modul: the other half of that round-trip. When the slot was EMPTY before the
+  // check, "putting the original back" means taking the drop off again -
+  // UnequipItem's TargetId is a slot index, no TargetGuid = the main character.
+  (globalThis as Record<string, unknown>).__folkidleUnequip = (slotIndex: number) => {
+    connection.send({ Command: CommandType.UnequipItem, TargetId: slotIndex });
+  };
 
   // Task 50: a forced drop through the REAL handler - the reveal card, the
   // row burst and the pitched clip. Tier 7+ shows the card. Uses the first
