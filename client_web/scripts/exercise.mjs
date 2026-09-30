@@ -1213,16 +1213,35 @@ await page.waitForTimeout(600);
   record('chat offers a whispers channel', hasWhispers);
 
   if (hasWhispers) {
+    // Modul: the recipient must exist on ANY database, not only the owner's
+    // (the old hardcoded name was an account that lives in one dev DB, so a
+    // fresh one failed both checks below and added a 404). Register a
+    // throwaway over the same REST the client uses - it is a second account
+    // by construction, which whispering to yourself would not be.
+    const whisperStamp = Date.now();
+    const whisperName = `exercise${(whisperStamp + 7) % 1_000_000}`;
+    const whisperReg = await fetch(`${API_BASE}/api/v1/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: `${whisperName}w${whisperStamp}@folkidle.local`,
+        password: 'FolkIdleExercise123!',
+        username: whisperName,
+        deviceId: `exercise-whisper-${whisperStamp}`,
+      }),
+    }).then((r) => r.status).catch(() => 0);
+    record('a whisper recipient account can be registered', whisperReg >= 200 && whisperReg < 300, `${whisperName} -> HTTP ${whisperReg}`);
+
     await whisperTab.first().click();
     await page.waitForTimeout(400);
 
     // The recipient is resolved by NAME to a player id before the message is
-    // sent, so this needs a real second account - the local database has one.
+    // sent, so this needs a real second account - registered just above.
     const target = page.getByPlaceholder(/who|player|name/i).first();
     const composer = page.getByPlaceholder(/Say something|Message|whisper/i).last();
 
     if ((await target.count()) > 0 && (await composer.count()) > 0) {
-      await target.fill('michal');
+      await target.fill(whisperName);
       await composer.fill(stamp);
       await composer.press('Enter');
       await page.waitForTimeout(1500);
@@ -1259,9 +1278,9 @@ await page.waitForTimeout(600);
       await page.getByRole('button', { name: 'Whispers', exact: true }).first().click();
       await page.waitForTimeout(1200);
 
-      const listed = page.locator('.thread', { hasText: 'michal' }).first();
+      const listed = page.locator('.thread', { hasText: whisperName }).first();
       const inList = (await listed.count()) > 0;
-      record('the whisper list survives a reload', inList, inList ? 'michal listed' : 'no thread rendered');
+      record('the whisper list survives a reload', inList, inList ? `${whisperName} listed` : 'no thread rendered');
 
       if (inList) {
         await listed.click();
