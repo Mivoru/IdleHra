@@ -66,6 +66,9 @@
               </span>
             </p>
             <p class="tiny dim">Each stage: {work.BonusPerStage}.</p>
+            <p class="tiny" class:dim={!work.FrameOwned} data-testid="great-work-completion-{work.Region}">
+              {work.FrameOwned ? 'Earned' : 'On completion'}: {work.CompletionReward}.
+            </p>
 
             {#if !complete && nextStage}
               <p class="tiny">

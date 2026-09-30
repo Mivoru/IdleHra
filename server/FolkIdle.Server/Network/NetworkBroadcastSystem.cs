@@ -6316,7 +6316,8 @@ namespace FolkIdle.Server.Network
                 var lineageById = new System.Collections.Generic.Dictionary<Guid, CharacterLineageRegistry>(lineages.Count);
                 for (int i = 0; i < lineages.Count; i++) lineageById[lineages[i].CharacterId] = lineages[i];
 
-                int cap = Engine.HallOfAncestorsRules.CapFor(player.AncestorSlotsPurchased);
+                int greatWorkSlots = await Domain.Progression.GreatWorksEngine.HallSlotsAsync(db, playerId);
+                int cap = Engine.HallOfAncestorsRules.CapFor(player.AncestorSlotsPurchased, greatWorkSlots);
 
                 var ranking = new System.Collections.Generic.List<Engine.HallOfAncestorsRules.Member>(characters.Count);
                 for (int i = 0; i < characters.Count; i++)
@@ -6344,7 +6345,8 @@ namespace FolkIdle.Server.Network
                 var payload = new
                 {
                     Cap = cap,
-                    MaxCap = Engine.HallOfAncestorsRules.MaxSlots,
+                    MaxCap = Engine.HallOfAncestorsRules.MaxCapFor(greatWorkSlots),
+                    GreatWorkSlots = greatWorkSlots,
                     SlotsPurchased = player.AncestorSlotsPurchased,
                     NextSlotCostDiamonds = Engine.HallOfAncestorsRules.NextSlotCostDiamonds(player.AncestorSlotsPurchased),
                     Diamonds = player.PremiumDiamonds,

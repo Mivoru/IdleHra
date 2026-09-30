@@ -117,13 +117,23 @@ exercise step round-trips.
 - The client keeps no copy of the monuments; only *where* each stands on the
   painting is a client fact.
 
-## 6. Not built (open, on purpose)
+## 6. Completion rewards (added 2026-09-30, owner: "do what you think is best")
 
-- **A Hall of Ancestors slot and a frame** were named as example bonuses. A Hall
-  slot needs the cap read in the cull and the purchase paths, and a frame needs a
-  bound cosmetic and its art (task 87's `Bound` machinery would carry it). Both
-  are small additions on top of this table if the owner wants them; neither was
-  needed for the sink to work.
-- The monument marker positions are estimated from the painting by eye; move them
-  in `MONUMENT_SPOTS` if one sits on a landmark.
-- The exercise step was written but not run here (one shared local stack).
+Completing a monument's fifth stage pays what a sixth +1 % could not: something
+you can see.
+
+- **A bound frame per monument** (`frame_monument_r1`..`r5`, Legendary, `Bound`
+  like the Ascension frames: never in a chest, never on the market). It is
+  granted in the SAME commit as the fifth stage (`GreatWorksEngine.GrantFrameAsync`,
+  source `CosmeticSource.GreatWork`), once.
+- **One Hall of Ancestors slot from The Ebon Crown** (`GreatWorksRegistry.HallSlotRegion`),
+  ABOVE the diamond ceiling: `HallOfAncestorsRules.CapFor(purchased, greatWorkSlots)`,
+  ceiling 14 -> 15 (`AbsoluteMaxSlots`, in `PowerCeilingTests`). Inside the
+  ceiling it would have paid nothing to a player who had bought all four and
+  merely spared everyone else a purchase. It is derived from the built stages,
+  not stored, and read by the cull, the rebirth preview and the Hall screen.
+
+## 7. Still open
+
+- The monument marker positions were estimated from the painting by eye; checked
+  in a browser on 2026-09-30 with all five built, none overlaps a place plate.

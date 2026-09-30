@@ -17,11 +17,12 @@ namespace FolkIdle.Server.Domain.Progression
     public sealed record GreatWorkView(
         int Region, string Name, int Stage, long Progress, long NextCost,
         string LogItem, string OreItem, long HeldLog, long HeldOre,
-        string BonusPerStage, IReadOnlyList<GreatWorkStageView> Stages);
+        string BonusPerStage, IReadOnlyList<GreatWorkStageView> Stages,
+        string CompletionReward, string FrameId, bool FrameOwned);
 
     public sealed record GreatWorksSnapshot(
         int YieldPct, int MaxYieldPct, int OfflineMinutes, int MaxOfflineMinutes,
-        IReadOnlyList<GreatWorkView> Works);
+        int HallSlots, IReadOnlyList<GreatWorkView> Works);
 
     /// <summary>The tick's copy of a player's stages, after a deposit committed.</summary>
     public readonly record struct GreatWorksUpdateNotification(long PlayerId, int StagesPacked);
@@ -145,10 +146,37 @@ namespace FolkIdle.Server.Domain.Progression
                 "WHERE \"PlayerId\" = {3} AND \"Region\" = {4}",
                 (short)stage, progress, at, playerId, (short)region);
 
+            // The completion frame, in the SAME commit as the fifth stage - a
+            // monument is never complete without it. The Hall slot needs no
+            // write: HallOfAncestorsRules reads it off the built stages.
+            if (built && stage >= GreatWorksRegistry.StageCount)
+            {
+                await GrantFrameAsync(db, playerId, region, at);
+            }
+
             await tx.CommitAsync();
             return (built ? CommandResultCode.GreatWorkStageBuilt : CommandResultCode.GreatWorkDeposited,
                 await LoadPackedAsync(db, playerId));
         }
+
+        /// <summary>
+        /// Grants a completed monument's bound frame, once (the NOT EXISTS makes
+        /// a repeat a no-op). The same insert the Ascension frames use.
+        /// </summary>
+        internal static Task GrantFrameAsync(FolkIdleDbContext db, long playerId, int region, DateTime at)
+        {
+            string frameId = GreatWorksRegistry.FrameId(region);
+            var def = CosmeticRegistry.Find(frameId)!;
+            return db.Database.ExecuteSqlRawAsync(
+                "INSERT INTO cosmetic_items (\"PlayerId\", \"Kind\", \"DefinitionId\", \"Rarity\", \"Source\", \"AcquiredAtUtc\", \"IsListed\") " +
+                "SELECT {0}, {1}, {2}, {3}, {4}, {5}, false WHERE NOT EXISTS " +
+                "(SELECT 1 FROM cosmetic_items WHERE \"PlayerId\" = {0} AND \"DefinitionId\" = {2})",
+                playerId, (short)CosmeticKind.Frame, frameId, (short)def.Rarity, (short)CosmeticSource.GreatWork, at);
+        }
+
+        /// <summary>Hall of Ancestors slots this player's Great Works pay.</summary>
+        public static async Task<int> HallSlotsAsync(FolkIdleDbContext db, long playerId)
+            => GreatWorksRegistry.HallSlots(await LoadPackedAsync(db, playerId));
 
         /// <summary>Keyless projection for the FOR UPDATE read.</summary>
         public sealed class GreatWorkRow
@@ -198,6 +226,11 @@ namespace FolkIdle.Server.Domain.Progression
                 held[s.ItemId] = held.GetValueOrDefault(s.ItemId) + s.Quantity;
             }
 
+            var frameIds = GreatWorksRegistry.Monuments.Select(m => GreatWorksRegistry.FrameId(m.Region)).ToList();
+            var ownedFrames = (await db.CosmeticItems.AsNoTracking()
+                .Where(c => c.PlayerId == playerId && frameIds.Contains(c.DefinitionId))
+                .Select(c => c.DefinitionId).ToListAsync()).ToHashSet();
+
             var works = new List<GreatWorkView>();
             foreach (var m in GreatWorksRegistry.Monuments)
             {
@@ -217,12 +250,15 @@ namespace FolkIdle.Server.Domain.Progression
                     m.Region, m.Name, stage, progress,
                     stage >= GreatWorksRegistry.StageCount ? 0 : GreatWorksRegistry.StageCosts[stage],
                     log, ore, held.GetValueOrDefault(log), held.GetValueOrDefault(ore),
-                    GreatWorksRegistry.DescribeStageBonus(m.Region), stages));
+                    GreatWorksRegistry.DescribeStageBonus(m.Region), stages,
+                    GreatWorksRegistry.DescribeCompletion(m.Region), GreatWorksRegistry.FrameId(m.Region),
+                    ownedFrames.Contains(GreatWorksRegistry.FrameId(m.Region))));
             }
 
             return new GreatWorksSnapshot(
                 GreatWorksRegistry.YieldPct(packed), GreatWorksRegistry.MaxYieldPct,
-                GreatWorksRegistry.OfflineMinutes(packed), GreatWorksRegistry.MaxOfflineMinutes, works);
+                GreatWorksRegistry.OfflineMinutes(packed), GreatWorksRegistry.MaxOfflineMinutes,
+                GreatWorksRegistry.HallSlots(packed), works);
         }
 
         /// <summary>

@@ -335,5 +335,55 @@ namespace FolkIdle.Server.Tests
             }
             throw new FileNotFoundException($"{folder}/{file}");
         }
+        // ---- completion rewards --------------------------------------------
+
+        [Fact]
+        public async Task CompletingAMonumentGrantsItsBoundFrameOnce()
+        {
+            const long playerId = 984_000_101L;
+            string log = GreatWorksRegistry.MaterialFor(1, GreatWorksRegistry.MaterialLog);
+            await SeedAsync(playerId, log, 3_000_000);
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            string frame = GreatWorksRegistry.FrameId(1);
+
+            // Stage 4 of 5 built: no frame yet.
+            await GreatWorksEngine.DevRestoreAsync(db, playerId, 1, 4, 0, GreatWorksRegistry.MaterialLog, 0);
+            Assert.False(await db.CosmeticItems.AsNoTracking().AnyAsync(c => c.PlayerId == playerId && c.DefinitionId == frame));
+            Assert.False((await GreatWorksEngine.ViewAsync(db, playerId)).Works.Single(w => w.Region == 1).FrameOwned);
+
+            // The fifth stage completes it, and the frame comes in the same commit.
+            var built = await GreatWorksEngine.DepositCoreAsync(db, playerId, 1, GreatWorksRegistry.MaterialLog, 0, DateTime.UtcNow);
+            Assert.Equal(CommandResultCode.GreatWorkStageBuilt, built.Result);
+            var owned = await db.CosmeticItems.AsNoTracking().Where(c => c.PlayerId == playerId && c.DefinitionId == frame).ToListAsync();
+            Assert.Single(owned);
+            Assert.Equal((short)CosmeticSource.GreatWork, (short)owned[0].Source);
+            Assert.True(CosmeticRegistry.Find(frame)!.Bound);
+            Assert.True((await GreatWorksEngine.ViewAsync(db, playerId)).Works.Single(w => w.Region == 1).FrameOwned);
+
+            // A repeat grant is a no-op, never a second frame.
+            await GreatWorksEngine.GrantFrameAsync(db, playerId, 1, DateTime.UtcNow);
+            Assert.Equal(1, await db.CosmeticItems.AsNoTracking().CountAsync(c => c.PlayerId == playerId && c.DefinitionId == frame));
+        }
+
+        [Fact]
+        public async Task TheEbonCrownCompleteGivesOneHallSlotAboveTheDiamondCeiling()
+        {
+            const long playerId = 984_000_102L;
+            string log = GreatWorksRegistry.MaterialFor(GreatWorksRegistry.HallSlotRegion, GreatWorksRegistry.MaterialLog);
+            await SeedAsync(playerId, log, 1);
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+
+            Assert.Equal(0, await GreatWorksEngine.HallSlotsAsync(db, playerId));
+            await GreatWorksEngine.DevRestoreAsync(db, playerId, GreatWorksRegistry.HallSlotRegion, GreatWorksRegistry.StageCount, 0, GreatWorksRegistry.MaterialLog, 0);
+            int slots = await GreatWorksEngine.HallSlotsAsync(db, playerId);
+
+            Assert.Equal(1, slots);
+            Assert.Equal(1, (await GreatWorksEngine.ViewAsync(db, playerId)).HallSlots);
+            Assert.Equal(HallOfAncestorsRules.BaseSlots + 1, HallOfAncestorsRules.CapFor(0, slots));
+            Assert.Equal(HallOfAncestorsRules.MaxSlots + 1, HallOfAncestorsRules.CapFor(HallOfAncestorsRules.MaxPurchases, slots));
+            Assert.Equal(HallOfAncestorsRules.MaxSlots + 1, HallOfAncestorsRules.MaxCapFor(slots));
+            // Buying is unchanged: still four to buy, same prices.
+            Assert.Equal(0L, HallOfAncestorsRules.NextSlotCostDiamonds(HallOfAncestorsRules.MaxPurchases));
+        }
     }
 }

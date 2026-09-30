@@ -76,7 +76,12 @@ describe('task 54 cosmetics mirrors', () => {
     const frameSteps = [...ascension.match(/FrameSteps = \{([^}]*)\}/)![1].matchAll(/\d+/g)].map((m) => m[0]);
     const ascent = [1, 2, 3, 4, 5].flatMap((r) => frameSteps.map((s) => `frame_ascent_r${r}_s${s}`));
     expect(ascent).toHaveLength(10);
-    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames, ...ascent].sort());
+    // Task 84: plus one bound frame per completed Great Work.
+    const greatWorks = read('Domain', 'Progression', 'GreatWorksRegistry.cs');
+    expect(greatWorks).toMatch(/FrameId\(int region\) => \$"frame_monument_r\{region\}"/);
+    const last = Number(greatWorks.match(/LastRegion = (\d+);/)![1]);
+    const monument = Array.from({ length: last }, (_, i) => `frame_monument_r${i + 1}`);
+    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames, ...ascent, ...monument].sort());
   });
 
   it('has a portrait for every avatar', () => {

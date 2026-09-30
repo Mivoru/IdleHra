@@ -288,6 +288,27 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void TheGreatWorksHallSlotIsOneAboveTheDiamondCeiling()
+        {
+            // Modul: task 84's completion reward. The Hall of Ancestors decides
+            // who survives a rebirth or rollover, and survivors carry their
+            // lineage - so a slot is power, however indirect. Exactly one, and
+            // only from The Ebon Crown: every monument complete is still 15.
+            int all = 0;
+            for (int r = GreatWorksRegistry.FirstRegion; r <= GreatWorksRegistry.LastRegion; r++) all = GreatWorksRegistry.WithStage(all, r, GreatWorksRegistry.StageCount);
+            int slots = GreatWorksRegistry.HallSlots(all);
+
+            Assert.Equal(1, slots);
+            Assert.Equal(HallOfAncestorsRules.MaxSlots + 1, HallOfAncestorsRules.CapFor(HallOfAncestorsRules.MaxPurchases, slots));
+            Assert.Equal(HallOfAncestorsRules.AbsoluteMaxSlots, HallOfAncestorsRules.CapFor(int.MaxValue, int.MaxValue));
+            Assert.Equal(15, HallOfAncestorsRules.AbsoluteMaxSlots);
+
+            // Four of five monuments complete, The Ebon Crown one stage short: nothing.
+            int almost = GreatWorksRegistry.WithStage(all, GreatWorksRegistry.HallSlotRegion, GreatWorksRegistry.StageCount - 1);
+            Assert.Equal(0, GreatWorksRegistry.HallSlots(almost));
+        }
+
+        [Fact]
         public void TheGreatWorksOfflineBonusIsACapAndLeavesTheOfflineWindowUnderADay()
         {
             // Modul: task 84. The other Great Works bonus is not a multiplier but

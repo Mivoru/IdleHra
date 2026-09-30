@@ -2652,6 +2652,28 @@ await go('The Delve');
     );
     await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: origStage, Progress: origProgress, Material: 0, StockDelta: 0 });
     await page.waitForTimeout(500);
+
+    // Completion (task 84): The Ebon Crown complete is one Hall of Ancestors
+    // slot ABOVE the diamond ceiling, and the panel names what completion pays.
+    // Round-trips through the dev route; the frame itself is granted only by a
+    // real fifth-stage deposit (GreatWorksTests), so the fixture gains nothing.
+    const crown = (await apiGet('/api/v1/great-works'))?.Works?.find((w) => w.Region === 5);
+    const hallBefore = await apiGet('/api/v1/ancestors/hall');
+    await apiPost('/api/v1/dev/great-works/restore', { Region: 5, Stage: 5, Progress: 0, Material: 0, StockDelta: 0 });
+    const hallAfter = await apiGet('/api/v1/ancestors/hall');
+    record(
+      'a completed Ebon Crown adds one Hall slot above the diamond ceiling',
+      Boolean(hallBefore && hallAfter) && hallAfter.Cap === hallBefore.Cap + 1 && hallAfter.MaxCap === hallBefore.MaxCap + 1
+        && hallAfter.GreatWorkSlots === 1,
+      `cap ${hallBefore?.Cap} -> ${hallAfter?.Cap}, ceiling ${hallBefore?.MaxCap} -> ${hallAfter?.MaxCap}`,
+    );
+    await go('Map');
+    await go('Village');
+    const completion = await page.getByTestId('great-work-completion-5').innerText().catch(() => '');
+    record('the panel names what completing a monument pays', /Frame and \+1 Hall of Ancestors slot/.test(completion), completion);
+    await apiPost('/api/v1/dev/great-works/restore', { Region: 5, Stage: crown?.Stage ?? 0, Progress: crown?.Progress ?? 0, Material: 0, StockDelta: 0 });
+    const hallBack = await apiGet('/api/v1/ancestors/hall');
+    record('the Hall is back to its own ceiling', hallBack?.Cap === hallBefore?.Cap, `cap ${hallBack?.Cap} (was ${hallBefore?.Cap})`);
   } else {
     record('Great Works round trip skipped (monument 1 already started on this account)', true, `stage ${origStage}`);
   }
