@@ -5687,11 +5687,12 @@ level returns.
   locked slot is refused with `SlotLocked`, and restores the fixture's rules.
 
 **Not done, on purpose:** a restocked larder does not send the fisher back to
-the fight (the player redeploys). **Open, pre-existing:** slots 2 and 3's
-activity change (a rule's, and a death's before it) is live-only until the
-next redeploy - only the fielded character's activity is written by the
-checkpoint (`PersistFieldedActivityAsync`), so a relogin puts slot 2 back on
-the monster it was deployed to.
+the fight (the player redeploys). **Fixed 2026-09-30:** slots 2 and 3's
+activity change (a rule's, and a death's before it) used to be live-only -
+the checkpoint wrote only slot 1's activity, so a relogin put slot 2 back on
+the monster it was deployed to. `PersistFieldedActivitiesAsync` now writes all
+three through the same guard, each at its own rank
+(`FieldedActivityPersistenceTests`).
 
 ## 86. A deterministic affix step beside the reroll - design with the owner
 
