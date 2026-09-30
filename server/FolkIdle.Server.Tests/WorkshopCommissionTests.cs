@@ -209,7 +209,8 @@ namespace FolkIdle.Server.Tests
         // The round trip
         // ---------------------------------------------------------------
 
-        private static long _nextPlayerId = 983_000_000L;
+        // A range no other test in the shared collection database uses (983_000_000 collided).
+        private static long _nextPlayerId = 8_083_000_000L + Random.Shared.Next(0, 1_000_000) * 100L;
 
         private async Task<long> SeedAsync(int workshopLevel, int bossesDefeated, long materialEach)
         {

@@ -200,8 +200,14 @@ namespace FolkIdle.Server.Domain.Economy
 
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
 
-            var player = await db.PlayerRecords
-                .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+            // Modul: NOT locked. The checkpoint writer updates this row every
+            // few seconds for an online player, and nothing here writes it; the
+            // two races that matter are covered elsewhere - the router's
+            // per-account stripe serialises this player's POSTs, and the
+            // (PlayerId, SlotIndex) key refuses a second order outright.
+            var player = await db.PlayerRecords.AsNoTracking()
+                .Where(p => p.Id == playerId)
+                .Select(p => new { p.IsQuarantined, p.Quarantine_Active })
                 .SingleOrDefaultAsync();
             if (player == null)
             {
