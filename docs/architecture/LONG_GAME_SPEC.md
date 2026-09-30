@@ -449,6 +449,15 @@ eighty-three days.
 
 # 4. What crosses a rollover
 
+> **Since task 88 (2026-09-30) a rollover is a REBIRTH the player triggers**,
+> not a date. The rules below are unchanged; they now run for one player when
+> that player chooses. `SeasonalRotationEngine.ResetPlayersAsync` is the list,
+> with a player filter. The full carry and reset list, and the Renown bonus,
+> are in `docs/superpowers/specs/2026-09-30-rebirth-on-demand.md`.
+>
+> **The code keeps the village buildings.** The paragraph below that says
+> they do not carry records a rejected design.
+
 **Carries:** lineage members (**born children only**), their race, aptitudes,
 generation number, epic-mutation flag. Diamonds and inheritance. Seals.
 
@@ -556,10 +565,8 @@ first two days are not dead, bad enough to want better.
    mutation, inbreeding degradation, the diminishing curve, and all four
    consumed by the game (damage, health, gathering, loot - live and offline)
    with a panel that shows them.
-   - **Not built**: the aptitudes do not yet survive the season rollover.
-      is not touched by SeasonalRotationEngine
-     today, so they persist by accident rather than by design - which happens
-     to be the intended behaviour, but nothing states or tests it.
+   - The aptitudes survive the rollover **by design**, and both the season
+     rollover test and `RebirthTests` assert it.
 5. **MOSTLY DONE - villagers.** `VillagerArrivalRules` holds every decision -
    interval, population cap, recruitment price, and the refusals - with 15
    tests. Measured: 45 arrivals a season at Inn 0 and 90 at the ceiling;
@@ -610,6 +617,17 @@ first two days are not dead, bad enough to want better.
      worse than moving the entry.
    - **Chapter I still pays no tools.** The Seal and the skill points are
      real; the promised set of Common tools is not built.
+7. **BUILT (task 88, not deployed) - rebirth on demand.** The season no
+   longer ends on a date. A player ends their own run from the Ancestors
+   screen; the preview shows what they keep and what they lose.
+   - The rollover's own reset runs for that one player.
+   - **Renown** is a permanent damage bonus: `floor(15 * (1 - 0.8^n))`%,
+     where n counts rebirths taken at level 50 or above. It is capped below
+     15% and sits in `PowerCeilingTests`.
+   - Chapter V's "top fifty" deed became "be reborn at level 50+".
+   - Also fixed in the shared reset: attributes now reset with the level,
+     and all 11 slots are cleared.
+   - See `docs/superpowers/specs/2026-09-30-rebirth-on-demand.md`.
 
 ## What is left of this document
 

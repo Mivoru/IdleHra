@@ -1192,6 +1192,10 @@ namespace FolkIdle.Server.Domain.Shared
             // way - SkillTreeSyncQueue carries a purchase back to the tick.
             byte[] skillTreeLevels = await SkillTreeEngine.LoadLevelsAsync(dbContext, playerId);
 
+            // Task 87: the highest Boss Ascension step per boss, packed - the
+            // tick's cache of boss_ascension_progress, for start-step validation.
+            int bossAscensionPacked = await BossAscensionEngine.LoadPackedAsync(dbContext, playerId);
+
             // Modul: SETTLE THE VILLAGE ARRIVAL CLOCK on the way in.
             //
             // Arrivals are hours apart, so checking them on a 10 Hz loop would
@@ -1345,6 +1349,7 @@ namespace FolkIdle.Server.Domain.Shared
                 HighestLocationReached = highestLocationReached,
                 HighestUnlockedRegion = highestUnlockedRegion,
                 DefeatedRegionBossMask = defeatedRegionBossMask,
+                BossAscensionPacked = bossAscensionPacked,
                 WorldBossAttemptCount = worldBossAttemptCount,
                 HumanMasteryLevel = humanMastery,
                 VilaMasteryLevel = vilaMastery,
@@ -1442,6 +1447,8 @@ namespace FolkIdle.Server.Domain.Shared
                 Inherit_GoldGain = inheritanceLevels[InheritanceRegistry.StatGoldGain],
                 Inherit_GatheringYield = inheritanceLevels[InheritanceRegistry.StatGatheringYield],
                 Inherit_LootLuck = inheritanceLevels[InheritanceRegistry.StatLootLuck],
+                // Task 88: RebirthEngine's column, read-only here.
+                RenownedRebirths = player.RenownedRebirths,
                 Skill_LootRarity = skillTreeLevels[SkillTreeRegistry.BranchLootRarity],
                 Skill_WorldBossDamage = skillTreeLevels[SkillTreeRegistry.BranchWorldBossDamage],
                 Skill_CritChance = skillTreeLevels[SkillTreeRegistry.BranchCritChance],

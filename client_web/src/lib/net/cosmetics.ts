@@ -17,6 +17,8 @@ export interface CosmeticDefinition {
   Name: string;
   /** For an avatar, the monster whose portrait it is. */
   Art: string | null;
+  /** Earned, not found (Boss Ascension frames): never in a chest, never on the market. */
+  Bound: boolean;
 }
 
 export interface CosmeticCatalogue {
@@ -136,7 +138,8 @@ export type CosmeticMarketResult =
   | 'InsufficientGold'
   | 'OwnListing'
   | 'Quarantined'
-  | 'PlayerNotFound';
+  | 'PlayerNotFound'
+  | 'Bound';
 
 export const COSMETIC_MARKET_SENTENCES: Record<CosmeticMarketResult, string> = {
   Ok: '',
@@ -150,6 +153,7 @@ export const COSMETIC_MARKET_SENTENCES: Record<CosmeticMarketResult, string> = {
   OwnListing: 'That is your own listing. Take it down instead.',
   Quarantined: 'This account cannot trade while it is quarantined.',
   PlayerNotFound: 'Your account could not be found. Try signing in again.',
+  Bound: 'That was earned on the Boss Ascension ladder. It is yours to wear, not to sell.',
 };
 
 /** The most a price can be (CosmeticRegistry.MaxMarketPrice). */
@@ -217,6 +221,38 @@ export interface BossChallengeRegion {
 }
 
 export const bossChallengeKeys = { all: ['bossChallenges'] as const };
+
+// Task 87: the Boss Ascension ladder. Everything a step MEANS - its effects,
+// its time limit in seconds, its reward names - is the server's sentence; this
+// file keeps no copy of the ladder, only the shape of the answer.
+export interface AscensionStep {
+  Step: number;
+  /** What this step ADDS on top of the one below it. */
+  Summary: string;
+  /** Every modifier in force at this step, cumulative. */
+  Effects: string[];
+  TimeLimitSeconds: number;
+  Cleared: boolean;
+  /** Boss beaten once and this step is at most one above the highest cleared. */
+  Startable: boolean;
+  RewardTitle: string;
+  RewardFrame: string | null;
+}
+
+export interface AscensionBoss {
+  Region: number;
+  BossMonsterId: number;
+  BossDefeated: boolean;
+  HighestStep: number;
+  NextStep: number;
+  Steps: AscensionStep[];
+}
+
+export const bossAscensionKeys = { all: ['bossAscension'] as const };
+
+export function fetchBossAscension(): Promise<AscensionBoss[]> {
+  return authedGet<{ MaxStep: number; Bosses: AscensionBoss[] }>('/api/v1/boss-ascension').then((r) => r?.Bosses ?? []);
+}
 
 export function fetchBossChallenges(): Promise<BossChallengeRegion[]> {
   return authedGet<{ Regions: BossChallengeRegion[] }>('/api/v1/boss-challenges').then((r) => r?.Regions ?? []);

@@ -1428,6 +1428,22 @@ export function respecAttributes(): CommandOutcome {
 }
 
 /**
+ * Task 87: fight a region boss again at one step of its Ascension ladder.
+ * Region rides on TargetId and the step on SecondaryId - two general-purpose
+ * fields, so no fixed-layout packet grew. The server owns every rule (the boss
+ * beaten once, the step at most one above the highest cleared) and answers a
+ * refusal with a result code (46 / 47), so this only declines what could never
+ * be a real button.
+ */
+export function startBossAscension(region: number, step: number): CommandOutcome {
+  if (!Number.isInteger(region) || region < 1 || !Number.isInteger(step) || step < 1) {
+    return refuse('Pick a boss and a step.');
+  }
+  connection.send({ Command: CommandType.StartBossAscension, TargetId: region, SecondaryId: step });
+  return OK;
+}
+
+/**
  * Spend attribute points earned by levelling.
  *
  * The server owns the balance: it re-checks the amount against its own copy and

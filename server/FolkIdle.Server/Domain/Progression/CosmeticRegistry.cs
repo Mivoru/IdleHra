@@ -19,13 +19,18 @@ namespace FolkIdle.Server.Domain.Progression
         Market = 2,
         /// <summary>Task 55: a boss challenge's reward.</summary>
         Challenge = 3,
+        /// <summary>Task 87: a Boss Ascension frame.</summary>
+        Ascension = 4,
         Dev = 9,
     }
 
     /// <param name="Art">For an avatar, the monster whose portrait it is (the
     /// client maps the name to a picture). Null for frames, which the client
     /// draws itself.</param>
-    public sealed record CosmeticDefinition(string Id, CosmeticKind Kind, int Rarity, string Name, string? Art);
+    /// <param name="Bound">Task 87: earned, not found - an Ascension frame. Never in
+    /// a chest's pool and never listable on the market, because a cosmetic that
+    /// sells for gold would make a reward "cosmetics only" in name.</param>
+    public sealed record CosmeticDefinition(string Id, CosmeticKind Kind, int Rarity, string Name, string? Art, bool Bound = false);
 
     /// <summary>
     /// Task 54: what cosmetics exist, how rare each is, and the two rolls that
@@ -100,6 +105,17 @@ namespace FolkIdle.Server.Domain.Progression
                     list.Add(new CosmeticDefinition("frame_" + Slug(name), CosmeticKind.Frame, rarity, name, null));
                 }
             }
+            // Task 87: the Boss Ascension frames, bound to whoever earned them.
+            for (int region = Combat.BossAscensionRegistry.FirstRegion; region <= Combat.BossAscensionRegistry.LastRegion; region++)
+            {
+                foreach (int step in Combat.BossAscensionRegistry.FrameSteps)
+                {
+                    list.Add(new CosmeticDefinition(
+                        Combat.BossAscensionRegistry.FrameId(region, step), CosmeticKind.Frame,
+                        step >= Combat.BossAscensionRegistry.MaxStep ? Legendary : Epic,
+                        Combat.BossAscensionRegistry.FrameName(region, step), null, Bound: true));
+                }
+            }
             return list;
         }
 
@@ -110,7 +126,7 @@ namespace FolkIdle.Server.Domain.Progression
 
         /// <summary>What a chest of this rarity can contain: its avatars and frames.</summary>
         public static IReadOnlyList<CosmeticDefinition> ChestPool(int rarity)
-            => All.Where(d => d.Rarity == rarity && d.Kind != CosmeticKind.Chest).ToList();
+            => All.Where(d => d.Rarity == rarity && d.Kind != CosmeticKind.Chest && !d.Bound).ToList();
 
         public static CosmeticDefinition PickFromChest(int rarity, Random random)
         {

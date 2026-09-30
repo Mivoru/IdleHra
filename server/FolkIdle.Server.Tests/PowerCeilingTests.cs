@@ -84,6 +84,15 @@ namespace FolkIdle.Server.Tests
             levers.Add(new Lever("inheritance damage", 1.0 + inheritPct / 100.0,
                 $"InheritanceRegistry.MaxLevel {InheritanceRegistry.MaxLevel} x {InheritanceRegistry.PercentPerLevel}%"));
 
+            // 2b. Renown, the permanent rebirth bonus (task 88). It shares the
+            //     inheritance term in ComputeEffectiveMilliAttack, so listing
+            //     it as its own multiplier overstates it slightly - the
+            //     pessimistic side. Quoted at a count nobody reaches: it is
+            //     an asymptote, so the number here is the ceiling.
+            double renownPct = RebirthRules.DamageBonusPct(1_000);
+            levers.Add(new Lever("rebirth renown", 1.0 + renownPct / 100.0,
+                $"RebirthRules.DamageBonusPct(1,000) - a CURVE under {RebirthRules.MaxDamageBonusPct}%"));
+
             // 3. The codex damage curve. No ceiling by design - quoted at the
             //    reference sum, which is what makes this line honest.
             double codex = CodexEngine.DamageMultiplierFor(ReferenceCodexLevelSum);
@@ -286,6 +295,9 @@ namespace FolkIdle.Server.Tests
             {
                 ("codex damage", n => CodexEngine.DamageMultiplierFor(n)),
                 ("gathering mastery speed", n => 1.0 + GatheringToolEngine.GetMasterySpeedBonusPct(n) / 100.0),
+                // Task 88: the rebirth count is the one input a player can
+                // raise as often as they like, so it must never be linear.
+                ("rebirth renown", n => 1.0 + RebirthRules.DamageBonusPct(n) / 100.0),
             };
 
             foreach (var (name, at) in curves)

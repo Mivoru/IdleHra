@@ -241,7 +241,18 @@ namespace FolkIdle.Server.Network
         // are eligible (not locked, not worn), the Forge-level ceiling, every
         // fee - with the single fusion's own rules. See
         // ForgeSplicingEngine.ExecuteStackFusionAsync.
-        FuseStack = 78
+        FuseStack = 78,
+
+        // Modul: StartBossAscension (task 87) fights a region boss again at one
+        // step of its Ascension ladder. TargetId is the REGION (1-5), SecondaryId
+        // the STEP (1-10). The server decides everything else: that the boss has
+        // been beaten once, that the step is at most one above the highest the
+        // player has cleared (BossAscensionPacked on the payload, filled from
+        // boss_ascension_progress at login), the modifiers, and the reward. A
+        // refusal answers AscensionBossNotDefeated or AscensionStepLocked - see
+        // BossAscensionTickCoordinator. Deploys the active character to the boss
+        // and arms the step on it; no database on the tick thread.
+        StartBossAscension = 79
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

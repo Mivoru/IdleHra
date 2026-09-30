@@ -5116,7 +5116,7 @@ prose in English. Loot below Rare stays silent.
 | 85 | Orders: automation rules as a reward | L | **design with the owner** |
 | 86 | A deterministic affix step beside the reroll | M | **design with the owner** |
 | 87 | Boss Ascension ladder | M | reward shape, once |
-| 88 | Rebirth on demand instead of a calendar season | XL | **owner decision (O3)** |
+| 88 | **BUILT** (branch `feat/88-rebirth`) - Rebirth on demand instead of a calendar season | XL | decided 2026-09-30 |
 
 Recommended batches: **68 + 69 + 70** first (felt every session, no owner
 input), then **71 + 72 + 74**, then **73 + 82** (one look at the shell), then
@@ -5626,16 +5626,140 @@ For region materials, add or replace one CHOSEN affix at Common rarity, so
 randomness stays in magnitude only. Also: an auto-reroll stop on a
 combination, and the reroll history from 74.
 
-## 87. Boss Ascension ladder
+## DONE - 87. Boss Ascension ladder
 
-Boss challenges become a ladder of 10 per boss, each step adding one modifier
-(boss attack +15 %, one larder slot, time limit -10 %), calibrated with
-`BossChallengeCalibrationTests`. Rewards are cosmetics and titles only.
+**Built 2026-09-30 (owner decision 2026-09-30).** Every region boss can be
+fought again at ten steps; each step is the one below it PLUS one modifier.
+First clear of a step pays a title (`Wolfbane I`..`X`, `Lynxbane`, `Wyrmbane`,
+`Titanbane`, `Scourge of Malakor`: 50 in all) and, at steps 5 and 10, a **bound**
+frame (10 in all). **Cosmetics and titles only** - no gold, diamonds, gear or
+chest. A chest is a tradeable cosmetic, i.e. gold by the back door, so the
+frames are `Bound` (`CosmeticDefinition.Bound`): never in a chest pool,
+refused on the cosmetic market with `CosmeticMarketResult.Bound`.
 
-## 88. Rebirth on demand instead of a calendar season - owner decision
+| Step | Adds | In force at this step (region 1) |
+|---|---|---|
+| 1 | boss attack +15% | attack +15% |
+| 2 | time limit 200% of the boss's Swift limit | + kill within 160 s |
+| 3 | boss health +10% | + health +10% |
+| 4 | limit 175% | 140 s |
+| 5 | boss attack +15% | attack +30% (frame) |
+| 6 | limit 155% | 124 s |
+| 7 | boss health +10% | health +20% |
+| 8 | limit 140% | 112 s |
+| 9 | boss attack +15% | attack +45% |
+| 10 | limit 120% | 96 s (frame) |
 
-Seasons are paused by hand because the calendar would wipe the owner's level
-96. Proposal: the player triggers the rollover (prestige), seeing what carries
-(Seals, the Hall, aptitudes, Inheritance, shards) against what is lost. It is
-the same question as O3 and changes what a season means, so it is not built
-without the owner.
+**The ladder is one table**, `BossAscensionRegistry.Steps`; the tick, the
+projection, the REST view (`GET /api/v1/boss-ascension`, which also carries the
+server's own effect sentences and reward names - the client keeps no copy) and
+the tests all read it through `ModifiersFor`. The owner's example "one fewer
+larder slot" is NOT on it, and neither is a slower bite or a no-food rule: they
+were measured and each moves nothing the projection can see (against the
+region's best gear the boss is a burst the larder never answers - region 5
+eats 0-1 bites in a whole fight), and a step that cannot be asserted harder
+does not belong on a calibrated ladder. Attack, health and the time limit
+(Swift's, reused) are the three that do.
+
+**Calibration** (`BossChallengeCalibrationTests`, best-in-slot = the wall's
+required quality +4 at the region's reference level, cleared boss): each step is
+ASSERTED harder than the last on the scalar its modifier acts on - survival
+headroom (the extra boss attack the gear still wins against) for attack steps,
+kill time for health steps, kill time over the limit for time steps - and may
+ease none of the three. Step 10, all modifiers on:
+
+| Region | BiS kills in / limit | attack headroom | the wall's own gear |
+|---|---|---|---|
+| 1 | 91 s / 96 s | x3.42 | 98 s - loses on time |
+| 2 | 125 s / 132 s | x2.36 | 136 s - loses |
+| 3 | 140 s / 144 s | x5.34 | 162 s - loses |
+| 4 | 125 s / 132 s | x11.90 | 152 s - loses |
+| 5 | 120 s / 132 s | x21.64 | 146 s - loses |
+
+The 120% last limit is the window where best-in-slot still clears (91-97% of
+the limit) and the wall's gear does not - 100% leaves no room for the two
+health steps.
+
+**Persistence and the tick.** `boss_ascension_progress` (additive migration
+`AddBossAscensionProgress`): highest step cleared per player per boss, only
+raised, inside the transaction that pays that step's titles and frames - one
+fact, exactly-once, and a lost note is paid with the next clear (every step
+between stored and cleared is paid). The payload keeps a packed cache
+(`BossAscensionPacked`, filled at login like `DefeatedRegionBossMask`) for
+start-step validation; the table is the authority. The armed attempt
+(`AscensionStep/Region/CharacterId`) is runtime only, pinned to the character
+that started it, and ends on a change of activity, a death or a reload. A
+step is cleared only by a kill inside its time limit; a slower kill answers
+result 49 and leaves the attempt armed for the respawn.
+
+**Wire.** `StartBossAscension = 79` (TargetId = region, SecondaryId = step; no
+struct change). `StateUpdatePacket.AscensionStep` (+1 byte, 810 -> 811, runtime
+only by design). Result codes: 46 boss never beaten, 47 step locked (both
+answers to the command - an honest client is never disconnected for a stale
+ladder), 48 step cleared (sent by the reward worker AFTER the commit, so the
+ladder refetched on it is right), 49 too slow, 50 reward could not be saved yet.
+
+**Client.** `BossAscension.svelte` under each unlocked region on Combat: ten
+44px buttons (not a `<select>`), cleared / open / locked, the modifiers and
+reward of the step being looked at, a Start button. `exercise.mjs` reads the
+ladder, checks a locked step cannot be started and the buttons' size, starts
+the next step on the fixture (marking region 1's boss beaten for the run, which
+the fixture has not done) and puts the fight, the ladder and the boss mark
+back through `POST /api/v1/dev/boss-ascension/restore` (dev tools only).
+
+**Not done:** the Book of Deeds line (task 57 reworks the Book); the offline
+catch-up does not run Ascension attempts (live kills only, like the challenges);
+the title picker lists all earned titles, so a player at the top of five ladders
+scrolls a long list.
+
+## BUILT - 88. Rebirth on demand instead of a calendar season
+
+**Owner decision 2026-09-30, built the same day on `feat/88-rebirth`, not
+deployed.** Design and status: `docs/superpowers/specs/2026-09-30-rebirth-on-demand.md`.
+
+- **The calendar ends nobody's run.** `SeasonalRotationEngine` no longer
+  closes an era on its date, paused or not. The admin's typed END SEASON is
+  the only global rollover left. The live era (due 2026-11-02 09:40 UTC)
+  is now safe without the pause.
+- **A player rebirths when they choose.** `GET /api/v1/rebirth/preview` and
+  `POST /api/v1/rebirth {ExpectedRebirthCount}`. The panel is on the
+  Ancestors screen, with a two-step confirm.
+  - The reset is the rollover's own `AwardLegacyShardsAsync` and
+    `ResetPlayersAsync`, run for one player. There is no second wipe list.
+  - When the player is online, the tick suspends and flushes the payload,
+    and the flush's continuation resets and reloads it
+    (`RebirthTickCoordinator`).
+  - The count token makes a double submit a 409.
+  - A reborn account gets the registration starter kit.
+- **Carries:**
+  - the Hall (aptitudes, genes, generation, epic, Keep marks, bought slots);
+  - Seals, with 2 skill points per Seal back at once;
+  - Inheritance;
+  - shards and Legacy perks;
+  - diamonds and paid respecs;
+  - village buildings;
+  - race, gathering and codex progress;
+  - deeds, cosmetics and records;
+  - the larder, mail and guild.
+- **Resets:**
+  - level, XP, attributes and unspent points;
+  - the skill tree;
+  - potions and the free respec;
+  - all gear in all 11 slots;
+  - gold, materials and unescrowed listings;
+  - ages (back to adult) and activities (idle);
+  - the gene pool, with its clock and price;
+  - the chronicle pass;
+  - the Hall past its cap (culled).
+- **Renown**, the permanent bonus: `floor(15 * (1 - 0.8^n))`% damage, where
+  n counts rebirths taken at level 50 or above. It is asymptotic below 15%
+  and sits in `PowerCeilingTests`.
+- **Fixed in the shared reset on the way:**
+  - attributes stacked on every climb;
+  - the tool slots 8-10 were left pointing at wiped ids;
+  - characters kept yesterday's fight.
+- **Changed deed:** Chapter V's "top fifty" is now "be reborn at level 50+",
+  and an old top-50 finish still counts.
+- **Before deploying:** migration `AddRebirthCounters` is additive. Run
+  `npm run exercise`; it was not run here, because the machine has no
+  Playwright browser.

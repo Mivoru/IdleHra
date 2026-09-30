@@ -679,7 +679,12 @@ namespace FolkIdle.Server.Network
         public void RegisterCheckpointManager(StateCheckpointManager manager)
         {
             manager.RegisterDisconnectCallback(ForceDisconnect);
+            _checkpointManager = manager;
         }
+
+        // Task 88: an offline rebirth waits for the player's queued
+        // checkpoints before it resets the rows they are writing.
+        private StateCheckpointManager? _checkpointManager;
 
         public void RegisterAntiCheatTelemetryEngine(AntiCheatTelemetryEngine engine)
         {
@@ -1819,6 +1824,22 @@ namespace FolkIdle.Server.Network
             if (requestPath == "/api/v1/ancestors/hall" && context.Request.HttpMethod == "GET")
             {
                 await HandleAncestorsHall(context);
+                return;
+            }
+
+            // Task 88: rebirth on demand. The preview is read-only; the POST
+            // is a mutating request and so holds the account stripe for its
+            // whole handler (EnterAccountStripeAsync), which is what makes a
+            // double-tap wait for the first rather than race it.
+            if (requestPath == "/api/v1/rebirth/preview" && context.Request.HttpMethod == "GET")
+            {
+                await HandleRebirthPreview(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/rebirth" && context.Request.HttpMethod == "POST")
+            {
+                await HandleRebirth(context);
                 return;
             }
 
@@ -6104,6 +6125,142 @@ namespace FolkIdle.Server.Network
         /// WouldCarry. A cap that only reveals what it did after a rollover has
         /// already deleted somebody is not a decision, it is a surprise.
         /// </summary>
+        private async Task HandleRebirthPreview(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var preview = await new RebirthEngine(_serviceProvider).PreviewAsync(playerId);
+                if (preview == null)
+                {
+                    context.Response.StatusCode = 404;
+                    context.Response.Close();
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, preview);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Rebirth preview error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private sealed class RebirthRequestBody
+        {
+            public int ExpectedRebirthCount { get; set; } = -1;
+        }
+
+        /// <summary>
+        /// Task 88: the player ends their run. Body: {ExpectedRebirthCount},
+        /// the count the preview showed - the idempotency token.
+        ///
+        /// Modul: EVERY OUTCOME ANSWERS WITH A RESULT, never a bare status and
+        /// never silence (CLAUDE.md, "silent rollback"): 200 Ok, 409
+        /// AlreadyReborn / InFlight, 503 when the tick did not answer in time.
+        /// </summary>
+        private async Task HandleRebirth(HttpListenerContext context)
+        {
+            long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+            if (playerId <= 0)
+            {
+                context.Response.StatusCode = 401;
+                context.Response.Close();
+                return;
+            }
+
+            RebirthRequestBody? body;
+            try
+            {
+                string raw = await ReadBodyAsync(context);
+                body = JsonSerializer.Deserialize<RebirthRequestBody>(string.IsNullOrWhiteSpace(raw) ? "{}" : raw);
+            }
+            catch (JsonException)
+            {
+                body = null;
+            }
+            if (body == null || body.ExpectedRebirthCount < 0)
+            {
+                context.Response.StatusCode = 400;
+                context.Response.Close();
+                return;
+            }
+
+            var engine = new RebirthEngine(_serviceProvider);
+            RebirthOutcome? outcome = null;
+
+            // A live session: the tick owns the payload, so the rebirth runs
+            // as the continuation of that payload's own flush.
+            if (_playerSessionRegistry != null && _playerSessionRegistry.IsPlayerOnline(playerId))
+            {
+                var request = new FolkIdle.Server.Domain.Progression.RebirthRequest
+                {
+                    PlayerId = playerId,
+                    ExpectedRebirthCount = body.ExpectedRebirthCount,
+                    Engine = engine,
+                };
+                _playerSessionRegistry.RebirthRequestQueue.Enqueue(request);
+
+                var finished = await Task.WhenAny(request.Completion.Task, Task.Delay(TimeSpan.FromSeconds(15)));
+                if (finished != request.Completion.Task)
+                {
+                    await WriteRebirthAsync(context, 503, new RebirthOutcome(RebirthResult.Failed, body.ExpectedRebirthCount, 0, 0, 0, false));
+                    return;
+                }
+                outcome = await request.Completion.Task;
+            }
+
+            // No live payload (offline, or between sign-in and the tick picking
+            // the session up): wait out any checkpoint still queued for this
+            // player, then reset directly.
+            if (outcome == null)
+            {
+                if (_checkpointManager != null)
+                {
+                    await _checkpointManager.WaitForPendingFlushesAsync(playerId);
+                }
+                outcome = await engine.RebirthAsync(playerId, body.ExpectedRebirthCount);
+            }
+
+            int status = outcome.Value.Result switch
+            {
+                RebirthResult.Ok => 200,
+                RebirthResult.AlreadyReborn => 409,
+                RebirthResult.InFlight => 409,
+                RebirthResult.NotFound => 404,
+                _ => 500,
+            };
+            await WriteRebirthAsync(context, status, outcome.Value);
+        }
+
+        private static async Task WriteRebirthAsync(HttpListenerContext context, int status, RebirthOutcome outcome)
+        {
+            context.Response.StatusCode = status;
+            context.Response.ContentType = "application/json";
+            await JsonSerializer.SerializeAsync(context.Response.OutputStream, new
+            {
+                Result = outcome.Result.ToString(),
+                outcome.RebirthCount,
+                outcome.RenownedRebirths,
+                outcome.DamageBonusPct,
+                outcome.ShardsEarned,
+                outcome.Renowned,
+            });
+            context.Response.Close();
+        }
+
         private async Task HandleAncestorsHall(HttpListenerContext context)
         {
             try
@@ -11749,6 +11906,45 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // Task 87: put one boss's Ascension ladder back to a step, so
+                // exercise.mjs can climb a rung and leave the fixture as it found
+                // it. Body {Region, Step, BossDefeated?}; reloads the live session so the tick's
+                // cache of the ladder agrees with the table again.
+                if (requestPath == "/api/v1/dev/boss-ascension/restore" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await ReadBodyAsync(context);
+                    int region = 0, step = 0;
+                    bool? bossDefeated = null;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                        if (parsed.RootElement.TryGetProperty("Region", out var r) && r.TryGetInt32(out int rv)) region = rv;
+                        if (parsed.RootElement.TryGetProperty("Step", out var st) && st.TryGetInt32(out int sv)) step = sv;
+                        if (parsed.RootElement.TryGetProperty("BossDefeated", out var bd)
+                            && (bd.ValueKind == JsonValueKind.True || bd.ValueKind == JsonValueKind.False)) bossDefeated = bd.GetBoolean();
+                    }
+                    catch (JsonException) { }
+
+                    if (!FolkIdle.Server.Domain.Combat.BossAscensionRegistry.IsValidRegion(region))
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                        await FolkIdle.Server.Domain.Combat.BossAscensionEngine.DevRestoreAsync(db, playerId, region, step, bossDefeated);
+                    }
+                    CommandQueue.Enqueue(new PlayerCommand
+                    {
+                        PlayerId = playerId,
+                        Packet = new ClientCommandPacket { Command = CommandType.ReloadState }
+                    });
+                    await WriteJsonAsync(context, new { Ok = true });
+                    return;
+                }
+
                 if (_worldBossEngine == null)
                 {
                     context.Response.StatusCode = 503;
@@ -11872,6 +12068,9 @@ namespace FolkIdle.Server.Network
                         EndTimestamp = era?.EndTimestamp ?? 0L,
                         Paused = era?.IsRolloverPaused ?? false,
                         EndRequested = FolkIdle.Server.Engine.SeasonalRotationEngine.EndNowPending,
+                        // Task 88: the date is kept and shown, and no longer
+                        // ends anything - players end their own runs.
+                        CalendarEndsSeason = false,
                     });
                     var bytes = System.Text.Encoding.UTF8.GetBytes(json);
                     context.Response.StatusCode = 200;

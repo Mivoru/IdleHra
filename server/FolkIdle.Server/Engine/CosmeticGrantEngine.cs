@@ -122,7 +122,48 @@ namespace FolkIdle.Server.Engine
         {
             int granted = await DrainLevelNotesAsync();
             granted += await DrainBossKillsAsync();
+            granted += await DrainAscensionClearsAsync();
             return granted;
+        }
+
+        /// <summary>
+        /// Task 87: pays the titles and frames of each Boss Ascension step the
+        /// tick noted as cleared. Budgeted like the drains above. A failure is
+        /// LOST, not re-queued: nothing was written (the transaction rolls
+        /// back), and the table's highest step only rises inside that
+        /// transaction, so the NEXT clear of any higher step pays every step
+        /// between what is stored and what it cleared.
+        /// </summary>
+        private async Task<int> DrainAscensionClearsAsync()
+        {
+            int budget = Math.Min(Domain.Combat.BossAscensionEngine.Clears.Count, MaxNotesPerCycle);
+            int paidThisCycle = 0;
+            for (int i = 0; i < budget && Domain.Combat.BossAscensionEngine.Clears.TryDequeue(out var clear); i++)
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    var paid = await Domain.Combat.BossAscensionEngine.RecordClearAsync(
+                        db, clear.PlayerId, clear.Region, clear.Step, DateTime.UtcNow);
+                    paidThisCycle += paid.Count;
+
+                    // Announced only now, after the commit: the client refetches the
+                    // ladder on this result, and an earlier one raced the write.
+                    _playerRegistry?.EnqueueCommandResult(clear.PlayerId, (byte)Network.CommandResultCode.AscensionStepCleared);
+                    foreach (var reward in paid)
+                    {
+                        Console.WriteLine($"Boss ascension: player {clear.PlayerId} cleared region {reward.Region} step {reward.Step} - {reward.TitleName}{(reward.FrameName != null ? " + " + reward.FrameName : "")}.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Interlocked.Increment(ref _failed);
+                    _playerRegistry?.EnqueueCommandResult(clear.PlayerId, (byte)Network.CommandResultCode.AscensionRewardNotSaved);
+                    Console.WriteLine($"Boss ascension reward failed for {clear.PlayerId}: {ex.Message}");
+                }
+            }
+            return paidThisCycle;
         }
 
         /// <summary>

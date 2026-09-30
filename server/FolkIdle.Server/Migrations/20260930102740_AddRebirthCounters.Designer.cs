@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260930102740_AddRebirthCounters")]
+    partial class AddRebirthCounters
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -124,25 +127,6 @@ namespace FolkIdle.Server.Migrations
                         {
                             t.HasCheckConstraint("CK_AccountSecurityQuotas_TotalFloodInfractionsCount", "\"TotalFloodInfractionsCount\" >= 0");
                         });
-                });
-
-            modelBuilder.Entity("FolkIdle.Server.Models.BossAscensionProgress", b =>
-                {
-                    b.Property<long>("PlayerId")
-                        .HasColumnType("bigint");
-
-                    b.Property<byte>("Region")
-                        .HasColumnType("smallint");
-
-                    b.Property<byte>("HighestStep")
-                        .HasColumnType("smallint");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("PlayerId", "Region");
-
-                    b.ToTable("boss_ascension_progress");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.BossChallengeCompletion", b =>

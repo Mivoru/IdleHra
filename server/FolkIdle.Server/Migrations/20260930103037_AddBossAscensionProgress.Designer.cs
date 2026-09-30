@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260930103037_AddBossAscensionProgress")]
+    partial class AddBossAscensionProgress
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2058,12 +2061,6 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<bool>("Quarantine_Active")
                         .HasColumnType("boolean");
-
-                    b.Property<int>("RebirthCount")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RenownedRebirths")
-                        .HasColumnType("integer");
 
                     b.Property<int>("SealsEarnedMask")
                         .HasColumnType("integer");

@@ -523,6 +523,10 @@ namespace FolkIdle.Server.Engine
         // symptom was "deployed to Wild Boar, but nothing is happening".
         public ConcurrentQueue<TickStatePayload> StateReloadQueue { get; } = new();
 
+        // Task 88: a rebirth the REST handler hands to the tick, which owns
+        // the live payload - see RebirthTickCoordinator.
+        public ConcurrentQueue<FolkIdle.Server.Domain.Progression.RebirthRequest> RebirthRequestQueue { get; } = new();
+
         // Modul: checkpoints off the tick thread (task 43). CheckpointWriter
         // commits a flush on its own partition and reports back here; the tick
         // drains this ahead of StateReloadQueue - see CheckpointAckTickCoordinator.
