@@ -35,7 +35,10 @@ namespace FolkIdle.Server.Tests
                 ("deep_40", "Where No Bell Rings", 40),
                 ("deep_50", "The Bottomless", 50),
             };
-            Assert.Equal(expected, TitleRegistry.All.Select(t => (t.Slug, t.DisplayName, t.DeepFloor)).ToArray());
+            // The Deep's titles; task 87's ascension_* titles (DeepFloor 0) sit beside them.
+            Assert.Equal(expected, TitleRegistry.All.Where(t => t.DeepFloor > 0).Select(t => (t.Slug, t.DisplayName, t.DeepFloor)).ToArray());
+            Assert.Equal(50, TitleRegistry.All.Count(t => t.Slug.StartsWith("ascension_", StringComparison.Ordinal)));
+            Assert.Equal(TitleRegistry.All.Count, TitleRegistry.All.Select(t => t.Slug).Distinct().Count());
 
             Assert.Empty(TitleRegistry.ForDeepFloor(9));
             Assert.Equal(new[] { "deep_10", "deep_15" }, TitleRegistry.ForDeepFloor(19).Select(t => t.Slug));

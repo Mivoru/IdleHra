@@ -71,7 +71,12 @@ describe('task 54 cosmetics mirrors', () => {
   it('draws every frame the server can hand out, and no other', () => {
     const frames = poolNames('FramePools').map((n) => `frame_${slug(n)}`);
     expect(frames).toHaveLength(16);
-    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames].sort());
+    // Task 87: plus the bound Ascension frames, one per (boss, frame step).
+    const ascension = read('Domain', 'Combat', 'BossAscensionRegistry.cs');
+    const frameSteps = [...ascension.match(/FrameSteps = \{([^}]*)\}/)![1].matchAll(/\d+/g)].map((m) => m[0]);
+    const ascent = [1, 2, 3, 4, 5].flatMap((r) => frameSteps.map((s) => `frame_ascent_r${r}_s${s}`));
+    expect(ascent).toHaveLength(10);
+    expect(Object.keys(FRAME_DRAWINGS).sort()).toEqual([...frames, ...ascent].sort());
   });
 
   it('has a portrait for every avatar', () => {

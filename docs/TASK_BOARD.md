@@ -5626,11 +5626,91 @@ For region materials, add or replace one CHOSEN affix at Common rarity, so
 randomness stays in magnitude only. Also: an auto-reroll stop on a
 combination, and the reroll history from 74.
 
-## 87. Boss Ascension ladder
+## DONE - 87. Boss Ascension ladder
 
-Boss challenges become a ladder of 10 per boss, each step adding one modifier
-(boss attack +15 %, one larder slot, time limit -10 %), calibrated with
-`BossChallengeCalibrationTests`. Rewards are cosmetics and titles only.
+**Built 2026-09-30 (owner decision 2026-09-30).** Every region boss can be
+fought again at ten steps; each step is the one below it PLUS one modifier.
+First clear of a step pays a title (`Wolfbane I`..`X`, `Lynxbane`, `Wyrmbane`,
+`Titanbane`, `Scourge of Malakor`: 50 in all) and, at steps 5 and 10, a **bound**
+frame (10 in all). **Cosmetics and titles only** - no gold, diamonds, gear or
+chest. A chest is a tradeable cosmetic, i.e. gold by the back door, so the
+frames are `Bound` (`CosmeticDefinition.Bound`): never in a chest pool,
+refused on the cosmetic market with `CosmeticMarketResult.Bound`.
+
+| Step | Adds | In force at this step (region 1) |
+|---|---|---|
+| 1 | boss attack +15% | attack +15% |
+| 2 | time limit 200% of the boss's Swift limit | + kill within 160 s |
+| 3 | boss health +10% | + health +10% |
+| 4 | limit 175% | 140 s |
+| 5 | boss attack +15% | attack +30% (frame) |
+| 6 | limit 155% | 124 s |
+| 7 | boss health +10% | health +20% |
+| 8 | limit 140% | 112 s |
+| 9 | boss attack +15% | attack +45% |
+| 10 | limit 120% | 96 s (frame) |
+
+**The ladder is one table**, `BossAscensionRegistry.Steps`; the tick, the
+projection, the REST view (`GET /api/v1/boss-ascension`, which also carries the
+server's own effect sentences and reward names - the client keeps no copy) and
+the tests all read it through `ModifiersFor`. The owner's example "one fewer
+larder slot" is NOT on it, and neither is a slower bite or a no-food rule: they
+were measured and each moves nothing the projection can see (against the
+region's best gear the boss is a burst the larder never answers - region 5
+eats 0-1 bites in a whole fight), and a step that cannot be asserted harder
+does not belong on a calibrated ladder. Attack, health and the time limit
+(Swift's, reused) are the three that do.
+
+**Calibration** (`BossChallengeCalibrationTests`, best-in-slot = the wall's
+required quality +4 at the region's reference level, cleared boss): each step is
+ASSERTED harder than the last on the scalar its modifier acts on - survival
+headroom (the extra boss attack the gear still wins against) for attack steps,
+kill time for health steps, kill time over the limit for time steps - and may
+ease none of the three. Step 10, all modifiers on:
+
+| Region | BiS kills in / limit | attack headroom | the wall's own gear |
+|---|---|---|---|
+| 1 | 91 s / 96 s | x3.42 | 98 s - loses on time |
+| 2 | 125 s / 132 s | x2.36 | 136 s - loses |
+| 3 | 140 s / 144 s | x5.34 | 162 s - loses |
+| 4 | 125 s / 132 s | x11.90 | 152 s - loses |
+| 5 | 120 s / 132 s | x21.64 | 146 s - loses |
+
+The 120% last limit is the window where best-in-slot still clears (91-97% of
+the limit) and the wall's gear does not - 100% leaves no room for the two
+health steps.
+
+**Persistence and the tick.** `boss_ascension_progress` (additive migration
+`AddBossAscensionProgress`): highest step cleared per player per boss, only
+raised, inside the transaction that pays that step's titles and frames - one
+fact, exactly-once, and a lost note is paid with the next clear (every step
+between stored and cleared is paid). The payload keeps a packed cache
+(`BossAscensionPacked`, filled at login like `DefeatedRegionBossMask`) for
+start-step validation; the table is the authority. The armed attempt
+(`AscensionStep/Region/CharacterId`) is runtime only, pinned to the character
+that started it, and ends on a change of activity, a death or a reload. A
+step is cleared only by a kill inside its time limit; a slower kill answers
+result 49 and leaves the attempt armed for the respawn.
+
+**Wire.** `StartBossAscension = 79` (TargetId = region, SecondaryId = step; no
+struct change). `StateUpdatePacket.AscensionStep` (+1 byte, 810 -> 811, runtime
+only by design). Result codes: 46 boss never beaten, 47 step locked (both
+answers to the command - an honest client is never disconnected for a stale
+ladder), 48 step cleared (sent by the reward worker AFTER the commit, so the
+ladder refetched on it is right), 49 too slow, 50 reward could not be saved yet.
+
+**Client.** `BossAscension.svelte` under each unlocked region on Combat: ten
+44px buttons (not a `<select>`), cleared / open / locked, the modifiers and
+reward of the step being looked at, a Start button. `exercise.mjs` reads the
+ladder, checks a locked step cannot be started and the buttons' size, starts
+the next step on the fixture (marking region 1's boss beaten for the run, which
+the fixture has not done) and puts the fight, the ladder and the boss mark
+back through `POST /api/v1/dev/boss-ascension/restore` (dev tools only).
+
+**Not done:** the Book of Deeds line (task 57 reworks the Book); the offline
+catch-up does not run Ascension attempts (live kills only, like the challenges);
+the title picker lists all earned titles, so a player at the top of five ladders
+scrolls a long list.
 
 ## BUILT - 88. Rebirth on demand instead of a calendar season
 

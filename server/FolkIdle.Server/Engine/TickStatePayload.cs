@@ -157,6 +157,23 @@ namespace FolkIdle.Server.Engine
         // Runtime only: not on the wire, not checkpointed - a relogin starts a
         // fresh fight, and a missed clear could only make the challenge harder.
         public bool AteThisFight;
+
+        // Modul: TASK 87 - the Boss Ascension ladder. BossAscensionPacked is a
+        // CACHE of boss_ascension_progress (the authority), four bits a region,
+        // filled at login and raised at a clear, so the tick can validate a
+        // start-step without a query - the same arrangement as
+        // DefeatedRegionBossMask. The rest is the ARMED attempt and is runtime
+        // only, not checkpointed: an attempt does not survive a relogin (a
+        // reload simply disarms it, which AscensionStep on the wire tells the
+        // client). AscensionCharacterId pins it to the character that started
+        // it, because the payload's fight register is swapped per slot and a
+        // second character standing at the same boss must not inherit it.
+        public int BossAscensionPacked;
+        public byte AscensionStep;
+        public byte AscensionRegion;
+        public System.Guid AscensionCharacterId;
+        /// <summary>0 nothing to report, 2 the kill missed the step's time limit. Drained into a command result by the tick.</summary>
+        public byte AscensionPendingResult;
         public int Food1_ItemId;
         public int Food1_Count;
         public int Food2_ItemId;
