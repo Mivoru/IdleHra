@@ -50,6 +50,8 @@ export const queryKeys = {
   ancestorsHall: ['meta', 'ancestors'] as const,
   /** Task 88: what a rebirth would keep and take, right now. */
   rebirthPreview: ['meta', 'rebirth'] as const,
+  /** Task 85: each fielded character's automation rules. */
+  automationRules: ['player', 'automationRules'] as const,
   deeds: ['meta', 'deeds'] as const,
   /** Task 57: the collection log. */
   collection: ['player', 'collection'] as const,
@@ -2113,6 +2115,44 @@ export interface MaterialFlow {
 
 export function fetchGoldLedger(): Promise<GoldLedger> {
   return authedGet<GoldLedger>('/api/v1/player/gold-ledger');
+}
+
+// ---------------------------------------------------------------------------
+// Automation rules, "Orders" (task 85)
+// ---------------------------------------------------------------------------
+
+/** Mirrors `AutomationRules` on the server: 0 none, 1 fish when the larder runs dry, 2 step down after a death, 3 fuse stacks up to tier N. */
+export const AUTOMATION_RULE = { None: 0, FishWhenLarderDry: 1, StepDownOnDeath: 2, AutoFuseToTier: 3 } as const;
+
+/** One rule as the API speaks it: a fishing rule's Param is the spot's activity id (3001-3005), a fusion rule's is the tier. */
+export interface AutomationRule {
+  Type: number;
+  Param: number;
+}
+
+export interface AutomationRulesView {
+  /** 'Ok', or why a POST was refused (SlotLocked, DuplicateRule, NotAFishingSpot, TierOutOfRange, NotFielded...). */
+  Result: string;
+  Level: number;
+  /** The level each of the three slots opens at. */
+  UnlockLevels: number[];
+  MaxFuseTier: number;
+  FishingSpots: { ActivityId: number; Location: number }[];
+  Characters: { CharacterId: string; Name: string; Slot: number; Rules: AutomationRule[] }[];
+}
+
+/**
+ * The server's view of every fielded character's rules. The panel renders it
+ * and decides nothing: the level gate, which spot is a fishing spot and which
+ * tier is allowed are all the server's (`AutomationRules.Validate`).
+ */
+export function fetchAutomationRules(): Promise<AutomationRulesView> {
+  return authedGet<AutomationRulesView>('/api/v1/automation-rules');
+}
+
+/** Replaces one character's three rules. A refusal answers 200 with its Result. */
+export function saveAutomationRules(characterId: string, rules: AutomationRule[]): Promise<AutomationRulesView | null> {
+  return authedPost<AutomationRulesView>('/api/v1/automation-rules', { CharacterId: characterId, Rules: rules });
 }
 
 // ---------------------------------------------------------------------------

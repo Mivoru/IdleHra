@@ -2320,6 +2320,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Task 85: the automation rules - see NetworkBroadcastSystem.AutomationRules.cs.
+            if (await TryHandleAutomationRulesAsync(context, requestPath))
+            {
+                return;
+            }
+
             // Titles (task 37): REST, not the wire - no StateUpdatePacket field.
             if (requestPath == "/api/v1/player/titles" && context.Request.HttpMethod == "GET")
             {

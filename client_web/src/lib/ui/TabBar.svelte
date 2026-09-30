@@ -20,6 +20,7 @@
   import { playerState } from '../stores/game';
   import { MAIN_TABS } from './tabs';
   import { unopenedChests } from '../stores/cosmeticChests';
+  import { isAutomationNote } from './slots';
 
   interface Props {
     current: string;
@@ -32,7 +33,8 @@
 
   // A dot, not a number: it says "something here wants you", and the screen
   // says what. Halted = not earning; unspent points = power already owned.
-  const combatAlert = $derived(snap ? Number(snap.ActivityHaltReason) !== 0 : false);
+  // Task 85: an automation note (a rule acting) is not a halt - no dot.
+  const combatAlert = $derived(snap ? Number(snap.ActivityHaltReason) !== 0 && !isAutomationNote(Number(snap.ActivityHaltReason)) : false);
   // Task 54: an unopened cosmetic chest also wants the player - the Wardrobe
   // sits beside Character in the Menu, and Character links to it.
   const characterAlert = $derived((snap ? Number(snap.UnspentAttributePoints) > 0 : false) || $unopenedChests > 0);

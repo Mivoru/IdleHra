@@ -12,7 +12,7 @@ import { refreshUnopenedChests } from './cosmeticChests';
 import { writable, get } from 'svelte/store';
 import { connection, fromBase64, type ConnectionStatus } from '../net/connection';
 import { FLASH_MIN_TIER, LootFeelGate, lootPitch, shouldReplaceReveal } from '../ui/lootFeel';
-import { resolveSlotIndex } from '../ui/slots';
+import { resolveSlotIndex, isAutomationNote } from '../ui/slots';
 import { loadContent, itemName } from '../net/content';
 import { accountIdOf } from '../net/auth';
 import { watchAppLifecycle } from '../net/lifecycle';
@@ -888,7 +888,8 @@ export function startSession(token: string): void {
       // A halt is the one state change a player most needs to notice, because
       // it is silent by nature - the character simply stops earning. Only on
       // the EDGE, or a stopped character would buzz every 1.6 seconds forever.
-      if (lastHaltReason === 0 && packet.ActivityHaltReason !== 0) play('error');
+      // Task 85: a rule acting (6, 7) is news, not an alarm.
+      if (lastHaltReason === 0 && packet.ActivityHaltReason !== 0 && !isAutomationNote(packet.ActivityHaltReason)) play('error');
       lastHaltReason = packet.ActivityHaltReason;
 
       // Modul: an earned deed, announced the second it lands. observeTierTotal
