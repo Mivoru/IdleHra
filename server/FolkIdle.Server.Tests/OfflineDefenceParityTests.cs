@@ -104,30 +104,6 @@ namespace FolkIdle.Server.Tests
             return (double)taken / swings;
         }
 
-        /// <summary>The live tick for an hour of real fighting: food eaten, and whether it died.</summary>
-        private static (int FoodEaten, bool Died, int SecondsAlive) RunLive(TickStatePayload payload)
-        {
-            var guildWar = new ConcurrentQueue<GuildWarPointEvent>();
-            var sessions = new ConcurrentDictionary<long, LiveSessionContext>();
-            int foodBefore = payload.Food1_Count;
-            try
-            {
-                for (int tick = 0; tick < HuntingProjection.HorizonTicks; tick++)
-                {
-                    SimulationEngine.RunCombatTick(ref payload, 100, 100, guildWar, sessions);
-                    if (payload.ActiveActivityId == 0)
-                    {
-                        return (foodBefore - payload.Food1_Count, true, tick / 10);
-                    }
-                }
-                return (foodBefore - payload.Food1_Count, false, 3600);
-            }
-            finally
-            {
-                while (CombatLootEngine.DropRequestQueue.TryDequeue(out _)) { }
-            }
-        }
-
         [Theory]
         [InlineData(1, false)]
         [InlineData(1, true)]
@@ -146,7 +122,8 @@ namespace FolkIdle.Server.Tests
             var stats = SimulationEngine.LiveCombatStats(in payload);
             long maxMilliHp = SimulationEngine.EffectiveMaxMilliHpFor(in payload, in stats);
 
-            double offline = OfflineSimulationEngine.ExpectedIncomingMilliDamagePerSwing(in payload, in stats, monsterId, maxMilliHp);
+            // The swing the offline fight charges (HuntingProjection.Advance).
+            double offline = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monsterId, payload.DefeatedRegionBossMask, maxMilliHp);
             double live = LiveMilliDamagePerSwing(payload);
 
             _output.WriteLine(
@@ -161,51 +138,8 @@ namespace FolkIdle.Server.Tests
             Assert.InRange(offline, live * 0.95, live * 1.05);
         }
 
-        /// <summary>
-        /// What the fix does to a real offline window: how long an empty larder
-        /// lasts, and what an hour eats with a full one, against the live tick.
-        /// </summary>
-        [Theory]
-        [InlineData(1, false)]
-        [InlineData(1, true)]
-        [InlineData(2, false)]
-        [InlineData(2, true)]
-        [InlineData(3, false)]
-        [InlineData(3, true)]
-        [InlineData(4, true)]
-        [InlineData(5, true)]
-        public void OfflineSurvivalAndFood_TrackTheLiveTick(int region, bool geared)
-        {
-            int monsterId = RegularOf(region);
-
-            var hungry = Character(region, geared, monsterId, food: 0);
-            var stats = SimulationEngine.LiveCombatStats(in hungry);
-            var offlineHungry = OfflineSimulationEngine.ProjectCombatSustain(in hungry, in stats, monsterId, 3600);
-            var liveHungry = RunLive(hungry);
-
-            var fed = Character(region, geared, monsterId, food: 20_000);
-            var offlineFed = OfflineSimulationEngine.ProjectCombatSustain(in fed, in stats, monsterId, 3600);
-            var liveFed = RunLive(fed);
-
-            _output.WriteLine(
-                $"region {region} {(geared ? "geared" : "bare  ")}: no food - offline {offlineHungry.SustainedSeconds:F0}s, live {liveHungry.SecondsAlive}s (died {liveHungry.Died}); "
-                + $"food/h - offline {offlineFed.FoodUnitsConsumed}, live {liveFed.FoodEaten} (died {liveFed.Died})");
-
-            Assert.False(liveFed.Died);
-            Assert.Equal(3600.0, offlineFed.SustainedSeconds);
-
-            // An empty larder: how long the bar lasts. Measured 2026-09-30 at
-            // 0.83-1.00x the live tick after the fix and 0.66-0.86x before it.
-            // The residue below 1.0 is not defence - the offline model charges a
-            // swing every monster interval, while the live tick restarts the
-            // monster's swing clock at every kill, so a fast killer is hit less
-            // often live. It is largest on region 1, where kills take seconds.
-            Assert.InRange(offlineHungry.SustainedSeconds, liveHungry.SecondsAlive * 0.78, liveHungry.SecondsAlive * 1.10);
-
-            // A full larder: bites an hour. Offline may overstate (same swing
-            // clock residue - measured 1.0-1.65x after the fix, 1.19-1.88x
-            // before) but must never promise a cheaper hour than the live tick.
-            Assert.InRange((double)offlineFed.FoodUnitsConsumed, (liveFed.FoodEaten * 0.90) - 2, (liveFed.FoodEaten * 1.80) + 5);
-        }
+        // Survival and food over a real window moved to OfflineCombatParityTests,
+        // which runs the whole offline fight (not only its incoming half) beside
+        // the live tick and holds kills, XP, gold, food and survival to 5%.
     }
 }

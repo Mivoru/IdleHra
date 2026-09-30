@@ -3076,7 +3076,7 @@ namespace FolkIdle.Server.Domain.Combat
             }
         }
 
-        private static void AddSeasonalXp(ref TickStatePayload payload, int xp)
+        internal static void AddSeasonalXp(ref TickStatePayload payload, int xp)
         {
             if (xp <= 0)
             {
@@ -3720,6 +3720,77 @@ namespace FolkIdle.Server.Domain.Combat
             effective = BloodlineBonuses.ApplyAttack(effective, payload.Aptitude_Strength, TraitTotals.From(payload.TraitMask));
 
             return effective;
+        }
+
+        /// <summary>
+        /// A death that no Death Ward caught: the character is back at a full
+        /// bar, the fight and the activity are over, and the death is recorded.
+        /// Shared by RunCombatTick and the offline projection, so a character
+        /// that would have died while watched stops while away as well.
+        /// </summary>
+        internal static void ApplyCombatDeath(ref TickStatePayload payload, int deathMonsterId, int effectiveMaxHp)
+        {
+            payload.PlayerHp = effectiveMaxHp;
+            payload.CurrentMonsterId = 0;
+            payload.CurrentMonsterHp = 0;
+            payload.CombatTargetTickAccumulator = 0;
+            payload.ActiveActivityId = 0;
+            // Modul: halt reasons. A full-HP character sitting idle
+            // looked exactly like one that had never been deployed.
+            payload.ActivityHaltReason = Network.ActivityHaltReason.Died;
+
+            // Modul: WHO killed you, not just that something did.
+            //
+            // Passed in because the respawn above wipes it - CurrentMonsterId
+            // is cleared, so by the time any broadcast runs the killer is
+            // gone. A death card that cannot name the monster is a shrug.
+            payload.LastDeathMonsterId = deathMonsterId;
+            payload.LastDeathTick++;
+            // Modul: lifetime statistics. The only place in the server
+            // where a player death is recognised, so the only place
+            // this can be counted. Intercepted lethal damage (the Death
+            // Ward branch) is not a death and is not counted.
+            payload.LifetimeDeaths++;
+            payload.IsDirty = true;
+        }
+
+        /// <summary>
+        /// What a kill opens, whoever made it: the location's gathering, the next
+        /// region's door (a region boss), and the boss's first-clear mark.
+        /// Returns whether this kill was the first clear. Shared by RunCombatTick
+        /// and the offline projection.
+        /// </summary>
+        internal static bool ApplyKillProgression(ref TickStatePayload payload, int monsterId)
+        {
+            // Modul: reaching a location unlocks its gathering. One kill is
+            // the whole requirement - if you can fight here, you can work
+            // here. Raised live as well as at hydration so the node list
+            // opens up the moment the kill lands, not on next login.
+            int killedLocation = ContentRegistry.GetCanonicalLocation(monsterId);
+            if (killedLocation > payload.HighestLocationReached)
+            {
+                payload.HighestLocationReached = killedLocation;
+            }
+
+            // Modul: region progression. Felling a region's boss opens the
+            // next region - to enter, and to wear its gear. Only ever raised,
+            // never recomputed from the codex here: the codex write for this
+            // kill has not landed yet. Hydration reconciles from the codex.
+            int clearedBossRegion = RaceUnlockRegistry.GetRegionForBossMonsterId(monsterId);
+            if (clearedBossRegion > 0
+                && clearedBossRegion < RaceUnlockRegistry.LastRegion
+                && payload.HighestUnlockedRegion < clearedBossRegion + 1)
+            {
+                payload.HighestUnlockedRegion = clearedBossRegion + 1;
+            }
+
+            // Modul: and the boss stops being a first clear. Deliberately NOT
+            // behind the `< LastRegion` guard above: clearing region 5's boss
+            // opens no sixth region, so a mask folded into that condition
+            // would leave the last boss permanently at first-clear stats.
+            bool wasFirstClear = BossFirstClearRules.IsFirstClearPending(payload.DefeatedRegionBossMask, monsterId);
+            payload.DefeatedRegionBossMask = BossFirstClearRules.MarkDefeated(payload.DefeatedRegionBossMask, monsterId);
+            return wasFirstClear;
         }
 
         internal static bool HasCrossedInterval(int tickAccumulator, int intervalMs)
@@ -4725,29 +4796,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // allocation on this combat path.
                 if (!ConsumableEngine.TryInterceptLethalDamage(ref payload, effectiveMaxHp))
                 {
-                    payload.PlayerHp = effectiveMaxHp;
-                    payload.CurrentMonsterId = 0;
-                    payload.CurrentMonsterHp = 0;
-                    payload.CombatTargetTickAccumulator = 0;
-                    payload.ActiveActivityId = 0;
-                    // Modul: halt reasons. A full-HP character sitting idle
-                    // looked exactly like one that had never been deployed.
-                    payload.ActivityHaltReason = Network.ActivityHaltReason.Died;
-
-                    // Modul: WHO killed you, not just that something did.
-                    //
-                    // Captured HERE because the next four lines wipe it -
-                    // CurrentMonsterId is cleared as part of the respawn, so
-                    // by the time any broadcast runs the killer is gone. A
-                    // death card that cannot name the monster is a shrug.
-                    payload.LastDeathMonsterId = deathMonsterId;
-                    payload.LastDeathTick++;
-                    // Modul: lifetime statistics. The only place in the server
-                    // where a player death is recognised, so the only place
-                    // this can be counted. Intercepted lethal damage (the Death
-                    // Ward branch above) is not a death and is not counted.
-                    payload.LifetimeDeaths++;
-                    payload.IsDirty = true;
+                    ApplyCombatDeath(ref payload, deathMonsterId, effectiveMaxHp);
                     return;
                 }
             }
@@ -4799,27 +4848,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // curve, and a second copy of that arithmetic would drift.
                 long victoryXpEarned = System.Math.Max(0L, payload.CurrentXp - victoryXpBefore);
 
-                // Modul: reaching a location unlocks its gathering. One kill is
-                // the whole requirement - if you can fight here, you can work
-                // here. Raised live as well as at hydration so the node list
-                // opens up the moment the kill lands, not on next login.
-                int killedLocation = ContentRegistry.GetCanonicalLocation(activeMonster.Id);
-                if (killedLocation > payload.HighestLocationReached)
-                {
-                    payload.HighestLocationReached = killedLocation;
-                }
-
-                // Modul: region progression. Felling a region's boss opens the
-                // next region - to enter, and to wear its gear. Raised live for
-                // the same reason the line above is: the reward for a boss is
-                // the door opening, and a door that opens on next login does
-                // not read as a reward at all.
-                //
-                // Only ever raised, never recomputed from the codex here. The
-                // codex write for this kill happens on CodexEngine's own cron
-                // and has not landed yet, so asking it now would answer with
-                // the state before the boss died. Hydration reconciles from the
-                // codex; this keeps the live session honest in between.
+                // Which region this boss guards (0 for a regular).
                 int clearedBossRegion = RaceUnlockRegistry.GetRegionForBossMonsterId(activeMonster.Id);
 
                 // Task 55: the boss challenges, judged off the tick from what this
@@ -4839,25 +4868,12 @@ namespace FolkIdle.Server.Domain.Combat
                     Domain.Progression.PersonalRecords.ObserveBossKill(
                         ref payload, clearedBossRegion, (int)Math.Min(int.MaxValue, (long)payload.CombatTargetTickAccumulator));
                 }
-                if (clearedBossRegion > 0
-                    && clearedBossRegion < RaceUnlockRegistry.LastRegion
-                    && payload.HighestUnlockedRegion < clearedBossRegion + 1)
-                {
-                    payload.HighestUnlockedRegion = clearedBossRegion + 1;
-                }
-
-                // Modul: and the boss stops being a first clear.
-                //
-                // Set separately from the door above, and deliberately NOT
-                // behind its `< LastRegion` guard: clearing region 5's boss
-                // opens no sixth region, so a mask folded into that condition
-                // would leave the last boss in the game permanently at
-                // first-clear stats.
-                bool wasFirstClearForThisPlayer =
-                    BossFirstClearRules.IsFirstClearPending(payload.DefeatedRegionBossMask, activeMonster.Id);
-
-                payload.DefeatedRegionBossMask =
-                    BossFirstClearRules.MarkDefeated(payload.DefeatedRegionBossMask, activeMonster.Id);
+                // Modul: the location's gathering, the next region's door and
+                // the first-clear mark - in ApplyKillProgression, which the
+                // offline projection calls for its kills too. The door is the
+                // reward for a boss, and one that opens on next login does not
+                // read as a reward at all.
+                bool wasFirstClearForThisPlayer = ApplyKillProgression(ref payload, activeMonster.Id);
 
                 // Modul: FIRST BLOOD ON A REGION BOSS GOES TO THE WHOLE WORLD.
                 //

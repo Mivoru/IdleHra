@@ -1846,6 +1846,10 @@ namespace FolkIdle.Server.Tests
                 LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
                 ActiveActivityId = monsterId,
                 CurrentLevel = 1,
+                // A fresh registration's attributes: the offline fight is the
+                // live one now, and a 0/0/0/0 character dies to this monster
+                // in seconds, watched or not.
+                STR = 50, DEX = 50, CON = 50, LCK = 25,
                 CurrentXp = 0,
                 SelectedLineageId = 0,
                 InventorySpaceRemaining = 1000,
@@ -1856,70 +1860,28 @@ namespace FolkIdle.Server.Tests
                 // incoming-damage/food-depletion model in
                 // OfflineSimulationEngine.CalculateCombatProjection) - this test
                 // exercises the full-duration reward pipeline, not the
-                // early-halt path (covered separately).
+                // early-halt path (covered separately). The threshold is what
+                // hydration gives every real payload: the offline fight eats as
+                // the live tick does, and 0 would never eat at all.
+                AutoEatThreshold = FolkIdle.Server.Domain.Shared.AutoEatDefaults.ThresholdPct,
                 Food1_ItemId = FirstEdibleItemId(),
                 Food1_Count = 100000
             };
 
-            // Independently replicate the engine's analytical combat projection to
-            // compute the expected reward, rather than hand-computing a fragile
-            // cascading level-up chain by hand.
-            // Modul: THE SHARED DAMAGE MODEL, not a private copy of it.
-            //
-            // These lines used to re-derive damage per hit inline - no monster
-            // armour, no hit roll - which is precisely the model the unified
-            // CombatDamageModel replaced when offline and warp were found to be
-            // paying for combat that could not have happened. The engine moved;
-            // this projection did not, so it computed a different number of
-            // kills and the test failed against a correct engine.
-            //
-            // Calling the same two authorities keeps the test about what it is
-            // for: that kills become XP, that the level-up cascade runs, and
-            // that the result is persisted. The damage model itself is pinned
-            // by its own tests, and a second hand-maintained copy here has now
-            // drifted twice.
-            MonsterDefinition monster = ContentRegistry.Monsters[monsterId - 1];
-            CombatStats combatStats = StatsCalculator.Calculate(0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0);
-            var projectionLineage = ProgressionEngine.Lineages[0];
-            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(
-                in combatStats, projectionLineage.DamageScalePerLevelPct, 1, 0);
-            double secondsPerKill = CombatDamageModel.ExpectedSecondsPerKill(
-                in combatStats, in monster, effectiveMilliAttack, multipliers.DamageMultiplier);
-
-            // Modul: the engine's incoming-damage/food-depletion model, ASKED,
-            // not replicated. This block was a copy of it - and a stale one,
-            // still subtracting armour flat and knowing nothing of dodge or
-            // block - that only agreed because the ample larder above means the
-            // window is never food-limited. The sustain model is pinned against
-            // the live tick in OfflineDefenceParityTests; this test is about
-            // kills becoming XP, levels and loot.
-            double effectiveElapsedSeconds = OfflineSimulationEngine.ProjectCombatSustain(
-                in payload, in combatStats, monsterId, elapsedOfflineSeconds).SustainedSeconds;
-
-            double totalKillsDouble = effectiveElapsedSeconds / secondsPerKill;
-            long expectedKills = (long)totalKillsDouble;
-            long expectedXpGained = expectedKills * monster.BaseXpReward;
-            int expectedLootRolls = (int)(totalKillsDouble * multipliers.YieldMultiplier);
-
-            long expectedXp = expectedXpGained;
-            int expectedLevel = 1;
-            while (true)
-            {
-                // Modul: balance pass. Was a fourth inline copy of the level
-                // curve. Calls the one authority so this projection cannot
-                // drift from the engine it is asserting against - which is
-                // exactly what it did do, silently, until the curve changed.
-                long requiredXp = ProgressionEngine.GetRequiredXpForLevel(expectedLevel);
-                if (expectedXp >= requiredXp)
-                {
-                    expectedXp -= requiredXp;
-                    expectedLevel++;
-                }
-                else
-                {
-                    break;
-                }
-            }
+            // Modul: THE ENGINE'S OWN OFFLINE FIGHT, ASKED, on a copy of the
+            // payload. This block re-derived kills twice over - first from an
+            // inline damage model, then from CombatDamageModel and the sustain
+            // model - and each copy drifted from the engine it was checking.
+            // The fight itself (kills, food, survival) is held to the REAL live
+            // tick by OfflineCombatParityTests; this test is about the pipeline:
+            // that kills become XP, levels and loot, and that the result is
+            // persisted.
+            var projected = payload;
+            var outcome = OfflineSimulationEngine.ProjectCombat(ref projected, monsterId, elapsedOfflineSeconds);
+            Assert.True(outcome.Kills > 0);
+            int expectedLevel = projected.CurrentLevel;
+            long expectedXp = projected.CurrentXp;
+            int expectedLootRolls = (int)(outcome.KillsExact * multipliers.YieldMultiplier);
 
             Assert.True(expectedLootRolls > 0);
 
@@ -1941,7 +1903,7 @@ namespace FolkIdle.Server.Tests
             await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 var lootTable = new[] { new LootTableEntry { ItemId = 1, Weight = 100 } };
-                int granted = await OfflineSimulationEngine.GrantAnalyticalLootAsync(verifyDb, testPlayerId, lootTable, expectedLootRolls, 1000);
+                int granted = await OfflineSimulationEngine.GrantAnalyticalLootAsync(verifyDb, testPlayerId, lootTable, expectedLootRolls, 100_000);
 
                 Assert.Equal(expectedLootRolls, granted);
 
@@ -1974,9 +1936,14 @@ namespace FolkIdle.Server.Tests
                 LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
                 ActiveActivityId = monsterId,
                 CurrentLevel = 1,
+                // A fresh registration's attributes: the offline fight is the
+                // live one now, and a 0/0/0/0 character dies to this monster
+                // in seconds, watched or not.
+                STR = 50, DEX = 50, CON = 50, LCK = 25,
                 CurrentXp = 0,
                 SelectedLineageId = 0,
-                InventorySpaceRemaining = 1000
+                InventorySpaceRemaining = 1000,
+                AutoEatThreshold = FolkIdle.Server.Domain.Shared.AutoEatDefaults.ThresholdPct,
                 // Food1-3 all default to zero - no food stocked.
             };
 
@@ -1992,9 +1959,14 @@ namespace FolkIdle.Server.Tests
                 LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
                 ActiveActivityId = monsterId,
                 CurrentLevel = 1,
+                // A fresh registration's attributes: the offline fight is the
+                // live one now, and a 0/0/0/0 character dies to this monster
+                // in seconds, watched or not.
+                STR = 50, DEX = 50, CON = 50, LCK = 25,
                 CurrentXp = 0,
                 SelectedLineageId = 0,
                 InventorySpaceRemaining = 1000,
+                AutoEatThreshold = FolkIdle.Server.Domain.Shared.AutoEatDefaults.ThresholdPct,
                 Food1_ItemId = FirstEdibleItemId(),
                 Food1_Count = 100000
             };
@@ -2012,6 +1984,10 @@ namespace FolkIdle.Server.Tests
             // it never had any healing capacity to draw from.
             Assert.True(wellFedPayload.CurrentLevel >= noFoodPayload.CurrentLevel);
             Assert.Equal(0, noFoodPayload.Food1_Count);
+            // And the halt is the live tick's: a death, recorded, activity over.
+            Assert.Equal(FolkIdle.Server.Network.ActivityHaltReason.Died, noFoodPayload.ActivityHaltReason);
+            Assert.Equal(0L, noFoodPayload.ActiveActivityId);
+            Assert.Equal(monsterId, noFoodPayload.LastDeathMonsterId);
             Assert.True(wellFedPayload.Food1_Count < 100000);
         }
 
@@ -6245,6 +6221,11 @@ namespace FolkIdle.Server.Tests
                 LastLogoutTimestamp = currentUnixTimestamp - elapsedOfflineSeconds,
                 ActiveActivityId = monsterId,
                 CurrentLevel = 1,
+                // A fresh registration's attributes: the offline fight is the
+                // live one now, and a 0/0/0/0 character dies to this monster
+                // in seconds, watched or not.
+                STR = 50, DEX = 50, CON = 50, LCK = 25,
+                AutoEatThreshold = FolkIdle.Server.Domain.Shared.AutoEatDefaults.ThresholdPct,
                 CurrentXp = 0,
                 InventorySpaceRemaining = 1000,
                 // Ample food stock so combat survives the full offline

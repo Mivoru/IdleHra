@@ -40,42 +40,6 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        // Modul: THE LIVE TICK STOPPED HEALING A FLAT 50 HP AND THIS DID NOT.
-        //
-        // This constant was written when SimulationEngine's Auto-Eat block also
-        // healed 50000 milli-HP per unit regardless of the food. That block now
-        // asks FoodRegistry, which pays 40 HP for a tier-1 minnow and 82,000 for
-        // a tier-10 Astral Ambrosia Roast - a factor of two thousand.
-        //
-        // The constant stayed, so the offline projection sized a night's food
-        // demand as though every fish in the larder were worth 50 HP. At the
-        // bottom of the game that OVERPAYS by 25%, and at the top it underpays
-        // by 1,640x: a player who logged off with high-tier food banked was
-        // told their larder ran dry in minutes and lost the rest of the window.
-        //
-        // The heal now comes from the same registry the live tick reads, per
-        // stocked slot. Same class of defect as the three damage models, in the
-        // same file, found the same way - by measuring rather than by reading.
-        private static double AverageHealPerFoodUnitMilliHp(in TickStatePayload payload, long effectiveMaxMilliHp)
-        {
-            long units = payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
-            if (units <= 0)
-            {
-                return 0.0;
-            }
-
-            // Weighted by how much of each food is actually stocked, because
-            // auto-eat drains the highest-healing slot first but ends up
-            // consuming all of it - over a full offline window the average is
-            // what decides how long the larder lasts.
-            double total =
-                (double)payload.Food1_Count * FoodRegistry.GetHealMilliHp(payload.Food1_ItemId, effectiveMaxMilliHp) +
-                (double)payload.Food2_Count * FoodRegistry.GetHealMilliHp(payload.Food2_ItemId, effectiveMaxMilliHp) +
-                (double)payload.Food3_Count * FoodRegistry.GetHealMilliHp(payload.Food3_ItemId, effectiveMaxMilliHp);
-
-            return total / units;
-        }
-
         // Modul: THE BACKPACK CAPPED OFFLINE PROGRESS AT TWENTY.
         //
         // Every bound in this file was `payload.InventorySpaceRemaining`. With
@@ -572,87 +536,6 @@ namespace FolkIdle.Server.Engine
             return new LootProjection(true, node.ActivityId, lootRolls, 0, gatherProjectionStats.LootLuckPct);
         }
 
-        /// <summary>
-        /// How long an offline window's fighting lasts on the character's own
-        /// health bar plus its larder, and what it eats doing so.
-        /// </summary>
-        internal readonly struct OfflineCombatSustain
-        {
-            /// <summary>Seconds of the window the character stays alive to fight.</summary>
-            public double SustainedSeconds { get; init; }
-            public long FoodUnitsConsumed { get; init; }
-            /// <summary>Milli-HP a second the monster lands, in expectation.</summary>
-            public double IncomingMilliDps { get; init; }
-            public long EffectiveMaxMilliHp { get; init; }
-        }
-
-        /// <summary>One monster swing in expectation - the live tick's own steps.</summary>
-        internal static double ExpectedIncomingMilliDamagePerSwing(in TickStatePayload payload, in CombatStats combatStats, int monsterId, long effectiveMaxMilliHp)
-            // Modul: THE LIVE TICK'S SWING, not a copy of it (task 78 found this
-            // path's copy). The copy took the crit blend and armour but not the
-            // player's dodge, block, the 1,000 floor or the Dreadnought cap, so
-            // every offline swing landed as though the 5% built-in miss and the
-            // CON-derived block did not exist - an hour away cost 10-25% more
-            // health than the same hour watched, and a food-limited window
-            // ended that much sooner. It also read the authored AttackPower
-            // through an int multiply, which wraps past 2.1M attack.
-            => SimulationEngine.ExpectedMonsterMilliDamagePerSwing(
-                in combatStats, monsterId, payload.DefeatedRegionBossMask, effectiveMaxMilliHp);
-
-        internal static OfflineCombatSustain ProjectCombatSustain(in TickStatePayload payload, in CombatStats combatStats, int monsterId, long elapsedSeconds)
-        {
-            MonsterDefinition monster = ContentRegistry.Monsters[monsterId - 1];
-
-            // Modul: the player's own max-HP pool is a "free" absorption buffer
-            // before any food is ever needed (mirrors the live tick, where
-            // Auto-Eat only triggers once HP drops below AutoEatThreshold, not
-            // at the very first point of damage) - without this, a character
-            // with simply no food stocked (Food1-3 all zero, the common case
-            // for most players) would be treated as unable to survive any
-            // combat time at all, which is wrong.
-            //
-            // The bar is the live tick's (EffectiveMaxMilliHpFor). This path
-            // held a line-for-line copy of it until the defence fix above.
-            long effectiveMilliHp = SimulationEngine.EffectiveMaxMilliHpFor(in payload, in combatStats);
-
-            double netIncomingMilliDamage = ExpectedIncomingMilliDamagePerSwing(in payload, in combatStats, monsterId, effectiveMilliHp);
-            double monsterAttacksPerSecond = monster.AttackIntervalMs > 0 ? 1000.0 / monster.AttackIntervalMs : 0.0;
-            double expectedIncomingMilliDps = netIncomingMilliDamage * monsterAttacksPerSecond;
-
-            double sustainedSeconds = elapsedSeconds;
-            long foodUnitsConsumed = 0;
-            if (expectedIncomingMilliDps > 0.0)
-            {
-                double totalIncomingMilliDamage = expectedIncomingMilliDps * elapsedSeconds;
-                long totalFoodUnits = payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
-                double healPerUnitMilliHp = AverageHealPerFoodUnitMilliHp(in payload, effectiveMilliHp);
-                double totalHealCapacityMilliHp = effectiveMilliHp + ((double)totalFoodUnits * healPerUnitMilliHp);
-
-                if (totalIncomingMilliDamage > totalHealCapacityMilliHp)
-                {
-                    // Modul: food stock depletes before the full offline
-                    // window is survived - sustain only as much combat time as
-                    // available food allows, bank the remainder as overflow
-                    // seconds (same mechanic already used when inventory space
-                    // caps gathering actions), and consume all available food.
-                    sustainedSeconds = Math.Max(0.0, totalHealCapacityMilliHp / expectedIncomingMilliDps);
-                    foodUnitsConsumed = totalFoodUnits;
-                }
-                else if (healPerUnitMilliHp > 0.0)
-                {
-                    foodUnitsConsumed = (long)Math.Ceiling(totalIncomingMilliDamage / healPerUnitMilliHp);
-                }
-            }
-
-            return new OfflineCombatSustain
-            {
-                SustainedSeconds = sustainedSeconds,
-                FoodUnitsConsumed = foodUnitsConsumed,
-                IncomingMilliDps = expectedIncomingMilliDps,
-                EffectiveMaxMilliHp = effectiveMilliHp,
-            };
-        }
-
         private static LootProjection CalculateCombatProjection(ref TickStatePayload payload, long elapsedSeconds)
         {
             int fallbackId = payload.ActiveActivityId > ContentRegistry.Monsters.Length ? 1 : (int)payload.ActiveActivityId;
@@ -662,93 +545,20 @@ namespace FolkIdle.Server.Engine
             }
 
             MonsterDefinition activeMonster = ContentRegistry.Monsters[fallbackId - 1];
+            CombatStats combatStats = SimulationEngine.LiveCombatStats(in payload);
 
-            // Modul: a first-clear boss is bigger here too.
-            //
-            // This path reads the authored definition straight out of the
-            // registry, so without this an offline stretch would fight the
-            // farmable version of a boss the live tick treats as a first clear
-            // - and credit kills the player has not earned. Offline diverging
-            // from live in exactly this way is a mistake this codebase has
-            // already made three times (food healing, warp tool tier, mastery
-            // routing).
-            if (BossFirstClearRules.IsFirstClearPending(payload.DefeatedRegionBossMask, fallbackId))
-            {
-                // Modul: THROUGH MaxHpFor / AttackPowerFor, not the constants.
-                //
-                // This multiplied by the flat constants directly, which made it
-                // the one path that ignored First Blood relief AND the one path
-                // that would have kept a flat 5x after the wall became
-                // per-region - a boss whose health changes depending on whether
-                // you were online for the fight.
-                activeMonster.MaxHp = (int)Math.Min(
-                    int.MaxValue,
-                    BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, fallbackId, payload.Skill_FirstBlood));
-                activeMonster.AttackPower = (int)Math.Min(
-                    int.MaxValue,
-                    BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, fallbackId));
-            }
-
-            int lineageId = payload.SelectedLineageId;
-            if (lineageId < 0 || lineageId >= ProgressionEngine.Lineages.Length) lineageId = 0;
-            LineageDefinition lineage = ProgressionEngine.Lineages[lineageId];
-
-            int activeAgePhase = 1;
-            int activeRaceId = 0;
-            if (payload.Slot1_CharacterId != Guid.Empty)
-            {
-                activeAgePhase = payload.Slot1_AgePhase;
-                activeRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
-            }
-
-            CombatStats combatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, activeRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
-
-            // Analytical projection intentionally uses expected (average) damage
-            // per hit rather than replaying per-swing hit/crit RNG - but the
-            // EXPECTATION is now CombatDamageModel's, the same one the live tick
-            // rolls against.
-            //
-            // This line used to read `Math.Max(1000, (int)effectiveMilliAttack)`:
-            // the monster's armour was never subtracted and the hit roll never
-            // applied, so an hour offline was credited with roughly three hours
-            // of live combat on region 1 and worse further in, where armour is
-            // five times higher. See CombatDamageModel for the other two models
-            // this replaces.
-            long effectiveMilliAttack = EffectiveMilliAttackFor(ref payload, in combatStats, lineage.DamageScalePerLevelPct);
-            double secondsPerKillEstimate = CombatDamageModel.ExpectedSecondsPerKill(in combatStats, in activeMonster, effectiveMilliAttack, payload.CachedCodexDamageMultiplier);
-
-            if (double.IsInfinity(secondsPerKillEstimate) || secondsPerKillEstimate <= 0.0 || activeMonster.MaxHp <= 0)
+            OfflineCombatOutcome outcome = ProjectCombat(ref payload, fallbackId, elapsedSeconds);
+            if (!outcome.CanDamage)
             {
                 return new LootProjection(false, 0, 0);
             }
 
-            OfflineCombatSustain sustain = ProjectCombatSustain(in payload, in combatStats, fallbackId, elapsedSeconds);
-            ConsumeFoodStock(ref payload, sustain.FoodUnitsConsumed);
-            double effectiveElapsedSeconds = sustain.SustainedSeconds;
-
-            double totalKillsDouble = effectiveElapsedSeconds / secondsPerKillEstimate;
-            long totalKills = (long)totalKillsDouble;
+            double totalKillsDouble = outcome.KillsExact;
+            long totalKills = outcome.Kills;
 
             // Funnel step 2, the offline half: a first kill made while away is
             // still a first kill. See FunnelRecorder.
             if (totalKills > 0) FunnelRecorder.Record(payload.PlayerId, FunnelStep.FirstKill);
-
-            long xpGained = totalKills * activeMonster.BaseXpReward;
-            xpGained += xpGained * InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain) / 100L;
-            ApplyCombatXp(ref payload, xpGained);
-
-            // Modul: the live tick's formula, CALLED rather than copied. The
-            // copy that used to live here had lost the legacy perk, the guild
-            // buff and Trophy Hunter - see CombatGoldReward.
-            long goldPerKill = CombatGoldReward.PerKill(in payload, in activeMonster, combatStats.GoldAcquisitionMultiplierPct);
-            long totalGoldGained = totalKills * goldPerKill;
-            if (totalGoldGained > 0)
-            {
-                payload.AddGold(totalGoldGained);
-                payload.RedisPendingGoldDelta += totalGoldGained;
-                GoldLedger.TallyIncome(ref payload, GoldIncomeSource.CombatAway, totalGoldGained);
-                payload.RequiresRedisFlush = true;
-            }
 
             // Modul: OFFLINE EQUIPMENT NOW ROLLS EXACTLY AS ONLINE DOES.
             //
@@ -813,57 +623,187 @@ namespace FolkIdle.Server.Engine
             return new LootProjection(true, activeMonster.LootTableId, lootRolls, 0, combatStats.LootLuckPct);
         }
 
-        // Modul: extracted out of CalculateCombatProjection, 2026-09-16, to
-        // mirror SimulationEngine.EffectiveMilliAttackFor exactly - same name,
-        // same shape, same two calls in the same order (aptitude, then trait).
-        // THE STRENGTH APTITUDE WAS MISSING HERE until 2026-09-13: the live
-        // tick added it and this projection did not, so a bred line killed
-        // more slowly while away (the third instance of "three paths grow a
-        // level" - see BloodlineBonuses and BloodlineBonusesTests). Splitting
-        // this into its own method - rather than leaving the two lines inline -
-        // is what lets a test drive the exact code path with reflection instead
-        // of grepping the source text for the right function names, which can
-        // never catch a wrong argument or a swapped order.
-        private static long EffectiveMilliAttackFor(ref TickStatePayload payload, in CombatStats combatStats, int damageScalePerLevelPct)
+        /// <summary>What an offline window of fighting came to, for one slot.</summary>
+        internal readonly struct OfflineCombatOutcome
         {
-            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, damageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
-            effectiveMilliAttack = BloodlineBonuses.ApplyAttack(effectiveMilliAttack, payload.Aptitude_Strength, TraitTotals.From(payload.TraitMask));
-            return effectiveMilliAttack;
+            public bool CanDamage { get; init; }
+            public long Kills { get; init; }
+            /// <summary>The kill count as the loot roll count scales from it.</summary>
+            public double KillsExact { get; init; }
+            public double SecondsFought { get; init; }
+            public bool Died { get; init; }
+            public long FoodEaten { get; init; }
+            public long XpGained { get; init; }
+            public long GoldGained { get; init; }
         }
 
-        // Modul: drains Food1-3 in a fixed order (mirrors the live tick's
-        // Auto-Eat consumption, which always prefers the first populated
-        // slot). Used to simulate offline food consumption without per-swing
-        // RNG or per-heal-event iteration.
-        private static void ConsumeFoodStock(ref TickStatePayload payload, long unitsToConsume)
+        /// <summary>
+        /// Game time between re-derivations of the character. A level gained
+        /// grows the health bar (and, with a lineage, the swing), so the fight
+        /// is re-set-up at the next boundary, as the live tick would have fought
+        /// on at the new level.
+        /// </summary>
+        private const int CombatStretchTicks = 3000;
+
+        /// <summary>
+        /// The fighting half of an offline window - kills, XP (levels included),
+        /// gold, the larder, and a death - applied to the payload as the live
+        /// tick would have applied them. Loot is the caller's.
+        /// </summary>
+        /// <remarks>
+        /// Modul: OFFLINE IS THE LIVE FIGHT, IN EXPECTATION (owner, 2026-09-30:
+        /// "offline and online must give the SAME results per hour").
+        ///
+        /// This was its own model, and every piece of it had drifted from
+        /// RunCombatTick. Kill time came from CombatDamageModel's mean swing
+        /// divided into the health, on the stat interval - no Relentless, no
+        /// skill-tree crit, no Double Strike, no burn or set fire, and its own
+        /// copy of the attack figure without the guild Damage buff or the legacy
+        /// speed perk. A monster was charged a swing every interval, where the
+        /// live tick restarts the monster's swing clock at every kill. A
+        /// first-clear boss was priced at first-clear ATTACK for the whole
+        /// window but farm HEALTH (ExpectedSecondsPerKill read the registry by
+        /// id), and never marked beaten. Lifesteal and Bloodthirst healed
+        /// nothing. The larder was a pool of health rather than bites at a
+        /// threshold with a cooldown, and running out ended the window's
+        /// earning without the death the live tick records. And XP took only
+        /// the inheritance bonus - no global multiplier, event, mentors, Human
+        /// mastery, legacy perk, skill tree or guild buff.
+        ///
+        /// Now the window is HuntingProjection's fight - the tick's own helpers,
+        /// order and swing clock, each roll replaced by its expectation - run
+        /// tick by tick for the whole window, and each kill pays through the
+        /// same per-kill figures the live kill does (HuntingProjection.XpPerKill,
+        /// CombatGoldReward.PerKill, LiveKillXpMultiplierPct for the seasonal
+        /// pass). OfflineCombatParityTests runs the REAL RunCombatTick for an
+        /// hour beside it and holds kills, XP, gold, food and survival to 5%.
+        /// </remarks>
+        internal static OfflineCombatOutcome ProjectCombat(ref TickStatePayload payload, int monsterId, long elapsedSeconds)
         {
-            if (unitsToConsume <= 0) return;
+            var setup = HuntingProjection.FightSetup.For(in payload, monsterId, timedEffects: true);
+            if (!setup.CanDamage)
+            {
+                return default;
+            }
 
-            long fromSlot1 = Math.Min(unitsToConsume, payload.Food1_Count);
-            payload.Food1_Count -= (int)fromSlot1;
-            unitsToConsume -= fromSlot1;
-            if (unitsToConsume <= 0) return;
+            MonsterDefinition monster = setup.Monster;
+            int startLevel = payload.CurrentLevel;
+            long startXp = payload.CurrentXp;
+            long foodBefore = (long)payload.Food1_Count + payload.Food2_Count + payload.Food3_Count;
 
-            long fromSlot2 = Math.Min(unitsToConsume, payload.Food2_Count);
-            payload.Food2_Count -= (int)fromSlot2;
-            unitsToConsume -= fromSlot2;
-            if (unitsToConsume <= 0) return;
+            var state = HuntingProjection.FightState.Begin(in payload, in setup, payload.PlayerHp, withFood: true);
 
-            long fromSlot3 = Math.Min(unitsToConsume, payload.Food3_Count);
-            payload.Food3_Count -= (int)fromSlot3;
+            // The server-wide XP terms the live kill reads when it lands.
+            int globalXpMultiplier = GlobalEngineState.GlobalXpMultiplier;
+            int globalEventId = SimulationEngine.ActiveGlobalEventId;
+
+            long remainingTicks = Math.Max(0L, elapsedSeconds) * 10L;
+            long totalGold = 0;
+            long totalKills = 0;
+            while (remainingTicks > 0 && !state.Died)
+            {
+                int stretch = (int)Math.Min(remainingTicks, CombatStretchTicks);
+                long killsBefore = state.Kills;
+                long ticksBefore = state.Ticks;
+                HuntingProjection.Advance(ref state, in setup, stretch);
+                remainingTicks -= state.Ticks - ticksBefore;
+
+                long kills = state.Kills - killsBefore;
+                if (kills <= 0) continue;
+                totalKills += kills;
+
+                // Each kill at the level it was made at - the stretch is short
+                // enough that the mentorship term (level < 50) is the only
+                // per-level input, and it moves once.
+                long xpPerKill = HuntingProjection.XpPerKill(in payload, in monster, globalXpMultiplier, globalEventId);
+                long seasonalPerKill = (long)monster.BaseXpReward * SimulationEngine.LiveKillXpMultiplierPct(in payload, globalXpMultiplier) / 100;
+                SimulationEngine.AddSeasonalXp(ref payload, (int)Math.Min(int.MaxValue, seasonalPerKill * kills));
+                QuestEngine.IncrementProgress(ref payload, QuestEngine.QuestTypeKillMonsters, (int)Math.Min(int.MaxValue, kills));
+                totalGold += kills * CombatGoldReward.PerKill(in payload, in monster, setup.Stats.GoldAcquisitionMultiplierPct);
+
+                int levelBefore = payload.CurrentLevel;
+                ApplyCombatXp(ref payload, xpPerKill * kills);
+                if (payload.CurrentLevel != levelBefore && remainingTicks > 0)
+                {
+                    // A bigger bar (and, for a lineage, a harder swing) from here on.
+                    // The fight in progress carries over: health stays where it was.
+                    var grown = HuntingProjection.FightSetup.For(in payload, monsterId, timedEffects: true);
+                    if (grown.CanDamage) setup = grown;
+                }
+            }
+
+            if (totalKills > 0)
+            {
+                // The location, the next region's door and a boss's first-clear
+                // mark - what the live kill opens. Once is enough: every later
+                // kill of the same monster opens nothing new.
+                SimulationEngine.ApplyKillProgression(ref payload, monsterId);
+            }
+
+            if (totalGold > 0)
+            {
+                payload.AddGold(totalGold);
+                payload.RedisPendingGoldDelta += totalGold;
+                GoldLedger.TallyIncome(ref payload, GoldIncomeSource.CombatAway, totalGold);
+                payload.RequiresRedisFlush = true;
+            }
+
+            payload.Food1_Count = state.Food1;
+            payload.Food2_Count = state.Food2;
+            payload.Food3_Count = state.Food3;
+
+            int effectiveMaxHp = (int)setup.MaxMilliHp;
+            if (state.DeathWardUsed)
+            {
+                // The ward is spent - through the live tick's own interception.
+                ConsumableEngine.TryInterceptLethalDamage(ref payload, effectiveMaxHp);
+            }
+
+            if (state.Died)
+            {
+                // Modul: A DEATH AWAY IS A DEATH. The live tick ends the activity
+                // and records it; the old projection simply stopped counting and
+                // left the character deployed, to die again seconds after login.
+                SimulationEngine.ApplyCombatDeath(ref payload, monsterId, effectiveMaxHp);
+            }
+            else
+            {
+                // The fight in progress is not carried across the login: the
+                // character is back on the bar it had, against a fresh monster.
+                payload.PlayerHp = (int)Math.Clamp(state.PlayerHp, 1.0, effectiveMaxHp);
+                payload.CurrentMonsterId = 0;
+                payload.CurrentMonsterHp = 0;
+                payload.CombatTargetTickAccumulator = 0;
+            }
+
+            return new OfflineCombatOutcome
+            {
+                CanDamage = true,
+                Kills = totalKills,
+                KillsExact = totalKills,
+                SecondsFought = state.Ticks / 10.0,
+                Died = state.Died,
+                FoodEaten = foodBefore - ((long)payload.Food1_Count + payload.Food2_Count + payload.Food3_Count),
+                XpGained = XpBetween(startLevel, startXp, payload.CurrentLevel, payload.CurrentXp),
+                GoldGained = totalGold,
+            };
+        }
+
+        /// <summary>Total XP a character moved through, levels included.</summary>
+        private static long XpBetween(int levelBefore, long xpBefore, int levelAfter, long xpAfter)
+        {
+            long total = -xpBefore;
+            for (int level = levelBefore; level < levelAfter; level++) total += ProgressionEngine.GetRequiredXpForLevel(level);
+            return total + xpAfter;
         }
 
         private static void ApplyCombatXp(ref TickStatePayload payload, long xpGained)
         {
             if (xpGained <= 0) return;
 
-            // Modul 13.4.3: -20% character XP generation while an early
-            // mentorship termination penalty is active (see MentorshipEngine).
-            if (payload.XpPenaltyExpiresEpoch > DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-            {
-                xpGained = (long)(xpGained * 0.8);
-            }
-
+            // Modul 13.4.3: the mentorship penalty's -20% is already in the
+            // figure - HuntingProjection.XpPerKill applies it per kill, with the
+            // live kill's own truncation, as ProcessMonsterDeath does.
             payload.CurrentXp += xpGained;
             int levelsGained = 0;
             while (true)
