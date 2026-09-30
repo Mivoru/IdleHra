@@ -43,16 +43,24 @@ namespace FolkIdle.Server.Domain.Combat
     {
         private const int TickIntervalMs = 100; // 10 Hz
 
-        // Modul: the chance of 1 diamond on an ORDINARY (non-boss) kill. Owner
-        // decision 2026-09-28: 0.05% -> 0.01%. At 0.05% a character killing about
-        // one monster a second earned ~300 diamonds a week, five times the
-        // Delve's calibrated DelveRegistry.MaxDiamondsPerWeek (60). At 0.01% the
-        // same pace pays ~60. Regional bosses pay none (BossDiamondTests), and
-        // the offline catch-up pays no diamonds, so this is the only site.
-        // OrdinaryKillDiamondTests pins it.
+        // Modul: the chance of 1 diamond on an ORDINARY (non-boss) kill, 0.01%
+        // (owner decision 2026-09-28, down from 0.05%). Regional bosses pay
+        // none (BossDiamondTests). OrdinaryKillDiamondTests pins it.
+        //
+        // It is a PER-KILL RATE and nothing else, on every path: the live tick
+        // rolls it per kill, and the offline catch-up draws Binomial(kills,
+        // this chance) for its window (owner rule 2026-09-30: the same per
+        // hour online and away). There is NO weekly cap on it (owner, same
+        // day), so what it pays a week is kills-per-hour x hours played,
+        // online or not - about 0.36 an hour at one kill a second. This
+        // comment used to quote that as "~60 a week", a figure that assumed
+        // only watched hours paid; do not read it as a ceiling.
         internal const double OrdinaryKillDiamondChance = 0.0001;
 
         internal static bool OrdinaryKillPaysDiamond(double roll) => roll < OrdinaryKillDiamondChance;
+
+        /// <summary>Whether a kill of this monster rolls the ordinary-kill diamond at all (regional bosses do not).</summary>
+        internal static bool KillCanPayDiamond(int monsterId) => !ContentRegistry.IsRegionalBoss(monsterId);
 
         // Modul: set bonuses made real. Magnitudes for the 4-piece effects,
         // which had none because nothing consumed them. Chosen to be worth
@@ -660,6 +668,12 @@ namespace FolkIdle.Server.Domain.Combat
             if (_activePlayers.TryGetValue(playerId, out var payload))
             {
                 RemoveFromGuildIndex(payload.GuildId, playerId);
+
+                // Modul: the last minute of village production goes with the
+                // session rather than with the payload - every disconnect path
+                // comes through here (see above), and the offline window that
+                // takes over from here starts at the logout stamp.
+                EnqueuePendingVillageProduction(ref payload);
             }
             _activePlayers.Remove(playerId);
             _liveSessionContexts.TryRemove(playerId, out _);
@@ -1172,6 +1186,10 @@ namespace FolkIdle.Server.Domain.Combat
                 // CraftingTickCoordinator.cs along with that comment - kept in
                 // one place now instead of two, per code review on Task 1.20.)
                 CraftingTickCoordinator.DrainCraftingTicks(_safeDispatch, _craftingEngine);
+
+                // The village production the tick made - written off the tick
+                // under the Warehouse cap (see ProcessPassiveVillageTick).
+                VillageTickCoordinator.DrainProductionGrants(_safeDispatch, _contextFactory);
 
                 LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
@@ -3170,48 +3188,63 @@ namespace FolkIdle.Server.Domain.Combat
                 ApplyMaturedUpgradeInMemory(ref payload);
             }
 
-            long maxStorage = VillageManagementEngine.CalculateWarehouseMaxStorage(payload.WarehouseLevel);
+            // Modul: ONE PRODUCTION RULE, LIVE AND AWAY (owner decision
+            // 2026-09-30). This tick produced the legacy "wood" and "iron_ore"
+            // rows at 0.1 and 0.05 a second per level, checked against a
+            // cached "wood" stock, while the offline window produced the
+            // region's catalogued log and ore at (level + 1) x 100 an hour with
+            // a tenth of it rare. The offline rule is the game: this tick now
+            // asks VillageManagementEngine for the rate, the exact integer
+            // accrual and the rare share - the functions the offline window
+            // calls - and hands the units to VillageProductionQueue, whose
+            // drain writes them under the Warehouse cap with the material
+            // ledger, exactly as the offline grant does.
+            //
+            // Scholar is a rate here too (ScholarRate): every stream below
+            // accrues at 1000 + its permille of the hourly rate.
+            long ticks = (long)Math.Round(deltaTimeSeconds * 10.0);
+            int ratePermille = 1000 + ScholarRate.BonusPermille(payload.Skill_Scholar);
 
-            float woodRate = payload.LumberjackLevel * VillageManagementEngine.LumberjackWoodRatePerLevel;
-            if (woodRate > 0f && payload.CachedWoodStock < maxStorage)
+            long logs = VillageManagementEngine.AccrueProduction(ref payload.LumberjackProductionAccumulator,
+                VillageManagementEngine.ProductionRatePerHour(payload.LumberjackLevel), ticks, ratePermille);
+            if (logs > 0)
             {
-                payload.AccumulatedWood += (float)(woodRate * deltaTimeSeconds);
+                long rare = VillageManagementEngine.RareShareOf(payload.VillageLogUnitsProduced, logs);
+                payload.VillageLogUnitsProduced += logs;
+                payload.PendingVillageRareLog += rare;
+                payload.PendingVillageLog += logs - rare;
             }
 
-            float ironRate = payload.MineLevel * VillageManagementEngine.MineIronRatePerLevel;
-            if (ironRate > 0f && payload.CachedIronOreStock < maxStorage)
+            long ores = VillageManagementEngine.AccrueProduction(ref payload.MineProductionAccumulator,
+                VillageManagementEngine.ProductionRatePerHour(payload.MineLevel), ticks, ratePermille);
+            if (ores > 0)
             {
-                payload.AccumulatedIron += (float)(ironRate * deltaTimeSeconds);
+                long rare = VillageManagementEngine.RareShareOf(payload.VillageOreUnitsProduced, ores);
+                payload.VillageOreUnitsProduced += ores;
+                payload.PendingVillageRareOre += rare;
+                payload.PendingVillageOre += ores - rare;
+            }
+
+            payload.VillageProductionTicksSinceGrant++;
+            if (payload.VillageProductionTicksSinceGrant >= VillageProductionGrantIntervalTicks)
+            {
+                EnqueuePendingVillageProduction(ref payload);
             }
 
             // Modul: Economy Polish, Part 2. Town Hall passive gold on the
-            // live tick: the accumulator gains the hourly rate once per
-            // tick, so 36000 accumulated units (36000 ticks = one hour)
-            // pay out exactly one hour's rate - pure integer arithmetic,
-            // no floats, no drift, zero allocation. Gold flows through the
-            // same AddGold/RedisPendingGoldDelta channel combat gold uses,
+            // live tick, through the same accrual as the production above
+            // (and as the offline window): an hour of ticks pays exactly one
+            // hour's rate - integer arithmetic, no drift. Gold flows through
+            // the same AddGold/RedisPendingGoldDelta channel combat gold uses,
             // landing in the CommodityRecords gold row at flush.
-            long townHallRate = VillageManagementEngine.GetTownHallGoldRatePerHour(payload.TownHallLevel);
-            if (townHallRate > 0L)
+            long wholeGold = VillageManagementEngine.AccrueProduction(ref payload.TownHallGoldAccumulator,
+                VillageManagementEngine.GetTownHallGoldRatePerHour(payload.TownHallLevel), ticks, ratePermille);
+            if (wholeGold > 0L)
             {
-                payload.TownHallGoldAccumulator += townHallRate;
-                long wholeGold = payload.TownHallGoldAccumulator / 36000L;
-                if (wholeGold > 0L)
-                {
-                    payload.TownHallGoldAccumulator -= wholeGold * 36000L;
-                    payload.AddGold(wholeGold);
-                    payload.RedisPendingGoldDelta += wholeGold;
-                    GoldLedger.TallyIncome(ref payload, GoldIncomeSource.TownHall, wholeGold);
-                    payload.RequiresRedisFlush = true;
-                    payload.IsDirty = true;
-                }
-            }
-
-            while (payload.AccumulatedWood >= 1.0f - ProductionAccumulatorEpsilon)
-            {
-                payload.AccumulatedWood -= 1.0f;
-                payload.CachedWoodStock++;
-                payload.PendingWoodDelta++;
+                payload.AddGold(wholeGold);
+                payload.RedisPendingGoldDelta += wholeGold;
+                GoldLedger.TallyIncome(ref payload, GoldIncomeSource.TownHall, wholeGold);
+                payload.RequiresRedisFlush = true;
                 payload.IsDirty = true;
             }
 
@@ -3222,14 +3255,49 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.PendingStoneDelta++;
                 payload.IsDirty = true;
             }
+        }
 
-            while (payload.AccumulatedIron >= 1.0f - ProductionAccumulatorEpsilon)
+        /// <summary>One minute of ticks between production writes.</summary>
+        internal const int VillageProductionGrantIntervalTicks = 600;
+
+        /// <summary>
+        /// Village production the tick has made and not yet written. Drained on
+        /// the engine loop (VillageTickCoordinator.DrainProductionGrants) into
+        /// VillageManagementEngine.GrantProductionAsync - the Warehouse cap and
+        /// the material ledger, the offline window's own grant.
+        /// </summary>
+        public static readonly System.Collections.Concurrent.ConcurrentQueue<VillageProductionGrant> VillageProductionQueue = new();
+
+        /// <summary>
+        /// Hands the payload's pending production to VillageProductionQueue.
+        /// Called once a minute by the tick and once more when the session
+        /// ends (RemoveActivePlayer), so nothing produced is left on a payload
+        /// that is about to be discarded.
+        /// </summary>
+        internal static void EnqueuePendingVillageProduction(ref TickStatePayload payload)
+        {
+            payload.VillageProductionTicksSinceGrant = 0;
+            if (payload.PendingVillageLog <= 0 && payload.PendingVillageRareLog <= 0
+                && payload.PendingVillageOre <= 0 && payload.PendingVillageRareOre <= 0)
             {
-                payload.AccumulatedIron -= 1.0f;
-                payload.CachedIronOreStock++;
-                payload.PendingIronDelta++;
-                payload.IsDirty = true;
+                return;
             }
+
+            VillageProductionQueue.Enqueue(new VillageProductionGrant
+            {
+                PlayerId = payload.PlayerId,
+                LumberjackLevel = payload.LumberjackLevel,
+                MineLevel = payload.MineLevel,
+                WarehouseLevel = payload.WarehouseLevel,
+                Log = payload.PendingVillageLog,
+                RareLog = payload.PendingVillageRareLog,
+                Ore = payload.PendingVillageOre,
+                RareOre = payload.PendingVillageRareOre,
+            });
+            payload.PendingVillageLog = 0;
+            payload.PendingVillageRareLog = 0;
+            payload.PendingVillageOre = 0;
+            payload.PendingVillageRareOre = 0;
         }
 
         // Modul 16: mirrors VillageManagementEngine's BuildingId -> cached
@@ -4811,6 +4879,13 @@ namespace FolkIdle.Server.Domain.Combat
                 // Shared with the hunting advisor - see LiveKillXpMultiplierPct.
                 int finalXpMultiplier = LiveKillXpMultiplierPct(in payload, localXpMultiplier);
 
+                // Modul: SCHOLAR PAYS PER KILL (ScholarRate, owner decision
+                // 2026-09-30): with the crown's chance this kill is paid as two -
+                // XP, gold, loot, codex, diamonds and the Golden Fleece count -
+                // which is what the offline projection draws for its window's
+                // kills. The fight itself is untouched.
+                int paidKills = (int)ScholarRate.RewardUnits(Random.Shared, 1, payload.Skill_Scholar);
+
 
                 // Modul: and the same removal on the live-kill path. Two copies
                 // of one bonus, which is why it is worth saying twice that the
@@ -4841,7 +4916,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // own XP can lift it past a challenge's cap.
                 int levelAtKill = payload.CurrentLevel;
                 long victoryXpBefore = payload.CurrentXp;
-                ProgressionEngine.ProcessMonsterDeath(ref payload, activeMonster.BaseXpReward, finalXpMultiplier, ActiveGlobalEventId, activeRaceId);
+                ProgressionEngine.ProcessMonsterDeath(ref payload, activeMonster.BaseXpReward * paidKills, finalXpMultiplier, ActiveGlobalEventId, activeRaceId);
                 // Modul: what this ONE kill paid, for the victory card. Read as
                 // a delta rather than recomputed - ProcessMonsterDeath applies
                 // the event multiplier, the race passive and the level-up
@@ -4934,17 +5009,19 @@ namespace FolkIdle.Server.Domain.Combat
                 // does not hand the player a hundred-kill head start they did
                 // not earn, and so untaking it (a respec) does not reset a
                 // counter they were watching.
-                payload.KillsSinceFleece++;
-                int fleeceTiers = 0;
-                if (payload.KillsSinceFleece >= GoldenFleeceKillInterval)
+                payload.KillsSinceFleece += paidKills;
+                int fleeceProcs = 0;
+                while (payload.KillsSinceFleece >= GoldenFleeceKillInterval)
                 {
-                    payload.KillsSinceFleece = 0;
-                    if (payload.Skill_GoldenFleece > 0) fleeceTiers = GoldenFleeceBonusTiers;
+                    payload.KillsSinceFleece -= GoldenFleeceKillInterval;
+                    fleeceProcs++;
                 }
+                int fleeceKills = payload.Skill_GoldenFleece > 0 ? Math.Min(fleeceProcs, paidKills) : 0;
+                int plainKills = paidKills - fleeceKills;
 
                 // Modul: the one gold formula, shared with the offline
                 // projection - see CombatGoldReward.
-                long goldReward = CombatGoldReward.PerKill(in payload, in activeMonster, combatStats.GoldAcquisitionMultiplierPct);
+                long goldReward = CombatGoldReward.PerKill(in payload, in activeMonster, combatStats.GoldAcquisitionMultiplierPct) * paidKills;
 
                 if (goldReward > 0)
                 {
@@ -4976,7 +5053,8 @@ namespace FolkIdle.Server.Domain.Combat
                     PlayerId = payload.PlayerId,
                     MonsterId = payload.CurrentMonsterId,
                     RaceId = codexRaceId,
-                    GainedXp = seasonalCombatXp
+                    GainedXp = (long)seasonalCombatXp * paidKills,
+                    Kills = paidKills,
                 });
 
                 // Modul: counted HERE as well as sixty lines below, because the
@@ -5018,10 +5096,14 @@ namespace FolkIdle.Server.Domain.Combat
                 // (measured with BossGearBenchmark). The live account had
                 // already taken 1,160 from 116 kills of that one boss.
                 // BossDiamondTests keeps it gone.
-                if (!isRegionalBoss && OrdinaryKillPaysDiamond(Random.Shared.NextDouble()))
+                if (KillCanPayDiamond(activeMonster.Id))
                 {
-                    payload.SetPremiumCurrency(payload.PremiumCurrency + 1);
-                    payload.IsDirty = true;
+                    for (int paid = 0; paid < paidKills; paid++)
+                    {
+                        if (!OrdinaryKillPaysDiamond(Random.Shared.NextDouble())) continue;
+                        payload.SetPremiumCurrency(payload.PremiumCurrency + 1);
+                        payload.IsDirty = true;
+                    }
                 }
 
                 // Modul 03/10/11/12: equipment drop roll request. ProcessSubTick
@@ -5034,13 +5116,31 @@ namespace FolkIdle.Server.Domain.Combat
                 // drifted, which is why offline drops were measurably worse -
                 // see CombatLootDropRequest.Build, which is now the only place
                 // either path composes one.
-                CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
-                    in payload,
-                    in combatStats,
-                    payload.CurrentMonsterId,
-                    kills: 1,
-                    bonusRarityTiers: fleeceTiers,
-                    skipMaterialRoll: false));
+                //
+                // Plain and Golden Fleece kills go as separate requests, the
+                // split OfflineSimulationEngine.ProjectCombatLoot makes too - a
+                // Scholar kill paid as two can carry one fleece proc and one
+                // plain kill.
+                if (plainKills > 0)
+                {
+                    CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
+                        in payload,
+                        in combatStats,
+                        payload.CurrentMonsterId,
+                        kills: plainKills,
+                        bonusRarityTiers: 0,
+                        skipMaterialRoll: false));
+                }
+                if (fleeceKills > 0)
+                {
+                    CombatLootEngine.DropRequestQueue.Enqueue(CombatLootDropRequest.Build(
+                        in payload,
+                        in combatStats,
+                        payload.CurrentMonsterId,
+                        kills: fleeceKills,
+                        bonusRarityTiers: GoldenFleeceBonusTiers,
+                        skipMaterialRoll: false));
+                }
 
                 // Modul: THE OTHER HALF OF THE LOOT TELEMETRY.
                 //
@@ -5052,58 +5152,21 @@ namespace FolkIdle.Server.Domain.Combat
                 // which half to look at.
                 CombatLootEngine.NoteKillEnqueued();
 
-                var lootTable = ContentRegistry.GetLootTable(activeMonster.LootTableId);
-                if (lootTable.Length > 0 && payload.InventorySpaceRemaining > 0)
-                {
-                    int totalWeight = 0;
-                    for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight;
-
-                    if (totalWeight > 0)
-                    {
-                        int multiplier = (int)(localDropMultiplier * payload.CachedCodexYieldMultiplier);
-                        int guaranteedRolls = multiplier / 100;
-                        int fractionalBonus = multiplier % 100;
-
-                        int rollsToExecute = guaranteedRolls;
-                        if (fractionalBonus > 0 && Random.Shared.Next(100) < fractionalBonus)
-                        {
-                            rollsToExecute++;
-                        }
-
-                        for (int r = 0; r < rollsToExecute; r++)
-                        {
-                            if (payload.InventorySpaceRemaining <= 0) break;
-
-                            int roll = Random.Shared.Next(totalWeight);
-                            int currentWeight = 0;
-                            for (int i = 0; i < lootTable.Length; i++)
-                            {
-                                currentWeight += lootTable[i].Weight;
-                                if (roll < currentWeight)
-                                {
-                                    // Modul 04: Kobold's packed-weight penalty,
-                                    // mirroring the gathering loot roll above.
-                                    int itemWeight = 1;
-                                    if (activeRaceId == RaceIds.Kobold)
-                                    {
-                                        string droppedBaseId = ContentRegistry.GetMaterialString(lootTable[i].ItemId);
-                                        bool isOreOrBar = droppedBaseId.Contains("_ore_") || droppedBaseId.Contains("_bar_");
-                                        if (!isOreOrBar) itemWeight = 2;
-                                    }
-
-                                    if (itemWeight > payload.InventorySpaceRemaining)
-                                    {
-                                        r = rollsToExecute;
-                                        break;
-                                    }
-
-                                    payload.InventorySpaceRemaining -= itemWeight;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
+                // Modul: A DEAD MATERIAL ROLL WAS DELETED HERE, 2026-09-30.
+                //
+                // This block rolled the monster's loot table
+                // `GlobalDropMultiplier x CachedCodexYieldMultiplier` times a
+                // kill - and granted NOTHING: all it did was decrement
+                // InventorySpaceRemaining, a backpack counter the census resets
+                // to capacity every pass since the backpack was retired. It
+                // read exactly like the real material roll, and the offline
+                // projection copied it, so offline paid materials x codex
+                // yield x drop multiplier that no live kill ever paid.
+                //
+                // A kill's materials are rolled in ONE place:
+                // CombatLootEngine's kill loop (35%, TryPickMaterialDrop). They
+                // read neither the codex yield nor the drop multiplier, and the
+                // owner confirmed that is the rule (2026-09-30).
 
                 payload.CurrentMonsterId = fallbackId;
                 payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
@@ -5127,39 +5190,10 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         private static void RunGatheringTick(ref TickStatePayload payload, in GatheringNodeDefinition gatheringNode, int localDropMultiplier)
         {
-            int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
-
-            // Modul: Deferred Part 5 Implementation, Parts 1/3. The
-            // required-tick math (legacy flat reductions + the tool
-            // family's percentage speed bonus + the village production
-            // building's +5 percent per level) lives in
-            // GatheringToolEngine.ComputeRequiredTicks - pure integer
-            // arithmetic over unmanaged payload ids, zero allocation on
-            // this 10Hz path. Lumberjack accelerates Woodcutting, Mine
-            // accelerates Mining.
-            // Only Woodcutting and Mining have a village production
-            // building. Fishing and Herbalism get no acceleration rather
-            // than silently borrowing the Mine's.
-            int villageProductionLevel = gatheringNode.ProfessionType switch
-            {
-                0 => payload.LumberjackLevel,
-                1 => payload.MineLevel,
-                _ => 0
-            };
-            // Modul: the tool that matches the job. This passed
-            // CachedCurrentToolTier, which was the forge building's level -
-            // so an axe sped up fishing, a rod sped up mining, and owning
-            // no tool at all made no difference either way.
-            int toolTier = gatheringNode.ProfessionType switch
-            {
-                0 => payload.AxeToolTier,
-                1 => payload.PickaxeToolTier,
-                _ => payload.RodToolTier
-            };
-            int requiredTicks = GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct
-                + SkillTreeRegistry.GetBonusTenthsOfPercent(
-                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
-                + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask)));
+            // Modul: the speed and the yield are each ONE function now,
+            // RequiredGatherTicks and GatheringYieldFor, asked by this tick and
+            // by OfflineSimulationEngine alike (offline parity, 2026-09-30).
+            int requiredTicks = RequiredGatherTicks(ref payload, in gatheringNode);
             payload.RequiredProgressTicks = requiredTicks;
             payload.GatheringProgressTicks++;
 
@@ -5168,90 +5202,39 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.GatheringProgressTicks = 0;
                 payload.HarvestLoopCount++;
 
+                // Modul: Scholar pays per harvest (ScholarRate, owner decision
+                // 2026-09-30): this harvest pays for one more with the crown's
+                // chance - mastery XP and loot rolls both - which is what the
+                // offline projection draws for a whole window. A rate on the
+                // reward, not a faster tick.
+                int paidHarvests = (int)ScholarRate.RewardUnits(Random.Shared, 1, payload.Skill_Scholar);
+
                 int masteryXpGain = gatheringNode.BaseMasteryXpReward;
-                ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, masteryXpGain);
+                ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, (long)masteryXpGain * paidHarvests);
                 AddSeasonalXp(ref payload, masteryXpGain);
 
                 // Loot roll
                 var lootTable = ContentRegistry.GetLootTable(gatheringNode.ActivityId);
                 if (lootTable.Length > 0)
                 {
-                    int gatherActiveAgePhase = 1;
-                    int gatherActiveRaceId = 0;
-                    if (payload.Slot1_CharacterId != System.Guid.Empty)
-                    {
-                        gatherActiveAgePhase = payload.Slot1_AgePhase;
-                        gatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
-                    }
-                    var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
-
-                    int monolithLevel = gatheringNode.ProfessionType switch
-                    {
-                        0 => payload.CachedWoodcuttingMonolithLevel,
-                        1 => payload.CachedMiningMonolithLevel,
-                        _ => 0
-                    };
-                    float yieldBonusPct = Math.Min(monolithLevel * 1.0f, 50.0f);
-                    int additionalYieldBonus = (int)(100f * (yieldBonusPct / 100f)); // Add to multiplier
-
-                    // Modul 13: Kobold ore duplication (Mining) / Moosleute yield
-                    // bonus. Fishing (ProfessionType 2) and Herbalism
-                    // (ProfessionType 3) fall through to the Moosleute
-                    // branch below along with Woodcutting - Kobold's ore
-                    // duplication is intentionally Mining-specific, and
-                    // no dedicated racial bonus exists yet for Fishing/
-                    // Herbalism, so Moosleute's "double harvest" is
-                    // applied to them as the closest available bonus
-                    // rather than granting neither profession any
-                    // racial yield bonus at all.
-                    if (gatheringNode.ProfessionType == 1)
-                    {
-                        additionalYieldBonus += (int)RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel);
-                        // Modul 13.4.3: Kobold's innate baseline (not mastery-scaled).
-                        additionalYieldBonus += (int)gatherCombatStats.MiningOreDuplicationBonusPct;
-                    }
-                    else
-                    {
-                        additionalYieldBonus += (int)RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel);
-                        // Modul 13.4.3: Moosleute's innate baseline (not mastery-scaled).
-                        additionalYieldBonus += (int)gatherCombatStats.WoodcuttingYieldBonusPct;
-                    }
-
-                    if (ActiveGlobalEventId == 1) // GoldenHarvest
-                    {
-                        additionalYieldBonus += 20;
-                    }
-
-                    // Modul: yield traits, which replaced the Yield gene on
-                    // 2026-09-13 - percentage points of extra harvest rolls, the
-                    // same units as the race-mastery bonuses above.
-                    additionalYieldBonus += BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask));
-
-                    // Modul: LootLuckPct no longer multiplies the roll COUNT
-                    // (which previously inflated absolute yield of every
-                    // table entry, common trash and rare drops alike, in
-                    // fixed proportion - a placebo that never actually
-                    // shifted rarity odds). Roll count now stays driven only
-                    // by monolith/race/event/trait bonuses; luck
-                    // instead adds a flat weight bonus to every entry below,
-                    // which mathematically favors low-weight (rare) entries
-                    // far more than high-weight (common/trash) ones, since a
-                    // fixed addition is a much larger relative increase for
-                    // a small base weight than a large one.
-                    int luckWeightBonus = (int)(gatherCombatStats.LootLuckPct * 0.1f);
-                    if (luckWeightBonus < 0) luckWeightBonus = 0;
+                    GatheringYield yield = GatheringYieldFor(ref payload, in gatheringNode, localDropMultiplier);
+                    int luckWeightBonus = yield.LuckWeightBonus;
 
                     int totalWeight = 0;
                     for (int i = 0; i < lootTable.Length; i++) totalWeight += lootTable[i].Weight + luckWeightBonus;
                     if (totalWeight > 0)
                     {
-                        int multiplier = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier);
+                        int multiplier = yield.MultiplierPct;
                         int guaranteedRolls = multiplier / 100;
                         int fractionalBonus = multiplier % 100;
-                        int rollsToExecute = guaranteedRolls;
-                        if (fractionalBonus > 0 && Random.Shared.Next(100) < fractionalBonus)
+                        int rollsToExecute = 0;
+                        for (int paid = 0; paid < paidHarvests; paid++)
                         {
-                            rollsToExecute++;
+                            rollsToExecute += guaranteedRolls;
+                            if (fractionalBonus > 0 && Random.Shared.Next(100) < fractionalBonus)
+                            {
+                                rollsToExecute++;
+                            }
                         }
                         for (int r = 0; r < rollsToExecute; r++)
                         {
@@ -5262,14 +5245,6 @@ namespace FolkIdle.Server.Domain.Combat
                                 currentWeight += lootTable[i].Weight + luckWeightBonus;
                                 if (roll < currentWeight)
                                 {
-                                    // Modul 04: Kobold's packed-weight penalty -
-                                    // anything other than raw ores/refined bars
-                                    // consumes 2 virtual capacity slots instead
-                                    // of 1. Breaching the cap drops this item
-                                    // (and stops this cycle's remaining rolls
-                                    // entirely, matching "0% efficiency" on
-                                    // overflow) while gold/XP already granted
-                                    // above are preserved.
                                     // Modul: THE GATHERED ITEM IS ACTUALLY
                                     // GRANTED. This block used to compute a
                                     // Kobold carry weight, spend a backpack
@@ -5283,9 +5258,7 @@ namespace FolkIdle.Server.Domain.Combat
                                     // capacity, and there is no capacity to
                                     // penalise now that storage is one
                                     // unlimited chest.
-                                    int grantQuantity = lootTable[i].MaxQuantity > lootTable[i].MinQuantity
-                                        ? Random.Shared.Next(Math.Max(1, lootTable[i].MinQuantity), lootTable[i].MaxQuantity + 1)
-                                        : 1;
+                                    int grantQuantity = RollGatherQuantity(Random.Shared, in lootTable[i]);
 
                                     CombatLootEngine.GatheringGrantQueue.Enqueue(new GatheredMaterialGrant
                                     {
@@ -5302,6 +5275,165 @@ namespace FolkIdle.Server.Domain.Combat
                 }
             }
         }
+
+        /// <summary>
+        /// How many 10 Hz ticks one harvest of this node takes for the active
+        /// register - the ONE composition of the speed terms, asked by the
+        /// live tick and by the offline projection alike.
+        /// </summary>
+        /// <remarks>
+        /// Modul: extracted 2026-09-30 for offline parity. The offline path
+        /// held a line-for-line copy of this argument list - correct on the
+        /// day it was checked, and exactly the kind of copy this codebase has
+        /// lost three times to a term added on one side only.
+        ///
+        /// Deferred Part 5 Implementation, Parts 1/3. The required-tick math
+        /// (the tool family's percentage speed bonus, mastery, the village
+        /// production building's +5 percent per level) lives in
+        /// GatheringToolEngine.ComputeRequiredTicks - pure integer arithmetic,
+        /// zero allocation on this 10Hz path. Only Woodcutting and Mining have
+        /// a village production building; Fishing and Herbalism get no
+        /// acceleration rather than silently borrowing the Mine's. The tool is
+        /// the one that matches the job: this passed CachedCurrentToolTier
+        /// once, which was the forge building's level - so an axe sped up
+        /// fishing and owning no tool made no difference either way.
+        /// </remarks>
+        internal static int RequiredGatherTicks(ref TickStatePayload payload, in GatheringNodeDefinition gatheringNode)
+        {
+            int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
+            int villageProductionLevel = gatheringNode.ProfessionType switch
+            {
+                0 => payload.LumberjackLevel,
+                1 => payload.MineLevel,
+                _ => 0
+            };
+            int toolTier = gatheringNode.ProfessionType switch
+            {
+                0 => payload.AxeToolTier,
+                1 => payload.PickaxeToolTier,
+                _ => payload.RodToolTier
+            };
+            return GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct
+                + SkillTreeRegistry.GetBonusTenthsOfPercent(
+                    SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
+                + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask)));
+        }
+
+        /// <summary>Mastery XP the profession still needs for its next level (at least 1).</summary>
+        internal static long MasteryXpToNextLevel(ref TickStatePayload payload, int professionType)
+        {
+            (int xp, int level) = professionType switch
+            {
+                0 => (payload.WoodcuttingMasteryXp, payload.WoodcuttingMasteryLevel),
+                1 => (payload.MiningMasteryXp, payload.MiningMasteryLevel),
+                2 => (payload.FishingMasteryXp, payload.FishingMasteryLevel),
+                _ => (payload.HerbalismMasteryXp, payload.HerbalismMasteryLevel)
+            };
+            return Math.Max(1L, MasteryXpForLevel(level) - xp);
+        }
+
+        /// <summary>What one harvest rolls: the roll count in percent, and luck's flat weight.</summary>
+        internal readonly struct GatheringYield
+        {
+            /// <summary>Rolls per harvest x100: one guaranteed roll per whole hundred, the remainder a percent chance of one more.</summary>
+            public int MultiplierPct { get; init; }
+            /// <summary>Added to every loot-table entry's weight (LootLuckPct / 10).</summary>
+            public int LuckWeightBonus { get; init; }
+
+            /// <summary>LootLuckPct as a flat weight bonus: a tenth of it, never negative.</summary>
+            public static int LuckWeightBonusFor(float lootLuckPct)
+            {
+                int bonus = (int)(lootLuckPct * 0.1f);
+                return bonus < 0 ? 0 : bonus;
+            }
+        }
+
+        /// <summary>
+        /// The per-harvest yield terms - the ONE composition, asked by the live
+        /// tick and by the offline projection alike.
+        /// </summary>
+        /// <remarks>
+        /// Modul: extracted 2026-09-30 for offline parity. The offline copy had
+        /// kept only the codex multiplier and the yield trait, and had lost the
+        /// monolith, both race bonuses, the Golden Harvest event and the global
+        /// drop multiplier - so an hour away gathered measurably less than the
+        /// same hour watched for any character that had one of them.
+        /// </remarks>
+        internal static GatheringYield GatheringYieldFor(ref TickStatePayload payload, in GatheringNodeDefinition gatheringNode, int localDropMultiplier)
+        {
+            int gatherActiveAgePhase = 1;
+            int gatherActiveRaceId = 0;
+            if (payload.Slot1_CharacterId != System.Guid.Empty)
+            {
+                gatherActiveAgePhase = payload.Slot1_AgePhase;
+                gatherActiveRaceId = (int)(payload.Slot1_GeneticVector & 0xFF);
+            }
+            var gatherCombatStats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, gatherActiveAgePhase, payload.CompletedAreaFlags, gatherActiveRaceId, payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
+
+            int monolithLevel = gatheringNode.ProfessionType switch
+            {
+                0 => payload.CachedWoodcuttingMonolithLevel,
+                1 => payload.CachedMiningMonolithLevel,
+                _ => 0
+            };
+            float yieldBonusPct = Math.Min(monolithLevel * 1.0f, 50.0f);
+            int additionalYieldBonus = (int)(100f * (yieldBonusPct / 100f)); // Add to multiplier
+
+            // Modul 13: Kobold ore duplication (Mining) / Moosleute yield
+            // bonus. Fishing (ProfessionType 2) and Herbalism
+            // (ProfessionType 3) fall through to the Moosleute
+            // branch below along with Woodcutting - Kobold's ore
+            // duplication is intentionally Mining-specific, and
+            // no dedicated racial bonus exists yet for Fishing/
+            // Herbalism, so Moosleute's "double harvest" is
+            // applied to them as the closest available bonus
+            // rather than granting neither profession any
+            // racial yield bonus at all.
+            if (gatheringNode.ProfessionType == 1)
+            {
+                additionalYieldBonus += (int)RaceMasteryResolver.GetKoboldOreDuplicationBonusPct(payload.KoboldMasteryLevel);
+                // Modul 13.4.3: Kobold's innate baseline (not mastery-scaled).
+                additionalYieldBonus += (int)gatherCombatStats.MiningOreDuplicationBonusPct;
+            }
+            else
+            {
+                additionalYieldBonus += (int)RaceMasteryResolver.GetMoosleuteDoubleHarvestBonusPct(payload.MoosleuteMasteryLevel);
+                // Modul 13.4.3: Moosleute's innate baseline (not mastery-scaled).
+                additionalYieldBonus += (int)gatherCombatStats.WoodcuttingYieldBonusPct;
+            }
+
+            if (ActiveGlobalEventId == 1) // GoldenHarvest
+            {
+                additionalYieldBonus += 20;
+            }
+
+            // Modul: yield traits, which replaced the Yield gene on
+            // 2026-09-13 - percentage points of extra harvest rolls, the
+            // same units as the race-mastery bonuses above.
+            additionalYieldBonus += BloodlineBonuses.GatherYieldBonusPct(TraitTotals.From(payload.TraitMask));
+
+            // Modul: LootLuckPct no longer multiplies the roll COUNT
+            // (which previously inflated absolute yield of every
+            // table entry, common trash and rare drops alike, in
+            // fixed proportion - a placebo that never actually
+            // shifted rarity odds). Roll count stays driven only
+            // by monolith/race/event/trait bonuses; luck instead adds
+            // a flat weight bonus to every entry, which favors
+            // low-weight (rare) entries far more than high-weight ones,
+            // since a fixed addition is a much larger relative increase
+            // for a small base weight than a large one.
+            return new GatheringYield
+            {
+                MultiplierPct = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier),
+                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct),
+            };
+        }
+
+        /// <summary>The quantity one winning gathering roll grants: its authored range, or one.</summary>
+        internal static int RollGatherQuantity(Random rng, in LootTableEntry entry)
+            => entry.MaxQuantity > entry.MinQuantity
+                ? rng.Next(Math.Max(1, entry.MinQuantity), entry.MaxQuantity + 1)
+                : 1;
 
         /// <summary>
         /// Crafting-as-a-job progress for one tick. Extracted verbatim from
@@ -5325,8 +5457,7 @@ namespace FolkIdle.Server.Domain.Combat
             // it repeats until the player stops it or runs out of
             // materials (CraftingEngine refuses the craft, the tick keeps
             // counting, and the halt shows up as nothing being produced).
-            int craftTicks = craftingRecipe.CraftingTimeMs / 100;
-            if (craftTicks < MinCraftTicks) craftTicks = MinCraftTicks;
+            int craftTicks = CraftTicksFor(in craftingRecipe);
 
             payload.RequiredProgressTicks = craftTicks;
             payload.GatheringProgressTicks++;
@@ -5335,12 +5466,31 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 payload.GatheringProgressTicks = 0;
                 payload.HarvestLoopCount++;
-                CraftingTickQueue.Enqueue(new CraftTickCompletion
+
+                // Modul: Scholar pays per completion (ScholarRate): this one
+                // is worth one more craft with the crown's chance - materials
+                // spent and all, as the offline window's extra attempts are.
+                long paidCrafts = ScholarRate.RewardUnits(Random.Shared, 1, payload.Skill_Scholar);
+                for (long craft = 0; craft < paidCrafts; craft++)
                 {
-                    PlayerId = payload.PlayerId,
-                    ResultItemId = craftingRecipe.ResultItemId
-                });
+                    CraftingTickQueue.Enqueue(new CraftTickCompletion
+                    {
+                        PlayerId = payload.PlayerId,
+                        ResultItemId = craftingRecipe.ResultItemId
+                    });
+                }
             }
+        }
+
+        /// <summary>
+        /// Ticks one craft of this recipe takes as a job. Asked by the live
+        /// tick and by the offline projection, so "a craft every N seconds"
+        /// is one number.
+        /// </summary>
+        internal static int CraftTicksFor(in ContentRegistry.RecipeDefinition craftingRecipe)
+        {
+            int craftTicks = craftingRecipe.CraftingTimeMs / 100;
+            return craftTicks < MinCraftTicks ? MinCraftTicks : craftTicks;
         }
     }
 }

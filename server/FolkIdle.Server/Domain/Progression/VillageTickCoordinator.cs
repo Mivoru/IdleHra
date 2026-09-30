@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using System.Threading.Tasks;
 using System;
 using FolkIdle.Server.Network;
@@ -13,8 +14,82 @@ namespace FolkIdle.Server.Domain.Progression
     /// because they are one domain, not to save a task - see
     /// LegacyStoreTickCoordinator for the coordinator shape this repeats.
     /// </summary>
+    /// <summary>One batch of live village production, already split into common and rare.</summary>
+    public struct VillageProductionGrant
+    {
+        public long PlayerId;
+        public int LumberjackLevel;
+        public int MineLevel;
+        public int WarehouseLevel;
+        public long Log;
+        public long RareLog;
+        public long Ore;
+        public long RareOre;
+    }
+
     internal static class VillageTickCoordinator
     {
+        /// <summary>
+        /// Writes the live tick's village production (SimulationEngine
+        /// .VillageProductionQueue) off the tick, one transaction per batch,
+        /// through VillageManagementEngine.GrantProductionAsync - the Warehouse
+        /// cap and the material ledger the offline window writes through.
+        /// </summary>
+        /// <remarks>
+        /// Modul: BOUNDED, per the worker-loop rule: the depth is read once and
+        /// only that many are taken, so a producer cannot keep this loop on the
+        /// tick. A batch is a minute of one player's village, so the depth is
+        /// at most the online population.
+        ///
+        /// A failed write is kept rather than lost: the batch goes to the
+        /// durable retry outbox (audit #18) under the source type the offline
+        /// village grant already uses - it is the same material, from the same
+        /// buildings.
+        /// </remarks>
+        internal static void DrainProductionGrants(
+            Action<string, long, Func<Task>> safeDispatch,
+            Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdle.Server.Models.FolkIdleDbContext> contextFactory)
+        {
+            int budget = SimulationEngine.VillageProductionQueue.Count;
+            for (int i = 0; i < budget && SimulationEngine.VillageProductionQueue.TryDequeue(out var grant); i++)
+            {
+                var batch = grant;
+                safeDispatch("Village.Production", 0L, () => WriteProductionGrantAsync(contextFactory, batch));
+            }
+        }
+
+        internal static async Task WriteProductionGrantAsync(
+            Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdle.Server.Models.FolkIdleDbContext> contextFactory,
+            VillageProductionGrant grant)
+        {
+            await using var db = await contextFactory.CreateDbContextAsync();
+            await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+            try
+            {
+                await VillageManagementEngine.GrantProductionAsync(
+                    db, grant.PlayerId, grant.LumberjackLevel, grant.MineLevel, grant.WarehouseLevel,
+                    grant.Log, grant.RareLog, grant.Ore, grant.RareOre);
+                await db.SaveChangesAsync();
+                await transaction.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                Console.WriteLine($"Village: live production for player {grant.PlayerId} failed and was rolled back: {ex.Message} - queued for retry.");
+
+                var lumberjackMats = VillageManagementEngine.GetTierMaterials(grant.LumberjackLevel);
+                var mineMats = VillageManagementEngine.GetTierMaterials(grant.MineLevel);
+                var deltas = new Dictionary<string, long>();
+                if (grant.Log > 0) deltas[lumberjackMats.Log] = grant.Log;
+                if (grant.RareLog > 0) deltas[lumberjackMats.RareLog] = grant.RareLog;
+                if (grant.Ore > 0) deltas[mineMats.Ore] = grant.Ore;
+                if (grant.RareOre > 0) deltas[mineMats.RareOre] = grant.RareOre;
+                db.ChangeTracker.Clear();
+                await PendingGrantOutbox.EnqueueCommodityDeltasAsync(
+                    db, grant.PlayerId, FolkIdle.Server.Models.PendingGrantSourceType.OfflineVillageProduction, deltas);
+            }
+        }
+
         internal static void DrainInfrastructureUpdates(
             PlayerSessionRegistry registry,
             Dictionary<long, TickStatePayload> activePlayers)

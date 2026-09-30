@@ -212,6 +212,110 @@ namespace FolkIdle.Server.Domain.Progression
             return warehouseLevel <= 0 ? 0L : (long)warehouseLevel * WarehouseCapacityPerLevel;
         }
 
+        // ------------------------------------------------------------------
+        // Modul: ONE PRODUCTION RULE, LIVE AND AWAY (owner decision 2026-09-30).
+        //
+        // The live tick produced the legacy "wood" and "iron_ore" rows at
+        // 0.1 and 0.05 a second per level, while the offline catch-up produced
+        // the region's catalogued log and ore at (level + 1) x 100 an hour with
+        // a tenth of it rare - two different buildings behind one button. The
+        // offline rule is the game; both paths now call the functions below,
+        // and "wood" / "iron_ore" are no longer produced by anything.
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// A Lumberjack's or Mine's output per hour. Only ever goes up with the
+        /// level (2026-09-01: it used to read level % 5 and reset every fifth
+        /// upgrade).
+        /// </summary>
+        public static long ProductionRatePerHour(int buildingLevel)
+            => buildingLevel > 0 ? (buildingLevel + 1) * 100L : 0L;
+
+        /// <summary>One unit of production, in accumulator units: an hour of tenth-second ticks at 1000 permille.</summary>
+        public const long ProductionUnitScale = 36_000L * 1000L;
+
+        /// <summary>
+        /// Adds <paramref name="ticks"/> tenth-second ticks of an hourly rate at
+        /// <paramref name="ratePermille"/> (1000 = the rate itself; Scholar
+        /// raises it) to an integer accumulator and takes out the whole units.
+        /// The live tick passes one tick and keeps its accumulator on the
+        /// payload; the offline window passes all its ticks and a fresh one.
+        /// Exact integer arithmetic, so an hour pays the same either way.
+        /// </summary>
+        public static long AccrueProduction(ref long accumulator, long ratePerHour, long ticks, int ratePermille)
+        {
+            if (ratePerHour <= 0 || ticks <= 0 || ratePermille <= 0) return 0L;
+            accumulator += ratePerHour * ticks * ratePermille;
+            long units = accumulator / ProductionUnitScale;
+            accumulator -= units * ProductionUnitScale;
+            return units;
+        }
+
+        /// <summary>
+        /// How many of the next <paramref name="units"/> are the tier's RARE
+        /// material, given <paramref name="producedBefore"/> already produced:
+        /// every unit that crosses a RareYieldPercent boundary. A window from
+        /// nothing is exactly units x 10 / 100; the live tick, producing one at
+        /// a time, lands on the same count per hour.
+        /// </summary>
+        public static long RareShareOf(long producedBefore, long units)
+            => (producedBefore + units) * RareYieldPercent / 100L - producedBefore * RareYieldPercent / 100L;
+
+        /// <summary>
+        /// Grants one batch of village production - the tier's log, rare log,
+        /// ore and rare ore - against the Warehouse cap, recording what did not
+        /// fit on the material ledger (task 79). Returns the units the cap
+        /// discarded. Runs inside the CALLER's transaction; the offline window
+        /// and the live production drain both call it.
+        /// </summary>
+        public static async Task<long> GrantProductionAsync(
+            FolkIdleDbContext db, long playerId, int lumberjackLevel, int mineLevel, int warehouseLevel,
+            long log, long rareLog, long ore, long rareOre)
+        {
+            long maxStorage = CalculateWarehouseMaxStorage(warehouseLevel);
+            var lumberjackMats = GetTierMaterials(lumberjackLevel);
+            var mineMats = GetTierMaterials(mineLevel);
+
+            long lost = 0L;
+            lost += await GrantUnderWarehouseCapAsync(db, playerId, lumberjackMats.Log, log, maxStorage);
+            lost += await GrantUnderWarehouseCapAsync(db, playerId, mineMats.Ore, ore, maxStorage);
+            lost += await GrantUnderWarehouseCapAsync(db, playerId, lumberjackMats.RareLog, rareLog, maxStorage);
+            lost += await GrantUnderWarehouseCapAsync(db, playerId, mineMats.RareOre, rareOre, maxStorage);
+            return lost;
+        }
+
+        // Modul: returns what this call could NOT grant - the Warehouse cap,
+        // against live storage, at grant time. Summed by the offline caller
+        // into TickStatePayload.OfflineMaterialsLostToFullWarehouse, so a full
+        // warehouse stops silently discarding production with no record.
+        private static async Task<long> GrantUnderWarehouseCapAsync(FolkIdleDbContext db, long playerId, string itemId, long amountToGrant, long maxStorage)
+        {
+            if (amountToGrant <= 0) return 0L;
+
+            var commodity = await db.CommodityRecords
+                .FromSqlRaw("SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = {1} FOR UPDATE", playerId, itemId)
+                .SingleOrDefaultAsync();
+
+            long currentStorage = commodity?.Quantity ?? 0L;
+            long grantedAmount = Math.Min(amountToGrant, Math.Max(0L, maxStorage - currentStorage));
+            long overflow = amountToGrant - grantedAmount;
+
+            // Task 79: the material flow, in the caller's transaction.
+            await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.LostToWarehouseCap, itemId, overflow);
+            if (grantedAmount <= 0)
+            {
+                return overflow;
+            }
+
+            // Modul: the FOR UPDATE read above stays, because the storage cap
+            // needs the current stack; the write is an upsert (task 44), since
+            // FOR UPDATE on a row that does not exist yet locks nothing.
+            await CommodityLedger.AddAsync(db, playerId, itemId, grantedAmount);
+            await MaterialLedger.RecordAsync(db, playerId, MaterialFlowDirection.Gathered, itemId, grantedAmount);
+
+            return overflow;
+        }
+
         // Modul: 500 and a 1.4 curve, from 1,000 and 1.5 - see
         // CalculateUpgradeCost. A level-10 service building was 57,665 gold on
         // the old curve, which is over two hours of region-2 income for one

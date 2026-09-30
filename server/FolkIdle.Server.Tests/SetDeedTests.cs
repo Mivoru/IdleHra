@@ -61,5 +61,31 @@ namespace FolkIdle.Server.Tests
             var context = await DeedProgressSource.LoadAsync(read, playerId);
             Assert.Equal(2, context.LargestActiveSetBonus);
         }
+
+        /// <summary>
+        /// Modul: "Gather 100 wood" counted the legacy "wood" row, which
+        /// gathering never wrote and live village production stopped writing on
+        /// 2026-09-30 - so it could not advance. It counts every _log now, and
+        /// no other material.
+        /// </summary>
+        [Fact]
+        public async Task WoodDeedCountsEveryCatalogueLog_AndNothingElse()
+        {
+            const long playerId = 950_052_002L;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
+                db.CommodityRecords.AddRange(
+                    new CommodityRecord { PlayerId = playerId, ItemId = "birch_log", Quantity = 40 },
+                    new CommodityRecord { PlayerId = playerId, ItemId = "willow_log", Quantity = 25 },
+                    new CommodityRecord { PlayerId = playerId, ItemId = "copper_ore", Quantity = 500 },
+                    new CommodityRecord { PlayerId = playerId, ItemId = "wood", Quantity = 500 });
+                await db.SaveChangesAsync();
+            }
+
+            await using var read = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var context = await DeedProgressSource.LoadAsync(read, playerId);
+            Assert.Equal(65, context.WoodStock);
+        }
     }
 }

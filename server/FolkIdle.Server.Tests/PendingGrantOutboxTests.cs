@@ -189,11 +189,12 @@ namespace FolkIdle.Server.Tests
                     db, player.Id, lumberjackLevel: 1, mineLevel: 0, warehouseLevel: 1, townHallLevel: 0, elapsedSeconds: 36000L);
 
                 // 10 hours at level 1 (200/hour, 90/10 split -> 180 common +
-                // 20 rare per hour) requests 1000 common wood before the
-                // clamp; with 990 already stored against a 1,000-cap
-                // warehouse, only 10 more fits - 890 lost, matching
-                // OfflineVillageProductionOverflowTests' own math.
-                Assert.Equal(890L, overflow);
+                // 20 rare per hour) produces 1,800 common wood; with 990
+                // already stored against a 1,000-cap warehouse, only 10 more
+                // fits - 1,790 lost, matching
+                // OfflineVillageProductionOverflowTests' own math. (There is no
+                // window ceiling any more - see GrantVillagePassiveProductionAsync.)
+                Assert.Equal(1_790L, overflow);
             }
 
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();

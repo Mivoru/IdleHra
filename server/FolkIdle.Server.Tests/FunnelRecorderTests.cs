@@ -288,7 +288,7 @@ namespace FolkIdle.Server.Tests
                 ["Registered"] = 2,      // AuthenticationEngine: device route + email route
                 ["FirstKill"] = 2,       // ProgressionEngine (live) + OfflineSimulationEngine (away)
                 ["FirstEquip"] = 1,
-                ["FirstCraft"] = 1,
+                ["FirstCraft"] = 2,      // CraftingEngine: the live job + the offline window
                 ["OnboardingDone"] = 0,  // FunnelRecorder.RecordCheckpoint, from FlushState
                 ["Region1Boss"] = 1,
                 ["Level5"] = 0,          // RecordCheckpoint
