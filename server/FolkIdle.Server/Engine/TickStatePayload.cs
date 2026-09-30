@@ -558,7 +558,10 @@ namespace FolkIdle.Server.Engine
 
         // Deltas awaiting write-behind flush into CommodityRecords (see
         // RedisSessionCache.TryStoreFrame / RedisWriteBehindEngine), mirroring
-        // the existing RedisPendingGoldDelta pattern below.
+        // the existing RedisPendingGoldDelta pattern below. Like gold, what
+        // Redis did not take is banked by the checkpoint (FlushState /
+        // FlushBatch), carried on the job and handed back by a failed ack -
+        // with Redis down that is their only durable path.
         public long PendingWoodDelta;
         public long PendingStoneDelta;
         public long PendingIronDelta;

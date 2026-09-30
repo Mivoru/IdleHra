@@ -87,6 +87,17 @@ namespace FolkIdle.Server.Engine
             // Task 79: the income tally is in no row either (the reload flush
             // took what it had; this is what arrived since, or came back).
             reloaded.PendingGoldIncome.Add(in live.PendingGoldIncome);
+
+            // Village production not yet banked (Redis down, or handed back by
+            // a failed flush's ack) is in no row the reload read either: carry
+            // it as still owed AND onto the stock the tick caps against and the
+            // screen shows, exactly as the gold delta is added to the balance.
+            reloaded.PendingWoodDelta += live.PendingWoodDelta;
+            reloaded.CachedWoodStock += live.PendingWoodDelta;
+            reloaded.PendingStoneDelta += live.PendingStoneDelta;
+            reloaded.CachedStoneStock += live.PendingStoneDelta;
+            reloaded.PendingIronDelta += live.PendingIronDelta;
+            reloaded.CachedIronOreStock += live.PendingIronDelta;
         }
 
         /// <summary>
