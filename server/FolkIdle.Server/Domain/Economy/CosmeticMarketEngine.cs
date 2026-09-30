@@ -252,14 +252,20 @@ namespace FolkIdle.Server.Domain.Economy
             long guildTax = await MarketEscrowEngine.ApplyGuildSalesTaxAsync(db, listing.SellerId, price);
             long proceeds = Math.Max(0L, price - fee - guildTax);
 
-            // Seller payment: the equipment market's exact choice. Online, the
-            // tick pays it (the payload holds unbanked gold, so a row credit
-            // here would double-pay at the next checkpoint); offline, the row.
+            // Seller payment: the ROW, online or not (2026-09-30). This used to
+            // say "online, the tick pays it; a row credit would double-pay at
+            // the next checkpoint". Neither held: the tick's drain moves
+            // CurrentGold only, nothing persists CurrentGold, and the
+            // checkpoint banks RedisPendingGoldDelta alone - so an online
+            // seller's proceeds vanished at the next relogin. The row is
+            // credited here; an online seller's display moves after the commit
+            // (the chest-sale path of CLAUDE.md's "two gold paths").
             bool sellerOnline = registry?.IsPlayerOnline(listing.SellerId) ?? false;
-            // Task 79: income whichever branch pays it, in the sale's transaction.
+            // Task 79: income, in the sale's transaction.
             await GoldLedger.RecordIncomeAsync(db, listing.SellerId, GoldIncomeSource.Market, proceeds);
-            if (!sellerOnline && proceeds > 0L)
+            if (proceeds > 0L)
             {
+                // GoldLedger: recorded as Market income above.
                 await CommodityLedger.AddAsync(db, listing.SellerId, "gold", proceeds);
             }
 

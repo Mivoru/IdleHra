@@ -413,23 +413,19 @@ namespace FolkIdle.Server.Domain.Economy
                 // tick's display-only AddGold or the rescue.
                 await GoldLedger.RecordIncomeAsync(db, order.SellerId, GoldIncomeSource.Market, sellerProceeds);
 
-                if (_playerRegistry.IsPlayerOnline(order.SellerId))
-                {
-                    _playerRegistry.MarketMatchQueue.Enqueue(new MarketMatchNotification
-                    {
-                        PlayerId = order.SellerId,
-                        GoldDelta = sellerProceeds,
-                        NewEquipmentInstanceId = null // Seller doesn't get a new equipment
-                    });
-                }
-                else
-                {
-                    // Modul: an upsert (CommodityLedger). The ledger rebases
-                    // the tracked sellerGold row read above, so nothing at
-                    // SaveChanges writes a stale absolute over it.
-                    // GoldLedger: recorded as Market income above, for both branches.
-                    await CommodityLedger.AddAsync(db, order.SellerId, "gold", sellerProceeds);
-                }
+                // Modul: THE ROW, ONLINE OR NOT (2026-09-30). The online branch
+                // used to post the proceeds to MarketMatchQueue only, whose
+                // drain moves CurrentGold and nothing else - and nothing
+                // persists CurrentGold (the checkpoint banks only
+                // RedisPendingGoldDelta; login reloads the row). An online
+                // seller's sale vanished at their next relogin. This is now
+                // the chest-sale path of CLAUDE.md's "two gold paths": the row
+                // is credited here, in the sale's transaction, and the live
+                // payload moves CurrentGold ONLY (after the commit, below).
+                // The upsert rebases the tracked sellerGold row read above.
+                // GoldLedger: recorded as Market income above.
+                await CommodityLedger.AddAsync(db, order.SellerId, "gold", sellerProceeds);
+                bool showSellerGold = _playerRegistry.IsPlayerOnline(order.SellerId);
 
                 // Archive matching order
                 var archive = new HistoricalMarketArchive
@@ -456,6 +452,18 @@ namespace FolkIdle.Server.Domain.Economy
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // After the commit, never inside it: a display credit for a
+                // sale that then rolled back would be gold the row never got.
+                if (showSellerGold)
+                {
+                    _playerRegistry.MarketMatchQueue.Enqueue(new MarketMatchNotification
+                    {
+                        PlayerId = order.SellerId,
+                        GoldDelta = sellerProceeds,
+                        NewEquipmentInstanceId = null // Seller doesn't get a new equipment
+                    });
+                }
 
                 Console.WriteLine($"Direct Buy: Order {orderId} purchased by {buyerId} for {order.Price}g.");
                 _playerRegistry.EnqueueCommandResult(buyerId, (byte)FolkIdle.Server.Network.CommandResultCode.Success);
