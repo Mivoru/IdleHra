@@ -491,6 +491,14 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public bool HasGoldenFleece;
 
+        // Modul: TASK 85, RULE 3 - "fuse stacks up to tier N", carried per
+        // request for the reason LootLuckPct is: the worker cannot read the
+        // payload, and the rule belongs to the character whose kill this is.
+        // ZERO IS OFF, the honest default for a request built without it.
+        // Set by Build, so the live kill and the offline window (the only two
+        // builders) cannot disagree about it.
+        public int AutoFuseToTier;
+
         /// <summary>
         /// Builds a drop request from a payload and its combat stats. THE ONLY
         /// place loot luck is composed.
@@ -538,6 +546,7 @@ namespace FolkIdle.Server.Engine
                     ContentRegistry.GetMonsterRegionTier(monsterId)),
                 Source = source,
                 HasGoldenFleece = payload.Skill_GoldenFleece > 0,
+                AutoFuseToTier = AutomationRules.AutoFuseTierFor(in payload),
 
                 // Everything that shifts WHAT falls, summed into one figure -
                 // by LootLuckBreakdown, the only place the terms are named.
@@ -666,6 +675,15 @@ namespace FolkIdle.Server.Engine
 
         // Modul: the drop record (task 26) - see DropRecord.
         private readonly DropTally _dropTally = new();
+
+        // Modul: task 85, rule 3. The base items the LAST request committed as
+        // chest rows (auto-salvaged pieces are not rows and are not here), and
+        // per player the stacks this cycle's drops landed in with the highest
+        // tier any of its requests asked for. The fusion runs once per player
+        // per cycle AFTER the drain - not per kill, which would be a
+        // serializable stack scan on every live kill.
+        private readonly List<string> _requestCommittedBaseIds = new();
+        private readonly Dictionary<long, (int Tier, HashSet<string> BaseIds)> _autoFuseWork = new();
 
         // Modul: THE LOOT PATH HAD NO OBSERVABILITY AT ALL, and it cost a day.
         //
@@ -830,6 +848,11 @@ namespace FolkIdle.Server.Engine
                                 request.AutoSalvageBelowTier,
                                 request.RarityElevationPct,
                                 request.RecordedSource);
+
+                            if (request.AutoFuseToTier >= 2)
+                            {
+                                NoteAutoFuse(request.PlayerId, request.AutoFuseToTier, _requestCommittedBaseIds);
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -838,6 +861,10 @@ namespace FolkIdle.Server.Engine
                                 $"Loot: drop request for player {request.PlayerId} (monster {request.MonsterId}) failed: {ex.Message}");
                         }
                     }
+
+                    // Task 85: after the drops, before the gathering drain - one
+                    // fusion pass per player whose drops this cycle asked for one.
+                    await RunAutoFusionsAsync();
 
                     await DrainGatheringGrantsAsync();
 
@@ -923,6 +950,82 @@ namespace FolkIdle.Server.Engine
 
             return taken;
         }
+
+        /// <summary>
+        /// Task 85: remembers that <paramref name="playerId"/>'s rule wants the
+        /// stacks <paramref name="baseItemIds"/> fused up to <paramref name="tier"/>.
+        /// </summary>
+        internal void NoteAutoFuse(long playerId, int tier, IEnumerable<string> baseItemIds)
+        {
+            if (!_autoFuseWork.TryGetValue(playerId, out var work))
+            {
+                work = (0, new HashSet<string>(StringComparer.Ordinal));
+            }
+            bool any = false;
+            foreach (string baseId in baseItemIds)
+            {
+                if (!string.IsNullOrEmpty(baseId)) { work.BaseIds.Add(baseId); any = true; }
+            }
+            if (!any && work.BaseIds.Count == 0) return;
+            _autoFuseWork[playerId] = (Math.Max(work.Tier, tier), work.BaseIds);
+        }
+
+        /// <summary>
+        /// Task 85, rule 3: fuses what this cycle's drops asked for, one
+        /// transaction per player, through ForgeSplicingEngine's one stack
+        /// fusion. Each player is isolated in its own try, the scope included -
+        /// see CLAUDE.md on guards that start after CreateScope.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE GOLD IS SPENT ON THE ROW, SO THE SESSION MOVES ITS
+        /// DISPLAY ONLY. The fee comes off CommodityRecords["gold"] inside the
+        /// fusion's transaction, as the Forge button's does. The live payload's
+        /// CurrentGold is then behind by exactly that fee, which is what
+        /// ChestSaleGoldQueue corrects without banking anything (a negative
+        /// amount here). Putting it on RedisPendingGoldDelta instead would make
+        /// the checkpoint take the fee from the row a second time.
+        /// </remarks>
+        internal async Task RunAutoFusionsAsync()
+        {
+            if (_autoFuseWork.Count == 0) return;
+
+            var work = new List<KeyValuePair<long, (int Tier, HashSet<string> BaseIds)>>(_autoFuseWork);
+            _autoFuseWork.Clear();
+            foreach (var entry in work)
+            {
+                try
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    var outcome = await ForgeSplicingEngine.AutoFuseStacksAsync(db, entry.Key, entry.Value.BaseIds, entry.Value.Tier);
+                    if (outcome.TotalFusions <= 0) continue;
+
+                    _autoFusions += outcome.TotalFusions;
+                    if (outcome.GoldCost > 0)
+                    {
+                        _playerRegistry?.ChestSaleGoldQueue.Enqueue(new ChestSaleGoldNotification
+                        {
+                            PlayerId = entry.Key,
+                            GoldGained = -outcome.GoldCost,
+                        });
+                    }
+                    _playerRegistry?.ForgeUpgradeQueue.Enqueue(new ForgeUpgradeNotification
+                    {
+                        PlayerId = entry.Key,
+                        ResultingQualityTier = outcome.BestTier,
+                    });
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Loot: auto-fuse for player {entry.Key} failed: {ex.Message}");
+                }
+            }
+        }
+
+        private long _autoFusions;
+
+        /// <summary>Fusions the automation rule has made since the process started.</summary>
+        public long AutoFusions => Interlocked.Read(ref _autoFusions);
 
         private async Task DrainGatheringGrantsAsync()
         {
@@ -1102,6 +1205,7 @@ namespace FolkIdle.Server.Engine
             _requestBestTier = 0;
             _requestBestBaseId = string.Empty;
             _requestCollection.Clear();
+            _requestCommittedBaseIds.Clear();
 
             // Modul: the drop record's accumulator, reused like _pendingDrops
             // (this worker is single-threaded). Cleared here as well as by the
@@ -1227,6 +1331,9 @@ namespace FolkIdle.Server.Engine
                 // transaction as the drops it counts.
                 await DropRecord.WriteAsync(dbContext, playerId, _dropTally, DateTime.UtcNow);
                 await transaction.CommitAsync();
+
+                // Task 85: what now sits in the chest, for the auto-fuse rule.
+                foreach (var grant in resolvedEquipmentGrants) _requestCommittedBaseIds.Add(grant.BaseItemId);
 
                 // Modul: THE CENSUS IS GONE, and it was pure waste on the
                 // hottest path in the game.

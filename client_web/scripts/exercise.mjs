@@ -3734,6 +3734,92 @@ await go('Ancestors');
   }
 }
 
+// --- orders: automation rules, round-tripped (task 85) -----------------------
+//
+// Modul: SET, READ BACK, RESTORE. The fixture is level 40, so slots 1 and 2 are
+// open and slot 3 (level 60) is not. This gives slot 1 of the first fielded
+// character an order THROUGH THE PANEL, reads it back from the server, asks
+// the server for an order in the locked slot and expects the refusal to be
+// ANSWERED (200 + Result, never a silent no-op), and then puts the character's
+// three rules back exactly as they were - a check that left an order behind
+// would change how the fixture fights in every later run.
+{
+  await dismissToasts();
+  const before = await apiGet('/api/v1/automation-rules');
+  const first = before?.Characters?.[0];
+  record(
+    'orders: the rules answer, with three slots per fielded character',
+    before !== null && Array.isArray(before.UnlockLevels) && before.UnlockLevels.length === 3
+      && first !== undefined && first.Rules.length === 3,
+    before ? `level ${before.Level}, ${before.Characters.length} characters, unlocks ${before.UnlockLevels.join('/')}` : 'no answer',
+  );
+
+  if (first) {
+    const original = first.Rules.map((r) => ({ Type: r.Type, Param: r.Param }));
+    await go('Character');
+    const block = page.locator(`[data-testid="orders-character"][data-character-id="${first.CharacterId}"]`);
+    await block.waitFor({ timeout: 10000 }).catch(() => {});
+
+    // The locked slot says so, and offers no control.
+    const locked = block.locator('[data-testid="orders-slot"][data-open="false"]');
+    const expectLocked = before.UnlockLevels.filter((l) => before.Level < l).length;
+    record(
+      'orders: a slot above the level shows its unlock level, not a control',
+      (await locked.count()) === expectLocked
+        && (expectLocked === 0 || /Opens at level \d+/.test(await locked.first().innerText().catch(() => ''))),
+      `${await locked.count()} locked of 3 at level ${before.Level}`,
+    );
+
+    // Give slot 1 an order it does not already have, through the panel.
+    const wanted = original[0].Type === 2 ? 1 : 2;
+    const typeSelect = block.locator('[data-testid="orders-slot"][data-slot="0"] [data-testid="orders-type"]');
+    if ((await typeSelect.count()) > 0) {
+      // The other slot may already hold the order we want; free it first.
+      if (original.some((r, i) => i !== 0 && r.Type === wanted)) {
+        await apiPost('/api/v1/automation-rules', {
+          CharacterId: first.CharacterId,
+          Rules: original.map((r, i) => (i !== 0 && r.Type === wanted ? { Type: 0, Param: 0 } : r)),
+        });
+        await page.reload({ waitUntil: 'networkidle' });
+        await go('Character');
+        await block.waitFor({ timeout: 10000 }).catch(() => {});
+      }
+      await typeSelect.selectOption(String(wanted));
+      await block.locator('[data-testid="orders-save"]').click();
+      let saved = null;
+      for (let i = 0; i < 20; i++) {
+        await page.waitForTimeout(300);
+        const now = await apiGet('/api/v1/automation-rules');
+        saved = now?.Characters?.find((c) => c.CharacterId === first.CharacterId)?.Rules?.[0] ?? null;
+        if (saved?.Type === wanted) break;
+      }
+      record('orders: an order set on the panel is what the server holds', saved?.Type === wanted,
+        saved ? `slot 1 type ${saved.Type} param ${saved.Param}` : 'not read back');
+    } else {
+      record('orders: an order set on the panel is what the server holds', false, 'slot 1 has no control (level below 20?)');
+    }
+
+    // A locked slot is refused out loud.
+    if (before.Level < before.UnlockLevels[2]) {
+      const refused = await apiPost('/api/v1/automation-rules', {
+        CharacterId: first.CharacterId,
+        Rules: [{ Type: 0, Param: 0 }, { Type: 0, Param: 0 }, { Type: 2, Param: 0 }],
+      });
+      record('orders: a rule in a locked slot is refused with a reason', refused?.Result === 'SlotLocked', refused?.Result ?? 'no answer');
+    }
+
+    // Restore, and prove it.
+    const restored = await apiPost('/api/v1/automation-rules', { CharacterId: first.CharacterId, Rules: original });
+    const back = restored?.Characters?.find((c) => c.CharacterId === first.CharacterId)?.Rules ?? [];
+    record(
+      'orders: the fixture ends with the rules it started with',
+      restored?.Result === 'Ok' && back.length === 3 && back.every((r, i) => r.Type === original[i].Type && r.Param === original[i].Param),
+      restored ? `${restored.Result}: ${JSON.stringify(back)}` : 'no answer',
+    );
+    await dismissToasts();
+  }
+}
+
 // --- rebirth: the PREVIEW only, on the fixture (task 88) ---------------------
 //
 // Modul: THE FIXTURE IS NEVER REBORN. A rebirth takes its level, gear, gold and

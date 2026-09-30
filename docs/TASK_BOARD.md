@@ -5113,7 +5113,7 @@ prose in English. Loot below Rare stays silent.
 | 82 | Desktop header as five groups | S-M | show a screenshot first |
 | 83 | Workshop commissions (the material sink) | L | **design with the owner** |
 | 84 | Great Works (the long material sink) | L | **design with the owner** |
-| 85 | Orders: automation rules as a reward | L | **design with the owner** |
+| 85 | **BUILT** (branch `claude/automation-rules-85`) - Orders: automation rules as a reward | L | decided 2026-09-30 |
 | 86 | A deterministic affix step beside the reroll | M | **design with the owner** |
 | 87 | Boss Ascension ladder | M | reward shape, once |
 | 88 | **BUILT** (branch `feat/88-rebirth`) - Rebirth on demand instead of a calendar season | XL | decided 2026-09-30 |
@@ -5613,12 +5613,50 @@ offline limit, a Hall slot, a frame). The owner's task 38 notes already name
 "Great Works"; this is the solo version. Every bonus goes into
 `PowerCeilingTests` with a cap.
 
-## 85. Orders: automation rules as a reward - design with the owner
+## BUILT - 85. Orders: automation rules as a reward
 
-Up to three rules per character, unlocked by progress: when the larder runs
-dry, fish in X; after a death, one monster easier; fuse stacks up to tier N.
-Server-side on the halt event, and the offline path must know the rules too
-("three paths grow a level" is the same lesson).
+**Owner decision 2026-09-30, built the same day on `claude/automation-rules-85`,
+not deployed.** Design and status: `docs/superpowers/specs/2026-09-30-automation-rules.md`.
+
+Up to three rules per character, one slot opening at each of level 20, 40 and
+60 (the account level; the game has no per-character level). A slot above the
+level keeps its rule but it is inert, so a rebirth re-locks them until the
+level returns.
+
+- **When the larder runs dry, fish at X.** Auto-eat wants a bite and has none
+  (OutOfFood); the next combat tick sends the character to the chosen fishing
+  spot, if it has been reached and no other slot works it. Halt reason 6.
+- **After a death, one monster easier.** `ApplyCombatDeath` (the one death
+  both paths share) respawns the character on the previous regular of the
+  canonical ladder (a boss steps to its region's strongest regular; a
+  region's first regular skips the boss behind it; 91 has nothing below).
+  Halt reason 7. The death is still counted and carded.
+- **Fuse stacks up to tier N.** The drop request carries the tier
+  (`CombatLootDropRequest.Build`, live and offline); after each loot-worker
+  cycle the stacks the drops landed in are fused from tier 1 to N through
+  `ForgeSplicingEngine.FuseStackInTransactionAsync` - the Forge button's
+  own path, extracted rather than copied. Gold comes off the row; the session
+  follows through `ChestSaleGoldQueue` (display only).
+- **Offline = online.** `OfflineSimulationEngine.ProjectCombatLegs` spends a
+  window as legs: the fight stops at a death or (with the rule) the starving
+  tick, the rule acts through the same function, and the rest of the window is
+  spent where it sent the character. `AutomationRuleParityTests` runs the real
+  tick beside it: the fishing switch within 10% of the live second, fishing XP
+  within 5%, and the step-down ending on the same rung after the same number
+  of deaths.
+- **Storage and wire.** `characters."AutomationRules"` (bigint, migration
+  `AddAutomationRules`), swapped with the character in the tick's register.
+  No packet field and no opcode: `GET/POST /api/v1/automation-rules`, then
+  `AutomationRulesQueue` to the tick. The "Orders" panel is on the Character
+  screen; `exercise.mjs` sets an order through it, reads it back, checks a
+  locked slot is refused with `SlotLocked`, and restores the fixture's rules.
+
+**Not done, on purpose:** a restocked larder does not send the fisher back to
+the fight (the player redeploys). **Open, pre-existing:** slots 2 and 3's
+activity change (a rule's, and a death's before it) is live-only until the
+next redeploy - only the fielded character's activity is written by the
+checkpoint (`PersistFieldedActivityAsync`), so a relogin puts slot 2 back on
+the monster it was deployed to.
 
 ## 86. A deterministic affix step beside the reroll - design with the owner
 

@@ -48,6 +48,11 @@ namespace FolkIdle.Server.Engine
         // out of food says nothing about the other two.
         public byte ActivityHaltReason;
 
+        // Task 85: this character's automation rules, parked - see
+        // TickStatePayload.AutomationRules. A rule belongs to the character,
+        // so slot 2 obeys slot 2's rules whether it is watched or away.
+        public long AutomationRules;
+
         // Modul: per-character equipment. Each character's own gear, and the
         // stat totals derived from it.
         //

@@ -42,7 +42,7 @@
     revokeRefreshToken,
   } from './lib/net/auth';
   import { queryClient } from './lib/net/queryClient';
-  import { HALT_REASON_SHORT } from './lib/ui/slots';
+  import { HALT_REASON_SHORT, isAutomationNote } from './lib/ui/slots';
   import { initLanguage, loadTranslations } from './lib/ui/i18n';
   import { unlockAudio, play } from './lib/ui/audio';
   import { startMusic, stopMusic } from './lib/ui/music';
@@ -702,7 +702,8 @@
       <EventBanner />
 
       {#if haltBadge}
-        <span class="halt" title="This character is not earning">{haltBadge}</span>
+        <!-- Task 85: an order acting (6, 7) still earns; only a stop says it does not. -->
+        <span class="halt" title={snap && isAutomationNote(Number(snap.ActivityHaltReason)) ? 'An order you set acted for this character' : 'This character is not earning'}>{haltBadge}</span>
       {/if}
 
       {#if snap}

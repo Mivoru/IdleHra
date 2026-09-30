@@ -73,6 +73,17 @@ namespace FolkIdle.Server.Engine
         public int AutoSalvageRegionTiers;
     }
 
+    // Modul: task 85. The REST setter has written characters."AutomationRules";
+    // the live register has to hear it too, or a rule set mid-session would
+    // not act until the next sign-in - a toggle that does nothing, the same
+    // shape ChestSettingsNotification exists for.
+    public struct AutomationRulesNotification
+    {
+        public long PlayerId;
+        public Guid CharacterId;
+        public long PackedRules;
+    }
+
     public struct AchievementClaimRequest
     {
         public long PlayerId;
@@ -459,6 +470,10 @@ namespace FolkIdle.Server.Engine
         // does NOT bank the delta, and AutoSalvageQueue's does.
         public ConcurrentQueue<ChestSaleGoldNotification> ChestSaleGoldQueue { get; } = new();
         public ConcurrentQueue<ChestSettingsNotification> ChestSettingsQueue { get; } = new();
+
+        // Task 85: a character's automation rules, changed over REST - see
+        // AutomationRulesNotification.
+        public ConcurrentQueue<AutomationRulesNotification> AutomationRulesQueue { get; } = new();
 
         // Task 78: a REST handler's request for a copy of the live payload -
         // see PayloadSnapshotOrder.

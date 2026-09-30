@@ -197,6 +197,14 @@ namespace FolkIdle.Server.Engine
         // a statement about right now rather than a sticky history.
         public byte ActivityHaltReason;
 
+        // Task 85: the ACTIVE REGISTER's automation rules, packed (see
+        // Domain.Combat.AutomationRules). Per character, so it travels with the
+        // character in SwapRegisterWith like ActivityHaltReason above; slots 2
+        // and 3 park theirs on CharacterActivityState.AutomationRules. Hydrated
+        // from characters."AutomationRules" and refreshed by
+        // AutomationRulesQueue. Never on the wire - the rules panel reads REST.
+        public long AutomationRules;
+
         public long EquippedWeaponId;
         public bool EquippedWeaponAffixLocked;
 

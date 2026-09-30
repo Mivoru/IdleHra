@@ -20,6 +20,7 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
+  import AutomationRulesPanel from '../lib/ui/AutomationRulesPanel.svelte';
   import { ATTRIBUTES, equipRequirement } from '../lib/net/commands';
   import { locationName, nodeLocation } from '../lib/ui/locations';
   // EMPTY_GUID is the sentinel the roster filter below tests against.
@@ -735,6 +736,9 @@
         <div><dt>Workshop</dt><dd>{snap.CraftingWorkshopLevel}</dd></div>
       </dl>
     </section>
+
+    <!-- Task 85: standing orders, beside the jobs they change. -->
+    <AutomationRulesPanel />
   </div>
 {/if}
 

@@ -277,6 +277,20 @@ namespace FolkIdle.Server.Domain.Combat
             public long Ticks;
             public bool Died;
 
+            /// <summary>
+            /// Auto-eat wanted a bite and the larder was empty - the moment the
+            /// live tick raises ActivityHaltReason.OutOfFood.
+            /// </summary>
+            public bool Starved;
+
+            /// <summary>
+            /// Task 85: stop at the end of the tick that starved, because a
+            /// rule (AutomationRules.FishWhenLarderDry) will move the character.
+            /// Off for the advisor and for a character without the rule, which
+            /// fight on unhealed as the live tick does.
+            /// </summary>
+            public bool StopWhenStarved;
+
             /// <summary>A fresh fight from a full bar, as the advisor prices one.</summary>
             public static FightState FullBar(in TickStatePayload payload, in FightSetup setup, bool withFood)
                 => Begin(in payload, in setup, setup.MaxMilliHp, withFood);
@@ -411,6 +425,11 @@ namespace FolkIdle.Server.Domain.Combat
                         s.EatCooldown = SimulationEngine.AutoEatCooldownTicks;
                         s.Bites++;
                     }
+                    else
+                    {
+                        // The live tick's `bestFoodIndex == 0` branch: OutOfFood.
+                        s.Starved = true;
+                    }
                 }
 
                 if (s.PlayerHp <= 0)
@@ -435,6 +454,15 @@ namespace FolkIdle.Server.Domain.Combat
                     if (s.FirstClearPending) s.FirstClearKills++;
                     s.FirstClearPending = false;
                     StartFight(ref s, in setup);
+                }
+
+                // Modul: task 85. At the END of the starving tick, after its
+                // death and kill: the live tick answers the rule at the top of
+                // the next tick (RunCombatTick), so everything this tick did
+                // still counts on both paths.
+                if (s.Starved && s.StopWhenStarved)
+                {
+                    return;
                 }
             }
         }
