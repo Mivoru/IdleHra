@@ -80,10 +80,16 @@ material stack. Unescrowed market listings. Character ages, back to adult.
 Activities, set to idle. The village gene pool, with its clock and its
 recruitment price. The chronicle pass. The Hall members past the cap.
 
+**Then granted (rebirth only).** The registration starter kit, through the same
+`StarterEquipmentGrant`: the claymore and ten fish go in the chest, and the
+three Normal tools are worn. Without it, a level-1 account with nothing is the
+account that died to the first monster until the starter weapon existed. Every
+piece is worthless on the market, so rebirth cannot farm them.
+
 ## 3. The permanent bonus: Renown
 
 A rebirth is **renowned** when the player is at level `RebirthRules.RenownLevel`
-(50, the breeding gate) or above when they trigger it. Each renowned rebirth
+(50, halfway to the level-100 deed) or above when they trigger it. Each renowned rebirth
 raises a permanent damage bonus:
 
     damage% = floor(15 × (1 − 0.8^n))       n = renowned rebirths
@@ -199,3 +205,40 @@ backfill, because nobody has been reborn.
   exactly as they survive a season.
 - **Hall cull deletes characters.** The preview names everyone it would let
   go, before step 2.
+- **Loot in flight.** A drop that `CombatLootEngine` has queued but not yet
+  written, from a kill just before the rebirth, can still land afterwards. It
+  would be one piece, from the old run.
+
+## 10. Status (built 2026-09-30, branch `feat/88-rebirth`)
+
+Built as designed, with two changes.
+
+- **Renown gate.** Its rationale was "the breeding gate", and that gate has
+  been removed. The value stays at 50, now read as halfway to the level-100
+  deed.
+- **Starter kit.** A reborn account gets it; see §2.
+
+**Covered by tests.**
+
+- `RebirthTests` (Postgres, shared collection):
+  - the carry list and the reset list, field by field;
+  - a neighbour player left untouched;
+  - a concurrent double submit, which rebirths once;
+  - a rebirth below the renown level, which pays no Renown;
+  - the online path through `RebirthTickCoordinator`: flush first, a
+    reload with no fight and no gold, and a stale snapshot refused by the
+    fence;
+  - the Redis purge;
+  - the Renown curve.
+- `SeasonControlTests`: an overdue era that is not paused no longer ends.
+- `PowerCeilingTests`: the Renown lever.
+
+**Checked live.** A server in a container, over HTTP and a JSON WebSocket
+session:
+
+- The rebirth is answered in about 430 ms, and a second submit gets 409.
+- The open socket receives level 1 and stays connected.
+- A checkpoint after the rebirth commits against the fenced epoch, and the
+  row stays at level 1.
+
+**Not run.** `npm run exercise`: this machine has no Playwright browser.
