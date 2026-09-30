@@ -958,86 +958,11 @@ await go('Auto-Eat');
   );
 }
 
-// --- crafting as a job -------------------------------------------------------
-// Crafting used to be instant and needed no character: every recipe carried a
-// CraftingTimeMs that nothing read. It is now an activity in its own band, so
-// the proof is that a character ends up REPORTING it as their job.
-await go('Crafting');
-{
-  const text = await page.evaluate(() => document.body.innerText);
-  record(
-    'crafting is presented as a job, not a button',
-    /Crafting takes time and needs a character/i.test(text),
-  );
-
-  // Modul: CRAFT NOW is the other half, added 2026-09-01. Assigning a
-  // character crafts one unit per interval forever while materials last, which
-  // is right for idling and wrong for "I need a pickaxe" - so making one tool
-  // meant assigning a worker and then remembering to stop them. The batch box
-  // multiplies both the cost and the output.
-  //
-  // Counted off the inventory rather than read off a toast: a batch of ten has
-  // to produce ten EquipmentInstances, and only counting them proves the
-  // multiplier reached the engine rather than just the label.
-  const countEquipment = async () => {
-    const body = await apiGet('/api/v1/player/inventory');
-    return body ? (body.Equipment ?? []).length : -1;
-  };
-
-  const batchBox = page.getByRole('checkbox').filter({ hasNot: page.locator('nothing') }).last();
-  const craftBtn = page.getByRole('button', { name: /^Craft(\s|$|\sx)/ }).first();
-  const canCraft = (await craftBtn.count()) > 0;
-  record('the crafting screen offers a direct Craft button', canCraft);
-
-  if (canCraft) {
-    // Tick "Craft x10" by its label so this does not depend on checkbox order.
-    const tenLabel = page.locator('label.check', { hasText: /Craft x10/i }).locator('input');
-    if ((await tenLabel.count()) > 0) await tenLabel.check().catch(() => {});
-    await page.waitForTimeout(300);
-
-    const enabled = page.getByRole('button', { name: /^Craft x10$/ }).and(page.locator('button:not([disabled])')).first();
-    if ((await enabled.count()) > 0) {
-      const before = await countEquipment();
-      await enabled.click();
-      await page.waitForTimeout(2500);
-      const after = await countEquipment();
-      // Modul: THE MASTER ARTISAN WEEK. That event (EventBanner, id 3) gives
-      // every craft a 25% chance of one extra item, so ten crafts produce ten
-      // to twenty - and "exactly ten" failed about 94% of runs for a whole week
-      // in four, on a crafting path that was working. Ten is still the floor;
-      // the ceiling moves only while the event is on.
-      const artisan = await page.evaluate(() => /Master Artisan/.test(document.body.innerText));
-      const made = after - before;
-      record(
-        'a x10 craft produces ten items in one press',
-        before >= 0 && (artisan ? made >= 10 && made <= 20 : made === 10),
-        `${before} -> ${after}${artisan ? ' (Master Artisan week)' : ''}`,
-      );
-    } else {
-      record('a x10 craft produces ten items in one press', true, 'no recipe affordable at x10 - skipped');
-    }
-  }
-
-  // Enabled only when the chest holds the recipe's materials, which a fresh
-  // fixture may not - a disabled button is a correct answer, not a stall.
-  const work = page.getByRole('button', { name: /Put to work/i }).first();
-  const hasWork = (await work.count()) > 0 && (await work.isEnabled());
-  if (hasWork) {
-    await work.click();
-    await page.waitForTimeout(1500);
-
-    await go('Character');
-    const roster = await page.evaluate(() => document.body.innerText);
-    // The roster names the craft rather than "Idle" or a bare activity id.
-    record(
-      'an assigned character reports the craft as its job',
-      /Smelting:|Cooking:|Alchemy:|Equipment:/i.test(roster),
-      'roster shows the recipe',
-    );
-  }
-}
-
 // --- Workshop commissions (task 83) ------------------------------------------
+// Modul: THIS RUNS BEFORE "crafting as a job". That step puts a character to
+// work on a recipe, and the worker then eats birch log and copper ore every
+// few seconds - the same stock this step proves it gave back, so the round
+// trip came out 20 log and 10 ore short on a Workshop that refunds exactly.
 // The material sink: one region piece at the Workshop's rarity floor, with an
 // affix the player picks, for hours and tens of thousands of materials. Proved
 // by what CHANGED - the quoted materials leave the stock, a clock starts, and
@@ -1141,6 +1066,85 @@ await go('Crafting');
       'the commission check leaves the fixture as it found it',
       !after?.Commission && (afterRegion?.Cost ?? []).every((l) => l.Held === heldBefore[l.ItemId]),
       (afterRegion?.Cost ?? []).map((l) => `${l.ItemId} ${heldBefore[l.ItemId]} -> ${l.Held}`).join(', '),
+    );
+  }
+}
+
+// --- crafting as a job -------------------------------------------------------
+// Crafting used to be instant and needed no character: every recipe carried a
+// CraftingTimeMs that nothing read. It is now an activity in its own band, so
+// the proof is that a character ends up REPORTING it as their job.
+await go('Crafting');
+{
+  const text = await page.evaluate(() => document.body.innerText);
+  record(
+    'crafting is presented as a job, not a button',
+    /Crafting takes time and needs a character/i.test(text),
+  );
+
+  // Modul: CRAFT NOW is the other half, added 2026-09-01. Assigning a
+  // character crafts one unit per interval forever while materials last, which
+  // is right for idling and wrong for "I need a pickaxe" - so making one tool
+  // meant assigning a worker and then remembering to stop them. The batch box
+  // multiplies both the cost and the output.
+  //
+  // Counted off the inventory rather than read off a toast: a batch of ten has
+  // to produce ten EquipmentInstances, and only counting them proves the
+  // multiplier reached the engine rather than just the label.
+  const countEquipment = async () => {
+    const body = await apiGet('/api/v1/player/inventory');
+    return body ? (body.Equipment ?? []).length : -1;
+  };
+
+  const batchBox = page.getByRole('checkbox').filter({ hasNot: page.locator('nothing') }).last();
+  const craftBtn = page.getByRole('button', { name: /^Craft(\s|$|\sx)/ }).first();
+  const canCraft = (await craftBtn.count()) > 0;
+  record('the crafting screen offers a direct Craft button', canCraft);
+
+  if (canCraft) {
+    // Tick "Craft x10" by its label so this does not depend on checkbox order.
+    const tenLabel = page.locator('label.check', { hasText: /Craft x10/i }).locator('input');
+    if ((await tenLabel.count()) > 0) await tenLabel.check().catch(() => {});
+    await page.waitForTimeout(300);
+
+    const enabled = page.getByRole('button', { name: /^Craft x10$/ }).and(page.locator('button:not([disabled])')).first();
+    if ((await enabled.count()) > 0) {
+      const before = await countEquipment();
+      await enabled.click();
+      await page.waitForTimeout(2500);
+      const after = await countEquipment();
+      // Modul: THE MASTER ARTISAN WEEK. That event (EventBanner, id 3) gives
+      // every craft a 25% chance of one extra item, so ten crafts produce ten
+      // to twenty - and "exactly ten" failed about 94% of runs for a whole week
+      // in four, on a crafting path that was working. Ten is still the floor;
+      // the ceiling moves only while the event is on.
+      const artisan = await page.evaluate(() => /Master Artisan/.test(document.body.innerText));
+      const made = after - before;
+      record(
+        'a x10 craft produces ten items in one press',
+        before >= 0 && (artisan ? made >= 10 && made <= 20 : made === 10),
+        `${before} -> ${after}${artisan ? ' (Master Artisan week)' : ''}`,
+      );
+    } else {
+      record('a x10 craft produces ten items in one press', true, 'no recipe affordable at x10 - skipped');
+    }
+  }
+
+  // Enabled only when the chest holds the recipe's materials, which a fresh
+  // fixture may not - a disabled button is a correct answer, not a stall.
+  const work = page.getByRole('button', { name: /Put to work/i }).first();
+  const hasWork = (await work.count()) > 0 && (await work.isEnabled());
+  if (hasWork) {
+    await work.click();
+    await page.waitForTimeout(1500);
+
+    await go('Character');
+    const roster = await page.evaluate(() => document.body.innerText);
+    // The roster names the craft rather than "Idle" or a bare activity id.
+    record(
+      'an assigned character reports the craft as its job',
+      /Smelting:|Cooking:|Alchemy:|Equipment:/i.test(roster),
+      'roster shows the recipe',
     );
   }
 }
@@ -4025,6 +4029,10 @@ await go('Ancestors');
 // against the server's own preview, and CANCELS; the real rebirth is pressed on
 // the throwaway account below, which exists to be spent.
 {
+  // Modul: the panel lives in the Hall of Ancestors. This step once relied on
+  // the step before it having left the page there; the orders step (task 85)
+  // goes to Character, so it navigates for itself now.
+  await go('Ancestors');
   await dismissToasts();
   const panel = page.locator('[data-testid="rebirth-panel"]');
   await panel.waitFor({ timeout: 10000 }).catch(() => {});

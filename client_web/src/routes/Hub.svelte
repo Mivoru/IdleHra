@@ -55,6 +55,10 @@
     queryKey: greatWorksKeys.all,
     queryFn: fetchGreatWorks,
     refetchInterval: 60_000,
+    // Modul: a stage is built on the Village screen, and the next place the
+    // player looks is this Map. The client-wide 30 s staleTime kept the old
+    // answer across that step, so a freshly built monument was missing here.
+    refetchOnMount: 'always',
   }));
 
   const built = $derived((greatWorks.data?.Works ?? []).filter((w) => w.Stage > 0 && MONUMENT_SPOTS[w.Region]));
