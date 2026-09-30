@@ -101,7 +101,14 @@ namespace FolkIdle.Server.Tests
                 LastLogoutTimestamp = now - elapsedOfflineSeconds,
                 ActiveActivityId = monsterId,
                 CurrentLevel = 1,
+                // A fresh registration's attributes: the offline fight is the
+                // live one now, and a 0/0/0/0 character dies to this monster
+                // in seconds, watched or not.
+                STR = 50, DEX = 50, CON = 50, LCK = 25,
                 InventorySpaceRemaining = 1000,
+                // What hydration gives every real payload (0 would disable
+                // auto-eat, and the offline fight eats as the live tick does).
+                AutoEatThreshold = FolkIdle.Server.Domain.Shared.AutoEatDefaults.ThresholdPct,
                 Food1_ItemId = ContentRegistry.RawFishItemIds.First(),
                 Food1_Count = 100000,
             };

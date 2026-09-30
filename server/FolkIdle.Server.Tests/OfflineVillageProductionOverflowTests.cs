@@ -62,12 +62,16 @@ namespace FolkIdle.Server.Tests
         // tier 0 (lumberjackLevel/mineLevel = 1 both round down to
         // GetTierMaterials(0): birch_log/copper_ore common,
         // golden_birch_log/malachite_ore rare). Ten hours at level 1
-        // (200/hour each) against a level-1 warehouse (1,000 cap) requests
-        // 1,000 of each before the 90/10 rare split - deliberately over the
-        // cap so the window-ceiling clamp does not itself already cap the
-        // request. With 990 of each common material already stored, only 10
-        // more of each fits: 890 lost per common material, 0 lost on the
-        // rares (fresh rows, plenty of headroom).
+        // (200/hour each) against a level-1 warehouse (1,000 cap) produces
+        // 2,000 of each: 1,800 common and 200 rare. With 990 of each common
+        // material already stored, only 10 more of each fits: 1,790 lost per
+        // common material, 0 lost on the rares (fresh rows, plenty of
+        // headroom).
+        //
+        // Modul: 2026-09-30 - there is no window-ceiling clamp any more (it
+        // capped the whole window at one Warehouse before the split, a
+        // second cap the live building never had; the live tick now runs this
+        // rule). This read 890 lost per common and 100 of each rare.
         [Fact]
         public async Task NearFullWarehouse_SumsOverflowAcrossAllFourMaterials()
         {
@@ -86,7 +90,7 @@ namespace FolkIdle.Server.Tests
                 townHallLevel: 0,
                 elapsedSeconds: 36000L);
 
-            Assert.Equal(1780L, overflow);
+            Assert.Equal(3580L, overflow);
 
             // Both commons landed exactly at the warehouse cap, not above it -
             // the clamp did its job; only the OVERFLOW REPORTING was missing.
@@ -94,8 +98,8 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(1000L, await QuantityAsync(player.Id, "copper_ore"));
 
             // The rares had room for the whole grant.
-            Assert.Equal(100L, await QuantityAsync(player.Id, "golden_birch_log"));
-            Assert.Equal(100L, await QuantityAsync(player.Id, "malachite_ore"));
+            Assert.Equal(200L, await QuantityAsync(player.Id, "golden_birch_log"));
+            Assert.Equal(200L, await QuantityAsync(player.Id, "malachite_ore"));
         }
 
         // The other half of the guard: a warehouse with headroom must report

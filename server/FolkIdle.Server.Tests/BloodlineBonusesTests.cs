@@ -52,39 +52,48 @@ namespace FolkIdle.Server.Tests
             foreach (string path in new[] { "Domain/Combat/SimulationEngine.cs", "Engine/OfflineSimulationEngine.cs" })
             {
                 string source = SourceOf(path);
-                Assert.Contains("BloodlineBonuses.ApplyAttack(", source);
-                Assert.Contains("BloodlineBonuses.ApplyMaxHp(", source);
-                Assert.Contains("BloodlineBonuses.GatherSpeedBonusPct(", source);
-                Assert.Contains("BloodlineBonuses.GatherYieldBonusPct(", source);
+                // Offline fights HuntingProjection's fight now, which reads the
+                // live attack (SimulationEngine.EffectiveMilliAttackFor, which
+                // calls ApplyAttack) rather than a copy that also calls it.
+                Assert.True(
+                    source.Contains("BloodlineBonuses.ApplyAttack(") || source.Contains("HuntingProjection.FightSetup.For("),
+                    $"{path} neither applies the bloodline attack formula nor fights the shared fight");
+                // Offline reads the live bar itself now (EffectiveMaxMilliHpFor,
+                // which calls ApplyMaxHp) rather than a copy that also calls it.
+                Assert.True(
+                    source.Contains("BloodlineBonuses.ApplyMaxHp(") || source.Contains("SimulationEngine.EffectiveMaxMilliHpFor(")
+                        || source.Contains("HuntingProjection.FightSetup.For("),
+                    $"{path} neither applies the bloodline health formula nor reads the live bar");
+                // Offline asks the live tick's own gathering functions now
+                // (offline parity, 2026-09-30) rather than holding a copy that
+                // also calls the bloodline terms.
+                Assert.True(
+                    source.Contains("BloodlineBonuses.GatherSpeedBonusPct(") || source.Contains("SimulationEngine.RequiredGatherTicks("),
+                    $"{path} neither applies the bloodline gather speed nor asks the live speed");
+                Assert.True(
+                    source.Contains("BloodlineBonuses.GatherYieldBonusPct(") || source.Contains("SimulationEngine.GatheringYieldFor("),
+                    $"{path} neither applies the bloodline gather yield nor asks the live yield");
                 Assert.DoesNotContain("BonusPercentFor(payload.Aptitude_", source);
                 Assert.DoesNotContain("LocusYield", source);
             }
         }
 
         /// <summary>
-        /// Modul: a COMPUTED-VALUE parity test, not a grep. The grep test above
-        /// (`LiveAndOfflineBothUseTheSharedFormulas`) would pass even if a
-        /// future edit called `ApplyAttack(effective, 0, default)` or fed it
-        /// the wrong aptitude - it only proves the function NAME appears in
-        /// both files. This one drives the actual private methods each engine
-        /// runs on a tick - `SimulationEngine.EffectiveMilliAttackFor` and
-        /// `OfflineSimulationEngine.EffectiveMilliAttackFor`, both extracted
-        /// specifically so a test can reach them without standing up a socket,
-        /// a database or the 10Hz tick thread (see the reflection precedent in
-        /// HardenedEngineIntegrationTests, e.g. ProcessAllSlotSubTicks) - with
-        /// the SAME CombatStats, the SAME Strength aptitude and the SAME trait
-        /// mask, and asserts they return the same milli-attack figure.
-        ///
-        /// This is exactly the case that broke: offline never applied
-        /// Aptitude_Strength at all, so a bred line with real Strength killed
-        /// noticeably slower away than online. Reverting the fix in either
-        /// engine, or introducing a NEW divergence (wrong argument, wrong
-        /// order, a different trait mask), fails this test on the computed
-        /// number - not on whether a string appears in the source.
+        /// Modul: offline had its OWN EffectiveMilliAttackFor, extracted so this
+        /// test could hold it to the live one by value - and it still drifted:
+        /// the live figure grew the guild Damage buff and the legacy speed perk,
+        /// and the copy never did. Since 2026-09-30 the offline fight is
+        /// HuntingProjection's, which calls the live method, so the copy is
+        /// deleted and this pins that it stays deleted - and that the live
+        /// figure reads the Strength aptitude (the case that first broke).
         /// </summary>
         [Fact]
-        public void LiveAndOfflineComputeTheIdenticalEffectiveAttack()
+        public void OfflineHasNoAttackCopy_AndTheLiveAttackReadsTheAptitude()
         {
+            Assert.Null(typeof(OfflineSimulationEngine).GetMethod(
+                "EffectiveMilliAttackFor", BindingFlags.NonPublic | BindingFlags.Static));
+            Assert.Contains("SimulationEngine.EffectiveMilliAttackFor(", SourceOf("Domain/Combat/HuntingProjection.cs"));
+
             var traits = TraitTotals.From(TraitRegistry.MaskOf(TraitRegistry.KeenEdge, TraitRegistry.HawkEye));
             var combatStats = StatsCalculator.Calculate(
                 str: 40, dex: 25, con: 30, lck: 15,
@@ -100,44 +109,16 @@ namespace FolkIdle.Server.Tests
                 Aptitude_Strength = 22, // a mid-band bred value, not the default 4
                 TraitMask = TraitRegistry.MaskOf(TraitRegistry.KeenEdge, TraitRegistry.HawkEye),
                 Inherit_Damage = 5,
-                GuildId = 0, // no guild buff to feed live's extra term - see EffectiveMilliAttackFor
             };
             const int damageScalePerLevelPct = 12;
 
-            long liveAttack = InvokeEffectiveMilliAttackFor(
-                typeof(SimulationEngine), payload, combatStats, damageScalePerLevelPct);
-            long offlineAttack = InvokeEffectiveMilliAttackFor(
-                typeof(OfflineSimulationEngine), payload, combatStats, damageScalePerLevelPct);
-
-            Assert.True(liveAttack > 0);
-            Assert.Equal(liveAttack, offlineAttack);
-
-            // And the aptitude is not a no-op: strip it back to the starting
-            // value and the figure must drop, proving this payload's Strength
-            // of 22 was actually read by both paths rather than both engines
-            // coincidentally agreeing on an unused default.
+            long withAptitude = SimulationEngine.EffectiveMilliAttackFor(ref payload, in combatStats, damageScalePerLevelPct);
             var noAptitude = payload;
             noAptitude.Aptitude_Strength = BreedingAptitudes.StartingValue;
-            long liveWithoutAptitude = InvokeEffectiveMilliAttackFor(
-                typeof(SimulationEngine), noAptitude, combatStats, damageScalePerLevelPct);
-            long offlineWithoutAptitude = InvokeEffectiveMilliAttackFor(
-                typeof(OfflineSimulationEngine), noAptitude, combatStats, damageScalePerLevelPct);
+            long withoutAptitude = SimulationEngine.EffectiveMilliAttackFor(ref noAptitude, in combatStats, damageScalePerLevelPct);
 
-            Assert.True(liveWithoutAptitude < liveAttack);
-            Assert.Equal(liveWithoutAptitude, offlineWithoutAptitude);
-        }
-
-        private static long InvokeEffectiveMilliAttackFor(
-            System.Type engineType, TickStatePayload payload, CombatStats combatStats, int damageScalePerLevelPct)
-        {
-            var method = engineType.GetMethod(
-                "EffectiveMilliAttackFor", BindingFlags.NonPublic | BindingFlags.Static);
-            Assert.True(method != null, $"{engineType.Name}.EffectiveMilliAttackFor not found - was it renamed?");
-
-            object[] args = { payload, combatStats, damageScalePerLevelPct };
-            var result = method!.Invoke(null, args);
-            Assert.NotNull(result);
-            return (long)result!;
+            Assert.True(withAptitude > 0);
+            Assert.True(withoutAptitude < withAptitude);
         }
 
         [Fact]

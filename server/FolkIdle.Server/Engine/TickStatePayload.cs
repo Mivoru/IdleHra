@@ -560,17 +560,47 @@ namespace FolkIdle.Server.Engine
         // RedisSessionCache.TryStoreFrame / RedisWriteBehindEngine), mirroring
         // the existing RedisPendingGoldDelta pattern below. Like gold, what
         // Redis did not take is banked by the checkpoint (FlushState /
-        // FlushBatch), carried on the job and handed back by a failed ack -
-        // with Redis down that is their only durable path.
+        // FlushBatch), carried on the job and handed back by a failed ack.
+        //
+        // Modul: NOTHING WRITES THESE ANY MORE (2026-09-30). The village tick
+        // produced "wood" / "iron_ore" through them; it produces the tier log
+        // and ore now, through PendingVillage* and VillageProductionQueue,
+        // which never touches Redis. The write-behind and the checkpoint still
+        // bank whatever a buffer held from before, so these stay until that
+        // has had a deploy to empty.
         public long PendingWoodDelta;
         public long PendingStoneDelta;
         public long PendingIronDelta;
 
         // Fractional-tick production accumulators. Internal bookkeeping only,
         // never read by StateUpdatePacket.
-        public float AccumulatedWood;
+        //
+        // Modul: Wood and Iron are GONE, 2026-09-30, with the "wood" /
+        // "iron_ore" production they drove. The Lumberjack and Mine produce the
+        // region's catalogued log and ore now, through the integer
+        // accumulators below - VillageManagementEngine.AccrueProduction, the
+        // same function the offline window calls. Stone never had a producer.
         public float AccumulatedStone;
-        public float AccumulatedIron;
+
+        // Integer production accumulators (ProductionUnitScale = one unit),
+        // runtime-only: at most one unit is in flight at a logout.
+        public long LumberjackProductionAccumulator;
+        public long MineProductionAccumulator;
+
+        // Units produced this session, so the 1-in-10 rare share lands on the
+        // same count an offline window of the same length pays
+        // (VillageManagementEngine.RareShareOf).
+        public long VillageLogUnitsProduced;
+        public long VillageOreUnitsProduced;
+
+        // Produced but not yet written: SimulationEngine hands them to
+        // VillageProductionQueue once a minute and at session end, and the
+        // drain writes them under the Warehouse cap.
+        public long PendingVillageLog;
+        public long PendingVillageRareLog;
+        public long PendingVillageOre;
+        public long PendingVillageRareOre;
+        public int VillageProductionTicksSinceGrant;
 
         public int ActiveChildMaturationMs;
 

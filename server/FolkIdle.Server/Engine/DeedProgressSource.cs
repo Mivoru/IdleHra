@@ -39,10 +39,15 @@ namespace FolkIdle.Server.Engine
             // fielded into slot 0; kept as the fallback for a row with no match.
             var main = characters.FirstOrDefault(c => c.Id == player.PlayerGuid) ?? characters.FirstOrDefault();
 
+            // Modul: EVERY LOG, not the legacy "wood" row. Gathering grants the
+            // catalogue logs (birch_log, willow_log, ...) and never wrote "wood";
+            // since 2026-09-30 live village production does not either, so a
+            // deed counting "wood" could no longer advance at all. Materials
+            // are classified by the _log BaseId suffix - ItemDefinition has no
+            // subtype field.
             long woodStock = await db.CommodityRecords.AsNoTracking()
-                .Where(c => c.PlayerId == playerId && c.ItemId == VillageManagementEngine.WoodCommodityId)
-                .Select(c => c.Quantity)
-                .FirstOrDefaultAsync();
+                .Where(c => c.PlayerId == playerId && c.ItemId.EndsWith("_log"))
+                .SumAsync(c => (long?)c.Quantity) ?? 0L;
 
             // The larder lives in three column pairs on PlayerRecords rather
             // than a table - see StateCheckpointManager, which writes them back

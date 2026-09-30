@@ -1,5 +1,6 @@
 using System;
 using FolkIdle.Server.Engine;
+using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Domain.Combat
 {
@@ -38,25 +39,33 @@ namespace FolkIdle.Server.Domain.Combat
 
     /// <summary>
     /// Task 78: the hunting advisor. For one monster, what this character's
-    /// kills take, pay and cost, projected from the live payload.
+    /// kills take, pay and cost, projected from the live payload. Also the
+    /// fight the OFFLINE projection runs (OfflineSimulationEngine.ProjectCombat):
+    /// one expected-value model of RunCombatTick, two callers.
     /// </summary>
     /// <remarks>
     /// Modul: A TICK SIMULATION OF EXPECTED VALUES, NOT A THIRD DAMAGE MODEL.
     /// Every figure comes from the functions the live tick itself calls -
     /// SimulationEngine.LiveCombatStats, EffectiveMaxMilliHpFor,
     /// EffectiveMilliAttackFor, LiveAttackIntervalMs, LiveCritChancePct,
-    /// LiveCritMultiplier, LiveKillXpMultiplierPct, HasCrossedInterval;
-    /// CombatDamageModel.Mitigate and HitChance; BossFirstClearRules;
-    /// FoodRegistry; CombatGoldReward. The swing timing, the order inside a
-    /// tick (player, monster, auto-eat, death, kill) and the reset of the swing
-    /// clock on respawn are RunCombatTick's. Each roll is replaced by its
-    /// expectation, so the answer is deterministic. HuntingProjectionTests
-    /// runs the REAL RunCombatTick against it and fails if they drift.
+    /// LiveCritMultiplier, LiveKillXpMultiplierPct, HasCrossedInterval,
+    /// ExpectedMonsterMilliDamagePerSwing; CombatDamageModel.Mitigate and
+    /// HitChance; BossFirstClearRules; FoodRegistry; CombatGoldReward. The swing
+    /// timing, the order inside a tick (regen, player, monster, auto-eat, death,
+    /// kill) and the reset of the swing clock on respawn are RunCombatTick's.
+    /// Each roll is replaced by its expectation - or, for how many swings a
+    /// fight takes, by its exact distribution (SwingsToKill) - so the answer is
+    /// deterministic. HuntingProjectionTests and OfflineCombatParityTests run
+    /// the REAL RunCombatTick against it and fail if they drift.
     ///
-    /// Left out, each on purpose: the food buff's regen and Death Ward (both
-    /// timed consumables - an estimate is about standing gear), Last Stand
-    /// (once an hour), and Thunderer (the first boss swing only). All of them
-    /// help the player, so the estimate errs toward caution.
+    /// Left out of the ADVISOR, each on purpose: the food buff's regen and
+    /// Death Ward (both timed consumables - an estimate is about standing
+    /// gear). The offline projection includes both, because they are what the
+    /// live tick would have done in that window. Left out of both: Last Stand
+    /// (the tick reads it only at the top of a tick with the bar already at or
+    /// below zero, which the death branch at the bottom of the previous tick
+    /// never leaves - in practice only a session's very first tick) and
+    /// Thunderer (armed only on a session's first spawn, never on a respawn).
     /// </remarks>
     public static class HuntingProjection
     {
@@ -74,40 +83,36 @@ namespace FolkIdle.Server.Domain.Combat
                 return new HuntingEstimate { MonsterId = monsterId };
             }
 
-            MonsterDefinition monster = ContentRegistry.Monsters[monsterId - 1];
-            TickStatePayload copy = payload;
-            CombatStats stats = SimulationEngine.LiveCombatStats(in copy);
-            long maxMilliHp = SimulationEngine.EffectiveMaxMilliHpFor(in copy, in stats);
-            long rawMilliAttack = SimulationEngine.EffectiveMilliAttackFor(
-                ref copy, in stats, SimulationEngine.LineageOf(in copy).DamageScalePerLevelPct);
-
-            var swing = PlayerSwing.For(in copy, in stats, in monster, rawMilliAttack);
-            if (swing.Mean <= 0.0)
+            // The advisor prices standing gear: no timed consumables (see remarks).
+            var setup = FightSetup.For(in payload, monsterId, timedEffects: false);
+            if (!setup.CanDamage)
             {
                 return new HuntingEstimate { MonsterId = monsterId };
             }
 
-            long monsterMilliHp = BossFirstClearRules.MaxHpFor(copy.DefeatedRegionBossMask, monsterId, copy.Skill_FirstBlood) * 1000L;
-            int playerIntervalMs = SimulationEngine.LiveAttackIntervalMs(in copy, in stats);
-
-            var withFood = Simulate(in copy, in stats, in monster, swing, playerIntervalMs, monsterMilliHp, maxMilliHp, withFood: true);
-            var noFood = Simulate(in copy, in stats, in monster, swing, playerIntervalMs, monsterMilliHp, maxMilliHp, withFood: false);
+            var withFood = FightState.FullBar(in payload, in setup, withFood: true);
+            Advance(ref withFood, in setup, HorizonTicks);
+            var noFood = FightState.FullBar(in payload, in setup, withFood: false);
+            Advance(ref noFood, in setup, HorizonTicks);
 
             // Seconds per kill: the cycle the simulation measured, and a band
             // from the swing count's spread (hit, crit and Double Strike rolls).
             // Swings to kill ~ HP/mean with standard deviation sqrt(n)*sd/mean.
-            double swings = monsterMilliHp / swing.Mean;
+            PlayerSwing swing = setup.Swing;
+            int playerIntervalMs = setup.PlayerIntervalMs;
+            double swings = setup.FarmMilliHp / swing.Mean;
             double swingSd = Math.Sqrt(Math.Max(1.0, swings)) * swing.StdDev / swing.Mean;
             double lowSwings = Math.Max(1.0, Math.Ceiling(swings - (BandZ * swingSd)));
             double highSwings = Math.Max(lowSwings, Math.Ceiling(swings + (BandZ * swingSd)));
             double secondsPerKill = withFood.Kills > 0
-                ? withFood.TicksFought * TickMs / 1000.0 / withFood.Kills
+                ? withFood.Ticks * TickMs / 1000.0 / withFood.Kills
                 : Math.Ceiling(swings) * playerIntervalMs / 1000.0;
 
             double killsPerHour = 3600.0 / secondsPerKill;
 
-            long xpPerKill = XpPerKill(in copy, in monster, globalXpMultiplier, activeGlobalEventId);
-            long goldPerKill = CombatGoldReward.PerKill(in copy, in monster, stats.GoldAcquisitionMultiplierPct);
+            MonsterDefinition monster = setup.Monster;
+            long xpPerKill = XpPerKill(in payload, in monster, globalXpMultiplier, activeGlobalEventId);
+            long goldPerKill = CombatGoldReward.PerKill(in payload, in monster, setup.Stats.GoldAcquisitionMultiplierPct);
 
             return new HuntingEstimate
             {
@@ -120,18 +125,19 @@ namespace FolkIdle.Server.Domain.Combat
                 GoldPerHour = (long)(killsPerHour * goldPerKill),
                 SurvivesWithFood = !withFood.Died,
                 SurvivesWithoutFood = !noFood.Died,
-                KillsBeforeDeathWithoutFood = noFood.Died ? noFood.Kills : 0,
+                KillsBeforeDeathWithoutFood = noFood.Died ? (int)noFood.Kills : 0,
                 FoodPerHour = withFood.Died
-                    ? withFood.Bites * (3600.0 / Math.Max(1.0, withFood.TicksFought * TickMs / 1000.0))
+                    ? withFood.Bites * (3600.0 / Math.Max(1.0, withFood.Ticks * TickMs / 1000.0))
                     : withFood.Bites,
             };
         }
 
         /// <summary>
         /// XP one kill pays: the live multiplier, then ProcessMonsterDeath's own
-        /// two terms (Blood Moon's +15, the mentorship penalty's 80%).
+        /// two terms (Blood Moon's +15, the mentorship penalty's 80%), with the
+        /// same integer truncation per kill.
         /// </summary>
-        private static long XpPerKill(in TickStatePayload payload, in MonsterDefinition monster, int globalXpMultiplier, int activeGlobalEventId)
+        internal static long XpPerKill(in TickStatePayload payload, in MonsterDefinition monster, int globalXpMultiplier, int activeGlobalEventId)
         {
             int multiplier = SimulationEngine.LiveKillXpMultiplierPct(in payload, globalXpMultiplier);
             if (activeGlobalEventId == 2) multiplier += 15;
@@ -143,124 +149,406 @@ namespace FolkIdle.Server.Domain.Combat
             return xp;
         }
 
-        internal readonly struct SimResult
+        /// <summary>
+        /// Everything about a fight that does not change while it is fought:
+        /// both swings, the bar, the larder's heal per bite, and - for a
+        /// first-clear boss - the boss both before and after it falls.
+        /// </summary>
+        internal readonly struct FightSetup
         {
-            public int Kills { get; init; }
-            public int TicksFought { get; init; }
-            public bool Died { get; init; }
-            public int Bites { get; init; }
+            public bool CanDamage { get; init; }
+            public MonsterDefinition Monster { get; init; }
+            public CombatStats Stats { get; init; }
+            public long MaxMilliHp { get; init; }
+            public int PlayerIntervalMs { get; init; }
+            public PlayerSwing Swing { get; init; }
+            public double EatAtMilliHp { get; init; }
+            public long LifestealCeiling { get; init; }
+            public int Heal1 { get; init; }
+            public int Heal2 { get; init; }
+            public int Heal3 { get; init; }
+            public double ThornsFraction { get; init; }
+
+            /// <summary>The food buff's regen, per tick (timed effects only).</summary>
+            public int RegenPerTick { get; init; }
+
+            /// <summary>A Death Ward in the defensive slot (timed effects only).</summary>
+            public bool DeathWardArmed { get; init; }
+
+            public long FirstClearMilliHp { get; init; }
+            public double FirstClearMonsterSwing { get; init; }
+            public SwingsToKill? FirstClearKill { get; init; }
+            public long FarmMilliHp { get; init; }
+            public double FarmMonsterSwing { get; init; }
+            public SwingsToKill? FarmKill { get; init; }
+
+            /// <param name="timedEffects">
+            /// The food buff's regen and a Death Ward. The offline projection
+            /// includes them - they are what the live tick would have done in
+            /// that window. The advisor leaves them out (see the class remarks).
+            /// </param>
+            public static FightSetup For(in TickStatePayload payload, int monsterId, bool timedEffects)
+            {
+                MonsterDefinition monster = ContentRegistry.Monsters[monsterId - 1];
+                TickStatePayload copy = payload;
+                CombatStats stats = SimulationEngine.LiveCombatStats(in copy);
+                long maxMilliHp = SimulationEngine.EffectiveMaxMilliHpFor(in copy, in stats);
+                long rawMilliAttack = SimulationEngine.EffectiveMilliAttackFor(
+                    ref copy, in stats, SimulationEngine.LineageOf(in copy).DamageScalePerLevelPct);
+
+                var swing = PlayerSwing.For(in copy, in stats, in monster, rawMilliAttack);
+                if (swing.Mean <= 0.0)
+                {
+                    return new FightSetup { CanDamage = false, Monster = monster, Stats = stats, MaxMilliHp = maxMilliHp };
+                }
+
+                // Modul: A FIRST-CLEAR BOSS IS BIGGER UNTIL IT FALLS, THEN IT IS
+                // NOT. The live tick spawns it through BossFirstClearRules on the
+                // payload's mask and marks the mask at the kill, so exactly one
+                // fight is at first-clear health and attack and every respawn
+                // after it is the farmable boss. Both are priced here; the state
+                // says which one is standing.
+                byte mask = copy.DefeatedRegionBossMask;
+                byte farmMask = BossFirstClearRules.MarkDefeated(mask, monsterId);
+                long firstClearHp = BossFirstClearRules.MaxHpFor(mask, monsterId, copy.Skill_FirstBlood) * 1000L;
+                long farmHp = BossFirstClearRules.MaxHpFor(farmMask, monsterId, copy.Skill_FirstBlood) * 1000L;
+                bool thorns = stats.SetThornsReflectionActive;
+                int effectiveMaxHp = (int)maxMilliHp;
+
+                // Thorns end fights between the player's swings, which a swing
+                // count cannot describe - those fights track health instead.
+                SwingsToKill? firstClearKill = thorns ? null : SwingsToKill.For(in swing, firstClearHp);
+                SwingsToKill? farmKill = thorns ? null
+                    : farmHp == firstClearHp ? firstClearKill
+                    : SwingsToKill.For(in swing, farmHp);
+
+                return new FightSetup
+                {
+                    CanDamage = true,
+                    Monster = monster,
+                    Stats = stats,
+                    MaxMilliHp = maxMilliHp,
+                    PlayerIntervalMs = SimulationEngine.LiveAttackIntervalMs(in copy, in stats),
+                    Swing = swing,
+                    EatAtMilliHp = (copy.AutoEatThreshold / 100.0f) * effectiveMaxHp,
+                    LifestealCeiling = effectiveMaxHp / 100,
+                    Heal1 = FoodRegistry.GetHealMilliHp(copy.Food1_ItemId, maxMilliHp),
+                    Heal2 = FoodRegistry.GetHealMilliHp(copy.Food2_ItemId, maxMilliHp),
+                    Heal3 = FoodRegistry.GetHealMilliHp(copy.Food3_ItemId, maxMilliHp),
+                    ThornsFraction = thorns ? SimulationEngine.ThornsReflectionFraction : 0.0,
+                    RegenPerTick = timedEffects && copy.ActiveFoodBuffId > 0
+                        ? Math.Max(1, effectiveMaxHp / ConsumableEngine.FoodRegenDivisor)
+                        : 0,
+                    DeathWardArmed = timedEffects
+                        && ConsumableEngine.DeathWardItemId > 0
+                        && copy.ActiveDefensivePotionId == ConsumableEngine.DeathWardItemId,
+                    FirstClearMilliHp = firstClearHp,
+                    FirstClearMonsterSwing = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monsterId, mask, maxMilliHp),
+                    FirstClearKill = firstClearKill,
+                    FarmMilliHp = farmHp,
+                    FarmMonsterSwing = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in stats, monsterId, farmMask, maxMilliHp),
+                    FarmKill = farmKill,
+                };
+            }
         }
 
         /// <summary>
-        /// One hour of back-to-back fights from a full bar, in RunCombatTick's
-        /// order, with each roll replaced by its expectation.
+        /// Where a projected fight stands: the player's bar, the monster, the
+        /// swing clock, the larder, and the running totals.
         /// </summary>
-        internal static SimResult Simulate(
-            in TickStatePayload payload, in CombatStats stats, in MonsterDefinition monster, PlayerSwing swing,
-            int playerIntervalMs, long monsterMaxMilliHp, long maxMilliHp, bool withFood)
+        internal struct FightState
         {
-            double monsterSwing = ExpectedMonsterMilliDamage(in stats, in monster, payload.DefeatedRegionBossMask, maxMilliHp);
-            double thornsPerSwing = stats.SetThornsReflectionActive
-                ? monsterSwing * SimulationEngine.ThornsReflectionFraction
-                : 0.0;
+            public double PlayerHp;
+            public double MonsterHp;
+            public int SwingsThisFight;
+            public int SwingsNeeded;
+            public int Accumulator;
+            public int EatCooldown;
+            public int Food1, Food2, Food3;
+            public bool WithFood;
+            public bool FirstClearPending;
+            public bool DeathWardUp;
+            public bool DeathWardUsed;
+            public long FirstClearFights;
+            public long FarmFights;
+            public long Kills;
+            public long FirstClearKills;
+            public long Bites;
+            public long Ticks;
+            public bool Died;
 
-            // The larder the character holds, best heal first, as auto-eat picks.
-            Span<(int heal, int count)> larder = stackalloc (int, int)[3];
-            larder[0] = (withFood ? FoodRegistry.GetHealMilliHp(payload.Food1_ItemId, maxMilliHp) : 0, payload.Food1_Count);
-            larder[1] = (withFood ? FoodRegistry.GetHealMilliHp(payload.Food2_ItemId, maxMilliHp) : 0, payload.Food2_Count);
-            larder[2] = (withFood ? FoodRegistry.GetHealMilliHp(payload.Food3_ItemId, maxMilliHp) : 0, payload.Food3_Count);
-            double eatAt = (payload.AutoEatThreshold / 100.0f) * maxMilliHp;
+            /// <summary>A fresh fight from a full bar, as the advisor prices one.</summary>
+            public static FightState FullBar(in TickStatePayload payload, in FightSetup setup, bool withFood)
+                => Begin(in payload, in setup, setup.MaxMilliHp, withFood);
 
-            double playerHp = maxMilliHp;
-            double monsterHp = monsterMaxMilliHp;
-            int accumulator = 0;
-            int eatCooldown = 0;
-            int kills = 0;
-            int bites = 0;
-            long lifestealCeiling = maxMilliHp / 100;
-
-            for (int tick = 1; tick <= HorizonTicks; tick++)
+            /// <summary>
+            /// A fresh fight from <paramref name="playerMilliHp"/> - the bar the
+            /// character logged off with, for the offline projection. At or below
+            /// zero is a full bar, as the tick's own top-of-tick reset makes it.
+            /// </summary>
+            public static FightState Begin(in TickStatePayload payload, in FightSetup setup, double playerMilliHp, bool withFood)
             {
-                accumulator++;
-
-                if (SimulationEngine.HasCrossedInterval(accumulator, playerIntervalMs))
+                var state = new FightState
                 {
-                    monsterHp -= swing.Mean;
-                    playerHp = Math.Min(maxMilliHp, playerHp + swing.ExpectedHeal(lifestealCeiling));
-                }
-
-                if (monsterHp > 0 && SimulationEngine.HasCrossedInterval(accumulator, monster.AttackIntervalMs))
-                {
-                    playerHp -= monsterSwing;
-                    monsterHp -= thornsPerSwing;
-                }
-
-                if (eatCooldown > 0)
-                {
-                    eatCooldown--;
-                }
-                else if (playerHp > 0 && playerHp <= eatAt)
-                {
-                    int best = -1;
-                    for (int i = 0; i < 3; i++)
-                    {
-                        if (larder[i].count > 0 && larder[i].heal > 0 && (best < 0 || larder[i].heal > larder[best].heal)) best = i;
-                    }
-                    if (best >= 0)
-                    {
-                        larder[best].count--;
-                        playerHp = Math.Min(maxMilliHp, playerHp + larder[best].heal);
-                        eatCooldown = SimulationEngine.AutoEatCooldownTicks;
-                        bites++;
-                    }
-                }
-
-                if (playerHp <= 0)
-                {
-                    return new SimResult { Kills = kills, TicksFought = tick, Died = true, Bites = bites };
-                }
-
-                if (monsterHp <= 0)
-                {
-                    kills++;
-                    monsterHp = monsterMaxMilliHp;
-                    accumulator = 0;
-                }
+                    PlayerHp = playerMilliHp > 0 ? Math.Min(playerMilliHp, setup.MaxMilliHp) : setup.MaxMilliHp,
+                    Food1 = payload.Food1_Count,
+                    Food2 = payload.Food2_Count,
+                    Food3 = payload.Food3_Count,
+                    WithFood = withFood,
+                    FirstClearPending = BossFirstClearRules.IsFirstClearPending(payload.DefeatedRegionBossMask, setup.Monster.Id),
+                    DeathWardUp = setup.DeathWardArmed,
+                };
+                StartFight(ref state, in setup);
+                return state;
             }
+        }
 
-            return new SimResult { Kills = kills, TicksFought = HorizonTicks, Died = false, Bites = bites };
+        /// <summary>A new monster: its health, its swing count, and the swing clock at zero.</summary>
+        private static void StartFight(ref FightState s, in FightSetup setup)
+        {
+            s.Accumulator = 0;
+            s.SwingsThisFight = 0;
+            SwingsToKill? kill;
+            long fightIndex;
+            if (s.FirstClearPending)
+            {
+                s.MonsterHp = setup.FirstClearMilliHp;
+                kill = setup.FirstClearKill;
+                fightIndex = s.FirstClearFights++;
+            }
+            else
+            {
+                s.MonsterHp = setup.FarmMilliHp;
+                kill = setup.FarmKill;
+                fightIndex = s.FarmFights++;
+            }
+            s.SwingsNeeded = kill?.Sample(fightIndex) ?? 0;
         }
 
         /// <summary>
-        /// The monster's swing, averaged over its hit and crit rolls, in the live
-        /// tick's order: dodge, crit, armour, block, the 1,000 floor, then the
-        /// Eternal Dreadnought cap.
+        /// Up to <paramref name="ticks"/> ticks of back-to-back fights, in
+        /// RunCombatTick's order - food buff regen, player swing, monster swing,
+        /// auto-eat, death (and a Death Ward), kill and respawn with the swing
+        /// clock reset - each roll replaced by its expectation. Stops at a
+        /// death. Callable repeatedly on one state, so the offline projection
+        /// can re-derive the character between stretches (a level gained).
         /// </summary>
-        private static double ExpectedMonsterMilliDamage(in CombatStats stats, in MonsterDefinition monster, byte defeatedMask, long maxMilliHp)
+        /// <remarks>
+        /// Modul: HOW LONG A FIGHT TAKES IS A DISTRIBUTION, NOT A MEAN. Counting
+        /// how many MEAN swings a monster's health holds is exact only when every
+        /// swing lands the same. With misses and crits, and the swing clock reset
+        /// at every kill, a monster that dies in one to three swings takes a
+        /// different number of ticks on average than one that always takes two -
+        /// the offline projection's old seconds-per-kill (a mean divided into the
+        /// health) read a region-5 character one-shotting region 1 as a third
+        /// of its real kill rate. So each fight draws its swing count from
+        /// SwingsToKill, the exact distribution of the live rolls, along a
+        /// golden-ratio sequence: deterministic, and within a few dozen fights
+        /// the counts are the distribution's own. Fights where thorns can land
+        /// the last blow, or that take so many swings the mean is exact enough,
+        /// track health instead.
+        /// </remarks>
+        internal static void Advance(ref FightState s, in FightSetup setup, int ticks)
         {
-            float hitChance = Math.Clamp(100f / (100f + stats.DodgeChancePct), 0.05f, 0.95f);
-            int region = ContentRegistry.GetMonsterRegionTier(monster.Id);
-            float critChance = 0.05f + (region * 0.005f);
-            float critMult = Math.Max(1.0f, 1.5f - (stats.CritMitigationPct / 100f));
-            long attackPower = BossFirstClearRules.AttackPowerFor(defeatedMask, monster.Id);
+            PlayerSwing swing = setup.Swing;
+            double swingHeal = swing.ExpectedHeal(setup.LifestealCeiling);
+            double max = setup.MaxMilliHp;
+            int effectiveMaxHp = (int)setup.MaxMilliHp;
 
-            double normal = Landed(attackPower, 1.0f, in stats, region, maxMilliHp);
-            double crit = Landed(attackPower, critMult, in stats, region, maxMilliHp);
-            return hitChance * (((1.0 - critChance) * normal) + (critChance * crit));
+            for (int i = 0; i < ticks && !s.Died; i++)
+            {
+                s.Ticks++;
+
+                if (setup.RegenPerTick > 0 && s.PlayerHp > 0 && s.PlayerHp < max)
+                {
+                    s.PlayerHp = Math.Min(max, s.PlayerHp + setup.RegenPerTick);
+                }
+
+                s.Accumulator++;
+                bool monsterDown = false;
+
+                if (SimulationEngine.HasCrossedInterval(s.Accumulator, setup.PlayerIntervalMs))
+                {
+                    s.PlayerHp = Math.Min(max, s.PlayerHp + swingHeal);
+                    if (s.SwingsNeeded > 0)
+                    {
+                        s.SwingsThisFight++;
+                        monsterDown = s.SwingsThisFight >= s.SwingsNeeded;
+                    }
+                    else
+                    {
+                        s.MonsterHp -= swing.Mean;
+                        monsterDown = s.MonsterHp <= 0;
+                    }
+                }
+
+                if (!monsterDown && SimulationEngine.HasCrossedInterval(s.Accumulator, setup.Monster.AttackIntervalMs))
+                {
+                    double monsterSwing = s.FirstClearPending ? setup.FirstClearMonsterSwing : setup.FarmMonsterSwing;
+                    s.PlayerHp -= monsterSwing;
+                    if (setup.ThornsFraction > 0 && s.SwingsNeeded == 0)
+                    {
+                        s.MonsterHp -= monsterSwing * setup.ThornsFraction;
+                        monsterDown = s.MonsterHp <= 0;
+                    }
+                }
+
+                if (s.EatCooldown > 0)
+                {
+                    s.EatCooldown--;
+                }
+                else if (s.WithFood && s.PlayerHp > 0 && s.PlayerHp <= setup.EatAtMilliHp)
+                {
+                    // Best heal first, as auto-eat picks.
+                    int best = 0, heal = 0;
+                    if (s.Food1 > 0 && setup.Heal1 > heal) { best = 1; heal = setup.Heal1; }
+                    if (s.Food2 > 0 && setup.Heal2 > heal) { best = 2; heal = setup.Heal2; }
+                    if (s.Food3 > 0 && setup.Heal3 > heal) { best = 3; heal = setup.Heal3; }
+                    if (best > 0)
+                    {
+                        if (best == 1) s.Food1--; else if (best == 2) s.Food2--; else s.Food3--;
+                        s.PlayerHp = Math.Min(max, s.PlayerHp + heal);
+                        s.EatCooldown = SimulationEngine.AutoEatCooldownTicks;
+                        s.Bites++;
+                    }
+                }
+
+                if (s.PlayerHp <= 0)
+                {
+                    if (s.DeathWardUp)
+                    {
+                        // ConsumableEngine.TryInterceptLethalDamage: up at a fifth of the bar.
+                        s.PlayerHp = Math.Max(1, effectiveMaxHp / ConsumableEngine.DeathWardReviveDivisor);
+                        s.DeathWardUp = false;
+                        s.DeathWardUsed = true;
+                    }
+                    else
+                    {
+                        s.Died = true;
+                        return;
+                    }
+                }
+
+                if (monsterDown)
+                {
+                    s.Kills++;
+                    if (s.FirstClearPending) s.FirstClearKills++;
+                    s.FirstClearPending = false;
+                    StartFight(ref s, in setup);
+                }
+            }
         }
 
-        private static double Landed(long attackPower, float critMult, in CombatStats stats, int region, long maxMilliHp)
+        /// <summary>
+        /// How many swings a monster takes to die, as a distribution over the
+        /// live rolls (miss, hit, crit, doubled crit). Built by convolving one
+        /// swing's outcomes over the monster's health in fine buckets; each
+        /// outcome's damage is split between its two neighbouring buckets so
+        /// the bucketing keeps the mean exact.
+        /// </summary>
+        internal sealed class SwingsToKill
         {
-            long raw = (long)(attackPower * 1000L * critMult);
-            float block = Math.Clamp(stats.BlockStrengthPct / 100f, 0f, 0.75f);
-            long armoured = CombatDamageModel.Mitigate(raw, stats.FlatPhysicalArmor, CombatDamageModel.PlayerArmourHalvingConstant(region));
-            long final = Math.Max(1000L, (long)(armoured * (1f - block)));
-            if (stats.SetDamageCapActive)
+            private const int Buckets = 4096;
+
+            /// <summary>Past this many expected swings the mean is exact enough (the ceiling's bias is under 2%), and health is tracked instead.</summary>
+            private const double MaxExpectedSwings = 60.0;
+
+            private const int MaxSwings = 4000;
+            private const double GoldenRatioConjugate = 0.6180339887498949;
+
+            private readonly double[] _cdf;
+
+            private SwingsToKill(double[] cdf) => _cdf = cdf;
+
+            /// <summary>The expected swing count.</summary>
+            public double Mean
             {
-                long ceiling = (long)(maxMilliHp * SimulationEngine.SetDamageCapMaxHpFraction);
-                if (ceiling > 0 && final > ceiling) final = ceiling;
+                get
+                {
+                    double mean = 0, previous = 0;
+                    for (int i = 0; i < _cdf.Length; i++)
+                    {
+                        mean += (i + 1) * (_cdf[i] - previous);
+                        previous = _cdf[i];
+                    }
+                    return mean;
+                }
             }
-            return final;
+
+            /// <summary>The fight's swing count: the median first, then the golden-ratio walk.</summary>
+            public int Sample(long fightIndex)
+            {
+                double u = (0.5 + (fightIndex * GoldenRatioConjugate)) % 1.0;
+                int lo = 0, hi = _cdf.Length - 1;
+                while (lo < hi)
+                {
+                    int mid = (lo + hi) / 2;
+                    if (_cdf[mid] >= u) hi = mid; else lo = mid + 1;
+                }
+                return lo + 1;
+            }
+
+            public static SwingsToKill? For(in PlayerSwing swing, long monsterMilliHp)
+            {
+                if (monsterMilliHp <= 0 || swing.Mean <= 0 || monsterMilliHp / swing.Mean > MaxExpectedSwings)
+                {
+                    return null;
+                }
+
+                double unit = (double)monsterMilliHp / Buckets;
+                Span<double> p = stackalloc double[3] { swing.PNormal, swing.PCrit, swing.PDouble };
+                Span<double> d = stackalloc double[3] { swing.NormalDamage / unit, swing.CritDamage / unit, swing.DoubleDamage / unit };
+                double pMiss = Math.Max(0.0, 1.0 - swing.PNormal - swing.PCrit - swing.PDouble);
+
+                var cur = new double[Buckets];
+                var next = new double[Buckets];
+                cur[0] = 1.0;
+                int top = 0;
+                double absorbedTotal = 0.0;
+                var cdf = new System.Collections.Generic.List<double>();
+
+                for (int n = 1; n <= MaxSwings && absorbedTotal < 1.0 - 1e-9; n++)
+                {
+                    Array.Clear(next, 0, Buckets);
+                    int newTop = 0;
+                    double absorbed = 0.0;
+                    for (int i = 0; i <= top; i++)
+                    {
+                        double mass = cur[i];
+                        if (mass <= 0) continue;
+                        next[i] += mass * pMiss;
+                        if (pMiss > 0 && i > newTop) newTop = i;
+                        for (int o = 0; o < 3; o++)
+                        {
+                            if (p[o] <= 0) continue;
+                            double at = i + d[o];
+                            double m = mass * p[o];
+                            if (at >= Buckets) { absorbed += m; continue; }
+                            int lo = (int)at;
+                            double frac = at - lo;
+                            next[lo] += m * (1 - frac);
+                            if (lo > newTop) newTop = lo;
+                            if (lo + 1 >= Buckets)
+                            {
+                                absorbed += m * frac;
+                            }
+                            else
+                            {
+                                next[lo + 1] += m * frac;
+                                if (lo + 1 > newTop) newTop = lo + 1;
+                            }
+                        }
+                    }
+                    (cur, next) = (next, cur);
+                    top = newTop;
+                    absorbedTotal += absorbed;
+                    cdf.Add(Math.Min(1.0, absorbedTotal));
+                }
+
+                // Whatever mass the cut-off left behind is folded into the last count.
+                cdf[^1] = 1.0;
+                return new SwingsToKill(cdf.ToArray());
+            }
         }
 
         /// <summary>
@@ -273,14 +561,23 @@ namespace FolkIdle.Server.Domain.Combat
             public double Mean { get; init; }
             public double StdDev { get; init; }
 
-            // Per-outcome landed damage and probability, for the heal terms,
-            // which are capped per hit and so cannot be taken off the mean.
+            // Per-outcome landed damage and probability, for the heal terms
+            // (capped per hit, so not derivable from the mean) and for
+            // SwingsToKill.
             private readonly double _pHit, _pCrit, _pDouble;
             private readonly double _normal, _crit, _double;
             private readonly float _lifestealPct;
             private readonly long _bloodthirstTenths;
             // Landed damage includes burn; the heals are on the hit before it.
             private readonly double _burnFactor;
+
+            /// <summary>P(a plain hit), P(a crit that is not doubled), P(a doubled crit).</summary>
+            public double PNormal => _pHit * (1 - _pCrit);
+            public double PCrit => _pHit * _pCrit * (1 - _pDouble);
+            public double PDouble => _pHit * _pCrit * _pDouble;
+            public double NormalDamage => _normal;
+            public double CritDamage => _crit;
+            public double DoubleDamage => _double;
 
             private PlayerSwing(double pHit, double pCrit, double pDouble, double normal, double crit, double dbl, float lifestealPct, long bloodthirstTenths, double burnFactor)
             {
@@ -341,10 +638,7 @@ namespace FolkIdle.Server.Domain.Combat
             public double ExpectedHeal(long lifestealCeiling)
             {
                 if (_lifestealPct <= 0f && _bloodthirstTenths <= 0) return 0.0;
-                double pN = _pHit * (1 - _pCrit);
-                double pC = _pHit * _pCrit * (1 - _pDouble);
-                double pD = _pHit * _pCrit * _pDouble;
-                return (pN * HealOn(_normal, lifestealCeiling)) + (pC * HealOn(_crit, lifestealCeiling)) + (pD * HealOn(_double, lifestealCeiling));
+                return (PNormal * HealOn(_normal, lifestealCeiling)) + (PCrit * HealOn(_crit, lifestealCeiling)) + (PDouble * HealOn(_double, lifestealCeiling));
             }
 
             private double HealOn(double landed, long lifestealCeiling)
@@ -354,6 +648,7 @@ namespace FolkIdle.Server.Domain.Combat
                 if (_bloodthirstTenths > 0) heal += hit * _bloodthirstTenths / 1000.0;
                 if (_lifestealPct > 0f) heal += Math.Min(lifestealCeiling, hit * (_lifestealPct / 100.0));
                 return heal;
-            }        }
+            }
+        }
     }
 }
