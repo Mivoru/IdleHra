@@ -250,10 +250,17 @@ namespace FolkIdle.Server.Engine
         /// breeding roster and cannot breed, and a lineage row with no character
         /// is a name in a family tree that nothing can play or pair.
         /// </summary>
-        public static async Task CullToCapAsync(FolkIdleDbContext db, CancellationToken cancellationToken)
+        public static async Task CullToCapAsync(FolkIdleDbContext db, CancellationToken cancellationToken, long? onlyPlayerId = null)
         {
-            var players = await db.PlayerRecords
-                .AsNoTracking()
+            // Task 88: a rebirth culls one Hall, by the same rule.
+            var roster = db.PlayerRecords.AsNoTracking();
+            if (onlyPlayerId.HasValue)
+            {
+                long only = onlyPlayerId.Value;
+                roster = roster.Where(p => p.Id == only);
+            }
+
+            var players = await roster
                 .Select(p => new { p.Id, p.PlayerGuid, p.AncestorSlotsPurchased })
                 .ToListAsync(cancellationToken);
 
@@ -273,25 +280,7 @@ namespace FolkIdle.Server.Engine
                     .Where(l => characterIds.Contains(l.CharacterId))
                     .ToListAsync(cancellationToken);
 
-                var lineageById = lineages.ToDictionary(l => l.CharacterId);
-
-                var members = new List<HallOfAncestorsRules.Member>(characters.Count);
-                for (int c = 0; c < characters.Count; c++)
-                {
-                    lineageById.TryGetValue(characters[c].Id, out var lineage);
-
-                    members.Add(new HallOfAncestorsRules.Member(
-                        characters[c].Id,
-                        characters[c].Id == player.PlayerGuid,
-                        lineage?.IsKeptAtRollover ?? false,
-                        lineage?.IsEpicMutation ?? false,
-                        // A character with no lineage row ranks at zero rather
-                        // than being excluded: it is still a real character, and
-                        // excluding it from the ranking would mean culling it
-                        // without ever considering it.
-                        lineage is null ? 0 : lineage.AptitudeVector().Sum(),
-                        lineage?.GenerationIndex ?? 0));
-                }
+                var members = BuildMembers(characters, lineages, player.PlayerGuid);
 
                 var survivors = new HashSet<Guid>(HallOfAncestorsRules.ChooseSurvivors(members, cap));
 
@@ -324,6 +313,66 @@ namespace FolkIdle.Server.Engine
             }
 
             await db.SaveChangesAsync(cancellationToken);
+        }
+
+        /// <summary>
+        /// The Hall as HallOfAncestorsRules ranks it. Shared by the cull and by
+        /// the rebirth preview, so "who the preview says goes" and "who goes"
+        /// are one computation rather than two that could disagree.
+        /// </summary>
+        internal static List<HallOfAncestorsRules.Member> BuildMembers(
+            IReadOnlyList<CharacterRecord> characters,
+            IReadOnlyList<CharacterLineageRegistry> lineages,
+            Guid mainCharacterId)
+        {
+            var lineageById = lineages.ToDictionary(l => l.CharacterId);
+
+            var members = new List<HallOfAncestorsRules.Member>(characters.Count);
+            for (int c = 0; c < characters.Count; c++)
+            {
+                lineageById.TryGetValue(characters[c].Id, out var lineage);
+
+                members.Add(new HallOfAncestorsRules.Member(
+                    characters[c].Id,
+                    characters[c].Id == mainCharacterId,
+                    lineage?.IsKeptAtRollover ?? false,
+                    lineage?.IsEpicMutation ?? false,
+                    // A character with no lineage row ranks at zero rather
+                    // than being excluded: it is still a real character, and
+                    // excluding it from the ranking would mean culling it
+                    // without ever considering it.
+                    lineage is null ? 0 : lineage.AptitudeVector().Sum(),
+                    lineage?.GenerationIndex ?? 0));
+            }
+            return members;
+        }
+
+        /// <summary>
+        /// The characters a cull would let go right now, by name - read-only,
+        /// for the rebirth preview (task 88).
+        /// </summary>
+        internal static async Task<List<string>> WouldReleaseAsync(FolkIdleDbContext db, long playerId, CancellationToken cancellationToken)
+        {
+            var player = await db.PlayerRecords.AsNoTracking()
+                .Where(p => p.Id == playerId)
+                .Select(p => new { p.PlayerGuid, p.AncestorSlotsPurchased })
+                .FirstOrDefaultAsync(cancellationToken);
+            if (player == null) return new List<string>();
+
+            int cap = HallOfAncestorsRules.CapFor(player.AncestorSlotsPurchased);
+            var characters = await db.CharacterRecords.AsNoTracking()
+                .Where(c => c.PlayerId == playerId)
+                .ToListAsync(cancellationToken);
+            if (characters.Count <= cap) return new List<string>();
+
+            var characterIds = characters.Select(c => c.Id).ToList();
+            var lineages = await db.CharacterLineages.AsNoTracking()
+                .Where(l => characterIds.Contains(l.CharacterId))
+                .ToListAsync(cancellationToken);
+
+            var survivors = new HashSet<Guid>(HallOfAncestorsRules.ChooseSurvivors(
+                BuildMembers(characters, lineages, player.PlayerGuid), cap));
+            return characters.Where(c => !survivors.Contains(c.Id)).Select(c => c.Name).ToList();
         }
     }
 }

@@ -49,6 +49,23 @@ namespace FolkIdle.Server.Engine
             reloaded.CommandResultRingWriteIndex = live.CommandResultRingWriteIndex;
             reloaded.CommandResultTickCounter = live.CommandResultTickCounter;
 
+            // Modul: A REBIRTH CARRIES NOTHING OF THE OLD LIFE BUT ITS
+            // BOOKKEEPING (task 88). The flushes in flight and the epoch are
+            // facts about the writer, not the character, so they cross. The
+            // fight does not - a level-1 character set down in the middle of a
+            // region-5 one dies on the next tick - and neither does any coin or
+            // village delta still owed: it was earned by a life whose gold the
+            // reset has just zeroed.
+            if (live.RebirthPending)
+            {
+                reloaded.FlushesInFlight = live.FlushesInFlight;
+                if (live.LogicEpochCounter > reloaded.LogicEpochCounter)
+                {
+                    reloaded.LogicEpochCounter = live.LogicEpochCounter;
+                }
+                return;
+            }
+
             CarryCheckpointBookkeeping(in live, ref reloaded);
             CarryLiveActivity(in live, ref reloaded);
         }

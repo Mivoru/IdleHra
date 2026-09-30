@@ -5116,7 +5116,7 @@ prose in English. Loot below Rare stays silent.
 | 85 | Orders: automation rules as a reward | L | **design with the owner** |
 | 86 | A deterministic affix step beside the reroll | M | **design with the owner** |
 | 87 | Boss Ascension ladder | M | reward shape, once |
-| 88 | Rebirth on demand instead of a calendar season | XL | **owner decision (O3)** |
+| 88 | **BUILT** (branch `feat/88-rebirth`) - Rebirth on demand instead of a calendar season | XL | decided 2026-09-30 |
 
 Recommended batches: **68 + 69 + 70** first (felt every session, no owner
 input), then **71 + 72 + 74**, then **73 + 82** (one look at the shell), then
@@ -5632,10 +5632,54 @@ Boss challenges become a ladder of 10 per boss, each step adding one modifier
 (boss attack +15 %, one larder slot, time limit -10 %), calibrated with
 `BossChallengeCalibrationTests`. Rewards are cosmetics and titles only.
 
-## 88. Rebirth on demand instead of a calendar season - owner decision
+## BUILT - 88. Rebirth on demand instead of a calendar season
 
-Seasons are paused by hand because the calendar would wipe the owner's level
-96. Proposal: the player triggers the rollover (prestige), seeing what carries
-(Seals, the Hall, aptitudes, Inheritance, shards) against what is lost. It is
-the same question as O3 and changes what a season means, so it is not built
-without the owner.
+**Owner decision 2026-09-30, built the same day on `feat/88-rebirth`, not
+deployed.** Design and status: `docs/superpowers/specs/2026-09-30-rebirth-on-demand.md`.
+
+- **The calendar ends nobody's run.** `SeasonalRotationEngine` no longer
+  closes an era on its date, paused or not. The admin's typed END SEASON is
+  the only global rollover left. The live era (due 2026-11-02 09:40 UTC)
+  is now safe without the pause.
+- **A player rebirths when they choose.** `GET /api/v1/rebirth/preview` and
+  `POST /api/v1/rebirth {ExpectedRebirthCount}`. The panel is on the
+  Ancestors screen, with a two-step confirm.
+  - The reset is the rollover's own `AwardLegacyShardsAsync` and
+    `ResetPlayersAsync`, run for one player. There is no second wipe list.
+  - When the player is online, the tick suspends and flushes the payload,
+    and the flush's continuation resets and reloads it
+    (`RebirthTickCoordinator`).
+  - The count token makes a double submit a 409.
+  - A reborn account gets the registration starter kit.
+- **Carries:**
+  - the Hall (aptitudes, genes, generation, epic, Keep marks, bought slots);
+  - Seals, with 2 skill points per Seal back at once;
+  - Inheritance;
+  - shards and Legacy perks;
+  - diamonds and paid respecs;
+  - village buildings;
+  - race, gathering and codex progress;
+  - deeds, cosmetics and records;
+  - the larder, mail and guild.
+- **Resets:**
+  - level, XP, attributes and unspent points;
+  - the skill tree;
+  - potions and the free respec;
+  - all gear in all 11 slots;
+  - gold, materials and unescrowed listings;
+  - ages (back to adult) and activities (idle);
+  - the gene pool, with its clock and price;
+  - the chronicle pass;
+  - the Hall past its cap (culled).
+- **Renown**, the permanent bonus: `floor(15 * (1 - 0.8^n))`% damage, where
+  n counts rebirths taken at level 50 or above. It is asymptotic below 15%
+  and sits in `PowerCeilingTests`.
+- **Fixed in the shared reset on the way:**
+  - attributes stacked on every climb;
+  - the tool slots 8-10 were left pointing at wiped ids;
+  - characters kept yesterday's fight.
+- **Changed deed:** Chapter V's "top fifty" is now "be reborn at level 50+",
+  and an old top-50 finish still counts.
+- **Before deploying:** migration `AddRebirthCounters` is additive. Run
+  `npm run exercise`; it was not run here, because the machine has no
+  Playwright browser.

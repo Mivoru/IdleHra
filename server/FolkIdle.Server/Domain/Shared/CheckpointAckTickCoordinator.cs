@@ -66,12 +66,23 @@ namespace FolkIdle.Server.Domain.Shared
                     continue;
                 }
 
+                bool rebirthWasPending = payload.RebirthPending;
                 if (Apply(ref payload, in ack) == FlushAckOutcome.CommandFailed)
                 {
                     // Modul: SILENT ROLLBACK IS THIS SERVER'S FAVOURITE WAY TO
                     // LIE. The command's engine work never ran; without this
                     // the button did nothing and said nothing.
                     registry.EnqueueCommandResult(ack.PlayerId, (byte)Network.CommandResultCode.CheckpointFailed);
+
+                    // Task 88: the flush a rebirth was waiting on failed, so
+                    // its continuation never runs. The player plays on
+                    // un-reborn (Apply un-suspended them) and the waiting
+                    // request is answered rather than left to time out.
+                    if (rebirthWasPending)
+                    {
+                        payload.RebirthPending = false;
+                        Progression.RebirthTickCoordinator.FailPending(ack.PlayerId);
+                    }
                 }
             }
         }

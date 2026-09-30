@@ -1190,13 +1190,14 @@
         <!-- ================================================== LONG GAME -->
         {:else if activeTab === 'longgame'}
           <p>
-            A season ends and takes almost everything with it. What it leaves is
-            the point of the whole system, and it is decided in advance by what you
-            built and who you marked — the rollover runs server-side with everyone
-            disconnected, so nothing prompts you.
+            A rebirth ends your run and takes almost everything with it. What it
+            leaves is the point of the whole system. You choose when: the Rebirth
+            panel on the Ancestors screen lists exactly what you keep and what you
+            lose - and who the Hall would let go - before you confirm. No date
+            ends a run for you any more.
           </p>
 
-          <h3 id="season">What a season resets</h3>
+          <h3 id="season">What a rebirth resets</h3>
           <div class="two-col">
             <div class="card good">
               <strong>Carries</strong>
@@ -1316,9 +1317,12 @@
 
           <h3 id="leaderboard">Season rank</h3>
           <p class="dim small">
-            The seasonal leaderboard ranks by level, then by the hardest monster you
-            ever put down. Your best finish is one of the few things that carries,
-            and a top-fifty finish is one of the six deeds in the last chapter.
+            The leaderboard ranks by level, then by the hardest monster you ever put
+            down - so a rebirth drops you down it, by your own choice. Seasons no
+            longer end on a date: you end your own run from the Rebirth panel on the
+            Ancestors screen, and a <em>renowned</em> rebirth - one taken halfway to
+            level 100 or later - is one of the six deeds in the last chapter (a
+            top-fifty season finish from before still counts).
           </p>
 
         <!-- ================================================== GUILDS -->

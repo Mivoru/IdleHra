@@ -481,6 +481,18 @@ namespace FolkIdle.Server.Models
         /// </summary>
         public int BestSeasonRank { get; set; }
 
+        // Modul: REBIRTH ON DEMAND (task 88). Written ONLY by RebirthEngine,
+        // inside its own row-locked transaction; the checkpoint never touches
+        // either column (one writer, the same rule as the Delve's counters).
+        //
+        // RebirthCount counts every rebirth and is the idempotency token: the
+        // POST carries the count its preview showed, and a second submit of the
+        // same preview finds it moved and is refused. RenownedRebirths counts
+        // only the ones taken at RebirthRules.RenownLevel or above, and is what
+        // the permanent damage bonus is computed from - see RebirthRules.
+        public int RebirthCount { get; set; }
+        public int RenownedRebirths { get; set; }
+
         /// <summary>
         /// Which chapters of the Book of Deeds have been completed, one bit
         /// each. **Each Seal grants +2 permanent skill points every season,

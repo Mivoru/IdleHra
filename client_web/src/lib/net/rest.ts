@@ -7,7 +7,8 @@
 // deduplication, retry and invalidation all belong to the query client and are
 // never reimplemented here.
 
-import { authedGet, authedPost } from './auth';
+import { authedGet, authedPost, storedToken, AuthError } from './auth';
+import { api } from './config';
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -47,6 +48,8 @@ export const queryKeys = {
   breedingRoster: ['meta', 'breeding'] as const,
   traits: ['meta', 'traits'] as const,
   ancestorsHall: ['meta', 'ancestors'] as const,
+  /** Task 88: what a rebirth would keep and take, right now. */
+  rebirthPreview: ['meta', 'rebirth'] as const,
   deeds: ['meta', 'deeds'] as const,
   /** Task 57: the collection log. */
   collection: ['player', 'collection'] as const,
@@ -2110,4 +2113,89 @@ export interface MaterialFlow {
 
 export function fetchGoldLedger(): Promise<GoldLedger> {
   return authedGet<GoldLedger>('/api/v1/player/gold-ledger');
+}
+
+// ---------------------------------------------------------------------------
+// Rebirth on demand (task 88)
+// ---------------------------------------------------------------------------
+
+/**
+ * What a rebirth would do right now, as the SERVER computes it
+ * (`RebirthEngine.PreviewAsync`). The client renders it; it decides nothing.
+ */
+export interface RebirthPreview {
+  RebirthCount: number;
+  RenownedRebirths: number;
+  Level: number;
+  RenownLevel: number;
+  /** Whether this rebirth, taken now, raises Renown. */
+  Renowned: boolean;
+  DamageBonusPctNow: number;
+  DamageBonusPctAfter: number;
+  /** The asymptote - never reached. */
+  DamageBonusPctCap: number;
+  ShardsEarned: number;
+
+  // What goes.
+  Gold: number;
+  MaterialStacks: number;
+  EquipmentPieces: number;
+  MarketListings: number;
+  SkillTreeLevels: number;
+  AttributePoints: number;
+  VillageNewcomers: number;
+  /** Names the Hall's cull would let go - deleted, permanently. */
+  HallLetGo: string[];
+
+  // What stays.
+  Seals: number;
+  SkillPointsFromSeals: number;
+  InheritanceLevels: number;
+  ShardBalance: number;
+  Diamonds: number;
+  HallMembersKept: number;
+  VillageBuildingLevels: number;
+}
+
+export function fetchRebirthPreview(): Promise<RebirthPreview> {
+  return authedGet<RebirthPreview>('/api/v1/rebirth/preview');
+}
+
+export type RebirthResultName = 'Ok' | 'AlreadyReborn' | 'InFlight' | 'NotFound' | 'Failed';
+
+export interface RebirthOutcome {
+  Result: RebirthResultName;
+  RebirthCount: number;
+  RenownedRebirths: number;
+  DamageBonusPct: number;
+  ShardsEarned: number;
+  Renowned: boolean;
+}
+
+/**
+ * Ends the run. `expectedRebirthCount` is the count the preview showed - the
+ * server's idempotency token, so a double tap or a stale page is refused
+ * (409 AlreadyReborn) instead of rebirthing twice.
+ *
+ * Not `authedPost`: that throws away the body of a non-2xx answer, and every
+ * refusal here carries a Result the panel has to show.
+ */
+export async function requestRebirth(expectedRebirthCount: number): Promise<RebirthOutcome> {
+  const token = storedToken();
+  if (!token) throw new AuthError('not signed in', 401);
+
+  const response = await fetch(api('/api/v1/rebirth'), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ExpectedRebirthCount: expectedRebirthCount }),
+  });
+  const text = await response.text();
+  if (text) {
+    try {
+      return JSON.parse(text) as RebirthOutcome;
+    } catch {
+      // Not JSON - fall through to the status.
+    }
+  }
+  throw new AuthError(`POST /api/v1/rebirth failed (HTTP ${response.status})`, response.status);
 }
