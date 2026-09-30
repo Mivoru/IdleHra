@@ -1,6 +1,7 @@
 <script lang="ts">
   import BossChallenges from '../lib/ui/BossChallenges.svelte';
-  import { bossChallengeKeys, fetchBossChallenges } from '../lib/net/cosmetics';
+  import BossAscension from '../lib/ui/BossAscension.svelte';
+  import { bossChallengeKeys, fetchBossChallenges, bossAscensionKeys, fetchBossAscension } from '../lib/net/cosmetics';
   import { createQuery } from '@tanstack/svelte-query';
   import { locationName } from '../lib/ui/locations';
   import {
@@ -53,6 +54,14 @@
   const challenges = createQuery(() => ({
     queryKey: bossChallengeKeys.all,
     queryFn: fetchBossChallenges,
+    refetchInterval: 60_000,
+  }));
+
+  // Task 87: the Ascension ladder per boss. Any command result invalidates
+  // every query (game.ts), so a cleared step refreshes the ladder by itself.
+  const ascension = createQuery(() => ({
+    queryKey: bossAscensionKeys.all,
+    queryFn: fetchBossAscension,
     refetchInterval: 60_000,
   }));
 
@@ -694,6 +703,10 @@
         {@const challengeRow = (challenges.data ?? []).find((c) => c.Region === index + 1)}
         {#if challengeRow && index + 1 <= unlockedRegion}
           <BossChallenges row={challengeRow} />
+        {/if}
+        {@const ascensionRow = (ascension.data ?? []).find((b) => b.Region === index + 1)}
+        {#if ascensionRow && index + 1 <= unlockedRegion}
+          <BossAscension boss={ascensionRow} />
         {/if}
         {/if}
       {/each}

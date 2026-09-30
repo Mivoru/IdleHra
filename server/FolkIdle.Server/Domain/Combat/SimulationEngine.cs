@@ -884,6 +884,7 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.StockFoodSlot] = LarderTickCoordinator.HandleStockFoodSlot,
                 [CommandType.UpdateAutoEatThreshold] = LarderTickCoordinator.HandleUpdateAutoEatThreshold,
                 [CommandType.SpendAttributePoint] = AttributeTickCoordinator.HandleSpendAttributePoint,
+                [CommandType.StartBossAscension] = BossAscensionTickCoordinator.HandleStartBossAscension,
                 [CommandType.RespecAttributes] = AttributeTickCoordinator.HandleRespecAttributes,
                 [CommandType.PurchaseSkillTreeLevel] = SkillTreeTickCoordinator.HandlePurchaseSkillTreeLevel,
                 [CommandType.RespecSkillTree] = SkillTreeTickCoordinator.HandleRespecSkillTree,
@@ -2377,6 +2378,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 BossBestKillTenthsR3 = (ushort)Math.Clamp(currentPayload.BossBestKillTenthsR3, 0, ushort.MaxValue),
                                 BossBestKillTenthsR4 = (ushort)Math.Clamp(currentPayload.BossBestKillTenthsR4, 0, ushort.MaxValue),
                                 BossBestKillTenthsR5 = (ushort)Math.Clamp(currentPayload.BossBestKillTenthsR5, 0, ushort.MaxValue),
+                                AscensionStep = currentPayload.AscensionStep,
                                 LastDeathMonsterId = currentPayload.LastDeathMonsterId,
                                 LastDeathTick = currentPayload.LastDeathTick,
                                 LastHitWasCrit = currentPayload.LastHitWasCrit,
@@ -2539,8 +2541,11 @@ namespace FolkIdle.Server.Domain.Combat
             return -1;
         }
 
-        private static void ApplyActivityChangeToPayload(ref TickStatePayload payload, long targetActivityId)
+        internal static void ApplyActivityChangeToPayload(ref TickStatePayload payload, long targetActivityId)
         {
+            // Task 87: any change of activity ends an Ascension attempt; the start
+            // command changes the activity FIRST and arms after.
+            DisarmAscension(ref payload);
             payload.ActiveActivityId = targetActivityId;
             payload.CurrentProgressTicks = 0;
             payload.CurrentMonsterId = 0;
@@ -3136,6 +3141,18 @@ namespace FolkIdle.Server.Domain.Combat
 
             ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
             ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
+
+            // Task 87: what the last kill did to an Ascension attempt is ANSWERED,
+            // never left for the player to infer from a boss that simply came
+            // back. The combat tick is static and holds no registry, so it leaves
+            // the verdict on the payload and this instance method sends it.
+            if (payload.AscensionPendingResult != 0)
+            {
+                _playerRegistry.EnqueueCommandResult(payload.PlayerId, (byte)(payload.AscensionPendingResult == 1
+                    ? CommandResultCode.AscensionStepCleared
+                    : CommandResultCode.AscensionTooSlow));
+                payload.AscensionPendingResult = 0;
+            }
 
             // Modul: NO SIMULATION SPEED (owner, 2026-09-28). The chrono-funded
             // 2x/4x branch went with the chrono bank; the second path that sat
@@ -3842,6 +3859,38 @@ namespace FolkIdle.Server.Domain.Combat
         /// than as an out-of-band hit, so it goes through the same to-hit,
         /// armour, lifesteal and kill-check path everything else does.
         /// </summary>
+        /// <summary>
+        /// Task 87: the modifiers in force for the fight the register is in RIGHT
+        /// NOW - or none. An armed step counts only while the register holds the
+        /// character that armed it and is fighting that region's boss, so a second
+        /// slot at the same boss, a gathering trip and a respawn all read as an
+        /// ordinary fight.
+        /// </summary>
+        private static bool TryGetAscensionModifiers(in TickStatePayload payload, out AscensionModifiers modifiers)
+        {
+            modifiers = default;
+            if (payload.AscensionStep == 0) return false;
+            if (payload.Slot1_CharacterId != payload.AscensionCharacterId) return false;
+            if (payload.CurrentMonsterId != RaceUnlockRegistry.GetRegionBossMonsterId(payload.AscensionRegion)) return false;
+            modifiers = BossAscensionRegistry.ModifiersFor(payload.AscensionStep);
+            return true;
+        }
+
+        /// <summary>A spawn's health, raised by an armed Ascension step's health modifier.</summary>
+        private static long SpawnHpFor(in TickStatePayload payload)
+        {
+            long hp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
+            return TryGetAscensionModifiers(in payload, out var m) ? BossAscensionRules.ScaleBossHp(hp, in m) : hp;
+        }
+
+        /// <summary>Disarms an attempt (activity changed, character died). Silent: the wire's AscensionStep reads 0.</summary>
+        internal static void DisarmAscension(ref TickStatePayload payload)
+        {
+            payload.AscensionStep = 0;
+            payload.AscensionRegion = 0;
+            payload.AscensionCharacterId = System.Guid.Empty;
+        }
+
         private static void ArmThundererIfBoss(ref TickStatePayload payload)
         {
             if (payload.Skill_Thunderer <= 0) return;
@@ -4099,7 +4148,7 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 payload.CurrentMonsterId = fallbackId;
                 ArmThundererIfBoss(ref payload);
-                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
+                payload.CurrentMonsterHp = SpawnHpFor(in payload);
                 payload.CombatTargetTickAccumulator = 0;
                 payload.AteThisFight = false;
             }
@@ -4450,7 +4499,12 @@ namespace FolkIdle.Server.Domain.Combat
                     // Nothing downstream needs an int: Mitigate already takes a
                     // long, and the only int in the chain is PlayerHp, which is
                     // assigned through a clamped subtraction below.
-                    long rawDamage = (long)(BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId) * 1000L * monsterCritMult);
+                    long monsterAttackPower = BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId);
+                    if (TryGetAscensionModifiers(in payload, out var ascensionMods))
+                    {
+                        monsterAttackPower = BossAscensionRules.ScaleBossAttack(monsterAttackPower, in ascensionMods);
+                    }
+                    long rawDamage = (long)(monsterAttackPower * 1000L * monsterCritMult);
 
                     // Step 3+4 (Armor then Block, combined): armor subtracts
                     // flat milli-damage, BlockStrengthPct (CON-derived, see
@@ -4683,6 +4737,8 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.CurrentMonsterHp = 0;
                     payload.CombatTargetTickAccumulator = 0;
                     payload.ActiveActivityId = 0;
+                    // Task 87: dying ends an Ascension attempt, as it ends the fight.
+                    DisarmAscension(ref payload);
                     // Modul: halt reasons. A full-HP character sitting idle
                     // looked exactly like one that had never been deployed.
                     payload.ActivityHaltReason = Network.ActivityHaltReason.Died;
@@ -4782,6 +4838,30 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     CosmeticGrantEngine.NoteBossKill(payload.PlayerId, clearedBossRegion, activeMonster.Id,
                         levelAtKill, payload.AteThisFight, (int)Math.Min(int.MaxValue, (long)payload.CombatTargetTickAccumulator));
+                }
+
+                // Task 87: an armed Boss Ascension step is CLEARED by this kill only
+                // if it landed inside the step's time limit; a slower kill is
+                // answered (AscensionTooSlow) and the attempt stays armed for the
+                // boss's respawn. The tick only notes the clear - the titles and
+                // frames are paid off it, in one transaction, by CosmeticGrantEngine.
+                if (clearedBossRegion > 0 && TryGetAscensionModifiers(in payload, out var clearedMods))
+                {
+                    long fightTenths = payload.CombatTargetTickAccumulator;
+                    bool inTime = clearedMods.TimeLimitPctOfSwift <= 0
+                        || fightTenths <= BossAscensionRegistry.TimeLimitSecondsFor(clearedBossRegion, payload.AscensionStep) * 10L;
+                    if (inTime)
+                    {
+                        int clearedStep = payload.AscensionStep;
+                        payload.BossAscensionPacked = BossAscensionRegistry.WithHighestStep(payload.BossAscensionPacked, clearedBossRegion, clearedStep);
+                        BossAscensionEngine.NoteClear(payload.PlayerId, clearedBossRegion, clearedStep, activeMonster.Id);
+                        DisarmAscension(ref payload);
+                        payload.AscensionPendingResult = 1;
+                    }
+                    else
+                    {
+                        payload.AscensionPendingResult = 2;
+                    }
                 }
 
                 // Task 51: every boss kill, first clear or farm, against the
@@ -5043,7 +5123,7 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 payload.CurrentMonsterId = fallbackId;
-                payload.CurrentMonsterHp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
+                payload.CurrentMonsterHp = SpawnHpFor(in payload);
                 payload.CombatTargetTickAccumulator = 0;
                 payload.AteThisFight = false;
             }

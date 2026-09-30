@@ -36,4 +36,20 @@ export const FRAME_DRAWINGS: Readonly<Record<string, FrameDrawing>> = {
   frame_moon_crown: { style: 'crown', color: '#b9c3d6', accent: '#ffffff', glow: true },
   frame_storm_crown: { style: 'crown', color: '#3f63c9', accent: '#b7c9ff', glow: true },
   frame_worldtree: { style: 'crown', color: '#3f8f3a', accent: '#d5f5a0', glow: true },
+
+  // Task 87: the Boss Ascension frames, one pair per boss - a laurel (knotwork)
+  // at step 5 and a crown at step 10, in the boss's colour. Bound: earned on the
+  // ladder, never in a chest, never on the market. Ids are
+  // BossAscensionRegistry.FrameId(region, step); tests/cosmetics.test.ts reads
+  // that registry and fails if one has no drawing.
+  frame_ascent_r1_s5: { style: 'knot', color: '#8c96a3', accent: '#e4e9ef' },
+  frame_ascent_r1_s10: { style: 'crown', color: '#aab4c2', accent: '#ffffff', glow: true },
+  frame_ascent_r2_s5: { style: 'knot', color: '#6b4fa0', accent: '#d2bcff' },
+  frame_ascent_r2_s10: { style: 'crown', color: '#8a63d1', accent: '#f0e3ff', glow: true },
+  frame_ascent_r3_s5: { style: 'knot', color: '#b8451c', accent: '#ffb98a' },
+  frame_ascent_r3_s10: { style: 'crown', color: '#e0611f', accent: '#ffe0a8', glow: true },
+  frame_ascent_r4_s5: { style: 'knot', color: '#3d86b8', accent: '#d5f0ff' },
+  frame_ascent_r4_s10: { style: 'crown', color: '#5fb0e6', accent: '#ffffff', glow: true },
+  frame_ascent_r5_s5: { style: 'knot', color: '#8f1f2e', accent: '#ff9aa6' },
+  frame_ascent_r5_s10: { style: 'crown', color: '#c2263c', accent: '#ffd0d6', glow: true },
 };

@@ -25,15 +25,35 @@ namespace FolkIdle.Server.Domain.Progression
     /// </summary>
     public static class TitleRegistry
     {
-        public static readonly IReadOnlyList<TitleDefinition> All = new[]
+        public static readonly IReadOnlyList<TitleDefinition> All = Build();
+
+        private static IReadOnlyList<TitleDefinition> Build()
         {
-            new TitleDefinition("deep_10", "Lamplighter", 10),
-            new TitleDefinition("deep_15", "Deepwalker", 15),
-            new TitleDefinition("deep_20", "Of the Dark Water", 20),
-            new TitleDefinition("deep_30", "Lantern-Eater", 30),
-            new TitleDefinition("deep_40", "Where No Bell Rings", 40),
-            new TitleDefinition("deep_50", "The Bottomless", 50),
-        };
+            var list = new List<TitleDefinition>
+            {
+                new TitleDefinition("deep_10", "Lamplighter", 10),
+                new TitleDefinition("deep_15", "Deepwalker", 15),
+                new TitleDefinition("deep_20", "Of the Dark Water", 20),
+                new TitleDefinition("deep_30", "Lantern-Eater", 30),
+                new TitleDefinition("deep_40", "Where No Bell Rings", 40),
+                new TitleDefinition("deep_50", "The Bottomless", 50),
+            };
+
+            // Task 87: one title per Boss Ascension step per boss - a rank the
+            // player wears ("Wolfbane IV"). DeepFloor 0 marks them as not the
+            // Deep's, so ForDeepFloor and NextDeepTitle never see them. The names
+            // come from BossAscensionRegistry, the one place the ladder lives.
+            for (int region = Combat.BossAscensionRegistry.FirstRegion; region <= Combat.BossAscensionRegistry.LastRegion; region++)
+            {
+                for (int step = 1; step <= Combat.BossAscensionRegistry.MaxStep; step++)
+                {
+                    list.Add(new TitleDefinition(
+                        Combat.BossAscensionRegistry.TitleSlug(region, step),
+                        Combat.BossAscensionRegistry.TitleName(region, step), 0));
+                }
+            }
+            return list;
+        }
 
         public static TitleDefinition? Find(string? slug)
             => slug == null ? null : All.FirstOrDefault(t => string.Equals(t.Slug, slug, StringComparison.Ordinal));

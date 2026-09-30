@@ -28,6 +28,15 @@ namespace FolkIdle.Server.Network
                 return true;
             }
 
+            // Task 87: the Boss Ascension ladder per boss - read-only. STARTING a
+            // step is the StartBossAscension command, because the fight lives on
+            // the tick thread's payload; a REST handler cannot arm it.
+            if (requestPath == "/api/v1/boss-ascension" && method == "GET")
+            {
+                await HandleBossAscension(context);
+                return true;
+            }
+
             if (requestPath.StartsWith("/api/v1/market/cosmetics", StringComparison.Ordinal))
             {
                 if (requestPath == "/api/v1/market/cosmetics" && method == "GET") { await HandleCosmeticListings(context); return true; }
@@ -66,7 +75,7 @@ namespace FolkIdle.Server.Network
                 await WriteJsonAsync(context, new
                 {
                     RarityNames = CosmeticRegistry.RarityNames,
-                    Items = CosmeticRegistry.All.Select(d => new { d.Id, Kind = (byte)d.Kind, d.Rarity, d.Name, d.Art }),
+                    Items = CosmeticRegistry.All.Select(d => new { d.Id, Kind = (byte)d.Kind, d.Rarity, d.Name, d.Art, d.Bound }),
                     ChestChancePerKill = Enumerable.Range(0, CosmeticRegistry.MaxRarity + 1)
                         .Select(r => r == 0 ? 0.0 : CosmeticRegistry.ChestChancePerKill(r)),
                     CosmeticRegistry.LevelsPerChest,
@@ -242,6 +251,32 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Boss challenges error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleBossAscension(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await WriteJsonAsync(context, new
+                {
+                    MaxStep = FolkIdle.Server.Domain.Combat.BossAscensionRegistry.MaxStep,
+                    Bosses = await FolkIdle.Server.Domain.Combat.BossAscensionEngine.ViewAsync(db, playerId),
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Boss ascension error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally

@@ -107,6 +107,9 @@ namespace FolkIdle.Server.Models
         // Task 55: boss challenges met, once each. See BossChallengeCompletion.
         public DbSet<BossChallengeCompletion> BossChallengeCompletions { get; set; }
 
+        // Task 87: the highest Boss Ascension step cleared per player per boss.
+        public DbSet<BossAscensionProgress> BossAscensionProgress { get; set; }
+
         // The new-player funnel (task 39): the first time each player reached
         // each step. See PlayerFunnelEvent and FunnelRecorder.
         public DbSet<PlayerFunnelEvent> PlayerFunnelEvents { get; set; }
@@ -292,6 +295,9 @@ namespace FolkIdle.Server.Models
             // hoping two concurrent list requests serialise.
             modelBuilder.Entity<BossChallengeCompletion>()
                 .HasKey(b => new { b.PlayerId, b.Region, b.Challenge });
+
+            modelBuilder.Entity<BossAscensionProgress>()
+                .HasKey(b => new { b.PlayerId, b.Region });
 
             modelBuilder.Entity<CosmeticListing>()
                 .HasIndex(l => l.CosmeticItemId)
