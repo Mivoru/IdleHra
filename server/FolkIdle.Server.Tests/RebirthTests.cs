@@ -30,6 +30,7 @@ namespace FolkIdle.Server.Tests
         public RebirthTests(PostgresTestFixture fixture)
         {
             _fixture = fixture;
+            ContentRegistry.Initialize();
         }
 
         private sealed record Seeded(long PlayerId, Guid Main, Guid Kept, List<Guid> Benched);
@@ -182,8 +183,17 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0L, player.LastVillagerArrivalEpoch);
             Assert.Equal(0, player.VillagerRecruitmentsThisSeason);
             Assert.Equal(0L, (await verify.CommodityRecords.AsNoTracking().SingleAsync(c => c.PlayerId == me.PlayerId && c.ItemId == "gold")).Quantity);
-            Assert.False(await verify.CommodityRecords.AnyAsync(c => c.PlayerId == me.PlayerId && c.ItemId != "gold"));
-            Assert.False(await verify.EquipmentInstances.AnyAsync(e => e.PlayerId == me.PlayerId));
+            // Every material goes; what is left is the starter kit a new
+            // account gets - ten fish, a claymore and three Normal tools.
+            var stacks = await verify.CommodityRecords.AsNoTracking()
+                .Where(c => c.PlayerId == me.PlayerId && c.ItemId != "gold").ToListAsync();
+            Assert.DoesNotContain(stacks, c => c.ItemId == "iron_ore");
+            Assert.Equal(StarterEquipmentGrant.StarterFishCount, stacks.Sum(c => c.Quantity));
+            var gear = await verify.EquipmentInstances.AsNoTracking().Where(e => e.PlayerId == me.PlayerId).ToListAsync();
+            Assert.DoesNotContain(gear, e => e.BaseItemId == "test_sword" || e.BaseItemId == "test_axe");
+            Assert.Equal(
+                StarterEquipmentGrant.StarterToolBaseIds.Append(StarterEquipmentGrant.StarterWeaponBaseId).OrderBy(x => x),
+                gear.Select(e => e.BaseItemId).OrderBy(x => x));
             Assert.False(await verify.MarketEquipmentInstances.AnyAsync(e => e.PlayerId == me.PlayerId));
             Assert.False(await verify.PlayerSkillTreeNodes.AnyAsync(n => n.PlayerId == me.PlayerId));
             Assert.False(await verify.VillageNewcomers.AnyAsync(v => v.PlayerId == me.PlayerId));
@@ -191,7 +201,10 @@ namespace FolkIdle.Server.Tests
 
             var founder = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == me.Main);
             Assert.Null(founder.EquippedWeaponId);
-            Assert.Null(founder.EquippedAxeId); // slot 8 - the list that used to stop at eight
+            // Slot 8 - the list that used to stop at eight. The old axe is
+            // gone and the starter axe is worn in its place.
+            Assert.NotNull(founder.EquippedAxeId);
+            Assert.Equal("normal_axe_tool", gear.Single(e => e.Id == founder.EquippedAxeId).BaseItemId);
             Assert.Equal(0L, founder.ActiveActivityId);
             Assert.Equal(AgePhaseCurve.Adult, founder.AgePhase);
             Assert.Equal(AgePhaseCurve.ChildEndTicks, founder.AgeTicks);

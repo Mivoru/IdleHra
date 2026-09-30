@@ -348,7 +348,7 @@ namespace FolkIdle.Server.Engine
                     // on it) and a top-fifty finish already on record still
                     // counts, because a deed that un-happens is not a record.
                     new("top-fifty", "Be reborn at level 50 or above",
-                        "End a run on your own terms, from the breeding gate or higher. It is what carries the bloodline into the next one.",
+                        "End a run on your own terms, halfway to level 100 or later. It is what carries the bloodline into the next one.",
                         "progression", 1, c => c.RenownedRebirths > 0 || (c.BestSeasonRank > 0 && c.BestSeasonRank <= 50) ? 1 : 0),
                     new("five-piece", "Wear five pieces of one set",
                         "A full set. The bonus steps at two, three and five.",

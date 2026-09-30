@@ -34,7 +34,7 @@
   import { enablePushNotifications, pushUnavailableReason } from '../lib/net/push';
   import { hapticsEnabled } from '../lib/net/haptics';
   import { enableLocalNotifications, localNotifyUnavailableReason } from '../lib/net/localNotify';
-  import { submitSupportTicket, scrubTrace, fetchAdminStatus, fetchAdminSeason, adminSeasonAction, adminEndSeasonNow, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent } from '../lib/net/rest';
+  import { submitSupportTicket, scrubTrace, fetchAdminStatus, fetchAdminSeason, adminEndSeasonNow, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
   import { runningBundleVersion } from '../lib/net/liveUpdate';
 
@@ -235,8 +235,9 @@
   let devMailMsg = $state('');
   
   // --- season control (admin) -------------------------------------------------
-  // Modul: the owner runs the season by hand (2026-09-28): pause the rollover,
-  // move the end, or end it now for everybody. Ending takes a typed phrase,
+  // Modul: the owner runs the season by hand (2026-09-28). Since task 88 the
+  // date ends nothing - players rebirth on demand - so all that is left here is
+  // ending it now for everybody. Ending takes a typed phrase,
   // exactly like deleting an account, because it takes every player's level,
   // gear and gold.
   const seasonQuery = createQuery(() => ({
@@ -246,39 +247,11 @@
     retry: false,
   }));
   const season = $derived(seasonQuery.data ?? null);
-  let seasonEndInput = $state('');
   let seasonEndPhrase = $state('');
   const SEASON_END_PHRASE = 'END SEASON';
 
   function formatSeasonEnd(epoch: number): string {
     return new Date(epoch * 1000).toLocaleString();
-  }
-
-  async function seasonAction(action: 'pause' | 'resume' | 'setEnd') {
-    try {
-      let end: number | undefined;
-      if (action === 'setEnd') {
-        const parsed = Date.parse(seasonEndInput);
-        if (Number.isNaN(parsed)) return pushLocalNotice('Pick a date and time first.');
-        end = Math.floor(parsed / 1000);
-      }
-      await adminSeasonAction(action, end);
-      pushLocalNotice(
-        action === 'pause' ? 'Season paused - it will not end on its own.'
-          : action === 'resume' ? 'Season resumed - it ends on its date.'
-            : 'Season end moved.',
-        'info',
-      );
-    } catch (error) {
-      const status = (error as { status?: number }).status;
-      pushLocalNotice(
-        status === 409 ? 'The end date has passed - move it before resuming, or the season would end at once.'
-          : status === 400 ? 'The new end must be at least an hour from now.'
-            : 'The server refused the change.',
-      );
-    } finally {
-      void seasonQuery.refetch();
-    }
   }
 
   async function endSeasonNow() {
@@ -675,26 +648,22 @@
           <div class="admin-card" style="grid-column: 1 / -1;">
             <h3>Season</h3>
             {#if season}
+              <!-- Modul: task 88. A date no longer ends a season - each
+                   player ends their own run with a rebirth (Ancestors screen)
+                   - so pause, resume and "move end" were retired with it:
+                   they steered a clock nothing reads any more. -->
               <p class="small">
-                Season {season.EraId} &middot;
-                {season.Paused ? 'PAUSED - will not end on its own' : `ends ${formatSeasonEnd(season.EndTimestamp)}`}
-                {#if season.Paused}<span class="dim"> (date on record: {formatSeasonEnd(season.EndTimestamp)})</span>{/if}
+                Season {season.EraId} &middot; the calendar no longer ends it; players rebirth on
+                demand.
+                <span class="dim"> (date on record: {formatSeasonEnd(season.EndTimestamp)})</span>
               </p>
               {#if season.EndRequested}
                 <p class="warn small">An end is queued; the rollover runs within seconds.</p>
               {/if}
-              <div class="flex-row">
-                {#if season.Paused}
-                  <button onclick={() => seasonAction('resume')}>Resume</button>
-                {:else}
-                  <button onclick={() => seasonAction('pause')}>Pause</button>
-                {/if}
-                <input type="datetime-local" bind:value={seasonEndInput} aria-label="New season end" />
-                <button onclick={() => seasonAction('setEnd')}>Move end</button>
-              </div>
               <p class="dim tiny">
-                Ending the season now resets every player's level, gear, gold and skill tree, exactly
-                like the date passing. Villages, ancestors, diamonds and Seals carry. Type
+                Ending the season now rebirths EVERY player at once - level, gear, gold and skill
+                tree - and pays the season's placement diamonds. Villages, ancestors, diamonds and
+                Seals carry. Type
                 {SEASON_END_PHRASE} to enable it.
               </p>
               <div class="flex-row">

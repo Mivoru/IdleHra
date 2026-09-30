@@ -16,12 +16,12 @@ namespace FolkIdle.Server.Engine
     /// Modul: THE LEVEL GATE IS ON THE BONUS, NOT ON THE REBIRTH. The owner's
     /// words were "whenever they choose", so a rebirth is allowed at any level.
     /// But a bonus paid for rebirth itself would be maxed in minutes by
-    /// rebirthing at level 2 on repeat; paying it only for a rebirth taken at
-    /// the breeding gate makes each step of it cost a real climb.
+    /// rebirthing at level 2 on repeat; paying it only for a rebirth taken
+    /// halfway to level 100 makes each step of it cost a real climb.
     /// </summary>
     public static class RebirthRules
     {
-        /// <summary>The level a rebirth must be taken at to count toward Renown - the breeding gate.</summary>
+        /// <summary>The level a rebirth must be taken at to count toward Renown - halfway to the level-100 deed.</summary>
         public const int RenownLevel = 50;
 
         /// <summary>The asymptote of the damage bonus, in percent. Never reached.</summary>

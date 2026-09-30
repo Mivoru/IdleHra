@@ -139,6 +139,21 @@ namespace FolkIdle.Server.Engine
                     int shards = await SeasonalRotationEngine.AwardLegacyShardsAsync(db, eraId, playerId, cancellationToken);
                     await SeasonalRotationEngine.ResetPlayersAsync(db, playerId, cancellationToken);
 
+                    // Modul: A NEW RUN STARTS LIKE A NEW ACCOUNT. The reset
+                    // takes every piece of gear and every fish, and a naked
+                    // level-1 character is exactly the account that died to the
+                    // first monster in the game until the starter weapon existed
+                    // (2026-09-28). So the reborn account gets what registration
+                    // gives - the claymore and ten fish in the chest, the three
+                    // Normal tools worn - through the same StarterEquipmentGrant
+                    // both registration paths call. All worthless on the market,
+                    // so a rebirth is not a way to farm them.
+                    var starterTools = StarterEquipmentGrant.Seed(db, playerId);
+                    await db.SaveChangesAsync(cancellationToken);
+                    await StarterEquipmentGrant.EquipOnAsync(db, player.PlayerGuid, starterTools);
+                    await StarterEquipmentGrant.SeedStarterFoodAsync(db, playerId);
+                    await db.SaveChangesAsync(cancellationToken);
+
                     await db.Database.ExecuteSqlRawAsync(
                         "UPDATE \"PlayerRecords\" SET \"RebirthCount\" = \"RebirthCount\" + 1, " +
                         "\"RenownedRebirths\" = \"RenownedRebirths\" + {0}, " +
