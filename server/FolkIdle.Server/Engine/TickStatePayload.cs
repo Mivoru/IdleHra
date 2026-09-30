@@ -558,13 +558,16 @@ namespace FolkIdle.Server.Engine
 
         // Deltas awaiting write-behind flush into CommodityRecords (see
         // RedisSessionCache.TryStoreFrame / RedisWriteBehindEngine), mirroring
-        // the existing RedisPendingGoldDelta pattern below.
+        // the existing RedisPendingGoldDelta pattern below. Like gold, what
+        // Redis did not take is banked by the checkpoint (FlushState /
+        // FlushBatch), carried on the job and handed back by a failed ack.
         //
         // Modul: NOTHING WRITES THESE ANY MORE (2026-09-30). The village tick
         // produced "wood" / "iron_ore" through them; it produces the tier log
-        // and ore now, through PendingVillage* and VillageProductionQueue. The
-        // Redis write-behind still drains whatever a buffer held from before,
-        // so these stay until that has had a deploy to empty.
+        // and ore now, through PendingVillage* and VillageProductionQueue,
+        // which never touches Redis. The write-behind and the checkpoint still
+        // bank whatever a buffer held from before, so these stay until that
+        // has had a deploy to empty.
         public long PendingWoodDelta;
         public long PendingStoneDelta;
         public long PendingIronDelta;

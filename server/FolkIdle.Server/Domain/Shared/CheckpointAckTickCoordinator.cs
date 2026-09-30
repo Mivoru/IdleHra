@@ -57,6 +57,12 @@ namespace FolkIdle.Server.Domain.Shared
                     {
                         Console.WriteLine($"{CheckpointWriter.DeadLetterPrefix} player={ack.PlayerId} gold_delta={ack.GoldDelta} reason={ack.Reason} detail=\"split-brain, player gone\"");
                     }
+                    if (!ack.Committed && (ack.WoodDelta != 0L || ack.StoneDelta != 0L || ack.IronDelta != 0L))
+                    {
+                        // Village production has no rescue job; say so rather
+                        // than drop it in silence.
+                        Console.WriteLine($"{CheckpointWriter.DeadLetterPrefix} player={ack.PlayerId} gold_delta=0 reason={ack.Reason} detail=\"player gone; village production lost: wood={ack.WoodDelta} stone={ack.StoneDelta} iron_ore={ack.IronDelta}\"");
+                    }
                     continue;
                 }
 
@@ -98,6 +104,11 @@ namespace FolkIdle.Server.Domain.Shared
             // not new income. Their tally comes back beside them, uncounted.
             payload.RedisPendingGoldDelta += ack.GoldDelta;
             payload.PendingGoldIncome.Add(in ack.Income);
+            // Village production likewise: still owed to CommodityRecords, and
+            // already counted in the Cached*Stock the screen shows.
+            payload.PendingWoodDelta += ack.WoodDelta;
+            payload.PendingStoneDelta += ack.StoneDelta;
+            payload.PendingIronDelta += ack.IronDelta;
             payload.IsDirty = true;
             if (payload.TicksSinceLastFlush < StateCheckpointManager.CheckpointBoundaryTicks)
             {

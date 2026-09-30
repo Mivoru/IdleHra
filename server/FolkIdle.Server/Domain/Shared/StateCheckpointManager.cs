@@ -226,6 +226,13 @@ namespace FolkIdle.Server.Domain.Shared
             // (FlushState writes job.Snapshot.PendingGoldIncome; a failed ack
             // hands it back). Earnings from here on start from zero.
             state.PendingGoldIncome = default;
+            // Village production rides on the snapshot the same way (FlushState
+            // banks job.Snapshot.Pending*Delta; a failed ack hands them back).
+            // TryStoreFrame above already zeroed them if Redis took them, so a
+            // non-zero value here is one that only the checkpoint will bank.
+            state.PendingWoodDelta = 0L;
+            state.PendingStoneDelta = 0L;
+            state.PendingIronDelta = 0L;
             state.FlushesInFlight++;
             state.IsDirty = false;
             state.TicksSinceLastFlush = 0;
@@ -485,6 +492,11 @@ namespace FolkIdle.Server.Domain.Shared
 
                 // Task 79: the snapshot's tally is in gold_income_daily now.
                 state.PendingGoldIncome.Subtract(snapshot.PendingGoldIncome);
+
+                // The snapshot's village production is in CommodityRecords now.
+                state.PendingWoodDelta -= snapshot.PendingWoodDelta;
+                state.PendingStoneDelta -= snapshot.PendingStoneDelta;
+                state.PendingIronDelta -= snapshot.PendingIronDelta;
             }
             return committed;
         }
@@ -675,6 +687,7 @@ namespace FolkIdle.Server.Domain.Shared
                         player.LarderSlot3Count = state.Food3_Count;
                         player.AutoEatThresholdPct = state.AutoEatThreshold;
                         await ApplyPendingGoldDeltaAsync(dbContext, state);
+                        await ApplyPendingVillageProductionAsync(dbContext, state);
                         // Task 79: where the tick's gold came from, in THIS
                         // transaction - a refused or rolled-back flush counts
                         // nothing, and its ack hands the tally back.
@@ -1697,6 +1710,45 @@ namespace FolkIdle.Server.Domain.Shared
             if (gold.Quantity < 0L) gold.Quantity = 0L;
         }
 
+        /// <summary>
+        /// Banks the session's live village production (Lumberjack, Quarry,
+        /// Mine) that Redis did not take, as an increment, and records it as
+        /// Gathered in task 79's MaterialLedger - the same row
+        /// RedisWriteBehindEngine.ApplyCommodityDeltaAsync writes when Redis
+        /// does take it.
+        /// </summary>
+        /// <remarks>
+        /// Modul: LIVE VILLAGE PRODUCTION HAD NO DURABLE PATH WITHOUT REDIS
+        /// (2026-09-30). Pending*Delta's only writer to the database was
+        /// TryStoreFrame -> a Redis buffer -> write-behind, and both return
+        /// early with Redis down - so the stock grew on screen (CachedWoodStock)
+        /// and was discarded at logout. Gold's old defect, given gold's answer.
+        ///
+        /// NEVER BANKED TWICE: every checkpoint entry point runs TryStoreFrame
+        /// before it snapshots (RequestFlush, FlushStateAndAdvance), and a
+        /// frame that succeeds moves these deltas into the Redis buffers and
+        /// zeroes them - so what reaches here is exactly what Redis never had.
+        /// FlushBatch does not frame; what it sees on the payload likewise
+        /// never reached Redis. VillageProductionCheckpointTests.
+        /// </remarks>
+        private static async Task ApplyPendingVillageProductionAsync(FolkIdleDbContext dbContext, TickStatePayload state)
+        {
+            await BankVillageDeltaAsync(dbContext, state.PlayerId, VillageManagementEngine.WoodCommodityId, state.PendingWoodDelta);
+            await BankVillageDeltaAsync(dbContext, state.PlayerId, VillageManagementEngine.StoneCommodityId, state.PendingStoneDelta);
+            await BankVillageDeltaAsync(dbContext, state.PlayerId, VillageManagementEngine.IronOreCommodityId, state.PendingIronDelta);
+        }
+
+        private static async Task BankVillageDeltaAsync(FolkIdleDbContext dbContext, long playerId, string itemId, long delta)
+        {
+            if (delta <= 0L)
+            {
+                return;
+            }
+
+            await CommodityLedger.AddAsync(dbContext, playerId, itemId, delta);
+            await MaterialLedger.RecordAsync(dbContext, playerId, MaterialFlowDirection.Gathered, itemId, delta);
+        }
+
         private static async Task UpsertChroniclePassAsync(FolkIdleDbContext dbContext, TickStatePayload state)
         {
             var pass = await dbContext.PlayerChroniclePasses
@@ -1884,6 +1936,23 @@ namespace FolkIdle.Server.Domain.Shared
                         // payloads, and the second pass is skipped there
                         // because the first already advanced the epoch.
                         await GoldLedger.RecordIncomeTallyAsync(dbContext, state.PlayerId, state.PendingGoldIncome);
+                        // Modul: THE SHUTDOWN FLUSH NEVER BANKED THE GOLD
+                        // (2026-09-30). This recorded the tally above and
+                        // dropped the coins it tallies: with Redis down,
+                        // RedisPendingGoldDelta is the only record of gold
+                        // earned since the last checkpoint - and of gold a
+                        // failed flush's ack handed back during
+                        // DrainCheckpointWriterForShutdown. Every deploy lost it
+                        // while gold_income_daily said it had been earned. Same
+                        // increment FlushState applies, and kept once by the
+                        // same epoch sieve as the tally. With Redis up the
+                        // delta is almost always zero here (TrackState moved it
+                        // into the buffer, which StopAndFlushAsync banks after
+                        // this); whatever is still on the payload never
+                        // reached Redis, so banking it cannot pay twice.
+                        // ShutdownGoldBankingTests.
+                        await ApplyPendingGoldDeltaAsync(dbContext, state);
+                        await ApplyPendingVillageProductionAsync(dbContext, state);
 
                         if (state.Slot1_CharacterId != System.Guid.Empty)
                         {

@@ -1,5 +1,9 @@
 # FolkIdle Task Board
 
+> **NEWEST (2026-09-30): read `docs/handoff-2026-09-30.md` first.** It lists
+> what is live, the owner's decisions (offline = online; rebirth on demand; 83,
+> 84, 85, 87 approved; 86 deferred), the branches in flight and their order.
+
 > **START HERE (updated 2026-09-29). The front of the board is TASKS 68-88,
 > at the bottom of this file: the second design audit (2026-09-29).** Work
 > them in the order of that section's table; the "How to work" rules of tasks
