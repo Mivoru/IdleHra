@@ -286,14 +286,19 @@ namespace FolkIdle.Server.Network
         //
         // 46: the boss has never been beaten - a ladder is climbed against a
         // boss you have already put down once. 47: a step above the one after
-        // your highest cleared. 48 and 49 come from the TICK, not from a command:
-        // the kill that cleared the step (titles and frames are paid off it) and
-        // the kill that landed after the step's time limit, which leaves the
-        // attempt armed for the boss's respawn.
+        // your highest cleared. 48 and 49 are not answers to a command: 48 is
+        // sent by the reward worker AFTER the step's titles and frames are saved,
+        // and 49 by the tick for a kill that landed after the step's time limit,
+        // which leaves the attempt armed for the boss's respawn.
         AscensionBossNotDefeated = 46,
         AscensionStepLocked = 47,
         AscensionStepCleared = 48,
-        AscensionTooSlow = 49
+        AscensionTooSlow = 49,
+
+        // The step was cleared but its reward could not be saved (a database
+        // blip). Nothing is lost: the next cleared step pays every step between
+        // what is stored and what it cleared.
+        AscensionRewardNotSaved = 50
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

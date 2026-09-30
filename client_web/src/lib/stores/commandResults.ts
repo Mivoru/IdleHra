@@ -108,13 +108,14 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   44: 'The server could not save your progress just then - nothing was spent. Try again.',
   45: 'Your screen was a moment out of date, so that was not done - it has caught up now. Try again.',
   // Modul: the Boss Ascension ladder (task 87). 46 and 47 answer a start that
-  // was refused; 48 and 49 come from the fight itself - the kill that cleared a
-  // step, and the kill that landed after its time limit (the boss comes back
-  // and the attempt is still on).
+  // was refused; 48 (sent once the reward is saved, so the ladder refetched on it
+  // is already right), 49 (a kill after the time limit: the boss comes back and
+  // the attempt is still on) and 50 (the reward could not be saved yet).
   46: 'Beat this boss once before you climb its Ascension.',
   47: 'That step is locked - clear the one below it first.',
   48: 'Ascension step cleared! Its reward is on the ladder - titles under Delve, frames in the Wardrobe.',
   49: "Too slow - that kill missed the step's time limit. The boss is back; the attempt is still on.",
+  50: 'Step cleared, but saving its reward failed. It is paid with your next cleared step.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;
@@ -174,7 +175,7 @@ export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
  * Forge button can meet (top rarity, fusion's three-of-a-kind rule, the Forge
  * level). The toast still says what happened; only the tone goes.
  */
-export const COMMAND_RESULT_SILENT_CODES: ReadonlySet<number> = new Set([10, 16, 19, 20, 23, 24, 25, 49]);
+export const COMMAND_RESULT_SILENT_CODES: ReadonlySet<number> = new Set([10, 16, 19, 20, 23, 24, 25, 49, 50]);
 
 /** Whether a batch of results deserves the error tone: a real refusal, not good news and not the Forge. */
 export function shouldPlayErrorTone(codes: readonly number[]): boolean {

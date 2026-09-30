@@ -11749,6 +11749,45 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // Task 87: put one boss's Ascension ladder back to a step, so
+                // exercise.mjs can climb a rung and leave the fixture as it found
+                // it. Body {Region, Step, BossDefeated?}; reloads the live session so the tick's
+                // cache of the ladder agrees with the table again.
+                if (requestPath == "/api/v1/dev/boss-ascension/restore" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await ReadBodyAsync(context);
+                    int region = 0, step = 0;
+                    bool? bossDefeated = null;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                        if (parsed.RootElement.TryGetProperty("Region", out var r) && r.TryGetInt32(out int rv)) region = rv;
+                        if (parsed.RootElement.TryGetProperty("Step", out var st) && st.TryGetInt32(out int sv)) step = sv;
+                        if (parsed.RootElement.TryGetProperty("BossDefeated", out var bd)
+                            && (bd.ValueKind == JsonValueKind.True || bd.ValueKind == JsonValueKind.False)) bossDefeated = bd.GetBoolean();
+                    }
+                    catch (JsonException) { }
+
+                    if (!FolkIdle.Server.Domain.Combat.BossAscensionRegistry.IsValidRegion(region))
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+
+                    using (var scope = _serviceProvider.CreateScope())
+                    {
+                        var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                        await FolkIdle.Server.Domain.Combat.BossAscensionEngine.DevRestoreAsync(db, playerId, region, step, bossDefeated);
+                    }
+                    CommandQueue.Enqueue(new PlayerCommand
+                    {
+                        PlayerId = playerId,
+                        Packet = new ClientCommandPacket { Command = CommandType.ReloadState }
+                    });
+                    await WriteJsonAsync(context, new { Ok = true });
+                    return;
+                }
+
                 if (_worldBossEngine == null)
                 {
                     context.Response.StatusCode = 503;

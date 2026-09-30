@@ -103,6 +103,56 @@ namespace FolkIdle.Server.Domain.Combat
             return paid;
         }
 
+        /// <summary>
+        /// DEV TOOLS ONLY (exercise.mjs): puts one boss's ladder back to
+        /// <paramref name="step"/> - the progress row, and the titles and frames
+        /// of every step above it - so a check that climbs a rung leaves the
+        /// fixture as it found it.
+        /// </summary>
+        public static async Task DevRestoreAsync(FolkIdleDbContext db, long playerId, int region, int step, bool? bossDefeated = null)
+        {
+            if (!BossAscensionRegistry.IsValidRegion(region)) return;
+            step = Math.Clamp(step, 0, BossAscensionRegistry.MaxStep);
+            await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+
+            // The fixture has not beaten the boss a ladder needs beaten; a check
+            // marks it beaten for the length of the run and takes the mark back.
+            if (bossDefeated == true)
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO monster_codex_entries (\"PlayerId\", \"MonsterId\", \"KillCount\", \"FirstDrawnRarity\", \"Level\") " +
+                    "VALUES ({0}, {1}, 1, 0, 0) ON CONFLICT (\"PlayerId\", \"MonsterId\") DO UPDATE SET \"KillCount\" = GREATEST(monster_codex_entries.\"KillCount\", 1)",
+                    playerId, RaceUnlockRegistry.GetRegionBossMonsterId(region));
+            }
+            else if (bossDefeated == false)
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM monster_codex_entries WHERE \"PlayerId\" = {0} AND \"MonsterId\" = {1}",
+                    playerId, RaceUnlockRegistry.GetRegionBossMonsterId(region));
+            }
+            for (int s = step + 1; s <= BossAscensionRegistry.MaxStep; s++)
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    "DELETE FROM player_titles WHERE \"PlayerId\" = {0} AND \"TitleSlug\" = {1}",
+                    playerId, BossAscensionRegistry.TitleSlug(region, s));
+                string? frame = BossAscensionRegistry.RewardFrameIdFor(region, s);
+                if (frame != null)
+                {
+                    await db.Database.ExecuteSqlRawAsync(
+                        "DELETE FROM cosmetic_items WHERE \"PlayerId\" = {0} AND \"DefinitionId\" = {1}", playerId, frame);
+                }
+            }
+            await db.Database.ExecuteSqlRawAsync(
+                "DELETE FROM boss_ascension_progress WHERE \"PlayerId\" = {0} AND \"Region\" = {1}", playerId, (short)region);
+            if (step > 0)
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    "INSERT INTO boss_ascension_progress (\"PlayerId\", \"Region\", \"HighestStep\", \"UpdatedAtUtc\") VALUES ({0}, {1}, {2}, {3})",
+                    playerId, (short)region, (short)step, DateTime.UtcNow);
+            }
+            await tx.CommitAsync();
+        }
+
         /// <summary>The player's highest cleared step per boss, packed for the payload's cache (see BossAscensionRegistry.HighestStepOf).</summary>
         public static async Task<int> LoadPackedAsync(FolkIdleDbContext db, long playerId)
         {

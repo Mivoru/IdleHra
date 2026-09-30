@@ -172,7 +172,7 @@ namespace FolkIdle.Server.Engine
         public byte AscensionStep;
         public byte AscensionRegion;
         public System.Guid AscensionCharacterId;
-        /// <summary>0 nothing to report, 1 a step was cleared, 2 the kill was too slow. Drained into a command result by the tick.</summary>
+        /// <summary>0 nothing to report, 2 the kill missed the step's time limit. Drained into a command result by the tick.</summary>
         public byte AscensionPendingResult;
         public int Food1_ItemId;
         public int Food1_Count;

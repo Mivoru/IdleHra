@@ -147,6 +147,10 @@ namespace FolkIdle.Server.Engine
                     var paid = await Domain.Combat.BossAscensionEngine.RecordClearAsync(
                         db, clear.PlayerId, clear.Region, clear.Step, DateTime.UtcNow);
                     paidThisCycle += paid.Count;
+
+                    // Announced only now, after the commit: the client refetches the
+                    // ladder on this result, and an earlier one raced the write.
+                    _playerRegistry?.EnqueueCommandResult(clear.PlayerId, (byte)Network.CommandResultCode.AscensionStepCleared);
                     foreach (var reward in paid)
                     {
                         Console.WriteLine($"Boss ascension: player {clear.PlayerId} cleared region {reward.Region} step {reward.Step} - {reward.TitleName}{(reward.FrameName != null ? " + " + reward.FrameName : "")}.");
@@ -155,6 +159,7 @@ namespace FolkIdle.Server.Engine
                 catch (Exception ex)
                 {
                     Interlocked.Increment(ref _failed);
+                    _playerRegistry?.EnqueueCommandResult(clear.PlayerId, (byte)Network.CommandResultCode.AscensionRewardNotSaved);
                     Console.WriteLine($"Boss ascension reward failed for {clear.PlayerId}: {ex.Message}");
                 }
             }

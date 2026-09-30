@@ -3142,15 +3142,14 @@ namespace FolkIdle.Server.Domain.Combat
             ProcessPassiveVillageTick(ref payload, TickIntervalSeconds, now);
             ProcessAllSlotSubTicks(ref payload, localXpMultiplier, localDropMultiplier, _guildWarEngine.GuildWarPointQueue, _liveSessionContexts);
 
-            // Task 87: what the last kill did to an Ascension attempt is ANSWERED,
+            // Task 87: a kill that missed an Ascension step's time limit is ANSWERED,
             // never left for the player to infer from a boss that simply came
             // back. The combat tick is static and holds no registry, so it leaves
-            // the verdict on the payload and this instance method sends it.
+            // the verdict on the payload and this instance method sends it. (A
+            // CLEAR is announced by CosmeticGrantEngine once its reward is saved.)
             if (payload.AscensionPendingResult != 0)
             {
-                _playerRegistry.EnqueueCommandResult(payload.PlayerId, (byte)(payload.AscensionPendingResult == 1
-                    ? CommandResultCode.AscensionStepCleared
-                    : CommandResultCode.AscensionTooSlow));
+                _playerRegistry.EnqueueCommandResult(payload.PlayerId, (byte)CommandResultCode.AscensionTooSlow);
                 payload.AscensionPendingResult = 0;
             }
 
@@ -4855,8 +4854,10 @@ namespace FolkIdle.Server.Domain.Combat
                         int clearedStep = payload.AscensionStep;
                         payload.BossAscensionPacked = BossAscensionRegistry.WithHighestStep(payload.BossAscensionPacked, clearedBossRegion, clearedStep);
                         BossAscensionEngine.NoteClear(payload.PlayerId, clearedBossRegion, clearedStep, activeMonster.Id);
+                        // No result here: "cleared" is announced by the worker AFTER
+                        // the reward commits, so the ladder the client refetches on
+                        // that result already shows the step.
                         DisarmAscension(ref payload);
-                        payload.AscensionPendingResult = 1;
                     }
                     else
                     {

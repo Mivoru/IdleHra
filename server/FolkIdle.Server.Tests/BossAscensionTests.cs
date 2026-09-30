@@ -189,6 +189,12 @@ namespace FolkIdle.Server.Tests
             for (int i = 0; i < 2000 && p.AscensionPendingResult == 0; i++) Tick(ref p);
         }
 
+        /// <summary>Ticks until the armed step is cleared (the tick disarms it and notes the clear).</summary>
+        private static void TickUntilCleared(ref TickStatePayload p)
+        {
+            for (int i = 0; i < 2000 && p.AscensionStep != 0; i++) Tick(ref p);
+        }
+
         private static void Tick(ref TickStatePayload p)
         {
             var queue = new ConcurrentQueue<GuildWarPointEvent>();
@@ -246,9 +252,9 @@ namespace FolkIdle.Server.Tests
         {
             DrainClears();
             var p = AboutToKill(region: 1, step: 3, fightTicks: 5); // 160 s limit at step 3
-            TickUntilJudged(ref p);
+            TickUntilCleared(ref p);
 
-            Assert.Equal(1, p.AscensionPendingResult);
+            Assert.Equal(0, p.AscensionPendingResult);
             Assert.Equal(0, p.AscensionStep);
             Assert.Equal(3, BossAscensionRegistry.HighestStepOf(p.BossAscensionPacked, 1));
             Assert.True(BossAscensionEngine.Clears.TryDequeue(out var note));
@@ -291,8 +297,9 @@ namespace FolkIdle.Server.Tests
         {
             DrainClears();
             var p = AboutToKill(region: 1, step: 1, fightTicks: 200_000);
-            TickUntilJudged(ref p);
-            Assert.Equal(1, p.AscensionPendingResult);
+            TickUntilCleared(ref p);
+            Assert.Equal(0, p.AscensionStep);
+            Assert.True(BossAscensionEngine.Clears.TryDequeue(out _));
             DrainClears();
         }
 
@@ -359,6 +366,36 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task TheDevRestorePutsALadderBackExactly()
+        {
+            const long playerId = 957000004L;
+            await SeedAsync(playerId);
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            await BossAscensionEngine.RecordClearAsync(db, playerId, 1, 2, DateTime.UtcNow);
+            await BossAscensionEngine.RecordClearAsync(db, playerId, 1, 6, DateTime.UtcNow);
+            Assert.Single(await db.CosmeticItems.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync());
+
+            await BossAscensionEngine.DevRestoreAsync(db, playerId, 1, 2);
+
+            Assert.Equal(2, BossAscensionRegistry.HighestStepOf(await BossAscensionEngine.LoadPackedAsync(db, playerId), 1));
+            Assert.Equal(new[] { "ascension_r1_s1", "ascension_r1_s2" },
+                (await TitleEngine.ListAsync(db, playerId)).Select(t => t.Slug).OrderBy(s => s));
+            Assert.Empty(await db.CosmeticItems.AsNoTracking().Where(c => c.PlayerId == playerId).ToListAsync());
+
+            // The boss can be marked beaten for a run and un-marked after it.
+            int boss1 = RaceUnlockRegistry.GetRegionBossMonsterId(1);
+            await BossAscensionEngine.DevRestoreAsync(db, playerId, 1, 2, bossDefeated: true);
+            Assert.True((await BossAscensionEngine.ViewAsync(db, playerId)).Single(b => b.Region == 1).BossDefeated);
+            await BossAscensionEngine.DevRestoreAsync(db, playerId, 1, 2, bossDefeated: false);
+            Assert.False(await db.MonsterCodexEntries.AsNoTracking().AnyAsync(c => c.PlayerId == playerId && c.MonsterId == boss1));
+
+            // Back to nothing, and the ladder pays again from the start.
+            await BossAscensionEngine.DevRestoreAsync(db, playerId, 1, 0);
+            Assert.Empty(await TitleEngine.ListAsync(db, playerId));
+            Assert.Single(await BossAscensionEngine.RecordClearAsync(db, playerId, 1, 1, DateTime.UtcNow));
+        }
+
+        [Fact]
         public async Task TheLadderViewSaysWhatIsClearedAndWhatCanBeStarted()
         {
             const long playerId = 957000002L;
@@ -416,6 +453,7 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(47, (int)CommandResultCode.AscensionStepLocked);
             Assert.Equal(48, (int)CommandResultCode.AscensionStepCleared);
             Assert.Equal(49, (int)CommandResultCode.AscensionTooSlow);
+            Assert.Equal(50, (int)CommandResultCode.AscensionRewardNotSaved);
             Assert.Equal(79, (int)CommandType.StartBossAscension);
         }
     }

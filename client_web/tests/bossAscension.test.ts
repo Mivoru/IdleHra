@@ -47,7 +47,7 @@ describe('boss ascension', () => {
     expect(packet.match(/StartBossAscension = (\d+)/)?.[1]).toBe(String(CommandType.StartBossAscension));
 
     const state = readFileSync(join(server, 'Network', 'StateUpdatePacket.cs'), 'utf8');
-    for (const name of ['AscensionBossNotDefeated', 'AscensionStepLocked', 'AscensionStepCleared', 'AscensionTooSlow']) {
+    for (const name of ['AscensionBossNotDefeated', 'AscensionStepLocked', 'AscensionStepCleared', 'AscensionTooSlow', 'AscensionRewardNotSaved']) {
       const code = Number(state.match(new RegExp(`${name} = (\\d+)`))?.[1]);
       expect(code, name).toBeGreaterThan(45);
       expect(COMMAND_RESULT_MESSAGES[code], name).toMatch(/\w{4,}/);
