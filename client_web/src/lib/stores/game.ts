@@ -582,6 +582,13 @@ if (import.meta.env.DEV) {
   (globalThis as Record<string, unknown>).__folkidleUnequip = (slotIndex: number) => {
     connection.send({ Command: CommandType.UnequipItem, TargetId: slotIndex });
   };
+  // Modul: undoing the Hall's fielding check. The swap puts an unarmed
+  // ancestor in slot 1, the tutorial's guided fence appears at once and covers
+  // the Hall, so the undo cannot be a click - the same command the Field
+  // buttons send (assignCharacterSlot), sent past the cover.
+  (globalThis as Record<string, unknown>).__folkidleAssignSlot = (characterId: string, slotIndex: number) => {
+    connection.send({ Command: CommandType.AssignCharacterSlot, TargetGuid: characterId, RequestedSlotIndex: slotIndex });
+  };
 
   // Task 50: a forced drop through the REAL handler - the reveal card, the
   // row burst and the pitched clip. Tier 7+ shows the card. Uses the first

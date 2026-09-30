@@ -3619,13 +3619,17 @@ await go('Ancestors');
     );
     await dismissToasts();
 
-    // Put slot 1 back the way it was.
+    // Put slot 1 back the way it was. Not a click: the ancestor now in slot 1
+    // wears nothing, so the tutorial's guided fence covers the Hall at once.
     if (displacedId !== null) {
-      const home = page.locator(`.panel li[data-character-id="${displacedId}"]`);
-      await home.locator('.field-slot', { hasText: /^1$/ }).first().click({ timeout: 5000 }).catch(() => {});
-      await page.waitForTimeout(3000);
-      const back = (await home.locator('.fielded').innerText().catch(() => '')).trim();
-      record('fielding is undone: slot 1 holds who it held before', back === 'slot 1', back || 'not fielded');
+      await page.evaluate((id) => globalThis.__folkidleAssignSlot?.(id, 0), displacedId);
+      let back = -1;
+      for (let i = 0; i < 20 && back !== 0; i++) {
+        await page.waitForTimeout(500);
+        const hall = await apiGet('/api/v1/ancestors/hall');
+        back = (hall?.Members ?? []).find((m) => m.CharacterId === displacedId)?.PlayableSlot ?? -1;
+      }
+      record('fielding is undone: slot 1 holds who it held before', back === 0, back === 0 ? '' : `playable slot ${back}`);
       await dismissToasts();
     } else {
       record('fielding is undone: slot 1 holds who it held before', false, 'slot 1 was empty or not found before the swap');
