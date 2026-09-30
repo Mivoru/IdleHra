@@ -351,6 +351,20 @@ namespace FolkIdle.Server.Engine
         public byte Inherit_GatheringYield;
         public byte Inherit_LootLuck;
 
+        // Modul: REBIRTH (task 88). RenownedRebirths is hydrated from
+        // PlayerRecords at login and never written back by the checkpoint -
+        // RebirthEngine is its one writer, and a rebirth ends in a reload, so
+        // the live copy is always the one the database just committed. Read on
+        // the damage path through RebirthRules.DamageBonusPct.
+        //
+        // RebirthPending is RUNTIME-ONLY: set on the tick when a rebirth
+        // suspends the session, it tells the Logout branch not to flush a
+        // payload that is about to be reset, and StateReloadMerge not to carry
+        // the old life's fight onto the reborn one. A reload replaces the
+        // payload, which clears it.
+        public int RenownedRebirths;
+        public bool RebirthPending;
+
         // Modul: SKILL TREE. Five bytes, one per branch, same shape and same
         // reasons as the inheritance bytes above: the cap is 20, and this
         // struct is blitted onto the wire so an array is not an option.

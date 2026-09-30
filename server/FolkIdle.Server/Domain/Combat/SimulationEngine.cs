@@ -1175,6 +1175,10 @@ namespace FolkIdle.Server.Domain.Combat
 
                 LarderTickCoordinator.DrainNotifications(_playerRegistry, _activePlayers);
 
+                // Task 88: rebirths asked for over REST - suspend, flush, and
+                // let the flush's continuation reset and reload.
+                FolkIdle.Server.Domain.Progression.RebirthTickCoordinator.Drain(_playerRegistry, _activePlayers, _checkpointManager);
+
                 GuildFanoutTickCoordinator.DrainWarScoreboard(_playerRegistry, _activePlayers, _guildMembersIndex);
 
                 InventoryCensusTickCoordinator.DrainCensus(_playerRegistry, _activePlayers);
@@ -1563,6 +1567,25 @@ namespace FolkIdle.Server.Domain.Combat
                             continue;
                     }
 
+                    // Modul: A REBIRTH IN FLIGHT TAKES NO COMMANDS (task 88).
+                    // The payload is the old life, already flushed and about
+                    // to be replaced by the reset. Anything that flushed it
+                    // again - a market command, a ReloadState an engine
+                    // enqueued - would queue a stale snapshot behind the
+                    // rebirth, which the epoch fence then refuses as a split
+                    // brain (compensation mail, forced disconnect). Answered,
+                    // not dropped: the client is told its state is stale, and
+                    // the reload arrives a moment later. Logout alone passes,
+                    // and its branch knows not to flush (below).
+                    if (currentPayload.RebirthPending && cmd.Command != CommandType.Logout)
+                    {
+                        if (cmd.Command != CommandType.ReloadState)
+                        {
+                            _playerRegistry.EnqueueCommandResult(routingPlayerId, (byte)CommandResultCode.StaleClientState);
+                        }
+                        continue;
+                    }
+
                     // Modul: the dispatch table is tried FIRST, then the
                     // branches that deliberately stay inline below. Each
                     // CommandType appears in exactly one of the two places, so
@@ -1833,6 +1856,14 @@ namespace FolkIdle.Server.Domain.Combat
                         // is SimulationEngine's job, not a coordinator's.
                         currentPayload.LastLogoutTimestamp = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         currentPayload.IsDirty = true;
+                        // Modul: task 88. A rebirth in flight has already
+                        // flushed everything this payload holds, and is about
+                        // to reset the rows it would write; flushing the old
+                        // life now would only queue a stale snapshot behind the
+                        // reset for the epoch fence to refuse. The next login
+                        // waits for the rebirth on the writer
+                        // (WaitForPendingFlushesAsync) like any other flush.
+                        //
                         // Modul: checkpoints off the tick thread (task 43). The
                         // last flush of a session is queued like every other;
                         // CheckpointWriter retries it (a logout has no next
@@ -1840,7 +1871,10 @@ namespace FolkIdle.Server.Domain.Combat
                         // writes a CHECKPOINT-DEADLETTER line - where a failed
                         // synchronous flush here used to lose it in silence.
                         // The next Login waits for it: see the Login branch.
-                        _checkpointManager.RequestFlush(ref currentPayload, FlushReason.Logout);
+                        if (!currentPayload.RebirthPending)
+                        {
+                            _checkpointManager.RequestFlush(ref currentPayload, FlushReason.Logout);
+                        }
                         currentPayload.IsSuspended = true;
                         // Modul: RemoveActivePlayer now clears
                         // PlayerSessionRegistry registration itself - see
@@ -3633,7 +3667,10 @@ namespace FolkIdle.Server.Domain.Combat
                 damageScalePerLevelPct,
                 payload.CurrentLevel,
                 InheritanceRegistry.GetBonusPct(payload.Inherit_Damage)
-                    + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Damage") * 2));
+                    + (FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Damage") * 2)
+                    // Task 88: Renown, the permanent rebirth bonus - a curve
+                    // under a ceiling (RebirthRules), in PowerCeilingTests.
+                    + RebirthRules.DamageBonusPct(payload.RenownedRebirths));
 
             // Modul: Prestige "combat speed" perk (LegacyPerkResolver) -
             // applied as a flat percent boost to effective damage output per

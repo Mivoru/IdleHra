@@ -813,7 +813,8 @@ namespace FolkIdle.Server.Engine
         // never catch a wrong argument or a swapped order.
         private static long EffectiveMilliAttackFor(ref TickStatePayload payload, in CombatStats combatStats, int damageScalePerLevelPct)
         {
-            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, damageScalePerLevelPct, payload.CurrentLevel, InheritanceRegistry.GetBonusPct(payload.Inherit_Damage));
+            long effectiveMilliAttack = StatsCalculator.ComputeEffectiveMilliAttack(in combatStats, damageScalePerLevelPct, payload.CurrentLevel,
+                InheritanceRegistry.GetBonusPct(payload.Inherit_Damage) + RebirthRules.DamageBonusPct(payload.RenownedRebirths));
             effectiveMilliAttack = BloodlineBonuses.ApplyAttack(effectiveMilliAttack, payload.Aptitude_Strength, TraitTotals.From(payload.TraitMask));
             return effectiveMilliAttack;
         }
