@@ -33,7 +33,8 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(CosmeticRegistry.All.Count, CosmeticRegistry.All.Select(d => d.Id).Distinct().Count());
 
             int Avatars(int r) => CosmeticRegistry.All.Count(d => d.Kind == CosmeticKind.Avatar && d.Rarity == r);
-            int Frames(int r) => CosmeticRegistry.All.Count(d => d.Kind == CosmeticKind.Frame && d.Rarity == r);
+            // Bound frames (task 87's Ascension rewards) are earned, not in a chest pool.
+            int Frames(int r) => CosmeticRegistry.All.Count(d => d.Kind == CosmeticKind.Frame && d.Rarity == r && !d.Bound);
 
             Assert.Equal(new[] { 8, 8, 6, 3 }, Enumerable.Range(1, 4).Select(Avatars));
             Assert.Equal(new[] { 4, 4, 4, 4 }, Enumerable.Range(1, 4).Select(Frames));

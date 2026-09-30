@@ -42,14 +42,25 @@ namespace FolkIdle.Server.Domain.Combat
         public readonly double PlayerMilliDps;
         public readonly double BossMilliDps;
 
+        /// <summary>Task 87: what the fight cost the character - total damage taken, bites eaten and the lowest the bar fell (0-1).</summary>
+        public readonly double MilliDamageTaken;
+        public readonly int BitesEaten;
+        public readonly double MinHpFraction;
+
         public BossFightProjection(
             double secondsToKillBoss,
             double secondsToPlayerDeath,
             long bossMilliHp,
             long playerMilliHp,
             double playerMilliDps,
-            double bossMilliDps)
+            double bossMilliDps,
+            double milliDamageTaken = 0.0,
+            int bitesEaten = 0,
+            double minHpFraction = 1.0)
         {
+            MilliDamageTaken = milliDamageTaken;
+            BitesEaten = bitesEaten;
+            MinHpFraction = minHpFraction;
             SecondsToKillBoss = secondsToKillBoss;
             SecondsToPlayerDeath = secondsToPlayerDeath;
             BossMilliHp = bossMilliHp;
@@ -156,9 +167,20 @@ namespace FolkIdle.Server.Domain.Combat
                 firstClear ? (byte)0 : BossFirstClearRules.MarkDefeated(0, bossMonsterId),
                 attackMultiplierOverride: 0.0, withFood);
 
+        /// <summary>
+        /// Task 87: an Ascension step's fight against a boss already beaten - the
+        /// same projection with the step's cumulative modifiers applied through
+        /// BossAscensionRules, the very functions the tick calls, so the ladder
+        /// is measured by the code that plays it and not by a second copy.
+        /// </summary>
+        public static BossFightProjection ProjectAscension(
+            int bossMonsterId, in ReferenceLoadout gear, in AscensionModifiers modifiers, double extraAttackMultiplier = 1.0)
+            => Project(bossMonsterId, in gear, BossFirstClearRules.MarkDefeated(0, bossMonsterId),
+                attackMultiplierOverride: extraAttackMultiplier, withFood: true, modifiers: modifiers);
+
         private static BossFightProjection Project(
             int bossMonsterId, in ReferenceLoadout gear, byte defeatedMask, double attackMultiplierOverride,
-            bool withFood = true, double hpMultiplierOverride = 0.0)
+            bool withFood = true, double hpMultiplierOverride = 0.0, AscensionModifiers modifiers = default)
         {
             MonsterDefinition boss = ContentRegistry.Monsters[bossMonsterId - 1];
 
@@ -186,6 +208,8 @@ namespace FolkIdle.Server.Domain.Combat
             long bossAttackPower = attackMultiplierOverride > 0.0
                 ? (long)(ContentRegistry.GetScaledMonsterAttackPower(bossMonsterId) * attackMultiplierOverride)
                 : BossFirstClearRules.AttackPowerFor(defeatedMask, bossMonsterId);
+            bossMilliHp = BossAscensionRules.ScaleBossHp(bossMilliHp, in modifiers);
+            bossAttackPower = BossAscensionRules.ScaleBossAttack(bossAttackPower, in modifiers);
 
             double playerMilliDamagePerSwing = CombatDamageModel.ExpectedMilliDamagePerSwing(
                 in stats, in boss, rawMilliAttack, codexDamageMultiplier: 1f);
@@ -218,6 +242,9 @@ namespace FolkIdle.Server.Domain.Combat
 
             double secondsToKill = double.PositiveInfinity;
             double secondsToDeath = double.PositiveInfinity;
+            double damageTaken = 0.0;
+            int bitesEaten = 0;
+            double minHpFraction = 1.0;
 
             for (int tick = 1; tick <= MaxTicks; tick++)
             {
@@ -241,6 +268,8 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     bossSwingAccumulator -= bossIntervalMs;
                     playerMilliHp -= bossMilliDamagePerSwing;
+                    damageTaken += bossMilliDamagePerSwing;
+                    minHpFraction = Math.Min(minHpFraction, playerMilliHp / playerMaxMilliHp);
                 }
 
                 if (remainingBossMilliHp <= 0)
@@ -264,6 +293,7 @@ namespace FolkIdle.Server.Domain.Combat
                 else if (playerMilliHp <= eatThreshold && healPerBite > 0)
                 {
                     playerMilliHp = Math.Min(playerMaxMilliHp, playerMilliHp + healPerBite);
+                    bitesEaten++;
                     eatCooldownTicks = SimulationEngine.AutoEatCooldownTicks;
                 }
             }
@@ -272,7 +302,8 @@ namespace FolkIdle.Server.Domain.Combat
             double bossDps = bossMilliDamagePerSwing * (1000.0 / bossIntervalMs);
 
             return new BossFightProjection(
-                secondsToKill, secondsToDeath, bossMilliHp, playerMaxMilliHp, playerDps, bossDps);
+                secondsToKill, secondsToDeath, bossMilliHp, playerMaxMilliHp, playerDps, bossDps,
+                damageTaken, bitesEaten, minHpFraction);
         }
 
         /// <summary>

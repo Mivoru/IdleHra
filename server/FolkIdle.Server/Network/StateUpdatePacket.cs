@@ -278,7 +278,27 @@ namespace FolkIdle.Server.Network
         // Modul: the epoch gate's answer (CommandGateVerdict.RefuseStale). The
         // client acted on a screen several checkpoints old - typically just
         // back from the background. It used to be a disconnect.
-        StaleClientState = 45
+        StaleClientState = 45,
+
+        // Modul: THE BOSS ASCENSION LADDER (task 87). StartBossAscension answers
+        // instead of acting - never silently and never with a disconnect, because
+        // the button is a menu choice, not evidence of a tampered client.
+        //
+        // 46: the boss has never been beaten - a ladder is climbed against a
+        // boss you have already put down once. 47: a step above the one after
+        // your highest cleared. 48 and 49 are not answers to a command: 48 is
+        // sent by the reward worker AFTER the step's titles and frames are saved,
+        // and 49 by the tick for a kill that landed after the step's time limit,
+        // which leaves the attempt armed for the boss's respawn.
+        AscensionBossNotDefeated = 46,
+        AscensionStepLocked = 47,
+        AscensionStepCleared = 48,
+        AscensionTooSlow = 49,
+
+        // The step was cleared but its reward could not be saved (a database
+        // blip). Nothing is lost: the next cleared step pays every step between
+        // what is stored and what it cleared.
+        AscensionRewardNotSaved = 50
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -911,6 +931,13 @@ namespace FolkIdle.Server.Network
         public ushort BossBestKillTenthsR3;
         public ushort BossBestKillTenthsR4;
         public ushort BossBestKillTenthsR5;
+
+        // Modul: the armed Boss Ascension step (task 87), 0 when none. On the
+        // wire because it is a fact about the live fight the client cannot
+        // derive - a death, a reload or a change of activity ends an attempt and
+        // nothing else says so. Runtime only by design: an attempt does not
+        // survive a relogin.
+        public byte AscensionStep;
 
         // Modul: Production Release Hardening, Part 2. ClaimedMilestonesBitmask,
         // ActiveChroniclePassLevel, AccumulatedSeasonalXp,

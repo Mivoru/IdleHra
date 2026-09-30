@@ -92,6 +92,7 @@ namespace FolkIdle.Server.Tests
             ["ActiveChildMaturationMs"] = "recomputed by the tick",
             ["ActiveChallengeSeed"] = "anti-cheat challenge, per session by design",
             ["NetworkDiagnosticsToken"] = "per-connection diagnostic",
+            ["AscensionStep"] = "the armed Boss Ascension attempt (task 87): a live fight does not survive a relogin, and the ladder's progress is loaded as BossAscensionPacked",
 
             // The victory and death cards, and the offline summary: shown once
             // and dismissed. The *Tick bytes are EDGES, never values.

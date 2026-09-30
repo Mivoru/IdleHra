@@ -214,7 +214,11 @@ namespace FolkIdle.Server.Network
         // Modul: simulation speed removed, 819 -> 810 (owner, 2026-09-28).
         // AccumulatedTimeBankMs (long) and CurrentSimulationSpeedMultiplier
         // (byte) went with the Store's speed buttons and the bank they spent.
-        public const int ExpectedStateUpdateSize = 810;
+        //
+        // Modul: Boss Ascension, 810 -> 811 (task 87). AscensionStep (1 byte),
+        // the step armed on the live boss fight. The client cannot derive it: a
+        // death, a reload or a change of activity ends an attempt silently.
+        public const int ExpectedStateUpdateSize = 811;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

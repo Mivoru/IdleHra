@@ -30,6 +30,8 @@ namespace FolkIdle.Server.Domain.Economy
         /// <summary>An anti-cheat quarantined account cannot trade.</summary>
         Quarantined,
         PlayerNotFound,
+        /// <summary>Task 87: an earned Ascension frame - bound to its owner, never listable.</summary>
+        Bound,
     }
 
     public sealed record CosmeticListingView(
@@ -116,6 +118,11 @@ namespace FolkIdle.Server.Domain.Economy
             {
                 await tx.RollbackAsync();
                 return CosmeticMarketResult.NotYours;
+            }
+            if (CosmeticRegistry.Find(item.DefinitionId)!.Bound)
+            {
+                await tx.RollbackAsync();
+                return CosmeticMarketResult.Bound;
             }
             if (item.IsListed)
             {
