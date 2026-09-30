@@ -222,10 +222,12 @@ namespace FolkIdle.Server.Domain.Economy
                 // THE BRANCH PROMISED SOMETHING THIS GAME CANNOT DO. Its first
                 // wording was "crafting finishes sooner", and crafting here is
                 // instantaneous - ExecuteCraftingAsync has no duration to
-                // shorten and PlayerCraftingSlot.CompletionEpoch is a column
-                // nothing has ever written. Rather than invent a timer so a
-                // node could reduce it, the node now does the half of its
-                // promise the game actually has.
+                // shorten. (PlayerCraftingSlot.CompletionEpoch, a column
+                // nothing wrote when this was said, is the Workshop
+                // commission's clock since task 83 - WorkshopCommissionEngine;
+                // the bench's crafts are still instant.) Rather than invent a
+                // timer so a node could reduce it, the node now does the half
+                // of its promise the game actually has.
                 //
                 // ONE ROLL FOR THE WHOLE CRAFT, not one per material: "this
                 // craft was free" is a thing a player can notice, while "one of

@@ -254,15 +254,14 @@ namespace FolkIdle.Server.Network
         // and arms the step on it; no database on the tick thread.
         StartBossAscension = 79,
 
-        // Modul: DepositGreatWork (task 84) puts materials into a Great Work
-        // (opcodes 80-81 belong to task 83, 85-87 to others). TargetId is the
-        // monument (its REGION, 1-5), SecondaryId which of that region's
+        // Modul: DepositGreatWork (task 84) puts materials into a Great Work.
+        // TargetId is the monument (its REGION, 1-5), SecondaryId which of that region's
         // materials (0 its common log, 1 its common ore) and DepositQuantity how
         // many - 0 meaning "all I hold, up to what the stage still needs". The
         // server decides everything else: the item, the stage's cost, the clamp
         // to what the stage still needs, and the bonus. See
         // GreatWorksTickCoordinator. Every refusal is a command result.
-        DepositGreatWork = 82
+        DepositGreatWork = 80
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

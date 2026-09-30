@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260930135636_AddWorkshopCommissions")]
+    partial class AddWorkshopCommissions
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -223,9 +226,6 @@ namespace FolkIdle.Server.Migrations
                         .HasColumnType("integer");
 
                     b.Property<long>("AgeTicks")
-                        .HasColumnType("bigint");
-
-                    b.Property<long>("AutomationRules")
                         .HasColumnType("bigint");
 
                     b.Property<long>("BreedingCooldownEndEpoch")
@@ -684,28 +684,6 @@ namespace FolkIdle.Server.Migrations
                     b.HasKey("PlayerId", "Day", "Category");
 
                     b.ToTable("gold_spend_daily");
-                });
-
-            modelBuilder.Entity("FolkIdle.Server.Models.GreatWorkProgress", b =>
-                {
-                    b.Property<long>("PlayerId")
-                        .HasColumnType("bigint");
-
-                    b.Property<byte>("Region")
-                        .HasColumnType("smallint");
-
-                    b.Property<long>("Progress")
-                        .HasColumnType("bigint");
-
-                    b.Property<byte>("Stage")
-                        .HasColumnType("smallint");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("PlayerId", "Region");
-
-                    b.ToTable("great_works_progress");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.GuildActiveBuff", b =>

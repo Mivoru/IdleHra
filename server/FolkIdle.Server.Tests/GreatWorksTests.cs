@@ -316,7 +316,7 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void TheOpcodesAndResultCodesAreTheAgreedBlock()
         {
-            Assert.Equal(82, (int)CommandType.DepositGreatWork);
+            Assert.Equal(80, (int)CommandType.DepositGreatWork);
             Assert.Equal(60, (int)CommandResultCode.GreatWorkDeposited);
             Assert.Equal(61, (int)CommandResultCode.GreatWorkStageBuilt);
             Assert.Equal(62, (int)CommandResultCode.GreatWorkComplete);

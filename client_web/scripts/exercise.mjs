@@ -1037,6 +1037,114 @@ await go('Crafting');
   }
 }
 
+// --- Workshop commissions (task 83) ------------------------------------------
+// The material sink: one region piece at the Workshop's rarity floor, with an
+// affix the player picks, for hours and tens of thousands of materials. Proved
+// by what CHANGED - the quoted materials leave the stock, a clock starts, and
+// collecting puts a piece in the chest carrying the chosen affix at Common.
+//
+// ROUND-TRIPS the fixture: the dev route finishes the order at once AND gives
+// its price back, and the collected piece is binned - so the stock and the
+// chest end where they started and this passes on every run, not once.
+await go('Crafting');
+{
+  const panel = page.locator('[data-testid="workshop-commissions"]');
+  const shown = await panel.waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+  record('the Crafting screen offers Workshop commissions', shown);
+
+  let view = await apiGet('/api/v1/workshop');
+  // A run interrupted mid-step leaves an order standing; clear it first so the
+  // check below starts from an empty Workshop (refund, collect, bin).
+  if (view?.Commission) {
+    await apiPost('/api/v1/dev/workshop/finish', { Refund: true });
+    const leftover = await apiPost('/api/v1/workshop/collect', {});
+    if (leftover?.Collected) await apiPost('/api/v1/chest/discard', { equipmentId: leftover.Collected.InstanceId });
+    view = await apiGet('/api/v1/workshop');
+  }
+
+  // Region 1, always: it is open to every account, and its Common floor costs
+  // a few thousand of what the fixture is seeded with - a deeper region the
+  // fixture happens to have opened would ask for ten times its stock.
+  const region = (view?.Regions ?? []).find((r) => r.Region === 1 && r.Unlocked);
+  if (!view || !region) {
+    record('a commission spends its quoted materials and starts the clock', false, '/api/v1/workshop did not answer');
+  } else if (view.WorkshopLevel === 0 || region.FloorTier === 0) {
+    record('a commission spends its quoted materials and starts the clock', false, 'the fixture has no Workshop - re-seed');
+  } else if (!region.Affordable) {
+    record(
+      'a commission spends its quoted materials and starts the clock',
+      false,
+      `the fixture cannot pay ${region.Cost.map((l) => `${l.Quantity} ${l.ItemId} (has ${l.Held})`).join(', ')} - re-seed`,
+    );
+  } else {
+    const piece = region.Pieces[0];
+    const affix = piece.Affixes[0];
+    const heldBefore = Object.fromEntries(region.Cost.map((l) => [l.ItemId, l.Held]));
+
+    const regionChip = panel.locator('button.chip', { hasText: /^\s*Region 1\s*$/ });
+    if ((await regionChip.count()) > 0) await regionChip.first().click();
+    await panel.locator('[data-testid="workshop-pieces"] button').first().click();
+    await panel.locator('[data-testid="workshop-affixes"] button').first().click();
+    await panel.locator('[data-testid="workshop-commission"]').click();
+    const started = await panel
+      .locator('[data-testid="workshop-running"]')
+      .waitFor({ timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+
+    const placed = await apiGet('/api/v1/workshop');
+    const placedRegion = placed?.Regions.find((r) => r.Region === region.Region);
+    const charged = (placedRegion?.Cost ?? []).every((l) => l.Held === heldBefore[l.ItemId] - l.Quantity);
+    const countdown = await panel.locator('[data-testid="workshop-countdown"]').innerText().catch(() => '');
+    record(
+      'a commission spends its quoted materials and starts the clock',
+      started && charged && placed?.Commission?.ItemId === piece.ItemId && placed.Commission.ChosenAffixId === affix
+        && !placed.Commission.Ready && /Ready in/.test(countdown),
+      `${piece.BaseItemId} + ${affix}, floor ${placed?.Commission?.FloorName}, "${countdown}"`,
+    );
+
+    // Finish it now and give the price back, then collect it in the UI.
+    await apiPost('/api/v1/dev/workshop/finish', { Refund: true });
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1200);
+    await dismissOfflineSummary(3000);
+    await go('Crafting');
+
+    const inventoryBefore = ((await apiGet('/api/v1/player/inventory'))?.Equipment ?? []).map((e) => e.Id);
+    const collectBtn = panel.locator('[data-testid="workshop-collect"]');
+    const enabled = await collectBtn
+      .and(page.locator('button:not([disabled])'))
+      .waitFor({ timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+    if (enabled) await collectBtn.click();
+    const collectedLine = await panel
+      .locator('[data-testid="workshop-collected"]')
+      .waitFor({ timeout: 10000 })
+      .then(() => true)
+      .catch(() => false);
+
+    const inventoryAfter = (await apiGet('/api/v1/player/inventory'))?.Equipment ?? [];
+    const fresh = inventoryAfter.filter((e) => !inventoryBefore.includes(e.Id));
+    const made = fresh.find((e) => e.BaseItemId === piece.BaseItemId);
+    record(
+      'collecting a commission puts the piece in the chest with the chosen affix at Common',
+      enabled && collectedLine && !!made && made.QualityTier >= region.FloorTier && `${affix}@1` in (made.Affixes ?? {}),
+      made ? `T${made.QualityTier} ${Object.keys(made.Affixes ?? {}).join(', ')}` : `nothing new of ${piece.BaseItemId}`,
+    );
+
+    // Restore: bin the piece; the refund already put the stock back.
+    if (made) await apiPost('/api/v1/chest/discard', { equipmentId: made.Id });
+    const after = await apiGet('/api/v1/workshop');
+    const afterRegion = after?.Regions.find((r) => r.Region === region.Region);
+    record(
+      'the commission check leaves the fixture as it found it',
+      !after?.Commission && (afterRegion?.Cost ?? []).every((l) => l.Held === heldBefore[l.ItemId]),
+      (afterRegion?.Cost ?? []).map((l) => `${l.ItemId} ${heldBefore[l.ItemId]} -> ${l.Held}`).join(', '),
+    );
+  }
+}
+
 // --- guild -------------------------------------------------------------------
 await go('Guild');
 {

@@ -140,6 +140,61 @@ namespace FolkIdle.Server.Tests
             Assert.InRange(villageOneUpgradeMax / endgameCommon * 60.0, 0.05, 20.0);
         }
 
+        /// <summary>
+        /// Task 83: the Workshop commission is priced FROM this file's supply
+        /// measurement. Its reference gatherers for regions 1, 3 and 5 must be
+        /// this file's own profiles, each price line must be what that gatherer
+        /// yields in the commission's hours, and the result must sit in the
+        /// band the owner asked for - tens of thousands, a real sink for the
+        /// endgame account that holds 1.8 million of one log, never a wall.
+        /// </summary>
+        [Fact]
+        public void Test_WorkshopCommission_IsPricedFromThisSupply()
+        {
+            // The same profiles, by construction rather than by coincidence.
+            (int Region, Profile Profile)[] anchors = { (1, Profiles[1]), (3, Profiles[2]), (5, Profiles[3]) };
+            foreach (var (region, p) in anchors)
+            {
+                var g = Domain.Economy.WorkshopCommissionRules.ReferenceGathererFor(region);
+                Assert.Equal((p.Mastery, p.ToolTier, p.Village, p.CodexYield), (g.Mastery, g.ToolTier, g.VillageLevel, g.CodexYield));
+                Assert.Equal(UnitsPerHour(p.BaseTicks, p.Mastery, p.ToolTier, p.Village, p.CodexYield),
+                    Domain.Economy.WorkshopCommissionRules.ReferenceUnitsPerHour(region, mining: false), 6);
+            }
+
+            var maxed = Profiles[^1];
+            double maxedCommon = UnitsPerHour(maxed.BaseTicks, maxed.Mastery, maxed.ToolTier, maxed.Village, maxed.CodexYield) * 0.9;
+
+            _o.WriteLine("region  floor       hours   wood/h   ore/h    total units   h of a MAXED gatherer (common, per line)");
+            for (int region = 1; region <= 5; region++)
+            {
+                int floor = Domain.Economy.WorkshopCommissionRules.FloorTierFor(VillageManagementEngine.MaxStructuralBuildingLevel, region);
+                double hours = Domain.Economy.WorkshopCommissionRules.DurationSecondsFor(floor) / 3600.0;
+                double wood = Domain.Economy.WorkshopCommissionRules.ReferenceUnitsPerHour(region, mining: false);
+                double ore = Domain.Economy.WorkshopCommissionRules.ReferenceUnitsPerHour(region, mining: true);
+                var lines = Domain.Economy.WorkshopCommissionRules.Quote(region, floor);
+                long total = lines.Sum(l => l.Quantity);
+
+                // Each line is the reference gatherer's output for the
+                // commission's duration, rounded UP to 500 (commons) / 50 (rares).
+                Assert.InRange(lines[0].Quantity, wood * hours * 0.9, wood * hours * 0.9 + 500);
+                Assert.InRange(lines[1].Quantity, ore * hours * 0.9, ore * hours * 0.9 + 500);
+                Assert.InRange(lines[2].Quantity, wood * hours * 0.1, wood * hours * 0.1 + 50);
+                Assert.InRange(lines[3].Quantity, ore * hours * 0.1, ore * hours * 0.1 + 50);
+
+                double maxedHours = lines[0].Quantity / maxedCommon;
+                _o.WriteLine($"  {region}     {RarityTier.GetName(floor),-10} {hours,5:F0}  {wood,7:F0}  {ore,6:F0}   {total,11:N0}   {maxedHours,6:F2} h");
+
+                // A sink the top of the economy still feels: never under a
+                // quarter of an hour of the best gatherer in the game per line,
+                // and a region-5 Epic never over the whole crafting tree.
+                Assert.True(maxedHours >= 0.1, $"region {region}: a commission is {maxedHours:F2} h of a maxed gatherer - decoration.");
+            }
+
+            long regionFiveEpic = Domain.Economy.WorkshopCommissionRules.Quote(5, RarityTier.Epic).Sum(l => l.Quantity);
+            long tree = ContentRegistry.Recipes.ToArray().Sum(r => (long)r.Mat1Count + r.Mat2Count);
+            Assert.True(regionFiveEpic < tree, $"a single commission ({regionFiveEpic:N0}) costs more than the whole crafting tree ({tree:N0}).");
+        }
+
         [Fact]
         public void Test_Gathering_TheToolIsTheDominantLeverAgain()
         {

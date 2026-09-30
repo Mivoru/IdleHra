@@ -469,6 +469,12 @@ namespace FolkIdle.Server.Engine
                 one ? $"DELETE FROM \"EquipmentInstances\"{Where("\"PlayerId\"")}" : "TRUNCATE TABLE \"EquipmentInstances\" RESTART IDENTITY CASCADE",
                 stoppingToken);
 
+            // Modul: a Workshop commission in progress is equipment on its way
+            // (task 83). Left standing, a rebirth would hand a level-1 run the
+            // Epic region-5 piece the old run paid for - the one piece of gear
+            // that would survive the wipe above.
+            await db.Database.ExecuteSqlRawAsync($"DELETE FROM \"PlayerCraftingSlots\"{Where("\"PlayerId\"")}", stoppingToken);
+
             await db.Database.ExecuteSqlRawAsync("DELETE FROM \"MarketOrderRecords\" o USING \"MarketEquipmentInstances\" e WHERE o.\"EquipmentInstanceId\" = e.\"Id\" AND e.\"IsLockedInEscrow\" = FALSE AND o.\"Status\" = 0 AND o.\"OrderType\" = 'SELL'" + And("e.\"PlayerId\""), stoppingToken);
             await db.Database.ExecuteSqlRawAsync("UPDATE \"MarketOrderRecords\" o SET \"EquipmentInstanceId\" = NULL FROM \"MarketEquipmentInstances\" e WHERE o.\"EquipmentInstanceId\" = e.\"Id\" AND e.\"IsLockedInEscrow\" = FALSE" + And("e.\"PlayerId\""), stoppingToken);
             // Modul 41: this TRUNCATE must run after the two statements

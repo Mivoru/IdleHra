@@ -444,7 +444,7 @@ export const CommandType = {
   RespecAttributes: 77,
   FuseStack: 78,
   StartBossAscension: 79,
-  DepositGreatWork: 82,
+  DepositGreatWork: 80,
 } as const;
 
 export type CommandTypeName = keyof typeof CommandType;

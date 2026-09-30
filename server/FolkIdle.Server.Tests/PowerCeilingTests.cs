@@ -345,6 +345,59 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        /// <summary>
+        /// Task 83: a Workshop commission buys a rarity FLOOR, and the owner's
+        /// rule is that the floor stays below the region's usual drop - so that
+        /// the Workshop is a sink with a reward, never a shortcut past the
+        /// ladder. Time to region 5 (~26 days, LONG_GAME_SPEC section 7) must
+        /// not fall below ~20, and region progress is gated by the boss walls.
+        /// </summary>
+        /// <remarks>
+        /// Modul: "USUAL DROP" IS THE TIER THE REGION'S BOSS WALL ASSUMES.
+        /// The median SINGLE drop is Normal everywhere (ItemRarityPowerTests
+        /// .PrintTheDropDistribution_AndWhereItsMedianFalls) and every floor is
+        /// above that by construction, so it cannot be the anchor. A player
+        /// wears the best of many drops, and BossFirstClearRules writes down
+        /// what that best is per region. Two things are asserted against it:
+        /// the floor is strictly below it at every Workshop level, and a full
+        /// wardrobe of commissioned pieces at the best floor - Common affixes
+        /// on everything, not only the chosen one, which is the pessimistic
+        /// side - LOSES the region's first clear. A Workshop can never open a
+        /// region, so it cannot shorten the climb to region 5.
+        /// </remarks>
+        [Fact]
+        public void TheWorkshopCommissionFloorStaysBelowEveryRegionsUsualDrop()
+        {
+            _o.WriteLine("region  usual (wall)  best floor   full set at the floor vs the first clear");
+            for (int region = RaceUnlockRegistry.FirstRegion; region <= RaceUnlockRegistry.LastRegion; region++)
+            {
+                int usual = BossFirstClearRules.RequiredQualityTierFor(region);
+
+                int best = 0;
+                for (int workshop = 0; workshop <= Domain.Progression.VillageManagementEngine.MaxStructuralBuildingLevel + 2; workshop++)
+                {
+                    int floor = Domain.Economy.WorkshopCommissionRules.FloorTierFor(workshop, region);
+                    Assert.True(floor < usual,
+                        $"region {region}: Workshop {workshop} commissions at {RarityTier.GetName(floor)} ({floor}), "
+                        + $"not below the {RarityTier.GetName(usual)} ({usual}) the region's gear is calibrated to.");
+                    Assert.InRange(floor, 0, RarityTier.Epic); // the owner's T2-T6
+                    best = Math.Max(best, floor);
+                }
+
+                var wardrobe = new ReferenceLoadout(BossGearBenchmark.ReferenceLevelForRegion(region), region, best, AffixRarity.Common);
+                var fight = BossGearBenchmark.ProjectFirstClear(RaceUnlockRegistry.GetRegionBossMonsterId(region), in wardrobe);
+
+                _o.WriteLine($"  {region}     {RarityTier.GetName(usual),-12}  {RarityTier.GetName(best),-10}   "
+                    + (fight.PlayerWins ? "WINS" : "loses")
+                    + $" (kill {fight.SecondsToKillBoss:F0} s, dies {fight.SecondsToPlayerDeath:F0} s)"
+                    + $"  power {RarityTier.PowerMultiplier(best):F2}x vs {RarityTier.PowerMultiplier(usual):F2}x");
+
+                Assert.False(fight.PlayerWins,
+                    $"region {region}: eight commissioned pieces at {RarityTier.GetName(best)} beat the boss wall - "
+                    + "the Workshop has become a way past the ladder, and time to region 5 moves with it.");
+            }
+        }
+
         private static Span<int> FullSet()
         {
             // Every slot in the offensive Linen set at Transcendent - the top
