@@ -6445,7 +6445,15 @@ N1-N7.
 
 ## 96. Settings
 
-**OPEN.** Report section 5. This is visual review C, S1-S5.
+**BUILT on branch `claude/ui-96-settings`, not merged.** One column of
+closed panels (`lib/ui/SettingsFold.svelte`, open state remembered per
+browser), Account with Sign out first and never folded; explanations list only
+the seen ones plus "N more unlock as you play"; translation keys/coverage, cue
+tester and Session moved into an admin-only Developer panel; admin grid
+`minmax(min(300px, 100%), 1fr)`. Still open: the page height, Sign out's
+position and 360 px fit are unmeasured (no browser run on the branch), and
+`exercise.mjs` step 5 was rewritten for the folds and has not been run. Owner:
+the screenshot. Report section 5. This is visual review C, S1-S5.
 
 **What is actually true.**
 - **The page is 7,417 px tall at 390** (`settings-fixture-390.png`).

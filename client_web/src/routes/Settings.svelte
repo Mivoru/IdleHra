@@ -37,8 +37,46 @@
   import { submitSupportTicket, scrubTrace, fetchAdminStatus, fetchAdminSeason, adminEndSeasonNow, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
   import { runningBundleVersion } from '../lib/net/liveUpdate';
+  import SettingsFold from '../lib/ui/SettingsFold.svelte';
+  import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
+  import DisabledReason from '../lib/ui/DisabledReason.svelte';
 
   const snap = $derived($playerState);
+
+  // Modul: WHICH PANELS ARE OPEN (task 96). Every panel starts closed - the
+  // page was 7,417 px at 390 with Sign out at the bottom - and a panel the
+  // player opened stays open on their next visit. Browser storage is right
+  // for this: it is a per-viewer convenience, and losing it (a private
+  // window, cleared site data) only means the panels start closed again.
+  //
+  // Every key is present from the start, because `bind:open` onto an
+  // undefined property of a prop with a fallback throws at runtime.
+  const PANEL_KEYS = ['language', 'sound', 'notify', 'gameplay', 'access', 'tutorial', 'support', 'dev'] as const;
+  type PanelKey = (typeof PANEL_KEYS)[number];
+  const OPEN_PANELS_KEY = 'folkidle.settings.openPanels';
+
+  function readOpenPanels(): Record<PanelKey, boolean> {
+    const result = Object.fromEntries(PANEL_KEYS.map((k) => [k, false])) as Record<PanelKey, boolean>;
+    try {
+      const stored = JSON.parse(localStorage.getItem(OPEN_PANELS_KEY) ?? '{}');
+      for (const key of PANEL_KEYS) if (stored?.[key] === true) result[key] = true;
+    } catch {
+      // Unreadable or blocked storage: everything starts closed.
+    }
+    return result;
+  }
+
+  const panels = $state(readOpenPanels());
+  $effect(() => {
+    const json = JSON.stringify(panels);
+    try {
+      localStorage.setItem(OPEN_PANELS_KEY, json);
+    } catch {
+      // Storage refused; the panels still work for this visit.
+    }
+  });
+
+  const currentLanguageName = $derived(LANGUAGES.find((l) => l.code === $language)?.name ?? '');
 
   onMount(() => {
     void loadTranslations();
@@ -192,8 +230,12 @@
 
   // Modul: RE-OPENABLE, because an idle game gets replayed by people who
   // already know it - and by people who dismissed something on the way past
-  // and then wanted it. Every explanation in the game is listed here with its
-  // full text, so nothing is reachable exactly once.
+  // and then wanted it. Every explanation the player has SEEN is listed here
+  // with its full text, so nothing is reachable exactly once.
+  //
+  // Only the seen ones (task 96). Listing all 27 in full showed a guest every
+  // future system in one wall - the opposite of introducing each one when the
+  // player reaches it. The unseen remainder is a count, never a title or body.
   const explanations = $derived(
     // Modul: BOTH reactive tiers. An objective the player dismissed is as
     // unreachable afterwards as a discovery they dismissed, so leaving tier
@@ -204,7 +246,10 @@
       seen: $seenExplanations.has(moment.id),
     })),
   );
-  const seenCount = $derived(explanations.filter((e) => e.seen).length);
+  const seenExplanationList = $derived(explanations.filter((e) => e.seen));
+  const seenCount = $derived(seenExplanationList.length);
+  const lockedCount = $derived(explanations.length - seenCount);
+  let showSeenExplanations = $state(false);
 
   const clipNames = Object.keys(CLIPS) as ClipName[];
 
@@ -316,6 +361,7 @@
 
   let supportMessage = $state('');
   let supportSent = $state(false);
+  let showTrace = $state(false);
 
   /**
    * The diagnostic bundle. Deliberately assembled from things this client
@@ -383,43 +429,44 @@
   }
 </script>
 
-<div class="grid">
-  <section class="panel">
-    <h2>Language</h2>
+<!-- Modul: TASK 96. One column of separate panels, Account first, every other
+     panel closed until asked for. Sign out was the last panel of a 7,417 px
+     page, and on a phone it is the ONLY sign-out (the header drops it), so it
+     sits in the first viewport now and is never folded away. -->
+<div class="settings">
+  <section class="panel account" data-testid="settings-account">
+    <div class="account-row">
+      <div class="account-text">
+        <h2>Account</h2>
+        <p class="dim small">Your characters keep their jobs while you are away.</p>
+      </div>
+      <button class="signout" onclick={requestSignOut}>Sign out</button>
+    </div>
+  </section>
+
+  <SettingsFold id="language" title="Language" summary={currentLanguageName} bind:open={panels.language}>
     <p class="dim small">
-      Where a line has no translation yet, it is shown in English.
+      Most of the game is still in English. Where a line has no translation
+      yet, it is shown in English.
     </p>
 
     <div class="langs">
       {#each LANGUAGES as lang}
         <button
           class:active={$language === lang.code}
+          aria-pressed={$language === lang.code}
           onclick={() => pickLanguage(lang.code, lang.wireId)}
         >
           {lang.name}
-          {#if $translations.size > 0}
-            <span class="dim tiny">{coverage(lang.code)}/{$translations.size}</span>
+          {#if lang.code !== 'En'}
+            <span class="dim tiny">partially translated</span>
           {/if}
         </button>
       {/each}
     </div>
+  </SettingsFold>
 
-    {#if $translations.size > 0}
-      <h3>Sample</h3>
-      <ul class="samples">
-        <li><span class="dim tiny">EventNone</span> {$t('EventNone')}</li>
-        <li><span class="dim tiny">ActiveEventPrefix</span> {$t('ActiveEventPrefix')}</li>
-      </ul>
-      <p class="dim tiny">
-        Only 30 keys exist, so most of this client's text is not translated at
-        all - the table covers event names and a handful of labels. Stated
-        rather than implied by a language picker that suggests full coverage.
-      </p>
-    {/if}
-  </section>
-
-  <section class="panel">
-    <h2>Sound</h2>
+  <SettingsFold id="sound" title="Sound & music" summary={$muted ? 'Muted' : ''} bind:open={panels.sound}>
     <p class="dim small">
       Sound effects and music have their own volume, and both start quiet.
     </p>
@@ -487,77 +534,18 @@
          audio is armed by a button rather than at load - starting early gives
          a suspended context that silently plays nothing. -->
     <button onclick={enableAudio}>Enable and preload sound</button>
+  </SettingsFold>
 
-    <h3>Test a cue</h3>
-    <div class="clips">
-      {#each clipNames as name}
-        <button class="tiny-btn" onclick={() => testSound(name)}>{name}</button>
-      {/each}
-    </div>
-  </section>
-
-  <section class="panel">
-    <h2>Tutorial</h2>
-
-    <!-- Modul: the three states became two, because the third was a fiction.
-         "Not started - it arms automatically on a brand-new account" described
-         a machine that armed off IsFreshAccount and then never advanced. The
-         steps are read from the player's own state now, so there is nothing to
-         start: either the three things are done or they are not. -->
-    {#if $tutorialPrompt}
-      <p class="active">
-        {$tutorialPrompt.index} / {$tutorialPrompt.total} &middot; {$tutorialPrompt.title}
-      </p>
-      <p class="dim small">{$tutorialPrompt.body}</p>
-      <button onclick={skip}>Hide the tutorial</button>
-    {:else}
-      <p class="dim">
-        Nothing outstanding - you have fought, dressed and stocked the larder.
-      </p>
-      {#if $onboardingDismissed}
-        <button onclick={showAgain}>Turn onboarding back on</button>
-      {:else}
-        <button onclick={skip}>Skip onboarding</button>
-      {/if}
-    {/if}
-
-    <h3>Explanations</h3>
+  <SettingsFold
+    id="notify"
+    title="Notifications & email"
+    summary={emailConsent ? 'Email on' : ''}
+    bind:open={panels.notify}
+  >
+    <h3>On this device</h3>
     <p class="dim small">
-      Each of these is shown once, the first time you reach the system it
-      describes. {seenCount} of {explanations.length} shown so far.
-    </p>
-    <ul class="explanations">
-      {#each explanations as moment (moment.id)}
-        <li>
-          <div class="ex-head">
-            <strong>{moment.title}</strong>
-            <span class="dim tiny">{moment.system}</span>
-            {#if moment.seen}
-              <button class="tiny-btn" onclick={() => forgetSeen(moment.id)}>Show again</button>
-            {:else}
-              <span class="dim tiny">not yet shown</span>
-            {/if}
-          </div>
-          <p class="dim small">{moment.body}</p>
-        </li>
-      {/each}
-    </ul>
-    <button onclick={forgetAllSeen}>Reset all explanations</button>
-
-    <!-- Modul: AUTO-SALVAGE MOVED TO THE CHEST (task 81). It grew per-region
-         rules there, and one setting edited from two screens would be two
-         copies of one truth. This line keeps the old address findable. -->
-    <h3>Auto-salvage</h3>
-    <p class="dim small">
-      Selling junk drops the moment they land now lives in the Chest, under
-      "Auto-sell rules", where it can be set per region.
-    </p>
-    <button onclick={() => requestScreen('chest')}>Open the Chest</button>
-
-    <h3>Notifications</h3>
-    <p class="dim small">
-      The same moment as the email below, but on the device: one notification
-      when your characters have stopped earning and there is progress waiting.
+      One notification when your characters have stopped earning and there is
+      progress waiting.
     </p>
     {#if pushBlocked}
       <p class="dim small">{pushBlocked}</p>
@@ -610,119 +598,105 @@
       </p>
     {/if}
     {#if emailError}
-      <p class="small" style="color: var(--danger)">{emailError}</p>
+      <p class="small error">{emailError}</p>
     {/if}
+  </SettingsFold>
 
-    <h3>Accessibility</h3>
+  <!-- Modul: AUTO-SALVAGE MOVED TO THE CHEST (task 81). It grew per-region
+       rules there, and one setting edited from two screens would be two
+       copies of one truth. This panel keeps the old address findable. -->
+  <SettingsFold id="gameplay" title="Gameplay" summary="Auto-salvage" bind:open={panels.gameplay}>
+    <p class="dim small">
+      Selling junk drops the moment they land lives in the Chest, under
+      "Auto-sell rules", where it can be set per region.
+    </p>
+    <button onclick={() => requestScreen('chest')}>Open the Chest</button>
+  </SettingsFold>
+
+  <SettingsFold id="access" title="Accessibility" bind:open={panels.access}>
     <p class="dim small">
       Animations respect your system's reduced-motion setting: floating damage
       numbers and the rarity glow both stop moving when it is on. Bars carry
       their real numbers as text rather than colour alone.
     </p>
+  </SettingsFold>
 
-    {#if snap}
-      <h3>Session</h3>
-      <dl class="stats">
-        <div><dt>Player</dt><dd>#{snap.PlayerId}</dd></div>
-        <div>
-          <dt>Last save</dt>
-          <!-- TicksSinceLastFlush / 10 is exactly the whole-second age of the
-               last successful save - the save-trust indicator's whole point. -->
-          <dd>{(snap.TicksSinceLastFlush / 10).toFixed(0)}s ago</dd>
-        </div>
-      </dl>
-    {/if}
-  </section>
-
-  {#if isAdmin}
-      <section class="panel admin-panel">
-        <header class="head">
-          <h2 style="color: var(--danger)">Dev Settings (Admin Only)</h2>
-        </header>
-
-        <p class="dim small">
-          These settings are visible only to you.
-        </p>
-
-        <div class="admin-grid">
-          <div class="admin-card" style="grid-column: 1 / -1;">
-            <h3>Season</h3>
-            {#if season}
-              <!-- Modul: task 88. A date no longer ends a season - each
-                   player ends their own run with a rebirth (Ancestors screen)
-                   - so pause, resume and "move end" were retired with it:
-                   they steered a clock nothing reads any more. -->
-              <p class="small">
-                Season {season.EraId} &middot; the calendar no longer ends it; players rebirth on
-                demand.
-                <span class="dim"> (date on record: {formatSeasonEnd(season.EndTimestamp)})</span>
-              </p>
-              {#if season.EndRequested}
-                <p class="warn small">An end is queued; the rollover runs within seconds.</p>
-              {/if}
-              <p class="dim tiny">
-                Ending the season now rebirths EVERY player at once - level, gear, gold and skill
-                tree - and pays the season's placement diamonds. Villages, ancestors, diamonds and
-                Seals carry. Type
-                {SEASON_END_PHRASE} to enable it.
-              </p>
-              <div class="flex-row">
-                <input type="text" bind:value={seasonEndPhrase} placeholder={SEASON_END_PHRASE} aria-label="Confirmation phrase" />
-                <button
-                  style="color: var(--danger)"
-                  disabled={seasonEndPhrase.trim() !== SEASON_END_PHRASE}
-                  onclick={endSeasonNow}
-                >End season now</button>
-              </div>
-            {:else}
-              <p class="dim small">Loading the season...</p>
-            {/if}
-          </div>
-
-          <div class="admin-card">
-            <h3>Global Profanity Filter</h3>
-            <button onclick={toggleProfanity} class:active={devProfanity}>
-              {devProfanity ? 'Enabled (ON)' : 'Disabled (OFF)'}
-            </button>
-          </div>
-
-          <div class="admin-card">
-            <h3>Announcement</h3>
-            <div class="flex-row">
-              <input type="text" bind:value={devAnnounceMsg} placeholder="Message to all players..." />
-              <button onclick={doAnnounce}>Broadcast</button>
-            </div>
-          </div>
-
-          <div class="admin-card">
-            <h3>Ban / Unban Player</h3>
-            <div class="flex-row">
-              <input type="text" bind:value={devBanUsername} placeholder="Player Username..." />
-              <button onclick={doBan} style="color: var(--danger)">Ban</button>
-              <button onclick={doUnban}>Unban</button>
-            </div>
-          </div>
-
-          <div class="admin-card" style="grid-column: 1 / -1;">
-            <h3>Admin Mailer</h3>
-            <p class="dim tiny">Leave Target Username empty to send to ALL players.</p>
-            <div class="form-grid">
-              <input type="text" bind:value={devMailUsername} placeholder="Target Username (empty = ALL)" />
-              <input type="text" bind:value={devMailItem} placeholder="Base Item ID (e.g. axe_copper)" />
-              <input type="number" bind:value={devMailQty} placeholder="Quantity" />
-              <input type="number" bind:value={devMailGold} placeholder="Gold Amount" />
-              <input type="text" bind:value={devMailMsg} placeholder="Text Message (optional)" style="grid-column: 1 / -1;" />
-              <button onclick={doMail} style="grid-column: 1 / -1;">Send Mail</button>
-            </div>
-          </div>
-        </div>
-      </section>
+  <SettingsFold
+    id="tutorial"
+    title="Tutorial & explanations"
+    summary="{seenCount}/{explanations.length} seen"
+    bind:open={panels.tutorial}
+  >
+    <!-- Modul: the three states became two, because the third was a fiction.
+         "Not started - it arms automatically on a brand-new account" described
+         a machine that armed off IsFreshAccount and then never advanced. The
+         steps are read from the player's own state now, so there is nothing to
+         start: either the three things are done or they are not. -->
+    {#if $tutorialPrompt}
+      <p class="active">
+        {$tutorialPrompt.index} / {$tutorialPrompt.total} &middot; {$tutorialPrompt.title}
+      </p>
+      <p class="dim small">{$tutorialPrompt.body}</p>
+      <button onclick={skip}>Hide the tutorial</button>
+    {:else}
+      <p class="dim small">
+        Nothing outstanding - you have fought, dressed and stocked the larder.
+      </p>
+      {#if $onboardingDismissed}
+        <button onclick={showAgain}>Turn onboarding back on</button>
+      {:else}
+        <button onclick={skip}>Skip onboarding</button>
+      {/if}
     {/if}
 
-    <section class="panel">
-      <header class="head">
-        <h2>Support</h2>
-      </header>
+    <h3>Explanations</h3>
+    <p class="dim small">
+      Each one is shown once, the first time you reach the system it describes.
+    </p>
+    <button
+      class="disclosure"
+      aria-expanded={showSeenExplanations}
+      aria-controls="seen-explanations"
+      onclick={() => (showSeenExplanations = !showSeenExplanations)}
+      data-testid="explanations-toggle"
+    >
+      {showSeenExplanations ? '▾' : '▸'} {seenCount} of {explanations.length} seen
+    </button>
+    {#if showSeenExplanations}
+      <div id="seen-explanations">
+        {#if seenCount > 0}
+          <ul class="explanations">
+            {#each seenExplanationList as moment (moment.id)}
+              <li>
+                <div class="ex-head">
+                  <strong>{moment.title}</strong>
+                  <span class="dim tiny">{moment.system}</span>
+                  <button class="tiny-btn" onclick={() => forgetSeen(moment.id)}>Show again</button>
+                </div>
+                <p class="dim small">{moment.body}</p>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        {#if lockedCount > 0}
+          <p class="dim small" data-testid="explanations-locked" data-count={lockedCount}>
+            {seenCount === 0 ? `${lockedCount} unlock` : `${lockedCount} more unlock`} as you play.
+          </p>
+        {/if}
+        {#if seenCount > 0}
+          <ConfirmButton
+            label="Reset all explanations"
+            confirmLabel="Show all of them again?"
+            danger={false}
+            onConfirm={forgetAllSeen}
+          />
+        {/if}
+      </div>
+    {/if}
+  </SettingsFold>
+
+  <SettingsFold id="support" title="Support · About · Delete account" bind:open={panels.support}>
+    <h3>Support</h3>
     <p class="dim small">
       Sends a short diagnostic bundle with your message. Bearer tokens, email
       addresses and long opaque ids are stripped in your browser before
@@ -735,14 +709,26 @@
       <textarea rows="4" bind:value={supportMessage}></textarea>
     </label>
 
-    <details>
-      <summary>See exactly what will be sent</summary>
-      <pre>{tracePreview}</pre>
-    </details>
-
-    <button disabled={supportMessage.trim().length === 0} onclick={sendSupport}>
-      Send
+    <!-- {#if}, not <details>: see SettingsFold - a closed <details> is not
+         trusted to hide its content in this client. -->
+    <button
+      class="disclosure"
+      aria-expanded={showTrace}
+      aria-controls="support-trace"
+      onclick={() => (showTrace = !showTrace)}
+    >
+      {showTrace ? '▾' : '▸'} See exactly what will be sent
     </button>
+    {#if showTrace}
+      <pre id="support-trace">{tracePreview}</pre>
+    {/if}
+
+    <div class="send-row">
+      <button disabled={supportMessage.trim().length === 0} onclick={sendSupport}>
+        Send
+      </button>
+      <DisabledReason text={supportMessage.trim().length === 0 ? 'Write what went wrong first.' : ''} />
+    </div>
 
     {#if supportSent}
       <p class="dim tiny">
@@ -750,68 +736,261 @@
         the game yet - if you want a reply, include a way to reach you.
       </p>
     {/if}
-  </section>
 
-  <section class="panel">
-    <h2>Account</h2>
-    <p class="dim small">Your characters keep their jobs while you are away.</p>
-    <button onclick={requestSignOut}>Sign out</button>
-  </section>
-
-  <section class="panel danger-panel">
-    <h2>Delete this account</h2>
-
-    <p class="warn">
-      <strong>This cannot be undone.</strong> Every character, item, guild
-      membership and purchase is erased permanently.
-    </p>
-
-    <p class="dim small">
-      Type <code>{PURGE_PHRASE}</code> below to enable the button. The request
-      also carries a one-time interlock computed from your player id and the
-      server's current save generation, so it cannot be replayed from a
-      captured request.
-    </p>
-
-    <label>
-      Confirmation
-      <input type="text" bind:value={purgeConfirmation} placeholder={PURGE_PHRASE} />
-    </label>
-
-    <button class="destructive" disabled={!purgeArmed || !snap} onclick={purge}>
-      Permanently delete
-    </button>
-
-    <p class="dim tiny">
-      You will be disconnected whether or not it succeeds - the server ends the
-      session either way and sends no result code. Signing in again is the only
-      way to find out which happened.
-    </p>
-  </section>
-
-  <!-- Modul: WHICH BUILD IS THIS. There was no version anywhere in the client,
-       which made a bug report untraceable to a release and made "what's new"
-       impossible to key off. The build id is the second half: it changes on
-       every deploy even when the version does not, so it is what tells a
-       support conversation whether somebody is on a stale tab. -->
-  <section class="panel">
-    <header class="head">
-      <h2>About</h2>
-    </header>
+    <!-- Modul: WHICH BUILD IS THIS. There was no version anywhere in the client,
+         which made a bug report untraceable to a release and made "what's new"
+         impossible to key off. The build id is the second half: it changes on
+         every deploy even when the version does not, so it is what tells a
+         support conversation whether somebody is on a stale tab. -->
+    <h3>About</h3>
     <p class="version">
       FolkIdle <strong>{APP_VERSION}</strong>
       <span class="dim tiny">build {BUILD_ID}</span>
       {#if bundleVersion}<span class="dim tiny">bundle {bundleVersion}</span>{/if}
     </p>
     <p class="dim tiny">
-      Quote both of these in a bug report &mdash; they say exactly which version
-      you were playing.
+      Quote these in a bug report &mdash; they say exactly which version you
+      were playing.
     </p>
     <button onclick={showNotesAgain}>What&rsquo;s new in this version</button>
-  </section>
+
+    <!-- The one part of this screen that can destroy something. Bordered in
+         the danger colour AND separated by its own heading and a typed
+         confirmation - colour is the last of the three signals, not the only
+         one. -->
+    <div class="danger-box">
+      <h3>Delete this account</h3>
+
+      <p class="warn">
+        <strong>This cannot be undone.</strong> Every character, item, guild
+        membership and purchase is erased permanently.
+      </p>
+
+      <p class="dim small">
+        Type <code>{PURGE_PHRASE}</code> below to enable the button.
+      </p>
+
+      <label>
+        Confirmation
+        <input type="text" bind:value={purgeConfirmation} placeholder={PURGE_PHRASE} />
+      </label>
+
+      <button class="destructive" disabled={!purgeArmed || !snap} onclick={purge}>
+        Permanently delete
+      </button>
+
+      <p class="dim tiny">
+        You will be disconnected whether or not it succeeds - the server ends the
+        session either way and sends no result code. Signing in again is the only
+        way to find out which happened.
+      </p>
+    </div>
+  </SettingsFold>
+
+  <!-- Modul: DEVELOPER CONTENT IS ADMIN-ONLY (task 96). The raw translation
+       keys, the 30-key coverage figures, the cue ids and the session numbers
+       were all on the player's page; they help the person building the game
+       and mean nothing to the person playing it. -->
+  {#if isAdmin}
+    <SettingsFold id="dev" title="Developer (admin only)" bind:open={panels.dev}>
+      <p class="dim small">These are visible only to admins.</p>
+
+      <div class="admin-grid">
+        <div class="admin-card">
+          <h3>Translations</h3>
+          {#if $translations.size > 0}
+            <ul class="samples">
+              {#each LANGUAGES as lang}
+                <li><span>{lang.name}</span> <span class="dim tiny">{coverage(lang.code)}/{$translations.size} keys</span></li>
+              {/each}
+            </ul>
+            <ul class="samples">
+              <li><span class="dim tiny">EventNone</span> {$t('EventNone')}</li>
+              <li><span class="dim tiny">ActiveEventPrefix</span> {$t('ActiveEventPrefix')}</li>
+            </ul>
+            <p class="dim tiny">
+              The table holds {$translations.size} keys - event names and a handful
+              of labels. The rest of the client is English only.
+            </p>
+          {:else}
+            <p class="dim small">The translation table has not loaded.</p>
+          {/if}
+        </div>
+
+        <div class="admin-card">
+          <h3>Test a cue</h3>
+          <div class="clips">
+            {#each clipNames as name}
+              <button class="tiny-btn" onclick={() => testSound(name)}>{name}</button>
+            {/each}
+          </div>
+        </div>
+
+        {#if snap}
+          <div class="admin-card">
+            <h3>Session</h3>
+            <dl class="stats">
+              <div><dt>Player</dt><dd>#{snap.PlayerId}</dd></div>
+              <div>
+                <dt>Last save</dt>
+                <!-- TicksSinceLastFlush / 10 is exactly the whole-second age of the
+                     last successful save - the save-trust indicator's whole point. -->
+                <dd>{(snap.TicksSinceLastFlush / 10).toFixed(0)}s ago</dd>
+              </div>
+            </dl>
+          </div>
+        {/if}
+
+        <div class="admin-card wide">
+          <h3>Season</h3>
+          {#if season}
+            <!-- Modul: task 88. A date no longer ends a season - each
+                 player ends their own run with a rebirth (Ancestors screen)
+                 - so pause, resume and "move end" were retired with it:
+                 they steered a clock nothing reads any more. -->
+            <p class="small">
+              Season {season.EraId} &middot; the calendar no longer ends it; players rebirth on
+              demand.
+              <span class="dim"> (date on record: {formatSeasonEnd(season.EndTimestamp)})</span>
+            </p>
+            {#if season.EndRequested}
+              <p class="warn small">An end is queued; the rollover runs within seconds.</p>
+            {/if}
+            <p class="dim tiny">
+              Ending the season now rebirths EVERY player at once - level, gear, gold and skill
+              tree - and pays the season's placement diamonds. Villages, ancestors, diamonds and
+              Seals carry. Type
+              {SEASON_END_PHRASE} to enable it.
+            </p>
+            <div class="flex-row">
+              <input type="text" bind:value={seasonEndPhrase} placeholder={SEASON_END_PHRASE} aria-label="Confirmation phrase" />
+              <button
+                class="destructive"
+                disabled={seasonEndPhrase.trim() !== SEASON_END_PHRASE}
+                onclick={endSeasonNow}
+              >End season now</button>
+            </div>
+          {:else}
+            <p class="dim small">Loading the season...</p>
+          {/if}
+        </div>
+
+        <div class="admin-card">
+          <h3>Global profanity filter</h3>
+          <button onclick={toggleProfanity} class:active={devProfanity}>
+            {devProfanity ? 'Enabled (ON)' : 'Disabled (OFF)'}
+          </button>
+        </div>
+
+        <div class="admin-card">
+          <h3>Announcement</h3>
+          <div class="flex-row">
+            <input type="text" bind:value={devAnnounceMsg} placeholder="Message to all players..." />
+            <button onclick={doAnnounce}>Broadcast</button>
+          </div>
+        </div>
+
+        <div class="admin-card">
+          <h3>Ban / unban player</h3>
+          <div class="flex-row">
+            <input type="text" bind:value={devBanUsername} placeholder="Player username..." />
+            <button class="destructive" onclick={doBan}>Ban</button>
+            <button onclick={doUnban}>Unban</button>
+          </div>
+        </div>
+
+        <div class="admin-card wide">
+          <h3>Admin mailer</h3>
+          <p class="dim tiny">Leave the target username empty to send to ALL players.</p>
+          <div class="form-grid">
+            <input type="text" bind:value={devMailUsername} placeholder="Target username (empty = ALL)" />
+            <input type="text" bind:value={devMailItem} placeholder="Base item id (e.g. axe_copper)" />
+            <input type="number" bind:value={devMailQty} placeholder="Quantity" />
+            <input type="number" bind:value={devMailGold} placeholder="Gold amount" />
+            <input type="text" bind:value={devMailMsg} placeholder="Text message (optional)" class="span-all" />
+            <button onclick={doMail} class="span-all">Send mail</button>
+          </div>
+        </div>
+      </div>
+    </SettingsFold>
+  {/if}
 </div>
 
 <style>
+  /* Modul: ONE COLUMN at every width (task 96). Four auto-fit columns of very
+     unequal height left most of a desktop empty beside one tall panel, and
+     closed panels of one header each read best as a list. */
+  .settings {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    max-width: 46rem;
+    margin: 0 auto;
+    align-items: start;
+  }
+
+  .panel {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.7rem;
+  }
+
+  .account-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .account-text {
+    flex: 1 1 12rem;
+  }
+
+  .account-text .small {
+    margin: 0;
+  }
+
+  .signout {
+    flex-shrink: 0;
+  }
+
+  /* Modul: ONE HEADING STYLE. Panel titles are h2 here and in SettingsFold at
+     the same size; anything inside a panel is an h3 in the same face, one
+     step down. The old uppercase dim h3 doubled as a panel title inside the
+     "Tutorial" panel, which is how the page came to have two. */
+  h2 {
+    margin: 0 0 0.35rem;
+    font-size: 1.05rem;
+  }
+
+  h3 {
+    margin: 1rem 0 0.35rem;
+    font-size: 0.9rem;
+  }
+
+  .dim {
+    color: var(--text-dim);
+  }
+  .small {
+    font-size: 0.8rem;
+    margin: 0 0 0.7rem;
+  }
+  .tiny {
+    font-size: 0.72rem;
+  }
+
+  .error {
+    color: var(--danger);
+  }
+
+  .active {
+    color: var(--good);
+    font-size: 0.88rem;
+    margin: 0 0 0.6rem;
+  }
+
   .tracks {
     list-style: none;
     margin: 0.25rem 0 0.75rem;
@@ -844,54 +1023,9 @@
     flex-wrap: wrap;
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
-    gap: 1rem;
-    padding: 1rem;
-    align-items: start;
-  }
-
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
-
-  h2 {
-    margin: 0 0 0.5rem;
-    font-size: 1.05rem;
-  }
-
-  h3 {
-    margin: 1.1rem 0 0.4rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
-  }
-
-  .dim {
-    color: var(--text-dim);
-  }
-  .small {
-    font-size: 0.8rem;
-    margin: 0 0 0.7rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
-  }
-
-  .active {
-    color: var(--good);
-    font-size: 0.88rem;
-    margin: 0 0 0.6rem;
-  }
-
   .langs {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.35rem;
   }
 
@@ -908,7 +1042,7 @@
 
   .samples {
     list-style: none;
-    margin: 0;
+    margin: 0 0 0.4rem;
     padding: 0;
     display: grid;
     gap: 0.2rem;
@@ -916,8 +1050,10 @@
   }
 
   .samples li {
-    display: grid;
-    gap: 0.05rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.4rem;
   }
 
   label {
@@ -928,14 +1064,17 @@
     margin-bottom: 0.6rem;
   }
 
-  label.check {
+  label.check,
+  label.row {
     display: flex;
     align-items: center;
     gap: 0.4rem;
   }
 
-  label.check input {
+  label.check input,
+  label.row input {
     width: auto;
+    flex-shrink: 0;
   }
 
   input[type='range'] {
@@ -951,6 +1090,19 @@
   .tiny-btn {
     font-size: 0.7rem;
     padding: 0.2rem 0.45rem;
+  }
+
+  /* A text-styled toggle for a disclosure inside a panel. */
+  .disclosure {
+    display: block;
+    margin: 0 0 0.6rem;
+    background: none;
+    border: none;
+    padding: 0.3rem 0;
+    font-size: 0.82rem;
+    color: var(--text-dim);
+    text-align: left;
+    cursor: pointer;
   }
 
   /* Modul: wraps rather than truncates. The guild buff tiers on the Guild
@@ -981,18 +1133,50 @@
     overflow-wrap: anywhere;
   }
 
+  .send-row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.6rem;
+  }
+
+  .send-row button {
+    flex-shrink: 0;
+  }
+
   .stats {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
     margin: 0;
   }
 
-  /* The one panel on this screen that can destroy something. Bordered in the
-     danger colour AND separated by its own heading and a typed confirmation -
-     colour is the last of the three signals, not the only one. */
-  .danger-panel {
-    border-color: var(--danger);
+  .stats div {
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  dt {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .danger-box {
+    margin-top: 1.2rem;
+    padding: 0.7rem;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+  }
+
+  .danger-box h3 {
+    margin-top: 0;
   }
 
   .warn {
@@ -1025,18 +1209,8 @@
     font-size: 0.85em;
   }
 
-  details {
-    margin: 0 0 0.7rem;
-    font-size: 0.78rem;
-    color: var(--text-dim);
-  }
-
-  summary {
-    cursor: pointer;
-  }
-
   pre {
-    margin: 0.4rem 0 0;
+    margin: 0 0 0.7rem;
     padding: 0.5rem;
     background: var(--bg-raised);
     border-radius: var(--radius);
@@ -1047,46 +1221,32 @@
     word-break: break-all;
   }
 
-  .stats div {
-    display: grid;
-    gap: 0.1rem;
-  }
-
-  dt {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-  }
-
-  dd {
-    margin: 0;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-  .admin-panel {
-    border: 1px solid var(--danger);
-    background: rgba(255, 0, 0, 0.05);
-  }
-
+  /* Modul: min(300px, 100%), not a bare 300px. A 300px track minimum inside
+     a panel on a 360px phone is wider than the panel's content box, and the
+     admin grid ran off the side of the screen (task 96). */
   .admin-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+    gap: 0.75rem;
   }
 
   .admin-card {
     background: var(--tint-hover);
-    padding: 1rem;
-    border-radius: 4px;
+    padding: 0.75rem;
+    border-radius: var(--radius);
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .admin-card.wide,
+  .span-all {
+    grid-column: 1 / -1;
   }
 
   .admin-card h3 {
     margin: 0;
-    font-size: 0.9rem;
-    color: var(--text);
   }
 
   .flex-row {
@@ -1096,15 +1256,20 @@
 
   .form-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.5rem;
   }
 
-  .flex-row input, .form-grid input {
+  .flex-row input,
+  .form-grid input {
     min-width: 0;
   }
 
   @media (max-width: 40rem) {
+    .settings {
+      padding: 0.6rem;
+      gap: 0.6rem;
+    }
     .flex-row {
       flex-direction: column;
     }
