@@ -536,7 +536,7 @@ await page.waitForTimeout(4000);
 // afterwards; if it was idle, it is stood down again.
 await go('Combat');
 {
-  const stopButton = page.getByRole('button', { name: 'Stop fighting' });
+  const stopButton = page.getByRole('button', { name: 'Stand down', exact: true });
   const wasFighting = (await stopButton.count()) > 0;
   if (wasFighting) {
     await stopButton.first().click();
@@ -578,7 +578,9 @@ await go('Combat');
   const firstLine = shown > 0 ? (await estimateRows.first().innerText()).replace(/\s+/g, ' ') : '';
   record(
     'each open monster shows a hunting estimate from the server',
-    projection !== null && (projection.Monsters ?? []).length === 25 && shown > 0 && firstLine.startsWith('Estimate:'),
+    // Task 98: the card's second line carries the estimate without the
+    // "Estimate:" prefix (the full sentence is the element's title).
+    projection !== null && (projection.Monsters ?? []).length === 25 && shown > 0 && /XP\/h|cannot hurt/.test(firstLine),
     `${shown} rows; first: ${firstLine.slice(0, 110)}`,
   );
 }
@@ -2464,11 +2466,22 @@ await go('The Delve');
     regions.length === 5 && regions.every((r) => r.Challenges.length === 3),
     regions.map((r) => `${r.Region}:${r.Challenges.filter((c) => c.Completed).length}/${r.Challenges.length}`).join(' '),
   );
+  // Task 98: Challenges and Ascension fold into one line under the boss, and
+  // that line exists only once the boss has fallen. An unbeaten boss is
+  // checked for the ABSENCE of the line here; the ascension block below marks
+  // region 1 beaten and checks the unfolded challenges there.
+  const beaten1 = Boolean((await apiGet('/api/v1/boss-ascension'))?.Bosses?.find((b) => b.Region === 1)?.BossDefeated);
   await go('Combat');
   await page.waitForTimeout(1200);
-  const shown = page.getByTestId('boss-challenges-1');
-  const text = (await shown.count()) > 0 ? ((await shown.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
-  record("Combat shows region 1's boss challenges", /Starved/.test(text) && /Young blood/.test(text) && /Swift/.test(text), text.slice(0, 120));
+  const fold = page.getByTestId('boss-extras-1');
+  if (beaten1) {
+    if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
+    const shown = page.getByTestId('boss-challenges-1');
+    const text = (await shown.count()) > 0 ? ((await shown.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
+    record("Combat shows region 1's boss challenges", /Starved/.test(text) && /Young blood/.test(text) && /Swift/.test(text), text.slice(0, 120));
+  } else {
+    record("an unbeaten boss folds its challenges away", (await fold.count()) === 0, 'region 1 boss not beaten yet');
+  }
 }
 
 // --- task 87: the Boss Ascension ladder ---------------------------------------
@@ -2509,14 +2522,27 @@ await go('The Delve');
 
   await go('Combat');
   await page.waitForTimeout(1500);
+  // Task 98: the ladder sits behind the boss's one-line fold.
+  {
+    const fold = page.getByTestId('boss-extras-1');
+    if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') {
+      await fold.click();
+      await page.waitForTimeout(300);
+    }
+    if (b1?.BossDefeated) {
+      const ch = page.getByTestId('boss-challenges-1');
+      const chText = (await ch.count()) > 0 ? ((await ch.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
+      record("the boss's fold opens its challenges", /Starved/.test(chText) && /Young blood/.test(chText) && /Swift/.test(chText), chText.slice(0, 120));
+    }
+  }
   const ladder = page.getByTestId('boss-ascension-1');
   const ladderText = (await ladder.count()) > 0 ? ((await ladder.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
-  record('Combat draws region 1\'s ladder', /Boss Ascension/.test(ladderText), ladderText.slice(0, 100));
+  if (b1?.BossDefeated) record('Combat draws region 1\'s ladder', /Boss Ascension/.test(ladderText), ladderText.slice(0, 100));
 
   if (b1?.BossDefeated && b1.HighestStep < 10) {
     const before = b1.HighestStep;
     const next = b1.NextStep;
-    const stopButton = page.getByRole('button', { name: 'Stop fighting' });
+    const stopButton = page.getByRole('button', { name: 'Stand down', exact: true });
     const wasFighting = (await stopButton.count()) > 0;
     const start = page.getByTestId('ascension-start-1');
 
@@ -2560,10 +2586,11 @@ await go('The Delve');
       `step ${after?.HighestStep} (was ${startedAt}), boss beaten ${after?.BossDefeated} (was ${wasBeaten})`,
     );
   } else {
+    // Task 98: an unbeaten boss shows no ladder at all (no placeholder).
     record(
       'the ladder waits for a first clear (boss not beaten, or the ladder is complete)',
-      /Beat this boss once|cleared/.test(ladderText),
-      ladderText.slice(0, 100),
+      (!b1?.BossDefeated && ladderText === '') || /cleared/.test(ladderText),
+      ladderText.slice(0, 100) || 'no ladder drawn',
     );
   }
 }

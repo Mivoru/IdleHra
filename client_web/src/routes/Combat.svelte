@@ -14,6 +14,7 @@
     FIRST_CLEAR_ATTACK_MULTIPLIERS,
   } from '../lib/ui/victories';
   import { rarityName } from '../lib/ui/rarity';
+  import { xpToNextLevel } from '../lib/ui/levelCurve';
   import { queryKeys, fetchWorn, fetchCombatProjection, type HuntingEstimate } from '../lib/net/rest';
   import { estimateLine, killTimeText, safety } from '../lib/ui/huntingEstimate';
   import { formatNumber, numberTitle } from '../lib/ui/format';
@@ -214,6 +215,10 @@
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
   let selectedMonsterId = $state(0);
+  // Which region's rules are open (0 = none), and which bosses' Challenges +
+  // Ascension line is unfolded. Screen state only: a fold is not a setting.
+  let rulesOpen = $state(0);
+  let extrasOpen = $state<number[]>([]);
   let dropPreview = $state<MonsterLootEntry[]>([]);
   let dropPreviewFor = $state(0);
 
@@ -311,6 +316,17 @@
   const estimates = $derived(
     new Map<number, HuntingEstimate>((projection.data?.Monsters ?? []).map((e) => [e.MonsterId, e])),
   );
+  // Modul: a second tap on the open card closes it - the drop table now opens
+  // INSIDE the list, so a card that could only open would leave a long table
+  // standing between the player and every monster below it.
+  function toggleMonster(monster: MonsterDefinition) {
+    if (selectedMonsterId === monster.Id) {
+      selectedMonsterId = 0;
+      return;
+    }
+    void selectMonster(monster);
+  }
+
   async function selectMonster(monster: MonsterDefinition) {
     selectedMonsterId = monster.Id;
     if (dropPreviewFor !== monster.Id) {
@@ -327,8 +343,10 @@
 
   const activeCharacterId = $derived(snap?.Slot1_CharacterId ?? EMPTY_GUID);
 
+  // Modul: Fight no longer opens the drop table. With the table inline under
+  // its card, opening it on Fight pushed every row below down by its height at
+  // the moment the player's thumb was over the list.
   function fight(monster: MonsterDefinition) {
-    selectMonster(monster);
     // See Gathering.svelte: a bare TargetId does not persist.
     const outcome = assignCharacterActivity(activeCharacterId, monster.Id);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
@@ -383,357 +401,432 @@
   // "what am I farming here", equipment is "which monster has the helmet I am
   // missing" - and the second only became a real question when each monster got
   // its own gear table instead of every monster in a region sharing one pool.
+  // The boss of this region has fallen at least once. The ladder's own flag
+  // first (it is what the dev-tools restore and the ladder agree on), and the
+  // wire's defeated-boss mask for the moment before the ladder query answers.
+  function bossBeaten(region: number, ladderSaysBeaten: boolean | undefined): boolean {
+    return Boolean(ladderSaysBeaten) || (defeatedMask & (1 << (region - 1))) !== 0;
+  }
+
+  function toggleExtras(region: number) {
+    extrasOpen = extrasOpen.includes(region) ? extrasOpen.filter((r) => r !== region) : [...extrasOpen, region];
+  }
+
+  // Within-level XP (the server subtracts each level's cost as it is paid) and
+  // what the current level costs - see levelCurve.ts.
+  const currentXp = $derived(Math.floor(visual?.CurrentXp ?? snap?.CurrentXp ?? 0));
+  const xpNeeded = $derived(xpToNextLevel(snap?.CurrentLevel ?? 0));
+
   const materialDrops = $derived(dropPreview.filter((entry) => !entry.IsEquipment));
   const equipmentDrops = $derived(dropPreview.filter((entry) => entry.IsEquipment));
 </script>
 
+<!-- Modul: TASK 98 - THE ACTION BEFORE THE PROSE.
+     At 390px the first Fight sat at about y 915 (y 1060 for a guest), under a
+     "Not in combat." panel, an empty loot panel and a six-line rules
+     paragraph - one column means DOM order is reading order, and all three
+     came first. Now: a compact status strip that stays pinned while the list
+     scrolls, a one-line loot summary, and the monsters. The rules sit behind
+     an (i) per region, the drop table opens under the card that was tapped,
+     and a boss's Challenges and Ascension fold into one line that only exists
+     once that boss has fallen.
+
+     On a wide screen the strip and the fight log are a sticky LEFT column and
+     the loot and monsters share the right. The loot stays to the right of the
+     fight log on purpose: asked for directly ("under the monster only the
+     course of the fight, the loot drops window on the right"), and
+     exercise.mjs asserts it. -->
 <div class="layout">
-  <!-- The level-up flare goes on the whole panel rather than on the number,
+  <!-- Modul: `.side` is display: contents on a phone, so the strip is a child
+       of `.layout` itself. A sticky box only travels inside its containing
+       block: inside a short panel - or inside a one-column GRID, where each
+       item's block is its own row track - it "sticks" across nothing, which
+       is how the Wiki sidebar came to be declared sticky and never stick.
+       `.layout` is a flex column below 64rem for the same reason. -->
+  <!-- The level-up flare goes on the whole strip rather than on the number,
        because the number is small and the moment is not. -->
   {#key levelPulse}
-    <section class="panel" class:level-flare={levelPulse > 0}>
-      <h2>Combat</h2>
+  <aside class="side" aria-label="Your fight">
+    <section class="strip" class:level-flare={levelPulse > 0} data-testid="combat-status">
+      <h2 class="sr-only">Combat</h2>
 
-    {#if contentError}
-      <p class="error">Content failed to load: {contentError}</p>
-    {/if}
+      {#if contentError}
+        <p class="error">Content failed to load: {contentError}</p>
+      {/if}
 
-    {#if $connectionStatus.phase !== 'live'}
-      <p class="status">
-        {$connectionStatus.phase}
-        {#if $connectionStatus.detail}- {$connectionStatus.detail}{/if}
-      </p>
-    {/if}
+      {#if $connectionStatus.phase !== 'live'}
+        <p class="status">
+          {$connectionStatus.phase}
+          {#if $connectionStatus.detail}- {$connectionStatus.detail}{/if}
+        </p>
+      {/if}
 
-    {#if snap}
-      <div class="stats">
-        <!-- Modul: the level number itself catches light when it changes.
-             Marked where the number IS, rather than as a banner somewhere
-             else - the eye is already on this figure when it moves. -->
-        <div class="levelcell">
-          <span class="dim">Level</span>
-          <strong>{snap.CurrentLevel}</strong>
-          {#if $levelUpPulse > 0}
-            {#key $levelUpPulse}
-              <span class="levelfx folk-sweep"></span>
-              <span class="levelburst"><Burst count={14} reach={2.8} /></span>
-            {/key}
-          {/if}
-        </div>
-        <div>
-          <span class="dim">XP</span>
-          <strong title={numberTitle(Math.floor(visual?.CurrentXp ?? snap.CurrentXp))}>{formatNumber(Math.floor(visual?.CurrentXp ?? snap.CurrentXp))}</strong>
-        </div>
-        <div>
-          <span class="dim">Gold</span>
-          <strong title={numberTitle(Math.floor(visual?.Gold ?? snap.Gold))}>{formatNumber(Math.floor(visual?.Gold ?? snap.Gold))}</strong>
-        </div>
-
-      </div>
-
-      <div class="hpblock">
-        <span class="dim">Your health</span>
-        <Bar
-          value={visual?.PlayerHp ?? snap.PlayerHp}
-          max={playerMaxHp}
-          color="var(--good)"
-          label={`${formatNumber(Math.round(visual?.PlayerHp ?? snap.PlayerHp))} / ${formatNumber(playerMaxHp)}`}
-        />
-      </div>
-
-      {#if activeMonster}
-        <FloatingDamage />
-        <div class="fighting">
-          <!-- Keyed on the pulse counter so the animation restarts on every
-               hit; without the key Svelte reuses the node and the animation
-               only ever plays once. -->
-          {#key hitPulse}
-            <span class="hit-shake">
-              <span class="struckwrap" class:struck class:dying>
-                <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="lg" />
-                <!-- Modul: the mark the blow leaves, drawn over the portrait it
-                     landed on. Shape depends on the weapon family, brightness on
-                     whether it crit. -->
-                <HitSpark />
-              </span>
-            </span>
-          {/key}
-          <div class="hpblock grow">
-            <span class="dim">Fighting {activeMonster.Name}</span>
+      {#if snap}
+        <div class="levelrow">
+          <!-- Modul: the level number itself catches light when it changes.
+               Marked where the number IS, rather than as a banner somewhere
+               else - the eye is already on this figure when it moves. -->
+          <span class="levelcell">
+            <span class="dim">Lv</span>
+            <strong>{snap.CurrentLevel}</strong>
+            {#if $levelUpPulse > 0}
+              {#key $levelUpPulse}
+                <span class="levelfx folk-sweep"></span>
+                <span class="levelburst"><Burst count={14} reach={2.8} /></span>
+              {/key}
+            {/if}
+          </span>
+          <!-- Modul: "XP 0" at level 40 said nothing - no denominator, so a
+               level might be a minute or a week away. The cost is the
+               server's own curve (levelCurve.ts, pinned by
+               serverMirrors.test.ts). Deliberately NOT inside an .hpblock:
+               exercise.mjs reads every bar there as a health bar. -->
+          <div class="xp" title={numberTitle(currentXp)}>
             <Bar
-              value={visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp}
-              max={activeMaxHp(activeMonster)}
-              color="var(--danger)"
-              label={`${formatNumber(Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp))} / ${formatNumber(activeMaxHp(activeMonster))}`}
+              value={currentXp}
+              max={Math.max(1, xpNeeded)}
+              color="var(--accent)"
+              label={xpNeeded > 0 ? `${formatNumber(currentXp)} / ${formatNumber(xpNeeded)} XP` : `${formatNumber(currentXp)} XP`}
             />
           </div>
         </div>
 
-        <!-- Modul: the fight log, under the monster's picture and health bar
-             exactly where it was asked for - and ONLY the fight.
-             Loot briefly lived here too and was moved out: asked for directly,
-             "under the monster there should be only the course of the fight,
-             and the loot drops window on the right". They were right, and for
-             a reason bigger than taste - see SessionLoot on how material
-             volume was evicting every piece of equipment.
-             {#if} rather than a <details>: a closed <details> whose child
-             carries an author display rule keeps its content live and
-             clickable on top of whatever is below it, which this project has
-             already shipped once. -->
-        {#if $combatLog.length > 0}
-          <ol class="fightlog" aria-label="Fight log">
-            {#each $combatLog as line (line.id)}
-              <li class:crit={(line.flags & CombatEventFlag.Crit) !== 0}
-                  class:miss={line.kind === CombatEventKind.PlayerMiss || line.kind === CombatEventKind.MonsterMiss}
-                  class:kill={line.kind === CombatEventKind.Kill}
-                  class:heal={line.kind === CombatEventKind.Lifesteal}
-                  class:incoming={line.kind === CombatEventKind.MonsterHit}>
-                {describeCombatLine(line, monsterName(registry, line.monsterId))}
-              </li>
-            {/each}
-          </ol>
-        {/if}
+        <div class="hpblock">
+          <span class="sr-only">Your health</span>
+          <Bar
+            value={visual?.PlayerHp ?? snap.PlayerHp}
+            max={playerMaxHp}
+            color="var(--good)"
+            label={`HP ${formatNumber(Math.round(visual?.PlayerHp ?? snap.PlayerHp))} / ${formatNumber(playerMaxHp)}`}
+          />
+        </div>
 
-        <button onclick={stop}>Stop fighting</button>
-      {:else if stalled}
-        <!-- Deployed, but the simulation is not running. Saying "not in
-             combat" here is what made the Fight button look broken. -->
-        <!-- Modul: DO NOT PROMISE A REASON THAT IS NOT THERE.
-             This said "See below for why" unconditionally, and the reason below
-             only renders when the server sent one. When it did not - which is
-             every case where the tick is not running this player at all - the
-             screen pointed at an empty space, which is worse than saying
-             nothing: it tells the player the answer exists and they have
-             missed it. -->
-        <p class="stalled">
-          Deployed to {deployedTo?.Name ?? `activity ${snap.ActiveActivityId}`}, but nothing is
-          happening.{haltMessage ? ' See below for why.' : ''}
-        </p>
-        {#if !haltMessage}
-          <p class="dim small">
-            The server has not said why. Standing down and deploying again
-            usually clears it; if it keeps happening, a reload will.
-          </p>
+        {#if activeMonster}
+          <div class="fighting">
+            <!-- Over the fight row rather than above it: in flow, the numbers'
+                 own 2.25rem would make a pinned strip that much taller on a
+                 phone, for a layer that is empty most of the time. -->
+            <span class="floatwrap"><FloatingDamage /></span>
+            <!-- Keyed on the pulse counter so the animation restarts on every
+                 hit; without the key Svelte reuses the node and the animation
+                 only ever plays once. -->
+            {#key hitPulse}
+              <span class="hit-shake">
+                <span class="struckwrap" class:struck class:dying>
+                  <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="md" />
+                  <!-- Modul: the mark the blow leaves, drawn over the portrait it
+                       landed on. Shape depends on the weapon family, brightness on
+                       whether it crit. -->
+                  <HitSpark />
+                </span>
+              </span>
+            {/key}
+            <div class="hpblock grow">
+              <span class="target">Fighting {activeMonster.Name}</span>
+              <Bar
+                value={visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp}
+                max={activeMaxHp(activeMonster)}
+                color="var(--danger)"
+                label={`${formatNumber(Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp))} / ${formatNumber(activeMaxHp(activeMonster))}`}
+              />
+            </div>
+            <button class="standdown" onclick={stop}>Stand down</button>
+          </div>
+        {:else if stalled}
+          <!-- Deployed, but the simulation is not running. Saying "not in
+               combat" here is what made the Fight button look broken. -->
+          <!-- Modul: DO NOT PROMISE A REASON THAT IS NOT THERE.
+               This said "See below for why" unconditionally, and the reason below
+               only renders when the server sent one. When it did not - which is
+               every case where the tick is not running this player at all - the
+               screen pointed at an empty space, which is worse than saying
+               nothing: it tells the player the answer exists and they have
+               missed it. -->
+          <div class="idle">
+            <p class="stalled">
+              Deployed to {deployedTo?.Name ?? `activity ${snap.ActiveActivityId}`}, but nothing is
+              happening.{haltMessage ? ' See below for why.' : ''}
+            </p>
+            <button class="standdown" onclick={stop}>Stand down</button>
+          </div>
+          {#if !haltMessage}
+            <p class="dim small">
+              The server has not said why. Standing down and deploying again
+              usually clears it; if it keeps happening, a reload will.
+            </p>
+          {/if}
+        {:else}
+          <!-- Modul: idle OFFERS something. "Not in combat." was a sentence with
+               nothing to press when there was no last monster; now it either
+               points at the list or goes straight back to the last fight. -->
+          <div class="idle">
+            {#if lastMonster}
+              <span class="dim">Not fighting.</span>
+              <button class="continue" data-testid="combat-continue" onclick={() => fight(lastMonster)}>
+                Continue: {lastMonster.Name}
+              </button>
+            {:else}
+              <span class="dim">Not fighting - pick a monster below.</span>
+            {/if}
+          </div>
         {/if}
-        <button onclick={stop}>Stand down</button>
       {:else}
-        <p class="dim">Not in combat.</p>
-        {#if lastMonster}
-          <button class="continue" data-testid="combat-continue" onclick={() => fight(lastMonster)}>
-            Continue: {lastMonster.Name}
-          </button>
-        {/if}
+        <p class="dim">Waiting for the first state snapshot...</p>
       {/if}
-
-      {#if haltMessage}
-        <p class="halt">{haltMessage}</p>
-      {/if}
-    {:else}
-      <p class="dim">Waiting for the first state snapshot...</p>
-    {/if}
     </section>
+
+    {#if snap && haltMessage}
+      <p class="halt">{haltMessage}</p>
+    {/if}
+
+    <!-- Modul: the fight log, under the monster's picture and health bar
+         exactly where it was asked for - and ONLY the fight.
+         Loot briefly lived here too and was moved out: asked for directly,
+         "under the monster there should be only the course of the fight,
+         and the loot drops window on the right". They were right, and for
+         a reason bigger than taste - see SessionLoot on how material
+         volume was evicting every piece of equipment.
+         {#if} rather than a <details>: a closed <details> whose child
+         carries an author display rule keeps its content live and
+         clickable on top of whatever is below it, which this project has
+         already shipped once. -->
+    {#if activeMonster && $combatLog.length > 0}
+      <ol class="fightlog" aria-label="Fight log">
+        {#each $combatLog as line (line.id)}
+          <li class:crit={(line.flags & CombatEventFlag.Crit) !== 0}
+              class:miss={line.kind === CombatEventKind.PlayerMiss || line.kind === CombatEventKind.MonsterMiss}
+              class:kill={line.kind === CombatEventKind.Kill}
+              class:heal={line.kind === CombatEventKind.Lifesteal}
+              class:incoming={line.kind === CombatEventKind.MonsterHit}>
+            {describeCombatLine(line, monsterName(registry, line.monsterId))}
+          </li>
+        {/each}
+      </ol>
+    {/if}
+  </aside>
   {/key}
 
-  <!-- Modul: SECOND, DIRECTLY UNDER THE FIGHT - and on a phone that is the
-       whole difference between a working screen and a frozen-looking one.
+  <div class="main">
+    <!-- Modul: SECOND, DIRECTLY UNDER THE FIGHT - and on a phone that is the
+         whole difference between a working screen and a frozen-looking one.
+         Reported from a phone as "combat is frozen, nothing is added to loot
+         drops": at level 87 an early monster dies BETWEEN TWO SNAPSHOTS, so
+         the loot landing is the only evidence anything is happening. On a
+         phone it is one line now (count and best piece), which still says
+         that, and opens in place. -->
+    <section class="panel lootpanel">
+      <SessionLoot {registry} compact />
+    </section>
 
-       This panel used to be LAST, after the drop table and after twenty-five
-       monster rows. `.layout` is repeat(auto-fit, minmax(20rem, 1fr)), so on a
-       wide screen that merely put it in the right-hand column - but a phone
-       has ONE column, and one column means DOM order IS reading order. What
-       you had just picked up sat thousands of pixels below the monster you
-       picked it up from.
-
-       Reported from a phone as "combat is frozen, nothing is added to loot
-       drops". It was not frozen: the account behind that report has 162,000
-       kills and 12,791 items. At level 87 an early monster dies BETWEEN TWO
-       SNAPSHOTS - the health bar cannot render a fight that is over before the
-       next packet arrives, which is the measured reason the combat EVENT feed
-       exists at all - so the only evidence the player has that anything is
-       happening is the loot landing. Putting that evidence off the bottom of
-       the screen is what made a working game look dead.
-
-       The order is now: the fight, what it just gave you, what this monster
-       can give you, and last the map of where other monsters are. -->
-  <section class="panel">
-    <SessionLoot {registry} />
-  </section>
-
-  <!-- Modul: only once a monster is chosen. With none, this was a heading
-       over nothing, between the loot and the monster list. -->
-  {#if dropPreviewFor > 0}
-  <section class="panel">
-    <h2>Drops</h2>
-    {#if dropPreviewFor > 0}
-      <h3>{monsterName(registry, dropPreviewFor)} drop table</h3>
-      {#if dropPreview.length === 0}
-        <p class="dim">No drop data.</p>
-      {:else}
-        {#if materialDrops.length > 0}
-          <h4>Materials</h4>
-          <ul class="drops">
-            {#each materialDrops as entry}
-              <li>
-                <span class="drop-name">
-                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
-                  {dropEntryName(entry)}
-                </span>
-                <span class="dim">
-                  {entry.ChancePct.toFixed(2)}% &middot; {entry.MinQuantity}-{entry.MaxQuantity}
-                </span>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-
-        {#if equipmentDrops.length > 0}
-          <h4>Equipment</h4>
-          <ul class="drops">
-            {#each equipmentDrops as entry}
-              <li>
-                <span class="drop-name">
-                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
-                  {dropEntryName(entry)}
-                </span>
-                <span class="dim">{entry.ChancePct.toFixed(2)}%</span>
-              </li>
-            {/each}
-          </ul>
-        {/if}
+    <section class="panel monsterpanel">
+      <h2>Monsters</h2>
+      {#if larderEmpty}
+        <div class="larder-warning" role="note">
+          <p>Your larder is empty. Without food a fight is usually lost.</p>
+          <button onclick={() => requestScreen('larder')}>Stock the larder</button>
+        </div>
       {/if}
-    {/if}
-
-  </section>
-  {/if}
-
-  <section class="panel">
-    <h2>Monsters</h2>
-    {#if larderEmpty}
-      <div class="larder-warning" role="note">
-        <p>Your larder is empty. Without food a fight is usually lost.</p>
-        <button onclick={() => requestScreen('larder')}>Stock the larder</button>
-      </div>
-    {/if}
-    {#if registry}
-    <!-- Modul: THE RULES OF THIS SCREEN, once, at the top.
-         A new player meets a list of twenty-five monsters, five of them
-         locked, some of them lethal, and nothing anywhere says which is which
-         or why. Every fact here is already enforced by the server; none of it
-         was ever written down where someone could read it. -->
-    <p class="dim small ruleset">
-      Each region has four monsters and a boss, and they get harder left to
-      right. A region opens when you beat the previous region's boss. A boss you
-      have never beaten is <strong>far stronger for that first kill</strong> -
-      {hpRange} its listed health and {attackRange} its damage, rising region by
-      region - and after it falls once it can be farmed at its normal stats.
-      Dying stops combat but never gathering.
-    </p>
-      {#each registry.regions as region, index}
-        {#if index + 1 <= lastListedRegion}
-        <!-- Modul: each location gets its painted scene as a banner. The art
-             existed and nothing referenced it; a list of five identical
-             headings is a much weaker sense of place than the thing the
-             painting is of. -->
-        <h3
-          class="place"
-          style={locationBackground(index + 1)
-            ? `background-image: linear-gradient(rgba(0,0,0,0.45), rgba(0,0,0,0.75)), url('${locationBackground(index + 1)}')`
-            : ''}
-        >
-          {locationName(index + 1)}
-          {#if index + 1 > unlockedRegion}
-            <span class="locked-tag"
-              >Locked — defeat the {locationName(index)} boss</span
+      {#if registry}
+        {#each registry.regions as region, index}
+          {#if index + 1 <= lastListedRegion}
+            {@const regionNo = index + 1}
+            {@const challengeRow = (challenges.data ?? []).find((c) => c.Region === regionNo)}
+            {@const ascensionRow = (ascension.data ?? []).find((b) => b.Region === regionNo)}
+            <!-- Modul: each location gets its painted scene as a banner. The art
+                 existed and nothing referenced it; a list of five identical
+                 headings is a much weaker sense of place than the thing the
+                 painting is of. -->
+            <div
+              class="place"
+              style={locationBackground(regionNo)
+                ? `background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.78)), url('${locationBackground(regionNo)}')`
+                : ''}
             >
-          {/if}
-        </h3>
-        {#if index + 1 > unlockedRegion && index + 1 === unlockedRegion + 1}
-          <!-- Task 72: the next region says what opens it, in numbers the
-               player can act on, instead of only naming the boss. -->
-          <p class="wall" data-testid="region-wall">
-            {describeBossGearRequirement(unlockedRegion)}
-            {#if wallProgress}
-              <strong>You wear {wallProgress.meets} of {wallProgress.of}</strong>
-              at region {unlockedRegion} {rarityName(wallProgress.tier)} or better.
+              <h3>
+                {locationName(regionNo)}
+                {#if regionNo > unlockedRegion}
+                  <span class="locked-tag">Locked — defeat the {locationName(index)} boss</span>
+                {/if}
+              </h3>
+              <button
+                class="info"
+                aria-expanded={rulesOpen === regionNo}
+                aria-label="How {locationName(regionNo)} works"
+                data-testid="region-rules-{regionNo}"
+                onclick={() => (rulesOpen = rulesOpen === regionNo ? 0 : regionNo)}>i</button
+              >
+            </div>
+            {#if rulesOpen === regionNo}
+              <!-- Modul: THE RULES OF THIS SCREEN, on request. A new player
+                   meets a list of monsters, some locked, some lethal, and these
+                   facts are all enforced by the server - they were simply a
+                   six-line paragraph ABOVE the first Fight. Per region now, with
+                   that region's own first-clear figures. -->
+              <p class="dim small ruleset" data-testid="region-rules-text-{regionNo}">
+                Four monsters and a boss, harder top to bottom. The next region
+                opens when this boss falls. A boss you have never beaten is
+                <strong>far stronger for that first kill</strong> - here
+                {firstClearHpMultiplier(regionNo)}x its listed health and
+                {firstClearAttackMultiplier(regionNo)}x its damage ({hpRange} and
+                {attackRange} across the map) - and after it falls once it can be
+                farmed at its normal stats. Dying stops combat but never gathering.
+              </p>
             {/if}
+            {#if regionNo > unlockedRegion && regionNo === unlockedRegion + 1}
+              <!-- Task 72: the next region says what opens it, in numbers the
+                   player can act on, instead of only naming the boss. -->
+              <p class="wall" data-testid="region-wall">
+                {describeBossGearRequirement(unlockedRegion)}
+                {#if wallProgress}
+                  <strong>You wear {wallProgress.meets} of {wallProgress.of}</strong>
+                  at region {unlockedRegion} {rarityName(wallProgress.tier)} or better.
+                {/if}
+              </p>
+            {/if}
+            <ul class="monsters" class:locked={regionNo > unlockedRegion}>
+              {#each region as monster}
+                {@const bossRegion = bossRegionOf(monster.Id)}
+                {@const firstClear = isFirstClearPending(monster.Id)}
+                {@const est = regionNo <= unlockedRegion ? estimates.get(monster.Id) : undefined}
+                {@const verdict = est ? (est.CanDamage ? safety(est) : { tone: 'danger', text: 'cannot hurt it' }) : null}
+                {@const open = selectedMonsterId === monster.Id}
+                <li class:selected={open}>
+                  <!-- Modul: TWO LINES, AND THE FIGHT BUTTON IS THE BIG THING.
+                       One flex-wrapped line left the verdict ("you would die")
+                       as an orphaned last token, and Fight was styled like the
+                       card - so the card, the larger target, read as the
+                       action. Name and verdict first, numbers second; Fight
+                       filled. -->
+                  <button
+                    class="row"
+                    aria-expanded={open}
+                    aria-label="{monster.Name}: show drops"
+                    onclick={() => toggleMonster(monster)}
+                  >
+                    <MonsterPortrait monsterId={monster.Id} name={monster.Name} size="sm" />
+                    <span class="rowtext">
+                      <span class="line1">
+                        <span class="name">{monster.Name}</span>
+                        {#if bossRegion > 0}<span class="chip boss">Boss</span>{/if}
+                        {#if firstClear}<span class="chip firstclear">first clear</span>{/if}
+                        {#if verdict}<span class="chip verdict {verdict.tone}">{verdict.text}</span>{/if}
+                      </span>
+                      <span class="line2 dim">
+                        <span class:firstclear-num={firstClear}>{formatNumber(shownMaxHp(monster))} HP</span>
+                        · {formatNumber(monster.BaseXpReward)} XP
+                        {#if est && est.CanDamage}
+                          <span class="estimate" data-testid="hunting-estimate" title={estimateLine(est)}>
+                            · {killTimeText(est)} a kill · {formatNumber(est.XpPerHour)} XP/h ·
+                            <Money amount={est.GoldPerHour} />/h
+                          </span>
+                        {:else if est}
+                          <span class="estimate" data-testid="hunting-estimate" title={estimateLine(est)}>
+                            · you cannot hurt it yet
+                          </span>
+                        {/if}
+                      </span>
+                    </span>
+                  </button>
+                  <button
+                    class="fight"
+                    disabled={$connectionStatus.phase !== 'live' || regionNo > unlockedRegion}
+                    onclick={() => fight(monster)}
+                  >
+                    Fight
+                  </button>
+                  {#if open}
+                    <!-- Modul: THE DROP TABLE OPENS WHERE THE TAP WAS. It used
+                         to render in its own panel ABOVE the monster list, so on
+                         one column the only visible answer to a tap was a
+                         border changing colour. -->
+                    <div class="detail" data-testid="monster-drops-{monster.Id}">
+                      {#if firstClear}
+                        <!-- Modul: WHAT "FIRST CLEAR" MEANS, said on tap - a
+                             title never shows on a phone. -->
+                        <p class="dim tiny" data-testid="first-clear-detail">
+                          Never beaten: {firstClearHpMultiplier(bossRegion)}x health and
+                          {firstClearAttackMultiplier(bossRegion)}x damage until it falls once,
+                          then it drops to its normal stats for good. {describeBossGearRequirement(bossRegion)}
+                        </p>
+                      {/if}
+                      {#if dropPreviewFor !== monster.Id}
+                        <p class="dim tiny">Loading drops...</p>
+                      {:else if dropPreview.length === 0}
+                        <p class="dim tiny">No drop data.</p>
+                      {:else}
+                        {#if materialDrops.length > 0}
+                          <h4>Materials</h4>
+                          <ul class="drops">
+                            {#each materialDrops as entry}
+                              <li>
+                                <span class="drop-name">
+                                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
+                                  {dropEntryName(entry)}
+                                </span>
+                                <span class="dim">
+                                  {entry.ChancePct.toFixed(2)}% &middot; {entry.MinQuantity}-{entry.MaxQuantity}
+                                </span>
+                              </li>
+                            {/each}
+                          </ul>
+                        {/if}
+                        {#if equipmentDrops.length > 0}
+                          <h4>Equipment</h4>
+                          <ul class="drops">
+                            {#each equipmentDrops as entry}
+                              <li>
+                                <span class="drop-name">
+                                  <ItemIcon baseItemId={entry.BaseItemId} name={dropEntryName(entry)} size="sm" />
+                                  {dropEntryName(entry)}
+                                </span>
+                                <span class="dim">{entry.ChancePct.toFixed(2)}%</span>
+                              </li>
+                            {/each}
+                          </ul>
+                        {/if}
+                      {/if}
+                    </div>
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+            <!-- Modul: CHALLENGES AND ASCENSION WERE ABOUT 560px PER REGION,
+                 including a "beat this boss once" placeholder under every boss
+                 nobody had beaten. Both are post-clear content (the ladder
+                 cannot start before a clear), so they fold into one line under
+                 the boss and that line only exists once the boss has fallen. -->
+            {#if regionNo <= unlockedRegion && (challengeRow || ascensionRow) && bossBeaten(regionNo, ascensionRow?.BossDefeated)}
+              {@const done = challengeRow ? challengeRow.Challenges.filter((c) => c.Completed).length : 0}
+              <button
+                class="extras-toggle"
+                aria-expanded={extrasOpen.includes(regionNo)}
+                data-testid="boss-extras-{regionNo}"
+                onclick={() => toggleExtras(regionNo)}
+              >
+                {#if challengeRow}<span>Challenges {done}/{challengeRow.Challenges.length}</span>{/if}
+                {#if challengeRow && ascensionRow}<span class="dim">·</span>{/if}
+                {#if ascensionRow}<span>Ascension {ascensionRow.HighestStep}/{ascensionRow.Steps.length}</span>{/if}
+                <span class="chev" aria-hidden="true">{extrasOpen.includes(regionNo) ? '▾' : '▸'}</span>
+              </button>
+              {#if extrasOpen.includes(regionNo)}
+                {#if challengeRow}<BossChallenges row={challengeRow} />{/if}
+                {#if ascensionRow}<BossAscension boss={ascensionRow} />{/if}
+              {/if}
+            {/if}
+          {/if}
+        {/each}
+        {#if registry.regions.length > lastListedRegion}
+          {@const hidden = registry.regions.length - lastListedRegion}
+          <p class="dim beyond">
+            {hidden === 1 ? 'One more region lies' : `${hidden} more regions lie`} beyond. Each opens
+            when the boss of the one before it falls.
           </p>
         {/if}
-        <ul class="monsters" class:locked={index + 1 > unlockedRegion}>
-          {#each region as monster}
-            <li class:selected={selectedMonsterId === monster.Id}>
-              <button class="row" onclick={() => selectMonster(monster)}>
-                <MonsterPortrait monsterId={monster.Id} name={monster.Name} size="sm" />
-                <span class="name">{monster.Name}</span>
-                <span class="dim" class:firstclear={isFirstClearPending(monster.Id)}>
-                  {formatNumber(shownMaxHp(monster))} HP
-                </span>
-                <span class="dim">{formatNumber(monster.BaseXpReward)} XP</span>
-                {#if isFirstClearPending(monster.Id)}
-                  {@const bossRegion = bossRegionOf(monster.Id)}
-                  <span
-                    class="firstclear tiny"
-                    title="Never beaten: {firstClearHpMultiplier(bossRegion)}x health and {firstClearAttackMultiplier(bossRegion)}x damage until it falls once, then it drops to its normal stats for good. {describeBossGearRequirement(bossRegion)}"
-                  >first clear</span>
-                {/if}
-                {#if index + 1 <= unlockedRegion && estimates.has(monster.Id)}
-                  {@const est = estimates.get(monster.Id)!}
-                  {@const verdict = safety(est)}
-                  <span class="estimate" data-testid="hunting-estimate" title={estimateLine(est)}>
-                    {#if est.CanDamage}
-                      <span class="dim">Estimate:</span>
-                      {killTimeText(est)} a kill · {formatNumber(est.XpPerHour)} XP/h ·
-                      <Money amount={est.GoldPerHour} />/h ·
-                      <span class="verdict {verdict.tone}">{verdict.text}</span>
-                    {:else}
-                      <span class="dim">Estimate:</span>
-                      <span class="verdict danger">you cannot hurt it yet</span>
-                    {/if}
-                  </span>
-                {/if}
-              </button>
-              <button
-                class="fight"
-                disabled={$connectionStatus.phase !== 'live' || index + 1 > unlockedRegion}
-                onclick={() => fight(monster)}
-              >
-                Fight
-              </button>
-              <!-- Modul: WHAT "FIRST CLEAR" MEANS, said on tap. The multipliers
-                   were only the chip's title, and the chip sits inside the row
-                   button, where a Hint (itself a button) cannot go - so
-                   selecting the row, which a tap already does, prints it. -->
-              {#if selectedMonsterId === monster.Id && isFirstClearPending(monster.Id)}
-                {@const bossRegion = bossRegionOf(monster.Id)}
-                <p class="dim tiny" style="grid-column: 1 / -1; margin: 0;" data-testid="first-clear-detail">
-                  Never beaten: {firstClearHpMultiplier(bossRegion)}x health and
-                  {firstClearAttackMultiplier(bossRegion)}x damage until it falls once,
-                  then it drops to its normal stats for good. {describeBossGearRequirement(bossRegion)}
-                </p>
-              {/if}
-            </li>
-          {/each}
-        </ul>
-        {@const challengeRow = (challenges.data ?? []).find((c) => c.Region === index + 1)}
-        {#if challengeRow && index + 1 <= unlockedRegion}
-          <BossChallenges row={challengeRow} />
-        {/if}
-        {@const ascensionRow = (ascension.data ?? []).find((b) => b.Region === index + 1)}
-        {#if ascensionRow && index + 1 <= unlockedRegion}
-          <BossAscension boss={ascensionRow} />
-        {/if}
-        {/if}
-      {/each}
-      {#if registry.regions.length > lastListedRegion}
-        {@const hidden = registry.regions.length - lastListedRegion}
-        <p class="dim beyond">
-          {hidden === 1 ? 'One more region lies' : `${hidden} more regions lie`} beyond. Each opens
-          when the boss of the one before it falls.
-        </p>
+      {:else if !contentError}
+        <p class="dim">Loading content...</p>
       {/if}
-    {:else if !contentError}
-      <p class="dim">Loading content...</p>
-    {/if}
-  </section>
+    </section>
+  </div>
 </div>
 
 <style>
@@ -744,8 +837,21 @@
     border-left: 2px solid var(--border);
   }
 
-  .continue {
-    margin-top: 0.4rem;
+  .continue,
+  .standdown {
+    flex-shrink: 0;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
   }
 
   .larder-warning {
@@ -753,8 +859,9 @@
     flex-wrap: wrap;
     align-items: center;
     gap: 0.4rem 0.8rem;
-    padding: 0.5rem 0.7rem;
-    margin: 0 0 0.7rem;
+    padding: 0.4rem 0.6rem;
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
     border: 1px solid var(--danger);
     border-radius: var(--radius);
   }
@@ -830,26 +937,73 @@
   }
 
   .ruleset {
-    margin: 0 0 0.6rem;
+    margin: 0 0 0.5rem;
     max-width: 60ch;
   }
 
-  .firstclear {
-    color: var(--warn);
+  /* Chips on the first line of a monster card: what kind of fight, and the
+     server's verdict on it. A chip rather than a trailing word, so the verdict
+     cannot be the orphaned last token of a wrapped line. */
+  .chip {
+    flex: none;
+    font-size: 0.7rem;
+    line-height: 1.4;
     border: 1px solid currentColor;
     border-radius: 999px;
-    padding: 0 0.35rem;
+    padding: 0 0.4rem;
     white-space: nowrap;
   }
 
-  h3.place {
+  .chip.boss {
+    color: var(--accent);
+  }
+
+  .firstclear,
+  .firstclear-num {
+    color: var(--warn);
+  }
+
+  /* Modul: the banner title was --text-dim on a darkened painting, which is
+     low contrast twice over. The gradient already guarantees a dark ground,
+     so the title is light on purpose rather than following the theme. */
+  .place {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    background-color: #2a231b;
     background-size: cover;
     background-position: center;
     border-radius: var(--radius-sm);
-    padding: 0.7rem 0.9rem;
-    margin: 1rem 0 0.5rem;
+    padding: 0.15rem 0.15rem 0.15rem 0.8rem;
+    margin: 0.9rem 0 0.4rem;
+  }
+
+  .place h3 {
+    margin: 0;
+    color: #f4ead8;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
     letter-spacing: 0.04em;
+  }
+
+  .place .info {
+    flex-shrink: 0;
+    /* 44px: the touch floor, measured by check:touch. */
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border-radius: 50%;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 700;
+    color: #f4ead8;
+    background: rgba(0, 0, 0, 0.35);
+    border-color: rgba(244, 234, 216, 0.5);
+  }
+
+  .place .info[aria-expanded='true'] {
+    background: var(--accent);
+    color: var(--on-accent);
   }
 
   /* Modul: THE PAGE JITTERED THROUGHOUT EVERY FIGHT.
@@ -861,13 +1015,120 @@
      moving.
      Fixed fractions, and tabular numerals so a digit is always the same
      width. */
+  /* Task 98: a flex COLUMN on a phone, so the status strip (a child of this
+     box while .side is display: contents) can stick across the whole screen.
+     See the comment on .side in the markup. */
   .layout {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .side {
+    display: contents;
+  }
+
+  .main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  /* Modul: THE STRIP. Level, XP to the next level, health, the target and
+     the way out - the four things a glance at Combat is for - pinned while
+     the monster list scrolls under it. Opaque, because the rows scroll
+     beneath. The offset is the status bar plus --sticky-header-h, which a
+     sticky app header (task 95) can set; without one it is 0. */
+  .strip {
+    position: sticky;
+    top: calc(var(--sa-top) + var(--sticky-header-h, 0px));
+    z-index: var(--z-sticky);
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
-    grid-auto-columns: 1fr;
-    gap: 1rem;
-    padding: 1rem;
-    align-items: start;
+    gap: 0.4rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.6rem 0.75rem;
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+  }
+
+  .strip p {
+    margin: 0;
+  }
+
+  .levelrow {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .levelrow .xp {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .levelcell {
+    flex: none;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  .levelcell strong {
+    font-size: 1.05rem;
+  }
+
+  .idle {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .target {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .floatwrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 55%;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* Wide: a sticky left column (the strip and the fight log) and the loot and
+     a wide monster table on the right, instead of three equal columns with
+     the 25-monster list squeezed into one of them. */
+  @media (min-width: 64rem) {
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(20rem, 26rem) minmax(0, 1fr);
+      align-items: start;
+      gap: 1rem;
+      padding: 1rem;
+    }
+
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      position: sticky;
+      top: calc(var(--sa-top) + var(--sticky-header-h, 0px) + 0.5rem);
+    }
+
+    .strip {
+      position: static;
+      box-shadow: none;
+    }
   }
 
   .layout strong {
@@ -898,23 +1159,21 @@
     color: var(--text-dim);
   }
 
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 0.5rem;
-    margin-bottom: 0.85rem;
+  .small {
+    font-size: 0.85rem;
   }
 
-  .stats div {
-    display: grid;
-    gap: 0.1rem;
-    font-size: 0.8rem;
+  .tiny {
+    font-size: 0.75rem;
+  }
+
+  .monsterpanel h2 {
+    margin-bottom: 0.4rem;
   }
 
   .hpblock {
     display: grid;
-    gap: 0.25rem;
-    margin-bottom: 0.75rem;
+    gap: 0.2rem;
     font-size: 0.8rem;
   }
 
@@ -944,7 +1203,8 @@
 
   .monsters li {
     display: grid;
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: stretch;
     gap: 0.35rem;
   }
 
@@ -952,48 +1212,104 @@
     border-color: var(--accent);
   }
 
-  /* Modul: THE NAME MUST NOT BE THE ONLY THING THAT GIVES WAY.
-     This was `grid-template-columns: auto 1fr auto auto` over a portrait, the
-     name, the health, the XP and - on an unbeaten monster - a fifth "first
-     clear" tag that landed in an implicit column nobody sized.
+  /* Modul: FIGHT IS THE ACTION, SO IT LOOKS LIKE ONE. It was styled like the
+     card beside it, and the card was the bigger target. */
+  .fight {
+    flex-shrink: 0;
+    min-width: 4.5rem;
+    background: var(--accent);
+    border-color: var(--accent);
+    color: var(--on-accent);
+    font-weight: 700;
+  }
 
-     `.name` carries `overflow: hidden`, and a grid item whose overflow is not
-     visible has an automatic minimum size of ZERO. So the 1fr track was the
-     one thing in the row allowed to shrink, and it did - all the way. In a
-     panel narrowed by its own grid (three 20rem columns at a 1060px window)
-     every monster read "Field Mo...", and every boss row - the one with the
-     extra tag - showed a portrait, a health figure and NO NAME AT ALL.
+  .fight:disabled {
+    background: var(--bg-raised);
+    border-color: var(--border);
+    color: var(--text-dim);
+    font-weight: 400;
+  }
 
-     Flex with a basis instead of fixed tracks: when the row runs out of room
-     the STATS drop to a second line and the name keeps its width, which is the
-     opposite of what the grid chose. Not a media query, because the panel's
-     width comes from the grid it sits in rather than from the viewport. */
-  .row {
+  .detail {
+    grid-column: 1 / -1;
+    margin: 0 0 0.4rem;
+    padding: 0.45rem 0.6rem;
+    border-left: 2px solid var(--accent);
+    background: var(--bg-sunken);
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  .detail p {
+    margin: 0 0 0.3rem;
+  }
+
+  .detail h4 {
+    margin: 0.3rem 0 0.2rem;
+    font-size: 0.78rem;
+  }
+
+  .extras-toggle {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem 0.6rem;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    width: 100%;
+    margin: 0.35rem 0 0.25rem;
+    font-size: 0.82rem;
+    text-align: left;
+  }
+
+  .extras-toggle .chev {
+    margin-left: auto;
+  }
+
+  /* Modul: THE NAME MUST NOT BE THE ONLY THING THAT GIVES WAY.
+     The grid this replaced let the 1fr name track shrink to nothing, so boss
+     rows showed a portrait, a health figure and NO NAME. The card is two
+     lines now - name and chips, then the numbers - and only the numbers
+     wrap; `.name` ellipsises but is the last thing to give. On a wide screen
+     the two lines sit side by side, which is the "wide monster table". */
+  .row {
+    display: flex;
+    gap: 0.6rem;
     align-items: center;
     text-align: left;
     font-size: 0.85rem;
+    min-width: 0;
+    padding: 0.35rem 0.55rem;
   }
 
-  /* The portrait, the health, the XP and the first-clear tag hold their size;
-     a truncated "27 000 HP" reads as a different number rather than a
-     shortened one. */
-  .row > :not(.name) {
+  /* The portrait keeps its size; `.panel *`'s min-width: 0 would otherwise
+     let flex squeeze it. */
+  .row > :global(:first-child) {
     flex: none;
   }
 
-  .row > span:not(.name) {
-    white-space: nowrap;
+  .rowtext {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: grid;
+    gap: 0.1rem;
   }
 
-  /* Task 78: the advisor's line takes a row of its own under the name, and
-     it may wrap - the class selector keeps it out of the nowrap rule above. */
-  .row > span.estimate {
-    flex: 1 1 100%;
-    white-space: normal;
+  .line1 {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .line2 {
     font-size: 0.75rem;
+    overflow-wrap: anywhere;
+  }
+
+  @media (min-width: 64rem) {
+    .rowtext {
+      grid-template-columns: minmax(12rem, 20rem) minmax(0, 1fr);
+      align-items: center;
+      gap: 0.8rem;
+    }
   }
 
   .verdict.safe {
@@ -1006,14 +1322,14 @@
 
   .verdict.danger {
     color: var(--danger);
-    font-weight: 600;
   }
   /* The portrait sits beside the health bar rather than above it, so the
      fight reads as one thing at a glance. */
   .fighting {
+    position: relative;
     display: flex;
     align-items: center;
-    gap: 0.8rem;
+    gap: 0.6rem;
   }
 
   .grow {
@@ -1099,12 +1415,21 @@
     padding: 0.4rem 0.6rem;
     max-height: 11rem;
     overflow-y: auto;
+    overflow-anchor: none;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: var(--bg-sunken);
     font-size: 0.82rem;
     line-height: 1.5;
     font-variant-numeric: tabular-nums;
+  }
+
+  /* A phone keeps the course of the fight to a few lines, so it cannot stand
+     between the strip and the monster list. */
+  @media (max-width: 63.99rem) {
+    .fightlog {
+      max-height: 5.2rem;
+    }
   }
 
   .fightlog li {
@@ -1138,9 +1463,9 @@
   }
 
   .name {
-    /* 7rem is about what the longest monster name needs before it starts
-       ellipsising; below that the stats wrap away rather than the name. */
-    flex: 1 1 7rem;
+    /* The chips beside it are short and nowrap; the name is the one thing on
+       the line allowed to ellipsise, and only once they have taken their room. */
+    flex: 0 1 auto;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -1165,7 +1490,7 @@
   }
 
   .halt {
-    margin: 0.5rem 0 0;
+    margin: 0;
     padding: 0.5rem 0.65rem;
     background: rgba(224, 85, 63, 0.12);
     border-left: 3px solid var(--danger);
@@ -1175,7 +1500,7 @@
   /* Warn, not danger: the player did the right thing and something is in the
      way, which is a different message from "this failed". */
   .stalled {
-    margin: 0 0 0.6rem;
+    margin: 0;
     color: var(--warn);
     font-size: 0.88rem;
   }

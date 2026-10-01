@@ -6538,7 +6538,7 @@ N1-N7.
 
 ## 98. Combat: phone redesign
 
-**OPEN.** Report sections 4.H and 8. This is visual review A1, C1-C11.
+**BUILT on branch `claude/ui-98-108-combat-gpu`, not merged.** Report sections 4.H and 8. This is visual review A1, C1-C11. Left open: nothing was run against a live stack - exercise.mjs (updated: "Stand down", the boss fold, the estimate line), check:perf, the geometry checkers and the owner's screenshot; the fold hides "Young blood", which CAN be met on a first clear (owner call); the strip sits under a sticky header only if that header sets `--sticky-header-h`.
 
 **What is actually true.**
 - **The first Fight is about y 915 at 390 px** (about y 1060 for a guest),

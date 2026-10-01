@@ -36,6 +36,7 @@
   import { wearOnMain } from '../net/commands';
   import { play } from './audio';
   import { compareDrop, comparisonLine, dropRequirement, isUpgrade } from './lootCompare';
+  import { requestScreen } from '../stores/navigation';
 
   interface Props {
     registry: ContentRegistry | null;
@@ -48,9 +49,28 @@
      * at something fishing does not do. Combat shows both.
      */
     showEquipment?: boolean;
+    /**
+     * Modul: TASK 98 - ONE LINE ON A PHONE. On Combat this panel came before
+     * the first Fight, and empty it was a heading, an odds line and two
+     * "Nothing yet." - about 250px of nothing above the action. Compact, it is
+     * a single line (how many pieces, how much material, the best piece) that
+     * opens in place, plus a way to the Chest. Open by default on a wide
+     * screen, where it has a column of its own.
+     */
+    compact?: boolean;
   }
 
-  const { registry, showEquipment = true }: Props = $props();
+  const { registry, showEquipment = true, compact = false }: Props = $props();
+
+  const WIDE = '(min-width: 64rem)';
+  // The starting state only - after that the player's tap decides. Read once,
+  // deliberately: a fold that re-opened itself on a rotate would fight them.
+  function initiallyOpen(): boolean {
+    if (!compact) return true;
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return true;
+    return window.matchMedia(WIDE).matches;
+  }
+  let expanded = $state(initiallyOpen());
 
   interface Row {
     key: string;
@@ -145,6 +165,8 @@
 
   const equipmentCount = $derived(equipmentRows.reduce((n, r) => n + r.count, 0));
   const materialCount = $derived(materialRows.reduce((n, r) => n + r.quantity, 0));
+  // Rows are sorted by rarity, so the first is the best piece this session.
+  const bestRow = $derived(showEquipment ? (equipmentRows[0] ?? null) : null);
 
   // Modul: SAY HOW RARE RARE ACTUALLY IS.
   //
@@ -164,9 +186,33 @@
   ];
 </script>
 
-<div class="loot">
-  <h2>Loot drops</h2>
+<div class="loot" class:compact>
+  {#if compact}
+    <div class="summary">
+      <button
+        class="toggle"
+        aria-expanded={expanded}
+        data-testid="loot-toggle"
+        onclick={() => (expanded = !expanded)}
+      >
+        <span class="label">Loot</span>
+        <span class="counts dim">
+          {#if showEquipment}{formatNumber(equipmentCount)} piece{equipmentCount === 1 ? '' : 's'} · {/if}{formatNumber(materialCount)} material{materialCount === 1 ? '' : 's'}
+        </span>
+        {#if bestRow}
+          <span class="best" style="color: {rarityColor(bestRow.qualityTier)}" title={rarityTitle(bestRow.qualityTier)}>
+            {itemName(registry, bestRow.itemId)}
+          </span>
+        {/if}
+        <span class="chev" aria-hidden="true">{expanded ? '▾' : '▸'}</span>
+      </button>
+      <button class="chestlink" onclick={() => requestScreen('chest')}>Chest</button>
+    </div>
+  {:else}
+    <h2>Loot drops</h2>
+  {/if}
 
+  {#if expanded}
   {#if showEquipment}
   <section class="lootsection">
     <div class="head">
@@ -271,6 +317,7 @@
       </ul>
     {/if}
   </section>
+  {/if}
 </div>
 
 <style>
@@ -278,6 +325,71 @@
     display: flex;
     flex-direction: column;
     gap: 0.9rem;
+  }
+
+  /* The screen's own h2 is 1.05rem; this one was the browser's 1.5em and
+     out-shouted the screen it sits on. */
+  h2 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .summary {
+    display: flex;
+    align-items: stretch;
+    gap: 0.4rem;
+  }
+
+  .toggle {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: left;
+    font-size: 0.85rem;
+  }
+
+  .toggle .label {
+    flex: none;
+    font-weight: 600;
+  }
+
+  .toggle .counts {
+    flex: none;
+    font-size: 0.78rem;
+    white-space: nowrap;
+  }
+
+  .toggle .best {
+    flex: 0 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.78rem;
+  }
+
+  .toggle .chev {
+    margin-left: auto;
+    flex: none;
+  }
+
+  .chestlink {
+    flex-shrink: 0;
+    font-size: 0.82rem;
+  }
+
+  /* Modul: NO SCROLLER INSIDE A SCROLLER ON A PHONE. Two nested 16rem boxes
+     inside a page that already scrolls meant a thumb dragging the list moved
+     the page or the box depending on where it landed. Opened on a phone, the
+     compact panel's lists are simply as long as they are; equipment comes
+     first, so material volume still cannot push it out of sight. */
+  @media (max-width: 40rem) {
+    .compact ul {
+      max-height: none;
+      overflow: visible;
+    }
   }
 
   .lootsection {

@@ -339,6 +339,11 @@
      under it - that is --sa-bottom, added separately. 0 where there is no bar,
      so every "sit above the bar" rule is a no-op on a desktop. */
   --tabbar-h: 0px;
+  /* The height of an app header that stays pinned while the page scrolls, so
+     a screen's own sticky strip (Combat's status, task 98) sits under it
+     instead of behind it. 0 while the header scrolls away with the page; a
+     sticky header sets it. */
+  --sticky-header-h: 0px;
 }
 
 @media (max-width: 40rem) {
