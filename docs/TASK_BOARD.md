@@ -7403,3 +7403,49 @@ Village at 0).
   wheel, and the white flash after the splash. -> 110 (device checklist).
 - Focus trapping and `inert` behind modals (audit B4) were not done. -> 106
   (the shared Modal).
+
+## Wave 2 result (2026-10-01): 94, 96, 97, 98, 99, 103, 104, 108 built and verified together
+
+Built in parallel on six branches and merged into `claude/ui-wave2`, which is
+what was verified. No merge conflicts.
+
+**Verified on `claude/ui-wave2`:** server suite 1547/1547; `npx vitest run`
+750 passed; svelte-check 4 (the GuildOps baseline); `npm run exercise`
+292/292 after a re-seed; `check:clipping`, `check:overlap`, `check:touch` and
+`check:safearea` all 0 findings. `check:perf` Chest scroll: 22 long tasks on
+both main and this branch (longest 227/242 ms on main, 320/153 ms here - noise,
+not a regression). 390 px screenshots in `docs/screenshots/2026-10-01-wave2/`:
+a guest sees the weapon slot (Character) and a Fight button (Combat) in the
+first viewport, and Sign out is the first control on Settings.
+
+**Found while integrating, and fixed here:**
+- **Gold could be sold or binned as a material** - `/chest/sell` and
+  `/chest/discard` accepted `itemId: "gold"`, took the coins and paid
+  `ValueMaterial("gold") = 0`. The server refuses with `NotRemovable` now
+  (`VillageChestEngine`, test in `GoldIncomeLedgerPostgresTests`).
+- The 94 exercise step refounded the fixture's guild whenever the fixture was
+  its last member - a new guild id with an empty depot every run. It only arms
+  that confirm now; `GuildLeaveTests` commits the close.
+- The Delve lantern check compared two gold balances while the fixture was
+  still fighting and failed on combat income (+580 g). It reads the route's own
+  `GoldCharged` now.
+- The loot strip read "0 pieces ·0 materials" (Svelte drops the space before
+  `{/if}`).
+
+**Owner questions raised by this wave:**
+- 98: "Young blood" can be earned on the first boss kill, but the challenge
+  fold stays hidden until the boss is beaten (the spec's rule).
+- 97: attributes are account-wide and health is only known for slot 1, so the
+  person switcher does not change them; and DPS is the server projection
+  (monster HP / seconds per kill). Confirm that is the number to show.
+- 103: married-in elders count against the newcomer cap and cannot be sent on,
+  so ~Inn+6 marriages stop arrivals for the season - intended? The Household
+  housing cap (e.g. 188/35) is enforced by nothing: give it an effect or drop it.
+- 94: leave/rejoin has no cooldown (guild payouts could be collected twice -
+  unchecked); succession ignores Officer rank.
+- 99: Sell shows no price because the client never receives the server's sell
+  value; sending it per inventory row is a server change.
+
+**Still open:** 95, 100, 101, 102, 105, 106, 107, 109, 110. The coach pill
+("Do this next") still sits over content at the bottom of every phone screen
+(seen on Settings, Chest, Village, Guild) - fold into 109's tutorial items.

@@ -2392,13 +2392,22 @@ await go('The Delve');
       );
 
       if (lanternPrice > 0) {
+        // Modul: what the lantern COST is read off the server's answer to the
+        // click (GoldCharged), not off two balance reads - the fixture is still
+        // fighting, so the balance drifted by combat income in between and this
+        // failed on an exact charge (+580g, 2026-10-01). Same fix as Walk out.
+        const lanternAnswer = page
+          .waitForResponse((r) => r.url().includes('/api/v1/delve/deep/lantern'), { timeout: 10000 })
+          .then((r) => r.json())
+          .catch(() => null);
         await page.getByRole('button', { name: /Light another lantern/i }).first().click();
+        const lit = await lanternAnswer;
         await page.waitForTimeout(1500);
         const relit = await apiGet('/api/v1/delve');
         record(
           'a lantern takes exactly the quoted price and relights the run',
-          Boolean(relit) && relit.CurrentGold === unlit.CurrentGold - lanternPrice && relit.ChargesRemaining === 1 && relit.LanternsBought === 1,
-          relit ? `${unlit.CurrentGold.toLocaleString()} - ${lanternPrice.toLocaleString()} -> ${relit.CurrentGold.toLocaleString()}g, ${relit.ChargesRemaining} charge` : '',
+          lit?.GoldCharged === lanternPrice && Boolean(relit) && relit.ChargesRemaining === 1 && relit.LanternsBought === 1,
+          lit ? `quoted ${lanternPrice.toLocaleString()}g, charged ${lit.GoldCharged.toLocaleString()}g (${lit.Result}), ${relit?.ChargesRemaining} charge` : 'no answer from the lantern route',
         );
       }
 

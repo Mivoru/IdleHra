@@ -197,7 +197,7 @@
       >
         <span class="label">Loot</span>
         <span class="counts dim">
-          {#if showEquipment}{formatNumber(equipmentCount)} piece{equipmentCount === 1 ? '' : 's'} · {/if}{formatNumber(materialCount)} material{materialCount === 1 ? '' : 's'}
+          {#if showEquipment}{formatNumber(equipmentCount)} piece{equipmentCount === 1 ? '' : 's'}{' · '}{/if}{formatNumber(materialCount)} material{materialCount === 1 ? '' : 's'}
         </span>
         {#if bestRow}
           <span class="best" style="color: {rarityColor(bestRow.qualityTier)}" title={rarityTitle(bestRow.qualityTier)}>
