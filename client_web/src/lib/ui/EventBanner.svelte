@@ -58,7 +58,7 @@
     <!-- Modul: the name is a Hint. A phone hides the effect (below) and the
          title tooltip never shows on touch, so "Diamond Star" was an
          unexplained pill; a tap now says what it does. -->
-    <Hint text="{$t('ActiveEventPrefix')} {$t(event.key)}: {event.effect}."><strong>{$t(event.key)}</strong></Hint>
+    <Hint class="event-hint" text="{$t('ActiveEventPrefix')} {$t(event.key)}: {event.effect}."><strong>{$t(event.key)}</strong></Hint>
     <span class="effect">{event.effect}</span>
   </span>
 {/if}
@@ -99,6 +99,19 @@
     .label,
     .effect {
       display: none;
+    }
+
+    /* Modul: on a phone the name IS the control, so it gets the same 44px as
+       the Chat and Menu buttons beside it. Hint's ::after only grows the hit
+       area by 20px, which left this pill at 39px - check:touch flagged it on
+       every screen. */
+    .event {
+      align-items: center;
+      padding-block: 0;
+    }
+
+    .event :global(.event-hint) {
+      min-height: 44px;
     }
   }
 
