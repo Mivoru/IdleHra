@@ -6847,7 +6847,7 @@ MC1-MC4.
 
 ## 104. Ancestors: carried vs lost
 
-**OPEN.** Report sections 4.H and 8. This is visual review B2, AN1-AN5.
+**BUILT on branch `claude/ui-103-104-village-ancestors`, not merged.** Report sections 4.H and 8. This is visual review B2, AN1-AN5. Still open: the Lost list has no filters (sort is total only); the page height at 390 px and the checkers were not measured on this branch; `exercise.mjs` (Hall: carried split, trait sheet, pedigree, keep round trip, fielding) was rewritten for the new structure and not run.
 
 **What is actually true.**
 - **The phone page is 37,468 px tall.** `Ancestors.svelte:182-247` renders

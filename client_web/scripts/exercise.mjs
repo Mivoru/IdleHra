@@ -3830,15 +3830,69 @@ await go('Ancestors');
   const rows = page.locator('.panel li');
   record('the Hall lists the roster', (await rows.count()) > 0, `${await rows.count()} members`);
 
-  // Modul: THE BRED CHILD'S OWN ROW, not just the preview that promised it.
+  // Modul: CARRIED AND LOST (task 104). The Hall is two sections now: the
+  // carried few, open, and "Lost at rebirth", collapsed and paged 20 at a
+  // time. Traits, parents, fielding and the keep toggle open in a sheet when a
+  // row is tapped. So a row is FOUND (opening Lost and paging until it is
+  // drawn) and then OPENED, rather than assumed to be on the page.
+  const hallSheet = page.locator('[data-testid="hall-sheet"]');
+  const hallRow = (id) => page.locator(`.panel li[data-character-id="${id}"]`);
+  async function revealHallRow(id) {
+    if ((await hallRow(id).count()) > 0) return true;
+    const lostToggle = page.locator('[data-testid="hall-lost-toggle"]');
+    if ((await lostToggle.count()) > 0 && (await lostToggle.getAttribute('aria-expanded')) !== 'true') {
+      await lostToggle.click();
+      await page.waitForTimeout(300);
+    }
+    for (let i = 0; i < 30 && (await hallRow(id).count()) === 0; i++) {
+      const more = page.locator('[data-testid="hall-lost-more"]');
+      if ((await more.count()) === 0) break;
+      await more.click();
+      await page.waitForTimeout(200);
+    }
+    return (await hallRow(id).count()) > 0;
+  }
+  async function openHallSheet(id) {
+    if (!(await revealHallRow(id))) return false;
+    await hallRow(id).locator('button.open').click();
+    return hallSheet.isVisible({ timeout: 3000 }).catch(() => false);
+  }
+  async function closeHallSheet() {
+    if ((await hallSheet.count()) === 0) return;
+    await hallSheet.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.waitForTimeout(200);
+  }
+  const hallNow = async () => (await apiGet('/api/v1/ancestors/hall'))?.Members ?? [];
+
+  // The split is the SERVER's WouldCarry, and the counter says the same number.
+  {
+    const members = await hallNow();
+    const carriedIds = members.filter((m) => m.WouldCarry).map((m) => m.CharacterId).sort();
+    const drawn = (await page.locator('[data-testid="hall-carried-list"] li').evaluateAll(
+      (els) => els.map((el) => el.getAttribute('data-character-id')),
+    )).sort();
+    record(
+      'the carried section is exactly who the server says carries',
+      carriedIds.length > 0 && JSON.stringify(carriedIds) === JSON.stringify(drawn),
+      `${drawn.length} drawn, ${carriedIds.length} carried by the server`,
+    );
+    // No row may say "Kept" without saying whether it carries.
+    const badges = await page.locator('.panel li .badge').allInnerTexts();
+    record(
+      'no row says Kept without saying whether it carries',
+      badges.every((t) => !/^Kept$/i.test(t.trim())),
+      `${badges.length} badges`,
+    );
+  }
+
+  // Modul: THE BRED CHILD'S OWN TRAITS, not just the preview that promised it.
   // `bredChildHadTrait` came from GET /api/v1/breeding/roster right after the
   // Breed click - server truth, rolled server-side - so this is checking that
   // what the server actually granted the child is what the player can see on
   // the one screen that shows a roster member's traits after birth
-  // (`m.TraitMask > 0` gates TraitBadge in Ancestors.svelte). A pass here with
-  // no badge rendered would be exactly the "output side was never wired" shape
-  // this project keeps shipping - Task 13's own preview assertion could not
-  // catch it because it never got past the empty-pair case.
+  // (`m.TraitMask > 0` gates TraitBadge in the Hall's detail sheet). A pass
+  // here with no badge rendered would be exactly the "output side was never
+  // wired" shape this project keeps shipping.
   if (bredChildName === null) {
     record('a bred child with a trait shows it on the Hall', true, 'no child identified this run - skipped');
   } else if (bredChildHadTrait === false) {
@@ -3851,116 +3905,131 @@ await go('Ancestors');
     // By id, not name: the fixture had NINE characters called Muirenn and
     // `.first()` matched an older one with no trait - a false FAIL on a
     // child the server had granted a trait to (measured 2026-09-23).
-    const childRow = page.locator(`.panel li[data-character-id="${bredChildId}"]`);
-    const rowExists = (await childRow.count()) > 0;
-    const badgeCount = rowExists ? await childRow.locator('.trait').count() : 0;
+    const opened = await openHallSheet(bredChildId);
+    const badgeCount = opened ? await hallSheet.locator('.trait').count() : 0;
     record(
       'a bred child with a trait shows it on the Hall',
-      rowExists && badgeCount > 0,
-      rowExists ? `${bredChildName}: ${badgeCount} trait badge(s)` : `${bredChildName} not found in the Hall`,
+      opened && badgeCount > 0,
+      opened ? `${bredChildName}: ${badgeCount} trait badge(s)` : `${bredChildName} not found in the Hall`,
     );
+    await closeHallSheet();
   }
 
   // The pedigree: everybody came from somewhere, and a founder says so. By
   // NAME - it printed eight hex digits of each parent's Guid until 2026-09-13.
-  record(
-    'every member names where they came from',
-    /a founder of the line|child of /i.test(text) && !/\b[0-9a-f]{8} x [0-9a-f]{8}\b/.test(text),
-  );
+  {
+    const firstId = await rows.first().getAttribute('data-character-id').catch(() => null);
+    const opened = firstId !== null && (await openHallSheet(firstId));
+    const sheetText = opened ? await hallSheet.innerText() : '';
+    record(
+      'every member names where they came from',
+      /a founder of the line|child of /i.test(sheetText) && !/\b[0-9a-f]{8} x [0-9a-f]{8}\b/.test(sheetText),
+      sheetText.replace(/\s+/g, ' ').slice(0, 100),
+    );
+    await closeHallSheet();
+  }
 
   // Marking. The whole reason the cap is a decision rather than a surprise.
   //
   // Modul: A ROUND TRIP, not a one-way click. Marking is a flag that nothing
   // ever clears, so "click Keep, expect a Kept" only works while an unmarked
   // member is left: every run marked one more until all 23 non-main ancestors
-  // read "Kept", and from then on the step failed permanently with "no Keep
-  // button rendered" - a green script slowly turning red without the game
-  // changing at all. Toggling whichever direction is available asserts MORE
-  // (both directions of the same button, not one) and puts the flag back, so
-  // the check costs the fixture nothing and reads the same on the hundredth
-  // run as on the first.
-  // Modul: PINNED BY POSITION, not by name. A name-matched locator re-resolves
-  // on every call, so the moment the click flips "Kept" to "Keep" the handle
-  // stops matching and silently slides to the NEXT row's button - which reads
-  // "Kept" again and looks exactly like a click that did nothing. The rows do
-  // not reorder on a mark, so an index is the stable handle. (The main
-  // character renders a span, not a button.) `.keep`, because the slot buttons
-  // that replaced the Field select sit in the same row.
-  const toggle = page.locator('.acts button.keep');
-  if ((await toggle.count()) > 0) {
-    await dismissToasts();
-    const button = toggle.first();
-    const before = (await button.innerText()).trim();
-    await button.click();
-    await page.waitForTimeout(2500);
-    const after = (await button.innerText()).trim();
-    const flipped = after !== before && /^Kept?$/.test(after);
-
-    // Back the way it was, so the next run starts where this one did.
-    if (flipped) {
-      await button.click();
-      await page.waitForTimeout(2500);
+  // were marked, and the step then failed permanently. Toggling whichever
+  // direction is available asserts both directions and puts the flag back.
+  //
+  // Modul: BY ID, AND READ BACK FROM THE SERVER. Since task 104 a mark
+  // re-ranks the row (marked members sort up, and a mark can move somebody
+  // between Carried and Lost), so neither a position nor the button's label is
+  // a stable handle. The row's pin carries `aria-pressed`, and the server's
+  // IsKept is the truth both are checked against. A carried, non-main member
+  // is used: marking them cannot push them out, and unmarking returns them to
+  // exactly the place they had.
+  {
+    const members = await hallNow();
+    const target = members.find((m) => m.WouldCarry && !m.IsMainCharacter && !m.IsKept)
+      ?? members.find((m) => m.WouldCarry && !m.IsMainCharacter);
+    if (!target) {
+      record('marking an ancestor to carry sticks', false, 'no carried member besides the main character');
+    } else {
+      await dismissToasts();
+      const before = target.IsKept;
+      const pin = () => hallRow(target.CharacterId).locator('button.keep');
+      const keptNow = async () => (await hallNow()).find((m) => m.CharacterId === target.CharacterId)?.IsKept;
+      const waitFor = async (want) => {
+        for (let i = 0; i < 12; i++) {
+          await page.waitForTimeout(400);
+          if ((await keptNow()) === want) return true;
+        }
+        return false;
+      };
+      await pin().click();
+      const flipped = await waitFor(!before);
+      await page.waitForTimeout(1200);
+      const pressed = (await revealHallRow(target.CharacterId)) ? await pin().getAttribute('aria-pressed') : null;
+      let restored = false;
+      if (flipped) {
+        await pin().click();
+        restored = await waitFor(before);
+        await page.waitForTimeout(1200);
+      }
+      record(
+        'marking an ancestor to carry sticks',
+        flipped && restored && pressed === String(!before),
+        `${before} -> ${flipped ? !before : before} (pin pressed ${pressed}) -> ${restored ? before : 'not restored'}`,
+      );
     }
-    const restored = (await button.innerText()).trim();
-    record(
-      'marking an ancestor to carry sticks',
-      flipped && restored === before,
-      flipped ? `${before} -> ${after} -> ${restored}` : `${before} -> ${after}, no change`,
-    );
-  } else {
-    record('marking an ancestor to carry sticks', false, 'no Keep/Kept button rendered');
   }
 
-  // FIELDING - the missing door. A benched child picks a slot and the roster
-  // has to actually change, not just the dropdown.
-  // Slot BUTTONS since 2026-09-13 - the select was a native Android dialog.
-  const bench = page.locator('.acts .field');
-  const benched = await bench.count();
-  record('benched members can be fielded', benched > 0, `${benched} on the bench`);
+  // FIELDING - the missing door. A benched member picks a slot and the roster
+  // has to actually change. Slot BUTTONS since 2026-09-13 (the select was a
+  // native Android dialog), and inside the row's detail sheet since task 104.
+  {
+    const members = await hallNow();
+    const benchedMembers = members.filter((m) => m.PlayableSlot < 0);
+    record('benched members can be fielded', benchedMembers.length > 0, `${benchedMembers.length} on the bench`);
 
-  if (benched > 0) {
-    // A SWAP, so counting fielded members proves nothing - one leaves as one
-    // arrives. Identify the row being fielded and check THAT row ends up with
-    // a slot badge.
-    const row = page.locator('.panel li').filter({ has: page.locator('.acts .field') }).first();
-    const fingerprint = (await row.locator('.apts').innerText()).replace(/\s+/g, ' ').trim();
-    // Modul: WHO SLOT 1 BELONGED TO, so the swap can be undone. It used to be
-    // left in place: the main character (the fixture's only armed one) went to
-    // the bench, the fielded ancestor wore nothing, and the tutorial's "wear
-    // your weapon" step then fenced every screen for the geometry checkers
-    // and every later run until a --seed-dev.
-    const displacedId = await page
-      .locator('.panel li')
-      .filter({ has: page.locator('.fielded', { hasText: /^slot 1$/ }) })
-      .first()
-      .getAttribute('data-character-id')
-      .catch(() => null);
+    const candidate = benchedMembers.find((m) => m.WouldCarry) ?? benchedMembers[0];
+    if (candidate) {
+      // Modul: WHO SLOT 1 BELONGED TO, so the swap can be undone. It used to be
+      // left in place: the main character (the fixture's only armed one) went to
+      // the bench, the fielded ancestor wore nothing, and the tutorial's "wear
+      // your weapon" step then fenced every screen for the geometry checkers
+      // and every later run until a --seed-dev.
+      const displacedId = members.find((m) => m.PlayableSlot === 0)?.CharacterId ?? null;
 
-    await row.locator('.field-slot').first().click();
-    await page.waitForTimeout(3000);
-
-    const nowFielded = await page.locator('.panel li').filter({ hasText: /slot \d/ }).allInnerTexts();
-    record(
-      'fielding an ancestor swaps them into a playable slot',
-      nowFielded.some((t) => t.replace(/\s+/g, ' ').includes(fingerprint)),
-      `${fingerprint} -> ${nowFielded.length} fielded`,
-    );
-    await dismissToasts();
-
-    // Put slot 1 back the way it was. Not a click: the ancestor now in slot 1
-    // wears nothing, so the tutorial's guided fence covers the Hall at once.
-    if (displacedId !== null) {
-      await page.evaluate((id) => globalThis.__folkidleAssignSlot?.(id, 0), displacedId);
-      let back = -1;
-      for (let i = 0; i < 20 && back !== 0; i++) {
-        await page.waitForTimeout(500);
-        const hall = await apiGet('/api/v1/ancestors/hall');
-        back = (hall?.Members ?? []).find((m) => m.CharacterId === displacedId)?.PlayableSlot ?? -1;
+      const opened = await openHallSheet(candidate.CharacterId);
+      const slotButton = hallSheet.locator('.field .field-slot').first();
+      const offered = opened && (await slotButton.count()) > 0;
+      let fieldedAt = -1;
+      if (offered) {
+        await slotButton.click();
+        for (let i = 0; i < 20 && fieldedAt < 0; i++) {
+          await page.waitForTimeout(500);
+          fieldedAt = (await hallNow()).find((m) => m.CharacterId === candidate.CharacterId)?.PlayableSlot ?? -1;
+        }
       }
-      record('fielding is undone: slot 1 holds who it held before', back === 0, back === 0 ? '' : `playable slot ${back}`);
+      record(
+        'fielding an ancestor swaps them into a playable slot',
+        fieldedAt >= 0,
+        offered ? `${candidate.Name || candidate.CharacterId} -> slot ${fieldedAt + 1}` : 'the sheet offered no slot button',
+      );
+      await closeHallSheet();
       await dismissToasts();
-    } else {
-      record('fielding is undone: slot 1 holds who it held before', false, 'slot 1 was empty or not found before the swap');
+
+      // Put slot 1 back the way it was. Not a click: the ancestor now in slot 1
+      // wears nothing, so the tutorial's guided fence covers the Hall at once.
+      if (displacedId !== null) {
+        await page.evaluate((id) => globalThis.__folkidleAssignSlot?.(id, 0), displacedId);
+        let back = -1;
+        for (let i = 0; i < 20 && back !== 0; i++) {
+          await page.waitForTimeout(500);
+          back = (await hallNow()).find((m) => m.CharacterId === displacedId)?.PlayableSlot ?? -1;
+        }
+        record('fielding is undone: slot 1 holds who it held before', back === 0, back === 0 ? '' : `playable slot ${back}`);
+        await dismissToasts();
+      } else {
+        record('fielding is undone: slot 1 holds who it held before', false, 'slot 1 was empty or not found before the swap');
+      }
     }
   }
 }
