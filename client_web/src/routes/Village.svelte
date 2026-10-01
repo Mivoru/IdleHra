@@ -155,8 +155,6 @@
     return list.sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || a.order - b.order);
   });
 
-  const householdOver = $derived(snap ? snap.CurrentPopulationCount > snap.CachedMaxPopulationCapacity : false);
-
   function upgrade(buildingId: number) {
     const outcome = upgradeBuilding(buildingId);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
@@ -187,30 +185,17 @@
     <section class="panel village">
       <div class="head">
         <h2>Village</h2>
-        <!-- Modul: LABELLED, and it is not the gene pool's number. This is
-             CurrentPopulationCount - every character the account owns
-             (VillageManagementEngine counts CharacterRecords) - against
-             10 + 5 x Inn. Nothing on the server enforces that capacity: no
-             handler reads it. So going over it is marked and said to cost
-             nothing; the Hall of Ancestors' cap is what culls at a rebirth.
-             The fixture's 184/35 is a real reading of that, not a seeding
-             artefact - any player who breeds past 35 shows the same. -->
-        <span
-          class="household"
-          class:over={householdOver}
-          data-testid="village-household"
-          title="Characters in your line, against the housing the Inn provides"
-        >
-          Household {snap.CurrentPopulationCount} / {snap.CachedMaxPopulationCapacity} housing
-          {#if householdOver}<span class="over-word">over</span>{/if}
+        <!-- Modul: A COUNT, NOT A CAP. This read "Household 184 / 35 housing":
+             every character the account owns against 10 + 5 x Inn. Nothing on
+             the server enforces that capacity - no handler reads it - so the
+             fraction promised a limit that does not exist, and turning it into
+             a real one would have locked every player already past it. The
+             real ceilings are the gene pool's places (below) and the Hall of
+             Ancestors' cap at a rebirth. -->
+        <span class="household" data-testid="village-household" title="Characters in your line">
+          Household {snap.CurrentPopulationCount}
         </span>
       </div>
-      {#if householdOver}
-        <p class="dim tiny over-note">
-          More people than the Inn houses. Nobody is turned away or lost for it
-          today; at a rebirth only the Hall of Ancestors' cap decides who stays.
-        </p>
-      {/if}
 
       <!-- Modul: no stock row. It showed Wood / Stone / Iron ore, legacy
            stocks no upgrade spends, above prices in logs and ores that were
@@ -452,20 +437,6 @@
     font-size: 0.8rem;
     color: var(--text-dim);
     font-variant-numeric: tabular-nums;
-  }
-
-  /* Over the Inn's housing: said in a word as well as a colour. */
-  .household.over {
-    color: var(--warn);
-  }
-
-  .over-word {
-    font-weight: 700;
-    margin-left: 0.2rem;
-  }
-
-  .over-note {
-    margin: -0.2rem 0 0.5rem;
   }
 
   .dim {

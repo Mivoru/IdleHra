@@ -1611,7 +1611,16 @@ await go('Chest');
   } else {
     const row = page.locator(`.row[data-equipment-id="${sellableId}"]`);
     await row.getByRole('button', { name: 'More', exact: true }).click();
-    await page.getByRole('menuitem', { name: 'Sell', exact: true }).click();
+    // The menu names the server's price (SellValueGold), not a client guess.
+    const sellItem = page.getByRole('menuitem', { name: /^Sell · / });
+    const sellText = ((await sellItem.textContent().catch(() => '')) ?? '').trim();
+    const priced = ((await apiGet('/api/v1/player/inventory'))?.Equipment ?? []).find((e) => String(e.Id) === sellableId);
+    record(
+      'the Sell item names the price the server will pay',
+      Boolean(priced) && priced.SellValueGold > 0 && sellText.replace(/\D/g, '') !== '' && /^Sell · /.test(sellText),
+      `"${sellText}" vs SellValueGold ${priced?.SellValueGold}`,
+    );
+    await sellItem.click();
     const undo = row.getByRole('button', { name: 'Undo', exact: true });
     const offered = (await undo.count()) > 0;
     if (offered) await undo.click();
@@ -3115,7 +3124,19 @@ await go('Character');
         }
         const same = page.locator(`[data-testid="equip-picker"] button[data-piece-id="${after}"]`);
         await ((await same.count()) > 0 ? same : wear).first().click().catch(() => {});
-        const restored = await waitWorn('filled', '');
+        let restored = await waitWorn('filled', '');
+        // Modul: ONE RETRY, because a miss here is not a local failure. It left
+        // the fixture unarmed once (2026-10-01), the guided "wear a weapon"
+        // overlay came up over the whole shell, and every later step timed
+        // out behind it - the run died rather than reporting this one line.
+        if (!restored) {
+          if ((await page.locator('[data-testid="equip-picker"]').count()) === 0) {
+            await gearSlot.click().catch(() => {});
+            await page.waitForTimeout(400);
+          }
+          await ((await same.count()) > 0 ? same : wear).first().click().catch(() => {});
+          restored = await waitWorn('filled', '');
+        }
         record('and wearing it again fills it', restored, `weapon instance now ${(await wornId()) || 'none'}`);
       }
     }

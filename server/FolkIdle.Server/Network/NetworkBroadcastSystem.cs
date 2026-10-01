@@ -2533,6 +2533,12 @@ namespace FolkIdle.Server.Network
             public Dictionary<string, int> Affixes { get; set; } = new();
 
             public bool IsAffixLocked { get; set; }
+
+            // Modul: WHAT THE CHEST PAYS FOR IT, from the same function
+            // RemoveEquipmentAsync pays with. The Sell button used to name no
+            // price, and computing BaseValueGold x tier x 0.40 in the client
+            // would have been a second copy of the vendor rule (task 99).
+            public long SellValueGold => Engine.VillageChestEngine.ValueEquipment(BaseItemId, QualityTier);
         }
 
         private sealed class InventoryStackResponse
@@ -2554,6 +2560,15 @@ namespace FolkIdle.Server.Network
             /// still exists is a field someone will read.
             /// </summary>
             public long Quantity { get; set; }
+
+            // Modul: what ONE of these sells for, by the function
+            // RemoveMaterialAsync pays with. 0 means the chest pays nothing
+            // for it - gold (refused outright) and the gathering slugs with no
+            // items.json entry - and the screen must say so rather than guess.
+            public long UnitSellValueGold =>
+                string.Equals(ItemId, Domain.Progression.VillageManagementEngine.GoldItemId, StringComparison.OrdinalIgnoreCase)
+                    ? 0L
+                    : Engine.VillageChestEngine.ValueMaterial(ItemId, 1);
         }
 
         // Modul: paper-doll combat rating, per roster character. See
@@ -5927,7 +5942,11 @@ namespace FolkIdle.Server.Network
                     IntervalSeconds = Engine.VillagerArrivalRules.IntervalSecondsFor(innLevel),
                     RecruitCostGold = Engine.VillagerArrivalRules.RecruitCostGold(recruitments),
                     RecruitBlockedReason = Engine.VillagerArrivalRules.RecruitBlockedReason(
-                        innLevel, rows.Count, heldGold, recruitments) ?? string.Empty,
+                        innLevel, rows.Count(v => !v.IsElder), heldGold, recruitments) ?? string.Empty,
+                    // Who takes a bed against PopulationCap - elders do not
+                    // (VillageArrivalEngine.CountRoomTakersAsync), so the
+                    // screen's "n / cap" must not count Newcomers.length.
+                    Residents = rows.Count(v => !v.IsElder),
                     Newcomers = rows.ConvertAll(v => new
                     {
                         v.Id,

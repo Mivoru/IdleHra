@@ -7,12 +7,12 @@ import { rarityName } from '../src/lib/ui/rarity';
 describe('isChestMaterial', () => {
   it('drops gold however much of it there is', () => {
     expect(GOLD_ITEM_ID).toBe('gold');
-    expect(isChestMaterial({ ItemId: 'gold', Quantity: 2000 })).toBe(false);
+    expect(isChestMaterial({ ItemId: 'gold', Quantity: 2000, UnitSellValueGold: 0 })).toBe(false);
   });
 
   it('keeps a real stack and drops an empty one', () => {
-    expect(isChestMaterial({ ItemId: 'copper_ore', Quantity: 3 })).toBe(true);
-    expect(isChestMaterial({ ItemId: 'copper_ore', Quantity: 0 })).toBe(false);
+    expect(isChestMaterial({ ItemId: 'copper_ore', Quantity: 3, UnitSellValueGold: 1 })).toBe(true);
+    expect(isChestMaterial({ ItemId: 'copper_ore', Quantity: 0, UnitSellValueGold: 1 })).toBe(false);
   });
 });
 
