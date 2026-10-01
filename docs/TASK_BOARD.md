@@ -1,9 +1,10 @@
 # FolkIdle Task Board
 
 > **NEWEST (2026-10-01): TASKS 89-110, at the bottom of this file**, from the
-> UI/UX audit `docs/audits/2026-10-01-ui-ux-audit.md`. 89 and 93 are built
-> on their branches, not merged; 90-92 are in progress. Work in the order of
-> that section's table.
+> UI/UX audit `docs/audits/2026-10-01-ui-ux-audit.md`. 89-93 are BUILT and
+> verified together on `claude/ui-integration` (exercise 276/276, the four
+> geometry checkers at 0), not merged yet. Read "Wave 1 result" at the end of
+> that section, then work in the order of its table.
 
 > **NEWEST (2026-09-30): read `docs/handoff-2026-09-30.md` first.** It lists
 > what is live, the owner's decisions (offline = online; rebirth on demand; 83,
@@ -5911,11 +5912,11 @@ estimate it; each task names the section it comes from.
 
 | # | Task | Size | Needs the owner? |
 |---|---|---|---|
-| 89 | **BUILT** (branch `claude/ui-css-foundation`, not merged) - CSS foundation | M | no |
-| 93 | **BUILT** (branch `claude/ui-query-states`, not merged) - Load errors stop looking like empty states | M | no |
-| 90 | **IN PROGRESS** (`claude/ui-overlays-nav`) - Overlays, back button, scroll | L | no |
-| 91 | **IN PROGRESS** (`claude/ui-money-feedback`) - Money and feedback | M | no |
-| 92 | **IN PROGRESS** (`claude/ui-confirm-hints`) - Confirm, pending, visible reasons | M | no |
+| 89 | **BUILT** (`claude/ui-css-foundation`, verified on `claude/ui-integration`) - CSS foundation | M | no |
+| 93 | **BUILT** (`claude/ui-query-states`, verified on `claude/ui-integration`) - Load errors stop looking like empty states | M | no |
+| 90 | **BUILT** (`claude/ui-overlays-nav`, verified on `claude/ui-integration`) - Overlays, back button, scroll | L | no |
+| 91 | **BUILT** (`claude/ui-money-feedback`, verified on `claude/ui-integration`) - Money and feedback | M | no |
+| 92 | **BUILT** (`claude/ui-confirm-hints`, verified on `claude/ui-integration`) - Confirm, pending, visible reasons | M | no |
 | 94 | Leave guild (server + client) | M | no |
 | 108 | Phone GPU budget | S | no |
 | 96 | Settings: account first, explanations folded, no developer text | M | show a screenshot first |
@@ -7324,3 +7325,54 @@ screenshots of the touched screens. Checkers clean. `exercise.mjs` green.
   rarity pip and a left border. 108 removes the animation regardless.
 
 **Size:** S. **Needs the owner:** yes.
+
+## Wave 1 result (2026-10-01): 89-93 built and verified together
+
+89-93 were built in parallel on five branches and merged into
+`claude/ui-integration` together with the portrait lock (a3eac07). That branch
+is what was verified, and the PR is opened from it rather than from five
+branches, because their conflicts (PersonPicker, Boosts, Social, Mailbox,
+Market, Forge, Crafting, Ancestors, VillageFolk, Village) were resolved there
+once and checked as a whole.
+
+**Verified on `claude/ui-integration`:** `npm test` 730 passed; svelte-check 4
+(the GuildOps baseline); `npm run exercise` 276/276 after a re-seed;
+`check:clipping`, `check:overlap`, `check:touch` and `check:safearea` all 0
+findings. Looked at by hand at 390 px: Skill tree (the leaking `header` rule
+is gone and the top bar is unchanged), Leaderboards (the monster name is
+whole, a name opens the profile), the profile (11 slots, readable on
+parchment, Escape closes it), Market, and scroll reset (Chest at 832px ->
+Village at 0).
+
+**Found by verifying, and fixed on the integration branch:**
+- **A new player's Auto-Eat hung on "Checking the chest..." for ever, and the
+  tutorial stalled on step one.** 93 had made the content registry a TanStack
+  query; with a freshly registered account the list never resolved and no
+  error was raised, while the dev fixture was fine. The same screen passed
+  whenever any `$effect` also read the query's status. The registry is now
+  read through `contentQuery` in `lib/net/registry.svelte.ts` (a plain promise
+  with error and retry). Only exercise.mjs's new-account steps caught it.
+- **check:touch went from 0 to 42** with 92's Hint triggers (the event chip at
+  91x19 on every screen, fourteen 50x17 timings on Gathering). A Hint's
+  `::after` hit area adds 20px, which is not enough. The chip is 44px on a
+  phone now, and Gathering explains its timings once per profession.
+- exercise.mjs: "Send on" is a two-tap confirm, so the step taps twice and
+  also asserts that one tap only arms it.
+
+**Still open from wave 1 (fold into the named task):**
+- The header still prints the raw connection phase ("live", "reconnecting
+  (retry 3)") - `App.svelte` around 729. -> 95.
+- The guild-name server cap is 100 while the client now stops at 32
+  (`GuildManagementEngine.cs:89`). -> 94 (same server change).
+- The player profile lists EVERY character on the account (185 on the
+  fixture, most of them bred children with nothing worn), and the level is
+  blank ("Level - Female - Child"). -> 107.
+- The Wiki sidebar now can stick (89), but at 1440x900 it is 1,216px tall,
+  taller than the viewport and the article, so it still scrolls away. Cap its
+  height and let it scroll. -> 109.
+- Not yet seen on a phone: the profile and the name menu opened from CHAT (the
+  portal fix for the dock's blur), the chat window with the keyboard up, the
+  bottom chrome hiding while typing, back on What's new and on the shield
+  wheel, and the white flash after the splash. -> 110 (device checklist).
+- Focus trapping and `inert` behind modals (audit B4) were not done. -> 106
+  (the shared Modal).
