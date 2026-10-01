@@ -1,5 +1,10 @@
 # FolkIdle Task Board
 
+> **NEWEST (2026-10-01): TASKS 89-110, at the bottom of this file**, from the
+> UI/UX audit `docs/audits/2026-10-01-ui-ux-audit.md`. 89 and 93 are built
+> on their branches, not merged; 90-92 are in progress. Work in the order of
+> that section's table.
+
 > **NEWEST (2026-09-30): read `docs/handoff-2026-09-30.md` first.** It lists
 > what is live, the owner's decisions (offline = online; rebirth on demand; 83,
 > 84, 85, 87 approved; 86 deferred), the branches in flight and their order.
@@ -5838,3 +5843,1484 @@ deployed.** Design and status: `docs/superpowers/specs/2026-09-30-rebirth-on-dem
 - **Before deploying:** migration `AddRebirthCounters` is additive. Run
   `npm run exercise`; it was not run here, because the machine has no
   Playwright browser.
+
+---
+
+# Tasks 89-110: the 2026-10-01 UI/UX audit
+
+Added 2026-10-01. **The report is `docs/audits/2026-10-01-ui-ux-audit.md`.**
+Read its section 4 (findings by root cause) for any task below before you
+estimate it; each task names the section it comes from.
+
+**Where the evidence comes from.**
+- Five read-only passes:
+  - CSS architecture;
+  - mobile and Android WebView;
+  - UI states;
+  - the mechanical evidence (below);
+  - five visual reviews of about 120 screenshots of the dev fixture and of
+    new guests, at 390 and 1440 px.
+- The four geometry checkers were run at 360, 390, 412, 768 and 1440 px.
+  - 0 findings at phone widths.
+  - `check:touch` found **153 undersized controls at 768**, because the 44 px
+    floor applies only below 40rem.
+  - `check:overlap` **silently skips 10 of 29 destinations**, the ones that
+    have no menu button of their own.
+- Nothing was run on a phone. Items marked **(device)** need one.
+
+**Owner decisions in force (2026-10-01).**
+- **The APK is portrait-only** (branch `claude/ui-audit-portrait`, a3eac07).
+  Tablets, unfolded foldables, split-screen and mobile web still rotate,
+  because Android 16 ignores `screenOrientation` on large screens at
+  targetSdk 36. So the ShieldWheel landscape query
+  (`ShieldWheel.svelte:868`) and the landscape half of `check:safearea` stay.
+- **A redesign is welcome where a screen clearly benefits.** The report's
+  section 8 has a sketch for each redesign. Show the owner a 390 px
+  screenshot before merging one.
+- Everything under "Owner decisions in force" in 48-62 and 68-88 still
+  holds. **Answer the owner in Czech.** Write repo prose in English.
+
+**How to work.** The "How to work" rules of 48-62 apply. In addition:
+- **One branch and one PR per task, cut from `main`.**
+  - Name the branch `claude/ui-<topic>`.
+  - Never stack PRs.
+  - Where a task touches a file that 89-93 also touch, wait for those to
+    merge, or rebase on them before opening the PR.
+- **Verify in this order:**
+  1. `npm test` and `npm run check:ratchet` (baseline: the 4 GuildOps
+     errors).
+  2. The server suite, only if the server changed (94, and any wire
+     addition).
+  3. `run-dev.ps1`, re-seed the fixture, then `npm run exercise`.
+  4. `check:clipping`, `check:overlap`, `check:touch` and `check:safearea`
+     at their default widths.
+  5. **A 390 px screenshot of every screen you changed, looked at**, plus
+     1440 px when the desktop layout changed.
+  6. For anything a new player meets, a freshly registered account, not the
+     fixture.
+- **Use the report's tokens and primitives.** Once 89 is merged, new CSS
+  uses the `:root` tokens (`--fs-*`, `--sp-*`, `--z-*`). Once 106 lands a
+  primitive (Button, Modal, Tabs, ItemRow, Hint), a redesign adopts it rather
+  than adding a thirteenth `.tiny-btn`.
+- **Do not trust a checker's 0 on a screen it does not visit.** Until 106
+  fixes `overlap-check`, measure Friends, Market, Guild, Leaderboards, the
+  shield wheel, Market cosmetics, Supplies Boosts and Bloodline
+  Ancestors/Inheritance by hand.
+
+## Order
+
+| # | Task | Size | Needs the owner? |
+|---|---|---|---|
+| 89 | **BUILT** (branch `claude/ui-css-foundation`, not merged) - CSS foundation | M | no |
+| 93 | **BUILT** (branch `claude/ui-query-states`, not merged) - Load errors stop looking like empty states | M | no |
+| 90 | **IN PROGRESS** (`claude/ui-overlays-nav`) - Overlays, back button, scroll | L | no |
+| 91 | **IN PROGRESS** (`claude/ui-money-feedback`) - Money and feedback | M | no |
+| 92 | **IN PROGRESS** (`claude/ui-confirm-hints`) - Confirm, pending, visible reasons | M | no |
+| 94 | Leave guild (server + client) | M | no |
+| 108 | Phone GPU budget | S | no |
+| 96 | Settings: account first, explanations folded, no developer text | M | show a screenshot first |
+| 95 | Phone navigation: More sheet, sticky header, one name per concept | L | **yes**: renames, and a screenshot |
+| 97 | Character: gear first on a phone | M-L | show a screenshot first |
+| 98 | Combat: phone redesign | L | show a screenshot first |
+| 99 | Chest: rows with stats, a Worn group, no Gold row | M-L | no |
+| 101 | Gathering and Crafting: actions first, real status, guided empty states | M | no |
+| 100 | Forge: one fusion row per item | M | no |
+| 102 | Market: Buy / Sell / My orders | L | show a screenshot first |
+| 103 | Village: buildings first | M | no |
+| 104 | Ancestors: carried vs lost | M | no |
+| 105 | World Boss and Delve | M-L | **yes**: Delve dark or parchment; boss name source |
+| 107 | Guild and Community structure, copy contradictions | M | show a screenshot first |
+| 106 | Shared primitives and sweeps (runs alongside 95-105) | L | no |
+| 109 | Polish bundle | L (many S) | no |
+| 110 | Decisions for the owner | S | **yes** |
+
+**Recommended batches.**
+- **Merge 89 and 93 now.** They are built and everything after builds on
+  them.
+- **Finish 90 + 91 + 92.** These are the systemic defects felt on every
+  screen.
+- **94 alone.** It is the only server change.
+- **108 whenever there is a spare hour.**
+- **The shell, one look at both:** 96, then 95.
+- **The phone redesigns, one screen per PR,** in the order of the table.
+  Start each with the matching 106 primitive if it is not there yet.
+- **107 and 109 last.** Put 110 to the owner in one message, at any time.
+
+---
+
+## 89. CSS foundation
+
+**BUILT on branch `claude/ui-css-foundation`, not merged.** Three commits:
+- 1650c75: design tokens, undefined vars, touch hover, sticky.
+- 3c69a6d: no white flash on Android, per-theme theme-color, keyboard resize.
+- 07b5ca5: the wood-beam header styling is scoped to the app's top bar.
+
+Report sections 4.C, 4.D and 7.
+
+**What is actually true (on `main`).**
+- **Sticky is broken.** `app.css:472-476` sets `overflow-x: hidden` on both
+  `html` and `body`. That makes `body` a scroll container that never
+  scrolls, so `position: sticky` sticks to a box that does not move **(spec)**.
+  - The ConnectionNotice scrolls away (`ConnectionNotice.svelte:153`).
+  - So does the Wiki sidebar, which `client_web/CLAUDE.md` already records as
+    never sticking.
+- **15 custom properties are read but never defined:** `--bad`, `--err`,
+  `--bg-sunken`, `--bg-dark`, `--panel`, `--fg`, `--bg-hover`, `--success`,
+  `--ok`, `--dim`, `--line`, `--bg-surface` and `--bg-light`.
+  - The Settings email error is not red (`Settings.svelte:613`).
+  - The PlayerProfileModal is dark-on-dark in the light theme
+    (`PlayerProfileModal.svelte:199,216,247`).
+  - Three different "bad" reds show (`Market.svelte:967,993`,
+    `Character.svelte:790`, `ChatDock.svelte:264`).
+- **There is no token beyond colour and `--radius`.** That gives 37
+  font-size lengths, 45 spacing lengths, 22 radii, 16 z-index values and 7
+  breakpoints.
+- **Sticky hover.** There are 25 `:hover` rules and no `(hover: hover)`
+  guard (`app.css:244,585-590,918-922`).
+- **WebView defaults are left on.**
+  - No `-webkit-tap-highlight-color`.
+  - No `overscroll-behavior`, so pull-to-refresh reloads the SPA on mobile
+    web.
+  - iOS zooms into 14 px inputs.
+- **The body background is fixed, with four layers** (two of them SVG
+  turbulence; `app.css:530-537`). It repaints on every scroll frame.
+- **`index.html` is incomplete.**
+  - There is no `interactive-widget` (`:5`), so mobile web and the APK
+    disagree on keyboard resize.
+  - `theme-color` is hard-coded dark (`:24`).
+- **Android white flash.** `styles.xml:12-16` has no `windowBackground`, and
+  `capacitor.config.json` has no `backgroundColor`. That is a likely white
+  flash after the splash **(device)**.
+- **Breakpoints are per file.** There are seven: `40rem`, `52rem`, `30rem`,
+  `46rem`, `64rem`, `560px` and `600px`. `PersonPicker.svelte:63`
+  re-declares `NARROW_QUERY`.
+- **A global `header` rule leaks into panels.** `app.css:661` (and the light
+  `:799`) paints the app bar's beam background and brass border, both
+  `!important`, on **every** `<header>`. 17 components use `<header>` inside
+  a panel. `header strong` (`:675`, `:808`) turns body words into 1.15rem
+  brass serif (the Skill tree intro, the Book of Deeds subtitle). It is also
+  why the Delve intro is unreadable.
+
+**Build (done on the branch).**
+- `overflow-x: clip`.
+- Define or replace the 15 variables, with a vitest guard that fails on an
+  undefined `var(--x)`.
+- The `:root` tokens of report section 7.
+- Hover only inside `(hover: hover) and (pointer: fine)`.
+- `-webkit-tap-highlight-color: transparent`, `overscroll-behavior-y: none`,
+  and a 16 px input font on phones.
+- The fixed background moves to `body::before`.
+- `interactive-widget=resizes-content` and per-scheme `theme-color` metas.
+- `backgroundColor` and `windowBackground`.
+- The breakpoints collapse to phone / tablet / wide, mirrored in `media.ts`.
+- The `header` rule is scoped to the app bar.
+
+**Done when:**
+- The guard test passes.
+- The 17 in-panel headers render as plain panel titles: Skill tree, Book of
+  Deeds and Delve each get a 390 px screenshot.
+- All four checkers are clean. `check:clipping` matters most, because panel
+  heads lose padding.
+- A disconnected long screen keeps its notice pinned.
+- **On a phone:** no white flash in the light system theme.
+
+**Size:** M.
+
+## 90. Overlays, back button and scroll
+
+**IN PROGRESS on branch `claude/ui-overlays-nav`.** Report sections 4.A, 4.B
+and 4.C.
+
+**What is actually true.**
+- **The chat dock traps its children.**
+  - `.window` has `backdrop-filter: blur(10px)` and `overflow: hidden`
+    (`ChatDock.svelte:156,158`), so it is the containing block for fixed
+    descendants.
+  - A profile opened from chat **measured 356×414 at (17,299)**, clipped to
+    the dock (`Chat.svelte:424`).
+  - The name ContextMenu (`Chat.svelte:409`) lands offset and clamps
+    against the wrong box.
+- **A 20-character username crushes the chat body to 0 px.** `button.who`
+  takes 224 px of a 296 px row, and `span.text` is 0 px wide and 1,203 px
+  tall. No checker opens the dock.
+- **PlayerProfileModal is out of date.**
+  - It shows 4 of 11 equipment slots (`PlayerProfileModal.svelte:130-165`).
+  - It passes the raw slug as the item name (`:136`).
+  - It shows "Last Online" even for a player who is online (`:122`).
+  - It has no `role=dialog` and no `aria-modal`.
+- **The chat window with the keyboard up** **(device).**
+  `height: min(26rem, calc(100vh - 8rem))` (`ChatDock.svelte:148`) puts the
+  header and close button at about y -2 px, under the status bar.
+- **Back misses four layers.**
+  - What's New is not one of `resolveBackPress`'s layers
+    (`backButton.ts:94-114`), and it shows after every OTA update.
+  - The profile is excluded on purpose (`App.svelte:491-497`).
+  - The ContextMenu has no back hook.
+  - The shield wheel unmounts mid-run (`WorldBoss.svelte:510-522`).
+  - Only ContextMenu and PersonPicker answer Escape.
+- **Scroll is never reset or restored** (`App.svelte:371-378,536-541`).
+- **Tapping a tab leaves the phone Menu open** (`App.svelte:809`).
+- **OfflineSummary has three faults.**
+  - Its backdrop and the TabBar are both z 50, and the TabBar comes later, so
+    the tab bar paints over "Welcome back" **(spec)**.
+  - The card has no max-height (`OfflineSummary.svelte:268-275`).
+  - The backdrop's `onclick` dismisses it on any tap on the card (`:67-73`).
+- **Modals ignore insets and use `vh`.**
+  - DeathCard, VictoryCard, OfflineSummary, PlayerProfileModal and the exit
+    confirm do not read `--sa-*`.
+  - The caps are in `vh` with no `dvh` (`VictoryCard:140`, `WhatsNew:111`,
+    `PlayerProfileModal:204`, `PersonPicker:435`).
+- **The ConnectionNotice sticks at `top: 0`**, under the status bar
+  (`ConnectionNotice.svelte:153-154`).
+- **The notification layers collide.**
+  - On a phone, AchievementToast has `bottom: 5rem` with no `--tabbar-h` or
+    `--sa-bottom` (`AchievementToast.svelte:188-194`). It lands on the tab bar
+    and on the coach bar.
+  - Toasts cover LootReveal (z60 over z55).
+  - The loot reveal plus the "New record" toast hide the whole header,
+    including Menu.
+  - The coach bar covers Chest row buttons at rest.
+- **The bottom chrome stays above the keyboard.** There is no
+  `scroll-padding`, so a focused field near the bottom can sit behind the tab
+  bar **(device)**.
+- **Keyboard hints are missing:**
+  - no `enterkeyhint="send"` on the chat input (`Chat.svelte:381-389`);
+  - no `autocapitalize="none"` or `autocorrect="off"` on usernames
+    (`Chat.svelte:374`, `Login.svelte:141`).
+
+**Build.**
+- **Portal** ContextMenu and PlayerProfileModal to `<body>`, using
+  PersonPicker's `portal` action.
+- **Fix the chat row:** the sender goes above the message, or the `.who`
+  column gets a max-width with ellipsis.
+- **PlayerProfileModal:** all 11 slots, item names, dialog role, theme
+  tokens.
+- **Size the chat window from `100dvh`** minus `--sa-top`, the tab bar and
+  the handle.
+- **Make `openSheetCloser` a stack**, so back and Escape close the top layer:
+  - What's New calls `acknowledgeNotes()`;
+  - the profile and the context menu close themselves;
+  - the wheel consumes back during play and closes in its result phase.
+- **Scroll:** to the top on forward navigation, restored on back.
+- **TabBar** sets `navOpen = false`.
+- **OfflineSummary** moves to the modal layer and gets a max-height, inner
+  scroll and `stopPropagation`.
+- **Modal insets:** backdrop padding `max(1rem, var(--sa-*))` and `dvh` caps.
+- **ConnectionNotice** gets `top: var(--sa-top)`, plus a status-bar scrim
+  **(device)**.
+- **One bottom notification stack**: toasts, the achievement card, the record
+  toast and the coach, with a gap. Toasts stay clear of the loot reveal.
+- **An `html.typing` class** hides the tab bar and the coach while a field
+  has focus, plus `scroll-padding-bottom`.
+- **The keyboard hint attributes.**
+
+**Done when:**
+- `tests/backButton.test.ts` has rows for What's New, the profile, the
+  context menu and the wheel.
+- On a phone viewport, a profile opened from chat fills the screen, and a
+  20-character name leaves the message readable. Screenshot both.
+- Chest → Village → back returns to the Chest's scroll position.
+- "Welcome back" covers the tab bar and scrolls.
+- The four checkers are clean.
+- **On a phone:** typing in chat keeps the dock's header on screen, and a
+  focused Market price field stays visible.
+
+**Size:** L.
+
+## 91. Money and feedback
+
+**IN PROGRESS on branch `claude/ui-money-feedback`.** Commits so far cover:
+- gold formatting and the Mailbox gate;
+- required notice tone and the deed reward;
+- pre-snapshot copy, grouped quantities and guild medals;
+- the equip picker cap;
+- the leaderboards.
+
+Report sections 4.F, 4.G and 4.J.
+
+**What is actually true.**
+- **"150 kg".** 27 sites append a bare `g` to `formatNumber`, so a compacted
+  value prints "150 kg" or "1.24 Mg". By file: Market 10 (e.g. `:363`,
+  `:440`), Forge 7 (`:497`, `:556`), Chest 2 (`:267`), Mailbox 2 (`:91`),
+  Wiki 2, and one each in Breeding (`:372`), VillageFolk (`:144`) and
+  ChildPreview. `Money.svelte:42-58` documents the player report about this,
+  and it is used at only 21 sites.
+- **Successes in the error tone.** `pushLocalNotice` defaults to `'error'`
+  and plays the error sound (`stores/game.ts:392,411`). Affected:
+  - "Member kicked/promoted/demoted" (`GuildOps.svelte:141,155,169`);
+  - "Friend request sent" and "Player blocked" (`Chat.svelte:170,179`);
+  - the Book of Deeds seals and diamonds (`BookOfDeeds.svelte:60,75-77`).
+- **The achievement card shows the next tier's reward.** It reads
+  `row.NextTierReward` from the snapshot after the crossing
+  (`stores/game.ts:677`; server `AchievementMilestones.cs:239-254`). The top
+  tier therefore shows no reward.
+- **Mailbox shows "Your backpack is full" before the first snapshot**
+  (`Mailbox.svelte:26-27,74-79,144`) and disables claims. It can never fire
+  afterwards, because the server pins the value
+  (`InventoryCensusTickCoordinator.cs:44-59`).
+- **The Character equip picker renders every owned piece for the slot**
+  (`Character.svelte:131-145,605-623`). Tool slot 8 uses it, and the fixture
+  holds 7,550 Birch Axes.
+- **Raw quantities.**
+  - `x{qty}` at `Boosts.svelte:152`, `Mailbox.svelte:118`,
+    `SessionLoot.svelte:224` and `GuildOps.svelte:623`.
+  - "131m of 120m" (`Boosts.svelte:191`), where the 120 is a second copy of
+    `MAX_BUFF_TICKS`.
+  - A stale comment at `Money.svelte:62`.
+- **Pre-snapshot copy differs.** There are three "Waiting for…" variants, and
+  the header prints the raw connection phase (`App.svelte:729-733`).
+- **The leaderboards have four faults.**
+  - `.board li` is a 4-column grid fed 5-6 children
+    (`Leaderboards.svelte:244-251,90-116`), so the progress line lands in the
+    2.5rem rank column as "Mou…" at every width.
+  - The tier colours are #ffd970 and #e2e8f0 on cream
+    (`leaderboardTiers.ts:43-49`).
+  - Only the "Deepest" tab can open a profile (`:61`).
+  - An error reads "No ranked players yet." (overlaps 93).
+- **Guild medals and guild names.**
+  - "1st/2nd place" are #f0c040 and #c0c0c0 on cream
+    (`GuildOps.svelte:1077-1079`).
+  - The guild name input has no `maxlength` (`Social.svelte:242`; the server
+    allows 1-100 characters, `GuildManagementEngine.cs:89`).
+  - Toasts do not wrap user text (`Toasts.svelte:54-66`).
+
+**Build.**
+- **Every gold amount goes through `<Money>`**, or a `formatGold()` for
+  strings. Add a grep test against `formatNumber(...)}g`.
+- **Make `tone` a required parameter.**
+- **Achievement reward:** price the tier just crossed, from the
+  before-snapshot or a server field.
+- **Delete the Mailbox gate.**
+- **Equip picker:** cap it, and collapse identical pieces.
+- **Quantities:** use `formatNumber`, and derive the cap.
+- **Pre-snapshot:** one line, and no phase in the header.
+- **Leaderboards:**
+  - named grid areas;
+  - a light-theme tier palette;
+  - profiles from every row;
+  - an error state;
+  - "rating" for "MMR";
+  - optionally a pinned "your rank" row (needs the server to return it).
+- **Guild:** medal colours that work on parchment, a `maxlength`, and
+  `overflow-wrap: anywhere` on toast, achievement and loot-reveal text.
+
+**Done when:**
+- The grep test passes.
+- A 390 px Market, Forge and Mailbox show "150 k gold", never "kg".
+- A deed card's reward matches the diamonds paid.
+- Opening the axe slot on the fixture stays responsive.
+- The leaderboard's second line is readable at 390 and 1440.
+- `exercise.mjs` is green.
+
+**Size:** M.
+
+## 92. Confirm, pending and visible reasons
+
+**IN PROGRESS on branch `claude/ui-confirm-hints`.** Report sections 4.E and
+4.F.
+
+**What is actually true.**
+- **One tap, no confirm:**
+  - Guild Kick (`GuildOps.svelte:136-148,837`).
+  - Villager "Send on", which is permanent and stays tappable for 900 ms
+    (`VillageFolk.svelte:41-55,131-137`).
+  - Ancestors "One more slot", which spends diamonds
+    (`Ancestors.svelte:63-67,152`).
+  - Friend Remove and Block (`Social.svelte:222-225`).
+- **Two native `confirm()` calls** remain: attribute respec
+  (`AttributePanel.svelte:54`) and high-rarity reroll (`Forge.svelte:403`).
+  In the WebView they render unstyled.
+- **WebSocket buttons have no in-flight state.** Market Buy
+  (`Market.svelte:177-183,364`), Mailbox Claim, Forge Fuse, Crafting Craft
+  and Send on can double-submit, giving a success toast and then "Target not
+  found." Village's `pendingId` (`Village.svelte:212`) is the model.
+- **Reasons that exist only in `title`, invisible on touch:**
+  - Skill-tree buy and respec (`SkillsPanel.svelte:453,479,501,526`).
+  - Great Works deposit (`GreatWorks.svelte:98-99`).
+  - Chest menu Sell (`Chest.svelte:413-416`).
+  - Inheritance (`Inheritance.svelte:111-112`).
+  - The Combat first-clear chip and estimate (`Combat.svelte:674,680`).
+  - SessionLoot Wear (`SessionLoot.svelte:232`).
+  - The Village requirement (`Village.svelte:213`).
+  - Gathering caveats (`Gathering.svelte:336-342`).
+  - Chest "Locked" (`Chest.svelte:789`).
+  - The event chip's effect on a phone (`EventBanner.svelte:55,87-98`).
+  - The aptitude numbers (`VillageFolk.svelte:122-125`,
+    `Ancestors.svelte:205`).
+- **Disabled with no reason anywhere:**
+  - Crafting "Put to work" (`Crafting.svelte:227-233`).
+  - Ancestors "One more slot" (`:152`).
+  - Forge Fuse, which has 6 conditions and shows only the gold one
+    (`Forge.svelte:504-511`).
+  - Social Join when the guild is full.
+- **Guild Join ignores `MinApplicationLevel`** (`Social.svelte:268-270`). A
+  level-1 guest gets an enabled Join on a "lv 20+" guild, and a server
+  refusal.
+
+**Build.**
+- **A `ConfirmButton`.** The first tap arms it and relabels it ("Really
+  kick?"); the second commits; it disarms after 4 s. Use it for Kick, Send
+  on, One more slot, Remove and Block, and replace both native `confirm()`
+  calls.
+- **An `inFlight` set keyed by target id.** It is set on send and cleared on
+  the next command result or after 3 s.
+- **A `Hint` component**: tap-to-toggle, the TraitBadge pattern.
+- **Every disabled button shows its reason** in its label or on a `.dim`
+  line under it, never only in `title`. The event chip becomes tappable.
+- **Join** respects the minimum level, with a "Lv 20" hint.
+
+**Done when:**
+- No destructive or diamond-spending action commits on one tap.
+- A double tap on Buy or Claim sends one command.
+- A greyed Skill-tree node, deposit and Sell each say why at 390 px.
+- `exercise.mjs` is green; its Kick, Send on and slot steps press twice.
+
+**Size:** M.
+
+## 93. Load errors stop looking like empty states
+
+**BUILT on branch `claude/ui-query-states`, not merged.** Two commits:
+- ca944db: QueryState/QueryError, and the content registry as a query.
+- fbbf66c: a failed query says so instead of claiming "empty".
+
+Report section 3, item 1.
+
+**What is actually true (on `main`).** The global `retry: 1`
+(`net/queryClient.ts:43`) means a dead endpoint surfaces in about a second.
+Then:
+- **Chest** reads "Nothing here." (`Chest.svelte:751-754`). Players primed by
+  the 17k-row incident read that as item loss.
+- **Leaderboards** read "No ranked players/guilds yet."
+  (`Leaderboards.svelte:52-55,82-85,126-129`).
+- **Social** reads "No guilds exist yet. Create the first."
+  (`Social.svelte:249-252`).
+- **Chat** reads "No conversations yet."
+- **GuildOps** reads "No members listed." (`GuildOps.svelte:811-814`).
+- **Progression** shimmers forever (`Progression.svelte:92,119-121`).
+- **Boosts and Larder** stay on a skeleton when `loadContent()` rejects.
+- 13 of 21 query-using route files never read `isError`.
+
+**Build (done on the branch).** A shared `QueryState`/`QueryError` that
+handles pending, error (with Retry) and empty, adopted on the screens above.
+A guard test flags `createQuery` in a file with no error handling.
+
+**Known leftovers, to finish before or right after merging:**
+- **The GuildOps content load has no error handling.**
+- **The Wardrobe/cosmetics tab** says "needs a guild" when the membership
+  check *failed*. That is the same lie in a new place, because `hasGuild`
+  derives from a query that can fail (`Social.svelte:39`,
+  `GuildOps.svelte:44`).
+
+**Done when:**
+- With the API stopped, every screen above says "Could not load …" with
+  Retry.
+- The guard test passes.
+- The two leftovers are fixed.
+
+**Size:** M.
+
+## 94. Leave guild
+
+**OPEN.** Report section 4.F (states audit F11).
+
+**What is actually true.**
+- `Social.svelte:245-246` tells a guild member "Leave it first to join or
+  create a new one."
+- `GuildManagementEngine.LeaveGuildAsync` exists
+  (`server/FolkIdle.Server/Domain/Social/GuildManagementEngine.cs:331`), and
+  leader succession is handled in it (`:395-401`).
+- A grep finds **no caller** of `LeaveGuildAsync` on the server and no leave
+  call in the client. A player in a dead guild is stuck, and every Join and
+  Create stays disabled (`Social.svelte:243,272`).
+- This is the "grep for a WRITER" trap from CLAUDE.md, in the form of a
+  route.
+
+**Build.**
+- **Server:** a REST route under the account stripe lock (a mutating POST,
+  per CLAUDE.md), or a WebSocket command through the `add-command` skill. It
+  calls `LeaveGuildAsync`.
+  - Decide what the client must refresh: membership, roster and chat
+    channels.
+  - Write a server test: leave as a member, and leave as the leader, where
+    succession picks the next member.
+  - Write a second test for the last member leaving. Read what the engine
+    does to an empty guild before you promise anything in the UI.
+- **Client:** a "Leave guild" button on the Guild tab.
+  - Use `ConfirmButton` (92).
+  - A leader is told who will lead next, or that the guild will close.
+- Until this ships, change the "Leave it first" copy so it does not promise
+  an action that does not exist.
+
+**Done when:**
+- The server tests pass.
+- `exercise.mjs` leaves and rejoins a guild, round-tripping the fixture's
+  membership.
+- A 390 px screenshot shows the confirm.
+
+**Size:** M (touches the server). **Needs the owner:** no.
+
+## 95. Phone navigation: More sheet, sticky header, one name per concept
+
+**OPEN.** Report sections 4.M and 8 (sketch R1). This is visual review C,
+N1-N7.
+
+**What is actually true.**
+- **The Menu is only at the top.** The header is in flow, not sticky
+  (`App.svelte:899-906`).
+  - The TabBar has 5 fixed entries and no "More" (`lib/ui/tabs.ts:6-12`).
+  - "Menu · X" sits top-right (`App.svelte:1025-1041`).
+  - Of 26 destinations, 21 are reachable only after scrolling to the top and
+    reaching the far corner.
+- **On desktop, "you are here" is weaker than the tutorial.**
+  `.group-toggle.active` only changes the background to `--bg-raised`, which
+  is almost the header colour (`App.svelte:976-978`). The coach ring is a
+  2 px accent outline plus a pulse (`App.svelte:1146-1151`), so the header
+  points at **Items** while you are in Community.
+- **One concept has several names:**
+  - The **Bloodline** menu entry opens tabs "Breeding / Ancestors /
+    Inheritance", and the word Bloodline appears nowhere on the page. The
+    Wiki says "Breeding".
+  - The **Community** group contains an entry also called Community, which
+    opens a page whose tab and heading are **Friends**
+    (`App.svelte:122,137,142,165-182`).
+  - **Supplies** vs **Auto-Eat** vs larder: the first guided step says "Go to
+    Auto-Eat".
+  - **The Delve** vs **the Deep**.
+  - **Map** vs a screen that is two-thirds dashboard.
+  - Resets are written as **"midnight UTC"** on World Boss and **"Monday,
+    02:00 CEST"** on Delve, for the same instant.
+- **The phone menu groups are odd.**
+  - "You" mixes Skill Tree and Progress with Settings and Wiki.
+  - Market lives only as a Community tab.
+  - Group labels are 0.6rem at 65 % opacity (`App.svelte:926-933`).
+- **"Close · Map" reads as "close the map"** (`App.svelte:633`).
+- **Chat has two entry points**, depending on who is online.
+  - `$chatHandleInHeader` (`App.svelte:719-726`) gives a header button.
+  - ChatDock gives a floating pill.
+  - With the dock open, both close controls show.
+  - The Guild channel shows to the guildless.
+  - The online dot has no label.
+- **Chat is cramped on a phone.** It is a floating 26rem window with double
+  frames and about 130 px of message area. The channel tabs wrap.
+- **The guest tab row wraps** because of the lock suffixes (+52 px).
+
+**Build.**
+- **The fifth tab becomes More**, opening the grouped nav as a bottom sheet.
+  - Village moves into the sheet.
+  - The sheet carries badges for mail and points.
+- **A slim sticky header** (`top: var(--sa-top)`) with ≡, gold and diamonds.
+- **A "Family > Tab" breadcrumb** above every tab row, which becomes one
+  scrollable row.
+- **Desktop:** the active group gets an accent underline and bold text, and
+  the coach mark becomes a dot.
+- **One name per concept** across menu, tab, heading, Wiki and tutorial.
+  - Proposed: Bloodline (family) > Breeding / Ancestors / Inheritance;
+    "Friends & Guilds" or no group; Supplies > Auto-Eat; "the Deep" is
+    introduced once as "below floor 8"; Map → Home.
+  - Show the full rename list to the owner first; 76 set the precedent.
+- **One time convention:** local time plus relative ("Mon 02:00 - in 3 d"),
+  from a shared formatter.
+- **One chat entry**, in the header or the sheet, with an "N online" label.
+  - On a phone, chat is a full-height sheet with one frame, one scrollable
+    channel row, and the sender stacked above the message (report section 8).
+  - Hide the Guild channel without a guild.
+- **Regroup the phone menu** (visual review C, N3) and raise the group labels
+  to `--fs-xs` at full dim colour.
+
+**Done when:**
+- From the bottom of the Chest at 390 px, Mail and Settings are two taps away
+  without scrolling.
+- The owner has approved the renames and a screenshot.
+- `screens.mjs`, the Wiki and the tutorial copy use the new names.
+- `check:touch` and `check:overlap` are clean with the sheet open.
+- `exercise.mjs` is green; it navigates by labels, so update them.
+
+**Size:** L. **Needs the owner:** yes, the renames and a screenshot.
+
+## 96. Settings
+
+**OPEN.** Report section 5. This is visual review C, S1-S5.
+
+**What is actually true.**
+- **The page is 7,417 px tall at 390** (`settings-fixture-390.png`).
+- **Sign out, the only sign-out on a phone, is about 6,900 px down.** The
+  header hides it there (`App.svelte:1063-1066`).
+- **The "Tutorial" panel holds everything.** It has 27 fully expanded
+  explanation cards, plus Auto-salvage, Notifications, Email, Accessibility
+  and Session, all as `<h3>` under `<h2>Tutorial`
+  (`Settings.svelte:500-635`).
+- **A guest sees all 27 explanations in full** ("2 of 27 shown so far"), so
+  every future system is spoiled in one wall.
+- **Developer text is visible to players:**
+  - raw keys "EventNone" and "ActiveEventPrefix" in the language sample
+    (`:408-411`);
+  - "Only 30 keys exist…" (`:414`), and "30/30" coverage per language;
+  - cue ids such as buttonClick and rollFlare (`:491`);
+  - "one-time interlock… save generation";
+  - "Player #1 / Last save 0s ago".
+- **Two heading styles** on one page.
+- **The admin grid** uses `minmax(300px, 1fr)` (`:1072`), which overflows a
+  360 px phone. It is admin-only.
+- **On desktop**, four columns of very unequal height.
+
+**Build.**
+- **Separate panels:** Account (with Sign out) first, then Language, Sound,
+  Notifications & email, Gameplay (auto-salvage), Accessibility, Tutorial &
+  explanations, Support / About / Delete.
+- **Fold the 27 explanations** into one disclosure ("14 of 27 seen"). Show
+  only the seen ones, plus "N more unlock as you play".
+- **Put the developer content behind the admin flag:** the sample keys, the
+  cue tester and Session.
+- **Copy:** "partially translated" instead of "30/30", and cut the interlock
+  sentence.
+- **One heading style.**
+
+**Done when:**
+- Sign out is in the first 390 px viewport.
+- The page is under about 2,500 px at 390 px with the panels closed.
+- A guest sees no unseen explanation text.
+- An admin still reaches the cue tester.
+- `exercise.mjs` is green (it signs out by the label).
+
+**Size:** M. **Needs the owner:** a screenshot.
+
+## 97. Character: gear first on a phone
+
+**OPEN.** Report sections 4.H and 8. This is visual review A2, CH-1 to CH-10.
+
+**What is actually true.**
+- **The gear slots are about 1,500 px down at 390 px**, behind
+  Character/Health, Combat rating and four attribute cards (about 1,000 px).
+  - The "Wear a weapon" deed says "Open Character and tap the weapon slot".
+  - For a guest, the first screen is four cards of zeros with disabled
+    +1/+10 buttons.
+- **The character has no name or level on its own screen.**
+  - The title is the word "Character", and the doll says "Human / Adult /
+    Idle".
+  - The name appears only in Orders ("Slot 1 - Cadoc").
+  - The level appears only in Orders copy.
+- **The slot switcher exists only inside Equipment**, while Combat rating,
+  Attributes and Health are per-slot too.
+- **Orders, for a new player:** twelve dead controls ("Opens at level
+  20/40/60") and a disabled Save. It also lists a slot that Work calls
+  locked. There are three select styles.
+- **Changelog copy:** "…used to share one row" (`Character.svelte:656`).
+- **"Skill pts 40" in Combat rating** links nowhere.
+- **"→ Prospector"** is unexplained.
+- **Population "184/35"** has no over-cap marking (`:733`) **(fixture?)**.
+- **The equip picker is not windowed** (fixed in 91).
+- **Untested:** a long *person* name in the header or in Orders (the audit
+  tested only the account name).
+
+**Build.**
+- **A sticky person switcher** with portrait, name, level, race/class and
+  activity. It drives every panel.
+- **Segmented tabs: Gear | Attributes (badge = unspent) | Work & orders.**
+  - Gear is the default. It shows all **eleven** slots as a 4-column icon
+    grid (8 combat + Axe, Pickaxe, Rod) and the set line.
+  - Attributes is the default only when points > 0 and the weapon slot is
+    filled.
+- **Orders:** below level 20, collapse to one line, and hide the people in
+  locked slots.
+- **Copy:** fix the Work and Prospector text. Replace Skill pts with Attack
+  or DPS.
+
+**Done when:**
+- At 390 px a guest sees the weapon slot in the first viewport.
+- All 11 slots are present.
+- The tutorial's "tap the weapon slot" step completes.
+- `exercise.mjs` equips and unequips by the new layout.
+- The checkers are clean.
+- A person renamed to 24 characters fits.
+
+**Size:** M-L. **Needs the owner:** a screenshot.
+
+## 98. Combat: phone redesign
+
+**OPEN.** Report sections 4.H and 8. This is visual review A1, C1-C11.
+
+**What is actually true.**
+- **The first Fight is about y 915 at 390 px** (about y 1060 for a guest),
+  below:
+  - a "Not in combat." panel;
+  - an empty Loot panel;
+  - a 6-line rules paragraph.
+
+  All three are in DOM order (`Combat.svelte:389-720`, rules `:622-630`).
+- **Tapping a monster card shows its drop table off-screen.** The table is
+  rendered *above* the Monsters panel (`:562-606` vs the card at `:663`), so
+  on one column the only visible response is a border colour.
+- **Fight is styled like the card** (`:693-699`). The card is the bigger
+  target.
+- **Rows wrap raggedly.** The verdict ("safe", "you would die") is the last,
+  orphaned token (`.row` flex-wrap, `:957-964`).
+- **Boss Challenges plus Ascension take about 560 px per region**, including
+  a placeholder for unbeaten bosses.
+- **The headings are inconsistent.** SessionLoot's `<h2>` is larger than the
+  screen's own `h2` (`SessionLoot.svelte:167`). Region banner titles are
+  low-contrast.
+- **SessionLoot has two nested 16rem scrollers** (`SessionLoot.svelte:306-307`).
+- **"XP 0" at level 40** has no denominator. Gold duplicates the header.
+- **"Not in combat."** offers nothing when there is no last monster.
+- **Desktop** has three equal columns, so the 25-monster list sits in a
+  440 px column with about 1,200×940 px blank.
+
+**Build** (sketch in report section 8):
+- **A sticky status strip** with level, an XP bar to the next level, HP,
+  current target and Stand down. When idle it shows "Pick a monster below"
+  or Continue.
+- **A one-line loot strip** that expands, or links to the Chest. No inner
+  scroller on a phone.
+- **Rules behind an (i) per region.**
+- **A two-line monster row:** name and a verdict chip, plus a filled Fight
+  button.
+- **The drop table expands inline** under the tapped card.
+- **Challenges and Ascension fold into one line** under the boss, hidden
+  until the boss is beaten.
+- **Desktop:** a sticky left column and a wide monster table.
+
+**Done when:**
+- At 390 px the first Fight is in the first viewport, for the fixture and
+  for a guest.
+- Tapping a card shows its drops without scrolling.
+- `exercise.mjs` (Fight, Continue, Again) is green.
+- `check:perf` is no worse.
+- The checkers are clean.
+
+**Size:** L. **Needs the owner:** a screenshot.
+
+## 99. Chest: rows with stats, a Worn group, no Gold row
+
+**OPEN.** Report sections 4.I and 8. This is visual review B1, C1-C9 and
+M1-M3.
+
+**What is actually true.**
+- **Rows carry no stats.** A row renders icon, name and rarity only
+  (`Chest.svelte:771-830`), so two "Hunter Amulet" T2 Relic rows, one of them
+  worn, are indistinguishable. The file's own comment (`:12-16`) says the
+  affix roll is what makes them different. The "…" menu has no Inspect
+  (`:400-445`).
+- **Gold is a material.** `materials` is every stack with Quantity > 0, with
+  no exclusion (`:100-104`). A guest sees "Gold 2000" with Sell all and Bin,
+  counted in "Materials 1". **Very low effort, high impact.** Check what the
+  server does with Sell or Bin on gold.
+- **Worn looks like loose.** Only the Equip/Unequip label differs.
+- **Nested scrollers.** Materials scroll in a 26rem box (`:985-997`), cut
+  mid-row.
+- **"Equipment" means two things.** The tab is "equipment minus weapons"
+  (`:138`), but the heading is "Equipment 5 638 shown".
+- **Material row buttons.** Bin weighs the same as Sell all, 6 px apart.
+  Material icons are mostly letter placeholders (art gap).
+- **The menu.** Sell shows no price. The header lacks rarity and tier.
+- **The rarity glow** is a red halo on parchment (with 108).
+- **Desktop:** the card stops at about 880 px of 1440.
+- At 768 px, `More` is 32×22 (see 110a).
+
+**Build.**
+- **Remove Gold** from materials.
+- **A shared `ItemRow`** (106) with a meta line: tier, rarity, the top
+  affixes ("+12 % crit, +40 HP, 2 more").
+- **A "Worn (n)" group on top** and a Worn chip.
+- **Inspect** as the first menu item, opening the Forge's `Affixes.svelte`.
+- **Sell shows its estimate** ("Sell - 1,240 gold").
+- **Bin moves into the materials' "…" menu.**
+- **Materials flow in the page.**
+- **Rename the tab** to "Armour & tools".
+- **Desktop:** list | detail pane.
+
+**Done when:**
+- A guest's Chest has no Gold row.
+- Two same-named pieces differ visibly.
+- Worn pieces are grouped.
+- `exercise.mjs` (equip, sell, bin, sweep) is green.
+- Chest scroll in `check:perf` is no worse. It is a VirtualList, so
+  `rowHeight` must match the new row (CLAUDE.md).
+
+**Size:** M-L.
+
+## 100. Forge: one fusion row per item
+
+**OPEN.** Report sections 4.H and 8. This is visual review B1, F1-F7.
+
+**What is actually true.**
+- **About 75 "Ready to fuse" chips run about 1,750 px at 390 px** before the
+  Fuse form.
+- **Tapping a chip appears to do nothing.** `pickSet` only fills the three
+  selects (`Forge.svelte:184-190`): no scroll, no selected state (`.settag`,
+  `:438`). Task 69 already corrected the claim that chips do nothing at all.
+  On a phone they *look* inert.
+- **The chips are sorted by rarity only and are unbounded.** "Fuse the whole
+  stack" (`:510-555`) appears only after picking a target in the dropdowns.
+- **The fusion explainer** sits in the Affix reroll panel (`:577-582`).
+- **ItemBrowser rows** are grey slabs (`ItemBrowser.svelte:258`; the fill is
+  likely a global button style). The compact list caps at 14rem (`:157`), so
+  "8 of 8 shown" displays 4.
+- **The third filter "Rarity" is the sort** but reads as a second rarity
+  filter.
+- **The 14 rarities are hard to tell apart by colour**: two greys, two blues
+  and three close purples (`app.css:141-154`). The T1/T2 badge is region
+  tier, a second confusable number.
+- **The Fuse form is three native selects.**
+
+**Build.**
+- **Cheap, first:** after `pickSet`, scroll the form into view and mark the
+  chip.
+- **Proper:** one row per base item with counts per rarity, the next fusion
+  ("3 Mythic → 1 Relic, 12k gold") and Fuse / Fuse stack in the row. Worn
+  items come first, with search.
+  - The manual three-piece choice moves behind "choose which ones".
+- **Move the explainer** into Fusion.
+- **ItemBrowser:** fix the row style; compact grows to about 8 rows on
+  desktop; a fade at the cut edge.
+- **"Sort:" label.**
+- **A rarity rank pip** distinct from the region tier.
+
+**Done when:**
+- At 390 px a fusion for the worn weapon's line is reachable in the first
+  viewport.
+- `exercise.mjs`'s fuse and stack-fuse steps are green, with the stack
+  restored.
+- The checkers are clean.
+
+**Size:** M.
+
+## 101. Gathering and Crafting: actions first, real status, guided empty states
+
+**OPEN.** Report sections 4.H, 4.N and 8. This is visual review B1, G1-G7 and
+CR1-CR9.
+
+**What is actually true.**
+
+*Gathering:*
+- **The first Gather is about y 990 at 390 px**, below the Mastery table,
+  the Speed and yield table (with a guild monolith paragraph) and an empty
+  "Hauled this session".
+- **The status says where, not what:** "Working Sunlit Plains - 40 %"
+  (`Gathering.svelte:209-217`). Every region has three nodes. Idle is the
+  single word "Idle."
+- **Only slot 1 can gather.** The command always uses
+  `snap.Slot1_CharacterId` (`:88`), and the copy names no character.
+- **The embedded SessionLoot `h2` outranks the card title.**
+- **A stray leading "·"** (`:323-325`).
+- **Mastery rows have no progress bar.**
+- **Developer empty state:** "No gathering nodes in the content files."
+  (`:366`).
+
+*Crafting:*
+- **A new player sees "0 of 30 craftable now"**: 30 faded cards and every
+  button disabled, about 6,000 px, with no next step.
+- **Level-locked and missing-materials cards look the same.**
+- **Craft and Put to work float with the name length**, so they form a
+  ragged column (`Crafting.svelte:215-235,298-303`). `class="tiny-btn
+  primary"` (`:220`) looks the same as secondary.
+- **The worker picker says "Slot 1"** (`:180-183`).
+- **Workshop commissions sit above the recipes.** For a guest that is 9 lines
+  of locked prose; on the fixture the recipes start below 850 px.
+- **Cards have no icon or outcome.** "Equipment" is printed on all 30
+  (`:241-245`).
+- **Big counts read as two numbers:** "0/1 226".
+- **"Craft x10" is a detached checkbox.**
+
+**Build.**
+- **Gathering:**
+  - order is status → profession cards → haul → a collapsed "How fast and
+    why";
+  - the status line is "Mining Copper Ore - Sunlit Plains [Stop]" with the
+    active row highlighted;
+  - a named character picker, shared with Crafting. **First check whether the
+    server accepts other slots for gathering.**
+- **Crafting:**
+  - with 0 craftable, lead with "Nothing craftable yet - the first tools
+    need Birch Log and Copper Ore. [Go gather]";
+  - groups Ready / Missing materials / Locked (collapsed);
+  - an aligned button group with a filled Craft;
+  - an icon, the slot and the effect on each card;
+  - named workers ("Aila (Warrior) - hunting Wolves");
+  - commissions collapsed into a card or a tab;
+  - batch size on the button;
+  - compact have/need with a thin bar.
+
+**Done when:**
+- At 390 px a guest sees a Gather button and a "what to do" line in the
+  first viewport of each screen.
+- `exercise.mjs` (gather, craft, put to work) is green.
+- The checkers are clean.
+
+**Size:** M.
+
+## 102. Market: Buy / Sell / My orders
+
+**OPEN.** Report sections 4.H and 8. This is visual review B2, MK1-MK6 and
+MC1-MC4.
+
+**What is actually true.**
+- **On a phone, the browse panel opens with about 650 px of filters**
+  (11 slot checkboxes, 5 region checkboxes, two selects and a sort). The
+  results start at about y 1060.
+- **The empty state blames filters when none are set:** "Nothing matches
+  those filters. The market is empty…" (`Market.svelte:338-341`).
+- **The sell picker shows 4 rows of 5,625, as grey slabs**
+  (`ItemBrowser.svelte:157,258`; the same cause as 100). The chosen item is
+  not echoed, so "List for 1000g" does not say what is listed.
+- **Developer copy:** "flushes your state to the database first"
+  (`Market.svelte:593`).
+- **There is no list of the player's own listings or orders on the screen.**
+- **"Any rarity" sits next to "Rarity"**, which is the sort.
+- **Cosmetics.**
+  - The sub-tabs look like the top tabs.
+  - Sell tiles show only a name, so duplicate "River Stone"s cannot be told
+    apart (`CosmeticMarket.svelte:197-198`).
+  - The Equipment tab uses different filter idioms.
+- **Desktop:** three equal columns.
+
+**Build.**
+- **Segmented Buy | Sell | My orders.** The orders tab needs an API that
+  lists them; check the server first.
+- **A search field plus "Filters (n)"** opening a bottom sheet of chips.
+  Results follow directly.
+- **Two empty-state messages.**
+- **Sell:** a full-screen picker on a phone → a summary card → "List Sentry
+  Helm for 1 000 gold".
+- **Copy:** "Placing an order takes a moment."
+- **"Sort:" label.**
+- **Cosmetic tiles** show "Rare avatar".
+- **Underline sub-tabs** (106 `Tabs`).
+- **Desktop:** a wide results table with Sell and Orders on the side.
+
+**Done when:**
+- At 390 px the first listing, or the empty message, is in the first
+  viewport.
+- The sell flow names the item before listing.
+- `exercise.mjs`'s market steps are green.
+- The checkers are clean. Measure by hand, because `overlap-check` skips the
+  Market (see 106).
+
+**Size:** L. **Needs the owner:** a screenshot.
+
+## 103. Village: buildings first
+
+**OPEN.** Report sections 4.H and 8. This is visual review B2, V1-V7.
+
+**What is actually true.**
+- **The page order is Gene pool → Village (buildings) → Great Works.** At
+  390 px the buildings start at about 1,050 px, after about 260 px of prose.
+- **Two population fractions contradict each other.** "101 / 11" with no
+  label (`VillageFolk.svelte:75`, newcomers / cap) and "184/35 population"
+  (`Village.svelte:128`). Both over cap **(fixture?)**.
+- **The gene pool is a 28rem inner scroller cut mid-row**
+  (`VillageFolk.svelte:217-218`). Married-in elders sit in the same list. The
+  aptitude key sits under the list.
+- **The footer text runs onto the panel's corner ornament** on desktop. The
+  same defect is on the Bloodline aptitude panel.
+- **Building rows.**
+  - The level is a lone "5".
+  - Buttons are half-width and left-floating.
+  - "Maxed" is a disabled button.
+  - Affordable upgrades do not stand out.
+- **Great Works** is five tall identical cards, each repeating the stage
+  ladder, with a 0 % bar that reads as a rule. That is about 1,500 px. For a
+  new player all ten deposits are disabled "(0 held)".
+- **A new player meets marriage and bloodlines first**, then seven red "Not
+  enough" buildings.
+
+**Build** (sketch in report section 8):
+- **Buildings first.** Affordable ones sort up, with a "Lv 5 / 5" pill and a
+  primary Upgrade only where affordable. Maxed is plain text.
+- **Label both fractions** and mark over-cap.
+- **Gene pool:** the top N by aptitude sum, "Show all", a collapsed "Married
+  in (n)", and the S K E F column header above the numbers. Collapse it until
+  Inn ≥ 1 or a newcomer exists.
+- **Great Works:** one compact row each (stage pips, "0 / 50 000",
+  Deposit → a sheet). The ladder shows once. While nothing is held, collapse
+  to one line.
+- **Panel bottom padding** for the ornament.
+
+**Done when:**
+- At 390 px a guest sees a building and its Upgrade button in the first
+  viewport.
+- `exercise.mjs` (upgrade, Send on, feast) is green, with the villager pool
+  re-seeded.
+- The checkers are clean.
+
+**Size:** M.
+
+## 104. Ancestors: carried vs lost
+
+**OPEN.** Report sections 4.H and 8. This is visual review B2, AN1-AN5.
+
+**What is actually true.**
+- **The phone page is 37,468 px tall.** `Ancestors.svelte:182-247` renders
+  every member of the line, grouped by generation, with no cap, collapse or
+  pagination: about 200 rows of about 180 px each.
+- **Most rows will be lost.** They are `class:doomed={!m.WouldCarry}`
+  (`:186,387-388`), at 45 % opacity: people culled at the next rebirth. The
+  list grows with every breeding. This is not fixture-only.
+- **"Kept" shows on doomed rows.** Keep and Kept differ by one letter
+  (`:239-240`). The rule that marks past the cap are allowed sits in the
+  intro.
+- **Every row carries "Field into [1][2][3] [Keep]".** Slot state is shown
+  three ways.
+- **The diamond button is the biggest control.** "One more slot · 250
+  diamonds" is full-width at the top. It has no confirm (in 92).
+- **Five number chips have no header.** The fifth ("16 / 200") is unique to
+  this screen.
+
+**Build.**
+- **Two sections.** "Carried into next season (10/10)" is expanded, in
+  cull-rank order. "Lost at rebirth (n)" is collapsed, sorted by total, 20 at
+  a time or virtualised, with filters.
+- **Generation becomes a tag** on the row.
+- **A doomed but kept row reads "Kept - over the cap"** in the warning
+  colour, with the count shown ("Kept 14/10"). Keep is a pin toggle.
+- **Tapping a row opens a detail sheet** (traits, parents, field into slot,
+  keep). The list shows one state badge.
+- **"+ slot (250 diamonds)"** sits beside the counter. The rules go into a
+  "What survives a rebirth" disclosure.
+- **A column header "S K E F Total".**
+
+**Done when:**
+- The fixture's Ancestors page at 390 px is under 3,000 px with "Lost"
+  collapsed.
+- No row says "Kept" without saying whether it carries.
+- `exercise.mjs`'s field and keep steps are green.
+- The checkers are clean. Measure by hand; `overlap-check` skips this tab.
+
+**Size:** M.
+
+## 105. World Boss and the Delve
+
+**OPEN.** Report sections 4.A8, 4.H, 4.J and 8. This is visual review A1,
+W1-W6, S1-S3 and D1-D6.
+
+**What is actually true.**
+
+*World Boss:*
+- **There is no name, face or art.** `WorldBoss.svelte:307-322` renders
+  `<h2>World Boss</h2>`, a state pill, a timer and a bar, and nothing in the
+  file names the boss.
+- **The strike is at about y 640, after three paragraphs.** One is an 8-line
+  armour rule in 0.75rem dim text (`:351-358`).
+- **The plate selector feeds only the secondary button.** It sets
+  `selectedPlate` (`:364-389`), which only "Auto-strike plate n (1x skill)"
+  uses (`:427-434`). The prominent wheel strike ignores it.
+- **Status colours misread.**
+  - "Active" is a red outlined pill.
+  - The primary strike is red text in a red border.
+  - "Ready" is a lone green pip that looks like an empty bar.
+  - The HP label is dark on dark orange.
+  - "97h 33m left".
+- **Desktop:** a 34rem column (`:527-531`), with the damage board below the
+  fold at every width.
+
+*Shield wheel:*
+- **No leave during play** (Close only at `ShieldWheel.svelte:516,548,557`).
+- **The legend shows only during the countdown** (`:419`).
+- **About 180 px of empty space**, and upside-down segment numbers.
+- **"Tap to throw" looks like a drop zone.**
+- **The header and part of the panel show above the overlay**: cause
+  unknown, maybe partly a capture artefact **(device)**.
+
+*The Delve:*
+- **A private dark palette.** `Delve.svelte:527-781` hard-codes 34 colour
+  literals and its own `button.primary`/`.secondary`, so it is a dark island
+  on the parchment page. The intro is pale grey on parchment, partly from the
+  global `header` rule fixed in 89.
+- **"Pay and descend" is the 7th block** (about y 865).
+- **Delve vs Deep, and the reset time:** "on Monday" vs "Monday, 02:00 CEST"
+  (naming in 95).
+- **"Clear floor 10 to earn Lamplighter"** sits above an owned "Lamplighter"
+  button with no Wear/Worn label (`:477-503`).
+- **Small glitches:**
+  - "60 /" wraps from "60";
+  - double spaces before units;
+  - "-" for none;
+  - "BREADTH" in caps;
+  - the 4+2 stats grid on desktop.
+
+**Build.**
+- **World Boss** (sketch in report section 8):
+  - a hero block with the boss name and portrait. **Find where the name can
+    come from first:** content data or a wire field. A wire field means
+    `generate:protocol` (CLAUDE.md).
+  - the strike directly under HP, as a filled primary;
+  - plates as read-only status, chosen only in "Quick strike (no skill
+    bonus)";
+  - rules and payout tiers in a disclosure that is open until the first
+    strike;
+  - "Active" in the good colour, a "1 strike ready" chip, "4d 1h left";
+  - two columns on desktop.
+- **Shield wheel:**
+  - a portalled overlay above the shell header, with its own top bar and
+    "Leave practice" / "Leave - finish later";
+  - a one-line legend during play;
+  - a solid "Throw - 5 left" thumb target;
+  - the numbers drawn upright;
+  - no dead gap.
+- **Delve:**
+  - **owner decision:** a full dark "underground" mode (page background
+    included) or the parchment tokens; the audit recommends dark;
+  - either way, every hex value becomes a token;
+  - the gate goes first and the records fold into one line;
+  - a titles picker labelled "Wear a title" with a Worn mark;
+  - the glitches fixed.
+
+**Done when:**
+- At 390 px the strike and "Pay and descend" are each in the first viewport.
+- The boss is named.
+- The wheel can be left during practice, and back during play does not
+  unmount it (with 90).
+- The Delve reads in the owner's chosen theme, and in both themes if the
+  choice is parchment.
+- `exercise.mjs`'s world boss (with the dev window route) and Delve steps are
+  green.
+
+**Size:** M-L. **Needs the owner:** yes, Delve dark or parchment, and where
+the boss name comes from.
+
+## 106. Shared primitives and sweeps
+
+**OPEN.** It runs alongside 95-105, and each redesign adopts what it needs.
+Report sections 4.I, 4.J, 4.K and 7.
+
+**What is actually true.**
+- **Buttons.**
+  - `.tiny-btn` is used 46 times in 14 files and **defined 12 times**, in
+    three sizes (`Boosts:331`, `Character:1131`, `Chest:1180`,
+    `Crafting:411`, `Gathering:535`, `GuildOps:1029`, `Larder:391`,
+    `Mailbox:263`, `Market:812`, `Settings:951`, `Social:458`,
+    `Village:534`). It is used undefined in `AutomationRulesPanel.svelte` and
+    `Forge.svelte`.
+  - "primary" has five meanings and **no rule at all** in `LootReveal.svelte`
+    (`:91`, the Wear call to action) and `CosmeticMarket.svelte:212`.
+  - "danger" has three meanings.
+  - Close buttons come in two classes.
+- **Modals:** nine implementations, with no focus management. `inert` is
+  used nowhere.
+- **Tabs and chips.**
+  - 4 `role=tablist`s with 4 class names, 3 non-ARIA tab sets, 2 chip groups
+    and 3 `.filters` copies.
+  - Four "active" looks, including a live slate-blue tint
+    (`Character.svelte:825`).
+  - Nested tab rows look the same as their parents.
+- **Item rows:** six shapes. Chest, the ItemBrowser grey slab, Mailbox
+  "[Epic]", the fusion chip, the Crafting card with no icon and the Larder
+  slot with no icon.
+- **Bars and panels.**
+  - `Bar` is used 16 times, against 11 or more hand-rolled bars. GoldLedger's
+    `.bar` collides with the global class, and Bar has no `aria-label`.
+  - Progress and Codex meters have no track.
+  - The `.panel` base is copied into 29 files. Two copies use the undefined
+    `--panel`.
+- **Typography and spacing.**
+  - 37 font sizes, 23 of them below 0.7rem.
+  - 45 spacing lengths.
+  - Weight `650`.
+  - `line-height: 1.1rem`.
+- **Z-index:** 16 values, from 1 to 10000.
+- **Colour:** 254 hard-coded colours outside `app.css`.
+  - 22 white-alpha borders vanish on parchment: Character, Forge, Market,
+    ChatDock, Mailbox, OfflineSummary, Wiki.
+  - Text on accent is coded three ways.
+  - The Delve remainder is in 105.
+- **The pressed state is lost** on the TabBar (`TabBar.svelte:129`).
+- **There is no focus-visible style** for `[role=button]`, `a`, `summary` or
+  `[tabindex]`.
+- **Checker coverage gaps.**
+  - `overlap-check` navigates with `navButton()`, so it skips the 10
+    destinations that exist only in `OVERLAYS`.
+  - `clipping-check` never opens the chat dock.
+
+**Build** (token values in report section 7):
+- **`Button`**, or global classes: variants default, primary (filled),
+  danger, ghost and quiet; sizes sm and md. Delete the 12 `.tiny-btn` copies.
+- **`Modal`:** a portal to body, `role=dialog`, Escape and back through 90's
+  closer stack, a focus trap with return, `--scrim`, `--z-modal`, safe-area
+  padding, a dvh cap and a bottom-sheet variant. Migrate DeathCard,
+  VictoryCard, WhatsNew, OfflineSummary, PlayerProfileModal and the exit
+  confirm.
+- **`Tabs`** (ARIA, roving tabindex, an underline variant for a nested row)
+  and **`ChipGroup`**.
+- **`ItemRow`.**
+- **`Bar`** with size, tone and `ariaLabel`, plus a visible track. Rename
+  GoldLedger's class.
+- **The `.panel` base** goes into `app.css`, with `.panel--sunken`.
+- **The z-index scale.** `folk-rise` changes from `both` to `backwards`.
+- **Retheme** the white-alpha edges and the blue tint onto `--edge-soft` and
+  `--tint-selected`.
+- **Pressed and focus states:** a `.tab:active` tint and a global
+  `:focus-visible` for those selectors.
+- **Type and spacing sweep**, file by file, alongside other work.
+- **Fix the checkers:** `overlap-check` uses `go()` for `OVERLAYS`
+  destinations, and `clipping-check` opens the dock.
+
+**Done when:**
+- A grep finds one `.tiny-btn` or `.btn-sm` definition and one `.panel` base.
+- Every modal is a `Modal`.
+- `check:overlap` visits all 29 destinations, and is clean.
+- No `font-size` below `--fs-badge`.
+- A light-theme screenshot of Character, Forge and Market shows card edges.
+
+**Size:** L (spread across PRs: one per primitive, plus sweeps).
+
+## 107. Guild and Community structure, and copy contradictions
+
+**OPEN.** Report section 5. This is visual review C, C1-C6 and G1-G5.
+
+**What is actually true.**
+- **The "Friends" tab is two-thirds guild.** It holds Friends, Guilds and My
+  guild (`Social.svelte:238-316`). "My guild" duplicates the Guild tab's
+  Members.
+- **The Guild dashboard has no identity.** It never shows the guild's name:
+  `GuildName` is used only for `hasGuild` (`GuildOps.svelte:44`). It opens on
+  "Guild war: unlock at 50 players, 1/50" (`:450-452`), and Members is the
+  last card, about 1,700 px down on a phone.
+- **The copy contradicts itself.** Contribute gold "raises your own
+  contribution ranking", while Contributors says "only material
+  contributions count toward the leaderboard, not gold donations". Find out
+  from the server which is true before rewriting either.
+- **A new player gets mixed signals.** The tab says "Guild · Level 10"
+  (locked), while the same page offers enabled Join and Create (Join's
+  minimum level is in 92). Your own guild's row shows a disabled Join.
+- **"None pending, or you are not the leader."** makes the player work out
+  which applies (`Social.svelte:303`).
+- **Donate needs a paragraph to make sense:** "To depot / To chain / Donate"
+  are three controls of different widths.
+- **Desktop:** an auto-fit grid leaves a hole under the tall Depot card
+  (`GuildOps.svelte:850-856`).
+- **Medal colours are in 91.**
+
+**Build.**
+- **Friends = friends only.**
+- **Guild =** the guild browser plus Create when not in a guild, and the
+  dashboard when in one.
+- **Dashboard order:** a header card (name, tier, members x/y, tax, your
+  role, weekly rank), then Members, Treasury & buffs, Depot / donate,
+  Contributors, and Guild war last, collapsed while locked.
+- **Name the two rankings distinctly,** or state the gold effect correctly.
+- **Applications show only to leaders.**
+- **Own guild row:** "Open" instead of Join.
+- **Donate:** a material picker plus a quantity, then "Deposit to: Depot |
+  Chain | Treasury" with a one-line hint.
+- **The "Leave guild" button from 94** goes on the dashboard.
+
+**Done when:**
+- The guild's name is the first thing on its dashboard at 390 px.
+- No copy on the two tabs contradicts the server.
+- `exercise.mjs`'s guild steps (donate, apply, kick) are green.
+- The checkers are clean. Measure by hand; `overlap-check` skips both tabs.
+
+**Size:** M. **Needs the owner:** a screenshot.
+
+## 108. Phone GPU budget
+
+**OPEN.** Report section 4.L.
+
+**What is actually true.**
+- **`.rarity-glow` animates `text-shadow`**, 2.2 s and infinite
+  (`app.css:304`). It is applied to every tier ≥10 row (`rarity.ts:100`) in
+  the Chest VirtualList (`Chest.svelte:782`), Character (`:529,563,593,629`),
+  Mailbox (`:110`), SessionLoot (`:220`) and Forge (`:628`). Each glowing row
+  repaints its text every frame.
+- **`CosmeticFrame` animates `filter: drop-shadow`**, 3.2 s and infinite
+  (`CosmeticFrame.svelte:65`). That reaches every `PlayerAvatar`: every chat
+  message, the leaderboards, GuildOps and WorldBoss.
+- **The always-visible chat handle has `backdrop-filter: blur(8px)`**
+  (`ChatDock.svelte:249`), which re-blurs on every scroll frame. The window's
+  blur is removed by 90's portal fix or kept: decide there.
+- **`will-change: transform, filter` on the monster sprite is permanent**
+  (`Combat.svelte:786`).
+
+All of these already have reduced-motion fallbacks.
+
+**Build.**
+- In lists, the glow is static. Animate only in detail views, on a `::after`
+  layer via `opacity`.
+- The frame glow moves to an opacity-animated pseudo-layer, or is static in
+  chat and boards.
+- No `backdrop-filter` on narrow screens, with a 96 % colour mix instead.
+- `will-change` only during the hit animation.
+
+**Done when:**
+- `check:perf` on Chest scroll and on Chat with 50 messages shows no more
+  long tasks than before. Record the numbers in the PR.
+- No infinite `text-shadow` or `filter` animation is left on a repeated list
+  item.
+
+**Size:** S.
+
+## 109. Polish bundle
+
+**OPEN.** These are small, independent fixes. Take them a few at a time, one
+PR per screen or per theme. Each line names its report source.
+
+**Login and Register** (A2 LG-1 to LG-3, RG-1 and RG-2):
+- **The first impression says nothing.** "Play as guest / Sign in / Create an
+  account" are three identical buttons with no pitch and no art
+  (`Login.svelte:129-131`).
+  - Fix: a filled "Play now" plus a one-line pitch, with the map art.
+  - Write the guest note honestly, depending on whether a guest can upgrade
+    to an account.
+- **The Android promo opens on the very first visit** (`Login.svelte:55`),
+  and its "Not now" looks primary while Download looks secondary
+  (`:229-234`).
+  - Fix: show it after the first session, with Download filled.
+- **Register.** Back weighs the same as Create account. There is no username
+  hint and no show-password toggle.
+
+**Map / Home** (A1 H1, H2, H3 and H5; A2 MP-1, MP-3 and MP-5):
+- The disc labels use `clamp(0.42rem, …)`, about 6.7 px
+  (`Hub.svelte:185`).
+  - Fix: a ribbon under each disc at 11 px or more, and discs of 44 px or
+    more.
+- Name the player's own person: "Brennus (you)".
+- Below the region-boss threshold, "Next unlock" shows the nearest actionable
+  unlock (`HomeCards.svelte:220-222`, `homeNow.ts:60-63`).
+- Desktop: `align-items: start` on the cards.
+
+**Skill tree** (A2 ST-2 to ST-8; evidence item 8):
+- "40 points" becomes "40 to spend", repeated above the list.
+- A guest with 0 points sees "You earn a skill point every N levels" instead
+  of a live Respec.
+- "Respec(free)" is missing a space (`SkillsPanel.svelte:457`).
+- A maxed node shows a bare "—" button (`:482`).
+- "pts" next to percentages.
+- The cost buttons have no verb.
+- The branch labels on the tree picture are about 6 px.
+- Desktop: the content width is uncapped.
+
+**Progress** (A2 PR-1, PR-2 and PR-4 to PR-6):
+- Collapse sealed chapters to one line, and make done deeds quiet.
+- The tabs wrap at 390 px ("Daily & races" alone on a row). Use one
+  scrollable segmented row (106 `Tabs`).
+- Meters have no track.
+- "Monster Slayer / [Monster Slayer]" stutters.
+- Desktop: cap the width.
+
+**Codex** (A2 CX-1 to CX-5):
+- Developer note: "Only the 25 canonical monsters appear…"
+  (`Codex.svelte:77`).
+- The page never says what a codex level gives.
+- The region completion block costs a phone screen. Fold it into the region
+  headings.
+- Purple `--rarity-6` kill bars with straddling labels (`:162`).
+- "lv 0".
+- Check blank portraits on a phone: probably lazy-load in the capture.
+
+**Wardrobe** (A2 WR-1 to WR-5):
+- Four "0" chest cards come first. With none held, show one line.
+- Locked tiles are disabled with no "how to get" (`Wardrobe.svelte:195,228`).
+  Make them tappable to show the source, after checking whether content data
+  has one.
+- Faded rarity labels on locked tiles.
+- Unexplained "×4".
+- No Owned/All toggle.
+
+**Wiki** (C W1 to W3):
+- The 16-entry table of contents sits above the article (about 1,300 px at
+  390, `Wiki.svelte:1619-1644`).
+  - Fix: a "Contents ▾" control and Previous/Next links.
+- Desktop prose: `max-width: 70ch`.
+- The low-contrast Gold/Diamonds card.
+
+**Loot reveal and achievement toast** (B1 LR1 to LR3 and AT2/AT3; evidence
+item 5):
+- "New record" is announced twice. Fold it into the reveal as a badge.
+- "Same rarity as yours" sits next to a primary Wear
+  (`lootCompare.ts:15,78-90`). Say "same base stats - compare affixes", and
+  make Wear secondary.
+- The bare "III" on the seal: write "Treasury - tier III".
+- The card should open the Book of Deeds.
+
+**Supplies: Auto-Eat** (B1 S1 to S5):
+- The flow runs bottom to top. Make each slot a row: "+ Add food" opens a
+  picker.
+- No heal amounts and no icons.
+- The desktop slider is browser-blue, because the range styles sit inside the
+  phone media query (`app.css:1113,1134-1170`).
+- "50" has no unit, and "Applied (50)" looks disabled.
+- Changelog copy at `Larder.svelte:178`.
+
+**Supplies: Boosts** (B1 B1 to B3; states F3):
+- The copy talks about a backpack and a bank (`Boosts.svelte:125-127`),
+  which the file's own comment (`:60-70`) says is untrue. Also check the
+  "four foods and two potions" count against items.json.
+- The empty state is a dead end. List all eight boosts with a source.
+- "Refused by disconnecting you" (`:131-135`).
+
+**Mailbox** (B1 ML1, ML2 and ML4):
+- Developer explainer (`Mailbox.svelte:67-71`).
+- The empty state does not say what mail is for.
+- "Claim up to 10" exposes a batch limit. Use "Claim all" that loops.
+
+**Bloodline: Breeding and Inheritance** (B2 BR1 to BR5, IN1 and IN2):
+- Five blocks of rules prose around the lab. Keep one line per control, and
+  put "partner is spent for ever" next to Breed.
+- "Choose up to 1" sits on checkboxes (`Breeding.svelte:338`). Use "Choose
+  one" with radio behaviour.
+- The unexplained mark tick (`AptitudePanel.svelte:74`).
+- The footer collides with the ornament (shared with 103).
+- **Verify against the fixture:** the Inn roll cap copy ("up to 9",
+  `Breeding.svelte:311-313`) vs newcomers at 10.
+- Inheritance: "not bought" should state the current and maximum effect.
+  Cap the desktop grid at 3 columns.
+
+**Shared small type** (CSS A3):
+- Item stack and tier badges are 9.3 px (`ItemIcon.svelte:124,151,164`).
+- Tab-bar labels are 10.9 px (`TabBar.svelte:168`).
+- PersonPicker is 8.8 px (`PersonPicker.svelte:331`).
+
+**Tutorial and new player** (evidence items 6 and 8; C T1 to T3):
+- **The tutorial reappeared** after a skip, on sign-in in a new browser
+  context. Find where the skip is stored. If it is per browser, store it on
+  the account.
+- **The guided card and the coach pill show at once.** Hide the coach while
+  GuidedOverlay is up. "Skip tutorial" should be a right-aligned link.
+- **A guest sees "you would die" on every Sunlit Plains monster**, plus
+  "Your larder is empty" (`combat-guest-390.png`). Check whether that is
+  honest for a level-1 character with the starter claymore and 10 fish. If
+  it is not, fix the estimate. If it is, the first monster is a wall again
+  (the 2026-09-02 precedent).
+- **Locked destinations are offered.** The Map shows Market and Guild
+  hotspots to a level-1 player. The Chest menu offers "Reroll in Forge" while
+  the Forge is locked.
+
+**Developer-phrased empty and loading states** (states F5 and the empty-state
+table):
+- "No gathering nodes in the content files." (`Gathering.svelte:366`).
+- "No region requirements are defined." (`Codex.svelte:128`).
+- "Join a guild to use its depot." with no link (`GuildOps.svelte:569-570`).
+
+**Done when:** each item is fixed or explicitly dropped in its PR. 390 px
+screenshots of the touched screens. Checkers clean. `exercise.mjs` green.
+
+**Size:** L in total, about S per line.
+
+## 110. Decisions for the owner
+
+**OPEN.** Ask these in one message, in Czech.
+
+- **a. A touch floor for tablets.** At 768 px, `check:touch` finds 153
+  controls under 44 px. Examples: header toggles 32 px tall, Chest `More`
+  32×22, Supplies `+`/`−` 24×26, Ancestors trait buttons 18 px. The floor
+  lives only in `@media (max-width: 40rem)`, and a portrait tablet is
+  744-834 CSS px, so the APK on a tablet gets desktop sizes.
+  - Option: apply the floor under `(pointer: coarse)` as well as the
+    40rem query.
+  - **Question:** are tablets a target?
+- **b. iOS portrait-only too?** `ios/App/App/Info.plist:64-69` still allows
+  landscape. Android phones are now locked.
+- **c. MOBILE.md wording.** The A2 checklist's "Rotation" line should read
+  "Android phone: locked; tablet, foldable and split-screen: still rotates".
+  Add the phone checks from report section 6 to the same list. This is a doc
+  change; it needs the owner only to confirm the phone list.
+- **d. Mobile web as a supported path?** If yes, add a `manifest.webmanifest`
+  and an apple-touch-icon (`index.html` has neither), so "Add to Home Screen"
+  works.
+- **e. Is world chat live-only by design?** A player who signs in again a
+  minute later sees "Nothing in this channel yet" (evidence item 7). If
+  history is meant to load, that is a defect to file.
+- **f. The rarity glow's colour.** On parchment, the top-tier red halo reads
+  as an error (Chest, Character, loot reveal). Choose between a gold sheen, a
+  rarity pip and a left border. 108 removes the animation regardless.
+
+**Size:** S. **Needs the owner:** yes.
