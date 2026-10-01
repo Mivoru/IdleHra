@@ -6558,7 +6558,7 @@ and 8. This is visual review A2, CH-1 to CH-10.
 
 ## 98. Combat: phone redesign
 
-**OPEN.** Report sections 4.H and 8. This is visual review A1, C1-C11.
+**BUILT on branch `claude/ui-98-108-combat-gpu`, not merged.** Report sections 4.H and 8. This is visual review A1, C1-C11. Left open: nothing was run against a live stack - exercise.mjs (updated: "Stand down", the boss fold, the estimate line), check:perf, the geometry checkers and the owner's screenshot; the fold hides "Young blood", which CAN be met on a first clear (owner call); the strip sits under a sticky header only if that header sets `--sticky-header-h`.
 
 **What is actually true.**
 - **The first Fight is about y 915 at 390 px** (about y 1060 for a guest),
@@ -7134,7 +7134,7 @@ Report sections 4.I, 4.J, 4.K and 7.
 
 ## 108. Phone GPU budget
 
-**OPEN.** Report section 4.L.
+**BUILT on branch `claude/ui-98-108-combat-gpu`, not merged.** Report section 4.L. Left open: the check:perf numbers (Chest scroll, Chat with 50 messages) were not measured on this branch and belong in the PR; the chat WINDOW keeps its blur (task 90's call); the glow colour is untouched (110f).
 
 **What is actually true.**
 - **`.rarity-glow` animates `text-shadow`**, 2.2 s and infinite

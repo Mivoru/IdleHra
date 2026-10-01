@@ -287,6 +287,18 @@
     box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   }
 
+  /* Modul: TASK 108 - NO BLUR UNDER A THUMB. The handle is on screen all the
+     time, over whatever is scrolling, and a backdrop-filter re-blurs that
+     region on every scroll frame - on a phone, a cost paid continuously for a
+     pill-sized frosted edge. Narrow screens get an almost opaque fill instead,
+     which reads the same at that size. */
+  @media (max-width: 40rem) {
+    .handle {
+      background: color-mix(in srgb, var(--bg-panel) 96%, transparent);
+      backdrop-filter: none;
+    }
+  }
+
   .dot {
     display: inline-flex;
     align-items: center;

@@ -339,6 +339,11 @@
      under it - that is --sa-bottom, added separately. 0 where there is no bar,
      so every "sit above the bar" rule is a no-op on a desktop. */
   --tabbar-h: 0px;
+  /* The height of an app header that stays pinned while the page scrolls, so
+     a screen's own sticky strip (Combat's status, task 98) sits under it
+     instead of behind it. 0 while the header scrolls away with the page; a
+     sticky header sets it. */
+  --sticky-header-h: 0px;
 }
 
 @media (max-width: 40rem) {
@@ -438,25 +443,51 @@ input {
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-/* Replaces UiRarityGlow. */
-@keyframes rarity-glow {
-  0%,
-  100% {
-    text-shadow: 0 0 4px currentColor;
-  }
-  50% {
-    text-shadow: 0 0 10px currentColor, 0 0 18px currentColor;
-  }
+/* Replaces UiRarityGlow.
+
+   Modul: TASK 108 - A GLOW THAT REPAINTS EVERY FRAME, ON EVERY ROW. This
+   animated `text-shadow`, 2.2 s and infinite, and shouldGlow() puts it on
+   every tier-10+ row: the Chest's list, Character, Mailbox, the loot panel,
+   Forge. text-shadow is not a compositor property, so each glowing row
+   re-rasterised its text sixty times a second for as long as it was on
+   screen - on a phone, a list of Mythics is a GPU budget spent on nothing.
+
+   So `.rarity-glow` is STATIC (the same colour, the pulse's resting depth),
+   and every list gets that for free without touching its screen. A detail
+   view that wants the pulse adds `.rarity-glow-live`: a halo on an ::after
+   layer whose only animated property is `opacity`, which the compositor runs
+   without repainting the text. */
+.rarity-glow {
+  text-shadow: 0 0 4px currentColor;
 }
 
-.rarity-glow {
-  animation: rarity-glow 2.2s ease-in-out infinite;
+.rarity-glow-live {
+  position: relative;
+  isolation: isolate;
+}
+
+.rarity-glow-live::after {
+  content: '';
+  position: absolute;
+  inset: -0.2em -0.45em;
+  z-index: -1;
+  border-radius: 999px;
+  background: radial-gradient(closest-side, currentColor, transparent);
+  opacity: 0;
+  animation: rarity-halo 2.2s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes rarity-halo {
+  50% {
+    opacity: 0.28;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .rarity-glow {
+  .rarity-glow-live::after {
     animation: none;
-    text-shadow: 0 0 4px currentColor;
+    opacity: 0;
   }
 }
 
