@@ -109,6 +109,118 @@
   --diamond: #8fd3ff;
 
   --radius: 8px;
+
+  /* Modul: THE REST OF THE DESIGN SYSTEM, NOT JUST COLOUR.
+     Until now the only size token was --radius, so every component picked its
+     own number: 37 font sizes, 45 spacing lengths, 22 radii, 16 z-indexes from
+     1 to 10000. Each value below is the most-used existing value of its
+     cluster, so adopting a token moves an element by 2px or less - that is the
+     contract that makes the sweeps safe to do file by file.
+
+     Breakpoints are NOT here because custom properties do not work inside
+     @media. They are literals, mirrored in lib/ui/media.ts: phone
+     (max-width: 40rem), tablet (max-width: 52rem), wide (min-width: 64rem). */
+
+  /* Type. Body is 14px while the root stays 16px, so --fs-base is 0.875rem.
+     --fs-badge is for badges only (counts, tiers); never body copy. */
+  --fs-badge: 0.68rem;
+  --fs-xs: 0.72rem;
+  --fs-sm: 0.8rem;
+  --fs-base: 0.875rem;
+  --fs-md: 1.05rem;
+  --fs-lg: 1.3rem;
+  --fs-display: 3rem;
+  --fw-regular: 400;
+  --fw-medium: 600;
+  --fw-bold: 700;
+  --fw-black: 800;
+  --lh-tight: 1.15;
+  --lh-snug: 1.35;
+  --lh-body: 1.5;
+  --tracking-caps: 0.06em;
+  --tracking-wide: 0.12em;
+  --font-ui: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  --font-mono: ui-monospace, monospace;
+
+  /* Spacing. */
+  --sp-0: 0.1rem;
+  --sp-1: 0.2rem;
+  --sp-2: 0.35rem;
+  --sp-3: 0.45rem;
+  --sp-4: 0.5rem;
+  --sp-5: 0.6rem;
+  --sp-6: 0.75rem;
+  --sp-7: 1rem;
+  --sp-8: 1.5rem;
+  --sp-9: 2rem;
+
+  /* Radii. --radius (8px) above stays the default. 50% stays a literal for
+     circles. */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* Shadows. --shadow-panel is the carved .panel edge used further down. */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 6px 18px rgba(0, 0, 0, 0.4);
+  --shadow-xl: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --shadow-well: inset 0 2px 5px rgba(0, 0, 0, 0.55);
+  --shadow-panel:
+    inset 0 1px 0 rgba(216, 180, 90, 0.13),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 2px 10px rgba(0, 0, 0, 0.45);
+
+  /* Layers. The low numbers are the ones already in use, so nothing moves
+     until an overlay is deliberately put on its layer. An overlay mounts on
+     <body>, never inside .panel: .panel's fade animation makes it a stacking
+     context, which traps any z-index under it. */
+  --z-raised: 1;
+  --z-sticky: 30;
+  --z-float: 40;
+  --z-nav: 50;
+  --z-overlay: 55;
+  --z-modal: 60;
+  --z-tutorial: 70;
+  --z-popover: 80;
+  --z-toast: 90;
+  --z-system: 100;
+
+  /* Motion. */
+  --dur-instant: 60ms;
+  --dur-fast: 120ms;
+  --dur-base: 160ms;
+  --dur-slow: 400ms;
+  --dur-celebrate: 900ms;
+  --dur-pulse: 1.4s;
+  --dur-ambient: 3s;
+  --ease-out: ease-out;
+  --ease-standard: ease-in-out;
+
+  /* Modul: SEMANTIC COLOURS, each with a parchment value below.
+     Components had invented eleven names the theme never defined (--bad,
+     --err, --ok, --success, --fg, --dim, --bg-dark, --bg-hover, --panel,
+     --bg-surface, --bg-light). A var() with no definition and no fallback is
+     invalid at computed-value time, so the Settings email error was not red
+     and the admin border was not there; the ones WITH a fallback quietly drew
+     a foreign colour - three different reds for "bad" on one screen.
+     tests/cssTokens.test.ts now fails on any var() nobody defines.
+
+     And white-alpha edges (rgba(255,255,255,.14)) are invisible on the light
+     theme's parchment, so a card outline is a token with two values rather
+     than a literal that only works in the dark. */
+  --info: #8fd3ff;
+  --on-accent: #1a1510;
+  --bg-sunken: rgba(0, 0, 0, 0.25);
+  --line: rgba(138, 106, 52, 0.22);
+  --edge-soft: rgba(255, 255, 255, 0.14);
+  --tint-hover: rgba(216, 180, 90, 0.06);
+  --tint-selected: rgba(201, 162, 39, 0.16);
+  --scrim: rgba(0, 0, 0, 0.58);
+  --text-muted: var(--text-dim);
+  --opacity-disabled: 0.5;
 }
 
 /* Modul: light mode needs its OWN rarity ramp, not the dark one.
@@ -163,6 +275,25 @@
 
     --gold: #8a6d0e;
     --diamond: #1a6a99;
+
+    --info: #1a6a99;
+    --on-accent: #fff8e8;
+    --bg-sunken: rgba(120, 92, 46, 0.08);
+    --line: rgba(120, 92, 46, 0.2);
+    --edge-soft: rgba(90, 68, 34, 0.18);
+    --tint-hover: rgba(120, 92, 46, 0.06);
+    --tint-selected: rgba(138, 106, 52, 0.14);
+    --scrim: rgba(40, 28, 12, 0.45);
+
+    --shadow-sm: 0 1px 2px rgba(90, 68, 34, 0.2);
+    --shadow-md: 0 4px 12px rgba(90, 68, 34, 0.16);
+    --shadow-lg: 0 6px 16px rgba(90, 68, 34, 0.18);
+    --shadow-xl: 0 10px 26px rgba(90, 68, 34, 0.2);
+    --shadow-well: inset 0 2px 4px rgba(90, 68, 34, 0.2);
+    --shadow-panel:
+      inset 0 1px 0 rgba(255, 255, 255, 0.6),
+      inset 0 0 0 1px rgba(120, 92, 46, 0.12),
+      0 2px 8px rgba(90, 68, 34, 0.14);
   }
 }
 
@@ -221,7 +352,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 14px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font: 14px/var(--lh-body) var(--font-ui);
   -webkit-font-smoothing: antialiased;
   /* The top and the sides. The bottom is set further down, where it has to be
      combined with the chat dock's clearance rather than replace it. */
@@ -241,12 +372,30 @@ button {
   transition: border-color 120ms ease, background 120ms ease;
 }
 
-button:hover:not(:disabled) {
-  border-color: var(--accent);
+/* Modul: EVERY :hover IN THIS CLIENT SITS INSIDE (hover: hover) and
+   (pointer: fine). A touchscreen has no hover, so the WebView emulates one on
+   tap and then never lets go: the last button a thumb pressed kept its brass
+   border and glow until the next tap somewhere else, which on a tab row or a
+   picker reads as "selected". The guard means a phone gets :active (the press,
+   further down) and nothing that outlives the finger. :focus-visible and
+   :active stay outside it on purpose - those are not pointer states. */
+@media (hover: hover) and (pointer: fine) {
+  button:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
+}
+
+html {
+  /* Android draws its own translucent rectangle on every tap, over the brass;
+     button:active already gives the press. */
+  -webkit-tap-highlight-color: transparent;
+  /* Mobile Chrome's pull-to-refresh reloads the SPA: the socket drops and the
+     chat log goes with it. Also takes the stretch glow off the APK. */
+  overscroll-behavior-y: none;
 }
 
 button:disabled {
-  opacity: 0.5;
+  opacity: var(--opacity-disabled);
   cursor: not-allowed;
 }
 
@@ -411,6 +560,21 @@ input {
   .tiny-btn {
     min-height: 2rem;
   }
+
+  /* Modul: iOS SAFARI ZOOMS INTO ANY FIELD UNDER 16px, and does not zoom back
+     out. Body text is 14px and the fields inherit it, so on mobile web every
+     tap into a search box or a price left the page magnified. Android does not
+     do this, which is why nobody saw it from the APK.
+     The :not() chain is for specificity, not for meaning: seven screens
+     restate `input { font: inherit }` in their own scoped block, which is
+     (0,1,1) and loads after this file, so a plain `input` here would lose to
+     every one of them. A field with a smaller size set through a container
+     class (Village's slot pickers) still keeps it - that one is deliberate. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not(.touch-exempt),
+  select:not(.touch-exempt):not([multiple]),
+  textarea:not(.touch-exempt) {
+    font-size: max(16px, 1em);
+  }
 }
 
 /* Modul: A GRID COLUMN THAT CANNOT SHRINK IS WHY THE RIGHT EDGE WAS CUT OFF.
@@ -468,11 +632,22 @@ input {
 
    Note it HIDES rather than fixes - which is exactly why the phone report read
    as "the right side is cut off" instead of "the page scrolls sideways". The
-   rules above are what stop it from firing. */
+   rules above are what stop it from firing.
+
+   Modul: `clip`, NOT `hidden` - hidden broke every position: sticky in the
+   client. With html's overflow already non-visible, body's is no longer
+   handed to the viewport, so `overflow-x: hidden` made BODY a scroll
+   container (overflow-y computes to auto), as tall as its content and
+   therefore never scrolling. A sticky element sticks to its nearest scroll
+   container, so ConnectionNotice and the Wiki sidebar were pinned to a box
+   that never moved, and scrolled away with the page. `clip` cuts the overflow
+   the same way without creating a scroll container. The `hidden` line stays
+   as the fallback for an engine older than Chromium 90. */
 html,
 body {
   max-width: 100%;
   overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Modul: ROOM TO SCROLL CLEAR OF THE CHAT HANDLE.
@@ -524,9 +699,27 @@ svg {
    =========================================================================== */
 
 body {
+  background-color: var(--bg);
+}
+
+/* Modul: A FIXED LAYER, NOT A FIXED BACKGROUND.
+   This was `background-attachment: fixed` on body. Chromium cannot composite
+   a fixed background, so every scroll frame repainted the whole page
+   background - two feTurbulence noise tiles and two gradients - on the main
+   thread, which is a plausible share of the Chest-scroll long tasks
+   check:perf recorded. A position: fixed box with the same layers is painted
+   once and then only moved by the compositor. It is sized and placed exactly
+   like the viewport a fixed background was measured against, so it looks the
+   same. z-index -1 puts it under all in-flow content but above body's own
+   colour, which the browser paints on the canvas. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
   /* Candle-light from above, dark at the edges - the oldest trick for making
      a flat page feel like a lit room. */
-  background-color: var(--bg);
   background-image:
     var(--grain),
     var(--cobble),
@@ -534,7 +727,6 @@ body {
     radial-gradient(100% 100% at 50% 120%, rgba(0, 0, 0, 0.55), transparent 55%);
   /* The stones tile; the light does not. */
   background-repeat: repeat, repeat, no-repeat, no-repeat;
-  background-attachment: fixed;
 }
 
 
@@ -546,7 +738,7 @@ h3 {
   /* A serif, from the stack every machine already has - a webfont for four
      headings is 30-80 kB and a request that can fail. Georgia and its
      relatives carry the period well enough at these sizes. */
-  font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  font-family: var(--font-display);
   letter-spacing: 0.02em;
   color: var(--text);
 }
@@ -582,11 +774,14 @@ button {
     box-shadow 120ms ease;
 }
 
-button:hover:not(:disabled) {
-  border-color: var(--brass-lit);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 234, 190, 0.2),
-    0 0 10px rgba(201, 162, 39, 0.22);
+/* Pointer devices only - see the note at the first button:hover. */
+@media (hover: hover) and (pointer: fine) {
+  button:hover:not(:disabled) {
+    border-color: var(--brass-lit);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 234, 190, 0.2),
+      0 0 10px rgba(201, 162, 39, 0.22);
+  }
 }
 
 /* Pressed, not just hovered. A control that does not move under a finger
@@ -642,10 +837,16 @@ optgroup {
   color: var(--text);
 }
 
-option:checked,
-option:hover {
+option:checked {
   background-color: var(--brass);
   color: #1a1209;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  option:hover {
+    background-color: var(--brass);
+    color: #1a1209;
+  }
 }
 
 input:focus-visible,
@@ -658,7 +859,19 @@ button:focus-visible {
 
 /* --- the header ---------------------------------------------------------- */
 
-header {
+/* Modul: THE APP'S TOP BAR, NOT EVERY <header>.
+   These were bare `header` and `header strong`, and seventeen components use
+   a <header> for a panel's title row - so every one of them got a second
+   wood beam with a brass rule under it, and any emphasised word in a panel
+   heading ("taking one locks the other" on the Skill tree, "+4 skill points
+   every season" in the Book of Deeds) blew up into the 1.15rem brass serif
+   meant for the game's name. The top bar is the only <header> that is a
+   direct child of the mount point: App.svelte renders it first inside
+   QueryClientProvider, which renders no element of its own. The extra
+   specificity changes nothing for the bar itself - App.svelte's scoped rules
+   set none of these properties except through the shorthand the !important
+   already beats. */
+#app > header {
   /* A beam over a doorway: one timber, its grain, and the light falling down
      it. The edges are drawn on the header itself - a lit top lip, a brass
      border at the bottom - so the beam has boundaries without any line
@@ -672,7 +885,7 @@ header {
     0 2px 12px rgba(0, 0, 0, 0.55);
 }
 
-header strong {
+#app > header > strong {
   font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', serif;
   font-size: 1.15rem;
   color: var(--brass-lit);
@@ -763,40 +976,26 @@ header strong {
     4px 4px, right 4px top 4px, left 4px bottom 4px, right 4px bottom 4px, 0 0, 0 0 !important;
   border-color: var(--border) !important;
   /* A carved edge: dark line out, brass highlight in. */
-  box-shadow:
-    inset 0 1px 0 rgba(216, 180, 90, 0.13),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.35),
-    0 2px 10px rgba(0, 0, 0, 0.45);
+  box-shadow: var(--shadow-panel);
   position: relative;
 }
 
 /* On parchment the same vignette reads as a stain rather than as candlelight,
    and it has to be far weaker or the page looks scorched. */
 @media (prefers-color-scheme: light) {
-  body {
-    background-image:
-      var(--grain),
-      radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.5), transparent 55%),
-      radial-gradient(100% 100% at 50% 120%, rgba(120, 92, 46, 0.16), transparent 60%);
-  }
-
-  .panel {
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.6),
-      inset 0 0 0 1px rgba(120, 92, 46, 0.12),
-      0 2px 8px rgba(90, 68, 34, 0.14);
-  }
+  /* The panel's carved edge has its own parchment value: --shadow-panel. */
 
   /* On parchment the cobbles read as dirt rather than as stone, so the page
-     keeps its paper and only the beam stays timber. */
-  body {
+     keeps its paper and only the beam stays timber. On the fixed layer, not on
+     body - see body::before. */
+  body::before {
     background-image:
       var(--grain),
       radial-gradient(120% 80% at 50% -10%, rgba(255, 255, 255, 0.5), transparent 55%),
       radial-gradient(100% 100% at 50% 120%, rgba(120, 92, 46, 0.16), transparent 60%);
   }
 
-  header {
+  #app > header {
     background-image:
       var(--beam), var(--grain), linear-gradient(180deg, #efe2c6, #ddc9a0) !important;
     box-shadow:
@@ -805,7 +1004,7 @@ header strong {
       0 2px 10px rgba(90, 68, 34, 0.18);
   }
 
-  header strong {
+  #app > header > strong {
     color: #5a4118;
     text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
   }
@@ -902,7 +1101,7 @@ header strong {
 .slots > li,
 .monsters > li,
 .board > li {
-  border-bottom: 1px solid rgba(138, 106, 52, 0.22);
+  border-bottom: 1px solid var(--line);
 }
 
 .rows > li:last-child,
@@ -915,10 +1114,12 @@ header strong {
 /* The row under the cursor lifts out of the leather very slightly. No
    transform: rows are clicked, and a target that moves as you reach it is the
    oldest interface annoyance there is. */
-.rows > li:hover,
-.monsters > li:hover,
-.board > li:hover {
-  background-color: rgba(216, 180, 90, 0.06);
+@media (hover: hover) and (pointer: fine) {
+  .rows > li:hover,
+  .monsters > li:hover,
+  .board > li:hover {
+    background-color: var(--tint-hover);
+  }
 }
 
 /* --- ornaments ------------------------------------------------------------ */
@@ -1250,9 +1451,11 @@ input[type='radio'] {
   border-radius: 50%;
 }
 
-input[type='checkbox']:hover:not(:disabled),
-input[type='radio']:hover:not(:disabled) {
-  border-color: var(--accent);
+@media (hover: hover) and (pointer: fine) {
+  input[type='checkbox']:hover:not(:disabled),
+  input[type='radio']:hover:not(:disabled) {
+    border-color: var(--accent);
+  }
 }
 
 input[type='checkbox']:checked {

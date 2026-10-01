@@ -85,6 +85,6 @@
   }
 
   li.done .mark {
-    color: var(--good, #4a4);
+    color: var(--good);
   }
 </style>

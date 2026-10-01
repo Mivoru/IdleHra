@@ -21,6 +21,7 @@
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import { RACE_NAMES, ALL_RACE_IDS, isRaceUnlocked } from '../lib/ui/races';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import BookOfDeeds from '../lib/ui/BookOfDeeds.svelte';
   import GoldLedgerPanel from '../lib/ui/GoldLedgerPanel.svelte';
   import { bossTimes, formatTenths } from '../lib/stores/records';
@@ -116,6 +117,9 @@
       {#if st.GuildName}
         <p class="dim tiny">Guild: {st.GuildName}</p>
       {/if}
+    {:else if statistics.isError}
+      <!-- Modul: `{:else}` alone shimmered for ever when this request failed. -->
+      <QueryError query={statistics} what="your statistics" />
     {:else}
       <Skeleton />
     {/if}
@@ -179,6 +183,8 @@
           Day 7 also grants <Money amount={loginBonus.data.Day7DiamondBonus} kind="diamond" />.
         </p>
       {/if}
+    {:else if loginBonus.isError}
+      <QueryError query={loginBonus} what="your login streak" />
     {:else}
       <Skeleton />
     {/if}
@@ -198,7 +204,11 @@
     </ul>
 
     <h3>Race mastery</h3>
-    {#if (raceMastery.data ?? []).length === 0}
+    {#if raceMastery.isPending}
+      <Skeleton rows={2} />
+    {:else if raceMastery.isError && raceMastery.data === undefined}
+      <QueryError query={raceMastery} what="race mastery" />
+    {:else if (raceMastery.data ?? []).length === 0}
       <p class="dim tiny">No race mastery yet.</p>
     {:else}
       {#each raceMastery.data ?? [] as race (race.RaceId)}

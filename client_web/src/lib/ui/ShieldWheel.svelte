@@ -574,8 +574,8 @@
     flex-direction: column;
     align-items: center;
     gap: 0.6rem;
-    background: var(--bg, #111);
-    color: var(--text, #eee);
+    background: var(--bg);
+    color: var(--text);
     padding: calc(0.8rem + var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))
       calc(0.8rem + var(--safe-area-inset-right, env(safe-area-inset-right, 0px)))
       calc(0.8rem + var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))
@@ -638,25 +638,25 @@
   }
 
   .plate {
-    fill: var(--bg-panel, #222);
-    stroke: var(--border, #555);
+    fill: var(--bg-panel);
+    stroke: var(--border);
     stroke-width: 1;
   }
 
   .plate.weak {
-    fill: color-mix(in srgb, var(--good, #4c4) 40%, var(--bg-panel, #222));
+    fill: color-mix(in srgb, var(--good) 40%, var(--bg-panel));
   }
 
   .seam {
-    fill: color-mix(in srgb, var(--accent, #d9c48b) 55%, transparent);
+    fill: color-mix(in srgb, var(--accent) 55%, transparent);
   }
 
   .rivet {
-    fill: color-mix(in srgb, var(--text-dim, #999) 45%, transparent);
+    fill: color-mix(in srgb, var(--text-dim) 45%, transparent);
   }
 
   .label {
-    fill: var(--text, #eee);
+    fill: var(--text);
     font-size: 13px;
     font-weight: 700;
     text-anchor: middle;
@@ -664,7 +664,7 @@
   }
 
   .impact {
-    fill: var(--danger, #e55);
+    fill: var(--danger);
   }
 
   .tell {
@@ -675,7 +675,7 @@
     font-weight: 800;
     font-size: 1.05rem;
     padding: 0.35rem 0.6rem;
-    border: 2px solid var(--danger, #e55);
+    border: 2px solid var(--danger);
     border-radius: 8px;
     text-align: center;
   }
@@ -693,14 +693,14 @@
   .timebar {
     height: 6px;
     border-radius: 999px;
-    background: color-mix(in srgb, var(--border, #555) 60%, transparent);
+    background: color-mix(in srgb, var(--border) 60%, transparent);
     overflow: hidden;
   }
 
   .timebar span {
     display: block;
     height: 100%;
-    background: var(--danger, #e55);
+    background: var(--danger);
     transform-origin: left center;
     animation-name: shrink;
     animation-timing-function: linear;
@@ -802,8 +802,8 @@
     min-height: 34vh;
     font-weight: 700;
     border: 2px dashed var(--border);
-    border-radius: var(--radius, 8px);
-    background: color-mix(in srgb, var(--bg-panel, #222) 60%, transparent);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--bg-panel) 60%, transparent);
     touch-action: manipulation;
     user-select: none;
   }
@@ -813,7 +813,7 @@
     max-width: 26rem;
     background: var(--bg-panel);
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     padding: 0.9rem;
     display: grid;
     gap: 0.6rem;

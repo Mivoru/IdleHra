@@ -13,6 +13,10 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
+        <!-- No windowBackground meant DayNight's default, which is white on a
+             phone in light mode: a white flash between the splash and the
+             WebView's first paint. -->
+        <item name="android:windowBackground">@color/folkidle_window_background</item>
     </style>
 
 

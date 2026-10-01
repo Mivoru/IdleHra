@@ -10,6 +10,7 @@
   import VillageFolk from '../lib/ui/VillageFolk.svelte';
   import GreatWorks from '../lib/ui/GreatWorks.svelte';
   import Stopwatch from '../lib/ui/Stopwatch.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
 
 
 
@@ -159,6 +160,11 @@
         </div>
       {/if}
 
+      {#if quote.isError && quote.data === undefined}
+        <!-- Without the quote every cost reads "..." and nothing says why. -->
+        <QueryError query={quote} what="the upgrade costs" />
+      {/if}
+
       <ul class="buildings">
         {#each BUILDINGS as building}
           {@const level = levelOf(snap, building.stateField)}
@@ -298,7 +304,7 @@
   .progress {
     height: 6px;
     border-radius: 3px;
-    background: var(--bg-sunken, rgba(0, 0, 0, 0.25));
+    background: var(--bg-sunken);
     overflow: hidden;
   }
 

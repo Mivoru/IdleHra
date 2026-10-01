@@ -822,7 +822,7 @@
   }
 
   .firstclear {
-    color: var(--warn, #e0a030);
+    color: var(--warn);
     border: 1px solid currentColor;
     border-radius: 999px;
     padding: 0 0.35rem;
@@ -832,7 +832,7 @@
   h3.place {
     background-size: cover;
     background-position: center;
-    border-radius: var(--radius, 6px);
+    border-radius: var(--radius-sm);
     padding: 0.7rem 0.9rem;
     margin: 1rem 0 0.5rem;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
@@ -984,11 +984,11 @@
   }
 
   .verdict.safe {
-    color: var(--good, #4c8a3a);
+    color: var(--good);
   }
 
   .verdict.food {
-    color: var(--warn, #b8860b);
+    color: var(--warn);
   }
 
   .verdict.danger {
@@ -1088,7 +1088,7 @@
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: 6px;
-    background: var(--bg-sunken, rgba(0, 0, 0, 0.12));
+    background: var(--bg-sunken);
     font-size: 0.82rem;
     line-height: 1.5;
     font-variant-numeric: tabular-nums;
@@ -1102,7 +1102,7 @@
   }
 
   .fightlog li.crit {
-    color: var(--warn, #e8b339);
+    color: var(--warn);
     font-weight: 600;
   }
 

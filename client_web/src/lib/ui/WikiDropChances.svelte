@@ -132,7 +132,7 @@
     gap: 1rem;
     background: rgba(0, 0, 0, 0.12);
     padding: 1.5rem;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     border: 1px solid var(--border);
   }
 
@@ -175,7 +175,7 @@
 
   .chance-table td {
     padding: 0.5rem;
-    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-bottom: 1px solid var(--line);
   }
 
   .chance-table .num {

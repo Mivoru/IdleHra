@@ -322,8 +322,10 @@
     cursor: pointer;
   }
 
-  .head:hover strong {
-    color: var(--accent);
+  @media (hover: hover) and (pointer: fine) {
+    .head:hover strong {
+      color: var(--accent);
+    }
   }
 
 

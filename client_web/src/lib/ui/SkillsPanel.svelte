@@ -698,7 +698,7 @@
   /* A fork side by side is unreadable under about 26rem - the two cards each
      get half of an already narrow column and the blurbs turn into one word a
      line. */
-  @media (max-width: 30rem) {
+  @media (max-width: 40rem) {
     .fork {
       grid-template-columns: 1fr;
     }
@@ -859,7 +859,7 @@
   }
 
   .panel {
-    background: var(--panel, rgba(127, 127, 127, 0.05));
+    background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1rem 1.15rem 1.25rem;

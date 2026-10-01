@@ -279,7 +279,7 @@
 
   .reward {
     flex: none;
-    color: var(--diamond, #7dd3fc);
+    color: var(--diamond);
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
   }

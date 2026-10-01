@@ -43,6 +43,7 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { requestScreen, setPendingFocusEquipment } from '../lib/stores/navigation';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import { isNarrow } from '../lib/ui/media';
   import ContextMenu, { type MenuItem } from '../lib/ui/ContextMenu.svelte';
   import { onDestroy } from 'svelte';
@@ -745,14 +746,24 @@
           is never sold automatically.
         </p>
       </div>
+      {:else if rulesOpen && chestSettings.isError}
+        <QueryError query={chestSettings} what="your auto-sell rules" />
       {/if}
     </section>
 
     {#if inventory.isPending}
       <Skeleton rows={5} variant="row" />
+    {:else if inventory.isError && inventory.data === undefined}
+      <!-- Modul: an error is not an empty chest. This fell through to
+           "Nothing here." - read by players who lived through the 17,836-row
+           incident as "my items are gone". See QueryError. -->
+      <QueryError query={inventory} what="your chest" />
     {:else if sortedEquipment.length === 0 && visibleMaterials.length === 0}
       <p class="dim">Nothing here.</p>
     {:else}
+      {#if inventory.isError}
+        <QueryError query={inventory} what="your chest" stale />
+      {/if}
       {#if sortedEquipment.length > 0}
         <h3>
           Equipment
@@ -908,7 +919,7 @@
     width: 100%;
   }
 
-  @media (max-width: 560px) {
+  @media (max-width: 40rem) {
     .finders {
       grid-template-columns: 1fr;
     }
@@ -1049,7 +1060,7 @@
      has to open each menu to find out - the opposite of what a lock is for
      when there are thousands of rows. */
   .lockbadge {
-    color: var(--warn, #e8b339);
+    color: var(--warn);
     font-weight: 600;
   }
 

@@ -179,7 +179,7 @@
   .bar {
     height: 6px;
     border-radius: 3px;
-    background: var(--bg-sunken, rgba(0, 0, 0, 0.25));
+    background: var(--bg-sunken);
     overflow: hidden;
   }
 

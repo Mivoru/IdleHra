@@ -72,8 +72,8 @@
     color: #6f9fd8;
   }
   .trait-legendary {
-    border-color: var(--brass, #c9a227);
-    color: var(--brass-lit, #e0b93a);
+    border-color: var(--brass);
+    color: var(--brass-lit);
   }
   .trait-flaw {
     border-color: var(--danger);

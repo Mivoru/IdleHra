@@ -341,7 +341,7 @@
     width: min(22rem, 100%);
     padding: 1rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     background: var(--bg-panel);
   }
 

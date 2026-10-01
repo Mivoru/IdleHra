@@ -16,6 +16,7 @@
   import { createQuery } from '@tanstack/svelte-query';
   import ItemIcon from './ItemIcon.svelte';
   import TraitBadge from './TraitBadge.svelte';
+  import QueryError from './QueryError.svelte';
   import { prettifyBaseId } from '../net/content';
   import { queryKeys, fetchTraits } from '../net/rest';
   import {
@@ -224,6 +225,8 @@
       </tbody>
     </table>
   </div>
+{:else if traitCatalogue.isError}
+  <QueryError query={traitCatalogue} what="the trait list" />
 {/if}
 
 <style>
@@ -236,7 +239,7 @@
   .scroll {
     overflow-x: auto;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     background: rgba(0, 0, 0, 0.12);
   }
 
@@ -291,7 +294,7 @@
 
   .card {
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     padding: 0.75rem;
     background: rgba(0, 0, 0, 0.12);
     min-width: 0;
@@ -330,7 +333,7 @@
   .picker button {
     background: transparent;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     color: var(--text-dim);
     padding: 0.35rem 0.7rem;
     font-size: 0.8rem;

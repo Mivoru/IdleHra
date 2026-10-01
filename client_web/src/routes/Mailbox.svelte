@@ -285,11 +285,11 @@
   .message-content .text {
     margin: 0;
     font-size: 0.85rem;
-    color: var(--fg);
+    color: var(--text);
     white-space: pre-wrap;
   }
 
-  @media (max-width: 30rem) {
+  @media (max-width: 40rem) {
     .mail li {
       grid-template-columns: 1fr auto;
     }

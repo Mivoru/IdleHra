@@ -109,7 +109,7 @@
     aspect-ratio: 1920 / 1072;
     background-size: cover;
     background-position: center;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     overflow: hidden;
   }
 
@@ -158,10 +158,16 @@
     transition: opacity 120ms ease, filter 120ms ease;
   }
 
-  .place:hover,
   .place:focus-visible {
     opacity: 1;
     filter: brightness(1.08);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .place:hover {
+      opacity: 1;
+      filter: brightness(1.08);
+    }
   }
 
   .place span {

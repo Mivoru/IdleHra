@@ -723,7 +723,7 @@
   }
 
   .board li.me {
-    background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+    background: var(--tint-selected);
     font-weight: 700;
   }
 

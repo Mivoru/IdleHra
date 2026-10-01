@@ -64,7 +64,7 @@
   .scroll {
     overflow-x: auto;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     background: rgba(0, 0, 0, 0.12);
   }
 
@@ -97,7 +97,7 @@
   .jump {
     background: transparent;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     color: var(--accent);
     padding: 0.15rem 0.5rem;
     font-size: 0.78rem;
