@@ -6,17 +6,19 @@
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchMaterials } from '../lib/net/rest';
-  import { contentQueryOptions, prettifyBaseId, isFood } from '../lib/net/content';
+  import { prettifyBaseId, isFood } from '../lib/net/content';
+  import { contentQuery } from '../lib/net/registry.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
 
   // Modul: MATERIALS ONLY - this screen reads Stacks and nothing else, and was
   // downloading the whole equipment list to count fish. See fetchMaterials.
   const inventory = createQuery(() => ({ queryKey: queryKeys.materials, queryFn: fetchMaterials }));
 
-  // Modul: a query rather than `loadContent().catch(() => null)`. The catch
-  // turned a failed fetch into a registry that never arrived, and the list
-  // below waits on the registry - so it said "Checking the chest..." for ever.
-  const content = createQuery(contentQueryOptions);
+  // Modul: through contentQuery, not `loadContent().catch(() => null)`. The
+  // catch turned a failed fetch into a registry that never arrived, and the
+  // list below waits on the registry - so it said "Checking the chest..." for
+  // ever. See registry.svelte.ts for why it is not a TanStack query.
+  const content = contentQuery;
   const registry = $derived(content.data ?? null);
 
   const snap = $derived($playerState);

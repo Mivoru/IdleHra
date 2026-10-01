@@ -12,7 +12,8 @@
 
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchMaterials } from '../lib/net/rest';
-  import { contentQueryOptions, consumableKind, prettifyBaseId } from '../lib/net/content';
+  import { consumableKind, prettifyBaseId } from '../lib/net/content';
+  import { contentQuery } from '../lib/net/registry.svelte';
   import {
     consumeConsumable,
     MAX_BUFF_TICKS,
@@ -29,10 +30,10 @@
   // against the 63 stack rows this screen wants. See fetchMaterials.
   const inventory = createQuery(() => ({ queryKey: queryKeys.materials, queryFn: fetchMaterials }));
 
-  // Modul: a query, not `loadContent().then(...)`. The bare promise had no
+  // Modul: a query-shaped handle, not `loadContent().then(...)`. The bare promise had no
   // catch, so a failed content fetch left the list below on a skeleton for
-  // ever. See contentQueryOptions.
-  const content = createQuery(contentQueryOptions);
+  // ever. See contentQuery in registry.svelte.ts.
+  const content = contentQuery;
   const registry = $derived(content.data ?? null);
 
   // ---------------------------------------------------------------------------

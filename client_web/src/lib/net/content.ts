@@ -161,24 +161,10 @@ export async function loadContent(): Promise<ContentRegistry> {
   return inFlight;
 }
 
-// Modul: THE REGISTRY AS A QUERY, for a screen that cannot render without it.
-//
-// Boosts, Larder and Market called `loadContent().then(...)` with no catch and
-// waited on `!registry`, so a failed content fetch left them on a skeleton or
-// "Checking the chest..." for ever, with no way out but a reload. As a query
-// the failure has a state and a refetch, and QueryState can show both. The
-// cache above still holds the one copy - a retry after a failure re-fetches
-// because `inFlight` is cleared on error - so this costs nothing extra.
-//
-// `staleTime: Infinity` because content is fixed for the life of the page.
-export const contentQueryKey = ['content-registry'] as const;
-export function contentQueryOptions() {
-  return {
-    queryKey: contentQueryKey,
-    queryFn: loadContent,
-    staleTime: Infinity,
-  };
-}
+// Modul: a screen that cannot render without the registry reads it through
+// `contentQuery` in registry.svelte.ts, which has a failure state and a retry.
+// It was briefly a TanStack query here, and that hung a NEW account's Auto-Eat
+// on "Checking the chest..." for ever - see the note in registry.svelte.ts.
 
 async function loadContentUncached(): Promise<ContentRegistry> {
   const [monsterList, itemList, gatheringNodes] = await Promise.all([

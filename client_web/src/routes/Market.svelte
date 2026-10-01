@@ -13,7 +13,7 @@
   } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
   import { listItemOnMarket, buyMarketListing, placeLimitOrder } from '../lib/net/commands';
-  import { contentQueryOptions } from '../lib/net/content';
+  import { contentQuery } from '../lib/net/registry.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
   import { rarityColor, rarityName, MAX_QUALITY_TIER } from '../lib/ui/rarity';
@@ -213,7 +213,7 @@
 
   // Modul: a query, not `loadContent().then(...)` with no catch - a failed
   // content fetch left "Item wanted" an empty dropdown with nothing saying why.
-  const content = createQuery(contentQueryOptions);
+  const content = contentQuery;
   const registry = $derived(content.data ?? null);
 
   const itemDefinitionCount = $derived(registry?.items.size ?? 0);
