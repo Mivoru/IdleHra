@@ -67,6 +67,7 @@ export const queryKeys = {
   guilds: ['social', 'guilds'] as const,
   guildRoster: ['social', 'guild', 'roster'] as const,
   guildApplications: ['social', 'guild', 'applications'] as const,
+  guildLeavePreview: ['social', 'guild', 'leavePreview'] as const,
   playerNames: (ids: number[]) => ['social', 'names', ids.join(',')] as const,
   forge: ['player', 'forge'] as const,
   recipes: ['crafting', 'recipes'] as const,
@@ -661,6 +662,57 @@ export interface GuildMember {
 
 export function fetchGuildRoster(): Promise<GuildMember[]> {
   return authedGet<GuildMember[]>('/api/v1/guild/roster');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/guilds/leave-preview, /api/v1/guilds/leave (task 94)
+// ---------------------------------------------------------------------------
+
+/**
+ * What leaving would do, from the server's own succession rule - the confirm
+ * names the next leader from THIS, never from re-sorting the roster here, so
+ * the promise and the outcome cannot disagree.
+ */
+export interface GuildLeavePreview {
+  InGuild: boolean;
+  IsLeader: boolean;
+  ClosesGuild: boolean;
+  /** 0 unless a leader is leaving a guild with others still in it. */
+  SuccessorPlayerId: number;
+  RemainingMembers: number;
+}
+
+export function fetchGuildLeavePreview(): Promise<GuildLeavePreview> {
+  return authedGet<GuildLeavePreview>('/api/v1/guilds/leave-preview');
+}
+
+export interface GuildLeaveResult {
+  Left: boolean;
+  ClosedGuild: boolean;
+  SuccessorPlayerId: number;
+  Reason: string;
+}
+
+// Modul: not authedPost - that throws on any non-2xx and drops the body, and a
+// refused leave (409) carries the reason the player has to be shown.
+export async function leaveGuild(): Promise<GuildLeaveResult> {
+  const token = storedToken();
+  if (!token) throw new AuthError('not signed in', 401);
+  const response = await fetch(api('/api/v1/guilds/leave'), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+  const body = (await response.json().catch(() => null)) as Partial<GuildLeaveResult> | null;
+  if (!response.ok && response.status !== 409) {
+    throw new AuthError(`POST /api/v1/guilds/leave failed (HTTP ${response.status})`, response.status);
+  }
+  return {
+    Left: response.ok && body?.Left === true,
+    ClosedGuild: body?.ClosedGuild === true,
+    SuccessorPlayerId: Number(body?.SuccessorPlayerId ?? 0),
+    Reason: body?.Reason ?? '',
+  };
 }
 
 export interface GuildApplication {

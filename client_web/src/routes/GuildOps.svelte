@@ -19,6 +19,8 @@
     kickGuildMember,
     promoteGuildMember,
     demoteGuildMember,
+    fetchGuildLeavePreview,
+    leaveGuild,
   } from '../lib/net/rest';
   import {
     contributeToWarSupply,
@@ -31,7 +33,7 @@
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import { setGuildWarLockProgress } from '../lib/stores/commandResults';
-  import { invalidateOwnedItems } from '../lib/net/queryClient';
+  import { invalidateOwnedItems, invalidateGuildMembership } from '../lib/net/queryClient';
   import { loadContent, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
   import Bar from '../lib/ui/Bar.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
@@ -174,6 +176,54 @@
     } finally {
         busy = false;
         refresh();
+    }
+  }
+
+  // --- leave ----------------------------------------------------------------
+  // Modul: task 94. There was no way out of a guild at all - the engine had a
+  // leave with succession and nothing called it. The confirm says what the
+  // server WILL do, read from its own preview: a leader is told who leads
+  // next, the last member that the guild closes. Guessing the successor here
+  // from the roster would be a second copy of the succession rule.
+  const leavePreview = createQuery(() => ({
+    queryKey: queryKeys.guildLeavePreview,
+    queryFn: fetchGuildLeavePreview,
+    enabled: hasGuild,
+  }));
+
+  const memberName = (id: number) => nameById.get(id) ?? `Player #${id}`;
+
+  const leaveNote = $derived.by(() => {
+    const p = leavePreview.data;
+    if (!p || !p.InGuild) return '';
+    if (p.ClosesGuild) {
+      return 'You are the last member: leaving closes the guild for good, with its depot, treasury and buffs.';
+    }
+    if (p.IsLeader && p.SuccessorPlayerId > 0) {
+      return `${memberName(p.SuccessorPlayerId)} will lead the guild after you.`;
+    }
+    return 'You can join this or another guild again from Friends.';
+  });
+
+  async function handleLeave() {
+    if (busy) return;
+    busy = true;
+    try {
+      const result = await leaveGuild();
+      if (!result.Left) {
+        pushLocalNotice(result.Reason || 'Could not leave the guild.', 'error');
+      } else if (result.ClosedGuild) {
+        pushLocalNotice('You left, and the guild has closed.', 'info');
+      } else if (result.SuccessorPlayerId > 0) {
+        pushLocalNotice(`You left. ${memberName(result.SuccessorPlayerId)} leads the guild now.`, 'info');
+      } else {
+        pushLocalNotice('You left the guild.', 'info');
+      }
+    } catch (err: any) {
+      pushLocalNotice(err?.message || 'Could not leave the guild.', 'error');
+    } finally {
+      busy = false;
+      invalidateGuildMembership(client);
     }
   }
 
@@ -867,6 +917,20 @@
           {/each}
         </ul>
       {/if}
+
+      {#if hasGuild}
+        <div class="leave" data-testid="guild-leave">
+          <ConfirmButton
+            label="Leave guild"
+            confirmLabel={leavePreview.data?.ClosesGuild ? 'Really close it?' : 'Really leave?'}
+            disabled={busy || !leavePreview.data?.InGuild}
+            onConfirm={handleLeave}
+          />
+          {#if leaveNote}
+            <p class="dim small" data-testid="guild-leave-note">{leaveNote}</p>
+          {/if}
+        </div>
+      {/if}
     </section>
 
   </div>
@@ -1130,6 +1194,19 @@
     gap: 0.5rem;
     padding: 0.35rem 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .leave {
+    margin-top: 0.9rem;
+    padding-top: 0.7rem;
+    border-top: 1px solid var(--border);
+    display: grid;
+    gap: 0.35rem;
+    justify-items: start;
+  }
+
+  .leave p {
+    margin: 0;
   }
 
   .members li:last-child {

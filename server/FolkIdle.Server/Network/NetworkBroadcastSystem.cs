@@ -2120,6 +2120,24 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Modul: task 94. LeaveGuildAsync existed, succession and all, and
+            // nothing called it - no route, no command, no button - so a player
+            // in a dead guild was stuck for good, and every Join and Create
+            // stayed disabled for them. A POST like create/join (the mutating
+            // path holds the account stripe lock); the GET preview is a pure
+            // read so the confirm can name the next leader BEFORE the tap.
+            if (requestPath == "/api/v1/guilds/leave" && context.Request.HttpMethod == "POST")
+            {
+                await HandleGuildLeave(context);
+                return;
+            }
+
+            if (requestPath == "/api/v1/guilds/leave-preview" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildLeavePreview(context);
+                return;
+            }
+
             // Modul: Play Mode audit fix. JoinGuildAsync has always
             // filed a GuildApplication row for Application-Required
             // guilds, but nothing anywhere ever reviewed one - see
@@ -2662,6 +2680,23 @@ namespace FolkIdle.Server.Network
         private sealed class GuildJoinResponse
         {
             public bool Joined { get; set; }
+        }
+
+        private sealed class GuildLeaveResponse
+        {
+            public bool Left { get; set; }
+            public bool ClosedGuild { get; set; }
+            public long SuccessorPlayerId { get; set; }
+            public string Reason { get; set; } = string.Empty;
+        }
+
+        private sealed class GuildLeavePreviewResponse
+        {
+            public bool InGuild { get; set; }
+            public bool IsLeader { get; set; }
+            public bool ClosesGuild { get; set; }
+            public long SuccessorPlayerId { get; set; }
+            public int RemainingMembers { get; set; }
         }
 
         private sealed class GuildApplicationEntryResponse
@@ -9268,7 +9303,7 @@ namespace FolkIdle.Server.Network
                             => $"Guilds open at level {outcome.RequiredLevel}. You are level {outcome.CurrentLevel}.",
                         GuildManagementEngine.GuildCreateRefusal.NameTaken
                             => "That name is taken.",
-                        _ => "That name will not do - one to a hundred characters.",
+                        _ => $"That name will not do - one to {GuildManagementEngine.MaxGuildNameLength} characters.",
                     };
 
                     context.Response.StatusCode = 409;
@@ -9349,6 +9384,85 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Guild join error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Modul: task 94 - see the route's registration comment. A refusal
+        // (not in a guild, or a race with a kick) is a 409 WITH a reason, not
+        // a silent 200: the player pressed a button and must be told why
+        // nothing happened.
+        private async Task HandleGuildLeave(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _playerSessionRegistry ?? throw new InvalidOperationException("NetworkBroadcastSystem: PlayerSessionRegistry not registered - call RegisterPlayerSessionRegistry before Start()."));
+
+                var outcome = await guildManagementEngine.LeaveAsync(playerId);
+
+                context.Response.StatusCode = outcome.Left ? 200 : 409;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildLeaveResponse
+                {
+                    Left = outcome.Left,
+                    ClosedGuild = outcome.ClosedGuild,
+                    SuccessorPlayerId = outcome.SuccessorPlayerId,
+                    Reason = outcome.Left ? string.Empty : "You are not in a guild.",
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild leave error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        private async Task HandleGuildLeavePreview(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                var guildManagementEngine = new GuildManagementEngine(
+                    _serviceProvider.GetRequiredService<RetryingDbContextOptions>(),
+                    _playerSessionRegistry ?? throw new InvalidOperationException("NetworkBroadcastSystem: PlayerSessionRegistry not registered - call RegisterPlayerSessionRegistry before Start()."));
+
+                var preview = await guildManagementEngine.PreviewLeaveAsync(playerId);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new GuildLeavePreviewResponse
+                {
+                    InGuild = preview.InGuild,
+                    IsLeader = preview.IsLeader,
+                    ClosesGuild = preview.ClosesGuild,
+                    SuccessorPlayerId = preview.SuccessorPlayerId,
+                    RemainingMembers = preview.RemainingMembers,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild leave preview error: {ex}");
                 context.Response.StatusCode = 500;
             }
 

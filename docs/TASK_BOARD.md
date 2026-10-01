@@ -6322,7 +6322,12 @@ A guard test flags `createQuery` in a file with no error handling.
 
 ## 94. Leave guild
 
-**OPEN.** Report section 4.F (states audit F11).
+**BUILT on branch `claude/ui-94-leave-guild`, not merged.** Report section 4.F (states audit F11).
+Open: the 390 px screenshot of the armed confirm and the `exercise.mjs` run are
+the coordinator's (not run here). When the fixture is a guild's last member the
+exercise step closes and refounds it, so that guild's depot, treasury and buffs
+reset each run. A closed guild's depot/buff/war rows are left orphaned, as
+before. The guild-name cap is now 32 on the server too.
 
 **What is actually true.**
 - `Social.svelte:245-246` tells a guild member "Leave it first to join or
