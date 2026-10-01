@@ -1,30 +1,65 @@
 <script lang="ts">
+  // Modul: TASK 97 - GEAR FIRST ON A PHONE.
+  //
+  // At 390 px the gear slots sat about 1,500 px down, behind a health bar, a
+  // combat rating block and four attribute cards - while the deed a new player
+  // is following says "Open Character and tap the weapon slot". The screen also
+  // never said WHO it was about: the title was the word "Character", the name
+  // appeared only in Orders, and the slot switcher lived inside Equipment even
+  // though the rating beside it was per-character too.
+  //
+  // So: one sticky person switcher at the top that drives every panel, then
+  // three tabs - Gear (default; all eleven slots as one icon grid), Attributes
+  // and Work & orders. Attributes opens first only when there are points to
+  // place AND a weapon to fight with; before the weapon, gear is the thing to
+  // do, and the tutorial's weapon step must find the slot without a tab press
+  // (the guided layer fences every other control).
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import { requestScreen } from '../lib/stores/navigation';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import { unopenedChests } from '../lib/stores/cosmeticChests';
   import { createQuery } from '@tanstack/svelte-query';
-  import { playerState, visualState, pushLocalNotice } from '../lib/stores/game';
+  import { playerState, visualState, pushLocalNotice, connectionStatus } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
-  import { queryKeys, fetchInventory, type InventoryEquipment } from '../lib/net/rest';
+  import {
+    queryKeys,
+    fetchInventory,
+    fetchRecipes,
+    fetchBreedingRoster,
+    fetchCombatProjection,
+    type InventoryEquipment,
+  } from '../lib/net/rest';
   import { loadContent, prettifyBaseId, monsterName, type ContentRegistry } from '../lib/net/content';
-  import { EQUIPMENT_SLOTS, agePhaseName, HALT_REASON_SHORT, isGatheringActivity, professionName, resolveSlotIndex, isCraftingActivity, craftingActivityId,
-    SLOT_WEAPON, SLOT_HELMET, SLOT_CHEST, SLOT_GLOVES, SLOT_LEGGINGS, SLOT_BOOTS, SLOT_AMULET, SLOT_RING, SLOT_AXE, SLOT_PICKAXE, SLOT_ROD } from '../lib/ui/slots';
-  import { craftingProfessionName, SLOT_UNLOCK_TOWN_HALL } from '../lib/ui/slots';
-  import { queryKeys as qk, fetchRecipes } from '../lib/net/rest';
+  import {
+    EQUIPMENT_SLOTS,
+    agePhaseName,
+    HALT_REASON_SHORT,
+    isGatheringActivity,
+    isCombatActivity,
+    professionName,
+    resolveSlotIndex,
+    isCraftingActivity,
+    craftingActivityId,
+    craftingProfessionName,
+    SLOT_UNLOCK_TOWN_HALL,
+    SLOT_AXE,
+    SLOT_PICKAXE,
+    SLOT_ROD,
+  } from '../lib/ui/slots';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import Affixes from '../lib/ui/Affixes.svelte';
   import Bar from '../lib/ui/Bar.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import Hint from '../lib/ui/Hint.svelte';
+  import DisabledReason from '../lib/ui/DisabledReason.svelte';
   import { pickerRows } from '../lib/ui/equipPicker';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
   import AutomationRulesPanel from '../lib/ui/AutomationRulesPanel.svelte';
   import { ATTRIBUTES, equipRequirement } from '../lib/net/commands';
   import { locationName, nodeLocation } from '../lib/ui/locations';
-  // EMPTY_GUID is the sentinel the roster filter below tests against.
   import { raceName } from '../lib/ui/races';
   import { writePref } from '../lib/net/prefs';
   import { lastActivityKey } from '../lib/ui/homeNow';
@@ -35,7 +70,11 @@
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
   // Recipes carry no id of their own on the wire - the crafting activity id is
   // the recipe's INDEX in this list, which is the same order the server holds.
-  const recipeList = createQuery(() => ({ queryKey: qk.recipes, queryFn: fetchRecipes }));
+  const recipeList = createQuery(() => ({ queryKey: queryKeys.recipes, queryFn: fetchRecipes }));
+  // Modul: names come from the breeding roster, the one place the server
+  // publishes a character's name (HomeCards reads the same key, task 73).
+  const names = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster, staleTime: 60_000 }));
+  const nameById = $derived(new Map((names.data ?? []).map((c) => [c.CharacterId, c.Name])));
 
   let registry = $state<ContentRegistry | null>(null);
   onMount(async () => {
@@ -46,7 +85,9 @@
 
   // Modul: the attribute pool and the four values, straight off the wire -
   // StateUpdatePacket carries STR/DEX/CON/LCK already and gained
-  // UnspentAttributePoints when levelling stopped allocating them.
+  // UnspentAttributePoints when levelling stopped allocating them. They are the
+  // ACCOUNT's (PlayerRecords), not one character's, which is why the
+  // Attributes tab does not change with the switcher.
   const attributePoints = $derived(Number(snap?.UnspentAttributePoints ?? 0));
 
   // Named rather than indexed: the four are real typed fields on the packet,
@@ -84,20 +125,11 @@
     };
   }
 
-
   const visual = $derived($visualState);
   // The wire's own maximum, as Combat reads it. Clamped against PlayerHp so a
   // bar can never read over-full while a stat change is still propagating.
   const playerMaxHp = $derived(Math.max(1, $playerState?.PlayerMaxHp ?? 0, $playerState?.PlayerHp ?? 0));
 
-  // Equipment ids arrive on StateUpdate but their names, rarities and affixes
-  // do not - the hot-path packet carries only the instance id, deliberately.
-  // The inventory snapshot is where the rest lives.
-  // Modul: you could see the seven slots here but only ever empty them. The
-  // only place that could EQUIP anything was the chest screen, so gearing up
-  // meant leaving the character you were gearing. Candidates are resolved with
-  // the same slot rule the server uses, so the list for a slot is exactly what
-  // that slot will accept.
   // Modul: worn by ANYONE, not just by the character on screen. This used to
   // read the wire's equipped ids, which are the ACTIVE character's only - so a
   // sword on character 2 was offered to character 1 as free, and the server
@@ -111,23 +143,16 @@
   );
   let selectedSlot = $state(1);
 
-  // Modul: the paper doll used to show slot 1's Accuracy/Armor/Block under
-  // EVERY tab - StateUpdate's three combat rating fields are the ACTIVE
-  // character's only (see slots.ts's comment on why tools have no wire
-  // field, same reason). Switching to slot 2 or 3 changed the gear on screen
-  // but the numbers next to it kept describing whoever was actually fighting.
-  // /api/v1/player/inventory now carries each character's own rating,
-  // computed from that character's own gear - this looks it up by slot
-  // rather than trusting the wire for anyone but the active character.
+  // Modul: StateUpdate's three combat rating fields are the ACTIVE character's
+  // only. /api/v1/player/inventory carries each character's own rating,
+  // computed from that character's own gear - looked up by slot rather than
+  // trusting the wire for anyone but the active character.
   const selectedCombatStats = $derived(
     inventory.data?.RosterCombatStats?.find((s) => s.SlotIndex === selectedSlot - 1) ?? null,
   );
 
-  // Modul: set bonuses are READ from the server (task 63). This used to count
-  // families here and print "+10% armour / +15% damage / unique passive" for
-  // every one of them, while the server paid nothing at all - it read a SetId
-  // column nothing ever wrote. The numbers below are the server's own
-  // SetBonusEngine evaluation of this character's gear.
+  // Modul: set bonuses are READ from the server (task 63). The numbers below
+  // are the server's own SetBonusEngine evaluation of this character's gear.
   const activeSets = $derived(selectedCombatStats?.ActiveSets ?? []);
 
   const candidatesBySlot = $derived.by(() => {
@@ -146,13 +171,8 @@
     return bySlot;
   });
 
-  // Modul: nothing could tell a character what to do.
-  //
-  // SimulationEngine has routed ChangeActivity by TargetGuid since the
-  // multi-slot overhaul, and CharacterSlotEngine unlocks slot 2 at Town Hall 3
-  // and slot 3 at Town Hall 5 - but no screen ever named a character, so
-  // characters 2 and 3 sat Idle permanently. Every other screen assigns work
-  // to "you", which is always slot 1.
+  // SimulationEngine routes ChangeActivity by TargetGuid, and
+  // CharacterSlotEngine unlocks slot 2 at Town Hall 3 and slot 3 at Town Hall 5.
   const townHall = $derived(snap?.TownHallLevel ?? 0);
 
   const jobChoices = $derived.by(() => {
@@ -189,9 +209,10 @@
   // showing it here means the player never has to find out that way.
   function occupiedBy(activityId: number, bySlot: number): string | null {
     if (activityId <= 0 || !snap) return null;
-    if (bySlot !== 1 && Number(snap.ActiveActivityId) === activityId) return 'Slot 1';
-    if (bySlot !== 2 && snap.Slot2ActivityId === activityId) return 'Slot 2';
-    if (bySlot !== 3 && snap.Slot3ActivityId === activityId) return 'Slot 3';
+    const who = (slot: number, id: string) => personName(id, 0) || `Slot ${slot}`;
+    if (bySlot !== 1 && Number(snap.ActiveActivityId) === activityId) return who(1, snap.Slot1_CharacterId);
+    if (bySlot !== 2 && snap.Slot2ActivityId === activityId) return who(2, snap.Slot2_CharacterId);
+    if (bySlot !== 3 && snap.Slot3ActivityId === activityId) return who(3, snap.Slot3_CharacterId);
     return null;
   }
 
@@ -227,7 +248,12 @@
       const job = craftingJobs.find((j) => j.id === activityId);
       return job ? job.label : `Crafting #${activityId}`;
     }
-    return monsterName(registry, activityId);
+    return `Fighting ${monsterName(registry, activityId)}`;
+  }
+
+  /** The person's name, or their race until the roster has answered. */
+  function personName(id: string, raceId: number): string {
+    return nameById.get(id) || (raceId > 0 ? raceName(raceId) : '');
   }
 
   const roster = $derived(
@@ -236,7 +262,6 @@
           {
             slot: 1,
             id: snap.Slot1_CharacterId,
-            ageTicks: snap.Slot1_AgeTicks,
             agePhase: snap.Slot1_AgePhase,
             raceId: snap.Slot1_RaceId,
             activity: Number(snap.ActiveActivityId),
@@ -245,7 +270,6 @@
           {
             slot: 2,
             id: snap.Slot2_CharacterId,
-            ageTicks: snap.Slot2_AgeTicks,
             agePhase: snap.Slot2_AgePhase,
             raceId: snap.Slot2_RaceId,
             activity: snap.Slot2ActivityId,
@@ -254,7 +278,6 @@
           {
             slot: 3,
             id: snap.Slot3_CharacterId,
-            ageTicks: snap.Slot3_AgeTicks,
             agePhase: snap.Slot3_AgePhase,
             raceId: snap.Slot3_RaceId,
             activity: snap.Slot3ActivityId,
@@ -268,35 +291,80 @@
       : [],
   );
 
-  // Modul: slot 2 used to appear the moment a character existed for it, with
-  // no way to give it a job and nothing saying why - the screen showed a
-  // worker who could not work. All three slots are always listed now, and a
-  // locked one says which Town Hall level opens it, the way slot 3 already
-  // did.
+  // Modul: the switcher offers only people who can actually be acted on - a
+  // slot behind a Town Hall level, or one nobody stands in, is a line on the
+  // Work tab saying why, not a person to select.
+  const people = $derived(roster.filter((c) => c.unlocked && c.occupied));
+  const idleSlots = $derived(roster.filter((c) => !c.unlocked || !c.occupied));
 
-  const selected = $derived(roster.find((c) => c.slot === selectedSlot) ?? roster[0] ?? null);
+  const selected = $derived(people.find((c) => c.slot === selectedSlot) ?? people[0] ?? null);
 
+  function choosePerson(slot: number) {
+    selectedSlot = slot;
+    pickerSlot = -1;
+  }
+
+  // ---------------------------------------------------------------- tabs
+  type Tab = 'gear' | 'attributes' | 'work';
+  let tab = $state<Tab | null>(null);
+
+  // Modul: THE DEFAULT IS DECIDED ONCE, at the first snapshot, and then left
+  // alone. Re-deriving it would yank a player off Attributes the moment they
+  // placed their last point. Attributes first only when there are points AND
+  // the weapon slot is filled: a character with no weapon has a more urgent
+  // thing to do, and it is the thing the tutorial's second step asks for.
+  // EquippedWeaponId is the wire's, i.e. the active character's, who is also
+  // the one the switcher opens on.
+  $effect(() => {
+    if (tab !== null || !snap) return;
+    tab = attributePoints > 0 && Number(snap.EquippedWeaponId) > 0 ? 'attributes' : 'gear';
+  });
+  const shownTab = $derived<Tab>(tab ?? 'gear');
+
+  function chooseTab(next: Tab) {
+    tab = next;
+    pickerSlot = -1;
+  }
+
+  // ---------------------------------------------------------------- DPS
+  // Modul: "Skill pts" sat in the combat rating and linked nowhere - the tree
+  // has its own screen. A rating wants a number for how hard this person hits.
+  // There is no attack figure on any wire, and a client-side damage model is
+  // the thing this codebase keeps deleting (huntingEstimate.ts), so this is the
+  // SERVER's projection (HuntingProjection) divided out: a monster's health
+  // over the projected time to kill it - misses, crits and its armour
+  // included. Against whoever this person is fighting, else the first monster.
+  const projection = createQuery(() => ({
+    queryKey: queryKeys.combatProjection(Math.max(0, (selected?.slot ?? 1) - 1)),
+    queryFn: () => fetchCombatProjection(Math.max(0, (selected?.slot ?? 1) - 1)),
+    enabled: $connectionStatus.phase === 'live' && shownTab === 'gear' && selected !== null,
+    staleTime: 60_000,
+    retry: false,
+  }));
+
+  const dps = $derived.by(() => {
+    if (!registry || !selected) return null;
+    const estimates = projection.data?.Monsters ?? [];
+    if (estimates.length === 0) return null;
+    const fighting = isCombatActivity(selected.activity) ? selected.activity : 0;
+    const firstId = registry.regions[0]?.[0]?.Id ?? 0;
+    const estimate =
+      estimates.find((e) => e.MonsterId === fighting) ?? estimates.find((e) => e.MonsterId === firstId) ?? null;
+    const monster = estimate ? registry.monsters.get(estimate.MonsterId) : undefined;
+    if (!estimate || !monster) return null;
+    if (!estimate.CanDamage || estimate.SecondsPerKill <= 0) return { value: 0, against: monster.Name };
+    return { value: monster.MaxHp / estimate.SecondsPerKill, against: monster.Name };
+  });
+
+  // ---------------------------------------------------------------- gear
   // Modul: gear per character, from the inventory snapshot rather than the
-  // wire. The hot-path packet deliberately carries only the ACTIVE
-  // character's equipment - gear changes on a button press, not ten times a
-  // second - so /api/v1/player/inventory's EquippedByCharacterSlot is the only
-  // place characters 2 and 3's loadouts exist at all.
+  // wire. The hot-path packet carries only the ACTIVE character's equipment,
+  // so /api/v1/player/inventory's EquippedByCharacterSlot is the only place
+  // characters 2 and 3's loadouts exist at all. That field is ZERO-BASED; this
+  // screen numbers slots from one.
   //
-  // That field is a ZERO-BASED character slot; this screen numbers slots from
-  // one, which is exactly the kind of off-by-one that silently dresses the
-  // wrong character.
-  //
-  // Modul: INDEXED ONCE, not scanned per slot.
-  //
-  // This walked the whole equipment list on every call, and the paper doll
-  // calls it for eleven slots on each of three characters - 33 full scans per
-  // render. On an account with 17,836 pieces that is nearly 600,000 iterations
-  // to fill eleven boxes, redone every time the snapshot changes.
-  //
-  // One pass builds the map instead. Keyed on "character slot : equipment
-  // slot" because both are small integers and the pair is what identifies a
-  // box on the doll; a nested Map would be two lookups and an allocation per
-  // character for no gain at this size.
+  // INDEXED ONCE, not scanned per slot: eleven boxes on each of three
+  // characters against 17,836 pieces was 600,000 iterations a render.
   const wornByIndex = $derived.by(() => {
     const index = new Map<string, InventoryEquipment>();
     for (const item of inventory.data?.Equipment ?? []) {
@@ -313,27 +381,14 @@
   // Which slot the picker is open on, or -1 for closed.
   let pickerSlot = $state(-1);
 
-  // Split so the figure stands between two even columns, four a side. Named by
-  // their constants rather than by bare numbers: the slot indices shifted when
-  // the offhand was removed and the jewellery added, and a literal [2, 4, 5, 6]
-  // silently pointed at different slots afterwards.
-  const LEFT_SLOTS = EQUIPMENT_SLOTS.filter((sl) =>
-    [SLOT_HELMET, SLOT_GLOVES, SLOT_WEAPON, SLOT_AMULET].includes(sl.index),
-  );
-  const RIGHT_SLOTS = EQUIPMENT_SLOTS.filter((sl) =>
-    [SLOT_CHEST, SLOT_LEGGINGS, SLOT_BOOTS, SLOT_RING].includes(sl.index),
-  );
-  // Modul: the three tool slots, in their own row under the figure. They are
-  // gear like any other piece - rolled rarity, rolled affixes - but they are
-  // what a character WORKS with rather than what they fight in, and mixing
-  // them into the armour columns loses that distinction.
-  const TOOL_SLOTS = EQUIPMENT_SLOTS.filter((sl) => [SLOT_AXE, SLOT_PICKAXE, SLOT_ROD].includes(sl.index));
+  // Modul: ALL ELEVEN, in slot order - the eight combat slots, then the three
+  // tools, which land on the grid's third row on their own. Every list in this
+  // codebase that stopped at eight was a bug (root CLAUDE.md).
+  const TOOL_INDICES: readonly number[] = [SLOT_AXE, SLOT_PICKAXE, SLOT_ROD];
 
-  // Modul: BOTH COMMANDS NAME THE CHARACTER. EquipItem and UnequipItem have
-  // carried a TargetGuid since per-character equipment landed, and Guid.Empty
-  // resolves to the main character - so sending it without one silently
-  // dressed slot 1 no matter which character was on screen. Caught by the
-  // paper doll's own test: wearing an item filled no slot.
+  // Modul: BOTH COMMANDS NAME THE CHARACTER. EquipItem and UnequipItem carry a
+  // TargetGuid, and Guid.Empty resolves to the main character - so sending it
+  // without one silently dressed slot 1 no matter who was on screen.
   function equipInstance(instanceId: number) {
     if (!selected) return;
     connection.send({
@@ -346,13 +401,8 @@
     pickerSlot = -1;
   }
 
-  // Modul: UnequipItem's TargetId is a SLOT INDEX (0 Weapon, 1 Helmet,
-  // 2 Chest, 3 Gloves, 4 Leggings, 5 Boots, 6 Amulet, 7 Ring) - NOT an item instance
-  // id, which is what EquipItem takes. Sending the instance id addresses slot
-  // 8, or 42, or whatever the id happened to be: out of range, silently
-  // ignored, no error anywhere.
-  //
-  // The asymmetry is real and easy to miss: equip names the ITEM, unequip
+  // Modul: UnequipItem's TargetId is a SLOT INDEX (0-10) - NOT an item
+  // instance id, which is what EquipItem takes. Equip names the ITEM, unequip
   // names the SLOT, because a slot is what you are emptying.
   function unequip(slotIndex: number) {
     connection.send({
@@ -361,425 +411,424 @@
       TargetGuid: selected?.id ?? EMPTY_GUID,
     });
   }
+
+  const populationOver = $derived(
+    snap ? Number(snap.CurrentPopulationCount) > Number(snap.CachedMaxPopulationCapacity) : false,
+  );
 </script>
 
 {#if !snap}
   <p class="dim pad">Waiting for the first state snapshot...</p>
 {:else}
-  <div class="grid">
-    <section class="panel">
-      <div class="char-head">
-        <!-- Task 54: the face other players see, and the way to the
-             Wardrobe - with a count when a chest is waiting. -->
-        <button class="face" onclick={() => requestScreen('wardrobe')} aria-label="Open the Wardrobe" data-testid="character-wardrobe">
-          <PlayerAvatar playerId={Number(snap.PlayerId)} size="md" />
-          {#if $unopenedChests > 0}<span class="chest-badge">{$unopenedChests}</span>{/if}
-        </button>
-        <h2>Character</h2>
-        {#if $unopenedChests > 0}
-          <button class="tiny-btn" onclick={() => requestScreen('wardrobe')}>
-            {$unopenedChests} chest{$unopenedChests === 1 ? '' : 's'} to open
+  <div class="page">
+    <!-- The person switcher. Sticky, so whoever the panels below describe is
+         never scrolled out of sight. -->
+    <section class="switcher" data-testid="person-switcher">
+      {#if selected}
+        <div class="me" data-testid="person-current" data-character-id={selected.id}>
+          <span class="portrait"><RaceIcon raceId={selected.raceId} size="md" /></span>
+          <div class="ident">
+            <div class="nameline">
+              <strong class="name" data-testid="person-name">{personName(selected.id, selected.raceId)}</strong>
+              <span class="lv">Lv {formatNumber(Number(snap.CurrentLevel))}</span>
+            </div>
+            <div class="sub">
+              <span>{raceName(selected.raceId)} · {agePhaseName(selected.agePhase)}</span>
+              <span class="act" class:idle={selected.activity === 0}>{activityLabel(selected.activity, selected.halt)}</span>
+            </div>
+          </div>
+          <!-- Task 54: the face other players see, and the way to the
+               Wardrobe - with a count when a chest is waiting. -->
+          <button class="face" onclick={() => requestScreen('wardrobe')} aria-label="Open the Wardrobe" data-testid="character-wardrobe">
+            <PlayerAvatar playerId={Number(snap.PlayerId)} size="sm" />
+            {#if $unopenedChests > 0}<span class="chest-badge">{$unopenedChests}</span>{/if}
           </button>
-        {/if}
-      </div>
-
-      <div class="vitals">
-        <div class="hpblock">
-          <span class="dim">Health</span>
-          <Bar
-            value={visual?.PlayerHp ?? snap.PlayerHp}
-            max={playerMaxHp}
-            color="var(--good)"
-            label={`${formatNumber(Math.round(visual?.PlayerHp ?? snap.PlayerHp))} / ${formatNumber(playerMaxHp)}`}
-          />
         </div>
-        <!-- Modul: the mana bar went with the four active skills. It measured
-             a resource that only they spent, and they were removed after being
-             measured at +90% damage for clicking every three seconds - see
-             lib/ui/SkillsPanel.svelte, which is the skill tree now. -->
-      </div>
-
-      <!-- Modul: no STR/DEX/CON/LCK row here any more. It sat above the
-           attribute cards, which show the same four numbers as Might, Finesse,
-           Vigour and Fortune - one screen, two names for each stat, and two
-           headings both reading "Attributes". The cards are the ones a player
-           acts on, so they are the ones that stay. -->
-
-      <!-- Modul: these three are the server-COMPUTED values actually used in
-           combat resolution, not a client reconstruction from raw DEX/CON -
-           so what is shown can never drift from what the server rolled
-           against. For the ACTIVE slot they still fall back to StateUpdate
-           (the 10Hz field), so the panel is never blank while /inventory is
-           still loading; for slot 2/3 there is no wire field at all, only
-           the REST snapshot's per-character RosterCombatStats. -->
-      <h3>Combat rating (Slot {selected.slot})</h3>
-      <dl class="stats">
-        <div>
-          <dt>Accuracy</dt>
-          <dd title={numberTitle(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating)}>{formatNumber(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating)}</dd>
-        </div>
-        <div>
-          <dt>Armor</dt>
-          <dd title={numberTitle(selectedCombatStats?.Armor ?? snap.PlayerArmorRating)}>{formatNumber(selectedCombatStats?.Armor ?? snap.PlayerArmorRating)}</dd>
-        </div>
-        <div>
-          <dt>Block</dt>
-          <dd
-            >{(selectedCombatStats?.BlockPct ??
-              (typeof snap.PlayerBlockStrengthPct === 'number' ? snap.PlayerBlockStrengthPct : 0)
-            ).toFixed(1)}%</dd
-          >
-        </div>
-        <div><dt>Skill pts</dt><dd>{snap.AvailableSkillPoints}</dd></div>
-      </dl>
-
-      <AttributePanel
-        values={{ STR: attributeValue('STR'), DEX: attributeValue('DEX'), CON: attributeValue('CON'), LCK: attributeValue('LCK') }}
-        unspent={attributePoints}
-        onnotice={(message) => pushLocalNotice(message, 'error')}
-      />
-
-      {#if activeSets.length > 0}
-        <h3>Set bonuses</h3>
-        <ul class="sets">
-          {#each activeSets as set (set.SetId)}
-            <li class="set-row">
-              <div class="set-head">
-                <strong class="set-name">{set.Family}</strong>
-                <span class="dim tiny">{set.Offensive ? 'offence' : 'defence'} · {set.Pieces}/5</span>
-              </div>
-              <div class="set-pay">
-                {#if set.DamagePct > 0}<span class="good">+{set.DamagePct}% damage</span>{/if}
-                {#if set.ArmorPct > 0}<span class="good">+{set.ArmorPct}% armour</span>{/if}
-                {#if set.Burn}<span class="accent">Burn: each hit adds a quarter again as fire</span>{/if}
-                {#if set.Thorns}<span class="accent">Thorns: a fifth of each hit taken is returned</span>{/if}
-                {#if set.DamageCap}<span class="accent">Bulwark: no single hit takes more than 20% of your health</span>{/if}
-              </div>
-              <div class="dim tiny">
-                {#if set.NextTierPieces > 0}
-                  {set.NextTierPieces - set.Pieces} more piece{set.NextTierPieces - set.Pieces === 1 ? '' : 's'} for the next tier.
-                {:else}
-                  Top tier.
-                {/if}
-                Rarity scales it: ×{set.QualityScale.toFixed(2)}.
-              </div>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-
-      <!-- Modul: skills sit with the character now. They spend mana, they have
-           cooldowns and they multiply the next hit - they were under Village,
-           between the building queue and the mentor slots, which is nowhere a
-           player looking for a combat ability would think to look. -->
-      <!-- Modul: the skill tree MOVED OUT of this screen, to its own entry
-           under "You". It sat here between the paper doll and the stat block
-           and was in the way of both - a tree wants room to be a tree, and the
-           character sheet wants to be about the character. -->
-    </section>
-
-    <section class="panel doll">
-      <h2>Equipment</h2>
-
-      <!-- Modul: the seven slots were a LIST, with a dropdown and an Equip
-           button stapled under each row, sitting in the same panel that gave
-           characters their jobs. Dressing someone and telling them what to do
-           are different acts and looked identical.
-
-           This is a paper doll: the character in the middle, their gear either
-           side of them, and a slot is a thing you click. -->
-      <div class="who">
-        {#each roster as character (character.slot)}
-          <button
-            class="slottab"
-            class:on={selectedSlot === character.slot}
-            disabled={!character.unlocked || !character.occupied}
-            onclick={() => { selectedSlot = character.slot; pickerSlot = -1; }}
-          >
-            Slot {character.slot}
-            {#if !character.unlocked}
-              <span class="dim tiny">Town Hall {SLOT_UNLOCK_TOWN_HALL[character.slot - 1]}</span>
-            {:else if !character.occupied}
-              <span class="dim tiny">empty</span>
-            {:else}
-              <span class="dim tiny">{raceName(character.raceId)}</span>
-            {/if}
-          </button>
-        {/each}
-      </div>
-
-      {#if !selected || !selected.occupied}
-        <p class="dim small">No character in this slot.</p>
-      {:else if inventory.isError && inventory.data === undefined}
-        <!-- Modul: the doll is drawn from the inventory, so without it every
-             slot reads as empty - a character stripped of gear they still own. -->
-        <QueryError query={inventory} what="your equipment" />
       {:else}
-        <div class="rig">
-          <div class="column">
-            {#each LEFT_SLOTS as slot (slot.index)}
-              {@const item = wornBy(selected.slot, slot.index)}
-              <button
-                class="gearslot"
-                data-guide="slot-{slot.index}"
-                class:filled={item !== null}
-                class:open={pickerSlot === slot.index}
-                onclick={() => (pickerSlot = pickerSlot === slot.index ? -1 : slot.index)}
-              >
-                <span class="slotname dim tiny">{slot.label}</span>
-                {#if item}
-                  <ItemIcon baseItemId={item.BaseItemId} name={prettifyBaseId(item.BaseItemId)} qualityTier={item.QualityTier} size="md" />
-                  <span
-                    class="gearname"
-                    style="color: {rarityColor(item.QualityTier)}"
-                    class:rarity-glow={shouldGlow(item.QualityTier)}
-                  >{prettifyBaseId(item.BaseItemId)}</span>
-                {:else}
-                  <span class="dim tiny">empty</span>
-                {/if}
-              </button>
-            {/each}
-          </div>
+        <p class="dim small">No character in a slot yet.</p>
+      {/if}
 
-          <div class="figure">
-            <RaceIcon raceId={selected.raceId} size="xl" />
-            <strong>{raceName(selected.raceId)}</strong>
-            <span class="dim tiny">{agePhaseName(selected.agePhase)}</span>
-            <span class="dim tiny" class:idle={selected.activity === 0}>
-              {activityLabel(selected.activity, selected.halt)}
-            </span>
-          </div>
-
-          <div class="column">
-            {#each RIGHT_SLOTS as slot (slot.index)}
-              {@const item = wornBy(selected.slot, slot.index)}
-              <button
-                class="gearslot"
-                data-guide="slot-{slot.index}"
-                class:filled={item !== null}
-                class:open={pickerSlot === slot.index}
-                onclick={() => (pickerSlot = pickerSlot === slot.index ? -1 : slot.index)}
-              >
-                <span class="slotname dim tiny">{slot.label}</span>
-                {#if item}
-                  <ItemIcon baseItemId={item.BaseItemId} name={prettifyBaseId(item.BaseItemId)} qualityTier={item.QualityTier} size="md" />
-                  <span
-                    class="gearname"
-                    style="color: {rarityColor(item.QualityTier)}"
-                    class:rarity-glow={shouldGlow(item.QualityTier)}
-                  >{prettifyBaseId(item.BaseItemId)}</span>
-                {:else}
-                  <span class="dim tiny">empty</span>
-                {/if}
-              </button>
-            {/each}
-          </div>
-        </div>
-
-        <div class="tools">
-          {#each TOOL_SLOTS as slot (slot.index)}
-            {@const item = wornBy(selected.slot, slot.index)}
+      {#if people.length > 1}
+        <div class="people" role="group" aria-label="Choose a person">
+          {#each people as person (person.slot)}
             <button
-              class="gearslot"
-              class:filled={item !== null}
-              class:open={pickerSlot === slot.index}
-              onclick={() => (pickerSlot = pickerSlot === slot.index ? -1 : slot.index)}
+              class="person"
+              class:on={selected?.slot === person.slot}
+              aria-pressed={selected?.slot === person.slot}
+              data-person-slot={person.slot}
+              data-character-id={person.id}
+              onclick={() => choosePerson(person.slot)}
             >
-              <span class="slotname dim tiny">{slot.label}</span>
-              {#if item}
-                <ItemIcon
-                  baseItemId={item.BaseItemId}
-                  name={prettifyBaseId(item.BaseItemId)}
-                  qualityTier={item.QualityTier}
-                  size="md"
-                />
-                <span
-                  class="gearname"
-                  style="color: {rarityColor(item.QualityTier)}"
-                  class:rarity-glow={shouldGlow(item.QualityTier)}
-                >{prettifyBaseId(item.BaseItemId)}</span>
-              {:else}
-                <span class="dim tiny">empty</span>
-              {/if}
+              <RaceIcon raceId={person.raceId} />
+              <span class="pname">{personName(person.id, person.raceId)}</span>
             </button>
           {/each}
         </div>
-
-        {#if pickerSlot >= 0}
-          {@const slot = EQUIPMENT_SLOTS.find((sl) => sl.index === pickerSlot)}
-          {@const worn = wornBy(selected.slot, pickerSlot)}
-          {@const candidates = candidatesBySlot.get(pickerSlot) ?? []}
-          {@const picked = pickerRows(candidates)}
-          <div class="picker">
-            <header>
-              <strong>{slot?.label}</strong>
-              <button class="tiny-btn" onclick={() => (pickerSlot = -1)}>Close</button>
-            </header>
-
-            {#if worn}
-              <div class="wornrow">
-                <span>Wearing {prettifyBaseId(worn.BaseItemId)} [{rarityName(worn.QualityTier)}]</span>
-                <button class="tiny-btn" onclick={() => unequip(pickerSlot)}>Take off</button>
-              </div>
-              <Affixes affixes={worn.Affixes} baseItemId={worn.BaseItemId} qualityTier={worn.QualityTier} />
-            {/if}
-
-            {#if candidates.length === 0}
-              <p class="dim tiny">Nothing in the chest fits this slot.</p>
-            {:else}
-              <ul class="choices">
-                {#each picked.rows as { piece: candidate, count }, candidateIndex (candidate.Id)}
-                  <li>
-                    <ItemIcon baseItemId={candidate.BaseItemId} name={prettifyBaseId(candidate.BaseItemId)} qualityTier={candidate.QualityTier} size="sm" />
-                    <span
-                      style="color: {rarityColor(candidate.QualityTier)}"
-                      class:rarity-glow={shouldGlow(candidate.QualityTier)}
-                    >{prettifyBaseId(candidate.BaseItemId)}</span>
-                    <span class="dim tiny">[{rarityName(candidate.QualityTier)}]</span>
-                    {#if count > 1}
-                      <span class="dim tiny" title="Identical pieces - Wear takes one">&times;{formatNumber(count)}</span>
-                    {/if}
-                    {#if requirementFor(candidate.BaseItemId)}
-                      {@const req = requirementFor(candidate.BaseItemId)!}
-                      <span class="req" class:unmet={!req.met}>
-                        {req.minimum} {req.label}
-                      </span>
-                    {/if}
-                    <button
-                      class="tiny-btn"
-                      data-guide={candidateIndex === 0 ? 'wear-first' : undefined}
-                      onclick={() => equipInstance(candidate.Id)}
-                    >Wear</button>
-                  </li>
-                {/each}
-              </ul>
-              {#if picked.hiddenRows > 0}
-                <p class="dim tiny">
-                  +{formatNumber(picked.hiddenPieces)} more -
-                  <button class="tiny-btn" onclick={() => requestScreen('chest')}>open the Chest</button>
-                  to filter them.
-                </p>
-              {/if}
-            {/if}
-          </div>
-        {/if}
       {/if}
     </section>
 
-    <section class="panel">
-      <h2>Work</h2>
-      <p class="dim small">
-        Who is doing what. Gear lives on the Equipment panel - these are two
-        different jobs and used to share one row.
-      </p>
+    <div class="tabs" role="tablist" aria-label="Character">
+      <button role="tab" aria-selected={shownTab === 'gear'} class:on={shownTab === 'gear'} data-character-tab="gear" onclick={() => chooseTab('gear')}>Gear</button>
+      <button role="tab" aria-selected={shownTab === 'attributes'} class:on={shownTab === 'attributes'} data-character-tab="attributes" onclick={() => chooseTab('attributes')}>
+        Attributes{#if attributePoints > 0}<span class="badge" aria-label="{attributePoints} unspent">{formatNumber(attributePoints)}</span>{/if}
+      </button>
+      <button role="tab" aria-selected={shownTab === 'work'} class:on={shownTab === 'work'} data-character-tab="work" onclick={() => chooseTab('work')}>Work &amp; orders</button>
+    </div>
 
-      {#each roster as character}
-        <div class="rostercard" class:locked={!character.unlocked}>
-          <div class="rosterrow">
-            <strong>Slot {character.slot}</strong>
-            {#if character.unlocked && character.occupied}
-              <span class="race">
-                <RaceIcon raceId={character.raceId} />
-                {raceName(character.raceId)}
-              </span>
-              <span class="dim">{agePhaseName(character.agePhase)}</span>
-              <span class:idle={character.activity === 0}>
-                {activityLabel(character.activity, character.halt)}
-              </span>
-            {:else if !character.unlocked}
-              <span class="dim">
-                Locked - opens at Town Hall {SLOT_UNLOCK_TOWN_HALL[character.slot - 1]}
-                (you are at {townHall})
-              </span>
-            {:else}
-              <span class="dim">Empty - breed a character to fill it</span>
-            {/if}
-          </div>
-
-          {#if character.unlocked && character.occupied}
-          <div class="assign">
-            <select bind:value={jobPick[character.slot]}>
-              <option value={0}>Choose a job...</option>
-              <optgroup label="Gathering">
-                {#each gatheringJobs as job (job.id)}
-                  <option value={job.id}>
-                    {job.label}{occupiedBy(job.id, character.slot) ? ' (taken)' : ''}
-                  </option>
-                {/each}
-              </optgroup>
-              <optgroup label="Combat">
-                {#each combatJobs as job (job.id)}
-                  <option value={job.id}>
-                    {job.label}{occupiedBy(job.id, character.slot) ? ' (taken)' : ''}
-                  </option>
-                {/each}
-              </optgroup>
-              <optgroup label="Crafting &amp; cooking">
-                {#each craftingJobs as job (job.id)}
-                  <option value={job.id}>
-                    {job.label}{occupiedBy(job.id, character.slot) ? ' (taken)' : ''}
-                  </option>
-                {/each}
-              </optgroup>
-            </select>
-            <button
-              class="tiny-btn"
-              disabled={!jobPick[character.slot]}
-              onclick={() => assign(character.slot, character.id)}
-            >
-              Assign
-            </button>
-            {#if character.activity !== 0}
-              <button class="tiny-btn" onclick={() => stopWork(character.slot, character.id)}>
-                Stop
-              </button>
-            {/if}
-          </div>
+    {#if shownTab === 'gear'}
+      <section class="panel" data-testid="character-gear">
+        {#if !selected}
+          <p class="dim small">No character in this slot.</p>
+        {:else if inventory.isError && inventory.data === undefined}
+          <!-- Modul: the grid is drawn from the inventory, so without it every
+               slot reads as empty - a character stripped of gear they still own. -->
+          <QueryError query={inventory} what="your equipment" />
+        {:else}
+          <!-- Modul: health is on the wire for the ACTIVE character only
+               (slot 1); slots 2 and 3 have no live health anywhere, so they
+               get no bar rather than slot 1's. -->
+          {#if selected.slot === 1}
+            <div class="hpblock">
+              <span class="dim">Health</span>
+              <Bar
+                value={visual?.PlayerHp ?? snap.PlayerHp}
+                max={playerMaxHp}
+                color="var(--good)"
+                label={`${formatNumber(Math.round(visual?.PlayerHp ?? snap.PlayerHp))} / ${formatNumber(playerMaxHp)}`}
+              />
+            </div>
           {/if}
-        </div>
-      {/each}
+          <!-- Modul: the server-COMPUTED values used in combat resolution, not
+               a client reconstruction. The active slot falls back to the 10 Hz
+               wire while /inventory is loading. -->
+          <dl class="stats" data-testid="combat-rating">
+            <div>
+              <dt>
+                {#if dps}
+                  <Hint text={`Damage a second against ${dps.against}: its health divided by the server's projected time to kill it, misses, crits and its armour included.`}>DPS</Hint>
+                {:else}DPS{/if}
+              </dt>
+              <dd>{dps ? formatNumber(Math.round(dps.value)) : '-'}</dd>
+            </div>
+            <div>
+              <dt>Accuracy</dt>
+              <dd title={numberTitle(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating)}>{formatNumber(selectedCombatStats?.Accuracy ?? snap.PlayerAccuracyRating)}</dd>
+            </div>
+            <div>
+              <dt>Armour</dt>
+              <dd title={numberTitle(selectedCombatStats?.Armor ?? snap.PlayerArmorRating)}>{formatNumber(selectedCombatStats?.Armor ?? snap.PlayerArmorRating)}</dd>
+            </div>
+            <div>
+              <dt>Block</dt>
+              <dd
+                >{(selectedCombatStats?.BlockPct ??
+                  (typeof snap.PlayerBlockStrengthPct === 'number' ? snap.PlayerBlockStrengthPct : 0)
+                ).toFixed(1)}%</dd
+              >
+            </div>
+          </dl>
 
+          <!-- Modul: a slot is a thing you tap. One 4-column grid of all eleven
+               - it replaced a paper doll whose figure pushed the slots below
+               the first screen on a phone. -->
+          <div class="slots">
+            {#each EQUIPMENT_SLOTS as slot (slot.index)}
+              {@const item = wornBy(selected.slot, slot.index)}
+              <button
+                class="gearslot"
+                class:tool={TOOL_INDICES.includes(slot.index)}
+                class:filled={item !== null}
+                class:open={pickerSlot === slot.index}
+                style={item ? `--slot-rarity: ${rarityColor(item.QualityTier)}` : undefined}
+                data-guide="slot-{slot.index}"
+                data-slot-index={slot.index}
+                data-item-id={item ? item.Id : ''}
+                aria-label={item ? `${slot.label}: ${prettifyBaseId(item.BaseItemId)}` : `${slot.label}: empty`}
+                aria-expanded={pickerSlot === slot.index}
+                onclick={() => (pickerSlot = pickerSlot === slot.index ? -1 : slot.index)}
+              >
+                <span class="slotname">{slot.label}</span>
+                {#if item}
+                  <ItemIcon baseItemId={item.BaseItemId} name={prettifyBaseId(item.BaseItemId)} qualityTier={item.QualityTier} size="md" />
+                  <span class="gearname" style="color: {rarityColor(item.QualityTier)}">{prettifyBaseId(item.BaseItemId)}</span>
+                {:else}
+                  <span class="empty" aria-hidden="true">+</span>
+                  <span class="gearname dim">empty</span>
+                {/if}
+              </button>
+            {/each}
+          </div>
 
+          {#if pickerSlot >= 0}
+            {@const slot = EQUIPMENT_SLOTS.find((sl) => sl.index === pickerSlot)}
+            {@const worn = wornBy(selected.slot, pickerSlot)}
+            {@const candidates = candidatesBySlot.get(pickerSlot) ?? []}
+            {@const picked = pickerRows(candidates)}
+            <div class="picker" data-testid="equip-picker" data-slot-index={pickerSlot}>
+              <header>
+                <strong>{slot?.label}</strong>
+                <button class="tiny-btn" onclick={() => (pickerSlot = -1)}>Close</button>
+              </header>
 
-      {#if roster.length === 0}
-        <p class="dim">No characters yet.</p>
-      {/if}
+              {#if worn}
+                <div class="wornrow">
+                  <span class="wornname">Wearing <span style="color: {rarityColor(worn.QualityTier)}">{prettifyBaseId(worn.BaseItemId)}</span> [{rarityName(worn.QualityTier)}]</span>
+                  <button class="tiny-btn" data-testid="take-off" data-piece-id={worn.Id} onclick={() => unequip(pickerSlot)}>Take off</button>
+                </div>
+                <Affixes affixes={worn.Affixes} baseItemId={worn.BaseItemId} qualityTier={worn.QualityTier} />
+              {/if}
 
-      <h3>Village</h3>
-      <dl class="stats">
-        <div><dt>Population</dt><dd>{snap.CurrentPopulationCount}/{snap.CachedMaxPopulationCapacity}</dd></div>
-        <div><dt>Town Hall</dt><dd>{snap.TownHallLevel}</dd></div>
-        <div><dt>Forge</dt><dd>{snap.ForgeLevel}</dd></div>
-        <div><dt>Workshop</dt><dd>{snap.CraftingWorkshopLevel}</dd></div>
-      </dl>
-    </section>
+              {#if candidates.length === 0}
+                <p class="dim tiny">Nothing in the chest fits this slot.</p>
+              {:else}
+                <ul class="choices">
+                  {#each picked.rows as { piece: candidate, count }, candidateIndex (candidate.Id)}
+                    {@const req = requirementFor(candidate.BaseItemId)}
+                    <li>
+                      <ItemIcon baseItemId={candidate.BaseItemId} name={prettifyBaseId(candidate.BaseItemId)} qualityTier={candidate.QualityTier} size="sm" />
+                      <span class="cname">
+                        <span
+                          style="color: {rarityColor(candidate.QualityTier)}"
+                          class:rarity-glow={shouldGlow(candidate.QualityTier)}
+                        >{prettifyBaseId(candidate.BaseItemId)}</span>
+                        <span class="dim tiny">[{rarityName(candidate.QualityTier)}]</span>
+                        {#if count > 1}
+                          <span class="dim tiny">&times;{formatNumber(count)} identical</span>
+                        {/if}
+                        {#if req}
+                          <span class="req" class:unmet={!req.met}>needs {req.minimum} {req.label}</span>
+                        {/if}
+                      </span>
+                      <button
+                        class="tiny-btn"
+                        data-guide={candidateIndex === 0 ? 'wear-first' : undefined}
+                        data-piece-id={candidate.Id}
+                        onclick={() => equipInstance(candidate.Id)}
+                      >Wear</button>
+                    </li>
+                  {/each}
+                </ul>
+                {#if picked.hiddenRows > 0}
+                  <p class="dim tiny">
+                    +{formatNumber(picked.hiddenPieces)} more -
+                    <button class="tiny-btn" onclick={() => requestScreen('chest')}>open the Chest</button>
+                    to filter them.
+                  </p>
+                {/if}
+              {/if}
+            </div>
+          {/if}
 
-    <!-- Task 85: standing orders, beside the jobs they change. -->
-    <AutomationRulesPanel />
+          <!-- The set line: one row per worn set, the detail behind a tap. -->
+          {#if activeSets.length > 0}
+            <ul class="sets" data-testid="set-line">
+              {#each activeSets as set (set.SetId)}
+                {@const left = set.NextTierPieces > 0 ? set.NextTierPieces - set.Pieces : 0}
+                <li>
+                  <Hint
+                    text={`${set.Offensive ? 'Offence' : 'Defence'} set. ${set.Burn ? 'Burn: each hit adds a quarter again as fire. ' : ''}${set.Thorns ? 'Thorns: a fifth of each hit taken is returned. ' : ''}${set.DamageCap ? 'Bulwark: no single hit takes more than 20% of your health. ' : ''}${left > 0 ? `${left} more piece${left === 1 ? '' : 's'} for the next tier.` : 'Top tier.'} Rarity scales it: x${set.QualityScale.toFixed(2)}.`}
+                  >
+                    <span class="set-name">Set: {set.Family} {set.Pieces}/5</span>
+                  </Hint>
+                  {#if set.DamagePct > 0}<span class="good"> · +{set.DamagePct}% damage</span>{/if}
+                  {#if set.ArmorPct > 0}<span class="good"> · +{set.ArmorPct}% armour</span>{/if}
+                  {#if set.Burn}<span class="accent"> · Burn</span>{/if}
+                  {#if set.Thorns}<span class="accent"> · Thorns</span>{/if}
+                  {#if set.DamageCap}<span class="accent"> · Bulwark</span>{/if}
+                </li>
+              {/each}
+            </ul>
+          {:else}
+            <p class="dim tiny sets-none">No armour set yet - two pieces of one family start a set bonus.</p>
+          {/if}
+
+          {#if $unopenedChests > 0}
+            <button class="tiny-btn chests" onclick={() => requestScreen('wardrobe')}>
+              {$unopenedChests} cosmetic chest{$unopenedChests === 1 ? '' : 's'} to open
+            </button>
+          {/if}
+        {/if}
+      </section>
+    {:else if shownTab === 'attributes'}
+      <section class="panel" data-testid="character-attributes">
+        <p class="dim tiny shared">Attributes belong to your whole house - every character fights with them.</p>
+        <AttributePanel
+          values={{ STR: attributeValue('STR'), DEX: attributeValue('DEX'), CON: attributeValue('CON'), LCK: attributeValue('LCK') }}
+          unspent={attributePoints}
+          onnotice={(message) => pushLocalNotice(message, 'error')}
+        />
+      </section>
+    {:else}
+      <div class="workgrid">
+        <section class="panel" data-testid="character-work">
+          <h2>Work</h2>
+          {#if selected}
+            {@const pick = jobPick[selected.slot] ?? 0}
+            {@const taken = occupiedBy(pick, selected.slot)}
+            <div class="rostercard">
+              <p class="small">
+                <span class="dim">Now:</span>
+                <span class="nowjob" class:idle={selected.activity === 0}>{activityLabel(selected.activity, selected.halt)}</span>
+              </p>
+              <div class="assign">
+                <select bind:value={jobPick[selected.slot]} aria-label="Job for {personName(selected.id, selected.raceId)}">
+                  <option value={0}>Choose a job...</option>
+                  <optgroup label="Gathering">
+                    {#each gatheringJobs as job (job.id)}
+                      <option value={job.id}>{job.label}{occupiedBy(job.id, selected.slot) ? ' (taken)' : ''}</option>
+                    {/each}
+                  </optgroup>
+                  <optgroup label="Combat">
+                    {#each combatJobs as job (job.id)}
+                      <option value={job.id}>{job.label}{occupiedBy(job.id, selected.slot) ? ' (taken)' : ''}</option>
+                    {/each}
+                  </optgroup>
+                  <optgroup label="Crafting &amp; cooking">
+                    {#each craftingJobs as job (job.id)}
+                      <option value={job.id}>{job.label}{occupiedBy(job.id, selected.slot) ? ' (taken)' : ''}</option>
+                    {/each}
+                  </optgroup>
+                </select>
+                <button class="tiny-btn" disabled={!pick} onclick={() => assign(selected.slot, selected.id)}>Assign</button>
+                {#if selected.activity !== 0}
+                  <button class="tiny-btn" onclick={() => stopWork(selected.slot, selected.id)}>Stop</button>
+                {/if}
+              </div>
+              <DisabledReason text={taken ? `${taken} already works there - two of your people cannot share a job.` : null} />
+            </div>
+          {/if}
+
+          {#each idleSlots as character (character.slot)}
+            <div class="rostercard" class:locked={!character.unlocked}>
+              <span class="dim small">
+                Slot {character.slot}:
+                {#if !character.unlocked}
+                  locked - opens at Town Hall {SLOT_UNLOCK_TOWN_HALL[character.slot - 1]} (you are at {townHall})
+                {:else}
+                  empty - breed a character to fill it
+                {/if}
+              </span>
+            </div>
+          {/each}
+
+          <h3>Village</h3>
+          <dl class="stats">
+            <div>
+              <dt>Population</dt>
+              <dd class:over={populationOver} data-testid="population">
+                {formatNumber(Number(snap.CurrentPopulationCount))}/{formatNumber(Number(snap.CachedMaxPopulationCapacity))}
+              </dd>
+            </div>
+            <div><dt>Town Hall</dt><dd>{snap.TownHallLevel}</dd></div>
+            <div><dt>Forge</dt><dd>{snap.ForgeLevel}</dd></div>
+            <div><dt>Workshop</dt><dd>{snap.CraftingWorkshopLevel}</dd></div>
+          </dl>
+          <DisabledReason text={populationOver ? 'Over capacity - more people than your houses hold.' : null} />
+        </section>
+
+        <!-- Task 85: standing orders, beside the jobs they change - for the
+             person the switcher is on. -->
+        <AutomationRulesPanel characterId={selected?.id} />
+      </div>
+    {/if}
   </div>
 {/if}
 
 <style>
-  .char-head {
+  .page {
+    display: grid;
+    gap: 0.75rem;
+    padding: 1rem;
+    max-width: 60rem;
+    margin: 0 auto;
+    align-content: start;
+  }
+
+  /* ------------------------------------------------------------ switcher */
+  /* Modul: --sa-top, not 0: a sticky offset is measured from the scrollport
+     edge, which on an edge-to-edge phone is under the status bar (the same
+     reason ConnectionNotice uses it). One below that banner's 30, so a
+     connection notice still wins when both are pinned. */
+  .switcher {
+    position: sticky;
+    top: var(--sa-top, 0px);
+    z-index: 29;
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.55rem 0.7rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  }
+
+  .me {
     display: flex;
     align-items: center;
     gap: 0.6rem;
-    flex-wrap: wrap;
+    min-width: 0;
   }
 
-  .char-head h2 {
-    margin: 0;
-    flex: 1;
+  .portrait {
+    flex-shrink: 0;
+    display: inline-flex;
+  }
+
+  .ident {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: grid;
+    gap: 0.1rem;
+  }
+
+  /* A 24-character name WRAPS rather than being cut or crushing "Lv": the
+     line is allowed to break anywhere, and the level keeps its own width. */
+  .nameline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.5rem;
+  }
+
+  .name {
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+    min-width: 0;
+  }
+
+  .lv {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  .sub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+  }
+
+  .sub .act {
+    color: var(--good);
+    overflow-wrap: anywhere;
+  }
+
+  .sub .act.idle {
+    color: var(--text-dim);
   }
 
   .face {
     position: relative;
+    flex-shrink: 0;
     padding: 0;
     border: 0;
     background: transparent;
     min-width: 44px;
     min-height: 44px;
-    flex-shrink: 0;
   }
 
   .chest-badge {
@@ -795,162 +844,171 @@
     line-height: 1.1rem;
   }
 
-  /* The requirement on a gear row - dim when met, loud when not, because the
-     only time it needs attention is when it is the reason Wear will refuse. */
-  .req {
-    font-size: 0.7rem;
-    opacity: 0.6;
+  .people {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+    gap: 0.35rem;
+  }
+
+  .person {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-height: 44px;
+    min-width: 0;
+    padding: 0.25rem 0.45rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: inherit;
+    font: inherit;
+    font-size: 0.8rem;
+    cursor: pointer;
+  }
+
+  .person.on {
+    border-color: var(--accent);
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  /* Ellipsis is the cut that says so (clipping-check allows it); the full
+     name is on the card above once the person is chosen. */
+  .pname {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .req.unmet {
-    opacity: 1;
-    color: var(--danger);
-    font-weight: 600;
-  }
 
-
-  .tools {
+  /* ---------------------------------------------------------------- tabs */
+  .tabs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.4rem;
-    margin-top: 0.6rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background: var(--bg-panel);
   }
 
-  .doll .who {
-    display: flex;
-    gap: 0.4rem;
-    margin-bottom: 0.8rem;
-    flex-wrap: wrap;
-  }
-
-  .slottab {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.1rem;
-    padding: 0.35rem 0.6rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--edge-soft);
-    background: rgba(255, 255, 255, 0.03);
-    cursor: pointer;
-    width: auto;
-    font-size: 0.82rem;
-  }
-
-  .slottab.on {
-    border-color: var(--accent);
-    background: var(--tint-selected);
-  }
-
-  .slottab:disabled {
-    cursor: not-allowed;
-    opacity: 0.5;
-  }
-
-  /* Modul: THE CHARACTER IS THE SUBJECT OF THIS SCREEN.
-     The middle column was `auto`, so it took only as much width as the picture
-     happened to need, and `align-items: start` parked that picture at the top.
-     Four gear slots down each side are much taller than a portrait and a name,
-     so the character ended up a small stamp with half a column of nothing
-     under it - the emptiest part of the screen sitting exactly where the eye
-     goes first. It gets the widest share now and is centred in its own
-     height. */
-  .rig {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.9fr) minmax(0, 1fr);
-    gap: 0.8rem;
-    align-items: stretch;
-  }
-
-  .rig .column {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-  }
-
-  .figure {
-    display: flex;
-    flex-direction: column;
+  .tabs button {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.35rem;
-    text-align: center;
+    min-height: 44px;
+    min-width: 0;
+    padding: 0.3rem 0.4rem;
+    border: 0;
+    border-left: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.85rem;
+    cursor: pointer;
   }
 
-  /* RaceIcon caps `xl` at 13rem, which was sized for the narrow middle column
-     that no longer exists. The column is the cap now. */
-  .figure :global(.race[data-size='xl'] img),
-  .figure :global(.race[data-size='xl'] .fallback) {
-    max-width: min(100%, 20rem);
+  .tabs button:first-child {
+    border-left: 0;
   }
 
-  /* Modul: on a phone three columns is one too many. The side rails squeezed
-     the portrait to a thumbnail between them, which is the complaint about
-     desktop only worse. The figure goes across the top at full width and the
-     gear sits under it in two columns - which is also the order it is read.
-     Placement is explicit rather than left to auto-flow: the figure sits
-     BETWEEN the two columns in the DOM, so auto-placement would put the left
-     rail above it.
-     52rem, the canonical tablet breakpoint, rather than the old one-off 46rem:
-     between the two the screen grid already runs two ~23rem tracks and the
-     doll sits in one of them, so three columns there was the squeeze this
-     rule exists to prevent. */
-  @media (max-width: 52rem) {
-    .rig {
-      grid-template-columns: 1fr 1fr;
-    }
+  .tabs button.on {
+    background: var(--accent);
+    color: var(--on-accent);
+    font-weight: 700;
+  }
 
-    .figure {
-      grid-column: 1 / -1;
-      grid-row: 1;
-      padding-bottom: 0.4rem;
-    }
+  .badge {
+    min-width: 1.2rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--on-accent);
+    font-size: 0.7rem;
+    line-height: 1.2rem;
+    font-weight: 700;
+  }
 
-    .rig > .column:first-of-type {
-      grid-column: 1;
-      grid-row: 2;
-    }
+  .tabs button.on .badge {
+    background: var(--on-accent);
+    color: var(--accent);
+  }
 
-    .rig > .column:last-of-type {
-      grid-column: 2;
-      grid-row: 2;
-    }
+  /* ---------------------------------------------------------------- gear */
+  .hpblock {
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.78rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .slots {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin-top: 0.7rem;
   }
 
   .gearslot {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: flex-start;
     gap: 0.15rem;
-    padding: 0.4rem;
+    min-width: 0;
+    min-height: 4.6rem;
+    padding: 0.3rem 0.2rem;
     border-radius: var(--radius-sm);
-    border: 1px dashed var(--edge-soft);
-    background: rgba(255, 255, 255, 0.02);
+    border: 1px dashed var(--border);
+    background: var(--bg);
+    color: inherit;
+    font: inherit;
     cursor: pointer;
-    width: 100%;
-    min-height: 4.4rem;
   }
 
   .gearslot.filled {
     border-style: solid;
+    border-color: var(--slot-rarity, var(--border));
   }
 
   .gearslot.open {
-    border-color: var(--accent);
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+
+  .slotname {
+    font-size: 0.68rem;
+    color: var(--text-dim);
+    line-height: 1.1;
+  }
+
+  .empty {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    font-size: 1.1rem;
+    color: var(--text-dim);
   }
 
   .gearname {
-    font-size: 0.72rem;
+    max-width: 100%;
+    font-size: 0.66rem;
     line-height: 1.15;
-    word-break: break-word;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .picker {
-    margin-top: 0.9rem;
+    margin-top: 0.7rem;
     padding: 0.6rem;
     border-radius: var(--radius-sm);
-    border: 1px solid var(--edge-soft);
-    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border);
+    background: var(--bg);
   }
 
   .picker header {
@@ -960,6 +1018,12 @@
     margin-bottom: 0.4rem;
   }
 
+  .picker header button,
+  .wornrow button,
+  .choices li button {
+    flex-shrink: 0;
+  }
+
   .wornrow {
     display: flex;
     align-items: center;
@@ -967,6 +1031,11 @@
     gap: 0.5rem;
     font-size: 0.85rem;
     margin-bottom: 0.3rem;
+  }
+
+  .wornname {
+    min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .choices {
@@ -987,28 +1056,92 @@
     font-size: 0.85rem;
   }
 
+  .cname {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.35rem;
+    align-items: baseline;
+    overflow-wrap: anywhere;
+  }
+
   .choices li button {
     margin-left: auto;
   }
 
-  .rostercard.locked {
-    opacity: 0.55;
+  /* The requirement on a gear row - dim when met, loud when not, because the
+     only time it needs attention is when it is the reason Wear will refuse. */
+  .req {
+    font-size: 0.7rem;
+    opacity: 0.6;
+    white-space: nowrap;
+  }
+  .req.unmet {
+    opacity: 1;
+    color: var(--danger);
+    font-weight: 600;
+  }
+
+  .sets {
+    list-style: none;
+    margin: 0.7rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.82rem;
+  }
+  .set-name {
+    font-weight: 600;
+    text-transform: capitalize;
+  }
+  .sets .good {
+    color: var(--good);
+  }
+  .sets .accent {
+    color: var(--accent);
+  }
+  .sets-none {
+    margin: 0.7rem 0 0;
+  }
+  .chests {
+    margin-top: 0.6rem;
+  }
+
+  /* ------------------------------------------------------------ attributes */
+  .shared {
+    margin: 0 0 -0.4rem;
+  }
+
+  /* ---------------------------------------------------------------- work */
+  .workgrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    gap: 0.75rem;
+    align-items: start;
   }
 
   .rostercard {
     padding: 0.5rem 0;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--border);
   }
 
-  .rostercard:last-of-type {
-    border-bottom: none;
+  .rostercard.locked {
+    opacity: 0.75;
+  }
+
+  .nowjob {
+    color: var(--good);
+  }
+  .nowjob.idle {
+    color: var(--text-dim);
   }
 
   .assign {
     display: flex;
     gap: 0.4rem;
     align-items: center;
-    margin-top: 0.35rem;
+    margin: 0.35rem 0 0.2rem;
   }
 
   .assign select {
@@ -1016,35 +1149,21 @@
     min-width: 0;
   }
 
-  .race {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.3rem;
+  .assign button {
+    flex-shrink: 0;
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
-    gap: 1rem;
-    padding: 1rem;
-    align-items: start;
+  dd.over {
+    color: var(--danger);
   }
 
-  /* Modul: the paper doll is not a sibling of the stat panels, it is the
-     screen. Three equal auto-fit columns gave it the same width as a list of
-     numbers, and that width is what squeezed the character between its own
-     gear. It takes two tracks once there is room for two. */
-  @media (min-width: 64rem) {
-    .doll {
-      grid-column: span 2;
-    }
-  }
-
+  /* ------------------------------------------------------------ shared */
   .panel {
     background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 1rem;
+    padding: 0.9rem;
+    min-width: 0;
   }
 
   h2 {
@@ -1064,8 +1183,8 @@
     color: var(--text-dim);
   }
   .small {
-    font-size: 0.8rem;
-    margin: 0 0 0.5rem;
+    font-size: 0.82rem;
+    margin: 0;
   }
   .tiny {
     font-size: 0.72rem;
@@ -1074,56 +1193,9 @@
     padding: 1rem;
   }
 
-  .vitals {
-    display: grid;
-    gap: 0.5rem;
-  }
-
-  .hpblock {
-    display: grid;
-    gap: 0.2rem;
-    font-size: 0.78rem;
-  }
-
-  .sets {
-    list-style: none;
-    margin: 0 0 0.75rem;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  .set-row {
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 0.4rem 0.55rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-  }
-  .set-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    gap: 0.5rem;
-  }
-  .set-name {
-    text-transform: capitalize;
-  }
-  .set-pay {
-    display: flex;
-    flex-direction: column;
-    font-size: 0.85rem;
-  }
-  .set-pay .good {
-    color: var(--good);
-  }
-  .set-pay .accent {
-    color: var(--accent);
-  }
   .stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.4rem;
     margin: 0;
   }
@@ -1131,6 +1203,7 @@
   .stats div {
     display: grid;
     gap: 0.1rem;
+    min-width: 0;
   }
 
   dt {
@@ -1142,11 +1215,7 @@
     margin: 0;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
-  }
-
-  .slotname {
-    font-size: 0.75rem;
-    padding-top: 0.1rem;
+    overflow-wrap: anywhere;
   }
 
   .tiny-btn {
@@ -1154,23 +1223,13 @@
     padding: 0.2rem 0.45rem;
   }
 
-  .rosterrow {
-    display: grid;
-    grid-template-columns: 4rem auto 1fr;
-    gap: 0.4rem;
-    align-items: baseline;
-    font-size: 0.82rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.3rem;
-    margin-bottom: 0.3rem;
-  }
-
-  .rosterrow span:last-child {
-    grid-column: 1 / -1;
-    color: var(--good);
-  }
-
-  .rosterrow span.idle {
-    color: var(--text-dim);
+  /* Wider screens: bigger tiles, the same four columns. */
+  @media (min-width: 52rem) {
+    .gearslot {
+      min-height: 5.6rem;
+    }
+    .gearname {
+      font-size: 0.74rem;
+    }
   }
 </style>

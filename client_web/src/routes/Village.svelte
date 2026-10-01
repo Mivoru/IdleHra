@@ -4,7 +4,17 @@
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { queryKeys, fetchVillageQuote, type VillageQuoteLine } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
-  import { BUILDINGS, upgradeBuilding, villageUpgradeDurationSeconds, formatDuration, villageUpgradeBlockedReason, TOWN_HALL_BUILDING_ID } from '../lib/net/commands';
+  import {
+    BUILDINGS,
+    upgradeBuilding,
+    villageUpgradeDurationSeconds,
+    formatDuration,
+    villageUpgradeBlockedReason,
+    maxBuildingLevelCeiling,
+    MAX_STRUCTURAL_BUILDING_LEVEL,
+    TOWN_HALL_BUILDING_ID,
+    CRAFTING_WORKSHOP_BUILDING_ID,
+  } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import type { StateUpdate } from '../lib/net/protocol.generated';
   import VillageFolk from '../lib/ui/VillageFolk.svelte';
@@ -97,6 +107,56 @@
     pendingTotal > 0 ? Math.max(0, Math.min(1, (pendingTotal - pendingRemaining) / pendingTotal)) : 0,
   );
 
+  // Modul: AFFORDABLE FIRST (task 103). The list was in a fixed order with a
+  // lone level number, a half-width button floating left on every row, and
+  // "Maxed" as a disabled button - so the one upgrade a player could actually
+  // make looked exactly like the seven they could not. Now the row being built
+  // leads, then what can be afforded (the only FILLED Upgrade button), then
+  // what is short (with what is missing), then what is capped (plain text, no
+  // control). Within a group the order is BUILDINGS' own, so Town Hall still
+  // leads its group.
+  type RowState = 'building' | 'ready' | 'short' | 'loading' | 'capped';
+  const STATE_RANK: Record<RowState, number> = { building: 0, ready: 1, short: 2, loading: 2, capped: 3 };
+
+  function isStructural(buildingId: number): boolean {
+    return buildingId === TOWN_HALL_BUILDING_ID || buildingId === CRAFTING_WORKSHOP_BUILDING_ID;
+  }
+
+  /** The level this building can reach right now - the "/ 5" of "Lv 4 / 5". */
+  function ceilingOf(buildingId: number): number {
+    return isStructural(buildingId) ? MAX_STRUCTURAL_BUILDING_LEVEL : maxBuildingLevelCeiling(townHallLevel);
+  }
+
+  /** "Maxed" only when nothing can raise it further; otherwise it is the Town Hall that caps it. */
+  function cappedLabel(buildingId: number): string {
+    if (isStructural(buildingId)) return 'Maxed';
+    return townHallLevel >= MAX_STRUCTURAL_BUILDING_LEVEL ? 'Maxed' : 'Town Hall cap';
+  }
+
+  const rows = $derived.by(() => {
+    if (!snap) return [];
+    const list = BUILDINGS.map((building, order) => {
+      const level = levelOf(snap, building.stateField);
+      const blocked = villageUpgradeBlockedReason(building.id, level, townHallLevel);
+      const lines = linesFor(building.id);
+      const missing = shortfall(lines);
+      const state: RowState =
+        building.id === pendingId
+          ? 'building'
+          : blocked !== null
+            ? 'capped'
+            : lines === null
+              ? 'loading'
+              : missing !== null
+                ? 'short'
+                : 'ready';
+      return { building, order, level, ceiling: ceilingOf(building.id), blocked, lines, missing, state };
+    });
+    return list.sort((a, b) => STATE_RANK[a.state] - STATE_RANK[b.state] || a.order - b.order);
+  });
+
+  const householdOver = $derived(snap ? snap.CurrentPopulationCount > snap.CachedMaxPopulationCapacity : false);
+
   function upgrade(buildingId: number) {
     const outcome = upgradeBuilding(buildingId);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
@@ -119,17 +179,38 @@
   <p class="dim pad">Waiting for the first state snapshot...</p>
 {:else}
   <div class="grid">
-    <!-- Modul: the people, before the buildings. The village's reason to exist
-         is the blood it brings in; the buildings are how it gets better at
-         it. -->
-    <VillageFolk />
-    <section class="panel">
+    <!-- Modul: THE BUILDINGS FIRST (task 103). The gene pool led this page,
+         so at 390px the first building started about 1,050px down, after
+         ~260px of prose - and a new player met marriage and bloodlines before
+         the one thing they could act on. The people follow the buildings now;
+         the Inn row says it is what feeds them. -->
+    <section class="panel village">
       <div class="head">
         <h2>Village</h2>
-        <span class="dim tiny">
-          {snap.CurrentPopulationCount}/{snap.CachedMaxPopulationCapacity} population
+        <!-- Modul: LABELLED, and it is not the gene pool's number. This is
+             CurrentPopulationCount - every character the account owns
+             (VillageManagementEngine counts CharacterRecords) - against
+             10 + 5 x Inn. Nothing on the server enforces that capacity: no
+             handler reads it. So going over it is marked and said to cost
+             nothing; the Hall of Ancestors' cap is what culls at a rebirth.
+             The fixture's 184/35 is a real reading of that, not a seeding
+             artefact - any player who breeds past 35 shows the same. -->
+        <span
+          class="household"
+          class:over={householdOver}
+          data-testid="village-household"
+          title="Characters in your line, against the housing the Inn provides"
+        >
+          Household {snap.CurrentPopulationCount} / {snap.CachedMaxPopulationCapacity} housing
+          {#if householdOver}<span class="over-word">over</span>{/if}
         </span>
       </div>
+      {#if householdOver}
+        <p class="dim tiny over-note">
+          More people than the Inn houses. Nobody is turned away or lost for it
+          today; at a rebirth only the Hall of Ancestors' cap decides who stays.
+        </p>
+      {/if}
 
       <!-- Modul: no stock row. It showed Wood / Stone / Iron ore, legacy
            stocks no upgrade spends, above prices in logs and ores that were
@@ -167,44 +248,59 @@
       {/if}
 
       <ul class="buildings">
-        {#each BUILDINGS as building}
-          {@const level = levelOf(snap, building.stateField)}
+        {#each rows as row (row.building.id)}
           <!-- Modul: THE BUTTON REFUSES BEFORE THE SERVER DOES.
                A capped building's Upgrade click used to travel, get rolled back
                with MaxTierReached or TownHallCeilingReached, and show the player
-               nothing at all - an enabled button that did nothing and said
-               nothing. The ceilings are mirrored in commands.ts so the reason
-               can be stated here instead of discovered by pressing. The server
-               still enforces both.
-
-               `{@const}` has to be an immediate child of the `{#each}`, which
-               is why it sits here rather than beside the button it feeds. -->
-          {@const blocked = villageUpgradeBlockedReason(building.id, level, townHallLevel)}
-          {@const lines = linesFor(building.id)}
-          {@const missing = shortfall(lines)}
-          <li class:upgrading={building.id === pendingId}>
-            <span class="name">
-              <!-- Modul: the stopwatch marks WHICH building is busy. Greying
-                   every button said "something is happening"; it did not say
-                   what, and the row that was actually being worked on looked
-                   exactly like the eleven that were not. -->
-              {#if building.id === pendingId}
-                <Stopwatch size={12} label="Upgrade in progress" />
+               nothing at all. The ceilings are mirrored in commands.ts so the
+               reason can be stated here instead of discovered by pressing. A
+               capped row has no button at all now - "Maxed" is a fact, not a
+               control. The server still enforces both. -->
+          <li
+            class:upgrading={row.state === 'building'}
+            data-testid="village-building"
+            data-building-id={row.building.id}
+            data-state={row.state}
+          >
+            <div class="top">
+              <span class="name">
+                <!-- Modul: the stopwatch marks WHICH building is busy. -->
+                {#if row.state === 'building'}
+                  <Stopwatch size={12} label="Upgrade in progress" />
+                {/if}
+                <strong>{row.building.name}</strong>
+                <span class="lvl" data-testid="village-building-level">Lv {row.level} / {row.ceiling}</span>
+              </span>
+              {#if row.state === 'building'}
+                <span class="status">{pendingRemaining > 0 ? formatDuration(pendingRemaining) : 'finishing...'}</span>
+              {:else if row.state === 'capped'}
+                <span class="status dim">{cappedLabel(row.building.id)}</span>
+              {:else}
+                <button
+                  type="button"
+                  class="upgrade"
+                  class:primary={row.state === 'ready' && pendingId === 0}
+                  disabled={pendingId !== 0 || row.state !== 'ready'}
+                  title={pendingId !== 0
+                    ? 'Another upgrade is already in progress'
+                    : (row.missing ?? 'Upgrade to the next level')}
+                  onclick={() => upgrade(row.building.id)}
+                >
+                  Upgrade
+                </button>
               {/if}
-              {building.name}
-              <!-- Modul: WHAT IT DOES AND WHAT IT COSTS.
-                   The village listed a name, a level and an Upgrade button, so
-                   raising anything was a gamble with an invisible price against
-                   an unexplained benefit - and the most valuable one, the
-                   Forge, gates fusion rarity without ever saying so. -->
-              <span class="what dim tiny">{building.what}</span>
-            </span>
-            <span class="lvl">{level}</span>
+            </div>
+            <!-- Modul: WHAT IT DOES AND WHAT IT COSTS. The village listed a
+                 name, a level and an Upgrade button, so raising anything was a
+                 gamble with an invisible price against an unexplained benefit -
+                 and the most valuable one, the Forge, gates fusion rarity
+                 without ever saying so. -->
+            <span class="what dim tiny">{row.building.what}</span>
             <span class="cost tiny">
-              {#if blocked !== null}
-                <span class="dim">{blocked}</span>
-              {:else if lines}
-                {#each lines as line (line.ItemId)}
+              {#if row.blocked !== null}
+                <span class="dim">{row.blocked}</span>
+              {:else if row.lines}
+                {#each row.lines as line (line.ItemId)}
                   <span class="line" class:short={heldOf(line) < line.Quantity}>
                     {formatNumber(Math.min(heldOf(line), line.Quantity))}/{formatNumber(line.Quantity)}
                     {lineName(line)}
@@ -213,34 +309,16 @@
               {:else}
                 <span class="dim">...</span>
               {/if}
-              <!-- Modul: "Not enough" said that, not WHAT - the shortfall
-                   lived only in the button's title, which a phone never
-                   shows. The same goes for the one-upgrade-at-a-time rule. -->
-              {#if blocked === null}
+              <!-- Modul: the shortfall in words, on the row - a phone never
+                   shows a disabled button's title. The same goes for the
+                   one-upgrade-at-a-time rule. -->
+              {#if row.blocked === null && row.state !== 'building'}
                 <DisabledReason
-                  text={missing ??
-                    (pendingId !== 0 && building.id !== pendingId ? 'Another upgrade is already in progress.' : null)}
+                  text={row.missing ??
+                    (pendingId !== 0 ? 'Another upgrade is already in progress.' : null)}
                 />
               {/if}
             </span>
-            <button
-              class="tiny-btn"
-              disabled={pendingId !== 0 || blocked !== null || missing !== null}
-              title={blocked !== null
-                ? blocked
-                : pendingId !== 0
-                  ? 'Another upgrade is already in progress'
-                  : (missing ?? 'Upgrade to the next level')}
-              onclick={() => upgrade(building.id)}
-            >
-              {building.id === pendingId
-                ? formatDuration(pendingRemaining)
-                : blocked !== null
-                  ? 'Maxed'
-                  : missing !== null
-                    ? 'Not enough'
-                    : 'Upgrade'}
-            </button>
           </li>
         {/each}
       </ul>
@@ -253,11 +331,13 @@
            into THIS season's line - which was written down in the server and
            nowhere a player could read it. See docs/breeding_model.md. -->
       <p class="dim tiny">
-        The <strong>Inn</strong> is what feeds the gene pool above: arrivals,
+        The <strong>Inn</strong> is what feeds the gene pool below: arrivals,
         capacity and how high a newcomer's aptitudes can roll all come off its
         level. Buildings survive the season; the people in the village do not.
       </p>
     </section>
+
+    <VillageFolk />
 
     <!-- Task 84: the long material sink. Buildings survive a rebirth and so
          do these; they are the destination for the stacks a rebirth deletes. -->
@@ -298,6 +378,11 @@
     display: grid;
     gap: 0.35rem;
     margin: 0 0 0.6rem;
+    padding: 0.45rem 0.6rem;
+    background: rgba(74, 163, 223, 0.12);
+    border-left: 3px solid var(--accent);
+    border-radius: 4px;
+    font-size: 0.82rem;
   }
 
   .pending-line {
@@ -325,40 +410,6 @@
     transition: width 1s linear;
   }
 
-  li.upgrading {
-    border-left: 2px solid var(--accent);
-    padding-left: 0.4rem;
-  }
-  .what {
-    display: block;
-    max-width: 34ch;
-    line-height: 1.25;
-  }
-
-  /* Modul: WRAPS AT THE PLUS SIGNS. This was `white-space: nowrap`, and the
-     `auto` grid track holding it could therefore never be narrower than
-     "2 690g + 100 Willow Log + 100 Hematite Ore". The row forced itself 151px
-     wider than the panel, so the price of an upgrade was cut off mid-word
-     ("100 Willow L") and painted over the panel beside it. A cost that reads
-     as a smaller number than it is, is worse than a cost on two lines. */
-  .cost {
-    overflow-wrap: break-word;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.1rem 0.6rem;
-  }
-
-  .cost .line {
-    color: var(--text-dim);
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* The word carries it too ("Not enough" on the button, the shortfall in its
-     title), so this is never colour-only. */
-  .cost .line.short {
-    color: var(--danger);
-  }
-
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
@@ -367,23 +418,54 @@
     align-items: start;
   }
 
+  /* Modul: the bottom gap clears the corner bracket app.css paints 4px in
+     from each corner (18px tall), so the closing note never sits on it. On a
+     phone app.css forces every panel to 0.7rem, so the last child carries the
+     gap there. */
   .panel {
     background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 1rem;
+    padding: 1rem 1rem 1.5rem;
+  }
+
+  @media (max-width: 40rem) {
+    .panel > :last-child {
+      margin-bottom: 0.75rem;
+    }
   }
 
   .head {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     align-items: baseline;
-    gap: 1rem;
+    gap: 0.3rem 1rem;
   }
 
   h2 {
     margin: 0 0 0.5rem;
     font-size: 1.05rem;
+  }
+
+  .household {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Over the Inn's housing: said in a word as well as a colour. */
+  .household.over {
+    color: var(--warn);
+  }
+
+  .over-word {
+    font-weight: 700;
+    margin-left: 0.2rem;
+  }
+
+  .over-note {
+    margin: -0.2rem 0 0.5rem;
   }
 
   .dim {
@@ -396,159 +478,115 @@
     padding: 1rem;
   }
 
-  .pending {
-    padding: 0.45rem 0.6rem;
-    background: rgba(74, 163, 223, 0.12);
-    border-left: 3px solid var(--accent);
-    border-radius: 4px;
-    font-size: 0.82rem;
-    margin: 0 0 0.6rem;
+  .panel > p {
+    margin: 0.4rem 0 0;
   }
 
-  .buildings,
-  .slots {
+  .buildings {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.3rem;
+    gap: 0.35rem;
   }
 
-  .buildings li,
-  .slots li {
+  /* Modul: A ROW IS A NAME LINE AND A DETAIL LINE, not a grid of tracks.
+     As `1fr auto auto` the cost column could never be narrower than its own
+     content, so "2 690g + 100 Willow Log + 100 Hematite Ore" pushed the row
+     151px past the panel - cut off mid-word and painted over the panel beside
+     it. The name, its level pill and the action share the top line (the
+     action pinned right, the same shape on every row); what it does and what
+     it costs wrap underneath at whatever width the panel happens to be. */
+  .buildings li {
     display: grid;
-    grid-template-columns: 1fr auto auto;
-    gap: 0.5rem;
-    align-items: center;
+    gap: 0.15rem;
     font-size: 0.85rem;
     border-bottom: 1px solid var(--border);
-    padding-bottom: 0.28rem;
+    padding-bottom: 0.35rem;
+    min-width: 0;
   }
 
-  .slots li {
-    grid-template-columns: auto 1fr auto;
+  li.upgrading {
+    border-left: 2px solid var(--accent);
+    padding-left: 0.4rem;
   }
 
-  /* Modul: THE COST TAKES ITS OWN LINE RATHER THAN SQUEEZING THE NAME.
-     As a grid of `1fr auto auto` the cost column could never be narrower than
-     its own content, so "2 690g + 100 Willow Log + 100 Hematite Ore" pushed
-     the row 151px past the panel - where it was cut off mid-word and painted
-     over the panel beside it. Letting the cost merely WRAP fixed the clipping
-     and replaced it with a second defect: the auto track still claimed most of
-     the row, and the description beside it came out one word, sometimes one
-     syllable, per line.
+  .top {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
 
-     Flex with a basis instead of fixed tracks. Name and cost sit side by side
-     while both fit and the cost drops to its own line when they do not, at
-     whatever width the panel happens to be - the panel's width comes from the
-     grid it sits in, not from the viewport, so a breakpoint would be guessing
-     at the wrong number. min-width: 0 is load-bearing: a flex item defaults to
-     min-content and would refuse to shrink, which is the trap the grid had. */
-  .buildings li {
+  /* Modul: NOT `white-space: nowrap` on anything that holds prose - nowrap is
+     inherited, and it once cut "Raises the level ceiling every other building
+     i" off on every row. */
+  .name {
+    flex: 1 1 auto;
+    min-width: 0;
     display: flex;
     flex-wrap: wrap;
-    gap: 0.35rem 0.5rem;
-  }
-
-  .buildings li .name {
-    flex: 1 1 11rem;
-  }
-
-  .buildings li .lvl {
-    flex: none;
-  }
-
-  .buildings li .cost {
-    flex: 1 1 12rem;
-    min-width: 0;
-  }
-
-  .buildings li button {
-    flex: none;
-  }
-
-  /* Modul: EVERY UPGRADE BUTTON THE SAME SIZE.
-     Each `li` is its own grid, so its `1fr` column is sized by that row's own
-     content - and the cost text differs per building ("100 logs + 100 ore"
-     against "980g + 225 logs + 225 ore"). The button wraps onto the second
-     row into that column, so it inherited a different width on every line and
-     the list read as nine buttons of nine sizes.
-
-     Pinned to a fixed width and left-aligned instead: the control is the same
-     control on every row, so it should be the same shape.
-
-     `min()` rather than a flat 11rem: a fixed width is also a floor on the
-     column's min-content, so in a panel squeezed to one grid track the button
-     alone kept the row wider than the panel. It gives way before the row
-     does, and only then. */
-  .buildings li button {
-    justify-self: start;
-    width: min(11rem, 100%);
-  }
-
-  .slots select {
-    font: inherit;
-    color: inherit;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.25rem 0.4rem;
-    font-size: 0.8rem;
-    min-width: 0;
-  }
-
-  .tier {
-    color: var(--accent);
-  }
-
-  .tools {
-    display: flex;
-    gap: 0.5rem;
-    margin-bottom: 0.7rem;
-  }
-
-  .tool {
-    display: grid;
-    place-items: center;
-    width: 3.4rem;
-    height: 3.4rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--bg);
-  }
-
-  .tool img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-
-  /* Modul: NOT `white-space: nowrap` - this span WRAPS A PARAGRAPH.
-     `.name` holds the building name AND the `.what` block that explains what
-     upgrading it does. nowrap is inherited, so that whole sentence was laid
-     out on one line and `overflow: hidden` then cut it off: "Raises the level
-     ceiling every other building i". 512px of the explanation was invisible on
-     every row, and the explanation is the only reason the row is there. */
-  .name {
-    min-width: 0;
+    align-items: center;
+    gap: 0.2rem 0.45rem;
     overflow-wrap: break-word;
   }
 
   .lvl {
-    font-weight: 700;
+    font-size: 0.7rem;
+    padding: 0 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    color: var(--text-dim);
     font-variant-numeric: tabular-nums;
-    min-width: 1.5rem;
-    text-align: right;
+    white-space: nowrap;
   }
 
-  .mana {
-    display: grid;
-    gap: 0.15rem;
-    margin-bottom: 0.7rem;
+  .status {
+    flex: none;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
   }
 
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
+  .upgrade {
+    flex: none;
+    flex-shrink: 0;
+    min-width: 6.5rem;
+    font-size: 0.8rem;
+    padding: 0.3rem 0.7rem;
+  }
+
+  /* The one upgrade that can actually be made, filled. Everything else is an
+     outline at most. */
+  .upgrade.primary {
+    background-color: var(--brass);
+    background-image: none;
+    border-color: var(--brass-lit);
+    color: var(--bg);
+    font-weight: 700;
+  }
+
+  .what {
+    display: block;
+    max-width: 52ch;
+    line-height: 1.25;
+  }
+
+  .cost {
+    overflow-wrap: break-word;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.1rem 0.6rem;
+    min-width: 0;
+  }
+
+  .cost .line {
+    color: var(--text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The words carry it too (the shortfall sentence beside it), so this is
+     never colour-only. */
+  .cost .line.short {
+    color: var(--danger);
   }
 </style>

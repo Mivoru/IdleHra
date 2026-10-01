@@ -274,6 +274,23 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task GoldItself_CannotBeSoldOrBinned()
+        {
+            var player = await CreatePlayerAsync();
+            long before = await GoldAsync(player.Id);
+
+            foreach (bool sell in new[] { true, false })
+            {
+                await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+                var result = await VillageChestEngine.RemoveMaterialAsync(db, player.Id, "gold", 500, sell);
+                Assert.Equal(VillageChestEngine.ChestActionResult.NotRemovable, result.Result);
+                Assert.Equal(0, result.GoldGained);
+            }
+
+            Assert.Equal(before, await GoldAsync(player.Id));
+        }
+
+        [Fact]
         public async Task TheLoginReward_IsIncome_OncePerDay()
         {
             var player = await CreatePlayerAsync();

@@ -26,6 +26,11 @@
   import { locationName } from './locations';
   import { rarityName } from './rarity';
 
+  // Modul: TASK 97 - the Character screen's person switcher drives this panel,
+  // so it shows the ONE person on screen. Without a characterId it lists every
+  // fielded character, as it did before.
+  const { characterId }: { characterId?: string } = $props();
+
   const client = useQueryClient();
   const view = createQuery(() => ({ queryKey: queryKeys.automationRules, queryFn: fetchAutomationRules }));
   const v = $derived(view.data);
@@ -114,24 +119,44 @@
     }
   }
 
+  const shown = $derived(
+    v ? (characterId ? v.Characters.filter((c) => c.CharacterId === characterId) : v.Characters) : [],
+  );
+
+  // Modul: BELOW THE FIRST UNLOCK, ONE LINE. A new player met twelve dead
+  // controls ("Opens at level 20/40/60" three times per person) and a disabled
+  // Save - a whole panel of things they could not do. Until the first slot
+  // opens there is nothing to set, so there is nothing to show but when.
+  const firstUnlock = $derived(v?.UnlockLevels[0] ?? 0);
+  const collapsed = $derived(v !== undefined && v.Level < firstUnlock);
+
   const tiers = $derived(v ? Array.from({ length: v.MaxFuseTier - 1 }, (_, i) => i + 2) : []);
 </script>
 
 <section class="panel orders" data-testid="orders-panel">
   <h2>Orders</h2>
+  {#if v && collapsed}
+    <p class="dim small" data-testid="orders-collapsed">
+      Standing orders - what your people do on their own after a death or when
+      the larder runs dry - open at level {firstUnlock}. You are level {v.Level}.
+    </p>
+  {:else}
   <p class="dim small">
     Standing orders your characters follow on their own - watched or away. One
-    slot opens at each of level 20, 40 and 60.
+    slot opens at each of level {v ? v.UnlockLevels.join(', ') : '20, 40 and 60'}.
   </p>
+  {/if}
 
-  {#if view.isPending}
+  {#if v && collapsed}
+    <!-- Nothing to set yet: see the line above. -->
+  {:else if view.isPending}
     <p class="dim tiny">Reading your orders&hellip;</p>
   {:else if view.isError || !v}
     <p class="warn">Your orders could not be loaded.</p>
-  {:else if v.Characters.length === 0}
+  {:else if shown.length === 0}
     <p class="dim">No character is in a slot yet.</p>
   {:else}
-    {#each v.Characters as character (character.CharacterId)}
+    {#each shown as character (character.CharacterId)}
       {@const rules = drafts[character.CharacterId] ?? character.Rules}
       <div class="who" data-testid="orders-character" data-character-id={character.CharacterId}>
         <h3>Slot {character.Slot + 1}{character.Name ? ` - ${character.Name}` : ''}</h3>

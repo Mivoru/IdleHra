@@ -77,9 +77,25 @@
 </section>
 
 <style>
+  /* Modul: ITS OWN SURFACE AND A BOTTOM GAP (task 103). Breeding.svelte's
+     `.panel` rule is scoped and never reached this component, so the panel had
+     no padding at all and its footer line ran onto the corner bracket app.css
+     paints 4px in from each corner (18px tall) - the same defect as the
+     village gene pool. On a phone app.css forces every panel to 0.7rem, so the
+     footer carries the gap there. */
   .apt {
     display: grid;
     gap: 0.5rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1rem 1.5rem;
+  }
+
+  @media (max-width: 40rem) {
+    .apt .foot {
+      margin-bottom: 0.75rem;
+    }
   }
 
   h3 {

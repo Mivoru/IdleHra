@@ -39,7 +39,9 @@
   {:else}
     <span class="initial" aria-hidden="true">{initial}</span>
   {/if}
-  <CosmeticFrame {frameId} />
+  <!-- Task 108: only a face shown on its own pulses its frame; a row of them
+       (chat, boards, a roster) glows still. -->
+  <CosmeticFrame {frameId} animate={size === 'lg'} />
 </span>
 
 <style>

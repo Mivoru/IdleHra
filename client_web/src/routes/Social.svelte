@@ -263,20 +263,22 @@
     <h2>Guilds</h2>
 
     <div class="adder">
-      <!-- Modul: 32, not the server's 100 (GuildManagementEngine.CreateGuildAsync).
-           A 100-character unbroken name overflows toasts and rosters; the
-           server cap should come down to match. -->
+      <!-- Modul: 32, the same as the server's cap
+           (GuildManagementEngine.MaxGuildNameLength, task 94). A 100-character
+           unbroken name overflowed toasts and rosters. -->
       <input placeholder="New guild name" maxlength="32" bind:value={newGuildName} disabled={joinLocked} />
       <button disabled={busy || !newGuildName.trim() || joinLocked} onclick={createGuild}>Create</button>
     </div>
     {#if statistics.isError && statistics.data === undefined}
       <QueryError query={statistics} what="your guild membership" />
     {:else if hasGuild}
-      <!-- Modul: this said "Leave it first", and there is no way to leave:
-           GuildManagementEngine.LeaveGuildAsync has no route and no caller,
-           client or server. Until a Leave route exists, say what is true
-           rather than instruct the impossible - reword it when one lands. -->
-      <p class="dim tiny">You are already in a guild, and a player belongs to one guild at a time.</p>
+      <!-- Modul: this once said "Leave it first" when there was no way to
+           leave (LeaveGuildAsync had no route). Task 94 added one, on the
+           Guild tab, so the instruction can point at it. -->
+      <p class="dim tiny">
+        You are in a guild, and a player belongs to one at a time. Leave it from the Guild tab to join or
+        found another.
+      </p>
     {/if}
 
     {#if guilds.isPending}

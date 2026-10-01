@@ -6322,7 +6322,12 @@ A guard test flags `createQuery` in a file with no error handling.
 
 ## 94. Leave guild
 
-**OPEN.** Report section 4.F (states audit F11).
+**BUILT on branch `claude/ui-94-leave-guild`, not merged.** Report section 4.F (states audit F11).
+Open: the 390 px screenshot of the armed confirm and the `exercise.mjs` run are
+the coordinator's (not run here). When the fixture is a guild's last member the
+exercise step closes and refounds it, so that guild's depot, treasury and buffs
+reset each run. A closed guild's depot/buff/war rows are left orphaned, as
+before. The guild-name cap is now 32 on the server too.
 
 **What is actually true.**
 - `Social.svelte:245-246` tells a guild member "Leave it first to join or
@@ -6440,7 +6445,15 @@ N1-N7.
 
 ## 96. Settings
 
-**OPEN.** Report section 5. This is visual review C, S1-S5.
+**BUILT on branch `claude/ui-96-settings`, not merged.** One column of
+closed panels (`lib/ui/SettingsFold.svelte`, open state remembered per
+browser), Account with Sign out first and never folded; explanations list only
+the seen ones plus "N more unlock as you play"; translation keys/coverage, cue
+tester and Session moved into an admin-only Developer panel; admin grid
+`minmax(min(300px, 100%), 1fr)`. Still open: the page height, Sign out's
+position and 360 px fit are unmeasured (no browser run on the branch), and
+`exercise.mjs` step 5 was rewritten for the folds and has not been run. Owner:
+the screenshot. Report section 5. This is visual review C, S1-S5.
 
 **What is actually true.**
 - **The page is 7,417 px tall at 390** (`settings-fixture-390.png`).
@@ -6487,7 +6500,14 @@ N1-N7.
 
 ## 97. Character: gear first on a phone
 
-**OPEN.** Report sections 4.H and 8. This is visual review A2, CH-1 to CH-10.
+**BUILT on branch `claude/ui-97-character`, not merged.** Still open: run
+`exercise.mjs` (new gear-grid, take-off/re-wear and tab-aware steps) and the
+four geometry checkers on the merge; a 390 px guest screenshot for the owner;
+check by scrolling that the switcher actually sticks on a phone; a 24-character
+person name looked at, not just reasoned about. Attributes stay account-wide
+and health is slot 1's only (no per-person wire data for either); DPS is the
+server projection's monster health over seconds-per-kill. Report sections 4.H
+and 8. This is visual review A2, CH-1 to CH-10.
 
 **What is actually true.**
 - **The gear slots are about 1,500 px down at 390 px**, behind
@@ -6538,7 +6558,7 @@ N1-N7.
 
 ## 98. Combat: phone redesign
 
-**OPEN.** Report sections 4.H and 8. This is visual review A1, C1-C11.
+**BUILT on branch `claude/ui-98-108-combat-gpu`, not merged.** Report sections 4.H and 8. This is visual review A1, C1-C11. Left open: nothing was run against a live stack - exercise.mjs (updated: "Stand down", the boss fold, the estimate line), check:perf, the geometry checkers and the owner's screenshot; the fold hides "Young blood", which CAN be met on a first clear (owner call); the strip sits under a sticky header only if that header sets `--sticky-header-h`.
 
 **What is actually true.**
 - **The first Fight is about y 915 at 390 px** (about y 1060 for a guest),
@@ -6592,7 +6612,14 @@ N1-N7.
 
 ## 99. Chest: rows with stats, a Worn group, no Gold row
 
-**OPEN.** Report sections 4.I and 8. This is visual review B1, C1-C9 and
+**BUILT on branch `claude/ui-99-chest`, not merged.** Left open: Sell shows
+no number, because the price (`VillageChestEngine.ValueEquipment`) never
+reaches the client and a client copy of it would be a second source; the
+server would have to send it on the inventory row. The server still lets
+`/api/v1/chest/sell` and `/discard` take `"gold"`, deleting it for 0 (it has
+no items.json price), so the client hiding the row is the only guard.
+`exercise.mjs`, `check:perf` and the geometry checkers have not been run on it.
+Report sections 4.I and 8. This is visual review B1, C1-C9 and
 M1-M3.
 
 **What is actually true.**
@@ -6800,7 +6827,7 @@ MC1-MC4.
 
 ## 103. Village: buildings first
 
-**OPEN.** Report sections 4.H and 8. This is visual review B2, V1-V7.
+**BUILT on branch `claude/ui-103-104-village-ancestors`, not merged.** Report sections 4.H and 8. This is visual review B2, V1-V7. The two fractions, checked against the server: "184/35" is REAL, not a fixture artefact - it is every character the account owns against 10 + 5 x Inn, and no handler enforces that capacity, so it is labelled "Household n / m housing" and marked over without claiming a penalty. "101/11" is a FIXTURE artefact (the seeder tops up 12 villagers with no regard for the cap), but note for the owner: elders still count against the newcomer cap and cannot be sent on, so a real player who marries in Inn+6 villagers stops arrivals for the rest of the season. Still open: no exercise step presses Upgrade (it spends and is not reversible; the new step checks the row shape read-only); a guest's first viewport at 390 px and the checkers were not measured on this branch; exercise.mjs (buildings, feast, Send on, Great Works deposit via the new sheet) was updated and not run.
 
 **What is actually true.**
 - **The page order is Gene pool → Village (buildings) → Great Works.** At
@@ -6847,7 +6874,7 @@ MC1-MC4.
 
 ## 104. Ancestors: carried vs lost
 
-**OPEN.** Report sections 4.H and 8. This is visual review B2, AN1-AN5.
+**BUILT on branch `claude/ui-103-104-village-ancestors`, not merged.** Report sections 4.H and 8. This is visual review B2, AN1-AN5. Still open: the Lost list has no filters (sort is total only); the page height at 390 px and the checkers were not measured on this branch; `exercise.mjs` (Hall: carried split, trait sheet, pedigree, keep round trip, fielding) was rewritten for the new structure and not run.
 
 **What is actually true.**
 - **The phone page is 37,468 px tall.** `Ancestors.svelte:182-247` renders
@@ -7114,7 +7141,7 @@ Report sections 4.I, 4.J, 4.K and 7.
 
 ## 108. Phone GPU budget
 
-**OPEN.** Report section 4.L.
+**BUILT on branch `claude/ui-98-108-combat-gpu`, not merged.** Report section 4.L. Left open: the check:perf numbers (Chest scroll, Chat with 50 messages) were not measured on this branch and belong in the PR; the chat WINDOW keeps its blur (task 90's call); the glow colour is untouched (110f).
 
 **What is actually true.**
 - **`.rarity-glow` animates `text-shadow`**, 2.2 s and infinite
@@ -7376,3 +7403,49 @@ Village at 0).
   wheel, and the white flash after the splash. -> 110 (device checklist).
 - Focus trapping and `inert` behind modals (audit B4) were not done. -> 106
   (the shared Modal).
+
+## Wave 2 result (2026-10-01): 94, 96, 97, 98, 99, 103, 104, 108 built and verified together
+
+Built in parallel on six branches and merged into `claude/ui-wave2`, which is
+what was verified. No merge conflicts.
+
+**Verified on `claude/ui-wave2`:** server suite 1547/1547; `npx vitest run`
+750 passed; svelte-check 4 (the GuildOps baseline); `npm run exercise`
+292/292 after a re-seed; `check:clipping`, `check:overlap`, `check:touch` and
+`check:safearea` all 0 findings. `check:perf` Chest scroll: 22 long tasks on
+both main and this branch (longest 227/242 ms on main, 320/153 ms here - noise,
+not a regression). 390 px screenshots in `docs/screenshots/2026-10-01-wave2/`:
+a guest sees the weapon slot (Character) and a Fight button (Combat) in the
+first viewport, and Sign out is the first control on Settings.
+
+**Found while integrating, and fixed here:**
+- **Gold could be sold or binned as a material** - `/chest/sell` and
+  `/chest/discard` accepted `itemId: "gold"`, took the coins and paid
+  `ValueMaterial("gold") = 0`. The server refuses with `NotRemovable` now
+  (`VillageChestEngine`, test in `GoldIncomeLedgerPostgresTests`).
+- The 94 exercise step refounded the fixture's guild whenever the fixture was
+  its last member - a new guild id with an empty depot every run. It only arms
+  that confirm now; `GuildLeaveTests` commits the close.
+- The Delve lantern check compared two gold balances while the fixture was
+  still fighting and failed on combat income (+580 g). It reads the route's own
+  `GoldCharged` now.
+- The loot strip read "0 pieces ·0 materials" (Svelte drops the space before
+  `{/if}`).
+
+**Owner questions raised by this wave:**
+- 98: "Young blood" can be earned on the first boss kill, but the challenge
+  fold stays hidden until the boss is beaten (the spec's rule).
+- 97: attributes are account-wide and health is only known for slot 1, so the
+  person switcher does not change them; and DPS is the server projection
+  (monster HP / seconds per kill). Confirm that is the number to show.
+- 103: married-in elders count against the newcomer cap and cannot be sent on,
+  so ~Inn+6 marriages stop arrivals for the season - intended? The Household
+  housing cap (e.g. 188/35) is enforced by nothing: give it an effect or drop it.
+- 94: leave/rejoin has no cooldown (guild payouts could be collected twice -
+  unchecked); succession ignores Officer rank.
+- 99: Sell shows no price because the client never receives the server's sell
+  value; sending it per inventory row is a server change.
+
+**Still open:** 95, 100, 101, 102, 105, 106, 107, 109, 110. The coach pill
+("Do this next") still sits over content at the bottom of every phone screen
+(seen on Settings, Chest, Village, Guild) - fold into 109's tutorial items.

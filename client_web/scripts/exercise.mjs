@@ -67,6 +67,39 @@ const go = async (label) => {
   await page.waitForTimeout(600);
 };
 
+// Modul: TASK 97 - Character is a person switcher plus three tabs (Gear,
+// Attributes, Work & orders), and only the open tab is in the DOM. A step that
+// reads or presses something on that screen opens its tab first rather than
+// trusting whichever tab the screen chose as its default.
+const characterTab = async (name) => {
+  await page.locator(`[data-character-tab="${name}"]`).first().click({ timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(300);
+};
+// Picks a person on the switcher by character id. The chips exist only when
+// more than one person can be chosen; with one, that person is already shown.
+const characterPerson = async (characterId) => {
+  const chip = page.locator(`[data-testid="person-switcher"] [data-character-id="${characterId}"].person`);
+  if ((await chip.count()) > 0) {
+    await chip.first().click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
+};
+// What the switcher says about EVERY person - name, race, age and job - by
+// stepping through the chips. The screen shows one person at a time now.
+const everyPersonText = async () => {
+  const chips = page.locator('[data-testid="person-switcher"] .person');
+  const count = await chips.count();
+  if (count === 0) return (await page.locator('[data-testid="person-switcher"]').innerText().catch(() => '')) ?? '';
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    await chips.nth(i).click().catch(() => {});
+    await page.waitForTimeout(250);
+    parts.push(await page.locator('[data-testid="person-current"]').innerText().catch(() => ''));
+  }
+  await chips.first().click().catch(() => {});
+  return parts.join(' | ');
+};
+
 // A toast is how this client reports both server results and its own refusals,
 // so reading them is how a click's outcome becomes observable at all.
 const toasts = async () => page.locator('.toast').allInnerTexts();
@@ -536,7 +569,7 @@ await page.waitForTimeout(4000);
 // afterwards; if it was idle, it is stood down again.
 await go('Combat');
 {
-  const stopButton = page.getByRole('button', { name: 'Stop fighting' });
+  const stopButton = page.getByRole('button', { name: 'Stand down', exact: true });
   const wasFighting = (await stopButton.count()) > 0;
   if (wasFighting) {
     await stopButton.first().click();
@@ -578,7 +611,9 @@ await go('Combat');
   const firstLine = shown > 0 ? (await estimateRows.first().innerText()).replace(/\s+/g, ' ') : '';
   record(
     'each open monster shows a hunting estimate from the server',
-    projection !== null && (projection.Monsters ?? []).length === 25 && shown > 0 && firstLine.startsWith('Estimate:'),
+    // Task 98: the card's second line carries the estimate without the
+    // "Estimate:" prefix (the full sentence is the element's title).
+    projection !== null && (projection.Monsters ?? []).length === 25 && shown > 0 && /XP\/h|cannot hurt/.test(firstLine),
     `${shown} rows; first: ${firstLine.slice(0, 110)}`,
   );
 }
@@ -1139,7 +1174,8 @@ await go('Crafting');
     await page.waitForTimeout(1500);
 
     await go('Character');
-    const roster = await page.evaluate(() => document.body.innerText);
+    // The person switcher names each person's job; the craft may be on any of them.
+    const roster = await everyPersonText();
     // The roster names the craft rather than "Idle" or a bare activity id.
     record(
       'an assigned character reports the craft as its job',
@@ -1298,6 +1334,102 @@ await go('Guild');
             ? 'contribution points granted'
             : 'no outcome shown within 15s - the panel said nothing either way',
       );
+    }
+  }
+}
+
+// --- leave the guild, and come back (task 94) --------------------------------
+//
+// Modul: LeaveGuildAsync existed for months with no route and no button, so a
+// player in a dead guild was stuck for good. This leaves through the real
+// confirm and REJOINS, so the fixture ends the step in the guild it started in.
+//
+// Only one shape can be restored exactly: the fixture is a plain Member of an
+// OPEN guild with others in it, and Join puts it back. Everything else is only
+// ARMED and read, then disarmed - never committed:
+//   - the LAST member: leaving CLOSES the guild. Refounding it under the same
+//     name gives a new guild id with an empty depot, treasury and buffs, so
+//     every run would spend the fixture's guild (CLAUDE.md: a check that
+//     spends fixture state passes once and fails forever);
+//   - a leader with others: the successor would lead for good;
+//   - an application-only guild: rejoining files an application.
+// GuildLeaveTests commits all of those on the server, HTTP route included.
+await go('Guild');
+{
+  const stats = await apiGet('/api/v1/player/statistics');
+  const guildName = stats?.GuildName ?? '';
+  const preview = await apiGet('/api/v1/guilds/leave-preview');
+  const directory = (await apiGet('/api/v1/guilds/list')) ?? [];
+  const entry = directory.find((g) => g.Name === guildName);
+
+  const leaveButton = page.getByRole('button', { name: /^(Leave guild|Really leave\?|Really close it\?)$/ }).first();
+  // The note is drawn from the preview query, which lands after the screen.
+  const noteText = async () => {
+    const note = page.locator('[data-testid="guild-leave-note"]').first();
+    await note.waitFor({ timeout: 10000 }).catch(() => {});
+    return (await note.textContent().catch(() => '')) ?? '';
+  };
+
+  if (!guildName || !preview?.InGuild) {
+    record('leaving a guild round-trips the fixture', false, 'the fixture is in no guild - nothing to leave (re-seed, or found one by hand)');
+  } else {
+    const closes = preview.ClosesGuild === true;
+    const canRestore = !closes && !preview.IsLeader && entry && entry.JoinType === 0;
+
+    // The confirm must say what the server will do BEFORE the second tap.
+    const note = await noteText();
+    record(
+      'the leave confirm says what leaving will do',
+      closes ? /closes the guild/i.test(note) : preview.IsLeader ? /will lead/i.test(note) : note.length > 0,
+      note || 'no note under the Leave guild button',
+    );
+
+    if (!canRestore) {
+      await leaveButton.click();
+      const armed = await leaveButton.textContent();
+      await page.keyboard.press('Escape');
+      record(
+        'leaving a guild round-trips the fixture',
+        /Really/.test(armed ?? ''),
+        `armed only ("${armed?.trim()}") - ${closes ? 'leaving would close the fixture\'s guild and lose its depot' : preview.IsLeader ? 'a leader with others would hand the guild over for good' : 'the guild takes applications, so rejoining is not immediate'}`,
+      );
+    } else {
+      await leaveButton.click();
+      await leaveButton.click();
+
+      let left = false;
+      for (let i = 0; i < 20 && !left; i++) {
+        await page.waitForTimeout(500);
+        left = ((await apiGet('/api/v1/player/statistics'))?.GuildName ?? 'x') === '';
+      }
+      record('the Leave guild confirm takes the fixture out of its guild', left, left ? guildName : 'still a member 10s after the second tap');
+
+      if (left) {
+        // Social's Join/Create used to stay disabled for good; they must open now.
+        await go('Friends');
+        const escaped = guildName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        await page
+          .locator('li.guild')
+          .filter({ has: page.locator('.name', { hasText: new RegExp(`^\\s*${escaped}\\s*$`) }) })
+          .getByRole('button', { name: 'Join', exact: true })
+          .first()
+          .click();
+
+        let back = false;
+        for (let i = 0; i < 20 && !back; i++) {
+          await page.waitForTimeout(500);
+          back = ((await apiGet('/api/v1/player/statistics'))?.GuildName ?? '') === guildName;
+        }
+        const after = await apiGet('/api/v1/guilds/leave-preview');
+        const sameRole = after?.InGuild === true && after.IsLeader === preview.IsLeader;
+        record(
+          'leaving a guild round-trips the fixture',
+          back && sameRole,
+          back
+            ? `rejoined "${guildName}"${sameRole ? '' : ' but the role changed'}`
+            : `not back in "${guildName}" - THE FIXTURE IS NOW GUILDLESS; join it by hand`,
+        );
+      }
     }
   }
 }
@@ -2260,13 +2392,22 @@ await go('The Delve');
       );
 
       if (lanternPrice > 0) {
+        // Modul: what the lantern COST is read off the server's answer to the
+        // click (GoldCharged), not off two balance reads - the fixture is still
+        // fighting, so the balance drifted by combat income in between and this
+        // failed on an exact charge (+580g, 2026-10-01). Same fix as Walk out.
+        const lanternAnswer = page
+          .waitForResponse((r) => r.url().includes('/api/v1/delve/deep/lantern'), { timeout: 10000 })
+          .then((r) => r.json())
+          .catch(() => null);
         await page.getByRole('button', { name: /Light another lantern/i }).first().click();
+        const lit = await lanternAnswer;
         await page.waitForTimeout(1500);
         const relit = await apiGet('/api/v1/delve');
         record(
           'a lantern takes exactly the quoted price and relights the run',
-          Boolean(relit) && relit.CurrentGold === unlit.CurrentGold - lanternPrice && relit.ChargesRemaining === 1 && relit.LanternsBought === 1,
-          relit ? `${unlit.CurrentGold.toLocaleString()} - ${lanternPrice.toLocaleString()} -> ${relit.CurrentGold.toLocaleString()}g, ${relit.ChargesRemaining} charge` : '',
+          lit?.GoldCharged === lanternPrice && Boolean(relit) && relit.ChargesRemaining === 1 && relit.LanternsBought === 1,
+          lit ? `quoted ${lanternPrice.toLocaleString()}g, charged ${lit.GoldCharged.toLocaleString()}g (${lit.Result}), ${relit?.ChargesRemaining} charge` : 'no answer from the lantern route',
         );
       }
 
@@ -2464,11 +2605,22 @@ await go('The Delve');
     regions.length === 5 && regions.every((r) => r.Challenges.length === 3),
     regions.map((r) => `${r.Region}:${r.Challenges.filter((c) => c.Completed).length}/${r.Challenges.length}`).join(' '),
   );
+  // Task 98: Challenges and Ascension fold into one line under the boss, and
+  // that line exists only once the boss has fallen. An unbeaten boss is
+  // checked for the ABSENCE of the line here; the ascension block below marks
+  // region 1 beaten and checks the unfolded challenges there.
+  const beaten1 = Boolean((await apiGet('/api/v1/boss-ascension'))?.Bosses?.find((b) => b.Region === 1)?.BossDefeated);
   await go('Combat');
   await page.waitForTimeout(1200);
-  const shown = page.getByTestId('boss-challenges-1');
-  const text = (await shown.count()) > 0 ? ((await shown.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
-  record("Combat shows region 1's boss challenges", /Starved/.test(text) && /Young blood/.test(text) && /Swift/.test(text), text.slice(0, 120));
+  const fold = page.getByTestId('boss-extras-1');
+  if (beaten1) {
+    if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
+    const shown = page.getByTestId('boss-challenges-1');
+    const text = (await shown.count()) > 0 ? ((await shown.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
+    record("Combat shows region 1's boss challenges", /Starved/.test(text) && /Young blood/.test(text) && /Swift/.test(text), text.slice(0, 120));
+  } else {
+    record("an unbeaten boss folds its challenges away", (await fold.count()) === 0, 'region 1 boss not beaten yet');
+  }
 }
 
 // --- task 87: the Boss Ascension ladder ---------------------------------------
@@ -2509,14 +2661,27 @@ await go('The Delve');
 
   await go('Combat');
   await page.waitForTimeout(1500);
+  // Task 98: the ladder sits behind the boss's one-line fold.
+  {
+    const fold = page.getByTestId('boss-extras-1');
+    if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') {
+      await fold.click();
+      await page.waitForTimeout(300);
+    }
+    if (b1?.BossDefeated) {
+      const ch = page.getByTestId('boss-challenges-1');
+      const chText = (await ch.count()) > 0 ? ((await ch.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
+      record("the boss's fold opens its challenges", /Starved/.test(chText) && /Young blood/.test(chText) && /Swift/.test(chText), chText.slice(0, 120));
+    }
+  }
   const ladder = page.getByTestId('boss-ascension-1');
   const ladderText = (await ladder.count()) > 0 ? ((await ladder.textContent()) ?? '').replace(/\s+/g, ' ').trim() : '';
-  record('Combat draws region 1\'s ladder', /Boss Ascension/.test(ladderText), ladderText.slice(0, 100));
+  if (b1?.BossDefeated) record('Combat draws region 1\'s ladder', /Boss Ascension/.test(ladderText), ladderText.slice(0, 100));
 
   if (b1?.BossDefeated && b1.HighestStep < 10) {
     const before = b1.HighestStep;
     const next = b1.NextStep;
-    const stopButton = page.getByRole('button', { name: 'Stop fighting' });
+    const stopButton = page.getByRole('button', { name: 'Stand down', exact: true });
     const wasFighting = (await stopButton.count()) > 0;
     const start = page.getByTestId('ascension-start-1');
 
@@ -2560,10 +2725,11 @@ await go('The Delve');
       `step ${after?.HighestStep} (was ${startedAt}), boss beaten ${after?.BossDefeated} (was ${wasBeaten})`,
     );
   } else {
+    // Task 98: an unbeaten boss shows no ladder at all (no placeholder).
     record(
       'the ladder waits for a first clear (boss not beaten, or the ladder is complete)',
-      /Beat this boss once|cleared/.test(ladderText),
-      ladderText.slice(0, 100),
+      (!b1?.BossDefeated && ladderText === '') || /cleared/.test(ladderText),
+      ladderText.slice(0, 100) || 'no ladder drawn',
     );
   }
 }
@@ -2598,6 +2764,20 @@ await go('The Delve');
     const panel = page.getByTestId('great-work-1');
     record('the Village draws the Great Works panel', (await panel.count()) > 0, `${(await page.getByTestId('great-works').count())} panel(s)`);
 
+    // Modul: DEPOSIT OPENS A SHEET (task 103). Each monument is one compact
+    // row now, and its two deposit buttons, the ladder and the completion
+    // reward live in a sheet the row's Deposit opens. The sheet's backdrop
+    // covers the nav, so it is closed before this step navigates anywhere.
+    const gwSheet = page.getByTestId('great-work-sheet');
+    const closeGwSheet = async () => {
+      if ((await gwSheet.count()) > 0) {
+        await gwSheet.getByRole('button', { name: 'Close', exact: true }).click();
+        await page.waitForTimeout(200);
+      }
+    };
+    await page.getByTestId('great-work-open-1').click().catch(() => {});
+    await gwSheet.waitFor({ timeout: 3000 }).catch(() => {});
+
     const deposit = page.getByTestId('great-work-deposit-1-log');
     const enabled = (await deposit.count()) > 0 && (await deposit.isEnabled());
     record('Deposit is enabled while the region\'s log is held', enabled, `held ${held?.HeldLog}`);
@@ -2623,6 +2803,7 @@ await go('The Delve');
       const text = ((await panel.textContent()) ?? '').replace(/\s+/g, ' ');
       record('the panel shows the new progress', /\/\s*50\D?000/.test(text) || moved.Stage > 0, text.slice(0, 140));
     }
+    await closeGwSheet();
 
     // Put everything back: the monument as found, the stock as found (what was
     // spent comes back, the 2,000 granted goes away).
@@ -2669,7 +2850,12 @@ await go('The Delve');
     );
     await go('Map');
     await go('Village');
+    await page.getByTestId('great-work-open-5').click().catch(() => {});
     const completion = await page.getByTestId('great-work-completion-5').innerText().catch(() => '');
+    {
+      const sheet = page.getByTestId('great-work-sheet');
+      if ((await sheet.count()) > 0) await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+    }
     record('the panel names what completing a monument pays', /Frame and \+1 Hall of Ancestors slot/.test(completion), completion);
     await apiPost('/api/v1/dev/great-works/restore', { Region: 5, Stage: crown?.Stage ?? 0, Progress: crown?.Progress ?? 0, Material: 0, StockDelta: 0 });
     const hallBack = await apiGet('/api/v1/ancestors/hall');
@@ -2685,6 +2871,8 @@ await go('The Delve');
 // and telling them what to do are different acts and looked identical.
 await go('Character');
 {
+  // The slots a person cannot stand in are listed on the Work tab (task 97).
+  await characterTab('work');
   const text = await page.evaluate(() => document.body.innerText);
   // The dev fixture is Town Hall 5, so all three slots are open and there is
   // nothing to lock. Asserted as a conditional rather than dropped: a locked
@@ -2716,6 +2904,7 @@ await go('Character');
     // Written as a conditional rather than a hard failure so a drained pool
     // reports itself instead of looking like a broken feature - the same shape
     // the locked-slot check above uses.
+    await characterTab('attributes');
     const before = await page.evaluate(() => document.body.innerText);
     const pointsBefore = Number(/(\d+)\s+points? to spend/.exec(before)?.[1] ?? 0);
     record(
@@ -2785,6 +2974,7 @@ await go('Character');
       await page.waitForTimeout(1500);
       await dismissOfflineSummary(3000);
       await go('Character');
+      await characterTab('attributes');
 
       const strReloaded = await page
         .locator('.attrpanel .card', { hasText: 'Might' })
@@ -2815,38 +3005,42 @@ await go('Character');
   }
 
   // A gear slot is a button now; clicking one opens its picker.
+  // Modul: TASK 97 - one 4-column grid of all ELEVEN slots on the Gear tab,
+  // addressed by data-slot-index rather than by position in a doll layout.
+  await characterTab('gear');
+  const allSlots = await page.locator('.gearslot[data-slot-index]').count();
+  record('the gear grid has all eleven slots', allSlots === 11, `${allSlots} slots`);
+
   // Modul: tools are gear now - three slots of their own, rolled with a rarity
   // and gathering affixes, where they used to be stackable materials that
   // could carry neither.
-  const toolSlots = await page.locator('.tools .gearslot').count();
+  const toolSlots = await page.locator('.gearslot.tool').count();
   record('the doll has the three tool slots', toolSlots === 3, `${toolSlots} tool slots`);
 
   // Modul: a WORN TOOL HAS TO SHOW. Counting the slots proved only that three
   // buttons render, and for as long as tools have existed all three rendered
   // EMPTY however many were equipped: the inventory snapshot recorded the
   // eight combat slots and never the tool ones, so an axe written to
-  // EquippedAxeId came back as EquippedByCharacterSlot -1. The doll drew
-  // nothing and the axe stayed in its own picker as available, which is what
-  // "I equip a tool and nothing appears in the slot" was.
+  // EquippedAxeId came back as EquippedByCharacterSlot -1.
   //
   // Modul: EQUIPS ONE HERE rather than trusting the fixture to have done it.
   // Which character occupies a playable slot is not stable across runs - the
-  // Hall of Ancestors step below FIELDS somebody, and that carries into the
-  // next run - so asserting on a pre-equipped tool made this check depend on
-  // the previous run's tail. Driving the equip makes it self-contained, and it
-  // is also the exact act that was reported broken.
-  const axeSlot = page.locator('.tools .gearslot').first();
+  // Hall of Ancestors step below FIELDS somebody - so driving the equip makes
+  // this self-contained, and it is the exact act that was reported broken.
+  const axeSlot = page.locator('.gearslot[data-slot-index="8"]').first();
   await axeSlot.click();
   await page.waitForTimeout(500);
 
-  const toolPick = page.locator('.picker button', { hasText: /Axe|Wear|Equip/i }).first();
+  const toolPick = page.locator('[data-testid="equip-picker"] button', { hasText: /^Wear$/ }).first();
   const pickable = (await toolPick.count()) > 0;
 
   if (pickable) {
     await toolPick.click();
-    await page.waitForTimeout(1600);
+    await page
+      .waitForFunction(() => document.querySelector('.gearslot[data-slot-index="8"]')?.classList.contains('filled'), null, { timeout: 8000 })
+      .catch(() => {});
   }
-  // Close the picker so its overlay does not sit over the slots being read.
+  // Close the picker so it does not sit over the slots being read.
   await page.getByRole('button', { name: 'Close', exact: true }).first().click().catch(() => {});
   await page.waitForTimeout(400);
 
@@ -2858,55 +3052,71 @@ await go('Character');
     axeFilled ? axeText : pickable ? 'equipped, but the slot still rendered empty' : 'no tool available to equip',
   );
 
-  const gearSlot = page.locator('.gearslot').first();
+  const gearSlot = page.locator('.gearslot[data-slot-index="0"]').first();
   const hasDoll = (await gearSlot.count()) > 0;
   record('the character has a paper doll with clickable slots', hasDoll);
+
+  const wornId = async () => (await gearSlot.getAttribute('data-item-id').catch(() => '')) ?? '';
+  // mode: 'changed' (a piece other than `value` is worn), 'empty', 'filled'.
+  const waitWorn = (mode, value) =>
+    page
+      .waitForFunction(
+        ([m, v]) => {
+          const id = document.querySelector('.gearslot[data-slot-index="0"]')?.dataset.itemId ?? '';
+          if (m === 'empty') return id === '';
+          if (m === 'filled') return id !== '';
+          return id !== '' && id !== v;
+        },
+        [mode, value],
+        { timeout: 10000 },
+      )
+      .then(() => true)
+      .catch(() => false);
 
   if (hasDoll) {
     await gearSlot.click();
     await page.waitForTimeout(500);
-    const opened = await page.evaluate(() => document.querySelector('.picker') !== null);
+    const opened = await page.evaluate(() => document.querySelector('[data-testid="equip-picker"]') !== null);
     record('clicking a slot opens its item picker', opened);
 
-    const wear = page.getByRole('button', { name: 'Wear', exact: true });
+    const wear = page.locator('[data-testid="equip-picker"] button[data-piece-id]', { hasText: /^Wear$/ });
     if ((await wear.count()) > 0) {
       await dismissToasts();
-      // The SLOT'S OWN TEXT, not the number of filled slots. The first slot on
-      // the doll is the weapon, which the fixture already has - so swapping it
-      // leaves the count unchanged and a count-based check reads as failure
-      // while the game is working correctly.
-      const before = await gearSlot.innerText();
+      // Modul: BY INSTANCE ID, not by the slot's text. The picker never lists
+      // a worn piece (equipped ids are filtered out), but two pieces can share
+      // a name - so "the text changed" read a working swap between two Hunter
+      // Swords as a failure. data-item-id is the instance actually worn.
+      const before = await wornId();
+      await wear.first().click();
+      const changed = await waitWorn('changed', before);
+      const after = await wornId();
+      const msgs = await toasts();
+      record(
+        'wearing an item from the doll dresses the character',
+        changed || msgs.length > 0,
+        msgs.join(' | ') || `weapon instance ${before || 'none'} -> ${after || 'none'}`,
+      );
 
-      // Modul: A DIFFERENT ITEM, not simply the first one offered. The picker
-      // lists everything that fits the slot INCLUDING the piece already worn,
-      // and the worn piece sorts to the top - so `wear.first()` re-equipped
-      // what was already on, the slot text was identical before and after, and
-      // a working game read as a failure. Worse, it was self-inflicting: each
-      // run left the weapon set to whatever the picker happened to head with,
-      // which is exactly the row the next run would pick again.
-      const wornName = before.split(String.fromCharCode(10)).pop().trim();
-      const index = await page.evaluate((worn) => {
-        const buttons = [...document.querySelectorAll('.picker button')]
-          .filter((b) => b.textContent.trim() === 'Wear');
-        return buttons.findIndex((b) => !(b.closest('li') ?? b.parentElement).innerText.includes(worn));
-      }, wornName);
+      // Modul: AND TAKES IT OFF, then puts it back - a round trip, so the
+      // fixture fights the later steps with a weapon (a check that leaves
+      // state behind passes once and fails for ever, root CLAUDE.md).
+      if (after) {
+        if ((await page.locator('[data-testid="equip-picker"]').count()) === 0) {
+          await gearSlot.click();
+          await page.waitForTimeout(400);
+        }
+        await page.locator('[data-testid="take-off"]').first().click().catch(() => {});
+        const emptied = await waitWorn('empty', '');
+        record('taking the weapon off from the gear grid empties the slot', emptied, emptied ? `instance ${after} taken off` : `still ${await wornId()}`);
 
-      if (index < 0) {
-        record(
-          'wearing an item from the doll dresses the character',
-          false,
-          `nothing offered but the ${wornName} already worn`,
-        );
-      } else {
-        await wear.nth(index).click();
-        await page.waitForTimeout(2500);
-        const after = await gearSlot.innerText();
-        const msgs = await toasts();
-        record(
-          'wearing an item from the doll dresses the character',
-          after !== before || msgs.length > 0,
-          msgs.join(' | ') || `${before.split(String.fromCharCode(10)).join(' ')} -> ${after.split(String.fromCharCode(10)).join(' ')}`,
-        );
+        if ((await page.locator('[data-testid="equip-picker"]').count()) === 0) {
+          await gearSlot.click();
+          await page.waitForTimeout(400);
+        }
+        const same = page.locator(`[data-testid="equip-picker"] button[data-piece-id="${after}"]`);
+        await ((await same.count()) > 0 ? same : wear).first().click().catch(() => {});
+        const restored = await waitWorn('filled', '');
+        record('and wearing it again fills it', restored, `weapon instance now ${(await wornId()) || 'none'}`);
       }
     }
   }
@@ -2958,6 +3168,56 @@ await go('Chest');
     await page.keyboard.press('Escape');
   }
   record('the chest offers a route to the reroll', rerollOffered, 'every equipment row menu links to the Forge');
+
+  // --- task 99: rows that say what the piece is ------------------------------
+  //
+  // Inspect is the FIRST menu item and opens the Forge's Affixes panel for
+  // that piece - addressed by id, so a refetch cannot swap the piece under the
+  // check. Closed again afterwards so the screen is as it was found.
+  {
+    const firstRow = page.locator('.row[data-equipment-id]').first();
+    if ((await firstRow.count()) > 0) {
+      const id = await firstRow.getAttribute('data-equipment-id');
+      await firstRow.getByRole('button', { name: 'More', exact: true }).click();
+      const firstItem = ((await page.getByRole('menuitem').first().textContent()) ?? '').trim();
+      await page.getByRole('menuitem', { name: 'Inspect', exact: true }).click();
+      const pane = page.locator(`[data-inspected-id="${id}"]`);
+      await pane.waitFor({ timeout: 5000 }).catch(() => {});
+      record(
+        'Inspect is the first item in the chest menu and opens that piece',
+        firstItem === 'Inspect' && (await pane.count()) > 0,
+        `first item "${firstItem}", pane ${await pane.count()}`,
+      );
+      await pane.getByRole('button', { name: 'Close', exact: true }).click().catch(() => {});
+    } else {
+      record('Inspect is the first item in the chest menu and opens that piece', false, 'no equipment row');
+    }
+
+    // Worn pieces are one group on top: in DOM order no worn row may follow a
+    // loose one. The loose half is windowed, so only what is rendered is read -
+    // which is the top of the list, where the boundary is.
+    const order = await page.evaluate(() =>
+      [...document.querySelectorAll('.row[data-equipment-id]')].map((r) => r.querySelector('.chip.worn') !== null),
+    );
+    const firstLoose = order.indexOf(false);
+    record(
+      'worn pieces are grouped above the loose ones',
+      firstLoose === -1 || !order.slice(firstLoose).includes(true),
+      `${order.filter(Boolean).length} worn rows, first loose at ${firstLoose}`,
+    );
+
+    // Gold is not a material. The server answers Sell all / Bin on "gold" by
+    // deleting it for 0 gold (it has no items.json price), so the row must not
+    // exist at all. Read with the All tab and no rarity floor, where it was.
+    await page.locator('.filters button').first().click();
+    await page.waitForTimeout(300);
+    const goldListed = await page.evaluate(() =>
+      [...document.querySelectorAll('.materials li .name')].some((n) => n.textContent.trim() === 'Gold'),
+    );
+    const inv = await apiGet('/api/v1/player/inventory');
+    const holdsGold = (inv?.Stacks ?? []).some((s) => s.ItemId === 'gold' && s.Quantity > 0);
+    record('the chest lists no Gold row among the materials', !goldListed, `gold in snapshot: ${holdsGold}`);
+  }
 
   // Modul: THE CHEST'S ONLY DRAIN.
   //
@@ -3268,7 +3528,46 @@ await go('Inheritance');
 // sink the top of the economy lacks was unreachable.
 await go('Village');
 {
-  const tally = async () => page.locator('.folk li').count();
+  // Modul: BUILDINGS FIRST, AND A CAPPED ROW IS TEXT (task 103). Read-only: an
+  // upgrade spends the fixture's materials and raises a level nothing lowers,
+  // so this asserts the shape the screen promises rather than pressing it.
+  // Every row carries a "Lv n / m" pill; a capped row has no button at all;
+  // the filled Upgrade appears only on a row the server's quote says is
+  // affordable, and those rows sort above the rest.
+  {
+    const buildingRows = page.locator('[data-testid="village-building"]');
+    await buildingRows.first().waitFor({ timeout: 10000 }).catch(() => {});
+    const count = await buildingRows.count();
+    const pills = await page.locator('[data-testid="village-building-level"]').allInnerTexts();
+    record(
+      'every building row shows its level against its ceiling',
+      count > 0 && pills.length === count && pills.every((t) => /^Lv \d+ \/ \d+$/.test(t.trim())),
+      pills.slice(0, 3).join(', '),
+    );
+    const capped = page.locator('[data-testid="village-building"][data-state="capped"]');
+    const cappedButtons = await capped.locator('button').count();
+    record('a capped building offers no button', cappedButtons === 0, `${await capped.count()} capped, ${cappedButtons} buttons`);
+    const states = await buildingRows.evaluateAll((els) => els.map((el) => el.getAttribute('data-state')));
+    const rank = { building: 0, ready: 1, short: 2, loading: 2, capped: 3 };
+    const sorted = states.every((st, i) => i === 0 || rank[states[i - 1]] <= rank[st]);
+    record('affordable upgrades sort above the rest', sorted, states.join(' '));
+    // Before the gene pool in the document - which is also first on a phone,
+    // where the grid is one column. (On a wide screen they sit side by side.)
+    const leads = await page.evaluate(() => {
+      const building = document.querySelector('[data-testid="village-building"]');
+      const pool = document.querySelector('[data-testid="gene-pool"]');
+      if (!building || !pool) return null;
+      return Boolean(building.compareDocumentPosition(pool) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    record('the buildings lead the Village page', leads === true, leads === null ? 'building or gene pool missing' : '');
+  }
+
+  // Modul: COUNTED FROM THE TALLY, NOT THE ROWS (task 103). The gene pool
+  // shows the best five by aptitude sum and collapses the married-in, so the
+  // number of rows on screen is no longer the number of people. The tally's
+  // data-count is the server's (every VillageNewcomers row, the same count the
+  // feast refusal quotes).
+  const tally = async () => Number(await page.locator('[data-testid="gene-pool-count"]').getAttribute('data-count').catch(() => '0'));
 
   const before = await tally();
   const feastButton = page.getByRole('button', { name: /^Throw a feast/ });
@@ -3314,6 +3613,12 @@ await go('Village');
     );
   }
 
+  // The shortlist holds five; "Show all" draws everybody who can be sent on.
+  const showAll = page.locator('[data-testid="gene-pool-show-all"]');
+  if ((await showAll.count()) > 0 && /^Show all/.test((await showAll.innerText()).trim())) {
+    await showAll.click();
+    await page.waitForTimeout(300);
+  }
   const sendButtons = page.getByRole('button', { name: 'Send on', exact: true });
   const dismissable = await sendButtons.count();
   record('the village offers to send somebody on', dismissable > 0, `${dismissable} not yet married in`);
@@ -3830,15 +4135,69 @@ await go('Ancestors');
   const rows = page.locator('.panel li');
   record('the Hall lists the roster', (await rows.count()) > 0, `${await rows.count()} members`);
 
-  // Modul: THE BRED CHILD'S OWN ROW, not just the preview that promised it.
+  // Modul: CARRIED AND LOST (task 104). The Hall is two sections now: the
+  // carried few, open, and "Lost at rebirth", collapsed and paged 20 at a
+  // time. Traits, parents, fielding and the keep toggle open in a sheet when a
+  // row is tapped. So a row is FOUND (opening Lost and paging until it is
+  // drawn) and then OPENED, rather than assumed to be on the page.
+  const hallSheet = page.locator('[data-testid="hall-sheet"]');
+  const hallRow = (id) => page.locator(`.panel li[data-character-id="${id}"]`);
+  async function revealHallRow(id) {
+    if ((await hallRow(id).count()) > 0) return true;
+    const lostToggle = page.locator('[data-testid="hall-lost-toggle"]');
+    if ((await lostToggle.count()) > 0 && (await lostToggle.getAttribute('aria-expanded')) !== 'true') {
+      await lostToggle.click();
+      await page.waitForTimeout(300);
+    }
+    for (let i = 0; i < 30 && (await hallRow(id).count()) === 0; i++) {
+      const more = page.locator('[data-testid="hall-lost-more"]');
+      if ((await more.count()) === 0) break;
+      await more.click();
+      await page.waitForTimeout(200);
+    }
+    return (await hallRow(id).count()) > 0;
+  }
+  async function openHallSheet(id) {
+    if (!(await revealHallRow(id))) return false;
+    await hallRow(id).locator('button.open').click();
+    return hallSheet.isVisible({ timeout: 3000 }).catch(() => false);
+  }
+  async function closeHallSheet() {
+    if ((await hallSheet.count()) === 0) return;
+    await hallSheet.getByRole('button', { name: 'Close', exact: true }).click();
+    await page.waitForTimeout(200);
+  }
+  const hallNow = async () => (await apiGet('/api/v1/ancestors/hall'))?.Members ?? [];
+
+  // The split is the SERVER's WouldCarry, and the counter says the same number.
+  {
+    const members = await hallNow();
+    const carriedIds = members.filter((m) => m.WouldCarry).map((m) => m.CharacterId).sort();
+    const drawn = (await page.locator('[data-testid="hall-carried-list"] li').evaluateAll(
+      (els) => els.map((el) => el.getAttribute('data-character-id')),
+    )).sort();
+    record(
+      'the carried section is exactly who the server says carries',
+      carriedIds.length > 0 && JSON.stringify(carriedIds) === JSON.stringify(drawn),
+      `${drawn.length} drawn, ${carriedIds.length} carried by the server`,
+    );
+    // No row may say "Kept" without saying whether it carries.
+    const badges = await page.locator('.panel li .badge').allInnerTexts();
+    record(
+      'no row says Kept without saying whether it carries',
+      badges.every((t) => !/^Kept$/i.test(t.trim())),
+      `${badges.length} badges`,
+    );
+  }
+
+  // Modul: THE BRED CHILD'S OWN TRAITS, not just the preview that promised it.
   // `bredChildHadTrait` came from GET /api/v1/breeding/roster right after the
   // Breed click - server truth, rolled server-side - so this is checking that
   // what the server actually granted the child is what the player can see on
   // the one screen that shows a roster member's traits after birth
-  // (`m.TraitMask > 0` gates TraitBadge in Ancestors.svelte). A pass here with
-  // no badge rendered would be exactly the "output side was never wired" shape
-  // this project keeps shipping - Task 13's own preview assertion could not
-  // catch it because it never got past the empty-pair case.
+  // (`m.TraitMask > 0` gates TraitBadge in the Hall's detail sheet). A pass
+  // here with no badge rendered would be exactly the "output side was never
+  // wired" shape this project keeps shipping.
   if (bredChildName === null) {
     record('a bred child with a trait shows it on the Hall', true, 'no child identified this run - skipped');
   } else if (bredChildHadTrait === false) {
@@ -3851,116 +4210,131 @@ await go('Ancestors');
     // By id, not name: the fixture had NINE characters called Muirenn and
     // `.first()` matched an older one with no trait - a false FAIL on a
     // child the server had granted a trait to (measured 2026-09-23).
-    const childRow = page.locator(`.panel li[data-character-id="${bredChildId}"]`);
-    const rowExists = (await childRow.count()) > 0;
-    const badgeCount = rowExists ? await childRow.locator('.trait').count() : 0;
+    const opened = await openHallSheet(bredChildId);
+    const badgeCount = opened ? await hallSheet.locator('.trait').count() : 0;
     record(
       'a bred child with a trait shows it on the Hall',
-      rowExists && badgeCount > 0,
-      rowExists ? `${bredChildName}: ${badgeCount} trait badge(s)` : `${bredChildName} not found in the Hall`,
+      opened && badgeCount > 0,
+      opened ? `${bredChildName}: ${badgeCount} trait badge(s)` : `${bredChildName} not found in the Hall`,
     );
+    await closeHallSheet();
   }
 
   // The pedigree: everybody came from somewhere, and a founder says so. By
   // NAME - it printed eight hex digits of each parent's Guid until 2026-09-13.
-  record(
-    'every member names where they came from',
-    /a founder of the line|child of /i.test(text) && !/\b[0-9a-f]{8} x [0-9a-f]{8}\b/.test(text),
-  );
+  {
+    const firstId = await rows.first().getAttribute('data-character-id').catch(() => null);
+    const opened = firstId !== null && (await openHallSheet(firstId));
+    const sheetText = opened ? await hallSheet.innerText() : '';
+    record(
+      'every member names where they came from',
+      /a founder of the line|child of /i.test(sheetText) && !/\b[0-9a-f]{8} x [0-9a-f]{8}\b/.test(sheetText),
+      sheetText.replace(/\s+/g, ' ').slice(0, 100),
+    );
+    await closeHallSheet();
+  }
 
   // Marking. The whole reason the cap is a decision rather than a surprise.
   //
   // Modul: A ROUND TRIP, not a one-way click. Marking is a flag that nothing
   // ever clears, so "click Keep, expect a Kept" only works while an unmarked
   // member is left: every run marked one more until all 23 non-main ancestors
-  // read "Kept", and from then on the step failed permanently with "no Keep
-  // button rendered" - a green script slowly turning red without the game
-  // changing at all. Toggling whichever direction is available asserts MORE
-  // (both directions of the same button, not one) and puts the flag back, so
-  // the check costs the fixture nothing and reads the same on the hundredth
-  // run as on the first.
-  // Modul: PINNED BY POSITION, not by name. A name-matched locator re-resolves
-  // on every call, so the moment the click flips "Kept" to "Keep" the handle
-  // stops matching and silently slides to the NEXT row's button - which reads
-  // "Kept" again and looks exactly like a click that did nothing. The rows do
-  // not reorder on a mark, so an index is the stable handle. (The main
-  // character renders a span, not a button.) `.keep`, because the slot buttons
-  // that replaced the Field select sit in the same row.
-  const toggle = page.locator('.acts button.keep');
-  if ((await toggle.count()) > 0) {
-    await dismissToasts();
-    const button = toggle.first();
-    const before = (await button.innerText()).trim();
-    await button.click();
-    await page.waitForTimeout(2500);
-    const after = (await button.innerText()).trim();
-    const flipped = after !== before && /^Kept?$/.test(after);
-
-    // Back the way it was, so the next run starts where this one did.
-    if (flipped) {
-      await button.click();
-      await page.waitForTimeout(2500);
+  // were marked, and the step then failed permanently. Toggling whichever
+  // direction is available asserts both directions and puts the flag back.
+  //
+  // Modul: BY ID, AND READ BACK FROM THE SERVER. Since task 104 a mark
+  // re-ranks the row (marked members sort up, and a mark can move somebody
+  // between Carried and Lost), so neither a position nor the button's label is
+  // a stable handle. The row's pin carries `aria-pressed`, and the server's
+  // IsKept is the truth both are checked against. A carried, non-main member
+  // is used: marking them cannot push them out, and unmarking returns them to
+  // exactly the place they had.
+  {
+    const members = await hallNow();
+    const target = members.find((m) => m.WouldCarry && !m.IsMainCharacter && !m.IsKept)
+      ?? members.find((m) => m.WouldCarry && !m.IsMainCharacter);
+    if (!target) {
+      record('marking an ancestor to carry sticks', false, 'no carried member besides the main character');
+    } else {
+      await dismissToasts();
+      const before = target.IsKept;
+      const pin = () => hallRow(target.CharacterId).locator('button.keep');
+      const keptNow = async () => (await hallNow()).find((m) => m.CharacterId === target.CharacterId)?.IsKept;
+      const waitFor = async (want) => {
+        for (let i = 0; i < 12; i++) {
+          await page.waitForTimeout(400);
+          if ((await keptNow()) === want) return true;
+        }
+        return false;
+      };
+      await pin().click();
+      const flipped = await waitFor(!before);
+      await page.waitForTimeout(1200);
+      const pressed = (await revealHallRow(target.CharacterId)) ? await pin().getAttribute('aria-pressed') : null;
+      let restored = false;
+      if (flipped) {
+        await pin().click();
+        restored = await waitFor(before);
+        await page.waitForTimeout(1200);
+      }
+      record(
+        'marking an ancestor to carry sticks',
+        flipped && restored && pressed === String(!before),
+        `${before} -> ${flipped ? !before : before} (pin pressed ${pressed}) -> ${restored ? before : 'not restored'}`,
+      );
     }
-    const restored = (await button.innerText()).trim();
-    record(
-      'marking an ancestor to carry sticks',
-      flipped && restored === before,
-      flipped ? `${before} -> ${after} -> ${restored}` : `${before} -> ${after}, no change`,
-    );
-  } else {
-    record('marking an ancestor to carry sticks', false, 'no Keep/Kept button rendered');
   }
 
-  // FIELDING - the missing door. A benched child picks a slot and the roster
-  // has to actually change, not just the dropdown.
-  // Slot BUTTONS since 2026-09-13 - the select was a native Android dialog.
-  const bench = page.locator('.acts .field');
-  const benched = await bench.count();
-  record('benched members can be fielded', benched > 0, `${benched} on the bench`);
+  // FIELDING - the missing door. A benched member picks a slot and the roster
+  // has to actually change. Slot BUTTONS since 2026-09-13 (the select was a
+  // native Android dialog), and inside the row's detail sheet since task 104.
+  {
+    const members = await hallNow();
+    const benchedMembers = members.filter((m) => m.PlayableSlot < 0);
+    record('benched members can be fielded', benchedMembers.length > 0, `${benchedMembers.length} on the bench`);
 
-  if (benched > 0) {
-    // A SWAP, so counting fielded members proves nothing - one leaves as one
-    // arrives. Identify the row being fielded and check THAT row ends up with
-    // a slot badge.
-    const row = page.locator('.panel li').filter({ has: page.locator('.acts .field') }).first();
-    const fingerprint = (await row.locator('.apts').innerText()).replace(/\s+/g, ' ').trim();
-    // Modul: WHO SLOT 1 BELONGED TO, so the swap can be undone. It used to be
-    // left in place: the main character (the fixture's only armed one) went to
-    // the bench, the fielded ancestor wore nothing, and the tutorial's "wear
-    // your weapon" step then fenced every screen for the geometry checkers
-    // and every later run until a --seed-dev.
-    const displacedId = await page
-      .locator('.panel li')
-      .filter({ has: page.locator('.fielded', { hasText: /^slot 1$/ }) })
-      .first()
-      .getAttribute('data-character-id')
-      .catch(() => null);
+    const candidate = benchedMembers.find((m) => m.WouldCarry) ?? benchedMembers[0];
+    if (candidate) {
+      // Modul: WHO SLOT 1 BELONGED TO, so the swap can be undone. It used to be
+      // left in place: the main character (the fixture's only armed one) went to
+      // the bench, the fielded ancestor wore nothing, and the tutorial's "wear
+      // your weapon" step then fenced every screen for the geometry checkers
+      // and every later run until a --seed-dev.
+      const displacedId = members.find((m) => m.PlayableSlot === 0)?.CharacterId ?? null;
 
-    await row.locator('.field-slot').first().click();
-    await page.waitForTimeout(3000);
-
-    const nowFielded = await page.locator('.panel li').filter({ hasText: /slot \d/ }).allInnerTexts();
-    record(
-      'fielding an ancestor swaps them into a playable slot',
-      nowFielded.some((t) => t.replace(/\s+/g, ' ').includes(fingerprint)),
-      `${fingerprint} -> ${nowFielded.length} fielded`,
-    );
-    await dismissToasts();
-
-    // Put slot 1 back the way it was. Not a click: the ancestor now in slot 1
-    // wears nothing, so the tutorial's guided fence covers the Hall at once.
-    if (displacedId !== null) {
-      await page.evaluate((id) => globalThis.__folkidleAssignSlot?.(id, 0), displacedId);
-      let back = -1;
-      for (let i = 0; i < 20 && back !== 0; i++) {
-        await page.waitForTimeout(500);
-        const hall = await apiGet('/api/v1/ancestors/hall');
-        back = (hall?.Members ?? []).find((m) => m.CharacterId === displacedId)?.PlayableSlot ?? -1;
+      const opened = await openHallSheet(candidate.CharacterId);
+      const slotButton = hallSheet.locator('.field .field-slot').first();
+      const offered = opened && (await slotButton.count()) > 0;
+      let fieldedAt = -1;
+      if (offered) {
+        await slotButton.click();
+        for (let i = 0; i < 20 && fieldedAt < 0; i++) {
+          await page.waitForTimeout(500);
+          fieldedAt = (await hallNow()).find((m) => m.CharacterId === candidate.CharacterId)?.PlayableSlot ?? -1;
+        }
       }
-      record('fielding is undone: slot 1 holds who it held before', back === 0, back === 0 ? '' : `playable slot ${back}`);
+      record(
+        'fielding an ancestor swaps them into a playable slot',
+        fieldedAt >= 0,
+        offered ? `${candidate.Name || candidate.CharacterId} -> slot ${fieldedAt + 1}` : 'the sheet offered no slot button',
+      );
+      await closeHallSheet();
       await dismissToasts();
-    } else {
-      record('fielding is undone: slot 1 holds who it held before', false, 'slot 1 was empty or not found before the swap');
+
+      // Put slot 1 back the way it was. Not a click: the ancestor now in slot 1
+      // wears nothing, so the tutorial's guided fence covers the Hall at once.
+      if (displacedId !== null) {
+        await page.evaluate((id) => globalThis.__folkidleAssignSlot?.(id, 0), displacedId);
+        let back = -1;
+        for (let i = 0; i < 20 && back !== 0; i++) {
+          await page.waitForTimeout(500);
+          back = (await hallNow()).find((m) => m.CharacterId === displacedId)?.PlayableSlot ?? -1;
+        }
+        record('fielding is undone: slot 1 holds who it held before', back === 0, back === 0 ? '' : `playable slot ${back}`);
+        await dismissToasts();
+      } else {
+        record('fielding is undone: slot 1 holds who it held before', false, 'slot 1 was empty or not found before the swap');
+      }
     }
   }
 }
@@ -3988,6 +4362,10 @@ await go('Ancestors');
   if (first) {
     const original = first.Rules.map((r) => ({ Type: r.Type, Param: r.Param }));
     await go('Character');
+    // Task 97: Orders sit on the Work & orders tab and show the person the
+    // switcher is on.
+    await characterPerson(first.CharacterId);
+    await characterTab('work');
     const block = page.locator(`[data-testid="orders-character"][data-character-id="${first.CharacterId}"]`);
     await block.waitFor({ timeout: 10000 }).catch(() => {});
 
@@ -4013,6 +4391,8 @@ await go('Ancestors');
         });
         await page.reload({ waitUntil: 'networkidle' });
         await go('Character');
+        await characterPerson(first.CharacterId);
+        await characterTab('work');
         await block.waitFor({ timeout: 10000 }).catch(() => {});
       }
       await typeSelect.selectOption(String(wanted));
@@ -4449,11 +4829,38 @@ await go('Ancestors');
     //    reachable only once.
     await (await navButton(fresh, 'Settings')).click();
     await fresh.waitForTimeout(1200);
-    const explanations = await fresh.locator('.explanations li').count();
+
+    // Modul: task 96. Settings' panels start closed (they remember being
+    // opened, so check before clicking), and the explanations sit behind their
+    // own disclosure. Only SEEN explanations are listed now - a new player was
+    // shown all 27 in full, every future system spoiled at once - and the rest
+    // are a count. Seen rows plus that count must account for every one.
+    const signOutVisible = await fresh
+      .getByRole('button', { name: 'Sign out', exact: true })
+      .first()
+      .evaluate((el) => el.getBoundingClientRect().top < window.innerHeight)
+      .catch(() => false);
+    record('Settings shows Sign out in the first viewport', signOutVisible);
+
+    const tutorialFold = fresh.locator('[data-fold="tutorial"] .fold-toggle');
+    if ((await tutorialFold.getAttribute('aria-expanded').catch(() => null)) !== 'true') {
+      await tutorialFold.click().catch(() => {});
+    }
+    const exToggle = fresh.locator('[data-testid="explanations-toggle"]');
+    if ((await exToggle.getAttribute('aria-expanded').catch(() => null)) !== 'true') {
+      await exToggle.click().catch(() => {});
+    }
+    await fresh.waitForTimeout(300);
+    const toggleText = (await exToggle.innerText().catch(() => '')) ?? '';
+    const totalMatch = /(\d+) of (\d+) seen/.exec(toggleText);
+    const seenRows = await fresh.locator('.explanations li').count();
+    const locked = Number(
+      (await fresh.locator('[data-testid="explanations-locked"]').getAttribute('data-count').catch(() => null)) ?? 0,
+    );
     record(
-      'Settings lists every explanation, shown or not',
-      explanations > 0,
-      `${explanations} listed`,
+      'Settings lists the seen explanations and only counts the rest',
+      totalMatch !== null && Number(totalMatch[2]) > 0 && seenRows + locked === Number(totalMatch[2]),
+      totalMatch ? `${seenRows} listed + ${locked} locked of ${totalMatch[2]}` : `no count in "${toggleText}"`,
     );
 
     await fresh.getByRole('button', { name: /^(Skip onboarding|Hide the tutorial)$/ }).first().click();
