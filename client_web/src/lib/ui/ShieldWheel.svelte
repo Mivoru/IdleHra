@@ -40,6 +40,8 @@
   } from '../net/rest';
   import { worldBossResultSentence } from '../game/worldBossResults';
   import { tap } from '../net/haptics';
+  import { registerOverlay } from '../stores/sheet';
+  import { LAYER_Z } from '../net/backButton';
 
   // `challenge` is read ONCE, on purpose, which is what svelte-check's
   // state_referenced_locally warnings on this file are about: a challenge
@@ -65,6 +67,20 @@
   let result = $state<PracticeScoreResponse | null>(null);
   let strike = $state<StrikeResponse | null>(null);
   const practice = challenge.Practice;
+
+  // Modul: BACK DOES NOT TEAR DOWN A RUN. The wheel is full-screen, but back
+  // could not see it, so a press or an edge swipe mid-throw walked to the
+  // previous screen and unmounted the timing game under the player's thumb
+  // (practice had no other way out at all). While a run is live - counting
+  // down, playing, or submitting - back is consumed and does nothing; once
+  // there is a result or an error to read, back is the Close button. One
+  // registration for the component's life: the closer reads the phase when
+  // it is pressed, not when it was registered.
+  $effect(() =>
+    registerOverlay(() => {
+      if (phase === 'result' || phase === 'error') onclose();
+    }, LAYER_Z.modal),
+  );
 
   interface Spear {
     seq: number;

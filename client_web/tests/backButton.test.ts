@@ -3,8 +3,12 @@ import {
   resolveBackPress,
   watchHardwareBack,
   exitApp,
+  isCloseOutcome,
+  LAYER_Z,
   type BackPressState,
 } from '../src/lib/net/backButton';
+import { get } from 'svelte/store';
+import { registerOverlay, topOfStack, topOverlay } from '../src/lib/stores/sheet';
 
 /*
   THE ANDROID HARDWARE BACK BUTTON.
@@ -22,7 +26,7 @@ import {
 */
 
 const CLOSED: BackPressState = {
-  sheetOpen: false,
+  overlayZ: null,
   exitPromptOpen: false,
   deathCardOpen: false,
   victoryCardOpen: false,
@@ -71,13 +75,13 @@ describe('what one back press means', () => {
     // exact "the output side was never wired" symptom this repo keeps
     // shipping. The order mirrors the z-indexes in the components: exit prompt
     // (1100) > death (60, last in the DOM) > victory (60) > offline summary
-    // (50) > chat dock (40) > nav.
+    // (60, first of the three) > chat dock (40) > nav.
     const everything: BackPressState = {
       exitPromptOpen: true,
       deathCardOpen: true,
       victoryCardOpen: true,
       offlineSummaryOpen: true,
-      sheetOpen: false,
+      overlayZ: null,
       chatDockOpen: true,
       navOpen: true,
       historyDepth: 4,
@@ -119,8 +123,93 @@ describe('what one back press means', () => {
   // half-made choice with it.
   it('closes an open picker sheet before anything else, and before navigating', () => {
     const nested = { ...CLOSED, atRoot: false, historyDepth: 2 };
-    expect(resolveBackPress({ ...nested, sheetOpen: true })).toBe('close-sheet');
-    expect(resolveBackPress({ ...nested, sheetOpen: true, chatDockOpen: true, navOpen: true })).toBe('close-sheet');
+    const sheet = LAYER_Z.pickerSheet;
+    expect(resolveBackPress({ ...nested, overlayZ: sheet })).toBe('close-overlay');
+    expect(resolveBackPress({ ...nested, overlayZ: sheet, chatDockOpen: true, navOpen: true })).toBe('close-overlay');
+    // 1401 is above even the exit prompt.
+    expect(resolveBackPress({ ...nested, overlayZ: sheet, exitPromptOpen: true })).toBe('close-overlay');
+  });
+
+  // Modul: the overlays whose open state lives inside a component. Before the
+  // closer stack, back over each of these acted BEHIND it: What's new let
+  // back change the screen under the modal (or open "Leave FolkIdle?" on top
+  // of it), a profile in Friends walked off the screen, and the shield wheel
+  // was torn down mid-throw.
+  it('closes a component overlay before navigating', () => {
+    const nested = { ...CLOSED, atRoot: false, historyDepth: 3 };
+    for (const z of [LAYER_Z.modal, LAYER_Z.playerProfile, LAYER_Z.contextMenu]) {
+      expect(resolveBackPress({ ...nested, overlayZ: z })).toBe('close-overlay');
+      expect(resolveBackPress({ ...nested, overlayZ: z, chatDockOpen: true })).toBe('close-overlay');
+      expect(resolveBackPress({ ...nested, overlayZ: z, navOpen: true })).toBe('close-overlay');
+    }
+    // What's new on the map: acknowledge it, do not ask about leaving.
+    expect(resolveBackPress({ ...CLOSED, overlayZ: LAYER_Z.modal })).toBe('close-overlay');
+  });
+
+  it('slots a component overlay into the paint order by its z-index', () => {
+    // The profile (1000) paints over a death card (60) but under the exit
+    // prompt (1100).
+    const profile = { ...CLOSED, overlayZ: LAYER_Z.playerProfile };
+    expect(resolveBackPress({ ...profile, deathCardOpen: true })).toBe('close-overlay');
+    expect(resolveBackPress({ ...profile, exitPromptOpen: true })).toBe('close-exit-prompt');
+
+    // The name menu (10000) is above everything.
+    expect(resolveBackPress({ ...CLOSED, overlayZ: LAYER_Z.contextMenu, exitPromptOpen: true })).toBe(
+      'close-overlay',
+    );
+
+    // What's new and the shield wheel tie with the cards at 60 and lose: both
+    // are earlier in the DOM, so a death card that arrives over them is the
+    // thing on top.
+    const atModal = { ...CLOSED, overlayZ: LAYER_Z.modal };
+    expect(resolveBackPress({ ...atModal, deathCardOpen: true })).toBe('close-death-card');
+    expect(resolveBackPress({ ...atModal, victoryCardOpen: true })).toBe('close-victory-card');
+    expect(resolveBackPress({ ...atModal, offlineSummaryOpen: true })).toBe('close-offline-summary');
+    // ...and win over the chat dock (40).
+    expect(resolveBackPress({ ...atModal, chatDockOpen: true })).toBe('close-overlay');
+  });
+});
+
+describe('the overlay closer stack', () => {
+  it('picks the topmost overlay on screen, not the last one opened', () => {
+    // What's new (60) arriving while a profile (1000) is open is still under it.
+    const profile = { close: () => {}, z: LAYER_Z.playerProfile, seq: 1 };
+    const notes = { close: () => {}, z: LAYER_Z.modal, seq: 2 };
+    expect(topOfStack([profile, notes])).toBe(profile);
+    // Equal z: the newer one is on top.
+    const later = { close: () => {}, z: LAYER_Z.playerProfile, seq: 3 };
+    expect(topOfStack([profile, notes, later])).toBe(later);
+    expect(topOfStack([])).toBeNull();
+  });
+
+  it('unregisters its own entry, whatever order the overlays close in', () => {
+    // Modul: the single slot this replaced cleared "whatever is set" - a
+    // menu closing over a profile took the profile's closer with it.
+    const closeProfile = vi.fn();
+    const closeMenu = vi.fn();
+    const dropProfile = registerOverlay(closeProfile, LAYER_Z.playerProfile);
+    const dropMenu = registerOverlay(closeMenu, LAYER_Z.contextMenu);
+
+    get(topOverlay)?.close();
+    expect(closeMenu).toHaveBeenCalledTimes(1);
+
+    // The profile goes first, out of order: the menu must still be on top.
+    dropProfile();
+    expect(get(topOverlay)?.z).toBe(LAYER_Z.contextMenu);
+
+    dropMenu();
+    expect(get(topOverlay)).toBeNull();
+    expect(closeProfile).not.toHaveBeenCalled();
+  });
+});
+
+describe('Escape on a desktop', () => {
+  it('only ever dismisses - never navigates, never asks to quit', () => {
+    expect(isCloseOutcome('close-overlay')).toBe(true);
+    expect(isCloseOutcome('close-nav')).toBe(true);
+    expect(isCloseOutcome('previous-screen')).toBe(false);
+    expect(isCloseOutcome('root-screen')).toBe(false);
+    expect(isCloseOutcome('confirm-exit')).toBe(false);
   });
 
   it('closes the exit prompt rather than opening a second one', () => {

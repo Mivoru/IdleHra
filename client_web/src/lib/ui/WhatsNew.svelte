@@ -1,6 +1,8 @@
 <script lang="ts">
   import { pendingNotes, acknowledgeNotes, updateAvailable } from '../stores/version';
   import { reserveBottom, releaseBottom } from '../stores/bottomInset';
+  import { registerOverlay } from '../stores/sheet';
+  import { LAYER_Z } from '../net/backButton';
 
   const BOTTOM_INSET_KEY = 'update-prompt';
 
@@ -13,6 +15,16 @@
   // waits for the notes to be dismissed rather than stacking on top of them.
   const showNotes = $derived($pendingNotes.length > 0);
   const showReload = $derived(!showNotes && $updateAvailable);
+
+  // Modul: BACK MEANS "GOT IT". The notes are a modal, and after every OTA
+  // update an APK player meets them first - but back could not see them, so it
+  // changed the screen underneath (or, on the map, opened "Leave FolkIdle?" on
+  // top of them). Registered only while the notes show; the reload chip below
+  // covers nothing and leaves back alone.
+  $effect(() => {
+    if (!showNotes) return;
+    return registerOverlay(acknowledgeNotes, LAYER_Z.modal);
+  });
 
   let dismissedReload = $state(false);
   let toastEl = $state<HTMLElement | null>(null);
@@ -109,6 +121,10 @@
   .card {
     width: min(32rem, 100%);
     max-height: 86vh;
+    /* dvh after vh (the fallback): on mobile web vh is the LARGE viewport, so
+       an 86vh card could push "Got it" below the URL bar's fold. Minus the
+       backdrop's padding and insets. */
+    max-height: min(86dvh, calc(100dvh - 2rem - var(--sa-top) - var(--sa-bottom)));
     background: var(--bg-panel);
     border: 1px solid var(--brass);
     border-radius: var(--radius);

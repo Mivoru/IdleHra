@@ -32,8 +32,14 @@
     dismissDeath,
   } from './lib/stores/game';
   import { chatDockOpen } from './lib/stores/chatDock';
-  import { openSheetCloser } from './lib/stores/sheet';
-  import { resolveBackPress, watchHardwareBack, exitApp } from './lib/net/backButton';
+  import { topOverlay } from './lib/stores/sheet';
+  import {
+    resolveBackPress,
+    watchHardwareBack,
+    exitApp,
+    isCloseOutcome,
+    type BackOutcome,
+  } from './lib/net/backButton';
   import {
     storedToken,
     clearToken,
@@ -52,7 +58,7 @@
   import WhatsNew from './lib/ui/WhatsNew.svelte';
   import { resolveNotesOnStartup, startUpdatePolling } from './lib/stores/version';
   import { coachTargetScreen, screenLocks } from './lib/stores/tutorial';
-  import { untrack, type Component } from 'svelte';
+  import { tick, untrack, type Component } from 'svelte';
 
   initLanguage();
   void loadTranslations();
@@ -328,10 +334,23 @@
     }
   }
   function onWindowKey(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && openGroup) {
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    if (openGroup) {
       event.preventDefault();
       closeGroups(true);
+      return;
     }
+    // Modul: ESCAPE IS THE BACK BUTTON'S "CLOSE" HALF. Most modals had no key
+    // handler at all - the death and victory cards, What's new, the exit
+    // prompt, the profile, the wheel - and the few that had one each decided
+    // for themselves which layer Escape meant. It now asks the same resolver
+    // the hardware button does, so both close the same (topmost) layer; but
+    // only ever to close something - Escape never changes the screen and
+    // never asks to quit.
+    const outcome = resolveBack();
+    if (!isCloseOutcome(outcome)) return;
+    event.preventDefault();
+    applyBack(outcome);
   }
   function onWindowPointer(event: Event): void {
     if (!openGroup) return;
@@ -368,15 +387,40 @@
   const MAX_SCREEN_HISTORY = 24;
   let screenHistory: ScreenKey[] = [];
 
+  // Modul: WHERE EACH SCREEN WAS SCROLLED TO, for back.
+  //
+  // Changing screens never touched the scroll position, so the document kept
+  // the previous screen's scrollY, clamped to the new one's height: a player
+  // deep in the Chest who tapped Village landed mid-page, with the header and
+  // the sub-tabs above the fold - and back then put them at the top of the
+  // Chest rather than where they had been. A first visit hid it, because the
+  // "Loading..." stub is short enough to clamp the scroll to 0.
+  //
+  // Forward is the top of the new screen; back is where you were. Plain Map,
+  // not $state, for the same reason as the history beside it. The Wiki's own
+  // anchor jumps are inside one screen and never pass through here.
+  const scrollPositions = new Map<ScreenKey, number>();
+
+  async function scrollAfterRender(y: number): Promise<void> {
+    await tick();
+    // A frame later as well: a revisited screen renders synchronously from
+    // loadedScreens, but its cached queries can still be filling in its
+    // height, and scrollTo clamps to whatever height exists when it runs.
+    window.scrollTo(0, y);
+    if (y > 0) requestAnimationFrame(() => window.scrollTo(0, y));
+  }
+
   function goTo(next: ScreenKey): void {
     // Modul: the same screen twice is not a step. Both the nav and a
     // cross-screen request can ask for where the player already is, and
     // recording those would make back a no-op the player has to press
     // repeatedly - the single most common way a back stack goes wrong.
     if (next === screen) return;
+    scrollPositions.set(screen, window.scrollY);
     screenHistory.push(screen);
     if (screenHistory.length > MAX_SCREEN_HISTORY) screenHistory.shift();
     screen = next;
+    void scrollAfterRender(0);
   }
   // Modul: flattened through an explicit type. `GROUPS` is a readonly tuple OF
   // readonly tuples, and flatMap over that infers the union of the tuples
@@ -482,24 +526,31 @@
   // tested without a device; this is only the half that has to touch component
   // state.
   //
-  // WHY THE LAYERS ARE READ INDIVIDUALLY RATHER THAN FROM A REGISTRY. Every
-  // dismissable layer in this client already keeps its open state somewhere
-  // durable - three stores in stores/game.ts, one in stores/chatDock.ts, and
-  // the nav menu which App.svelte owns outright. A registry would be a fourth
-  // copy of state that already exists, kept in step by hand, and this codebase
-  // has shipped its worst defects to exactly that shape of duplication.
+  // WHY THE BIG LAYERS ARE READ INDIVIDUALLY RATHER THAN FROM A REGISTRY.
+  // The App-level layers already keep their open state somewhere durable -
+  // three stores in stores/game.ts, one in stores/chatDock.ts, and the nav
+  // menu which App.svelte owns outright. Registering them as well would be a
+  // second copy of state that already exists, kept in step by hand, and this
+  // codebase has shipped its worst defects to exactly that shape of
+  // duplication.
   //
-  // NOT covered, deliberately: PlayerProfileModal (opened from Friends and
-  // chat) and the inline equipment picker on Character. The first is a real
-  // overlay whose open state is local to two routes; the second is not an
-  // overlay at all - it is a disclosure panel in the page flow with its own
-  // visible Close button, and consuming a back press for something that
-  // obscures nothing would make back feel like it had missed.
+  // The overlays whose open state lives INSIDE a component - the picker
+  // sheet, PlayerProfileModal, the name menu, What's new, the shield wheel -
+  // have no durable store to read, so they register a closer on the stack in
+  // stores/sheet.ts while they are mounted. That is not a copy: the stack IS
+  // the only place App can learn they exist. The profile used to be excluded
+  // for exactly that reason (its state is local to the screens that open it),
+  // and back walked off the screen under it.
+  //
+  // Still NOT covered, deliberately: the inline equipment picker on
+  // Character. It is not an overlay - it is a disclosure panel in the page
+  // flow with its own visible Close button, and consuming a back press for
+  // something that obscures nothing would make back feel like it had missed.
   let exitPromptOpen = $state(false);
 
-  function handleBack(): void {
-    const outcome = resolveBackPress({
-      sheetOpen: $openSheetCloser !== null,
+  function resolveBack(): BackOutcome {
+    return resolveBackPress({
+      overlayZ: $topOverlay?.z ?? null,
       exitPromptOpen,
       deathCardOpen: $deathSummary !== null,
       victoryCardOpen: $victorySummary !== null,
@@ -510,7 +561,13 @@
       // The login form is a root too: there is nothing behind it to go back to.
       atRoot: !token || screen === 'hub',
     });
+  }
 
+  function handleBack(): void {
+    applyBack(resolveBack());
+  }
+
+  function applyBack(outcome: BackOutcome): void {
     switch (outcome) {
       case 'close-exit-prompt':
         exitPromptOpen = false;
@@ -527,17 +584,21 @@
       case 'close-chat-dock':
         chatDockOpen.set(false);
         break;
-      case 'close-sheet':
-        $openSheetCloser?.();
+      case 'close-overlay':
+        $topOverlay?.close();
         break;
       case 'close-nav':
         navOpen = false;
         break;
-      case 'previous-screen':
-        screen = screenHistory.pop() ?? 'hub';
+      case 'previous-screen': {
+        const previous = screenHistory.pop() ?? 'hub';
+        screen = previous;
+        void scrollAfterRender(scrollPositions.get(previous) ?? 0);
         break;
+      }
       case 'root-screen':
         screen = 'hub';
+        void scrollAfterRender(0);
         break;
       case 'confirm-exit':
         exitPromptOpen = true;
@@ -549,6 +610,37 @@
   // closing over a snapshot, so this attaches once and stays attached. A
   // no-op in a browser, where there is no such button.
   $effect(() => watchHardwareBack(handleBack));
+
+  // Modul: THE BOTTOM CHROME STEPS ASIDE WHILE THE PLAYER TYPES.
+  //
+  // With the soft keyboard up, the APK's viewport shrinks to roughly half a
+  // phone, and the 64px tab bar and the onboarding coach stayed pinned above
+  // the keyboard inside it. The browser scrolls a focused field into view
+  // without knowing about fixed overlays, so a Market price or a guild
+  // donation near the bottom of a screen could land exactly behind the tab
+  // bar. A class on <html> rather than state: what it hides lives in other
+  // components, and the CSS below (scoped :global, phone-only) is the whole
+  // effect. focusout always clears it - moving between two fields removes and
+  // re-adds it in the same task, so nothing flickers.
+  const EDITABLE =
+    'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button])' +
+    ':not([type=submit]):not([type=reset]):not([type=color]):not([type=file]):not([type=image]),' +
+    ' textarea, [contenteditable]:not([contenteditable="false"])';
+  $effect(() => {
+    const root = document.documentElement;
+    const onFocusIn = (event: FocusEvent) => {
+      const target = event.target as Element | null;
+      if (target?.matches?.(EDITABLE)) root.classList.add('typing');
+    };
+    const onFocusOut = () => root.classList.remove('typing');
+    document.addEventListener('focusin', onFocusIn);
+    document.addEventListener('focusout', onFocusOut);
+    return () => {
+      document.removeEventListener('focusin', onFocusIn);
+      document.removeEventListener('focusout', onFocusOut);
+      root.classList.remove('typing');
+    };
+  });
 
   // Modul: what build this is, and what the player has not seen yet. Runs once
   // and needs no dependencies - the version is a compile-time constant and the
@@ -806,7 +898,15 @@
     <VictoryCard />
     <DeathCard />
     <ChatDock />
-    <TabBar current={screen} onNavigate={(next) => goTo(next as ScreenKey)} />
+    <!-- Closes the phone Menu too: a tab tapped under an open Menu changed the
+         screen and left the whole menu expanded on top of it. -->
+    <TabBar
+      current={screen}
+      onNavigate={(next) => {
+        navOpen = false;
+        goTo(next as ScreenKey);
+      }}
+    />
     <Toasts />
     <AchievementToast />
   {:else if restoring}
@@ -1172,11 +1272,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 1rem;
+    /* Fixed, so body's safe-area padding does not reach it - its own inset. */
+    padding: calc(1rem + var(--sa-top)) calc(1rem + var(--sa-right)) calc(1rem + var(--sa-bottom))
+      calc(1rem + var(--sa-left));
     background: rgba(0, 0, 0, 0.62);
   }
 
+  /* The vh line is the fallback for an engine without dvh. */
   .exitcard {
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem - var(--sa-top) - var(--sa-bottom));
+    overflow-y: auto;
     width: min(22rem, 100%);
     padding: 1rem;
     border: 1px solid var(--border);
@@ -1215,5 +1321,25 @@
   .exitrow .leave {
     border-color: var(--danger);
     color: var(--danger);
+  }
+
+  /* Modul: WHILE TYPING (html.typing, set in the script), on a phone: the tab
+     bar and the coach go, and --tabbar-h drops to 0 so everything that stands
+     on the bar - the chat dock, its window's height, the toasts - comes down
+     with it. The chat window stays: it is often where the player is typing.
+     scroll-padding-bottom tells focus-scrolling about whatever fixed chrome
+     is left, which it otherwise cannot know about. Here and not in app.css
+     because the class belongs to this file's focus listener. */
+  @media (max-width: 40rem) {
+    :global(html) {
+      scroll-padding-bottom: calc(var(--tabbar-h) + var(--sa-bottom) + 1rem);
+    }
+    :global(html.typing) {
+      --tabbar-h: 0px;
+    }
+    :global(html.typing .tabbar),
+    :global(html.typing .coach) {
+      display: none;
+    }
   }
 </style>

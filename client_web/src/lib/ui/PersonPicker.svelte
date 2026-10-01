@@ -17,7 +17,9 @@
   import RaceIcon from './RaceIcon.svelte';
   import TraitBadge from './TraitBadge.svelte';
   import type { PickerPerson } from './breedingPicker';
-  import { openSheetCloser } from '../stores/sheet';
+  import { registerOverlay } from '../stores/sheet';
+  import { LAYER_Z } from '../net/backButton';
+  import { portal } from './portal';
   import { isNarrow } from './media';
 
   interface Group {
@@ -66,24 +68,16 @@
   // drift from the CSS that lays the sheet out.
   const isPhone = $derived($isNarrow);
 
-  // While this sheet covers a phone screen, the hardware back button closes it
-  // (App.svelte asks through openSheetCloser). Cleared only if it is still OUR
-  // closer, so a second picker opening cannot be unregistered by the first.
+  // While the list is open, the hardware back button and Escape close it
+  // (App.svelte asks through the overlay stack in stores/sheet.ts). Each
+  // picker removes only its own entry, so a second picker opening cannot be
+  // unregistered by the first. Registered on a wide screen too, where the list
+  // opens in place: otherwise App's Escape would close whatever is BEHIND an
+  // open list, and the list along with it.
   $effect(() => {
-    if (!(open && isPhone)) return;
-    const close = () => (open = false);
-    openSheetCloser.set(close);
-    return () => openSheetCloser.update((current) => (current === close ? null : current));
+    if (!open) return;
+    return registerOverlay(() => (open = false), LAYER_Z.pickerSheet);
   });
-
-  function portal(node: HTMLElement) {
-    document.body.appendChild(node);
-    return {
-      destroy() {
-        node.remove();
-      },
-    };
-  }
 
   const APTITUDE_LABELS = [
     { short: 'STR', name: 'Strength' },

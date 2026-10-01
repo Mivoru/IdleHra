@@ -151,7 +151,13 @@
      follows the player down a long screen. */
   .notice {
     position: sticky;
-    top: 0;
+    /* Modul: --sa-top, not 0. A sticky offset is measured from the scrollport
+       edge, and on an edge-to-edge phone that edge is under the status bar -
+       body's padding-top only places the banner at rest. Scrolled, a phone
+       losing signal (exactly when this matters) showed it half behind the
+       clock and battery icons. check:safearea judges the top band at rest, so
+       it could not see this. */
+    top: var(--sa-top);
     /* Below the modal cards (50-60) and the chat dock (40), above ordinary
        page content. It is information, not an interruption. */
     z-index: 30;

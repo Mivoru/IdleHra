@@ -32,10 +32,10 @@ const RUNTIME_INJECTED = new Set([
   '--safe-area-inset-left',
 ]);
 
-// Files whose undefined tokens are being fixed on another branch
-// (claude/ui overlays/nav work, which owns these components). Remove each
-// entry once that branch lands - the test then guards them too.
-const PENDING_ELSEWHERE = new Set(['lib/ui/ChatDock.svelte', 'lib/ui/PlayerProfileModal.svelte']);
+// Files whose undefined tokens are being fixed on another branch. Empty now
+// that the overlays/nav work has landed; add an entry only with a branch
+// that removes it again.
+const PENDING_ELSEWHERE = new Set<string>();
 
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
