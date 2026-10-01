@@ -3328,7 +3328,15 @@ await go('Village');
   // that this run declined to spend it, not a fake pass and not a fake failure.
   if (dismissable > 1) {
     const held = await tally();
+    // Modul: sending somebody on is permanent, so it is a two-tap
+    // ConfirmButton (task 92): the first tap only arms it and relabels it
+    // "Really send?". One tap here would assert a confirm guard as a defect.
     await sendButtons.first().click();
+    const armed = page.getByRole('button', { name: 'Really send?', exact: true }).first();
+    const armedOk = await armed.isVisible({ timeout: 2000 }).catch(() => false);
+    const leftAfterOneTap = await tally();
+    record('one tap only arms Send on', armedOk && leftAfterOneTap === held, armedOk ? `${held} -> ${leftAfterOneTap}` : 'no "Really send?" after the first tap');
+    if (armedOk) await armed.click();
     await page.waitForTimeout(2500);
     const left = await tally();
     record('sending somebody on frees the slot', left < held, `${held} -> ${left}`);
