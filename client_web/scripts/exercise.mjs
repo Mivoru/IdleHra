@@ -4449,11 +4449,38 @@ await go('Ancestors');
     //    reachable only once.
     await (await navButton(fresh, 'Settings')).click();
     await fresh.waitForTimeout(1200);
-    const explanations = await fresh.locator('.explanations li').count();
+
+    // Modul: task 96. Settings' panels start closed (they remember being
+    // opened, so check before clicking), and the explanations sit behind their
+    // own disclosure. Only SEEN explanations are listed now - a new player was
+    // shown all 27 in full, every future system spoiled at once - and the rest
+    // are a count. Seen rows plus that count must account for every one.
+    const signOutVisible = await fresh
+      .getByRole('button', { name: 'Sign out', exact: true })
+      .first()
+      .evaluate((el) => el.getBoundingClientRect().top < window.innerHeight)
+      .catch(() => false);
+    record('Settings shows Sign out in the first viewport', signOutVisible);
+
+    const tutorialFold = fresh.locator('[data-fold="tutorial"] .fold-toggle');
+    if ((await tutorialFold.getAttribute('aria-expanded').catch(() => null)) !== 'true') {
+      await tutorialFold.click().catch(() => {});
+    }
+    const exToggle = fresh.locator('[data-testid="explanations-toggle"]');
+    if ((await exToggle.getAttribute('aria-expanded').catch(() => null)) !== 'true') {
+      await exToggle.click().catch(() => {});
+    }
+    await fresh.waitForTimeout(300);
+    const toggleText = (await exToggle.innerText().catch(() => '')) ?? '';
+    const totalMatch = /(\d+) of (\d+) seen/.exec(toggleText);
+    const seenRows = await fresh.locator('.explanations li').count();
+    const locked = Number(
+      (await fresh.locator('[data-testid="explanations-locked"]').getAttribute('data-count').catch(() => null)) ?? 0,
+    );
     record(
-      'Settings lists every explanation, shown or not',
-      explanations > 0,
-      `${explanations} listed`,
+      'Settings lists the seen explanations and only counts the rest',
+      totalMatch !== null && Number(totalMatch[2]) > 0 && seenRows + locked === Number(totalMatch[2]),
+      totalMatch ? `${seenRows} listed + ${locked} locked of ${totalMatch[2]}` : `no count in "${toggleText}"`,
     );
 
     await fresh.getByRole('button', { name: /^(Skip onboarding|Hide the tutorial)$/ }).first().click();
