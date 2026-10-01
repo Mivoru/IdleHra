@@ -509,7 +509,9 @@
         onSelect: () => toggleLock(item.Id, label),
       },
       {
-        label: 'Sell',
+        // The price is the server's (InventoryEquipment.SellValueGold), so the
+        // menu says what the tap is worth before it is made.
+        label: `Sell · ${formatGold(item.SellValueGold)}`,
         disabled: busy || blocked !== '',
         title: blocked,
         note: blocked,
@@ -745,13 +747,10 @@
 
     <Affixes affixes={item.Affixes} baseItemId={item.BaseItemId} qualityTier={item.QualityTier} />
 
-    <!-- Modul: NO PRICE, ON PURPOSE. The sale price is
-         VillageChestEngine.ValueEquipment on the server (BaseValueGold x
-         (1 + tier x 0.5) x 0.40) and nothing sends it to the client. Working
-         it out here would be a second copy of that formula, and two copies of
-         one truth is this codebase's dominant bug class. The number belongs on
-         the inventory row, from the server. -->
-    <p class="dim tiny">Sells for 40% of its market value. The amount is shown after the sale.</p>
+    <!-- Modul: THE SERVER'S PRICE. VillageChestEngine.ValueEquipment rides on
+         the inventory row as SellValueGold, so this is the number the sale
+         pays - not a client copy of BaseValueGold x (1 + tier x 0.5) x 0.40. -->
+    <p class="dim tiny">Sells for {formatGold(item.SellValueGold)} - 40% of its market value.</p>
 
     <div class="detail-actions">
       {#if pendingSales.has(saleKey)}
@@ -773,7 +772,7 @@
           title={blocked}
           onclick={() => queueSale({ equipmentId: item.Id }, label, saleKey)}
         >
-          Sell
+          Sell · {formatGold(item.SellValueGold)}
         </button>
         {#if confirming === `detail:${item.Id}`}
           <button
@@ -1068,7 +1067,7 @@
                       disabled={busy}
                       onclick={() => queueSale({ itemId: stack.ItemId, quantity: stack.Quantity }, label, saleKey)}
                     >
-                      Sell all
+                      Sell all · {formatGold(stack.UnitSellValueGold * stack.Quantity)}
                     </button>
                     <button
                       class="tiny-btn more"

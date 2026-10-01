@@ -48,11 +48,12 @@
   );
   const elders = $derived((data?.Newcomers ?? []).filter((p) => p.IsElder));
 
-  // Modul: THE SERVER COUNTS ELDERS AGAINST THE CAP. VillageArrivalEngine and
-  // RecruitBlockedReason both count every VillageNewcomers row, married in or
-  // not, so this fraction is all of them - the same number the feast refusal
-  // quotes. A fraction of only the unmarried would disagree with that sentence.
-  const placesUsed = $derived(data?.Newcomers.length ?? 0);
+  // Modul: ELDERS NO LONGER TAKE A PLACE. The server used to count every row,
+  // married in or not, so each marriage filled a place for good and ~Inn+6 of
+  // them closed the village for the season. It counts only those who can be
+  // sent on now, and says how many - read that rather than counting here, so
+  // this fraction and the feast refusal cannot disagree.
+  const placesUsed = $derived(data?.Residents ?? 0);
 
   let showAll = $state(false);
   let showElders = $state(false);
@@ -162,7 +163,7 @@
         class:full={placesUsed >= data.PopulationCap}
         data-testid="gene-pool-count"
         data-count={placesUsed}
-        title="Everybody in the village, married in or not, against the places the Inn provides"
+        title="Newcomers who have not married in, against the places the Inn provides - those who married in stay on the roster without taking a place"
       >
         Newcomers {placesUsed} / {data.PopulationCap}
         {#if placesUsed > data.PopulationCap}
@@ -213,8 +214,8 @@
             A <strong>newcomer</strong> arrives every {hours(data.IntervalSeconds)} while
             there is room &mdash; the Inn (level {data.InnLevel}) sets how often they
             come, how many fit, and how high their aptitudes roll, up to
-            {APTITUDE_VILLAGE_CEILING}. Everybody who has married in still takes a
-            place. A full village stops the clock entirely.
+            {APTITUDE_VILLAGE_CEILING}. Somebody who has married in stays on the roster
+            but no longer takes a place. A full village stops the clock entirely.
           </p>
           <!-- Modul: the interlock, said where it bites. -->
           <p class="dim tiny">

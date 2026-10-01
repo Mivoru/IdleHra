@@ -412,9 +412,6 @@
     });
   }
 
-  const populationOver = $derived(
-    snap ? Number(snap.CurrentPopulationCount) > Number(snap.CachedMaxPopulationCapacity) : false,
-  );
 </script>
 
 {#if !snap}
@@ -714,16 +711,15 @@
           <h3>Village</h3>
           <dl class="stats">
             <div>
-              <dt>Population</dt>
-              <dd class:over={populationOver} data-testid="population">
-                {formatNumber(Number(snap.CurrentPopulationCount))}/{formatNumber(Number(snap.CachedMaxPopulationCapacity))}
-              </dd>
+              <dt>Household</dt>
+              <!-- A count, not a fraction: the housing "cap" beside it was
+                   enforced by nothing (see Village.svelte). -->
+              <dd data-testid="population">{formatNumber(Number(snap.CurrentPopulationCount))}</dd>
             </div>
             <div><dt>Town Hall</dt><dd>{snap.TownHallLevel}</dd></div>
             <div><dt>Forge</dt><dd>{snap.ForgeLevel}</dd></div>
             <div><dt>Workshop</dt><dd>{snap.CraftingWorkshopLevel}</dd></div>
           </dl>
-          <DisabledReason text={populationOver ? 'Over capacity - more people than your houses hold.' : null} />
         </section>
 
         <!-- Task 85: standing orders, beside the jobs they change - for the
@@ -1151,10 +1147,6 @@
 
   .assign button {
     flex-shrink: 0;
-  }
-
-  dd.over {
-    color: var(--danger);
   }
 
   /* ------------------------------------------------------------ shared */

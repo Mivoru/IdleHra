@@ -104,12 +104,18 @@ export interface InventoryEquipment {
   EquippedInSlotIndex: number;
   Affixes: AffixMap;
   IsAffixLocked: boolean;
+  /** What the chest pays for it - VillageChestEngine.ValueEquipment, the
+   *  function the sale itself pays with. Never recompute it here. */
+  SellValueGold: number;
 }
 
 export interface InventoryStack {
   ItemId: string;
   /** How many the player has. One store - see InventoryStackResponse. */
   Quantity: number;
+  /** What ONE sells for, by the server's own sale rule. 0 = the chest pays
+   *  nothing for it (gathering slugs with no catalogue entry, gold). */
+  UnitSellValueGold: number;
 }
 
 /** Combat rating for ONE roster character, computed server-side from that
@@ -986,6 +992,11 @@ export interface VillageNewcomersSnapshot {
    * function the command itself runs, so a disabled button and a rolled-back
    * command can never disagree about why. */
   RecruitBlockedReason: string;
+
+  /** How many take a place against PopulationCap: everybody but the elders
+   * (VillageArrivalEngine.CountRoomTakersAsync). Sent rather than counted
+   * here, so the tally and the feast refusal read one number. */
+  Residents: number;
 
   Newcomers: VillageNewcomer[];
 }

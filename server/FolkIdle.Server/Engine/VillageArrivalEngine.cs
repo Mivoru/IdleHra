@@ -32,7 +32,7 @@ namespace FolkIdle.Server.Engine
         public static async Task<int> SettleAsync(
             FolkIdleDbContext db, PlayerRecord player, int innLevel, long nowEpoch)
         {
-            int population = await db.VillageNewcomers.CountAsync(v => v.PlayerId == player.Id);
+            int population = await CountRoomTakersAsync(db, player.Id);
 
             byte[] races = await UnlockedRacesAsync(db, player.Id);
 
@@ -106,7 +106,7 @@ namespace FolkIdle.Server.Engine
         public static async Task<(string? Refusal, long GoldSpent)> RecruitAsync(
             FolkIdleDbContext db, PlayerRecord player, int innLevel, long nowEpoch)
         {
-            int population = await db.VillageNewcomers.CountAsync(v => v.PlayerId == player.Id);
+            int population = await CountRoomTakersAsync(db, player.Id);
 
             var gold = await db.CommodityRecords
                 .FirstOrDefaultAsync(c => c.PlayerId == player.Id && c.ItemId == "gold");
@@ -130,6 +130,23 @@ namespace FolkIdle.Server.Engine
             await db.SaveChangesAsync();
             return (null, cost);
         }
+
+        /// <summary>
+        /// Who counts against the Inn's population cap: newcomers who have not
+        /// married into the line.
+        ///
+        /// Modul: ELDERS USED TO FILL THE VILLAGE FOR GOOD. An elder has been a
+        /// parent and is kept as the record of the blood that entered the line
+        /// - so DismissAsync refuses them - yet they were counted against the
+        /// same cap as everybody else. Every marriage therefore took one slot
+        /// permanently, and about Inn level + 6 marriages (11 at Inn 5) stopped
+        /// arrivals AND recruitment for the rest of the season, with no way
+        /// out. Breeding is the reason the village exists, so using it must
+        /// not close the village. Elders stay on the roster; they just no
+        /// longer take a bed.
+        /// </summary>
+        public static Task<int> CountRoomTakersAsync(FolkIdleDbContext db, long playerId)
+            => db.VillageNewcomers.CountAsync(v => v.PlayerId == playerId && !v.IsElder);
 
         /// <summary>
         /// Turns somebody away, freeing a slot.
