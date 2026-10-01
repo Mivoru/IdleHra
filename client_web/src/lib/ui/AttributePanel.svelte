@@ -181,7 +181,7 @@
           </span>
           <span class="dim tiny">
             {#if next}
-              {reachedCount}/5 — next at {next.threshold}: {next.name}
+              {reachedCount}/5 — next at {next.threshold}: {next.name} ({next.effect})
             {:else}
               5/5 — track complete
             {/if}
@@ -206,12 +206,15 @@
             <button disabled={unspent < 1} onclick={() => spend(attribute.id, 1)}>+1</button>
             <button disabled={unspent < 10} onclick={() => spend(attribute.id, 10)}>+10</button>
             {#if next && unspent >= next.threshold - value && next.threshold > value}
+              <!-- Modul: this said "→ Prospector" and nothing else - a name
+                   with no number and no effect, so nobody could tell it spent
+                   points at all. It says how many and what they reach; the
+                   effect is on the track line just above. -->
               <button
                 class="tonext"
                 onclick={() => spend(attribute.id, next.threshold - value)}
-                title="Enough to reach {next.name}"
               >
-                → {next.name}
+                +{next.threshold - value}: reach {next.name}
               </button>
             {/if}
           </span>

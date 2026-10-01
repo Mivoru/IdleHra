@@ -67,6 +67,39 @@ const go = async (label) => {
   await page.waitForTimeout(600);
 };
 
+// Modul: TASK 97 - Character is a person switcher plus three tabs (Gear,
+// Attributes, Work & orders), and only the open tab is in the DOM. A step that
+// reads or presses something on that screen opens its tab first rather than
+// trusting whichever tab the screen chose as its default.
+const characterTab = async (name) => {
+  await page.locator(`[data-character-tab="${name}"]`).first().click({ timeout: 5000 }).catch(() => {});
+  await page.waitForTimeout(300);
+};
+// Picks a person on the switcher by character id. The chips exist only when
+// more than one person can be chosen; with one, that person is already shown.
+const characterPerson = async (characterId) => {
+  const chip = page.locator(`[data-testid="person-switcher"] [data-character-id="${characterId}"].person`);
+  if ((await chip.count()) > 0) {
+    await chip.first().click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
+};
+// What the switcher says about EVERY person - name, race, age and job - by
+// stepping through the chips. The screen shows one person at a time now.
+const everyPersonText = async () => {
+  const chips = page.locator('[data-testid="person-switcher"] .person');
+  const count = await chips.count();
+  if (count === 0) return (await page.locator('[data-testid="person-switcher"]').innerText().catch(() => '')) ?? '';
+  const parts = [];
+  for (let i = 0; i < count; i++) {
+    await chips.nth(i).click().catch(() => {});
+    await page.waitForTimeout(250);
+    parts.push(await page.locator('[data-testid="person-current"]').innerText().catch(() => ''));
+  }
+  await chips.first().click().catch(() => {});
+  return parts.join(' | ');
+};
+
 // A toast is how this client reports both server results and its own refusals,
 // so reading them is how a click's outcome becomes observable at all.
 const toasts = async () => page.locator('.toast').allInnerTexts();
@@ -1139,7 +1172,8 @@ await go('Crafting');
     await page.waitForTimeout(1500);
 
     await go('Character');
-    const roster = await page.evaluate(() => document.body.innerText);
+    // The person switcher names each person's job; the craft may be on any of them.
+    const roster = await everyPersonText();
     // The roster names the craft rather than "Idle" or a bare activity id.
     record(
       'an assigned character reports the craft as its job',
@@ -2787,6 +2821,8 @@ await go('The Delve');
 // and telling them what to do are different acts and looked identical.
 await go('Character');
 {
+  // The slots a person cannot stand in are listed on the Work tab (task 97).
+  await characterTab('work');
   const text = await page.evaluate(() => document.body.innerText);
   // The dev fixture is Town Hall 5, so all three slots are open and there is
   // nothing to lock. Asserted as a conditional rather than dropped: a locked
@@ -2818,6 +2854,7 @@ await go('Character');
     // Written as a conditional rather than a hard failure so a drained pool
     // reports itself instead of looking like a broken feature - the same shape
     // the locked-slot check above uses.
+    await characterTab('attributes');
     const before = await page.evaluate(() => document.body.innerText);
     const pointsBefore = Number(/(\d+)\s+points? to spend/.exec(before)?.[1] ?? 0);
     record(
@@ -2887,6 +2924,7 @@ await go('Character');
       await page.waitForTimeout(1500);
       await dismissOfflineSummary(3000);
       await go('Character');
+      await characterTab('attributes');
 
       const strReloaded = await page
         .locator('.attrpanel .card', { hasText: 'Might' })
@@ -2917,38 +2955,42 @@ await go('Character');
   }
 
   // A gear slot is a button now; clicking one opens its picker.
+  // Modul: TASK 97 - one 4-column grid of all ELEVEN slots on the Gear tab,
+  // addressed by data-slot-index rather than by position in a doll layout.
+  await characterTab('gear');
+  const allSlots = await page.locator('.gearslot[data-slot-index]').count();
+  record('the gear grid has all eleven slots', allSlots === 11, `${allSlots} slots`);
+
   // Modul: tools are gear now - three slots of their own, rolled with a rarity
   // and gathering affixes, where they used to be stackable materials that
   // could carry neither.
-  const toolSlots = await page.locator('.tools .gearslot').count();
+  const toolSlots = await page.locator('.gearslot.tool').count();
   record('the doll has the three tool slots', toolSlots === 3, `${toolSlots} tool slots`);
 
   // Modul: a WORN TOOL HAS TO SHOW. Counting the slots proved only that three
   // buttons render, and for as long as tools have existed all three rendered
   // EMPTY however many were equipped: the inventory snapshot recorded the
   // eight combat slots and never the tool ones, so an axe written to
-  // EquippedAxeId came back as EquippedByCharacterSlot -1. The doll drew
-  // nothing and the axe stayed in its own picker as available, which is what
-  // "I equip a tool and nothing appears in the slot" was.
+  // EquippedAxeId came back as EquippedByCharacterSlot -1.
   //
   // Modul: EQUIPS ONE HERE rather than trusting the fixture to have done it.
   // Which character occupies a playable slot is not stable across runs - the
-  // Hall of Ancestors step below FIELDS somebody, and that carries into the
-  // next run - so asserting on a pre-equipped tool made this check depend on
-  // the previous run's tail. Driving the equip makes it self-contained, and it
-  // is also the exact act that was reported broken.
-  const axeSlot = page.locator('.tools .gearslot').first();
+  // Hall of Ancestors step below FIELDS somebody - so driving the equip makes
+  // this self-contained, and it is the exact act that was reported broken.
+  const axeSlot = page.locator('.gearslot[data-slot-index="8"]').first();
   await axeSlot.click();
   await page.waitForTimeout(500);
 
-  const toolPick = page.locator('.picker button', { hasText: /Axe|Wear|Equip/i }).first();
+  const toolPick = page.locator('[data-testid="equip-picker"] button', { hasText: /^Wear$/ }).first();
   const pickable = (await toolPick.count()) > 0;
 
   if (pickable) {
     await toolPick.click();
-    await page.waitForTimeout(1600);
+    await page
+      .waitForFunction(() => document.querySelector('.gearslot[data-slot-index="8"]')?.classList.contains('filled'), null, { timeout: 8000 })
+      .catch(() => {});
   }
-  // Close the picker so its overlay does not sit over the slots being read.
+  // Close the picker so it does not sit over the slots being read.
   await page.getByRole('button', { name: 'Close', exact: true }).first().click().catch(() => {});
   await page.waitForTimeout(400);
 
@@ -2960,55 +3002,71 @@ await go('Character');
     axeFilled ? axeText : pickable ? 'equipped, but the slot still rendered empty' : 'no tool available to equip',
   );
 
-  const gearSlot = page.locator('.gearslot').first();
+  const gearSlot = page.locator('.gearslot[data-slot-index="0"]').first();
   const hasDoll = (await gearSlot.count()) > 0;
   record('the character has a paper doll with clickable slots', hasDoll);
+
+  const wornId = async () => (await gearSlot.getAttribute('data-item-id').catch(() => '')) ?? '';
+  // mode: 'changed' (a piece other than `value` is worn), 'empty', 'filled'.
+  const waitWorn = (mode, value) =>
+    page
+      .waitForFunction(
+        ([m, v]) => {
+          const id = document.querySelector('.gearslot[data-slot-index="0"]')?.dataset.itemId ?? '';
+          if (m === 'empty') return id === '';
+          if (m === 'filled') return id !== '';
+          return id !== '' && id !== v;
+        },
+        [mode, value],
+        { timeout: 10000 },
+      )
+      .then(() => true)
+      .catch(() => false);
 
   if (hasDoll) {
     await gearSlot.click();
     await page.waitForTimeout(500);
-    const opened = await page.evaluate(() => document.querySelector('.picker') !== null);
+    const opened = await page.evaluate(() => document.querySelector('[data-testid="equip-picker"]') !== null);
     record('clicking a slot opens its item picker', opened);
 
-    const wear = page.getByRole('button', { name: 'Wear', exact: true });
+    const wear = page.locator('[data-testid="equip-picker"] button[data-piece-id]', { hasText: /^Wear$/ });
     if ((await wear.count()) > 0) {
       await dismissToasts();
-      // The SLOT'S OWN TEXT, not the number of filled slots. The first slot on
-      // the doll is the weapon, which the fixture already has - so swapping it
-      // leaves the count unchanged and a count-based check reads as failure
-      // while the game is working correctly.
-      const before = await gearSlot.innerText();
+      // Modul: BY INSTANCE ID, not by the slot's text. The picker never lists
+      // a worn piece (equipped ids are filtered out), but two pieces can share
+      // a name - so "the text changed" read a working swap between two Hunter
+      // Swords as a failure. data-item-id is the instance actually worn.
+      const before = await wornId();
+      await wear.first().click();
+      const changed = await waitWorn('changed', before);
+      const after = await wornId();
+      const msgs = await toasts();
+      record(
+        'wearing an item from the doll dresses the character',
+        changed || msgs.length > 0,
+        msgs.join(' | ') || `weapon instance ${before || 'none'} -> ${after || 'none'}`,
+      );
 
-      // Modul: A DIFFERENT ITEM, not simply the first one offered. The picker
-      // lists everything that fits the slot INCLUDING the piece already worn,
-      // and the worn piece sorts to the top - so `wear.first()` re-equipped
-      // what was already on, the slot text was identical before and after, and
-      // a working game read as a failure. Worse, it was self-inflicting: each
-      // run left the weapon set to whatever the picker happened to head with,
-      // which is exactly the row the next run would pick again.
-      const wornName = before.split(String.fromCharCode(10)).pop().trim();
-      const index = await page.evaluate((worn) => {
-        const buttons = [...document.querySelectorAll('.picker button')]
-          .filter((b) => b.textContent.trim() === 'Wear');
-        return buttons.findIndex((b) => !(b.closest('li') ?? b.parentElement).innerText.includes(worn));
-      }, wornName);
+      // Modul: AND TAKES IT OFF, then puts it back - a round trip, so the
+      // fixture fights the later steps with a weapon (a check that leaves
+      // state behind passes once and fails for ever, root CLAUDE.md).
+      if (after) {
+        if ((await page.locator('[data-testid="equip-picker"]').count()) === 0) {
+          await gearSlot.click();
+          await page.waitForTimeout(400);
+        }
+        await page.locator('[data-testid="take-off"]').first().click().catch(() => {});
+        const emptied = await waitWorn('empty', '');
+        record('taking the weapon off from the gear grid empties the slot', emptied, emptied ? `instance ${after} taken off` : `still ${await wornId()}`);
 
-      if (index < 0) {
-        record(
-          'wearing an item from the doll dresses the character',
-          false,
-          `nothing offered but the ${wornName} already worn`,
-        );
-      } else {
-        await wear.nth(index).click();
-        await page.waitForTimeout(2500);
-        const after = await gearSlot.innerText();
-        const msgs = await toasts();
-        record(
-          'wearing an item from the doll dresses the character',
-          after !== before || msgs.length > 0,
-          msgs.join(' | ') || `${before.split(String.fromCharCode(10)).join(' ')} -> ${after.split(String.fromCharCode(10)).join(' ')}`,
-        );
+        if ((await page.locator('[data-testid="equip-picker"]').count()) === 0) {
+          await gearSlot.click();
+          await page.waitForTimeout(400);
+        }
+        const same = page.locator(`[data-testid="equip-picker"] button[data-piece-id="${after}"]`);
+        await ((await same.count()) > 0 ? same : wear).first().click().catch(() => {});
+        const restored = await waitWorn('filled', '');
+        record('and wearing it again fills it', restored, `weapon instance now ${(await wornId()) || 'none'}`);
       }
     }
   }
@@ -4090,6 +4148,10 @@ await go('Ancestors');
   if (first) {
     const original = first.Rules.map((r) => ({ Type: r.Type, Param: r.Param }));
     await go('Character');
+    // Task 97: Orders sit on the Work & orders tab and show the person the
+    // switcher is on.
+    await characterPerson(first.CharacterId);
+    await characterTab('work');
     const block = page.locator(`[data-testid="orders-character"][data-character-id="${first.CharacterId}"]`);
     await block.waitFor({ timeout: 10000 }).catch(() => {});
 
@@ -4115,6 +4177,8 @@ await go('Ancestors');
         });
         await page.reload({ waitUntil: 'networkidle' });
         await go('Character');
+        await characterPerson(first.CharacterId);
+        await characterTab('work');
         await block.waitFor({ timeout: 10000 }).catch(() => {});
       }
       await typeSelect.selectOption(String(wanted));

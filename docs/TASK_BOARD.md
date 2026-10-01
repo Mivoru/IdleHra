@@ -6500,7 +6500,14 @@ the screenshot. Report section 5. This is visual review C, S1-S5.
 
 ## 97. Character: gear first on a phone
 
-**OPEN.** Report sections 4.H and 8. This is visual review A2, CH-1 to CH-10.
+**BUILT on branch `claude/ui-97-character`, not merged.** Still open: run
+`exercise.mjs` (new gear-grid, take-off/re-wear and tab-aware steps) and the
+four geometry checkers on the merge; a 390 px guest screenshot for the owner;
+check by scrolling that the switcher actually sticks on a phone; a 24-character
+person name looked at, not just reasoned about. Attributes stay account-wide
+and health is slot 1's only (no per-person wire data for either); DPS is the
+server projection's monster health over seconds-per-kill. Report sections 4.H
+and 8. This is visual review A2, CH-1 to CH-10.
 
 **What is actually true.**
 - **The gear slots are about 1,500 px down at 390 px**, behind
