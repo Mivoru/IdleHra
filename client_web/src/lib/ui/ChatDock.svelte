@@ -143,20 +143,52 @@
     pointer-events: auto;
   }
 
+  /* Modul: SIZED FROM WHAT IS LEFT, not from a guess at it.
+     It was `min(26rem, 100vh - 8rem)`. With the soft keyboard up the APK's
+     viewport shrinks to ~350px, and the dock already stands on the tab bar,
+     the gesture inset, its 1rem offset, the 44px handle and the gap - so the
+     window's top landed about 2px ABOVE the screen, under the status bar,
+     with the header and its close button underneath the clock. Every term the
+     dock stands on is subtracted now, plus the status bar and a margin.
+     The vh line is the fallback for an engine without dvh. */
   .window {
+    position: relative;
+    isolation: isolate;
     width: min(30rem, calc(100vw - 2rem));
     height: min(26rem, calc(100vh - 8rem));
+    height: min(
+      26rem,
+      calc(100dvh - var(--sa-top) - var(--sa-bottom) - var(--tabbar-h) - 1rem - 44px - 0.4rem - 0.5rem)
+    );
     display: flex;
     flex-direction: column;
     border-radius: 10px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    border: 1px solid var(--border);
     /* Translucent so the game keeps showing through - the point of a dock
        rather than a page. */
-    background: color-mix(in srgb, var(--bg-panel, #14161c) 82%, transparent);
-    backdrop-filter: blur(10px);
+    background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
     overflow: hidden;
     animation: slide-up 140ms ease-out;
+  }
+
+  /* Modul: THE BLUR LIVES ON A PSEUDO-ELEMENT, NOT ON THE WINDOW.
+     A backdrop-filter makes its element the containing block for every
+     position: fixed descendant. The window holds the whole chat, and chat
+     opens the player profile and the name menu - so both were laid out
+     inside this ~416px box instead of the screen, offset and clipped by its
+     overflow. They are portalled to <body> now as well (ui/portal.ts); this
+     keeps the trap from being set for the next thing chat opens. A
+     pseudo-element is not an ancestor of anything. */
+  .window::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    pointer-events: none;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -178,7 +210,9 @@
 
   header {
     padding: 0.5rem;
-    background: var(--bg-dark);
+    /* --bg-raised, not --bg-dark: the theme never defined --bg-dark, so the
+       header had no background at all. Translucent like the window. */
+    background: color-mix(in srgb, var(--bg-raised) 70%, transparent);
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -192,7 +226,7 @@
   }
 
   .handle-online {
-    color: var(--good, #6c6);
+    color: var(--good);
     font-variant-numeric: tabular-nums;
   }
 
@@ -209,14 +243,14 @@
     align-items: center;
     gap: 0.25rem;
     font-size: 0.8rem;
-    color: var(--dim, #888);
+    color: var(--text-dim);
   }
 
   .online-dot {
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background-color: var(--success, #4caf50);
+    background-color: var(--good);
     display: inline-block;
   }
 
@@ -244,8 +278,8 @@
     gap: 0.35rem;
     padding: 0.45rem 0.8rem;
     border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    background: color-mix(in srgb, var(--bg-panel, #14161c) 88%, transparent);
+    border: 1px solid var(--border);
+    background: color-mix(in srgb, var(--bg-panel) 88%, transparent);
     backdrop-filter: blur(8px);
     cursor: pointer;
     font-size: 0.85rem;
@@ -261,7 +295,7 @@
     height: 1.15rem;
     padding: 0 0.3rem;
     border-radius: 999px;
-    background: var(--bad, #e5484d);
+    background: var(--danger);
     color: #fff;
     font-size: 0.7rem;
     font-weight: 700;
