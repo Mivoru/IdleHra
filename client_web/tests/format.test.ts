@@ -3,6 +3,7 @@ import {
   formatNumber,
   formatExact,
   formatDecimal,
+  formatGold,
   numberTitle,
   isCompacted,
   COMPACT_THRESHOLD,
@@ -127,5 +128,17 @@ describe('formatDecimal', () => {
     expect(formatDecimal(2, 1)).toBe('2');
     language.set('De');
     expect(formatDecimal(1.5, 1)).toBe('1,5');
+  });
+});
+
+describe('formatGold', () => {
+  it('keeps the terse g on a figure written out in full', () => {
+    expect(formatGold(950)).toBe('950g');
+    expect(formatGold(100_000)).toBe(`100${S}000g`);
+  });
+
+  it('spells the unit out once compacted, so it cannot read as kg or Mg', () => {
+    expect(formatGold(150_000)).toBe(`150${S}k gold`);
+    expect(formatGold(1_240_000)).toBe(`1.24${S}M gold`);
   });
 });

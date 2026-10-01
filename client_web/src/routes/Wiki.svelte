@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatNumber, numberTitle } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import { PREF_WIKI_TAB, readPref, writePref } from '../lib/net/prefs';
   // Modul: the wiki. Fifteen pages, a search across all of them, and a ledger
   // at the end saying which of the game's screens each one covers.
@@ -701,7 +702,7 @@
                   <tr>
                     <td>{index + 1}. {name}</td>
                     <td class="num" title={numberTitle(REROLL_GOLD_BY_REGION[index + 1])}>{formatNumber(REROLL_GOLD_BY_REGION[index + 1])}</td>
-                    <td class="num">{formatNumber(Math.round(regionGold[index] ?? 0))}g</td>
+                    <td class="num"><Money amount={Math.round(regionGold[index] ?? 0)} /></td>
                     <td class="num">{rerollInKills[index] ?? '—'}</td>
                   </tr>
                 {/each}
@@ -844,7 +845,7 @@
                         {monster.Armor} armour · {monster.DodgeRating} dodge
                       </span>
                       <span class="dim tiny">
-                        {formatNumber(monster.BaseGoldReward)}g · {formatNumber(monster.BaseXpReward)} xp
+                        <Money amount={monster.BaseGoldReward} /> · {formatNumber(monster.BaseXpReward)} xp
                       </span>
                     </div>
                   </div>

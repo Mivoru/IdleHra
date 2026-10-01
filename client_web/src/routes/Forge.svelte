@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { formatNumber } from '../lib/ui/format';
+  import { formatNumber, formatGold } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { queryKeys, fetchForge, fetchForgeStackPreview, type ForgeEquipment } from '../lib/net/rest';
@@ -494,7 +495,7 @@ ${scope}`)) return;
 
       {#if !atMaxTier}
         <p class="dim small">
-          Fee up to <b class:blocked={gold < fusionFee}>{formatNumber(fusionFee)}g</b>.
+          Fee up to <b class:blocked={gold < fusionFee}><Money amount={fusionFee} available={gold} /></b>.
           Luck and the Diamond Star event take up to 25% off.
         </p>
       {/if}
@@ -534,7 +535,7 @@ ${scope}`)) return;
           {:else}
             <p class="small" data-testid="fuse-stack-plan">
               {formatNumber(plan.TotalFusions)} fusions &middot;
-              <b>{formatNumber(plan.GoldCost)}g</b> &rarr;
+              <b><Money amount={plan.GoldCost} /></b> &rarr;
               {#each plan.Result.filter((r) => r.Count > 0).reverse() as row, i (row.Tier)}
                 {i > 0 ? ', ' : ''}<span style="color: {rarityColor(row.Tier)}">{formatNumber(row.Count)}&times; {rarityName(row.Tier)}</span>
               {/each}
@@ -553,7 +554,7 @@ ${scope}`)) return;
           data-testid="fuse-stack-go"
           disabled={!plan || plan.TotalFusions === 0}
         >
-          Fuse the stack{plan && plan.TotalFusions > 0 ? ` · ${formatNumber(plan.GoldCost)}g` : ''}
+          Fuse the stack{plan && plan.TotalFusions > 0 ? ` · ${formatGold(plan.GoldCost)}` : ''}
         </button>
       </div>
     {/if}
@@ -589,8 +590,8 @@ ${scope}`)) return;
     {#if rerollItem}
       <p class="price">
         This reroll costs
-        <b class:blocked={gold < rerollFee}>{formatNumber(rerollFee)}g</b>.
-        You have {formatNumber(gold)}g.
+        <b class:blocked={gold < rerollFee}><Money amount={rerollFee} available={gold} /></b>.
+        You have <Money amount={gold} />.
         <span class="dim tiny">
           The price follows the item's rarity, not how many times you have
           tried - a run of poor rolls does not get more expensive.
@@ -739,7 +740,7 @@ ${scope}`)) return;
         disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
       >
         {autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'}
-        &middot; {formatNumber(rerollFee)}g{autoReroll ? ' each' : ''}
+        &middot; {formatGold(rerollFee)}{autoReroll ? ' each' : ''}
       </button>
 
       {#if rerollFlash > 0}
@@ -750,7 +751,7 @@ ${scope}`)) return;
       {/if}
       {#if gold < rerollFee}
         <p class="dim tiny">
-          You have {formatNumber(gold)}g and this costs {formatNumber(rerollFee)}g.
+          You have <Money amount={gold} /> and this costs <Money amount={rerollFee} />.
         </p>
       {/if}
     {/if}

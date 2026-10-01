@@ -1,6 +1,6 @@
 <script lang="ts">
   import { PREF_CHEST_FILTER, PREF_CHEST_MIN_RARITY, readPrefAs, writePref } from '../lib/net/prefs';
-  import { formatNumber, numberTitle } from '../lib/ui/format';
+  import { formatGold, formatNumber, numberTitle } from '../lib/ui/format';
   // Modul: the village chest. Everything a character produces ends up here.
   //
   // It replaces the backpack, which capped at twenty shared slots and stopped
@@ -264,7 +264,7 @@
       if (sell) {
         play('itemSold');
         pushLocalNotice(
-          `Sold ${formatNumber(result.RemovedCount)} pieces for ${formatNumber(result.GoldGained)}g.${kept}`,
+          `Sold ${formatNumber(result.RemovedCount)} pieces for ${formatGold(result.GoldGained)}.${kept}`,
           'info',
         );
       } else {
@@ -301,7 +301,7 @@
         pushLocalNotice(`Could not ${sell ? 'sell' : 'bin'} ${label}.`, 'error');
       } else if (sell) {
         play('itemSold');
-        pushLocalNotice(`Sold ${label} for ${formatNumber(result.GoldGained)}g.`, 'info');
+        pushLocalNotice(`Sold ${label} for ${formatGold(result.GoldGained)}.`, 'info');
       } else {
         pushLocalNotice(`Binned ${label}.`, 'info');
       }

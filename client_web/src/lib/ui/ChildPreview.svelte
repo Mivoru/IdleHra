@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatNumber } from './format';
+  import Money from './Money.svelte';
   // Modul: THE PREVIEW IS THE TEACHING MOMENT.
   //
   // Breeding is the densest system in the game and had the least explanation.
@@ -173,7 +173,7 @@
   {/if}
   {#if generation !== null}
     The price is 500g per generation: generation {generation}, so
-    {formatNumber(breedingCostFor(generation))}g.
+    <Money amount={breedingCostFor(generation)} />.
   {/if}
 </p>
 

@@ -17,6 +17,7 @@
   import { queryKeys, fetchWorn, fetchCombatProjection, type HuntingEstimate } from '../lib/net/rest';
   import { estimateLine, killTimeText, safety } from '../lib/ui/huntingEstimate';
   import { formatNumber, numberTitle } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import { readPref, writePref, PREF_LAST_MONSTER } from '../lib/net/prefs';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
@@ -681,7 +682,7 @@
                     {#if est.CanDamage}
                       <span class="dim">Estimate:</span>
                       {killTimeText(est)} a kill · {formatNumber(est.XpPerHour)} XP/h ·
-                      {formatNumber(est.GoldPerHour)} g/h ·
+                      <Money amount={est.GoldPerHour} />/h ·
                       <span class="verdict {verdict.tone}">{verdict.text}</span>
                     {:else}
                       <span class="dim">Estimate:</span>

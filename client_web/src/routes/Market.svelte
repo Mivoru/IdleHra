@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { formatNumber } from '../lib/ui/format';
+  import { formatNumber, formatGold } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import CosmeticMarket from '../lib/ui/CosmeticMarket.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import {
@@ -360,7 +361,7 @@
                 {slotLabel(listing.BaseItemId)} &middot; {rarityName(listing.QualityTier)}
               </span>
             </div>
-            <span class="price">{formatNumber(listing.Price)}g</span>
+            <span class="price"><Money amount={listing.Price} /></span>
             <button class="tiny-btn" disabled={!hasGuildLicense} onclick={() => buy(listing.OrderId)}>
               Buy
             </button>
@@ -429,15 +430,15 @@
           <div class="quote-head">
             <div>
               <span class="dim tiny">Last sold</span>
-              <strong>{formatNumber(h.LastPrice)}g</strong>
+              <strong><Money amount={h.LastPrice} /></strong>
             </div>
             <div>
               <span class="dim tiny">Average</span>
-              <strong>{formatNumber(h.AveragePrice)}g</strong>
+              <strong><Money amount={h.AveragePrice} /></strong>
             </div>
             <div>
               <span class="dim tiny">Range</span>
-              <strong>{formatNumber(h.LowPrice)} - {formatNumber(h.HighPrice)}g</strong>
+              <strong><Money amount={h.LowPrice} /> - <Money amount={h.HighPrice} /></strong>
             </div>
           </div>
 
@@ -487,17 +488,17 @@
       {@const fee = Math.floor((sellPrice * history.data.FeePct) / 100)}
       {@const guildCut = Math.floor((sellPrice * history.data.GuildTaxPct) / 100)}
       <dl class="payout">
-        <div><dt>Asking</dt><dd>{formatNumber(sellPrice)}g</dd></div>
-        <div><dt>Market fee ({history.data.FeePct}%)</dt><dd class="minus">-{formatNumber(fee)}g</dd></div>
+        <div><dt>Asking</dt><dd><Money amount={sellPrice} /></dd></div>
+        <div><dt>Market fee ({history.data.FeePct}%)</dt><dd class="minus">-{formatGold(fee)}</dd></div>
         {#if history.data.GuildTaxPct > 0}
           <div>
             <dt>Guild cut ({history.data.GuildTaxPct}%)</dt>
-            <dd class="minus">-{formatNumber(guildCut)}g</dd>
+            <dd class="minus">-{formatGold(guildCut)}</dd>
           </div>
         {/if}
         <div class="total">
           <dt>You receive</dt>
-          <dd>{formatNumber(Math.max(0, sellPrice - fee - guildCut))}g</dd>
+          <dd><Money amount={Math.max(0, sellPrice - fee - guildCut)} /></dd>
         </div>
       </dl>
     {/if}
@@ -507,7 +508,7 @@
          offering it and explaining afterwards. NoGuildLicense is a rejection
          code rather than a disconnect, so this is UX rather than safety. -->
     <button onclick={sell} disabled={!hasGuildLicense || sellInstanceId === 0 || sellPrice < 1}>
-      List for {formatNumber(Math.max(1, sellPrice))}g
+      List for {formatGold(Math.max(1, sellPrice))}
     </button>
 
     {#if sellable.length === 0}
@@ -586,7 +587,7 @@
         orderPrice < 1 ||
         (orderSide === 'buy' ? orderDefinitionId === 0 : orderInstanceId === 0)}
     >
-      Place {orderSide} order at {formatNumber(Math.max(1, orderPrice))}g
+      Place {orderSide} order at {formatGold(Math.max(1, orderPrice))}
     </button>
 
     <p class="dim tiny">
