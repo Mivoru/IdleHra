@@ -33,3 +33,20 @@ export const isNarrow = readable(false, (set) => {
   mq.addEventListener('change', onChange);
   return () => mq.removeEventListener('change', onChange);
 });
+
+// Modul: the WIDE breakpoint (64rem, app.css's "wide"), for the one layout
+// that changes structure rather than style: the Chest's list | detail pane
+// (task 99). Below it the detail opens inline above the list instead, and a
+// row tap does not select - on a phone that tap is aimed at Equip.
+export const WIDE_QUERY = '(min-width: 64rem)';
+
+export const isWide = readable(false, (set) => {
+  if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return;
+
+  const mq = window.matchMedia(WIDE_QUERY);
+  set(mq.matches);
+
+  const onChange = (e: MediaQueryListEvent) => set(e.matches);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
+});

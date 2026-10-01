@@ -1,6 +1,6 @@
 <script lang="ts">
   import { PREF_CHEST_FILTER, PREF_CHEST_MIN_RARITY, readPrefAs, writePref } from '../lib/net/prefs';
-  import { formatGold, formatNumber, numberTitle } from '../lib/ui/format';
+  import { formatGold, formatNumber } from '../lib/ui/format';
   // Modul: the village chest. Everything a character produces ends up here.
   //
   // It replaces the backpack, which capped at twenty shared slots and stopped
@@ -34,7 +34,7 @@
   import { invalidateOwnedItems } from '../lib/net/queryClient';
   import VirtualList from '../lib/ui/VirtualList.svelte';
   import { prettifyBaseId, isFood, consumableKind } from '../lib/net/content';
-  import { rarityColor, rarityName, rarityTitle, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
+  import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { pushLocalNotice } from '../lib/stores/game';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
@@ -44,7 +44,11 @@
   import { requestScreen, setPendingFocusEquipment } from '../lib/stores/navigation';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
-  import { isNarrow } from '../lib/ui/media';
+  import { isNarrow, isWide } from '../lib/ui/media';
+  import ItemRow from '../lib/ui/ItemRow.svelte';
+  import Affixes from '../lib/ui/Affixes.svelte';
+  import { isChestMaterial, splitWorn, itemMetaLine } from '../lib/ui/itemRow';
+  import { contentRegistry } from '../lib/net/registry.svelte';
   import ContextMenu, { type MenuItem } from '../lib/ui/ContextMenu.svelte';
   import Hint from '../lib/ui/Hint.svelte';
   import { onDestroy } from 'svelte';
@@ -53,10 +57,12 @@
   // Modul: TWO NUMBERS FOR ONE CONTRACT, because the row has two shapes.
   //
   // VirtualList positions rows by arithmetic, so whatever `.row` actually
-  // renders as, this has to match it. Below 40rem the name and rarity stack
-  // into two short lines beside the two 44px buttons (see `.label` in the
-  // 40rem media block), so the row is one touch target plus its padding. It
-  // was 78 while the row carried five buttons on a second line of their own.
+  // renders as, this has to match it. The row is ItemRow now (task 99): two
+  // single-line text lines at every width - the name, then tier, rarity and
+  // the top affixes - so on a wide screen it is two lines of text plus padding
+  // (46; it was 34 while it was one line), and below 40rem it is still the
+  // 44px buttons plus padding, which the two lines fit beside. It was 78 while
+  // the row carried five buttons on a second line of their own.
   //
   // Modul: do NOT write a literal style or script tag in a comment here. The
   // Svelte parser scans this block as raw text looking for its closing tag,
@@ -67,7 +73,7 @@
   // Kept beside each other rather than derived from a CSS variable: the CSS
   // and this number have to agree, and two literals a reader can compare are
   // easier to keep honest than one indirection they have to resolve.
-  const ROW_H_WIDE = 34;
+  const ROW_H_WIDE = 46;
   const ROW_H_NARROW = 56;
   const equipmentRowHeight = $derived($isNarrow ? ROW_H_NARROW : ROW_H_WIDE);
 
@@ -99,11 +105,9 @@
   // earlier version read the bank instead, which meant a looted piece could
   // never be worn or upgraded.
   const equipment = $derived(((inventory.data?.Equipment ?? []) as InventoryEquipment[]));
-  const materials = $derived(
-    ((inventory.data?.Stacks ?? []) as InventoryStack[]).filter(
-      (s) => s.Quantity > 0,
-    ),
-  );
+  // Modul: GOLD IS NOT A MATERIAL (task 99) - see isChestMaterial. The
+  // server would answer Sell all and Bin on it by deleting the gold for 0.
+  const materials = $derived(((inventory.data?.Stacks ?? []) as InventoryStack[]).filter(isChestMaterial));
 
   // Modul: SEARCH AND RARITY, alongside the category tabs.
   //
@@ -177,6 +181,46 @@
       (a, b) => b.QualityTier - a.QualityTier || a.BaseItemId.localeCompare(b.BaseItemId),
     ),
   );
+
+  // Modul: WORN PIECES ARE THEIR OWN GROUP, ON TOP (task 99). A worn piece
+  // used to differ from a loose one only by its button saying Unequip, so the
+  // gear a character has on was scattered through five thousand rows. The
+  // group is bounded by the roster's slots, so it is a plain list; the loose
+  // pieces are the unbounded half and stay in the VirtualList.
+  const groups = $derived(splitWorn(sortedEquipment));
+
+  // What the loose list is called. "Equipment" meant two things - the tab
+  // (everything but weapons) and the heading (everything) - so each says what
+  // it holds.
+  const looseTitle = $derived(
+    filter === 'weapons' ? 'Weapons' : filter === 'equipment' ? 'Armour & tools' : 'Gear',
+  );
+
+  // ---------------------------------------------------------------------------
+  // Inspect (task 99)
+  // ---------------------------------------------------------------------------
+
+  // Modul: BY ID, NOT BY OBJECT. The inventory refetches after every action,
+  // and a held object would keep showing the affixes from before a reroll or
+  // a lock. Looking the id up again also closes the pane by itself when the
+  // piece is sold or binned.
+  let inspectedId = $state<number | null>(null);
+  const inspected = $derived(
+    inspectedId === null ? null : (equipment.find((e) => e.Id === inspectedId) ?? null),
+  );
+  let inlineDetail = $state<HTMLElement | null>(null);
+
+  function inspect(id: number) {
+    inspectedId = id;
+    // Below the wide breakpoint the detail opens above the list, which may be
+    // a long way up from the row that asked for it.
+    if (!$isWide) requestAnimationFrame(() => inlineDetail?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+  }
+
+  function inspectedMeta(item: InventoryEquipment): string {
+    const regionTier = contentRegistry.current?.itemsByBaseId.get(item.BaseItemId)?.RegionTier ?? 0;
+    return itemMetaLine({ regionTier, qualityTier: item.QualityTier });
+  }
 
   // Modul: ONE PASS, not four. This was four separate `.filter().length`
   // calls over the same two arrays - and two of them ran isFood and
@@ -392,21 +436,70 @@
   // shared ContextMenu. The lock state could only be read off its button
   // before, so it is a badge on the row now. A lock you cannot see is a lock
   // you have to click to check.
-  let menu = $state<{ x: number; y: number; item: InventoryEquipment } | null>(null);
+  //
+  // Task 99: the same menu serves a material row, which keeps Sell all on the
+  // row and moved Bin in here - it weighed the same as Sell all, 6px away.
+  type MenuTarget =
+    | { x: number; y: number; kind: 'eq'; item: InventoryEquipment }
+    | { x: number; y: number; kind: 'mat'; stack: InventoryStack };
+  let menu = $state<MenuTarget | null>(null);
 
   function openMenu(e: MouseEvent, item: InventoryEquipment) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     confirming = null;
-    menu = { x: rect.left, y: rect.bottom + 4, item };
+    menu = { x: rect.left, y: rect.bottom + 4, kind: 'eq', item };
+  }
+
+  function openMaterialMenu(e: MouseEvent, stack: InventoryStack) {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    confirming = null;
+    menu = { x: rect.left, y: rect.bottom + 4, kind: 'mat', stack };
+  }
+
+  const menuTitle = $derived(
+    menu === null
+      ? ''
+      : menu.kind === 'eq'
+        ? `${prettifyBaseId(menu.item.BaseItemId)} - ${rarityName(menu.item.QualityTier)}`
+        : prettifyBaseId(menu.stack.ItemId),
+  );
+
+  function materialMenuItems(stack: InventoryStack): MenuItem[] {
+    const label = prettifyBaseId(stack.ItemId);
+    const binKey = `mat:${stack.ItemId}`;
+    return [
+      confirming === binKey
+        ? {
+            label: `Really bin ${formatNumber(stack.Quantity)}`,
+            danger: true,
+            disabled: busy,
+            onSelect: () => {
+              confirming = null;
+              act({ itemId: stack.ItemId, quantity: stack.Quantity }, false, label);
+            },
+          }
+        : {
+            label: 'Bin',
+            disabled: busy,
+            title: 'Destroy the whole stack for nothing',
+            keepOpen: true,
+            onSelect: () => (confirming = binKey),
+          },
+    ];
   }
 
   const menuItems = $derived.by((): MenuItem[] => {
     if (!menu) return [];
+    if (menu.kind === 'mat') return materialMenuItems(menu.stack);
     const item = menu.item;
     const label = prettifyBaseId(item.BaseItemId);
     const blocked = item.IsEquipped ? 'Worn - take it off first' : item.IsAffixLocked ? 'Locked - unlock it first' : '';
     const binKey = `eq:${item.Id}`;
     return [
+      // Modul: INSPECT FIRST (task 99). The affixes are what makes this piece
+      // different from the next one with the same name, and they were nowhere
+      // on this screen. It opens the Forge's own Affixes panel.
+      { label: 'Inspect', title: 'Show every affix on this piece', onSelect: () => inspect(item.Id) },
       { label: 'Reroll in Forge', title: "Reroll this piece's affixes in the Forge", onSelect: () => openRerollInForge(item.Id) },
       {
         label: item.IsAffixLocked ? 'Unlock' : 'Lock',
@@ -566,7 +659,150 @@
   }
 </script>
 
-<div class="wrap">
+{#snippet dots()}
+  <svg viewBox="0 0 16 16" aria-hidden="true">
+    <circle cx="3" cy="8" r="1.6" fill="currentColor" />
+    <circle cx="8" cy="8" r="1.6" fill="currentColor" />
+    <circle cx="13" cy="8" r="1.6" fill="currentColor" />
+  </svg>
+{/snippet}
+
+<!-- One equipment row, shared by the Worn group and the VirtualList so the
+     two cannot drift apart. `.row[data-equipment-id]` is what exercise.mjs
+     addresses a piece by. -->
+{#snippet equipmentRow(item: InventoryEquipment)}
+  {@const saleKey = `eq:${item.Id}`}
+  <div class="row" class:pending={pendingSales.has(saleKey)} data-equipment-id={item.Id}>
+    <ItemRow
+      baseItemId={item.BaseItemId}
+      name={prettifyBaseId(item.BaseItemId)}
+      qualityTier={item.QualityTier}
+      affixes={item.Affixes}
+      selected={$isWide && inspectedId === item.Id}
+      onSelect={$isWide ? () => inspect(item.Id) : undefined}
+    >
+      {#snippet chips()}
+        {#if item.IsEquipped}<span class="chip worn">Worn</span>{/if}
+        {#if item.IsAffixLocked}
+          <!-- Modul: a Hint, because what a lock protects against was
+               only this badge's title - nothing on a phone. -->
+          <Hint text="Locked - cannot be sold, binned, swept, rerolled or fused. Unlock it from the row's menu."
+            ><span class="lockbadge">Locked</span></Hint
+          >
+        {/if}
+      {/snippet}
+      {#snippet actions()}
+        <!-- Modul: ONE PRIMARY ACTION AND A MENU (task 81). A pending sale
+             takes the group's place with its countdown and Undo, so nothing
+             else can be pressed on a piece that is about to go. -->
+        {#if pendingSales.has(saleKey)}
+          <span class="dim tiny">Selling in {secondsLeft(saleKey)}s</span>
+          <button class="tiny-btn" onclick={() => undoSale(saleKey)}>Undo</button>
+        {:else}
+          {#if item.IsEquipped}
+            <button class="tiny-btn" onclick={() => unequip(item.BaseItemId)}>Unequip</button>
+          {:else}
+            <button class="tiny-btn" onclick={() => equip(item.Id)}>Equip</button>
+          {/if}
+          <button
+            class="tiny-btn more"
+            aria-label="More"
+            aria-haspopup="menu"
+            title="Inspect, reroll, lock, sell or bin"
+            onclick={(e) => openMenu(e, item)}
+          >
+            {@render dots()}
+          </button>
+        {/if}
+      {/snippet}
+    </ItemRow>
+  </div>
+{/snippet}
+
+<!-- Modul: THE DETAIL (task 99) - the pane beside the list on a wide screen,
+     a block above the list below that. The affixes are the Forge's own
+     Affixes component, so this and the reroll panel cannot describe one roll
+     two ways. The actions are real buttons here because there is room.
+     Deliberately no "Cancel" label in it: exercise.mjs finds the sweep's
+     confirm by that name, page-wide. -->
+{#snippet detail(item: InventoryEquipment)}
+  {@const label = prettifyBaseId(item.BaseItemId)}
+  {@const saleKey = `eq:${item.Id}`}
+  {@const blocked = item.IsEquipped ? 'Worn - take it off first' : item.IsAffixLocked ? 'Locked - unlock it first' : ''}
+  <div class="detail-body" data-inspected-id={item.Id}>
+    <div class="detail-head">
+      <ItemIcon baseItemId={item.BaseItemId} name={label} qualityTier={item.QualityTier} size="md" />
+      <div class="detail-title">
+        <strong style="color: {rarityColor(item.QualityTier)}" class:rarity-glow={shouldGlow(item.QualityTier)}>{label}</strong>
+        <span class="dim tiny">
+          {inspectedMeta(item)}
+          {#if item.IsEquipped}<span class="chip worn">Worn</span>{/if}
+          {#if item.IsAffixLocked}<span class="lockstate">Locked</span>{/if}
+        </span>
+      </div>
+      <button class="tiny-btn close" aria-label="Close" title="Close" onclick={() => (inspectedId = null)}>×</button>
+    </div>
+
+    <Affixes affixes={item.Affixes} baseItemId={item.BaseItemId} qualityTier={item.QualityTier} />
+
+    <!-- Modul: NO PRICE, ON PURPOSE. The sale price is
+         VillageChestEngine.ValueEquipment on the server (BaseValueGold x
+         (1 + tier x 0.5) x 0.40) and nothing sends it to the client. Working
+         it out here would be a second copy of that formula, and two copies of
+         one truth is this codebase's dominant bug class. The number belongs on
+         the inventory row, from the server. -->
+    <p class="dim tiny">Sells for 40% of its market value. The amount is shown after the sale.</p>
+
+    <div class="detail-actions">
+      {#if pendingSales.has(saleKey)}
+        <span class="dim tiny">Selling in {secondsLeft(saleKey)}s</span>
+        <button class="tiny-btn" onclick={() => undoSale(saleKey)}>Undo</button>
+      {:else}
+        {#if item.IsEquipped}
+          <button class="tiny-btn" onclick={() => unequip(item.BaseItemId)}>Take off</button>
+        {:else}
+          <button class="tiny-btn" onclick={() => equip(item.Id)}>Wear</button>
+        {/if}
+        <button class="tiny-btn" onclick={() => openRerollInForge(item.Id)}>Reroll in Forge</button>
+        <button class="tiny-btn" disabled={busy} onclick={() => toggleLock(item.Id, label)}>
+          {item.IsAffixLocked ? 'Unlock' : 'Lock'}
+        </button>
+        <button
+          class="tiny-btn"
+          disabled={busy || blocked !== ''}
+          title={blocked}
+          onclick={() => queueSale({ equipmentId: item.Id }, label, saleKey)}
+        >
+          Sell
+        </button>
+        {#if confirming === `detail:${item.Id}`}
+          <button
+            class="tiny-btn danger"
+            disabled={busy}
+            onclick={() => {
+              confirming = null;
+              act({ equipmentId: item.Id }, false, label);
+            }}
+          >
+            Really bin
+          </button>
+        {:else}
+          <button
+            class="tiny-btn"
+            disabled={busy || item.IsEquipped}
+            title={item.IsEquipped ? 'Worn - take it off first' : ''}
+            onclick={() => (confirming = `detail:${item.Id}`)}
+          >
+            Bin
+          </button>
+        {/if}
+      {/if}
+    </div>
+    {#if blocked !== ''}<p class="dim tiny">{blocked}.</p>{/if}
+  </div>
+{/snippet}
+
+<div class="wrap" class:split={$isWide}>
   <section class="panel">
     <header class="head">
       <h2>Village chest</h2>
@@ -576,7 +812,7 @@
     </header>
 
     <div class="filters" role="group" aria-label="Filter">
-      {#each [['all', 'All', equipment.length + materials.length], ['equipment', 'Equipment', counts.equipment - counts.weapons], ['weapons', 'Weapons', counts.weapons], ['materials', 'Materials', counts.materials], ['food', 'Food', counts.food]] as [key, label, count]}
+      {#each [['all', 'All', equipment.length + materials.length], ['equipment', 'Armour & tools', counts.equipment - counts.weapons], ['weapons', 'Weapons', counts.weapons], ['materials', 'Materials', counts.materials], ['food', 'Food', counts.food]] as [key, label, count]}
         <button class:active={filter === key} onclick={() => (filter = key as Filter)}>
           {label}
           <span class="count">{count}</span>
@@ -767,11 +1003,30 @@
       {#if inventory.isError}
         <QueryError query={inventory} what="your chest" stale />
       {/if}
-      {#if sortedEquipment.length > 0}
+      {#if !$isWide && inspected}
+        <div class="inline-detail" bind:this={inlineDetail}>
+          {@render detail(inspected)}
+        </div>
+      {/if}
+
+      {#if groups.worn.length > 0}
         <h3>
-          Equipment
+          Worn ({formatNumber(groups.worn.length)})
+        </h3>
+        <!-- Bounded by the roster's slots, so a plain list. Each item keeps
+             the VirtualList's row height so the two groups line up. -->
+        <ul class="plain" aria-label="Worn pieces">
+          {#each groups.worn as item (item.Id)}
+            <li style="height: {equipmentRowHeight}px">{@render equipmentRow(item)}</li>
+          {/each}
+        </ul>
+      {/if}
+
+      {#if groups.loose.length > 0}
+        <h3>
+          {looseTitle}
           <span class="dim tiny">
-            {formatNumber(sortedEquipment.length)} shown
+            {formatNumber(groups.loose.length)} shown
           </span>
         </h3>
 
@@ -779,113 +1034,54 @@
              player owns, inside a box 26rem tall - 17,836 rows on the
              worst-affected account, each one an icon and six buttons, roughly
              180,000 DOM nodes to display about twenty. See ui/VirtualList. -->
-        <VirtualList items={sortedEquipment} rowHeight={equipmentRowHeight} label="Equipment in the chest">
+        <VirtualList items={groups.loose} rowHeight={equipmentRowHeight} label="Equipment in the chest">
           {#snippet row(item: InventoryEquipment)}
-            {@const saleKey = `eq:${item.Id}`}
-            <div class="row" class:pending={pendingSales.has(saleKey)} data-equipment-id={item.Id}>
-              <ItemIcon
-                baseItemId={item.BaseItemId}
-                name={prettifyBaseId(item.BaseItemId)}
-                qualityTier={item.QualityTier}
-                size="sm"
-              />
-              <span class="label">
-                <span
-                  class="name"
-                  style="color: {rarityColor(item.QualityTier)}"
-                  class:rarity-glow={shouldGlow(item.QualityTier)}
-                >
-                  {prettifyBaseId(item.BaseItemId)}
-                </span>
-                <span class="meta dim tiny">
-                  <span title={rarityTitle(item.QualityTier)}>{rarityName(item.QualityTier)}</span>
-                  {#if item.IsAffixLocked}
-                    <!-- Modul: a Hint, because what a lock protects against was
-                         only this badge's title - nothing on a phone. -->
-                    <Hint text="Locked - cannot be sold, binned, swept, rerolled or fused. Unlock it from the row's menu."
-                      ><span class="lockbadge">Locked</span></Hint
-                    >
-                  {/if}
-                </span>
-              </span>
-
-              <!-- Modul: ONE PRIMARY ACTION AND A MENU (task 81). This group
-                   held five buttons, and at 360px they crushed the name to 0
-                   wide. That was fixed once by putting them on a second line.
-                   With two buttons the row fits on one line again, and the
-                   name and rarity stack instead (see ROW_H_NARROW). A
-                   pending sale takes the group's place with its countdown
-                   and Undo, so nothing else can be pressed on a piece that is
-                   about to go. -->
-              <div class="actions">
-                {#if pendingSales.has(saleKey)}
-                  <span class="dim tiny">Selling in {secondsLeft(saleKey)}s</span>
-                  <button class="tiny-btn" onclick={() => undoSale(saleKey)}>Undo</button>
-                {:else}
-                  {#if item.IsEquipped}
-                    <button class="tiny-btn" onclick={() => unequip(item.BaseItemId)}>Unequip</button>
-                  {:else}
-                    <button class="tiny-btn" onclick={() => equip(item.Id)}>Equip</button>
-                  {/if}
-                  <button
-                    class="tiny-btn more"
-                    aria-label="More"
-                    aria-haspopup="menu"
-                    title="Reroll, lock, sell or bin"
-                    onclick={(e) => openMenu(e, item)}
-                  >
-                    <svg viewBox="0 0 16 16" aria-hidden="true">
-                      <circle cx="3" cy="8" r="1.6" fill="currentColor" />
-                      <circle cx="8" cy="8" r="1.6" fill="currentColor" />
-                      <circle cx="13" cy="8" r="1.6" fill="currentColor" />
-                    </svg>
-                  </button>
-                {/if}
-              </div>
-            </div>
+            {@render equipmentRow(item)}
           {/snippet}
         </VirtualList>
       {/if}
 
       {#if visibleMaterials.length > 0}
         <h3>Materials</h3>
-        <ul class="rows">
+        <!-- Modul: IN THE PAGE, NOT IN A BOX (task 99). This list sat in a
+             26rem scroller inside the scrolling page, cut mid-row. It is one
+             row per item id - bounded by the catalogue, 63 rows on the live
+             database - so it needs no window and no scroller of its own. -->
+        <ul class="plain materials">
           {#each visibleMaterials as stack (stack.ItemId)}
-            {@const total = stack.Quantity}
-            <li>
-              <ItemIcon baseItemId={stack.ItemId} name={prettifyBaseId(stack.ItemId)} size="sm" />
-              <span class="name">{prettifyBaseId(stack.ItemId)}</span>
-              <span class="qty" data-exact={total} title={numberTitle(total)}>{formatNumber(total)}</span>
-
-              {#if pendingSales.has(`mat:${stack.ItemId}`)}
-                <span class="dim tiny">Selling in {secondsLeft(`mat:${stack.ItemId}`)}s</span>
-                <button class="tiny-btn" onclick={() => undoSale(`mat:${stack.ItemId}`)}>Undo</button>
-              {:else}
-              <button
-                class="tiny-btn"
-                disabled={busy}
-                onclick={() => queueSale({ itemId: stack.ItemId, quantity: total }, prettifyBaseId(stack.ItemId), `mat:${stack.ItemId}`)}
+            {@const saleKey = `mat:${stack.ItemId}`}
+            {@const label = prettifyBaseId(stack.ItemId)}
+            <li class:pending={pendingSales.has(saleKey)}>
+              <ItemRow
+                baseItemId={stack.ItemId}
+                name={label}
+                quantity={stack.Quantity}
+                extra={isFood(stack.ItemId) || consumableKind(stack.ItemId) !== null ? 'Food' : 'Material'}
               >
-                Sell all
-              </button>
-
-              {#if confirming === `mat:${stack.ItemId}`}
-                <button
-                  class="tiny-btn danger"
-                  disabled={busy}
-                  onclick={() => {
-                    confirming = null;
-                    act({ itemId: stack.ItemId, quantity: total }, false, prettifyBaseId(stack.ItemId));
-                  }}
-                >
-                  Really bin
-                </button>
-              {:else}
-                <button class="tiny-btn" disabled={busy} onclick={() => (confirming = `mat:${stack.ItemId}`)}>
-                  Bin
-                </button>
-              {/if}
-              {/if}
+                {#snippet actions()}
+                  {#if pendingSales.has(saleKey)}
+                    <span class="dim tiny">Selling in {secondsLeft(saleKey)}s</span>
+                    <button class="tiny-btn" onclick={() => undoSale(saleKey)}>Undo</button>
+                  {:else}
+                    <button
+                      class="tiny-btn"
+                      disabled={busy}
+                      onclick={() => queueSale({ itemId: stack.ItemId, quantity: stack.Quantity }, label, saleKey)}
+                    >
+                      Sell all
+                    </button>
+                    <button
+                      class="tiny-btn more"
+                      aria-label="More"
+                      aria-haspopup="menu"
+                      title="Bin"
+                      onclick={(e) => openMaterialMenu(e, stack)}
+                    >
+                      {@render dots()}
+                    </button>
+                  {/if}
+                {/snippet}
+              </ItemRow>
             </li>
           {/each}
         </ul>
@@ -900,13 +1096,26 @@
            reason. -->
     </p>
   </section>
+
+  <!-- Modul: LIST | DETAIL on a wide screen (task 99). The card used to stop
+       at about 880px of a 1440px window with the rest empty; the pane uses it
+       for the one thing a row cannot hold, every affix on the piece. -->
+  {#if $isWide}
+    <aside class="panel detail" aria-label="Selected piece">
+      {#if inspected}
+        {@render detail(inspected)}
+      {:else}
+        <p class="dim tiny">Pick a piece to see every affix on it and what you can do with it.</p>
+      {/if}
+    </aside>
+  {/if}
 </div>
 
 {#if menu}
   <ContextMenu
     x={menu.x}
     y={menu.y}
-    title={prettifyBaseId(menu.item.BaseItemId)}
+    title={menuTitle}
     items={menuItems}
     onClose={() => { menu = null; confirming = null; }}
   />
@@ -935,6 +1144,22 @@
   .wrap {
     padding: 1rem;
     max-width: 56rem;
+  }
+
+  /* Wide: the list keeps its old width and the detail pane takes the room
+     that used to sit empty to the right of it. The pane sticks so a piece
+     picked far down the list still has its detail in view. */
+  .wrap.split {
+    max-width: 88rem;
+    display: grid;
+    grid-template-columns: minmax(0, 56rem) minmax(18rem, 26rem);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .detail {
+    position: sticky;
+    top: 1rem;
   }
 
   .panel {
@@ -1000,75 +1225,49 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* Still the MATERIALS list. Materials are one row per item id - 63 of them
-     on the live database, bounded by the catalogue rather than by playtime -
-     so there is nothing to window and a plain list is the right shape. The
-     equipment list is the unbounded one, and it is a VirtualList now. */
-  .rows {
+  /* Modul: THE MATERIALS AND THE WORN GROUP FLOW IN THE PAGE (task 99). The
+     materials sat in a 26rem scroller here, cut mid-row inside a page that
+     scrolls anyway. Both lists are bounded - materials by the catalogue (63
+     rows live), worn pieces by the roster's slots - so neither needs a box of
+     its own. The loose equipment is the unbounded one, and it is a
+     VirtualList. */
+  .plain {
     list-style: none;
     margin: 0;
     padding: 0;
     display: grid;
-    gap: 0.25rem;
-    max-height: 26rem;
-    overflow-y: auto;
-  }
-
-  /* Flex, not a shared grid template: an equipment row carries six children
-     and a material row four, and one template would misalign whichever it was
-     not written for. */
-  .rows li,
-  .row {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.3rem 0.45rem;
-    background: var(--bg-raised);
-    border-radius: var(--radius);
-    font-size: 0.85rem;
+    gap: 4px;
   }
 
   /* Modul: the virtual list positions rows by arithmetic, so this has to be
-     exactly the rowHeight passed to it - box-sizing included, since the
-     padding above is inside it. A row that renders taller overlaps its
-     neighbour instead of pushing it down. `height: 100%` takes whichever of
-     ROW_H_WIDE / ROW_H_NARROW the script handed the list. */
+     exactly the rowHeight passed to it. ItemRow fills it with `height: 100%`
+     and keeps both of its lines to one line each. */
   .row {
-    box-sizing: border-box;
     height: 100%;
-  }
-
-  .actions {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    flex-shrink: 0;
-  }
-
-  /* Name and rarity side by side on a wide row, stacked on a narrow one. The
-     label is the only child allowed to shrink, and it ellipsises rather than
-     collapsing (`min-width: 0` is what once produced a 0-wide name). */
-  .label {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    align-items: baseline;
-    gap: 0.5rem;
-  }
-
-  .meta {
-    display: inline-flex;
-    gap: 0.4rem;
-    flex-shrink: 0;
-    white-space: nowrap;
   }
 
   /* Modul: a locked piece has to READ as locked at a glance, or the player
      has to open each menu to find out - the opposite of what a lock is for
      when there are thousands of rows. */
-  .lockbadge {
+  .lockbadge,
+  .lockstate {
     color: var(--warn);
     font-weight: 600;
+  }
+
+  /* Worn is a fact about the piece, not an action, so it is a chip rather
+     than the Equip/Unequip label being the only difference. */
+  .chip {
+    display: inline-block;
+    padding: 0 0.3rem;
+    border: 1px solid currentColor;
+    border-radius: var(--radius-pill);
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .chip.worn {
+    color: var(--good);
   }
 
   .more svg {
@@ -1077,8 +1276,55 @@
     display: block;
   }
 
-  .row.pending {
+  .row.pending,
+  .materials li.pending {
     opacity: 0.6;
+  }
+
+  /* The detail, in the side pane or inline above the list. */
+  .inline-detail {
+    margin: 0.6rem 0;
+    padding: 0.6rem;
+    background: var(--bg-raised);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+  }
+
+  .detail-head {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+  }
+
+  .detail-title {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  .detail-title strong {
+    overflow-wrap: anywhere;
+  }
+
+  .detail-title .chip,
+  .detail-title .lockstate {
+    margin-left: 0.3rem;
+  }
+
+  .close {
+    flex-shrink: 0;
+  }
+
+  .detail-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .detail-body p {
+    margin: 0.5rem 0 0;
   }
 
   .rulegrid {
@@ -1098,35 +1344,6 @@
 
   .rulegrid select {
     min-width: 0;
-  }
-
-  /* Modul: ONE LINE AGAIN (task 81). This block used to force a five-button
-     actions group onto a second line. With two buttons the row fits, and the
-     name and rarity stack instead - two short lines beside a 44px button, so
-     the height is set by the button and ROW_H_NARROW matches it. */
-  @media (max-width: 40rem) {
-    .label {
-      flex-direction: column;
-      align-items: stretch;
-      gap: 0.1rem;
-    }
-
-    /* The materials list has the same squeeze - icon, name, quantity and two
-       buttons - but it is a plain <ul>, not the VirtualList, so nothing is
-       positioned by arithmetic and it may simply wrap where it likes. No
-       height to keep in step, so no wrapper and no constant. */
-    .rows li {
-      flex-wrap: wrap;
-      row-gap: 0.3rem;
-    }
-
-    .rows li .name {
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
   }
 
   .sweep,
@@ -1180,20 +1397,6 @@
     margin: 0 0 0.5rem;
     font-size: 0.8rem;
   }
-
-  .name {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .qty {
-    font-variant-numeric: tabular-nums;
-    color: var(--text-dim);
-  }
-
 
   .tiny-btn {
     font-size: 0.7rem;
