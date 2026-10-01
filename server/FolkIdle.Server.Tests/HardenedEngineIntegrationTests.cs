@@ -5219,7 +5219,9 @@ namespace FolkIdle.Server.Tests
         {
             const long leaderPlayerId = 980000601L;
             const long memberPlayerId = 980000602L;
-            const string guildName = "IntegrationTestManagedGuild980000601";
+            // 32 characters at most since task 94 (GuildManagementEngine.MaxGuildNameLength);
+            // this was 36 and the cap refused it.
+            const string guildName = "ManagedGuild980000601";
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {

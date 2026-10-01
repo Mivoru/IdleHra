@@ -1302,6 +1302,108 @@ await go('Guild');
   }
 }
 
+// --- leave the guild, and come back (task 94) --------------------------------
+//
+// Modul: LeaveGuildAsync existed for months with no route and no button, so a
+// player in a dead guild was stuck for good. This leaves through the real
+// confirm and REJOINS, so the fixture ends the step in the guild it started in.
+//
+// What "rejoin" means depends on the fixture's guild, and only two shapes can
+// be restored exactly:
+//   - the fixture is the LAST member: leaving closes the guild, and founding
+//     one under the same name puts it back as leader. The depot, treasury and
+//     buffs of the closed guild do not come back - the guild steps above only
+//     need membership, and donate afresh each run.
+//   - the fixture is a plain Member of an OPEN guild with others in it: Join.
+// A leader with others (rejoining would make the successor leader for good)
+// or a member of an application-only guild (rejoining files an application)
+// cannot be round-tripped, so there the confirm is only ARMED and read, then
+// disarmed - never committed.
+await go('Guild');
+{
+  const stats = await apiGet('/api/v1/player/statistics');
+  const guildName = stats?.GuildName ?? '';
+  const preview = await apiGet('/api/v1/guilds/leave-preview');
+  const directory = (await apiGet('/api/v1/guilds/list')) ?? [];
+  const entry = directory.find((g) => g.Name === guildName);
+
+  const leaveButton = page.getByRole('button', { name: /^(Leave guild|Really leave\?|Really close it\?)$/ }).first();
+  // The note is drawn from the preview query, which lands after the screen.
+  const noteText = async () => {
+    const note = page.locator('[data-testid="guild-leave-note"]').first();
+    await note.waitFor({ timeout: 10000 }).catch(() => {});
+    return (await note.textContent().catch(() => '')) ?? '';
+  };
+
+  if (!guildName || !preview?.InGuild) {
+    record('leaving a guild round-trips the fixture', false, 'the fixture is in no guild - nothing to leave (re-seed, or found one by hand)');
+  } else {
+    const closes = preview.ClosesGuild === true;
+    const canRestore = closes || (!preview.IsLeader && entry && entry.JoinType === 0);
+
+    // The confirm must say what the server will do BEFORE the second tap.
+    const note = await noteText();
+    record(
+      'the leave confirm says what leaving will do',
+      closes ? /closes the guild/i.test(note) : preview.IsLeader ? /will lead/i.test(note) : note.length > 0,
+      note || 'no note under the Leave guild button',
+    );
+
+    if (!canRestore) {
+      await leaveButton.click();
+      const armed = await leaveButton.textContent();
+      await page.keyboard.press('Escape');
+      record(
+        'leaving a guild round-trips the fixture',
+        /Really/.test(armed ?? ''),
+        `armed only ("${armed?.trim()}") - ${preview.IsLeader ? 'a leader with others would hand the guild over for good' : 'the guild takes applications, so rejoining is not immediate'}`,
+      );
+    } else {
+      await leaveButton.click();
+      await leaveButton.click();
+
+      let left = false;
+      for (let i = 0; i < 20 && !left; i++) {
+        await page.waitForTimeout(500);
+        left = ((await apiGet('/api/v1/player/statistics'))?.GuildName ?? 'x') === '';
+      }
+      record('the Leave guild confirm takes the fixture out of its guild', left, left ? guildName : 'still a member 10s after the second tap');
+
+      if (left) {
+        // Social's Join/Create used to stay disabled for good; they must open now.
+        await go('Friends');
+        if (closes) {
+          await page.getByPlaceholder('New guild name').fill(guildName);
+          await page.getByRole('button', { name: 'Create', exact: true }).click();
+        } else {
+          const escaped = guildName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          await page
+            .locator('li.guild')
+            .filter({ has: page.locator('.name', { hasText: new RegExp(`^\\s*${escaped}\\s*$`) }) })
+            .getByRole('button', { name: 'Join', exact: true })
+            .first()
+            .click();
+        }
+
+        let back = false;
+        for (let i = 0; i < 20 && !back; i++) {
+          await page.waitForTimeout(500);
+          back = ((await apiGet('/api/v1/player/statistics'))?.GuildName ?? '') === guildName;
+        }
+        const after = await apiGet('/api/v1/guilds/leave-preview');
+        const sameRole = after?.InGuild === true && after.IsLeader === preview.IsLeader;
+        record(
+          'leaving a guild round-trips the fixture',
+          back && sameRole,
+          back
+            ? `${closes ? 'refounded' : 'rejoined'} "${guildName}"${sameRole ? '' : ' but the role changed'}`
+            : `not back in "${guildName}" - THE FIXTURE IS NOW GUILDLESS; ${closes ? 'found' : 'join'} it by hand`,
+        );
+      }
+    }
+  }
+}
+
 // --- private messages persist -------------------------------------------------
 //
 // Modul: chat used to be written down NOWHERE. Every channel was Redis fan-out

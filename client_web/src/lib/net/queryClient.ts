@@ -24,6 +24,29 @@ export function invalidateOwnedItems(client: QueryClient): void {
   client.invalidateQueries({ queryKey: queryKeys.materials });
 }
 
+/**
+ * Everything that reads "which guild am I in". Leaving or joining changes all
+ * of it at once: the roster, the directory (member counts), the statistics
+ * GuildName that Social and GuildOps gate on, the leader-only applications,
+ * the depot/logistics panels and the leave preview itself. Chat needs nothing
+ * here - the server re-tags the session's guild channel off the membership
+ * change and pushes a ReloadState.
+ */
+export function invalidateGuildMembership(client: QueryClient): void {
+  for (const queryKey of [
+    queryKeys.guilds,
+    queryKeys.guildRoster,
+    queryKeys.guildApplications,
+    queryKeys.guildLeavePreview,
+    queryKeys.statistics,
+    queryKeys.guildDepot,
+    queryKeys.guildLogistics,
+    queryKeys.guildShardMatch,
+  ]) {
+    client.invalidateQueries({ queryKey });
+  }
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

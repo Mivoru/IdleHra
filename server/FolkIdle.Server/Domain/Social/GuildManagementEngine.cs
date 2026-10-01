@@ -55,6 +55,16 @@ namespace FolkIdle.Server.Domain.Social
         public const int JoinTypeOpen = 0;
         public const int JoinTypeApplicationRequired = 1;
 
+        // Modul: 32, not the column's 100. The client's input has stopped at
+        // 32 since task 92 because a 100-character unbroken name overflows
+        // toasts, rosters and the guild list - but a direct POST still minted
+        // one, so the client's limit was a suggestion. The cap lives here, the
+        // one place that writes a name. GuildRecord.Name keeps MaxLength(100):
+        // guilds founded before this (if any are longer) stay joinable by
+        // their exact name, and narrowing the column would be a migration that
+        // truncates them.
+        public const int MaxGuildNameLength = 32;
+
         // Creates a new guild with the caller as its sole member and Leader.
         // Returns the new guild's id, or 0 if rejected (caller already in a
         // guild, empty/overlong name, or duplicate guild name).
@@ -86,7 +96,7 @@ namespace FolkIdle.Server.Domain.Social
 
         public async Task<GuildCreateOutcome> CreateGuildAsync(long playerId, string guildName)
         {
-            if (string.IsNullOrWhiteSpace(guildName) || guildName.Length > 100)
+            if (string.IsNullOrWhiteSpace(guildName) || guildName.Length > MaxGuildNameLength)
             {
                 return new GuildCreateOutcome { Refusal = GuildCreateRefusal.NameInvalid };
             }
@@ -330,12 +340,96 @@ namespace FolkIdle.Server.Domain.Social
         // mutate the wrong guild.
         public async Task<bool> LeaveGuildAsync(long playerId)
         {
+            return (await LeaveAsync(playerId)).Left;
+        }
+
+        /// <summary>
+        /// What leaving did, so the route can tell the player rather than
+        /// answer a bare 200.
+        /// </summary>
+        public sealed class GuildLeaveOutcome
+        {
+            public bool Left;
+            public long GuildId;
+            /// <summary>The leaver was the last member and the guild is gone.</summary>
+            public bool ClosedGuild;
+            /// <summary>Who leads now, when a leader left a guild with others in it; 0 otherwise.</summary>
+            public long SuccessorPlayerId;
+        }
+
+        /// <summary>
+        /// What leaving WOULD do, read before the player commits - the confirm
+        /// names the next leader, or says the guild closes.
+        /// </summary>
+        public sealed class GuildLeavePreview
+        {
+            public bool InGuild;
+            public long GuildId;
+            public bool IsLeader;
+            public bool ClosesGuild;
+            public long SuccessorPlayerId;
+            public int RemainingMembers;
+        }
+
+        // Modul: ONE SUCCESSION RULE, read by both the preview and the leave.
+        // The confirm button promises a name before the player commits; if the
+        // preview ordered candidates one way and the leave another, the promise
+        // would be a guess. Highest ContributionPoints, lowest PlayerId on a
+        // tie, so the answer is deterministic.
+        private static IQueryable<GuildMember> SuccessionOrder(IQueryable<GuildMember> members, long guildId, long leavingPlayerId)
+        {
+            return members
+                .Where(m => m.GuildId == guildId && m.PlayerId != leavingPlayerId)
+                .OrderByDescending(m => m.ContributionPoints)
+                .ThenBy(m => m.PlayerId);
+        }
+
+        public async Task<GuildLeavePreview> PreviewLeaveAsync(long playerId)
+        {
+            await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
+
+            var membership = await context.GuildMembers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(m => m.PlayerId == playerId);
+
+            if (membership == null)
+            {
+                return new GuildLeavePreview();
+            }
+
+            long guildId = membership.GuildId;
+            int remaining = await context.GuildMembers
+                .AsNoTracking()
+                .CountAsync(m => m.GuildId == guildId && m.PlayerId != playerId);
+
+            bool isLeader = membership.Role == RoleLeader;
+            long successor = 0;
+            if (isLeader && remaining > 0)
+            {
+                successor = await SuccessionOrder(context.GuildMembers.AsNoTracking(), guildId, playerId)
+                    .Select(m => m.PlayerId)
+                    .FirstOrDefaultAsync();
+            }
+
+            return new GuildLeavePreview
+            {
+                InGuild = true,
+                GuildId = guildId,
+                IsLeader = isLeader,
+                ClosesGuild = remaining == 0,
+                SuccessorPlayerId = successor,
+                RemainingMembers = remaining,
+            };
+        }
+
+        public async Task<GuildLeaveOutcome> LeaveAsync(long playerId)
+        {
             await using var context = new FolkIdleDbContext(_retryingDbOptions.Options);
             var strategy = context.Database.CreateExecutionStrategy();
 
             try
             {
-                long leftGuildId = await strategy.ExecuteAsync(async () =>
+                var outcome = await strategy.ExecuteAsync(async () =>
                 {
                     context.ChangeTracker.Clear();
                     using var transaction = await context.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
@@ -347,7 +441,7 @@ namespace FolkIdle.Server.Domain.Social
                     if (membershipLookup == null)
                     {
                         await transaction.RollbackAsync();
-                        return 0L;
+                        return new GuildLeaveOutcome();
                     }
 
                     long guildId = membershipLookup.GuildId;
@@ -363,7 +457,7 @@ namespace FolkIdle.Server.Domain.Social
                     if (profile == null || profile.GuildId != guildId)
                     {
                         await transaction.RollbackAsync();
-                        return 0L;
+                        return new GuildLeaveOutcome();
                     }
 
                     var membership = await context.GuildMembers
@@ -372,58 +466,84 @@ namespace FolkIdle.Server.Domain.Social
                     if (membership == null)
                     {
                         await transaction.RollbackAsync();
-                        return 0L;
+                        return new GuildLeaveOutcome();
                     }
 
                     bool wasLeader = membership.Role == RoleLeader;
                     context.GuildMembers.Remove(membership);
                     profile.GuildId = 0;
 
+                    var result = new GuildLeaveOutcome { Left = true, GuildId = guildId };
+
                     if (guild != null)
                     {
-                        guild.ActiveMembers = Math.Max(0, guild.ActiveMembers - 1);
+                        // Modul: COUNT THE ROWS, DO NOT TRUST THE COUNTER. This
+                        // used to decrement ActiveMembers and delete the guild
+                        // when it reached 0. Nothing reconciles that counter
+                        // against GuildMembers, so one that had drifted low
+                        // would delete a guild that still had people in it,
+                        // leaving their GuildMembers rows and PlayerRecords.
+                        // GuildId pointing at nothing. The guild row is locked
+                        // FOR UPDATE above and every join locks it too, so this
+                        // count cannot race a join. The counter is resynced
+                        // from it, which also heals a drifted one.
+                        int remaining = await context.GuildMembers
+                            .CountAsync(m => m.GuildId == guildId && m.PlayerId != playerId);
 
-                        if (guild.ActiveMembers == 0)
+                        if (remaining == 0)
                         {
+                            // Modul: a closed guild's pending applications go
+                            // with it - nothing can approve them, and the
+                            // applicant would wait on a guild that no longer
+                            // exists. The depot, buffs and war rows are left
+                            // as they were (as before this route existed);
+                            // they key on an id nothing will reuse.
+                            var orphanedApplications = await context.GuildApplications
+                                .Where(a => a.GuildId == guildId)
+                                .ToListAsync();
+                            context.GuildApplications.RemoveRange(orphanedApplications);
                             context.GuildRecords.Remove(guild);
+                            result.ClosedGuild = true;
                         }
-                        else if (wasLeader)
+                        else
                         {
-                            var successor = await context.GuildMembers
-                                .Where(m => m.GuildId == guildId && m.PlayerId != playerId)
-                                .OrderByDescending(m => m.ContributionPoints)
-                                .ThenBy(m => m.PlayerId)
-                                .FirstOrDefaultAsync();
+                            guild.ActiveMembers = remaining;
 
-                            if (successor != null)
+                            if (wasLeader)
                             {
-                                successor.Role = RoleLeader;
+                                var successor = await SuccessionOrder(context.GuildMembers, guildId, playerId)
+                                    .FirstOrDefaultAsync();
+
+                                if (successor != null)
+                                {
+                                    successor.Role = RoleLeader;
+                                    result.SuccessorPlayerId = successor.PlayerId;
+                                }
                             }
                         }
                     }
 
                     await context.SaveChangesAsync();
                     await transaction.CommitAsync();
-                    return guildId;
+                    return result;
                 });
 
-                if (leftGuildId > 0)
+                if (outcome.Left)
                 {
                     _playerRegistry.GuildMembershipChangeQueue.Enqueue(new GuildMembershipChangeNotification
                     {
                         PlayerId = playerId,
-                        OldGuildId = leftGuildId,
+                        OldGuildId = outcome.GuildId,
                         NewGuildId = 0
                     });
-                    return true;
                 }
 
-                return false;
+                return outcome;
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Guild leave failed - PlayerId {playerId}: {ex.Message}");
-                return false;
+                return new GuildLeaveOutcome();
             }
         }
 
