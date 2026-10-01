@@ -51,6 +51,9 @@
       </p>
       {#if deepest.isPending}
         <Skeleton />
+      {:else if deepest.isError}
+        <p class="warn">Could not load the leaderboard.</p>
+        <button class="retry" onclick={() => deepest.refetch()}>Retry</button>
       {:else if (deepest.data ?? []).length === 0}
         <p class="dim">Nobody has gone below the Delve this week.</p>
       {:else}
@@ -81,10 +84,15 @@
     </p>
     {#if leaderboard.isPending}
       <Skeleton />
+    {:else if leaderboard.isError}
+      <!-- Modul: an error is not an empty board. This fell through to "No
+           ranked players yet", which reads as "nobody plays this". -->
+      <p class="warn">Could not load the leaderboard.</p>
+      <button class="retry" onclick={() => leaderboard.refetch()}>Retry</button>
     {:else if (leaderboard.data ?? []).length === 0}
       <p class="dim">No ranked players yet.</p>
     {:else}
-      <ol class="board">
+      <ol class="board players">
         {#each leaderboard.data ?? [] as row (row.PlayerId)}
           <li class:self={row.PlayerId === connection.currentPlayerId}>
             <span class="rank dim">#{row.Rank}</span>
@@ -93,27 +101,43 @@
                  lib/ui/leaderboardTiers.ts for why the thresholds are not
                  mirrored. An untiered row gets an empty style and keeps the
                  page's own text colour, so the decorated names stand out by
-                 contrast rather than by shouting. -->
-            <span class="who" style={tierNameStyle(row.TierId)} title={row.TierName}>
+                 contrast rather than by shouting.
+
+                 A button, like the Deepest tab's rows: this board is where a
+                 player meets everyone else, and only the weekly tab could
+                 open a profile. -->
+            <button
+              class="who who-btn tiered"
+              style={tierNameStyle(row.TierId)}
+              title={row.TierName}
+              onclick={() => (inspectPlayerId = row.PlayerId)}
+            >
               <PlayerAvatar playerId={row.PlayerId} size="sm" />
               {row.DisplayName}
-            </span>
-            {#if row.TierName}
-              <span class="tier tiny" style={tierNameStyle(row.TierId)}>{row.TierName}</span>
-            {/if}
-            <span class="dim tiny">lv {row.Level}</span>
-            {#if row.WeeklyDiamonds > 0}
-              <span class="reward tiny" title="Paid every week while this rank holds">
-                {row.WeeklyDiamonds}&#9670;/wk
-              </span>
-            {/if}
-            <span class="progress dim tiny">
-              {#if row.HardestMonsterName}
-                {row.HardestMonsterName}
-                {#if row.KillsOfHardest > 0}&times;{formatNumber(row.KillsOfHardest)}{/if}
-              {:else}
-                no kills yet
+            </button>
+            <span class="lv dim tiny">lv {row.Level}</span>
+            <!-- Modul: ONE cell for everything optional. The row used to put up
+                 to six children into a four-column grid, so a tiered, paid row
+                 wrapped its last two cells onto a second line - the monster
+                 name landing in the 2.5rem rank column, cut to "Mou...", even
+                 at 1440 wide. The second line is a named area now. -->
+            <span class="meta tiny">
+              {#if row.TierName}
+                <span class="tier tiered" style={tierNameStyle(row.TierId)}>{row.TierName}</span>
               {/if}
+              {#if row.WeeklyDiamonds > 0}
+                <span class="reward" title="Paid every week while this rank holds">
+                  {row.WeeklyDiamonds}&#9670;/wk
+                </span>
+              {/if}
+              <span class="progress dim">
+                {#if row.HardestMonsterName}
+                  {row.HardestMonsterName}
+                  {#if row.KillsOfHardest > 0}&times;{formatNumber(row.KillsOfHardest)}{/if}
+                {:else}
+                  no kills yet
+                {/if}
+              </span>
             </span>
           </li>
         {/each}
@@ -125,6 +149,9 @@
     <h2>Guild Leaderboard</h2>
     {#if guildBoard.isPending}
       <Skeleton />
+    {:else if guildBoard.isError}
+      <p class="warn">Could not load the leaderboard.</p>
+      <button class="retry" onclick={() => guildBoard.refetch()}>Retry</button>
     {:else if (guildBoard.data ?? []).length === 0}
       <p class="dim tiny">No ranked guilds yet.</p>
     {:else}
@@ -289,5 +316,66 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  /* Two named lines: name and level on top, tier / reward / hardest monster
+     below. Rank spans both. */
+  .players li {
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    grid-template-areas:
+      'rank who lv'
+      'rank meta meta';
+    row-gap: 0;
+    align-items: center;
+  }
+
+  .players .rank {
+    grid-area: rank;
+  }
+
+  .players .who {
+    grid-area: who;
+  }
+
+  .players .lv {
+    grid-area: lv;
+  }
+
+  .players .meta {
+    grid-area: meta;
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+
+  .players .progress {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  /* leaderboardTiers.ts declares both colours as custom properties; the
+     theme picks one here. Undefined on an untiered row, so the colour falls
+     back to inherit. The white halo is for dark wood - on parchment it only
+     blurs the ink. */
+  .tiered {
+    color: var(--tier-color);
+    text-shadow: var(--tier-shadow);
+  }
+
+  @media (prefers-color-scheme: light) {
+    .tiered {
+      color: var(--tier-color-light);
+      text-shadow: none;
+    }
+  }
+
+  .warn {
+    color: var(--danger);
+    margin: 0 0 0.5rem;
+  }
+
+  .retry {
+    min-height: 44px;
   }
 </style>
