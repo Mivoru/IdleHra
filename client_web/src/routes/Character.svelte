@@ -18,6 +18,7 @@
   import Bar from '../lib/ui/Bar.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import { pickerRows } from '../lib/ui/equipPicker';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
   import AutomationRulesPanel from '../lib/ui/AutomationRulesPanel.svelte';
@@ -29,6 +30,7 @@
   import { lastActivityKey } from '../lib/ui/homeNow';
   import { onMount } from 'svelte';
   import { play } from '../lib/ui/audio';
+  import QueryError from '../lib/ui/QueryError.svelte';
 
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
   // Recipes carry no id of their own on the wire - the crafting activity id is
@@ -201,14 +203,14 @@
       unlocked: townHall >= SLOT_UNLOCK_TOWN_HALL[slot - 1],
       takenBy: occupiedBy(activityId, slot),
     });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     // Task 73: Home's "Continue" resumes whatever was given last, wherever.
     if (activityId > 0) writePref(lastActivityKey(characterId), String(activityId));
   }
 
   function stopWork(slot: number, characterId: string) {
     const outcome = assignCharacterActivity(characterId, 0);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     jobPick = { ...jobPick, [slot]: 0 };
   }
 
@@ -434,7 +436,7 @@
       <AttributePanel
         values={{ STR: attributeValue('STR'), DEX: attributeValue('DEX'), CON: attributeValue('CON'), LCK: attributeValue('LCK') }}
         unspent={attributePoints}
-        onnotice={pushLocalNotice}
+        onnotice={(message) => pushLocalNotice(message, 'error')}
       />
 
       {#if activeSets.length > 0}
@@ -508,6 +510,10 @@
 
       {#if !selected || !selected.occupied}
         <p class="dim small">No character in this slot.</p>
+      {:else if inventory.isError && inventory.data === undefined}
+        <!-- Modul: the doll is drawn from the inventory, so without it every
+             slot reads as empty - a character stripped of gear they still own. -->
+        <QueryError query={inventory} what="your equipment" />
       {:else}
         <div class="rig">
           <div class="column">
@@ -603,6 +609,7 @@
           {@const slot = EQUIPMENT_SLOTS.find((sl) => sl.index === pickerSlot)}
           {@const worn = wornBy(selected.slot, pickerSlot)}
           {@const candidates = candidatesBySlot.get(pickerSlot) ?? []}
+          {@const picked = pickerRows(candidates)}
           <div class="picker">
             <header>
               <strong>{slot?.label}</strong>
@@ -621,7 +628,7 @@
               <p class="dim tiny">Nothing in the chest fits this slot.</p>
             {:else}
               <ul class="choices">
-                {#each candidates as candidate, candidateIndex (candidate.Id)}
+                {#each picked.rows as { piece: candidate, count }, candidateIndex (candidate.Id)}
                   <li>
                     <ItemIcon baseItemId={candidate.BaseItemId} name={prettifyBaseId(candidate.BaseItemId)} qualityTier={candidate.QualityTier} size="sm" />
                     <span
@@ -629,6 +636,9 @@
                       class:rarity-glow={shouldGlow(candidate.QualityTier)}
                     >{prettifyBaseId(candidate.BaseItemId)}</span>
                     <span class="dim tiny">[{rarityName(candidate.QualityTier)}]</span>
+                    {#if count > 1}
+                      <span class="dim tiny" title="Identical pieces - Wear takes one">&times;{formatNumber(count)}</span>
+                    {/if}
                     {#if requirementFor(candidate.BaseItemId)}
                       {@const req = requirementFor(candidate.BaseItemId)!}
                       <span class="req" class:unmet={!req.met}>
@@ -643,6 +653,13 @@
                   </li>
                 {/each}
               </ul>
+              {#if picked.hiddenRows > 0}
+                <p class="dim tiny">
+                  +{formatNumber(picked.hiddenPieces)} more -
+                  <button class="tiny-btn" onclick={() => requestScreen('chest')}>open the Chest</button>
+                  to filter them.
+                </p>
+              {/if}
             {/if}
           </div>
         {/if}
@@ -773,7 +790,7 @@
     padding: 0 0.25rem;
     border-radius: 999px;
     background: var(--accent);
-    color: #1a1510;
+    color: var(--on-accent);
     font-size: 0.7rem;
     line-height: 1.1rem;
   }
@@ -787,7 +804,7 @@
   }
   .req.unmet {
     opacity: 1;
-    color: var(--bad, #d9694a);
+    color: var(--danger);
     font-weight: 600;
   }
 
@@ -812,8 +829,8 @@
     align-items: flex-start;
     gap: 0.1rem;
     padding: 0.35rem 0.6rem;
-    border-radius: var(--radius, 6px);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--edge-soft);
     background: rgba(255, 255, 255, 0.03);
     cursor: pointer;
     width: auto;
@@ -821,8 +838,8 @@
   }
 
   .slottab.on {
-    border-color: var(--accent, #7aa2f7);
-    background: rgba(122, 162, 247, 0.12);
+    border-color: var(--accent);
+    background: var(--tint-selected);
   }
 
   .slottab:disabled {
@@ -873,8 +890,12 @@
      gear sits under it in two columns - which is also the order it is read.
      Placement is explicit rather than left to auto-flow: the figure sits
      BETWEEN the two columns in the DOM, so auto-placement would put the left
-     rail above it. */
-  @media (max-width: 46rem) {
+     rail above it.
+     52rem, the canonical tablet breakpoint, rather than the old one-off 46rem:
+     between the two the screen grid already runs two ~23rem tracks and the
+     doll sits in one of them, so three columns there was the squeeze this
+     rule exists to prevent. */
+  @media (max-width: 52rem) {
     .rig {
       grid-template-columns: 1fr 1fr;
     }
@@ -902,8 +923,8 @@
     align-items: center;
     gap: 0.15rem;
     padding: 0.4rem;
-    border-radius: var(--radius, 6px);
-    border: 1px dashed rgba(255, 255, 255, 0.16);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--edge-soft);
     background: rgba(255, 255, 255, 0.02);
     cursor: pointer;
     width: 100%;
@@ -915,7 +936,7 @@
   }
 
   .gearslot.open {
-    border-color: var(--accent, #7aa2f7);
+    border-color: var(--accent);
   }
 
   .gearname {
@@ -927,8 +948,8 @@
   .picker {
     margin-top: 0.9rem;
     padding: 0.6rem;
-    border-radius: var(--radius, 6px);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--edge-soft);
     background: rgba(255, 255, 255, 0.03);
   }
 
@@ -976,7 +997,7 @@
 
   .rostercard {
     padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid var(--line);
   }
 
   .rostercard:last-of-type {

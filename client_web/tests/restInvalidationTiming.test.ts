@@ -54,6 +54,8 @@ describe('Mailbox.svelte does not re-time-guess its cache invalidation', () => {
 
   it('keeps claimAll\'s own command-staggering setTimeout, which is not the invalidation timer being guarded against', () => {
     const source = readRoute('Mailbox.svelte');
-    expect(source).toMatch(/setTimeout\(\(\) => claimMailItem\(entry\.Id\), index \* 250\)/);
+    // Each staggered claim goes through the pending-command guard
+    // (commandInFlight) now; the stagger itself is what this pins.
+    expect(source).toMatch(/setTimeout\(\(\) =>[^\n]*claimMailItem\(entry\.Id\)[^\n]*, index \* 250\)/);
   });
 });

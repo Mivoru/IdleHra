@@ -161,6 +161,11 @@ export async function loadContent(): Promise<ContentRegistry> {
   return inFlight;
 }
 
+// Modul: a screen that cannot render without the registry reads it through
+// `contentQuery` in registry.svelte.ts, which has a failure state and a retry.
+// It was briefly a TanStack query here, and that hung a NEW account's Auto-Eat
+// on "Checking the chest..." for ever - see the note in registry.svelte.ts.
+
 async function loadContentUncached(): Promise<ContentRegistry> {
   const [monsterList, itemList, gatheringNodes] = await Promise.all([
     fetchJson<MonsterDefinition[]>('monsters.json'),

@@ -33,7 +33,7 @@
     type ShieldWheelChallenge,
     type StrikeResponse,
   } from '../lib/net/rest';
-  import { worldBossResultSentence } from '../lib/game/worldBossResults';
+  import { worldBossResultSentence, worldBossResultTone } from '../lib/game/worldBossResults';
   import { tap } from '../lib/net/haptics';
 
   // Modul: THE SHIELD WHEEL (task 36). The server says which mode it runs
@@ -53,7 +53,7 @@
   let autoResult = $state<StrikeResponse | null>(null);
 
   function sayResolved(resolved: StrikeResponse | null | undefined) {
-    if (resolved) pushLocalNotice(worldBossResultSentence(resolved.Result, resolved.Damage));
+    if (resolved) pushLocalNotice(worldBossResultSentence(resolved.Result, resolved.Damage), worldBossResultTone(resolved.Result));
   }
 
   $effect(() => {
@@ -79,10 +79,10 @@
         resumable = null;
         strikeChallenge = answer.Challenge;
       } else if (answer) {
-        pushLocalNotice(worldBossResultSentence(answer.Result) || 'The strike could not be started.');
+        pushLocalNotice(worldBossResultSentence(answer.Result) || 'The strike could not be started.', 'error');
       }
     } catch (err) {
-      pushLocalNotice(err instanceof Error ? err.message : 'The strike could not be started.');
+      pushLocalNotice(err instanceof Error ? err.message : 'The strike could not be started.', 'error');
     } finally {
       openingStrike = false;
     }
@@ -100,10 +100,10 @@
       if (answer && (answer.Result === 'Issued' || answer.Result === 'Outstanding') && answer.Challenge) {
         practiceChallenge = answer.Challenge;
       } else if (answer) {
-        pushLocalNotice(worldBossResultSentence(answer.Result) || 'Practice is not available right now.');
+        pushLocalNotice(worldBossResultSentence(answer.Result) || 'Practice is not available right now.', 'error');
       }
     } catch (err) {
-      pushLocalNotice(err instanceof Error ? err.message : 'Practice could not be opened.');
+      pushLocalNotice(err instanceof Error ? err.message : 'Practice could not be opened.', 'error');
     } finally {
       openingPractice = false;
     }
@@ -253,9 +253,9 @@
       if (answer && answer.Result === 'Landed') {
         autoResult = answer;
         if (answer.BrokePlate >= 0) tap('heavy');
-      } else pushLocalNotice(answer ? worldBossResultSentence(answer.Result, answer.Damage) || 'The strike was not recorded.' : 'The strike could not be sent.');
+      } else pushLocalNotice(answer ? worldBossResultSentence(answer.Result, answer.Damage) || 'The strike was not recorded.' : 'The strike could not be sent.', answer ? worldBossResultTone(answer.Result) : 'error');
     } catch (err) {
-      pushLocalNotice(err instanceof Error ? err.message : 'The strike could not be sent.');
+      pushLocalNotice(err instanceof Error ? err.message : 'The strike could not be sent.', 'error');
     } finally {
       striking = false;
     }
@@ -270,7 +270,7 @@
       bossCurrentHp: currentHp,
       attemptCount: attempts,
     });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     striking = true;
     attemptsAtStrike = attempts;
     clearTimeout(strikeTimer);
@@ -723,7 +723,7 @@
   }
 
   .board li.me {
-    background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+    background: var(--tint-selected);
     font-weight: 700;
   }
 

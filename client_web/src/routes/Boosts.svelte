@@ -12,14 +12,16 @@
 
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchMaterials } from '../lib/net/rest';
-  import { loadContent, consumableKind, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
+  import { consumableKind, prettifyBaseId } from '../lib/net/content';
+  import { contentQuery } from '../lib/net/registry.svelte';
   import {
     consumeConsumable,
     MAX_BUFF_TICKS,
   } from '../lib/net/commands';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { play } from '../lib/ui/audio';
-  import Skeleton from '../lib/ui/Skeleton.svelte';
+  import QueryState from '../lib/ui/QueryState.svelte';
+  import { formatNumber } from '../lib/ui/format';
 
   const snap = $derived($playerState);
   // Modul: MATERIALS ONLY. This reads `inventory.data.Stacks` and nothing
@@ -28,10 +30,11 @@
   // against the 63 stack rows this screen wants. See fetchMaterials.
   const inventory = createQuery(() => ({ queryKey: queryKeys.materials, queryFn: fetchMaterials }));
 
-  let registry = $state<ContentRegistry | null>(null);
-  $effect(() => {
-    void loadContent().then((loaded) => (registry = loaded));
-  });
+  // Modul: a query-shaped handle, not `loadContent().then(...)`. The bare promise had no
+  // catch, so a failed content fetch left the list below on a skeleton for
+  // ever. See contentQuery in registry.svelte.ts.
+  const content = contentQuery;
+  const registry = $derived(content.data ?? null);
 
   // ---------------------------------------------------------------------------
   // Consumables held
@@ -89,7 +92,7 @@
 
   function use(row: HeldConsumable) {
     const outcome = consumeConsumable(row.itemId, buffTicks);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     play('windowOpen');
   }
 
@@ -115,6 +118,11 @@
   // Ticks are 10 Hz, which is the one conversion worth doing in one place -
   // reading this as seconds is how a two-hour cap looks like twelve minutes.
   const buffSeconds = $derived(Math.round(buffTicks / 10));
+  // Modul: the cap is MAX_BUFF_TICKS, not a second copy of it. The label was a
+  // literal "120m", and unclamped it read "131m of 120m" once the timer ran
+  // past the cap (saturation is legal - the server just stops accepting more).
+  // Ticks are 10 a second, so 600 to a minute.
+  const MAX_BUFF_MINUTES = Math.floor(MAX_BUFF_TICKS / 600);
 
 </script>
 
@@ -135,11 +143,11 @@
       </p>
     {/if}
 
-    {#if inventory.isPending || !registry}
-      <Skeleton />
-    {:else if held.length === 0}
-      <p class="dim">You are not carrying any consumables.</p>
-    {:else}
+    <QueryState query={content} what="the item list">
+      <QueryState query={inventory} what="your consumables" isEmpty={() => held.length === 0}>
+        {#snippet empty()}
+          <p class="dim">You are not carrying any consumables.</p>
+        {/snippet}
       <ul class="items">
         {#each held as row (row.itemId)}
           <li>
@@ -149,12 +157,13 @@
               {#if row.attack > 0}<span class="atk">+{row.attack} atk</span>{/if}
               {#if row.defense > 0}<span class="def">+{row.defense} def</span>{/if}
             </span>
-            <span class="qty">x{row.quantity}</span>
+            <span class="qty">x{formatNumber(row.quantity)}</span>
             <button class="tiny-btn" disabled={saturated} onclick={() => use(row)}>Use</button>
           </li>
         {/each}
       </ul>
-    {/if}
+      </QueryState>
+    </QueryState>
   </section>
 
   <section class="panel">
@@ -188,7 +197,7 @@
             class:over={saturated}
             style="width: {Math.min(100, (buffTicks / MAX_BUFF_TICKS) * 100)}%"
           ></div>
-          <span class="bar-label">{Math.floor(buffSeconds / 60)}m of 120m</span>
+          <span class="bar-label">{Math.min(Math.floor(buffSeconds / 60), MAX_BUFF_MINUTES)}m of {MAX_BUFF_MINUTES}m</span>
         </div>
         <p class="dim tiny">
           Buff duration accumulates rather than replacing. Past two hours the

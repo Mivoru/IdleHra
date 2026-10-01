@@ -172,7 +172,7 @@
   .scroll {
     overflow-x: auto;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     background: rgba(0, 0, 0, 0.12);
   }
 

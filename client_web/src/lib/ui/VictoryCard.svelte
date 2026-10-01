@@ -132,13 +132,19 @@
     display: grid;
     place-items: center;
     z-index: 60;
-    padding: 1rem;
+    /* Fixed, so body's safe-area padding does not reach it - its own inset. */
+    padding: calc(1rem + var(--sa-top)) calc(1rem + var(--sa-right)) calc(1rem + var(--sa-bottom))
+      calc(1rem + var(--sa-left));
   }
 
+  /* dvh after vh (the fallback): on mobile web vh is the LARGE viewport, so an
+     86vh card could end below the URL bar's fold with its buttons in it. */
   .card {
     width: min(30rem, 100%);
     max-height: 86vh;
+    max-height: min(86dvh, calc(100dvh - 2rem - var(--sa-top) - var(--sa-bottom)));
     overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--bg-panel);
     border: 1px solid var(--brass);
     border-radius: var(--radius);

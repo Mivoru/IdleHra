@@ -10,6 +10,9 @@
     separated?: boolean;
     /** Keeps the menu open after the click (a two-step confirm). */
     keepOpen?: boolean;
+    /** Why it is disabled, printed under the label while it is - a touch
+     *  screen shows no tooltip, least of all on a disabled item. */
+    note?: string;
   }
 </script>
 
@@ -20,6 +23,9 @@
   // its items instead. A second, Chest-only copy would have been two popups
   // that drift apart on positioning, dismissal and touch size.
   import { onMount } from 'svelte';
+  import { portal } from './portal';
+  import { registerOverlay } from '../stores/sheet';
+  import { LAYER_Z } from '../net/backButton';
 
   interface Props {
     x: number;
@@ -49,12 +55,21 @@
     node.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus();
   });
 
+  // Modul: BACK CLOSES THE MENU, not the screen under it. A Chest row's menu
+  // used to survive a back press only because the press left the Chest and
+  // unmounted it along the way.
+  $effect(() => registerOverlay(() => onClose(), LAYER_Z.contextMenu));
+
   function clickOutside(el: HTMLElement) {
     const handleClick = (event: MouseEvent) => {
       if (!el.contains(event.target as Node) && !event.defaultPrevented) onClose();
     };
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      // Handled here, so App's Escape (which closes the top overlay) does not
+      // close a second layer with the same key press.
+      event.preventDefault();
+      onClose();
     };
     // Capture phase, so it fires before anything else stops propagation.
     document.addEventListener('click', handleClick, true);
@@ -79,6 +94,7 @@
   aria-label={title}
   style="top: {top}px; left: {left}px;"
   bind:this={node}
+  use:portal
   use:clickOutside
 >
   <div class="header">
@@ -94,6 +110,7 @@
       onclick={() => select(item)}
     >
       {item.label}
+      {#if item.disabled && item.note}<span class="note">{item.note}</span>{/if}
     </button>
   {/each}
 </div>
@@ -155,6 +172,12 @@
 
   button.danger:hover:not(:disabled) {
     background: rgba(255, 68, 68, 0.1);
+  }
+
+  .note {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-dim);
   }
 
   .divider {

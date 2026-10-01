@@ -11,6 +11,7 @@
   import { fetchGreatWorks, greatWorksKeys, isComplete, stageFraction, type GreatWork } from '../net/greatWorks';
   import { connectionStatus, pushLocalNotice } from '../stores/game';
   import MonumentGlyph from './MonumentGlyph.svelte';
+  import DisabledReason from './DisabledReason.svelte';
 
   // Any command result invalidates every query (processCommandResults), so the
   // panel refetches by itself the moment a deposit is answered.
@@ -24,7 +25,7 @@
 
   function deposit(work: GreatWork, material: 0 | 1) {
     const outcome = depositGreatWork(work.Region, material, 0);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   /** Why a deposit button is off, in words - never a silent grey. */
@@ -101,6 +102,11 @@
                   >
                     Deposit {prettifyBaseId(opt.item)}
                     <span class="dim tiny">({formatNumber(opt.held)} held)</span>
+                    <!-- Modul: the reason was only this button's title, and a
+                         touch screen never shows the title of a DISABLED
+                         button. "0 held" already says itself; the others
+                         are printed in the button. -->
+                    <DisabledReason text={why !== null && opt.held > 0 ? why : null} />
                   </button>
                 {/each}
               </div>
@@ -179,7 +185,7 @@
   .bar {
     height: 6px;
     border-radius: 3px;
-    background: var(--bg-sunken, rgba(0, 0, 0, 0.25));
+    background: var(--bg-sunken);
     overflow: hidden;
   }
 

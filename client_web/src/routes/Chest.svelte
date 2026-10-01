@@ -1,6 +1,6 @@
 <script lang="ts">
   import { PREF_CHEST_FILTER, PREF_CHEST_MIN_RARITY, readPrefAs, writePref } from '../lib/net/prefs';
-  import { formatNumber, numberTitle } from '../lib/ui/format';
+  import { formatGold, formatNumber, numberTitle } from '../lib/ui/format';
   // Modul: the village chest. Everything a character produces ends up here.
   //
   // It replaces the backpack, which capped at twenty shared slots and stopped
@@ -43,8 +43,10 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { requestScreen, setPendingFocusEquipment } from '../lib/stores/navigation';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import { isNarrow } from '../lib/ui/media';
   import ContextMenu, { type MenuItem } from '../lib/ui/ContextMenu.svelte';
+  import Hint from '../lib/ui/Hint.svelte';
   import { onDestroy } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
 
@@ -252,7 +254,7 @@
     try {
       const result = await bulkClearChest(sweepTier, sell);
       if (!result || result.Success === false) {
-        pushLocalNotice('Could not clear the chest.');
+        pushLocalNotice('Could not clear the chest.', 'error');
         return;
       }
 
@@ -264,7 +266,7 @@
       if (sell) {
         play('itemSold');
         pushLocalNotice(
-          `Sold ${formatNumber(result.RemovedCount)} pieces for ${formatNumber(result.GoldGained)}g.${kept}`,
+          `Sold ${formatNumber(result.RemovedCount)} pieces for ${formatGold(result.GoldGained)}.${kept}`,
           'info',
         );
       } else {
@@ -273,7 +275,7 @@
 
       refresh();
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     } finally {
       sweeping = false;
     }
@@ -298,16 +300,16 @@
       // the quantity was stale. Checking only the status would report a
       // failure as a sale.
       if (!result || result.Success === false) {
-        pushLocalNotice(`Could not ${sell ? 'sell' : 'bin'} ${label}.`);
+        pushLocalNotice(`Could not ${sell ? 'sell' : 'bin'} ${label}.`, 'error');
       } else if (sell) {
         play('itemSold');
-        pushLocalNotice(`Sold ${label} for ${formatNumber(result.GoldGained)}g.`, 'info');
+        pushLocalNotice(`Sold ${label} for ${formatGold(result.GoldGained)}.`, 'info');
       } else {
         pushLocalNotice(`Binned ${label}.`, 'info');
       }
       refresh();
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     } finally {
       busy = false;
     }
@@ -328,7 +330,7 @@
     try {
       const result = await toggleChestLock(equipmentId);
       if (!result || result.Success === false) {
-        pushLocalNotice(`Could not change the lock on ${label}.`);
+        pushLocalNotice(`Could not change the lock on ${label}.`, 'error');
       } else {
         pushLocalNotice(
           result.Locked
@@ -339,7 +341,7 @@
       }
       refresh();
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     } finally {
       busy = false;
     }
@@ -365,7 +367,7 @@
 
   function unequip(baseItemId: string) {
     const slotIndex = resolveSlotIndex(baseItemId);
-    if (slotIndex < 0) return pushLocalNotice('That piece has no equipment slot.');
+    if (slotIndex < 0) return pushLocalNotice('That piece has no equipment slot.', 'error');
     connection.send({ Command: CommandType.UnequipItem, TargetId: slotIndex });
     setTimeout(refresh, 700);
   }
@@ -417,6 +419,7 @@
         label: 'Sell',
         disabled: busy || blocked !== '',
         title: blocked,
+        note: blocked,
         onSelect: () => queueSale({ equipmentId: item.Id }, label, `eq:${item.Id}`),
       },
       confirming === binKey
@@ -435,6 +438,7 @@
             separated: true,
             disabled: busy || item.IsEquipped,
             title: item.IsEquipped ? 'Worn - take it off first' : '',
+            note: item.IsEquipped ? 'Worn - take it off first' : '',
             keepOpen: true,
             onSelect: () => (confirming = binKey),
           },
@@ -548,14 +552,14 @@
     try {
       const saved = await saveChestSettings(draft.global, draft.regions);
       if (!saved) {
-        pushLocalNotice('The rules did not save. Try again in a moment.');
+        pushLocalNotice('The rules did not save. Try again in a moment.', 'error');
         return;
       }
       client.setQueryData(queryKeys.chestSettings, saved);
       draft = { global: saved.AutoSalvageBelowTier, regions: [...saved.AutoSalvageRegionTiers] };
       pushLocalNotice('Auto-sell rules saved. They apply to the next drop.', 'info');
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     } finally {
       rulesSaving = false;
     }
@@ -745,14 +749,24 @@
           is never sold automatically.
         </p>
       </div>
+      {:else if rulesOpen && chestSettings.isError}
+        <QueryError query={chestSettings} what="your auto-sell rules" />
       {/if}
     </section>
 
     {#if inventory.isPending}
       <Skeleton rows={5} variant="row" />
+    {:else if inventory.isError && inventory.data === undefined}
+      <!-- Modul: an error is not an empty chest. This fell through to
+           "Nothing here." - read by players who lived through the 17,836-row
+           incident as "my items are gone". See QueryError. -->
+      <QueryError query={inventory} what="your chest" />
     {:else if sortedEquipment.length === 0 && visibleMaterials.length === 0}
       <p class="dim">Nothing here.</p>
     {:else}
+      {#if inventory.isError}
+        <QueryError query={inventory} what="your chest" stale />
+      {/if}
       {#if sortedEquipment.length > 0}
         <h3>
           Equipment
@@ -786,7 +800,11 @@
                 <span class="meta dim tiny">
                   <span title={rarityTitle(item.QualityTier)}>{rarityName(item.QualityTier)}</span>
                   {#if item.IsAffixLocked}
-                    <span class="lockbadge" title="Locked - cannot be sold, binned, swept, rerolled or fused">Locked</span>
+                    <!-- Modul: a Hint, because what a lock protects against was
+                         only this badge's title - nothing on a phone. -->
+                    <Hint text="Locked - cannot be sold, binned, swept, rerolled or fused. Unlock it from the row's menu."
+                      ><span class="lockbadge">Locked</span></Hint
+                    >
                   {/if}
                 </span>
               </span>
@@ -908,7 +926,7 @@
     width: 100%;
   }
 
-  @media (max-width: 560px) {
+  @media (max-width: 40rem) {
     .finders {
       grid-template-columns: 1fr;
     }
@@ -1049,7 +1067,7 @@
      has to open each menu to find out - the opposite of what a lock is for
      when there are thousands of rows. */
   .lockbadge {
-    color: var(--warn, #e8b339);
+    color: var(--warn);
     font-weight: 600;
   }
 

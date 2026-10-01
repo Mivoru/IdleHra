@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatNumber } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import {
@@ -25,6 +25,7 @@
   import AptitudePanel from '../lib/ui/AptitudePanel.svelte';
   import ChildPreview from '../lib/ui/ChildPreview.svelte';
   import PersonPicker from '../lib/ui/PersonPicker.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import {
     heroPerson,
     partnerCharacterPerson,
@@ -234,7 +235,7 @@
       ? executeVillagerBreeding(heroId, partnerVillagerId, breedingLevel, effectiveMask)
       : executeBreeding(paternalId, maternalId, breedingLevel, effectiveMask);
 
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     // A villager marries once, so the choice is spent the moment this lands;
     // a partner from your own line is now resting. Either way the old choice
@@ -281,6 +282,16 @@
         You have no <strong>Breeding Grounds</strong>. Build it in your village
         and any grown adult can marry &mdash; there is no level requirement.
       </p>
+    {/if}
+
+    <!-- Modul: the pickers below say "You have no characters" and "Nobody to
+         choose from" when their lists are empty - which a failed request also
+         produces. Name the failure above them instead. -->
+    {#if roster.isError && roster.data === undefined}
+      <QueryError query={roster} what="your characters" />
+    {/if}
+    {#if village.isError && village.data === undefined}
+      <QueryError query={village} what="your village" />
     {/if}
 
     <PersonPicker
@@ -369,13 +380,15 @@
         <p class="warn">{p.IneligibleReason ? refusal(p.IneligibleReason) : 'These two cannot pair.'}</p>
       {:else}
         <p class="cost" class:short={!p.HasSufficientGold}>
-          Costs {formatNumber(p.BreedingCostGold)}g
+          Costs <Money amount={p.BreedingCostGold} />
           {#if !p.HasSufficientGold}&middot; not enough gold{/if}
           {#if p.IsInbredRisk}&middot; <span class="risk">related pair</span>{/if}
         </p>
       {/if}
 
       <ChildPreview preview={p} mode={partnerIsVillager ? 'village' : 'roster'} {generation} {catalogue} />
+    {:else if partnerKey !== '' && (partnerIsVillager ? villagePreview : rosterPreview).isError}
+      <QueryError query={partnerIsVillager ? villagePreview : rosterPreview} what="the child preview" />
     {/if}
 
     <button class="breed" onclick={breed} disabled={!canBreed}>Breed</button>

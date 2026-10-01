@@ -13,6 +13,7 @@
 
   import { playerState } from '../stores/game';
   import { t } from './i18n';
+  import Hint from './Hint.svelte';
 
   /** ContentRegistry.GlobalEventType. */
   const EVENTS: Record<number, { key: string; effect: string; tone: string }> = {
@@ -54,7 +55,10 @@
 {#if event}
   <span class="event" data-tone={event.tone} title={event.effect}>
     <span class="label">{$t('ActiveEventPrefix')}</span>
-    <strong>{$t(event.key)}</strong>
+    <!-- Modul: the name is a Hint. A phone hides the effect (below) and the
+         title tooltip never shows on touch, so "Diamond Star" was an
+         unexplained pill; a tap now says what it does. -->
+    <Hint class="event-hint" text="{$t('ActiveEventPrefix')} {$t(event.key)}: {event.effect}."><strong>{$t(event.key)}</strong></Hint>
     <span class="effect">{event.effect}</span>
   </span>
 {/if}
@@ -85,8 +89,8 @@
   }
 
   /* Modul: on a phone the chip is the event's NAME. Prefix and effect made it
-     a two-line banner on a row of its own; the effect stays in the title
-     tooltip and on the Wiki, and the colour still carries the flavour. */
+     a two-line banner on a row of its own; the effect is a tap on the name
+     (the Hint), and the colour still carries the flavour. */
   @media (max-width: 40rem) {
     .event {
       order: 1;
@@ -95,6 +99,19 @@
     .label,
     .effect {
       display: none;
+    }
+
+    /* Modul: on a phone the name IS the control, so it gets the same 44px as
+       the Chat and Menu buttons beside it. Hint's ::after only grows the hit
+       area by 20px, which left this pill at 39px - check:touch flagged it on
+       every screen. */
+    .event {
+      align-items: center;
+      padding-block: 0;
+    }
+
+    .event :global(.event-hint) {
+      min-height: 44px;
     }
   }
 

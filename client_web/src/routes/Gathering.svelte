@@ -8,6 +8,7 @@
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import Bar from '../lib/ui/Bar.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
+  import Hint from '../lib/ui/Hint.svelte';
 
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
@@ -89,12 +90,12 @@
 
   function deploy(node: GatheringNodeDefinition) {
     const outcome = assignCharacterActivity(activeCharacterId, node.ActivityId);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   function stop() {
     const outcome = assignCharacterActivity(activeCharacterId, 0);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   // Modul: BaseTickThreshold is NOT what a gather actually costs.
@@ -328,20 +329,28 @@
           {/if}
         </p>
 
+        <p class="speed-help">
+          <Hint
+            class="speed-hint"
+            text="The time per unit is at your mastery, tool and village bonuses. The server also applies a logistics bonus this screen cannot see, so the real speed is this or better. 0.2s is the hard minimum for any gathering action: a node marked 'as fast as it goes' will not get faster with more mastery or a better tool - a higher-tier node will."
+            >How speed works</Hint
+          >
+        </p>
+
         <ul class="nodes">
           {#each profession.nodes as node (node.ActivityId)}
             {@const locked = isLocked(node)}
             <li class:current={activeActivity === node.ActivityId} class:locked>
               <span class="place">{locationName(nodeLocation(node.ActivityId))}</span>
-              <span class="dim tiny" title={`Base ${(node.BaseTickThreshold / 10).toFixed(1)}s, reduced by mastery and tool tier`}>
-                <span
-                  title="How long one unit takes at your mastery, tool and village bonuses. The server also applies a logistics bonus this screen cannot see, so the real speed is this or better."
-                >{secondsPerUnit(node)}s / unit</span
-                >{#if isFloored(node)}<span
-                    class="floored"
-                    title="This node cannot go any faster - 0.2s is the hard minimum for any gathering action. More mastery or a better tool will not help here; a higher-tier node will."
-                  > (as fast as it goes)</span
-                >{/if}
+              <!-- Modul: plain text, explained ONCE above the list. The base
+                   time, the logistics caveat and the 0.2s floor were tooltips,
+                   so a phone could never show them; then they were a Hint per
+                   row, fourteen dotted triggers 17px tall that check:touch
+                   failed one by one. One 44px "How speed works" per profession
+                   says the same thing with a target a thumb can hit. -->
+              <span class="dim tiny">
+                {secondsPerUnit(node)}s / unit{#if isFloored(node)}
+                  <span class="floored">(as fast as it goes)</span>{/if}
               </span>
               <span class="dim tiny">{node.BaseMasteryXpReward} xp</span>
               {#if locked}
@@ -530,6 +539,18 @@
      that is worth knowing before spending on it. */
   .floored {
     color: var(--rarity-12);
+  }
+
+  .speed-help {
+    margin: 0.2rem 0 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-dim);
+  }
+
+  @media (max-width: 40rem) {
+    .speed-help :global(.speed-hint) {
+      min-height: 44px;
+    }
   }
 
   .tiny-btn {

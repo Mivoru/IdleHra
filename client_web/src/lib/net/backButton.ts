@@ -45,6 +45,23 @@ function nativeApp(): CapacitorAppPlugin | undefined {
 }
 
 /**
+ * The z-index each dismissable layer paints at, named once so the resolver
+ * below and the components that register themselves agree on it. The CSS in
+ * each component carries the same literal - a stylesheet cannot import a
+ * TypeScript constant - so a change to one is a change to both.
+ */
+export const LAYER_Z = {
+  contextMenu: 10000,
+  pickerSheet: 1401,
+  exitPrompt: 1100,
+  playerProfile: 1000,
+  /** Death, victory, offline summary, What's new and the shield wheel. */
+  modal: 60,
+  chatDock: 40,
+  nav: 0,
+} as const;
+
+/**
  * What one press of the back button should do, given what is on screen.
  *
  * Modul: A PURE FUNCTION, so the decision can be tested without a device.
@@ -52,10 +69,10 @@ function nativeApp(): CapacitorAppPlugin | undefined {
  * The ordering below is not arbitrary and it is not alphabetical - it is the
  * PAINT ORDER of the layers, topmost first, because "back" means "close the
  * thing I am looking at" and the thing a player is looking at is whichever
- * layer is on top. The z-indexes it mirrors live in the components: the exit
- * prompt (1100) over the death and victory cards (60, death last in the DOM
- * and therefore above victory), over the offline summary (50), over the chat
- * dock (40), over the collapsed nav menu.
+ * layer is on top. The z-indexes it mirrors are LAYER_Z above: the exit
+ * prompt (1100) over the death card, the victory card and the offline summary
+ * (all 60 - a tie decided by DOM order, death last and therefore on top), over
+ * the chat dock (40), over the collapsed nav menu.
  *
  * Get this order wrong and back appears to skip a layer: it would close
  * something behind whatever is covering the screen, and the player would see
@@ -63,10 +80,15 @@ function nativeApp(): CapacitorAppPlugin | undefined {
  */
 export interface BackPressState {
   /**
-   * A picker sheet (PersonPicker on a phone), portalled to <body> at z-index
-   * 1401 - the topmost layer this client draws, so it is closed first.
+   * The z-index of the topmost overlay registered in stores/sheet.ts (a
+   * picker sheet, the player profile, the name menu, What's new, the shield
+   * wheel), or null when none is open. It is slotted into the paint order by
+   * that z: above every App-level layer it out-paints, below every one it
+   * does not. On a TIE the App-level layer wins, because every registered
+   * overlay at z 60 sits earlier in the DOM than the cards at 60 - What's new
+   * is mounted before them and the shield wheel lives inside the screen.
    */
-  sheetOpen: boolean;
+  overlayZ: number | null;
   /** The "leave the game?" dialog this module's own last press opened. */
   exitPromptOpen: boolean;
   deathCardOpen: boolean;
@@ -82,7 +104,7 @@ export interface BackPressState {
 }
 
 export type BackOutcome =
-  | 'close-sheet'
+  | 'close-overlay'
   | 'close-exit-prompt'
   | 'close-death-card'
   | 'close-victory-card'
@@ -93,14 +115,37 @@ export type BackOutcome =
   | 'root-screen'
   | 'confirm-exit';
 
+/** The App-level layers, topmost first. */
+const APP_LAYERS: readonly {
+  z: number;
+  open: (state: BackPressState) => boolean;
+  outcome: BackOutcome;
+}[] = [
+  { z: LAYER_Z.exitPrompt, open: (s) => s.exitPromptOpen, outcome: 'close-exit-prompt' },
+  { z: LAYER_Z.modal, open: (s) => s.deathCardOpen, outcome: 'close-death-card' },
+  { z: LAYER_Z.modal, open: (s) => s.victoryCardOpen, outcome: 'close-victory-card' },
+  { z: LAYER_Z.modal, open: (s) => s.offlineSummaryOpen, outcome: 'close-offline-summary' },
+  { z: LAYER_Z.chatDock, open: (s) => s.chatDockOpen, outcome: 'close-chat-dock' },
+  { z: LAYER_Z.nav, open: (s) => s.navOpen, outcome: 'close-nav' },
+];
+
+/**
+ * True for an outcome that closes something rather than moving or leaving.
+ * Escape on a desktop takes exactly these and ignores the rest - Escape is
+ * "dismiss", never "go back a screen" and never "quit".
+ */
+export function isCloseOutcome(outcome: BackOutcome): boolean {
+  return outcome.startsWith('close-');
+}
+
 export function resolveBackPress(state: BackPressState): BackOutcome {
-  if (state.sheetOpen) return 'close-sheet';
-  if (state.exitPromptOpen) return 'close-exit-prompt';
-  if (state.deathCardOpen) return 'close-death-card';
-  if (state.victoryCardOpen) return 'close-victory-card';
-  if (state.offlineSummaryOpen) return 'close-offline-summary';
-  if (state.chatDockOpen) return 'close-chat-dock';
-  if (state.navOpen) return 'close-nav';
+  const overlayZ = state.overlayZ;
+  for (const layer of APP_LAYERS) {
+    // Strictly greater: a tie goes to the App-level layer (see overlayZ).
+    if (overlayZ !== null && overlayZ > layer.z) return 'close-overlay';
+    if (layer.open(state)) return layer.outcome;
+  }
+  if (overlayZ !== null) return 'close-overlay';
 
   // Modul: the history is walked before the "go to the map" fallback, and both
   // exist. History is what a player means by back - it retraces the route they

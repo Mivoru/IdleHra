@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatNumber } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   // Modul: the mailbox. Absent from this client entirely until the 2026-08-02
   // protocol audit - which mattered more than a missing screen usually does,
   // because mail is how the server delivers things it could not put straight
@@ -10,29 +11,31 @@
   import { queryKeys, fetchMailbox, type MailboxEntry } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
   import { claimMailItem } from '../lib/net/commands';
-  import { pushLocalNotice, playerState } from '../lib/stores/game';
+  import { pushLocalNotice } from '../lib/stores/game';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import { commandInFlight } from '../lib/ui/commandInFlight';
 
   const mailbox = createQuery(() => ({ queryKey: queryKeys.mailbox, queryFn: fetchMailbox }));
 
-  const snap = $derived($playerState);
   const entries = $derived(mailbox.data ?? []);
 
-  // Claiming an attachment needs somewhere to put it. The server does not say
-  // "your backpack is full" - it just declines to move the item, leaving the
-  // mail sitting there looking unclaimed, so the screen says it first.
-  const spaceRemaining = $derived(snap?.InventorySpaceRemaining ?? 0);
-  const noSpace = $derived(spaceRemaining <= 0);
-
+  // Modul: NO BACKPACK GATE. This screen used to refuse item claims while
+  // InventorySpaceRemaining was 0 and show "Your backpack is full" - but the
+  // backpack is gone (items land in the unbounded village chest) and the
+  // server pins that field at capacity
+  // (InventoryCensusTickCoordinator.ApplyCensus), so after the first packet
+  // the gate could never fire. BEFORE the first packet it read `?? 0`, so
+  // every visit opened on a false "backpack full" warning with item claims
+  // disabled until a StateUpdate landed.
   function claim(entry: MailboxEntry) {
-    if (entry.HasEquipmentAttachment && noSpace) {
-      return pushLocalNotice('Free a backpack slot first - this message carries an item.');
-    }
-
-    const outcome = claimMailItem(entry.Id);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    // Modul: held until the server answers. The row is only removed by the
+    // refetch a command result triggers, so Claim stayed live in between and a
+    // second tap came back as "Target not found.".
+    const outcome = commandInFlight.run(mailKey(entry.Id), () => claimMailItem(entry.Id));
+    if (outcome === null) return;
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
   }
 
@@ -41,12 +44,15 @@
     // throttles inbound commands and a flood infraction is recorded against
     // the account, so a "claim 40 messages" button that fires 40 commands in
     // one frame looks exactly like an attack.
-    const claimable = entries.filter((e) => !e.HasEquipmentAttachment || !noSpace);
-    if (claimable.length === 0) return pushLocalNotice('Nothing can be claimed right now.');
-
-    claimable.slice(0, 10).forEach((entry, index) => {
-      setTimeout(() => claimMailItem(entry.Id), index * 250);
+    // Each one through the same pending key, so a row the player has already
+    // tapped is not sent twice.
+    entries.slice(0, 10).forEach((entry, index) => {
+      setTimeout(() => commandInFlight.run(mailKey(entry.Id), () => claimMailItem(entry.Id)), index * 250);
     });
+  }
+
+  function mailKey(id: number): string {
+    return `mail:${id}`;
   }
 
   function received(epochSeconds: number): string {
@@ -71,13 +77,6 @@
       to track.
     </p>
 
-    {#if noSpace}
-      <p class="warn" role="status">
-        Your backpack is full. Messages carrying an item cannot be claimed until
-        you free a slot; gold-only messages still can.
-      </p>
-    {/if}
-
     {#if mailbox.isPending}
       <Skeleton />
     {:else if mailbox.isError}
@@ -88,7 +87,7 @@
       <div class="actions">
         <button onclick={claimAll}>Claim up to 10</button>
         {#if totalGold > 0}
-          <span class="gold">{formatNumber(totalGold)}g waiting</span>
+          <span class="gold"><Money amount={totalGold} /> waiting</span>
         {/if}
       </div>
 
@@ -115,14 +114,14 @@
                   <span class="dim tiny">[{rarityName(entry.QualityTier)}]</span>
                 {/if}
                 {#if entry.Quantity > 1}
-                  <span class="qty">x{entry.Quantity}</span>
+                  <span class="qty">x{formatNumber(entry.Quantity)}</span>
                 {/if}
               {:else}
                 <span class="name">Gold delivery</span>
               {/if}
 
               {#if entry.GoldAttachment > 0}
-                <span class="gold">+{formatNumber(Number(entry.GoldAttachment))}g</span>
+                <span class="gold"><Money amount={Number(entry.GoldAttachment)} signed /></span>
               {/if}
             </div>
 
@@ -141,7 +140,7 @@
 
             <button
               class="tiny-btn"
-              disabled={entry.HasEquipmentAttachment && noSpace}
+              disabled={$commandInFlight.has(mailKey(entry.Id))}
               onclick={() => claim(entry)}
             >
               Claim
@@ -285,11 +284,11 @@
   .message-content .text {
     margin: 0;
     font-size: 0.85rem;
-    color: var(--fg);
+    color: var(--text);
     white-space: pre-wrap;
   }
 
-  @media (max-width: 30rem) {
+  @media (max-width: 40rem) {
     .mail li {
       grid-template-columns: 1fr auto;
     }

@@ -63,14 +63,22 @@
 </script>
 
 {#if summary}
-  <div
-    class="backdrop"
-    role="button"
-    tabindex="0"
-    onclick={dismissOfflineSummary}
-    onkeydown={(e) => (e.key === 'Escape' || e.key === 'Enter') && dismissOfflineSummary()}
-  >
-    <div class="card" role="dialog" aria-label="Welcome back">
+  <!-- Modul: A TAP ON THE CARD IS READING, NOT DISMISSING. The backdrop was
+       one big button and the card did not stop the click, so a player
+       touching the crew table to read it closed the summary it was built
+       for. Only the dim area around the card dismisses now; Escape and the
+       hardware back button reach it through App.svelte. -->
+  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+  <div class="backdrop" onclick={dismissOfflineSummary}>
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+    <div
+      class="card"
+      role="dialog"
+      tabindex="-1"
+      aria-modal="true"
+      aria-label="Welcome back"
+      onclick={(e) => e.stopPropagation()}
+    >
       <h2>Welcome back</h2>
       <p class="lead">You were away for {duration(summary.elapsedSeconds)}.</p>
 
@@ -257,17 +265,33 @@
     background: rgba(0, 0, 0, 0.6);
     display: grid;
     place-items: center;
-    z-index: 50;
+    /* Modul: 60, THE MODAL LAYER (LAYER_Z.modal), not 50. At 50 it tied with
+       the phone's tab bar, which comes later in the DOM and so painted OVER
+       the backdrop - five live buttons on top of the first thing a returning
+       player sees. */
+    z-index: 60;
     border: 0;
-    padding: 1rem;
+    /* Fixed, so body's safe-area padding does not reach it. */
+    padding: calc(1rem + var(--sa-top)) calc(1rem + var(--sa-right)) calc(1rem + var(--sa-bottom))
+      calc(1rem + var(--sa-left));
   }
 
+  /* Modul: THE CARD SCROLLS, because a fixed backdrop cannot. Its worst case -
+     three workers with one idle, an empty larder, a full warehouse - measured
+     650-750px on a 640px phone, and a centred grid clips the top and the
+     bottom equally: the heading and "Stock the larder" were the parts lost.
+     The vh line is the fallback for an engine without dvh. */
   .card {
     background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1.5rem;
     min-width: min(22rem, 90vw);
+    max-width: 100%;
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem - var(--sa-top) - var(--sa-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
     text-align: center;
   }
 

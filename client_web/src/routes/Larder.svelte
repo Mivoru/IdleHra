@@ -1,22 +1,25 @@
 <script lang="ts">
   import { formatNumber, numberTitle } from '../lib/ui/format';
-  import { onMount } from 'svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState } from '../lib/stores/game';
   import { requestScreen } from '../lib/stores/navigation';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchMaterials } from '../lib/net/rest';
-  import { loadContent, prettifyBaseId, isFood, type ContentRegistry } from '../lib/net/content';
+  import { prettifyBaseId, isFood } from '../lib/net/content';
+  import { contentQuery } from '../lib/net/registry.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
 
   // Modul: MATERIALS ONLY - this screen reads Stacks and nothing else, and was
   // downloading the whole equipment list to count fish. See fetchMaterials.
   const inventory = createQuery(() => ({ queryKey: queryKeys.materials, queryFn: fetchMaterials }));
 
-  let registry = $state<ContentRegistry | null>(null);
-  onMount(async () => {
-    registry = await loadContent().catch(() => null);
-  });
+  // Modul: through contentQuery, not `loadContent().catch(() => null)`. The
+  // catch turned a failed fetch into a registry that never arrived, and the
+  // list below waits on the registry - so it said "Checking the chest..." for
+  // ever. See registry.svelte.ts for why it is not a TanStack query.
+  const content = contentQuery;
+  const registry = $derived(content.data ?? null);
 
   const snap = $derived($playerState);
 
@@ -235,7 +238,11 @@
          Two conditions because there are two sources: the query, and the
          registry the ids are resolved through. Either one missing means the
          answer is not known yet. -->
-    {#if inventory.isPending || !registry}
+    {#if inventory.isError && inventory.data === undefined}
+      <QueryError query={inventory} what="your chest" />
+    {:else if content.isError && !registry}
+      <QueryError query={content} what="the item list" />
+    {:else if inventory.isPending || !registry}
       <p class="dim">Checking the chest...</p>
     {:else if availableFood.length === 0}
       <!-- Modul: an empty state names the next step AND offers it. This said
@@ -290,7 +297,7 @@
         {threshold === snap.AutoEatThreshold ? `Applied (${snap.AutoEatThreshold})` : `Set to ${threshold}`}
       </button>
     {:else}
-      <p class="dim">Waiting for state...</p>
+      <p class="dim">Waiting for the first state snapshot...</p>
     {/if}
   </section>
 </div>

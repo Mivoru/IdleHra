@@ -127,7 +127,7 @@
 
   function assign(worker: { slot: number; id: string }, activityId: number) {
     const outcome = assignCharacterActivity(worker.id, activityId, { takenBy: takenBy(activityId, worker.slot) });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     writePref(lastActivityKey(worker.id), String(activityId));
     pickerSlot = 0;
   }

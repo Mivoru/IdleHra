@@ -38,7 +38,7 @@
 
   function start() {
     const outcome = startBossAscension(boss.Region, step.Step);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 </script>
 
@@ -109,8 +109,8 @@
   .ascension {
     margin: 0.25rem 0 1rem;
     padding: 0.5rem 0.75rem;
-    border-left: 3px solid var(--accent, #c9a227);
-    background: color-mix(in srgb, var(--accent, #c9a227) 7%, transparent);
+    border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
   }
 
   .head {
@@ -149,7 +149,7 @@
   }
 
   .step.done {
-    border-color: var(--good, #4a4);
+    border-color: var(--good);
   }
 
   .step.locked {
@@ -157,12 +157,12 @@
   }
 
   .step.picked {
-    outline: 2px solid var(--accent, #c9a227);
+    outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
 
   .step.running {
-    box-shadow: 0 0 0 2px var(--good, #4a4);
+    box-shadow: 0 0 0 2px var(--good);
   }
 
   .detail {
@@ -182,7 +182,7 @@
   }
 
   .reward strong {
-    color: var(--accent, #c9a227);
+    color: var(--accent);
   }
 
   .actions {

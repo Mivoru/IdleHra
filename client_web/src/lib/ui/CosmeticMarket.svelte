@@ -7,6 +7,7 @@
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import Avatar from './Avatar.svelte';
   import Money from './Money.svelte';
+  import QueryError from './QueryError.svelte';
   import {
     COSMETIC_KIND,
     COSMETIC_MARKET_SENTENCES,
@@ -83,14 +84,14 @@
 
   async function settle(response: CosmeticMarketResponse | null, success: string): Promise<void> {
     if (!response) {
-      pushLocalNotice('The market did not answer. Try again.');
+      pushLocalNotice('The market did not answer. Try again.', 'error');
       return;
     }
     client.setQueryData(cosmeticKeys.mine, response.Cosmetics);
     noteCosmeticsView(response.Cosmetics);
     await client.invalidateQueries({ queryKey: ['market', 'cosmetics'] });
     if (response.Result === 'Ok') pushLocalNotice(success, 'info');
-    else pushLocalNotice(COSMETIC_MARKET_SENTENCES[response.Result] ?? response.Result);
+    else pushLocalNotice(COSMETIC_MARKET_SENTENCES[response.Result] ?? response.Result, 'error');
   }
 
   async function act(run: () => Promise<void>): Promise<void> {
@@ -153,6 +154,8 @@
 
     {#if listings.isPending}
       <p class="dim">Reading the market&hellip;</p>
+    {:else if listings.isError && listings.data === undefined}
+      <QueryError query={listings} what="the cosmetic market" />
     {:else if (listings.data ?? []).length === 0}
       <p class="dim">Nothing like that is for sale right now.</p>
     {:else}
@@ -181,7 +184,9 @@
     {#if !hasGuildLicense}
       <p class="warn">The market needs a guild. Join one to buy or sell.</p>
     {/if}
-    {#if sellable.length === 0}
+    {#if mine.isError && mine.data === undefined}
+      <QueryError query={mine} what="your cosmetics" />
+    {:else if sellable.length === 0}
       <p class="dim">You have nothing to sell. Chests come every five levels and, rarely, from monsters.</p>
     {:else}
       <div class="sell-pick" role="listbox" aria-label="What to sell">

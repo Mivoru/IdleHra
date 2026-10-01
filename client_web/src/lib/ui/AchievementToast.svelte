@@ -118,10 +118,13 @@
     box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.35);
   }
 
+  /* A fixed layer is outside .panel's wrap rule (app.css), so it carries its
+     own: a long deed title wraps rather than widening the card. */
   .body {
     display: grid;
     gap: 0.05rem;
     min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   .eyebrow {
@@ -184,13 +187,29 @@
   }
 
   /* On a narrow screen the card takes the bottom edge outright - a 23rem card
-     pinned right would otherwise sit half off a 320px viewport. */
+     pinned right would otherwise sit half off a 320px viewport.
+
+     Modul: ABOVE THE TAB BAR, MEASURED FROM IT. This was a bare `bottom: 5rem`,
+     which ignored both the tab bar and the gesture inset: on a phone with a
+     34px gesture bar the tab bar is ~5.6rem tall, so this z-61 card sat on top
+     of it - and on the chat handle (1rem above the bar) on every phone - for
+     its four seconds. 4.25rem over the bar clears the handle; it is the band
+     the onboarding coach and the update prompt already use. */
   @media (max-width: 30rem) {
     .deeds {
-      right: 0.5rem;
-      left: 0.5rem;
-      bottom: 5rem;
+      right: calc(0.5rem + var(--sa-right));
+      left: calc(0.5rem + var(--sa-left));
+      bottom: calc(4.25rem + var(--sa-bottom) + var(--tabbar-h));
       max-width: none;
+    }
+  }
+
+  /* The loot reveal takes the band above the tab bar wherever there is one
+     (LootReveal.svelte). A deed and a Legendary can land together - stand on
+     top of the reveal rather than under it. */
+  @media (max-width: 40rem) {
+    :global(body:has([data-loot-reveal])) .deeds {
+      bottom: calc(10rem + var(--sa-bottom) + var(--tabbar-h));
     }
   }
 

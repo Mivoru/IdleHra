@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { formatNumber } from '../lib/ui/format';
+  import { formatNumber, formatGold } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import CosmeticMarket from '../lib/ui/CosmeticMarket.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import {
@@ -12,14 +13,17 @@
   } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
   import { listItemOnMarket, buyMarketListing, placeLimitOrder } from '../lib/net/commands';
-  import { loadContent, type ContentRegistry } from '../lib/net/content';
+  import { contentQuery } from '../lib/net/registry.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
   import { rarityColor, rarityName, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from '../lib/ui/slots';
   import { locationName } from '../lib/ui/locations';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import PriceChart from '../lib/ui/PriceChart.svelte';
-  import { pushLocalNotice } from '../lib/stores/game';
+  import { pushLocalNotice, playerState } from '../lib/stores/game';
+  import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
+  import { commandInFlight } from '../lib/ui/commandInFlight';
   import { requestScreen } from '../lib/stores/navigation';
 
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
@@ -168,16 +172,27 @@
   function sell() {
     const outcome = listItemOnMarket(sellInstanceId, sellPrice);
     if (!outcome.ok) {
-      pushLocalNotice(outcome.reason);
+      pushLocalNotice(outcome.reason, 'error');
       return;
     }
     sellInstanceId = 0;
   }
 
+  // Modul: ONE BUY PER TAP. Buy sent its command and stayed live, so a double
+  // tap bought (or tried to buy) twice: a success toast, then "Target not
+  // found." for the same press. The listing is held until the server answers.
+  // A purchase that takes a quarter of the purse or more also asks first -
+  // gold is the one thing a mis-tap here cannot get back, and below that
+  // threshold a confirm on every cheap buy would just be friction.
+  const buyKey = (orderId: number) => `market:${orderId}`;
+  const purse = $derived(Number($playerState?.Gold ?? 0));
+  const isBigBuy = (price: number) => purse > 0 && price * 4 >= purse;
+
   function buy(orderId: number) {
-    const outcome = buyMarketListing(orderId);
+    const outcome = commandInFlight.run(buyKey(orderId), () => buyMarketListing(orderId));
+    if (outcome === null) return;
     if (!outcome.ok) {
-      pushLocalNotice(outcome.reason);
+      pushLocalNotice(outcome.reason, 'error');
       return;
     }
   }
@@ -196,10 +211,10 @@
   // order against whichever item happens to share that instance's number -
   // accepted by the server, wrong for the player, and silent.
 
-  let registry = $state<ContentRegistry | null>(null);
-  $effect(() => {
-    void loadContent().then((loaded) => (registry = loaded));
-  });
+  // Modul: a query, not `loadContent().then(...)` with no catch - a failed
+  // content fetch left "Item wanted" an empty dropdown with nothing saying why.
+  const content = contentQuery;
+  const registry = $derived(content.data ?? null);
 
   const itemDefinitionCount = $derived(registry?.items.size ?? 0);
 
@@ -227,7 +242,7 @@
           }
         : { isBuy: false, targetId: orderInstanceId, price: orderPrice },
     );
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     pushLocalNotice('Order placed. It rests until something matches it.', 'info');
   }
@@ -360,10 +375,25 @@
                 {slotLabel(listing.BaseItemId)} &middot; {rarityName(listing.QualityTier)}
               </span>
             </div>
-            <span class="price">{formatNumber(listing.Price)}g</span>
-            <button class="tiny-btn" disabled={!hasGuildLicense} onclick={() => buy(listing.OrderId)}>
-              Buy
-            </button>
+            <span class="price"><Money amount={listing.Price} /></span>
+            {#if isBigBuy(listing.Price)}
+              <ConfirmButton
+                small
+                danger={false}
+                label="Buy"
+                confirmLabel="Really buy?"
+                disabled={!hasGuildLicense || $commandInFlight.has(buyKey(listing.OrderId))}
+                onConfirm={() => buy(listing.OrderId)}
+              />
+            {:else}
+              <button
+                class="tiny-btn"
+                disabled={!hasGuildLicense || $commandInFlight.has(buyKey(listing.OrderId))}
+                onclick={() => buy(listing.OrderId)}
+              >
+                Buy
+              </button>
+            {/if}
           </li>
         {/each}
       </ul>
@@ -389,7 +419,12 @@
   <section class="panel">
     <h2>Sell</h2>
 
-    {#if !hasGuildLicense}
+    {#if statistics.isError && statistics.data === undefined}
+      <!-- Modul: a failed membership check is not "you have no guild". The
+           buttons stay disabled (hasGuildLicense is false) but the reason
+           given is the true one. -->
+      <QueryError query={statistics} what="your guild membership" />
+    {:else if statistics.data !== undefined && !hasGuildLicense}
       <p class="warn">
         Trading needs an active guild membership - the server treats it as a
         trade licence and rejects listings and purchases without one.
@@ -424,20 +459,22 @@
       <div class="quote">
         {#if history.isPending}
           <p class="dim tiny">Checking what these go for...</p>
+        {:else if history.isError && history.data === undefined}
+          <QueryError query={history} what="the price history" />
         {:else if history.data && history.data.TradeCount > 0}
           {@const h = history.data}
           <div class="quote-head">
             <div>
               <span class="dim tiny">Last sold</span>
-              <strong>{formatNumber(h.LastPrice)}g</strong>
+              <strong><Money amount={h.LastPrice} /></strong>
             </div>
             <div>
               <span class="dim tiny">Average</span>
-              <strong>{formatNumber(h.AveragePrice)}g</strong>
+              <strong><Money amount={h.AveragePrice} /></strong>
             </div>
             <div>
               <span class="dim tiny">Range</span>
-              <strong>{formatNumber(h.LowPrice)} - {formatNumber(h.HighPrice)}g</strong>
+              <strong><Money amount={h.LowPrice} /> - <Money amount={h.HighPrice} /></strong>
             </div>
           </div>
 
@@ -487,17 +524,17 @@
       {@const fee = Math.floor((sellPrice * history.data.FeePct) / 100)}
       {@const guildCut = Math.floor((sellPrice * history.data.GuildTaxPct) / 100)}
       <dl class="payout">
-        <div><dt>Asking</dt><dd>{formatNumber(sellPrice)}g</dd></div>
-        <div><dt>Market fee ({history.data.FeePct}%)</dt><dd class="minus">-{formatNumber(fee)}g</dd></div>
+        <div><dt>Asking</dt><dd><Money amount={sellPrice} /></dd></div>
+        <div><dt>Market fee ({history.data.FeePct}%)</dt><dd class="minus">-{formatGold(fee)}</dd></div>
         {#if history.data.GuildTaxPct > 0}
           <div>
             <dt>Guild cut ({history.data.GuildTaxPct}%)</dt>
-            <dd class="minus">-{formatNumber(guildCut)}g</dd>
+            <dd class="minus">-{formatGold(guildCut)}</dd>
           </div>
         {/if}
         <div class="total">
           <dt>You receive</dt>
-          <dd>{formatNumber(Math.max(0, sellPrice - fee - guildCut))}g</dd>
+          <dd><Money amount={Math.max(0, sellPrice - fee - guildCut)} /></dd>
         </div>
       </dl>
     {/if}
@@ -507,10 +544,12 @@
          offering it and explaining afterwards. NoGuildLicense is a rejection
          code rather than a disconnect, so this is UX rather than safety. -->
     <button onclick={sell} disabled={!hasGuildLicense || sellInstanceId === 0 || sellPrice < 1}>
-      List for {formatNumber(Math.max(1, sellPrice))}g
+      List for {formatGold(Math.max(1, sellPrice))}
     </button>
 
-    {#if sellable.length === 0}
+    {#if inventory.isError && inventory.data === undefined}
+      <QueryError query={inventory} what="your equipment" />
+    {:else if inventory.data !== undefined && sellable.length === 0}
       <p class="dim tiny">Nothing carried to sell.</p>
     {/if}
   </section>
@@ -524,7 +563,9 @@
       order names a specific piece you already hold.
     </p>
 
-    {#if !hasGuildLicense}
+    {#if statistics.isError && statistics.data === undefined}
+      <QueryError query={statistics} what="your guild membership" />
+    {:else if statistics.data !== undefined && !hasGuildLicense}
       <p class="warn">
         Trading needs an active guild membership.
       </p>
@@ -536,6 +577,9 @@
     </div>
 
     {#if orderSide === 'buy'}
+      {#if content.isError && !registry}
+        <QueryError query={content} what="the item list" />
+      {/if}
       <label>
         Item wanted
         <select bind:value={orderDefinitionId}>
@@ -586,7 +630,7 @@
         orderPrice < 1 ||
         (orderSide === 'buy' ? orderDefinitionId === 0 : orderInstanceId === 0)}
     >
-      Place {orderSide} order at {formatNumber(Math.max(1, orderPrice))}g
+      Place {orderSide} order at {formatGold(Math.max(1, orderPrice))}
     </button>
 
     <p class="dim tiny">
@@ -691,8 +735,8 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.4rem 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: var(--radius, 6px);
+    border: 1px solid var(--edge-soft);
+    border-radius: var(--radius-sm);
     background: rgba(255, 255, 255, 0.02);
   }
 
@@ -889,8 +933,10 @@
     cursor: pointer;
   }
 
-  .checks label:hover {
-    background: var(--bg-sunken, rgba(0, 0, 0, 0.12));
+  @media (hover: hover) and (pointer: fine) {
+    .checks label:hover {
+      background: var(--tint-hover);
+    }
   }
 
   .checks input {
@@ -918,7 +964,7 @@
     border: none;
     padding: 0;
     font: inherit;
-    color: var(--accent, #7dd3fc);
+    color: var(--accent);
     text-decoration: underline;
     cursor: pointer;
   }
@@ -960,11 +1006,11 @@
   }
 
   .change.up strong {
-    color: var(--good, #4ade80);
+    color: var(--good);
   }
 
   .change.down strong {
-    color: var(--bad, #f87171);
+    color: var(--danger);
   }
 
   /* The payout breakdown. Laid out as a definition list because that is what
@@ -990,7 +1036,7 @@
   }
 
   .payout .minus {
-    color: var(--bad, #f87171);
+    color: var(--danger);
   }
 
   .payout .total {

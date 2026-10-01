@@ -116,3 +116,29 @@ export function diffTiers(before: TierRow[], after: TierRow[]): { achievementId:
 
   return crossed;
 }
+
+/** A snapshot row, narrowed to what pricing a card needs. */
+export interface RewardRow extends TierRow {
+  NextTierReward: number;
+}
+
+/**
+ * The diamonds paid for the tier just LANDED ON, or 0 when this side cannot
+ * know it.
+ *
+ * Modul: the reward comes from the snapshot BEFORE the crossing. The server's
+ * NextTierReward is `rewardTable[CompletedTier]` - the reward for the tier
+ * after the one already held - so the post-crossing row prices the NEXT deed.
+ * The card used to read that row and announced "+500 diamonds" while 250 were
+ * paid, and nothing at all on the final tier, where the next reward is 0.
+ *
+ * The before-row is only exact for a one-tier step. A jump of two tiers in one
+ * checkpoint was paid for both, and the client holds one table entry, not the
+ * other; the row is also absent for a deed the earlier snapshot did not list.
+ * Both answer 0, which the card renders as no reward line - a missing figure
+ * is better than a wrong one sitting next to the diamond counter.
+ */
+export function crossedTierReward(before: RewardRow | undefined, landedTier: number): number {
+  if (!before || before.CompletedTier !== landedTier - 1) return 0;
+  return before.NextTierReward > 0 ? before.NextTierReward : 0;
+}

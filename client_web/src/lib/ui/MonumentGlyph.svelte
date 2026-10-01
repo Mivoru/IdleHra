@@ -64,28 +64,28 @@
   }
 
   .part {
-    fill: color-mix(in srgb, var(--accent, #c9a227) 55%, var(--bg-panel, #1c1712));
-    stroke: var(--accent, #c9a227);
+    fill: color-mix(in srgb, var(--accent) 55%, var(--bg-panel));
+    stroke: var(--accent);
     stroke-width: 1;
     stroke-linejoin: round;
   }
 
   .wall {
-    fill: color-mix(in srgb, var(--accent, #c9a227) 30%, var(--bg-panel, #1c1712));
+    fill: color-mix(in srgb, var(--accent) 30%, var(--bg-panel));
   }
 
   .roof {
-    fill: color-mix(in srgb, var(--danger, #d1503c) 45%, var(--bg-panel, #1c1712));
-    stroke: var(--danger, #d1503c);
+    fill: color-mix(in srgb, var(--danger) 45%, var(--bg-panel));
+    stroke: var(--danger);
   }
 
   .beacon {
-    fill: var(--accent, #c9a227);
+    fill: var(--accent);
   }
 
   .glow {
     fill: none;
-    stroke: var(--accent, #c9a227);
+    stroke: var(--accent);
     stroke-width: 0.8;
     opacity: 0.55;
   }

@@ -17,6 +17,7 @@
   import { queryKeys, fetchWorn, fetchCombatProjection, type HuntingEstimate } from '../lib/net/rest';
   import { estimateLine, killTimeText, safety } from '../lib/ui/huntingEstimate';
   import { formatNumber, numberTitle } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import { readPref, writePref, PREF_LAST_MONSTER } from '../lib/net/prefs';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
@@ -330,7 +331,7 @@
     selectMonster(monster);
     // See Gathering.svelte: a bare TargetId does not persist.
     const outcome = assignCharacterActivity(activeCharacterId, monster.Id);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     writePref(PREF_LAST_MONSTER, String(monster.Id));
     lastMonsterId = monster.Id;
   }
@@ -369,7 +370,7 @@
 
   function stop() {
     const outcome = assignCharacterActivity(activeCharacterId, 0);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   // BaseItemId is the reliable identifier on a drop-preview row. Falls back to
@@ -681,7 +682,7 @@
                     {#if est.CanDamage}
                       <span class="dim">Estimate:</span>
                       {killTimeText(est)} a kill · {formatNumber(est.XpPerHour)} XP/h ·
-                      {formatNumber(est.GoldPerHour)} g/h ·
+                      <Money amount={est.GoldPerHour} />/h ·
                       <span class="verdict {verdict.tone}">{verdict.text}</span>
                     {:else}
                       <span class="dim">Estimate:</span>
@@ -697,6 +698,18 @@
               >
                 Fight
               </button>
+              <!-- Modul: WHAT "FIRST CLEAR" MEANS, said on tap. The multipliers
+                   were only the chip's title, and the chip sits inside the row
+                   button, where a Hint (itself a button) cannot go - so
+                   selecting the row, which a tap already does, prints it. -->
+              {#if selectedMonsterId === monster.Id && isFirstClearPending(monster.Id)}
+                {@const bossRegion = bossRegionOf(monster.Id)}
+                <p class="dim tiny" style="grid-column: 1 / -1; margin: 0;" data-testid="first-clear-detail">
+                  Never beaten: {firstClearHpMultiplier(bossRegion)}x health and
+                  {firstClearAttackMultiplier(bossRegion)}x damage until it falls once,
+                  then it drops to its normal stats for good. {describeBossGearRequirement(bossRegion)}
+                </p>
+              {/if}
             </li>
           {/each}
         </ul>
@@ -822,7 +835,7 @@
   }
 
   .firstclear {
-    color: var(--warn, #e0a030);
+    color: var(--warn);
     border: 1px solid currentColor;
     border-radius: 999px;
     padding: 0 0.35rem;
@@ -832,7 +845,7 @@
   h3.place {
     background-size: cover;
     background-position: center;
-    border-radius: var(--radius, 6px);
+    border-radius: var(--radius-sm);
     padding: 0.7rem 0.9rem;
     margin: 1rem 0 0.5rem;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
@@ -984,11 +997,11 @@
   }
 
   .verdict.safe {
-    color: var(--good, #4c8a3a);
+    color: var(--good);
   }
 
   .verdict.food {
-    color: var(--warn, #b8860b);
+    color: var(--warn);
   }
 
   .verdict.danger {
@@ -1088,7 +1101,7 @@
     overflow-y: auto;
     border: 1px solid var(--border);
     border-radius: 6px;
-    background: var(--bg-sunken, rgba(0, 0, 0, 0.12));
+    background: var(--bg-sunken);
     font-size: 0.82rem;
     line-height: 1.5;
     font-variant-numeric: tabular-nums;
@@ -1102,7 +1115,7 @@
   }
 
   .fightlog li.crit {
-    color: var(--warn, #e8b339);
+    color: var(--warn);
     font-weight: 600;
   }
 

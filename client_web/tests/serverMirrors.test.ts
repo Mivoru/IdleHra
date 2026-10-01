@@ -12,6 +12,7 @@ import {
   BOSS_REQUIRED_QUALITY_TIER,
 } from '../src/lib/ui/victories';
 import { TIER_STYLES } from '../src/lib/ui/leaderboardTiers';
+import { GUILD_JOIN_MIN_LEVEL } from '../src/lib/ui/unlocks';
 import { nextBossMonday, nextStrikeRefill } from '../src/lib/net/commands';
 import {
   VILLAGE_UPGRADE_BASE_SECONDS,
@@ -164,6 +165,15 @@ describe('the numbers the client mirrors still match the server', () => {
     );
     expect(num(commands, /Math\.ceil\(\d+ \* Math\.pow\(([\d.]+),/, 'client village growth')).toBe(
       num(village, /BaseUpgradeCost \* Math\.Pow\(([\d.]+),/, 'server village growth'),
+    );
+  });
+
+  // The Guild screen greys Join below this level; drifting from the server's
+  // floor would bring back an active Join that the server refuses.
+  it('guilds: the level floor under every join', () => {
+    const guilds = read(serverRoot, 'Domain', 'Social', 'GuildManagementEngine.cs');
+    expect(GUILD_JOIN_MIN_LEVEL).toBe(
+      num(guilds, /const int MinGuildInteractionLevel = (\d+);/, 'server guild level floor'),
     );
   });
 
@@ -680,6 +690,8 @@ describe('the leaderboard tier ladder', () => {
     // Two rungs the same colour is a ladder that does not rank anything.
     const colors = new Set(TIER_STYLES.map((t) => t.color.toLowerCase()));
     expect(colors.size).toBe(TIER_STYLES.length);
+    const lightColors = new Set(TIER_STYLES.map((t) => t.lightColor.toLowerCase()));
+    expect(lightColors.size).toBe(TIER_STYLES.length);
   });
 
   it('dims the glow as the rungs widen', () => {

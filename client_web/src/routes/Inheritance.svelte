@@ -17,6 +17,7 @@
   } from '../lib/net/commands';
   import Money from '../lib/ui/Money.svelte';
   import Bar from '../lib/ui/Bar.svelte';
+  import DisabledReason from '../lib/ui/DisabledReason.svelte';
 
   const snap = $derived($playerState);
   const diamonds = $derived(snap?.PremiumCurrencyBalance ?? 0);
@@ -61,7 +62,7 @@
 
   function buy(statId: number, level: number) {
     const outcome = purchaseInheritanceLevel(statId, level, diamonds);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 </script>
 
@@ -82,7 +83,7 @@
     </p>
 
     {#if !snap}
-      <p class="dim">Waiting for your state to arrive...</p>
+      <p class="dim">Waiting for the first state snapshot...</p>
     {:else}
       <ul class="stats">
         {#each rows as row (row.id)}
@@ -99,7 +100,7 @@
             <Bar
               value={row.level}
               max={INHERITANCE_MAX_LEVEL}
-              color="var(--diamond, #7dd3fc)"
+              color="var(--diamond)"
               label={`${row.level} / ${INHERITANCE_MAX_LEVEL}`}
             />
 
@@ -115,6 +116,11 @@
                   Buy +{INHERITANCE_PCT_PER_LEVEL}% for
                   <Money amount={row.cost} kind="diamond" />
                 </button>
+                <!-- Modul: said under the button, not only in its title -
+                     a phone shows no tooltip on a disabled button. -->
+                <DisabledReason
+                  text={row.affordable ? null : `Needs ${formatNumber(row.cost)} diamonds - you have ${formatNumber(diamonds)}.`}
+                />
               {/if}
             </div>
           </li>
@@ -135,7 +141,7 @@
   .wrap { display: grid; gap: 1rem; }
 
   .panel {
-    background: var(--panel, rgba(127, 127, 127, 0.05));
+    background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1rem 1.15rem 1.25rem;
@@ -175,7 +181,7 @@
 
   /* A maxed stat stays fully legible - it is an achievement, not a disabled
      control, and dimming it would read as "broken". */
-  .stats li.capped { border-color: var(--diamond, #7dd3fc); }
+  .stats li.capped { border-color: var(--diamond); }
 
   .head {
     display: flex;

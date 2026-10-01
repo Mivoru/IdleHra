@@ -1,11 +1,15 @@
 <script lang="ts">
-  import { formatNumber } from '../lib/ui/format';
+  import { formatNumber, formatGold } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { queryKeys, fetchForge, fetchForgeStackPreview, type ForgeEquipment } from '../lib/net/rest';
   import { prettifyBaseId, loadContent, type ContentRegistry } from '../lib/net/content';
   import { executeForgeFusion, fuseStack, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
   import Burst from '../lib/ui/Burst.svelte';
+  import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
+  import DisabledReason from '../lib/ui/DisabledReason.svelte';
+  import { commandInFlight } from '../lib/ui/commandInFlight';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
 
@@ -18,6 +22,7 @@
     describeStopCondition,
   } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
 
   import { takePendingFocusEquipment } from '../lib/stores/navigation';
   import { commandResults } from '../lib/stores/game';
@@ -169,6 +174,18 @@
   );
   const gold = $derived(Number($playerState?.Gold ?? 0));
 
+  // Modul: SIX THINGS GREY THE FUSE BUTTON and only the gold one was said
+  // anywhere near it, so "no Forge yet" looked like a broken button. The
+  // first unmet one is printed under it, in the order a player meets them.
+  const fuseBlocked = $derived.by((): string | null => {
+    if (forgeLevel === 0) return 'Build a Forge in your village first.';
+    if (fusionTarget === 0) return 'Choose the item to upgrade.';
+    if (fusionSacOne === 0 || fusionSacTwo === 0) return 'Choose two matching items to fuse into it.';
+    if (atMaxTier) return 'That item is already at the highest rarity.';
+    if (gold < fusionFee) return `Not enough gold - the fee is up to ${formatGold(fusionFee)}.`;
+    return null;
+  });
+
   // Modul: THE REROLL PRICE, SHOWN. Mirrors
   // AffixRegistry.CalculateRerollGoldCost - a flat per-REGION table, see
   // getRerollCost below. This comment used to describe a `100 * 1.35^(itemTier
@@ -206,8 +223,11 @@
           }
         : undefined;
 
-    const outcome = executeForgeFusion(fusionTarget, fusionSacOne, fusionSacTwo, forgeLevel, match);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    const outcome = commandInFlight.run(`fuse:${fusionTarget}`, () =>
+      executeForgeFusion(fusionTarget, fusionSacOne, fusionSacTwo, forgeLevel, match),
+    );
+    if (outcome === null) return;
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     fusionSacOne = 0;
     fusionSacTwo = 0;
     fusionFlash++;
@@ -249,7 +269,7 @@
   function fuseWholeStack() {
     if (!fusionTargetItem) return;
     const outcome = fuseStack(fusionTargetItem.Id, fusionTargetItem.QualityTier, stackTo, forgeLevel);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     fusionTarget = 0;
     fusionSacOne = 0;
     fusionSacTwo = 0;
@@ -392,25 +412,29 @@
   let fusionFlash = $state(0);
   let rerollFlash = $state(0);
 
-  function doReroll() {
-    // The affix ABOUT TO BE DESTROYED, not the one that will replace it.
+  // Modul: THE GUARD ASKS INLINE. It was a native confirm(), which the
+  // Android WebView draws as an unstyled system dialog; now a guarded affix
+  // turns the button into a two-tap ConfirmButton and says, before the first
+  // tap, what is at stake. The affix ABOUT TO BE DESTROYED, not the one that
+  // will replace it.
+  const rerollGuard = $derived.by(() => {
     const current = rerollAffixRows[rerollAffixIndex];
-    if (current && current.rarity >= guardRarity) {
-      const what = `${current.rarityName} ${current.label} ${current.value}`;
-      const scope = autoReroll
+    if (!current || current.rarity < guardRarity) return null;
+    return {
+      what: `${current.rarityName} ${current.label} ${current.value}`,
+      scope: autoReroll
         ? `Auto-reroll will keep rolling this slot up to ${autoAttempts} times, so it is gone on the first attempt.`
-        : 'A reroll replaces it outright - it can come out worse.';
-      if (!confirm(`Reroll ${what}?
+        : 'A reroll replaces it outright - it can come out worse.',
+    };
+  });
 
-${scope}`)) return;
-    }
-
+  function doReroll() {
     const outcome = rerollAffix(rerollItemId, rerollAffixIndex, rerollOperation, {
       maxAttempts: autoReroll ? autoAttempts : 0,
       stopMinRarity,
       stopAffixIndex,
     });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     rerollFlash++;
     refresh();
   }
@@ -431,7 +455,11 @@ ${scope}`)) return;
         for a gold fee. It always works - nothing is lost to chance.
       </p>
 
-      {#if fusableSets.length > 0}
+      {#if forge.isError && forge.data === undefined}
+        <!-- Modul: "Nothing to fuse yet" is a claim about the chest; a failed
+             request cannot make it. -->
+        <QueryError query={forge} what="your equipment" />
+      {:else if fusableSets.length > 0}
         <div class="sets">
           <span class="dim tiny">Ready to fuse:</span>
           {#each fusableSets as set (set.base + set.tier)}
@@ -494,7 +522,7 @@ ${scope}`)) return;
 
       {#if !atMaxTier}
         <p class="dim small">
-          Fee up to <b class:blocked={gold < fusionFee}>{formatNumber(fusionFee)}g</b>.
+          Fee up to <b class:blocked={gold < fusionFee}><Money amount={fusionFee} available={gold} /></b>.
           Luck and the Diamond Star event take up to 25% off.
         </p>
       {/if}
@@ -502,15 +530,11 @@ ${scope}`)) return;
 
     <button
       onclick={fuse}
-      disabled={forgeLevel === 0 ||
-        fusionTarget === 0 ||
-        fusionSacOne === 0 ||
-        fusionSacTwo === 0 ||
-        atMaxTier ||
-        gold < fusionFee}
+      disabled={fuseBlocked !== null || $commandInFlight.has(`fuse:${fusionTarget}`)}
     >
       Fuse
     </button>
+    <DisabledReason text={fuseBlocked} />
 
     {#if fusionTargetItem && stackTiers.length > 0}
       {@const plan = stackPreview.data}
@@ -526,6 +550,8 @@ ${scope}`)) return;
         </label>
         {#if stackPreview.isPending}
           <p class="dim tiny">Working it out...</p>
+        {:else if stackPreview.isError && !plan}
+          <QueryError query={stackPreview} what="the fusion plan" />
         {:else if plan}
           {#if plan.TotalFusions === 0}
             <p class="blocked small">
@@ -534,7 +560,7 @@ ${scope}`)) return;
           {:else}
             <p class="small" data-testid="fuse-stack-plan">
               {formatNumber(plan.TotalFusions)} fusions &middot;
-              <b>{formatNumber(plan.GoldCost)}g</b> &rarr;
+              <b><Money amount={plan.GoldCost} /></b> &rarr;
               {#each plan.Result.filter((r) => r.Count > 0).reverse() as row, i (row.Tier)}
                 {i > 0 ? ', ' : ''}<span style="color: {rarityColor(row.Tier)}">{formatNumber(row.Count)}&times; {rarityName(row.Tier)}</span>
               {/each}
@@ -553,7 +579,7 @@ ${scope}`)) return;
           data-testid="fuse-stack-go"
           disabled={!plan || plan.TotalFusions === 0}
         >
-          Fuse the stack{plan && plan.TotalFusions > 0 ? ` · ${formatNumber(plan.GoldCost)}g` : ''}
+          Fuse the stack{plan && plan.TotalFusions > 0 ? ` · ${formatGold(plan.GoldCost)}` : ''}
         </button>
       </div>
     {/if}
@@ -589,8 +615,8 @@ ${scope}`)) return;
     {#if rerollItem}
       <p class="price">
         This reroll costs
-        <b class:blocked={gold < rerollFee}>{formatNumber(rerollFee)}g</b>.
-        You have {formatNumber(gold)}g.
+        <b class:blocked={gold < rerollFee}><Money amount={rerollFee} available={gold} /></b>.
+        You have <Money amount={gold} />.
         <span class="dim tiny">
           The price follows the item's rarity, not how many times you have
           tried - a run of poor rolls does not get more expensive.
@@ -604,6 +630,9 @@ ${scope}`)) return;
         {showAllForReroll ? 'Only equipped' : 'Show all (tools too)'}
       </button>
     </div>
+    {#if forge.isError && forge.data === undefined}
+      <QueryError query={forge} what="your equipment" />
+    {/if}
     <ItemBrowser
       items={rerollChoices}
       selectedId={rerollItemId}
@@ -734,13 +763,27 @@ ${scope}`)) return;
            look at the moment they commit. A charge belongs on the thing that
            charges - and this is the button that quietly took a night's income
            over five presses. -->
-      <button
-        onclick={doReroll}
-        disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
-      >
-        {autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'}
-        &middot; {formatNumber(rerollFee)}g{autoReroll ? ' each' : ''}
-      </button>
+      {#if rerollGuard}
+        <p class="dim tiny hint">
+          Guarded: this destroys your {rerollGuard.what}. {rerollGuard.scope}
+        </p>
+        {#key `${rerollItemId}:${rerollAffixIndex}`}
+          <ConfirmButton
+            label="{autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'} · {formatGold(rerollFee)}{autoReroll ? ' each' : ''}"
+            confirmLabel="Really reroll {rerollGuard.what}?"
+            disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
+            onConfirm={doReroll}
+          />
+        {/key}
+      {:else}
+        <button
+          onclick={doReroll}
+          disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
+        >
+          {autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'}
+          &middot; {formatGold(rerollFee)}{autoReroll ? ' each' : ''}
+        </button>
+      {/if}
 
       {#if rerollFlash > 0}
         {#key rerollFlash}
@@ -750,7 +793,7 @@ ${scope}`)) return;
       {/if}
       {#if gold < rerollFee}
         <p class="dim tiny">
-          You have {formatNumber(gold)}g and this costs {formatNumber(rerollFee)}g.
+          You have <Money amount={gold} /> and this costs <Money amount={rerollFee} />.
         </p>
       {/if}
     {/if}
@@ -818,8 +861,10 @@ ${scope}`)) return;
     cursor: pointer;
   }
 
-  .slot:hover {
-    border-color: currentColor;
+  @media (hover: hover) and (pointer: fine) {
+    .slot:hover {
+      border-color: currentColor;
+    }
   }
 
   .slot.selected {
@@ -873,16 +918,18 @@ ${scope}`)) return;
     align-items: flex-start;
     gap: 0.1rem;
     padding: 0.3rem 0.5rem;
-    border-radius: var(--radius, 6px);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--edge-soft);
     background: rgba(255, 255, 255, 0.04);
     cursor: pointer;
     font-size: 0.8rem;
     width: auto;
   }
 
-  .settag:hover {
-    border-color: rgba(255, 255, 255, 0.32);
+  @media (hover: hover) and (pointer: fine) {
+    .settag:hover {
+      border-color: var(--brass-lit);
+    }
   }
 
   .grid {

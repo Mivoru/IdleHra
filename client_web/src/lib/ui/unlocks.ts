@@ -41,6 +41,10 @@ export const DELVE_FIRST_ENTRY_GOLD = 7_000;
 export const FORGE_OPEN_LEVEL = 5;
 export const MARKET_OPEN_LEVEL = 10;
 
+/** GuildManagementEngine.MinGuildInteractionLevel - the floor under every
+ * guild's own MinApplicationLevel (serverMirrors.test.ts holds them together). */
+export const GUILD_JOIN_MIN_LEVEL = 10;
+
 /** AGE_PHASES in ui/slots.ts is Child / Adult / Veteran / Elder. */
 const AGE_PHASE_VETERAN = 2;
 

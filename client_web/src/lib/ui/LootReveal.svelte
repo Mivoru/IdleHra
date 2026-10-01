@@ -124,11 +124,26 @@
     height: 0;
   }
 
+  /* Modul: ON A PHONE THE REVEAL STANDS ON THE TAB BAR, not under the header.
+     At `top: 4.5rem` it covered the phone header's second row - the Menu
+     button, the one way to most screens - until it was dismissed, and the
+     two command toasts the phone stacks at the top (z 60, over this z 55)
+     reached ~5.4rem and covered its item name. The bottom band 4.25rem above
+     the tab bar clears the chat handle and is free of both. A desktop has
+     neither problem: one header row, toasts bottom-right. */
+  @media (max-width: 40rem) {
+    .reveal {
+      top: auto;
+      bottom: calc(4.25rem + var(--sa-bottom) + var(--tabbar-h));
+    }
+  }
+
   .text {
     flex: 1 1 auto;
     min-width: 0;
     display: grid;
     gap: 0.1rem;
+    overflow-wrap: anywhere;
   }
 
   p {

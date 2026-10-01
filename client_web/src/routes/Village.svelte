@@ -10,6 +10,8 @@
   import VillageFolk from '../lib/ui/VillageFolk.svelte';
   import GreatWorks from '../lib/ui/GreatWorks.svelte';
   import Stopwatch from '../lib/ui/Stopwatch.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
+  import DisabledReason from '../lib/ui/DisabledReason.svelte';
 
 
 
@@ -97,7 +99,7 @@
 
   function upgrade(buildingId: number) {
     const outcome = upgradeBuilding(buildingId);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
   }
 
   // Modul: evict() is gone with the button that called it, and the panel it
@@ -114,7 +116,7 @@
 </script>
 
 {#if !snap}
-  <p class="dim pad">Waiting for state...</p>
+  <p class="dim pad">Waiting for the first state snapshot...</p>
 {:else}
   <div class="grid">
     <!-- Modul: the people, before the buildings. The village's reason to exist
@@ -157,6 +159,11 @@
             <div class="progress-fill" style="width: {pendingProgress * 100}%"></div>
           </div>
         </div>
+      {/if}
+
+      {#if quote.isError && quote.data === undefined}
+        <!-- Without the quote every cost reads "..." and nothing says why. -->
+        <QueryError query={quote} what="the upgrade costs" />
       {/if}
 
       <ul class="buildings">
@@ -205,6 +212,15 @@
                 {/each}
               {:else}
                 <span class="dim">...</span>
+              {/if}
+              <!-- Modul: "Not enough" said that, not WHAT - the shortfall
+                   lived only in the button's title, which a phone never
+                   shows. The same goes for the one-upgrade-at-a-time rule. -->
+              {#if blocked === null}
+                <DisabledReason
+                  text={missing ??
+                    (pendingId !== 0 && building.id !== pendingId ? 'Another upgrade is already in progress.' : null)}
+                />
               {/if}
             </span>
             <button
@@ -298,7 +314,7 @@
   .progress {
     height: 6px;
     border-radius: 3px;
-    background: var(--bg-sunken, rgba(0, 0, 0, 0.25));
+    background: var(--bg-sunken);
     overflow: hidden;
   }
 

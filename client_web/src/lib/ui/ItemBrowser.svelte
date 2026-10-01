@@ -268,8 +268,10 @@
      list's maxHeight; it does not shrink the text, so it never had a claim to a
      shorter row. It was 34, then 44, and both clipped - measured. */
 
-  .row:hover {
-    border-color: currentColor;
+  @media (hover: hover) and (pointer: fine) {
+    .row:hover {
+      border-color: currentColor;
+    }
   }
 
   .row.selected {

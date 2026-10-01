@@ -34,10 +34,10 @@
   }
 
   const SLICES: { key: keyof InsightStyle; label: string; color: string }[] = [
-    { key: 'FightingPct', label: 'Fighting', color: 'var(--bad, #c0503a)' },
-    { key: 'GatheringPct', label: 'Gathering', color: 'var(--good, #5a9a4a)' },
-    { key: 'CraftingPct', label: 'Crafting', color: 'var(--accent, #c08a2a)' },
-    { key: 'IdlePct', label: 'Idle', color: 'var(--border, #999)' },
+    { key: 'FightingPct', label: 'Fighting', color: 'var(--danger)' },
+    { key: 'GatheringPct', label: 'Gathering', color: 'var(--good)' },
+    { key: 'CraftingPct', label: 'Crafting', color: 'var(--accent)' },
+    { key: 'IdlePct', label: 'Idle', color: 'var(--border)' },
   ];
 
   const day = $derived(view?.Rates.find((r) => r.WindowSeconds === 86400) ?? null);

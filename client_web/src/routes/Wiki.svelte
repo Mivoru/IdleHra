@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatNumber, numberTitle } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import { PREF_WIKI_TAB, readPref, writePref } from '../lib/net/prefs';
   // Modul: the wiki. Fifteen pages, a search across all of them, and a ledger
   // at the end saying which of the game's screens each one covers.
@@ -701,7 +702,7 @@
                   <tr>
                     <td>{index + 1}. {name}</td>
                     <td class="num" title={numberTitle(REROLL_GOLD_BY_REGION[index + 1])}>{formatNumber(REROLL_GOLD_BY_REGION[index + 1])}</td>
-                    <td class="num">{formatNumber(Math.round(regionGold[index] ?? 0))}g</td>
+                    <td class="num"><Money amount={Math.round(regionGold[index] ?? 0)} /></td>
                     <td class="num">{rerollInKills[index] ?? '—'}</td>
                   </tr>
                 {/each}
@@ -844,7 +845,7 @@
                         {monster.Armor} armour · {monster.DodgeRating} dodge
                       </span>
                       <span class="dim tiny">
-                        {formatNumber(monster.BaseGoldReward)}g · {formatNumber(monster.BaseXpReward)} xp
+                        <Money amount={monster.BaseGoldReward} /> · {formatNumber(monster.BaseXpReward)} xp
                       </span>
                     </div>
                   </div>
@@ -1689,17 +1690,19 @@
     color: var(--text-dim);
     text-align: left;
     padding: 0.45rem 0.7rem;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     cursor: pointer;
     font-size: 0.9rem;
     width: 100%;
     min-width: 0;
   }
 
-  .tab-btn:hover,
-  .result:hover {
-    background: rgba(128, 128, 128, 0.12);
-    color: var(--text);
+  @media (hover: hover) and (pointer: fine) {
+    .tab-btn:hover,
+    .result:hover {
+      background: rgba(128, 128, 128, 0.12);
+      color: var(--text);
+    }
   }
 
   .tab-btn.active {
@@ -1790,7 +1793,7 @@
     gap: 1rem;
     background: rgba(0, 0, 0, 0.12);
     padding: 1rem;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     margin: 0.5rem 0;
   }
@@ -1813,7 +1816,7 @@
   .scroll {
     overflow-x: auto;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     background: rgba(0, 0, 0, 0.12);
     margin: 0.5rem 0;
   }
@@ -1866,7 +1869,7 @@
     display: block;
     padding: 0.35rem;
     text-align: center;
-    border-radius: var(--radius, 4px);
+    border-radius: var(--radius-sm);
     font-size: 0.75rem;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid;
@@ -1886,7 +1889,7 @@
     align-items: center;
     gap: 0.4rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     padding: 0.35rem 0.5rem;
     font-size: 0.82rem;
     background: rgba(0, 0, 0, 0.12);
@@ -1918,7 +1921,7 @@
     flex-direction: column;
     background: rgba(0, 0, 0, 0.12);
     padding: 0.6rem;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     min-width: 0;
   }
@@ -1949,7 +1952,7 @@
     gap: 0.15rem;
     background: rgba(0, 0, 0, 0.12);
     padding: 0.6rem;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     min-width: 0;
   }
@@ -1985,7 +1988,7 @@
 
   .card {
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     padding: 0.75rem;
     background: rgba(0, 0, 0, 0.12);
     min-width: 0;

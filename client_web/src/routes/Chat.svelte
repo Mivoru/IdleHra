@@ -11,6 +11,7 @@
   import { connection } from '../lib/net/connection';
   import { addFriend, blockPlayer } from '../lib/net/commands';
   import ContextMenu from '../lib/ui/ContextMenu.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
   import {
     queryKeys,
@@ -167,18 +168,18 @@
   async function handleAddFriend(playerId: number) {
     try {
       await addFriend(playerId);
-      pushLocalNotice('Friend request sent.');
+      pushLocalNotice('Friend request sent.', 'info');
     } catch {
-      pushLocalNotice('Failed to add friend.');
+      pushLocalNotice('Failed to add friend.', 'error');
     }
   }
 
   async function handleBlock(playerId: number) {
     try {
       await blockPlayer(playerId);
-      pushLocalNotice('Player blocked.');
+      pushLocalNotice('Player blocked.', 'info');
     } catch {
-      pushLocalNotice('Failed to block player.');
+      pushLocalNotice('Failed to block player.', 'error');
     }
   }
 
@@ -306,6 +307,8 @@
         </ul>
         {#if conversations.isPending}
           <p class="dim empty">Loading conversations...</p>
+        {:else if conversations.isError && conversations.data === undefined}
+          <QueryError query={conversations} what="your conversations" />
         {:else if (conversations.data ?? []).length === 0}
           <p class="dim empty">
             No conversations yet. Type a name below to start one, or use Whisper
@@ -328,6 +331,8 @@
         </ul>
         {#if threadHistory.isPending}
           <p class="dim empty">Loading history...</p>
+        {:else if threadHistory.isError && threadMessages.length === 0}
+          <QueryError query={threadHistory} what="this conversation" />
         {:else if threadMessages.length === 0}
           <p class="dim empty">Nothing said yet. Say something.</p>
         {/if}
@@ -526,8 +531,10 @@
     border-radius: var(--radius);
   }
 
-  .thread:hover {
-    border-color: var(--border);
+  @media (hover: hover) and (pointer: fine) {
+    .thread:hover {
+      border-color: var(--border);
+    }
   }
 
   .thread .who-line {
@@ -561,7 +568,7 @@
     min-width: 1.1rem;
     padding: 0 0.25rem;
     border-radius: 999px;
-    background: var(--danger, #b34);
+    background: var(--danger);
     color: #fff;
     font-size: 0.65rem;
     line-height: 1.1rem;
@@ -572,7 +579,7 @@
     width: 0.45rem;
     height: 0.45rem;
     border-radius: 50%;
-    background: var(--ok, #4b8);
+    background: var(--good);
     display: inline-block;
   }
 
