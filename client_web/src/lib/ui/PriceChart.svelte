@@ -101,11 +101,11 @@
      already uses. Colour is not the only carrier: the aria-label says which,
      and the percentage figures beside the chart say it in words. */
   .rising {
-    color: var(--good, #4ade80);
+    color: var(--good);
   }
 
   .falling {
-    color: var(--bad, #f87171);
+    color: var(--danger);
   }
 
   .empty {

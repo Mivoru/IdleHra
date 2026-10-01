@@ -434,8 +434,10 @@
     font-size: inherit;
   }
   
-  .name-btn:hover {
-    text-decoration: underline;
+  @media (hover: hover) and (pointer: fine) {
+    .name-btn:hover {
+      text-decoration: underline;
+    }
   }
 
   .name-btn.blocked {

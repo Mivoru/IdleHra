@@ -691,8 +691,8 @@
     align-items: center;
     gap: 0.5rem;
     padding: 0.4rem 0.5rem;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-radius: var(--radius, 6px);
+    border: 1px solid var(--edge-soft);
+    border-radius: var(--radius-sm);
     background: rgba(255, 255, 255, 0.02);
   }
 
@@ -889,8 +889,10 @@
     cursor: pointer;
   }
 
-  .checks label:hover {
-    background: var(--bg-sunken, rgba(0, 0, 0, 0.12));
+  @media (hover: hover) and (pointer: fine) {
+    .checks label:hover {
+      background: var(--tint-hover);
+    }
   }
 
   .checks input {
@@ -918,7 +920,7 @@
     border: none;
     padding: 0;
     font: inherit;
-    color: var(--accent, #7dd3fc);
+    color: var(--accent);
     text-decoration: underline;
     cursor: pointer;
   }
@@ -960,11 +962,11 @@
   }
 
   .change.up strong {
-    color: var(--good, #4ade80);
+    color: var(--good);
   }
 
   .change.down strong {
-    color: var(--bad, #f87171);
+    color: var(--danger);
   }
 
   /* The payout breakdown. Laid out as a definition list because that is what
@@ -990,7 +992,7 @@
   }
 
   .payout .minus {
-    color: var(--bad, #f87171);
+    color: var(--danger);
   }
 
   .payout .total {

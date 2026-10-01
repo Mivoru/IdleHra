@@ -287,7 +287,7 @@
     padding: 0 0.45rem;
     border-radius: 999px;
     background: var(--accent);
-    color: #1a1510;
+    color: var(--on-accent);
   }
 
   /* Rarity colours, the chest's own four - not the 14-tier item palette. */

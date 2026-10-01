@@ -18,6 +18,7 @@
   import TraitBadge from './TraitBadge.svelte';
   import type { PickerPerson } from './breedingPicker';
   import { openSheetCloser } from '../stores/sheet';
+  import { isNarrow } from './media';
 
   interface Group {
     title: string;
@@ -60,15 +61,10 @@
   // node to <body> is the only fix that does not depend on what the layout
   // around this component happens to be. On a wide screen the list opens in
   // place, where it belongs.
-  const PHONE_QUERY = '(max-width: 40rem)';
-  let isPhone = $state(typeof window !== 'undefined' && window.matchMedia(PHONE_QUERY).matches);
-
-  $effect(() => {
-    const media = window.matchMedia(PHONE_QUERY);
-    const update = () => (isPhone = media.matches);
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  });
+  // "Phone" is media.ts's NARROW_QUERY - the same 40rem as app.css's phone
+  // block. This used to re-declare the query string, a second copy free to
+  // drift from the CSS that lays the sheet out.
+  const isPhone = $derived($isNarrow);
 
   // While this sheet covers a phone screen, the hardware back button closes it
   // (App.svelte asks through openSheetCloser). Cleared only if it is still OUR

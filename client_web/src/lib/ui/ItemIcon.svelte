@@ -166,7 +166,7 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     background: var(--bg);
-    color: var(--text-dim, #888);
+    color: var(--text-dim);
     border-top-right-radius: 4px;
     opacity: 0.95;
     z-index: 1;

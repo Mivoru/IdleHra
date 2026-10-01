@@ -610,7 +610,7 @@
       </p>
     {/if}
     {#if emailError}
-      <p class="small" style="color: var(--bad)">{emailError}</p>
+      <p class="small" style="color: var(--danger)">{emailError}</p>
     {/if}
 
     <h3>Accessibility</h3>
@@ -637,7 +637,7 @@
   {#if isAdmin}
       <section class="panel admin-panel">
         <header class="head">
-          <h2 style="color: var(--err)">Dev Settings (Admin Only)</h2>
+          <h2 style="color: var(--danger)">Dev Settings (Admin Only)</h2>
         </header>
 
         <p class="dim small">
@@ -669,7 +669,7 @@
               <div class="flex-row">
                 <input type="text" bind:value={seasonEndPhrase} placeholder={SEASON_END_PHRASE} aria-label="Confirmation phrase" />
                 <button
-                  style="color: var(--err)"
+                  style="color: var(--danger)"
                   disabled={seasonEndPhrase.trim() !== SEASON_END_PHRASE}
                   onclick={endSeasonNow}
                 >End season now</button>
@@ -698,7 +698,7 @@
             <h3>Ban / Unban Player</h3>
             <div class="flex-row">
               <input type="text" bind:value={devBanUsername} placeholder="Player Username..." />
-              <button onclick={doBan} style="color: var(--err)">Ban</button>
+              <button onclick={doBan} style="color: var(--danger)">Ban</button>
               <button onclick={doUnban}>Unban</button>
             </div>
           </div>
@@ -1063,7 +1063,7 @@
     font-variant-numeric: tabular-nums;
   }
   .admin-panel {
-    border: 1px solid var(--err);
+    border: 1px solid var(--danger);
     background: rgba(255, 0, 0, 0.05);
   }
 
@@ -1075,7 +1075,7 @@
   }
 
   .admin-card {
-    background: var(--bg-hover);
+    background: var(--tint-hover);
     padding: 1rem;
     border-radius: 4px;
     display: flex;
@@ -1086,7 +1086,7 @@
   .admin-card h3 {
     margin: 0;
     font-size: 0.9rem;
-    color: var(--fg);
+    color: var(--text);
   }
 
   .flex-row {
@@ -1104,7 +1104,7 @@
     min-width: 0;
   }
 
-  @media (max-width: 600px) {
+  @media (max-width: 40rem) {
     .flex-row {
       flex-direction: column;
     }

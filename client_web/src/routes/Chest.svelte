@@ -908,7 +908,7 @@
     width: 100%;
   }
 
-  @media (max-width: 560px) {
+  @media (max-width: 40rem) {
     .finders {
       grid-template-columns: 1fr;
     }
@@ -1049,7 +1049,7 @@
      has to open each menu to find out - the opposite of what a lock is for
      when there are thousands of rows. */
   .lockbadge {
-    color: var(--warn, #e8b339);
+    color: var(--warn);
     font-weight: 600;
   }
 

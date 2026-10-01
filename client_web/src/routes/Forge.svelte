@@ -818,8 +818,10 @@ ${scope}`)) return;
     cursor: pointer;
   }
 
-  .slot:hover {
-    border-color: currentColor;
+  @media (hover: hover) and (pointer: fine) {
+    .slot:hover {
+      border-color: currentColor;
+    }
   }
 
   .slot.selected {
@@ -873,16 +875,18 @@ ${scope}`)) return;
     align-items: flex-start;
     gap: 0.1rem;
     padding: 0.3rem 0.5rem;
-    border-radius: var(--radius, 6px);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--edge-soft);
     background: rgba(255, 255, 255, 0.04);
     cursor: pointer;
     font-size: 0.8rem;
     width: auto;
   }
 
-  .settag:hover {
-    border-color: rgba(255, 255, 255, 0.32);
+  @media (hover: hover) and (pointer: fine) {
+    .settag:hover {
+      border-color: var(--brass-lit);
+    }
   }
 
   .grid {

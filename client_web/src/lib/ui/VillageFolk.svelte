@@ -276,9 +276,11 @@
     cursor: pointer;
   }
 
-  .send:hover {
-    color: var(--warn);
-    border-color: var(--warn);
+  @media (hover: hover) and (pointer: fine) {
+    .send:hover {
+      color: var(--warn);
+      border-color: var(--warn);
+    }
   }
 
   .feast {

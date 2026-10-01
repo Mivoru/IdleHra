@@ -917,8 +917,10 @@
     color: inherit;
     font: inherit;
   }
-  .buff-header:hover {
-    background: color-mix(in srgb, var(--accent) 18%, transparent);
+  @media (hover: hover) and (pointer: fine) {
+    .buff-header:hover {
+      background: color-mix(in srgb, var(--accent) 18%, transparent);
+    }
   }
 
   .caret {
@@ -1093,7 +1095,7 @@
     justify-content: space-between;
     gap: 0.5rem;
     padding: 0.35rem 0;
-    border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.07));
+    border-bottom: 1px solid var(--line);
   }
 
   .members li:last-child {

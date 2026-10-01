@@ -1689,17 +1689,19 @@
     color: var(--text-dim);
     text-align: left;
     padding: 0.45rem 0.7rem;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     cursor: pointer;
     font-size: 0.9rem;
     width: 100%;
     min-width: 0;
   }
 
-  .tab-btn:hover,
-  .result:hover {
-    background: rgba(128, 128, 128, 0.12);
-    color: var(--text);
+  @media (hover: hover) and (pointer: fine) {
+    .tab-btn:hover,
+    .result:hover {
+      background: rgba(128, 128, 128, 0.12);
+      color: var(--text);
+    }
   }
 
   .tab-btn.active {
@@ -1790,7 +1792,7 @@
     gap: 1rem;
     background: rgba(0, 0, 0, 0.12);
     padding: 1rem;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     margin: 0.5rem 0;
   }
@@ -1813,7 +1815,7 @@
   .scroll {
     overflow-x: auto;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     background: rgba(0, 0, 0, 0.12);
     margin: 0.5rem 0;
   }
@@ -1866,7 +1868,7 @@
     display: block;
     padding: 0.35rem;
     text-align: center;
-    border-radius: var(--radius, 4px);
+    border-radius: var(--radius-sm);
     font-size: 0.75rem;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid;
@@ -1886,7 +1888,7 @@
     align-items: center;
     gap: 0.4rem;
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     padding: 0.35rem 0.5rem;
     font-size: 0.82rem;
     background: rgba(0, 0, 0, 0.12);
@@ -1918,7 +1920,7 @@
     flex-direction: column;
     background: rgba(0, 0, 0, 0.12);
     padding: 0.6rem;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     min-width: 0;
   }
@@ -1949,7 +1951,7 @@
     gap: 0.15rem;
     background: rgba(0, 0, 0, 0.12);
     padding: 0.6rem;
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     border: 1px solid var(--border);
     min-width: 0;
   }
@@ -1985,7 +1987,7 @@
 
   .card {
     border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
+    border-radius: var(--radius);
     padding: 0.75rem;
     background: rgba(0, 0, 0, 0.12);
     min-width: 0;

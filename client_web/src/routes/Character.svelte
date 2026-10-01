@@ -773,7 +773,7 @@
     padding: 0 0.25rem;
     border-radius: 999px;
     background: var(--accent);
-    color: #1a1510;
+    color: var(--on-accent);
     font-size: 0.7rem;
     line-height: 1.1rem;
   }
@@ -787,7 +787,7 @@
   }
   .req.unmet {
     opacity: 1;
-    color: var(--bad, #d9694a);
+    color: var(--danger);
     font-weight: 600;
   }
 
@@ -812,8 +812,8 @@
     align-items: flex-start;
     gap: 0.1rem;
     padding: 0.35rem 0.6rem;
-    border-radius: var(--radius, 6px);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--edge-soft);
     background: rgba(255, 255, 255, 0.03);
     cursor: pointer;
     width: auto;
@@ -821,8 +821,8 @@
   }
 
   .slottab.on {
-    border-color: var(--accent, #7aa2f7);
-    background: rgba(122, 162, 247, 0.12);
+    border-color: var(--accent);
+    background: var(--tint-selected);
   }
 
   .slottab:disabled {
@@ -873,8 +873,12 @@
      gear sits under it in two columns - which is also the order it is read.
      Placement is explicit rather than left to auto-flow: the figure sits
      BETWEEN the two columns in the DOM, so auto-placement would put the left
-     rail above it. */
-  @media (max-width: 46rem) {
+     rail above it.
+     52rem, the canonical tablet breakpoint, rather than the old one-off 46rem:
+     between the two the screen grid already runs two ~23rem tracks and the
+     doll sits in one of them, so three columns there was the squeeze this
+     rule exists to prevent. */
+  @media (max-width: 52rem) {
     .rig {
       grid-template-columns: 1fr 1fr;
     }
@@ -902,8 +906,8 @@
     align-items: center;
     gap: 0.15rem;
     padding: 0.4rem;
-    border-radius: var(--radius, 6px);
-    border: 1px dashed rgba(255, 255, 255, 0.16);
+    border-radius: var(--radius-sm);
+    border: 1px dashed var(--edge-soft);
     background: rgba(255, 255, 255, 0.02);
     cursor: pointer;
     width: 100%;
@@ -915,7 +919,7 @@
   }
 
   .gearslot.open {
-    border-color: var(--accent, #7aa2f7);
+    border-color: var(--accent);
   }
 
   .gearname {
@@ -927,8 +931,8 @@
   .picker {
     margin-top: 0.9rem;
     padding: 0.6rem;
-    border-radius: var(--radius, 6px);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--edge-soft);
     background: rgba(255, 255, 255, 0.03);
   }
 
@@ -976,7 +980,7 @@
 
   .rostercard {
     padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    border-bottom: 1px solid var(--line);
   }
 
   .rostercard:last-of-type {

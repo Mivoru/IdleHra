@@ -526,8 +526,10 @@
     border-radius: var(--radius);
   }
 
-  .thread:hover {
-    border-color: var(--border);
+  @media (hover: hover) and (pointer: fine) {
+    .thread:hover {
+      border-color: var(--border);
+    }
   }
 
   .thread .who-line {
@@ -561,7 +563,7 @@
     min-width: 1.1rem;
     padding: 0 0.25rem;
     border-radius: 999px;
-    background: var(--danger, #b34);
+    background: var(--danger);
     color: #fff;
     font-size: 0.65rem;
     line-height: 1.1rem;
@@ -572,7 +574,7 @@
     width: 0.45rem;
     height: 0.45rem;
     border-radius: 50%;
-    background: var(--ok, #4b8);
+    background: var(--good);
     display: inline-block;
   }
 

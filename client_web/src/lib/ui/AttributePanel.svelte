@@ -263,8 +263,8 @@
     opacity: 0.7;
   }
   .pool.ready {
-    border-color: var(--accent, #c9a227);
-    box-shadow: 0 0 0 1px var(--accent, #c9a227) inset;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 1px var(--accent) inset;
   }
 
   .cards {

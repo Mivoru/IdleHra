@@ -619,7 +619,7 @@
   .saving span {
     display: block;
     height: 100%;
-    background: var(--brass, #c9a227);
+    background: var(--brass);
   }
 
   .gate,
@@ -692,8 +692,10 @@
     font: inherit;
   }
 
-  .door:hover:not(:disabled) {
-    border-color: #d9c48b;
+  @media (hover: hover) and (pointer: fine) {
+    .door:hover:not(:disabled) {
+      border-color: #d9c48b;
+    }
   }
 
   .door:disabled {

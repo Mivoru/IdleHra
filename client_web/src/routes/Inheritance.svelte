@@ -99,7 +99,7 @@
             <Bar
               value={row.level}
               max={INHERITANCE_MAX_LEVEL}
-              color="var(--diamond, #7dd3fc)"
+              color="var(--diamond)"
               label={`${row.level} / ${INHERITANCE_MAX_LEVEL}`}
             />
 
@@ -135,7 +135,7 @@
   .wrap { display: grid; gap: 1rem; }
 
   .panel {
-    background: var(--panel, rgba(127, 127, 127, 0.05));
+    background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1rem 1.15rem 1.25rem;
@@ -175,7 +175,7 @@
 
   /* A maxed stat stays fully legible - it is an achievement, not a disabled
      control, and dimming it would read as "broken". */
-  .stats li.capped { border-color: var(--diamond, #7dd3fc); }
+  .stats li.capped { border-color: var(--diamond); }
 
   .head {
     display: flex;
