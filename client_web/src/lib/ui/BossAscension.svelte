@@ -38,7 +38,7 @@
 
   function start() {
     const outcome = startBossAscension(boss.Region, step.Step);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 </script>
 

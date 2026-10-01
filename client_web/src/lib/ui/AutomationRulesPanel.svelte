@@ -103,11 +103,11 @@
       if (result === 'Ok') {
         pushLocalNotice('Orders saved. They act while you are away as well.', 'info');
       } else {
-        pushLocalNotice(REFUSALS[result] ?? 'The orders were not saved - try again.');
+        pushLocalNotice(REFUSALS[result] ?? 'The orders were not saved - try again.', 'error');
       }
     } catch {
       lastResult = { ...lastResult, [characterId]: 'Failed' };
-      pushLocalNotice('The orders were not saved - try again.');
+      pushLocalNotice('The orders were not saved - try again.', 'error');
     } finally {
       saving = null;
       await client.invalidateQueries({ queryKey: queryKeys.automationRules });

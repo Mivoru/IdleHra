@@ -50,19 +50,19 @@
 
   function mark(m: HallMember) {
     const outcome = setAncestorKept(m.CharacterId, !m.IsKept);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refresh();
   }
 
   function field(m: HallMember, slotIndex: number) {
     const outcome = assignCharacterSlot(m.CharacterId, slotIndex);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refresh();
   }
 
   function buySlot() {
     const outcome = purchaseAncestorSlot();
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refresh();
   }
 

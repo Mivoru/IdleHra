@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatNumber, numberTitle } from './format';
+  import { formatGold, numberTitle } from './format';
   // Modul: THE VILLAGE GENE POOL, shown.
   //
   // Breeding takes each aptitude from one parent, so a child can never exceed
@@ -44,13 +44,13 @@
 
   function feast() {
     const outcome = recruitVillager();
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refresh();
   }
 
   function sendAway(person: VillageNewcomer) {
     const outcome = dismissNewcomer(person.Id);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refresh();
   }
 </script>
@@ -144,7 +144,7 @@
 
     <div class="feast">
       <button disabled={data.RecruitBlockedReason !== ''} onclick={feast} data-exact={data.RecruitCostGold} title={numberTitle(data.RecruitCostGold)}>
-        Throw a feast &middot; {formatNumber(data.RecruitCostGold)}g
+        Throw a feast &middot; {formatGold(data.RecruitCostGold)}
       </button>
       <p class="dim tiny">
         {#if data.RecruitBlockedReason}

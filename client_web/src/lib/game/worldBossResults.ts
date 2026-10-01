@@ -44,6 +44,22 @@ export const SILENT_WORLD_BOSS_RESULTS: ReadonlySet<WorldBossStrikeResult> = new
   'PracticeScored',
 ]);
 
+/**
+ * Modul: the results that are NEWS, not refusals. A strike that went through
+ * (Queued) or was scored at the base multiplier still dealt damage, so the
+ * toast is informational - pushLocalNotice's error tone plays the error sound
+ * and draws a red border, which read "Strike sent" as a failure.
+ */
+const GOOD_NEWS_RESULTS: ReadonlySet<WorldBossStrikeResult> = new Set<WorldBossStrikeResult>([
+  'Queued',
+  'ResolvedAtFloor',
+  'Refused',
+]);
+
+export function worldBossResultTone(result: WorldBossStrikeResult): 'info' | 'error' {
+  return GOOD_NEWS_RESULTS.has(result) ? 'info' : 'error';
+}
+
 export function worldBossResultSentence(result: WorldBossStrikeResult, damage?: number): string {
   const sentence = WORLD_BOSS_RESULT_SENTENCES[result] ?? '';
   return sentence.replace('{damage}', damage === undefined ? '0' : formatNumber(damage));

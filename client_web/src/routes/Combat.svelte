@@ -17,6 +17,7 @@
   import { queryKeys, fetchWorn, fetchCombatProjection, type HuntingEstimate } from '../lib/net/rest';
   import { estimateLine, killTimeText, safety } from '../lib/ui/huntingEstimate';
   import { formatNumber, numberTitle } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import { readPref, writePref, PREF_LAST_MONSTER } from '../lib/net/prefs';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { locationBackground } from '../lib/ui/sprites';
@@ -330,7 +331,7 @@
     selectMonster(monster);
     // See Gathering.svelte: a bare TargetId does not persist.
     const outcome = assignCharacterActivity(activeCharacterId, monster.Id);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     writePref(PREF_LAST_MONSTER, String(monster.Id));
     lastMonsterId = monster.Id;
   }
@@ -369,7 +370,7 @@
 
   function stop() {
     const outcome = assignCharacterActivity(activeCharacterId, 0);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   // BaseItemId is the reliable identifier on a drop-preview row. Falls back to
@@ -681,7 +682,7 @@
                     {#if est.CanDamage}
                       <span class="dim">Estimate:</span>
                       {killTimeText(est)} a kill · {formatNumber(est.XpPerHour)} XP/h ·
-                      {formatNumber(est.GoldPerHour)} g/h ·
+                      <Money amount={est.GoldPerHour} />/h ·
                       <span class="verdict {verdict.tone}">{verdict.text}</span>
                     {:else}
                       <span class="dim">Estimate:</span>

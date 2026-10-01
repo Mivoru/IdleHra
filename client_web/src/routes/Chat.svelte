@@ -168,18 +168,18 @@
   async function handleAddFriend(playerId: number) {
     try {
       await addFriend(playerId);
-      pushLocalNotice('Friend request sent.');
+      pushLocalNotice('Friend request sent.', 'info');
     } catch {
-      pushLocalNotice('Failed to add friend.');
+      pushLocalNotice('Failed to add friend.', 'error');
     }
   }
 
   async function handleBlock(playerId: number) {
     try {
       await blockPlayer(playerId);
-      pushLocalNotice('Player blocked.');
+      pushLocalNotice('Player blocked.', 'info');
     } catch {
-      pushLocalNotice('Failed to block player.');
+      pushLocalNotice('Failed to block player.', 'error');
     }
   }
 

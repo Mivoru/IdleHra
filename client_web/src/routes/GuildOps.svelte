@@ -95,13 +95,13 @@
 
   function contributeWar() {
     const outcome = contributeToWarSupply(warCommodity, warQuantity, warId);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   // --- raid -----------------------------------------------------------------
   function raid() {
     const outcome = launchGuildRaid(hasGuild);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     // Leader-only is enforced server-side against the locked membership row,
     // and a non-leader's request simply rolls back with no message at all -
     // so promising success here would be a lie.
@@ -139,9 +139,9 @@
     busy = true;
     try {
         await kickGuildMember(id);
-        pushLocalNotice('Member kicked.');
+        pushLocalNotice('Member kicked.', 'info');
     } catch (err: any) {
-        pushLocalNotice(err.message || 'Failed to kick.');
+        pushLocalNotice(err.message || 'Failed to kick.', 'error');
     } finally {
         busy = false;
         refresh();
@@ -153,9 +153,9 @@
     busy = true;
     try {
         await promoteGuildMember(id);
-        pushLocalNotice('Member promoted.');
+        pushLocalNotice('Member promoted.', 'info');
     } catch (err: any) {
-        pushLocalNotice(err.message || 'Failed to promote.');
+        pushLocalNotice(err.message || 'Failed to promote.', 'error');
     } finally {
         busy = false;
         refresh();
@@ -167,9 +167,9 @@
     busy = true;
     try {
         await demoteGuildMember(id);
-        pushLocalNotice('Member demoted.');
+        pushLocalNotice('Member demoted.', 'info');
     } catch (err: any) {
-        pushLocalNotice(err.message || 'Failed to demote.');
+        pushLocalNotice(err.message || 'Failed to demote.', 'error');
     } finally {
         busy = false;
         refresh();
@@ -251,7 +251,7 @@
       hasGuild,
       itemDefinitionCount,
     );
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refreshDepot();
   }
 
@@ -261,7 +261,7 @@
       Math.min(depotQuantity, depotMax),
       hasGuild,
     );
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refreshDepot();
   }
 
@@ -275,7 +275,7 @@
 
   function defend() {
     const outcome = registerGuildDefense(hasGuild, quarantined);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     pushLocalNotice('Your roster is registered as the guild defence.', 'info');
   }
 
@@ -309,7 +309,7 @@
       // value here means the guard checks exactly what the validator will.
       activeMatchUuid: matchUuid || EMPTY_UUID,
     });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.guildShardMatch }), 900);
   }
 
@@ -324,7 +324,7 @@
 
   function takeTurn() {
     const outcome = executeCombatTurn(matchId, turnCounter, hasGuild);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
   }
 
   // --- guild treasury ---
@@ -446,7 +446,7 @@
 </script>
 
 {#if !snap}
-  <p class="dim pad">Waiting for state...</p>
+  <p class="dim pad">Waiting for the first state snapshot...</p>
 {:else}
   <div class="grid">
     <section class="panel">
@@ -622,12 +622,12 @@
             {#each Array.from(BUFF_MATERIAL_IDS) as baseId}
               {@const invItem = depositable.find(d => d.baseId === baseId)}
               <option value={baseId}>
-                {prettifyBaseId(baseId)} (x{invItem?.quantity ?? 0})
+                {prettifyBaseId(baseId)} (x{formatNumber(invItem?.quantity ?? 0)})
               </option>
             {/each}
             {#each depositable.filter(d => !BUFF_MATERIAL_IDS.has(d.baseId) && isLogOrOre(d.baseId)) as row}
               <option value={row.baseId}>
-                {prettifyBaseId(row.baseId)} (x{row.quantity})
+                {prettifyBaseId(row.baseId)} (x{formatNumber(row.quantity)})
               </option>
             {/each}
           </select>
@@ -1102,6 +1102,14 @@
   .gold-text   { color: #f0c040; }
   .silver-text { color: #c0c0c0; }
   .bronze-text { color: #cd7f32; }
+  /* Modul: medal colours tuned for charred oak vanish on parchment - #c0c0c0
+     on #f6edd8 is about 1.6:1. Same hues, darker, for the light theme (which
+     app.css selects with prefers-color-scheme; there is no data-theme). */
+  @media (prefers-color-scheme: light) {
+    .gold-text   { color: #85650a; }
+    .silver-text { color: #5b6672; }
+    .bronze-text { color: #8a4b18; }
+  }
 
   .members {
     list-style: none;

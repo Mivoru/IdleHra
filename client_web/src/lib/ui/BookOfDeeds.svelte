@@ -57,7 +57,7 @@
     const paid = data?.LifetimeDiamondsPaidNow ?? 0;
     if (paid > 0 && !lifetimeAnnounced) {
       lifetimeAnnounced = true;
-      pushLocalNotice(`Monster Slayer - ten thousand kills. +${paid} diamonds.`);
+      pushLocalNotice(`Monster Slayer - ten thousand kills. +${paid} diamonds.`, 'info');
     }
   });
 
@@ -74,6 +74,7 @@
       if ((mask & (1 << (chapter.Index - 1))) === 0) continue;
       pushLocalNotice(
         `Seal earned - ${chapter.Title}. +${data?.SkillPointsPerSeal ?? 2} skill points, every season from now on.`,
+        'info',
       );
     }
   });

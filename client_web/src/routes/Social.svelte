@@ -63,15 +63,15 @@
     try {
       const { PlayerId } = await resolvePlayer(name);
       if (!PlayerId) {
-        pushLocalNotice(`No player called "${name}".`);
+        pushLocalNotice(`No player called "${name}".`, 'error');
         return;
       }
       const outcome = addFriend(PlayerId);
-      if (!outcome.ok) pushLocalNotice(outcome.reason);
+      if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
       else friendName = '';
       refreshFriends();
     } catch {
-      pushLocalNotice(`No player called "${name}".`);
+      pushLocalNotice(`No player called "${name}".`, 'error');
     } finally {
       busy = false;
     }
@@ -79,7 +79,7 @@
 
   function act(fn: (id: number) => CommandOutcome, playerId: number) {
     const outcome = fn(playerId);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
     refreshFriends();
   }
 
@@ -122,7 +122,7 @@
           .json()
           .then((body: { Reason?: string; reason?: string }) => body.Reason ?? body.reason ?? '')
           .catch(() => '');
-        pushLocalNotice(reason || `Could not create "${name}".`);
+        pushLocalNotice(reason || `Could not create "${name}".`, 'error');
       }
       if (response.ok) newGuildName = '';
       refreshGuilds();
@@ -136,7 +136,7 @@
     try {
       const response = await post('/api/v1/guilds/join', { guildName: name });
       if (!response.ok) {
-        pushLocalNotice(`Could not join "${name}".`);
+        pushLocalNotice(`Could not join "${name}".`, 'error');
       } else {
         const body = await response.json().catch(() => ({ Joined: false }));
         // Application-required guilds file a request instead of joining, and
@@ -170,6 +170,7 @@
           approve
             ? 'Not approved - you may not be the leader, or the guild is full.'
             : 'Not rejected - it may already have been handled.',
+          'error',
         );
       } else {
         pushLocalNotice(approve ? 'Application approved.' : 'Application rejected.', 'info');
@@ -178,7 +179,7 @@
       client.invalidateQueries({ queryKey: queryKeys.guildApplications });
       client.invalidateQueries({ queryKey: queryKeys.guildRoster });
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     } finally {
       busy = false;
     }
@@ -245,7 +246,10 @@
     <h2>Guilds</h2>
 
     <div class="adder">
-      <input placeholder="New guild name" bind:value={newGuildName} disabled={joinLocked} />
+      <!-- Modul: 32, not the server's 100 (GuildManagementEngine.CreateGuildAsync).
+           A 100-character unbroken name overflows toasts and rosters; the
+           server cap should come down to match. -->
+      <input placeholder="New guild name" maxlength="32" bind:value={newGuildName} disabled={joinLocked} />
       <button disabled={busy || !newGuildName.trim() || joinLocked} onclick={createGuild}>Create</button>
     </div>
     {#if statistics.isError && statistics.data === undefined}

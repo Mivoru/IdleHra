@@ -680,6 +680,8 @@ describe('the leaderboard tier ladder', () => {
     // Two rungs the same colour is a ladder that does not rank anything.
     const colors = new Set(TIER_STYLES.map((t) => t.color.toLowerCase()));
     expect(colors.size).toBe(TIER_STYLES.length);
+    const lightColors = new Set(TIER_STYLES.map((t) => t.lightColor.toLowerCase()));
+    expect(lightColors.size).toBe(TIER_STYLES.length);
   });
 
   it('dims the glow as the rungs widen', () => {

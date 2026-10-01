@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { formatNumber } from '../lib/ui/format';
+  import Money from '../lib/ui/Money.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import {
@@ -235,7 +235,7 @@
       ? executeVillagerBreeding(heroId, partnerVillagerId, breedingLevel, effectiveMask)
       : executeBreeding(paternalId, maternalId, breedingLevel, effectiveMask);
 
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     // A villager marries once, so the choice is spent the moment this lands;
     // a partner from your own line is now resting. Either way the old choice
@@ -380,7 +380,7 @@
         <p class="warn">{p.IneligibleReason ? refusal(p.IneligibleReason) : 'These two cannot pair.'}</p>
       {:else}
         <p class="cost" class:short={!p.HasSufficientGold}>
-          Costs {formatNumber(p.BreedingCostGold)}g
+          Costs <Money amount={p.BreedingCostGold} />
           {#if !p.HasSufficientGold}&middot; not enough gold{/if}
           {#if p.IsInbredRisk}&middot; <span class="risk">related pair</span>{/if}
         </p>

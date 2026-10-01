@@ -84,14 +84,14 @@
 
   async function settle(response: CosmeticMarketResponse | null, success: string): Promise<void> {
     if (!response) {
-      pushLocalNotice('The market did not answer. Try again.');
+      pushLocalNotice('The market did not answer. Try again.', 'error');
       return;
     }
     client.setQueryData(cosmeticKeys.mine, response.Cosmetics);
     noteCosmeticsView(response.Cosmetics);
     await client.invalidateQueries({ queryKey: ['market', 'cosmetics'] });
     if (response.Result === 'Ok') pushLocalNotice(success, 'info');
-    else pushLocalNotice(COSMETIC_MARKET_SENTENCES[response.Result] ?? response.Result);
+    else pushLocalNotice(COSMETIC_MARKET_SENTENCES[response.Result] ?? response.Result, 'error');
   }
 
   async function act(run: () => Promise<void>): Promise<void> {

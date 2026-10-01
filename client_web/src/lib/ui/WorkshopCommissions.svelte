@@ -109,10 +109,10 @@
           'info',
         );
       } else {
-        pushLocalNotice(REFUSALS[view.Result ?? 'NotFound'] || 'The commission was refused.');
+        pushLocalNotice(REFUSALS[view.Result ?? 'NotFound'] || 'The commission was refused.', 'error');
       }
     } catch {
-      pushLocalNotice('The commission did not go through. Nothing was spent - try again.');
+      pushLocalNotice('The commission did not go through. Nothing was spent - try again.', 'error');
     } finally {
       working = false;
     }
@@ -130,10 +130,10 @@
           'info',
         );
       } else {
-        pushLocalNotice(REFUSALS[view.Result ?? 'NotFound'] || 'Nothing was collected.');
+        pushLocalNotice(REFUSALS[view.Result ?? 'NotFound'] || 'Nothing was collected.', 'error');
       }
     } catch {
-      pushLocalNotice('Collecting did not go through - try again.');
+      pushLocalNotice('Collecting did not go through - try again.', 'error');
     } finally {
       working = false;
     }

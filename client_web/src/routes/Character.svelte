@@ -18,6 +18,7 @@
   import Bar from '../lib/ui/Bar.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import { pickerRows } from '../lib/ui/equipPicker';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
   import AutomationRulesPanel from '../lib/ui/AutomationRulesPanel.svelte';
@@ -202,14 +203,14 @@
       unlocked: townHall >= SLOT_UNLOCK_TOWN_HALL[slot - 1],
       takenBy: occupiedBy(activityId, slot),
     });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     // Task 73: Home's "Continue" resumes whatever was given last, wherever.
     if (activityId > 0) writePref(lastActivityKey(characterId), String(activityId));
   }
 
   function stopWork(slot: number, characterId: string) {
     const outcome = assignCharacterActivity(characterId, 0);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     jobPick = { ...jobPick, [slot]: 0 };
   }
 
@@ -435,7 +436,7 @@
       <AttributePanel
         values={{ STR: attributeValue('STR'), DEX: attributeValue('DEX'), CON: attributeValue('CON'), LCK: attributeValue('LCK') }}
         unspent={attributePoints}
-        onnotice={pushLocalNotice}
+        onnotice={(message) => pushLocalNotice(message, 'error')}
       />
 
       {#if activeSets.length > 0}
@@ -608,6 +609,7 @@
           {@const slot = EQUIPMENT_SLOTS.find((sl) => sl.index === pickerSlot)}
           {@const worn = wornBy(selected.slot, pickerSlot)}
           {@const candidates = candidatesBySlot.get(pickerSlot) ?? []}
+          {@const picked = pickerRows(candidates)}
           <div class="picker">
             <header>
               <strong>{slot?.label}</strong>
@@ -626,7 +628,7 @@
               <p class="dim tiny">Nothing in the chest fits this slot.</p>
             {:else}
               <ul class="choices">
-                {#each candidates as candidate, candidateIndex (candidate.Id)}
+                {#each picked.rows as { piece: candidate, count }, candidateIndex (candidate.Id)}
                   <li>
                     <ItemIcon baseItemId={candidate.BaseItemId} name={prettifyBaseId(candidate.BaseItemId)} qualityTier={candidate.QualityTier} size="sm" />
                     <span
@@ -634,6 +636,9 @@
                       class:rarity-glow={shouldGlow(candidate.QualityTier)}
                     >{prettifyBaseId(candidate.BaseItemId)}</span>
                     <span class="dim tiny">[{rarityName(candidate.QualityTier)}]</span>
+                    {#if count > 1}
+                      <span class="dim tiny" title="Identical pieces - Wear takes one">&times;{formatNumber(count)}</span>
+                    {/if}
                     {#if requirementFor(candidate.BaseItemId)}
                       {@const req = requirementFor(candidate.BaseItemId)!}
                       <span class="req" class:unmet={!req.met}>
@@ -648,6 +653,13 @@
                   </li>
                 {/each}
               </ul>
+              {#if picked.hiddenRows > 0}
+                <p class="dim tiny">
+                  +{formatNumber(picked.hiddenPieces)} more -
+                  <button class="tiny-btn" onclick={() => requestScreen('chest')}>open the Chest</button>
+                  to filter them.
+                </p>
+              {/if}
             {/if}
           </div>
         {/if}

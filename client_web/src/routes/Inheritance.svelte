@@ -61,7 +61,7 @@
 
   function buy(statId: number, level: number) {
     const outcome = purchaseInheritanceLevel(statId, level, diamonds);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 </script>
 
@@ -82,7 +82,7 @@
     </p>
 
     {#if !snap}
-      <p class="dim">Waiting for your state to arrive...</p>
+      <p class="dim">Waiting for the first state snapshot...</p>
     {:else}
       <ul class="stats">
         {#each rows as row (row.id)}

@@ -46,11 +46,12 @@
         have < 1
           ? `Not enough materials for ${prettifyBaseId(recipe.ResultBaseItemId)}.`
           : `Enough for ${have}, not ${batchSize}.`,
+        'error',
       );
     }
 
     const outcome = startTreeCraft(recipe.ResultItemId, batchSize);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     pushLocalNotice(
       `Crafting ${batchSize} x ${prettifyBaseId(recipe.ResultBaseItemId)}.`,
@@ -133,16 +134,16 @@
 
   function putToWork(recipe: CraftingRecipe) {
     const chosen = workers.find((w) => w.slot === worker);
-    if (!chosen) return pushLocalNotice('No character to assign.');
+    if (!chosen) return pushLocalNotice('No character to assign.', 'error');
 
     const activityId = activityIdFor(recipe);
-    if (activityId < 0) return pushLocalNotice('That recipe is not on the server list.');
+    if (activityId < 0) return pushLocalNotice('That recipe is not on the server list.', 'error');
 
     const clash = workers.find((w) => w.slot !== worker && w.busy === activityId);
     const outcome = assignCharacterActivity(chosen.id, activityId, {
       takenBy: clash ? `Slot ${clash.slot}` : null,
     });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     pushLocalNotice(`Slot ${worker} is now making ${prettifyBaseId(recipe.ResultBaseItemId)}.`, 'info');
     setTimeout(() => {

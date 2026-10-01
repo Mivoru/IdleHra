@@ -59,14 +59,15 @@
   const affordable = $derived(available === undefined || value <= available);
 
   /*
-    Modul: COMPACTED FROM A MILLION, and the exact figure never goes away.
+    Modul: COMPACTED ABOVE 100,000 (COMPACT_THRESHOLD in format.ts - this said
+    "a million" until task 74 lowered it), and the exact figure never goes away.
 
     This is the most-read number in the game - it sits in the header on every
     screen - and a live account's balance is seven digits. `5 042 484` has to be
     counted in groups before it can be compared against a 250,000 gate; `5.04M`
-    does not. Below a million the separator is still doing its job, so nothing
-    changes there: a 17,000 fee and a 2,000 reroll stay comparable at a glance
-    and keep their real precision.
+    does not. Up to the threshold the separator is still doing its job, so
+    nothing changes there: a 17,000 fee and a 2,000 reroll stay comparable at a
+    glance and keep their real precision.
 
     `data-exact` carries the RAW number, not the formatted one - the attribute
     exists so a machine can read it, and Number("4 950 462") is NaN. The

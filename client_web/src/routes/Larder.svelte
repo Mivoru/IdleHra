@@ -295,7 +295,7 @@
         {threshold === snap.AutoEatThreshold ? `Applied (${snap.AutoEatThreshold})` : `Set to ${threshold}`}
       </button>
     {:else}
-      <p class="dim">Waiting for state...</p>
+      <p class="dim">Waiting for the first state snapshot...</p>
     {/if}
   </section>
 </div>

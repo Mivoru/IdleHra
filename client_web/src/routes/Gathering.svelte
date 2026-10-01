@@ -89,12 +89,12 @@
 
   function deploy(node: GatheringNodeDefinition) {
     const outcome = assignCharacterActivity(activeCharacterId, node.ActivityId);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   function stop() {
     const outcome = assignCharacterActivity(activeCharacterId, 0);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   // Modul: BaseTickThreshold is NOT what a gather actually costs.

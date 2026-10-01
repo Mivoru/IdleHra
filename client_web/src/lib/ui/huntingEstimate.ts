@@ -4,7 +4,7 @@
 // model this codebase has had to delete.
 
 import type { HuntingEstimate } from '../net/rest';
-import { formatNumber } from './format';
+import { formatGold, formatNumber } from './format';
 
 function seconds(s: number): string {
   if (s >= 90) return `${Math.round(s / 60)} min`;
@@ -33,5 +33,5 @@ export function safety(e: HuntingEstimate): { tone: SafetyTone; text: string } {
 /** The whole line, for a title attribute and for tests. */
 export function estimateLine(e: HuntingEstimate): string {
   if (!e.CanDamage) return 'Estimate: you cannot hurt it yet';
-  return `Estimate: ${killTimeText(e)} a kill · ${formatNumber(e.XpPerHour)} XP/h · ${formatNumber(e.GoldPerHour)} g/h · ${safety(e).text}`;
+  return `Estimate: ${killTimeText(e)} a kill · ${formatNumber(e.XpPerHour)} XP/h · ${formatGold(e.GoldPerHour)}/h · ${safety(e).text}`;
 }

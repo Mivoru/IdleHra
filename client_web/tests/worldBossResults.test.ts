@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WORLD_BOSS_RESULT_SENTENCES, SILENT_WORLD_BOSS_RESULTS } from '../src/lib/game/worldBossResults';
+import { WORLD_BOSS_RESULT_SENTENCES, SILENT_WORLD_BOSS_RESULTS, worldBossResultTone } from '../src/lib/game/worldBossResults';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const serverResults: string[] = JSON.parse(
@@ -24,5 +24,13 @@ describe('world boss strike results', () => {
       if (SILENT_WORLD_BOSS_RESULTS.has(result as never)) continue;
       expect(sentence, `${result} has no sentence`).toMatch(/\w{3,}/);
     }
+  });
+
+  it('announces a strike that went through as news, a refusal as an error', () => {
+    // "Strike sent" in the error tone played the error sound on a success.
+    expect(worldBossResultTone('Queued')).toBe('info');
+    expect(worldBossResultTone('ResolvedAtFloor')).toBe('info');
+    expect(worldBossResultTone('NoAttemptsLeft')).toBe('error');
+    expect(worldBossResultTone('Failed')).toBe('error');
   });
 });

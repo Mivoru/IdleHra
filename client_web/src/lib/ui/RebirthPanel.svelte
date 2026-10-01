@@ -58,12 +58,12 @@
           'info',
         );
       } else if (outcome.Result === 'AlreadyReborn' || outcome.Result === 'InFlight') {
-        pushLocalNotice('That rebirth has already happened - the page was out of date.');
+        pushLocalNotice('That rebirth has already happened - the page was out of date.', 'error');
       } else {
-        pushLocalNotice('The rebirth did not go through. Nothing was reset - try again.');
+        pushLocalNotice('The rebirth did not go through. Nothing was reset - try again.', 'error');
       }
     } catch {
-      pushLocalNotice('The rebirth did not go through. Nothing was reset - try again.');
+      pushLocalNotice('The rebirth did not go through. Nothing was reset - try again.', 'error');
     } finally {
       working = false;
       confirming = false;

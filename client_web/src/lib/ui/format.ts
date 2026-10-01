@@ -122,6 +122,20 @@ export function numberTitle(value: number | bigint | string, compactFrom: number
   return isCompacted(value, compactFrom) ? formatExact(value) : undefined;
 }
 
+/**
+ * A gold amount as PLAIN TEXT, for the places markup cannot reach - a toast
+ * string, a button label - where `<Money>` is not an option.
+ *
+ * Modul: `${formatNumber(x)}g` was written at 27 sites and is wrong past
+ * 100,000: the compactor's own suffix is a letter, so 150,000 read "150 kg"
+ * and 1.24M "1.24 Mg" - mass units. Money.svelte solved this for markup by
+ * spelling the unit out once the number is compacted; this is the same rule
+ * for a string. tests/goldSuffix.test.ts fails on the bare-g pattern.
+ */
+export function formatGold(value: number | bigint | string): string {
+  return isCompacted(value) ? `${formatNumber(value)} gold` : `${formatNumber(value)}g`;
+}
+
 /** A non-integer rate ("1.5 per hour"), grouped and decimal-marked like everything else. */
 export function formatDecimal(value: number, maxFractionDigits = 1): string {
   const n = toNumber(value);
