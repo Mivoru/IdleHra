@@ -901,15 +901,19 @@
     pointer-events: none;
   }
 
+  /* Modul: TASK 108 - will-change ONLY WHILE IT CHANGES. It was permanent,
+     which kept the sprite on its own compositor layer (with a filter hint) for
+     the whole time the screen was open, between hits as well as during them.
+     The hint now rides on the two classes that animate. */
   .struckwrap {
     display: inline-block;
-    will-change: transform, filter;
     /* The spark layer positions itself against this, so the arc and the burst
        land on the monster rather than in the corner of the panel. */
     position: relative;
   }
 
   .struckwrap.struck {
+    will-change: transform, filter;
     animation: folk-struck 120ms ease-out;
   }
 
@@ -1354,6 +1358,7 @@
      `forwards` so it holds the final frame rather than snapping back for the
      few hundred milliseconds before the replacement lands. */
   .dying {
+    will-change: transform, filter, opacity;
     animation: monster-disintegrate 420ms cubic-bezier(0.4, 0, 0.9, 0.6) forwards;
     /* The mask is animated by moving its position, which the compositor can do
        without repainting the sprite. */

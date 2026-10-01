@@ -3,9 +3,14 @@
 
   interface Props {
     frameId: string | null;
+    /**
+     * Pulse the glow. Only for a face shown on its own (the profile); a face
+     * in a list - chat, the boards, a guild roster - glows still. Task 108.
+     */
+    animate?: boolean;
   }
 
-  let { frameId }: Props = $props();
+  let { frameId, animate = false }: Props = $props();
 
   const drawing = $derived(frameId ? (FRAME_DRAWINGS[frameId] ?? null) : null);
 
@@ -24,6 +29,9 @@
 </script>
 
 {#if drawing}
+  {#if drawing.glow && animate}
+    <span class="halo" aria-hidden="true" style="--frame-color: {drawing.color}"></span>
+  {/if}
   <svg class="frame" class:glow={drawing.glow} viewBox="0 0 100 100" aria-hidden="true" style="--frame-color: {drawing.color}">
     {#if drawing.style === 'band'}
       <circle cx="50" cy="50" r="43" fill="none" stroke={drawing.accent} stroke-width="8" />
@@ -60,20 +68,37 @@
     overflow: visible;
   }
 
+  /* Modul: TASK 108 - THE GLOW IS STILL; ONLY A FADE MOVES.
+     This animated `filter: drop-shadow` 3 s and infinite, and a frame rides on
+     every PlayerAvatar - every chat message, every leaderboard row, GuildOps,
+     WorldBoss. A filter is redrawn, not composited, so each of those faces
+     re-rasterised its SVG every frame. The shadow is drawn once now (the
+     pulse's resting depth, same colour), and where a face is shown alone the
+     pulse is a ring on its own layer whose only moving property is opacity. */
   .glow {
     filter: drop-shadow(0 0 3px var(--frame-color));
-    animation: frame-glow 3.2s ease-in-out infinite;
   }
 
-  @keyframes frame-glow {
+  .halo {
+    position: absolute;
+    inset: 3%;
+    border-radius: 50%;
+    box-shadow: 0 0 7px 2px var(--frame-color);
+    opacity: 0;
+    animation: frame-halo 3.2s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes frame-halo {
     50% {
-      filter: drop-shadow(0 0 6px var(--frame-color));
+      opacity: 0.7;
     }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .glow {
+    .halo {
       animation: none;
+      opacity: 0;
     }
   }
 </style>

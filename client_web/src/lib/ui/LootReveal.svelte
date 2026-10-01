@@ -79,7 +79,7 @@
       {/if}
       <div class="text">
         <p class="kicker" style="color: {rarityColor(drop.qualityTier)}">{rarityName(drop.qualityTier)} drop</p>
-        <p class="name rarity-glow" style="color: {rarityColor(drop.qualityTier)}">{itemName(registry, drop.itemId)}</p>
+        <p class="name rarity-glow rarity-glow-live" style="color: {rarityColor(drop.qualityTier)}">{itemName(registry, drop.itemId)}</p>
         {#if cmp}
           <p class="cmp" class:up={isUpgrade(cmp)}>
             {comparisonLine(cmp)}{#if req && !req.met}<span class="unmet"> · {req.text}</span>{/if}

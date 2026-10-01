@@ -7114,7 +7114,7 @@ Report sections 4.I, 4.J, 4.K and 7.
 
 ## 108. Phone GPU budget
 
-**OPEN.** Report section 4.L.
+**BUILT on branch `claude/ui-98-108-combat-gpu`, not merged.** Report section 4.L. Left open: the check:perf numbers (Chest scroll, Chat with 50 messages) were not measured on this branch and belong in the PR; the chat WINDOW keeps its blur (task 90's call); the glow colour is untouched (110f).
 
 **What is actually true.**
 - **`.rarity-glow` animates `text-shadow`**, 2.2 s and infinite
