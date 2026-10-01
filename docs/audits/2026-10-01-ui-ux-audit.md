@@ -481,7 +481,7 @@ is where it gets fixed.
   (`InventoryCensusTickCoordinator.cs:44-59`). → 91
 - **G4. Pre-snapshot copy differs per screen.** It is "Waiting for state…" in
   three variants, and the header prints the raw connection phase
-  (`App.svelte:729-733`). → 109
+  (`App.svelte:729-733`). → 91
 - **G5. Guild name: 1-100 characters, no charset rule, no client
   `maxlength`** (`Social.svelte:242`, `GuildManagementEngine.cs:89`). It is
   interpolated into toasts that do not wrap (`Toasts.svelte:54-66`). → 91
@@ -588,12 +588,12 @@ order, and static rules text sits above the controls.
   - Region banner titles are dim gold on dark paint.
   - Locked Wardrobe rarity labels sit at 45-60 % opacity.
 
-  → 91, 107, 105, 109
+  → 91 (leaderboard tiers, guild medals), 105, 109
 - **J3. The rarity glow reads as an error on parchment.** A red text halo on
   Ancient items appears in the Chest, Character, the loot reveal and
   SessionLoot. Animated `text-shadow` per row is also a GPU cost (section
-  4.L). → 108 for the animation, 99 for the row look; the colour choice is a
-  design decision
+  4.L). → 108 for the animation, 99 for the row look; the colour choice is
+  decision 110f
 - **J4. 14 rarities are hard to tell apart by colour.** Normal and Common are
   both grey; Rare and Ultra Rare both blue; Epic, Legendary and Mythic are
   three close purples (`app.css:141-154`). → 100
@@ -698,6 +698,9 @@ order, and static rules text sits above the controls.
   - Home "Next unlock" (endgame gear wording at level 1).
 
   → 101, 109, 103, 97, 96
+- **N5. World chat showed "Nothing in this channel yet"** to an account that
+  signed in again about a minute after posting two messages (evidence item
+  7). This may be by design (live-only chat). → decision 110e
 
 ---
 
@@ -737,7 +740,7 @@ structure.
 | Bloodline: Ancestors | **redesign** | 37,468 px; carried mixed with lost; "Kept" on doomed rows; per-row buttons ×200; diamond button on top | 104 |
 | Bloodline: Inheritance | good | no current or max effect; desktop orphan card | 109 |
 | Community / Friends | **redesign** | two-thirds guild browser; Join ignores min level; own-guild Join; mixed lock signals | 107 |
-| Guild | **redesign** (order) | no guild name; locked Guild war first; 1st/2nd place invisible; contradicting rank copy | 107 |
+| Guild | **redesign** (order) | no guild name; locked Guild war first; 1st/2nd place invisible; contradicting rank copy | 107, 91 |
 | Leaderboards | polish | "Mou…" grid bug; tier colours; no profile from Standing; no own rank; error shown as empty | 91, 93 |
 | Wiki | polish | phone TOC 1,300 px before the article; 150-character lines on desktop | 109 |
 | Settings | **redesign** | 7,417 px; Sign out at the bottom; 27 open explanations; developer text | 96 |
@@ -1116,7 +1119,7 @@ These cost under an hour each and are folded into the tasks shown.
 - Codex developer note (109).
 - "Respec (free)" spacing (109).
 - Market empty-state split; "Sort:" label (102).
-- Guild 1st/2nd place colours (107).
+- Guild 1st/2nd place colours (91).
 - Desktop active nav group with an accent underline; the coach becomes a dot
   (95).
 - Social Join respects `MinApplicationLevel` (92).
