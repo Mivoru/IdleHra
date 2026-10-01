@@ -6592,7 +6592,14 @@ N1-N7.
 
 ## 99. Chest: rows with stats, a Worn group, no Gold row
 
-**OPEN.** Report sections 4.I and 8. This is visual review B1, C1-C9 and
+**BUILT on branch `claude/ui-99-chest`, not merged.** Left open: Sell shows
+no number, because the price (`VillageChestEngine.ValueEquipment`) never
+reaches the client and a client copy of it would be a second source; the
+server would have to send it on the inventory row. The server still lets
+`/api/v1/chest/sell` and `/discard` take `"gold"`, deleting it for 0 (it has
+no items.json price), so the client hiding the row is the only guard.
+`exercise.mjs`, `check:perf` and the geometry checkers have not been run on it.
+Report sections 4.I and 8. This is visual review B1, C1-C9 and
 M1-M3.
 
 **What is actually true.**

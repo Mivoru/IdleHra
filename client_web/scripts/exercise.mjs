@@ -2959,6 +2959,56 @@ await go('Chest');
   }
   record('the chest offers a route to the reroll', rerollOffered, 'every equipment row menu links to the Forge');
 
+  // --- task 99: rows that say what the piece is ------------------------------
+  //
+  // Inspect is the FIRST menu item and opens the Forge's Affixes panel for
+  // that piece - addressed by id, so a refetch cannot swap the piece under the
+  // check. Closed again afterwards so the screen is as it was found.
+  {
+    const firstRow = page.locator('.row[data-equipment-id]').first();
+    if ((await firstRow.count()) > 0) {
+      const id = await firstRow.getAttribute('data-equipment-id');
+      await firstRow.getByRole('button', { name: 'More', exact: true }).click();
+      const firstItem = ((await page.getByRole('menuitem').first().textContent()) ?? '').trim();
+      await page.getByRole('menuitem', { name: 'Inspect', exact: true }).click();
+      const pane = page.locator(`[data-inspected-id="${id}"]`);
+      await pane.waitFor({ timeout: 5000 }).catch(() => {});
+      record(
+        'Inspect is the first item in the chest menu and opens that piece',
+        firstItem === 'Inspect' && (await pane.count()) > 0,
+        `first item "${firstItem}", pane ${await pane.count()}`,
+      );
+      await pane.getByRole('button', { name: 'Close', exact: true }).click().catch(() => {});
+    } else {
+      record('Inspect is the first item in the chest menu and opens that piece', false, 'no equipment row');
+    }
+
+    // Worn pieces are one group on top: in DOM order no worn row may follow a
+    // loose one. The loose half is windowed, so only what is rendered is read -
+    // which is the top of the list, where the boundary is.
+    const order = await page.evaluate(() =>
+      [...document.querySelectorAll('.row[data-equipment-id]')].map((r) => r.querySelector('.chip.worn') !== null),
+    );
+    const firstLoose = order.indexOf(false);
+    record(
+      'worn pieces are grouped above the loose ones',
+      firstLoose === -1 || !order.slice(firstLoose).includes(true),
+      `${order.filter(Boolean).length} worn rows, first loose at ${firstLoose}`,
+    );
+
+    // Gold is not a material. The server answers Sell all / Bin on "gold" by
+    // deleting it for 0 gold (it has no items.json price), so the row must not
+    // exist at all. Read with the All tab and no rarity floor, where it was.
+    await page.locator('.filters button').first().click();
+    await page.waitForTimeout(300);
+    const goldListed = await page.evaluate(() =>
+      [...document.querySelectorAll('.materials li .name')].some((n) => n.textContent.trim() === 'Gold'),
+    );
+    const inv = await apiGet('/api/v1/player/inventory');
+    const holdsGold = (inv?.Stacks ?? []).some((s) => s.ItemId === 'gold' && s.Quantity > 0);
+    record('the chest lists no Gold row among the materials', !goldListed, `gold in snapshot: ${holdsGold}`);
+  }
+
   // Modul: THE CHEST'S ONLY DRAIN.
   //
   // Equipment lands on 15% of kills and nothing removed it but the per-item
