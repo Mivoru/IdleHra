@@ -61,7 +61,7 @@
 
   function buy(statId: number, level: number) {
     const outcome = purchaseInheritanceLevel(statId, level, diamonds);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 </script>
 

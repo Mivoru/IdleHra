@@ -168,7 +168,7 @@
   function sell() {
     const outcome = listItemOnMarket(sellInstanceId, sellPrice);
     if (!outcome.ok) {
-      pushLocalNotice(outcome.reason);
+      pushLocalNotice(outcome.reason, 'error');
       return;
     }
     sellInstanceId = 0;
@@ -177,7 +177,7 @@
   function buy(orderId: number) {
     const outcome = buyMarketListing(orderId);
     if (!outcome.ok) {
-      pushLocalNotice(outcome.reason);
+      pushLocalNotice(outcome.reason, 'error');
       return;
     }
   }
@@ -227,7 +227,7 @@
           }
         : { isBuy: false, targetId: orderInstanceId, price: orderPrice },
     );
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     pushLocalNotice('Order placed. It rests until something matches it.', 'info');
   }

@@ -41,6 +41,7 @@ import {
   diffTiers,
   tierLabel,
   achievementName,
+  crossedTierReward,
   type AchievementToast,
 } from './achievementToasts';
 import { CommandType, type StateUpdate, type ResponseChatMessage, type ResponseLootDrop, type ResponseCombatEvent } from '../net/protocol.generated';
@@ -388,8 +389,14 @@ let localNoticeSequence = -1;
  * and "we did not ask because it would have been no" are the same event, and
  * splitting them across two notification styles would only make the UI harder
  * to read. Negative ids so they can never collide with a server result.
+ *
+ * Modul: `tone` is REQUIRED, on purpose. It defaulted to 'error', so every
+ * caller that forgot it - "Member kicked.", "Friend request sent.", a Book of
+ * Deeds seal - showed a red border and played the error sound on a success.
+ * A default here is a guess about a message the function cannot read; making
+ * the caller say it turns a forgotten argument into a type error.
  */
-export function pushLocalNotice(message: string, tone: 'info' | 'error' = 'error'): void {
+export function pushLocalNotice(message: string, tone: 'info' | 'error'): void {
   const entry: CommandResultEntry = {
     id: localNoticeSequence--,
     // Reuses the server's success code for an informational notice so the
@@ -534,8 +541,24 @@ export function dismissDeath(): void {
 export const achievementToasts = writable<AchievementToast[]>([]);
 
 const toastWatermark = createWatermark();
-let lastTierSnapshot: AchievementEntry[] = [];
+// Modul: null means "no snapshot yet this session", and that is NOT the same
+// as an empty one. It used to start as [], so the first crossing of a session
+// diffed against nothing and carded EVERY deed the player already held - and
+// had no before-row to price the new tier from (see crossedTierReward). The
+// baseline packet now primes it (primeTierSnapshot), and a crossing that still
+// finds it null takes its fetch as the baseline instead of guessing.
+let lastTierSnapshot: AchievementEntry[] | null = null;
 let toastSequence = 0;
+
+/** Fetches the session's first snapshot, the "before" every later card is diffed and priced against. */
+async function primeTierSnapshot(): Promise<void> {
+  try {
+    const rows = await fetchAchievements();
+    if (lastTierSnapshot === null) lastTierSnapshot = rows;
+  } catch {
+    // A crossing will take its own fetch as the baseline instead.
+  }
+}
 
 export function dismissAchievementToast(id: number): void {
   achievementToasts.update((list) => list.filter((toast) => toast.id !== id));
@@ -664,19 +687,26 @@ async function raiseAchievementToasts(): Promise<void> {
     return;
   }
 
-  const crossed = diffTiers(lastTierSnapshot, rows);
+  const before = lastTierSnapshot;
   lastTierSnapshot = rows;
+  // No baseline to diff against: this fetch becomes it, and no card is shown
+  // rather than one for every deed the player has ever earned.
+  if (before === null) return;
+  const crossed = diffTiers(before, rows);
   if (crossed.length === 0) return;
 
   const cards: AchievementToast[] = crossed.map(({ achievementId, tier }) => {
-    const row = rows.find((entry) => entry.AchievementId === achievementId);
+    const reward = crossedTierReward(
+      before.find((entry) => entry.AchievementId === achievementId),
+      tier,
+    );
     return {
       id: ++toastSequence,
       achievementId,
       title: achievementName(achievementId),
       tier,
       tierLabel: tierLabel(tier),
-      reward: row && row.NextTierReward > 0 ? `+${row.NextTierReward} diamonds` : '',
+      reward: reward > 0 ? `+${reward} diamonds` : '',
     };
   });
 
@@ -756,7 +786,7 @@ export function startSession(token: string): void {
   // player for the old one's tiers.
   achievementToasts.set([]);
   toastWatermark.highWater = -1;
-  lastTierSnapshot = [];
+  lastTierSnapshot = null;
   // A new session numbers its events from scratch, so a carried-over sequence
   // high-water mark would swallow every line until the server caught up to it.
   resetCombatLog();
@@ -897,8 +927,13 @@ export function startSession(token: string): void {
       // above the session high-water mark counts (the server computes the
       // total live from gold, so spending back down and re-earning would
       // otherwise toast a deed twice). See stores/achievementToasts.
+      const hadTierBaseline = toastWatermark.highWater >= 0;
       if (observeTierTotal(toastWatermark, packet.AchievementTierTotal)) {
         void raiseAchievementToasts();
+      } else if (!hadTierBaseline && toastWatermark.highWater >= 0) {
+        // The packet baseline just landed: take the matching REST baseline, so
+        // the first crossing has a before-row to diff and price against.
+        void primeTierSnapshot();
       }
 
       // Modul: the first packet of a session is a BASELINE, never a trigger.

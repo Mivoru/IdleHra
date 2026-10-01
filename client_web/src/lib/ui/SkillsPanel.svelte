@@ -118,13 +118,13 @@
 
   function doRespec() {
     const outcome = respecSkillTree(freeUsed, grants);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
     confirmingRespec = false;
   }
 
   function buy(nodeId: number) {
     const outcome = purchaseSkillTreeLevel(nodeId, levels, points);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   // ---- the drawing ---------------------------------------------------------

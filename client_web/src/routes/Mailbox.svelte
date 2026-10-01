@@ -28,11 +28,11 @@
 
   function claim(entry: MailboxEntry) {
     if (entry.HasEquipmentAttachment && noSpace) {
-      return pushLocalNotice('Free a backpack slot first - this message carries an item.');
+      return pushLocalNotice('Free a backpack slot first - this message carries an item.', 'error');
     }
 
     const outcome = claimMailItem(entry.Id);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
   }
 
@@ -42,7 +42,7 @@
     // the account, so a "claim 40 messages" button that fires 40 commands in
     // one frame looks exactly like an attack.
     const claimable = entries.filter((e) => !e.HasEquipmentAttachment || !noSpace);
-    if (claimable.length === 0) return pushLocalNotice('Nothing can be claimed right now.');
+    if (claimable.length === 0) return pushLocalNotice('Nothing can be claimed right now.', 'error');
 
     claimable.slice(0, 10).forEach((entry, index) => {
       setTimeout(() => claimMailItem(entry.Id), index * 250);

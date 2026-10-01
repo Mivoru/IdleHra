@@ -330,7 +330,7 @@
     selectMonster(monster);
     // See Gathering.svelte: a bare TargetId does not persist.
     const outcome = assignCharacterActivity(activeCharacterId, monster.Id);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     writePref(PREF_LAST_MONSTER, String(monster.Id));
     lastMonsterId = monster.Id;
   }
@@ -369,7 +369,7 @@
 
   function stop() {
     const outcome = assignCharacterActivity(activeCharacterId, 0);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   // BaseItemId is the reliable identifier on a drop-preview row. Falls back to

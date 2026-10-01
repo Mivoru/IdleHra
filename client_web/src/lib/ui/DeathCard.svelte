@@ -61,7 +61,7 @@
     const character = snap?.Slot1_CharacterId ?? EMPTY_GUID;
     const outcome = assignCharacterActivity(character, monsterId);
     dismissDeath();
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     writePref(PREF_LAST_MONSTER, String(monsterId));
     requestScreen('combat');
   }

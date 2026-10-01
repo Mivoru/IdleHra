@@ -252,7 +252,7 @@
     try {
       const result = await bulkClearChest(sweepTier, sell);
       if (!result || result.Success === false) {
-        pushLocalNotice('Could not clear the chest.');
+        pushLocalNotice('Could not clear the chest.', 'error');
         return;
       }
 
@@ -273,7 +273,7 @@
 
       refresh();
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     } finally {
       sweeping = false;
     }
@@ -298,7 +298,7 @@
       // the quantity was stale. Checking only the status would report a
       // failure as a sale.
       if (!result || result.Success === false) {
-        pushLocalNotice(`Could not ${sell ? 'sell' : 'bin'} ${label}.`);
+        pushLocalNotice(`Could not ${sell ? 'sell' : 'bin'} ${label}.`, 'error');
       } else if (sell) {
         play('itemSold');
         pushLocalNotice(`Sold ${label} for ${formatNumber(result.GoldGained)}g.`, 'info');
@@ -307,7 +307,7 @@
       }
       refresh();
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     } finally {
       busy = false;
     }
@@ -328,7 +328,7 @@
     try {
       const result = await toggleChestLock(equipmentId);
       if (!result || result.Success === false) {
-        pushLocalNotice(`Could not change the lock on ${label}.`);
+        pushLocalNotice(`Could not change the lock on ${label}.`, 'error');
       } else {
         pushLocalNotice(
           result.Locked
@@ -339,7 +339,7 @@
       }
       refresh();
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     } finally {
       busy = false;
     }
@@ -365,7 +365,7 @@
 
   function unequip(baseItemId: string) {
     const slotIndex = resolveSlotIndex(baseItemId);
-    if (slotIndex < 0) return pushLocalNotice('That piece has no equipment slot.');
+    if (slotIndex < 0) return pushLocalNotice('That piece has no equipment slot.', 'error');
     connection.send({ Command: CommandType.UnequipItem, TargetId: slotIndex });
     setTimeout(refresh, 700);
   }
@@ -548,14 +548,14 @@
     try {
       const saved = await saveChestSettings(draft.global, draft.regions);
       if (!saved) {
-        pushLocalNotice('The rules did not save. Try again in a moment.');
+        pushLocalNotice('The rules did not save. Try again in a moment.', 'error');
         return;
       }
       client.setQueryData(queryKeys.chestSettings, saved);
       draft = { global: saved.AutoSalvageBelowTier, regions: [...saved.AutoSalvageRegionTiers] };
       pushLocalNotice('Auto-sell rules saved. They apply to the next drop.', 'info');
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     } finally {
       rulesSaving = false;
     }

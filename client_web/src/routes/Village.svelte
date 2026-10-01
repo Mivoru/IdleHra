@@ -97,7 +97,7 @@
 
   function upgrade(buildingId: number) {
     const outcome = upgradeBuilding(buildingId);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
   }
 
   // Modul: evict() is gone with the button that called it, and the panel it

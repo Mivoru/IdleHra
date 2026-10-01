@@ -234,7 +234,7 @@
       ? executeVillagerBreeding(heroId, partnerVillagerId, breedingLevel, effectiveMask)
       : executeBreeding(paternalId, maternalId, breedingLevel, effectiveMask);
 
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     // A villager marries once, so the choice is spent the moment this lands;
     // a partner from your own line is now resting. Either way the old choice

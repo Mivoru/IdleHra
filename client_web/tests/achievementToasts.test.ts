@@ -5,6 +5,7 @@ import {
   diffTiers,
   tierLabel,
   achievementName,
+  crossedTierReward,
 } from '../src/lib/stores/achievementToasts';
 
 describe('achievement toast edge detection', () => {
@@ -97,5 +98,28 @@ describe('naming which deed moved', () => {
       expect(achievementName(id)).not.toMatch(/^Deed #/);
     }
     expect(achievementName(99)).toBe('Deed #99');
+  });
+});
+
+describe('pricing the card for the tier just earned', () => {
+  it('reads the reward off the snapshot BEFORE the crossing', () => {
+    // Before: tier 1 held, the next tier pays 250. After: tier 2 held, the
+    // next pays 500. The card for tier 2 must say 250 - 500 belongs to tier 3.
+    const before = { AchievementId: 2, CompletedTier: 1, NextTierReward: 250 };
+    expect(crossedTierReward(before, 2)).toBe(250);
+  });
+
+  it('still prices the final tier, whose post-crossing reward is 0', () => {
+    const before = { AchievementId: 2, CompletedTier: 3, NextTierReward: 1000 };
+    expect(crossedTierReward(before, 4)).toBe(1000);
+  });
+
+  it('shows nothing for a multi-tier jump rather than a partial figure', () => {
+    const before = { AchievementId: 3, CompletedTier: 1, NextTierReward: 250 };
+    expect(crossedTierReward(before, 3)).toBe(0);
+  });
+
+  it('shows nothing when the deed was absent from the earlier snapshot', () => {
+    expect(crossedTierReward(undefined, 1)).toBe(0);
   });
 });

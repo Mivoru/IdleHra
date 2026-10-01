@@ -201,14 +201,14 @@
       unlocked: townHall >= SLOT_UNLOCK_TOWN_HALL[slot - 1],
       takenBy: occupiedBy(activityId, slot),
     });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     // Task 73: Home's "Continue" resumes whatever was given last, wherever.
     if (activityId > 0) writePref(lastActivityKey(characterId), String(activityId));
   }
 
   function stopWork(slot: number, characterId: string) {
     const outcome = assignCharacterActivity(characterId, 0);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     jobPick = { ...jobPick, [slot]: 0 };
   }
 
@@ -434,7 +434,7 @@
       <AttributePanel
         values={{ STR: attributeValue('STR'), DEX: attributeValue('DEX'), CON: attributeValue('CON'), LCK: attributeValue('LCK') }}
         unspent={attributePoints}
-        onnotice={pushLocalNotice}
+        onnotice={(message) => pushLocalNotice(message, 'error')}
       />
 
       {#if activeSets.length > 0}

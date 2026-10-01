@@ -24,7 +24,7 @@
 
   function deposit(work: GreatWork, material: 0 | 1) {
     const outcome = depositGreatWork(work.Region, material, 0);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   /** Why a deposit button is off, in words - never a silent grey. */

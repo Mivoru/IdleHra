@@ -261,35 +261,35 @@
       seasonEndPhrase = '';
       pushLocalNotice('Season ending - every player is disconnected while the rollover runs.', 'info');
     } catch {
-      pushLocalNotice('The server refused to end the season.');
+      pushLocalNotice('The server refused to end the season.', 'error');
     }
   }
 
   async function toggleProfanity() {
     devProfanity = !devProfanity;
     await adminToggleProfanity(devProfanity);
-    pushLocalNotice('Profanity filter ' + (devProfanity ? 'enabled' : 'disabled'));
+    pushLocalNotice('Profanity filter ' + (devProfanity ? 'enabled' : 'disabled'), 'info');
   }
 
   async function doAnnounce() {
     if (!devAnnounceMsg) return;
     await adminAnnounce(devAnnounceMsg);
     devAnnounceMsg = '';
-    pushLocalNotice('Announcement sent!');
+    pushLocalNotice('Announcement sent!', 'info');
   }
 
   async function doBan() {
     if (!devBanUsername) return;
     await adminBan(devBanUsername);
     devBanUsername = '';
-    pushLocalNotice('Player banned.');
+    pushLocalNotice('Player banned.', 'info');
   }
 
   async function doUnban() {
     if (!devBanUsername) return;
     await adminUnban(devBanUsername);
     devBanUsername = '';
-    pushLocalNotice('Player unbanned.');
+    pushLocalNotice('Player unbanned.', 'info');
   }
 
   async function doMail() {
@@ -307,7 +307,7 @@
     devMailQty = 1;
     devMailGold = 0;
     devMailMsg = '';
-    pushLocalNotice('Admin mail sent!');
+    pushLocalNotice('Admin mail sent!', 'info');
   }
 
   // ---------------------------------------------------------------------------
@@ -349,7 +349,7 @@
       // not promise a reply - only that it arrived where it can be read.
       pushLocalNotice('Sent. Thank you - the developer reads these.', 'info');
     } catch {
-      pushLocalNotice('Could not reach the server.');
+      pushLocalNotice('Could not reach the server.', 'error');
     }
   }
 
@@ -365,7 +365,7 @@
     if (!purgeArmed || !snap) return;
 
     const outcome = triggerGdprPurge(snap.PlayerId, connection.currentEpoch);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     // Modul: BOTH OUTCOMES LOOK IDENTICAL FROM HERE.
     //

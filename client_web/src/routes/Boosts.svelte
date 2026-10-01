@@ -89,7 +89,7 @@
 
   function use(row: HeldConsumable) {
     const outcome = consumeConsumable(row.itemId, buffTicks);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     play('windowOpen');
   }
 

@@ -94,13 +94,13 @@
 
   function contributeWar() {
     const outcome = contributeToWarSupply(warCommodity, warQuantity, warId);
-    if (!outcome.ok) pushLocalNotice(outcome.reason);
+    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
   // --- raid -----------------------------------------------------------------
   function raid() {
     const outcome = launchGuildRaid(hasGuild);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     // Leader-only is enforced server-side against the locked membership row,
     // and a non-leader's request simply rolls back with no message at all -
     // so promising success here would be a lie.
@@ -138,9 +138,9 @@
     busy = true;
     try {
         await kickGuildMember(id);
-        pushLocalNotice('Member kicked.');
+        pushLocalNotice('Member kicked.', 'info');
     } catch (err: any) {
-        pushLocalNotice(err.message || 'Failed to kick.');
+        pushLocalNotice(err.message || 'Failed to kick.', 'error');
     } finally {
         busy = false;
         refresh();
@@ -152,9 +152,9 @@
     busy = true;
     try {
         await promoteGuildMember(id);
-        pushLocalNotice('Member promoted.');
+        pushLocalNotice('Member promoted.', 'info');
     } catch (err: any) {
-        pushLocalNotice(err.message || 'Failed to promote.');
+        pushLocalNotice(err.message || 'Failed to promote.', 'error');
     } finally {
         busy = false;
         refresh();
@@ -166,9 +166,9 @@
     busy = true;
     try {
         await demoteGuildMember(id);
-        pushLocalNotice('Member demoted.');
+        pushLocalNotice('Member demoted.', 'info');
     } catch (err: any) {
-        pushLocalNotice(err.message || 'Failed to demote.');
+        pushLocalNotice(err.message || 'Failed to demote.', 'error');
     } finally {
         busy = false;
         refresh();
@@ -250,7 +250,7 @@
       hasGuild,
       itemDefinitionCount,
     );
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refreshDepot();
   }
 
@@ -260,7 +260,7 @@
       Math.min(depotQuantity, depotMax),
       hasGuild,
     );
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refreshDepot();
   }
 
@@ -274,7 +274,7 @@
 
   function defend() {
     const outcome = registerGuildDefense(hasGuild, quarantined);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     pushLocalNotice('Your roster is registered as the guild defence.', 'info');
   }
 
@@ -308,7 +308,7 @@
       // value here means the guard checks exactly what the validator will.
       activeMatchUuid: matchUuid || EMPTY_UUID,
     });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.guildShardMatch }), 900);
   }
 
@@ -323,7 +323,7 @@
 
   function takeTurn() {
     const outcome = executeCombatTurn(matchId, turnCounter, hasGuild);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
   }
 
   // --- guild treasury ---

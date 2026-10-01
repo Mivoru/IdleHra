@@ -44,13 +44,13 @@
 
   function feast() {
     const outcome = recruitVillager();
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refresh();
   }
 
   function sendAway(person: VillageNewcomer) {
     const outcome = dismissNewcomer(person.Id);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refresh();
   }
 </script>

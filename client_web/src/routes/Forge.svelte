@@ -207,7 +207,7 @@
         : undefined;
 
     const outcome = executeForgeFusion(fusionTarget, fusionSacOne, fusionSacTwo, forgeLevel, match);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     fusionSacOne = 0;
     fusionSacTwo = 0;
     fusionFlash++;
@@ -249,7 +249,7 @@
   function fuseWholeStack() {
     if (!fusionTargetItem) return;
     const outcome = fuseStack(fusionTargetItem.Id, fusionTargetItem.QualityTier, stackTo, forgeLevel);
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     fusionTarget = 0;
     fusionSacOne = 0;
     fusionSacTwo = 0;
@@ -410,7 +410,7 @@ ${scope}`)) return;
       stopMinRarity,
       stopAffixIndex,
     });
-    if (!outcome.ok) return pushLocalNotice(outcome.reason);
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     rerollFlash++;
     refresh();
   }
