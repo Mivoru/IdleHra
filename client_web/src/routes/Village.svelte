@@ -11,6 +11,7 @@
   import GreatWorks from '../lib/ui/GreatWorks.svelte';
   import Stopwatch from '../lib/ui/Stopwatch.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
+  import DisabledReason from '../lib/ui/DisabledReason.svelte';
 
 
 
@@ -211,6 +212,15 @@
                 {/each}
               {:else}
                 <span class="dim">...</span>
+              {/if}
+              <!-- Modul: "Not enough" said that, not WHAT - the shortfall
+                   lived only in the button's title, which a phone never
+                   shows. The same goes for the one-upgrade-at-a-time rule. -->
+              {#if blocked === null}
+                <DisabledReason
+                  text={missing ??
+                    (pendingId !== 0 && building.id !== pendingId ? 'Another upgrade is already in progress.' : null)}
+                />
               {/if}
             </span>
             <button

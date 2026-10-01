@@ -37,9 +37,6 @@ function svelteFiles(dir: string): string[] {
 }
 
 const ALLOWED: Record<string, string> = {
-  // Another branch (the leaderboard error state) adds this file's error
-  // handling; remove this entry once it lands.
-  'routes/Leaderboards.svelte': 'error state added on a parallel branch',
   // Every query here decorates the fight list - hunting estimates (deliberately
   // `retry: false`, "a 409 shows nothing"), challenge badges, the ascension
   // ladder, boss-gear progress. Absent means "no badge", not "none exist".

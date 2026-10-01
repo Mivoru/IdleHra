@@ -68,6 +68,12 @@ function definedIn(text: string): Set<string> {
 describe('every CSS custom property that is read is defined', () => {
   const files = sourceFiles(srcRoot);
   const theme = definedIn(stripComments(readFileSync(join(srcRoot, 'app.css'), 'utf8')));
+  // A .ts helper that BUILDS an inline style string (leaderboardTiers.ts'
+  // `--tier-color: ...`) defines those names for whichever component applies
+  // it, so their declarations count as defined everywhere.
+  for (const file of files.filter((f) => f.endsWith('.ts'))) {
+    for (const name of definedIn(stripComments(readFileSync(file, 'utf8')))) theme.add(name);
+  }
 
   it('finds files and theme tokens at all - an empty sweep proves nothing', () => {
     expect(files.length).toBeGreaterThan(50);

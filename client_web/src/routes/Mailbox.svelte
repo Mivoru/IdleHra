@@ -15,6 +15,7 @@
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import { commandInFlight } from '../lib/ui/commandInFlight';
 
   const mailbox = createQuery(() => ({ queryKey: queryKeys.mailbox, queryFn: fetchMailbox }));
 
@@ -29,7 +30,11 @@
   // every visit opened on a false "backpack full" warning with item claims
   // disabled until a StateUpdate landed.
   function claim(entry: MailboxEntry) {
-    const outcome = claimMailItem(entry.Id);
+    // Modul: held until the server answers. The row is only removed by the
+    // refetch a command result triggers, so Claim stayed live in between and a
+    // second tap came back as "Target not found.".
+    const outcome = commandInFlight.run(mailKey(entry.Id), () => claimMailItem(entry.Id));
+    if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
   }
@@ -39,9 +44,15 @@
     // throttles inbound commands and a flood infraction is recorded against
     // the account, so a "claim 40 messages" button that fires 40 commands in
     // one frame looks exactly like an attack.
+    // Each one through the same pending key, so a row the player has already
+    // tapped is not sent twice.
     entries.slice(0, 10).forEach((entry, index) => {
-      setTimeout(() => claimMailItem(entry.Id), index * 250);
+      setTimeout(() => commandInFlight.run(mailKey(entry.Id), () => claimMailItem(entry.Id)), index * 250);
     });
+  }
+
+  function mailKey(id: number): string {
+    return `mail:${id}`;
   }
 
   function received(epochSeconds: number): string {
@@ -127,7 +138,13 @@
 
             <span class="dim tiny when">{received(entry.ReceivedTimestamp)}</span>
 
-            <button class="tiny-btn" onclick={() => claim(entry)}>Claim</button>
+            <button
+              class="tiny-btn"
+              disabled={$commandInFlight.has(mailKey(entry.Id))}
+              onclick={() => claim(entry)}
+            >
+              Claim
+            </button>
           </li>
         {/each}
       </ul>

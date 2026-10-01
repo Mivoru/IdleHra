@@ -19,6 +19,9 @@
   import { raceName } from './races';
   import { traitsOf } from './traits';
   import Skeleton from './Skeleton.svelte';
+  import ConfirmButton from './ConfirmButton.svelte';
+  import { commandInFlight } from './commandInFlight';
+  import { APTITUDES } from './aptitudes';
 
   const client = useQueryClient();
   const folk = createQuery(() => ({
@@ -48,8 +51,14 @@
     refresh();
   }
 
+  // Modul: held pending from the tap until the server answers. The row stayed
+  // live for the 900ms before refresh() refetched, and a second tap sent a
+  // second dismissal for somebody already gone.
+  const sendKey = (person: VillageNewcomer) => `newcomer:${person.Id}`;
+
   function sendAway(person: VillageNewcomer) {
-    const outcome = dismissNewcomer(person.Id);
+    const outcome = commandInFlight.run(sendKey(person), () => dismissNewcomer(person.Id));
+    if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
     refresh();
   }
@@ -118,23 +127,28 @@
                 </span>
               {/if}
             </div>
+            <!-- Modul: each number carries its own short label. The names were
+                 only titles plus a key line under the whole list, so on a phone
+                 "4 3 9 2" had to be decoded by position. -->
             <span class="apts">
-              <span title="Strength">{person.AptitudeStrength}</span>
-              <span title="Skill">{person.AptitudeSkill}</span>
-              <span title="Endurance">{person.AptitudeEndurance}</span>
-              <span title="Fortune">{person.AptitudeFortune}</span>
+              {#each APTITUDES as apt (apt.short)}
+                <span title={apt.name} aria-label="{apt.name} {apt.of(person)}"><small aria-hidden="true">{apt.short}</small>{apt.of(person)}</span>
+              {/each}
             </span>
             <!-- An elder married into the line. They are a record of the blood
                  that came in, not a resident, and the server refuses to dismiss
-                 them - so no button rather than a button that fails. -->
+                 them - so no button rather than a button that fails.
+                 Modul: two taps - sending somebody on is permanent, and the
+                 next newcomer is a day or two away. -->
             {#if !person.IsElder}
-              <button
-                class="send"
+              <ConfirmButton
+                small
+                label="Send on"
+                confirmLabel="Really send?"
                 title="Send them on their way and free the slot"
-                onclick={() => sendAway(person)}
-              >
-                Send on
-              </button>
+                disabled={$commandInFlight.has(sendKey(person))}
+                onConfirm={() => sendAway(person)}
+              />
             {/if}
           </li>
         {/each}
@@ -255,6 +269,14 @@
     font-size: 0.85rem;
   }
 
+  .apts small {
+    display: block;
+    font-size: 0.55rem;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
+  }
+
   .apts span {
     min-width: 1.5rem;
     padding: 0.05rem 0.2rem;
@@ -262,25 +284,6 @@
     border-radius: 3px;
     background: var(--bg);
     color: var(--brass-lit);
-  }
-
-  .send {
-    flex: none;
-    font: inherit;
-    font-size: 0.72rem;
-    padding: 0.15rem 0.4rem;
-    color: var(--text-dim);
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    cursor: pointer;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .send:hover {
-      color: var(--warn);
-      border-color: var(--warn);
-    }
   }
 
   .feast {

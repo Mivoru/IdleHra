@@ -21,7 +21,9 @@
   import { locationName } from '../lib/ui/locations';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import PriceChart from '../lib/ui/PriceChart.svelte';
-  import { pushLocalNotice } from '../lib/stores/game';
+  import { pushLocalNotice, playerState } from '../lib/stores/game';
+  import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
+  import { commandInFlight } from '../lib/ui/commandInFlight';
   import { requestScreen } from '../lib/stores/navigation';
 
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
@@ -176,8 +178,19 @@
     sellInstanceId = 0;
   }
 
+  // Modul: ONE BUY PER TAP. Buy sent its command and stayed live, so a double
+  // tap bought (or tried to buy) twice: a success toast, then "Target not
+  // found." for the same press. The listing is held until the server answers.
+  // A purchase that takes a quarter of the purse or more also asks first -
+  // gold is the one thing a mis-tap here cannot get back, and below that
+  // threshold a confirm on every cheap buy would just be friction.
+  const buyKey = (orderId: number) => `market:${orderId}`;
+  const purse = $derived(Number($playerState?.Gold ?? 0));
+  const isBigBuy = (price: number) => purse > 0 && price * 4 >= purse;
+
   function buy(orderId: number) {
-    const outcome = buyMarketListing(orderId);
+    const outcome = commandInFlight.run(buyKey(orderId), () => buyMarketListing(orderId));
+    if (outcome === null) return;
     if (!outcome.ok) {
       pushLocalNotice(outcome.reason, 'error');
       return;
@@ -363,9 +376,24 @@
               </span>
             </div>
             <span class="price"><Money amount={listing.Price} /></span>
-            <button class="tiny-btn" disabled={!hasGuildLicense} onclick={() => buy(listing.OrderId)}>
-              Buy
-            </button>
+            {#if isBigBuy(listing.Price)}
+              <ConfirmButton
+                small
+                danger={false}
+                label="Buy"
+                confirmLabel="Really buy?"
+                disabled={!hasGuildLicense || $commandInFlight.has(buyKey(listing.OrderId))}
+                onConfirm={() => buy(listing.OrderId)}
+              />
+            {:else}
+              <button
+                class="tiny-btn"
+                disabled={!hasGuildLicense || $commandInFlight.has(buyKey(listing.OrderId))}
+                onclick={() => buy(listing.OrderId)}
+              >
+                Buy
+              </button>
+            {/if}
           </li>
         {/each}
       </ul>

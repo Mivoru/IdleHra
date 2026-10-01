@@ -9,6 +9,7 @@
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import { craftingProfessionName } from '../lib/ui/slots';
   import WorkshopCommissions from '../lib/ui/WorkshopCommissions.svelte';
+  import { commandInFlight } from '../lib/ui/commandInFlight';
 
   const client = useQueryClient();
   const recipes = createQuery(() => ({ queryKey: queryKeys.recipes, queryFn: fetchRecipes }));
@@ -36,6 +37,10 @@
     return Number.isFinite(units) ? units : MAX_CRAFT_BATCH;
   }
 
+  function craftKey(recipe: CraftingRecipe): string {
+    return `craft:${recipe.ResultItemId}`;
+  }
+
   function craftNow(recipe: CraftingRecipe) {
     // Refuse here rather than letting the server take the materials for a
     // batch it cannot complete. ExecuteCraftingAsync is one transaction and
@@ -50,7 +55,10 @@
       );
     }
 
-    const outcome = startTreeCraft(recipe.ResultItemId, batchSize);
+    // Modul: held until the server answers, so a double tap is one batch and
+    // not two - the stock shown here is only refreshed after the result.
+    const outcome = commandInFlight.run(craftKey(recipe), () => startTreeCraft(recipe.ResultItemId, batchSize));
+    if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     pushLocalNotice(
@@ -220,7 +228,7 @@
                    questions and both are wanted. -->
               <button
                 class="tiny-btn primary"
-                disabled={!isUnlocked(recipe) || affordableUnits(recipe) < batchSize}
+                disabled={!isUnlocked(recipe) || affordableUnits(recipe) < batchSize || $commandInFlight.has(craftKey(recipe))}
                 onclick={() => craftNow(recipe)}
               >
                 Craft{craftTen ? ` x${MAX_CRAFT_BATCH}` : ''}
@@ -230,7 +238,14 @@
                 disabled={!ready || workers.length === 0}
                 onclick={() => putToWork(recipe)}
               >
-                {workers.some((w) => w.busy === activityIdFor(recipe)) ? 'Working' : 'Put to work'}
+                <!-- Modul: the reason in the label, as Village does. "No
+                     character available" was said once at the top of a
+                     hundred-row list, nowhere near the greyed button. -->
+                {workers.length === 0
+                  ? 'No character fielded'
+                  : workers.some((w) => w.busy === activityIdFor(recipe))
+                    ? 'Working'
+                    : 'Put to work'}
               </button>
             </div>
 

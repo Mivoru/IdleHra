@@ -8,6 +8,7 @@
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import Bar from '../lib/ui/Bar.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
+  import Hint from '../lib/ui/Hint.svelte';
 
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
@@ -333,15 +334,18 @@
             {@const locked = isLocked(node)}
             <li class:current={activeActivity === node.ActivityId} class:locked>
               <span class="place">{locationName(nodeLocation(node.ActivityId))}</span>
-              <span class="dim tiny" title={`Base ${(node.BaseTickThreshold / 10).toFixed(1)}s, reduced by mastery and tool tier`}>
-                <span
-                  title="How long one unit takes at your mastery, tool and village bonuses. The server also applies a logistics bonus this screen cannot see, so the real speed is this or better."
-                >{secondsPerUnit(node)}s / unit</span
-                >{#if isFloored(node)}<span
-                    class="floored"
-                    title="This node cannot go any faster - 0.2s is the hard minimum for any gathering action. More mastery or a better tool will not help here; a higher-tier node will."
-                  > (as fast as it goes)</span
-                >{/if}
+              <!-- Modul: Hints, not titles. The base time, the logistics
+                   caveat and the 0.2s floor were all tooltips, so on a phone a
+                   player could not learn why a node stopped getting faster. -->
+              <span class="dim tiny">
+                <Hint
+                  text={`How long one unit takes at your mastery, tool and village bonuses (base ${(node.BaseTickThreshold / 10).toFixed(1)}s). The server also applies a logistics bonus this screen cannot see, so the real speed is this or better.`}
+                  >{secondsPerUnit(node)}s / unit</Hint
+                >{#if isFloored(node)}
+                  <Hint
+                    text="This node cannot go any faster - 0.2s is the hard minimum for any gathering action. More mastery or a better tool will not help here; a higher-tier node will."
+                    ><span class="floored">(as fast as it goes)</span></Hint
+                  >{/if}
               </span>
               <span class="dim tiny">{node.BaseMasteryXpReward} xp</span>
               {#if locked}
