@@ -10,6 +10,7 @@
   import VillageFolk from '../lib/ui/VillageFolk.svelte';
   import GreatWorks from '../lib/ui/GreatWorks.svelte';
   import Stopwatch from '../lib/ui/Stopwatch.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
 
 
 
@@ -157,6 +158,11 @@
             <div class="progress-fill" style="width: {pendingProgress * 100}%"></div>
           </div>
         </div>
+      {/if}
+
+      {#if quote.isError && quote.data === undefined}
+        <!-- Without the quote every cost reads "..." and nothing says why. -->
+        <QueryError query={quote} what="the upgrade costs" />
       {/if}
 
       <ul class="buildings">

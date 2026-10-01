@@ -18,6 +18,7 @@
     describeStopCondition,
   } from '../lib/ui/affixes';
   import Affixes from '../lib/ui/Affixes.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
 
   import { takePendingFocusEquipment } from '../lib/stores/navigation';
   import { commandResults } from '../lib/stores/game';
@@ -431,7 +432,11 @@ ${scope}`)) return;
         for a gold fee. It always works - nothing is lost to chance.
       </p>
 
-      {#if fusableSets.length > 0}
+      {#if forge.isError && forge.data === undefined}
+        <!-- Modul: "Nothing to fuse yet" is a claim about the chest; a failed
+             request cannot make it. -->
+        <QueryError query={forge} what="your equipment" />
+      {:else if fusableSets.length > 0}
         <div class="sets">
           <span class="dim tiny">Ready to fuse:</span>
           {#each fusableSets as set (set.base + set.tier)}
@@ -526,6 +531,8 @@ ${scope}`)) return;
         </label>
         {#if stackPreview.isPending}
           <p class="dim tiny">Working it out...</p>
+        {:else if stackPreview.isError && !plan}
+          <QueryError query={stackPreview} what="the fusion plan" />
         {:else if plan}
           {#if plan.TotalFusions === 0}
             <p class="blocked small">
@@ -604,6 +611,9 @@ ${scope}`)) return;
         {showAllForReroll ? 'Only equipped' : 'Show all (tools too)'}
       </button>
     </div>
+    {#if forge.isError && forge.data === undefined}
+      <QueryError query={forge} what="your equipment" />
+    {/if}
     <ItemBrowser
       items={rerollChoices}
       selectedId={rerollItemId}

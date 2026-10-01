@@ -29,6 +29,7 @@
   import { lastActivityKey } from '../lib/ui/homeNow';
   import { onMount } from 'svelte';
   import { play } from '../lib/ui/audio';
+  import QueryError from '../lib/ui/QueryError.svelte';
 
   const inventory = createQuery(() => ({ queryKey: queryKeys.inventory, queryFn: fetchInventory }));
   // Recipes carry no id of their own on the wire - the crafting activity id is
@@ -508,6 +509,10 @@
 
       {#if !selected || !selected.occupied}
         <p class="dim small">No character in this slot.</p>
+      {:else if inventory.isError && inventory.data === undefined}
+        <!-- Modul: the doll is drawn from the inventory, so without it every
+             slot reads as empty - a character stripped of gear they still own. -->
+        <QueryError query={inventory} what="your equipment" />
       {:else}
         <div class="rig">
           <div class="column">

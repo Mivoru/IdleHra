@@ -12,7 +12,8 @@
   } from '../lib/net/rest';
   import { prettifyBaseId } from '../lib/net/content';
   import { listItemOnMarket, buyMarketListing, placeLimitOrder } from '../lib/net/commands';
-  import { loadContent, type ContentRegistry } from '../lib/net/content';
+  import { contentQueryOptions } from '../lib/net/content';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
   import { rarityColor, rarityName, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from '../lib/ui/slots';
@@ -196,10 +197,10 @@
   // order against whichever item happens to share that instance's number -
   // accepted by the server, wrong for the player, and silent.
 
-  let registry = $state<ContentRegistry | null>(null);
-  $effect(() => {
-    void loadContent().then((loaded) => (registry = loaded));
-  });
+  // Modul: a query, not `loadContent().then(...)` with no catch - a failed
+  // content fetch left "Item wanted" an empty dropdown with nothing saying why.
+  const content = createQuery(contentQueryOptions);
+  const registry = $derived(content.data ?? null);
 
   const itemDefinitionCount = $derived(registry?.items.size ?? 0);
 
@@ -389,7 +390,12 @@
   <section class="panel">
     <h2>Sell</h2>
 
-    {#if !hasGuildLicense}
+    {#if statistics.isError && statistics.data === undefined}
+      <!-- Modul: a failed membership check is not "you have no guild". The
+           buttons stay disabled (hasGuildLicense is false) but the reason
+           given is the true one. -->
+      <QueryError query={statistics} what="your guild membership" />
+    {:else if statistics.data !== undefined && !hasGuildLicense}
       <p class="warn">
         Trading needs an active guild membership - the server treats it as a
         trade licence and rejects listings and purchases without one.
@@ -424,6 +430,8 @@
       <div class="quote">
         {#if history.isPending}
           <p class="dim tiny">Checking what these go for...</p>
+        {:else if history.isError && history.data === undefined}
+          <QueryError query={history} what="the price history" />
         {:else if history.data && history.data.TradeCount > 0}
           {@const h = history.data}
           <div class="quote-head">
@@ -510,7 +518,9 @@
       List for {formatNumber(Math.max(1, sellPrice))}g
     </button>
 
-    {#if sellable.length === 0}
+    {#if inventory.isError && inventory.data === undefined}
+      <QueryError query={inventory} what="your equipment" />
+    {:else if inventory.data !== undefined && sellable.length === 0}
       <p class="dim tiny">Nothing carried to sell.</p>
     {/if}
   </section>
@@ -524,7 +534,9 @@
       order names a specific piece you already hold.
     </p>
 
-    {#if !hasGuildLicense}
+    {#if statistics.isError && statistics.data === undefined}
+      <QueryError query={statistics} what="your guild membership" />
+    {:else if statistics.data !== undefined && !hasGuildLicense}
       <p class="warn">
         Trading needs an active guild membership.
       </p>
@@ -536,6 +548,9 @@
     </div>
 
     {#if orderSide === 'buy'}
+      {#if content.isError && !registry}
+        <QueryError query={content} what="the item list" />
+      {/if}
       <label>
         Item wanted
         <select bind:value={orderDefinitionId}>

@@ -11,6 +11,7 @@
   import { connection } from '../lib/net/connection';
   import { addFriend, blockPlayer } from '../lib/net/commands';
   import ContextMenu from '../lib/ui/ContextMenu.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
   import {
     queryKeys,
@@ -306,6 +307,8 @@
         </ul>
         {#if conversations.isPending}
           <p class="dim empty">Loading conversations...</p>
+        {:else if conversations.isError && conversations.data === undefined}
+          <QueryError query={conversations} what="your conversations" />
         {:else if (conversations.data ?? []).length === 0}
           <p class="dim empty">
             No conversations yet. Type a name below to start one, or use Whisper
@@ -328,6 +331,8 @@
         </ul>
         {#if threadHistory.isPending}
           <p class="dim empty">Loading history...</p>
+        {:else if threadHistory.isError && threadMessages.length === 0}
+          <QueryError query={threadHistory} what="this conversation" />
         {:else if threadMessages.length === 0}
           <p class="dim empty">Nothing said yet. Say something.</p>
         {/if}

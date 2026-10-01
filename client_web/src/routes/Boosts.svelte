@@ -12,14 +12,14 @@
 
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchMaterials } from '../lib/net/rest';
-  import { loadContent, consumableKind, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
+  import { contentQueryOptions, consumableKind, prettifyBaseId } from '../lib/net/content';
   import {
     consumeConsumable,
     MAX_BUFF_TICKS,
   } from '../lib/net/commands';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { play } from '../lib/ui/audio';
-  import Skeleton from '../lib/ui/Skeleton.svelte';
+  import QueryState from '../lib/ui/QueryState.svelte';
 
   const snap = $derived($playerState);
   // Modul: MATERIALS ONLY. This reads `inventory.data.Stacks` and nothing
@@ -28,10 +28,11 @@
   // against the 63 stack rows this screen wants. See fetchMaterials.
   const inventory = createQuery(() => ({ queryKey: queryKeys.materials, queryFn: fetchMaterials }));
 
-  let registry = $state<ContentRegistry | null>(null);
-  $effect(() => {
-    void loadContent().then((loaded) => (registry = loaded));
-  });
+  // Modul: a query, not `loadContent().then(...)`. The bare promise had no
+  // catch, so a failed content fetch left the list below on a skeleton for
+  // ever. See contentQueryOptions.
+  const content = createQuery(contentQueryOptions);
+  const registry = $derived(content.data ?? null);
 
   // ---------------------------------------------------------------------------
   // Consumables held
@@ -135,11 +136,11 @@
       </p>
     {/if}
 
-    {#if inventory.isPending || !registry}
-      <Skeleton />
-    {:else if held.length === 0}
-      <p class="dim">You are not carrying any consumables.</p>
-    {:else}
+    <QueryState query={content} what="the item list">
+      <QueryState query={inventory} what="your consumables" isEmpty={() => held.length === 0}>
+        {#snippet empty()}
+          <p class="dim">You are not carrying any consumables.</p>
+        {/snippet}
       <ul class="items">
         {#each held as row (row.itemId)}
           <li>
@@ -154,7 +155,8 @@
           </li>
         {/each}
       </ul>
-    {/if}
+      </QueryState>
+    </QueryState>
   </section>
 
   <section class="panel">

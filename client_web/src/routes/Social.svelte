@@ -24,6 +24,7 @@
   import { api } from '../lib/net/config';
   import { storedToken } from '../lib/net/auth';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
 
   const client = useQueryClient();
@@ -37,6 +38,11 @@
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
 
   const hasGuild = $derived((statistics.data?.GuildName ?? '') !== '');
+  // Modul: UNKNOWN IS NOT "NO GUILD". `hasGuild` reads false both for a player
+  // with no guild and for a statistics request that failed or has not landed,
+  // so gating Create/Join on it alone re-enabled both for guild members the
+  // moment that request 500'd. Locked until the answer is known.
+  const joinLocked = $derived(statistics.data === undefined || hasGuild);
 
   function refreshFriends() {
     setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.friends }), 600);
@@ -206,7 +212,7 @@
     {#if friends.isPending}
       <Skeleton />
     {:else if friends.isError}
-      <p class="err">{friends.error?.message}</p>
+      <QueryError query={friends} what="your friends" />
     {:else if (friends.data ?? []).length === 0}
       <p class="dim">No friends yet.</p>
     {:else}
@@ -239,15 +245,19 @@
     <h2>Guilds</h2>
 
     <div class="adder">
-      <input placeholder="New guild name" bind:value={newGuildName} disabled={hasGuild} />
-      <button disabled={busy || !newGuildName.trim() || hasGuild} onclick={createGuild}>Create</button>
+      <input placeholder="New guild name" bind:value={newGuildName} disabled={joinLocked} />
+      <button disabled={busy || !newGuildName.trim() || joinLocked} onclick={createGuild}>Create</button>
     </div>
-    {#if hasGuild}
+    {#if statistics.isError && statistics.data === undefined}
+      <QueryError query={statistics} what="your guild membership" />
+    {:else if hasGuild}
       <p class="dim tiny">You are already in a guild. Leave it first to join or create a new one.</p>
     {/if}
 
     {#if guilds.isPending}
       <Skeleton />
+    {:else if guilds.isError}
+      <QueryError query={guilds} what="the guild list" />
     {:else if (guilds.data ?? []).length === 0}
       <p class="dim">No guilds exist yet. Create the first.</p>
     {:else}
@@ -267,7 +277,7 @@
             </span>
             <button
               class="tiny-btn"
-              disabled={busy || guild.ActiveMembers >= guild.MaxMembers || hasGuild}
+              disabled={busy || guild.ActiveMembers >= guild.MaxMembers || joinLocked}
               onclick={() => joinGuild(guild.Name)}
             >
               {guild.JoinType === 0 ? 'Join' : 'Apply'}
@@ -281,7 +291,11 @@
   <section class="panel">
     <h2>My guild</h2>
 
-    {#if (roster.data ?? []).length === 0}
+    {#if roster.isPending}
+      <Skeleton />
+    {:else if roster.isError}
+      <QueryError query={roster} what="your guild" />
+    {:else if (roster.data ?? []).length === 0}
       <p class="dim">You are not in a guild. Trading needs one - it doubles as a trade licence.</p>
     {:else}
       <ul class="rows">
@@ -299,7 +313,11 @@
     <h3>Applications</h3>
     <!-- Leader-only: the endpoint returns an empty list for everyone else
          rather than a 403, so an empty list here is not evidence of none. -->
-    {#if (applications.data ?? []).length === 0}
+    {#if applications.isPending}
+      <Skeleton rows={1} />
+    {:else if applications.isError}
+      <QueryError query={applications} what="guild applications" />
+    {:else if (applications.data ?? []).length === 0}
       <p class="dim tiny">None pending, or you are not the leader.</p>
     {:else}
       <ul class="rows">
@@ -354,9 +372,6 @@
   }
   .tiny {
     font-size: 0.72rem;
-  }
-  .err {
-    color: var(--danger);
   }
 
   .adder {

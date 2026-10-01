@@ -34,6 +34,7 @@
   import { loadContent, prettifyBaseId, type ContentRegistry } from '../lib/net/content';
   import Bar from '../lib/ui/Bar.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import QueryError from '../lib/ui/QueryError.svelte';
   import Money from '../lib/ui/Money.svelte';
 
   const client = useQueryClient();
@@ -566,7 +567,11 @@
     <section class="panel">
       <h2>Depot</h2>
 
-      {#if !hasGuild}
+      {#if statistics.isPending}
+        <Skeleton />
+      {:else if statistics.isError && statistics.data === undefined}
+        <QueryError query={statistics} what="your guild membership" />
+      {:else if !hasGuild}
         <p class="dim">Join a guild to use its depot.</p>
       {:else}
         <p class="dim small">
@@ -576,6 +581,8 @@
 
         {#if logistics.isPending}
           <Skeleton />
+        {:else if logistics.isError}
+          <QueryError query={logistics} what="the depot requirements" />
         {:else if (logistics.data ?? []).length === 0}
           <p class="dim">The depot has no requirements set.</p>
         {:else}
@@ -656,7 +663,9 @@
           <strong>Donate</strong> adds materials to the treasury for buffs and contribution points.
         </p>
 
-        {#if depositable.length === 0}
+        {#if inventory.isError && inventory.data === undefined}
+          <QueryError query={inventory} what="your materials" />
+        {:else if depositable.length === 0}
           <p class="dim tiny">You are not carrying any stackable materials.</p>
         {/if}
       {/if}
@@ -665,11 +674,17 @@
 
     <section class="panel">
       <h2>Guild Treasury & Buffs</h2>
-      {#if !hasGuild}
+      {#if statistics.isPending}
+        <Skeleton />
+      {:else if statistics.isError && statistics.data === undefined}
+        <QueryError query={statistics} what="your guild membership" />
+      {:else if !hasGuild}
         <p class="dim">Join a guild to use the treasury.</p>
       {:else}
         {#if guildDepot.isPending}
           <Skeleton />
+        {:else if guildDepot.isError && guildDepot.data === undefined}
+          <QueryError query={guildDepot} what="the guild treasury" />
         {:else if guildDepot.data}
           <div style="margin-bottom: 0.75rem; font-size: 1.1rem;">
             <Money amount={guildDepot.data.GuildGold ?? 0} icon />
@@ -764,11 +779,17 @@
 
     <section class="panel">
       <h2>Guild Contributors</h2>
-      {#if !hasGuild}
+      {#if statistics.isPending}
+        <Skeleton />
+      {:else if statistics.isError && statistics.data === undefined}
+        <QueryError query={statistics} what="your guild membership" />
+      {:else if !hasGuild}
         <p class="dim">Join a guild to contribute.</p>
       {:else}
         {#if guildDepot.isPending}
           <Skeleton />
+        {:else if guildDepot.isError && guildDepot.data === undefined}
+          <QueryError query={guildDepot} what="the guild treasury" />
         {:else if guildDepot.data}
           <div class="prize-info">
             <h3> Weekly Prizes</h3>
@@ -810,6 +831,8 @@
 
       {#if roster.isPending}
         <p class="dim small">Loading the roster...</p>
+      {:else if roster.isError}
+        <QueryError query={roster} what="the guild roster" />
       {:else if members.length === 0}
         <p class="dim small">No members listed.</p>
       {:else}

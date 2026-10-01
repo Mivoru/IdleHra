@@ -26,6 +26,7 @@
   import { forgetWorn, requestWorn, wornByPlayer } from '../lib/stores/worn';
   import { play } from '../lib/ui/audio';
   import { noteCosmeticsView } from '../lib/stores/cosmeticChests';
+  import QueryError from '../lib/ui/QueryError.svelte';
 
   const client = useQueryClient();
   const mine = createQuery(() => ({ queryKey: cosmeticKeys.mine, queryFn: fetchCosmetics }));
@@ -131,6 +132,11 @@
 
   {#if loadError}
     <p class="error">{loadError}</p>
+  {/if}
+  {#if mine.isError && mine.data === undefined}
+    <!-- Modul: without this the chests read 0 and nothing reads as owned -
+         a wardrobe that looks emptied rather than one that did not load. -->
+    <QueryError query={mine} what="your cosmetics" />
   {/if}
   {#if message}
     <p class="notice" role="status">{message}</p>

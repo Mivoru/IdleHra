@@ -16,6 +16,7 @@
   import { createQuery } from '@tanstack/svelte-query';
   import ItemIcon from './ItemIcon.svelte';
   import TraitBadge from './TraitBadge.svelte';
+  import QueryError from './QueryError.svelte';
   import { prettifyBaseId } from '../net/content';
   import { queryKeys, fetchTraits } from '../net/rest';
   import {
@@ -224,6 +225,8 @@
       </tbody>
     </table>
   </div>
+{:else if traitCatalogue.isError}
+  <QueryError query={traitCatalogue} what="the trait list" />
 {/if}
 
 <style>
