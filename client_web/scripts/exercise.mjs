@@ -1344,17 +1344,16 @@ await go('Guild');
 // player in a dead guild was stuck for good. This leaves through the real
 // confirm and REJOINS, so the fixture ends the step in the guild it started in.
 //
-// What "rejoin" means depends on the fixture's guild, and only two shapes can
-// be restored exactly:
-//   - the fixture is the LAST member: leaving closes the guild, and founding
-//     one under the same name puts it back as leader. The depot, treasury and
-//     buffs of the closed guild do not come back - the guild steps above only
-//     need membership, and donate afresh each run.
-//   - the fixture is a plain Member of an OPEN guild with others in it: Join.
-// A leader with others (rejoining would make the successor leader for good)
-// or a member of an application-only guild (rejoining files an application)
-// cannot be round-tripped, so there the confirm is only ARMED and read, then
-// disarmed - never committed.
+// Only one shape can be restored exactly: the fixture is a plain Member of an
+// OPEN guild with others in it, and Join puts it back. Everything else is only
+// ARMED and read, then disarmed - never committed:
+//   - the LAST member: leaving CLOSES the guild. Refounding it under the same
+//     name gives a new guild id with an empty depot, treasury and buffs, so
+//     every run would spend the fixture's guild (CLAUDE.md: a check that
+//     spends fixture state passes once and fails forever);
+//   - a leader with others: the successor would lead for good;
+//   - an application-only guild: rejoining files an application.
+// GuildLeaveTests commits all of those on the server, HTTP route included.
 await go('Guild');
 {
   const stats = await apiGet('/api/v1/player/statistics');
@@ -1375,7 +1374,7 @@ await go('Guild');
     record('leaving a guild round-trips the fixture', false, 'the fixture is in no guild - nothing to leave (re-seed, or found one by hand)');
   } else {
     const closes = preview.ClosesGuild === true;
-    const canRestore = closes || (!preview.IsLeader && entry && entry.JoinType === 0);
+    const canRestore = !closes && !preview.IsLeader && entry && entry.JoinType === 0;
 
     // The confirm must say what the server will do BEFORE the second tap.
     const note = await noteText();
@@ -1392,7 +1391,7 @@ await go('Guild');
       record(
         'leaving a guild round-trips the fixture',
         /Really/.test(armed ?? ''),
-        `armed only ("${armed?.trim()}") - ${preview.IsLeader ? 'a leader with others would hand the guild over for good' : 'the guild takes applications, so rejoining is not immediate'}`,
+        `armed only ("${armed?.trim()}") - ${closes ? 'leaving would close the fixture\'s guild and lose its depot' : preview.IsLeader ? 'a leader with others would hand the guild over for good' : 'the guild takes applications, so rejoining is not immediate'}`,
       );
     } else {
       await leaveButton.click();
@@ -1408,18 +1407,13 @@ await go('Guild');
       if (left) {
         // Social's Join/Create used to stay disabled for good; they must open now.
         await go('Friends');
-        if (closes) {
-          await page.getByPlaceholder('New guild name').fill(guildName);
-          await page.getByRole('button', { name: 'Create', exact: true }).click();
-        } else {
-          const escaped = guildName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-          await page
-            .locator('li.guild')
-            .filter({ has: page.locator('.name', { hasText: new RegExp(`^\\s*${escaped}\\s*$`) }) })
-            .getByRole('button', { name: 'Join', exact: true })
-            .first()
-            .click();
-        }
+        const escaped = guildName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        await page
+          .locator('li.guild')
+          .filter({ has: page.locator('.name', { hasText: new RegExp(`^\\s*${escaped}\\s*$`) }) })
+          .getByRole('button', { name: 'Join', exact: true })
+          .first()
+          .click();
 
         let back = false;
         for (let i = 0; i < 20 && !back; i++) {
@@ -1432,8 +1426,8 @@ await go('Guild');
           'leaving a guild round-trips the fixture',
           back && sameRole,
           back
-            ? `${closes ? 'refounded' : 'rejoined'} "${guildName}"${sameRole ? '' : ' but the role changed'}`
-            : `not back in "${guildName}" - THE FIXTURE IS NOW GUILDLESS; ${closes ? 'found' : 'join'} it by hand`,
+            ? `rejoined "${guildName}"${sameRole ? '' : ' but the role changed'}`
+            : `not back in "${guildName}" - THE FIXTURE IS NOW GUILDLESS; join it by hand`,
         );
       }
     }

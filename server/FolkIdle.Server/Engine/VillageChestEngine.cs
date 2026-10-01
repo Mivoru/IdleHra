@@ -89,6 +89,18 @@ namespace FolkIdle.Server.Engine
             /// exactly when it wants to already be true.
             /// </summary>
             Locked = 4,
+
+            /// <summary>
+            /// The id names the player's gold, which is not a material.
+            ///
+            /// Modul: GOLD WAS SELLABLE. It lives in CommodityRecords under
+            /// "gold" like any stack, so the materials list showed a Gold row
+            /// with Sell all and Bin, and this path took the gold out and paid
+            /// ValueMaterial("gold") = 0 for it - "Sell all" on Gold destroyed
+            /// every coin exactly like Bin. The client hides the row now
+            /// (task 99), but the client is not the authority.
+            /// </summary>
+            NotRemovable = 5,
         }
 
         /// <summary>
@@ -180,6 +192,11 @@ namespace FolkIdle.Server.Engine
             if (quantity <= 0 || string.IsNullOrWhiteSpace(itemId))
             {
                 return (ChestActionResult.InvalidQuantity, 0L);
+            }
+
+            if (string.Equals(itemId.Trim(), "gold", StringComparison.OrdinalIgnoreCase))
+            {
+                return (ChestActionResult.NotRemovable, 0L);
             }
 
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
