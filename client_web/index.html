@@ -2,7 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Modul: interactive-widget=resizes-content makes mobile Chrome shrink
+         the layout viewport for the soft keyboard, which is what the APK's
+         WebView already does. Without it the two disagreed: Chrome's default
+         (resizes-visual) left fixed bars behind the keyboard, so one layout
+         could not be right on both. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"
+    />
 
     <title>FolkIdle - a Slavic idle RPG</title>
 
@@ -22,7 +30,10 @@
       name="description"
       content="FolkIdle is a browser idle RPG rooted in Slavic folklore. Fight through five regions, craft tools, fish, mine and build a village - it keeps playing while you are away, and a season leaves your village, your mastery and what you bought behind."
     />
-    <meta name="theme-color" content="#1a1410" />
+    <!-- One per theme, matching --bg in src/app.css for each. A single dark
+         value painted a dark browser bar over the parchment theme. -->
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#100d0a" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e8dcc0" />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="FolkIdle" />

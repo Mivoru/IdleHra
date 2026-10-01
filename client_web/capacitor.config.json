@@ -2,6 +2,7 @@
   "appId": "com.folkidle.game",
   "appName": "FolkIdle",
   "webDir": "dist",
+  "backgroundColor": "#100d0a",
   "server": {
     "androidScheme": "https",
     "iosScheme": "capacitor"
