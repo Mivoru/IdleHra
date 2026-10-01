@@ -2598,6 +2598,20 @@ await go('The Delve');
     const panel = page.getByTestId('great-work-1');
     record('the Village draws the Great Works panel', (await panel.count()) > 0, `${(await page.getByTestId('great-works').count())} panel(s)`);
 
+    // Modul: DEPOSIT OPENS A SHEET (task 103). Each monument is one compact
+    // row now, and its two deposit buttons, the ladder and the completion
+    // reward live in a sheet the row's Deposit opens. The sheet's backdrop
+    // covers the nav, so it is closed before this step navigates anywhere.
+    const gwSheet = page.getByTestId('great-work-sheet');
+    const closeGwSheet = async () => {
+      if ((await gwSheet.count()) > 0) {
+        await gwSheet.getByRole('button', { name: 'Close', exact: true }).click();
+        await page.waitForTimeout(200);
+      }
+    };
+    await page.getByTestId('great-work-open-1').click().catch(() => {});
+    await gwSheet.waitFor({ timeout: 3000 }).catch(() => {});
+
     const deposit = page.getByTestId('great-work-deposit-1-log');
     const enabled = (await deposit.count()) > 0 && (await deposit.isEnabled());
     record('Deposit is enabled while the region\'s log is held', enabled, `held ${held?.HeldLog}`);
@@ -2623,6 +2637,7 @@ await go('The Delve');
       const text = ((await panel.textContent()) ?? '').replace(/\s+/g, ' ');
       record('the panel shows the new progress', /\/\s*50\D?000/.test(text) || moved.Stage > 0, text.slice(0, 140));
     }
+    await closeGwSheet();
 
     // Put everything back: the monument as found, the stock as found (what was
     // spent comes back, the 2,000 granted goes away).
@@ -2669,7 +2684,12 @@ await go('The Delve');
     );
     await go('Map');
     await go('Village');
+    await page.getByTestId('great-work-open-5').click().catch(() => {});
     const completion = await page.getByTestId('great-work-completion-5').innerText().catch(() => '');
+    {
+      const sheet = page.getByTestId('great-work-sheet');
+      if ((await sheet.count()) > 0) await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+    }
     record('the panel names what completing a monument pays', /Frame and \+1 Hall of Ancestors slot/.test(completion), completion);
     await apiPost('/api/v1/dev/great-works/restore', { Region: 5, Stage: crown?.Stage ?? 0, Progress: crown?.Progress ?? 0, Material: 0, StockDelta: 0 });
     const hallBack = await apiGet('/api/v1/ancestors/hall');
@@ -3268,7 +3288,46 @@ await go('Inheritance');
 // sink the top of the economy lacks was unreachable.
 await go('Village');
 {
-  const tally = async () => page.locator('.folk li').count();
+  // Modul: BUILDINGS FIRST, AND A CAPPED ROW IS TEXT (task 103). Read-only: an
+  // upgrade spends the fixture's materials and raises a level nothing lowers,
+  // so this asserts the shape the screen promises rather than pressing it.
+  // Every row carries a "Lv n / m" pill; a capped row has no button at all;
+  // the filled Upgrade appears only on a row the server's quote says is
+  // affordable, and those rows sort above the rest.
+  {
+    const buildingRows = page.locator('[data-testid="village-building"]');
+    await buildingRows.first().waitFor({ timeout: 10000 }).catch(() => {});
+    const count = await buildingRows.count();
+    const pills = await page.locator('[data-testid="village-building-level"]').allInnerTexts();
+    record(
+      'every building row shows its level against its ceiling',
+      count > 0 && pills.length === count && pills.every((t) => /^Lv \d+ \/ \d+$/.test(t.trim())),
+      pills.slice(0, 3).join(', '),
+    );
+    const capped = page.locator('[data-testid="village-building"][data-state="capped"]');
+    const cappedButtons = await capped.locator('button').count();
+    record('a capped building offers no button', cappedButtons === 0, `${await capped.count()} capped, ${cappedButtons} buttons`);
+    const states = await buildingRows.evaluateAll((els) => els.map((el) => el.getAttribute('data-state')));
+    const rank = { building: 0, ready: 1, short: 2, loading: 2, capped: 3 };
+    const sorted = states.every((st, i) => i === 0 || rank[states[i - 1]] <= rank[st]);
+    record('affordable upgrades sort above the rest', sorted, states.join(' '));
+    // Before the gene pool in the document - which is also first on a phone,
+    // where the grid is one column. (On a wide screen they sit side by side.)
+    const leads = await page.evaluate(() => {
+      const building = document.querySelector('[data-testid="village-building"]');
+      const pool = document.querySelector('[data-testid="gene-pool"]');
+      if (!building || !pool) return null;
+      return Boolean(building.compareDocumentPosition(pool) & Node.DOCUMENT_POSITION_FOLLOWING);
+    });
+    record('the buildings lead the Village page', leads === true, leads === null ? 'building or gene pool missing' : '');
+  }
+
+  // Modul: COUNTED FROM THE TALLY, NOT THE ROWS (task 103). The gene pool
+  // shows the best five by aptitude sum and collapses the married-in, so the
+  // number of rows on screen is no longer the number of people. The tally's
+  // data-count is the server's (every VillageNewcomers row, the same count the
+  // feast refusal quotes).
+  const tally = async () => Number(await page.locator('[data-testid="gene-pool-count"]').getAttribute('data-count').catch(() => '0'));
 
   const before = await tally();
   const feastButton = page.getByRole('button', { name: /^Throw a feast/ });
@@ -3314,6 +3373,12 @@ await go('Village');
     );
   }
 
+  // The shortlist holds five; "Show all" draws everybody who can be sent on.
+  const showAll = page.locator('[data-testid="gene-pool-show-all"]');
+  if ((await showAll.count()) > 0 && /^Show all/.test((await showAll.innerText()).trim())) {
+    await showAll.click();
+    await page.waitForTimeout(300);
+  }
   const sendButtons = page.getByRole('button', { name: 'Send on', exact: true });
   const dismissable = await sendButtons.count();
   record('the village offers to send somebody on', dismissable > 0, `${dismissable} not yet married in`);

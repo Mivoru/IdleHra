@@ -6800,7 +6800,7 @@ MC1-MC4.
 
 ## 103. Village: buildings first
 
-**OPEN.** Report sections 4.H and 8. This is visual review B2, V1-V7.
+**BUILT on branch `claude/ui-103-104-village-ancestors`, not merged.** Report sections 4.H and 8. This is visual review B2, V1-V7. The two fractions, checked against the server: "184/35" is REAL, not a fixture artefact - it is every character the account owns against 10 + 5 x Inn, and no handler enforces that capacity, so it is labelled "Household n / m housing" and marked over without claiming a penalty. "101/11" is a FIXTURE artefact (the seeder tops up 12 villagers with no regard for the cap), but note for the owner: elders still count against the newcomer cap and cannot be sent on, so a real player who marries in Inn+6 villagers stops arrivals for the rest of the season. Still open: no exercise step presses Upgrade (it spends and is not reversible; the new step checks the row shape read-only); a guest's first viewport at 390 px and the checkers were not measured on this branch; exercise.mjs (buildings, feast, Send on, Great Works deposit via the new sheet) was updated and not run.
 
 **What is actually true.**
 - **The page order is Gene pool → Village (buildings) → Great Works.** At
