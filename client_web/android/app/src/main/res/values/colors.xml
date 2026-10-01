@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- The window behind the WebView, shown between the splash and the
-         page's first paint. It matches the dark theme's --bg in src/app.css
+         page's first paint. It matches the dark theme's bg token in src/app.css
          (and capacitor.config.json's backgroundColor), so that gap is the
          game's own colour instead of a white flash. Kept out of
          ic_launcher_background.xml because scripts/generate-icons.mjs owns
