@@ -45,6 +45,7 @@
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import { isNarrow } from '../lib/ui/media';
   import ContextMenu, { type MenuItem } from '../lib/ui/ContextMenu.svelte';
+  import Hint from '../lib/ui/Hint.svelte';
   import { onDestroy } from 'svelte';
   import { SvelteMap } from 'svelte/reactivity';
 
@@ -417,6 +418,7 @@
         label: 'Sell',
         disabled: busy || blocked !== '',
         title: blocked,
+        note: blocked,
         onSelect: () => queueSale({ equipmentId: item.Id }, label, `eq:${item.Id}`),
       },
       confirming === binKey
@@ -435,6 +437,7 @@
             separated: true,
             disabled: busy || item.IsEquipped,
             title: item.IsEquipped ? 'Worn - take it off first' : '',
+            note: item.IsEquipped ? 'Worn - take it off first' : '',
             keepOpen: true,
             onSelect: () => (confirming = binKey),
           },
@@ -786,7 +789,11 @@
                 <span class="meta dim tiny">
                   <span title={rarityTitle(item.QualityTier)}>{rarityName(item.QualityTier)}</span>
                   {#if item.IsAffixLocked}
-                    <span class="lockbadge" title="Locked - cannot be sold, binned, swept, rerolled or fused">Locked</span>
+                    <!-- Modul: a Hint, because what a lock protects against was
+                         only this badge's title - nothing on a phone. -->
+                    <Hint text="Locked - cannot be sold, binned, swept, rerolled or fused. Unlock it from the row's menu."
+                      ><span class="lockbadge">Locked</span></Hint
+                    >
                   {/if}
                 </span>
               </span>

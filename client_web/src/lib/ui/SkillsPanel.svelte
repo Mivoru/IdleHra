@@ -17,6 +17,7 @@
   // mistake this project has made more than once.
   import { playerState, pushLocalNotice } from '../stores/game';
   import { backgroundUrl } from './sprites';
+  import DisabledReason from './DisabledReason.svelte';
   import {
     SKILL_TREE_NODES,
     SKILL_TREE_ROOT_MAX,
@@ -456,6 +457,7 @@
       >
         Respec{#if !freeUsed} (free){:else} ({grants} left){/if}
       </button>
+      <DisabledReason text={respecBlocked} />
     {/if}
   </div>
 
@@ -473,6 +475,7 @@
             <strong>{limb.root.name} <span class="lvl">{limb.root.level}/{limb.root.max}</span></strong>
             <p class="dim small">{limb.root.blurb}</p>
             {#if limb.root.label}<span class="worth">{limb.root.label}</span>{/if}
+            <DisabledReason text={limb.root.level >= limb.root.max ? null : limb.root.blocked} />
           </div>
           <button
             disabled={limb.root.blocked !== null}
@@ -495,6 +498,7 @@
                 <p class="dim tiny">{bough.blurb}</p>
                 {#if bough.level > 0}<span class="worth">{bough.label}</span>{/if}
                 {#if bough.lockedOut}<span class="dim tiny locked-note">Foreclosed this season</span>{/if}
+                <DisabledReason text={bough.lockedOut || bough.level >= bough.max ? null : bough.blocked} />
               </div>
               <button
                 disabled={bough.blocked !== null}
@@ -520,6 +524,7 @@
               {limb.crown.name}
             </strong>
             <p class="dim tiny">{limb.crown.blurb}</p>
+            <DisabledReason text={limb.crown.level > 0 ? null : limb.crown.blocked} />
           </div>
           <button
             disabled={limb.crown.blocked !== null}

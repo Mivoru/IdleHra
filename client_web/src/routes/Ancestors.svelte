@@ -28,6 +28,10 @@
   import TraitBadge from '../lib/ui/TraitBadge.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import RebirthPanel from '../lib/ui/RebirthPanel.svelte';
+  import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
+  import DisabledReason from '../lib/ui/DisabledReason.svelte';
+  import { commandInFlight } from '../lib/ui/commandInFlight';
+  import { APTITUDES } from '../lib/ui/aptitudes';
 
   const client = useQueryClient();
   const hall = createQuery(() => ({ queryKey: queryKeys.ancestorsHall, queryFn: fetchAncestorsHall }));
@@ -61,7 +65,9 @@
   }
 
   function buySlot() {
-    const outcome = purchaseAncestorSlot();
+    // Modul: diamonds, so two taps and one command - see ConfirmButton.
+    const outcome = commandInFlight.run('ancestor-slot', () => purchaseAncestorSlot());
+    if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
     refresh();
   }
@@ -149,9 +155,18 @@
     {:else if data}
       {#if data.NextSlotCostDiamonds > 0}
         <div class="buy">
-          <button disabled={data.Diamonds < data.NextSlotCostDiamonds} onclick={buySlot}>
-            One more slot &middot; {formatNumber(data.NextSlotCostDiamonds)} diamonds
-          </button>
+          <ConfirmButton
+            danger={false}
+            label="One more slot · {formatNumber(data.NextSlotCostDiamonds)} diamonds"
+            confirmLabel="Spend {formatNumber(data.NextSlotCostDiamonds)} diamonds?"
+            disabled={data.Diamonds < data.NextSlotCostDiamonds || $commandInFlight.has('ancestor-slot')}
+            onConfirm={buySlot}
+          />
+          <DisabledReason
+            text={data.Diamonds < data.NextSlotCostDiamonds
+              ? `Not enough diamonds - you have ${formatNumber(data.Diamonds)}.`
+              : null}
+          />
           <p class="dim tiny">
             {data.SlotsPurchased} of {data.MaxCap - (data.Cap - data.SlotsPurchased)} bought.
             Slots survive a rebirth, like everything else diamonds buy.
@@ -202,12 +217,13 @@
                 {/if}
               </div>
 
+              <!-- Modul: labelled per number, as in VillageFolk - the names
+                   were only this title, which a phone never shows. -->
               <span class="apts" title="Strength / Skill / Endurance / Fortune">
-                <span>{m.AptitudeStrength}</span>
-                <span>{m.AptitudeSkill}</span>
-                <span>{m.AptitudeEndurance}</span>
-                <span>{m.AptitudeFortune}</span>
-                <span class="sum">{total(m)} / {APTITUDE_MAX * 4}</span>
+                {#each APTITUDES as apt (apt.short)}
+                  <span aria-label="{apt.name} {apt.of(m)}"><small aria-hidden="true">{apt.short}</small>{apt.of(m)}</span>
+                {/each}
+                <span class="sum"><small aria-hidden="true">SUM</small>{total(m)} / {APTITUDE_MAX * 4}</span>
               </span>
 
               <div class="acts">
@@ -337,7 +353,9 @@
     margin-top: 0.6rem;
   }
 
-  .buy button,
+  /* :global - the slot purchase is a ConfirmButton, whose button lives in
+     that component and is out of reach of a plain scoped selector. */
+  .buy :global(button),
   .acts button {
     font: inherit;
     color: inherit;
@@ -348,11 +366,11 @@
     cursor: pointer;
   }
 
-  .buy button {
+  .buy :global(button) {
     border-color: var(--brass);
   }
 
-  .buy button:disabled {
+  .buy :global(button:disabled) {
     opacity: 0.5;
     border-color: var(--border);
     cursor: default;
@@ -424,6 +442,14 @@
     border-radius: 3px;
     background: var(--bg);
     color: var(--brass-lit);
+  }
+
+  .apts small {
+    display: block;
+    font-size: 0.55rem;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    color: var(--text-dim);
   }
 
   .apts .sum {

@@ -697,6 +697,18 @@
               >
                 Fight
               </button>
+              <!-- Modul: WHAT "FIRST CLEAR" MEANS, said on tap. The multipliers
+                   were only the chip's title, and the chip sits inside the row
+                   button, where a Hint (itself a button) cannot go - so
+                   selecting the row, which a tap already does, prints it. -->
+              {#if selectedMonsterId === monster.Id && isFirstClearPending(monster.Id)}
+                {@const bossRegion = bossRegionOf(monster.Id)}
+                <p class="dim tiny" style="grid-column: 1 / -1; margin: 0;" data-testid="first-clear-detail">
+                  Never beaten: {firstClearHpMultiplier(bossRegion)}x health and
+                  {firstClearAttackMultiplier(bossRegion)}x damage until it falls once,
+                  then it drops to its normal stats for good. {describeBossGearRequirement(bossRegion)}
+                </p>
+              {/if}
             </li>
           {/each}
         </ul>

@@ -14,6 +14,7 @@
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import { commandInFlight } from '../lib/ui/commandInFlight';
 
   const mailbox = createQuery(() => ({ queryKey: queryKeys.mailbox, queryFn: fetchMailbox }));
 
@@ -31,7 +32,11 @@
       return pushLocalNotice('Free a backpack slot first - this message carries an item.');
     }
 
-    const outcome = claimMailItem(entry.Id);
+    // Modul: held until the server answers. The row is only removed by the
+    // refetch a command result triggers, so Claim stayed live in between and a
+    // second tap came back as "Target not found.".
+    const outcome = commandInFlight.run(mailKey(entry.Id), () => claimMailItem(entry.Id));
+    if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
 
   }
@@ -44,9 +49,15 @@
     const claimable = entries.filter((e) => !e.HasEquipmentAttachment || !noSpace);
     if (claimable.length === 0) return pushLocalNotice('Nothing can be claimed right now.');
 
+    // Each one through the same pending key, so a row the player has already
+    // tapped is not sent twice.
     claimable.slice(0, 10).forEach((entry, index) => {
-      setTimeout(() => claimMailItem(entry.Id), index * 250);
+      setTimeout(() => commandInFlight.run(mailKey(entry.Id), () => claimMailItem(entry.Id)), index * 250);
     });
+  }
+
+  function mailKey(id: number): string {
+    return `mail:${id}`;
   }
 
   function received(epochSeconds: number): string {
@@ -141,7 +152,7 @@
 
             <button
               class="tiny-btn"
-              disabled={entry.HasEquipmentAttachment && noSpace}
+              disabled={(entry.HasEquipmentAttachment && noSpace) || $commandInFlight.has(mailKey(entry.Id))}
               onclick={() => claim(entry)}
             >
               Claim

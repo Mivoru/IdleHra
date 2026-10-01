@@ -17,6 +17,7 @@
   } from '../lib/net/commands';
   import Money from '../lib/ui/Money.svelte';
   import Bar from '../lib/ui/Bar.svelte';
+  import DisabledReason from '../lib/ui/DisabledReason.svelte';
 
   const snap = $derived($playerState);
   const diamonds = $derived(snap?.PremiumCurrencyBalance ?? 0);
@@ -115,6 +116,11 @@
                   Buy +{INHERITANCE_PCT_PER_LEVEL}% for
                   <Money amount={row.cost} kind="diamond" />
                 </button>
+                <!-- Modul: said under the button, not only in its title -
+                     a phone shows no tooltip on a disabled button. -->
+                <DisabledReason
+                  text={row.affordable ? null : `Needs ${formatNumber(row.cost)} diamonds - you have ${formatNumber(diamonds)}.`}
+                />
               {/if}
             </div>
           </li>

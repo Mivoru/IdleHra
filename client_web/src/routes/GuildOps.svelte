@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatNumber } from '../lib/ui/format';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
+  import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice, typicalHit } from '../lib/stores/game';
   import {
@@ -834,7 +835,9 @@
                       <button class="tiny-btn" disabled={busy} onclick={() => handleDemote(member.PlayerId)}>Demote</button>
                     {/if}
                   {/if}
-                  <button class="tiny-btn warning" disabled={busy} onclick={() => handleKick(member.PlayerId)}>Kick</button>
+                  <!-- Modul: two taps. Kicking was one, and a mis-tap on a phone
+                       removed a guildmate with no way back. -->
+                  <ConfirmButton small label="Kick" confirmLabel="Really kick?" disabled={busy} onConfirm={() => handleKick(member.PlayerId)} />
                 {/if}
               </span>
             </li>

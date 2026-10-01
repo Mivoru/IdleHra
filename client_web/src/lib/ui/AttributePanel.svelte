@@ -27,6 +27,7 @@
     spendAttributePoint,
     respecAttributes,
   } from '../net/commands';
+  import ConfirmButton from './ConfirmButton.svelte';
 
   let {
     values,
@@ -50,8 +51,9 @@
 
   function respec() {
     // Placed points are gone from the pool until this returns them, and a
-    // misclick here would undo a season of decisions - so it asks.
-    if (!confirm('Return every placed attribute point to the pool?\n\nYou keep the points and place them again. Nothing else changes.')) return;
+    // misclick here would undo a season of decisions - so it asks, with the
+    // inline two-tap ConfirmButton rather than the native confirm() the
+    // WebView draws as an unstyled system dialog.
     const outcome = respecAttributes();
     if (!outcome.ok) onnotice(outcome.reason);
   }
@@ -219,7 +221,14 @@
   </div>
 
   <footer>
-    <button class="respec" disabled={totalPlaced < 1} onclick={respec}>Return every placed point</button>
+    <ConfirmButton
+      small
+      danger={false}
+      label="Return every placed point"
+      confirmLabel="Really return all {formatNumber(totalPlaced)}?"
+      disabled={totalPlaced < 1}
+      onConfirm={respec}
+    />
     <span class="dim tiny">Free. You place them again — nothing else changes.</span>
   </footer>
 </section>
@@ -424,9 +433,5 @@
     gap: 0.6rem;
     margin-top: 0.6rem;
     flex-wrap: wrap;
-  }
-  button.respec {
-    font-size: 0.78rem;
-    padding: 0.2rem 0.6rem;
   }
 </style>

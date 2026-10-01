@@ -10,6 +10,9 @@
     separated?: boolean;
     /** Keeps the menu open after the click (a two-step confirm). */
     keepOpen?: boolean;
+    /** Why it is disabled, printed under the label while it is - a touch
+     *  screen shows no tooltip, least of all on a disabled item. */
+    note?: string;
   }
 </script>
 
@@ -94,6 +97,7 @@
       onclick={() => select(item)}
     >
       {item.label}
+      {#if item.disabled && item.note}<span class="note">{item.note}</span>{/if}
     </button>
   {/each}
 </div>
@@ -155,6 +159,12 @@
 
   button.danger:hover:not(:disabled) {
     background: rgba(255, 68, 68, 0.1);
+  }
+
+  .note {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-dim);
   }
 
   .divider {

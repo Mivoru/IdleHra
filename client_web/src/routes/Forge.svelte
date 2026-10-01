@@ -6,6 +6,9 @@
   import { prettifyBaseId, loadContent, type ContentRegistry } from '../lib/net/content';
   import { executeForgeFusion, fuseStack, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
   import Burst from '../lib/ui/Burst.svelte';
+  import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
+  import DisabledReason from '../lib/ui/DisabledReason.svelte';
+  import { commandInFlight } from '../lib/ui/commandInFlight';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
 
@@ -169,6 +172,18 @@
   );
   const gold = $derived(Number($playerState?.Gold ?? 0));
 
+  // Modul: SIX THINGS GREY THE FUSE BUTTON and only the gold one was said
+  // anywhere near it, so "no Forge yet" looked like a broken button. The
+  // first unmet one is printed under it, in the order a player meets them.
+  const fuseBlocked = $derived.by((): string | null => {
+    if (forgeLevel === 0) return 'Build a Forge in your village first.';
+    if (fusionTarget === 0) return 'Choose the item to upgrade.';
+    if (fusionSacOne === 0 || fusionSacTwo === 0) return 'Choose two matching items to fuse into it.';
+    if (atMaxTier) return 'That item is already at the highest rarity.';
+    if (gold < fusionFee) return `Not enough gold - the fee is up to ${formatNumber(fusionFee)}g.`;
+    return null;
+  });
+
   // Modul: THE REROLL PRICE, SHOWN. Mirrors
   // AffixRegistry.CalculateRerollGoldCost - a flat per-REGION table, see
   // getRerollCost below. This comment used to describe a `100 * 1.35^(itemTier
@@ -206,7 +221,10 @@
           }
         : undefined;
 
-    const outcome = executeForgeFusion(fusionTarget, fusionSacOne, fusionSacTwo, forgeLevel, match);
+    const outcome = commandInFlight.run(`fuse:${fusionTarget}`, () =>
+      executeForgeFusion(fusionTarget, fusionSacOne, fusionSacTwo, forgeLevel, match),
+    );
+    if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason);
     fusionSacOne = 0;
     fusionSacTwo = 0;
@@ -392,19 +410,23 @@
   let fusionFlash = $state(0);
   let rerollFlash = $state(0);
 
-  function doReroll() {
-    // The affix ABOUT TO BE DESTROYED, not the one that will replace it.
+  // Modul: THE GUARD ASKS INLINE. It was a native confirm(), which the
+  // Android WebView draws as an unstyled system dialog; now a guarded affix
+  // turns the button into a two-tap ConfirmButton and says, before the first
+  // tap, what is at stake. The affix ABOUT TO BE DESTROYED, not the one that
+  // will replace it.
+  const rerollGuard = $derived.by(() => {
     const current = rerollAffixRows[rerollAffixIndex];
-    if (current && current.rarity >= guardRarity) {
-      const what = `${current.rarityName} ${current.label} ${current.value}`;
-      const scope = autoReroll
+    if (!current || current.rarity < guardRarity) return null;
+    return {
+      what: `${current.rarityName} ${current.label} ${current.value}`,
+      scope: autoReroll
         ? `Auto-reroll will keep rolling this slot up to ${autoAttempts} times, so it is gone on the first attempt.`
-        : 'A reroll replaces it outright - it can come out worse.';
-      if (!confirm(`Reroll ${what}?
+        : 'A reroll replaces it outright - it can come out worse.',
+    };
+  });
 
-${scope}`)) return;
-    }
-
+  function doReroll() {
     const outcome = rerollAffix(rerollItemId, rerollAffixIndex, rerollOperation, {
       maxAttempts: autoReroll ? autoAttempts : 0,
       stopMinRarity,
@@ -502,15 +524,11 @@ ${scope}`)) return;
 
     <button
       onclick={fuse}
-      disabled={forgeLevel === 0 ||
-        fusionTarget === 0 ||
-        fusionSacOne === 0 ||
-        fusionSacTwo === 0 ||
-        atMaxTier ||
-        gold < fusionFee}
+      disabled={fuseBlocked !== null || $commandInFlight.has(`fuse:${fusionTarget}`)}
     >
       Fuse
     </button>
+    <DisabledReason text={fuseBlocked} />
 
     {#if fusionTargetItem && stackTiers.length > 0}
       {@const plan = stackPreview.data}
@@ -734,13 +752,27 @@ ${scope}`)) return;
            look at the moment they commit. A charge belongs on the thing that
            charges - and this is the button that quietly took a night's income
            over five presses. -->
-      <button
-        onclick={doReroll}
-        disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
-      >
-        {autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'}
-        &middot; {formatNumber(rerollFee)}g{autoReroll ? ' each' : ''}
-      </button>
+      {#if rerollGuard}
+        <p class="dim tiny hint">
+          Guarded: this destroys your {rerollGuard.what}. {rerollGuard.scope}
+        </p>
+        {#key `${rerollItemId}:${rerollAffixIndex}`}
+          <ConfirmButton
+            label="{autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'} · {formatNumber(rerollFee)}g{autoReroll ? ' each' : ''}"
+            confirmLabel="Really reroll {rerollGuard.what}?"
+            disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
+            onConfirm={doReroll}
+          />
+        {/key}
+      {:else}
+        <button
+          onclick={doReroll}
+          disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
+        >
+          {autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'}
+          &middot; {formatNumber(rerollFee)}g{autoReroll ? ' each' : ''}
+        </button>
+      {/if}
 
       {#if rerollFlash > 0}
         {#key rerollFlash}

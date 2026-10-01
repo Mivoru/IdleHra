@@ -28,6 +28,7 @@
   import { itemName, type ContentRegistry } from '../net/content';
   import { rarityColor, shouldGlow, rarityName, rarityTitle, killsPerRarity } from './rarity';
   import Burst from './Burst.svelte';
+  import DisabledReason from './DisabledReason.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState } from '../stores/game';
   import { lootFlash } from '../stores/game';
@@ -237,6 +238,10 @@
               <div class="cmp" class:up={isUpgrade(cmp)} class:down={!isUpgrade(cmp)}>
                 {comparisonLine(cmp)}{#if req && !req.met}<span class="unmet"> · {req.text}</span>{/if}
               </div>
+            {:else if !isWorn && target !== undefined && req && !req.met}
+              <!-- Modul: with no comparison line the unmet requirement was only
+                   the disabled Wear button's title - invisible on a phone. -->
+              <DisabledReason text="This piece {req.text}." />
             {/if}
           </li>
         {/each}

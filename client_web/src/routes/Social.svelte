@@ -20,7 +20,9 @@
     unblockPlayer,
     type CommandOutcome,
   } from '../lib/net/commands';
-  import { pushLocalNotice } from '../lib/stores/game';
+  import { pushLocalNotice, playerState } from '../lib/stores/game';
+  import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
+  import { GUILD_JOIN_MIN_LEVEL } from '../lib/ui/unlocks';
   import { api } from '../lib/net/config';
   import { storedToken } from '../lib/net/auth';
   import Skeleton from '../lib/ui/Skeleton.svelte';
@@ -37,6 +39,19 @@
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
 
   const hasGuild = $derived((statistics.data?.GuildName ?? '') !== '');
+
+  // Modul: WHY A JOIN IS GREY, in its label. Join used to check only "full"
+  // and "already in a guild", so a level-1 player saw a live Join on a
+  // "lv 20+" guild and got a bare "Could not join" from the server, which
+  // gates on max(MinGuildInteractionLevel, MinApplicationLevel). The level is
+  // unknown until the first snapshot; nothing is greyed on a guess.
+  const myLevel = $derived(Number($playerState?.CurrentLevel ?? 0));
+  function joinBlock(guild: { ActiveMembers: number; MaxMembers: number; MinApplicationLevel: number }): string | null {
+    if (guild.ActiveMembers >= guild.MaxMembers) return 'Full';
+    const needed = Math.max(GUILD_JOIN_MIN_LEVEL, guild.MinApplicationLevel);
+    if (myLevel > 0 && myLevel < needed) return `Needs level ${needed}`;
+    return null;
+  }
 
   function refreshFriends() {
     setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.friends }), 600);
@@ -226,8 +241,10 @@
             {#if friend.IsBlocked}
               <button class="tiny-btn" onclick={() => act(unblockPlayer, friend.PlayerId)}>Unblock</button>
             {:else}
-              <button class="tiny-btn" onclick={() => act(blockPlayer, friend.PlayerId)}>Block</button>
-              <button class="tiny-btn" onclick={() => act(removeFriend, friend.PlayerId)}>Remove</button>
+              <!-- Modul: two taps each. Both were one, and both drop a
+                   friendship a mis-tap cannot restore without asking again. -->
+              <ConfirmButton small label="Block" confirmLabel="Really block?" onConfirm={() => act(blockPlayer, friend.PlayerId)} />
+              <ConfirmButton small label="Remove" confirmLabel="Really remove?" onConfirm={() => act(removeFriend, friend.PlayerId)} />
             {/if}
           </li>
         {/each}
@@ -243,7 +260,11 @@
       <button disabled={busy || !newGuildName.trim() || hasGuild} onclick={createGuild}>Create</button>
     </div>
     {#if hasGuild}
-      <p class="dim tiny">You are already in a guild. Leave it first to join or create a new one.</p>
+      <!-- Modul: this said "Leave it first", and there is no way to leave:
+           GuildManagementEngine.LeaveGuildAsync has no route and no caller,
+           client or server. Until a Leave route exists, say what is true
+           rather than instruct the impossible - reword it when one lands. -->
+      <p class="dim tiny">You are already in a guild, and a player belongs to one guild at a time.</p>
     {/if}
 
     {#if guilds.isPending}
@@ -265,13 +286,16 @@
               &middot; {guild.TaxRatePct}% tax
               {#if guild.MinApplicationLevel > 0}&middot; lv {guild.MinApplicationLevel}+{/if}
             </span>
-            <button
-              class="tiny-btn"
-              disabled={busy || guild.ActiveMembers >= guild.MaxMembers || hasGuild}
-              onclick={() => joinGuild(guild.Name)}
-            >
-              {guild.JoinType === 0 ? 'Join' : 'Apply'}
-            </button>
+            {#if !(hasGuild && guild.Name === statistics.data?.GuildName)}
+              {@const block = joinBlock(guild)}
+              <button
+                class="tiny-btn"
+                disabled={busy || block !== null || hasGuild}
+                onclick={() => joinGuild(guild.Name)}
+              >
+                {block ?? (guild.JoinType === 0 ? 'Join' : 'Apply')}
+              </button>
+            {/if}
           </li>
         {/each}
       </ul>
