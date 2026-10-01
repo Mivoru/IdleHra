@@ -194,7 +194,7 @@ namespace FolkIdle.Server.Engine
                 return (ChestActionResult.InvalidQuantity, 0L);
             }
 
-            if (string.Equals(itemId.Trim(), "gold", StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(itemId.Trim(), FolkIdle.Server.Domain.Progression.VillageManagementEngine.GoldItemId, StringComparison.OrdinalIgnoreCase))
             {
                 return (ChestActionResult.NotRemovable, 0L);
             }
