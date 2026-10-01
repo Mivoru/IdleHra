@@ -69,6 +69,16 @@
     border-color: var(--good);
   }
 
+  /* Modul: a toast can carry player text - "Could not join "<guild name>"",
+     and a guild name is up to 100 characters with no charset rule. The wrap
+     rule in app.css is scoped to .panel, which a fixed toast is not inside,
+     and a flex child will not shrink below its longest word without
+     min-width: 0. One unbroken name ran off a phone. */
+  .toast span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
   .toast button {
     background: none;
     border: none;

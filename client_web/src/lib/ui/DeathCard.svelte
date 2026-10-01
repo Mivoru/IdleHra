@@ -145,11 +145,20 @@
     display: grid;
     place-items: center;
     z-index: 60;
-    padding: 1rem;
+    /* Fixed, so body's safe-area padding does not reach it - its own inset. */
+    padding: calc(1rem + var(--sa-top)) calc(1rem + var(--sa-right)) calc(1rem + var(--sa-bottom))
+      calc(1rem + var(--sa-left));
   }
 
+  /* The card scrolls rather than running off a short screen (a landscape
+     phone, a large font setting): a fixed backdrop cannot scroll for it. The
+     vh line is the fallback for an engine without dvh. */
   .card {
     width: min(26rem, 100%);
+    max-height: calc(100vh - 2rem);
+    max-height: calc(100dvh - 2rem - var(--sa-top) - var(--sa-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
     background: var(--bg-panel);
     border: 1px solid var(--danger);
     border-radius: var(--radius);
