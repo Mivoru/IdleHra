@@ -445,7 +445,7 @@
 </script>
 
 {#if !snap}
-  <p class="dim pad">Waiting for state...</p>
+  <p class="dim pad">Waiting for the first state snapshot...</p>
 {:else}
   <div class="grid">
     <section class="panel">
@@ -615,12 +615,12 @@
             {#each Array.from(BUFF_MATERIAL_IDS) as baseId}
               {@const invItem = depositable.find(d => d.baseId === baseId)}
               <option value={baseId}>
-                {prettifyBaseId(baseId)} (x{invItem?.quantity ?? 0})
+                {prettifyBaseId(baseId)} (x{formatNumber(invItem?.quantity ?? 0)})
               </option>
             {/each}
             {#each depositable.filter(d => !BUFF_MATERIAL_IDS.has(d.baseId) && isLogOrOre(d.baseId)) as row}
               <option value={row.baseId}>
-                {prettifyBaseId(row.baseId)} (x{row.quantity})
+                {prettifyBaseId(row.baseId)} (x{formatNumber(row.quantity)})
               </option>
             {/each}
           </select>
@@ -1077,6 +1077,14 @@
   .gold-text   { color: #f0c040; }
   .silver-text { color: #c0c0c0; }
   .bronze-text { color: #cd7f32; }
+  /* Modul: medal colours tuned for charred oak vanish on parchment - #c0c0c0
+     on #f6edd8 is about 1.6:1. Same hues, darker, for the light theme (which
+     app.css selects with prefers-color-scheme; there is no data-theme). */
+  @media (prefers-color-scheme: light) {
+    .gold-text   { color: #85650a; }
+    .silver-text { color: #5b6672; }
+    .bronze-text { color: #8a4b18; }
+  }
 
   .members {
     list-style: none;

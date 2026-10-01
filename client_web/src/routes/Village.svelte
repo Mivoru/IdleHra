@@ -114,7 +114,7 @@
 </script>
 
 {#if !snap}
-  <p class="dim pad">Waiting for state...</p>
+  <p class="dim pad">Waiting for the first state snapshot...</p>
 {:else}
   <div class="grid">
     <!-- Modul: the people, before the buildings. The village's reason to exist

@@ -240,7 +240,10 @@
     <h2>Guilds</h2>
 
     <div class="adder">
-      <input placeholder="New guild name" bind:value={newGuildName} disabled={hasGuild} />
+      <!-- Modul: 32, not the server's 100 (GuildManagementEngine.CreateGuildAsync).
+           A 100-character unbroken name overflows toasts and rosters; the
+           server cap should come down to match. -->
+      <input placeholder="New guild name" maxlength="32" bind:value={newGuildName} disabled={hasGuild} />
       <button disabled={busy || !newGuildName.trim() || hasGuild} onclick={createGuild}>Create</button>
     </div>
     {#if hasGuild}

@@ -20,6 +20,7 @@
   import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { play } from '../lib/ui/audio';
   import Skeleton from '../lib/ui/Skeleton.svelte';
+  import { formatNumber } from '../lib/ui/format';
 
   const snap = $derived($playerState);
   // Modul: MATERIALS ONLY. This reads `inventory.data.Stacks` and nothing
@@ -115,6 +116,11 @@
   // Ticks are 10 Hz, which is the one conversion worth doing in one place -
   // reading this as seconds is how a two-hour cap looks like twelve minutes.
   const buffSeconds = $derived(Math.round(buffTicks / 10));
+  // Modul: the cap is MAX_BUFF_TICKS, not a second copy of it. The label was a
+  // literal "120m", and unclamped it read "131m of 120m" once the timer ran
+  // past the cap (saturation is legal - the server just stops accepting more).
+  // Ticks are 10 a second, so 600 to a minute.
+  const MAX_BUFF_MINUTES = Math.floor(MAX_BUFF_TICKS / 600);
 
 </script>
 
@@ -149,7 +155,7 @@
               {#if row.attack > 0}<span class="atk">+{row.attack} atk</span>{/if}
               {#if row.defense > 0}<span class="def">+{row.defense} def</span>{/if}
             </span>
-            <span class="qty">x{row.quantity}</span>
+            <span class="qty">x{formatNumber(row.quantity)}</span>
             <button class="tiny-btn" disabled={saturated} onclick={() => use(row)}>Use</button>
           </li>
         {/each}
@@ -188,7 +194,7 @@
             class:over={saturated}
             style="width: {Math.min(100, (buffTicks / MAX_BUFF_TICKS) * 100)}%"
           ></div>
-          <span class="bar-label">{Math.floor(buffSeconds / 60)}m of 120m</span>
+          <span class="bar-label">{Math.min(Math.floor(buffSeconds / 60), MAX_BUFF_MINUTES)}m of {MAX_BUFF_MINUTES}m</span>
         </div>
         <p class="dim tiny">
           Buff duration accumulates rather than replacing. Past two hours the

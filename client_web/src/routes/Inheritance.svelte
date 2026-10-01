@@ -82,7 +82,7 @@
     </p>
 
     {#if !snap}
-      <p class="dim">Waiting for your state to arrive...</p>
+      <p class="dim">Waiting for the first state snapshot...</p>
     {:else}
       <ul class="stats">
         {#each rows as row (row.id)}

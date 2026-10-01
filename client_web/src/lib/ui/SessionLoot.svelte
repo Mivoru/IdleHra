@@ -221,7 +221,7 @@
               {itemName(registry, row.itemId)}
             </span>
             <span class="tier" style="color: {rarityColor(row.qualityTier)}" title={rarityTitle(row.qualityTier)}>{rarityName(row.qualityTier)}</span>
-            <span class="qty">x{row.count}</span>
+            <span class="qty">x{formatNumber(row.count)}</span>
             {#if isWorn}
               <span class="worntag">Worn</span>
             {:else if target !== undefined}
