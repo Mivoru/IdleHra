@@ -29,8 +29,12 @@
 
   // While the window is open the player is looking at it, so anything arriving
   // is read on arrival.
+  //
+  // Math.max because history rows (task 110e) carry NEGATIVE ids: reading one
+  // as "seen" must never pull seenId below a live id, or the next live message
+  // would count every history row as unread.
   $effect(() => {
-    if (open) seenId = newestId;
+    if (open) seenId = Math.max(seenId, newestId);
   });
 
   function toggle() {
@@ -39,7 +43,7 @@
     // set would read the value that was just written and invert the branch.
     const next = !open;
     chatDockOpen.set(next);
-    if (next) seenId = newestId;
+    if (next) seenId = Math.max(seenId, newestId);
   }
 
   const onlineStatsQuery = createQuery(() => ({

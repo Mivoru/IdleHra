@@ -1011,6 +1011,34 @@ await page.waitForTimeout(600);
   // RequestChatMessage out, ResponseChatMessage in, decoded, rendered.
   record('chat message round-trips through the server', text.includes(marker));
 
+  // Modul: task 110e. World chat used to live only in the socket and an
+  // in-memory list, so a reload - or signing in a minute later - opened on
+  // "Nothing in this channel yet" over a busy channel. Both halves are
+  // checked: the server's own record, and the screen after a reload (which
+  // wipes the in-memory list, so the line can only have come from history).
+  const recent = (await apiGet('/api/v1/chat/recent')) ?? [];
+  record(
+    'a world message is written down, not just broadcast',
+    recent.some((r) => r.ChannelType === 0 && r.MessageText === marker),
+    `${recent.length} history row(s)`,
+  );
+
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(1500);
+  await dismissOfflineSummary(3000);
+  await dismissToasts();
+  await page.getByRole('button', { name: /Show chat/i }).first().click();
+  await page.waitForTimeout(600);
+  await page.getByRole('button', { name: 'World', exact: true }).first().click().catch(() => {});
+  await page.waitForTimeout(1500);
+  const afterReload = await page.evaluate(() => document.body.innerText);
+  const occurrences = afterReload.split(marker).length - 1;
+  record(
+    'world chat shows its history after a reload',
+    occurrences === 1,
+    occurrences === 0 ? 'the message is gone after a reload' : `shown ${occurrences} time(s)`,
+  );
+
   // Shut the dock and confirm the handle is back, so a failure to close is not
   // mistaken for "no unread" later.
   await page.getByRole('button', { name: /Hide chat/i }).first().click();
