@@ -19,7 +19,7 @@
   import { playerState } from '../stores/game';
   import { onboardingDismissed, skipTutorial } from '../stores/tutorial';
   import { currentScreen, requestScreen } from '../stores/navigation';
-  import { guidedStage } from '../stores/guided';
+  import { guidedStage, guidedShowing } from '../stores/guided';
 
   const stage = $derived(guidedStage($playerState, $onboardingDismissed));
   const onScreen = $derived(stage !== null && $currentScreen === stage.screen);
@@ -82,6 +82,11 @@
   const mode = $derived(
     !stage || modalUp ? 'off' : !onScreen ? 'elsewhere' : rect ? 'lit' : gaveUp ? 'off' : 'waiting',
   );
+
+  $effect(() => {
+    guidedShowing.set(mode !== 'off');
+  });
+  onMount(() => () => guidedShowing.set(false));
 
   /** Caption below the lit control, or above it when there is no room below. */
   const bubbleBelow = $derived(rect ? rect.top + rect.height + 140 < window.innerHeight : true);
@@ -181,12 +186,15 @@
     justify-self: stretch;
   }
 
-  /* Small but always there - the way out of the fence. */
+  /* Small but always there - the way out of the fence. A link at the right
+     edge (task 109), so it reads as the way out and not as a second answer. */
   .skip {
+    justify-self: end;
     background: transparent;
     border-color: transparent;
     color: var(--text-dim);
     font-size: 0.85rem;
+    text-decoration: underline;
     padding: 0.2rem 0;
     min-height: 44px;
   }

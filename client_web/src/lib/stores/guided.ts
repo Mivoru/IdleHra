@@ -1,3 +1,4 @@
+import { writable } from 'svelte/store';
 import type { StateUpdate } from '../net/protocol.generated';
 import { nextTutorialStep, TutorialStep } from './tutorialSteps';
 
@@ -55,3 +56,13 @@ export function guidedStage(snapshot: StateUpdate | null, dismissed: boolean): G
   if (step.step === TutorialStep.EquipADrop) return WEAPON;
   return null;
 }
+
+/**
+ * Modul: task 109 - whether GuidedOverlay is covering the screen right now,
+ * written by the overlay alone. The coach panel hides while it is: the guided
+ * card and the coach pill used to show at once, two tutorials talking over
+ * each other. A stage can be due while the overlay is off (a modal is up, or
+ * the control never appeared), so this is the overlay's own `mode`, not
+ * `guidedStage() !== null`.
+ */
+export const guidedShowing = writable(false);
