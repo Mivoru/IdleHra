@@ -1531,3 +1531,89 @@ input[type='radio']:disabled {
     transition: none;
   }
 }
+
+/* ===========================================================================
+   THE UNDERGROUND MOOD (task 105, owner decision 2026-10-02).
+
+   Modul: THE DELVE IS DARK IN BOTH THEMES, AND IT IS ONE PALETTE, NOT 34
+   LITERALS. Delve.svelte used to hard-code its own browns and its own
+   button.primary, so on the parchment theme it was a dark island floating on
+   a light page, with an intro paragraph in pale grey on cream. The owner chose
+   a full dark "underground" mode: the page itself goes dark while the Delve
+   is open (Delve.svelte sets data-mood on <html> and removes it on leave),
+   and every colour on that screen is one of these tokens.
+
+   Two layers:
+   - the --ug-* palette, theme-independent on purpose (it is a place, not a
+     preference), defined once on :root;
+   - `.underground`, which re-points the shared tokens (--text, --bg-panel,
+     --gold, ...) at that palette for everything inside it, so a shared
+     component such as Money reads a value legible on stone rather than the
+     parchment theme's dark ink.
+   =========================================================================== */
+:root {
+  --ug-bg: #0d0b09;
+  --ug-panel: #1e1a16;
+  --ug-raised: #2a231c;
+  --ug-sunken: #241f1a;
+  --ug-track: #2c251f;
+  --ug-border: #3a322a;
+  --ug-border-strong: #4a3f33;
+  --ug-edge: #6b5a3f;
+  --ug-text: #e8e2d4;
+  --ug-text-soft: #b6ae9c;
+  --ug-text-dim: #938b7a;
+  /* Lamplight: headings, the primary action, a worn title, the door wanted. */
+  --ug-lamp: #d9c48b;
+  --ug-on-lamp: #1b1712;
+  /* A lantern charge, lit and spent. */
+  --ug-flame: #e0b74a;
+  --ug-flame-out: #4a4038;
+  --ug-callout: #2b2418;
+  --ug-callout-edge: #5c4a22;
+  --ug-error: #e08a7a;
+  --ug-good: #9cc76c;
+  /* The dark theme's currency colours: the parchment ones are ink, and ink
+     on stone is unreadable. */
+  --ug-gold: #e8c13a;
+  --ug-diamond: #8fd3ff;
+}
+
+:root[data-mood='underground'] {
+  color-scheme: dark;
+}
+
+:root[data-mood='underground'] body {
+  background-color: var(--ug-bg);
+}
+
+/* Beats both theme rules for the fixed layer (see body::before): the stones
+   stay, the candle-light from above becomes a faint lamp, and the parchment
+   theme's paper is not drawn here at all. */
+:root[data-mood='underground'] body::before {
+  background-image:
+    var(--grain),
+    var(--cobble),
+    radial-gradient(90% 60% at 50% -10%, rgba(217, 196, 139, 0.06), transparent 60%),
+    radial-gradient(100% 100% at 50% 120%, rgba(0, 0, 0, 0.7), transparent 55%);
+  background-repeat: repeat, repeat, no-repeat, no-repeat;
+}
+
+.underground {
+  color-scheme: dark;
+  --bg: var(--ug-bg);
+  --bg-panel: var(--ug-panel);
+  --bg-raised: var(--ug-raised);
+  --bg-sunken: var(--ug-sunken);
+  --border: var(--ug-border);
+  --text: var(--ug-text);
+  --text-dim: var(--ug-text-dim);
+  --text-muted: var(--ug-text-dim);
+  --accent: var(--ug-lamp);
+  --on-accent: var(--ug-on-lamp);
+  --good: var(--ug-good);
+  --danger: var(--ug-error);
+  --gold: var(--ug-gold);
+  --diamond: var(--ug-diamond);
+  color: var(--ug-text);
+}
