@@ -62,7 +62,7 @@
              is the part worth knowing before you plan a season around it. -->
         <div class="track" role="img" aria-label={`${row.value} of ${APTITUDE_MAX}`}>
           <span class="fill" style={`width: ${(row.value / APTITUDE_MAX) * 100}%`}></span>
-          <span class="mark" style={`left: ${(APTITUDE_VILLAGE_CEILING / APTITUDE_MAX) * 100}%`}></span>
+          <span class="mark" style={`left: ${(APTITUDE_VILLAGE_CEILING / APTITUDE_MAX) * 100}%`} title={`${APTITUDE_VILLAGE_CEILING}: as far as village blood goes`}></span>
         </div>
 
         <p class="dim tiny">{row.blurb} &middot; next point +{row.next.toFixed(1)}%</p>
@@ -70,9 +70,10 @@
     {/each}
   </ul>
 
+  <!-- Task 109: "the mark" did not say which mark; name the tick. -->
   <p class="dim tiny foot">
-    The mark is {APTITUDE_VILLAGE_CEILING} — as far as village blood can carry a
-    line. Past it is breeding alone.
+    The tick on each bar is {APTITUDE_VILLAGE_CEILING} — as far as village blood
+    can carry a line. Past it is breeding alone.
   </p>
 </section>
 

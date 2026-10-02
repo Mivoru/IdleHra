@@ -46,6 +46,13 @@ describe('compareDrop', () => {
     expect(comparisonLine(c)).toContain('6 tiers below your');
   });
 
+  it('sends a same-base, same-rarity copy to the affixes, and is no upgrade', () => {
+    const worn = [{ InstanceId: 9, BaseItemId: sword.BaseId, QualityTier: 5, SlotIndex: 0 }];
+    const c = compareDrop(registry, sword.BaseId, 5, worn)!;
+    expect(comparisonLine(c)).toBe('same base stats - compare affixes');
+    expect(isUpgrade(c)).toBe(false);
+  });
+
   it('returns null for something with no slot', () => {
     expect(compareDrop(registry, 'raw_log', 1, [])).toBeNull();
   });

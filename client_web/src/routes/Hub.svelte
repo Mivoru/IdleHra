@@ -14,6 +14,7 @@
   import MonumentGlyph from '../lib/ui/MonumentGlyph.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { fetchGreatWorks, greatWorksKeys } from '../lib/net/greatWorks';
+  import { screenLocks } from '../lib/stores/tutorial';
 
   interface Props {
     onNavigate: (screen: ScreenKey) => void;
@@ -28,9 +29,9 @@
     { key: 'guildops', label: 'Guild', x: 78.5, y: 34.0 },
     { key: 'village', label: 'Village', x: 52.0, y: 54.5 },
     { key: 'market', label: 'Market', x: 27.8, y: 77.5 },
-    // Two lines on purpose: WORLD over BOSS reads as one sign, where a single
-    // line has to shrink to fit the disc and stops matching the others.
-    { key: 'worldboss', label: 'World\nBoss', x: 83.0, y: 81.5 },
+    // One line now: the label is a ribbon UNDER the disc (task 109), so it no
+    // longer has to fit inside the wood.
+    { key: 'worldboss', label: 'World Boss', x: 83.0, y: 81.5 },
   ];
 
   const scene = backgroundUrl('main_hub');
@@ -81,14 +82,23 @@
       </span>
     {/each}
     {#each PLACES as place (place.key)}
+      <!-- Task 109: a LOCKED place is shown, greyed, with its condition on
+           the ribbon - the same rule the menu follows (ui/unlocks.ts) - rather
+           than offered to a level-1 player as a place to go. -->
+      {@const locked = $screenLocks(place.key)}
       <button
         class="place"
+        class:locked={locked !== null}
+        disabled={locked !== null}
+        data-locked={locked ?? undefined}
+        title={locked ? `Opens at: ${locked}` : undefined}
         style="left: {place.x}%; top: {place.y}%; background-image: url('{plate}')"
         onclick={() => onNavigate(place.key)}
       >
-        <span>{place.label}</span>
+        <span>{place.label}{#if locked}<small> · {locked}</small>{/if}</span>
       </button>
     {/each}
+
   </div>
 </div>
 
@@ -126,8 +136,6 @@
   }
 
   .place {
-    /* Makes cqw above measure THIS element. */
-    container-type: inline-size;
     position: absolute;
     transform: translate(-50%, -50%);
     width: 10.5%;
@@ -139,17 +147,15 @@
        drawn for and crowded over each other. The floor exists so they stay
        tappable, and 2.75rem (44px) is the size a thumb actually needs. */
     min-width: 2.75rem;
-    display: grid;
-    place-items: center;
     padding: 0;
     border: none;
     background-color: transparent;
     background-size: contain;
     background-repeat: no-repeat;
     background-position: center;
-    /* 70%, as specified - the plate reads better with the valley showing
-       through it than as a solid disc. */
-    opacity: 0.7;
+    /* The plate reads better with the valley showing through it than as a
+       solid disc. */
+    opacity: 0.85;
     cursor: pointer;
     /* Modul: opacity only. Hover used to also scale the plate, and a hovered
        element whose geometry is moving is never "stable" - every automated
@@ -164,49 +170,51 @@
   }
 
   @media (hover: hover) and (pointer: fine) {
-    .place:hover {
+    .place:not(:disabled):hover {
       opacity: 1;
       filter: brightness(1.08);
     }
   }
 
-  .place span {
-    /* Black on wood, per the mock-up - and the only text on this screen that
-       does NOT follow the app's light-on-dark theme, because it sits on a
-       painted plank rather than on the page. */
-    color: #17110a;
-    font-weight: 800;
-    /* Modul: SIZED AGAINST THE PLATE, not the window.
-       This was `0.85vw`, which ties the label to the viewport - and once the
-       plates were allowed to shrink on a phone the two stopped tracking each
-       other: an 8.8px label on a 44px plate wrapped every word, so COMBAT read
-       "COMBA / T" and MARKET read "MARKE / T".
-       Container units measure the plate itself, which is the box the text has
-       to fit, so the relationship holds at every size.
+  /* Task 109: a place that is not open yet. Still on the map, so the player
+     learns it exists; greyed, untappable, its condition on the ribbon. */
+  .place.locked,
+  .place.locked:disabled {
+    opacity: 0.6;
+    filter: grayscale(0.85);
+    cursor: default;
+  }
 
-       19cqw is the largest that still fits: at 21 the labels wrap again -
-       measured, not guessed, and mobile-check.mjs asserts it, because a label
-       too big for its disc does not overflow the PAGE and so nothing else
-       would ever catch it. */
-    font-size: clamp(0.42rem, 19cqw, 0.92rem);
-    line-height: 1.05;
-    text-align: center;
-    letter-spacing: 0.01em;
+  /* Modul: TASK 109 - THE LABEL IS A RIBBON UNDER THE DISC, NOT TEXT IN IT.
+     Sized against the plate (19cqw), the label came out at about 6.7px on a
+     phone: a 44px disc cannot hold "MARKET" at a readable size. Under the
+     disc the label has the whole width of the painting to use, so it is a
+     fixed 11.2px and never has to shrink. mobile-check.mjs still asserts it
+     does not wrap - nowrap is what holds that now. */
+  .place span {
+    position: absolute;
+    top: calc(100% - 0.15rem);
+    left: 50%;
+    translate: -50% 0;
+    padding: 0.05rem 0.45rem;
+    border-radius: 3px;
+    background: rgba(23, 17, 10, 0.82);
+    border: 1px solid rgba(201, 162, 39, 0.55);
+    color: #f4e6c4;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.3;
+    letter-spacing: 0.03em;
     text-transform: uppercase;
-    /* A little more of the disc, now that the wood is smaller. */
-    max-width: 90%;
-    /* Modul: NEVER BREAK INSIDE A WORD. Since task 73 the map is a strip capped
-       at 40rem, so the plates (10.5% of it) are smaller than the label was
-       sized for, and break-word split COMBAT into "COMBA / T" and VILLAGE into
-       "VILLAG / E". A word wider than its plate now overhangs the wood by a
-       pixel or two (the span's overflow is visible) instead; only the space in
-       a multi-word label ("World Boss") is a place to wrap. */
-    overflow-wrap: normal;
-    word-break: keep-all;
-    hyphens: none;
-    /* The label carries its own line breaks - "World\nBoss" is two lines by
-       authorship, not by the box happening to be narrow. */
-    white-space: pre-line;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+
+  .place span small {
+    font-size: inherit;
+    font-weight: 600;
+    text-transform: none;
+    color: #d8c79f;
   }
 
   @media (prefers-reduced-motion: reduce) {

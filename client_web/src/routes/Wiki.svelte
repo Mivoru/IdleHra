@@ -174,6 +174,16 @@
 
   const currentTab = $derived(ALL_TABS.find((t) => t.id === activeTab) ?? ALL_TABS[0]);
 
+  // Modul: task 109 - at 390 px the sixteen-entry contents stacked ABOVE the
+  // article, about 1,300 px of buttons before the first sentence. On a narrow
+  // column the list folds behind "Contents" (CSS decides when; this only says
+  // whether it is open), and Previous/Next under the article walk the pages in
+  // the same order, so a reader never has to scroll back up to move on.
+  let contentsOpen = $state(false);
+  const tabIndex = $derived(ALL_TABS.findIndex((t) => t.id === currentTab.id));
+  const prevTab = $derived(tabIndex > 0 ? ALL_TABS[tabIndex - 1] : null);
+  const nextTab = $derived(tabIndex >= 0 && tabIndex < ALL_TABS.length - 1 ? ALL_TABS[tabIndex + 1] : null);
+
   // --- search ---------------------------------------------------------------
   //
   // Over the hand-kept index in wikiData rather than over the DOM: only the
@@ -194,6 +204,7 @@
   function goTo(tab: string, anchor?: string) {
     activeTab = tab;
     search = '';
+    contentsOpen = false;
     // The section only exists after the tab has rendered.
     requestAnimationFrame(() => {
       if (!anchor) {
@@ -286,7 +297,15 @@
           {/if}
         </div>
       {:else}
-        <nav class="wiki-nav">
+        <button
+          class="contents-toggle"
+          type="button"
+          aria-expanded={contentsOpen}
+          onclick={() => (contentsOpen = !contentsOpen)}
+        >
+          Contents: {currentTab.label} <span aria-hidden="true">{contentsOpen ? '▴' : '▾'}</span>
+        </button>
+        <nav class="wiki-nav" class:collapsed={!contentsOpen}>
           {#each GROUPS as group (group.label)}
             <p class="group">{group.label}</p>
             {#each group.tabs as tab (tab.id)}
@@ -1593,6 +1612,15 @@
             <WikiScreenIndex onJump={(tab) => goTo(tab)} />
           </div>
         {/if}
+
+        <nav class="pager" aria-label="Wiki pages">
+          {#if prevTab}
+            <button type="button" onclick={() => goTo(prevTab.id)}>← {prevTab.label}</button>
+          {:else}<span></span>{/if}
+          {#if nextTab}
+            <button type="button" onclick={() => goTo(nextTab.id)}>{nextTab.label} →</button>
+          {/if}
+        </nav>
       {/if}
     </main>
   </div>
@@ -1630,6 +1658,14 @@
       flex: 1 1 auto;
       width: 100%;
     }
+
+    .contents-toggle {
+      display: flex;
+    }
+
+    .wiki-nav.collapsed {
+      display: none;
+    }
   }
 
   /* The backstop for browsers without container queries, and for a genuinely
@@ -1643,6 +1679,14 @@
       position: static;
       flex: 1 1 auto;
       width: 100%;
+    }
+
+    .contents-toggle {
+      display: flex;
+    }
+
+    .wiki-nav.collapsed {
+      display: none;
     }
   }
 
@@ -1663,6 +1707,29 @@
   .search {
     width: 100%;
     margin-bottom: 0.75rem;
+  }
+
+  /* Only shown on a narrow column, by the two queries above. */
+  .contents-toggle {
+    display: none;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+    min-height: 44px;
+    margin-bottom: 0.5rem;
+  }
+
+  .pager {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .pager button {
+    min-height: 44px;
   }
 
   .wiki-nav {
@@ -1761,9 +1828,12 @@
     color: var(--text);
   }
 
+  /* A measure for prose: on a desktop column a paragraph ran 150 characters
+     wide. Tables and the stat cards keep the full width. */
   p {
     margin: 0.6rem 0;
     line-height: 1.5;
+    max-width: 70ch;
   }
 
   code {
@@ -1784,6 +1854,7 @@
     color: var(--text-dim);
     font-size: 0.88rem;
     line-height: 1.45;
+    max-width: 70ch;
   }
 
   .styled-list strong,
@@ -1808,10 +1879,11 @@
     margin-bottom: 0.2rem;
   }
 
+  /* Full-strength text: dim grey on the dark well read at well under 4.5:1. */
   .stats-list dd {
     margin: 0;
-    color: var(--text-dim);
-    font-size: 0.83rem;
+    color: var(--text);
+    font-size: 0.86rem;
     line-height: 1.45;
   }
 

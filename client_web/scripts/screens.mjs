@@ -222,7 +222,7 @@ export async function open({ width = 1500, height = 1000 } = {}) {
  * the popup's own button is exercised on every run.
  */
 export async function dismissAppPromo(page) {
-  await page.getByRole('button', { name: 'Play as guest' }).waitFor({ timeout: 25000 });
+  await page.getByRole('button', { name: 'Play now', exact: true }).waitFor({ timeout: 25000 });
   const notNow = page.getByRole('button', { name: 'Not now', exact: true });
   if ((await notNow.count()) > 0) await notNow.click();
 }
@@ -235,7 +235,7 @@ export async function dismissAppPromo(page) {
 export async function signInAsGuest(page) {
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await dismissAppPromo(page);
-  await page.getByRole('button', { name: 'Play as guest' }).click();
+  await page.getByRole('button', { name: 'Play now', exact: true }).click();
   await waitForShell(page);
   await page.waitForTimeout(500);
   // Modul: a brand-new account is FENCED by the guided first minute

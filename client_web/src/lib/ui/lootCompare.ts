@@ -83,7 +83,9 @@ export function comparisonLine(c: DropComparison): string {
   if (!c.worn) {
     parts.push(`${c.slotLabel.toLowerCase()} slot is empty`);
   } else if (c.tierStep === 0) {
-    parts.push(`same rarity as yours`);
+    // Task 109: with nothing else on the line, "same rarity as yours" read as
+    // a verdict. Same base and rarity means the affixes decide - say so.
+    parts.push(parts.length === 0 ? 'same base stats - compare affixes' : 'same rarity as yours');
   } else {
     const n = Math.abs(c.tierStep);
     parts.push(`${n} tier${n === 1 ? '' : 's'} ${c.tierStep > 0 ? 'above' : 'below'} your ${rarityName(c.worn.QualityTier)}`);

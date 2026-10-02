@@ -654,3 +654,35 @@ describe('a veteran is not buried, and a season reset does not re-teach', () => 
     expect(nextDiscovery(seasonOne, NO_FACTS, stored)).toBeNull();
   });
 });
+
+// Task 109: a skip made on one device must hold on the next. The local key is
+// per browser; the account's seen-set carries the sentinel.
+describe('skipping the tutorial follows the account', () => {
+  beforeEach(() => {
+    installStorage();
+    resetStubServer();
+  });
+
+  it('reads a skip from the server seen-set on a browser that never skipped', async () => {
+    const seen = await freshSeenModule();
+    const tutorial = await import('../src/lib/stores/tutorial');
+    const { get } = await import('svelte/store');
+    stubServer.seen = [tutorial.TUTORIAL_SKIPPED_ID];
+    stubServer.hasRecord = true;
+    expect(get(tutorial.onboardingDismissed)).toBe(false);
+    await adoptAndSettle(seen, 7);
+    expect(get(tutorial.onboardingDismissed)).toBe(true);
+  });
+
+  it('writes the skip into the seen-set, and un-skipping takes it out', async () => {
+    const seen = await freshSeenModule();
+    const tutorial = await import('../src/lib/stores/tutorial');
+    const { get } = await import('svelte/store');
+    await adoptAndSettle(seen, 8);
+    tutorial.skipTutorial();
+    expect((get(seen.seenExplanations) as ReadonlySet<string>).has(tutorial.TUTORIAL_SKIPPED_ID)).toBe(true);
+    tutorial.unskipTutorial();
+    expect((get(seen.seenExplanations) as ReadonlySet<string>).has(tutorial.TUTORIAL_SKIPPED_ID)).toBe(false);
+    expect(get(tutorial.onboardingDismissed)).toBe(false);
+  });
+});

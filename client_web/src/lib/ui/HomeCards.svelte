@@ -27,6 +27,7 @@
   import {
     formatOfflineCap,
     lastActivityKey,
+    nearestScreenUnlock,
     nextUnlockLine,
     rememberedActivity,
   } from './homeNow';
@@ -43,6 +44,7 @@
   } from './slots';
   import { locationName, nodeLocation } from './locations';
   import { raceName } from './races';
+  import { screenLocks } from '../stores/tutorial';
   import Bar from './Bar.svelte';
 
   let registry = $state<ContentRegistry | null>(null);
@@ -143,7 +145,11 @@
     const content = registry;
     const region = snap.HighestUnlockedRegion || 1;
     const boss = content.regions[region - 1]?.find((m) => bossRegionOf(m.Id) === region)?.Name ?? null;
-    return nextUnlockLine(region, content.regions.length, boss, worn.data?.Pieces ?? null, (id) => content.itemsByBaseId.get(id)?.RegionTier ?? 1);
+    // Task 109: below the boss's gear threshold the boss line was endgame
+    // jargon on day one ("0 of 8 pieces at region 1 Rare"); the nearest screen
+    // that is still locked is the unlock a new player can actually work on.
+    const nearer = nearestScreenUnlock(Number(snap.CurrentLevel), $screenLocks);
+    return nextUnlockLine(region, content.regions.length, boss, worn.data?.Pieces ?? null, (id) => content.itemsByBaseId.get(id)?.RegionTier ?? 1, nearer);
   });
 
   const goal = $derived(closestDeed(deeds.data?.Chapters ?? []));
@@ -173,7 +179,10 @@
           {@const fix = HALT_FIX[worker.halt]}
           <li>
             <div class="who">
-              <strong data-testid="home-worker-name">{who(worker)}</strong>
+              <!-- Task 109: slot 1 is the character Combat fights with - the
+                   player's own person. A bare "Brennus" left a new player
+                   asking who that was. -->
+              <strong data-testid="home-worker-name">{who(worker)}{#if worker.slot === 1}<span class="you"> (you)</span>{/if}</strong>
               <span class:idle={worker.activity === 0}>{jobLabel(worker.activity)}</span>
               {#if halt}
                 <span class="halt">{halt}</span>
@@ -248,7 +257,16 @@
     grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
     gap: 1rem;
     margin-bottom: 0;
+    /* Desktop: two cards side by side kept their own heights - a short goal
+       card stretched to the height of a long roster was a box of nothing. */
+    align-items: start;
   }
+
+  .you {
+    font-weight: 400;
+    color: var(--text-dim);
+  }
+
 
   .card {
     background: var(--bg-panel);

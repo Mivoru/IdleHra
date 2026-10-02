@@ -10,6 +10,14 @@
   // command worked and must stay small and dismissible; this one is meant to
   // be looked at. Sharing a component would have made both worse.
   import { achievementToasts, dismissAchievementToast } from '../stores/game';
+  import { requestScreen } from '../stores/navigation';
+
+  // Task 109: the card is a way in, not only a notice - it opens the Book of
+  // Deeds (Progress, Goals tab), where the deed and its next tier live.
+  function openBook(id: number): void {
+    dismissAchievementToast(id);
+    requestScreen('progression', { tab: 'goals' });
+  }
 </script>
 
 <div class="deeds" role="status" aria-live="polite">
@@ -37,11 +45,13 @@
         {/if}
       </span>
 
-      <span class="body">
+      <!-- The seal's bare "III" said nothing on its own; the title carries
+           the tier in words. -->
+      <button class="body" type="button" onclick={() => openBook(toast.id)} aria-label="Open the Book of Deeds: {toast.title}">
         <span class="eyebrow">Deed accomplished</span>
-        <strong class="title">{toast.title}</strong>
+        <strong class="title">{toast.title}{#if toast.tierLabel} - tier {toast.tierLabel}{/if}</strong>
         {#if toast.reward}<span class="reward">{toast.reward}</span>{/if}
-      </span>
+      </button>
 
       <button
         class="close"
@@ -125,6 +135,15 @@
     gap: 0.05rem;
     min-width: 0;
     overflow-wrap: anywhere;
+    flex: 1;
+    /* A button that reads as the card's text, not as a control on it. */
+    background: none;
+    border: 0;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
   }
 
   .eyebrow {

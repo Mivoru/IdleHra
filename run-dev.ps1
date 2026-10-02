@@ -73,7 +73,7 @@ Start-Sleep -Seconds 6
 Write-Host ''
 Write-Host '  http://localhost:5173' -ForegroundColor Green
 Write-Host ''
-Write-Host '  Play as guest, or sign in as the stocked dev account:' -ForegroundColor Gray
+Write-Host '  Play now (guest), or sign in as the stocked dev account:' -ForegroundColor Gray
 Write-Host '    dev@folkidle.local / FolkIdleDev123!' -ForegroundColor Gray
 Write-Host ''
 Write-Host '  If the dev account has never been seeded, run once:' -ForegroundColor DarkGray

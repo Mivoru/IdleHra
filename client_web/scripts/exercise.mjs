@@ -173,9 +173,16 @@ await page.goto(BASE, { waitUntil: 'networkidle' });
 // --- the Android app offer ----------------------------------------------------
 // Once per browser: this is a fresh one, so the popup must be up, must close,
 // must stay closed after a reload, and the permanent link must remain.
+// Task 109: NOT on the very first visit - the popup waits until this browser
+// has been through a session (appDownload.ts markPlayed). The flag is set by
+// hand here so the once-only behaviour is still exercised.
 {
   const promo = page.getByRole('dialog', { name: 'FolkIdle for Android' });
-  record('app popup shows on a first visit', (await promo.count()) === 1);
+  record('app popup waits on a first visit', (await promo.count()) === 0);
+  record('login leads with Play now', (await page.getByRole('button', { name: 'Play now', exact: true }).count()) === 1);
+  await page.evaluate(() => localStorage.setItem('folkidle.playedBefore', '1'));
+  await page.reload({ waitUntil: 'networkidle' });
+  record('app popup shows after a first session', (await promo.count()) === 1);
   if ((await promo.count()) > 0) {
     await page.getByRole('button', { name: 'Not now', exact: true }).click();
     record('app popup closes on Not now', (await promo.count()) === 0);
@@ -1229,7 +1236,7 @@ await go('Auto-Eat');
   record(
     'auto-eat can be stocked with the fish you caught',
     !/No food in the chest/i.test(text),
-    text.match(/Choose food\.\.\./) ? 'food list offered' : 'panel shown',
+    /Load all|\+ Add food/.test(text) ? 'food offered' : 'panel shown',
   );
 }
 

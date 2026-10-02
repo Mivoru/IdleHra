@@ -78,7 +78,9 @@
         <ItemIcon baseItemId={def.BaseId} name={itemName(registry, drop.itemId)} qualityTier={drop.qualityTier} size="md" />
       {/if}
       <div class="text">
-        <p class="kicker" style="color: {rarityColor(drop.qualityTier)}">{rarityName(drop.qualityTier)} drop</p>
+        <p class="kicker" style="color: {rarityColor(drop.qualityTier)}">
+          {rarityName(drop.qualityTier)} drop{#if drop.record}<span class="record">New record</span>{/if}
+        </p>
         <p class="name rarity-glow rarity-glow-live" style="color: {rarityColor(drop.qualityTier)}">{itemName(registry, drop.itemId)}</p>
         {#if cmp}
           <p class="cmp" class:up={isUpgrade(cmp)}>
@@ -88,7 +90,9 @@
       </div>
       <div class="actions">
         {#if drop.instanceId > 0}
-          <button class="primary" disabled={req !== null && !req.met} onclick={wear}>Wear</button>
+          <!-- Filled only when the comparison says it is better: a filled Wear
+               next to "same base stats" pushed a sidegrade (task 109). -->
+          <button class:primary={cmp !== null && isUpgrade(cmp)} disabled={req !== null && !req.met} onclick={wear}>Wear</button>
         {/if}
         <button class="close" aria-label="Close" onclick={dismissLootReveal}>×</button>
       </div>
@@ -114,6 +118,16 @@
     border-radius: var(--radius);
     box-shadow: 0 0 18px -4px var(--tint), 0 8px 24px rgba(0, 0, 0, 0.35);
     animation: reveal-in 220ms ease-out;
+  }
+
+  .record {
+    margin-left: 0.4rem;
+    padding: 0 0.3rem;
+    border: 1px solid currentColor;
+    border-radius: 3px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   .crown {

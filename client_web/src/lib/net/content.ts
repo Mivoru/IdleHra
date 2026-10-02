@@ -96,6 +96,23 @@ export function isFood(baseItemId: string): boolean {
 }
 
 /**
+ * Mirrors FoodRegistry.HealPercentOfMaxHpPerTier (serverMirrors.test.ts holds
+ * them together). A fish of region tier N heals N times this share of max HP,
+ * or an authored flat floor if that is more - which only wins at the very
+ * start of the game, so the share is the honest figure to print.
+ */
+export const FOOD_HEAL_PCT_PER_TIER = 12;
+
+/** The share of max HP one raw fish restores, capped at a full bar; null for
+ *  anything that is not a raw fish (the legacy cooked dishes tier differently
+ *  and nothing produces them). */
+export function fishHealPercent(baseItemId: string, regionTier: number): number | null {
+  if (!RAW_FISH_BASE_IDS.includes(baseItemId)) return null;
+  const tier = Math.max(1, Math.min(10, regionTier));
+  return Math.min(100, tier * FOOD_HEAL_PCT_PER_TIER);
+}
+
+/**
  * Consumable classification, by the SAME BaseId markers ConsumableEngine uses
  * server-side.
  *

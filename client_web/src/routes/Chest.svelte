@@ -35,7 +35,8 @@
   import VirtualList from '../lib/ui/VirtualList.svelte';
   import { prettifyBaseId, isFood, consumableKind } from '../lib/net/content';
   import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
-  import { pushLocalNotice } from '../lib/stores/game';
+  import { pushLocalNotice, playerState } from '../lib/stores/game';
+  import { forgeOpen, FORGE_OPEN_LEVEL } from '../lib/ui/unlocks';
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { resolveSlotIndex } from '../lib/ui/slots';
@@ -416,6 +417,12 @@
     setTimeout(refresh, 700);
   }
 
+  // Modul: task 109 - "Reroll in Forge" was offered to a level-1 player whose
+  // Forge is still locked, and led to a screen that would not have them. The
+  // same predicate the nav greys the Forge with (unlocks.ts), not a copy.
+  const forgeIsOpen = $derived($playerState ? forgeOpen($playerState) : true);
+  const rerollLabel = $derived(forgeIsOpen ? 'Reroll in Forge' : `Reroll (Forge opens at level ${FORGE_OPEN_LEVEL})`);
+
   function openRerollInForge(instanceId: number) {
     setPendingFocusEquipment(instanceId);
     requestScreen('forge');
@@ -500,7 +507,7 @@
       // different from the next one with the same name, and they were nowhere
       // on this screen. It opens the Forge's own Affixes panel.
       { label: 'Inspect', title: 'Show every affix on this piece', onSelect: () => inspect(item.Id) },
-      { label: 'Reroll in Forge', title: "Reroll this piece's affixes in the Forge", onSelect: () => openRerollInForge(item.Id) },
+      { label: rerollLabel, disabled: !forgeIsOpen, title: "Reroll this piece's affixes in the Forge", onSelect: () => openRerollInForge(item.Id) },
       {
         label: item.IsAffixLocked ? 'Unlock' : 'Lock',
         title: item.IsAffixLocked
@@ -762,7 +769,7 @@
         {:else}
           <button class="tiny-btn" onclick={() => equip(item.Id)}>Wear</button>
         {/if}
-        <button class="tiny-btn" onclick={() => openRerollInForge(item.Id)}>Reroll in Forge</button>
+        <button class="tiny-btn" disabled={!forgeIsOpen} onclick={() => openRerollInForge(item.Id)}>{rerollLabel}</button>
         <button class="tiny-btn" disabled={busy} onclick={() => toggleLock(item.Id, label)}>
           {item.IsAffixLocked ? 'Unlock' : 'Lock'}
         </button>

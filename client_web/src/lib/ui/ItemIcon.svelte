@@ -121,7 +121,7 @@
   }
 
   .icon[data-size='sm'] .fallback {
-    font-size: 0.58rem;
+    font-size: 0.68rem;
   }
   .icon[data-size='md'] .fallback {
     font-size: 0.8rem;
@@ -144,12 +144,15 @@
     }
   }
 
+  /* Modul: task 109 - the stack and tier badges were 0.58rem, 9.3 px, under
+     the 11 px floor the rest of the client keeps. 0.68rem is the smallest
+     size that clears it without the badge covering a small icon whole. */
   .qty {
     position: absolute;
     right: 0;
     bottom: 0;
     padding: 0 0.18rem;
-    font-size: 0.58rem;
+    font-size: 0.68rem;
     line-height: 1.25;
     font-variant-numeric: tabular-nums;
     background: var(--bg);
@@ -162,7 +165,7 @@
     left: 0;
     bottom: 0;
     padding: 0 0.18rem;
-    font-size: 0.58rem;
+    font-size: 0.68rem;
     line-height: 1.25;
     font-weight: 600;
     font-variant-numeric: tabular-nums;

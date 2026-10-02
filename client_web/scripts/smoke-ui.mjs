@@ -19,8 +19,8 @@ console.log('login screen:', await page.locator('h1').first().textContent());
 const notNow = page.getByRole('button', { name: 'Not now', exact: true });
 if ((await notNow.count()) > 0) await notNow.click();
 
-// Play as guest -> real HTTP login -> real WebSocket JSON handshake.
-await page.getByRole('button', { name: 'Play as guest' }).click();
+// Play now (guest) -> real HTTP login -> real WebSocket JSON handshake.
+await page.getByRole('button', { name: 'Play now', exact: true }).click();
 // Modul: not 'text=Combat' - since task 82 the desktop header folds Combat
 // into the Play dropdown, so the label exists but is never visible. The
 // header plus the first state packet (below) is what signed in means.

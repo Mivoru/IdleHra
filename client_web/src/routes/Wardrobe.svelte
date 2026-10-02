@@ -97,6 +97,28 @@
     }
   }
 
+  // Modul: task 109 - a locked tile was a disabled button with the source in a
+  // hover title, which a phone never shows. It is tappable now and says where
+  // the piece comes from: a chest of its rarity, or - for a Bound piece, which
+  // is never in a chest (cosmetics.ts) - the Boss Ascension ladder.
+  function sourceOf(def: CosmeticDefinition): string {
+    return def.Bound
+      ? `${def.Name} is earned on the Boss Ascension ladder, never found in a chest.`
+      : `${def.Name} comes from a ${rarityNames[def.Rarity]} chest, or from another player on the market.`;
+  }
+
+  // "×4" said nothing; spare copies are what the cosmetic market sells.
+  function copiesNote(id: string): string {
+    const n = copies.get(id) ?? 0;
+    return n > 1 ? ` - ${n} copies` : '';
+  }
+
+  // Owned-only is the view of a player dressing; All is the view of a
+  // collector. Defaults to All, which is what the screen always showed.
+  let ownedOnly = $state(false);
+  const shownAvatars = $derived(ownedOnly ? avatars.filter((d) => ownedIds.has(d.Id)) : avatars);
+  const shownFrames = $derived(ownedOnly ? frames.filter((d) => ownedIds.has(d.Id)) : frames);
+
   async function wear(kind: number, id: string | null): Promise<void> {
     if (busy) return;
     busy = true;
@@ -125,7 +147,13 @@
         Nothing here makes you stronger.
       </p>
       {#if catalogue}
-        <p class="dim small">Collected {collected} of {collectable}.</p>
+        <p class="dim small">
+          Collected {collected} of {collectable}.
+          <label class="owned-toggle">
+            <input type="checkbox" bind:checked={ownedOnly} data-testid="wardrobe-owned-only" />
+            Owned only
+          </label>
+        </p>
       {/if}
     </div>
   </header>
@@ -148,6 +176,11 @@
       One every {catalogue?.LevelsPerChest ?? 5} levels, and a rare drop from any monster. A chest
       gives an avatar or a frame of its own rarity.
     </p>
+    <!-- Four cards reading "0" were the first thing on the screen for most
+         players. With nothing to open, the sentence above is all there is. -->
+    {#if view && totalChests === 0}
+      <p class="dim small" data-testid="no-chests">You have no chests to open yet.</p>
+    {:else}
     <div class="chest-row">
       {#each [1, 2, 3, 4] as rarity}
         {@const count = view?.Chests[rarity] ?? 0}
@@ -158,6 +191,7 @@
         </div>
       {/each}
     </div>
+    {/if}
 
     {#if opened}
       <div class="reveal {rarityClass(opened.Rarity)}" data-testid="chest-reveal">
@@ -192,20 +226,21 @@
         <span class="tile-name">Your race</span>
         <span class="tile-rarity dim">Default</span>
       </button>
-      {#each avatars as def (def.Id)}
+      {#each shownAvatars as def (def.Id)}
         {@const owned = ownedIds.has(def.Id)}
         <button
           class="tile {rarityClass(def.Rarity)}"
           class:locked={!owned}
           class:worn={view?.EquippedAvatarId === def.Id}
-          disabled={busy || !owned}
-          onclick={() => wear(COSMETIC_KIND.Avatar, def.Id)}
+          aria-disabled={!owned}
+          disabled={busy}
+          onclick={() => (owned ? wear(COSMETIC_KIND.Avatar, def.Id) : (message = sourceOf(def)))}
           data-testid="avatar-{def.Id}"
           title={owned ? `Wear ${def.Name}` : `${def.Name} - from a ${rarityNames[def.Rarity]} chest`}
         >
           <Avatar avatarId={def.Id} frameId={null} size="tile" />
           <span class="tile-name">{def.Name}</span>
-          <span class="tile-rarity">{rarityNames[def.Rarity]}{(copies.get(def.Id) ?? 0) > 1 ? ` ×${copies.get(def.Id)}` : ''}</span>
+          <span class="tile-rarity">{rarityNames[def.Rarity]}{copiesNote(def.Id)}</span>
         </button>
       {/each}
     </div>
@@ -225,20 +260,21 @@
         <span class="tile-name">No frame</span>
         <span class="tile-rarity dim">Default</span>
       </button>
-      {#each frames as def (def.Id)}
+      {#each shownFrames as def (def.Id)}
         {@const owned = ownedIds.has(def.Id)}
         <button
           class="tile {rarityClass(def.Rarity)}"
           class:locked={!owned}
           class:worn={view?.EquippedFrameId === def.Id}
-          disabled={busy || !owned}
-          onclick={() => wear(COSMETIC_KIND.Frame, def.Id)}
+          aria-disabled={!owned}
+          disabled={busy}
+          onclick={() => (owned ? wear(COSMETIC_KIND.Frame, def.Id) : (message = sourceOf(def)))}
           data-testid="frame-{def.Id}"
           title={owned ? `Wear ${def.Name}` : `${def.Name} - from a ${rarityNames[def.Rarity]} chest`}
         >
           <Avatar avatarId={view?.EquippedAvatarId ?? null} frameId={def.Id} raceId={selfWorn?.RaceId ?? 0} female={selfWorn?.IsFemale ?? false} size="tile" />
           <span class="tile-name">{def.Name}</span>
-          <span class="tile-rarity">{rarityNames[def.Rarity]}{(copies.get(def.Id) ?? 0) > 1 ? ` ×${copies.get(def.Id)}` : ''}</span>
+          <span class="tile-rarity">{rarityNames[def.Rarity]}{copiesNote(def.Id)}</span>
         </button>
       {/each}
     </div>
@@ -380,10 +416,19 @@
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--c, var(--accent)) 60%, transparent);
   }
 
-  /* Dimmed but still coloured, so an unowned piece shows what it would be. */
-  .tile.locked {
-    opacity: 0.45;
+  /* Dimmed but still coloured, so an unowned piece shows what it would be.
+     The picture dims, not the whole tile: a faded rarity label was unreadable. */
+  .tile.locked > :global(:not(.tile-rarity)) {
+    opacity: 0.5;
     filter: grayscale(0.45);
+  }
+
+  .owned-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: 0.6rem;
+    cursor: pointer;
   }
 
   .tile-name {

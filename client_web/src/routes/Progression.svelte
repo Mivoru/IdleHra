@@ -1,12 +1,16 @@
 <script module lang="ts">
   // The tab survives leaving Progress and coming back within a session.
   let lastTab: 'goals' | 'collection' | 'stats' | 'daily' = 'goals';
+  // The last screenRequest whose tab was applied: the store keeps its value,
+  // so without this every later visit would be pulled back to that tab.
+  let appliedRequest = 0;
 </script>
 
 <script lang="ts">
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState } from '../lib/stores/game';
+  import { screenRequest } from '../lib/stores/navigation';
   import {
     queryKeys,
     fetchLoginBonus,
@@ -45,6 +49,13 @@
   let tab = $state<(typeof TABS)[number]['key']>(lastTab);
   $effect(() => {
     lastTab = tab;
+  });
+  $effect(() => {
+    const request = $screenRequest;
+    if (!request || request.screen !== 'progression' || !request.tab || request.nonce === appliedRequest) return;
+    appliedRequest = request.nonce;
+    const wanted = TABS.find((t) => t.key === request.tab);
+    if (wanted) tab = wanted.key;
   });
 
   const loginBonus = createQuery(() => ({ queryKey: queryKeys.loginBonus, queryFn: fetchLoginBonus }));
@@ -237,16 +248,28 @@
 </div>
 
 <style>
+  /* Task 109: ONE ROW THAT SCROLLS, not a row that wraps - at 390px "Daily &
+     races" fell onto a line of its own and the tabs read as two groups. A
+     stopgap until task 106's shared Tabs replaces this block. */
   .progress-tabs {
     display: flex;
     gap: 0.5rem;
     padding: 1rem 1rem 0;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: 72rem;
+    margin-inline: auto;
+  }
+
+  .progress-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .progress-tabs button {
     min-height: 44px;
     flex-shrink: 0;
+    white-space: nowrap;
     padding: 0.4rem 0.9rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
@@ -284,6 +307,10 @@
     gap: 1rem;
     padding: 1rem;
     align-items: start;
+    /* Desktop: one Book stretched across 1440px put the Go buttons a screen
+       away from the deed they belong to. */
+    max-width: 72rem;
+    margin-inline: auto;
   }
 
   h2 {
