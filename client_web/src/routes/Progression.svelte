@@ -1,12 +1,16 @@
 <script module lang="ts">
   // The tab survives leaving Progress and coming back within a session.
   let lastTab: 'goals' | 'collection' | 'stats' | 'daily' = 'goals';
+  // The last screenRequest whose tab was applied: the store keeps its value,
+  // so without this every later visit would be pulled back to that tab.
+  let appliedRequest = 0;
 </script>
 
 <script lang="ts">
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import { createQuery } from '@tanstack/svelte-query';
   import { playerState } from '../lib/stores/game';
+  import { screenRequest } from '../lib/stores/navigation';
   import {
     queryKeys,
     fetchLoginBonus,
@@ -45,6 +49,13 @@
   let tab = $state<(typeof TABS)[number]['key']>(lastTab);
   $effect(() => {
     lastTab = tab;
+  });
+  $effect(() => {
+    const request = $screenRequest;
+    if (!request || request.screen !== 'progression' || !request.tab || request.nonce === appliedRequest) return;
+    appliedRequest = request.nonce;
+    const wanted = TABS.find((t) => t.key === request.tab);
+    if (wanted) tab = wanted.key;
   });
 
   const loginBonus = createQuery(() => ({ queryKey: queryKeys.loginBonus, queryFn: fetchLoginBonus }));

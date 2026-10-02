@@ -22,6 +22,9 @@ export interface ScreenRequest {
   screen: string;
   /** Set when the destination should open focused on one thing. */
   focusEquipmentId?: number;
+  /** Set when the destination should open on one of its own tabs (task 109:
+   *  a deed card opens Progress on the Book of Deeds). */
+  tab?: string;
   /** Bumped per request so identical destinations still fire. */
   nonce: number;
 }
@@ -32,7 +35,7 @@ let nonce = 0;
 
 export const screenRequest = { subscribe: requests.subscribe };
 
-export function requestScreen(screen: string, options: { focusEquipmentId?: number } = {}): void {
+export function requestScreen(screen: string, options: { focusEquipmentId?: number; tab?: string } = {}): void {
   nonce += 1;
   requests.set({ screen, nonce, ...options });
 }
