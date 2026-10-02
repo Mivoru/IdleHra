@@ -1935,6 +1935,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            if (requestPath == "/api/v1/guilds/view" && context.Request.HttpMethod == "GET")
+            {
+                await HandleGuildView(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/stats/online" && context.Request.HttpMethod == "GET")
             {
                 await HandleStatsOnline(context);
@@ -7399,6 +7405,11 @@ namespace FolkIdle.Server.Network
             context.Response.Close();
         }
 
+        // Modul: ONE COMPACT ANSWER, built by PublicProfiles.BuildProfileAsync.
+        // This used to serialise every CharacterRecord on the account whole
+        // (185 on the dev fixture) plus raw equipment entities, and the client
+        // drew a blank "Level" per bred child. A profile opens on a tap, so its
+        // cost is paid by a waiting thumb - see PublicProfiles for the shape.
         private async Task HandlePlayerProfile(HttpListenerContext context)
         {
             try
@@ -7407,7 +7418,6 @@ namespace FolkIdle.Server.Network
                 if (requesterId <= 0)
                 {
                     context.Response.StatusCode = 401;
-                    context.Response.Close();
                     return;
                 }
 
@@ -7415,70 +7425,72 @@ namespace FolkIdle.Server.Network
                 if (!long.TryParse(query["id"], out long targetId) || targetId <= 0)
                 {
                     context.Response.StatusCode = 400;
-                    context.Response.Close();
                     return;
                 }
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
-                var player = await db.PlayerRecords.AsNoTracking().Where(p => p.Id == targetId).FirstOrDefaultAsync();
-                if (player == null)
+                var view = await PublicProfiles.BuildProfileAsync(db, targetId, id => _connectedClients.ContainsKey(id));
+                if (view == null)
                 {
                     context.Response.StatusCode = 404;
-                    context.Response.Close();
                     return;
                 }
 
-                var characters = await db.CharacterRecords.AsNoTracking().Where(c => c.PlayerId == targetId).ToListAsync();
-                
-                var equipIds = new System.Collections.Generic.HashSet<long>();
-                foreach (var c in characters)
-                {
-                    if (c.EquippedAxeId.HasValue) equipIds.Add(c.EquippedAxeId.Value);
-                    if (c.EquippedPickaxeId.HasValue) equipIds.Add(c.EquippedPickaxeId.Value);
-                    if (c.EquippedRodId.HasValue) equipIds.Add(c.EquippedRodId.Value);
-                    if (c.EquippedWeaponId.HasValue) equipIds.Add(c.EquippedWeaponId.Value);
-                    if (c.EquippedHelmetId.HasValue) equipIds.Add(c.EquippedHelmetId.Value);
-                    if (c.EquippedChestId.HasValue) equipIds.Add(c.EquippedChestId.Value);
-                    if (c.EquippedGlovesId.HasValue) equipIds.Add(c.EquippedGlovesId.Value);
-                    if (c.EquippedLeggingsId.HasValue) equipIds.Add(c.EquippedLeggingsId.Value);
-                    if (c.EquippedBootsId.HasValue) equipIds.Add(c.EquippedBootsId.Value);
-                    if (c.EquippedAmuletId.HasValue) equipIds.Add(c.EquippedAmuletId.Value);
-                    if (c.EquippedRingId.HasValue) equipIds.Add(c.EquippedRingId.Value);
-                }
-
-                var equipment = new System.Collections.Generic.List<EquipmentInstance>();
-                if (equipIds.Count > 0)
-                {
-                    equipment = await db.EquipmentInstances.AsNoTracking().Where(e => equipIds.Contains(e.Id)).ToListAsync();
-                }
-
-                var payload = new
-                {
-                    PlayerId = player.Id,
-                    Username = player.Username,
-                    GuildId = player.GuildId,
-                    CurrentLevel = player.CurrentLevel,
-                    LastLogoutTimestamp = player.LastLogoutTimestamp,
-                    // The display name, as the server has it - the client keeps
-                    // no list of titles to look a slug up in.
-                    ActiveTitle = FolkIdle.Server.Domain.Progression.TitleRegistry.DisplayNameFor(player.ActiveTitleSlug),
-                    Characters = characters,
-                    Equipment = equipment
-                };
-
-                string responseJson = JsonSerializer.Serialize(payload);
-                var responseBytes = System.Text.Encoding.UTF8.GetBytes(responseJson);
-
                 context.Response.StatusCode = 200;
                 context.Response.ContentType = "application/json";
-                context.Response.ContentLength64 = responseBytes.Length;
-                await context.Response.OutputStream.WriteAsync(responseBytes, 0, responseBytes.Length);
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, view);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Profile fetch error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        // Modul: A GUILD SEEN FROM OUTSIDE, opened from a member's profile. The
+        // directory is for guildless players only (task 107), so this is how a
+        // guild member looks at another guild: by id, read-only, and with only
+        // the fields a stranger may see - no treasury gold, no depot, no
+        // per-member contribution, no applications. See PublicProfiles.
+        private async Task HandleGuildView(HttpListenerContext context)
+        {
+            try
+            {
+                long requesterId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (requesterId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                var query = System.Web.HttpUtility.ParseQueryString(context.Request.Url?.Query ?? string.Empty);
+                if (!long.TryParse(query["id"], out long guildId) || guildId <= 0)
+                {
+                    context.Response.StatusCode = 400;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var view = await PublicProfiles.BuildGuildAsync(db, guildId, requesterId, id => _connectedClients.ContainsKey(id));
+                if (view == null)
+                {
+                    context.Response.StatusCode = 404;
+                    return;
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, view);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Guild view error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally
