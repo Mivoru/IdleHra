@@ -237,7 +237,7 @@
   .crew td {
     text-align: right;
     padding: 0.25rem 0.3rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--edge-soft);
     font-variant-numeric: tabular-nums;
   }
 

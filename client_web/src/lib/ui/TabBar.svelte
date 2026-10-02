@@ -136,6 +136,13 @@
     color: var(--text);
   }
 
+  /* Modul: the press, which .tab's flat transparent look had taken away
+     (task 106) - a thumb on the bar got no sign it had landed. A tint while
+     the finger is down, nothing that outlives it. */
+  .tab:active {
+    background: var(--tint-selected);
+  }
+
   .tab.active::before {
     content: '';
     position: absolute;

@@ -53,4 +53,14 @@ describe('app.css shared rules', () => {
     expect(copies).toEqual([]);
     expect(appCss).toMatch(/\.tiny-btn,\s*\.btn-sm\s*\{/);
   });
+
+  it('lets a panel fade in without staying a stacking context (106)', () => {
+    expect(appCss).toMatch(/\.panel \{\s*animation: folk-rise [^;]* backwards;/);
+  });
+
+  it('rings every keyboard-reachable thing on focus-visible (106)', () => {
+    for (const sel of ['a:focus-visible', 'summary:focus-visible', "[role='button']:focus-visible", '[tabindex]']) {
+      expect(appCss).toContain(sel);
+    }
+  });
 });

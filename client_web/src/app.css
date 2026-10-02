@@ -983,10 +983,19 @@ option:checked {
   }
 }
 
+/* Modul: EVERY KEYBOARD-REACHABLE THING, not only form controls (task 106).
+   A link, a <summary>, a [role=button] div and a roving-tabindex tab had no
+   focus ring at all, so a keyboard player could not see where they were.
+   tabindex="-1" is left out: that is a container focused from script (the
+   Modal card on open), and a ring around the whole dialog is noise. */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
-button:focus-visible {
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[role='button']:focus-visible,
+[tabindex]:not([tabindex='-1']):focus-visible {
   outline: 2px solid var(--brass-lit);
   outline-offset: 1px;
 }
@@ -1047,7 +1056,12 @@ button:focus-visible {
 }
 
 .panel {
-  animation: folk-rise 180ms ease-out both;
+  /* Modul: `backwards`, NOT `both` (task 106). A forwards fill keeps the
+     animation applied after it ends, and an applied opacity animation keeps
+     the panel a stacking context for as long as it is on screen - which is
+     what trapped every z-index inside a panel under its neighbours. Backwards
+     still holds opacity 0 through the (zero) delay, so nothing flashes in. */
+  animation: folk-rise 180ms ease-out backwards;
 }
 
 /* A slow brass sheen, for the one control on a screen that matters most.

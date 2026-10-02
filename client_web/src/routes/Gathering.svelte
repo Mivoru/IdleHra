@@ -533,7 +533,7 @@
   }
 
   .nodes li.current {
-    background: rgba(74, 163, 223, 0.08);
+    background: var(--tint-selected);
   }
 
   /* Modul: the node rows were a flex line, and a two-word location name
