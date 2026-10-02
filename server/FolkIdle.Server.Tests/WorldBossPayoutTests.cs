@@ -125,6 +125,7 @@ namespace FolkIdle.Server.Tests
             Assert.All(view.Top, r => Assert.StartsWith("boss_", r.Name));
             Assert.Equal(3, view.Me!.Rank);
             Assert.Equal("Participation", view.MyBracket);
+            Assert.Equal(WorldBossIdentity.Name, view.BossName);
 
             var stranger = await WorldBossBoard.ViewAsync(db, 1);
             Assert.Null(stranger.Me);

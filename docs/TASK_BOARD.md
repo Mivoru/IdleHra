@@ -6976,7 +6976,36 @@ MC1-MC4.
 
 ## 105. World Boss and the Delve
 
-**OPEN.** Report sections 4.A8, 4.H, 4.J and 8. This is visual review A1,
+**BUILT 2026-10-02, branch `claude/ui-105-delve`, not merged or deployed.**
+Owner decisions: the Delve goes full dark "underground" (page background
+included, both themes), and the boss is named from content.
+- *Boss name:* `WorldBossIdentity` names it from monsters.json id 30
+  ("Perun's Celestial Avatar", the boss the payout token already belonged to)
+  and `/api/v1/worldboss/board` carries `BossName` + `BossMonsterId`. REST
+  only, no packet change. Id 30 has no portrait art yet, so `MonsterPortrait`
+  shows its initials over the yggdrasil banner.
+- *World Boss:* hero block with name, "Active" in the good colour and
+  "4d 1h left" (`lib/game/worldBossTime.ts`); the HP numbers sit above the bar;
+  the strike is a filled primary straight under HP with a "1 strike ready"
+  chip; armour is read-only status and the plate is picked only inside
+  "Quick strike (no skill bonus)" (or beside the strike with the wheel off);
+  the rules and payout tiers are a disclosure, open until the first strike;
+  two columns from 60rem.
+- *Shield wheel:* portalled to `<body>`, its own top bar with "Leave
+  practice" / "Leave - finish later" (a real strike resumes as "Finish your
+  strike"), a one-line legend during play, a solid "Throw - 5 left" button,
+  upright plate numbers, and a ring sized to the height.
+- *Delve:* the `--ug-*` palette and `.underground` in app.css, no colour
+  literals in Delve.svelte (guarded by `tests/worldBossDelveUi.test.ts`);
+  the gate leads, the records fold to one line, "Wear a title" with a Worn
+  mark, an owned next title is not shown as a goal, one reset time, and the
+  glitches fixed.
+- `exercise.mjs`'s world boss step now opens Quick strike and reads the spent
+  count off the strike chip. **Not yet run**: exercise, check:touch and the
+  geometry checks still need a dev box, and the wheel's above-the-header fix
+  needs a real phone.
+
+Report sections 4.A8, 4.H, 4.J and 8. This is visual review A1,
 W1-W6, S1-S3 and D1-D6.
 
 **What is actually true.**

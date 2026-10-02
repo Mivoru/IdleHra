@@ -235,17 +235,39 @@
   const atBottom = $derived(!!view?.Active && view.AtLanding);
   const isDeep = $derived(!!view?.IsDeep);
 
-  // Task 61: when the weekly course turns over, in the player's own clock.
-  const courseEnds = $derived(
+  // Modul: RESET TIMES, IN ONE PLACE (task 105). The Deep's course, its
+  // records and the weekly diamond ceiling all turn over together - they share
+  // DelveWeekKey - so one instant answers "when does it reset" for all three.
+  // It used to say "on Monday" in one paragraph and "Monday, 02:00 CEST" in
+  // the next. Task 95 owns the shared reset formatter; when it lands, this is
+  // the one line to swap.
+  const resetsAt = $derived(
     view?.DeepWeekEndsUtc
-      ? new Date(view.DeepWeekEndsUtc).toLocaleString('en-GB', {
-          weekday: 'long',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZoneName: 'short',
-        })
+      ? new Date(view.DeepWeekEndsUtc).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })
       : 'Monday'
   );
+
+  // Modul: THE UNDERGROUND MOOD (owner, 2026-10-02). The page itself goes
+  // dark while this screen is open, in both themes; the palette is the --ug-*
+  // block in app.css. Set on <html> because the page background is body's, and
+  // removed on leave so no other screen inherits the cave.
+  $effect(() => {
+    const root = document.documentElement;
+    root.dataset.mood = 'underground';
+    return () => {
+      if (root.dataset.mood === 'underground') delete root.dataset.mood;
+    };
+  });
+
+  // The records fold to one line; the detail is one press away.
+  let recordsOpen = $state(false);
+
+  // Modul: "CLEAR FLOOR 10 TO EARN LAMPLIGHTER" ABOVE AN OWNED LAMPLIGHTER.
+  // The server's NextTitle is priced on the deepest floor reached, and a title
+  // can be held without that floor (granted, or carried from before a reset).
+  // A goal the player already holds is not a goal, so it is not shown as one.
+  const ownedSlugs = $derived(new Set((titles?.Titles ?? []).map((t) => t.Slug)));
+  const nextTitle = $derived(view?.NextTitle && !ownedSlugs.has(view.NextTitle.Slug) ? view.NextTitle : null);
 
   function oddsLabel(odds: number): string {
     return odds < 0 ? '???' : `${Math.round(odds * 100)}%`;
@@ -264,13 +286,12 @@
   </svg>
 {/snippet}
 
-<div class="delve">
-  <header>
+<div class="delve underground">
+  <header class="intro">
     <h1>The Delve</h1>
     <p class="blurb">
-      Pay at the gate, take the stair down, and decide on every floor whether to keep going. What you
-      bank converts to diamonds when you climb out. What you are carrying when the last lantern
-      charge goes out is lost.
+      Pay at the gate, go down, and choose a door on every floor. Climb out to bank diamonds; lose the
+      last lantern charge and you carry nothing out.
     </p>
   </header>
 
@@ -292,59 +313,27 @@
         The price is about forty minutes of what you earn in region {view.HighestRegionReached}, so it
         grows as you do. A run pays back in diamonds.
       </p>
-      <button onclick={() => (showFullWhilePoor = true)}>How the Delve works</button>
+      <button class="secondary" onclick={() => (showFullWhilePoor = true)}>How the Delve works</button>
     </section>
   {:else}
-    <section class="ledger">
-      <div><span class="k">Your gold</span><span class="v"><Money amount={view.CurrentGold} /></span></div>
-      <div><span class="k">Diamonds this week</span><span class="v">{view.DiamondsEarnedThisWeek} / {view.WeeklyDiamondCeiling}</span></div>
-      <div><span class="k">Deepest region reached</span><span class="v">{view.HighestRegionReached}</span></div>
-      {#if view.DeepEnabled}
-        <div><span class="k">Deepest floor</span><span class="v">{view.DeepestFloor}</span></div>
-        <div><span class="k">Deepest this week</span><span class="v">{view.DeepestThisWeek}</span></div>
-        <div><span class="k">Last week</span><span class="v">{view.DeepestLastWeek > 0 ? view.DeepestLastWeek : '-'}</span></div>
-      {/if}
-    </section>
-
-    {#if view.DeepEnabled}
-      <!-- Task 61: the Deep's floors come from a seed per ISO week, the same
-           for everyone - so the number to beat is your own last week. What
-           is fixed is the doors; whether one opens is still a roll. -->
-      <p class="weekly-course" data-testid="deep-weekly-course">
-        This week's Deep is the same course for everyone: every floor past the eighth has
-        the same doors until {courseEnds}. Whether a door opens is still up to you.
-        {#if view.DeepestLastWeek > 0}
-          {view.DeepestThisWeek > view.DeepestLastWeek
-            ? `You are past last week's floor ${view.DeepestLastWeek}.`
-            : `Last week you reached floor ${view.DeepestLastWeek}.`}
-        {/if}
-      </p>
-    {/if}
-
-    {#if ceilingLeft === 0}
-      <!-- Modul: the ceiling is STATED, not discovered. A player who earns
-           nothing and is not told why concludes the feature is broken, which
-           is exactly the report that produced half this codebase's rules. -->
-      <p class="capped">
-        You have taken this week's {view.WeeklyDiamondCeiling} diamonds. A run still pays gold back
-        from the gate, and the ceiling lifts on Monday.
-      </p>
-    {/if}
-
+    <!-- Modul: THE GATE FIRST (task 105). "Pay and descend" was the seventh
+         block, about 865px down a phone, under a six-card ledger and two
+         banners. The decision a player came here to make leads; the numbers
+         that inform it sit inside it, and the records fold to one line below. -->
     {#if !view.Active}
       <section class="gate">
-        <h2>The gate</h2>
-        <p>
-          A run costs <strong><Money amount={view.EntryFeeForNextRun} /></strong> &mdash; about
-          forty minutes of what you earn in region {view.HighestRegionReached}.
-        </p>
-        <p class="muted small">
-          Eight floors. Three doors on each, and each door wants one attribute. Fortune decides how
-          often a door tells you which.
-        </p>
+        <div class="gate-head">
+          <h2>The gate</h2>
+          <span class="gate-cost">A run costs <strong><Money amount={view.EntryFeeForNextRun} /></strong></span>
+        </div>
         <button class="primary" disabled={busy || !canAfford} onclick={() => act(startDelve)}>
           {canAfford ? 'Pay and descend' : 'Not enough gold'}
         </button>
+        <p class="muted small">
+          You have <Money amount={view.CurrentGold} />. The price is about forty minutes of what you
+          earn in region {view.HighestRegionReached}. Eight floors, three doors on each, and each door
+          wants one attribute; Fortune decides how often a door tells you which.
+        </p>
       </section>
     {:else}
       <section class="run">
@@ -368,7 +357,7 @@
           {:else}
             <div class="banked">
               <span class="k">Banked</span>
-              <span class="v">{view.DiamondsAfterCeiling}{@render Diamond()}</span>
+              <span class="v nowrap">{view.DiamondsAfterCeiling}{@render Diamond()}</span>
             </div>
           {/if}
         </div>
@@ -396,7 +385,7 @@
         {:else if atBottom && isDeep}
           <p class="bottom">Floor {view.CurrentFloor} is behind you. The water below is darker.</p>
         {:else if atBottom && view.CanDescend}
-          <p class="bottom">The floor of the Delve. Below it, the Deep: no diamonds down there, only how far you went.</p>
+          <p class="bottom">The floor of the Delve. Below floor 8 lies the Deep: no diamonds down there, only how far you went.</p>
         {:else if atBottom}
           <p class="bottom">You are standing on the floor of the world. There is nothing below.</p>
         {:else}
@@ -460,7 +449,7 @@
           {:else if !atBottom}
             <p class="muted small">
               Clearing floor {Math.min(view.CurrentFloor, 8)} would make it
-              <strong>{view.DiamondsIfNextFloorCleared}{@render Diamond()}</strong>. Three failures and you
+              <strong class="nowrap">{view.DiamondsIfNextFloorCleared}{@render Diamond()}</strong>. Three failures and you
               carry nothing out.
             </p>
           {/if}
@@ -472,25 +461,70 @@
       <p class="notice" role="status">{notice}</p>
     {/if}
 
+    <!-- The week, in one place: the diamond ceiling and when it lifts. The
+         ceiling is STATED, not discovered - a player who earns nothing and is
+         not told why concludes the feature is broken. -->
+    <p class="week" class:capped={ceilingLeft === 0}>
+      <span class="nowrap">Diamonds this week <strong>{view.DiamondsEarnedThisWeek}/{view.WeeklyDiamondCeiling}</strong></span>
+      {#if ceilingLeft === 0}
+        <span>- cap reached; a run still pays gold back from the gate.</span>
+      {/if}
+      <span class="nowrap muted">Resets {resetsAt}.</span>
+    </p>
+
     {#if view.DeepEnabled}
-      <section class="sheet titles">
-        <h2>Titles</h2>
-        {#if view.NextTitle}
-          <p class="muted small">
-            Clear floor {view.NextTitle.Floor} of the Deep to earn <strong>{view.NextTitle.Name}</strong>.
+      <!-- Task 61: the Deep's floors come from a seed per ISO week, the same
+           for everyone - so the number to beat is your own last week. Naming
+           (task 105): "the Delve" is the place, and the Deep is introduced
+           here, once, as what lies below floor 8. -->
+      <p class="deep-line muted small" data-testid="deep-weekly-course">
+        Below floor 8 lies the Deep. This week it is the same course for everyone until {resetsAt};
+        whether a door opens is still up to you.
+      </p>
+
+      <section class="records">
+        <button
+          type="button"
+          class="records-toggle"
+          aria-expanded={recordsOpen}
+          onclick={() => (recordsOpen = !recordsOpen)}
+        >
+          <span class="k">Records</span>
+          <span class="records-line">
+            best floor <strong>{view.DeepestFloor}</strong> · this week <strong>{view.DeepestThisWeek}</strong>
+            · last week <strong>{view.DeepestLastWeek > 0 ? view.DeepestLastWeek : 'none'}</strong>
+          </span>
+          <span class="chev" aria-hidden="true">{recordsOpen ? '▴' : '▾'}</span>
+        </button>
+        {#if recordsOpen}
+          <p class="muted small records-more">
+            {#if view.DeepestLastWeek > 0}
+              {view.DeepestThisWeek > view.DeepestLastWeek
+                ? `You are past last week's floor ${view.DeepestLastWeek}.`
+                : `Last week you reached floor ${view.DeepestLastWeek}; that is the number to beat.`}
+            {:else}
+              No record last week, so anything this week is a first.
+            {/if}
+            The deepest region you have reached is {view.HighestRegionReached}, which is what prices the gate.
           </p>
         {/if}
+      </section>
+
+      <section class="sheet titles">
+        <h2>Titles</h2>
         {#if titles && titles.Titles.length > 0}
-          <div class="picker">
+          <p class="picker-label" id="wear-title-label">Wear a title</p>
+          <div class="picker" role="group" aria-labelledby="wear-title-label">
             {#each titles.Titles as t (t.Slug)}
+              {@const isWorn = titles.Active?.Slug === t.Slug}
               <button
                 class="secondary"
-                class:worn={titles.Active?.Slug === t.Slug}
-                aria-pressed={titles.Active?.Slug === t.Slug}
+                class:worn={isWorn}
+                aria-pressed={isWorn}
                 disabled={busy}
                 onclick={() => wear(t.Slug)}
               >
-                {t.Name}
+                {t.Name}{#if isWorn}<span class="worn-mark"> · Worn</span>{/if}
               </button>
             {/each}
             {#if titles.Active}
@@ -500,6 +534,11 @@
         {:else}
           <p class="muted small">No titles yet. The Deep pays in these, not in diamonds.</p>
         {/if}
+        {#if nextTitle}
+          <p class="muted small">
+            Next: clear floor {nextTitle.Floor} of the Deep to earn <strong>{nextTitle.Name}</strong>.
+          </p>
+        {/if}
         {#if titleNotice}
           <p class="notice" role="status">{titleNotice}</p>
         {/if}
@@ -508,13 +547,13 @@
 
     <section class="sheet">
       <h2>What you are taking down there</h2>
-      <ul>
+      <ul class="stats">
         {#each view.Attributes as value, i}
           <li><span class="k">{ATTRIBUTE_NAMES[i]}</span><span class="v">{value}</span></li>
         {/each}
       </ul>
       <p class="muted small">
-        Each floor asks more than the last. Depth is bought with the BREADTH of your sheet: a door
+        Each floor asks more than the last. Depth is bought with the breadth of your sheet: a door
         you cannot answer is still a gamble, never a wall.
       </p>
     </section>
@@ -522,33 +561,45 @@
 </div>
 
 <style>
+  /* Every colour here is a token: the --ug-* palette in app.css, re-pointed
+     for this subtree by `.underground`. No literals (tests/worldBossDelveUi.test.ts). */
   .delve {
     padding: 16px;
     max-width: 720px;
     margin: 0 auto;
-    color: #e8e2d4;
+    color: var(--ug-text);
   }
 
   h1 {
     margin: 0 0 4px;
     font-size: 1.4rem;
     letter-spacing: 0.02em;
+    color: var(--ug-text);
   }
 
   h2 {
-    margin: 0 0 8px;
+    margin: 0;
     font-size: 1rem;
-    color: #d9c48b;
+    color: var(--ug-lamp);
+  }
+
+  /* The global `header` rule colours a header's text for the app bar; this
+     one is a page intro on stone, so it says its own colours. */
+  .intro {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--ug-text);
   }
 
   .blurb {
-    margin: 0 0 16px;
+    margin: 0 0 14px;
     line-height: 1.45;
-    color: #b6ae9c;
+    color: var(--ug-text-soft);
   }
 
   .muted {
-    color: #938b7a;
+    color: var(--ug-text-dim);
   }
 
   .small {
@@ -556,30 +607,16 @@
     line-height: 1.4;
   }
 
+  .nowrap {
+    white-space: nowrap;
+  }
+
   .error {
-    color: #e08a7a;
-  }
-
-  .ledger {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-    gap: 8px;
-    margin-bottom: 16px;
-  }
-
-  .ledger div,
-  .sheet li {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    background: #241f1a;
-    border: 1px solid #3a322a;
-    border-radius: 6px;
-    padding: 8px 10px;
+    color: var(--ug-error);
   }
 
   .k {
-    color: #938b7a;
+    color: var(--ug-text-dim);
   }
 
   .v {
@@ -587,31 +624,42 @@
     font-weight: 600;
   }
 
-  /* Task 61. Same dark card as .capped: this screen's text colours are
-     written for its dark panels, and on the bare parchment it vanished. */
-  .weekly-course {
-    background: #2b2418;
-    border: 1px solid #5c4a22;
-    border-radius: 6px;
-    padding: 10px 12px;
-    margin-bottom: 16px;
-    line-height: 1.45;
-    font-size: 0.9rem;
+  .gate,
+  .run,
+  .sheet,
+  .records {
+    background: var(--ug-panel);
+    border: 1px solid var(--ug-border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 14px;
   }
 
-  .capped {
-    background: #2b2418;
-    border: 1px solid #5c4a22;
-    border-radius: 6px;
-    padding: 10px 12px;
-    margin-bottom: 16px;
-    line-height: 1.45;
+  .gate {
+    display: grid;
+    gap: 10px;
+  }
+
+  .gate p {
+    margin: 0;
+  }
+
+  .gate-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .gate-cost {
+    color: var(--ug-text-soft);
   }
 
   .saving {
     height: 8px;
     border-radius: 4px;
-    background: #2c251f;
+    background: var(--ug-track);
     overflow: hidden;
     margin: 8px 0 10px;
   }
@@ -619,17 +667,63 @@
   .saving span {
     display: block;
     height: 100%;
-    background: var(--brass);
+    background: var(--ug-flame);
   }
 
-  .gate,
-  .run,
-  .sheet {
-    background: #1e1a16;
-    border: 1px solid #3a322a;
-    border-radius: 8px;
-    padding: 14px;
-    margin-bottom: 16px;
+  .week {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: baseline;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    background: var(--ug-sunken);
+    border: 1px solid var(--ug-border);
+    border-radius: 6px;
+    line-height: 1.45;
+  }
+
+  .week.capped {
+    background: var(--ug-callout);
+    border-color: var(--ug-callout-edge);
+  }
+
+  .deep-line {
+    margin: 0 0 10px;
+  }
+
+  .records {
+    padding: 0;
+  }
+
+  .records-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .records-line {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .chev {
+    color: var(--ug-text-dim);
+  }
+
+  .records-more {
+    margin: 0;
+    padding: 0 14px 12px;
   }
 
   .runhead {
@@ -649,7 +743,7 @@
   }
 
   .charge {
-    color: #e0b74a;
+    color: var(--ug-flame);
     display: inline-flex;
   }
 
@@ -658,15 +752,15 @@
     height: 14px;
   }
 
+  .charge.spent {
+    color: var(--ug-flame-out);
+  }
+
   .gem {
     width: 0.72em;
     height: 0.72em;
-    margin-left: 0.28em;
+    margin-left: 0.15em;
     vertical-align: -0.02em;
-  }
-
-  .charge.spent {
-    color: #4a4038;
   }
 
   /* Modul: a COLUMN at narrow widths. Three doors side by side is the shape
@@ -683,8 +777,8 @@
     flex-direction: column;
     gap: 6px;
     text-align: left;
-    background: #2a231c;
-    border: 1px solid #4a3f33;
+    background: var(--ug-raised);
+    border: 1px solid var(--ug-border-strong);
     border-radius: 8px;
     padding: 12px;
     color: inherit;
@@ -694,7 +788,7 @@
 
   @media (hover: hover) and (pointer: fine) {
     .door:hover:not(:disabled) {
-      border-color: #d9c48b;
+      border-color: var(--ug-lamp);
     }
   }
 
@@ -708,12 +802,12 @@
   }
 
   .flavour {
-    color: #b6ae9c;
+    color: var(--ug-text-soft);
     line-height: 1.35;
   }
 
   .demand {
-    color: #d9c48b;
+    color: var(--ug-lamp);
     font-weight: 600;
   }
 
@@ -731,7 +825,7 @@
   }
 
   .bottom {
-    color: #d9c48b;
+    color: var(--ug-lamp);
     line-height: 1.45;
   }
 
@@ -745,17 +839,19 @@
     flex-shrink: 0;
   }
 
+  /* `background`, not `background-color`: the shorthand also clears the
+     global button gradient, which on the parchment theme is a white sheen. */
   button.primary {
-    background: #d9c48b;
-    border: 1px solid #d9c48b;
-    color: #1b1712;
+    background: var(--ug-lamp);
+    border: 1px solid var(--ug-lamp);
+    color: var(--ug-on-lamp);
     font-weight: 700;
   }
 
   button.secondary {
-    background: #2a231c;
-    border: 1px solid #6b5a3f;
-    color: #e8e2d4;
+    background: var(--ug-raised);
+    border: 1px solid var(--ug-edge);
+    color: var(--ug-text);
   }
 
   button:disabled {
@@ -764,32 +860,72 @@
   }
 
   .notice {
-    background: #241f1a;
-    border-left: 3px solid #d9c48b;
+    background: var(--ug-sunken);
+    border-left: 3px solid var(--ug-lamp);
     padding: 10px 12px;
-    margin: 0 0 16px;
+    margin: 0 0 14px;
     line-height: 1.45;
+  }
+
+  .titles {
+    display: grid;
+    gap: 8px;
+  }
+
+  .titles p {
+    margin: 0;
+  }
+
+  .picker-label {
+    font-size: 0.8rem;
+    color: var(--ug-text-soft);
   }
 
   .picker {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-    margin-bottom: 10px;
   }
 
   button.worn {
-    border-color: #d9c48b;
-    color: #d9c48b;
+    border-color: var(--ug-lamp);
+    color: var(--ug-lamp);
     font-weight: 700;
   }
 
-  .sheet ul {
+  .worn-mark {
+    font-weight: 400;
+    font-size: 0.85em;
+  }
+
+  /* Four attributes: 2x2 on a phone, one row of four when there is room -
+     never the 4+2 ledger grid the old auto-fit produced. */
+  .stats {
     list-style: none;
-    margin: 0 0 10px;
+    margin: 10px 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  @media (min-width: 40rem) {
+    .stats {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+
+  .stats li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    background: var(--ug-sunken);
+    border: 1px solid var(--ug-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+  }
+
+  .sheet p {
+    margin: 0;
   }
 </style>

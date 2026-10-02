@@ -2252,6 +2252,10 @@ export interface WorldBossBoardView {
   Top: WorldBossBoardRow[];
   Me: WorldBossBoardRow | null;
   MyBracket: string | null;
+  /** WorldBossIdentity: the boss's name, from monsters.json (task 105). */
+  BossName: string;
+  /** The monsters.json id the boss is - its portrait, when it has art. */
+  BossMonsterId: number;
 }
 
 export function fetchBossBoard(): Promise<WorldBossBoardView | null> {

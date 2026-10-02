@@ -2077,9 +2077,18 @@ await go('World Boss');
   const plateStrike = wheelMode ? 'button.auto' : 'button.attack';
 
   // Picking a plate has to change what the button says it will do, or the
-  // choice is invisible at the moment it matters.
-  if (plateCount === 5) {
-    await plates.nth(3).click();
+  // choice is invisible at the moment it matters. Task 105: the armour is
+  // read-only status now, and the plate is picked where it changes something -
+  // inside "Quick strike" under the wheel, beside the strike without it.
+  if (wheelMode) {
+    const toggle = page.locator('[data-testid="quick-strike-toggle"]');
+    if ((await toggle.getAttribute('aria-expanded').catch(() => null)) === 'false') await toggle.click();
+  }
+  const picks = page.locator('.plate-pick');
+  const pickCount = await picks.count();
+  if (plateCount === 5 && pickCount !== 5) record('the plate picker offers five plates', false, `${pickCount} picks`);
+  if (plateCount === 5 && pickCount === 5) {
+    await picks.nth(3).click();
     await page.waitForTimeout(200);
     const label = await page
       .locator(plateStrike)
@@ -2099,7 +2108,7 @@ await go('World Boss');
       const read = () =>
         page.evaluate(() => ({
           hp: Number(document.querySelector('.bar[role="progressbar"]')?.getAttribute('aria-valuenow') ?? -1),
-          pips: document.querySelectorAll('.pip.spent').length,
+          pips: Number(document.querySelector('[data-testid="strike-chip"]')?.getAttribute('data-spent') ?? 0),
           states: [...document.querySelectorAll('.armour-plate .armour-plate-state')].map((el) => el.textContent.trim()),
         }));
       const before = await read();
@@ -2107,7 +2116,7 @@ await go('World Boss');
 
       await strike.click();
       await page
-        .waitForFunction((n) => document.querySelectorAll('.pip.spent').length > n, before.pips, { timeout: 10000 })
+        .waitForFunction((n) => Number(document.querySelector('[data-testid="strike-chip"]')?.getAttribute('data-spent') ?? 0) > n, before.pips, { timeout: 10000 })
         .catch(() => {});
       await page.waitForTimeout(600);
       const after = await read();
@@ -2335,7 +2344,7 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
       return {
         attempts: row?.AttemptCount ?? 0,
         damage: row?.TotalInflictedDamage ?? 0,
-        pips: await page.evaluate(() => document.querySelectorAll('.pip.spent').length),
+        pips: await page.evaluate(() => Number(document.querySelector('[data-testid="strike-chip"]')?.getAttribute('data-spent') ?? 0)),
       };
     };
     const before = await board();

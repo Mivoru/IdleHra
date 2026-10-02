@@ -36,6 +36,10 @@
   } from '../lib/net/rest';
   import { worldBossResultSentence, worldBossResultTone } from '../lib/game/worldBossResults';
   import { tap } from '../lib/net/haptics';
+  import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
+  import { backgroundUrl } from '../lib/ui/sprites';
+  import { bossTimeLeft } from '../lib/game/worldBossTime';
+  import { WORLD_BOSS_REWARDS } from '../lib/ui/wikiData';
 
   // Modul: THE SHIELD WHEEL (task 36). The server says which mode it runs
   // (FOLKIDLE_BOSS_MINIGAME); with it off, GET /challenge answers Disabled and
@@ -90,6 +94,15 @@
   }
 
   function closeStrike() {
+    strikeChallenge = null;
+  }
+
+  // "Leave - finish later" (task 105): the server keeps the run, its throws
+  // and its clock, so leaving is only closing the overlay - and the strike
+  // button becomes "Finish your strike" until it is picked up again. A run
+  // whose clock runs out meanwhile is resolved by the server at the floor.
+  function leaveStrike() {
+    resumable = strikeChallenge;
     strikeChallenge = null;
   }
 
@@ -150,6 +163,8 @@
   // Since 2026-09-25 there are two "whens": the strike refills at UTC midnight,
   // and a fallen boss is replaced on Monday (WorldBossCalendar, pinned by
   // serverMirrors.test.ts).
+  // RESET TIMES live here and only here (task 105): task 95's shared
+  // reset-time formatter replaces these two lines.
   // en-GB, not the browser's locale: every other sentence on this screen is
   // English, and a Czech phone printed "arrives on pondělí" mid-sentence.
   const onDay = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
@@ -212,9 +227,7 @@
         remainingLabel = 'closing';
         return;
       }
-      const h = Math.floor(seconds / 3600);
-      const m = Math.floor((seconds % 3600) / 60);
-      remainingLabel = h > 0 ? `${h}h ${m}m left` : `${m}m ${seconds % 60}s left`;
+      remainingLabel = `${bossTimeLeft(seconds)} left`;
     };
     tick();
     const id = setInterval(tick, 1000);
@@ -295,6 +308,24 @@
     return '';
   });
 
+  // Modul: WHO THE BOSS IS comes from the server (WorldBossIdentity, read off
+  // monsters.json), on the board answer. Until that answer lands the heading
+  // says what it always said, rather than a name this file made up.
+  const bossName = $derived(board?.BossName ?? 'World Boss');
+  const bossMonsterId = $derived(board?.BossMonsterId ?? 0);
+  const banner = backgroundUrl('yggdrasil');
+
+  // Modul: THE RULES ARE A DISCLOSURE, OPEN UNTIL THE FIRST STRIKE (task 105).
+  // An 8-line armour rule and two more paragraphs pushed the strike to about
+  // y 640 on a phone. A player who has never struck needs them; one who has
+  // struck this boss has read them, so they fold - and either can toggle.
+  const hasStruck = $derived(attempts > 0 || !!board?.Me);
+  let rulesToggled = $state<boolean | null>(null);
+  const rulesOpen = $derived(rulesToggled ?? !hasStruck);
+
+  // The plate is chosen only where it matters: the quick strike.
+  let quickOpen = $state(false);
+
   const stateLabel = $derived(
     eventState === BossEventState.Active
       ? 'Active'
@@ -304,247 +335,376 @@
   );
 </script>
 
-<div class="wrap">
-  <section class="panel" class:live={eventState === BossEventState.Active}>
-    <header class="head">
-      <h2>World Boss</h2>
-      <span class="state" data-state={stateLabel.toLowerCase()}>{stateLabel}</span>
-      {#if remainingLabel}
-        <span class="dim tiny">{remainingLabel}</span>
-      {/if}
-    </header>
+<!-- Modul: THE PLATE IS A CHOICE ONLY WHERE IT CHANGES SOMETHING (task 105).
+     The five plates used to be a radio group at the top of the screen that
+     fed only the secondary "Auto-strike" button - the prominent wheel strike
+     ignored it, so the most visible decision on the page did nothing to the
+     action most players took. The armour is shown as status; the picker lives
+     inside "Quick strike", or beside the strike when the strike IS the plate
+     (no wheel). -->
+{#snippet platePicker()}
+  <div class="plate-picker" role="radiogroup" aria-label="Which plate to strike">
+    {#each Array(BOSS_PLATE_COUNT) as _, index}
+      <button
+        type="button"
+        role="radio"
+        aria-checked={selectedPlate === index}
+        class="plate-pick"
+        class:selected={selectedPlate === index}
+        class:broken={isBroken(index)}
+        class:weak={deducedPlate === index}
+        onclick={() => (selectedPlate = index)}
+      >
+        {index + 1}
+      </button>
+    {/each}
+  </div>
+{/snippet}
 
-    {#if eventState === BossEventState.Active}
-      <div class="bar" role="progressbar" aria-valuenow={currentHp} aria-valuemin="0" aria-valuemax={maxHp}>
-        <div class="bar-fill boss" style="width: {hpPct * 100}%"></div>
-        <span class="bar-label">
-          {formatNumber(currentHp)} / {formatNumber(maxHp)}
-          ({(hpPct * 100).toFixed(1)}%)
+<div class="wrap">
+  <div class="col main-col">
+    <section class="panel hero-panel" class:live={eventState === BossEventState.Active}>
+      <header class="hero" style="--banner: url('{banner}')">
+        <MonsterPortrait monsterId={bossMonsterId} name={bossName} size="md" />
+        <div class="hero-text">
+          <p class="eyebrow">
+            <span>World Boss</span>
+            <span class="state" data-state={stateLabel.toLowerCase()}>{stateLabel}</span>
+            {#if remainingLabel}
+              <span class="time">{remainingLabel}</span>
+            {/if}
+          </p>
+          <h2 data-testid="boss-name">{bossName}</h2>
+        </div>
+      </header>
+
+      {#if eventState === BossEventState.Active}
+        <!-- The numbers sit ABOVE the bar, on the panel: a label inside the
+             fill was dark text on dark orange (audit J2). -->
+        <div class="hp-row">
+          <span class="hp-nums" title={numberTitle(currentHp)}>{formatNumber(currentHp)} / {formatNumber(maxHp)}</span>
+          <span class="dim">{(hpPct * 100).toFixed(1)}%</span>
+        </div>
+        <div class="bar hp" role="progressbar" aria-label="{bossName} health" aria-valuenow={currentHp} aria-valuemin="0" aria-valuemax={maxHp}>
+          <div class="bar-fill boss" style="width: {hpPct * 100}%"></div>
+        </div>
+      {:else if eventState === BossEventState.Concluded}
+        <p class="dim small">This encounter is over. {returnsLabel}</p>
+      {:else}
+        <p class="dim small">No encounter is running. {returnsLabel}</p>
+      {/if}
+
+      <div class="strike-head">
+        <h3>Today's strike</h3>
+        <span
+          class="strike-chip"
+          class:ready={attemptsLeft > 0}
+          data-testid="strike-chip"
+          data-spent={attempts}
+        >
+          {attemptsLeft > 0 ? `${attemptsLeft} strike ready` : 'Strike used'}
         </span>
       </div>
 
-      <p class="dim small">
-        Shared by every player on the server. Its health scales with how many
-        accounts are online and their combined race mastery, so it moves even
-        when you are not attacking.
-      </p>
-    {:else if eventState === BossEventState.Concluded}
-      <p class="dim">
-        This encounter is over. {returnsLabel} There is nothing to do here until
-        then.
-      </p>
-    {:else}
-      <p class="dim">No encounter is running. {returnsLabel}</p>
-    {/if}
-
-    <h3>Today's strike</h3>
-    <div class="attempts" aria-label={attemptsLeft > 0 ? "Today's strike is ready" : "Today's strike is used"}>
-      {#each Array(MAX_BOSS_ATTEMPTS) as _, index}
-        <span class="pip" class:spent={index < attempts}></span>
-      {/each}
-      <span class="dim tiny">{attemptsLeft > 0 ? 'Ready' : 'Used'}</span>
-    </div>
-    <p class="dim tiny">
-      One strike a day, every day. {attemptsLeft > 0 ? 'It refills at midnight UTC.' : refillLabel} A new
-      boss arrives every Monday.
-    </p>
-    <h3>Its armour</h3>
-    {#if wheelStrikes}
-      <p class="dim tiny">
-        Five plates, and one of them is soft - but a <strong>different one for every strike</strong>,
-        chosen among the plates still standing. A hit on it does
-        <strong>{BOSS_WEAK_PLATE_MULTIPLIER}x</strong> damage, and only you see where it was. A hit
-        anywhere else <strong>breaks</strong> that plate for everyone, so every broken plate makes
-        the soft one easier to find for whoever strikes next. The armour grows back at midnight UTC.
-      </p>
-    {:else}
-      <p class="dim tiny">
-        Five plates, one of them soft. A strike on the soft one does
-        <strong>{BOSS_WEAK_PLATE_MULTIPLIER}x</strong> damage. A strike anywhere else does full
-        damage and <strong>breaks</strong> that plate - for everyone, for the rest of this
-        encounter. Which plate is soft changes every encounter.
-      </p>
-    {/if}
-
-    <div class="armour-plates" role="radiogroup" aria-label="Which plate to strike">
-      {#each Array(BOSS_PLATE_COUNT) as _, index}
+      {#if wheelStrikes}
+        <!-- The strike: the shield wheel. Up to 2x for a skilled run, and never
+             less than a quick strike on the best plate it struck. -->
         <button
-          type="button"
-          role="radio"
-          aria-checked={selectedPlate === index}
-          class="armour-plate"
-          class:selected={selectedPlate === index}
-          class:broken={isBroken(index)}
-          class:weak={deducedPlate === index}
-          onclick={() => (selectedPlate = index)}
+          class="attack primary"
+          data-testid="wheel-strike"
+          disabled={(strikeBlockedReason !== '' && !resumable) || openingStrike}
+          onclick={openStrike}
         >
-          <span class="armour-plate-index">{index + 1}</span>
-          <span class="armour-plate-state">
-            {#if deducedPlate === index}
-              soft
-            {:else if isBroken(index)}
-              broken
-            {:else}
-              intact
-            {/if}
-          </span>
+          {resumable ? 'Finish your strike' : 'Strike with the shield wheel'}
         </button>
-      {/each}
-    </div>
-
-    <p class="dim tiny" role="status">
-      {#if weakPlateFound}
-        Somebody found the soft plate: it is <strong>plate {weakPlate + 1}</strong>. Every
-        strike on it pays {BOSS_WEAK_PLATE_MULTIPLIER}x.
-      {:else if deducedPlate >= 0 && wheelStrikes}
-        Every other plate is broken, so the next strike's soft plate is certain:
-        <strong>plate {deducedPlate + 1}</strong>.
-      {:else if deducedPlate >= 0}
-        Every other plate is broken and nobody has found the soft one, so it must be
-        <strong>plate {deducedPlate + 1}</strong>.
-      {:else if brokenCount === 0 && wheelStrikes}
-        No plate is broken yet today: the soft one could be any of the five.
-      {:else if wheelStrikes}
-        {brokenCount} of {BOSS_PLATE_COUNT} plates broken today: the soft one is among the other
-        {BOSS_PLATE_COUNT - brokenCount}.
-      {:else if brokenCount === 0}
-        Nobody has struck this boss yet. Whatever you learn, everyone else will see.
       {:else}
-        {brokenCount} of {BOSS_PLATE_COUNT} plates broken, and the soft one is not among them.
+        {@render platePicker()}
+        <button class="attack primary" disabled={strikeBlockedReason !== ''} onclick={attack}>
+          Strike plate {selectedPlate + 1}
+        </button>
       {/if}
-    </p>
+      {#if strikeBlockedReason && !resumable}
+        <p class="strike-reason dim tiny" role="status">{strikeBlockedReason}</p>
+      {:else if resumable}
+        <p class="strike-reason dim tiny" role="status">Your strike is waiting where you left it.</p>
+      {/if}
 
-    {#if wheelStrikes}
-      <!-- The strike: the shield wheel. Up to 2x for a skilled run, and never
-           less than an auto-strike on the best plate it struck. -->
-      <button
-        class="attack"
-        data-testid="wheel-strike"
-        disabled={(strikeBlockedReason !== '' && !resumable) || openingStrike}
-        onclick={openStrike}
-      >
-        {resumable ? 'Finish your strike' : 'Strike with the shield wheel'}
-      </button>
-      <button
-        class="auto"
-        data-testid="auto-strike"
-        disabled={strikeBlockedReason !== '' || resumable !== null}
-        onclick={attack}
-      >
-        Auto-strike plate {selectedPlate + 1} (1x skill)
-      </button>
-    {:else}
-      <button
-        class="attack"
-        disabled={strikeBlockedReason !== ''}
-        onclick={attack}
-      >
-        Strike plate {selectedPlate + 1}
-      </button>
-    {/if}
-    {#if strikeBlockedReason && !resumable}
-      <p class="strike-reason dim tiny" role="status">{strikeBlockedReason}</p>
-    {/if}
-
-    {#if autoResult}
-      <p class="auto-result small" role="status" data-testid="auto-card" data-damage={autoResult.Damage}>
-        {#if autoResult.Landings.some((l) => l.WeakHit)}
-          Plate {selectedPlate + 1} was the soft one this time:
-        {:else if autoResult.BrokePlate >= 0}
-          You broke plate {autoResult.BrokePlate + 1} for everyone:
-        {/if}
-        <strong title={numberTitle(autoResult.Damage)}>{formatNumber(autoResult.Damage)}</strong> damage ({autoResult.Played.toFixed(2)}x).
-      </p>
-    {/if}
-
-    <h3>Damage this week</h3>
-    {#if board && board.Participants > 0}
-      <p class="small together" data-testid="boss-total">
-        Together, {board.Participants} {board.Participants === 1 ? 'player has' : 'players have'} dealt
-        <strong title={numberTitle(board.TotalDamage)}>{formatNumber(board.TotalDamage)}</strong> damage{#if board.BossMaxHp > 0}
-          &nbsp;({((board.TotalDamage / board.BossMaxHp) * 100).toFixed(2)}% of its health){/if}.
-      </p>
-      {#if board.Me}
-        <p class="small" data-testid="boss-me">
-          You are <strong>#{board.Me.Rank}</strong> with {formatNumber(board.Me.Damage)} damage -
-          {board.MyBracket} right now.
+      {#if autoResult}
+        <p class="auto-result small" role="status" data-testid="auto-card" data-damage={autoResult.Damage}>
+          {#if autoResult.Landings.some((l) => l.WeakHit)}
+            Plate {selectedPlate + 1} was the soft one this time:
+          {:else if autoResult.BrokePlate >= 0}
+            You broke plate {autoResult.BrokePlate + 1} for everyone:
+          {/if}
+          <strong title={numberTitle(autoResult.Damage)}>{formatNumber(autoResult.Damage)}</strong> damage ({autoResult.Played.toFixed(2)}x).
         </p>
-      {:else}
-        <p class="dim tiny">You have not struck this boss yet.</p>
       {/if}
-      <ol class="board">
-        {#each board.Top.slice(0, 10) as row (row.PlayerId)}
-          <li class:me={row.PlayerId === board.Me?.PlayerId}>
-            <span class="rank">{row.Rank}</span>
-            <span class="who"><PlayerAvatar playerId={row.PlayerId} size="sm" /> <button class="name-link" use:profileLink={{ playerId: row.PlayerId, name: row.Name }}>{row.Name}</button>{#if row.Title}<span class="dim tiny"> · {row.Title}</span>{/if}</span>
-            <span class="dmg" title={numberTitle(row.Damage)}>{formatNumber(row.Damage)}</span>
+
+      <h3>Its armour</h3>
+      <ul class="armour-plates" aria-label="The boss's armour">
+        {#each Array(BOSS_PLATE_COUNT) as _, index}
+          <li class="armour-plate" class:broken={isBroken(index)} class:weak={deducedPlate === index}>
+            <span class="armour-plate-index">{index + 1}</span>
+            <span class="armour-plate-state">
+              {#if deducedPlate === index}
+                soft
+              {:else if isBroken(index)}
+                broken
+              {:else}
+                intact
+              {/if}
+            </span>
           </li>
         {/each}
-      </ol>
-    {:else}
-      <p class="dim tiny">Nobody has struck this boss yet.</p>
-    {/if}
-    <p class="dim tiny">
-      The boss does not have to fall. When the week ends, everybody who dealt damage is paid by their
-      place on this board: top 1%, top 10%, top 50%, or a participation reward. Rewards arrive in the
-      mailbox.
-    </p>
-
-    {#if wheelMode !== 'off'}
-      <h3>The shield wheel</h3>
-      <p class="dim tiny">
-        {#if wheelStrikes}
-          Spin, read the boss's blows, and aim for the seams. Practice it here for free - it spends
-          no strike and deals no damage.
+      </ul>
+      <p class="dim tiny plate-note" role="status">
+        {#if weakPlateFound}
+          Somebody found the soft plate: it is <strong>plate {weakPlate + 1}</strong>. Every
+          strike on it pays {BOSS_WEAK_PLATE_MULTIPLIER}x.
+        {:else if deducedPlate >= 0 && wheelStrikes}
+          Every other plate is broken, so the next strike's soft plate is certain:
+          <strong>plate {deducedPlate + 1}</strong>.
+        {:else if deducedPlate >= 0}
+          Every other plate is broken and nobody has found the soft one, so it must be
+          <strong>plate {deducedPlate + 1}</strong>.
+        {:else if brokenCount === 0 && wheelStrikes}
+          No plate is broken yet today: the soft one could be any of the five.
+        {:else if wheelStrikes}
+          {brokenCount} of {BOSS_PLATE_COUNT} plates broken today: the soft one is among the other
+          {BOSS_PLATE_COUNT - brokenCount}.
+        {:else if brokenCount === 0}
+          Nobody has struck this boss yet. Whatever you learn, everyone else will see.
         {:else}
-          A new way to strike is coming: spin, read the boss's blows, and aim for the seams. Practice it
-          here for free - it spends no attempt and deals no damage.
+          {brokenCount} of {BOSS_PLATE_COUNT} plates broken, and the soft one is not among them.
         {/if}
       </p>
-      <button class="practice" disabled={openingPractice} onclick={openPractice}>
-        Practice the shield wheel
+
+      {#if wheelStrikes}
+        <button
+          type="button"
+          class="disclosure"
+          data-testid="quick-strike-toggle"
+          aria-expanded={quickOpen}
+          onclick={() => (quickOpen = !quickOpen)}
+        >
+          <span>Quick strike (no skill bonus)</span>
+          <span class="chev" aria-hidden="true">{quickOpen ? '▴' : '▾'}</span>
+        </button>
+        {#if quickOpen}
+          <div class="quick">
+            <p class="dim tiny">
+              No wheel: pick a plate and strike it at 1x skill - {BOSS_WEAK_PLATE_MULTIPLIER}x if it is
+              this strike's soft one. It spends today's strike.
+            </p>
+            {@render platePicker()}
+            <button
+              class="auto"
+              data-testid="auto-strike"
+              disabled={strikeBlockedReason !== '' || resumable !== null}
+              onclick={attack}
+            >
+              Quick strike plate {selectedPlate + 1}
+            </button>
+          </div>
+        {/if}
+      {/if}
+
+      {#if wheelMode !== 'off'}
+        <button class="practice" disabled={openingPractice} onclick={openPractice}>
+          Practice the shield wheel
+        </button>
+        <p class="dim tiny practice-note">Free: it spends no strike and deals no damage.</p>
+      {/if}
+    </section>
+  </div>
+
+  <div class="col side-col">
+    <section class="panel">
+      <h3 class="first">Damage this week</h3>
+      {#if board && board.Participants > 0}
+        <p class="small together" data-testid="boss-total">
+          Together, {board.Participants} {board.Participants === 1 ? 'player has' : 'players have'} dealt
+          <strong title={numberTitle(board.TotalDamage)}>{formatNumber(board.TotalDamage)}</strong> damage{#if board.BossMaxHp > 0}
+            &nbsp;({((board.TotalDamage / board.BossMaxHp) * 100).toFixed(2)}% of its health){/if}.
+        </p>
+        {#if board.Me}
+          <p class="small" data-testid="boss-me">
+            You are <strong>#{board.Me.Rank}</strong> with {formatNumber(board.Me.Damage)} damage -
+            {board.MyBracket} right now.
+          </p>
+        {:else}
+          <p class="dim tiny">You have not struck this boss yet.</p>
+        {/if}
+        <ol class="board">
+          {#each board.Top.slice(0, 10) as row (row.PlayerId)}
+            <li class:me={row.PlayerId === board.Me?.PlayerId}>
+              <span class="rank">{row.Rank}</span>
+              <span class="who"><PlayerAvatar playerId={row.PlayerId} size="sm" /> <button class="name-link" use:profileLink={{ playerId: row.PlayerId, name: row.Name }}>{row.Name}</button>{#if row.Title}<span class="dim tiny"> · {row.Title}</span>{/if}</span>
+              <span class="dmg" title={numberTitle(row.Damage)}>{formatNumber(row.Damage)}</span>
+            </li>
+          {/each}
+        </ol>
+      {:else}
+        <p class="dim tiny">Nobody has struck this boss yet.</p>
+      {/if}
+    </section>
+
+    <section class="panel rules">
+      <button
+        type="button"
+        class="disclosure"
+        data-testid="boss-rules-toggle"
+        aria-expanded={rulesOpen}
+        onclick={() => (rulesToggled = !rulesOpen)}
+      >
+        <span>How the World Boss works</span>
+        <span class="chev" aria-hidden="true">{rulesOpen ? '▴' : '▾'}</span>
       </button>
-    {/if}
-  </section>
+      <!-- {#if}, not <details>: see client_web/CLAUDE.md. -->
+      {#if rulesOpen}
+        <div class="rules-body">
+          <p class="dim tiny">
+            One health bar shared by every player on the server. It scales with how many accounts are
+            online and their combined race mastery, so it moves even when you are not attacking.
+          </p>
+          <p class="dim tiny">
+            One strike a day, every day. {attemptsLeft > 0 ? 'It refills at midnight UTC.' : refillLabel}
+            A new boss arrives every Monday.
+          </p>
+          {#if wheelStrikes}
+            <p class="dim tiny">
+              Five plates, and one of them is soft - a <strong>different one for every strike</strong>,
+              chosen among the plates still standing. A hit on it does
+              <strong>{BOSS_WEAK_PLATE_MULTIPLIER}x</strong> damage, and only you see where it was. A hit
+              anywhere else <strong>breaks</strong> that plate for everyone, so every broken plate makes the
+              soft one easier to find. The armour grows back at midnight UTC.
+            </p>
+            <p class="dim tiny">
+              The shield wheel: spin, read the boss's blows, and aim for the seams. A skilled run is worth
+              up to 2x, and never less than a quick strike on the best plate it hit.
+            </p>
+          {:else}
+            <p class="dim tiny">
+              Five plates, one of them soft. A strike on the soft one does
+              <strong>{BOSS_WEAK_PLATE_MULTIPLIER}x</strong> damage. A strike anywhere else does full damage
+              and <strong>breaks</strong> that plate - for everyone, for the rest of this encounter.
+            </p>
+          {/if}
+          <p class="dim tiny">
+            The boss does not have to fall. When the week ends, everybody who dealt damage is paid into
+            the mailbox by their place on the board:
+          </p>
+          <table class="tiers">
+            <tbody>
+              {#each WORLD_BOSS_REWARDS as tier (tier.bracket)}
+                <tr>
+                  <th scope="row">{tier.bracket}</th>
+                  <td>{tier.tokens} {tier.tokens === 1 ? 'token' : 'tokens'}</td>
+                  <td>{formatNumber(tier.gold)} gold</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+    </section>
+  </div>
 </div>
 
 {#if practiceChallenge}
   <!-- Keyed on the challenge: ShieldWheel reads its schedule ONCE (a challenge
        never changes mid-run), so a new challenge must mean a new component. -->
   {#key practiceChallenge.ChallengeId}
-    <ShieldWheel challenge={practiceChallenge} onclose={closePractice} onagain={practiceAgain} />
+    <ShieldWheel challenge={practiceChallenge} onclose={closePractice} onagain={practiceAgain} onleave={closePractice} />
   {/key}
 {/if}
 
 {#if strikeChallenge}
   {#key strikeChallenge.ChallengeId}
-    <ShieldWheel challenge={strikeChallenge} onclose={closeStrike} onagain={closeStrike} />
+    <ShieldWheel challenge={strikeChallenge} onclose={closeStrike} onagain={closeStrike} onleave={leaveStrike} />
   {/key}
 {/if}
 
 <style>
   /* Centred on a wide screen (owner, 2026-09-28): a 34rem column hugging the
-     left edge of a 1900px window read as a layout that had not loaded. */
+     left edge of a 1900px window read as a layout that had not loaded. Two
+     columns from 60rem (task 105): the strike on the left, the board and the
+     rules on the right, so the board is no longer below the fold. */
   .wrap {
     padding: 1rem;
     max-width: 34rem;
     margin: 0 auto;
+    display: grid;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  @media (min-width: 60rem) {
+    .wrap {
+      max-width: 68rem;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+
+  .col {
+    display: grid;
+    gap: 1rem;
+    min-width: 0;
   }
 
   .panel.live {
     border-color: var(--rarity-10);
   }
 
-  .head {
+  .hero {
     display: flex;
-    align-items: baseline;
-    gap: 0.6rem;
+    align-items: center;
+    gap: 0.75rem;
+    margin: -1rem -1rem 0.75rem;
+    padding: 0.9rem 1rem;
+    min-height: 5.5rem;
+    border-radius: var(--radius) var(--radius) 0 0;
+    /* The painted world tree - Perun sits at its crown - under a dark
+       scrim, and the text on it is the underground palette's light ink: the
+       banner is a painting, dark in both themes, so the theme's own --text
+       (brown ink on parchment) would vanish on it. */
+    background-image:
+      linear-gradient(90deg, color-mix(in srgb, var(--ug-bg) 88%, transparent), color-mix(in srgb, var(--ug-bg) 35%, transparent)),
+      var(--banner);
+    background-size: cover;
+    background-position: center 30%;
+    color: var(--ug-text);
+  }
+
+  .hero h2 {
+    color: var(--ug-text);
+  }
+
+  .hero-text {
+    min-width: 0;
+  }
+
+  .eyebrow {
+    display: flex;
     flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.2rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .time {
+    text-transform: none;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
   }
 
   h2 {
-    margin: 0 0 0.5rem;
-    font-size: 1.05rem;
+    margin: 0;
+    font-size: 1.2rem;
+    line-height: 1.2;
   }
 
   h3 {
@@ -555,17 +715,37 @@
     color: var(--text-dim);
   }
 
+  h3.first {
+    margin-top: 0;
+  }
+
   .state {
     font-size: 0.72rem;
     border-radius: 999px;
     padding: 0.05rem 0.5rem;
     border: 1px solid var(--border);
+    background: var(--bg-panel);
     color: var(--text-dim);
   }
 
+  /* "Active" is good news, so it wears the good colour - it was a red pill. */
   .state[data-state='active'] {
-    color: var(--rarity-10);
-    border-color: var(--rarity-10);
+    color: var(--good);
+    border-color: var(--good);
+  }
+
+  .hp-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    margin-bottom: 0.25rem;
+  }
+
+  .bar.hp {
+    height: 0.8rem;
   }
 
   .boss {
@@ -583,82 +763,74 @@
     font-size: 0.72rem;
   }
 
-  .warn {
-    font-size: 0.82rem;
-    color: var(--danger);
-    border-left: 2px solid var(--danger);
-    padding-left: 0.55rem;
-    margin: 0.7rem 0 0;
-  }
-
-  .attempts {
+  .strike-head {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
-  }
-
-  .pip {
-    width: 1.6rem;
-    height: 0.4rem;
-    border-radius: 999px;
-    background: var(--good);
-  }
-
-  .pip.spent {
-    background: var(--border);
-  }
-
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
+    justify-content: space-between;
     gap: 0.5rem;
+    margin-top: 0.9rem;
+  }
+
+  .strike-head h3 {
     margin: 0;
   }
 
-  .stats div {
-    display: grid;
-    gap: 0.1rem;
-  }
-
-  dt {
-    font-size: 0.7rem;
-    color: var(--text-dim);
-  }
-
-  dd {
-    margin: 0;
+  .strike-chip {
+    font-size: 0.75rem;
     font-weight: 700;
-    font-variant-numeric: tabular-nums;
+    border-radius: 999px;
+    padding: 0.1rem 0.6rem;
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .strike-chip.ready {
+    border-color: var(--good);
+    color: var(--good);
+  }
+
+  .attack {
+    margin-top: 0.6rem;
+    width: 100%;
+    min-height: 48px;
+    padding: 0.6rem;
+    font-weight: 700;
+  }
+
+  .strike-reason {
+    margin: 0.4rem 0 0;
+    text-align: center;
   }
 
   .armour-plates {
+    list-style: none;
+    padding: 0;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 0.4rem;
-    margin: 0.6rem 0;
+    margin: 0.4rem 0;
   }
 
   .armour-plate {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 0.15rem;
-    padding: 0.5rem 0.2rem;
+    gap: 0.1rem;
+    padding: 0.35rem 0.2rem;
     border: 1px solid var(--border);
     border-radius: 6px;
-    background: var(--bg-panel);
-    cursor: pointer;
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     line-height: 1.2;
   }
 
   .armour-plate-index {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     font-weight: 600;
   }
 
   .armour-plate-state {
-    opacity: 0.7;
+    color: var(--text-dim);
     /* The five states have to fit a 390px phone, so the word truncates rather
        than wrapping the grid into two rows. */
     max-width: 100%;
@@ -668,7 +840,7 @@
   }
 
   .armour-plate.broken {
-    opacity: 0.55;
+    opacity: 0.6;
     border-style: dashed;
   }
 
@@ -678,21 +850,96 @@
     opacity: 1;
   }
 
-  .armour-plate.selected {
+  .armour-plate.weak .armour-plate-state {
+    color: var(--good);
+  }
+
+  .plate-note {
+    margin: 0;
+  }
+
+  .plate-picker {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin: 0.6rem 0 0;
+  }
+
+  .plate-pick {
+    min-height: 44px;
+    font-weight: 700;
+  }
+
+  .plate-pick.broken {
+    border-style: dashed;
+  }
+
+  .plate-pick.weak {
+    border-color: var(--good);
+    color: var(--good);
+  }
+
+  .plate-pick.selected {
     outline: 2px solid var(--accent);
     outline-offset: -2px;
   }
 
-  .attack {
-    margin-top: 0.9rem;
+  .disclosure {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
     width: 100%;
-    padding: 0.6rem;
-    font-weight: 700;
+    min-height: 44px;
+    margin-top: 0.8rem;
+    font-weight: 600;
+    text-align: left;
   }
 
-  .strike-reason {
-    margin: 0.4rem 0 0;
-    text-align: center;
+  .rules .disclosure {
+    margin-top: 0;
+  }
+
+  .chev {
+    color: var(--text-dim);
+  }
+
+  .quick {
+    display: grid;
+    gap: 0.4rem;
+    margin-top: 0.5rem;
+  }
+
+  .quick p {
+    margin: 0;
+  }
+
+  .rules-body {
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+  }
+
+  .rules-body p {
+    margin: 0;
+  }
+
+  .tiers {
+    border-collapse: collapse;
+    font-size: 0.78rem;
+    width: 100%;
+  }
+
+  .tiers th,
+  .tiers td {
+    text-align: left;
+    padding: 0.2rem 0.4rem 0.2rem 0;
+    border-bottom: 1px solid var(--line);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tiers th {
+    font-weight: 600;
   }
 
   .together {
@@ -744,7 +991,6 @@
   .auto {
     width: 100%;
     min-height: 44px;
-    margin-top: 0.4rem;
   }
 
   .auto-result {
@@ -755,14 +1001,14 @@
   .practice {
     width: 100%;
     min-height: 44px;
-    margin-top: 0.4rem;
-    font-weight: 700;
+    margin-top: 0.6rem;
   }
 
-  .attack:not(:disabled) {
-    border-color: var(--rarity-10);
-    color: var(--rarity-10);
+  .practice-note {
+    margin: 0.3rem 0 0;
+    text-align: center;
   }
+
   /* A board name opens the profile, as everywhere else a name is shown. */
   .name-link {
     background: none;

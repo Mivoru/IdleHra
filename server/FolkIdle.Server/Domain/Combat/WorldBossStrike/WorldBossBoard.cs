@@ -31,6 +31,10 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         public WorldBossBoardRow? Me { get; set; }
         /// <summary>The reward bracket the asking player sits in right now, by the same rule the payout uses.</summary>
         public string? MyBracket { get; set; }
+        /// <summary>The boss's name, from content (WorldBossIdentity) - the screen keeps no copy.</summary>
+        public string BossName { get; set; } = WorldBossIdentity.FallbackName;
+        /// <summary>The monsters.json id the boss is, so the screen can find its portrait.</summary>
+        public int BossMonsterId { get; set; } = WorldBossIdentity.MonsterId;
     }
 
     /// <summary>
@@ -113,6 +117,8 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
                 Top = Enumerable.Range(0, Math.Min(Size, ranked.Count)).Select(Row).ToList(),
                 Me = mine >= 0 ? Row(mine) : null,
                 MyBracket = mine >= 0 ? BracketFor(mine + 1, ranked.Count).Bracket : null,
+                BossName = WorldBossIdentity.Name,
+                BossMonsterId = WorldBossIdentity.MonsterId,
             };
         }
     }
