@@ -2428,6 +2428,14 @@ namespace FolkIdle.Server.Network
             public string BaseItemId { get; set; } = string.Empty;
             public int QualityTier { get; set; }
             public bool IsAffixLocked { get; set; }
+            /// <summary>
+            /// Worn by ANY of the player's characters, all eleven slots. Task
+            /// 100: the Forge picks fusion pieces itself now, and the wire only
+            /// names the active character's gear - a piece worn by character 2
+            /// was offered as a sacrifice, refused (ItemEquipped), and offered
+            /// again on the next tap.
+            /// </summary>
+            public bool IsEquipped { get; set; }
             public System.Collections.Generic.Dictionary<string, int> Affixes { get; set; } = new();
         }
 
@@ -4737,7 +4745,27 @@ namespace FolkIdle.Server.Network
                     .Where(c => c.PlayerId == playerId)
                     .ToDictionaryAsync(c => c.ItemId, c => c.Quantity);
 
+                // All ELEVEN slots - eight combat, then axe, pickaxe, rod.
+                var wornLoadouts = await db.CharacterRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .ToListAsync();
+
                 await transaction.CommitAsync();
+
+                var wornIds = new System.Collections.Generic.HashSet<long>();
+                foreach (var c in wornLoadouts)
+                {
+                    foreach (var id in new[]
+                    {
+                        c.EquippedWeaponId, c.EquippedHelmetId, c.EquippedChestId, c.EquippedGlovesId,
+                        c.EquippedLeggingsId, c.EquippedBootsId, c.EquippedAmuletId, c.EquippedRingId,
+                        c.EquippedAxeId, c.EquippedPickaxeId, c.EquippedRodId,
+                    })
+                    {
+                        if (id.HasValue) wornIds.Add(id.Value);
+                    }
+                }
 
                 var response = new ForgeInventorySnapshotResponse();
 
@@ -4775,6 +4803,7 @@ namespace FolkIdle.Server.Network
                         BaseItemId = item.BaseItemId,
                         QualityTier = item.QualityTier,
                         IsAffixLocked = item.IsAffixLocked || jsonLockFlag,
+                        IsEquipped = wornIds.Contains(item.Id),
                         Affixes = affixes
                     });
                 }

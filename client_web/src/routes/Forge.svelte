@@ -346,7 +346,13 @@
   let showAllRows = $state(false);
   const ROWS_SHOWN = 6;
 
-  const allRows = $derived(buildFusionRows(owned, equippedIds, hiddenIds, MAX_QUALITY_TIER));
+  // Worn by anyone: the active character's gear from the wire (instant after
+  // an equip), plus the server's IsEquipped for characters 2 and 3 and tools,
+  // which the wire does not name.
+  const wornAnywhere = $derived(
+    new Set<number>([...equippedIds, ...owned.filter((i) => i.IsEquipped).map((i) => i.Id)]),
+  );
+  const allRows = $derived(buildFusionRows(owned, wornAnywhere, hiddenIds, MAX_QUALITY_TIER));
   const matchedRows = $derived.by(() => {
     const needle = rowSearch.trim().toLowerCase();
     if (!needle) return allRows;

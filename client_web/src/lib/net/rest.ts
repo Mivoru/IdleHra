@@ -465,6 +465,8 @@ export interface ForgeEquipment {
   BaseItemId: string;
   QualityTier: number;
   IsAffixLocked: boolean;
+  /** Worn by any of the player's characters (task 100). */
+  IsEquipped?: boolean;
   Affixes: AffixMap;
 }
 
