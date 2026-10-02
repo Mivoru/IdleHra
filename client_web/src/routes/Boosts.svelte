@@ -87,6 +87,31 @@
     return rows.sort((a, b) => a.kind.localeCompare(b.kind) || a.itemId - b.itemId);
   });
 
+  // Modul: task 109 - THE WHOLE CATALOGUE, for the empty state. It was a
+  // dead end ("You are not carrying any consumables") above copy that said
+  // eight exist. items.json holds FIVE (372-375 and 379; 376-378 are gone),
+  // and FoodRegistry's own comment records that no recipe or drop produces
+  // any of them - so the list says what each does and does not invent a
+  // source. Read from the registry by the same marker the server uses, so a
+  // sixth one appears here the day it is added.
+  const catalogue = $derived.by(() => {
+    if (!registry) return [] as { baseId: string; kind: 'food' | 'offensive' | 'defensive' }[];
+    const rows: { baseId: string; kind: 'food' | 'offensive' | 'defensive' }[] = [];
+    for (const def of registry.items.values()) {
+      const kind = consumableKind(def.BaseId);
+      if (kind) rows.push({ baseId: def.BaseId, kind });
+    }
+    return rows.sort((a, b) => a.kind.localeCompare(b.kind) || a.baseId.localeCompare(b.baseId));
+  });
+
+  // ConsumableEngine: food regenerates 2% of max HP a second for ten minutes,
+  // a potion lasts five, and the Death Ward brings you back at 20% once.
+  function effectOf(baseId: string, kind: 'food' | 'offensive' | 'defensive'): string {
+    if (baseId.startsWith('death_ward')) return 'saves you once from a killing blow, at 20% health';
+    if (kind === 'food') return 'heals 2% of your health a second for 10 minutes';
+    return kind === 'offensive' ? 'more attack for 5 minutes' : 'more defence for 5 minutes';
+  }
+
   const buffTicks = $derived(snap?.RemainingBuffDurationTicks ?? 0);
   const saturated = $derived(buffTicks > MAX_BUFF_TICKS);
 
@@ -129,24 +154,33 @@
 <div class="grid">
   <section class="panel">
     <h2>Consumables</h2>
+    <!-- The backpack/bank sentence was untrue since storage became one
+         chest (see `held` above), and the count was wrong too. -->
     <p class="dim small">
-      Eight exist in the game - four foods and two potions of each kind. Only
-      what is in your backpack can be used; anything in the bank has to be
-      withdrawn first.
+      Spend one now for an edge that runs out. Anything in your chest can be
+      used here.
     </p>
 
     {#if saturated}
       <p class="warn" role="status">
-        You are saturated with buff duration. Using anything now would be
-        refused by disconnecting you, so the buttons stay off until the timer
-        falls below the cap.
+        Your boost timer is full. Use another once it falls below
+        {MAX_BUFF_MINUTES} minutes.
       </p>
     {/if}
 
     <QueryState query={content} what="the item list">
       <QueryState query={inventory} what="your consumables" isEmpty={() => held.length === 0}>
         {#snippet empty()}
-          <p class="dim">You are not carrying any consumables.</p>
+          <p class="dim">You have none of these yet:</p>
+          <ul class="items catalogue">
+            {#each catalogue as row (row.baseId)}
+              <li>
+                <span class="kind" data-kind={row.kind}>{row.kind}</span>
+                <span class="name">{prettifyBaseId(row.baseId)}</span>
+                <span class="dim tiny effect">{effectOf(row.baseId, row.kind)}</span>
+              </li>
+            {/each}
+          </ul>
         {/snippet}
       <ul class="items">
         {#each held as row (row.itemId)}
@@ -275,6 +309,17 @@
     padding: 0.4rem 0.55rem;
     background: var(--bg-raised);
     border-radius: var(--radius);
+  }
+
+  /* The catalogue row has no stat, count or button: the effect wraps under. */
+  .items.catalogue li {
+    grid-template-columns: auto 1fr;
+    opacity: 0.85;
+  }
+
+  .catalogue .effect {
+    grid-column: 1 / -1;
+    margin: 0;
   }
 
   .effects li {
