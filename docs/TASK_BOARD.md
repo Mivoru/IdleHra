@@ -7066,7 +7066,9 @@ the boss name comes from.
 
 ## 106. Shared primitives and sweeps
 
-**OPEN.** It runs alongside 95-105, and each redesign adopts what it needs.
+**BUILT on branch `claude/ui-106-primitives`, not merged, not run in a browser.** Button vocabulary in `app.css` (default/primary/danger/ghost/quiet, `.tiny-btn`/`.btn-sm` and `.btn-md`; the 12 copies deleted). `ui/Modal.svelte` + `modalStack.ts` (portal, inert app root, focus trap and return, closer stack, `--scrim`, dvh cap, sheet variant); DeathCard, VictoryCard, WhatsNew, OfflineSummary, PlayerProfileModal, the exit confirm and Login's Android promo migrated, `tests/modal.test.ts` keeps the rest on a shrinking list (DetailSheet, GuidedOverlay, ShieldWheel - 105). `ui/Tabs.svelte` (ARIA, roving tabindex, pill/underline) and `ui/ChipGroup.svelte`, adopted on Leaderboards, Market and the gold ledger. `Bar` takes `size`, `tone`, `ariaLabel` on a `--bar-track` well; GoldLedger's `.bar` is `.share`. One `.panel` base and `.panel--sunken` in `app.css` (30 copies trimmed; five panels that had no surface now get one). `folk-rise` fills `backwards`; global `:focus-visible` for `a`, `summary`, `[role=button]`, `[tabindex]`; TabBar press tint; OfflineSummary and Gathering rethemed. overlap-check reaches OVERLAYS through `go()`; clipping-check opens the chat dock. `tests/primitives.test.ts` holds the app.css rules. **Left:** `ItemRow` exists (task 99) but only the Chest uses it - the other five row shapes; the type/spacing sweep (with 109); the z-index literals in components onto the scale; `check:overlap`/`check:clipping`/`check:touch` and the light-theme screenshots were not run (no stack in this session).
+
+**OPEN (original brief).** It runs alongside 95-105, and each redesign adopts what it needs.
 Report sections 4.I, 4.J, 4.K and 7.
 
 **What is actually true.**
@@ -7388,7 +7390,12 @@ screenshots of the touched screens. Checkers clean. `exercise.mjs` green.
 
 **OPEN.** Ask these in one message, in Czech.
 
-- **a. A touch floor for tablets.** At 768 px, `check:touch` finds 153
+- **a. A touch floor for tablets.** **DECIDED 2026-10-02: yes. BUILT on
+  `claude/ui-106-primitives`:** the global floor in `app.css` and the scoped
+  floors in ContextMenu and AttributePanel read
+  `(max-width: 40rem), (pointer: coarse)`. Not yet measured at 768px with a
+  coarse pointer; scoped component sizes outside a floor block may still be
+  short there. At 768 px, `check:touch` finds 153
   controls under 44 px. Examples: header toggles 32 px tall, Chest `More`
   32×22, Supplies `+`/`−` 24×26, Ancestors trait buttons 18 px. The floor
   lives only in `@media (max-width: 40rem)`, and a portrait tablet is
@@ -7408,7 +7415,11 @@ screenshots of the touched screens. Checkers clean. `exercise.mjs` green.
 - **e. Is world chat live-only by design?** A player who signs in again a
   minute later sees "Nothing in this channel yet" (evidence item 7). If
   history is meant to load, that is a defect to file.
-- **f. The rarity glow's colour.** On parchment, the top-tier red halo reads
+- **f. The rarity glow's colour.** **DECIDED 2026-10-02: a gold sheen. BUILT
+  on `claude/ui-106-primitives`:** `--rarity-sheen` (pale gold dark, darker
+  gold on parchment) draws `.rarity-glow`, the loot reveal's halo and
+  ItemIcon's box glow, for every tier that glows (10+); the name and border
+  keep the tier colour. On parchment, the top-tier red halo reads
   as an error (Chest, Character, loot reveal). Choose between a gold sheen, a
   rarity pip and a left border. 108 removes the animation regardless.
 
