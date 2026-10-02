@@ -513,7 +513,7 @@
             {#key hitPulse}
               <span class="hit-shake">
                 <span class="struckwrap" class:struck class:dying>
-                  <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="md" />
+                  <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="xl" />
                   <!-- Modul: the mark the blow leaves, drawn over the portrait it
                        landed on. Shape depends on the weapon family, brightness on
                        whether it crit. -->
@@ -1329,11 +1329,37 @@
   }
   /* The portrait sits beside the health bar rather than above it, so the
      fight reads as one thing at a glance. */
+  /* Modul: a two-column grid, portrait spanning both rows. The portrait is
+     large now (size xl), and with Stand down as a third flex item beside it a
+     390px row left the health bar about 60px wide. Stacking the bar over the
+     button keeps both in the column the portrait leaves, so nothing wraps and
+     the strip grows only to the portrait's own height. */
   .fighting {
     position: relative;
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    align-content: center;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.4rem 0.6rem;
+  }
+
+  .fighting > :global(.hit-shake) {
+    grid-row: 1 / 3;
+    grid-column: 1;
+  }
+
+  .fighting > .hpblock {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  .fighting > .standdown {
+    grid-column: 2;
+    grid-row: 2;
+    justify-self: start;
+    align-self: start;
   }
 
   .grow {
