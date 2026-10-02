@@ -1,5 +1,6 @@
 <script lang="ts">
   import { formatNumber, numberTitle } from '../lib/ui/format';
+  import { formatWhen, minuteClock } from '../lib/ui/when';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import { profileLink } from '../lib/ui/profileLink';
   // Modul: the world boss. A server-wide encounter that scales with how many
@@ -150,14 +151,13 @@
   // Since 2026-09-25 there are two "whens": the strike refills at UTC midnight,
   // and a fallen boss is replaced on Monday (WorldBossCalendar, pinned by
   // serverMirrors.test.ts).
-  // en-GB, not the browser's locale: every other sentence on this screen is
-  // English, and a Czech phone printed "arrives on pondělí" mid-sentence.
-  const onDay = (d: Date) => d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
-  const returnsLabel = $derived(`A new boss arrives on ${onDay(nextBossMonday(new Date()))} at 00:00 UTC.`);
-  const refillLabel = $derived.by(() => {
-    const at = nextStrikeRefill(new Date());
-    return `Your strike comes back at ${at.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZoneName: 'short' })}.`;
-  });
+  // Task 95: both "whens" go through the shared formatter - the player's own
+  // clock and the distance ("Mon 02:00 - in 3 d") - instead of "midnight UTC",
+  // which made a player do timezone arithmetic, and which the Delve wrote
+  // differently for the same Monday.
+  const returnsLabel = $derived(`A new boss arrives ${formatWhen(nextBossMonday($minuteClock), $minuteClock)}.`);
+  const refillAt = $derived(formatWhen(nextStrikeRefill($minuteClock), $minuteClock));
+  const refillLabel = $derived(`Your strike comes back ${refillAt}.`);
   // Modul: THE ARMOUR, and it is the whole interaction now.
   //
   // This screen used to show an estimate of the player's own damage, because
@@ -345,7 +345,7 @@
       <span class="dim tiny">{attemptsLeft > 0 ? 'Ready' : 'Used'}</span>
     </div>
     <p class="dim tiny">
-      One strike a day, every day. {attemptsLeft > 0 ? 'It refills at midnight UTC.' : refillLabel} A new
+      One strike a day, every day. {attemptsLeft > 0 ? `It refills ${refillAt}.` : refillLabel} A new
       boss arrives every Monday.
     </p>
     <h3>Its armour</h3>
@@ -355,7 +355,7 @@
         chosen among the plates still standing. A hit on it does
         <strong>{BOSS_WEAK_PLATE_MULTIPLIER}x</strong> damage, and only you see where it was. A hit
         anywhere else <strong>breaks</strong> that plate for everyone, so every broken plate makes
-        the soft one easier to find for whoever strikes next. The armour grows back at midnight UTC.
+        the soft one easier to find for whoever strikes next. The armour grows back {refillAt}.
       </p>
     {:else}
       <p class="dim tiny">

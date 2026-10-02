@@ -1,5 +1,7 @@
 <script lang="ts">
   import { formatNumber, numberTitle } from './format';
+  import { formatWhen } from './when';
+  import { nextStrikeRefill } from '../net/commands';
   // Modul: THE SHIELD WHEEL OVERLAY (task 36, spec 2 and 7). A practice run
   // posts to /practice/score and deals no damage; a real one (Phase 2) posts
   // the same log to /strike, spends today's strike and shows the damage.
@@ -557,7 +559,7 @@
       </dl>
       <p class="damage"><strong data-testid="strike-damage" title={numberTitle(strike.Damage)}>{formatNumber(strike.Damage)}</strong> damage dealt</p>
       {#if strike.BrokePlate >= 0}
-        <p class="hint">You broke plate {strike.BrokePlate + 1} for everyone until midnight UTC.</p>
+        <p class="hint">You broke plate {strike.BrokePlate + 1} for everyone until {formatWhen(nextStrikeRefill(new Date()))}.</p>
       {/if}
       <p class="hint">The weak plate was yours alone to find - the next strike draws a new one.</p>
       <div class="row">

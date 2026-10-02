@@ -36,6 +36,7 @@
   import { play } from '../lib/ui/audio';
   import Money from '../lib/ui/Money.svelte';
   import { formatNumber } from '../lib/ui/format';
+  import { formatWhen, minuteClock } from '../lib/ui/when';
 
   /*
     Modul: SVG, NOT A GLYPH. This screen shipped with ◆ and ● in its markup,
@@ -236,15 +237,11 @@
   const isDeep = $derived(!!view?.IsDeep);
 
   // Task 61: when the weekly course turns over, in the player's own clock.
+  // Task 95: through the shared formatter, so it reads like every other reset
+  // ("Mon 02:00 - in 3 d"). The diamond ceiling turns over at the same ISO
+  // week boundary (DelveEngine.CurrentWeekKey / WeekEndsUtc).
   const courseEnds = $derived(
-    view?.DeepWeekEndsUtc
-      ? new Date(view.DeepWeekEndsUtc).toLocaleString('en-GB', {
-          weekday: 'long',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZoneName: 'short',
-        })
-      : 'Monday'
+    view?.DeepWeekEndsUtc ? formatWhen(new Date(view.DeepWeekEndsUtc), $minuteClock) : 'Monday'
   );
 
   function oddsLabel(odds: number): string {
@@ -327,7 +324,7 @@
            is exactly the report that produced half this codebase's rules. -->
       <p class="capped">
         You have taken this week's {view.WeeklyDiamondCeiling} diamonds. A run still pays gold back
-        from the gate, and the ceiling lifts on Monday.
+        from the gate, and the ceiling lifts {view.DeepWeekEndsUtc ? courseEnds : 'on Monday'}.
       </p>
     {/if}
 
