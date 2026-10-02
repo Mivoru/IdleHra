@@ -14,6 +14,7 @@
 
 import { HTTP_BASE } from '../net/config';
 import { writable, get } from 'svelte/store';
+import { currentScreen } from '../stores/navigation';
 
 export const CLIPS = {
   buttonClick: 'ui_button_click.wav',
@@ -126,6 +127,20 @@ pageActive.subscribe((active) => {
   else void context.suspend();
 });
 
+// Modul: COMBAT SFX BELONG TO THE COMBAT SCREEN (owner, 2026-10-02: the blows
+// kept sounding while he was in the Chest or Character screen). The fight runs
+// on the server whatever is on show, so the event feed keeps arriving; the
+// gate is here, where every clip passes, rather than at each call site, so a
+// new combat sound cannot forget it. Events that arrive while away are DROPPED,
+// never queued - play() starts a clip immediately or not at all - so returning
+// to Combat hears new blows only, not a replayed backlog. Music, UI sounds and
+// the death / boss-clear stingers are deliberately not in the set.
+const COMBAT_CLIPS: ReadonlySet<ClipName> = new Set<ClipName>(['playerMiss', 'hitMelee', 'hitRanged', 'hitMagic', 'hitCrit']);
+
+function blockedByScreen(name: ClipName): boolean {
+  return COMBAT_CLIPS.has(name) && get(currentScreen) !== 'combat';
+}
+
 /**
  * Browsers refuse to start an AudioContext before a user gesture, so this is
  * called from the first click rather than at load. Calling it early does not
@@ -204,6 +219,7 @@ export function playHit(weaponKind: number, isCrit: boolean): void {
  * keep in step with a directory.
  */
 export function playWithFallback(name: ClipName, fallback: ClipName): void {
+  if (blockedByScreen(name)) return;
   if (get(muted) || !get(pageActive) || !context || !masterGain) return;
 
   void loadClip(CLIPS[name]).then((buffer) => {
@@ -229,6 +245,7 @@ function playBuffer(buffer: AudioBuffer): void {
  * second recording.
  */
 export function play(name: ClipName, rate = 1): void {
+  if (blockedByScreen(name)) return;
   if (get(muted) || !get(pageActive) || !context || !masterGain) return;
 
   void loadClip(CLIPS[name]).then((buffer) => {

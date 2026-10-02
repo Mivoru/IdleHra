@@ -1110,11 +1110,32 @@
   }
 
   /* ---------------------------------------------------------------- work */
+  /* Modul: THE WORK TAB MADE THE PAGE "ZOOM OUT" on a phone (owner,
+     2026-10-02). Gear and Attributes hold the page at the device width; this
+     tab alone has selects whose option text is wider than a phone, two panels
+     side by side, and a track floor of 19rem. Chrome on Android sizes the page
+     to the widest thing in the document even when html/body clip overflow
+     (app.css), so a few pixels of overhang in ONE tab rescaled the whole
+     screen and only that tab.
+     Three guards, because each alone leaves a way back in: the track floor can
+     never exceed the container (min(..., 100%)), the grid items may shrink
+     below their content (AutomationRulesPanel is another component, so its
+     section carries no scoped class from here - :global), and the grid itself
+     clips what still escapes inside its own box instead of handing it to the
+     document. */
   .workgrid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(19rem, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
     gap: 0.75rem;
     align-items: start;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .workgrid > :global(*) {
+    min-width: 0;
+    max-width: 100%;
   }
 
   .rostercard {

@@ -16,7 +16,7 @@
   interface Props {
     monsterId: number;
     name: string;
-    size?: 'sm' | 'md' | 'lg';
+    size?: 'sm' | 'md' | 'lg' | 'xl';
     /** Dimmed, for a codex entry never encountered. */
     unknown?: boolean;
   }
@@ -69,6 +69,16 @@
   .portrait[data-size='lg'] {
     width: 8rem;
     height: 8rem;
+  }
+
+  /* Modul: the fight's own portrait (owner, 2026-10-02: the art was too small
+     to see on a phone). Scales with the viewport instead of one fixed size:
+     8.5rem (136px) at 390px, growing to 12rem on a wide screen. The floor is
+     what the Combat row can spare beside a health bar without pushing the
+     bar off the 390px width. */
+  .portrait[data-size='xl'] {
+    width: clamp(8.5rem, 22vw, 12rem);
+    height: clamp(8.5rem, 22vw, 12rem);
   }
 
   /* Colour AND a heavier border, plus "(boss)" in the tooltip - three signals

@@ -679,8 +679,7 @@ namespace FolkIdle.Server.Engine
             {
                 string who = await PlayerNameResolver.GetAsync(standings[i].PlayerId);
                 Domain.Social.ChatEngine.EnqueueSystemAnnouncement(
-                    $"Season {closedEraId} is over. {who} finished #{i + 1} " +
-                    $"({SeasonPlacementRewards.BandNameForRank(i + 1)}). Congratulations!");
+                    AnnouncementText.SeasonPlacement(closedEraId, i + 1, who));
             }
         }
 

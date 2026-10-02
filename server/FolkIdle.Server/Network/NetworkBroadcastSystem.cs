@@ -2375,6 +2375,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            if (requestPath == "/api/v1/market/mine" && context.Request.HttpMethod == "GET")
+            {
+                await HandleMarketOwnOrders(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/support/tickets/create" && context.Request.HttpMethod == "POST")
             {
                 await HandleSupportTicket(context);
@@ -2422,6 +2428,14 @@ namespace FolkIdle.Server.Network
             public string BaseItemId { get; set; } = string.Empty;
             public int QualityTier { get; set; }
             public bool IsAffixLocked { get; set; }
+            /// <summary>
+            /// Worn by ANY of the player's characters, all eleven slots. Task
+            /// 100: the Forge picks fusion pieces itself now, and the wire only
+            /// names the active character's gear - a piece worn by character 2
+            /// was offered as a sacrifice, refused (ItemEquipped), and offered
+            /// again on the next tap.
+            /// </summary>
+            public bool IsEquipped { get; set; }
             public System.Collections.Generic.Dictionary<string, int> Affixes { get; set; } = new();
         }
 
@@ -2791,6 +2805,65 @@ namespace FolkIdle.Server.Network
             public int TierId { get; set; }
             public string TierName { get; set; } = string.Empty;
             public int WeeklyDiamonds { get; set; }
+        }
+
+        private sealed class MarketOwnOrderResponse
+        {
+            public long OrderId { get; set; }
+            /// <summary>"SELL" (a listing or sell order) or "BUY" (a resting buy order).</summary>
+            public string OrderType { get; set; } = string.Empty;
+            public string BaseItemId { get; set; } = string.Empty;
+            /// <summary>0 on a buy order means "any quality".</summary>
+            public int QualityTier { get; set; }
+            public long Price { get; set; }
+            public long CreatedAtEpoch { get; set; }
+        }
+
+        // Modul: task 102, "My orders". Read-only on purpose: the book has no
+        // cancel command for equipment yet, and a Cancel button here would be
+        // a control that cannot work. What the screen gains is the fact that
+        // the listing exists and what it is asking.
+        private async Task HandleMarketOwnOrders(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var orders = await MarketOrderBookEngine.FetchOwnOpenOrdersAsync(db, playerId);
+
+                var rows = new System.Collections.Generic.List<MarketOwnOrderResponse>(orders.Count);
+                foreach (var order in orders)
+                {
+                    rows.Add(new MarketOwnOrderResponse
+                    {
+                        OrderId = order.Id,
+                        OrderType = order.OrderType,
+                        BaseItemId = order.BaseItemId,
+                        QualityTier = order.QualityTier,
+                        Price = order.Price,
+                        CreatedAtEpoch = order.CreatedAtEpoch,
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, rows);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Market own orders error: {ex.Message}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
         }
 
         private sealed class MarketListingResponse
@@ -4672,7 +4745,27 @@ namespace FolkIdle.Server.Network
                     .Where(c => c.PlayerId == playerId)
                     .ToDictionaryAsync(c => c.ItemId, c => c.Quantity);
 
+                // All ELEVEN slots - eight combat, then axe, pickaxe, rod.
+                var wornLoadouts = await db.CharacterRecords
+                    .AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .ToListAsync();
+
                 await transaction.CommitAsync();
+
+                var wornIds = new System.Collections.Generic.HashSet<long>();
+                foreach (var c in wornLoadouts)
+                {
+                    foreach (var id in new[]
+                    {
+                        c.EquippedWeaponId, c.EquippedHelmetId, c.EquippedChestId, c.EquippedGlovesId,
+                        c.EquippedLeggingsId, c.EquippedBootsId, c.EquippedAmuletId, c.EquippedRingId,
+                        c.EquippedAxeId, c.EquippedPickaxeId, c.EquippedRodId,
+                    })
+                    {
+                        if (id.HasValue) wornIds.Add(id.Value);
+                    }
+                }
 
                 var response = new ForgeInventorySnapshotResponse();
 
@@ -4710,6 +4803,7 @@ namespace FolkIdle.Server.Network
                         BaseItemId = item.BaseItemId,
                         QualityTier = item.QualityTier,
                         IsAffixLocked = item.IsAffixLocked || jsonLockFlag,
+                        IsEquipped = wornIds.Contains(item.Id),
                         Affixes = affixes
                     });
                 }

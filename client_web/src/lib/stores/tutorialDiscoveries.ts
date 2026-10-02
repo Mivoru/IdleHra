@@ -163,7 +163,7 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     reached: (s) => Number(s.TotalItemsCraftedCount) >= 1,
     body:
       'A character works a recipe over time, the same way it fights or gathers. ' +
-      'Craft x10 queues ten of the same recipe in one go, which is the only sane way to ' +
+      'Make 10 turns every Craft button into ten of the same recipe in one go, the only sane way to ' +
       'make anything in quantity.',
   },
   {

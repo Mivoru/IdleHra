@@ -73,6 +73,8 @@ export const queryKeys = {
   recipes: ['crafting', 'recipes'] as const,
   market: (baseItemId: string, qualityTier: number, pageIndex: number) =>
     ['market', 'listings', baseItemId, qualityTier, pageIndex] as const,
+  /** Task 102: the player's own open orders, both sides. */
+  marketMine: ['market', 'mine'] as const,
   mailbox: ['player', 'mailbox'] as const,
   guildLogistics: ['social', 'guild', 'logistics'] as const,
   guildDepot: ['social', 'guild', 'depot'] as const,
@@ -463,6 +465,8 @@ export interface ForgeEquipment {
   BaseItemId: string;
   QualityTier: number;
   IsAffixLocked: boolean;
+  /** Worn by any of the player's characters (task 100). */
+  IsEquipped?: boolean;
   Affixes: AffixMap;
 }
 
@@ -562,6 +566,25 @@ export function fetchMarketListings(filters: MarketBrowseFilters = {}): Promise<
     pageSize: String(filters.pageSize ?? 24),
   });
   return authedGet<MarketBrowsePage>(`/api/v1/market/listings?${query}`);
+}
+
+/**
+ * Task 102: one of the player's own open orders. A "SELL" row is a listing
+ * (or a sell limit order) of a piece they own; a "BUY" row is a resting buy
+ * order whose gold is in escrow, and QualityTier 0 on it means any quality.
+ */
+export interface MarketOwnOrder {
+  OrderId: number;
+  OrderType: 'SELL' | 'BUY';
+  BaseItemId: string;
+  QualityTier: number;
+  Price: number;
+  CreatedAtEpoch: number;
+}
+
+/** Newest first, at most 200 (MarketOrderBookEngine.MaxOwnOrders). */
+export function fetchMyMarketOrders(): Promise<MarketOwnOrder[]> {
+  return authedGet<MarketOwnOrder[]>('/api/v1/market/mine');
 }
 
 export interface MarketPricePoint {

@@ -57,6 +57,9 @@ const ALLOWED: Record<string, string> = {
   'lib/ui/ChatDock.svelte': 'overlay, unread count only',
   // The worn list only adds the "better than worn" comparison to loot rows.
   'lib/ui/SessionLoot.svelte': 'comparison enrichment',
+  // Task 101: the only query is the roster of NAMES for the worker picker;
+  // without it a person is called by their race, which is still true.
+  'routes/Gathering.svelte': 'worker names only, falls back to the race',
 };
 
 describe('every query has an error state', () => {

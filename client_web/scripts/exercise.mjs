@@ -639,6 +639,12 @@ await go('Forge');
   const selects = page.locator('select');
   const count = await selects.count();
   record('forge exposes selects for fusion and reroll', count >= 3, `${count} selects`);
+
+  // Task 100: one row per item, each with its own Fuse. The fixture holds
+  // thousands of identical pieces, so an empty list here is the old chip
+  // panel's failure (or a fixture that lost its stock - re-seed).
+  const rows = await page.locator('[data-testid="fusion-row"]').count();
+  record('the forge lists one fusion row per item', rows > 0, `${rows} rows`);
 }
 
 // --- forge: a whole stack in one press (task 69) --------------------------------
@@ -662,7 +668,15 @@ await go('Forge');
     await go('Forge');
     await page.waitForTimeout(1200);
 
-    const chip = page.locator('button.settag', { hasText: 'Doom Gorget' }).filter({ hasText: 'Normal' }).first();
+    // Task 100: the chips are gone. The row for the item carries a Stack
+    // button that points the whole-stack section at its lowest rarity; the
+    // search narrows the list so the row is on screen whatever else is owned.
+    const search = page.getByPlaceholder('Find an item...');
+    if ((await search.count()) > 0) await search.fill('Doom Gorget');
+    const chip = page
+      .locator('[data-testid="fusion-row"]', { hasText: 'Doom Gorget' })
+      .getByTestId('fusion-row-stack')
+      .first();
     let planText = '';
     if ((await chip.count()) > 0) {
       await chip.click();
@@ -698,6 +712,56 @@ await go('Forge');
     for (const piece of await held()) {
       await apiPost('/api/v1/chest/discard', { equipmentId: piece.Id });
     }
+
+    // Modul: FUSING QUICKLY (owner: "the forge breaks for a second"). Three
+    // row Fuses pressed as fast as the button allows, on a fresh dev stack of
+    // nine. Each fusion turns three pieces into one, so the honest end state
+    // is three Common pieces. A tap that re-sent a piece the previous fusion
+    // ate used to be answered with TargetNotFound AND a disconnect, so the
+    // count came out wrong and the header said "reconnecting". Round-trips:
+    // the three Commons are binned afterwards.
+    const again = await apiPost('/api/v1/dev/forge/stack', {});
+    if (again?.BaseItemId === base) {
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1200);
+      await dismissOfflineSummary(3000);
+      await go('Forge');
+      await page.waitForTimeout(1200);
+      const find = page.getByPlaceholder('Find an item...');
+      if ((await find.count()) > 0) await find.fill('Doom Gorget');
+      const fuseBtn = page
+        .locator('[data-testid="fusion-row"]', { hasText: 'Doom Gorget' })
+        .getByTestId('fusion-row-fuse')
+        .first();
+      let pressed = 0;
+      let sawReconnect = false;
+      for (let i = 0; i < 3; i++) {
+        const ready = await fuseBtn
+          .and(page.locator('button:not([disabled])'))
+          .waitFor({ timeout: 8000 })
+          .then(() => true)
+          .catch(() => false);
+        if (!ready) break;
+        await fuseBtn.click();
+        pressed++;
+        sawReconnect ||= /reconnecting/i.test(await page.evaluate(() => document.body.innerText));
+      }
+      let quick = [];
+      const until = Date.now() + 15000;
+      while (Date.now() < until) {
+        quick = await held();
+        if (quick.length === 3) break;
+        await page.waitForTimeout(500);
+      }
+      record(
+        'fusing quickly from the row fuses every press and keeps the session',
+        pressed === 3 && quick.length === 3 && quick.every((i) => i.QualityTier === 2) && !sawReconnect,
+        `${pressed} presses -> ${quick.map((i) => `T${i.QualityTier}`).join(', ') || 'nothing'}${sawReconnect ? ', reconnected' : ''}`,
+      );
+      for (const piece of await held()) {
+        await apiPost('/api/v1/chest/discard', { equipmentId: piece.Id });
+      }
+    }
   }
 }
 
@@ -716,38 +780,39 @@ await go('Market');
     'browse is the default',
   );
 
-  const filterCount = await page.locator('.filters select').count();
-  record(
-    'the market filters by type and rarity',
-    filterCount >= 3,
-    `${filterCount} filter dropdowns`,
-  );
-
   record(
     'the market pages rather than dumping the book',
     /Page \d+ of \d+/.test(before) || /Nothing matches|market is empty/i.test(before),
   );
 
-  // Narrowing to a slot must actually change the request, not just the UI.
-  //
-  // Modul: A CHECKBOX, NOT A DROPDOWN. The type filter became checkboxes when
-  // the market gained multi-select, and this step kept calling selectOption on
-  // `.filters select` - which now resolves to the RARITY dropdown, where no
-  // option is named "Helmet". It threw rather than failed, so the whole script
-  // died here and every check below the market - crafting, guild, the paper
-  // doll, the chest - silently stopped running for as long as that shipped.
-  // A crash in a test suite is worse than a red line: a red line is reported.
-  const helmet = page.locator('.filters label').filter({ hasText: 'Helmet' }).locator('input[type="checkbox"]').first();
-  await helmet.check();
-  await page.waitForTimeout(1200);
-  const narrowed = await page.evaluate(() => document.body.innerText);
+  // Task 102: the filters are chips in a sheet behind "Filters (n)", so the
+  // results are not pushed below 650 px of checkboxes on a phone.
+  await page.getByTestId('market-filters').click();
+  const sheet = page.getByTestId('market-filter-sheet');
+  await sheet.waitFor({ timeout: 5000 }).catch(() => {});
+  const chipCount = await sheet.locator('.chip').count();
+  const rarityCount = await sheet.locator('select').count();
   record(
-    'narrowing by slot re-queries the market',
-    narrowed !== before,
-    'the listing panel changed',
+    'the market filters by type and rarity',
+    chipCount >= 6 && rarityCount >= 2,
+    `${chipCount} chips, ${rarityCount} rarity selects`,
   );
 
-  const listButton = page.getByRole('button', { name: /^List for/ });
+  // Narrowing to a slot must actually change the REQUEST, not just the UI -
+  // asserted on the request the chip sends.
+  const narrowed = page
+    .waitForRequest((r) => r.url().includes('/api/v1/market/listings') && /slotIndexes=\d/.test(r.url()), { timeout: 8000 })
+    .then(() => true)
+    .catch(() => false);
+  await sheet.getByRole('button', { name: 'Helmet', exact: true }).click().catch(() => {});
+  record('narrowing by slot re-queries the market', await narrowed, 'the listings request carries the slot');
+  await sheet.getByRole('button', { name: 'Clear all' }).click().catch(() => {});
+  await sheet.getByRole('button', { name: 'Close' }).click().catch(() => {});
+
+  // Sell is a segment on a phone and a side column on a desktop.
+  const sellSeg = page.getByTestId('market-seg-sell');
+  if ((await sellSeg.count()) > 0) await sellSeg.click();
+  const listButton = page.getByTestId('market-list');
   const hasList = (await listButton.count()) > 0;
   record('market has a list-for-price button', hasList);
 
@@ -758,7 +823,34 @@ await go('Market');
       true,
       disabled ? 'disabled (no guild licence or no item picked)' : 'enabled',
     );
+
+    // Task 102: the sell flow names the item before listing. Picking a piece
+    // swaps the picker for a card, and the button says what it lists.
+    const firstPiece = page.locator('[data-testid="market-sell"] button.row').first();
+    if ((await firstPiece.count()) > 0) {
+      await firstPiece.click();
+      const label = (await listButton.first().innerText().catch(() => '')).trim();
+      record(
+        'the sell flow names the item before listing',
+        /^List \S.* for /.test(label) && (await page.getByTestId('market-sell-card').count()) > 0,
+        label || 'no label',
+      );
+      await page.getByTestId('market-sell-card').getByRole('button', { name: 'Change' }).click().catch(() => {});
+    }
   }
+
+  // Task 102: My orders reads the player's own open orders from the server.
+  const ordersSeg = page.getByTestId('market-seg-orders');
+  if ((await ordersSeg.count()) > 0) await ordersSeg.click();
+  const mine = await apiGet('/api/v1/market/mine');
+  const ordersText = await page.getByTestId('market-orders').innerText().catch(() => '');
+  record(
+    'My orders lists what the player has on the book',
+    Array.isArray(mine) && (mine.length === 0 ? /nothing on the market/i.test(ordersText) : /Selling|Buying/.test(ordersText)),
+    Array.isArray(mine) ? `${mine.length} open` : 'the route did not answer',
+  );
+  const buySeg = page.getByTestId('market-seg-buy');
+  if ((await buySeg.count()) > 0) await buySeg.click();
 }
 
 // --- social: friends ---------------------------------------------------------
@@ -871,10 +963,13 @@ await go('Gathering');
   // display format nobody can change afterwards.
   const readMastery = async (name) => {
     const found = await page.evaluate((trackName) => {
+      // Task 101: mastery moved into each profession's card as a bar, marked
+      // data-mastery. The old <dt>/<dd> table is the fallback.
+      const marked = document.querySelector(`[data-mastery="${trackName}"]`);
       const term = [...document.querySelectorAll('dt')].find(
         (el) => el.textContent.trim() === trackName,
       );
-      const detail = term?.nextElementSibling;
+      const detail = marked ?? term?.nextElementSibling;
       if (!detail) return null;
 
       const exact = detail.querySelector('[data-exact]')?.getAttribute('data-exact');
@@ -928,6 +1023,13 @@ await go('Gathering');
     miningAfter !== null &&
     miningBefore !== null &&
     (miningAfter.xp > miningBefore.xp || miningAfter.level > miningBefore.level);
+
+  // Task 101: the status says WHAT, not only where ("Fishing Sunlit Perch -
+  // Sunlit Plains"), so a working node is identifiable at a glance.
+  if (deployed) {
+    const status = await page.getByTestId('gathering-status').innerText().catch(() => '');
+    record('the gathering status names the catch and the place', /^Fishing \S.* - \S/.test(status.trim()), status.trim() || 'no status');
+  }
 
   if (deployed) {
     record('fishing raises fishing mastery', fishingMoved, `fishing xp ${fishingBefore?.xp} -> ${fishingAfter?.xp}`);
@@ -1007,6 +1109,9 @@ await go('Auto-Eat');
 // its price back, and the collected piece is binned - so the stock and the
 // chest end where they started and this passes on every run, not once.
 await go('Crafting');
+// Task 101: commissions are a tab of the Crafting screen now.
+const openCommissions = () => page.getByTestId('crafting-tab-commissions').click().catch(() => {});
+await openCommissions();
 {
   const panel = page.locator('[data-testid="workshop-commissions"]');
   const shown = await panel.waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
@@ -1069,6 +1174,7 @@ await go('Crafting');
     await page.waitForTimeout(1200);
     await dismissOfflineSummary(3000);
     await go('Crafting');
+    await openCommissions();
 
     const inventoryBefore = ((await apiGet('/api/v1/player/inventory'))?.Equipment ?? []).map((e) => e.Id);
     const collectBtn = panel.locator('[data-testid="workshop-collect"]');
@@ -1110,6 +1216,10 @@ await go('Crafting');
 // CraftingTimeMs that nothing read. It is now an activity in its own band, so
 // the proof is that a character ends up REPORTING it as their job.
 await go('Crafting');
+// Modul: the commission step above leaves Crafting on its Commissions tab, and
+// navigating to the screen it is already on does not remount it - so without
+// this click every recipe check below reads the wrong tab and fails.
+await page.getByRole('tab', { name: 'Recipes' }).click().catch(() => {});
 {
   const text = await page.evaluate(() => document.body.innerText);
   record(
@@ -1137,9 +1247,10 @@ await go('Crafting');
   record('the crafting screen offers a direct Craft button', canCraft);
 
   if (canCraft) {
-    // Tick "Craft x10" by its label so this does not depend on checkbox order.
-    const tenLabel = page.locator('label.check', { hasText: /Craft x10/i }).locator('input');
-    if ((await tenLabel.count()) > 0) await tenLabel.check().catch(() => {});
+    // Task 101: the batch is a "Make 1 / Make 10" toggle, and the number is
+    // on every Craft button.
+    const ten = page.getByRole('radio', { name: 'Make 10' });
+    if ((await ten.count()) > 0) await ten.click().catch(() => {});
     await page.waitForTimeout(300);
 
     const enabled = page.getByRole('button', { name: /^Craft x10$/ }).and(page.locator('button:not([disabled])')).first();
@@ -1202,6 +1313,8 @@ await go('Guild');
   } else if (warUnlock.Unlocked) {
     record('the guild war lock reports its progress', true, 'already unlocked on this server');
   } else {
+    // Task 107: the locked war card is collapsed to one line; a player opens it.
+    await page.locator('[data-testid="guild-war-toggle"]').first().click().catch(() => {});
     const lockLine = await page
       .locator('[data-testid="guild-war-locked"]')
       .waitFor({ timeout: 10000 })
@@ -1270,7 +1383,7 @@ await go('Guild');
   const uncatalogued = held.find((o) => o.value === 'raw_log' || o.value === 'oak_log');
   if (uncatalogued) {
     await materialSelect.selectOption(uncatalogued.value);
-    const donateBtn = page.getByRole('button', { name: 'Donate', exact: true }).first();
+    const donateBtn = page.getByRole('button', { name: /^Deposit to Treasury$/ }).first();
     const off = await donateBtn.evaluate((b) => b.disabled);
     record(
       'a material the depot cannot store is not offered as donatable',
@@ -1286,7 +1399,7 @@ await go('Guild');
     // editability check is defined for inputs and selects and answers "not
     // disabled" for anything else, which is how a greyed-out control once
     // reported a broken feature as working.
-    const donate = page.getByRole('button', { name: 'Donate', exact: true }).first();
+    const donate = page.getByRole('button', { name: /^Deposit to Treasury$/ }).first();
     const stillDisabled = await donate.evaluate((b) => b.disabled);
     record(
       'choosing a material enables the Donate button',
@@ -1406,7 +1519,9 @@ await go('Guild');
 
       if (left) {
         // Social's Join/Create used to stay disabled for good; they must open now.
-        await go('Friends');
+        // Task 107: the guild browser moved from Friends to the Guild tab, which
+        // shows it in place of the dashboard for a guildless player.
+        await go('Guild');
         const escaped = guildName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         await page
           .locator('li.guild')

@@ -41,7 +41,10 @@
     { id: GLOBAL, label: 'World' },
     { id: GUILD, label: 'Guild' },
     { id: WHISPER, label: 'Whispers' },
-    { id: ANNOUNCEMENT, label: 'Announcements' },
+    // 'News', not 'Announcements': at 390px the four tabs only fit on one
+    // row with a short label, and a second row of 44px tabs is a row of chat
+    // the player does not get to see.
+    { id: ANNOUNCEMENT, label: 'News' },
   ];
 
   let active = $state(GLOBAL);
@@ -340,23 +343,31 @@
     {:else}
     <ul class="log">
       {#each visible as message (message.id)}
-        <li>
-          <span class="time dim">{timeOf(message.atMs)}</span>
-          <button 
-            class="who" 
-            class:self={message.senderPlayerId === connection.currentPlayerId}
-            onclick={(e) => openContextMenu(e, displayName(message.senderPlayerId), message.senderPlayerId)}
-          >
-            {#if message.channelType !== ANNOUNCEMENT}<PlayerAvatar playerId={message.senderPlayerId} size="sm" />{/if}
-            {displayName(message.senderPlayerId)}
-          </button>
-          <span class="text" class:announcement={message.channelType === ANNOUNCEMENT}>
-            {message.text}
-          </span>
-          {#if message.channelType === ANNOUNCEMENT && message.senderPlayerId !== connection.currentPlayerId}
+        {#if message.channelType === ANNOUNCEMENT}
+          <!-- Modul: AN ANNOUNCEMENT IS A SYSTEM LINE, NOT A MESSAGE. It used
+               to render exactly like a player's row - a name button reading
+               "World" that opened nothing (id 0 is refused by the menu) beside
+               the text. The server already names the player inside the line,
+               so the button was a second, inert name. -->
+          <li class="sys">
+            <span class="time dim">{timeOf(message.atMs)}</span>
+            <span class="text announcement">{message.text}</span>
             <button class="gz" title="Say gz! in world chat" onclick={congratulate}>gz!</button>
-          {/if}
-        </li>
+          </li>
+        {:else}
+          <li>
+            <span class="time dim">{timeOf(message.atMs)}</span>
+            <button
+              class="who"
+              class:self={message.senderPlayerId === connection.currentPlayerId}
+              onclick={(e) => openContextMenu(e, displayName(message.senderPlayerId), message.senderPlayerId)}
+            >
+              <PlayerAvatar playerId={message.senderPlayerId} size="sm" />
+              <span class="who-name">{displayName(message.senderPlayerId)}</span>
+            </button>
+            <span class="text">{message.text}</span>
+          </li>
+        {/if}
       {/each}
     </ul>
 
@@ -364,7 +375,7 @@
       <p class="dim empty">
         Nothing in this channel yet.
         {#if active === GUILD}Guild messages only arrive if you are in a guild.{/if}
-        {#if active === ANNOUNCEMENT}High-rarity drops across the world show up here.{/if}
+        {#if active === ANNOUNCEMENT}Rare drops, Legendary rerolls, boss clears and season results show up here.{/if}
       </p>
     {/if}
     {/if}
@@ -433,9 +444,12 @@
 {/if}
 
 <style>
-  /* Task 54: the face sits inside the name cell, so the grid keeps its columns. */
+  /* Task 54: the face sits inside the name cell, so the grid keeps its columns.
+     18px rather than the 28px 'sm' face: at 28 the avatar alone set every row's
+     height, taller than the line of text beside it. */
   .who :global(.avatar) {
-    margin-right: 0.3rem;
+    width: 18px;
+    height: 18px;
   }
 
   .wrap {
@@ -485,8 +499,8 @@
     background: transparent;
     border-color: transparent;
     color: var(--text-dim);
-    font-size: 0.85rem;
-    padding: 0.3rem 0.7rem;
+    font-size: var(--fs-sm);
+    padding: 0.3rem 0.6rem;
   }
 
   .tabs button.active {
@@ -598,36 +612,64 @@
     font-size: 0.75rem;
   }
 
+  /* Modul: CHAT DENSITY, 2026-10-02 - "the bubble with the player's name is
+     too big, same for the chat text". The name was a full raised, bordered
+     button with a 28px face in it, and on a phone app.css's 44px touch floor
+     made every row at least 44px tall: about eight lines in the dock. The name
+     is now plain bold text, the face 18px, the text --fs-sm, and on a phone the
+     floor is kept by the BUTTON BOX rather than the ROW (see the media block
+     below), so a one-line message is a ~28px row. */
   .log {
     list-style: none;
     margin: 0;
-    padding: 0.5rem;
+    padding: 0.4rem 0.5rem;
     display: flex;
     flex-direction: column-reverse;
-    gap: 0.2rem;
+    gap: 0.1rem;
     height: 22rem;
     overflow-y: auto;
     background: var(--bg);
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    font-size: 0.85rem;
+    font-size: var(--fs-sm);
+    line-height: var(--lh-snug);
   }
 
   .log li {
     display: grid;
-    grid-template-columns: 3rem auto 1fr auto;
-    gap: 0.5rem;
-    align-items: baseline;
+    grid-template-columns: auto auto 1fr;
+    gap: 0.4rem;
+    align-items: center;
   }
 
   .time {
-    font-size: 0.7rem;
+    font-size: var(--fs-badge);
     font-variant-numeric: tabular-nums;
   }
 
   .who {
-    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    /* Text, not a chip: no fill, no border, no padding. */
+    background: none;
+    border: none;
+    /* Modul: app.css gives every button a drop shadow. On this 44px box that
+       overhangs its 28px row it drew a pale slab across the neighbouring rows. */
+    box-shadow: none;
+    border-radius: var(--radius-xs);
+    padding: 0 0.1rem;
+    font-weight: var(--fw-medium);
+    line-height: inherit;
+    color: var(--text);
     white-space: nowrap;
+    /* A 20-character name must not take the message's width from it. */
+    max-width: 9rem;
+  }
+
+  .who-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .who.self {
@@ -636,6 +678,18 @@
 
   .text {
     overflow-wrap: anywhere;
+    min-width: 0;
+  }
+
+  /* An announcement is a system line: smaller, coloured, marked by an edge
+     rather than drawn as somebody's message. */
+  .log li.sys {
+    grid-template-columns: auto 1fr auto;
+    padding-left: 0.35rem;
+    border-left: 2px solid var(--rarity-12);
+    background: color-mix(in srgb, var(--rarity-12) 7%, transparent);
+    border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
+    font-size: var(--fs-xs);
   }
 
   .text.announcement {
@@ -644,8 +698,28 @@
 
   .gz {
     padding: 0 0.35rem;
-    font-size: 0.7rem;
+    font-size: var(--fs-badge);
     line-height: 1.4;
+  }
+
+  /* Modul: THE FLOOR IS ON THE BUTTON, NOT ON THE ROW. app.css gives every
+     button a 44px min-height on a phone, and it stays: the name and gz! boxes
+     still MEASURE 44px tall (check:touch reads the element's own box). The
+     negative block margin only stops that box from setting the row's height,
+     so it overhangs its 28px row by 8px each way instead of padding it out.
+     The overhang lands on the row gap and the blank band above or below the
+     neighbouring line's centred text, not on that row's name. A taller row
+     (a wrapped message) only widens the clearance. */
+  @media (max-width: 40rem) {
+    .log li .who,
+    .log li .gz {
+      margin-block: -8px;
+      flex-shrink: 0;
+    }
+
+    .log li {
+      min-height: 28px;
+    }
   }
 
   .composer {

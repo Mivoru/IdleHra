@@ -9,8 +9,13 @@
     fetchMarketListings,
     fetchMarketPriceHistory,
     fetchStatistics,
+    fetchMyMarketOrders,
     type InventoryEquipment,
   } from '../lib/net/rest';
+  import DetailSheet from '../lib/ui/DetailSheet.svelte';
+  import RarityPip from '../lib/ui/RarityPip.svelte';
+  import { summarizeAffixes } from '../lib/ui/itemRow';
+  import { isWide } from '../lib/ui/media';
   import { prettifyBaseId } from '../lib/net/content';
   import { listItemOnMarket, buyMarketListing, placeLimitOrder } from '../lib/net/commands';
   import { contentQuery } from '../lib/net/registry.svelte';
@@ -250,8 +255,54 @@
   // Task 54: equipment and cosmetics are two markets with different rules
   // (a price corridor against the seller's own price), so two tabs.
   let marketTab = $state<'equipment' | 'cosmetics'>('equipment');
+
+  // --- task 102: Buy / Sell / My orders --------------------------------------
+  //
+  // Modul: ONE JOB AT A TIME ON A PHONE. The browse panel opened with about
+  // 650 px of filters (eleven slot checkboxes, five region checkboxes, two
+  // selects and a sort), so the first listing sat near y 1060; the sell picker
+  // and the limit-order form stacked below that. A segmented Buy | Sell | My
+  // orders puts the one being done on screen, and the filters fold into a
+  // sheet behind "Filters (n)". On a wide screen the three are side by side -
+  // the results wide, Sell and the orders beside them.
+  let seg = $state<'buy' | 'sell' | 'orders'>('buy');
+  let filtersOpen = $state(false);
+
+  const activeFilterCount = $derived(
+    filterSlots.length +
+      filterTiers.length +
+      (filterMinRarity > 0 ? 1 : 0) +
+      (filterMaxRarity < MAX_QUALITY_TIER ? 1 : 0),
+  );
+  const anyFilter = $derived(activeFilterCount > 0 || debouncedText.trim() !== '');
+
+  function toggleSlot(index: number) {
+    filterSlots = filterSlots.includes(index) ? filterSlots.filter((i) => i !== index) : [...filterSlots, index];
+    pageIndex = 0;
+  }
+
+  function toggleTier(tier: number) {
+    filterTiers = filterTiers.includes(tier) ? filterTiers.filter((t) => t !== tier) : [...filterTiers, tier];
+    pageIndex = 0;
+  }
+
+  const myOrders = createQuery(() => ({
+    queryKey: queryKeys.marketMine,
+    queryFn: fetchMyMarketOrders,
+    enabled: seg === 'orders' || $isWide,
+  }));
+
+  function ago(epochMs: number): string {
+    const minutes = Math.max(0, Math.floor((Date.now() - epochMs) / 60_000));
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 48) return `${hours} h ago`;
+    return `${Math.floor(hours / 24)} days ago`;
+  }
 </script>
 
+<!-- Modul: UNDERLINED, because these are sub-tabs of the Market and the
+     filled buttons made them look like the screen's own top tabs. -->
 <div class="market-tabs" role="tablist">
   <button role="tab" class:active={marketTab === 'equipment'} aria-selected={marketTab === 'equipment'} onclick={() => (marketTab = 'equipment')}>
     Equipment
@@ -261,11 +312,22 @@
   </button>
 </div>
 
-{#if marketTab === 'cosmetics'}
-  <CosmeticMarket {hasGuildLicense} />
-{:else}
-<div class="grid">
-  <section class="panel browse">
+{#snippet licenceWarning()}
+  {#if statistics.isError && statistics.data === undefined}
+    <!-- Modul: a failed membership check is not "you have no guild". The
+         buttons stay disabled (hasGuildLicense is false) but the reason given
+         is the true one. -->
+    <QueryError query={statistics} what="your guild membership" />
+  {:else if statistics.data !== undefined && !hasGuildLicense}
+    <p class="warn">
+      Trading needs an active guild membership - the server treats it as a
+      trade licence and rejects listings and purchases without one.
+    </p>
+  {/if}
+{/snippet}
+
+{#snippet buyPanel()}
+  <section class="panel browse" data-testid="market-buy">
     <header class="head">
       <h2>Market</h2>
       <span class="dim tiny">
@@ -273,77 +335,24 @@
       </span>
     </header>
 
-    <div class="filters">
-      <input placeholder="Search by name..." bind:value={filterText} />
-
-      <fieldset class="checks">
-        <legend>Type</legend>
-        {#each TYPE_FILTERS as option (option.index)}
-          <label>
-            <input
-              type="checkbox"
-              class="touch-exempt"
-              checked={filterSlots.includes(option.index)}
-              onchange={() => {
-                filterSlots = filterSlots.includes(option.index)
-                  ? filterSlots.filter((i) => i !== option.index)
-                  : [...filterSlots, option.index];
-                pageIndex = 0;
-              }}
-            />
-            {option.label}
-          </label>
-        {/each}
-      </fieldset>
-
-      <fieldset class="checks">
-        <legend>Tier</legend>
-        {#each TIER_FILTERS as tier (tier)}
-          <label>
-            <input
-              type="checkbox"
-              class="touch-exempt"
-              checked={filterTiers.includes(tier)}
-              onchange={() => {
-                filterTiers = filterTiers.includes(tier)
-                  ? filterTiers.filter((t) => t !== tier)
-                  : [...filterTiers, tier];
-                pageIndex = 0;
-              }}
-            />
-            {locationName(tier)}
-          </label>
-        {/each}
-      </fieldset>
-
-      <label class="range">
-        Rarity
-        <select bind:value={filterMinRarity} onchange={() => (pageIndex = 0)}>
-          {#each Array.from({ length: MAX_QUALITY_TIER + 1 }, (_, i) => i) as tier}
-            <option value={tier}>{rarityName(tier)}</option>
-          {/each}
-        </select>
-        to
-        <select bind:value={filterMaxRarity} onchange={() => (pageIndex = 0)}>
-          {#each Array.from({ length: MAX_QUALITY_TIER + 1 }, (_, i) => i) as tier}
-            <option value={tier}>{rarityName(tier)}</option>
-          {/each}
-        </select>
-      </label>
-
-      <label class="range">
-        Sort
-        <select bind:value={sortBy} onchange={() => (pageIndex = 0)}>
+    <div class="searchrow">
+      <input type="search" placeholder="Search by name..." bind:value={filterText} aria-label="Search the market" />
+      <button class="filtersbtn" class:on={activeFilterCount > 0} onclick={() => (filtersOpen = true)} data-testid="market-filters">
+        Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+      </button>
+    </div>
+    <div class="sortrow">
+      <label class="sortlabel">
+        <span>Sort:</span>
+        <select bind:value={sortBy} onchange={() => (pageIndex = 0)} aria-label="Sort by">
           {#each SORTS as option (option.key)}
             <option value={option.key}>{option.label}</option>
           {/each}
         </select>
-        <button class="tiny-btn" onclick={() => (descending = !descending)}>
-          {descending ? 'High to low' : 'Low to high'}
-        </button>
       </label>
-
-      <button class="tiny-btn" onclick={resetFilters}>Clear</button>
+      <button class="tiny-btn" onclick={() => (descending = !descending)}>
+        {descending ? 'High to low' : 'Low to high'}
+      </button>
     </div>
 
     {#if listings.isPending}
@@ -351,12 +360,16 @@
     {:else if listings.isError}
       <p class="err">{listings.error?.message}</p>
     {:else if rows.length === 0}
-      <p class="dim">
-        Nothing matches those filters.
-        {#if totalCount === 0 && !debouncedText && filterSlots.length === 0 && filterTiers.length === 0}
-          The market is empty - nobody has listed anything yet.
-        {/if}
-      </p>
+      <!-- Modul: TWO EMPTY STATES. "Nothing matches those filters" was said
+           even with no filter set, blaming the player for an empty book. -->
+      {#if anyFilter}
+        <p class="dim" data-testid="market-empty-filtered">
+          Nothing matches those filters.
+          <button class="linkish" onclick={resetFilters}>Clear filters</button>
+        </p>
+      {:else}
+        <p class="dim" data-testid="market-empty">The market is empty - nobody has listed anything yet.</p>
+      {/if}
     {:else}
       <ul class="cards">
         {#each rows as listing (listing.OrderId)}
@@ -371,8 +384,9 @@
               <span class="name" style="color: {rarityColor(listing.QualityTier)}">
                 {prettifyBaseId(listing.BaseItemId)}
               </span>
-              <span class="dim tiny">
-                {slotLabel(listing.BaseItemId)} &middot; {rarityName(listing.QualityTier)}
+              <span class="dim tiny metaline">
+                <RarityPip tier={listing.QualityTier} />
+                {rarityName(listing.QualityTier)} &middot; {slotLabel(listing.BaseItemId)}
               </span>
             </div>
             <span class="price"><Money amount={listing.Price} /></span>
@@ -415,47 +429,54 @@
       </div>
     {/if}
   </section>
+{/snippet}
 
-  <section class="panel">
+{#snippet sellPanel()}
+  <section class="panel" data-testid="market-sell">
     <h2>Sell</h2>
+    {@render licenceWarning()}
 
-    {#if statistics.isError && statistics.data === undefined}
-      <!-- Modul: a failed membership check is not "you have no guild". The
-           buttons stay disabled (hasGuildLicense is false) but the reason
-           given is the true one. -->
-      <QueryError query={statistics} what="your guild membership" />
-    {:else if statistics.data !== undefined && !hasGuildLicense}
-      <p class="warn">
-        Trading needs an active guild membership - the server treats it as a
-        trade licence and rejects listings and purchases without one.
+    {#if !sellItem}
+      <p class="dim small">
+        Pick the piece to list. Only carried equipment can be sold - take a
+        piece off first, in
+        <button class="linkish" onclick={() => requestScreen('chest')}>the chest</button>.
       </p>
-    {/if}
+      <!-- Modul: A BROWSER, NOT A DROPDOWN - the same component the Forge uses,
+           so the two cannot drift. It is the whole tab until something is
+           picked, which is as close to a full-screen picker as a phone needs;
+           then it gives way to a card that names the piece. -->
+      <ItemBrowser
+        items={sellable}
+        selectedId={sellInstanceId}
+        compact
+        emptyText="Nothing carried. Take a piece off in the chest to sell it."
+        onselect={(item) => (sellInstanceId = item.Id)}
+      />
+      {#if inventory.isError && inventory.data === undefined}
+        <QueryError query={inventory} what="your equipment" />
+      {/if}
+    {:else}
+      <!-- Modul: THE ITEM, ECHOED. "List for 1000g" did not say what was being
+           listed; the card and the button both name it now. -->
+      <div class="sellcard" data-testid="market-sell-card">
+        <ItemIcon baseItemId={sellItem.BaseItemId} name={prettifyBaseId(sellItem.BaseItemId)} qualityTier={sellItem.QualityTier} size="md" />
+        <div class="what">
+          <span class="name" style="color: {rarityColor(sellItem.QualityTier)}">{prettifyBaseId(sellItem.BaseItemId)}</span>
+          <span class="dim tiny metaline">
+            <RarityPip tier={sellItem.QualityTier} />
+            {rarityName(sellItem.QualityTier)} &middot; {slotLabel(sellItem.BaseItemId)}
+          </span>
+          {#if summarizeAffixes(sellItem.Affixes)}
+            <span class="dim tiny">{summarizeAffixes(sellItem.Affixes)}</span>
+          {/if}
+        </div>
+        <button class="tiny-btn" onclick={() => (sellInstanceId = 0)}>Change</button>
+      </div>
 
-    <p class="dim small">
-      Only carried equipment can be listed. Take a piece off first to sell it -
-      <button class="linkish" onclick={() => requestScreen('chest')}>open the chest</button>.
-    </p>
-
-    <!-- Modul: A BROWSER, NOT A DROPDOWN.
-         This was a <select> - one line of text per item, no picture, no kind,
-         no search - which is a fine control for three options and the wrong
-         one for the two hundred pieces a played account carries. The buy side
-         of this same screen has had search and filters since it shipped; the
-         sell side now uses the same component, so they cannot drift apart. -->
-    <ItemBrowser
-      items={sellable}
-      selectedId={sellInstanceId}
-      compact
-      emptyText="Nothing carried. Take a piece off in the chest to sell it."
-      onselect={(item) => (sellInstanceId = item.Id)}
-    />
-
-    <!-- Modul: WHAT IS IT WORTH. A price box with nothing beside it asks the
-         player to invent a number, and the market has been answering that
-         question in the trade archive since it shipped - every completed sale,
-         with its price and timestamp. This is that answer, for the exact piece
-         they picked. -->
-    {#if sellInstanceId > 0}
+      <!-- Modul: WHAT IS IT WORTH. A price box with nothing beside it asks the
+           player to invent a number, and the market has been answering that
+           question in the trade archive since it shipped. -->
       <div class="quote">
         {#if history.isPending}
           <p class="dim tiny">Checking what these go for...</p>
@@ -480,9 +501,7 @@
 
           <PriceChart points={h.Points} />
 
-          <!-- "-" where nothing traded before that window opened. A three-day
-               market has no honest month-over-month figure and 0% would claim
-               it does. -->
+          <!-- "-" where nothing traded before that window opened. -->
           <div class="changes">
             {#each [['Day', h.ChangeDayPct], ['Week', h.ChangeWeekPct], ['Month', h.ChangeMonthPct]] as [label, pct]}
               <span class="change" class:up={typeof pct === 'number' && pct > 0} class:down={typeof pct === 'number' && pct < 0}>
@@ -517,10 +536,8 @@
     </label>
 
     <!-- Modul: the cut, BEFORE confirming. Both figures come from the server
-         with the history - the burn bracket depends on the seller's own wealth
-         and the guild rate on their guild's setting, so a client that computed
-         either would be a second source of truth about what a player is paid. -->
-    {#if history.data && sellPrice > 0}
+         with the history, so a client copy cannot misquote them. -->
+    {#if sellItem && history.data && sellPrice > 0}
       {@const fee = Math.floor((sellPrice * history.data.FeePct) / 100)}
       {@const guildCut = Math.floor((sellPrice * history.data.GuildTaxPct) / 100)}
       <dl class="payout">
@@ -539,37 +556,59 @@
       </dl>
     {/if}
 
-    <!-- Disabled without a licence for the same reason the fusion dropdowns
-         exclude each other: not offering a choice the server will refuse beats
-         offering it and explaining afterwards. NoGuildLicense is a rejection
-         code rather than a disconnect, so this is UX rather than safety. -->
-    <button onclick={sell} disabled={!hasGuildLicense || sellInstanceId === 0 || sellPrice < 1}>
-      List for {formatGold(Math.max(1, sellPrice))}
+    <!-- Disabled without a licence: not offering a choice the server will
+         refuse beats offering it and explaining afterwards. -->
+    <button
+      class="primary listbtn"
+      onclick={sell}
+      disabled={!hasGuildLicense || !sellItem || sellPrice < 1}
+      data-testid="market-list"
+    >
+      {sellItem
+        ? `List ${prettifyBaseId(sellItem.BaseItemId)} for ${formatGold(Math.max(1, sellPrice))}`
+        : 'Choose an item to list'}
     </button>
-
-    {#if inventory.isError && inventory.data === undefined}
-      <QueryError query={inventory} what="your equipment" />
-    {:else if inventory.data !== undefined && sellable.length === 0}
-      <p class="dim tiny">Nothing carried to sell.</p>
-    {/if}
   </section>
+{/snippet}
 
-  <section class="panel">
-    <h2>Limit order</h2>
+{#snippet ordersPanel()}
+  <section class="panel" data-testid="market-orders">
+    <h2>My orders</h2>
+    {#if myOrders.isPending}
+      <p class="dim tiny">Reading your orders...</p>
+    {:else if myOrders.isError && myOrders.data === undefined}
+      <QueryError query={myOrders} what="your orders" />
+    {:else if (myOrders.data ?? []).length === 0}
+      <p class="dim small">You have nothing on the market. A listing or a standing order shows up here until it fills.</p>
+    {:else}
+      <ul class="cards mine">
+        {#each myOrders.data ?? [] as order (order.OrderId)}
+          <li>
+            <ItemIcon baseItemId={order.BaseItemId} name={prettifyBaseId(order.BaseItemId)} qualityTier={order.QualityTier} size="sm" />
+            <div class="what">
+              <span class="name" style={order.QualityTier > 0 ? `color: ${rarityColor(order.QualityTier)}` : undefined}>
+                {prettifyBaseId(order.BaseItemId)}
+              </span>
+              <span class="dim tiny">
+                <span class="side" class:buy={order.OrderType === 'BUY'}>{order.OrderType === 'BUY' ? 'Buying' : 'Selling'}</span>
+                {order.QualityTier > 0 ? rarityName(order.QualityTier) : 'any quality'} &middot; {ago(order.CreatedAtEpoch)}
+              </span>
+            </div>
+            <span class="price"><Money amount={order.Price} /></span>
+          </li>
+        {/each}
+      </ul>
+      <p class="dim tiny">An order stays until it fills. A buy order's gold is held until then.</p>
+    {/if}
 
+    <h3>Place a standing order</h3>
     <p class="dim small">
-      A standing order that rests in the book until something matches it, rather
+      A standing order rests in the book until something matches it, rather
       than trading immediately. A buy order names the item you WANT; a sell
       order names a specific piece you already hold.
     </p>
 
-    {#if statistics.isError && statistics.data === undefined}
-      <QueryError query={statistics} what="your guild membership" />
-    {:else if statistics.data !== undefined && !hasGuildLicense}
-      <p class="warn">
-        Trading needs an active guild membership.
-      </p>
-    {/if}
+    {@render licenceWarning()}
 
     <div class="sides">
       <button class:active={orderSide === 'buy'} onclick={() => (orderSide = 'buy')}>Buy</button>
@@ -633,37 +672,166 @@
       Place {orderSide} order at {formatGold(Math.max(1, orderPrice))}
     </button>
 
-    <p class="dim tiny">
-      Placing an order flushes your state to the database first, so there is a
-      brief pause before the rest of the game resumes.
-    </p>
+    <p class="dim tiny">Placing an order takes a moment.</p>
   </section>
-</div>
+{/snippet}
+
+{#if marketTab === 'cosmetics'}
+  <CosmeticMarket {hasGuildLicense} />
+{:else if $isWide}
+  <!-- Desktop: the results wide, Sell and the orders beside them. -->
+  <div class="wide">
+    {@render buyPanel()}
+    <div class="side-col">
+      {@render sellPanel()}
+      {@render ordersPanel()}
+    </div>
+  </div>
+{:else}
+  <div class="phone">
+    <div class="seg" role="tablist" aria-label="Market">
+      <button role="tab" aria-selected={seg === 'buy'} class:on={seg === 'buy'} onclick={() => (seg = 'buy')} data-testid="market-seg-buy">Buy</button>
+      <button role="tab" aria-selected={seg === 'sell'} class:on={seg === 'sell'} onclick={() => (seg = 'sell')} data-testid="market-seg-sell">Sell</button>
+      <button role="tab" aria-selected={seg === 'orders'} class:on={seg === 'orders'} onclick={() => (seg = 'orders')} data-testid="market-seg-orders">My orders</button>
+    </div>
+    {#if seg === 'buy'}
+      {@render buyPanel()}
+    {:else if seg === 'sell'}
+      {@render sellPanel()}
+    {:else}
+      {@render ordersPanel()}
+    {/if}
+  </div>
+{/if}
+
+{#if filtersOpen}
+  <!-- Modul: THE FILTERS ARE CHIPS IN A SHEET - the same idiom as the
+       Cosmetics tab - and the results never wait below them. -->
+  <DetailSheet title="Filters" onClose={() => (filtersOpen = false)} testid="market-filter-sheet">
+    <div class="filters">
+      <p class="chiphead">Type</p>
+      <div class="chips" role="group" aria-label="Type">
+        {#each TYPE_FILTERS as option (option.index)}
+          <button
+            class="chip"
+            class:active={filterSlots.includes(option.index)}
+            aria-pressed={filterSlots.includes(option.index)}
+            onclick={() => toggleSlot(option.index)}
+          >{option.label}</button>
+        {/each}
+      </div>
+
+      <p class="chiphead">Region</p>
+      <div class="chips" role="group" aria-label="Region">
+        {#each TIER_FILTERS as tier (tier)}
+          <button
+            class="chip"
+            class:active={filterTiers.includes(tier)}
+            aria-pressed={filterTiers.includes(tier)}
+            onclick={() => toggleTier(tier)}
+          >{locationName(tier)}</button>
+        {/each}
+      </div>
+
+      <p class="chiphead">Rarity</p>
+      <div class="range">
+        <select bind:value={filterMinRarity} onchange={() => (pageIndex = 0)} aria-label="Lowest rarity">
+          {#each Array.from({ length: MAX_QUALITY_TIER + 1 }, (_, i) => i) as tier}
+            <option value={tier}>{tier === 0 ? 'Any' : rarityName(tier)}</option>
+          {/each}
+        </select>
+        <span class="dim">to</span>
+        <select bind:value={filterMaxRarity} onchange={() => (pageIndex = 0)} aria-label="Highest rarity">
+          {#each Array.from({ length: MAX_QUALITY_TIER + 1 }, (_, i) => i) as tier}
+            <option value={tier}>{tier === 0 ? 'Any' : rarityName(tier)}</option>
+          {/each}
+        </select>
+      </div>
+
+      <div class="sheetacts">
+        <button class="tiny-btn" onclick={resetFilters}>Clear all</button>
+        <button class="primary" onclick={() => (filtersOpen = false)}>
+          Show {formatNumber(totalCount)} listing{totalCount === 1 ? '' : 's'}
+        </button>
+      </div>
+    </div>
+  </DetailSheet>
 {/if}
 
 <style>
   .market-tabs {
     display: flex;
-    gap: 0.5rem;
-    padding: 1rem 1rem 0;
-    flex-wrap: wrap;
+    gap: 0.25rem;
+    margin: 1rem 1rem 0;
+    border-bottom: 1px solid var(--border);
   }
 
   .market-tabs button {
     min-height: 44px;
     flex-shrink: 0;
     padding: 0.4rem 0.9rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: var(--bg-panel);
-    color: inherit;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    background: none;
+    background-image: none;
+    box-shadow: none;
+    color: var(--text-dim);
     font: inherit;
     cursor: pointer;
   }
 
   .market-tabs button.active {
-    border-color: var(--accent);
-    color: var(--accent);
+    color: var(--text);
+    border-bottom-color: var(--brass-lit);
+    font-weight: 700;
+  }
+
+  .phone {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem 1rem;
+  }
+
+  .wide {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(20rem, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+    align-items: start;
+  }
+
+  .side-col {
+    display: grid;
+    gap: 1rem;
+  }
+
+  /* The segmented control: one bordered strip, the chosen segment filled. */
+  .seg {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+
+  .seg button {
+    border: 0;
+    border-radius: 0;
+    background: var(--bg);
+    background-image: none;
+    box-shadow: none;
+    color: var(--text-dim);
+    padding: 0.45rem 0.3rem;
+  }
+
+  .seg button + button {
+    border-left: 1px solid var(--border);
+  }
+
+  .seg button.on {
+    background: color-mix(in srgb, var(--brass) 25%, var(--bg));
+    color: var(--text);
     font-weight: 700;
   }
 
@@ -674,51 +842,154 @@
     gap: 0.5rem;
   }
 
-  .filters {
+  .searchrow {
     display: flex;
-    flex-wrap: wrap;
     gap: 0.4rem;
-    align-items: center;
-    margin: 0.6rem 0 0.8rem;
+    margin: 0.5rem 0 0.4rem;
   }
 
-  /* Modul: `>` IS LOAD-BEARING. A bare `.filters input` also matched every
-     checkbox nested inside `.checks fieldset label input` several levels
-     down, overriding app.css's touch-floor `flex: 0 0 44px` with this rule's
-     `flex: 1 1 12rem; min-width: 0` - so each checkbox grew to fill whatever
-     space its row's label text left over (measured: 272-288px wide, height
-     still 44px), varying row to row with the label length. Reported as
-     "each checkbox is positioned slightly differently" - which is exactly
-     what a flex-grow width that depends on neighbouring text produces.
-     `check:touch` never caught it: both dimensions still exceeded 44px, so
-     the floor it measures was technically met. The search input is this
-     element's only direct child; every checkbox is a grandchild or deeper,
-     so `>` reaches the one input this rule was ever meant for. */
-  .filters > input {
-    flex: 1 1 12rem;
+  .searchrow input {
+    flex: 1 1 auto;
     min-width: 0;
   }
 
-  .filters select {
-    width: auto;
+  .filtersbtn {
+    flex-shrink: 0;
   }
 
-  /* Modul: EACH FILTER BLOCK TAKES ITS OWN ROW, which is what lets the grid
-     inside it have columns at all.
-     As a bare flex item a fieldset sizes to its CONTENT, and a grid of
-     `auto-fill minmax(8rem, 1fr)` inside a content-sized box has nothing to
-     divide - it collapsed to a single column measured at 412px, wedged to the
-     right of the search field. Given a full row it has a real width, and the
-     column count follows the panel the way it should. */
-  .filters .checks {
-    flex: 1 1 100%;
+  .filtersbtn.on {
+    border-color: var(--brass-lit);
+    font-weight: 700;
+  }
+
+  .sortrow {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.7rem;
+  }
+
+  .sortlabel {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sortlabel select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sortrow .tiny-btn {
+    flex-shrink: 0;
+  }
+
+  .filters {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .chiphead {
+    margin: 0.3rem 0 0;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-dim);
+  }
+
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+  }
+
+  .chip {
+    flex-shrink: 0;
+    background-image: none;
+    box-shadow: none;
+    background: var(--bg);
+    font-size: 0.8rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+  }
+
+  .chip.active {
+    border-color: var(--brass-lit);
+    background: color-mix(in srgb, var(--brass) 25%, var(--bg));
+    font-weight: 700;
   }
 
   .range {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .range select {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  .sheetacts {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.6rem;
+  }
+
+  .metaline {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    font-size: 0.82rem;
+  }
+
+  .sellcard {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem;
+    margin: 0 0 0.7rem;
+    border: 1px solid var(--brass);
+    border-radius: var(--radius);
+  }
+
+  .sellcard .what {
+    display: grid;
+    gap: 0.1rem;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .sellcard .name {
+    font-weight: 700;
+  }
+
+  .sellcard button {
+    flex-shrink: 0;
+  }
+
+  .listbtn {
+    width: 100%;
+    margin-top: 0.4rem;
+  }
+
+  .side {
+    font-weight: 700;
+    color: var(--good);
+    margin-right: 0.2rem;
+  }
+
+  .side.buy {
+    color: var(--accent);
+  }
+
+  h3 {
+    margin: 1.1rem 0 0.4rem;
+    font-size: 0.85rem;
   }
 
   .cards {
@@ -728,6 +999,11 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
     gap: 0.4rem;
+  }
+
+  .cards.mine {
+    grid-template-columns: minmax(0, 1fr);
+    margin-bottom: 0.4rem;
   }
 
   .cards li {
@@ -785,19 +1061,12 @@
     color: var(--accent);
   }
 
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr));
-    gap: 1rem;
-    padding: 1rem;
-    align-items: start;
-  }
-
   .panel {
     background: var(--bg-panel);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: 1rem;
+    min-width: 0;
   }
 
   h2 {
@@ -858,109 +1127,12 @@
     padding: 0.2rem 0.45rem;
   }
 
-  /* Checkbox groups. A fieldset because that is what a set of related
-     checkboxes is - the legend names the axis, and a screen reader reads the
-     group rather than eleven loose boxes. */
-  /* Modul: A GRID, so the boxes line up in columns.
-     Reported as "the structure or the spacing in market filters feels wrong,
-     it's chaosy".
-
-     It was `flex-wrap`, which packs each line by CONTENT width and then starts
-     a new one - so "Weapon / Helmet / Chest" and "Amulet / Ring / Axe" began
-     at different x positions, and the checkbox column zig-zagged down the
-     panel. Harmless on a desktop where the labels are short relative to the
-     row; on a phone the touch floor makes every checkbox a 44px square, which
-     magnifies the raggedness until the block reads as noise rather than as a
-     list of options.
-
-     auto-fill with a minmax track gives real columns at every width - the
-     count changes with the panel, the alignment does not. */
-  .checks {
-    display: grid;
-    /* Modul: 10.5rem, and the number is measured rather than chosen.
-       A track has to hold a 44px checkbox plus the longest label - "Scorched
-       Wasteland" - on one line. At 8rem it did not, and since
-       `.panel * { min-width: 0 !important }` lets a flex item shrink below its
-       own basis, the thing that gave way was the CHECKBOX: check:touch caught
-       two at 36x44 and 43x44 against the 44px floor. Widening the track fixes
-       it at the cause instead of fighting that !important with another one.
-
-       Modul: EQUAL CELLS, and the LABEL is the touch target (task 29).
-       That 10.5rem left room for ONE column on a 390px phone - sixteen 44px
-       rows of filters, ~700px of checkboxes. The box no longer has to be the
-       target (see .checks label), so a track only has to hold a 1.15rem box
-       and a label that may wrap: two columns on any phone, more on a desktop.
-       min(100%, ...) keeps a single track from ever exceeding a very narrow
-       panel. 8.5rem rather than 9rem because 9rem only JUST fits two tracks
-       at 360px (2 x 144 + gap = 296 of ~297px of fieldset) - one pixel of
-       padding anywhere and a small phone is back to one column. Measured on
-       a replica: two columns at 390 and 360, one at 320. */
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 8.5rem), 1fr));
-    gap: 0.2rem 0.5rem;
-    margin: 0;
-    padding: 0.35rem 0.6rem 0.45rem;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-  }
-
-  .checks legend {
-    padding: 0 0.3rem;
-    font-size: 0.72rem;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    opacity: 0.7;
-  }
-
-  .checks label {
-    /* Modul: THE LABEL IS WHAT A THUMB HITS. A tap anywhere on a <label> that
-       wraps a checkbox toggles it natively, and padding can NEVER enlarge the
-       checkbox itself (the browser hit-tests its border box - app.css). So the
-       cell carries the 44px floor, and the box inside it is opted out of
-       app.css's 44x44 checkbox rule with .touch-exempt. check:touch credits a
-       wrapping label for exactly this reason. */
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    min-height: 2.25rem;
-    padding: 0 0.35rem;
-    border-radius: 6px;
-    font-size: 0.82rem;
-    line-height: 1.2;
-    /* Wrap instead of widening the track - "Scorched Wasteland" may take two
-       lines in an 8.5rem cell, and a 44px cell has room for both. */
-    white-space: normal;
-    overflow-wrap: anywhere;
-    cursor: pointer;
-  }
-
-  @media (hover: hover) and (pointer: fine) {
-    .checks label:hover {
-      background: var(--tint-hover);
-    }
-  }
-
-  .checks input {
-    /* flex: none, not min-width: `.panel * { min-width: 0 !important }` would
-       otherwise let the row squeeze the box - see app.css. */
-    flex: none;
-    width: 1.15rem;
-    height: 1.15rem;
-    margin: 0;
-    accent-color: var(--accent);
-    cursor: pointer;
-  }
-
-  @media (max-width: 40rem) {
-    .checks label {
-      min-height: 44px;
-    }
-  }
-
-  /* A button, because it navigates rather than addressing anything - the
-     screens are modal panels, not URLs, so there is no href to give it. Styled
-     as a link because that is what it does. */
+  /* Modul: an inline button styled as a link - screens are modal panels, not
+     URLs, so there is no href to give it. */
   .linkish {
     background: none;
+    background-image: none;
+    box-shadow: none;
     border: none;
     padding: 0;
     font: inherit;
@@ -975,6 +1147,7 @@
     display: grid;
     gap: 0.5rem;
     padding: 0.6rem;
+    margin: 0 0 0.7rem;
     border: 1px solid var(--border);
     border-radius: 6px;
     background: rgba(127, 127, 127, 0.06);
@@ -1013,10 +1186,8 @@
     color: var(--danger);
   }
 
-  /* The payout breakdown. Laid out as a definition list because that is what
-     it is - each line names a deduction and gives its amount - and the total
-     is separated by a rule so the number the player actually receives is not
-     just another row. */
+  /* The payout breakdown, with the total ruled off so the number the player
+     actually receives is not just another row. */
   .payout {
     display: grid;
     gap: 0.15rem;
