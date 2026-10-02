@@ -61,6 +61,13 @@
   --glow-warm: #ffd98a;
   --glow-soft: rgba(255, 217, 138, 0.28);
   --glow-hot: #ffe9b0;
+  /* Modul: THE TOP-TIER SHEEN IS GOLD, NOT THE TIER'S OWN COLOUR (task 110f,
+     owner 2026-10-02). The glow used currentColor, and tiers 10-11 are red and
+     orange: on parchment a red halo around an item name read as an error on
+     Chest, Character and the loot reveal. Gold is the one colour this game
+     already means "valuable" by, and it is the same for every glowing tier,
+     so the text keeps the rarity and the halo says "top tier". */
+  --rarity-sheen: rgba(255, 217, 138, 0.85);
 
   /* Modul: textures as inline SVG, not files.
      A parchment or a woodgrain PNG is 40-200 kB and one more thing to serve;
@@ -282,6 +289,8 @@
     --bg-sunken: rgba(120, 92, 46, 0.08);
     --line: rgba(120, 92, 46, 0.2);
     --edge-soft: rgba(90, 68, 34, 0.18);
+    /* A darker gold: the dark theme's pale one vanishes on parchment. */
+    --rarity-sheen: rgba(184, 134, 11, 0.7);
     --tint-hover: rgba(120, 92, 46, 0.06);
     --tint-selected: rgba(138, 106, 52, 0.14);
     --scrim: rgba(40, 28, 12, 0.45);
@@ -470,7 +479,7 @@ input {
    layer whose only animated property is `opacity`, which the compositor runs
    without repainting the text. */
 .rarity-glow {
-  text-shadow: 0 0 4px currentColor;
+  text-shadow: 0 0 4px var(--rarity-sheen);
 }
 
 .rarity-glow-live {
@@ -484,7 +493,7 @@ input {
   inset: -0.2em -0.45em;
   z-index: -1;
   border-radius: 999px;
-  background: radial-gradient(closest-side, currentColor, transparent);
+  background: radial-gradient(closest-side, var(--rarity-sheen), transparent);
   opacity: 0;
   animation: rarity-halo 2.2s ease-in-out infinite;
   pointer-events: none;

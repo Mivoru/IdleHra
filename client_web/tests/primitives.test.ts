@@ -20,4 +20,12 @@ describe('app.css shared rules', () => {
     expect(floor![1]).toContain('(max-width: 40rem)');
     expect(floor![1]).toContain('(pointer: coarse)');
   });
+
+  it('draws the top-tier glow in gold, not in the tier colour (110f)', () => {
+    const glow = /\.rarity-glow\s*\{([^}]*)\}/.exec(appCss);
+    expect(glow![1]).toContain('var(--rarity-sheen)');
+    expect(glow![1]).not.toContain('currentColor');
+    const halo = /\.rarity-glow-live::after\s*\{([^}]*)\}/.exec(appCss);
+    expect(halo![1]).toContain('var(--rarity-sheen)');
+  });
 });

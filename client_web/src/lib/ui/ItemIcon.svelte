@@ -132,14 +132,15 @@
 
   /* Only the top tiers glow, or the effect stops meaning anything - the same
      threshold the text glow uses, so a legendary reads as legendary whichever
-     way it is drawn. */
+     way it is drawn. Gold, like the text's sheen (task 110f): the border
+     already carries the tier's colour. */
   .glow {
-    box-shadow: 0 0 6px var(--rarity);
+    box-shadow: 0 0 6px var(--rarity-sheen);
   }
 
   @media (prefers-reduced-motion: reduce) {
     .glow {
-      box-shadow: 0 0 4px var(--rarity);
+      box-shadow: 0 0 4px var(--rarity-sheen);
     }
   }
 
