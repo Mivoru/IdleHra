@@ -12,6 +12,7 @@
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import { profileLink, guildLink } from '../lib/ui/profileLink';
   import { tierNameStyle } from '../lib/ui/leaderboardTiers';
+  import Tabs from '../lib/ui/Tabs.svelte';
 
   const leaderboard = createQuery(() => ({ queryKey: queryKeys.leaderboard, queryFn: fetchLeaderboard }));
   const guildBoard = createQuery(() => ({ queryKey: queryKeys.guildLeaderboard, queryFn: fetchGuildLeaderboard }));
@@ -30,13 +31,18 @@
   }));
 </script>
 
-<div class="tabs" role="tablist">
-  <button role="tab" class:active={tab === 'standing'} aria-selected={tab === 'standing'} onclick={() => (tab = 'standing')}>
-    Standing
-  </button>
-  <button role="tab" class:active={tab === 'deepest'} aria-selected={tab === 'deepest'} onclick={() => (tab = 'deepest')}>
-    Deepest this week
-  </button>
+<!-- Underlined: this row sits under Community's own tabs, and the two levels
+     must not look alike. -->
+<div class="tabrow">
+  <Tabs
+    bind:value={tab}
+    label="Leaderboard"
+    variant="underline"
+    tabs={[
+      { value: 'standing', label: 'Standing' },
+      { value: 'deepest', label: 'Deepest this week' },
+    ]}
+  />
 </div>
 
 {#if tab === 'deepest'}
@@ -176,29 +182,8 @@
     margin-right: 0.3rem;
   }
 
-  .tabs {
-    display: flex;
-    gap: 0.5rem;
+  .tabrow {
     padding: 1rem 1rem 0;
-    flex-wrap: wrap;
-  }
-
-  .tabs button {
-    min-height: 44px;
-    flex-shrink: 0;
-    padding: 0.4rem 0.9rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: var(--bg-panel);
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .tabs button.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    font-weight: 700;
   }
 
   .deepest .board li {
