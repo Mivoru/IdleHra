@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
+  import { profileLink } from '../lib/ui/profileLink';
   // Modul: the world boss. A server-wide encounter that scales with how many
   // accounts are online and their combined race mastery, so its health bar is
   // shared by everyone - the one place in this game where a player's progress
@@ -475,7 +476,7 @@
         {#each board.Top.slice(0, 10) as row (row.PlayerId)}
           <li class:me={row.PlayerId === board.Me?.PlayerId}>
             <span class="rank">{row.Rank}</span>
-            <span class="who"><PlayerAvatar playerId={row.PlayerId} size="sm" /> {row.Name}{#if row.Title}<span class="dim tiny"> · {row.Title}</span>{/if}</span>
+            <span class="who"><PlayerAvatar playerId={row.PlayerId} size="sm" /> <button class="name-link" use:profileLink={{ playerId: row.PlayerId, name: row.Name }}>{row.Name}</button>{#if row.Title}<span class="dim tiny"> · {row.Title}</span>{/if}</span>
             <span class="dmg" title={numberTitle(row.Damage)}>{formatNumber(row.Damage)}</span>
           </li>
         {/each}
@@ -768,5 +769,18 @@
   .attack:not(:disabled) {
     border-color: var(--rarity-10);
     color: var(--rarity-10);
+  }
+  /* A board name opens the profile, as everywhere else a name is shown. */
+  .name-link {
+    background: none;
+    border: 0;
+    padding: 0;
+    min-height: 44px;
+    min-width: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline dotted;
   }
 </style>
