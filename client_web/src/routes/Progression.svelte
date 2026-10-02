@@ -237,16 +237,28 @@
 </div>
 
 <style>
+  /* Task 109: ONE ROW THAT SCROLLS, not a row that wraps - at 390px "Daily &
+     races" fell onto a line of its own and the tabs read as two groups. A
+     stopgap until task 106's shared Tabs replaces this block. */
   .progress-tabs {
     display: flex;
     gap: 0.5rem;
     padding: 1rem 1rem 0;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: 72rem;
+    margin-inline: auto;
+  }
+
+  .progress-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .progress-tabs button {
     min-height: 44px;
     flex-shrink: 0;
+    white-space: nowrap;
     padding: 0.4rem 0.9rem;
     border-radius: var(--radius);
     border: 1px solid var(--border);
@@ -284,7 +296,12 @@
     gap: 1rem;
     padding: 1rem;
     align-items: start;
+    /* Desktop: one Book stretched across 1440px put the Go buttons a screen
+       away from the deed they belong to. */
+    max-width: 72rem;
+    margin-inline: auto;
   }
+
 
   .panel {
     background: var(--bg-panel);
