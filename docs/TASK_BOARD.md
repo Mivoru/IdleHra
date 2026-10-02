@@ -7239,7 +7239,34 @@ All of these already have reduced-motion fallbacks.
 
 ## 109. Polish bundle
 
-**OPEN.** These are small, independent fixes. Take them a few at a time, one
+**BUILT 2026-10-02** on `claude/ui-109-polish`, one commit per screen. Not
+yet verified with `exercise.mjs` or the geometry checks (the branch is meant
+to be merged with 95, 105, 106 and 110 first and checked on the merge).
+`check:ratchet` is at the baseline of 4 and vitest is green.
+
+- **Done:** Login and Register; Map/Home; Skill tree; Progress (one row of
+  tabs, not yet the 106 `Tabs` primitive); Codex (portraits not checked on a
+  phone); Wardrobe (locked tiles say chest-of-rarity or Boss Ascension);
+  Wiki; Loot reveal and the deed card (opens Progress on Goals via a new
+  `tab` on `requestScreen`); Auto-Eat (heal % mirrors
+  `FoodRegistry.HealPercentOfMaxHpPerTier`, pinned in `serverMirrors.test.ts`);
+  Boosts; Mailbox; Bloodline; ItemIcon and PersonPicker type; the skip
+  stored on the account (a `tutorial-skipped` id in the server seen-set);
+  coach hidden under the guided card; Chest Reroll greyed below the Forge.
+- **Findings:** Boosts - items.json holds **five** consumables, not eight,
+  and per `FoodRegistry`'s own comment no recipe or drop produces any of
+  them. The empty state lists them with what each does and names no source.
+  It needs an owner decision: give them a source, or cut them. The Inn copy
+  ("up to 9" at Inn 5) is correct: the fixture's newcomers at 10 are
+  hand-seeded by `DevFixtureSeeder`. "Join a guild to use its depot" can no
+  longer render, because 107 shows guildless players only the browser.
+- **Left for the merge:** the tab-bar label size (95 rewrites `TabBar`), and
+  moving Progress's tabs onto 106's `Tabs`.
+- **Left open:** whether a guest really "would die" on every Sunlit Plains
+  monster needs a measurement on a fresh account (the 2026-09-02 precedent);
+  blank Codex portraits need a phone.
+
+These are small, independent fixes. Take them a few at a time, one
 PR per screen or per theme. Each line names its report source.
 
 **Login and Register** (A2 LG-1 to LG-3, RG-1 and RG-2):
