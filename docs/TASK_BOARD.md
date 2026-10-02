@@ -6823,9 +6823,14 @@ Buy is a search field plus "Filters (n)" opening a `DetailSheet` of chips
 is the item browser until a pick, then a summary card and "List Sentry Helm
 for 1,000 gold". **My orders needed a server route** - there was none:
 `GET /api/v1/market/mine` (open listings and standing orders, both sides,
-newest first, max 200; `MarketOwnOrdersTests`). It is read-only - there is no
-cancel command for equipment orders, so no Cancel button (owner question:
-should there be one?). Standing orders moved under My orders; the copy says
+newest first, max 200; `MarketOwnOrdersTests`). **Cancel added
+2026-10-02 (owner: yes):** `POST /api/v1/market/cancel { OrderId }` ->
+`MarketEscrowEngine.CancelOrderAsync`, answering `Ok | Sold | Gone | NotYours |
+Unsupported`; a SELL's piece returns to the chest as a new row (base, rarity,
+affixes, affix lock kept), a BUY's escrowed gold to the row. It locks the order
+row FOR UPDATE like the buy and the matcher, so a cancel racing a purchase ends
+in exactly one of the two (`MarketCancelTests`). Two-tap Cancel on each My
+orders row; `exercise.mjs` lists, cancels and checks the piece is back. Standing orders moved under My orders; the copy says
 "Placing an order takes a moment."; sub-tabs underlined; cosmetic sell tiles
 say "Rare avatar". Desktop is not a table - the results keep their cards.
 `marketFilters.test.ts` now pins the chip design. Verified: vitest,
