@@ -6668,7 +6668,28 @@ M1-M3.
 
 ## 100. Forge: one fusion row per item
 
-**OPEN.** Report sections 4.H and 8. This is visual review B1, F1-F7.
+**BUILT on branch `claude/tasks-100-102`, not merged.** One row per base
+item (`fusionRows.ts`): worn lines first, counts per rarity with a
+`RarityPip` rank, "3 Mythic -> 1 Relic - up to 12k" and Fuse / Stack in the
+row; search past six rows; the three selects behind "Choose which ones"; the
+explainer moved into Fusion. The one-tap target is the piece with the most
+affixes. `/api/v1/forge/inventory` now says `IsEquipped` for every character
+and all eleven slots, so a piece worn by character 2 or a worn tool is never
+offered. ItemBrowser: the grey slabs were the global button box-shadow;
+compact grows to ~8 rows (`clamp(14rem, 45vh, 28rem)`) with a fade while
+`VirtualList.moreBelow`; "Sort:" label; rows name their strongest affix. A
+global `button.primary` fill. **The owner's "the forge breaks for a second
+when I fuse quickly"** was a real disconnect: the next Fuse picked from the
+list fetched before the previous fusion committed, re-sent a destroyed
+sacrifice, the engine answered TargetNotFound with `InvalidRequest`, and
+`ForgeTickCoordinator` turned every `InvalidRequest` into `ForceDisconnect`.
+Fixed on both sides - the coordinator always ends in ReloadState (source
+guard `ForgeFusionRefusalGuardTests`), and the client hides claimed pieces
+until the refetched list no longer holds the sacrifices (8 s backstop).
+Verified: `npx vitest run`, `check:ratchet` (4), server suite. NOT run:
+`exercise.mjs` (the stack step now uses the row; a new rapid-fuse round trip
+was added), the geometry checkers, and the 390 px first-viewport claim.
+Report sections 4.H and 8. This is visual review B1, F1-F7.
 
 **What is actually true.**
 - **About 75 "Ready to fuse" chips run about 1,750 px at 390 px** before the
@@ -6714,7 +6735,24 @@ M1-M3.
 
 ## 101. Gathering and Crafting: actions first, real status, guided empty states
 
-**OPEN.** Report sections 4.H, 4.N and 8. This is visual review B1, G1-G7 and
+**BUILT on branch `claude/tasks-100-102`, not merged.** Gathering: status
+-> profession cards -> haul -> a closed "How fast and why". The status names
+the job ("Mining Copper Ore - Sunlit Plains", `workers.ts` + `gatheringNodes.ts`,
+the node yields pinned against ContentRegistry's loot rows) with Stop beside
+it; node rows carry the yield's icon and a filled Gather; mastery is a bar in
+each card (`50 * (level + 1)^2`, pinned). **Other slots CAN gather** - checked
+first: ChangeActivity takes any character by TargetGuid and
+`ProcessAllSlotSubTicks` runs every working slot - so a named `WorkerPicker`
+(buttons, not a select) is shared with Crafting; only slot 1's progress is on
+the wire, so the bar shows for slot 1 alone. Crafting: commissions are a tab;
+with nothing craftable it leads with `firstStepLine` ("the first tools need
+Birch Log and Copper Ore") and Go gather; Ready / Missing materials / Locked
+(folded); cards show icon, tool slot and speed effect, have/need with a thin
+bar, an aligned button group with a filled Craft; "Make 1 / Make 10" with the
+batch on the button. Verified: vitest, `check:ratchet`. NOT run:
+`exercise.mjs` (updated: mastery read by `data-mastery`, the commissions tab,
+the batch toggle, a new status-line check), the checkers, 390 px viewports.
+Report sections 4.H, 4.N and 8. This is visual review B1, G1-G7 and
 CR1-CR9.
 
 **What is actually true.**
@@ -6778,7 +6816,23 @@ CR1-CR9.
 
 ## 102. Market: Buy / Sell / My orders
 
-**OPEN.** Report sections 4.H and 8. This is visual review B2, MK1-MK6 and
+**BUILT on branch `claude/tasks-100-102`, not merged.** Phone: segmented
+Buy | Sell | My orders; wide: results wide with Sell and orders beside them.
+Buy is a search field plus "Filters (n)" opening a `DetailSheet` of chips
+(type, region, rarity range), a labelled "Sort:", and two empty states. Sell
+is the item browser until a pick, then a summary card and "List Sentry Helm
+for 1,000 gold". **My orders needed a server route** - there was none:
+`GET /api/v1/market/mine` (open listings and standing orders, both sides,
+newest first, max 200; `MarketOwnOrdersTests`). It is read-only - there is no
+cancel command for equipment orders, so no Cancel button (owner question:
+should there be one?). Standing orders moved under My orders; the copy says
+"Placing an order takes a moment."; sub-tabs underlined; cosmetic sell tiles
+say "Rare avatar". Desktop is not a table - the results keep their cards.
+`marketFilters.test.ts` now pins the chip design. Verified: vitest,
+`check:ratchet`, server suite. NOT run: `exercise.mjs` (market steps
+rewritten for the sheet, the request-level slot check, the named List button
+and My orders), and the hand measurement the task asks for.
+Report sections 4.H and 8. This is visual review B2, MK1-MK6 and
 MC1-MC4.
 
 **What is actually true.**

@@ -58,9 +58,15 @@
      * screen, where it has a column of its own.
      */
     compact?: boolean;
+    /**
+     * The panel's own "Loot drops" heading. Off where the caller's card already
+     * has a title (Gathering's "Hauled this session"): an h2 inside that card
+     * outranked the card it sat in (task 101).
+     */
+    title?: boolean;
   }
 
-  const { registry, showEquipment = true, compact = false }: Props = $props();
+  const { registry, showEquipment = true, compact = false, title = true }: Props = $props();
 
   const WIDE = '(min-width: 64rem)';
   // The starting state only - after that the player's tap decides. Read once,
@@ -208,7 +214,7 @@
       </button>
       <button class="chestlink" onclick={() => requestScreen('chest')}>Chest</button>
     </div>
-  {:else}
+  {:else if title}
     <h2>Loot drops</h2>
   {/if}
 

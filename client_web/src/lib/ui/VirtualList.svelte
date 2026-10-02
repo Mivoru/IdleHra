@@ -35,6 +35,7 @@
     overscan = 6,
     label,
     row,
+    moreBelow = $bindable(false),
   }: {
     items: T[];
     /** Row height in CSS pixels, EXCLUDING gap. Every row must match it. */
@@ -50,6 +51,12 @@
     overscan?: number;
     label?: string;
     row: Snippet<[T, number]>;
+    /**
+     * True while rows remain below the visible band. Bindable so a caller can
+     * fade the cut edge only when there is something past it (task 100) - a
+     * fade over the genuine last row would hide it for no reason.
+     */
+    moreBelow?: boolean;
   } = $props();
 
   let scrollTop = $state(0);
@@ -83,6 +90,10 @@
       index: firstIndex + offset,
     })),
   );
+
+  $effect(() => {
+    moreBelow = scrollTop + viewportHeight < totalHeight - 2;
+  });
 
   function onscroll(event: Event) {
     scrollTop = (event.currentTarget as HTMLElement).scrollTop;

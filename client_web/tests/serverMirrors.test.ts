@@ -138,7 +138,7 @@ describe('the numbers the client mirrors still match the server', () => {
 
   it('fusion: base fee and growth per quality tier', () => {
     const splicing = read(serverRoot, 'Domain', 'Economy', 'ForgeSplicingEngine.cs');
-    const forge = read(clientRoot, 'routes', 'Forge.svelte');
+    const forge = read(clientRoot, 'lib', 'ui', 'fusionRows.ts');
 
     expect(num(forge, /FORGE_BASE_FEE = (\d+)/, 'client fusion base')).toBe(
       num(splicing, /BaseGoldCost = (\d+)/, 'server fusion base'),

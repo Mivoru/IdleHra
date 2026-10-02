@@ -832,6 +832,18 @@ button:active:not(:disabled) {
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.5);
 }
 
+/* Modul: THE ONE FILLED BUTTON on a row or card - Craft, Fuse, Gather
+   (tasks 100/101). `class="tiny-btn primary"` was written in several places
+   and styled nowhere, so the action a player came for looked exactly like
+   the secondary one beside it. */
+button.primary:not(:disabled) {
+  background-color: var(--brass);
+  background-image: linear-gradient(180deg, rgba(255, 234, 190, 0.28), rgba(0, 0, 0, 0.12));
+  border-color: var(--brass-lit);
+  color: #1d1408;
+  font-weight: 700;
+}
+
 button.active,
 nav button.active {
   border-color: var(--brass-lit);

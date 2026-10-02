@@ -12,8 +12,19 @@
   import { commandInFlight } from '../lib/ui/commandInFlight';
   import { pushLocalNotice, playerState } from '../lib/stores/game';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
+  import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import RarityPip from '../lib/ui/RarityPip.svelte';
+  import {
+    buildFusionRows,
+    fusionFeeCeiling,
+    hiddenByPending,
+    settlePending,
+    PENDING_FUSION_TTL_MS,
+    type FusionRow,
+    type PendingFusion,
+  } from '../lib/ui/fusionRows';
 
-  import { rarityColor, rarityName, rarityTitle, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
+  import { rarityColor, rarityName, shouldGlow, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import {
     toDisplayAffixes,
     AFFIX_RARITY_NAMES,
@@ -163,15 +174,11 @@
   const sacOneChoices = $derived(twins.filter((i) => i.Id !== fusionSacTwo));
   const sacTwoChoices = $derived(twins.filter((i) => i.Id !== fusionSacOne));
 
-  // ForgeSplicingEngine: BaseGoldCost * 1.5^currentTier, rounded up. Luck and
-  // the Diamond Star event take up to 25% off server-side, so this is the
-  // ceiling rather than the exact charge - stated in the UI as such rather
-  // than quietly presented as final.
-  const FORGE_BASE_FEE = 200;
-  const FORGE_FEE_GROWTH = 1.35;
-  const fusionFee = $derived(
-    fusionTargetItem ? Math.ceil(FORGE_BASE_FEE * Math.pow(FORGE_FEE_GROWTH, fusionTargetItem.QualityTier)) : 0,
-  );
+  // ForgeSplicingEngine.FusionFee, mirrored in fusionRows.ts (pinned by
+  // serverMirrors.test.ts). Luck and the Diamond Star event take up to 25% off
+  // server-side, so this is the ceiling rather than the exact charge - stated
+  // in the UI as such rather than quietly presented as final.
+  const fusionFee = $derived(fusionTargetItem ? fusionFeeCeiling(fusionTargetItem.QualityTier) : 0);
   const gold = $derived(Number($playerState?.Gold ?? 0));
 
   // Modul: SIX THINGS GREY THE FUSE BUTTON and only the gold one was said
@@ -198,13 +205,6 @@
   // someone spends a night's income on five rolls without noticing until it is
   // gone. A charge you cannot see before you agree to it is not a price.
 
-  function pickSet(base: string, tier: number) {
-    const trio = owned.filter((i) => i.BaseItemId === base && i.QualityTier === tier).slice(0, 3);
-    if (trio.length < 3) return;
-    fusionTarget = trio[0].Id;
-    fusionSacOne = trio[1].Id;
-    fusionSacTwo = trio[2].Id;
-  }
 
   function fuse() {
     const one = owned.find((i) => i.Id === fusionSacOne) ?? null;
@@ -228,6 +228,7 @@
     );
     if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
+    claim(fusionTarget, [fusionSacOne, fusionSacTwo]);
     fusionSacOne = 0;
     fusionSacTwo = 0;
     fusionFlash++;
@@ -311,6 +312,99 @@
   const rerollChoices = $derived(
     showAllForReroll ? owned : owned.filter((i: { Id: number }) => equippedIds.has(Number(i.Id))),
   );
+
+  // --- one row per item (task 100) ------------------------------------------
+  //
+  // Fusions sent but not yet visible in the list. See fusionRows.ts: without
+  // this, a quick second Fuse re-sent pieces the first one had destroyed.
+  let pending = $state<PendingFusion[]>([]);
+  let clock = $state(Date.now());
+
+  // Settle against every fresh list, and wake once when the oldest entry
+  // expires so a refused fusion's pieces come back without another refetch
+  // (`clock` feeds hiddenByPending; an expired entry hides nothing).
+  $effect(() => {
+    const ids = new Set(owned.map((i) => i.Id));
+    const now = Date.now();
+    const kept = settlePending(pending, ids, now);
+    if (kept.length !== pending.length) pending = kept;
+  });
+  $effect(() => {
+    if (pending.length === 0) return;
+    const soonest = Math.min(...pending.map((p) => p.expiresAt));
+    const handle = setTimeout(() => (clock = Date.now()), Math.max(0, soonest - Date.now()) + 20);
+    return () => clearTimeout(handle);
+  });
+  const hiddenIds = $derived(hiddenByPending(pending, clock));
+
+  function claim(target: number, sacrifices: number[]) {
+    clock = Date.now();
+    pending = [...pending, { target, sacrifices, expiresAt: clock + PENDING_FUSION_TTL_MS }];
+  }
+
+  let rowSearch = $state('');
+  let showAllRows = $state(false);
+  const ROWS_SHOWN = 6;
+
+  // Worn by anyone: the active character's gear from the wire (instant after
+  // an equip), plus the server's IsEquipped for characters 2 and 3 and tools,
+  // which the wire does not name.
+  const wornAnywhere = $derived(
+    new Set<number>([...equippedIds, ...owned.filter((i) => i.IsEquipped).map((i) => i.Id)]),
+  );
+  const allRows = $derived(buildFusionRows(owned, wornAnywhere, hiddenIds, MAX_QUALITY_TIER));
+  const matchedRows = $derived.by(() => {
+    const needle = rowSearch.trim().toLowerCase();
+    if (!needle) return allRows;
+    return allRows.filter((r) => prettifyBaseId(r.baseItemId).toLowerCase().includes(needle));
+  });
+  const visibleRows = $derived(showAllRows || rowSearch.trim() !== '' ? matchedRows : matchedRows.slice(0, ROWS_SHOWN));
+
+  const rowKey = (row: FusionRow) => `fuse:${row.baseItemId}`;
+
+  function rowBlocked(row: FusionRow): string | null {
+    if (forgeLevel === 0) return 'Build a Forge first';
+    if (!row.next) return null;
+    if (row.next.tier + 1 > forgeLevel) return `Forge level ${row.next.tier + 1} needed`;
+    if (gold < fusionFeeCeiling(row.next.tier)) return 'Not enough gold';
+    return null;
+  }
+
+  function fuseRow(row: FusionRow) {
+    const next = row.next;
+    if (!next) return;
+    const outcome = commandInFlight.run(rowKey(row), () =>
+      executeForgeFusion(next.target, next.sacrifices[0], next.sacrifices[1], forgeLevel, {
+        sameBase: true,
+        sameRarity: true,
+        resultTier: next.tier + 1,
+      }),
+    );
+    if (outcome === null) return;
+    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
+    claim(next.target, [...next.sacrifices]);
+    fusionFlash++;
+    refresh();
+  }
+
+  let stackPanel: HTMLElement | null = $state(null);
+
+  // The whole stack is still the section below the rows (it needs a tier
+  // picker and the server's plan); a row's button points it at that row's
+  // lowest fusable rarity and brings it into view, rather than filling
+  // controls the player cannot see - which is what made the old chips look
+  // inert on a phone.
+  function openStack(row: FusionRow) {
+    if (!row.stack) return;
+    manualOpen = false;
+    fusionTarget = row.stack.sampleId;
+    fusionSacOne = 0;
+    fusionSacTwo = 0;
+    requestAnimationFrame(() => stackPanel?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }));
+  }
+
+  // The three-select form, for a player who wants to choose WHICH pieces.
+  let manualOpen = $state(false);
 
   // --- reroll ---------------------------------------------------------------
   let rerollItemId = $state(0);
@@ -449,34 +543,103 @@
         Fusion needs a Forge in your village. Build one under
         <strong>Village</strong>, then come back.
       </p>
-    {:else}
+    {:else if forge.isError && forge.data === undefined}
+      <!-- Modul: "Nothing to fuse yet" is a claim about the chest; a failed
+           request cannot make it. -->
+      <QueryError query={forge} what="your equipment" />
+    {:else if forge.data !== undefined && allRows.length === 0}
       <p class="dim small">
-        Three identical items of the same rarity become one of the next rarity,
-        for a gold fee. It always works - nothing is lost to chance.
+        Nothing to fuse yet - you need three of the same item at the same
+        rarity.
       </p>
-
-      {#if forge.isError && forge.data === undefined}
-        <!-- Modul: "Nothing to fuse yet" is a claim about the chest; a failed
-             request cannot make it. -->
-        <QueryError query={forge} what="your equipment" />
-      {:else if fusableSets.length > 0}
-        <div class="sets">
-          <span class="dim tiny">Ready to fuse:</span>
-          {#each fusableSets as set (set.base + set.tier)}
-            <button class="settag" onclick={() => pickSet(set.base, set.tier)}>
-              <span style="color: {rarityColor(set.tier)}">{prettifyBaseId(set.base)}</span>
-              <span class="dim tiny" title={rarityTitle(set.tier)}>{rarityName(set.tier)} &times;{set.count}</span>
-            </button>
-          {/each}
-        </div>
-      {:else}
-        <p class="dim tiny">
-          Nothing to fuse yet - you need three of the same item at the same
-          rarity.
-        </p>
+    {:else if allRows.length > 0}
+      <!-- Modul: ONE ROW PER ITEM, worn lines first (task 100). It replaced a
+           chip per (item, rarity) pair - about 75 of them, 1,750 px at 390 px
+           before the form they filled - and a chip only set three selects
+           further down, so on a phone a tap looked like nothing. The row says
+           the decision ("3 Mythic -> 1 Relic, up to 12k gold") and carries its
+           own Fuse. -->
+      {#if allRows.length > ROWS_SHOWN}
+        <input
+          class="rowsearch"
+          type="search"
+          placeholder="Find an item..."
+          bind:value={rowSearch}
+          aria-label="Find an item to fuse"
+        />
+      {/if}
+      <ul class="fuserows" data-testid="fusion-rows">
+        {#each visibleRows as row (row.baseItemId)}
+          {@const blocked = rowBlocked(row)}
+          {@const best = row.next?.tier ?? row.counts[0]?.tier ?? row.wornTier}
+          <li class="fuserow" class:worn={row.worn} data-testid="fusion-row">
+            <ItemIcon baseItemId={row.baseItemId} name={prettifyBaseId(row.baseItemId)} qualityTier={best} size="sm" />
+            <div class="fusebody">
+              <span class="fusename">
+                <span class="nm" style="color: {rarityColor(best)}">{prettifyBaseId(row.baseItemId)}</span>
+                {#if row.worn}<span class="wornchip">Worn</span>{/if}
+              </span>
+              <span class="counts">
+                {#each row.counts.slice(0, 4) as c (c.tier)}
+                  <span class="count"><RarityPip tier={c.tier} />&times;{formatNumber(c.count)}</span>
+                {/each}
+                {#if row.counts.length > 4}<span class="dim tiny">+{row.counts.length - 4} more</span>{/if}
+                {#if row.counts.length === 0}<span class="dim tiny">no spare pieces</span>{/if}
+              </span>
+              {#if row.next}
+                <span class="nextfuse">
+                  3 {rarityName(row.next.tier)} &rarr;
+                  <b style="color: {rarityColor(row.next.tier + 1)}">1 {rarityName(row.next.tier + 1)}</b>
+                  &middot; up to {formatGold(fusionFeeCeiling(row.next.tier))}
+                </span>
+              {:else if row.worn}
+                <span class="dim tiny">
+                  Three spare pieces at one rarity make the next one up.
+                </span>
+              {/if}
+              {#if blocked && row.next}<span class="blocked tiny">{blocked}</span>{/if}
+            </div>
+            <div class="fuseacts">
+              {#if row.next}
+                <button
+                  class="tiny-btn primary"
+                  data-testid="fusion-row-fuse"
+                  disabled={blocked !== null || $commandInFlight.has(rowKey(row))}
+                  onclick={() => fuseRow(row)}
+                >Fuse</button>
+              {/if}
+              {#if row.stack && row.total >= 6}
+                <button class="tiny-btn" data-testid="fusion-row-stack" onclick={() => openStack(row)}>Stack</button>
+              {/if}
+            </div>
+          </li>
+        {/each}
+      </ul>
+      {#if matchedRows.length === 0}
+        <p class="dim tiny">No item by that name has anything to fuse.</p>
+      {:else if !showAllRows && rowSearch.trim() === '' && matchedRows.length > ROWS_SHOWN}
+        <button class="tiny-btn" onclick={() => (showAllRows = true)}>
+          Show all {matchedRows.length}
+        </button>
       {/if}
     {/if}
 
+    <!-- Modul: THE EXPLAINER LIVES WITH THE MACHINE IT EXPLAINS. It sat in the
+         Affix reroll panel, under a heading about something else. -->
+    <p class="explainer dim small">
+      Three identical pieces at the same rarity become one of the next rarity,
+      for a gold fee. It always works - nothing is lost to chance. The piece
+      with the most affixes is kept and gains one more; the other two are used
+      up. Your Forge's level (now {forgeLevel}) is the highest rarity it can
+      make, and anything a character wears is left alone.
+    </p>
+
+    <button class="tiny-btn linkish" onclick={() => (manualOpen = !manualOpen)} aria-expanded={manualOpen}>
+      {manualOpen ? 'Hide the manual choice' : 'Choose which ones'}
+    </button>
+
+    {#if manualOpen}
+    <div class="manual">
     <label>
       Item to upgrade
       <select bind:value={fusionTarget}>
@@ -535,10 +698,12 @@
       Fuse
     </button>
     <DisabledReason text={fuseBlocked} />
+    </div>
+    {/if}
 
     {#if fusionTargetItem && stackTiers.length > 0}
       {@const plan = stackPreview.data}
-      <div class="stack" data-testid="fuse-stack">
+      <div class="stack" data-testid="fuse-stack" bind:this={stackPanel}>
         <h3>The whole stack</h3>
         <label>
           Fuse every {prettifyBaseId(fusionTargetItem.BaseItemId)} up to
@@ -594,18 +759,6 @@
 
   <section class="panel">
     <h2>Affix reroll</h2>
-    <!-- Modul: SAY WHAT THE MACHINE DOES.
-         Both halves of this screen were controls with no explanation, in a
-         game where the two of them are the entire gear progression. A player
-         who does not know that fusion needs three IDENTICAL pieces at the same
-         rarity will try it with three different ones and conclude it is
-         broken - which is exactly what happened. -->
-    <p class="explainer dim small">
-      Fusion takes <strong>three identical pieces at the same rarity</strong>
-      and returns one at the next rarity up. Two ceilings apply: your Forge's
-      level (currently {forgeLevel}) is the highest rarity it can produce, and
-      rarity {MAX_QUALITY_TIER} is the top of the ladder.
-    </p>
     <p class="dim small">
       Rerolls one affix on one item, for gold. Its stat, its rarity and its
       value are all rolled fresh together - so it can come out worse. The other
@@ -904,32 +1057,106 @@
     margin: 0;
   }
 
-  .sets {
+  .rowsearch {
+    width: 100%;
+    margin: 0 0 0.5rem;
+  }
+
+  .fuserows {
+    list-style: none;
+    margin: 0 0 0.5rem;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .fuserow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+  }
+
+  .fuserow.worn {
+    border-color: var(--brass);
+  }
+
+  /* The one child allowed to shrink; it ellipsises rather than collapsing to
+     zero width (client_web/CLAUDE.md, the Chest's 0-wide name). */
+  .fusebody {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: grid;
+    gap: 0.15rem;
+    font-size: 0.82rem;
+  }
+
+  .fusename {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+  }
+
+  .fusename .nm {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 600;
+  }
+
+  .wornchip {
+    flex-shrink: 0;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0 0.3rem;
+    border-radius: var(--radius-xs);
+    border: 1px solid var(--brass);
+    color: var(--brass-lit);
+  }
+
+  .counts {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.35rem;
+    gap: 0.2rem 0.5rem;
     align-items: center;
-    margin: 0 0 0.6rem;
+    font-size: 0.72rem;
+    color: var(--text-dim);
   }
 
-  .settag {
+  .count {
     display: inline-flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.1rem;
-    padding: 0.3rem 0.5rem;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--edge-soft);
-    background: rgba(255, 255, 255, 0.04);
-    cursor: pointer;
-    font-size: 0.8rem;
-    width: auto;
+    align-items: center;
+    gap: 0.15rem;
+    font-variant-numeric: tabular-nums;
   }
 
-  @media (hover: hover) and (pointer: fine) {
-    .settag:hover {
-      border-color: var(--brass-lit);
-    }
+  .nextfuse {
+    font-size: 0.75rem;
+  }
+
+  .fuseacts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    flex-shrink: 0;
+  }
+
+  .fuseacts button {
+    flex-shrink: 0;
+  }
+
+  .manual {
+    margin-top: 0.6rem;
+  }
+
+  .linkish {
+    margin: 0.2rem 0 0.4rem;
   }
 
   .grid {
