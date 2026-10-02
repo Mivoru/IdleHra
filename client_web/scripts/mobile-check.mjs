@@ -14,7 +14,7 @@ const WIDTHS = [320, 360, 414];
 const SCREENS = [
   'Character', 'Chest', 'Combat', 'Gathering', 'Forge', 'Market',
   'Village', 'Progress', 'Skill Tree', 'Auto-Eat', 'Crafting',
-  'Codex', 'Bloodline', 'Settings', 'Friends', 'Guild',
+  'Codex', 'Bloodline', 'Settings', 'Community', 'Guild',
   'World Boss', 'Home', 'Mail',
 ];
 
