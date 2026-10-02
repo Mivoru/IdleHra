@@ -35,21 +35,20 @@ page.on('response', (r) => { if (r.status() === 404) missedUrls.push(r.url()); }
 // screens open on a query, and a cold server answers the first one slowly
 // enough that a fixed wait passes locally and fails on a fresh boot - which is
 // a flaky test pretending to be a bug report.
-// Task 59: these screens are tabs under one menu entry now - Supplies holds
+// Task 59: these screens are tabs under one menu entry now - Auto-Eat holds
 // Auto-Eat and Boosts, Bloodline holds Breeding, Ancestors and Inheritance.
 // A step still names the screen it means; go() takes the menu entry and then
 // the tab, the way a player would.
 const SUB_TABS = {
-  'Auto-Eat': ['Supplies', 'larder'],
-  Boosts: ['Supplies', 'boosts'],
+  'Auto-Eat': ['Auto-Eat', 'larder'],
+  Boosts: ['Auto-Eat', 'boosts'],
   Breeding: ['Bloodline', 'breeding'],
   Ancestors: ['Bloodline', 'ancestors'],
   Inheritance: ['Bloodline', 'inheritance'],
-  // Task 76: one Community entry, four tabs.
-  Friends: ['Community', 'social'],
-  Market: ['Community', 'market'],
-  Guild: ['Community', 'guildops'],
-  Leaderboards: ['Community', 'leaderboards'],
+  // Task 76 made Friends, Market, Guild and Leaderboards one family. Task 95
+  // gave Friends, Market and Guild menu entries of their own; Leaderboards is
+  // still only a tab.
+  Leaderboards: ['Friends', 'leaderboards'],
 };
 
 const go = async (label) => {
@@ -1016,7 +1015,7 @@ await page.waitForTimeout(600);
   await page.getByRole('button', { name: /Hide chat/i }).first().click();
   await page.waitForTimeout(400);
   record(
-    'the chat dock closes back to its handle',
+    'the chat window closes back to its entry',
     (await page.getByRole('button', { name: /Show chat/i }).count()) > 0,
   );
 }
@@ -1026,7 +1025,7 @@ await page.waitForTimeout(600);
 // valley is the menu now: five places, each a plate on its own landmark.
 // The suite has walked through several screens by now, so it has to come back
 // to the map before asking what is on it.
-await go('Map');
+await go('Home');
 {
   const plates = await page.locator('.place').count();
   record('the hub map shows its five places', plates === 5, `${plates} plates`);
@@ -1195,7 +1194,7 @@ await go('Auto-Eat');
   const tabs = await page.evaluate(() =>
     [...document.querySelectorAll('[data-subtab]')].map((b) => b.getAttribute('data-subtab')),
   );
-  record('Supplies opens on Auto-Eat with a Boosts tab beside it', tabs.join(',') === 'larder,boosts', tabs.join(','));
+  record('Auto-Eat opens on its own tab with a Boosts tab beside it', tabs.join(',') === 'larder,boosts', tabs.join(','));
 }
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -3154,13 +3153,13 @@ await go('The Delve');
     );
 
     // A built stage is a landmark on the Map; an unbuilt monument is not there.
-    await go('Map');
+    await go('Home');
     await page.waitForTimeout(800);
     const before = await page.getByTestId('hub-monument-1').count();
     await apiPost('/api/v1/dev/great-works/restore', { Region: 1, Stage: 2, Progress: 0, Material: 0, StockDelta: 0 });
     await page.waitForTimeout(500);
     await go('Village');
-    await go('Map');
+    await go('Home');
     await page.waitForTimeout(1500);
     const marker = page.getByTestId('hub-monument-1');
     record(
@@ -3185,7 +3184,7 @@ await go('The Delve');
         && hallAfter.GreatWorkSlots === 1,
       `cap ${hallBefore?.Cap} -> ${hallAfter?.Cap}, ceiling ${hallBefore?.MaxCap} -> ${hallAfter?.MaxCap}`,
     );
-    await go('Map');
+    await go('Home');
     await go('Village');
     await page.getByTestId('great-work-open-5').click().catch(() => {});
     const completion = await page.getByTestId('great-work-completion-5').innerText().catch(() => '');
@@ -4448,7 +4447,7 @@ await go('Progress');
 // happening. The cards under it must name every working character's job and
 // offer the nearest deed - and its Go must actually leave the map, because a
 // card whose button renders but goes nowhere is this project's oldest bug.
-await go('Map');
+await go('Home');
 {
   await page.waitForFunction(() => /Right now/.test(document.body.innerText), null, { timeout: 10000 }).catch(() => {});
   const text = await page.evaluate(() => document.body.innerText);
@@ -4938,9 +4937,11 @@ await go('Ancestors');
           (b) => `${b.dataset.label}=${b.dataset.locked}`,
         ),
       );
-      // Task 76: the Market is a TAB of Community now, so the lock is on the
-      // tab and the entry stays open for Friends and Leaderboards.
-      const community = locked.find((l) => l.startsWith('Community='));
+      // Task 95: the Market is a menu entry of its own again as well as a tab
+      // of the Friends family (task 76), so the lock shows on both - and the
+      // Friends entry stays open for Friends and Leaderboards.
+      const friends = locked.find((l) => l.startsWith('Friends='));
+      const marketEntry = locked.find((l) => l.startsWith('Market='));
       // A DOM click, not a pointer one: a brand-new account has onboarding
       // overlays up at this point, and what is checked is the lock state,
       // not whether the button can be reached through them.
@@ -4952,13 +4953,13 @@ await go('Ancestors');
         .getAttribute('data-locked')
         .catch(() => null);
       record(
-        'a new account sees the Market tab greyed until level 10, Community open',
-        community === undefined && marketTab === 'Level 10',
-        `Community ${community ?? 'open'}; Market tab ${marketTab ?? 'open'}`,
+        'a new account sees Market greyed until level 10 (entry and tab), Friends open',
+        friends === undefined && marketEntry === 'Market=Level 10' && marketTab === 'Level 10',
+        `Friends ${friends ?? 'open'}; ${marketEntry ?? 'Market entry open'}; Market tab ${marketTab ?? 'open'}`,
       );
       record(
-        'a new account keeps Combat, Character and Supplies open',
-        !locked.some((l) => /^(Combat|Character|Supplies|Map)=/.test(l)),
+        'a new account keeps Combat, Character and Auto-Eat open',
+        !locked.some((l) => /^(Combat|Character|Auto-Eat|Home)=/.test(l)),
         locked.join(', ') || 'nothing greyed',
       );
     }
@@ -5205,7 +5206,7 @@ await go('Ancestors');
       await rod.click();
       await fresh.waitForTimeout(45000);
 
-      await (await navButton(fresh, 'Supplies')).click();
+      await (await navButton(fresh, 'Auto-Eat')).click();
       await fresh.waitForTimeout(1500);
 
       const foodSelect = fresh.locator('select').first();
