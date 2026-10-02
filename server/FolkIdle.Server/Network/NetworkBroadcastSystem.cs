@@ -1899,6 +1899,14 @@ namespace FolkIdle.Server.Network
             // guard change and a protocol regeneration for something
             // that is a paged list - which is what HTTP is for, and
             // what the friends list and mailbox beside it already do.
+            // Task 110e: world, guild and announcement history at sign-in.
+            // REST for the same reason as conversations just below.
+            if (requestPath == "/api/v1/chat/recent" && context.Request.HttpMethod == "GET")
+            {
+                await HandleChatRecent(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/conversations/list" && context.Request.HttpMethod == "GET")
             {
                 await HandleConversationList(context);
@@ -7137,6 +7145,50 @@ namespace FolkIdle.Server.Network
             public string MessageText { get; set; } = string.Empty;
             public long SentAtEpochMs { get; set; }
             public bool Read { get; set; }
+        }
+
+        /// <summary>
+        /// Task 110e. The newest world, announcement and (own) guild messages,
+        /// oldest first, so a player signing in does not read "Nothing in this
+        /// channel yet" over a channel that was busy a minute ago. Filtering is
+        /// ChatHistory.ReadRecentAsync's: the reader's current guild only, and
+        /// nothing from anyone the reader has blocked. Whispers are not here.
+        /// </summary>
+        private async Task HandleChatRecent(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.ReadCommitted);
+                await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY");
+
+                var recent = await ChatHistory.ReadRecentAsync(db, playerId);
+
+                await transaction.CommitAsync();
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, recent);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Chat history error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
         }
 
         /// <summary>
@@ -12585,6 +12637,10 @@ namespace FolkIdle.Server.Network
                                 frames.EnqueueTo(target);
                             }
                         }
+
+                        // Task 110e: an admin announcement is News too, so a
+                        // player who signs in afterwards still reads it.
+                        await ChatHistory.RecordAsync(_serviceProvider, ChatEngine.AnnouncementChannelType, 0, packet.SenderPlayerId, message, packet.TimestampEpochMs);
                         
                         context.Response.StatusCode = 200;
                         return;
