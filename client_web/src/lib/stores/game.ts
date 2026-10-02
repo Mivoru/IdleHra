@@ -172,6 +172,8 @@ export interface LootEntry {
   atMs: number;
   /** EquipmentInstances.Id of an equipment drop, 0 otherwise (task 49). */
   instanceId: number;
+  /** Task 109: a best-drop record, shown as a badge on the reveal card. */
+  record?: boolean;
 }
 
 // Modul: TWO BUFFERS, BECAUSE ONE LET MATERIALS EVICT EVERY PIECE OF GEAR.
@@ -254,11 +256,9 @@ export function acceptLootDrop(packet: ResponseLootDrop): void {
   if (tier >= 10) tap('success');
 
   // Task 51: a best-drop record (Rare+, against the durable baseline).
-  if (recordWatch.observeDrop(tier, kind)) {
-    void loadContent()
-      .then((registry) => pushLocalNotice(dropRecordMessage(tier, itemName(registry, packet.ItemId)), 'info'))
-      .catch(() => pushLocalNotice(dropRecordMessage(tier, 'item'), 'info'));
-  }
+  // Observed here, in arrival order; announced below once it is known whether
+  // the reveal card is showing this drop.
+  const isRecord = recordWatch.observeDrop(tier, kind);
 
   const entry: LootEntry = {
     id: ++lootSequence,
@@ -282,7 +282,18 @@ export function acceptLootDrop(packet: ResponseLootDrop): void {
 
   const feel = lootFeel.accept(tier, kind, Date.now());
   if (feel.flash) lootFlash.set({ id: entry.id, itemId: entry.itemId, qualityTier: tier });
-  if (feel.reveal && shouldReplaceReveal(get(lootReveal)?.qualityTier ?? null, tier)) lootReveal.set(entry);
+  const revealed = feel.reveal && shouldReplaceReveal(get(lootReveal)?.qualityTier ?? null, tier);
+  if (revealed) lootReveal.set(isRecord ? { ...entry, record: true } : entry);
+
+  // Modul: task 109 - a Legendary record was announced TWICE, by the reveal
+  // card and by a "New record" toast on top of it. When the card shows the
+  // drop, the record is a badge on the card; the toast is only for a record
+  // the card does not show (a Rare or Epic best, below the reveal tier).
+  if (isRecord && !revealed) {
+    void loadContent()
+      .then((registry) => pushLocalNotice(dropRecordMessage(tier, itemName(registry, packet.ItemId)), 'info'))
+      .catch(() => pushLocalNotice(dropRecordMessage(tier, 'item'), 'info'));
+  }
 }
 
 
