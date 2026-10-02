@@ -69,6 +69,10 @@ export const queryKeys = {
   guildApplications: ['social', 'guild', 'applications'] as const,
   guildLeavePreview: ['social', 'guild', 'leavePreview'] as const,
   playerNames: (ids: number[]) => ['social', 'names', ids.join(',')] as const,
+  /** Another player's profile - see `fetchPlayerProfile`. */
+  playerProfile: (playerId: number) => ['social', 'profile', playerId] as const,
+  /** A guild seen from outside - see `fetchGuildView`. */
+  guildView: (guildId: number) => ['social', 'guildView', guildId] as const,
   forge: ['player', 'forge'] as const,
   recipes: ['crafting', 'recipes'] as const,
   market: (baseItemId: string, qualityTier: number, pageIndex: number) =>
@@ -587,6 +591,34 @@ export function fetchMyMarketOrders(): Promise<MarketOwnOrder[]> {
   return authedGet<MarketOwnOrder[]>('/api/v1/market/mine');
 }
 
+/** MarketCancelResult, by name. */
+export type MarketCancelResult = 'Ok' | 'Sold' | 'Gone' | 'NotYours' | 'Unsupported';
+
+export interface MarketCancelResponse {
+  Result: MarketCancelResult;
+  /** The chest row the piece came back as - a NEW id, the listed copy's is gone. */
+  ReturnedEquipmentId: number | null;
+  /** A buy order's escrowed gold, returned to the row. */
+  RefundedGold: number;
+}
+
+/** What the player reads when a cancel is refused. Keyed by the server's own names. */
+export const MARKET_CANCEL_SENTENCES: Record<MarketCancelResult, string> = {
+  Ok: 'Order cancelled.',
+  Sold: 'Too late - that listing has just sold.',
+  Gone: 'That order is no longer open. It was already filled or cancelled.',
+  NotYours: 'That order is not yours to cancel.',
+  Unsupported: 'That order cannot be cancelled here.',
+};
+
+/**
+ * Takes one of the player's own open orders off the book. A refusal answers
+ * 200 with its Result; a SELL comes back to the chest, a BUY's gold to the purse.
+ */
+export function cancelMyMarketOrder(orderId: number): Promise<MarketCancelResponse | null> {
+  return authedPost<MarketCancelResponse>('/api/v1/market/cancel', { OrderId: orderId });
+}
+
 export interface MarketPricePoint {
   Epoch: number;
   Price: number;
@@ -687,6 +719,105 @@ export interface GuildMember {
   Role: number;
   ContributionPoints: number;
   IsOnline: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/players/profile, /api/v1/guilds/view (2026-10-02)
+// ---------------------------------------------------------------------------
+
+// Modul: REST DTOs, mirrored by hand like every other shape in this file - the
+// generated protocol covers the WebSocket packets only. The server side is
+// Domain/Social/PublicProfiles.cs; nothing private (gold, diamonds, treasury,
+// depot, per-member contribution) is on either shape, by design.
+
+export interface ProfilePiece {
+  SlotIndex: number;
+  InstanceId: number;
+  BaseItemId: string;
+  QualityTier: number;
+  Affixes: AffixMap;
+}
+
+export interface ProfileCharacter {
+  Name: string;
+  SlotIndex: number;
+  IsMain: boolean;
+  IsFemale: boolean;
+  AgePhase: number;
+  /** "Fighting", "Woodcutting", "Mining", "Fishing", "Crafting" or "Idle". */
+  Activity: string;
+  Worn: ProfilePiece[];
+}
+
+export interface ProfileStats {
+  TotalKills: number;
+  BossesSlain: number;
+  RegionsCompleted: number;
+  AchievementsClaimed: number;
+  TotalPlayTimeSeconds: number;
+  TotalItemsCrafted: number;
+  TotalDeaths: number;
+  RebirthCount: number;
+  DelveDeepestFloor: number;
+  BestHit: number;
+  BestDropTier: number;
+  BestDropBaseId: string | null;
+  BestSeasonRank: number;
+  SealsEarned: number;
+  WoodcuttingMasteryLevel: number;
+  MiningMasteryLevel: number;
+  FishingMasteryLevel: number;
+}
+
+export interface PlayerProfile {
+  PlayerId: number;
+  Username: string;
+  /** The worn title's display name, resolved by the server, or null. */
+  ActiveTitle: string | null;
+  Level: number;
+  LastLogoutTimestamp: number;
+  IsOnline: boolean;
+  Guild: { GuildId: number; Name: string; Tier: number; Role: number } | null;
+  /** The main character first, then up to four others who wear something. */
+  Characters: ProfileCharacter[];
+  MoreEquippedCharacters: number;
+  Stats: ProfileStats;
+}
+
+export function fetchPlayerProfile(playerId: number): Promise<PlayerProfile> {
+  return authedGet<PlayerProfile>(`/api/v1/players/profile?id=${playerId}`);
+}
+
+export interface GuildViewMember {
+  PlayerId: number;
+  Username: string;
+  Level: number;
+  Role: number;
+  IsOnline: boolean;
+}
+
+export interface GuildView {
+  GuildId: number;
+  Name: string;
+  Tier: number;
+  ActiveMembers: number;
+  MaxMembers: number;
+  Rating: number;
+  /** Position on the guild board's own order (tier, then rating). */
+  Rank: number;
+  TaxRatePct: number;
+  JoinType: number;
+  MinApplicationLevel: number;
+  MiningMonolithLevel: number;
+  WoodcuttingMonolithLevel: number;
+  WeeklyPoints: number;
+  ViewerIsMember: boolean;
+  ActiveBuffs: { BuffType: string; Tier: number; ExpiresAtEpoch: number }[];
+  Members: GuildViewMember[];
+}
+
+export function fetchGuildView(guildId: number): Promise<GuildView> {
+  return authedGet<GuildView>(`/api/v1/guilds/view?id=${guildId}`);
 }
 
 export function fetchGuildRoster(): Promise<GuildMember[]> {

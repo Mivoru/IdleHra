@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatNumber } from '../lib/ui/format';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
+  import { profileLink } from '../lib/ui/profileLink';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { playerState, pushLocalNotice, typicalHit } from '../lib/stores/game';
@@ -577,7 +578,14 @@
             <li>
               <span class="who" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
                 <PlayerAvatar playerId={member.PlayerId} size="sm" />
-                {nameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}
+                <!-- A name opens the profile, as it does in chat and Friends. -->
+                <button
+                  class="name-link"
+                  data-testid="guild-member-name"
+                  use:profileLink={{ playerId: member.PlayerId, name: nameById.get(member.PlayerId) }}
+                >
+                  {nameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}
+                </button>
                 <span class="dim tiny">[{ROLE_NAMES[member.Role] ?? 'Unknown'}]</span>
                 {#if member.PlayerId === connection.currentPlayerId}
                   <span class="dim tiny">you</span>
@@ -878,7 +886,7 @@
                 <li>
                   <span class="who">
                     {#if i === 0}{:else if i === 1}{:else if i === 2}{:else}#{i + 1}{/if}
-                    {member.Name}
+                    <button class="name-link" use:profileLink={{ playerId: member.PlayerId, name: member.Name }}>{member.Name}</button>
                     {#if member.PlayerId === connection.currentPlayerId}<span class="dim tiny">you</span>{/if}
                   </span>
                   <span class="dim">{formatNumber(member.WeeklyContributionPoints)} pts</span>
@@ -1380,6 +1388,25 @@
 
   .who {
     font-weight: 600;
+  }
+
+  /* A name that opens a profile: text, not a boxed button, at a thumb's height. */
+  .name-link {
+    background: none;
+    border: 0;
+    padding: 0 0.15rem;
+    min-height: 44px;
+    /* Modul: a three-letter name is still a thumb's width (check:touch caught "dev" at 28px). */
+    min-width: 44px;
+    flex-shrink: 1;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    text-decoration: underline dotted;
+    text-underline-offset: 0.2em;
   }
 
   .axis {

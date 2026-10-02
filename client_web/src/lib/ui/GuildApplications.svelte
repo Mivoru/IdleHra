@@ -13,6 +13,7 @@
   } from '../net/rest';
   import { pushLocalNotice } from '../stores/game';
   import Skeleton from './Skeleton.svelte';
+  import { profileLink } from './profileLink';
   import QueryError from './QueryError.svelte';
 
   const client = useQueryClient();
@@ -67,7 +68,7 @@
     <ul class="rows">
       {#each applications.data ?? [] as application (application.Id)}
         <li>
-          <span class="name">{application.Username}</span>
+          <button class="name name-link" use:profileLink={{ playerId: application.PlayerId, name: application.Username }}>{application.Username}</button>
           <span class="dim small">lv {application.ApplicantLevel}</span>
           <button class="tiny-btn" disabled={busy} onclick={() => reviewApplication(application.Id, true)}>
             Approve
@@ -119,6 +120,21 @@
     font-weight: 600;
     margin-right: auto;
     overflow-wrap: anywhere;
+  }
+  /* The applicant's name opens their profile - who is asking to join. */
+  .name-link {
+    background: none;
+    border: 0;
+    padding: 0;
+    min-height: 44px;
+    /* Modul: a three-letter name is still a thumb's width (check:touch caught "dev" at 28px). */
+    min-width: 44px;
+    color: inherit;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: underline dotted;
   }
   .tiny-btn {
     font-size: 0.72rem;

@@ -1,210 +1,296 @@
 <script lang="ts">
-  import PlayerAvatar from './PlayerAvatar.svelte';
+  // Modul: THE ONE PROFILE HOST. Mounted once in App; any name in the game
+  // calls `openProfile` (stores/profile.ts, usually through the `profileLink`
+  // action) and this draws whatever is on top of the stack - a player, or a
+  // guild reached from a player. It used to be mounted per screen off each
+  // screen's local state, which is why the guild roster never had one.
+  //
+  // Still `$props()`-free and rune-based on purpose: this file once used
+  // `export let`, compiled as a LEGACY component, and never heard its
+  // `createQuery` finish ("it says fetching data, and I have to close it and
+  // click again"). tests/runesMode.test.ts guards that.
   import { createQuery } from '@tanstack/svelte-query';
-  import { authedGet } from '../net/auth';
+  import PlayerAvatar from './PlayerAvatar.svelte';
   import ItemIcon from './ItemIcon.svelte';
+  import Affixes from './Affixes.svelte';
+  import DetailSheet from './DetailSheet.svelte';
+  import Skeleton from './Skeleton.svelte';
   import { EQUIPMENT_SLOTS } from './slots';
   import { prettifyBaseId } from '../net/content';
+  import { rarityColor, rarityName } from './rarity';
+  import { formatNumber } from './format';
   import { portal } from './portal';
+  import { profileLink, guildLink } from './profileLink';
   import { registerOverlay } from '../stores/sheet';
   import { LAYER_Z } from '../net/backButton';
+  import {
+    profileStack,
+    popProfile,
+    closeProfiles,
+    PROFILE_STALE_MS,
+    type ProfileEntry,
+  } from '../stores/profile';
+  import {
+    queryKeys,
+    fetchPlayerProfile,
+    fetchGuildView,
+    type ProfilePiece,
+    type ProfileCharacter,
+  } from '../net/rest';
 
-  // Modul: `$props()`, NOT `export let`, AND THAT IS THE WHOLE BUG FIX.
-  //
-  // Reported as "I click show profile, it says fetching data, and I have to
-  // close it and click again".
-  //
-  // A Svelte 5 component is in RUNES mode only if it uses a rune. This file
-  // used `export let`, which is the Svelte 4 form, so the component compiled
-  // as LEGACY - and legacy components track reactivity through the compiler's
-  // own invalidation, not through signals. `createQuery` from
-  // @tanstack/svelte-query builds its result out of runes, so the template
-  // read `profile.isPending` exactly once, at mount, and never heard that the
-  // request had finished. The spinner was not waiting on the network; it had
-  // stopped listening.
-  //
-  // The second click worked because by then the query cache was WARM: the
-  // fresh component's very first render already had the data, so a template
-  // that only renders once was enough. That is why it looked intermittent
-  // rather than broken.
-  //
-  // Nothing else in the file had to change - which is the dangerous part.
-  // `export let` is not deprecated syntax that warns, it is a different
-  // reactivity system that compiles cleanly and silently disagrees with any
-  // rune-based library it is handed.
-  const { playerId, onClose }: { playerId: number; onClose: () => void } = $props();
   const titleId = $props.id();
 
-  interface ProfileEquipment {
-    Id: number;
-    BaseItemId: string;
-    QualityTier: number;
-    AffixPayload: any;
-    IsAffixLocked: boolean;
-    SetId: number;
-  }
-
-  interface ProfileCharacter {
-    SlotIndex: number;
-    Level: number;
-    AgePhase: number;
-    IsFemale: boolean;
-    EquippedAxeId?: number;
-    EquippedPickaxeId?: number;
-    EquippedRodId?: number;
-    EquippedWeaponId?: number;
-    EquippedHelmetId?: number;
-    EquippedChestId?: number;
-    EquippedGlovesId?: number;
-    EquippedLeggingsId?: number;
-    EquippedBootsId?: number;
-    EquippedAmuletId?: number;
-    EquippedRingId?: number;
-  }
-
-  interface PlayerProfile {
-    PlayerId: number;
-    Username: string;
-    /** The worn title's display name, resolved by the server, or null. */
-    ActiveTitle: string | null;
-    GuildId: number;
-    CurrentLevel: number;
-    LastLogoutTimestamp: number;
-    Characters: ProfileCharacter[];
-    Equipment: ProfileEquipment[];
-  }
-
-  async function fetchProfile(id: number) {
-    return authedGet<PlayerProfile>(`/api/v1/players/profile?id=${id}`);
-  }
+  const top = $derived<ProfileEntry | null>($profileStack.length > 0 ? $profileStack[$profileStack.length - 1] : null);
+  const depth = $derived($profileStack.length);
+  const playerId = $derived(top?.kind === 'player' ? top.playerId : 0);
+  const guildId = $derived(top?.kind === 'guild' ? top.guildId : 0);
 
   const profile = createQuery(() => ({
-    queryKey: ['profile', playerId],
-    queryFn: () => fetchProfile(playerId),
-    staleTime: 60000,
+    queryKey: queryKeys.playerProfile(playerId),
+    queryFn: () => fetchPlayerProfile(playerId),
+    enabled: playerId > 0,
+    staleTime: PROFILE_STALE_MS,
   }));
 
-  // Modul: ALL ELEVEN SLOTS, in EQUIPMENT_SLOTS' order. This showed four -
-  // weapon, helmet, chest, leggings - while the endpoint has always returned
-  // every worn piece including the amulet, the ring and the three tools, so a
-  // fully dressed character looked half naked to anyone inspecting it. The
-  // CLAUDE.md rule: every list that stopped short of eleven has been a bug.
-  //
-  // The profile's field per slot index, written out because the three tool
-  // slots carry no `field` in EQUIPMENT_SLOTS (the hot-path wire does not
-  // ship them) while this REST shape does. A slot added to EQUIPMENT_SLOTS
-  // without a key here still renders - as an empty box, which is the thing to
-  // look for.
-  const PROFILE_FIELD: Record<number, keyof ProfileCharacter> = {
-    0: 'EquippedWeaponId',
-    1: 'EquippedHelmetId',
-    2: 'EquippedChestId',
-    3: 'EquippedGlovesId',
-    4: 'EquippedLeggingsId',
-    5: 'EquippedBootsId',
-    6: 'EquippedAmuletId',
-    7: 'EquippedRingId',
-    8: 'EquippedAxeId',
-    9: 'EquippedPickaxeId',
-    10: 'EquippedRodId',
-  };
+  const guild = createQuery(() => ({
+    queryKey: queryKeys.guildView(guildId),
+    queryFn: () => fetchGuildView(guildId),
+    enabled: guildId > 0,
+    staleTime: PROFILE_STALE_MS,
+  }));
 
-  function wornIn(char: ProfileCharacter, slotIndex: number): ProfileEquipment | undefined {
-    const field = PROFILE_FIELD[slotIndex];
-    const id = field ? (char[field] as number | undefined) : undefined;
-    if (!id) return undefined;
-    return profile.data?.Equipment.find((e: ProfileEquipment) => e.Id === id);
+  // Modul: BACK POPS ONE LEVEL - guild back to the profile it came from - and
+  // only while something is open, so the stack in stores/sheet.ts never holds
+  // a closer for an overlay that is not on screen.
+  $effect(() => {
+    if (depth === 0) return;
+    return registerOverlay(() => popProfile(), LAYER_Z.playerProfile);
+  });
+
+  // Selected piece for the stats sheet. Cleared whenever the entry changes.
+  let piece = $state<ProfilePiece | null>(null);
+  $effect(() => {
+    void top;
+    piece = null;
+  });
+
+  const ROLE_NAMES: Record<number, string> = { 0: 'Member', 1: 'Officer', 2: 'Leader' };
+  const AGE = ['Child', 'Adult', 'Senior', 'Elder'];
+
+  function wornIn(char: ProfileCharacter, slotIndex: number): ProfilePiece | undefined {
+    return char.Worn.find((p) => p.SlotIndex === slotIndex);
   }
 
-  // Modul: BACK CLOSES THE PROFILE, not the screen it was opened from. It was
-  // left out of the back handler because its open state is local to the
-  // screens that open it (Friends, Leaderboards, chat) - which is what the
-  // overlay stack is for: the modal registers itself while it is mounted.
-  $effect(() => registerOverlay(() => onClose(), LAYER_Z.playerProfile));
-
-  function getAge(phase: number) {
-    switch (phase) {
-      case 0: return 'Child';
-      case 1: return 'Adult';
-      case 2: return 'Senior';
-      case 3: return 'Elder';
-      default: return 'Unknown';
-    }
+  function hours(seconds: number): string {
+    const h = Math.floor(seconds / 3600);
+    return h >= 1 ? `${formatNumber(h)} h` : `${Math.floor(seconds / 60)} min`;
   }
+
+  function lastSeen(epoch: number, online: boolean): string {
+    if (online) return 'Online now';
+    if (!epoch) return 'Never seen';
+    return `Last seen ${new Date(epoch * 1000).toLocaleString()}`;
+  }
+
+  function timeLeft(epoch: number): string {
+    const minutes = Math.max(0, Math.round((epoch * 1000 - Date.now()) / 60000));
+    return minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`;
+  }
+
+  // The name the shell shows before the answer: what the tapped row knew.
+  const shellName = $derived(
+    top?.kind === 'player'
+      ? (profile.data?.Username ?? top.name ?? '')
+      : top?.kind === 'guild'
+        ? (guild.data?.Name ?? top.name ?? '')
+        : '',
+  );
 </script>
 
-<!-- Modul: PORTALLED TO <body>. Chat renders this inside the chat dock, whose
-     window was blurred - and a backdrop-filter makes an ancestor the box a
-     position: fixed child is laid out in, so the "full-screen" overlay was the
-     size of the ~416px chat window and clipped by it. See ui/portal.ts. -->
-<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-<div class="overlay" onclick={onClose} use:portal>
-  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-  <div
-    class="modal"
-    role="dialog"
-    tabindex="-1"
-    aria-modal="true"
-    aria-labelledby={titleId}
-    onclick={(e) => e.stopPropagation()}
-  >
-    <div class="header">
-      <!-- Task 54: the profile is where a face is shown largest. -->
-      <PlayerAvatar {playerId} size="lg" name={profile.data?.Username ?? ''} />
-      <h3 id={titleId}>
-        {profile.data ? `${profile.data.Username}'s Profile` : 'Loading Profile...'}
-        {#if profile.data?.ActiveTitle}
-          <span class="title-badge">{profile.data.ActiveTitle}</span>
+{#if top}
+  <!-- Modul: PORTALLED TO <body>. Chat opens this from inside the chat dock,
+       whose window is blurred - and a backdrop-filter makes an ancestor the
+       box a position: fixed child is laid out in, so the "full-screen" overlay
+       was the size of the chat window. See ui/portal.ts. -->
+  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+  <div class="overlay" onclick={closeProfiles} use:portal>
+    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+    <div
+      class="modal"
+      role="dialog"
+      tabindex="-1"
+      aria-modal="true"
+      aria-labelledby={titleId}
+      data-testid={top.kind === 'player' ? 'player-profile' : 'guild-view'}
+      onclick={(e) => e.stopPropagation()}
+    >
+      <div class="header">
+        {#if depth > 1}
+          <button class="back-btn" aria-label="Back" data-testid="profile-back" onclick={popProfile}>&lsaquo;</button>
         {/if}
-      </h3>
-      <button class="close-btn" aria-label="Close profile" onclick={onClose}>&times;</button>
-    </div>
-    
-    <div class="content">
-      {#if profile.isPending}
-        <p class="dim">Fetching profile data...</p>
-      {:else if profile.isError}
-        <p class="err">Could not load profile. {profile.error?.message}</p>
-      {:else if profile.data}
-        {@const p = profile.data}
-        <div class="profile">
-          <div class="meta">
-            <p><strong>Account Level:</strong> {p.CurrentLevel}</p>
-            <p><strong>Last Online:</strong> {new Date(p.LastLogoutTimestamp * 1000).toLocaleString()}</p>
-          </div>
+        {#if top.kind === 'player'}
+          <PlayerAvatar playerId={top.playerId} size="lg" name={shellName} />
+        {/if}
+        <h3 id={titleId}>
+          {#if top.kind === 'guild'}<span class="dim kind">Guild</span>{/if}
+          <span class="who" data-testid="profile-name">{shellName || (top.kind === 'player' ? 'Player' : 'Guild')}</span>
+          {#if top.kind === 'player' && profile.data?.ActiveTitle}
+            <span class="title-badge">{profile.data.ActiveTitle}</span>
+          {/if}
+        </h3>
+        <button class="close-btn" aria-label="Close profile" onclick={closeProfiles}>&times;</button>
+      </div>
 
-          <div class="characters">
+      <div class="content">
+        {#if top.kind === 'player'}
+          {#if profile.isPending}
+            <Skeleton />
+          {:else if profile.isError}
+            <p class="err">Could not load this profile. {profile.error?.message}</p>
+          {:else if profile.data}
+            {@const p = profile.data}
+            <div class="facts">
+              <span class="fact" data-testid="profile-level"><b>Level {p.Level}</b></span>
+              {#if p.Guild}
+                <button
+                  class="guild-link"
+                  data-testid="profile-guild-link"
+                  use:guildLink={{ guildId: p.Guild.GuildId, name: p.Guild.Name }}
+                >
+                  {p.Guild.Name}
+                </button>
+                <span class="dim small">{ROLE_NAMES[p.Guild.Role] ?? 'Member'} &middot; tier {p.Guild.Tier}</span>
+              {:else}
+                <span class="dim small">No guild</span>
+              {/if}
+              <span class="dim small" class:online={p.IsOnline}>{lastSeen(p.LastLogoutTimestamp, p.IsOnline)}</span>
+            </div>
+
             {#each p.Characters as char (char.SlotIndex)}
-              <div class="character-card">
-                <h4>Character {char.SlotIndex + 1}</h4>
-                <p class="dim tiny">Level {char.Level} • {char.IsFemale ? 'Female' : 'Male'} • {getAge(char.AgePhase)}</p>
-                
+              <section class="character-card" data-testid="profile-character">
+                <h4>
+                  {char.Name || `Character ${char.SlotIndex + 1}`}
+                  <span class="dim tiny">
+                    {char.IsMain ? 'Main' : ''}{char.IsMain ? ' · ' : ''}{char.Activity} · {char.IsFemale ? 'Female' : 'Male'} · {AGE[char.AgePhase] ?? ''}
+                  </span>
+                </h4>
                 <div class="equipment-grid">
                   {#each EQUIPMENT_SLOTS as slot (slot.index)}
                     {@const item = wornIn(char, slot.index)}
                     {@const itemLabel = item ? prettifyBaseId(item.BaseItemId) : ''}
                     <!-- The name is written under the icon, not left in a
-                         tooltip: a phone has no hover, and this is a screen
-                         people open to see what someone is wearing. -->
+                         tooltip: a phone has no hover. A tap shows its stats. -->
                     <div class="slot" data-slot={slot.index}>
                       <span class="tiny dim">{slot.label}</span>
                       {#if item}
-                        <ItemIcon baseItemId={item.BaseItemId} name={itemLabel} qualityTier={item.QualityTier} size="md" />
-                        <span class="item-name">{itemLabel}</span>
+                        <button class="piece" aria-label={`${itemLabel}, show stats`} onclick={() => (piece = item)}>
+                          <ItemIcon baseItemId={item.BaseItemId} name={itemLabel} qualityTier={item.QualityTier} size="md" />
+                          <span class="item-name">{itemLabel}</span>
+                        </button>
                       {:else}
                         <div class="empty-slot"></div>
                       {/if}
                     </div>
                   {/each}
                 </div>
-              </div>
+              </section>
             {/each}
-          </div>
-        </div>
-      {/if}
+            {#if p.MoreEquippedCharacters > 0}
+              <p class="dim tiny">and {p.MoreEquippedCharacters} more villagers carrying gear.</p>
+            {/if}
+
+            <section class="stats" data-testid="profile-stats">
+              <h4>Statistics</h4>
+              <dl>
+                <dt>Monsters slain</dt><dd>{formatNumber(p.Stats.TotalKills)}</dd>
+                <dt>Bosses slain</dt><dd>{formatNumber(p.Stats.BossesSlain)}</dd>
+                <dt>Regions completed</dt><dd>{p.Stats.RegionsCompleted} / 5</dd>
+                <dt>Achievements</dt><dd>{formatNumber(p.Stats.AchievementsClaimed)}</dd>
+                <dt>Play time</dt><dd>{hours(p.Stats.TotalPlayTimeSeconds)}</dd>
+                <dt>Best hit</dt><dd>{formatNumber(p.Stats.BestHit)}</dd>
+                {#if p.Stats.BestDropBaseId}
+                  <dt>Best drop</dt>
+                  <dd style:color={rarityColor(p.Stats.BestDropTier)}>{rarityName(p.Stats.BestDropTier)} {prettifyBaseId(p.Stats.BestDropBaseId)}</dd>
+                {/if}
+                <dt>Deepest Delve floor</dt><dd>{p.Stats.DelveDeepestFloor}</dd>
+                <dt>Rebirths</dt><dd>{p.Stats.RebirthCount}</dd>
+                <dt>Seals (Book of Deeds)</dt><dd>{p.Stats.SealsEarned}</dd>
+                {#if p.Stats.BestSeasonRank > 0}<dt>Best season rank</dt><dd>#{p.Stats.BestSeasonRank}</dd>{/if}
+                <dt>Items crafted</dt><dd>{formatNumber(p.Stats.TotalItemsCrafted)}</dd>
+                <dt>Deaths</dt><dd>{formatNumber(p.Stats.TotalDeaths)}</dd>
+                <dt>Mastery (wood / ore / fish)</dt>
+                <dd>{p.Stats.WoodcuttingMasteryLevel} / {p.Stats.MiningMasteryLevel} / {p.Stats.FishingMasteryLevel}</dd>
+              </dl>
+            </section>
+          {/if}
+        {:else}
+          {#if guild.isPending}
+            <Skeleton />
+          {:else if guild.isError}
+            <p class="err">Could not load this guild. {guild.error?.message}</p>
+          {:else if guild.data}
+            {@const g = guild.data}
+            <div class="facts">
+              <span class="fact"><b>Tier {g.Tier}</b></span>
+              <span class="small">{g.ActiveMembers}/{g.MaxMembers} members</span>
+              <span class="small" data-testid="guild-view-rank">Rank #{g.Rank} &middot; rating {formatNumber(g.Rating)}</span>
+              {#if g.ViewerIsMember}<span class="dim small">Your guild</span>{/if}
+            </div>
+            <section class="stats">
+              <h4>Guild</h4>
+              <dl>
+                <dt>This week's points</dt><dd>{formatNumber(g.WeeklyPoints)}</dd>
+                <dt>Joining</dt><dd>{g.JoinType === 0 ? 'Open' : `By application, level ${g.MinApplicationLevel}+`}</dd>
+                <dt>Tax</dt><dd>{g.TaxRatePct}%</dd>
+                <dt>Monoliths (wood / ore)</dt><dd>{g.WoodcuttingMonolithLevel} / {g.MiningMonolithLevel}</dd>
+                <dt>Active buffs</dt>
+                <dd>
+                  {#if g.ActiveBuffs.length === 0}
+                    none
+                  {:else}
+                    {#each g.ActiveBuffs as b (b.BuffType)}
+                      <span class="buff">{b.BuffType} T{b.Tier} ({timeLeft(b.ExpiresAtEpoch)})</span>
+                    {/each}
+                  {/if}
+                </dd>
+              </dl>
+            </section>
+            <section>
+              <h4>Members</h4>
+              <ul class="members">
+                {#each g.Members as m (m.PlayerId)}
+                  <li>
+                    <span class="dot" class:online={m.IsOnline} title={m.IsOnline ? 'Online' : 'Offline'}></span>
+                    <PlayerAvatar playerId={m.PlayerId} size="sm" name={m.Username} />
+                    <button
+                      class="name-btn"
+                      data-testid="guild-view-member"
+                      use:profileLink={{ playerId: m.PlayerId, name: m.Username }}
+                    >
+                      {m.Username}
+                    </button>
+                    <span class="dim tiny">lv {m.Level} &middot; {ROLE_NAMES[m.Role] ?? 'Member'}</span>
+                  </li>
+                {/each}
+              </ul>
+            </section>
+          {/if}
+        {/if}
+      </div>
     </div>
   </div>
-</div>
+
+  {#if piece}
+    {@const label = prettifyBaseId(piece.BaseItemId)}
+    <DetailSheet title={label} onClose={() => (piece = null)} testid="profile-item-sheet">
+      <div class="piece-head">
+        <ItemIcon baseItemId={piece.BaseItemId} name={label} qualityTier={piece.QualityTier} size="lg" />
+        <span style:color={rarityColor(piece.QualityTier)}>{rarityName(piece.QualityTier)}</span>
+      </div>
+      <Affixes affixes={piece.Affixes} baseItemId={piece.BaseItemId} qualityTier={piece.QualityTier} />
+    </DetailSheet>
+  {/if}
+{/if}
 
 <style>
   /* A title (task 37) sits beside the name, in the name's own line. */
@@ -231,10 +317,6 @@
     padding: calc(0.5rem + var(--sa-top)) calc(0.5rem + var(--sa-right)) calc(0.5rem + var(--sa-bottom))
       calc(0.5rem + var(--sa-left));
   }
-  /* Modul: THE APP'S TOKENS. This read --bg-surface and --bg-dark, which the
-     theme never defines, so it fell back to a hard-coded #1e1e1e - and the
-     light theme's dark ink text sat on it: dark on dark, the same defect
-     ContextMenu had. */
   .modal {
     background: var(--bg-panel);
     color: var(--text);
@@ -243,9 +325,7 @@
     width: 100%;
     max-width: 500px;
     max-height: 90vh;
-    /* dvh after vh: the vh line is the fallback for an engine without it. On
-       mobile web vh is the LARGE viewport, taller than what shows under the
-       URL bar. */
+    /* dvh after vh: the vh line is the fallback for an engine without it. */
     max-height: calc(100dvh - 1rem - var(--sa-top) - var(--sa-bottom));
     display: flex;
     flex-direction: column;
@@ -253,10 +333,9 @@
   }
   .header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 0.75rem;
-    padding: 1rem;
+    gap: 0.6rem;
+    padding: 0.75rem;
     border-bottom: 1px solid var(--border);
     background: var(--bg-raised);
     flex-shrink: 0;
@@ -266,8 +345,17 @@
     min-width: 0;
     margin: 0;
     font-size: 1.1rem;
+    overflow-wrap: anywhere;
   }
-  .close-btn {
+  .kind {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: normal;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .close-btn,
+  .back-btn {
     background: transparent;
     border: none;
     color: var(--text);
@@ -275,8 +363,7 @@
     cursor: pointer;
     line-height: 1;
     padding: 0 0.5rem;
-    /* 44px on every width: it was ~24px on a desktop, and this is the only
-       visible way out of the modal. */
+    /* 44px on every width: these are the only visible ways out. */
     flex-shrink: 0;
     min-width: 44px;
     min-height: 44px;
@@ -285,26 +372,31 @@
     color: var(--danger);
   }
   .content {
-    padding: 1rem;
+    padding: 0.75rem;
     overflow-y: auto;
     overscroll-behavior: contain;
     min-height: 0;
-  }
-  .profile {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: 0.75rem;
   }
-  .meta {
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.75rem;
     padding: 0.5rem;
     background: var(--bg-raised);
     border-radius: 4px;
     border: 1px solid var(--border);
   }
-  .characters {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+  .online {
+    color: var(--good);
+  }
+  .guild-link {
+    min-height: 44px;
+    flex-shrink: 0;
+    font-weight: 600;
   }
   .character-card {
     padding: 0.5rem;
@@ -312,12 +404,16 @@
     border-radius: 4px;
     background: var(--bg);
   }
+  .character-card h4,
+  .stats h4,
+  section h4 {
+    margin: 0 0 0.35rem;
+  }
   /* Eleven slots wrap; a flex row of eleven ran off a phone. */
   .equipment-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(4.2rem, 1fr));
     gap: 0.5rem;
-    margin-top: 0.5rem;
   }
   .slot {
     display: flex;
@@ -326,6 +422,20 @@
     gap: 0.25rem;
     min-width: 0;
     text-align: center;
+  }
+  .piece {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    min-width: 44px;
+    min-height: 44px;
+    max-width: 100%;
+    color: inherit;
+    cursor: pointer;
   }
   .item-name {
     font-size: 0.62rem;
@@ -346,6 +456,66 @@
     border: 1px dashed var(--border);
     border-radius: 2px;
     opacity: 0.3;
+  }
+  .stats dl {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.2rem 0.75rem;
+    margin: 0;
+    font-size: 0.85rem;
+  }
+  .stats dt {
+    color: var(--text-dim);
+  }
+  .stats dd {
+    margin: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  .buff {
+    display: block;
+  }
+  .members {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .members li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    background: var(--text-dim);
+    flex-shrink: 0;
+  }
+  .dot.online {
+    background: var(--good);
+  }
+  .name-btn {
+    background: transparent;
+    border: 0;
+    color: var(--text);
+    text-align: left;
+    padding: 0 0.25rem;
+    min-height: 44px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    cursor: pointer;
+    text-decoration: underline dotted;
+  }
+  .piece-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
   }
   .err {
     color: var(--danger);

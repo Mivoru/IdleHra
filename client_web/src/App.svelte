@@ -56,6 +56,8 @@
   import GuidedOverlay from './lib/ui/GuidedOverlay.svelte';
   import LootReveal from './lib/ui/LootReveal.svelte';
   import WhatsNew from './lib/ui/WhatsNew.svelte';
+  import PlayerProfileModal from './lib/ui/PlayerProfileModal.svelte';
+  import { closeProfiles } from './lib/stores/profile';
   import { resolveNotesOnStartup, startUpdatePolling } from './lib/stores/version';
   import { coachTargetScreen, screenLocks } from './lib/stores/tutorial';
   import { tick, untrack, type Component } from 'svelte';
@@ -498,6 +500,8 @@
 
   function signOut() {
     stopMusic();
+    // A profile left open would reappear over the next account's first screen.
+    closeProfiles();
     endSession();
     forgetSession();
     clearToken();
@@ -898,6 +902,8 @@
     <VictoryCard />
     <DeathCard />
     <ChatDock />
+    <!-- The one profile host: any name opens it through stores/profile.ts. -->
+    <PlayerProfileModal />
     <!-- Closes the phone Menu too: a tab tapped under an open Menu changed the
          screen and left the whole menu expanded on top of it. -->
     <TabBar
