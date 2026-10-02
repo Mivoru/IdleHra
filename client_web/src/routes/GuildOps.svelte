@@ -1396,7 +1396,8 @@
     border: 0;
     padding: 0 0.15rem;
     min-height: 44px;
-    min-width: 0;
+    /* Modul: a three-letter name is still a thumb's width (check:touch caught "dev" at 28px). */
+    min-width: 44px;
     flex-shrink: 1;
     color: inherit;
     font: inherit;
