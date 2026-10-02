@@ -15,7 +15,9 @@
    */
   import ItemIcon from './ItemIcon.svelte';
   import VirtualList from './VirtualList.svelte';
-  import { rarityColor, rarityName, rarityTitle, MAX_QUALITY_TIER } from './rarity';
+  import RarityPip from './RarityPip.svelte';
+  import { rarityColor, rarityName, MAX_QUALITY_TIER } from './rarity';
+  import { summarizeAffixes } from './itemRow';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from './slots';
   import { prettifyBaseId } from '../net/content';
 
@@ -23,6 +25,8 @@
     Id: number;
     BaseItemId: string;
     QualityTier: number;
+    /** When present, the strongest one is named on the row (task 100). */
+    Affixes?: Record<string, number> | null;
   };
 
   let {
@@ -106,6 +110,12 @@
   // the ICON, and the two lines of text are identical in both modes. It never
   // had a claim to a shorter row.
   const ROW_HEIGHT = 52;
+
+  // Modul: "8 OF 8 SHOWN" DISPLAYED FOUR. The compact list was capped at 14rem,
+  // which is four 52px rows plus gaps, and nothing said the rest were below the
+  // edge. About eight rows on a desktop now, fewer on a short phone screen, and
+  // a fade at the cut edge whenever more rows are below it.
+  let moreBelow = $state(false);
 </script>
 
 <div class="browser" class:compact>
@@ -131,11 +141,16 @@
       {/each}
     </select>
 
-    <select bind:value={sortBy} aria-label="Sort by">
-      <option value="rarity">Rarity</option>
-      <option value="name">Name</option>
-      <option value="slot">Kind</option>
-    </select>
+    <!-- Modul: "Sort:" IS SAID. The third select read "Rarity" beside the
+         second's "Any rarity", so a sort looked like a second rarity filter. -->
+    <label class="sort">
+      <span class="dim tiny">Sort:</span>
+      <select bind:value={sortBy} aria-label="Sort by">
+        <option value="rarity">Rarity</option>
+        <option value="name">Name</option>
+        <option value="slot">Kind</option>
+      </select>
+    </label>
   </div>
 
   <p class="dim tiny count">
@@ -151,11 +166,13 @@
          carries, in a box 22rem tall. The Forge's "show all" and the market's
          sell form both feed it the whole chest, which reached 17,836 pieces on
          one live account. See VirtualList. -->
+    <div class="listwrap" class:fade={moreBelow}>
     <VirtualList
       items={shown}
       rowHeight={ROW_HEIGHT}
-      maxHeight={compact ? '14rem' : '22rem'}
+      maxHeight={compact ? 'clamp(14rem, 45vh, 28rem)' : '22rem'}
       label="Your items"
+      bind:moreBelow
     >
       {#snippet row(item: Item)}
         <button
@@ -172,16 +189,18 @@
           <span class="text">
             <span class="name">{prettifyBaseId(item.BaseItemId)}</span>
             <span class="meta dim tiny">
-              {slotLabel(item.BaseItemId)}
-              &middot;
-              <span class="rar" style="color: {rarityColor(item.QualityTier)}" title={rarityTitle(item.QualityTier)}>
-                {rarityName(item.QualityTier)}
+              <RarityPip tier={item.QualityTier} />
+              <span class="metatext">
+                <span class="rar" style="color: {rarityColor(item.QualityTier)}">{rarityName(item.QualityTier)}</span>
+                &middot; {slotLabel(item.BaseItemId)}{#if item.Affixes && summarizeAffixes(item.Affixes, 1)}
+                  &middot; {summarizeAffixes(item.Affixes, 1)}{/if}
               </span>
             </span>
           </span>
         </button>
       {/snippet}
     </VirtualList>
+    </div>
   {/if}
 </div>
 
@@ -222,6 +241,35 @@
     min-width: 0;
   }
 
+  .sort {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex: 1 1 8rem;
+    min-width: 0;
+  }
+
+  .sort select {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .listwrap {
+    position: relative;
+  }
+
+  /* The cut edge, only while there is more below it (VirtualList.moreBelow). */
+  .listwrap.fade::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1.6rem;
+    pointer-events: none;
+    background: linear-gradient(to bottom, transparent, var(--bg-panel));
+  }
+
   .count {
     margin: 0;
   }
@@ -256,6 +304,12 @@
     box-sizing: border-box;
     padding: 0.3rem 0.4rem;
     background: transparent;
+    /* Modul: THE GREY SLABS. app.css gives every button a brass gradient and
+       an inset-plus-drop shadow; `background: transparent` cleared the first
+       and nothing cleared the second, so every row of a list read as a raised
+       button the full width of the panel (task 100, visual review F5). */
+    background-image: none;
+    box-shadow: none;
     border: 1px solid transparent;
     border-radius: 0.35rem;
     text-align: left;
@@ -295,6 +349,16 @@
      a long "slot - rarity" pair could WRAP to a second line and push the row's
      content past its declared height - the same overlap by a different route. */
   .meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+  }
+
+  .metatext {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

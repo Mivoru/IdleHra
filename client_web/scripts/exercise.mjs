@@ -639,6 +639,12 @@ await go('Forge');
   const selects = page.locator('select');
   const count = await selects.count();
   record('forge exposes selects for fusion and reroll', count >= 3, `${count} selects`);
+
+  // Task 100: one row per item, each with its own Fuse. The fixture holds
+  // thousands of identical pieces, so an empty list here is the old chip
+  // panel's failure (or a fixture that lost its stock - re-seed).
+  const rows = await page.locator('[data-testid="fusion-row"]').count();
+  record('the forge lists one fusion row per item', rows > 0, `${rows} rows`);
 }
 
 // --- forge: a whole stack in one press (task 69) --------------------------------
@@ -662,7 +668,15 @@ await go('Forge');
     await go('Forge');
     await page.waitForTimeout(1200);
 
-    const chip = page.locator('button.settag', { hasText: 'Doom Gorget' }).filter({ hasText: 'Normal' }).first();
+    // Task 100: the chips are gone. The row for the item carries a Stack
+    // button that points the whole-stack section at its lowest rarity; the
+    // search narrows the list so the row is on screen whatever else is owned.
+    const search = page.getByPlaceholder('Find an item...');
+    if ((await search.count()) > 0) await search.fill('Doom Gorget');
+    const chip = page
+      .locator('[data-testid="fusion-row"]', { hasText: 'Doom Gorget' })
+      .getByTestId('fusion-row-stack')
+      .first();
     let planText = '';
     if ((await chip.count()) > 0) {
       await chip.click();
@@ -697,6 +711,56 @@ await go('Forge');
     // Restore: bin whatever of the dev stack remains.
     for (const piece of await held()) {
       await apiPost('/api/v1/chest/discard', { equipmentId: piece.Id });
+    }
+
+    // Modul: FUSING QUICKLY (owner: "the forge breaks for a second"). Three
+    // row Fuses pressed as fast as the button allows, on a fresh dev stack of
+    // nine. Each fusion turns three pieces into one, so the honest end state
+    // is three Common pieces. A tap that re-sent a piece the previous fusion
+    // ate used to be answered with TargetNotFound AND a disconnect, so the
+    // count came out wrong and the header said "reconnecting". Round-trips:
+    // the three Commons are binned afterwards.
+    const again = await apiPost('/api/v1/dev/forge/stack', {});
+    if (again?.BaseItemId === base) {
+      await page.reload({ waitUntil: 'networkidle' });
+      await page.waitForTimeout(1200);
+      await dismissOfflineSummary(3000);
+      await go('Forge');
+      await page.waitForTimeout(1200);
+      const find = page.getByPlaceholder('Find an item...');
+      if ((await find.count()) > 0) await find.fill('Doom Gorget');
+      const fuseBtn = page
+        .locator('[data-testid="fusion-row"]', { hasText: 'Doom Gorget' })
+        .getByTestId('fusion-row-fuse')
+        .first();
+      let pressed = 0;
+      let sawReconnect = false;
+      for (let i = 0; i < 3; i++) {
+        const ready = await fuseBtn
+          .and(page.locator('button:not([disabled])'))
+          .waitFor({ timeout: 8000 })
+          .then(() => true)
+          .catch(() => false);
+        if (!ready) break;
+        await fuseBtn.click();
+        pressed++;
+        sawReconnect ||= /reconnecting/i.test(await page.evaluate(() => document.body.innerText));
+      }
+      let quick = [];
+      const until = Date.now() + 15000;
+      while (Date.now() < until) {
+        quick = await held();
+        if (quick.length === 3) break;
+        await page.waitForTimeout(500);
+      }
+      record(
+        'fusing quickly from the row fuses every press and keeps the session',
+        pressed === 3 && quick.length === 3 && quick.every((i) => i.QualityTier === 2) && !sawReconnect,
+        `${pressed} presses -> ${quick.map((i) => `T${i.QualityTier}`).join(', ') || 'nothing'}${sawReconnect ? ', reconnected' : ''}`,
+      );
+      for (const piece of await held()) {
+        await apiPost('/api/v1/chest/discard', { equipmentId: piece.Id });
+      }
     }
   }
 }
