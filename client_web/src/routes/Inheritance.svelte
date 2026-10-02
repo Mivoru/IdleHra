@@ -91,7 +91,9 @@
             <div class="head">
               <span class="name">{row.name}</span>
               <span class="value">
-                {#if row.bonus > 0}+{row.bonus}%{:else}<span class="dim">not bought</span>{/if}
+                <!-- Task 109: "not bought" said nothing about what buying is
+                     worth. Current and ceiling, always. -->
+                +{row.bonus}% <span class="dim of-max">of +{INHERITANCE_MAX_LEVEL * INHERITANCE_PCT_PER_LEVEL}%</span>
               </span>
             </div>
 
@@ -170,6 +172,14 @@
     gap: 0.9rem;
   }
 
+  /* Six cards in a 4+2 or 5+1 split on a wide screen; three columns make two
+     even rows. */
+  @media (min-width: 64rem) {
+    .stats {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
   .stats li {
     display: grid;
     gap: 0.45rem;
@@ -194,6 +204,7 @@
     font-variant-numeric: tabular-nums;
     font-weight: 650;
   }
+  .of-max { font-weight: 400; font-size: 0.8rem; }
 
   .blurb { margin: 0; }
 

@@ -266,15 +266,12 @@
     <h2>Breeding lab</h2>
 
     <!-- Modul: WHERE THIS SITS. Breeding interlocks with four other systems and
-         none of them were named here. -->
+         none of them were named here. Task 109 cut five blocks of rules prose
+         around the lab to one line per control; the full rules are the Wiki's
+         Bloodline page. -->
     <p class="interlocks dim tiny">
-      The <strong>Inn</strong> stocks your village with newcomers to marry, and
-      sets how good they are. The <strong>Breeding Grounds</strong> lets you
-      choose which aptitude to breed for. A child joins the
-      <strong>Hall of Ancestors</strong>, where you field it and mark whether it
-      carries. When the season turns, levels, gear, gold and the whole village
-      are taken back &mdash; the Hall and the <strong>aptitudes</strong> bred
-      into it are what survive.
+      What you breed into the <strong>Hall of Ancestors</strong> is what
+      survives the season; levels, gear, gold and the village do not.
     </p>
 
     {#if breedingLevel === 0}
@@ -315,15 +312,13 @@
       emptyText="Nobody to choose from here."
     />
 
-    <!-- Modul: WHICH LIST TO PICK FROM, stated rather than implied. -->
+    <!-- Modul: WHICH LIST TO PICK FROM, stated rather than implied. One line
+         now: the village raises a line, your own refines it. The Inn figure is
+         bestVillagerAptitudeFor, pinned to the server by serverMirrors.test.ts. -->
     <p class="dim tiny">
-      Marrying the <strong>village</strong> is what raises a bloodline &mdash;
-      only outside blood brings a number you do not already have. Your Inn is
-      level {innLevel}, so a newcomer can roll up to
-      <strong>{bestVillagerAptitudeFor(innLevel)}</strong> in an aptitude
-      (the village can never exceed {APTITUDE_VILLAGE_CEILING}; past that it is
-      selection and luck alone). Crossing <strong>your own</strong> refines what
-      you have and never exceeds it by more than a lucky point.
+      A <strong>village</strong> newcomer raises a bloodline (Inn level {innLevel}:
+      up to <strong>{bestVillagerAptitudeFor(innLevel)}</strong>, never past
+      {APTITUDE_VILLAGE_CEILING}); <strong>your own</strong> line refines it.
     </p>
 
     {#if newcomers.length === 0 && village.data}
@@ -339,25 +334,29 @@
 
       {#if selectableCount === 0}
         <p class="dim tiny">
-          Your <strong>Breeding Grounds</strong> is level {breedingLevel}. At
-          level {SELECTION_UNLOCK_LEVELS[0]} you can choose one aptitude to breed
-          for, and a chosen one always keeps the better parent's value instead of
-          leaving it to chance.
+          Breeding Grounds level {SELECTION_UNLOCK_LEVELS[0]} lets you choose an
+          aptitude that always keeps the better parent's value.
         </p>
       {:else}
+        <!-- "Choose up to 1" sat on checkboxes. One choice is a radio choice;
+             toggleSelection already replaces the old pick at capacity 1, and a
+             second tap on the chosen one clears it. -->
         <p class="dim tiny">
-          Choose up to <strong>{selectableCount}</strong>. A chosen aptitude
-          takes the <strong>better parent's value outright</strong>; the rest are
-          a weighted roll, so a 4 against a 6 keeps the 6 only about 60% of the
-          time. Your Grounds also gives every aptitude a
-          <strong>{upMutationPercent(breedingLevel)}%</strong> chance of +1.
+          {selectableCount === 1 ? 'Choose one' : `Choose up to ${selectableCount}`}: it keeps the
+          better parent's value; the rest roll. Every aptitude has a
+          {upMutationPercent(breedingLevel)}% chance of +1.
         </p>
 
         <div class="apt-choices">
           {#each APTITUDES as aptitude, index (aptitude.field)}
             {@const on = (effectiveMask & (1 << index)) !== 0}
             <label class="apt-choice" class:on>
-              <input type="checkbox" checked={on} onchange={() => toggleAptitude(index)} />
+              <input
+                type={selectableCount === 1 ? 'radio' : 'checkbox'}
+                name="breed-for"
+                checked={on}
+                onclick={() => toggleAptitude(index)}
+              />
               <span>
                 <strong>{aptitude.name}</strong>
                 <span class="dim tiny">{aptitude.blurb}</span>
@@ -391,14 +390,18 @@
       <QueryError query={partnerIsVillager ? villagePreview : rosterPreview} what="the child preview" />
     {/if}
 
+    <!-- Modul: WHAT HAPPENS NEXT, which the screen never said - and the cost
+         that matters most sits beside the button that pays it. -->
+    {#if partnerIsVillager}
+      <p class="spent-note" data-testid="partner-spent-note">
+        This villager is <strong>spent for ever</strong> once married.
+      </p>
+    {/if}
     <button class="breed" onclick={breed} disabled={!canBreed}>Breed</button>
 
-    <!-- Modul: WHAT HAPPENS NEXT, which the screen never said. -->
     <p class="dim tiny">
-      The child is born into the <strong>Hall of Ancestors</strong>. Field it
-      into one of your slots and it grows from a child into an adult after an
-      hour. A villager who marries in is <strong>spent for ever</strong> &mdash;
-      everybody marries once &mdash; so spend a good one deliberately.
+      The child joins the <strong>Hall of Ancestors</strong>; field it and it is
+      an adult in an hour.
     </p>
   </section>
 </div>
@@ -452,6 +455,12 @@
 
   .risk {
     color: var(--danger);
+  }
+
+  .spent-note {
+    margin: 0.6rem 0 0;
+    font-size: 0.8rem;
+    color: var(--warn, var(--danger));
   }
 
   .breed {
