@@ -7505,3 +7505,36 @@ first viewport, and Sign out is the first control on Settings.
 **Still open:** 95, 100, 101, 102, 105, 106, 107, 109, 110. The coach pill
 ("Do this next") still sits over content at the bottom of every phone screen
 (seen on Settings, Chest, Village, Guild) - fold into 109's tutorial items.
+
+## Wave 3 result (2026-10-02): 100, 101, 102, 107 and owner bugs, built and verified together
+
+Four branches merged as `claude/ui-wave3`: tasks 100-102 (Forge rows, Gathering
+and Crafting, Market tabs), task 107 (guild structure), and the owner's bug list
+of 2026-10-02 - combat SFX only on the Combat screen, a bigger monster portrait,
+the Work & orders tab width, smaller chat rows, one-line announcements and a
+reroll announcement rule (Legendary only, one per player per 10 minutes,
+auto-reroll announces its final result once).
+
+**The forge "breaks for a second" was a real disconnect.** A quick second Fuse
+sent the ids of pieces the first fusion had just destroyed, and
+`ForgeTickCoordinator` turned the refusal into `ForceDisconnect`. It now answers
+`ReloadState`, and the client hides the pieces it just sent until the refreshed
+list drops them.
+
+**Verified on the merge:** server suite 1557/1557; vitest 767 passed;
+`check:ratchet` at the 4-error baseline; `exercise` 295/296; clipping, overlap,
+touch and safearea all clean. Measured by hand at 390px with mobile emulation:
+Character keeps a 390px document on all three tabs, the fight portrait is
+136x136, a one-line chat row is 28px with 12.8px text. The one exercise miss is
+"a drop can be worn from the loot list" (no wearable drop in 90 s), which passed
+on the previous run of the same code.
+
+**Fixed during the merge pass:** `exercise.mjs` read the Crafting recipes while
+the screen was still on the Commissions tab (navigating to the screen you are on
+does not remount it); the chat name button's global drop shadow drew a pale slab
+across neighbouring 28px rows.
+
+**Open questions for the owner:** gate the death and boss first-clear stingers
+outside Combat too?; let guild members still browse the guild directory?; a
+Cancel for own equipment market orders needs a new command; is the reroll
+announcement rule right?

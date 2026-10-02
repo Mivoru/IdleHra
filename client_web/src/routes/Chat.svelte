@@ -654,6 +654,9 @@
     /* Text, not a chip: no fill, no border, no padding. */
     background: none;
     border: none;
+    /* Modul: app.css gives every button a drop shadow. On this 44px box that
+       overhangs its 28px row it drew a pale slab across the neighbouring rows. */
+    box-shadow: none;
     border-radius: var(--radius-xs);
     padding: 0 0.1rem;
     font-weight: var(--fw-medium);

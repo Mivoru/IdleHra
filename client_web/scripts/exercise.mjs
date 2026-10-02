@@ -1216,6 +1216,10 @@ await openCommissions();
 // CraftingTimeMs that nothing read. It is now an activity in its own band, so
 // the proof is that a character ends up REPORTING it as their job.
 await go('Crafting');
+// Modul: the commission step above leaves Crafting on its Commissions tab, and
+// navigating to the screen it is already on does not remount it - so without
+// this click every recipe check below reads the wrong tab and fails.
+await page.getByRole('tab', { name: 'Recipes' }).click().catch(() => {});
 {
   const text = await page.evaluate(() => document.body.innerText);
   record(
