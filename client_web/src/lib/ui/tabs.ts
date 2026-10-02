@@ -1,14 +1,35 @@
 /**
- * The five tab-bar destinations, in order. One list for two readers: the
- * phone's TabBar draws them, and the desktop hotkeys 1-5 (task 52) jump to
- * them - so "3" is always whatever the third tab is.
+ * The phone's five tab-bar entries, in order: four screens and More.
+ *
+ * Modul: TASK 95 - THE FIFTH TAB IS "MORE", NOT VILLAGE. Twenty-one of the
+ * twenty-six destinations were reachable only through a Menu button at the
+ * top-right of the page - scroll to the top, reach the far corner, scan a
+ * list. More opens the same grouped nav as a sheet from where the thumb
+ * already is, and Village moved into it: it is a place you visit when an
+ * upgrade comes due, not one a session lives on.
+ *
+ * "Home", not "Map": the screen is two-thirds dashboard (what everybody is
+ * doing, the next goal) and one-third painted valley.
  */
 export const MAIN_TABS = [
-  { key: 'hub', label: 'Map', icon: 'map' },
+  { key: 'hub', label: 'Home', icon: 'map' },
   { key: 'combat', label: 'Combat', icon: 'swords' },
   { key: 'gathering', label: 'Gathering', icon: 'pick' },
   { key: 'character', label: 'Character', icon: 'hero' },
-  { key: 'village', label: 'Village', icon: 'house' },
+  { key: 'more', label: 'More', icon: 'more' },
+] as const;
+
+/** The tab-bar entry that opens the More sheet rather than a screen. */
+export const MORE_TAB = 'more';
+
+/**
+ * What the desktop hotkeys 1-5 open (task 52). The tab bar's four screens,
+ * then Village - which held the fifth tab before More, and a desktop has no
+ * sheet for "5" to open.
+ */
+export const HOTKEY_SCREENS = [
+  ...MAIN_TABS.filter((t) => t.key !== MORE_TAB).map((t) => t.key),
+  'village',
 ] as const;
 
 /**
@@ -23,5 +44,5 @@ export function hotkeyTab(event: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKe
   const target = event.target as { isContentEditable?: boolean; closest?: (selector: string) => unknown } | null;
   if (target?.isContentEditable) return null;
   if (target?.closest?.('input, textarea, select, [contenteditable]')) return null;
-  return MAIN_TABS[index].key;
+  return HOTKEY_SCREENS[index];
 }

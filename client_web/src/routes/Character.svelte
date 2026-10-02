@@ -747,7 +747,7 @@
      connection notice still wins when both are pinned. */
   .switcher {
     position: sticky;
-    top: var(--sa-top, 0px);
+    top: calc(var(--sa-top, 0px) + var(--sticky-header-h));
     z-index: 29;
     display: grid;
     gap: 0.45rem;

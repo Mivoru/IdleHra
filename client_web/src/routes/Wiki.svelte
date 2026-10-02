@@ -150,7 +150,8 @@
       label: 'Your village',
       tabs: [
         { id: 'village', label: 'The Village', sub: 'Buildings and costs' },
-        { id: 'breeding', label: 'Breeding', sub: 'Aptitudes and bloodlines' },
+        // Task 95: the menu entry is Bloodline, so the page about it is too.
+        { id: 'breeding', label: 'Bloodline', sub: 'Breeding and aptitudes' },
         { id: 'longgame', label: 'The Long Game', sub: 'Seasons, Seals, the Hall' },
       ],
     },
@@ -969,7 +970,9 @@
         {:else if activeTab === 'breeding'}
           <p>
             Breeding is why a season ends rather than stops. Levels and gear are
-            wiped at the rollover; a bloodline is not.
+            wiped at the rollover; a bloodline is not. In the menu it is
+            <strong>Bloodline</strong>, with three tabs: Breeding, Ancestors and
+            Inheritance.
           </p>
 
           <h3 id="words">The words</h3>
@@ -1646,7 +1649,8 @@
   .sidebar {
     flex: 0 0 15rem;
     position: sticky;
-    top: 1rem;
+    /* Task 95: below the sticky app header. */
+    top: calc(var(--sticky-header-h) + 1rem);
     padding: 1.25rem 0.9rem;
     min-width: 0;
   }

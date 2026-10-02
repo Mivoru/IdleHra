@@ -60,8 +60,14 @@ export const LAYER_Z = {
   playerProfile: 1000,
   /** Death, victory, offline summary, What's new and the shield wheel. */
   modal: 60,
+  /**
+   * Task 95: the phone's More sheet. Above the chat (it closes the chat when it
+   * opens, but a layer that paints on top has to be peeled first) and below
+   * the tab bar (50), which stays usable under it - tapping More again closes
+   * it.
+   */
+  nav: 45,
   chatDock: 40,
-  nav: 0,
 } as const;
 
 /**
@@ -75,7 +81,7 @@ export const LAYER_Z = {
  * layer is on top. The z-indexes it mirrors are LAYER_Z above: the exit
  * prompt (1100) over the death card, the victory card and the offline summary
  * (all 60 - a tie decided by DOM order, death last and therefore on top), over
- * the chat dock (40), over the collapsed nav menu.
+ * the phone's More sheet (45), over the chat window (40).
  *
  * Get this order wrong and back appears to skip a layer: it would close
  * something behind whatever is covering the screen, and the player would see
@@ -98,7 +104,7 @@ export interface BackPressState {
   victoryCardOpen: boolean;
   offlineSummaryOpen: boolean;
   chatDockOpen: boolean;
-  /** The phone's collapsed navigation menu, which covers the screen it is on. */
+  /** The phone's More sheet (task 95), which covers the screen it is on. */
   navOpen: boolean;
   /** How many screens are behind this one. */
   historyDepth: number;
@@ -128,8 +134,8 @@ const APP_LAYERS: readonly {
   { z: LAYER_Z.modal, open: (s) => s.deathCardOpen, outcome: 'close-death-card' },
   { z: LAYER_Z.modal, open: (s) => s.victoryCardOpen, outcome: 'close-victory-card' },
   { z: LAYER_Z.modal, open: (s) => s.offlineSummaryOpen, outcome: 'close-offline-summary' },
-  { z: LAYER_Z.chatDock, open: (s) => s.chatDockOpen, outcome: 'close-chat-dock' },
   { z: LAYER_Z.nav, open: (s) => s.navOpen, outcome: 'close-nav' },
+  { z: LAYER_Z.chatDock, open: (s) => s.chatDockOpen, outcome: 'close-chat-dock' },
 ];
 
 /**

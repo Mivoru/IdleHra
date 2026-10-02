@@ -352,8 +352,8 @@
   --tabbar-h: 0px;
   /* The height of an app header that stays pinned while the page scrolls, so
      a screen's own sticky strip (Combat's status, task 98) sits under it
-     instead of behind it. 0 while the header scrolls away with the page; a
-     sticky header sets it. */
+     instead of behind it. App.svelte measures the header and sets it (task 95,
+     when the header became sticky); 0 before sign-in. */
   --sticky-header-h: 0px;
 }
 

@@ -21,6 +21,7 @@
     fetchConversations,
     fetchConversationHistory,
     markConversationRead,
+    fetchStatistics,
   } from '../lib/net/rest';
   import { useQueryClient } from '@tanstack/svelte-query';
 
@@ -49,6 +50,17 @@
   ];
 
   let active = $state(GLOBAL);
+
+  // Modul: TASK 95 - NO GUILD TAB WITHOUT A GUILD. The server filters guild
+  // traffic by membership, so for the guildless the tab could only ever say
+  // "Nothing in this channel yet" - a channel offered and then refused. Shown
+  // while the answer is unknown, so a member's tab does not blink in.
+  const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
+  const guildless = $derived(statistics.isSuccess && (statistics.data?.GuildName ?? '') === '');
+  const channels = $derived(CHANNELS.filter((c) => !(c.id === GUILD && guildless)));
+  $effect(() => {
+    if (guildless && active === GUILD) active = GLOBAL;
+  });
   let draft = $state('');
   let whisperTarget = $state('');
 
@@ -279,9 +291,9 @@
 
 <div class="wrap" class:docked>
   <section class="panel">
-    <div class="tabs">
-      {#each CHANNELS as channel}
-        <button class:active={active === channel.id} onclick={() => (active = channel.id)}>
+    <div class="tabs" role="tablist" aria-label="Channels">
+      {#each channels as channel (channel.id)}
+        <button role="tab" aria-selected={active === channel.id} class:active={active === channel.id} onclick={() => (active = channel.id)}>
           {channel.label}
           <!-- The count sits on the tab because an unread whisper is otherwise
                invisible from any other channel. -->
@@ -360,7 +372,7 @@
             <button class="gz" title="Say gz! in world chat" onclick={congratulate}>gz!</button>
           </li>
         {:else}
-          <li>
+          <li class="msg">
             <span class="time dim">{timeOf(message.atMs)}</span>
             <button
               class="who"
@@ -477,18 +489,65 @@
   .wrap.docked .log {
     flex: 1;
     min-height: 0;
+    height: auto;
     overflow-y: auto;
+  }
+
+  /* Modul: TASK 95 - ONE FRAME, AND THE SENDER ABOVE THE MESSAGE, ON A PHONE.
+     Docked on a phone the window is a full-height sheet (ChatDock.svelte), and
+     the log's own border and darker well were a frame inside its frame. And a
+     row of time | name | text gave a long name the width the message needed:
+     the text column was crushed to a few characters a line. The name and time
+     go on their own line now, and the message gets the whole width. */
+  @media (max-width: 40rem) {
+    .wrap.docked .log {
+      border: none;
+      background: transparent;
+      padding: 0.2rem 0;
+      gap: 0.35rem;
+    }
+    .wrap.docked .log li.msg {
+      grid-template-columns: auto 1fr;
+      grid-template-areas: 'who time' 'text text';
+      row-gap: 0;
+      align-items: baseline;
+    }
+    .wrap.docked .log li.msg .who {
+      grid-area: who;
+      max-width: 14rem;
+    }
+    .wrap.docked .log li.msg .time {
+      grid-area: time;
+    }
+    .wrap.docked .log li.msg .text {
+      grid-area: text;
+    }
+    .wrap.docked .threads {
+      border: none;
+      background: transparent;
+      max-height: none;
+      flex: 1;
+      min-height: 0;
+    }
   }
 
   .panel {
     max-width: 46rem;
   }
 
+  /* Task 95: ONE row that scrolls sideways, never two. A wrapped second row of
+     44px tabs was a row of chat the player did not get to see. */
   .tabs {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
     gap: 0.25rem;
     margin-bottom: 0.6rem;
+  }
+
+  .tabs button {
+    flex-shrink: 0;
   }
 
   .tabs button {

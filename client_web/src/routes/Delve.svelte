@@ -36,6 +36,7 @@
   import { play } from '../lib/ui/audio';
   import Money from '../lib/ui/Money.svelte';
   import { formatNumber } from '../lib/ui/format';
+  import { formatWhen, minuteClock } from '../lib/ui/when';
 
   /*
     Modul: SVG, NOT A GLYPH. This screen shipped with ◆ and ● in its markup,
@@ -238,13 +239,10 @@
   // Modul: RESET TIMES, IN ONE PLACE (task 105). The Deep's course, its
   // records and the weekly diamond ceiling all turn over together - they share
   // DelveWeekKey - so one instant answers "when does it reset" for all three.
-  // It used to say "on Monday" in one paragraph and "Monday, 02:00 CEST" in
-  // the next. Task 95 owns the shared reset formatter; when it lands, this is
-  // the one line to swap.
+  // Task 95: through the shared formatter, so it reads like every other reset
+  // ("Mon 02:00 - in 3 d").
   const resetsAt = $derived(
-    view?.DeepWeekEndsUtc
-      ? new Date(view.DeepWeekEndsUtc).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })
-      : 'Monday'
+    view?.DeepWeekEndsUtc ? formatWhen(new Date(view.DeepWeekEndsUtc), $minuteClock) : 'Monday'
   );
 
   // Modul: THE UNDERGROUND MOOD (owner, 2026-10-02). The page itself goes

@@ -7,27 +7,40 @@
   // rests, and five is the most that fit at 360px with a 44px touch target and
   // a readable label each.
   //
-  // WHICH FIVE, and why these: the map (home - where a session starts and the
-  // "right now" cards live), Combat and Gathering (the two jobs a character
-  // does), Character (gear and attributes - where every drop and level-up
-  // sends you) and Village (the owner asked for it; it is the long-term build
-  // and its upgrades come due while you are away). Everything else stays in
-  // the header's Menu, which is also the whole map of the game on desktop,
-  // where this bar does not exist.
+  // WHICH FIVE, and why these: Home (where a session starts and the "right
+  // now" cards live), Combat and Gathering (the two jobs a character does),
+  // Character (gear and attributes - where every drop and level-up sends you)
+  // and More (task 95): every other destination, grouped, in a sheet that
+  // opens from here. Village held the fifth slot before More; it is in the
+  // sheet now. On a desktop the header shows the same groups as dropdowns,
+  // and this bar does not exist.
   //
   // Labels are the nav's own words, so a player who uses both never meets two
   // names for one place.
   import { playerState } from '../stores/game';
-  import { MAIN_TABS } from './tabs';
+  import { MAIN_TABS, MORE_TAB } from './tabs';
+  import MailBadge from './MailBadge.svelte';
   import { unopenedChests } from '../stores/cosmeticChests';
   import { isAutomationNote } from './slots';
 
   interface Props {
     current: string;
     onNavigate: (screen: string) => void;
+    /** Whether the More sheet is open. */
+    moreOpen: boolean;
+    onMore: () => void;
   }
 
-  const { current, onNavigate }: Props = $props();
+  const { current, onNavigate, moreOpen, onMore }: Props = $props();
+
+  const SCREEN_TABS: ReadonlySet<string> = new Set(MAIN_TABS.map((t) => t.key).filter((k) => k !== MORE_TAB));
+
+  // More is "where you are" while its sheet is open, and also while the screen
+  // on show is one of the sheet's - the bar always marks the current place.
+  function isActive(key: string): boolean {
+    if (key === MORE_TAB) return moreOpen || !SCREEN_TABS.has(current);
+    return !moreOpen && current === key;
+  }
 
   const snap = $derived($playerState);
 
@@ -41,9 +54,14 @@
 
   const TABS = MAIN_TABS;
 
+  // Task 95: the sheet's own wants - skill points to spend - dot the More tab;
+  // unclaimed mail rides on it as a count (MailBadge below).
+  const moreAlert = $derived(snap ? Number(snap.AvailableSkillPoints) > 0 : false);
+
   function alertFor(key: string): boolean {
     if (key === 'combat') return combatAlert;
     if (key === 'character') return characterAlert;
+    if (key === MORE_TAB) return moreAlert;
     return false;
   }
 </script>
@@ -52,10 +70,12 @@
   {#each TABS as tab (tab.key)}
     <button
       class="tab"
-      class:active={current === tab.key}
-      aria-current={current === tab.key ? 'page' : undefined}
+      class:active={isActive(tab.key)}
+      aria-current={tab.key !== MORE_TAB && current === tab.key ? 'page' : undefined}
+      aria-expanded={tab.key === MORE_TAB ? moreOpen : undefined}
+      aria-haspopup={tab.key === MORE_TAB ? 'dialog' : undefined}
       data-tab={tab.key}
-      onclick={() => onNavigate(tab.key)}
+      onclick={() => (tab.key === MORE_TAB ? onMore() : onNavigate(tab.key))}
     >
       <span class="icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -73,11 +93,13 @@
             <circle cx="12" cy="7.5" r="3.5" />
             <path d="M5 20c.8-4 3.6-6 7-6s6.2 2 7 6" />
           {:else}
-            <path d="M3.5 11 12 4l8.5 7" />
-            <path d="M6 9.5V20h12V9.5M10 20v-5h4v5" />
+            <circle cx="5.5" cy="12" r="1.6" />
+            <circle cx="12" cy="12" r="1.6" />
+            <circle cx="18.5" cy="12" r="1.6" />
           {/if}
         </svg>
         {#if alertFor(tab.key)}<span class="dot" aria-label="needs attention"></span>{/if}
+        {#if tab.key === MORE_TAB}<span class="count"><MailBadge quiet /></span>{/if}
       </span>
       <span class="label">{tab.label}</span>
     </button>
@@ -169,6 +191,19 @@
     border-radius: 50%;
     background: var(--danger);
     border: 1.5px solid var(--bg-panel);
+  }
+
+  /* The unclaimed-mail count, top-right of the More icon. */
+  .count {
+    position: absolute;
+    top: -7px;
+    left: 14px;
+    line-height: 1;
+  }
+
+  .count :global(.badge) {
+    font-size: 0.6rem;
+    padding: 0.1rem 0.25rem;
   }
 
   .label {

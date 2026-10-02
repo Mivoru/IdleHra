@@ -164,7 +164,7 @@ describe('world boss', () => {
 
   it('says when the spent strike comes back', () => {
     const spent = attackWorldBoss({ ...healthy, attemptCount: MAX_BOSS_ATTEMPTS });
-    expect(spent.ok === false && spent.reason).toMatch(/today's strike.*midnight UTC/i);
+    expect(spent.ok === false && spent.reason).toMatch(/today's strike\. It comes back \w{3} \d\d:\d\d - in /);
   });
   it('accepts every plate the server does', () => {
     for (let plate = 0; plate < BOSS_PLATE_COUNT; plate++) {
