@@ -35,6 +35,26 @@
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#100d0a" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#e8dcc0" />
 
+    <!-- Modul: MOBILE WEB INSTALL, task 110d. "Add to Home Screen" from a
+         phone's browser used to save a screenshot-icon bookmark that opened
+         with the URL bar. The manifest gives Chrome on Android the name, icon,
+         standalone display and portrait lock (the APK's own lock); iOS Safari
+         ignores most of it and reads the apple-* tags below instead. Icons are
+         rasterised from resources/icon.svg by `npm run generate:icons`, and
+         Vite copies public/ to the site root. The manifest's colours are the
+         dark theme's --bg, the default: a manifest cannot follow the system
+         scheme the way the two theme-color metas above do. -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="FolkIdle" />
+    <!-- black-translucent draws the page under the status bar, which the
+         layout already handles: viewport-fit=cover plus the safe-area insets
+         (see client_web/CLAUDE.md, "The phone draws under the status bar"). -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="FolkIdle" />
     <meta property="og:title" content="FolkIdle - a Slavic idle RPG" />

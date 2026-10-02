@@ -9,6 +9,7 @@
 
 import { authedGet, authedPost, storedToken, AuthError } from './auth';
 import { api } from './config';
+import type { ChatHistoryRow } from '../stores/chatHistory';
 
 // ---------------------------------------------------------------------------
 // Query keys
@@ -405,6 +406,18 @@ export interface CraftingRecipeSnapshot {
 
 export function fetchRecipes(): Promise<CraftingRecipeSnapshot> {
   return authedGet<CraftingRecipeSnapshot>('/api/v1/crafting/recipes');
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/chat/recent  (task 110e)
+//
+// The newest world, News and own-guild lines, oldest first, so a sign-in does
+// not open on an empty channel. Merged into the live log by
+// stores/chatHistory.ts, which owns the dedupe against live arrivals.
+// ---------------------------------------------------------------------------
+
+export function fetchChatHistory(): Promise<ChatHistoryRow[]> {
+  return authedGet<ChatHistoryRow[]>('/api/v1/chat/recent');
 }
 
 // ---------------------------------------------------------------------------

@@ -140,6 +140,22 @@ for (const name of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-27
   );
 }
 
+// Modul: MOBILE WEB, task 110d. "Add to Home Screen" from a phone's browser
+// reads public/manifest.webmanifest (192 and 512) and, on iOS, the
+// apple-touch-icon link in index.html (180). Vite copies public/ to the site
+// root as-is. The artwork paints its own full-bleed background and keeps every
+// mark inside r=36 of 108 - inside a maskable icon's 40% safe zone - so one
+// image serves both "any" and "maskable", and iOS (which fills transparency
+// with black) gets no black corners.
+console.log('\nMobile web (public/icons)');
+for (const [size, name] of [
+  [192, 'icon-192.png'],
+  [512, 'icon-512.png'],
+  [180, 'apple-touch-icon.png'],
+]) {
+  await emit(ICON, size, resolve(root, `public/icons/${name}`), `public/icons/${name}`);
+}
+
 await browser.close();
 
 console.log(`\n${written} files, ${(bytes / 1024).toFixed(0)}kB total.`);

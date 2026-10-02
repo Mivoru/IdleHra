@@ -135,4 +135,43 @@ describe('the committed native projects', () => {
       'android.permission.POST_NOTIFICATIONS',
     );
   });
+
+  it('locks a phone to portrait on both platforms (task 110b)', () => {
+    // Android: one attribute on the activity. Android itself still rotates a
+    // tablet, a foldable and split-screen - that is the platform, not us.
+    expect(read('android', 'app', 'src', 'main', 'AndroidManifest.xml')).toContain(
+      'android:screenOrientation="portrait"',
+    );
+
+    // iOS: the unsuffixed key is the iPhone's; `~ipad` overrides it on an iPad,
+    // which keeps every orientation (iPad multitasking requires all four
+    // unless the app opts out of it entirely with UIRequiresFullScreen).
+    const plist = read('ios', 'App', 'App', 'Info.plist');
+    const list = (key: string) => {
+      const m = plist.match(new RegExp(`<key>${key}</key>\\s*<array>([\\s\\S]*?)</array>`));
+      return m ? [...m[1].matchAll(/<string>(\w+)<\/string>/g)].map((x) => x[1]) : [];
+    };
+    expect(list('UISupportedInterfaceOrientations')).toEqual(['UIInterfaceOrientationPortrait']);
+    expect(list('UISupportedInterfaceOrientations~ipad')).toContain('UIInterfaceOrientationLandscapeLeft');
+  });
+
+  it('the web app can be installed from a phone browser (task 110d)', () => {
+    // A manifest naming an icon that is not in public/ installs with a blank
+    // tile and says nothing - every path it names must exist.
+    const manifest = JSON.parse(read('public', 'manifest.webmanifest'));
+    expect(manifest.display).toBe('standalone');
+    expect(manifest.orientation).toBe('portrait');
+    const sizes = manifest.icons.map((i: { sizes: string }) => i.sizes);
+    expect(sizes).toContain('192x192');
+    expect(sizes).toContain('512x512');
+    for (const icon of manifest.icons) {
+      expect(() => read('public', ...icon.src.replace(/^\//, '').split('/'))).not.toThrow();
+    }
+
+    const html = read('index.html');
+    expect(html).toContain('<link rel="manifest" href="/manifest.webmanifest" />');
+    const touch = html.match(/<link rel="apple-touch-icon" href="\/([^"]+)"/);
+    expect(touch).not.toBeNull();
+    expect(() => read('public', ...touch![1].split('/'))).not.toThrow();
+  });
 });

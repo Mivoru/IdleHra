@@ -7425,6 +7425,37 @@ screenshots of the touched screens. Checkers clean. `exercise.mjs` green.
 
 **Size:** S. **Needs the owner:** yes.
 
+**Owner decisions (2026-10-02):** b - iPhone portrait-only; d - yes, the web
+app should be installable; e - world chat loads its history at sign-in.
+a and f are handled on another branch.
+
+**b, c, d, e BUILT on branch `claude/ui-110-chat-mobile`, not merged.**
+- **b.** `Info.plist`: the unsuffixed (iPhone) orientation list is portrait
+  only; `~ipad` keeps all four, because iPad multitasking requires them
+  unless the app sets `UIRequiresFullScreen` (not done - a separate call).
+  `nativeProjects.test.ts` pins both platforms.
+- **c.** `MOBILE.md`'s A2 checklist: Rotation per platform (phones locked;
+  tablet, foldable, split-screen and iPad still rotate), the audit's
+  section-6 phone checks, and "Add to Home Screen" on both mobile browsers.
+- **d.** `public/manifest.webmanifest` (standalone, portrait, dark `--bg`)
+  plus `apple-touch-icon` and the `apple-*` metas in `index.html`; the 192,
+  512 and 180 px icons come from `resources/icon.svg` via `generate:icons`.
+  A test checks every file the manifest and the touch-icon link name exists.
+- **e.** World, guild and announcement messages are written to
+  `chat_channel_messages` once, on the sender's pod (`ChatEngine.Publish*`,
+  the announcement worker and the admin announce route), with the live
+  packet's timestamp. `GET /api/v1/chat/recent` returns the newest 50 per
+  channel (own CURRENT guild only, blocked senders filtered); the client
+  fetches it each time the socket goes live and dedupes on (channel, sender,
+  timestamp). Bounded: rows older than 14 days are pruned every 200th write.
+  History rows get negative ids so sign-in does not show "50 unread".
+  **Carries an additive migration, `AddChatChannelMessages`** - deploys apply
+  it; locally run `--migrate` by hand. Verified: 17 server tests matching Chat or
+  Migration (incl. `ChatHistoryTests`), vitest 784, svelte-check 4, EF reports no
+  pending model changes. NOT run here: `npm run exercise` (its world chat
+  step now also checks the reload shows the line exactly once) and a real
+  phone install.
+
 ## Wave 1 result (2026-10-01): 89-93 built and verified together
 
 89-93 were built in parallel on five branches and merged into

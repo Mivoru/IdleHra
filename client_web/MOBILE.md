@@ -804,8 +804,27 @@ run against as a checklist:
   leave the phone for 26 hours - past the JWT's life, well inside the refresh
   token's - and open the app. It should reach the game without a password, and
   without the login form flashing on the way.
-- Rotation, and the soft keyboard over a text input (chat, market price, guild
-  donation) - does the input stay visible?
+- Rotation. Android phone: locked; tablet, foldable and split-screen: still
+  rotates (Android ignores `screenOrientation` in multi-window and on large
+  screens). iPhone: locked; iPad: still rotates (`Info.plist`'s `~ipad` list
+  keeps all four, which iPad multitasking requires). Confirm a phone does not
+  turn, and that a tablet in landscape is usable rather than merely drawn.
+- The soft keyboard over a text input (chat, market price, guild donation) -
+  does the input stay visible?
+- The phone checks from the 2026-10-01 UI audit (`docs/audits/2026-10-01-ui-ux-audit.md`
+  section 6):
+  - tapping a name in chat opens the profile, and the name menu, above the
+    dock rather than inside it;
+  - typing in a Market price field near the bottom of the screen;
+  - typing in chat: the chat window with the keyboard up, and the bottom
+    chrome hiding while you type;
+  - scrolling a long screen while disconnected;
+  - splash to first paint in the LIGHT system theme - is there a white flash?
+  - the shield wheel's top edge, clear of the status bar;
+  - back closes What's new and the shield wheel before it navigates.
+- Mobile web: "Add to Home Screen" from Chrome on Android and from Safari on
+  iOS. The icon should be the app icon, the name "FolkIdle", and the installed
+  page should open standalone (no URL bar) in portrait.
 - The hardware back button on every screen. The ordering is tested; what a
   device adds is the gesture-navigation variant, and whether the exit
   confirmation is reachable at all on a phone that uses an edge swipe.
