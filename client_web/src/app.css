@@ -1413,7 +1413,8 @@ h3:not(.place):not([style*='background-image'])::before {
  * viewport is a phone, cannot be forgotten - and check:touch fails the build if
  * it ever is.
  *
- * WHY ONLY ON A PHONE. 44px is a thumb, not a mouse. Applying it at 1500px
+ * WHY ONLY UNDER A THUMB (a phone, or a tablet - see 110a below). 44px is a
+ * thumb, not a mouse. Applying it at 1500px
  * would inflate every dense table in the game to no benefit; a cursor hits a
  * 24px target perfectly well, which is why WCAG's AA figure is 24 rather than
  * 44.
@@ -1436,7 +1437,13 @@ h3:not(.place):not([style*='background-image'])::before {
  * The :not() raises this to (0,1,1) so it lands, and gives any control that
  * genuinely must stay small a named way out - which is better than a component
  * quietly winning by accident. */
-@media (max-width: 40rem) {
+/* Modul: `(pointer: coarse)` AS WELL AS THE WIDTH (task 110a, owner
+   2026-10-02: tablets are a target). A portrait tablet is 744-834 CSS px, so
+   the APK on one fell outside the 40rem query and got desktop sizes -
+   check:touch at 768px found 153 controls under 44px. A coarse primary
+   pointer is the honest signal for "a thumb is aiming at this", whatever the
+   width; a desktop with a mouse still keeps its dense tables. */
+@media (max-width: 40rem), (pointer: coarse) {
   button:not(.touch-exempt),
   [role='button']:not(.touch-exempt),
   a.button:not(.touch-exempt),
