@@ -12,7 +12,8 @@
   import { addFriend, blockPlayer } from '../lib/net/commands';
   import ContextMenu from '../lib/ui/ContextMenu.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
-  import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
+  import { openProfile } from '../lib/stores/profile';
+  import { profileLink } from '../lib/ui/profileLink';
   import {
     queryKeys,
     fetchPlayerNames,
@@ -56,13 +57,17 @@
   let contextMenuY = $state(0);
   let contextMenuUsername = $state('');
   let contextMenuPlayerId = $state(0);
-  
-  let inspectingPlayerId = $state<number | null>(null);
-
   function openContextMenu(e: MouseEvent, username: string, playerId: number) {
     e.preventDefault();
-    // Do not open menu for yourself or system messages (id <= 0)
-    if (playerId <= 0 || playerId === connection.currentPlayerId) return;
+    if (playerId <= 0) return;
+    // Modul: YOUR OWN NAME OPENS YOUR PROFILE. Whisper, Add Friend and Block
+    // mean nothing aimed at yourself, so there is no menu to show - but "what
+    // do others see when they tap me" is a fair question, and it is the one
+    // name in chat that is always there to tap.
+    if (playerId === connection.currentPlayerId) {
+      openProfile(playerId, username);
+      return;
+    }
     contextMenuUsername = username;
     contextMenuPlayerId = playerId;
     contextMenuX = e.clientX;
@@ -186,8 +191,8 @@
     }
   }
 
-  function handleViewProfile(playerId: number) {
-    inspectingPlayerId = playerId;
+  function handleViewProfile(playerId: number, username: string) {
+    openProfile(playerId, username);
   }
 
   const visible = $derived($chatLog.filter((m: ChatEntry) => m.channelType === active).slice(0, 200));
@@ -360,6 +365,7 @@
             <button
               class="who"
               class:self={message.senderPlayerId === connection.currentPlayerId}
+              use:profileLink={{ playerId: message.senderPlayerId, open: false }}
               onclick={(e) => openContextMenu(e, displayName(message.senderPlayerId), message.senderPlayerId)}
             >
               <PlayerAvatar playerId={message.senderPlayerId} size="sm" />
@@ -428,20 +434,14 @@
     title={contextMenuUsername}
     onClose={() => (contextMenuOpen = false)}
     items={[
+      { label: 'View Profile', onSelect: () => handleViewProfile(contextMenuPlayerId, contextMenuUsername) },
       { label: 'Whisper', onSelect: () => handleWhisper(contextMenuUsername) },
       { label: 'Add Friend', onSelect: () => handleAddFriend(contextMenuPlayerId) },
-      { label: 'View Profile', onSelect: () => handleViewProfile(contextMenuPlayerId) },
       { label: 'Block', danger: true, separated: true, onSelect: () => handleBlock(contextMenuPlayerId) },
     ]}
   />
 {/if}
 
-{#if inspectingPlayerId !== null}
-  <PlayerProfileModal 
-    playerId={inspectingPlayerId} 
-    onClose={() => (inspectingPlayerId = null)} 
-  />
-{/if}
 
 <style>
   /* Task 54: the face sits inside the name cell, so the grid keeps its columns.
