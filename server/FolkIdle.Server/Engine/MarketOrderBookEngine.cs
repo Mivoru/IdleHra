@@ -142,6 +142,28 @@ namespace FolkIdle.Server.Engine
             public int TotalCount;
         }
 
+        /// <summary>
+        /// Every open order the player owns - listings and resting limit
+        /// orders, both sides - newest first.
+        ///
+        /// Modul: task 102's "My orders". A player could list a piece, place a
+        /// buy order that escrowed their gold, and then had no screen that said
+        /// either existed: the book is browsed by item, never by owner. Bounded
+        /// so a pathological account cannot make this a book dump.
+        /// </summary>
+        public const int MaxOwnOrders = 200;
+
+        public static Task<System.Collections.Generic.List<MarketOrderRecord>> FetchOwnOpenOrdersAsync(FolkIdleDbContext db, long playerId)
+        {
+            return db.MarketOrderRecords
+                .AsNoTracking()
+                .Where(o => o.SellerId == playerId && o.Status == 0)
+                .OrderByDescending(o => o.CreatedAtEpoch)
+                .ThenByDescending(o => o.Id)
+                .Take(MaxOwnOrders)
+                .ToListAsync();
+        }
+
         public static async Task<MarketBrowsePage> BrowseActiveListingsAsync(FolkIdleDbContext db, MarketBrowseQuery query)
         {
             var rows = db.MarketOrderRecords

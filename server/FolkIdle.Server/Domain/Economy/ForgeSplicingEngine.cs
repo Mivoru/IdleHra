@@ -373,6 +373,12 @@ namespace FolkIdle.Server.Domain.Economy
             {
                 await transaction.RollbackAsync();
                 Console.WriteLine($"Fusion transaction aborted: {ex.Message}");
+                // Modul: ANSWERED. Two fusions over the same pieces in quick
+                // succession can collide here (a serialization failure), and
+                // this path used to say nothing at all - the client's Fuse
+                // button stayed held until its timeout and no toast explained
+                // the missing upgrade.
+                _playerRegistry?.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
                 return ForgeSplicingResult.InvalidRequest;
             }
         }

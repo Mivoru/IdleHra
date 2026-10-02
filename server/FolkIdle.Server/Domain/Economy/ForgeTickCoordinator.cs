@@ -84,12 +84,22 @@ namespace FolkIdle.Server.Domain.Economy
             ctx.CheckpointManager.RequestFlush(ref currentPayload, FlushReason.Command, then: () =>
             {
                 safeDispatch("Forge.Fusion", pId, async () => {
-                    var result = await forgeEngine.ExecuteFusionAsync(pId, cTargetId, cSecId, cTerId);
-                    if (result == ForgeSplicingResult.InvalidRequest)
-                    {
-                        networkSystem.ForceDisconnect(pId);
-                        return;
-                    }
+                    // Modul: A REFUSED FUSION RELOADS, IT DOES NOT DISCONNECT.
+                    //
+                    // InvalidRequest used to ForceDisconnect here, two screens
+                    // after the comment above said this command never does. It
+                    // is not a tamper signal: it is what a fusion naming a piece
+                    // that is ALREADY GONE returns (TargetNotFound - the engine
+                    // reports it), and that is the ordinary result of fusing
+                    // quickly. The Forge picks the next three pieces from the
+                    // list it fetched before the previous fusion committed, so a
+                    // second tap can name a sacrifice the first one just ate.
+                    // Reported as "when I fuse quickly the forge breaks for a
+                    // second" - the second was the session being torn down and
+                    // the client reconnecting. The engine has already answered
+                    // with a command result; all that is left is to un-suspend
+                    // the session, which is what ReloadState does on every path.
+                    await forgeEngine.ExecuteFusionAsync(pId, cTargetId, cSecId, cTerId);
                     networkSystem.CommandQueue.Enqueue(new NetworkBroadcastSystem.PlayerCommand { PlayerId = pId, Packet = new ClientCommandPacket { Command = CommandType.ReloadState } });
                 });
                 return Task.CompletedTask;
