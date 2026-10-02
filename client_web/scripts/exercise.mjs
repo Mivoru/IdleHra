@@ -1209,7 +1209,7 @@ await go('Auto-Eat');
   record(
     'auto-eat can be stocked with the fish you caught',
     !/No food in the chest/i.test(text),
-    text.match(/Choose food\.\.\./) ? 'food list offered' : 'panel shown',
+    /Load all|\+ Add food/.test(text) ? 'food offered' : 'panel shown',
   );
 }
 

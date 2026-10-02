@@ -6,7 +6,8 @@
   import { connection } from '../lib/net/connection';
   import { CommandType } from '../lib/net/protocol.generated';
   import { queryKeys, fetchMaterials } from '../lib/net/rest';
-  import { prettifyBaseId, isFood } from '../lib/net/content';
+  import { prettifyBaseId, isFood, fishHealPercent } from '../lib/net/content';
+  import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { contentQuery } from '../lib/net/registry.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
 
@@ -53,13 +54,18 @@
         quantity: s.total,
         // Commands carry the numeric ContentRegistry id; REST carries BaseIds.
         numericId: registry?.itemsByBaseId.get(s.ItemId)?.Id ?? 0,
+        heal: fishHealPercent(s.ItemId, registry?.itemsByBaseId.get(s.ItemId)?.RegionTier ?? 1),
       }))
       .filter((f) => f.numericId > 0)
       .sort((a, b) => a.baseId.localeCompare(b.baseId)),
   );
 
-  let selectedFood = $state('');
   let amount = $state(100);
+  // Modul: task 109 - the flow ran bottom to top: pick a food in a <select>
+  // under the slots, type an amount, then press + back up on a slot. An empty
+  // slot now carries "+ Add food", which opens the chest's foods right under
+  // that slot; one tap loads the amount into it.
+  let pickingSlot = $state<number | null>(null);
 
   // LarderLimits.SlotCapacity. A slot cannot hold more, and a request over it
   // is clamped server-side - showing the real ceiling avoids the player
@@ -74,6 +80,15 @@
     return item ? prettifyBaseId(item.BaseId) : `Item #${itemId}`;
   }
 
+  function foodBaseId(itemId: number): string {
+    return registry?.items.get(itemId)?.BaseId ?? '';
+  }
+
+  function slotHeal(itemId: number): number | null {
+    const item = registry?.items.get(itemId);
+    return item ? fishHealPercent(item.BaseId, item.RegionTier) : null;
+  }
+
   // Modul: ADD to a slot rather than only filling an empty one.
   //
   // The server has always summed into an occupied slot when the food matches -
@@ -81,10 +96,9 @@
   // the only route from 100 fish to 200 was Unload, then Load 200. Sending the
   // slot's OWN food id is what makes it an addition rather than a swap.
   function add(slotIndex: number, itemId: number) {
-    const food = itemId > 0
-      ? availableFood.find((f) => f.numericId === itemId)
-      : availableFood.find((f) => f.baseId === selectedFood);
+    const food = availableFood.find((f) => f.numericId === itemId);
     if (!food) return;
+    pickingSlot = null;
 
     connection.send({
       Command: CommandType.StockFoodSlot,
@@ -175,57 +189,10 @@
     <h2>Auto-Eat</h2>
     <p class="dim small">
       Load up to three foods. When health drops below the threshold your
-      character eats the one that heals most, automatically.
-    </p>
-    <p class="dim tiny">
-      Running out no longer stops you - you simply stop healing, and keep
-      fighting until you win or die.
+      character eats the one that heals most, automatically. If the larder runs
+      out you keep fighting, just without healing.
     </p>
 
-    <ul class="slots">
-      {#each slots as slot}
-        <li>
-          <span class="idx dim">Slot {slot.index + 1}</span>
-          {#if slot.itemId > 0}
-            <span class="name">{foodName(slot.itemId)}</span>
-            <span class="count" title={numberTitle(slot.count)}>{formatNumber(slot.count)}</span>
-            <span class="pm">
-              <button
-                class="tiny-btn"
-                title="Add {amount} more"
-                onclick={() => add(slot.index, slot.itemId)}
-              >+</button>
-              <button
-                class="tiny-btn"
-                title="Take {amount} back to the chest"
-                onclick={() => remove(slot.index)}
-              >&minus;</button>
-              <button
-                class="tiny-btn ghost"
-                title="Empty the slot"
-                onclick={() => unload(slot.index)}
-              >all</button>
-            </span>
-          {:else}
-            <span class="name dim empty">empty</span>
-            <span class="count dim">0</span>
-            <span class="pm">
-              <button
-                class="tiny-btn"
-                disabled={!selectedFood}
-                onclick={() => add(slot.index, 0)}
-              >+</button>
-            </span>
-          {/if}
-        </li>
-      {/each}
-    </ul>
-
-    <h3>From the village chest</h3>
-    <p class="dim tiny">
-      Choose a food and an amount, then use + on a slot. &minus; takes that
-      same amount back out; "all" empties the slot.
-    </p>
     <!-- Modul: "there is none" is a claim, and it needs the answer to have
          arrived first. This read `availableFood.length === 0`, which is also
          true while the inventory request is in flight and while the content
@@ -258,19 +225,75 @@
           into slot {quickLoad.slotIndex + 1}
         </button>
       {/if}
-      <div class="loader">
-        <select bind:value={selectedFood}>
-          <option value="">Choose food...</option>
-          {#each availableFood as food}
-            <option value={food.baseId}>
-              {prettifyBaseId(food.baseId)} ({formatNumber(food.quantity)})
-            </option>
-          {/each}
-        </select>
+      <label class="amount">
+        <span class="dim">Amount per tap</span>
         <input type="number" min="1" max={SLOT_CAPACITY} bind:value={amount} />
-      </div>
-      <p class="dim tiny">Slots hold at most {formatNumber(SLOT_CAPACITY)}; larger requests are clamped.</p>
+      </label>
     {/if}
+
+    <ul class="slots">
+      {#each slots as slot}
+        <li>
+          <span class="idx dim">Slot {slot.index + 1}</span>
+          {#if slot.itemId > 0}
+            {@const heal = slotHeal(slot.itemId)}
+            <span class="name">
+              <ItemIcon baseItemId={foodBaseId(slot.itemId)} name={foodName(slot.itemId)} size="sm" />
+              <span>
+                {foodName(slot.itemId)}
+                {#if heal !== null}<span class="dim heal">heals ~{heal}% each</span>{/if}
+              </span>
+            </span>
+            <span class="count" title={numberTitle(slot.count)}>{formatNumber(slot.count)}</span>
+            <span class="pm">
+              <button
+                class="tiny-btn"
+                title="Add {amount} more"
+                aria-label="Add {amount} more"
+                disabled={!availableFood.some((f) => f.numericId === slot.itemId)}
+                onclick={() => add(slot.index, slot.itemId)}
+              >+</button>
+              <button
+                class="tiny-btn"
+                title="Take {amount} back to the chest"
+                aria-label="Take {amount} back to the chest"
+                onclick={() => remove(slot.index)}
+              >&minus;</button>
+              <button
+                class="tiny-btn ghost"
+                title="Empty the slot"
+                onclick={() => unload(slot.index)}
+              >all</button>
+            </span>
+          {:else}
+            <button
+              class="add-food"
+              aria-expanded={pickingSlot === slot.index}
+              disabled={availableFood.length === 0}
+              onclick={() => (pickingSlot = pickingSlot === slot.index ? null : slot.index)}
+            >+ Add food</button>
+          {/if}
+        </li>
+        {#if pickingSlot === slot.index && slot.itemId === 0}
+          <li class="picker">
+            {#each availableFood as food (food.baseId)}
+              <button class="pick" onclick={() => add(slot.index, food.numericId)}>
+                <ItemIcon baseItemId={food.baseId} name={prettifyBaseId(food.baseId)} size="sm" />
+                <span class="pick-name">
+                  {prettifyBaseId(food.baseId)}
+                  {#if food.heal !== null}<span class="dim heal">heals ~{food.heal}%</span>{/if}
+                </span>
+                <span class="dim">{formatNumber(Math.min(amount, food.quantity, SLOT_CAPACITY))} of {formatNumber(food.quantity)}</span>
+              </button>
+            {/each}
+          </li>
+        {/if}
+      {/each}
+    </ul>
+    <p class="dim tiny">
+      &minus; takes the amount back to the chest; "all" empties the slot. A slot
+      holds at most {formatNumber(SLOT_CAPACITY)}.
+    </p>
   </section>
 
   <section class="panel">
@@ -290,12 +313,19 @@
           bind:value={threshold}
           oninput={() => (thresholdTouched = true)}
         />
-        <output>{threshold}</output>
+        <output>{threshold}%</output>
       </div>
 
-      <button onclick={applyThreshold} disabled={threshold === snap.AutoEatThreshold}>
-        {threshold === snap.AutoEatThreshold ? `Applied (${snap.AutoEatThreshold})` : `Set to ${threshold}`}
-      </button>
+      <!-- "Applied (50)" was a disabled button, which read as a control that
+           could not be used. The saved state is a sentence; the button only
+           appears when there is something to save. -->
+      {#if threshold === snap.AutoEatThreshold}
+        <p class="dim tiny" role="status">
+          {snap.AutoEatThreshold === 0 ? 'Auto-eat is off.' : `Eats below ${snap.AutoEatThreshold}% health.`}
+        </p>
+      {:else}
+        <button onclick={applyThreshold}>Eat below {threshold}%</button>
+      {/if}
     {:else}
       <p class="dim">Waiting for the first state snapshot...</p>
     {/if}
@@ -386,10 +416,6 @@
     font-size: 0.75rem;
   }
 
-  .empty {
-    font-style: italic;
-  }
-
   .count {
     font-variant-numeric: tabular-nums;
     font-weight: 700;
@@ -409,20 +435,59 @@
     opacity: 0.7;
   }
 
-  .loader {
-    display: grid;
-    grid-template-columns: 1fr 5.5rem;
+  .amount {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     gap: 0.5rem;
+    margin: 0 0 0.5rem;
+    font-size: 0.8rem;
   }
 
-  select {
-    font: inherit;
-    color: inherit;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 0.45rem 0.5rem;
-    width: 100%;
+  .amount input {
+    width: 5.5rem;
+  }
+
+  .slots .name {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+  }
+
+  .heal {
+    display: block;
+    font-size: 0.72rem;
+  }
+
+  .add-food {
+    grid-column: 2 / -1;
+    justify-self: start;
+  }
+
+  .slots li.picker {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.3rem;
+    padding: 0.3rem 0 0.5rem 3.6rem;
+  }
+
+  .pick {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    text-align: left;
+  }
+
+  .pick-name {
+    min-width: 0;
+  }
+
+  /* The phone media query in app.css draws the slider; above it the browser
+     default was a bright system blue on parchment. */
+  .threshold input[type='range'] {
+    accent-color: var(--accent);
   }
 
   .threshold {
