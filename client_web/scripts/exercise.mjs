@@ -766,6 +766,13 @@ await go('Forge');
 }
 
 // --- market ------------------------------------------------------------------
+// Every price-history request the market makes, for the cancel round-trip
+// below: the history query is cached for a minute, so the piece it picks may
+// not ask again - the earlier request for the same piece names it instead.
+const marketHistoryUrls = [];
+page.on('request', (r) => {
+  if (r.url().includes('/api/v1/market/history')) marketHistoryUrls.push(r.url());
+});
 await go('Market');
 {
   const before = await page.evaluate(() => document.body.innerText);
@@ -849,6 +856,110 @@ await go('Market');
     Array.isArray(mine) && (mine.length === 0 ? /nothing on the market/i.test(ordersText) : /Selling|Buying/.test(ordersText)),
     Array.isArray(mine) ? `${mine.length} open` : 'the route did not answer',
   );
+
+  // Cancel, round-tripped: list a carried piece through the real Sell flow,
+  // find it under My orders, cancel it with the two-tap button, and assert the
+  // SAME piece (base item, rarity, affixes) is back in the chest. Restores the
+  // fixture: the piece returns under a new id, nothing is spent.
+  {
+    const invBefore = (await apiGet('/api/v1/player/inventory'))?.Equipment ?? [];
+    const idsBefore = new Set(invBefore.map((e) => e.Id));
+    const openBefore = new Set((Array.isArray(mine) ? mine : []).map((o) => o.OrderId));
+
+    // Which piece the Sell browser picks is the browser's business; its price
+    // history request names it, which is what the price corridor needs.
+    const sellSegAgain = page.getByTestId('market-seg-sell');
+    if ((await sellSegAgain.count()) > 0) await sellSegAgain.click();
+    const piece = page.locator('[data-testid="market-sell"] button.row').first();
+    let listedOrder = null;
+    let detail = '';
+    if ((await piece.count()) === 0) {
+      detail = 'no carried piece to list';
+    } else {
+      await piece.click();
+      await page.waitForTimeout(1500);
+      const url = marketHistoryUrls.at(-1);
+      const params = url ? new URL(url).searchParams : null;
+      const baseItemId = params?.get('baseItemId') ?? '';
+      const qualityTier = Number(params?.get('qualityTier') ?? 0);
+      // Inside MarketOrderBookEngine's corridor (0.8x-3x the 7-day average,
+      // or BaseValueGold * (1 + 0.5 * tier) when nothing traded).
+      const hist = baseItemId
+        ? await apiGet(`/api/v1/market/history?${new URLSearchParams({ baseItemId, qualityTier: String(qualityTier) })}`)
+        : null;
+      let price = 0;
+      if (hist?.TradeCount > 0) {
+        price = Math.round(hist.AveragePrice * 1.2);
+      } else if (baseItemId) {
+        const items = await fetch(`${API_BASE}/gamedata/items.json`).then((r) => r.json()).catch(() => []);
+        const def = items.find((i) => i.BaseId === baseItemId);
+        if (def) price = Math.round(def.BaseValueGold * (1 + 0.5 * qualityTier) * 1.5);
+      }
+      const listBtn = page.getByTestId('market-list').first();
+      if (price <= 0) {
+        detail = `could not price ${baseItemId || 'the picked piece'}`;
+      } else if (await listBtn.isDisabled()) {
+        detail = 'List is disabled (no guild licence?)';
+      } else {
+        await page.locator('[data-testid="market-sell"] input[type="number"]').first().fill(String(price));
+        await listBtn.click();
+        const until = Date.now() + 15000;
+        while (Date.now() < until && !listedOrder) {
+          await page.waitForTimeout(700);
+          const now = (await apiGet('/api/v1/market/mine')) ?? [];
+          listedOrder = now.find((o) => !openBefore.has(o.OrderId) && o.OrderType === 'SELL' && o.BaseItemId === baseItemId) ?? null;
+        }
+        if (!listedOrder) detail = `listing ${baseItemId} T${qualityTier} at ${price} never reached the book`;
+      }
+    }
+
+    if (!listedOrder) {
+      record('a listing can be cancelled back into the chest', false, detail);
+    } else {
+      const invListed = (await apiGet('/api/v1/player/inventory'))?.Equipment ?? [];
+      const listedIds = new Set(invListed.map((e) => e.Id));
+      const original = invBefore.find((e) => !listedIds.has(e.Id) && e.BaseItemId === listedOrder.BaseItemId);
+      record('a listed piece shows under My orders', true, `order ${listedOrder.OrderId}`);
+
+      if ((await ordersSeg.count()) > 0) await ordersSeg.click();
+      const orderRow = page.locator(`[data-testid="market-order"][data-order-id="${listedOrder.OrderId}"]`);
+      await orderRow.waitFor({ timeout: 10000 }).catch(() => {});
+      const shown = (await orderRow.count()) > 0;
+      if (shown) {
+        await orderRow.getByRole('button', { name: 'Cancel', exact: true }).click();
+        const armed = (await orderRow.getByRole('button', { name: 'Really cancel?' }).count()) > 0;
+        const stillOpenAfterOneTap = ((await apiGet('/api/v1/market/mine')) ?? []).some((o) => o.OrderId === listedOrder.OrderId);
+        record('Cancel asks twice before it acts', armed && stillOpenAfterOneTap, armed ? 'armed' : 'one tap did not arm');
+        await orderRow.getByRole('button', { name: 'Really cancel?' }).click();
+      }
+      let back = null;
+      let gone = false;
+      const until = Date.now() + 10000;
+      while (Date.now() < until && !(back && gone)) {
+        await page.waitForTimeout(600);
+        gone = !((await apiGet('/api/v1/market/mine')) ?? []).some((o) => o.OrderId === listedOrder.OrderId);
+        const inv = (await apiGet('/api/v1/player/inventory'))?.Equipment ?? [];
+        back =
+          inv.find(
+            (e) =>
+              !idsBefore.has(e.Id) &&
+              e.BaseItemId === listedOrder.BaseItemId &&
+              e.QualityTier === listedOrder.QualityTier &&
+              JSON.stringify(e.Affixes) === JSON.stringify(original?.Affixes),
+          ) ?? null;
+      }
+      const rowGone = (await orderRow.count()) === 0;
+      record(
+        'a listing can be cancelled back into the chest',
+        shown && gone && Boolean(back) && Boolean(original) && rowGone,
+        `${shown ? 'row shown' : 'row never shown'}, order ${gone ? 'closed' : 'still open'}, ` +
+          `${back ? `piece back as ${back.Id}` : 'piece NOT back'}${original ? '' : ' (original not identified)'}, row ${rowGone ? 'removed' : 'still on screen'}`,
+      );
+      // If the UI path failed, still put the piece back so the fixture is whole.
+      if (!gone) await apiPost('/api/v1/market/cancel', { OrderId: listedOrder.OrderId });
+    }
+  }
+
   const buySeg = page.getByTestId('market-seg-buy');
   if ((await buySeg.count()) > 0) await buySeg.click();
 }

@@ -2,7 +2,8 @@
   import { formatNumber, formatGold } from '../lib/ui/format';
   import Money from '../lib/ui/Money.svelte';
   import CosmeticMarket from '../lib/ui/CosmeticMarket.svelte';
-  import { createQuery } from '@tanstack/svelte-query';
+  import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { invalidateOwnedItems } from '../lib/net/queryClient';
   import {
     queryKeys,
     fetchInventory,
@@ -10,7 +11,10 @@
     fetchMarketPriceHistory,
     fetchStatistics,
     fetchMyMarketOrders,
+    cancelMyMarketOrder,
+    MARKET_CANCEL_SENTENCES,
     type InventoryEquipment,
+    type MarketOwnOrder,
   } from '../lib/net/rest';
   import DetailSheet from '../lib/ui/DetailSheet.svelte';
   import RarityPip from '../lib/ui/RarityPip.svelte';
@@ -291,6 +295,50 @@
     queryFn: fetchMyMarketOrders,
     enabled: seg === 'orders' || $isWide,
   }));
+
+  // Modul: CANCEL, two taps (ConfirmButton) because it is the one control on
+  // this panel that undoes something. The row leaves the list only when the
+  // server says Ok - an optimistic removal would hide a refusal ("it had just
+  // sold") behind a row that silently came back on the next refetch. A
+  // refusal names its reason; Sold/Gone also drop the row, since it is no
+  // longer open either way.
+  const queryClient = useQueryClient();
+  let cancelling = $state<number | null>(null);
+
+  async function cancelOrder(orderId: number) {
+    if (cancelling !== null) return;
+    cancelling = orderId;
+    try {
+      const response = await cancelMyMarketOrder(orderId);
+      const result = response?.Result;
+      if (!result) {
+        pushLocalNotice('The market did not answer. Try again.', 'error');
+        return;
+      }
+      if (result === 'Ok' || result === 'Sold' || result === 'Gone') {
+        queryClient.setQueryData<MarketOwnOrder[]>(queryKeys.marketMine, (rows) =>
+          (rows ?? []).filter((o) => o.OrderId !== orderId),
+        );
+      }
+      if (result === 'Ok') {
+        pushLocalNotice(
+          response.RefundedGold > 0
+            ? `Order cancelled. ${formatGold(response.RefundedGold)} returned.`
+            : 'Listing cancelled. The piece is back in your chest.',
+          'info',
+        );
+      } else {
+        pushLocalNotice(MARKET_CANCEL_SENTENCES[result] ?? result, 'error');
+      }
+      invalidateOwnedItems(queryClient);
+      queryClient.invalidateQueries({ queryKey: queryKeys.marketMine });
+      queryClient.invalidateQueries({ queryKey: ['market'] });
+    } catch {
+      pushLocalNotice('Could not cancel that order. Try again.', 'error');
+    } finally {
+      cancelling = null;
+    }
+  }
 
   function ago(epochMs: number): string {
     const minutes = Math.max(0, Math.floor((Date.now() - epochMs) / 60_000));
@@ -583,7 +631,7 @@
     {:else}
       <ul class="cards mine">
         {#each myOrders.data ?? [] as order (order.OrderId)}
-          <li>
+          <li data-testid="market-order" data-order-id={order.OrderId}>
             <ItemIcon baseItemId={order.BaseItemId} name={prettifyBaseId(order.BaseItemId)} qualityTier={order.QualityTier} size="sm" />
             <div class="what">
               <span class="name" style={order.QualityTier > 0 ? `color: ${rarityColor(order.QualityTier)}` : undefined}>
@@ -595,10 +643,20 @@
               </span>
             </div>
             <span class="price"><Money amount={order.Price} /></span>
+            <ConfirmButton
+              small
+              label="Cancel"
+              confirmLabel="Really cancel?"
+              disabled={cancelling !== null}
+              onConfirm={() => cancelOrder(order.OrderId)}
+            />
           </li>
         {/each}
       </ul>
-      <p class="dim tiny">An order stays until it fills. A buy order's gold is held until then.</p>
+      <p class="dim tiny">
+        An order stays until it fills or you cancel it. Cancelling returns the
+        piece to your chest, or a buy order's gold to your purse.
+      </p>
     {/if}
 
     <h3>Place a standing order</h3>

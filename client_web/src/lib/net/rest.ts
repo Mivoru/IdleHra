@@ -591,6 +591,34 @@ export function fetchMyMarketOrders(): Promise<MarketOwnOrder[]> {
   return authedGet<MarketOwnOrder[]>('/api/v1/market/mine');
 }
 
+/** MarketCancelResult, by name. */
+export type MarketCancelResult = 'Ok' | 'Sold' | 'Gone' | 'NotYours' | 'Unsupported';
+
+export interface MarketCancelResponse {
+  Result: MarketCancelResult;
+  /** The chest row the piece came back as - a NEW id, the listed copy's is gone. */
+  ReturnedEquipmentId: number | null;
+  /** A buy order's escrowed gold, returned to the row. */
+  RefundedGold: number;
+}
+
+/** What the player reads when a cancel is refused. Keyed by the server's own names. */
+export const MARKET_CANCEL_SENTENCES: Record<MarketCancelResult, string> = {
+  Ok: 'Order cancelled.',
+  Sold: 'Too late - that listing has just sold.',
+  Gone: 'That order is no longer open. It was already filled or cancelled.',
+  NotYours: 'That order is not yours to cancel.',
+  Unsupported: 'That order cannot be cancelled here.',
+};
+
+/**
+ * Takes one of the player's own open orders off the book. A refusal answers
+ * 200 with its Result; a SELL comes back to the chest, a BUY's gold to the purse.
+ */
+export function cancelMyMarketOrder(orderId: number): Promise<MarketCancelResponse | null> {
+  return authedPost<MarketCancelResponse>('/api/v1/market/cancel', { OrderId: orderId });
+}
+
 export interface MarketPricePoint {
   Epoch: number;
   Price: number;

@@ -2387,6 +2387,14 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // A POST, so the router's per-account stripe lock already holds
+            // for the whole handler - a double-tapped Cancel runs one at a time.
+            if (requestPath == "/api/v1/market/cancel" && context.Request.HttpMethod == "POST")
+            {
+                await HandleMarketCancelOrder(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/support/tickets/create" && context.Request.HttpMethod == "POST")
             {
                 await HandleSupportTicket(context);
@@ -2825,10 +2833,9 @@ namespace FolkIdle.Server.Network
             public long CreatedAtEpoch { get; set; }
         }
 
-        // Modul: task 102, "My orders". Read-only on purpose: the book has no
-        // cancel command for equipment yet, and a Cancel button here would be
-        // a control that cannot work. What the screen gains is the fact that
-        // the listing exists and what it is asking.
+        // Modul: task 102, "My orders". It was read-only while the book had no
+        // cancel for equipment; POST /api/v1/market/cancel (below) is that
+        // cancel now, and each row here carries the OrderId it takes.
         private async Task HandleMarketOwnOrders(HttpListenerContext context)
         {
             try
@@ -2870,6 +2877,77 @@ namespace FolkIdle.Server.Network
             }
 
             context.Response.Close();
+        }
+
+        // Modul: CANCEL ONE OF MY ORDERS. REST, like the cosmetic market's
+        // cancel and the My orders read beside it - not a wire command,
+        // because nothing it changes is tick state: the piece and the gold
+        // both live in rows, so there is nothing to flush first. A refusal
+        // answers 200 with its Result (the "silent rollback" rule); only a
+        // malformed body is a 400. On success the session reloads, which
+        // flushes and then reads the refunded gold row back - the
+        // MarketMatchQueue display credit is NOT used as well, or the
+        // header would show a refund twice.
+        private async Task HandleMarketCancelOrder(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    return;
+                }
+
+                long orderId;
+                try
+                {
+                    using var parsed = JsonDocument.Parse(await ReadBodyAsync(context));
+                    if (!parsed.RootElement.TryGetProperty("OrderId", out var idEl)
+                        || !idEl.TryGetInt64(out orderId)
+                        || orderId <= 0)
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+                }
+                catch (JsonException)
+                {
+                    context.Response.StatusCode = 400;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var outcome = await FolkIdle.Server.Domain.Economy.MarketEscrowEngine.CancelOrderAsync(db, playerId, orderId);
+
+                if (outcome.Result == FolkIdle.Server.Domain.Economy.MarketCancelResult.Ok)
+                {
+                    CommandQueue.Enqueue(new PlayerCommand
+                    {
+                        PlayerId = playerId,
+                        Packet = new ClientCommandPacket { Command = CommandType.ReloadState }
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, new
+                {
+                    Result = outcome.Result.ToString(),
+                    outcome.ReturnedEquipmentId,
+                    outcome.RefundedGold,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Market cancel error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
         }
 
         private sealed class MarketListingResponse
