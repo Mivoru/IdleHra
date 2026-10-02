@@ -144,3 +144,30 @@ export function shouldShowConnectionPanel(
   // the panel would never appear during the one state it exists for.
   return msSinceDisconnected >= CONNECTION_GRACE_MS;
 }
+
+/**
+ * The header's few words about the connection, or null when there is nothing
+ * to say.
+ *
+ * Modul: TASK 95 - THE HEADER PRINTED THE PHASE NAME. "live", and on a bad
+ * train "reconnecting (retry 3)": internal state, lower-case, with a counter
+ * that only means something to whoever wrote the retry loop. Connected is the
+ * normal case and says nothing; anything else is one plain word, and
+ * ConnectionNotice below the header carries the explanation.
+ */
+export function connectionChip(phase: ConnectionPhase): string | null {
+  switch (phase) {
+    case 'live':
+    case 'idle':
+      return null;
+    case 'connecting':
+    case 'authenticating':
+      return 'Connecting';
+    case 'reconnecting':
+      return 'Reconnecting';
+    case 'failed':
+      return 'Offline';
+    case 'signedout':
+      return 'Signing in';
+  }
+}
