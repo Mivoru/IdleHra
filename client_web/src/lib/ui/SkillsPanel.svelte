@@ -75,7 +75,10 @@
           ? 'Taken'
           : ''
         : node.unit === 'points'
-          ? `+${total.toFixed(1)} pts`
+          ? // Task 109: "+0.4 pts" sat next to "+3.0%" and read as a third
+            // currency. 'points' means PERCENTAGE POINTS added to a chance -
+            // Precision, the only node in that unit, adds them to crit chance.
+            `+${total.toFixed(1)}% crit chance`
           : `+${total.toFixed(1)}%`;
 
     return {
@@ -121,6 +124,14 @@
     const outcome = respecSkillTree(freeUsed, grants);
     if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
     confirmingRespec = false;
+  }
+
+  /** Task 109: a cost button says what it does - and a full node says so,
+   * rather than showing a bare dash on a dead button. */
+  function costLabel(row: NodeRow): string {
+    if (row.level >= row.max) return 'Maxed';
+    if (row.lockedOut) return 'Locked';
+    return `Learn · ${row.cost} pt`;
   }
 
   function buy(nodeId: number) {
@@ -292,7 +303,7 @@
   );
 </script>
 
-<section class="panel">
+<section class="panel skills">
   <header class="head">
     <div>
       <h2>Skill tree</h2>
@@ -302,7 +313,7 @@
         above whichever fork you chose.
       </p>
     </div>
-    <span class="points">{points} <span class="dim tiny">points</span></span>
+    <span class="points">{points} <span class="dim tiny">to spend</span></span>
   </header>
 
   <div class="treewrap">
@@ -423,19 +434,42 @@
         </g>
       {/if}
 
-      <text
-        x={limb.forkX + limb.labelDx}
-        y={limb.forkY + limb.labelDy}
-        class="limb-label"
-        class:lit={limb.level > 0}
-        text-anchor={limb.labelAnchor}
-      >
-        {limb.name}{#if limb.level > 0}&#160;{limb.level}{/if}
-      </text>
     {/each}
   </svg>
+  <!-- Modul: TASK 109 - THE LIMB LABELS ARE HTML OVER THE PICTURE, NOT SVG
+       TEXT IN IT. SVG text scales with the viewBox, so 11 user units came out
+       at about 6px on a phone; any size big enough there ran FORTUNE off the
+       left edge again (the lesson PAD_X records). HTML text keeps a CSS size
+       of its own (11px floor, growing with the container), and each label is
+       pinned by the edge it grows AWAY from with a max-width up to the
+       picture's border - so a long label wraps instead of leaving the screen. -->
+  {#each drawn as limb (limb.id)}
+    {@const px = ((limb.forkX + limb.labelDx + PAD_X) / (VIEW_W + PAD_X * 2)) * 100}
+    {@const py = ((limb.forkY + limb.labelDy + PAD_TOP) / (VIEW_H + PAD_TOP)) * 100}
+    <span
+      class="limb-label anchor-{limb.labelAnchor}"
+      class:lit={limb.level > 0}
+      style={limb.labelAnchor === 'end'
+        ? `right: ${100 - px}%; top: ${py}%; max-width: ${px}%`
+        : limb.labelAnchor === 'start'
+          ? `left: ${px}%; top: ${py}%; max-width: ${100 - px}%`
+          : `left: ${px}%; top: ${py}%`}
+    >
+      {limb.name}{#if limb.level > 0}{' '}{limb.level}{/if}
+    </span>
+  {/each}
   </div>
 
+  {#if spent === 0 && points === 0}
+    <!-- Task 109: nothing learned and nothing to spend - a live Respec here
+         was the only thing on the screen that looked pressable, and it would
+         have refunded nothing. ProgressionEngine grants one point per level;
+         DeedRegistry.SkillPointsPerSeal adds two per sealed chapter. -->
+    <p class="dim small earn" data-testid="skills-earn">
+      You earn a skill point every level, and two more for each chapter you seal
+      in the Book of Deeds.
+    </p>
+  {:else}
   <div class="respec-row">
     <p class="dim tiny spent">{spent} points invested</p>
 
@@ -455,11 +489,18 @@
           (freeUsed ? `${grants} paid respec left` : 'Your free respec this season')}
         onclick={() => (confirmingRespec = true)}
       >
-        Respec{#if !freeUsed} (free){:else} ({grants} left){/if}
+        <!-- {' '} on purpose: Svelte drops the space before an {#if}, which
+             is how this read "Respec(free)". -->
+        Respec{' '}{#if !freeUsed}(free){:else}({grants} left){/if}
       </button>
       <DisabledReason text={respecBlocked} />
     {/if}
   </div>
+  {/if}
+
+  {#if points > 0}
+    <p class="to-spend" data-testid="skills-to-spend"><strong>{points}</strong> to spend - pick a root below.</p>
+  {/if}
 
   <div class="limbs">
     {#each limbs as limb (limb.root.id)}
@@ -482,7 +523,7 @@
             title={limb.root.blocked ?? ''}
             onclick={() => buy(limb.root.id)}
           >
-            {limb.root.cost > 0 ? `${limb.root.cost} pt` : '—'}
+            {costLabel(limb.root)}
           </button>
         </div>
 
@@ -505,7 +546,7 @@
                 title={bough.blocked ?? ''}
                 onclick={() => buy(bough.id)}
               >
-                {bough.cost > 0 ? `${bough.cost} pt` : '—'}
+                {costLabel(bough)}
               </button>
             </div>
           {/each}
@@ -531,7 +572,7 @@
             title={limb.crown.blocked ?? ''}
             onclick={() => buy(limb.crown.id)}
           >
-            {limb.crown.level > 0 ? 'Taken' : `${limb.crown.cost} pt`}
+            {limb.crown.level > 0 ? 'Taken' : `Take · ${limb.crown.cost} pt`}
           </button>
         </div>
       </div>
@@ -540,6 +581,13 @@
 </section>
 
 <style>
+  /* Task 109: on a desktop the cards ran the full width of the window, a
+     blurb one long line and its button a screen away. */
+  .skills {
+    max-width: 60rem;
+    margin-inline: auto;
+  }
+
   .respec-row {
     display: flex;
     align-items: center;
@@ -724,8 +772,11 @@
      room. Still capped rather than full-bleed: past this the labels drift so
      far from the trunk that the fan stops reading as one tree. */
   .treewrap {
+    /* The limb labels size against this box (cqw), not the window. */
+    container-type: inline-size;
     position: relative;
     width: 100%;
+
     max-width: 52rem;
     margin: 0.2rem auto 0.6rem;
   }
@@ -838,21 +889,48 @@
   }
 
   .limb-label {
-    fill: var(--text);
-    font-size: 11px;
+    position: absolute;
+    /* The label's baseline sat at the anchor point in the SVG; lifting the
+       box by its own height puts it back there. */
+    translate: 0 -85%;
+    color: var(--text);
+    font-size: clamp(0.6875rem, 2cqw, 1rem);
+    font-weight: 600;
+    line-height: 1.15;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    pointer-events: none;
     /* The backdrop behind these is painted foliage, not a flat panel, so a
        dim grey label landed on whatever colour that branch happened to be.
        Brightened and given a dark halo so it reads over leaf, bark or gap. */
-    paint-order: stroke;
-    stroke: rgba(0, 0, 0, 0.85);
-    stroke-width: 3px;
-    stroke-linejoin: round;
+    text-shadow:
+      0 0 3px rgba(0, 0, 0, 0.95),
+      0 0 2px rgba(0, 0, 0, 0.95),
+      0 1px 1px rgba(0, 0, 0, 0.9);
+  }
+
+  .limb-label.anchor-end {
+    text-align: right;
+  }
+
+  .limb-label.anchor-middle {
+    translate: -50% -85%;
+    white-space: nowrap;
+    text-align: center;
   }
 
   .limb-label.lit {
-    fill: #ffeec2;
+    color: #ffeec2;
+  }
+
+  .earn {
+    text-align: center;
+    margin: 0 auto 0.6rem;
+  }
+
+  .to-spend {
+    margin: 0 0 0.5rem;
+    color: var(--brass-lit);
   }
 
   @media (prefers-reduced-motion: reduce) {
