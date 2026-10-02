@@ -6367,8 +6367,31 @@ before. The guild-name cap is now 32 on the server too.
 
 ## 95. Phone navigation: More sheet, sticky header, one name per concept
 
-**OPEN.** Report sections 4.M and 8 (sketch R1). This is visual review C,
-N1-N7.
+**BUILT on branch `claude/ui-95-nav`, not merged.** Renames owner-approved
+2026-10-02. The fifth tab is More, a bottom sheet holding every other
+destination plus the chat entry. It badges unclaimed mail and dots unspent
+skill points. Village moved into the sheet, and hotkey 5 still opens it.
+The header is sticky and one row on a phone: name, purse, ≡. Its measured
+height is published as `--sticky-header-h`, which ConnectionNotice,
+Character's switcher, Chest's detail, the Wiki sidebar and the chat sheet
+add to their offsets. Every tab family has a breadcrumb and one tab row
+that scrolls sideways. On desktop the active group is bold and underlined,
+and the coach-mark on a group toggle is a dot. There is one chat entry
+(`ChatButton.svelte`) with "N online": in the header on desktop, in the
+sheet on a phone. On a phone the chat is a full-height sheet with the
+sender above the message, and the Guild channel is hidden without a guild.
+Groups are now Play / Hero / Make / Friends & Guilds / Game, and group
+labels use `--fs-xs` at full dim colour. Renames: Map -> Home,
+Supplies -> Auto-Eat, Community -> Friends (Guild and Market have entries
+of their own), and Bloodline is the family name on the page and in the
+Wiki. Time convention: `lib/ui/when.ts`. `screens.mjs`, `exercise.mjs`
+and `mobile-check.mjs` use the new labels. `navButton` reaches the tab bar
+and the sheet, and the new destination "Home · More sheet" measures the
+sheet open. Verified so far: `check:ratchet` 4 and vitest green.
+**Not yet run:** `exercise`, `check:touch`, `check:overlap`, the 390px
+two-tap check and the owner's screenshot. "The Deep" vs "the Delve" was
+not touched. Report sections 4.M and 8 (sketch R1). This is visual review
+C, N1-N7.
 
 **What is actually true.**
 - **The Menu is only at the top.** The header is in flow, not sticky
