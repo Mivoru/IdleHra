@@ -1818,11 +1818,14 @@ namespace FolkIdle.Server.Engine
             // rather than sent: the queue is bounded and drained by the chat
             // dispatch worker, so an unlucky flood drops announcements instead
             // of stalling the loot path.
+            //
+            // Worded by AnnouncementText: the monster and the closing
+            // "Congratulations!" are gone, because with a long item and boss
+            // name the old sentence overran the packet's 128-byte text buffer.
             if (tier >= AnnounceableRarityTier)
             {
                 Domain.Social.ChatEngine.EnqueueSystemAnnouncement(
-                    $"{PlayerNameResolver.GetCachedOrFallback(playerId)} found a {RarityTier.GetName(tier)} {Readable(baseItemId)} " +
-                    $"from {ContentRegistry.GetMonsterName(monsterId)}. Congratulations!");
+                    AnnouncementText.Drop(PlayerNameResolver.GetCachedOrFallback(playerId), RarityTier.GetName(tier), Readable(baseItemId)));
             }
 
             // The piece was kept, so there is nothing to pay for.

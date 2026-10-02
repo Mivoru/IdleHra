@@ -75,9 +75,7 @@ namespace FolkIdle.Server.Domain.Combat
                     string who = await PlayerNameResolver.GetAsync(item.PlayerId);
 
                     Social.ChatEngine.EnqueueSystemAnnouncement(
-                        worldFirst
-                            ? $"{who} is the FIRST in the world to defeat {bossName}. Congratulations!"
-                            : $"{who} defeated {bossName} for the first time. Congratulations!");
+                        Social.AnnouncementText.BossClear(who, bossName, worldFirst));
                 }
             }
             catch (Exception ex)

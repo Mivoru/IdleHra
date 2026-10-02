@@ -65,22 +65,18 @@ namespace FolkIdle.Server.Engine
         // assigned after CommitAsync), and everything staged across the commit
         // is a local. Nothing here is reachable from another request.
 
-        // "Player 4711 rerolled Critical Damage to LEGENDARY (+18.5%)".
-        // Deliberately carries no player NAME - PlayerRecord has no display
-        // name column, and inventing one here would put a second, wrong answer
-        // next to whatever the social layer eventually uses. The client
-        // resolves the id against its own roster cache.
-        // Modul: WORDS, not a pipe-delimited payload.
-        //
-        // This produced "123|4|flat_hp|56" on the assumption that the client
-        // would parse and render it. The client does not - Chat.svelte prints
-        // an announcement's text verbatim - so every high-rarity reroll in the
-        // game has been announced to the world as a row of numbers and pipes.
-        private static string FormatRarityAnnouncement(long playerId, AffixRarity rarity, string affixId, int magnitude)
+        // Modul: the words live in AnnouncementText and WHETHER to say them in
+        // RerollAnnouncementPolicy (Domain/Social/AnnouncementText.cs). This
+        // used to be a sentence of its own ending in "(+magnitude).
+        // Congratulations!", announced for every Epic, which is how a reroll
+        // session filled world chat. The name is still read from the cache
+        // only: this runs on the command path, never awaiting the database.
+        private static void AnnounceIfNewsworthy(long playerId, AffixRarity rarity, string affixId)
         {
-            string affixName = affixId.Replace('_', ' ');
-            return string.Create(System.Globalization.CultureInfo.InvariantCulture,
-                $"{PlayerNameResolver.GetCachedOrFallback(playerId)} rerolled a {rarity} {affixName} (+{magnitude}). Congratulations!");
+            if (!RerollAnnouncementPolicy.TryClaim(playerId, rarity, DateTime.UtcNow)) return;
+
+            Domain.Social.ChatEngine.EnqueueSystemAnnouncement(
+                AnnouncementText.Reroll(PlayerNameResolver.GetCachedOrFallback(playerId), rarity, affixId));
         }
 
         private readonly IServiceProvider _serviceProvider;
@@ -203,7 +199,18 @@ namespace FolkIdle.Server.Engine
                 stopCondition,
                 maxAttempts,
                 attempt => ExecuteRerollAsync(
-                    playerId, targetItemGuid, affixIndex, operation, attempt, reportResult: false));
+                    playerId, targetItemGuid, affixIndex, operation, attempt, reportResult: false, announce: false));
+
+            // Modul: ONE announcement per run, of what the item ended up
+            // holding. Each attempt used to announce itself, so a run of fifty
+            // put every Epic it rolled PAST into world chat - including the
+            // ones the next attempt destroyed, which is a claim about an item
+            // that no longer exists. The final committed roll is the only
+            // result the player keeps.
+            if (run.AttemptsCommitted > 0)
+            {
+                AnnounceIfNewsworthy(playerId, run.FinalRarity, run.FinalAffixId);
+            }
 
             return ReportRun(playerId, run);
         }
@@ -278,7 +285,7 @@ namespace FolkIdle.Server.Engine
             return (string.Empty, AffixRarity.Common, string.Empty, false);
         }
 
-        public async Task<RerollAttemptOutcome> ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex, RerollOperation operation = RerollOperation.Full, int consecutiveAttempts = 0, bool reportResult = true)
+        public async Task<RerollAttemptOutcome> ExecuteRerollAsync(long playerId, long targetItemGuid, int affixIndex, RerollOperation operation = RerollOperation.Full, int consecutiveAttempts = 0, bool reportResult = true, bool announce = true)
         {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
@@ -478,20 +485,6 @@ namespace FolkIdle.Server.Engine
 
                 targetItem.AffixPayload = affixPayload.ToJsonString();
 
-                // Modul: high-rarity announcements. Epic and above only - the
-                // same threshold UiRarityPalette uses to decide what glows, so
-                // "it glowed" and "it was announced" never disagree.
-                //
-                // Enqueued AFTER the mutation but BEFORE the commit is
-                // deliberate: the queue is drained by a different thread, and
-                // announcing a reroll that then rolled back would put a lie in
-                // global chat that nothing could retract. The commit follows
-                // immediately below, and a failure there throws past this point
-                // without the dispatch worker having anything to send yet.
-                string? pendingAnnouncement = resultRarity >= AffixRarity.Epic
-                    ? FormatRarityAnnouncement(playerId, resultRarity, resultDefinition.Id, resultMagnitude)
-                    : null;
-
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
@@ -499,16 +492,11 @@ namespace FolkIdle.Server.Engine
                 // drained by the chat dispatch worker on another thread, so
                 // announcing before the commit could put a claim in global chat
                 // that a rollback then silently contradicts - and nothing can
-                // retract a chat line.
-                //
-                // A LOCAL, not a field: staged across the commit of THIS attempt
-                // and nothing else. As a field it was shared with every other
-                // player rerolling at the same moment, and the catch below had to
-                // clear it to stop one player's rolled-back Legendary being
-                // announced under the next caller's name.
-                if (!string.IsNullOrEmpty(pendingAnnouncement))
+                // retract a chat line. `announce` is false inside an auto-reroll
+                // run, which announces its final result once instead.
+                if (announce)
                 {
-                    Domain.Social.ChatEngine.EnqueueSystemAnnouncement(pendingAnnouncement);
+                    AnnounceIfNewsworthy(playerId, resultRarity, resultDefinition.Id);
                 }
 
                 Console.WriteLine($"Reroll success: {affixKeyToReroll} -> {newAffixKey} ({resultRarity})");
