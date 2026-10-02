@@ -7092,7 +7092,9 @@ Report sections 4.I, 4.J, 4.K and 7.
 
 ## 107. Guild and Community structure, and copy contradictions
 
-**OPEN.** Report section 5. This is visual review C, C1-C6 and G1-G5.
+**BUILT on branch `claude/task-107-guild`, not merged, not run in a browser.** Friends is friends only (`Social.svelte`). The Guild tab shows `GuildBrowser.svelte` (directory with Join/Apply plus Create) while guildless, and otherwise a dashboard in the spec's order: header card (name, tier, members, tax, your role, weekly rank), Members with Leave, Applications (leaders only, `GuildApplications.svelte`), Treasury & buffs, Depot & donations, Weekly material ranking, Guild war last and collapsed while locked. One column, so the desktop hole is gone. The contradiction is settled from the server: gold donations fill the treasury and grant guild XP but write no member points, only Treasury material deposits earn the weekly ranking, and both cards now say so. Donate is one material picker, a quantity with Max, a Depot / Chain / Treasury choice and one "Deposit to ..." button with a hint. `exercise.mjs` follows: it opens the war toggle, clicks "Deposit to Treasury" and rejoins from the Guild tab. Left for the owner: the 390 px screenshot, running `exercise`, `check:clipping/touch/overlap` on both tabs (overlap-check skips them), and the "Open" label for your own guild's row was dropped rather than built, because a member never sees the directory now.
+
+**OPEN (original brief).** Report section 5. This is visual review C, C1-C6 and G1-G5.
 
 **What is actually true.**
 - **The "Friends" tab is two-thirds guild.** It holds Friends, Guilds and My

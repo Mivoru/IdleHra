@@ -1,17 +1,9 @@
 <script lang="ts">
-  import { formatNumber } from '../lib/ui/format';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import {
     queryKeys,
     fetchFriends,
-    fetchGuilds,
-    fetchGuildRoster,
-    fetchGuildApplications,
-    approveGuildApplication,
-    rejectGuildApplication,
     resolvePlayer,
-    fetchPlayerNames,
-    fetchStatistics,
   } from '../lib/net/rest';
   import {
     addFriend,
@@ -20,44 +12,14 @@
     unblockPlayer,
     type CommandOutcome,
   } from '../lib/net/commands';
-  import { pushLocalNotice, playerState } from '../lib/stores/game';
+  import { pushLocalNotice } from '../lib/stores/game';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
-  import { GUILD_JOIN_MIN_LEVEL } from '../lib/ui/unlocks';
-  import { api } from '../lib/net/config';
-  import { storedToken } from '../lib/net/auth';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
   import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
 
   const client = useQueryClient();
   const friends = createQuery(() => ({ queryKey: queryKeys.friends, queryFn: fetchFriends }));
-  const guilds = createQuery(() => ({ queryKey: queryKeys.guilds, queryFn: fetchGuilds }));
-  const roster = createQuery(() => ({ queryKey: queryKeys.guildRoster, queryFn: fetchGuildRoster }));
-  const applications = createQuery(() => ({
-    queryKey: queryKeys.guildApplications,
-    queryFn: fetchGuildApplications,
-  }));
-  const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
-
-  const hasGuild = $derived((statistics.data?.GuildName ?? '') !== '');
-  // Modul: UNKNOWN IS NOT "NO GUILD". `hasGuild` reads false both for a player
-  // with no guild and for a statistics request that failed or has not landed,
-  // so gating Create/Join on it alone re-enabled both for guild members the
-  // moment that request 500'd. Locked until the answer is known.
-  const joinLocked = $derived(statistics.data === undefined || hasGuild);
-
-  // Modul: WHY A JOIN IS GREY, in its label. Join used to check only "full"
-  // and "already in a guild", so a level-1 player saw a live Join on a
-  // "lv 20+" guild and got a bare "Could not join" from the server, which
-  // gates on max(MinGuildInteractionLevel, MinApplicationLevel). The level is
-  // unknown until the first snapshot; nothing is greyed on a guess.
-  const myLevel = $derived(Number($playerState?.CurrentLevel ?? 0));
-  function joinBlock(guild: { ActiveMembers: number; MaxMembers: number; MinApplicationLevel: number }): string | null {
-    if (guild.ActiveMembers >= guild.MaxMembers) return 'Full';
-    const needed = Math.max(GUILD_JOIN_MIN_LEVEL, guild.MinApplicationLevel);
-    if (myLevel > 0 && myLevel < needed) return `Needs level ${needed}`;
-    return null;
-  }
 
   function refreshFriends() {
     setTimeout(() => client.invalidateQueries({ queryKey: queryKeys.friends }), 600);
@@ -97,123 +59,6 @@
     if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
     refreshFriends();
   }
-
-  // --- guilds ---------------------------------------------------------------
-  // Guild create/join are HTTP POSTs, not WebSocket commands: a guild name is a
-  // variable-length string and ClientCommandPacket's fixed layout has no field
-  // for one. Same reason email/password auth uses HTTP.
-  let newGuildName = $state('');
-
-  async function post(path: string, body: unknown): Promise<Response> {
-    return fetch(api(path), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${storedToken()}` },
-      body: JSON.stringify(body),
-    });
-  }
-
-  function refreshGuilds() {
-    client.invalidateQueries({ queryKey: queryKeys.guilds });
-    client.invalidateQueries({ queryKey: queryKeys.guildRoster });
-    client.invalidateQueries({ queryKey: queryKeys.statistics });
-  }
-
-  async function createGuild() {
-    const name = newGuildName.trim();
-    if (!name) return;
-    busy = true;
-    try {
-      // The endpoint reads `guildName`, not `name` - a mismatch here is a
-      // bare 400 with no body, which says nothing about which field was wrong.
-      const response = await post('/api/v1/guilds/create', { guildName: name });
-      if (response.ok) {
-        pushLocalNotice(`Guild "${name}" created.`, 'info');
-      } else {
-        // The endpoint answers a refusal with { reason }. It used to be a bare
-        // 409 with no body for four different rules, so "Could not create" was
-        // the whole of what a player could learn - including that guilds need
-        // level 20.
-        const reason = await response
-          .json()
-          .then((body: { Reason?: string; reason?: string }) => body.Reason ?? body.reason ?? '')
-          .catch(() => '');
-        pushLocalNotice(reason || `Could not create "${name}".`, 'error');
-      }
-      if (response.ok) newGuildName = '';
-      refreshGuilds();
-    } finally {
-      busy = false;
-    }
-  }
-
-  async function joinGuild(name: string) {
-    busy = true;
-    try {
-      const response = await post('/api/v1/guilds/join', { guildName: name });
-      if (!response.ok) {
-        pushLocalNotice(`Could not join "${name}".`, 'error');
-      } else {
-        const body = await response.json().catch(() => ({ Joined: false }));
-        // Application-required guilds file a request instead of joining, and
-        // saying "joined" for that would be a lie the player only discovers
-        // when the roster stays empty.
-        pushLocalNotice(body.Joined ? `Joined "${name}".` : `Application sent to "${name}".`, 'info');
-      }
-      refreshGuilds();
-      client.invalidateQueries({ queryKey: queryKeys.guildApplications });
-    } finally {
-      busy = false;
-    }
-  }
-
-  async function reviewApplication(applicationId: number, approve: boolean) {
-    busy = true;
-    try {
-      // Modul: `Success: false` arrives with HTTP 200 and MUST be checked.
-      //
-      // ApproveApplicationAsync returns it when the caller is not the leader,
-      // when the guild is full, or when someone else already handled the
-      // application - all normal outcomes, none of them an HTTP error. This
-      // used to fire and forget, so a refusal looked exactly like an approval
-      // and the only symptom was a roster that never grew.
-      const result = approve
-        ? await approveGuildApplication(applicationId)
-        : await rejectGuildApplication(applicationId);
-
-      if (result?.Success === false) {
-        pushLocalNotice(
-          approve
-            ? 'Not approved - you may not be the leader, or the guild is full.'
-            : 'Not rejected - it may already have been handled.',
-          'error',
-        );
-      } else {
-        pushLocalNotice(approve ? 'Application approved.' : 'Application rejected.', 'info');
-      }
-
-      client.invalidateQueries({ queryKey: queryKeys.guildApplications });
-      client.invalidateQueries({ queryKey: queryKeys.guildRoster });
-    } catch {
-      pushLocalNotice('Could not reach the server.', 'error');
-    } finally {
-      busy = false;
-    }
-  }
-
-  const ROLE_NAMES: Record<number, string> = { 0: 'Member', 1: 'Officer', 2: 'Leader' };
-
-  // The roster identifies members numerically, so names are resolved in one
-  // batched request - the same shape chat uses, for the same reason.
-  const rosterIds = $derived((roster.data ?? []).map((m) => m.PlayerId).sort());
-  const rosterNames = createQuery(() => ({
-    queryKey: queryKeys.playerNames(rosterIds),
-    queryFn: () => fetchPlayerNames(rosterIds),
-    enabled: rosterIds.length > 0,
-    staleTime: 10 * 60_000,
-  }));
-  const rosterNameById = $derived(
-    new Map((rosterNames.data ?? []).map((n) => [n.PlayerId, n.Username])),
-  );
 </script>
 
 <div class="grid">
@@ -258,120 +103,13 @@
       </ul>
     {/if}
   </section>
-
-  <section class="panel">
-    <h2>Guilds</h2>
-
-    <div class="adder">
-      <!-- Modul: 32, the same as the server's cap
-           (GuildManagementEngine.MaxGuildNameLength, task 94). A 100-character
-           unbroken name overflowed toasts and rosters. -->
-      <input placeholder="New guild name" maxlength="32" bind:value={newGuildName} disabled={joinLocked} />
-      <button disabled={busy || !newGuildName.trim() || joinLocked} onclick={createGuild}>Create</button>
-    </div>
-    {#if statistics.isError && statistics.data === undefined}
-      <QueryError query={statistics} what="your guild membership" />
-    {:else if hasGuild}
-      <!-- Modul: this once said "Leave it first" when there was no way to
-           leave (LeaveGuildAsync had no route). Task 94 added one, on the
-           Guild tab, so the instruction can point at it. -->
-      <p class="dim tiny">
-        You are in a guild, and a player belongs to one at a time. Leave it from the Guild tab to join or
-        found another.
-      </p>
-    {/if}
-
-    {#if guilds.isPending}
-      <Skeleton />
-    {:else if guilds.isError}
-      <QueryError query={guilds} what="the guild list" />
-    {:else if (guilds.data ?? []).length === 0}
-      <p class="dim">No guilds exist yet. Create the first.</p>
-    {:else}
-      <ul class="rows">
-        {#each guilds.data ?? [] as guild (guild.GuildId)}
-          <li class="guild">
-            <span class="name">
-              {guild.Name}
-              {#if hasGuild && guild.Name === statistics.data?.GuildName}
-                <span class="dim tiny" style="margin-left: 0.3rem;">(Your Guild)</span>
-              {/if}
-            </span>
-            <span class="dim tiny">
-              tier {guild.CurrentTier} &middot; {guild.ActiveMembers}/{guild.MaxMembers}
-              &middot; {guild.TaxRatePct}% tax
-              {#if guild.MinApplicationLevel > 0}&middot; lv {guild.MinApplicationLevel}+{/if}
-            </span>
-            {#if !(hasGuild && guild.Name === statistics.data?.GuildName)}
-              {@const block = joinBlock(guild)}
-              <button
-                class="tiny-btn"
-                disabled={busy || block !== null || joinLocked}
-                onclick={() => joinGuild(guild.Name)}
-              >
-                {block ?? (guild.JoinType === 0 ? 'Join' : 'Apply')}
-              </button>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
-
-  <section class="panel">
-    <h2>My guild</h2>
-
-    {#if roster.isPending}
-      <Skeleton />
-    {:else if roster.isError}
-      <QueryError query={roster} what="your guild" />
-    {:else if (roster.data ?? []).length === 0}
-      <p class="dim">You are not in a guild. Trading needs one - it doubles as a trade licence.</p>
-    {:else}
-      <ul class="rows">
-        {#each roster.data ?? [] as member (member.PlayerId)}
-          <li>
-            <span class="dot" class:online={member.IsOnline} title={member.IsOnline ? 'Online' : 'Offline'}></span>
-            <span class="name">{rosterNameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}</span>
-            <span class="dim tiny">{ROLE_NAMES[member.Role] ?? `Role ${member.Role}`}</span>
-            <span class="dim tiny">{formatNumber(member.ContributionPoints)} pts</span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-
-    <h3>Applications</h3>
-    <!-- Leader-only: the endpoint returns an empty list for everyone else
-         rather than a 403, so an empty list here is not evidence of none. -->
-    {#if applications.isPending}
-      <Skeleton rows={1} />
-    {:else if applications.isError}
-      <QueryError query={applications} what="guild applications" />
-    {:else if (applications.data ?? []).length === 0}
-      <p class="dim tiny">None pending, or you are not the leader.</p>
-    {:else}
-      <ul class="rows">
-        {#each applications.data ?? [] as application (application.Id)}
-          <li>
-            <span class="name">{application.Username}</span>
-            <span class="dim tiny">lv {application.ApplicantLevel}</span>
-            <button class="tiny-btn" disabled={busy} onclick={() => reviewApplication(application.Id, true)}>
-              Approve
-            </button>
-            <button class="tiny-btn" disabled={busy} onclick={() => reviewApplication(application.Id, false)}>
-              Reject
-            </button>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </section>
 </div>
 
 <style>
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    grid-template-columns: minmax(0, 40rem);
+    justify-content: center;
     gap: 1rem;
     padding: 1rem;
     align-items: start;
@@ -387,14 +125,6 @@
   h2 {
     margin: 0 0 0.6rem;
     font-size: 1.05rem;
-  }
-
-  h3 {
-    margin: 1.1rem 0 0.4rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
   }
 
   .dim {
@@ -438,10 +168,6 @@
     font-size: 0.85rem;
     border-bottom: 1px solid var(--border);
     padding-bottom: 0.3rem;
-  }
-
-  .rows li.guild {
-    flex-wrap: wrap;
   }
 
   .name {

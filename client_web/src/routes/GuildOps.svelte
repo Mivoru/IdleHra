@@ -7,6 +7,7 @@
   import {
     queryKeys,
     fetchGuildRoster,
+    fetchGuilds,
     fetchPlayerNames,
     fetchStatistics,
     fetchGuildLogistics,
@@ -39,10 +40,14 @@
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
   import Money from '../lib/ui/Money.svelte';
+  import GuildBrowser from '../lib/ui/GuildBrowser.svelte';
+  import GuildApplications from '../lib/ui/GuildApplications.svelte';
 
   const client = useQueryClient();
   const roster = createQuery(() => ({ queryKey: queryKeys.guildRoster, queryFn: fetchGuildRoster }));
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
+
+  const guilds = createQuery(() => ({ queryKey: queryKeys.guilds, queryFn: fetchGuilds }));
 
   const snap = $derived($playerState);
   const hasGuild = $derived((statistics.data?.GuildName ?? '') !== '');
@@ -75,6 +80,8 @@
     staleTime: 5 * 60_000,
   }));
   const warLocked = $derived(warLock.data ? !warLock.data.Unlocked : false);
+  // Modul: task 107. The war card is collapsed while locked; see its markup.
+  let warOpen = $state(false);
 
   $effect(() => {
     const d = warLock.data;
@@ -136,6 +143,17 @@
   let busy = $state(false);
   const myRole = $derived(members.find(m => m.PlayerId === connection.currentPlayerId)?.Role ?? 0);
   const ROLE_NAMES: Record<number, string> = { 0: 'Member', 1: 'Officer', 2: 'Leader' };
+
+  // Modul: task 107. The header card's numbers come from the guild directory
+  // (tier, members, tax) - the one place the server already publishes them -
+  // matched on name, which is unique. The weekly rank is read off the same
+  // leaderboard the ranking card shows, so the two cannot disagree.
+  const myGuild = $derived((guilds.data ?? []).find((g) => g.Name === statistics.data?.GuildName));
+  const myWeeklyRank = $derived.by(() => {
+    const board = (guildDepot.data?.Leaderboard ?? []).filter((m) => m.WeeklyContributionPoints > 0);
+    const at = board.findIndex((m) => m.PlayerId === connection.currentPlayerId);
+    return at >= 0 ? at + 1 : 0;
+  });
 
   async function handleKick(id: number) {
     if (busy) return;
@@ -202,7 +220,7 @@
     if (p.IsLeader && p.SuccessorPlayerId > 0) {
       return `${memberName(p.SuccessorPlayerId)} will lead the guild after you.`;
     }
-    return 'You can join this or another guild again from Friends.';
+    return 'You can join this or another guild again from the Guild tab.';
   });
 
   async function handleLeave() {
@@ -398,6 +416,29 @@
   // the same state is how the two halves of this panel disagreed in the first
   // place. One material selection, one quantity.
 
+  // Modul: task 107. One destination choice replaces three buttons. The three
+  // calls are unchanged - only which one a tap reaches is.
+  type DepositDest = 'depot' | 'chain' | 'treasury';
+  const DEPOSIT_DESTINATIONS: { key: DepositDest; label: string; hint: string }[] = [
+    { key: 'depot', label: 'Depot', hint: 'Fills the requirements listed above. The material leaves your backpack for good.' },
+    { key: 'chain', label: 'Chain', hint: 'Feeds the logistics production bar instead of the requirements.' },
+    { key: 'treasury', label: 'Treasury', hint: 'Pays for buffs and earns weekly ranking points. Buff materials only.' },
+  ];
+  let depositDest = $state<DepositDest>('treasury');
+
+  const canDeposit = $derived(
+    depotMaterial !== '' &&
+      depotMax > 0 &&
+      depotMaterialId !== 0 &&
+      (depositDest !== 'treasury' || isDonatableMaterial(depotMaterial)),
+  );
+
+  function depositSelected() {
+    if (depositDest === 'depot') deposit();
+    else if (depositDest === 'chain') contributeStock();
+    else void handleDonate();
+  }
+
   async function handleDonate() {
     if (!hasGuild) return pushLocalNotice('You are not in a guild.', 'info');
     if (depotQuantity < 1) return pushLocalNotice('Quantity must be positive.', 'info');
@@ -498,230 +539,88 @@
 
 {#if !snap}
   <p class="dim pad">Waiting for the first state snapshot...</p>
+{:else if statistics.isPending}
+  <div class="grid"><Skeleton /></div>
+{:else if statistics.isError && statistics.data === undefined}
+  <div class="grid"><QueryError query={statistics} what="your guild membership" /></div>
+{:else if !hasGuild}
+  <!-- Modul: task 107. Guildless: the browser and Create, nothing else. The
+       dashboard cards all say "Join a guild to ..." and there is nothing on
+       this tab to look at until one has. -->
+  <div class="grid"><GuildBrowser /></div>
 {:else}
   <div class="grid">
-    <section class="panel">
-      <h2>Guild war</h2>
-
-      {#if warLocked && warLock.data}
-        {@const lock = warLock.data}
-        <p class="war-locked" data-testid="guild-war-locked">
-          Guild Wars unlock at {lock.RequiredPlayers} players.
-        </p>
-        <div class="axis">
-          <span class="dim tiny">Players at level {lock.MinimumLevel}+</span>
-          <Bar
-            value={Math.min(lock.QualifyingPlayers, lock.RequiredPlayers)}
-            max={lock.RequiredPlayers}
-            label={`${lock.QualifyingPlayers} / ${lock.RequiredPlayers}`}
-          />
-        </div>
-        <div class="axis">
-          <span class="dim tiny">Guilds with {lock.RequiredMembersPerGuild}+ such members</span>
-          <Bar
-            value={Math.min(lock.QualifyingGuilds, lock.RequiredGuilds)}
-            max={lock.RequiredGuilds}
-            label={`${lock.QualifyingGuilds} / ${lock.RequiredGuilds}`}
-          />
-        </div>
-        <p class="dim tiny">
-          Both are needed. Once reached, Guild Wars stay unlocked for good.
-        </p>
-      {:else if warId <= 0}
-        <p class="dim">
-          No war is active. The scoreboard below appears once your guild is
-          matched.
-        </p>
-      {:else}
-        <p class="dim small">
-          War #{warId} &middot; multiplier
-          {typeof snap.CachedWarMultiplier === 'number'
-            ? snap.CachedWarMultiplier.toFixed(2)
-            : snap.CachedWarMultiplier}x
-        </p>
-
-        {#each warAxes as axis}
-          {@const total = Math.max(1, axis.ours + axis.theirs)}
-          <div class="axis">
-            <span class="dim tiny">{axis.label}</span>
-            <Bar
-              value={axis.ours}
-              max={total}
-              color={axis.ours >= axis.theirs ? 'var(--good)' : 'var(--danger)'}
-              label={`${formatNumber(axis.ours)} vs ${formatNumber(axis.theirs)}`}
-            />
-          </div>
-        {/each}
-
-        <h3>Contribute supply</h3>
-        <div class="row">
-          <input type="number" min="1" bind:value={warCommodity} title="Commodity id" />
-          <input type="number" min="1" bind:value={warQuantity} title="Quantity" />
-          <button onclick={contributeWar}>Burn</button>
-        </div>
-        <p class="dim tiny">
-          Contributions are burned into the war effort.
-          <!-- Modul: the command takes a numeric commodity id and there is no
-               picker for it yet; this panel is hidden with the rest of Guild
-               Wars until that is built. -->
-        </p>
-      {/if}
-    </section>
-
-    <!-- Modul: GUILD WAR IS ON HOLD, not removed - decided 2026-09-01, and
-         docs/FUTURE_PLANS.md still lists it as planned. The panel is hidden
-         rather than deleted so the handlers keep a caller; they are also the
-         four remaining svelte-check errors, and that is the trade being made
-         knowingly.
-
-         NOTE the Logistics section below is inside this hidden panel too, so
-         the "To chain" button in the visible Depot feeds a production bar
-         players cannot see. That is a real inconsistency, not part of the
-         hold - see the 2026-09-01 handoff. -->
-    <section class="panel" style="display:none;">
-      <h2>Raid</h2>
-
-      {#if snap.GuildRaidBossMaxHp > 0}
-        <p class="dim small">Tier {snap.GuildRaidTier}</p>
-        <Bar
-          value={Number(snap.GuildRaidBossCurrentHp)}
-          max={Number(snap.GuildRaidBossMaxHp)}
-          color="var(--danger)"
-          label={`${formatNumber(Number(snap.GuildRaidBossCurrentHp))} / ${formatNumber(Number(snap.GuildRaidBossMaxHp))}`}
-        />
-      {:else}
-        <p class="dim">No raid boss active.</p>
-      {/if}
-
-      <button disabled={!hasGuild} onclick={raid}>Launch raid</button>
-
-      <!-- The Treasury block that stood here was a second copy of the
-           Contribute gold control, superseded by the one in the Depot panel
-           below. Both were bound to the same treasuryGold state and called the
-           same giveGold, so they were never out of step - but only this one was
-           inside display:none, which is the only reason players never saw two.
-           Removed rather than left as the kind of duplicate that gets edited on
-           one side. -->
-
-      <h3>Logistics</h3>
-      <div class="axis">
-        <span class="dim tiny">Depot level {snap.GuildLogisticsLevel}</span>
-        <Bar
-          value={Number(snap.GuildLogisticsCurrentStock)}
-          max={Math.max(1, Number(snap.GuildLogisticsTargetRequirement))}
-          color="var(--accent)"
-          label={`${formatNumber(Number(snap.GuildLogisticsCurrentStock))} / ${formatNumber(Number(snap.GuildLogisticsTargetRequirement))}`}
-        />
-      </div>
+    <section class="panel head" data-testid="guild-header">
+      <h1 class="guild-name">{myGuild?.Name ?? statistics.data?.GuildName}</h1>
+      <p class="dim small head-stats">
+        {#if myGuild}
+          Tier {myGuild.CurrentTier} &middot; {myGuild.ActiveMembers}/{myGuild.MaxMembers} members
+          &middot; {myGuild.TaxRatePct}% tax &middot;
+        {/if}
+        You: {ROLE_NAMES[myRole] ?? 'Member'}
+        &middot; Weekly rank: {myWeeklyRank ? `#${myWeeklyRank}` : 'unranked'}
+      </p>
     </section>
 
     <section class="panel">
-      <h2>Depot</h2>
+      <h2>Members</h2>
 
-      {#if statistics.isPending}
-        <Skeleton />
-      {:else if statistics.isError && statistics.data === undefined}
-        <QueryError query={statistics} what="your guild membership" />
-      {:else if !hasGuild}
-        <p class="dim">Join a guild to use its depot.</p>
+      {#if roster.isPending}
+        <p class="dim small">Loading the roster...</p>
+      {:else if roster.isError}
+        <QueryError query={roster} what="the guild roster" />
+      {:else if members.length === 0}
+        <p class="dim small">No members listed.</p>
       {:else}
-        <p class="dim small">
-          Per-material stock against what the guild needs. Depositing moves the
-          material out of your backpack permanently.
-        </p>
+        <ul class="members">
+          {#each members as member (member.PlayerId)}
+            <li>
+              <span class="who" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
+                <PlayerAvatar playerId={member.PlayerId} size="sm" />
+                {nameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}
+                <span class="dim tiny">[{ROLE_NAMES[member.Role] ?? 'Unknown'}]</span>
+                {#if member.PlayerId === connection.currentPlayerId}
+                  <span class="dim tiny">you</span>
+                {/if}
+                
+                <span style="flex: 1;"></span>
+                
+                {#if myRole >= 1 && member.Role < myRole && member.PlayerId !== connection.currentPlayerId}
+                  {#if myRole === 2}
+                    {#if member.Role === 0}
+                      <button class="tiny-btn" disabled={busy} onclick={() => handlePromote(member.PlayerId)}>Promote</button>
+                    {:else if member.Role === 1}
+                      <button class="tiny-btn" disabled={busy} onclick={() => handleDemote(member.PlayerId)}>Demote</button>
+                    {/if}
+                  {/if}
+                  <!-- Modul: two taps. Kicking was one, and a mis-tap on a phone
+                       removed a guildmate with no way back. -->
+                  <ConfirmButton small label="Kick" confirmLabel="Really kick?" disabled={busy} onConfirm={() => handleKick(member.PlayerId)} />
+                {/if}
+              </span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
 
-        {#if logistics.isPending}
-          <Skeleton />
-        {:else if logistics.isError}
-          <QueryError query={logistics} what="the depot requirements" />
-        {:else if (logistics.data ?? []).length === 0}
-          <p class="dim">The depot has no requirements set.</p>
-        {:else}
-          <ul class="depot">
-            {#each logistics.data ?? [] as row (row.MaterialId)}
-              {@const required = Math.max(1, Number(row.TargetRequirement))}
-              {@const stock = Number(row.CurrentStock)}
-              {@const met = stock >= Number(row.TargetRequirement)}
-              <li>
-                <span class="mat">{materialName(row.MaterialId)}</span>
-                <Bar
-                  value={stock}
-                  max={required}
-                  color={met ? 'var(--good)' : 'var(--accent)'}
-                  label={`${formatNumber(stock)} / ${formatNumber(Number(row.TargetRequirement))}`}
-                />
-              </li>
-            {/each}
-          </ul>
-        {/if}
-
-        <h3>Contribute Gold</h3>
-        <div class="row">
-          <input type="number" min="1" step="100" bind:value={treasuryGold} />
-          <button disabled={!hasGuild || treasuryGold < 1} onclick={giveGold}>Contribute gold</button>
+      {#if hasGuild}
+        <div class="leave" data-testid="guild-leave">
+          <ConfirmButton
+            label="Leave guild"
+            confirmLabel={leavePreview.data?.ClosesGuild ? 'Really close it?' : 'Really leave?'}
+            disabled={busy || !leavePreview.data?.InGuild}
+            onConfirm={handleLeave}
+          />
+          {#if leaveNote}
+            <p class="dim small" data-testid="guild-leave-note">{leaveNote}</p>
+          {/if}
         </div>
-        <p class="dim tiny">
-          Raises the guild's tier and your own contribution ranking on the roster.
-        </p>
-
-        <h3>Donate Materials</h3>
-        <p class="dim tiny">Donate logs and ores to the guild depot. Rarer materials grant more contribution points!</p>
-        <label>
-          Material
-          <select bind:value={depotMaterial}>
-            <option value="">Choose...</option>
-            {#each Array.from(BUFF_MATERIAL_IDS) as baseId}
-              {@const invItem = depositable.find(d => d.baseId === baseId)}
-              <option value={baseId}>
-                {prettifyBaseId(baseId)} (x{formatNumber(invItem?.quantity ?? 0)})
-              </option>
-            {/each}
-            {#each depositable.filter(d => !BUFF_MATERIAL_IDS.has(d.baseId) && isLogOrOre(d.baseId)) as row}
-              <option value={row.baseId}>
-                {prettifyBaseId(row.baseId)} (x{formatNumber(row.quantity)})
-              </option>
-            {/each}
-          </select>
-        </label>
-
-        <div class="row">
-          <input type="number" min="1" max={depotMax || 1} bind:value={depotQuantity} />
-          <!-- These two go through APIs that take a numeric definition id and
-               refuse anything else, so they need a catalogued item - not every
-               donatable commodity has one. Donate takes the base id and does
-               not. -->
-          <button disabled={depotMaterial === '' || depotMax === 0 || depotMaterialId === 0} onclick={deposit}>
-            To depot
-          </button>
-          <button disabled={depotMaterial === '' || depotMax === 0 || depotMaterialId === 0} onclick={contributeStock}>
-            To chain
-          </button>
-          <!-- Modul: donating ALSO needs a catalogued item, even though the
-               endpoint takes a base id string. GuildDepotBalances is keyed on
-               ItemDefinitionId and the engine bails on
-               TryGetItemDefinitionByBaseId, so an uncatalogued commodity is a
-               400 no matter how much of it the player holds. Four of the
-               twenty BUFF_MATERIAL_IDS are uncatalogued - see the note by that
-               set. -->
-          <button disabled={depotMaterial === '' || depotMax === 0 || depotMaterialId === 0 || !isDonatableMaterial(depotMaterial)} onclick={handleDonate}>
-            Donate
-          </button>
-        </div>
-
-        <p class="dim tiny">
-          <strong>To depot</strong> fills the requirements above.
-          <strong>To chain</strong> feeds the logistics production bar instead.
-          <strong>Donate</strong> adds materials to the treasury for buffs and contribution points.
-        </p>
-
-        {#if inventory.isError && inventory.data === undefined}
-          <QueryError query={inventory} what="your materials" />
-        {:else if depositable.length === 0}
-          <p class="dim tiny">You are not carrying any stackable materials.</p>
-        {/if}
       {/if}
     </section>
 
+    {#if myRole === 2}
+      <GuildApplications />
+    {/if}
 
     <section class="panel">
       <h2>Guild Treasury & Buffs</h2>
@@ -829,7 +728,124 @@
     </section>
 
     <section class="panel">
-      <h2>Guild Contributors</h2>
+      <h2>Depot &amp; donations</h2>
+
+      {#if statistics.isPending}
+        <Skeleton />
+      {:else if statistics.isError && statistics.data === undefined}
+        <QueryError query={statistics} what="your guild membership" />
+      {:else if !hasGuild}
+        <p class="dim">Join a guild to use its depot.</p>
+      {:else}
+        <p class="dim small">
+          Per-material stock against what the guild needs. Depositing moves the
+          material out of your backpack permanently.
+        </p>
+
+        {#if logistics.isPending}
+          <Skeleton />
+        {:else if logistics.isError}
+          <QueryError query={logistics} what="the depot requirements" />
+        {:else if (logistics.data ?? []).length === 0}
+          <p class="dim">The depot has no requirements set.</p>
+        {:else}
+          <ul class="depot">
+            {#each logistics.data ?? [] as row (row.MaterialId)}
+              {@const required = Math.max(1, Number(row.TargetRequirement))}
+              {@const stock = Number(row.CurrentStock)}
+              {@const met = stock >= Number(row.TargetRequirement)}
+              <li>
+                <span class="mat">{materialName(row.MaterialId)}</span>
+                <Bar
+                  value={stock}
+                  max={required}
+                  color={met ? 'var(--good)' : 'var(--accent)'}
+                  label={`${formatNumber(stock)} / ${formatNumber(Number(row.TargetRequirement))}`}
+                />
+              </li>
+            {/each}
+          </ul>
+        {/if}
+
+        <h3>Gold</h3>
+        <div class="row">
+          <input type="number" min="1" step="100" bind:value={treasuryGold} aria-label="Gold to contribute" />
+          <button disabled={!hasGuild || treasuryGold < 1} onclick={giveGold}>Contribute gold</button>
+        </div>
+        <!-- Modul: task 107. This said gold "raises your own contribution
+             ranking" while the Contributors card said gold does not count. The
+             server settles it: the donate route puts gold in the treasury and
+             grants guild experience (GuildContributionEngine, the "gold"
+             branch of ContributeDepotMaterialAsync) and writes no member
+             points at all. Only materials earn the weekly ranking. -->
+        <p class="dim tiny">
+          Goes into the treasury and raises the guild's tier. It does not count toward the weekly ranking.
+        </p>
+
+        <h3>Materials</h3>
+        <label class="pick">
+          <span class="dim tiny">Material</span>
+          <select bind:value={depotMaterial}>
+            <option value="">Choose...</option>
+            {#each Array.from(BUFF_MATERIAL_IDS) as baseId}
+              {@const invItem = depositable.find(d => d.baseId === baseId)}
+              <option value={baseId}>
+                {prettifyBaseId(baseId)} (x{formatNumber(invItem?.quantity ?? 0)})
+              </option>
+            {/each}
+            {#each depositable.filter(d => !BUFF_MATERIAL_IDS.has(d.baseId) && isLogOrOre(d.baseId)) as row}
+              <option value={row.baseId}>
+                {prettifyBaseId(row.baseId)} (x{formatNumber(row.quantity)})
+              </option>
+            {/each}
+          </select>
+        </label>
+
+        <div class="row">
+          <input type="number" min="1" max={depotMax || 1} bind:value={depotQuantity} aria-label="Quantity" />
+          <button class="max-btn" disabled={depotMax === 0} onclick={() => (depotQuantity = depotMax)}>Max</button>
+        </div>
+
+        <!-- Modul: ONE destination choice and ONE button, replacing "To depot /
+             To chain / Donate" - three controls of different widths that
+             needed a paragraph to tell apart. The disabled rule follows the
+             destination: depot and chain go through APIs that take a numeric
+             definition id and refuse anything else, so they need a catalogued
+             item; the treasury takes a base id but ALSO needs a catalogued
+             item (GuildDepotBalances is keyed on ItemDefinitionId) and only
+             the buff set. Four of the twenty used to be uncatalogued - see the
+             note by BUFF_MATERIAL_IDS. -->
+        <div class="dest" role="radiogroup" aria-label="Deposit to">
+          <span class="dim tiny">Deposit to</span>
+          {#each DEPOSIT_DESTINATIONS as d (d.key)}
+            <button
+              type="button"
+              role="radio"
+              class="dest-btn"
+              class:active={depositDest === d.key}
+              aria-checked={depositDest === d.key}
+              onclick={() => (depositDest = d.key)}
+            >{d.label}</button>
+          {/each}
+        </div>
+        <button class="deposit-go" disabled={!canDeposit} onclick={depositSelected}>
+          Deposit to {DEPOSIT_DESTINATIONS.find((d) => d.key === depositDest)?.label}
+        </button>
+        <p class="dim tiny" data-testid="deposit-hint">
+          {DEPOSIT_DESTINATIONS.find((d) => d.key === depositDest)?.hint}
+        </p>
+
+        {#if inventory.isError && inventory.data === undefined}
+          <QueryError query={inventory} what="your materials" />
+        {:else if depositable.length === 0}
+          <p class="dim tiny">You are not carrying any stackable materials.</p>
+        {/if}
+      {/if}
+    </section>
+
+
+    <section class="panel">
+      <h2>Weekly material ranking</h2>
       {#if statistics.isPending}
         <Skeleton />
       {:else if statistics.isError && statistics.data === undefined}
@@ -850,10 +866,10 @@
               <li><span class="silver-text">2nd place</span> — 15% of treasury</li>
               <li><span class="bronze-text">3rd place</span> — 10% of treasury</li>
             </ul>
-            <p class="dim tiny">Only material contributions count toward the leaderboard, not gold donations.</p>
+            <p class="dim tiny">Only materials deposited to the Treasury earn points here. Gold does not.</p>
           </div>
 
-          <h3>Weekly Leaderboard</h3>
+          <h3>This week</h3>
           {#if (guildDepot.data.Leaderboard ?? []).filter(m => m.WeeklyContributionPoints > 0).length === 0}
             <p class="dim small">No material contributions this week yet.</p>
           {:else}
@@ -876,60 +892,138 @@
       {/if}
     </section>
 
-    <!-- Cross-shard war hidden -->
-    <section class="panel">
-      <h2>Members</h2>
+    <!-- Modul: GUILD WAR IS ON HOLD, not removed - decided 2026-09-01, and
+         docs/FUTURE_PLANS.md still lists it as planned. The panel is hidden
+         rather than deleted so the handlers keep a caller; they are also the
+         four remaining svelte-check errors, and that is the trade being made
+         knowingly.
 
-      {#if roster.isPending}
-        <p class="dim small">Loading the roster...</p>
-      {:else if roster.isError}
-        <QueryError query={roster} what="the guild roster" />
-      {:else if members.length === 0}
-        <p class="dim small">No members listed.</p>
+         NOTE the Logistics section below is inside this hidden panel too, so
+         the "To chain" button in the visible Depot feeds a production bar
+         players cannot see. That is a real inconsistency, not part of the
+         hold - see the 2026-09-01 handoff. -->
+    <section class="panel" style="display:none;">
+      <h2>Raid</h2>
+
+      {#if snap.GuildRaidBossMaxHp > 0}
+        <p class="dim small">Tier {snap.GuildRaidTier}</p>
+        <Bar
+          value={Number(snap.GuildRaidBossCurrentHp)}
+          max={Number(snap.GuildRaidBossMaxHp)}
+          color="var(--danger)"
+          label={`${formatNumber(Number(snap.GuildRaidBossCurrentHp))} / ${formatNumber(Number(snap.GuildRaidBossMaxHp))}`}
+        />
       {:else}
-        <ul class="members">
-          {#each members as member (member.PlayerId)}
-            <li>
-              <span class="who" style="display: flex; gap: 0.5rem; align-items: center; width: 100%;">
-                <PlayerAvatar playerId={member.PlayerId} size="sm" />
-                {nameById.get(member.PlayerId) ?? `Player #${member.PlayerId}`}
-                <span class="dim tiny">[{ROLE_NAMES[member.Role] ?? 'Unknown'}]</span>
-                {#if member.PlayerId === connection.currentPlayerId}
-                  <span class="dim tiny">you</span>
-                {/if}
-                
-                <span style="flex: 1;"></span>
-                
-                {#if myRole >= 1 && member.Role < myRole && member.PlayerId !== connection.currentPlayerId}
-                  {#if myRole === 2}
-                    {#if member.Role === 0}
-                      <button class="tiny-btn" disabled={busy} onclick={() => handlePromote(member.PlayerId)}>Promote</button>
-                    {:else if member.Role === 1}
-                      <button class="tiny-btn" disabled={busy} onclick={() => handleDemote(member.PlayerId)}>Demote</button>
-                    {/if}
-                  {/if}
-                  <!-- Modul: two taps. Kicking was one, and a mis-tap on a phone
-                       removed a guildmate with no way back. -->
-                  <ConfirmButton small label="Kick" confirmLabel="Really kick?" disabled={busy} onConfirm={() => handleKick(member.PlayerId)} />
-                {/if}
-              </span>
-            </li>
-          {/each}
-        </ul>
+        <p class="dim">No raid boss active.</p>
       {/if}
 
-      {#if hasGuild}
-        <div class="leave" data-testid="guild-leave">
-          <ConfirmButton
-            label="Leave guild"
-            confirmLabel={leavePreview.data?.ClosesGuild ? 'Really close it?' : 'Really leave?'}
-            disabled={busy || !leavePreview.data?.InGuild}
-            onConfirm={handleLeave}
+      <button disabled={!hasGuild} onclick={raid}>Launch raid</button>
+
+      <!-- The Treasury block that stood here was a second copy of the
+           Contribute gold control, superseded by the one in the Depot panel
+           below. Both were bound to the same treasuryGold state and called the
+           same giveGold, so they were never out of step - but only this one was
+           inside display:none, which is the only reason players never saw two.
+           Removed rather than left as the kind of duplicate that gets edited on
+           one side. -->
+
+      <h3>Logistics</h3>
+      <div class="axis">
+        <span class="dim tiny">Depot level {snap.GuildLogisticsLevel}</span>
+        <Bar
+          value={Number(snap.GuildLogisticsCurrentStock)}
+          max={Math.max(1, Number(snap.GuildLogisticsTargetRequirement))}
+          color="var(--accent)"
+          label={`${formatNumber(Number(snap.GuildLogisticsCurrentStock))} / ${formatNumber(Number(snap.GuildLogisticsTargetRequirement))}`}
+        />
+      </div>
+    </section>
+
+    <section class="panel">
+      <!-- Modul: task 107. This card used to be FIRST, so a phone opened the
+           Guild tab on "unlock at 50 players, 1/50" and the roster sat 1,700px
+           down. It is last now and, while locked, a one-line header that opens
+           on tap. {#if}, not <details>: a closed <details> keeps its
+           author-styled children live (client_web/CLAUDE.md). -->
+      {#if warLocked && warLock.data}
+        {@const lock = warLock.data}
+        <button
+          class="war-toggle"
+          data-testid="guild-war-toggle"
+          aria-expanded={warOpen}
+          onclick={() => (warOpen = !warOpen)}
+        >
+          <span class="war-title">Guild war</span>
+          <span class="dim tiny">Locked &middot; {lock.QualifyingPlayers} / {lock.RequiredPlayers} players</span>
+        </button>
+      {:else}
+        <h2>Guild war</h2>
+      {/if}
+
+      {#if warLocked && warLock.data && warOpen}
+        {@const lock = warLock.data}
+        <p class="war-locked" data-testid="guild-war-locked">
+          Guild Wars unlock at {lock.RequiredPlayers} players.
+        </p>
+        <div class="axis">
+          <span class="dim tiny">Players at level {lock.MinimumLevel}+</span>
+          <Bar
+            value={Math.min(lock.QualifyingPlayers, lock.RequiredPlayers)}
+            max={lock.RequiredPlayers}
+            label={`${lock.QualifyingPlayers} / ${lock.RequiredPlayers}`}
           />
-          {#if leaveNote}
-            <p class="dim small" data-testid="guild-leave-note">{leaveNote}</p>
-          {/if}
         </div>
+        <div class="axis">
+          <span class="dim tiny">Guilds with {lock.RequiredMembersPerGuild}+ such members</span>
+          <Bar
+            value={Math.min(lock.QualifyingGuilds, lock.RequiredGuilds)}
+            max={lock.RequiredGuilds}
+            label={`${lock.QualifyingGuilds} / ${lock.RequiredGuilds}`}
+          />
+        </div>
+        <p class="dim tiny">
+          Both are needed. Once reached, Guild Wars stay unlocked for good.
+        </p>
+      {:else if warLocked}
+        <!-- collapsed -->
+      {:else if warId <= 0}
+        <p class="dim">
+          No war is active. The scoreboard below appears once your guild is
+          matched.
+        </p>
+      {:else}
+        <p class="dim small">
+          War #{warId} &middot; multiplier
+          {typeof snap.CachedWarMultiplier === 'number'
+            ? snap.CachedWarMultiplier.toFixed(2)
+            : snap.CachedWarMultiplier}x
+        </p>
+
+        {#each warAxes as axis}
+          {@const total = Math.max(1, axis.ours + axis.theirs)}
+          <div class="axis">
+            <span class="dim tiny">{axis.label}</span>
+            <Bar
+              value={axis.ours}
+              max={total}
+              color={axis.ours >= axis.theirs ? 'var(--good)' : 'var(--danger)'}
+              label={`${formatNumber(axis.ours)} vs ${formatNumber(axis.theirs)}`}
+            />
+          </div>
+        {/each}
+
+        <h3>Contribute supply</h3>
+        <div class="row">
+          <input type="number" min="1" bind:value={warCommodity} title="Commodity id" />
+          <input type="number" min="1" bind:value={warQuantity} title="Quantity" />
+          <button onclick={contributeWar}>Burn</button>
+        </div>
+        <p class="dim tiny">
+          Contributions are burned into the war effort.
+          <!-- Modul: the command takes a numeric commodity id and there is no
+               picker for it yet; this panel is hidden with the rest of Guild
+               Wars until that is built. -->
+        </p>
       {/if}
     </section>
 
@@ -937,12 +1031,83 @@
 {/if}
 
 <style>
+  /* Modul: ONE COLUMN, on purpose. The auto-fit grid this replaced left a hole
+     under the tall Depot card on a desktop, because a row is as tall as its
+     tallest card. A phone was one column anyway; this makes the desktop agree
+     and puts the cards in the order the dashboard is meant to be read. */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    grid-template-columns: minmax(0, 44rem);
+    justify-content: center;
     gap: 1rem;
     padding: 1rem;
     align-items: start;
+  }
+
+  .guild-name {
+    margin: 0 0 0.3rem;
+    font-size: 1.4rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+  .head-stats {
+    margin: 0;
+  }
+
+  .war-toggle {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    width: 100%;
+    background: none;
+    border: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    padding: 0;
+    cursor: pointer;
+  }
+  .war-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+  }
+  .war-toggle .tiny {
+    margin: 0;
+  }
+
+  .pick {
+    display: grid;
+    gap: 0.2rem;
+    margin-bottom: 0.5rem;
+  }
+  .pick select {
+    width: 100%;
+  }
+  .max-btn {
+    flex: none;
+  }
+
+  .dest {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0.2rem 0 0.6rem;
+  }
+  .dest .tiny {
+    margin: 0 0.2rem 0 0;
+  }
+  .dest-btn {
+    flex: 1 1 0;
+    min-width: 4.5rem;
+  }
+  .dest-btn.active {
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+    border-color: var(--accent);
+  }
+  .deposit-go {
+    width: 100%;
   }
 
   .panel {

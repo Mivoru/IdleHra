@@ -1202,6 +1202,8 @@ await go('Guild');
   } else if (warUnlock.Unlocked) {
     record('the guild war lock reports its progress', true, 'already unlocked on this server');
   } else {
+    // Task 107: the locked war card is collapsed to one line; a player opens it.
+    await page.locator('[data-testid="guild-war-toggle"]').first().click().catch(() => {});
     const lockLine = await page
       .locator('[data-testid="guild-war-locked"]')
       .waitFor({ timeout: 10000 })
@@ -1270,7 +1272,7 @@ await go('Guild');
   const uncatalogued = held.find((o) => o.value === 'raw_log' || o.value === 'oak_log');
   if (uncatalogued) {
     await materialSelect.selectOption(uncatalogued.value);
-    const donateBtn = page.getByRole('button', { name: 'Donate', exact: true }).first();
+    const donateBtn = page.getByRole('button', { name: /^Deposit to Treasury$/ }).first();
     const off = await donateBtn.evaluate((b) => b.disabled);
     record(
       'a material the depot cannot store is not offered as donatable',
@@ -1286,7 +1288,7 @@ await go('Guild');
     // editability check is defined for inputs and selects and answers "not
     // disabled" for anything else, which is how a greyed-out control once
     // reported a broken feature as working.
-    const donate = page.getByRole('button', { name: 'Donate', exact: true }).first();
+    const donate = page.getByRole('button', { name: /^Deposit to Treasury$/ }).first();
     const stillDisabled = await donate.evaluate((b) => b.disabled);
     record(
       'choosing a material enables the Donate button',
@@ -1406,7 +1408,9 @@ await go('Guild');
 
       if (left) {
         // Social's Join/Create used to stay disabled for good; they must open now.
-        await go('Friends');
+        // Task 107: the guild browser moved from Friends to the Guild tab, which
+        // shows it in place of the dashboard for a guildless player.
+        await go('Guild');
         const escaped = guildName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         await page
           .locator('li.guild')
