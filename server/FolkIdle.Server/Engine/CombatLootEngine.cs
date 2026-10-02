@@ -1813,8 +1813,8 @@ namespace FolkIdle.Server.Engine
             // Epic-and-above results since it shipped and drops - the far more
             // common way a player meets a rare item - said nothing at all.
             //
-            // Eight of fourteen, so it fires for roughly the top half of the
-            // rarity ladder and stays rare enough to mean something. Enqueued
+            // Mythic and above (owner decision 2026-10-02), so it stays rare
+            // enough to mean something. Enqueued
             // rather than sent: the queue is bounded and drained by the chat
             // dispatch worker, so an unlucky flood drops announcements instead
             // of stalling the loot path.
@@ -1852,10 +1852,10 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
-        /// Rarity 8 of 14 - the top half of the ladder. High enough that a line
-        /// in global chat is an event rather than noise.
+        /// Mythic (tier 8 of 14) and above. Named after the tier rather than a
+        /// bare number so the threshold reads as the decision it is.
         /// </summary>
-        public const int AnnounceableRarityTier = 8;
+        public const int AnnounceableRarityTier = RarityTier.Mythic;
 
         // Modul: Loot Event Feed. Enqueue only - the actual socket write is
         // NetworkBroadcastSystem's job (it owns the connections; this engine

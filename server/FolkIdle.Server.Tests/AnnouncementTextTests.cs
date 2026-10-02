@@ -9,9 +9,7 @@ namespace FolkIdle.Server.Tests
 {
     /// <summary>
     /// Modul: world announcements, 2026-10-02. "The announcements are too
-    /// long, and when I reroll it spams the chat." Both halves are pure, so
-    /// both are tested here without a fixture; the end-to-end form of the
-    /// auto-reroll rule is in AutoRerollRunReportTests.
+    /// long." Pure, so tested here without a fixture.
     /// </summary>
     public class AnnouncementTextTests
     {
@@ -47,16 +45,9 @@ namespace FolkIdle.Server.Tests
                 if (name.Length > longestMonster.Length) longestMonster = name;
             }
 
-            string longestAffix = string.Empty;
-            foreach (var definition in AffixRegistry.Definitions)
-            {
-                if (definition.Id.Length > longestAffix.Length) longestAffix = definition.Id;
-            }
-
             string[] lines =
             {
                 AnnouncementText.Drop(LongestName, RarityTier.GetName(RarityTier.Transcendent), longestItem),
-                AnnouncementText.Reroll(LongestName, AffixRarity.Legendary, longestAffix),
                 AnnouncementText.BossClear(LongestName, longestMonster, worldFirst: true),
                 AnnouncementText.BossClear(LongestName, longestMonster, worldFirst: false),
                 AnnouncementText.SeasonPlacement(9999, 3, LongestName),
@@ -74,53 +65,17 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        /// <summary>
+        /// Owner decision 2026-10-02: a drop is world news from Mythic up. The
+        /// threshold is read by NAME from the server's own rarity list, so this
+        /// fails if the ladder is reordered under it.
+        /// </summary>
         [Fact]
-        public void TheRerollLineNamesTheAffixAndNotItsRawMagnitude()
+        public void ADropIsAnnouncedFromMythicAndAbove()
         {
-            Assert.Equal("Mivoru rerolled Legendary crit dmg%",
-                AnnouncementText.Reroll("Mivoru", AffixRarity.Legendary, "crit_dmg_pct"));
-            Assert.Equal("Mivoru rerolled Legendary hp",
-                AnnouncementText.Reroll("Mivoru", AffixRarity.Legendary, "flat_hp"));
-        }
-
-        // ---------- the reroll rule ----------
-        //
-        // Each test uses its own player id, because the claim table is static
-        // and xunit runs test classes in parallel.
-
-        [Fact]
-        public void AnEpicRerollIsNoLongerWorldNews()
-        {
-            var now = new DateTime(2026, 10, 2, 12, 0, 0, DateTimeKind.Utc);
-            Assert.False(RerollAnnouncementPolicy.TryClaim(880000001L, AffixRarity.Epic, now));
-            Assert.False(RerollAnnouncementPolicy.TryClaim(880000001L, AffixRarity.Rare, now));
-            Assert.True(RerollAnnouncementPolicy.TryClaim(880000001L, AffixRarity.Legendary, now));
-        }
-
-        [Fact]
-        public void OnePlayerIsAnnouncedAtMostOncePerCooldown()
-        {
-            const long player = 880000002L;
-            var start = new DateTime(2026, 10, 2, 12, 0, 0, DateTimeKind.Utc);
-
-            Assert.True(RerollAnnouncementPolicy.TryClaim(player, AffixRarity.Legendary, start));
-
-            // A burst of Legendaries inside the window is one line, not many.
-            Assert.False(RerollAnnouncementPolicy.TryClaim(player, AffixRarity.Legendary, start.AddSeconds(1)));
-            Assert.False(RerollAnnouncementPolicy.TryClaim(player, AffixRarity.Legendary,
-                start + RerollAnnouncementPolicy.PerPlayerCooldown - TimeSpan.FromSeconds(1)));
-
-            // And the window reopens - the rule coalesces, it does not silence.
-            Assert.True(RerollAnnouncementPolicy.TryClaim(player, AffixRarity.Legendary,
-                start + RerollAnnouncementPolicy.PerPlayerCooldown));
-        }
-
-        [Fact]
-        public void OnePlayersCooldownDoesNotSilenceAnother()
-        {
-            var now = new DateTime(2026, 10, 2, 12, 0, 0, DateTimeKind.Utc);
-            Assert.True(RerollAnnouncementPolicy.TryClaim(880000003L, AffixRarity.Legendary, now));
-            Assert.True(RerollAnnouncementPolicy.TryClaim(880000004L, AffixRarity.Legendary, now));
+            Assert.Equal("Mythic", RarityTier.GetName(CombatLootEngine.AnnounceableRarityTier));
+            Assert.Equal(RarityTier.Mythic, CombatLootEngine.AnnounceableRarityTier);
+            Assert.True(RarityTier.Legendary < CombatLootEngine.AnnounceableRarityTier);
         }
     }
 }
