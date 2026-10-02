@@ -135,4 +135,23 @@ describe('the committed native projects', () => {
       'android.permission.POST_NOTIFICATIONS',
     );
   });
+
+  it('locks a phone to portrait on both platforms (task 110b)', () => {
+    // Android: one attribute on the activity. Android itself still rotates a
+    // tablet, a foldable and split-screen - that is the platform, not us.
+    expect(read('android', 'app', 'src', 'main', 'AndroidManifest.xml')).toContain(
+      'android:screenOrientation="portrait"',
+    );
+
+    // iOS: the unsuffixed key is the iPhone's; `~ipad` overrides it on an iPad,
+    // which keeps every orientation (iPad multitasking requires all four
+    // unless the app opts out of it entirely with UIRequiresFullScreen).
+    const plist = read('ios', 'App', 'App', 'Info.plist');
+    const list = (key: string) => {
+      const m = plist.match(new RegExp(`<key>${key}</key>\\s*<array>([\\s\\S]*?)</array>`));
+      return m ? [...m[1].matchAll(/<string>(\w+)<\/string>/g)].map((x) => x[1]) : [];
+    };
+    expect(list('UISupportedInterfaceOrientations')).toEqual(['UIInterfaceOrientationPortrait']);
+    expect(list('UISupportedInterfaceOrientations~ipad')).toContain('UIInterfaceOrientationLandscapeLeft');
+  });
 });
