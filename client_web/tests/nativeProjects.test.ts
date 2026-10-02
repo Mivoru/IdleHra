@@ -154,4 +154,24 @@ describe('the committed native projects', () => {
     expect(list('UISupportedInterfaceOrientations')).toEqual(['UIInterfaceOrientationPortrait']);
     expect(list('UISupportedInterfaceOrientations~ipad')).toContain('UIInterfaceOrientationLandscapeLeft');
   });
+
+  it('the web app can be installed from a phone browser (task 110d)', () => {
+    // A manifest naming an icon that is not in public/ installs with a blank
+    // tile and says nothing - every path it names must exist.
+    const manifest = JSON.parse(read('public', 'manifest.webmanifest'));
+    expect(manifest.display).toBe('standalone');
+    expect(manifest.orientation).toBe('portrait');
+    const sizes = manifest.icons.map((i: { sizes: string }) => i.sizes);
+    expect(sizes).toContain('192x192');
+    expect(sizes).toContain('512x512');
+    for (const icon of manifest.icons) {
+      expect(() => read('public', ...icon.src.replace(/^\//, '').split('/'))).not.toThrow();
+    }
+
+    const html = read('index.html');
+    expect(html).toContain('<link rel="manifest" href="/manifest.webmanifest" />');
+    const touch = html.match(/<link rel="apple-touch-icon" href="\/([^"]+)"/);
+    expect(touch).not.toBeNull();
+    expect(() => read('public', ...touch![1].split('/'))).not.toThrow();
+  });
 });
