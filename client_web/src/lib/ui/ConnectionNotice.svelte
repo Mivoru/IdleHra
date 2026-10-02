@@ -157,7 +157,8 @@
        losing signal (exactly when this matters) showed it half behind the
        clock and battery icons. check:safearea judges the top band at rest, so
        it could not see this. */
-    top: var(--sa-top);
+    /* Task 95: and under the app header, which is sticky too. */
+    top: calc(var(--sa-top) + var(--sticky-header-h));
     /* Below the modal cards (50-60) and the chat dock (40), above ordinary
        page content. It is information, not an interruption. */
     z-index: 30;

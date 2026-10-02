@@ -2,13 +2,14 @@
   import { QueryClientProvider } from '@tanstack/svelte-query';
   import Login from './routes/Login.svelte';
   import ChatDock from './lib/ui/ChatDock.svelte';
-  import { chatHandleInHeader } from './lib/stores/chatDock';
+  import ChatButton from './lib/ui/ChatButton.svelte';
   import { screenRequest, signOutRequest, publishCurrentScreen } from './lib/stores/navigation';
   import Hub from './routes/Hub.svelte';
   import OfflineSummary from './lib/ui/OfflineSummary.svelte';
   import VictoryCard from './lib/ui/VictoryCard.svelte';
   import TabBar from './lib/ui/TabBar.svelte';
-  import { hotkeyTab } from './lib/ui/tabs';
+  import { hotkeyTab, MAIN_TABS } from './lib/ui/tabs';
+  import { connectionChip } from './lib/ui/connectionMessage';
   import { refreshUnopenedChests, unopenedChests } from './lib/stores/cosmeticChests';
   import { PREF_LAST_SCREEN, readPrefAs, writePref } from './lib/net/prefs';
   import DeathCard from './lib/ui/DeathCard.svelte';
@@ -31,7 +32,7 @@
     deathSummary,
     dismissDeath,
   } from './lib/stores/game';
-  import { chatDockOpen } from './lib/stores/chatDock';
+  import { chatDockOpen, setChatOpen } from './lib/stores/chatDock';
   import { topOverlay } from './lib/stores/sheet';
   import {
     resolveBackPress,
@@ -91,13 +92,30 @@
 
   // Modul: grouped rather than a flat row. Twenty-one destinations in one line
   // wrapped into an unscannable block on any window narrower than a desktop,
-  // and the groups are how the game already thinks about itself - what you do,
-  // what you own, who you do it with, and what you have achieved.
+  // and the groups are how the game already thinks about itself.
+  //
+  // Task 95: ONE LIST, TWO FACES. A desktop shows each group as a header
+  // dropdown; a phone shows the same groups as tiles in the More sheet, minus
+  // the four the tab bar already holds. Regrouped at the same time - "You"
+  // had mixed Skill Tree and Progress with Settings and the Wiki, and the
+  // Market was reachable only as a tab inside another entry:
+  //   Play             - what the character is doing right now
+  //   Hero             - the character and what it carries
+  //   Make             - what the village builds and breeds
+  //   Friends & Guilds - other players, and the post
+  //   Game             - your record, the rules, the settings
+  //
+  // ONE NAME PER CONCEPT (task 95, owner-approved 2026-10-02). An entry, its
+  // tab, its heading, the Wiki and the tutorial say the same word: Home (not
+  // Map), Auto-Eat (not Supplies - the first guided step already said "Go to
+  // Auto-Eat" and pointed at an entry called something else), Bloodline >
+  // Breeding / Ancestors / Inheritance, and Friends (the entry that used to be
+  // called Community and opened a page called Friends).
   const GROUPS = [
     {
       name: 'Play',
       screens: [
-        { key: 'hub', label: 'Map' },
+        { key: 'hub', label: 'Home' },
         { key: 'combat', label: 'Combat' },
         { key: 'gathering', label: 'Gathering' },
         { key: 'worldboss', label: 'World Boss' },
@@ -105,57 +123,66 @@
       ],
     },
     {
-      name: 'Items',
+      name: 'Hero',
       screens: [
         { key: 'character', label: 'Character' },
+        { key: 'skills', label: 'Skill Tree' },
         // Task 54: cosmetic chests, avatars and frames.
         { key: 'wardrobe', label: 'Wardrobe' },
         { key: 'chest', label: 'Chest' },
-        // Task 59: Auto-Eat and Boosts are one "Supplies" entry with two tabs
-        // - both are what you take into a fight, and Boosts was one small
-        // panel once the chrono bank went. See TAB_FAMILIES.
-        { key: 'larder', label: 'Supplies' },
-        { key: 'crafting', label: 'Crafting' },
-        { key: 'forge', label: 'Forge' },
+        // Task 59: Auto-Eat and Boosts are one entry with two tabs - both are
+        // what you take into a fight. See TAB_FAMILIES. Task 95 renamed the
+        // entry from "Supplies" to the word the tutorial uses.
+        { key: 'larder', label: 'Auto-Eat' },
       ],
     },
     {
-      name: 'Village',
+      name: 'Make',
       screens: [
         { key: 'village', label: 'Village' },
-        // Task 59: Breeding, the Hall of Ancestors and Inheritance were a
-        // three-entry "Genetics" group. They are one family's story - who is
-        // born, who is kept through the season, what the line has bought -
-        // so they are one "Bloodline" entry with three tabs.
+        { key: 'crafting', label: 'Crafting' },
+        { key: 'forge', label: 'Forge' },
+        // Task 59: Breeding, the Hall of Ancestors and Inheritance are one
+        // family's story - who is born, who is kept through the season, what
+        // the line has bought - so they are one "Bloodline" entry, three tabs.
         { key: 'breeding', label: 'Bloodline' },
         { key: 'codex', label: 'Codex' },
       ],
     },
     {
-      name: 'You',
+      name: 'Friends & Guilds',
       screens: [
-        { key: 'skills', label: 'Skill Tree' },
-        { key: 'progression', label: 'Progress' },
-        { key: 'store', label: 'Store' },
-        { key: 'settings', label: 'Settings' },
-        { key: 'wiki', label: 'Wiki' },
-      ],
-    },
-    {
-      name: 'Community',
-      screens: [
-        // Task 76: Friends, Market, Guild and Leaderboards are one
-        // "Community" entry with four tabs - see TAB_FAMILIES. The entry
-        // opens Friends, the one tab nobody has to unlock first.
-        { key: 'social', label: 'Community' },
-        // Modul: Mail belongs here, not under Items - and for a while it
-        // belonged NOWHERE. Moving it out of Items dropped the entry without
-        // adding it back, which left the route and its unread badge reachable
-        // only by a cross-screen navigation request. There was no button.
+        // Task 76 made Friends, Market, Guild and Leaderboards one family with
+        // four tabs. Task 95 gives Guild and Market an entry of their own as
+        // well: a player looking for the Market finds the word Market in the
+        // menu, not inside an entry with another name.
+        { key: 'social', label: 'Friends' },
+        { key: 'guildops', label: 'Guild' },
+        { key: 'market', label: 'Market' },
+        // Modul: Mail has its own entry - world boss rewards land there, and
+        // a badge on a tab inside another entry is a badge nobody sees. It
+        // once belonged NOWHERE: moving it out of Items dropped the entry
+        // without adding it back, and the route was reachable only by a
+        // cross-screen request.
         { key: 'mailbox', label: 'Mail' },
       ],
     },
+    {
+      name: 'Game',
+      screens: [
+        { key: 'progression', label: 'Progress' },
+        { key: 'wiki', label: 'Wiki' },
+        { key: 'settings', label: 'Settings' },
+        { key: 'store', label: 'Store' },
+      ],
+    },
   ] as const;
+
+  /** The group whose sheet section carries the chat entry (task 95). */
+  const CHAT_GROUP = 'Friends & Guilds';
+
+  /** The tab bar's own screens: a phone's sheet does not list them twice. */
+  const TAB_BAR_KEYS: ReadonlySet<string> = new Set(MAIN_TABS.map((t) => t.key));
 
   // Modul: TASK 71 - A MENU ENTRY THAT LEADS TO "NOTHING HERE YET" IS NOT AN
   // ENTRY. The Store has no product (owner, 2026-09-28: simulation speed and
@@ -170,24 +197,35 @@
   // coach-marks, the guided first minute's 'larder' step, requestScreen() from
   // a death card, the back stack, the remembered last screen - still works
   // unchanged. Only the menu folds them together.
-  const TAB_FAMILIES: Record<string, readonly { key: string; label: string }[]> = {
-    larder: [
-      { key: 'larder', label: 'Auto-Eat' },
-      { key: 'boosts', label: 'Boosts' },
-    ],
-    breeding: [
-      { key: 'breeding', label: 'Breeding' },
-      { key: 'ancestors', label: 'Ancestors' },
-      { key: 'inheritance', label: 'Inheritance' },
-    ],
-    // Task 76. Mail stays its own entry: world boss rewards land there, and
-    // a badge on a tab inside another entry is a badge nobody sees.
-    social: [
-      { key: 'social', label: 'Friends' },
-      { key: 'market', label: 'Market' },
-      { key: 'guildops', label: 'Guild' },
-      { key: 'leaderboards', label: 'Leaderboards' },
-    ],
+  //
+  // Task 95: a family has a NAME, shown as the breadcrumb above its tabs
+  // ("Bloodline > Ancestors"). Before it, the word Bloodline was on the menu
+  // entry and nowhere on the page it opened.
+  const TAB_FAMILIES: Record<string, { name: string; tabs: readonly { key: string; label: string }[] }> = {
+    larder: {
+      name: 'Auto-Eat',
+      tabs: [
+        { key: 'larder', label: 'Auto-Eat' },
+        { key: 'boosts', label: 'Boosts' },
+      ],
+    },
+    breeding: {
+      name: 'Bloodline',
+      tabs: [
+        { key: 'breeding', label: 'Breeding' },
+        { key: 'ancestors', label: 'Ancestors' },
+        { key: 'inheritance', label: 'Inheritance' },
+      ],
+    },
+    social: {
+      name: 'Friends & Guilds',
+      tabs: [
+        { key: 'social', label: 'Friends' },
+        { key: 'market', label: 'Market' },
+        { key: 'guildops', label: 'Guild' },
+        { key: 'leaderboards', label: 'Leaderboards' },
+      ],
+    },
   };
   const TAB_ONLY_KEYS = ['boosts', 'ancestors', 'inheritance', 'market', 'guildops', 'leaderboards'] as const;
 
@@ -195,14 +233,27 @@
     | (typeof GROUPS)[number]['screens'][number]['key']
     | (typeof TAB_ONLY_KEYS)[number];
 
-  /** The menu entry a screen lives under - itself, unless it is a tab. */
+  /** The family owner a screen's tabs belong to - itself, unless it is a tab. */
   function menuKeyOf(key: string | null): string | null {
     if (key === null) return null;
-    for (const [owner, tabs] of Object.entries(TAB_FAMILIES)) {
-      if (tabs.some((t) => t.key === key)) return owner;
+    for (const [owner, family] of Object.entries(TAB_FAMILIES)) {
+      if (family.tabs.some((t) => t.key === key)) return owner;
     }
     return key;
   }
+
+  const MENU_KEYS: ReadonlySet<string> = new Set(GROUPS.flatMap((g) => g.screens.map((s) => s.key)));
+
+  /**
+   * The menu ENTRY that stands for a screen: its own entry when it has one
+   * (Market and Guild are tabs AND entries since task 95), otherwise its
+   * family's. So the menu marks Market, not Friends, while you are trading.
+   */
+  function entryKeyOf(key: string | null): string | null {
+    if (key === null) return null;
+    return MENU_KEYS.has(key) ? key : menuKeyOf(key);
+  }
+
   // Modul: the map is where a session starts. Signing in used to drop the
   // player straight onto Combat with a wall of nav words above it; the painted
   // valley is both prettier and a better answer to "where am I".
@@ -377,6 +428,15 @@
     return key !== null && group.screens.some((s) => s.key === key);
   }
 
+  // Task 95: the phone's More sheet is `navOpen` - the same flag the old
+  // in-header menu used, so the back button's 'close-nav' still closes it.
+  // Opening it closes the chat window: two full-screen layers at once make a
+  // back press that seems to do nothing.
+  function setNavOpen(open: boolean): void {
+    navOpen = open;
+    if (open) setChatOpen(false);
+  }
+
   // Modul: THE ROUTE THE PLAYER TOOK, kept so the Android back button has
   // something to walk. See lib/net/backButton.ts for why back needed to stop
   // meaning "quit".
@@ -424,19 +484,9 @@
     screen = next;
     void scrollAfterRender(0);
   }
-  // Modul: flattened through an explicit type. `GROUPS` is a readonly tuple OF
-  // readonly tuples, and flatMap over that infers the union of the tuples
-  // themselves rather than of their elements - so `item` came out as unknown
-  // and `item.label` did not typecheck. Naming the element type is the whole
-  // fix; the runtime behaviour never changed.
-  const ALL_SCREENS: readonly { key: ScreenKey; label: string }[] = GROUPS.flatMap(
-    (group) => group.screens as readonly { key: ScreenKey; label: string }[],
-  );
-  const currentScreenLabel = $derived(
-    ALL_SCREENS.find((item) => item.key === menuKeyOf(screen))?.label ?? 'Menu',
-  );
-
-  const activeTabs = $derived(TAB_FAMILIES[menuKeyOf(screen) ?? ''] ?? null);
+  const activeFamily = $derived(TAB_FAMILIES[menuKeyOf(screen) ?? ''] ?? null);
+  const activeTabs = $derived(activeFamily?.tabs ?? null);
+  const activeTabLabel = $derived(activeTabs?.find((t) => t.key === screen)?.label ?? '');
 
   $effect(() => {
     const request = $screenRequest;
@@ -699,6 +749,32 @@
   // halted character earns nothing, and the player may well be looking at the
   // inventory when it happens.
   const haltBadge = $derived(snap ? (HALT_REASON_SHORT[snap.ActivityHaltReason] ?? '') : '');
+  // Task 95: the Skill Tree lives in the sheet now, so it carries its own dot.
+  const skillsWant = $derived(snap ? Number(snap.AvailableSkillPoints) > 0 : false);
+
+  // Task 95: nothing while connected, one plain word otherwise.
+  const phaseChip = $derived(connectionChip($connectionStatus.phase));
+
+  // Modul: THE HEADER'S HEIGHT, PUBLISHED. The header is sticky now (task 95),
+  // so anything else that sticks - Combat's status strip, Character's person
+  // switcher, the connection notice - has to sit UNDER it, not behind it. The
+  // height is measured rather than declared because it is not fixed: an event
+  // chip or a halt badge can wrap a desktop header onto a second line.
+  let headerEl = $state<HTMLElement | null>(null);
+  $effect(() => {
+    const el = headerEl;
+    if (!el) return;
+    const root = document.documentElement;
+    const publish = () =>
+      root.style.setProperty('--sticky-header-h', `${Math.ceil(el.getBoundingClientRect().height)}px`);
+    publish();
+    const observer = new ResizeObserver(publish);
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      root.style.removeProperty('--sticky-header-h');
+    };
+  });
 </script>
 
 <svelte:head>
@@ -709,27 +785,56 @@
 
 <QueryClientProvider client={queryClient}>
   {#if token}
-    <header>
-      <strong>FolkIdle</strong>
-
-      <!-- Modul: ON A PHONE THE NAV IS A MENU, not a wall.
-           Twenty-two destinations in four labelled groups is a good desktop
-           header and it filled the whole first screen of a 360px phone - the
-           map, which is the screen it was sitting on top of, started below the
-           fold. A player opening the game saw a list of links and had to
-           scroll to reach the game.
-           Collapsed by default on narrow screens, showing where you are; the
-           full grouping is intact once opened, and choosing anything closes
-           it again. -->
+    <!-- Modul: ONE NAV ENTRY, two places (task 95): the desktop header's
+         dropdowns and the phone's More sheet both render this, so a lock, a
+         badge or a coach-mark cannot be added to one and forgotten in the
+         other. -->
+    {#snippet navEntry(item: { key: string; label: string }, inSheet: boolean)}
+      <!-- Task 60: a screen that is not useful yet is greyed, with what opens
+           it beside the label, rather than hidden - the menu says what is
+           coming. A link from another screen still opens it. -->
+      {@const locked = $screenLocks(item.key)}
+      <!-- Modul: THE COACH-MARK. The onboarding panel does not float a bubble
+           next to this button, it makes the button itself pulse - same "look
+           here", none of the positioning maths that clips at a narrow width. -->
       <button
-        class="navtoggle"
-        aria-expanded={navOpen}
-        onclick={() => (navOpen = !navOpen)}
+        class:active={entryKeyOf(screen) === item.key}
+        class:coachmark={entryKeyOf($coachTargetScreen) === item.key}
+        class:locked={locked !== null}
+        class:tile={inSheet}
+        disabled={locked !== null}
+        aria-current={entryKeyOf(screen) === item.key ? 'page' : undefined}
+        title={locked ? `Opens at: ${locked}` : item.key === 'character' && characterWants ? 'Points to spend or a chest to open' : undefined}
+        data-nav={item.key}
+        data-label={item.label}
+        data-locked={locked ?? undefined}
+        onclick={() => {
+          goTo(item.key as ScreenKey);
+          navOpen = false;
+          openGroup = '';
+        }}
       >
-        {navOpen ? 'Close' : 'Menu'} &middot; {currentScreenLabel}
+        <span class="entry-label">{item.label}</span>
+        {#if locked}<span class="lock-req">{locked}</span>{/if}
+        <!-- Only the header's copy chimes when mail arrives; see MailBadge. -->
+        {#if item.key === 'mailbox'}<MailBadge quiet={inSheet} />{/if}
+        {#if item.key === 'character' && characterWants}<span class="navdot" aria-hidden="true"></span>{/if}
+        {#if item.key === 'skills' && skillsWant}<span class="navdot" aria-hidden="true"></span>{/if}
       </button>
+    {/snippet}
 
-      <nav class:open={navOpen}>
+    <!-- Modul: TASK 95 - A SLIM HEADER THAT STAYS. It was in flow and about
+         230px tall on a 390px phone (title, event, wallet, "Live", Sign out,
+         and a "Menu · Map" button on a row of its own), and it scrolled away
+         with the page - so the menu, the only way to 21 of 26 screens, was at
+         the top of whatever the player had scrolled down. Now one row, sticky
+         under the status bar: the name, the purse, and a menu button that
+         opens the same sheet as the More tab. On a desktop the same row
+         carries the grouped dropdowns, the chat entry and Sign out. -->
+    <header bind:this={headerEl}>
+      <strong class="brand">FolkIdle</strong>
+
+      <nav aria-label="Main menu">
         {#each GROUPS as group}
           <div
             class="group"
@@ -738,14 +843,16 @@
             aria-label={group.name}
             onfocusout={onGroupFocusOut}
           >
-            <span class="group-name">{group.name}</span>
             <!-- Task 82: the desktop face of the group. aria-label says "menu"
-                 so a button named exactly "Village" or "Community" still means
-                 the ENTRY inside it. -->
+                 so a button named exactly "Village" still means the ENTRY
+                 inside it. Task 95: the group you are in is underlined and
+                 bold, and a coach-mark is a dot on the toggle - the toggle used
+                 to wear the tutorial's pulsing ring while the "you are here"
+                 state was a background a shade off the header's own. -->
             <button
               class="group-toggle"
-              class:active={groupHolds(group, menuKeyOf(screen))}
-              class:coachmark={groupHolds(group, menuKeyOf($coachTargetScreen))}
+              class:active={groupHolds(group, entryKeyOf(screen))}
+              class:coachmark={groupHolds(group, entryKeyOf($coachTargetScreen))}
               aria-haspopup="true"
               aria-expanded={openGroup === group.name}
               aria-label={`${group.name} menu`}
@@ -758,36 +865,8 @@
             </button>
             <div class="group-buttons">
               {#each group.screens as item}
-                <!-- Modul: THE COACH-MARK. The onboarding panel does not float a
-                     bubble next to this button, it makes the button itself
-                     pulse - same "look here", none of the positioning maths
-                     that clips at a narrow width. -->
-                <!-- Task 60: a screen that is not useful yet is greyed, with
-                     what opens it beside the label, rather than hidden - the
-                     menu says what is coming. A link from another screen
-                     still opens it; this only declutters the menu. -->
-                {@const locked = $screenLocks(item.key)}
                 {#if !MENU_HIDDEN.has(item.key)}
-                <button
-                  class:active={menuKeyOf(screen) === item.key}
-                  class:coachmark={menuKeyOf($coachTargetScreen) === item.key}
-                  class:locked={locked !== null}
-                  disabled={locked !== null}
-                  title={locked ? `Opens at: ${locked}` : item.key === 'character' && characterWants ? 'Points to spend or a chest to open' : undefined}
-                  data-nav={item.key}
-                  data-label={item.label}
-                  data-locked={locked ?? undefined}
-                  onclick={() => {
-                    goTo(item.key);
-                    navOpen = false;
-                    openGroup = '';
-                  }}
-                >
-                  {item.label}
-                  {#if locked}<span class="lock-req">{locked}</span>{/if}
-                  {#if item.key === 'mailbox'}<MailBadge />{/if}
-                  {#if item.key === 'character' && characterWants}<span class="navdot" aria-hidden="true"></span>{/if}
-                </button>
+                  {@render navEntry(item, false)}
                 {/if}
               {/each}
             </div>
@@ -795,7 +874,7 @@
         {/each}
       </nav>
 
-      <EventBanner />
+      <span class="event-slot"><EventBanner /></span>
 
       {#if haltBadge}
         <!-- Task 85: an order acting (6, 7) still earns; only a stop says it does not. -->
@@ -815,19 +894,27 @@
         </span>
       {/if}
 
-      {#if $chatHandleInHeader}
-        <!-- Task 71: the chat's quiet home. See stores/chatDock.ts. -->
-        <button class="chat-head" onclick={() => chatDockOpen.set(true)} aria-label="Show chat, nobody online">
-          Chat
-        </button>
-      {/if}
+      <!-- Task 95: the one chat entry on a desktop. A phone's is in the sheet. -->
+      <ChatButton class="chat-head" />
 
-      <span class="phase" data-phase={$connectionStatus.phase}>
-        {$connectionStatus.phase}{$connectionStatus.attempt > 0
-          ? ` (retry ${$connectionStatus.attempt})`
-          : ''}
-      </span>
+      {#if phaseChip}
+        <span class="phase" data-phase={$connectionStatus.phase}>{phaseChip}</span>
+      {/if}
       <button class="signout" onclick={signOut}>Sign out</button>
+
+      <!-- Phone only: the same sheet as the More tab, from the top of the
+           screen for a player whose thumb is up there. -->
+      <button
+        class="navtoggle"
+        aria-label="Menu"
+        aria-expanded={navOpen}
+        aria-controls="more-sheet"
+        onclick={() => setNavOpen(!navOpen)}
+      >
+        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M4 7h16M4 12h16M4 17h16" />
+        </svg>
+      </button>
     </header>
 
     <!-- Modul: offline/reconnect UI. This was a one-line banner that printed
@@ -839,25 +926,41 @@
          reconnect loop it reports on is untouched. -->
     <ConnectionNotice />
 
-    {#if activeTabs}
-      <div class="screen-tabs" role="tablist" aria-label={currentScreenLabel}>
-        {#each activeTabs as tab (tab.key)}
-          {@const tabLock = $screenLocks(tab.key)}
-          <!-- Task 76: a tab carries the lock its screen would have had as a
-               menu entry (Market and Guild at level 10), so the entry itself
-               stays open for the tabs that are. -->
-          <button
-            role="tab"
-            class:active={screen === tab.key}
-            class:locked={tabLock !== null}
-            aria-selected={screen === tab.key}
-            disabled={tabLock !== null && screen !== tab.key}
-            title={tabLock ? `Opens at: ${tabLock}` : undefined}
-            data-subtab={tab.key}
-            data-locked={tabLock ?? undefined}
-            onclick={() => goTo(tab.key as ScreenKey)}>{tab.label}{#if tabLock}<span class="lock-req">{tabLock}</span>{/if}</button
-          >
-        {/each}
+    {#if activeFamily && activeTabs}
+      <!-- Modul: TASK 95 - "WHERE AM I" ABOVE EVERY TAB ROW. The family's name
+           ("Bloodline") was on the menu entry and nowhere on the page it
+           opened, so the page read as "Breeding" and the menu as something
+           else. And the tabs are ONE row that scrolls sideways: a guest's
+           lock suffixes ("Market Level 10") wrapped them onto a second line. -->
+      <div class="family">
+        <!-- The family's first tab can share its name (Auto-Eat), and
+             "Auto-Eat > Auto-Eat" says nothing twice. -->
+        <p class="crumbs">
+          <span>{activeFamily.name}</span>
+          {#if activeTabLabel && activeTabLabel !== activeFamily.name}
+            <span class="crumb-sep" aria-hidden="true">&rsaquo;</span>
+            <span aria-current="page">{activeTabLabel}</span>
+          {/if}
+        </p>
+        <div class="screen-tabs" role="tablist" aria-label={activeFamily.name}>
+          {#each activeTabs as tab (tab.key)}
+            {@const tabLock = $screenLocks(tab.key)}
+            <!-- Task 76: a tab carries the lock its screen would have had as a
+                 menu entry (Market and Guild at level 10), so the entry itself
+                 stays open for the tabs that are. -->
+            <button
+              role="tab"
+              class:active={screen === tab.key}
+              class:locked={tabLock !== null}
+              aria-selected={screen === tab.key}
+              disabled={tabLock !== null && screen !== tab.key}
+              title={tabLock ? `Opens at: ${tabLock}` : undefined}
+              data-subtab={tab.key}
+              data-locked={tabLock ?? undefined}
+              onclick={() => goTo(tab.key as ScreenKey)}>{tab.label}{#if tabLock}<span class="lock-req">{tabLock}</span>{/if}</button
+            >
+          {/each}
+        </div>
       </div>
     {/if}
 
@@ -904,12 +1007,46 @@
     <ChatDock />
     <!-- The one profile host: any name opens it through stores/profile.ts. -->
     <PlayerProfileModal />
-    <!-- Closes the phone Menu too: a tab tapped under an open Menu changed the
-         screen and left the whole menu expanded on top of it. -->
+
+    {#if navOpen}
+      <!-- Modul: TASK 95 - THE MORE SHEET. Every destination the tab bar does
+           not hold, grouped, rising from the tab bar the thumb is already on:
+           from the bottom of a long Chest, Mail and Settings are two taps away
+           and no scrolling. Phone only - a desktop never sets navOpen, and the
+           CSS hides it above the breakpoint in case a resize leaves it set.
+           The tab bar stays on top of the backdrop, so More closes it again
+           and the other four tabs still work. -->
+      <button class="sheet-backdrop" aria-label="Close menu" tabindex="-1" onclick={() => setNavOpen(false)}></button>
+      <div class="more-sheet" id="more-sheet" role="dialog" aria-label="More">
+        <div class="sheet-event"><EventBanner /></div>
+        {#each GROUPS as group}
+          {@const items = group.screens.filter((s) => !MENU_HIDDEN.has(s.key) && !TAB_BAR_KEYS.has(s.key))}
+          {#if items.length > 0 || group.name === CHAT_GROUP}
+            <section class="sheet-group" aria-label={group.name}>
+              <h2 class="group-name">{group.name}</h2>
+              <div class="sheet-grid">
+                {#each items as item (item.key)}
+                  {@render navEntry(item, true)}
+                {/each}
+                {#if group.name === CHAT_GROUP}
+                  <ChatButton class="tile" onactivate={() => (navOpen = false)} />
+                {/if}
+              </div>
+            </section>
+          {/if}
+        {/each}
+      </div>
+    {/if}
+
     <TabBar
       current={screen}
+      moreOpen={navOpen}
+      onMore={() => setNavOpen(!navOpen)}
       onNavigate={(next) => {
+        // A tab tapped under the open sheet or chat changes the screen, so
+        // neither may stay on top of it.
         navOpen = false;
+        setChatOpen(false);
         goTo(next as ScreenKey);
       }}
     />
@@ -958,13 +1095,37 @@
 </QueryClientProvider>
 
 <style>
+  /* Task 95: the family's name, then the tab you are on, above the tabs. */
+  .family {
+    padding: 0.6rem 1rem 0;
+  }
+  .crumbs {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    margin: 0 0 0.35rem;
+    font-size: var(--fs-xs);
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .crumbs [aria-current='page'] {
+    color: var(--text);
+  }
+  /* Modul: ONE ROW THAT SCROLLS SIDEWAYS (task 95). It wrapped, and a guest's
+     lock suffixes ("Market Level 10", "Guild Level 10") pushed Leaderboards
+     onto a second row of 44px buttons - 52px of chrome before the screen. A
+     tab may not shrink: the touch floor is 44px and a squeezed tab is a
+     clipped label. */
   .screen-tabs {
     display: flex;
+    flex-wrap: nowrap;
     gap: 0.5rem;
-    padding: 0.75rem 1rem 0;
-    flex-wrap: wrap;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
   .screen-tabs button {
+    flex-shrink: 0;
     min-height: 44px;
     padding: 0.4rem 0.9rem;
     border-radius: var(--radius);
@@ -972,6 +1133,7 @@
     background: var(--bg-panel);
     color: inherit;
     font: inherit;
+    white-space: nowrap;
     cursor: pointer;
   }
   .screen-tabs button.active {
@@ -980,7 +1142,8 @@
     font-weight: 700;
   }
   nav button.locked,
-  .screen-tabs button.locked {
+  .screen-tabs button.locked,
+  .more-sheet button.locked {
     opacity: 0.55;
     cursor: not-allowed;
   }
@@ -1002,13 +1165,25 @@
     opacity: 0.9;
   }
 
+  /* Modul: STICKY, under the status bar (task 95). `top: var(--sa-top)`, not
+     0: a sticky offset is measured from the scrollport edge, which on an
+     edge-to-edge phone is under the clock - the reason ConnectionNotice gives.
+     The shadow paints the header's own colour up over that strip, so a page
+     scrolling under it does not show through behind the status icons.
+     --z-nav like the tab bar: above page content and the screens' own sticky
+     strips (30), below the cards (60). Its height is published as
+     --sticky-header-h (script), which those strips add to their own top. */
   header {
+    position: sticky;
+    top: var(--sa-top);
+    z-index: var(--z-nav);
     display: flex;
     align-items: center;
     gap: 0.75rem;
     padding: 0.5rem 1rem;
     background: var(--bg-panel);
     border-bottom: 1px solid var(--border);
+    box-shadow: 0 calc(-1 * var(--sa-top)) 0 var(--bg-panel);
     flex-wrap: wrap;
   }
 
@@ -1027,14 +1202,15 @@
     gap: 0.1rem;
   }
 
-  /* The group name is a label, not a control - small, quiet, and skippable
-     once the player knows where things live. */
+  /* Task 95: a label, not a control - but a READABLE one. It was 0.6rem at 65%
+     opacity, which is under the size the rest of the client calls small. */
   .group-name {
-    font-size: 0.6rem;
+    margin: 0;
+    font-size: var(--fs-xs);
+    font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--text-dim);
-    opacity: 0.65;
     padding-left: 0.15rem;
   }
 
@@ -1060,14 +1236,15 @@
     color: var(--text);
   }
 
-  /* The toggle only exists on narrow screens - a desktop header has room for
-     the whole nav and hiding it there would be a step backwards. */
-  .navtoggle {
+  /* The ≡ and the More sheet are the phone's; a desktop header has room for
+     the groups themselves. */
+  .navtoggle,
+  .more-sheet,
+  .sheet-backdrop {
     display: none;
   }
 
-  /* Task 82: above the phone breakpoint a group is a dropdown. The label
-     span is the phone's; the toggle is this one's. */
+  /* Task 82: above the phone breakpoint a group is a dropdown. */
   @media (min-width: 40.01rem) {
     .group {
       position: relative;
@@ -1076,11 +1253,36 @@
       display: none;
     }
     .group-toggle {
+      position: relative;
       border-color: var(--border);
       color: var(--text);
     }
+    /* Modul: "YOU ARE HERE" HAS TO OUTRANK "LOOK HERE" (task 95). The active
+       group was a background one shade off the header's own, while the
+       tutorial's coach-mark was a pulsing accent ring - so the header pointed
+       at Items while the player stood in Community. Now the group you are in
+       is bold with an accent underline, and the coach-mark on a toggle is a
+       small dot. The ring stays on the ENTRY inside an open dropdown, where it
+       is the only thing marked. */
     .group-toggle.active {
       background: var(--bg-raised);
+      font-weight: 700;
+      box-shadow: inset 0 -2px 0 var(--accent);
+    }
+    .group-toggle.coachmark {
+      outline: none;
+      animation: none;
+    }
+    .group-toggle.coachmark::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      right: 3px;
+      width: 0.4rem;
+      height: 0.4rem;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: coachdot 1.6s ease-in-out infinite;
     }
     .group-toggle[aria-expanded='true'] {
       border-color: var(--accent);
@@ -1111,10 +1313,9 @@
     }
   }
 
-  @media (max-width: 40rem) {
-    .group-toggle {
-      display: none;
-    }
+  @keyframes coachdot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.25; }
   }
 
   @media (max-width: 52rem) {
@@ -1128,66 +1329,138 @@
   }
 
   @media (max-width: 40rem) {
-    /* Modul: pushed to its own line. Inline beside the title it drew over
-       "FolkIdle" once the label grew - a header that overlaps itself. */
-    .navtoggle {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.3rem;
-      /* Modul: 44px, not 2.2rem. This is the single most-tapped control on a
-         phone - it is how every screen is reached - and it was 37px on all
-         twenty-six of them. A scoped component class outranks the global touch
-         floor in app.css, so the floor could not reach it; the number has to
-         be here. */
-      min-height: 44px;
-      order: 1;
-      margin-left: auto;
+    /* Modul: ONE ROW ON A PHONE (task 95). It measured about 230px of an
+       844px phone: the title, an event banner on its own row, the wallet,
+       "Live" and Sign out, and the menu on a row of its own. Now the name, the
+       purse and ≡. The event chip moved into the More sheet, the chat entry
+       too, Sign out lives in Settings, and the connection says something only
+       when it is not connected (ConnectionNotice explains). */
+    header {
+      flex-wrap: nowrap;
+      gap: 0.5rem;
+      padding: 0.25rem 0.5rem 0.25rem 0.75rem;
     }
 
-    nav {
-      display: none;
-    }
-
-    nav.open {
-      display: flex;
-      flex-direction: column;
-      gap: 0.4rem;
-    }
-
-    nav button {
-      min-height: 2.2rem;
-    }
-
-    /* Modul: THE HEADER GIVES THE SCREEN BACK. At 390px it measured about
-       230px of an 844px phone: the title, an event banner on its own row,
-       the wallet, the word "Live" and Sign out on a third, and the menu on a
-       fourth. Now: title and wallet on one row, the event chip and the menu
-       on the next. Sign out lives in Settings on a phone, and the connection
-       state only shows when it is NOT live - "Live" is the normal case and
-       ConnectionNotice already speaks up when it is not. */
+    nav,
+    .event-slot,
     .signout,
-    .phase[data-phase='live'] {
+    header :global(.chat-head) {
       display: none;
+    }
+
+    .halt {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .wallet {
-      order: 0;
+      flex-shrink: 0;
     }
 
-    /* The event chip, the halt badge and the quiet chat button (order 1)
-       sit left of the menu. */
-    .halt,
-    .chat-head {
-      order: 1;
-    }
-
+    /* Modul: 44px stated here. This is the single most-tapped control on a
+       phone and it was 37px on all twenty-six screens: a scoped component
+       class outranks the global touch floor in app.css, so the number has to
+       be here. */
     .navtoggle {
-      order: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      min-width: 44px;
+      min-height: 44px;
+      padding: 0;
+      width: auto;
     }
 
-    nav.open {
-      order: 3;
+    .navtoggle[aria-expanded='true'] {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Modul: THE MORE SHEET (task 95) rises from the tab bar and stops under
+       the sticky header, so both stay usable: More or ≡ closes it, any other
+       tab goes there. Fixed, so it carries its own side insets - body's
+       padding never reaches a fixed box. Above the chat window (40), which
+       opening it closes anyway; below the header and the tab bar (50). */
+    .sheet-backdrop {
+      display: block;
+      position: fixed;
+      inset: 0;
+      z-index: 44;
       width: 100%;
+      height: 100%;
+      min-height: 0;
+      margin: 0;
+      padding: 0;
+      border: none;
+      border-radius: 0;
+      box-shadow: none;
+      background: rgba(0, 0, 0, 0.5);
+    }
+
+    .more-sheet {
+      display: grid;
+      align-content: start;
+      gap: 0.85rem;
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: calc(var(--tabbar-h) + var(--sa-bottom));
+      z-index: 45;
+      max-height: calc(100vh - var(--tabbar-h) - 4rem);
+      max-height: calc(100dvh - var(--sa-top) - var(--sticky-header-h) - var(--tabbar-h) - var(--sa-bottom));
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      padding: 0.85rem calc(0.75rem + var(--sa-right)) 0.85rem calc(0.75rem + var(--sa-left));
+      background: var(--bg-panel);
+      border-top: 1px solid var(--border);
+      border-radius: 12px 12px 0 0;
+      box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .sheet-event:empty {
+      display: none;
+    }
+
+    .sheet-group {
+      display: grid;
+      gap: 0.4rem;
+    }
+
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.4rem;
+    }
+
+    .more-sheet button.tile,
+    .more-sheet :global(.chat-entry.tile) {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      flex-wrap: wrap;
+      width: 100%;
+      min-height: 44px;
+      padding: 0.45rem 0.7rem;
+      text-align: left;
+      justify-content: flex-start;
+      background: var(--bg-raised);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .more-sheet button.tile.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .more-sheet button.tile.coachmark {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+      animation: coachpulse 1.6s ease-in-out infinite;
     }
   }
 
@@ -1207,10 +1480,10 @@
     font-size: 0.85rem;
   }
 
-  .chat-head {
+  /* The chat entry is ChatButton's own element, so the scoped class needs
+     :global to reach it. */
+  header :global(.chat-head) {
     font-size: 0.8rem;
-    width: auto;
-    opacity: 0.8;
   }
 
   .phase {
@@ -1246,7 +1519,9 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    nav button.coachmark {
+    nav button.coachmark,
+    .more-sheet button.tile.coachmark,
+    .group-toggle.coachmark::after {
       animation: none;
     }
   }
@@ -1327,6 +1602,12 @@
   .exitrow .leave {
     border-color: var(--danger);
     color: var(--danger);
+  }
+
+  /* Task 95: focus-scrolling and anchor jumps stop under the sticky header
+     rather than behind it. */
+  :global(html) {
+    scroll-padding-top: calc(var(--sa-top) + var(--sticky-header-h));
   }
 
   /* Modul: WHILE TYPING (html.typing, set in the script), on a phone: the tab

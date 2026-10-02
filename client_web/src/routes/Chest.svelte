@@ -1158,7 +1158,8 @@
 
   .detail {
     position: sticky;
-    top: 1rem;
+    /* Task 95: below the sticky app header. */
+    top: calc(var(--sticky-header-h) + 1rem);
   }
 
   .panel {

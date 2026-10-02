@@ -14,6 +14,11 @@
   import { queryKeys, fetchMailbox } from '../net/rest';
   import { play } from './audio';
 
+  // Task 95: the count shows in more than one place now (the desktop menu, the
+  // More tab, the More sheet), and every instance chiming would ring three
+  // times for one letter. Exactly one instance - the header's - is not quiet.
+  const { quiet = false }: { quiet?: boolean } = $props();
+
   const mailbox = createQuery(() => ({
     queryKey: queryKeys.mailbox,
     queryFn: fetchMailbox,
@@ -31,7 +36,7 @@
   let lastCount: number | null = null;
   $effect(() => {
     if (mailbox.data === undefined) return;
-    if (lastCount !== null && count > lastCount) play('notification');
+    if (!quiet && lastCount !== null && count > lastCount) play('notification');
     lastCount = count;
   });
 </script>

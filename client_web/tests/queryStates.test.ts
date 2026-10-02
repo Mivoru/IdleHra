@@ -55,6 +55,9 @@ const ALLOWED: Record<string, string> = {
   'lib/ui/LootReveal.svelte': 'overlay enrichment',
   'lib/ui/OnboardingCoach.svelte': 'overlay hint',
   'lib/ui/ChatDock.svelte': 'overlay, unread count only',
+  // Task 95: the online count on the chat entry is printed only once it has
+  // loaded; a failed fetch shows the plain "Chat" button.
+  'lib/ui/ChatButton.svelte': 'online count only, absent until loaded',
   // The worn list only adds the "better than worn" comparison to loot rows.
   'lib/ui/SessionLoot.svelte': 'comparison enrichment',
   // Task 101: the only query is the roster of NAMES for the worker picker;
