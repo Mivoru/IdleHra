@@ -9,6 +9,7 @@
     AuthError,
   } from '../lib/net/auth';
   import { configurationProblem } from '../lib/net/config';
+  import Modal from '../lib/ui/Modal.svelte';
   import { isNativePlatform } from '../lib/net/platform';
   import {
     APP_DOWNLOAD_PATH,
@@ -215,8 +216,10 @@
 </div>
 
 {#if promoOpen}
-  <div class="promobackdrop" role="dialog" aria-modal="true" aria-label="FolkIdle for Android">
-    <div class="promocard">
+  <!-- Task 106: the shared Modal - scrim, safe-area insets, the inert app
+       behind it, a focus trap, and Escape/back closing it like any other. -->
+  <Modal label="FolkIdle for Android" onClose={() => (promoOpen = false)} width="22rem" layout="block">
+    <div class="promo">
       <h2>FolkIdle is on Android</h2>
       <p>
         The app keeps you signed in, and updates itself. Your account and your
@@ -236,7 +239,7 @@
       </div>
       <p class="promonote">The link stays at the bottom of this screen.</p>
     </div>
-  </div>
+  </Modal>
 {/if}
 
 <style>
@@ -322,46 +325,23 @@
     color: var(--brass-lit, var(--accent));
   }
 
-  /* A fixed overlay needs its own insets: body's padding never reaches it. */
-  .promobackdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: max(1rem, var(--safe-area-inset-top, env(safe-area-inset-top, 0px)))
-      max(1rem, var(--safe-area-inset-right, env(safe-area-inset-right, 0px)))
-      max(1rem, var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)))
-      max(1rem, var(--safe-area-inset-left, env(safe-area-inset-left, 0px)));
-    background: rgba(0, 0, 0, 0.62);
-  }
-
-  .promocard {
-    width: min(22rem, 100%);
-    padding: 1rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: var(--bg-panel);
-  }
-
-  .promocard h2 {
+  .promo h2 {
     margin: 0 0 0.4rem;
     font-size: 1.1rem;
   }
 
-  .promocard p {
+  .promo p {
     margin: 0 0 0.7rem;
     color: var(--text-dim);
     font-size: 0.88rem;
     line-height: 1.35;
   }
 
-  .promocard .promourl {
+  .promo .promourl {
     overflow-wrap: anywhere;
   }
 
-  .promocard .promonote {
+  .promo .promonote {
     margin: 0.7rem 0 0;
     font-size: 0.75rem;
   }

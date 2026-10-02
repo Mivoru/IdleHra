@@ -20,8 +20,6 @@ const NOT_YET_MODAL = new Set([
   'lib/ui/GuidedOverlay.svelte',
   // Task 105 owns the shield wheel.
   'lib/ui/ShieldWheel.svelte',
-  // The download promo on the login screen.
-  'routes/Login.svelte',
 ]);
 
 function svelteFiles(dir: string): string[] {
