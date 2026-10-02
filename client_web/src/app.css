@@ -219,6 +219,7 @@
   --tint-hover: rgba(216, 180, 90, 0.06);
   --tint-selected: rgba(201, 162, 39, 0.16);
   --scrim: rgba(0, 0, 0, 0.58);
+  --bar-track: #0b0907;
   --text-muted: var(--text-dim);
   --opacity-disabled: 0.5;
 }
@@ -284,6 +285,7 @@
     --tint-hover: rgba(120, 92, 46, 0.06);
     --tint-selected: rgba(138, 106, 52, 0.14);
     --scrim: rgba(40, 28, 12, 0.45);
+    --bar-track: #ddcca6;
 
     --shadow-sm: 0 1px 2px rgba(90, 68, 34, 0.2);
     --shadow-md: 0 4px 12px rgba(90, 68, 34, 0.16);
@@ -417,14 +419,24 @@ input {
 /* Replaces Image.Type.Filled, and with it an entire class of bug: a filled
    Image silently ignores fillAmount when its sprite is null, which left all 33
    bars in the Unity client rendering permanently full. A div's width cannot
-   fail that way. */
+   fail that way.
+
+   Modul: THE TRACK IS ITS OWN TOKEN (task 106). It was --bg, which on the
+   parchment theme is a shade off the panel, so an empty Progress or Codex
+   meter was a brass outline around nothing. --bar-track is a well in both
+   themes. */
 .bar {
   position: relative;
   height: 1.25rem;
-  background: var(--bg);
+  background: var(--bar-track);
   border: 1px solid var(--border);
   border-radius: 999px;
   overflow: hidden;
+}
+
+/* A thin meter: no label inside it (Bar.svelte still reads the label out). */
+.bar.bar-sm {
+  height: 0.5rem;
 }
 
 .bar-fill {
