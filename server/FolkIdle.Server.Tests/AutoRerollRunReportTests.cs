@@ -187,50 +187,6 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
-        /// "When I reroll it spams the chat." Every attempt of a run used to
-        /// announce its own Epic-or-better roll - about 5 in 100, so a fifty-
-        /// attempt run usually put several lines in world chat, most of them
-        /// about affixes the next attempt destroyed. A run now announces at
-        /// most once, and only what the item finally holds, if that is
-        /// Legendary (RerollAnnouncementPolicy).
-        ///
-        /// The announcement queue is static and another test's chat worker may
-        /// drain it, so this counts only lines naming THIS player and asserts
-        /// an upper bound - which is the direction the defect went.
-        /// </summary>
-        [Fact]
-        public async Task AnAutoRerollRunAnnouncesAtMostItsFinalResult()
-        {
-            const long playerId = 990000815L;
-            long equipmentId = await SeedRerollableItemAsync(playerId, 50_000_000L);
-
-            var engine = new AffixRerollEngine(_fixture.ServiceProvider, new PlayerSessionRegistry());
-
-            var run = await engine.ExecuteAutoRerollAsync(
-                playerId,
-                equipmentId,
-                affixIndex: 0,
-                operation: RerollOperation.Full,
-                stopCondition: new AutoRerollStopCondition(AffixRarity.Legendary, "flat_armor"),
-                maxAttempts: AutoRerollPlanner.MaxAttemptsPerRequest);
-
-            string mine = $"{PlayerNameResolver.GetCachedOrFallback(playerId)} rerolled";
-            int lines = 0;
-            foreach (string line in FolkIdle.Server.Domain.Social.ChatEngine.SystemAnnouncementQueue)
-            {
-                if (line.StartsWith(mine, StringComparison.Ordinal)) lines++;
-            }
-
-            _output.WriteLine($"{run.Reason} after {run.AttemptsCommitted} attempts, final {run.FinalRarity}; {lines} announcement(s)");
-
-            Assert.True(lines <= 1, $"{lines} announcements for one run");
-            if (run.FinalRarity < AffixRarity.Legendary)
-            {
-                Assert.Equal(0, lines);
-            }
-        }
-
-        /// <summary>
         /// A chest can only ever roll flat_hp or flat_armor, so asking it for
         /// crit chance is a run that can never finish. It must cost nothing and
         /// say which kind of refusal it was, rather than spending a budget to

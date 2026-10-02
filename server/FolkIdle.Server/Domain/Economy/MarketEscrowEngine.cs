@@ -14,6 +14,27 @@ using FolkIdle.Server.Domain.Shared;
 
 namespace FolkIdle.Server.Domain.Economy
 {
+    /// <summary>
+    /// Why a cancel did or did not happen. Sent to the client by name
+    /// (<c>POST /api/v1/market/cancel</c>), so a refusal can say why.
+    /// </summary>
+    public enum MarketCancelResult
+    {
+        Ok,
+        /// <summary>The listing sold before the cancel reached it.</summary>
+        Sold,
+        /// <summary>No such open order - already cancelled, or filled.</summary>
+        Gone,
+        NotYours,
+        /// <summary>An order whose escrow this path cannot return.</summary>
+        Unsupported,
+    }
+
+    public readonly record struct MarketCancelOutcome(
+        MarketCancelResult Result,
+        long? ReturnedEquipmentId = null,
+        long RefundedGold = 0);
+
     public class MarketEscrowEngine
     {
         private readonly IServiceProvider _serviceProvider;
@@ -473,6 +494,136 @@ namespace FolkIdle.Server.Domain.Economy
                 await transaction.RollbackAsync();
                 Console.WriteLine($"MarketBuyItem failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Takes one of the caller's own open orders off the book and hands
+        /// back what it held in escrow: a SELL listing's piece goes back to
+        /// the chest, a BUY order's gold goes back to the gold row. One
+        /// transaction; answers why when it refuses.
+        /// </summary>
+        /// <remarks>
+        /// Modul: THE ORDER ROW IS THE LOCK, the same row BuyItemAsync and
+        /// MatchOrdersAsync take FOR UPDATE before they move anything. Whoever
+        /// holds it first decides the order's fate, and the other side reads it
+        /// afterwards:
+        ///   - buy first: the sale commits and deletes the row, and this
+        ///     SELECT, waiting on the lock, then finds nothing (Read Committed
+        ///     re-reads after the wait) - Sold, nothing refunded;
+        ///   - cancel first: the row is gone when the buy's own FOR UPDATE
+        ///     wakes, and the buy (Serializable) fails with 40001 and rolls
+        ///     back - no gold debited, no item granted.
+        /// So one press can never both sell and refund. Read Committed rather
+        /// than the buy's Serializable on purpose: the losing cancel then
+        /// answers "already sold" instead of throwing a serialization error at
+        /// a player who did nothing wrong.
+        ///
+        /// Modul: THE PIECE COMES BACK AS A NEW CHEST ROW, exactly the way a
+        /// buyer receives it - listing moved it out of EquipmentInstances into
+        /// MarketEquipmentInstances, so its old id no longer exists. Base item,
+        /// rarity, affixes and the affix lock are carried over; those are all
+        /// the listed copy kept. The chest is unlimited (see
+        /// MarketTickCoordinator), so there is no "full chest" branch to take:
+        /// a cancel never needs the mailbox fallback, and never vaporises.
+        /// </remarks>
+        public static async Task<MarketCancelOutcome> CancelOrderAsync(FolkIdleDbContext db, long playerId, long orderId)
+        {
+            await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+
+            var order = await db.MarketOrderRecords
+                .FromSqlRaw("SELECT * FROM \"MarketOrderRecords\" WHERE \"Id\" = {0} FOR UPDATE", orderId)
+                .SingleOrDefaultAsync();
+
+            if (order == null)
+            {
+                await transaction.RollbackAsync();
+                // Gone. Say whether it sold, so the player is not left
+                // wondering where the piece went - a filled listing is
+                // archived under its own order id. (A filled BUY order is
+                // archived under the SELL it matched, so it reads as Gone.)
+                bool sold = await db.HistoricalMarketArchives.AsNoTracking()
+                    .AnyAsync(a => a.OriginalOrderId == orderId && a.SellerId == playerId);
+                return new MarketCancelOutcome(sold ? MarketCancelResult.Sold : MarketCancelResult.Gone);
+            }
+
+            if (order.SellerId != playerId)
+            {
+                await transaction.RollbackAsync();
+                return new MarketCancelOutcome(MarketCancelResult.NotYours);
+            }
+
+            if (order.Status != 0)
+            {
+                await transaction.RollbackAsync();
+                return new MarketCancelOutcome(MarketCancelResult.Gone);
+            }
+
+            long? returnedEquipmentId = null;
+            long refundedGold = 0;
+
+            if (order.OrderType == "BUY")
+            {
+                // GoldLedger: the buyer's own escrow coming back, not income - PlaceLimitOrderAsync never recorded it as a spend.
+                await CommodityLedger.AddAsync(db, playerId, "gold", order.Price);
+                refundedGold = order.Price;
+                db.MarketOrderRecords.Remove(order);
+                await db.SaveChangesAsync();
+            }
+            else if (order.OrderType == "SELL" && order.EquipmentInstanceId.HasValue)
+            {
+                var escrowed = await db.MarketEquipmentInstances
+                    .FromSqlRaw("SELECT * FROM \"MarketEquipmentInstances\" WHERE \"Id\" = {0} FOR UPDATE", order.EquipmentInstanceId.Value)
+                    .SingleOrDefaultAsync();
+
+                if (escrowed != null && escrowed.PlayerId != playerId)
+                {
+                    // An order that points at someone else's piece is corrupt;
+                    // handing that piece to the order's owner would be theft.
+                    await transaction.RollbackAsync();
+                    Console.WriteLine($"MarketCancel refused: order {orderId} of player {playerId} escrows piece {escrowed.Id} owned by {escrowed.PlayerId}.");
+                    return new MarketCancelOutcome(MarketCancelResult.NotYours);
+                }
+
+                // The order goes first: it references the escrowed row.
+                db.MarketOrderRecords.Remove(order);
+                await db.SaveChangesAsync();
+
+                if (escrowed != null)
+                {
+                    db.MarketEquipmentInstances.Remove(escrowed);
+                    var returned = new EquipmentInstance
+                    {
+                        PlayerId = playerId,
+                        BaseItemId = escrowed.BaseItemId,
+                        QualityTier = escrowed.QualityTier,
+                        AffixPayload = escrowed.AffixPayload,
+                        IsAffixLocked = escrowed.IsAffixLocked,
+                    };
+                    db.EquipmentInstances.Add(returned);
+                    await db.SaveChangesAsync();
+                    returnedEquipmentId = returned.Id;
+                }
+                else
+                {
+                    // Nothing in escrow: the listing could never have been
+                    // bought (BuyItemAsync answers TargetNotFound), so taking
+                    // the dead row down loses nothing and unsticks the screen.
+                    Console.WriteLine($"MarketCancel: order {orderId} of player {playerId} had no escrowed piece; removed the dead order.");
+                }
+            }
+            else
+            {
+                // A commodity order, or a shape nothing writes today. Its
+                // escrow would be materials this method does not know how to
+                // return, so refuse rather than delete the only record of them.
+                await transaction.RollbackAsync();
+                Console.WriteLine($"MarketCancel refused: order {orderId} is {order.OrderType} with no equipment escrow.");
+                return new MarketCancelOutcome(MarketCancelResult.Unsupported);
+            }
+
+            await transaction.CommitAsync();
+            Console.WriteLine($"MarketCancel: order {orderId} ({order.OrderType}) cancelled by {playerId}; piece {returnedEquipmentId?.ToString() ?? "-"}, gold {refundedGold}.");
+            return new MarketCancelOutcome(MarketCancelResult.Ok, returnedEquipmentId, refundedGold);
         }
 
         /// <summary>

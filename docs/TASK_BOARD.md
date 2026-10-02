@@ -6823,9 +6823,14 @@ Buy is a search field plus "Filters (n)" opening a `DetailSheet` of chips
 is the item browser until a pick, then a summary card and "List Sentry Helm
 for 1,000 gold". **My orders needed a server route** - there was none:
 `GET /api/v1/market/mine` (open listings and standing orders, both sides,
-newest first, max 200; `MarketOwnOrdersTests`). It is read-only - there is no
-cancel command for equipment orders, so no Cancel button (owner question:
-should there be one?). Standing orders moved under My orders; the copy says
+newest first, max 200; `MarketOwnOrdersTests`). **Cancel added
+2026-10-02 (owner: yes):** `POST /api/v1/market/cancel { OrderId }` ->
+`MarketEscrowEngine.CancelOrderAsync`, answering `Ok | Sold | Gone | NotYours |
+Unsupported`; a SELL's piece returns to the chest as a new row (base, rarity,
+affixes, affix lock kept), a BUY's escrowed gold to the row. It locks the order
+row FOR UPDATE like the buy and the matcher, so a cancel racing a purchase ends
+in exactly one of the two (`MarketCancelTests`). Two-tap Cancel on each My
+orders row; `exercise.mjs` lists, cancels and checks the piece is back. Standing orders moved under My orders; the copy says
 "Placing an order takes a moment."; sub-tabs underlined; cosmetic sell tiles
 say "Rare avatar". Desktop is not a table - the results keep their cards.
 `marketFilters.test.ts` now pins the chip design. Verified: vitest,
@@ -7538,3 +7543,37 @@ across neighbouring 28px rows.
 outside Combat too?; let guild members still browse the guild directory?; a
 Cancel for own equipment market orders needs a new command; is the reroll
 announcement rule right?
+
+## Player profile and public guild view (2026-10-02, branch `claude/player-profile`)
+
+Owner request: a name opens a profile almost at once, from chat, the guild
+roster and Friends; the profile shows equipment, level, guild and statistics;
+and a guild member, who no longer sees the directory (107), can open another
+guild from a person's profile.
+
+- **Server.** `GET /api/v1/players/profile?id=` answers from
+  `Domain/Social/PublicProfiles.cs` now: level, online, guild (id, name, tier,
+  role), the MAIN character (`PlayerGuid`) plus at most four others who wear
+  something - all eleven slots, affixes parsed - and statistics the server
+  already tracked (kills and bosses from the codex, regions, achievements, play
+  time, best hit and drop, Delve floor, rebirths, seals, best season rank,
+  crafted, deaths, gathering mastery). It used to serialise every
+  CharacterRecord whole (185 on the fixture) with a blank per-character level;
+  that is the Wave 1 open item, closed. New `GET /api/v1/guilds/view?id=`:
+  tier, members x/max, rating and rank (the guild board's order, counted in
+  SQL), tax, join rule, monoliths, active buffs, the week's summed points and
+  the member list. **Deliberately not on it:** treasury gold, depot,
+  per-member contribution, applications (`PublicProfileTests` pins that).
+- **Client.** One host: `PlayerProfileModal` is mounted once in App and draws
+  the top of `stores/profile.ts`'s stack (profile -> guild -> member; back pops
+  one, the X closes all). Any name uses `use:profileLink` (`ui/profileLink.ts`):
+  the shell opens at once with the tapped row's name and the cached avatar, and
+  the fetch starts on pointerdown/hover/focus, cached 60 s. Wired: chat (own
+  name opens your profile directly; others through the menu, View Profile
+  first), Friends, guild roster, the guild's weekly ranking, guild
+  applications, all three leaderboards (guild rows open the guild view), world
+  boss board. Tapping a worn piece opens its stats in a DetailSheet (Affixes).
+- **exercise.mjs:** roster name -> profile (11 slots, item sheet, Escape),
+  guild view from the profile and a member back to a profile; own chat name;
+  and in the new-account block the fixture befriends the throwaway, opens it
+  from Friends and removes it again.

@@ -766,6 +766,13 @@ await go('Forge');
 }
 
 // --- market ------------------------------------------------------------------
+// Every price-history request the market makes, for the cancel round-trip
+// below: the history query is cached for a minute, so the piece it picks may
+// not ask again - the earlier request for the same piece names it instead.
+const marketHistoryUrls = [];
+page.on('request', (r) => {
+  if (r.url().includes('/api/v1/market/history')) marketHistoryUrls.push(r.url());
+});
 await go('Market');
 {
   const before = await page.evaluate(() => document.body.innerText);
@@ -849,6 +856,110 @@ await go('Market');
     Array.isArray(mine) && (mine.length === 0 ? /nothing on the market/i.test(ordersText) : /Selling|Buying/.test(ordersText)),
     Array.isArray(mine) ? `${mine.length} open` : 'the route did not answer',
   );
+
+  // Cancel, round-tripped: list a carried piece through the real Sell flow,
+  // find it under My orders, cancel it with the two-tap button, and assert the
+  // SAME piece (base item, rarity, affixes) is back in the chest. Restores the
+  // fixture: the piece returns under a new id, nothing is spent.
+  {
+    const invBefore = (await apiGet('/api/v1/player/inventory'))?.Equipment ?? [];
+    const idsBefore = new Set(invBefore.map((e) => e.Id));
+    const openBefore = new Set((Array.isArray(mine) ? mine : []).map((o) => o.OrderId));
+
+    // Which piece the Sell browser picks is the browser's business; its price
+    // history request names it, which is what the price corridor needs.
+    const sellSegAgain = page.getByTestId('market-seg-sell');
+    if ((await sellSegAgain.count()) > 0) await sellSegAgain.click();
+    const piece = page.locator('[data-testid="market-sell"] button.row').first();
+    let listedOrder = null;
+    let detail = '';
+    if ((await piece.count()) === 0) {
+      detail = 'no carried piece to list';
+    } else {
+      await piece.click();
+      await page.waitForTimeout(1500);
+      const url = marketHistoryUrls.at(-1);
+      const params = url ? new URL(url).searchParams : null;
+      const baseItemId = params?.get('baseItemId') ?? '';
+      const qualityTier = Number(params?.get('qualityTier') ?? 0);
+      // Inside MarketOrderBookEngine's corridor (0.8x-3x the 7-day average,
+      // or BaseValueGold * (1 + 0.5 * tier) when nothing traded).
+      const hist = baseItemId
+        ? await apiGet(`/api/v1/market/history?${new URLSearchParams({ baseItemId, qualityTier: String(qualityTier) })}`)
+        : null;
+      let price = 0;
+      if (hist?.TradeCount > 0) {
+        price = Math.round(hist.AveragePrice * 1.2);
+      } else if (baseItemId) {
+        const items = await fetch(`${API_BASE}/gamedata/items.json`).then((r) => r.json()).catch(() => []);
+        const def = items.find((i) => i.BaseId === baseItemId);
+        if (def) price = Math.round(def.BaseValueGold * (1 + 0.5 * qualityTier) * 1.5);
+      }
+      const listBtn = page.getByTestId('market-list').first();
+      if (price <= 0) {
+        detail = `could not price ${baseItemId || 'the picked piece'}`;
+      } else if (await listBtn.isDisabled()) {
+        detail = 'List is disabled (no guild licence?)';
+      } else {
+        await page.locator('[data-testid="market-sell"] input[type="number"]').first().fill(String(price));
+        await listBtn.click();
+        const until = Date.now() + 15000;
+        while (Date.now() < until && !listedOrder) {
+          await page.waitForTimeout(700);
+          const now = (await apiGet('/api/v1/market/mine')) ?? [];
+          listedOrder = now.find((o) => !openBefore.has(o.OrderId) && o.OrderType === 'SELL' && o.BaseItemId === baseItemId) ?? null;
+        }
+        if (!listedOrder) detail = `listing ${baseItemId} T${qualityTier} at ${price} never reached the book`;
+      }
+    }
+
+    if (!listedOrder) {
+      record('a listing can be cancelled back into the chest', false, detail);
+    } else {
+      const invListed = (await apiGet('/api/v1/player/inventory'))?.Equipment ?? [];
+      const listedIds = new Set(invListed.map((e) => e.Id));
+      const original = invBefore.find((e) => !listedIds.has(e.Id) && e.BaseItemId === listedOrder.BaseItemId);
+      record('a listed piece shows under My orders', true, `order ${listedOrder.OrderId}`);
+
+      if ((await ordersSeg.count()) > 0) await ordersSeg.click();
+      const orderRow = page.locator(`[data-testid="market-order"][data-order-id="${listedOrder.OrderId}"]`);
+      await orderRow.waitFor({ timeout: 10000 }).catch(() => {});
+      const shown = (await orderRow.count()) > 0;
+      if (shown) {
+        await orderRow.getByRole('button', { name: 'Cancel', exact: true }).click();
+        const armed = (await orderRow.getByRole('button', { name: 'Really cancel?' }).count()) > 0;
+        const stillOpenAfterOneTap = ((await apiGet('/api/v1/market/mine')) ?? []).some((o) => o.OrderId === listedOrder.OrderId);
+        record('Cancel asks twice before it acts', armed && stillOpenAfterOneTap, armed ? 'armed' : 'one tap did not arm');
+        await orderRow.getByRole('button', { name: 'Really cancel?' }).click();
+      }
+      let back = null;
+      let gone = false;
+      const until = Date.now() + 10000;
+      while (Date.now() < until && !(back && gone)) {
+        await page.waitForTimeout(600);
+        gone = !((await apiGet('/api/v1/market/mine')) ?? []).some((o) => o.OrderId === listedOrder.OrderId);
+        const inv = (await apiGet('/api/v1/player/inventory'))?.Equipment ?? [];
+        back =
+          inv.find(
+            (e) =>
+              !idsBefore.has(e.Id) &&
+              e.BaseItemId === listedOrder.BaseItemId &&
+              e.QualityTier === listedOrder.QualityTier &&
+              JSON.stringify(e.Affixes) === JSON.stringify(original?.Affixes),
+          ) ?? null;
+      }
+      const rowGone = (await orderRow.count()) === 0;
+      record(
+        'a listing can be cancelled back into the chest',
+        shown && gone && Boolean(back) && Boolean(original) && rowGone,
+        `${shown ? 'row shown' : 'row never shown'}, order ${gone ? 'closed' : 'still open'}, ` +
+          `${back ? `piece back as ${back.Id}` : 'piece NOT back'}${original ? '' : ' (original not identified)'}, row ${rowGone ? 'removed' : 'still on screen'}`,
+      );
+      // If the UI path failed, still put the piece back so the fixture is whole.
+      if (!gone) await apiPost('/api/v1/market/cancel', { OrderId: listedOrder.OrderId });
+    }
+  }
+
   const buySeg = page.getByTestId('market-seg-buy');
   if ((await buySeg.count()) > 0) await buySeg.click();
 }
@@ -1547,6 +1658,108 @@ await go('Guild');
       }
     }
   }
+}
+
+// --- player profiles: the guild roster, the guild view, chat (2026-10-02) -----
+//
+// Modul: A PROFILE OPENS FROM EVERY NAME, and a guild opens from a profile.
+// One host (PlayerProfileModal, stores/profile.ts) serves all of them, so this
+// clicks the real names rather than calling the route: a button that renders
+// and opens nothing is exactly what smoke:screens would pass. Spends nothing;
+// everything it opens it closes.
+const profileOpen = () => page.locator('[data-testid="player-profile"]');
+const guildOpen = () => page.locator('[data-testid="guild-view"]');
+const closeAllProfiles = async () => {
+  await page.locator('.modal .close-btn').first().click().catch(() => {});
+  await page.waitForTimeout(300);
+};
+await go('Guild');
+{
+  const stats = await apiGet('/api/v1/player/statistics');
+  const memberName = page.locator('[data-testid="guild-member-name"]').first();
+  await memberName.waitFor({ timeout: 10000 }).catch(() => {});
+  if (!stats?.GuildName || (await memberName.count()) === 0) {
+    record('a guild roster name opens a profile', false, stats?.GuildName ? 'no clickable roster names' : 'the fixture is in no guild (re-seed)');
+  } else {
+    const t0 = Date.now();
+    await memberName.click();
+    const shellMs = await profileOpen().waitFor({ timeout: 3000 }).then(() => Date.now() - t0).catch(() => -1);
+    const level = (await page.locator('[data-testid="profile-level"]').first().textContent({ timeout: 10000 }).catch(() => '')) ?? '';
+    record('a guild roster name opens a profile, with a level', shellMs >= 0 && /Level \d+/.test(level), `shell in ${shellMs} ms, "${level.trim()}"`);
+
+    const slots = await page.locator('[data-testid="profile-character"]').first().locator('[data-slot]').count();
+    const characters = await page.locator('[data-testid="profile-character"]').count();
+    record(
+      'the profile shows eleven slots and a short list of characters',
+      slots === 11 && characters >= 1 && characters <= 5,
+      `${slots} slots, ${characters} characters`,
+    );
+
+    // A worn piece shows its stats on a tap.
+    const worn = page.locator('[data-testid="player-profile"] button.piece').first();
+    if ((await worn.count()) > 0) {
+      await worn.click();
+      const sheet = page.locator('[data-testid="profile-item-sheet"]');
+      const shown = await sheet.waitFor({ timeout: 3000 }).then(() => true).catch(() => false);
+      record('a worn piece on a profile opens its stats', shown);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(300);
+      record(
+        'Escape closes the item sheet and leaves the profile',
+        (await sheet.count()) === 0 && (await profileOpen().count()) === 1,
+      );
+    } else {
+      record('a worn piece on a profile opens its stats', false, 'the first roster member wears nothing');
+    }
+
+    // The guild, from the profile: read-only, and its members open profiles.
+    const guildButton = page.locator('[data-testid="profile-guild-link"]').first();
+    if ((await guildButton.count()) === 0) {
+      record('a profile opens its guild', false, "no guild link on a guild member's profile");
+    } else {
+      await guildButton.click();
+      const opened = await guildOpen().waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
+      await page.locator('[data-testid="guild-view-member"]').first().waitFor({ timeout: 10000 }).catch(() => {});
+      const title = (await page.locator('[data-testid="guild-view"] [data-testid="profile-name"]').first().textContent().catch(() => '')) ?? '';
+      const rows = await page.locator('[data-testid="guild-view-member"]').count();
+      record(
+        'a profile opens its guild, with the members listed',
+        opened && title.trim() === stats.GuildName && rows >= 1,
+        `"${title.trim()}" vs "${stats.GuildName}", ${rows} members`,
+      );
+      const guildText = (await guildOpen().innerText().catch(() => '')) ?? '';
+      record('the public guild view shows no treasury', !/treasury|depot/i.test(guildText));
+
+      await page.locator('[data-testid="guild-view-member"]').last().click();
+      const back = await profileOpen().waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
+      record('a member in the guild view opens their profile', back);
+      await closeAllProfiles();
+    }
+    record('closing the profile leaves nothing over the screen', (await page.locator('.modal').count()) === 0);
+  }
+}
+
+// Chat: your own name opens your profile (the menu is for other players).
+await page.getByRole('button', { name: /Show chat/i }).first().click();
+await page.waitForTimeout(600);
+{
+  await page.getByRole('button', { name: 'World', exact: true }).first().click().catch(() => {});
+  const box = page.getByPlaceholder(/Say something|Message your guild/).first();
+  await box.fill(`profile-probe-${Date.now()}`);
+  await box.press('Enter');
+  const own = page.locator('button.who.self').first();
+  await own.waitFor({ timeout: 8000 }).catch(() => {});
+  if ((await own.count()) === 0) {
+    record('a name in chat opens a profile', false, 'no own message in World chat');
+  } else {
+    await own.click();
+    const opened = await profileOpen().waitFor({ timeout: 3000 }).then(() => true).catch(() => false);
+    const level = (await page.locator('[data-testid="profile-level"]').first().textContent({ timeout: 10000 }).catch(() => '')) ?? '';
+    record('a name in chat opens a profile', opened && /Level \d+/.test(level), level.trim());
+    await closeAllProfiles();
+  }
+  await page.getByRole('button', { name: /Hide chat/i }).first().click().catch(() => {});
+  await page.waitForTimeout(300);
 }
 
 // --- private messages persist -------------------------------------------------
@@ -4671,6 +4884,48 @@ await go('Ancestors');
     .then(() => true)
     .catch(() => false);
   record('a brand-new account can register and reach the game', registered, email);
+
+  // --- a friend's profile, from the Friends list (2026-10-02) -----------------
+  // The fixture befriends the throwaway account, opens its profile from the
+  // list, and removes it again - a round trip, so the list starts empty next run.
+  if (registered) {
+    const newName = `exercise${stamp % 1_000_000}`;
+    await go('Friends');
+    const input = page.getByPlaceholder('Username').first();
+    await input.fill(newName);
+    await page.getByRole('button', { name: /^Add/ }).first().click();
+    const row = page.locator('[data-testid="friend-name"]', { hasText: newName }).first();
+    const listed = await row.waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+    if (!listed) {
+      record("a friend's name opens their profile", false, `${newName} never appeared in the friend list`);
+    } else {
+      await row.click();
+      const opened = await profileOpen().waitFor({ timeout: 3000 }).then(() => true).catch(() => false);
+      const level = (await page.locator('[data-testid="profile-level"]').first().textContent({ timeout: 10000 }).catch(() => '')) ?? '';
+      const name = (await page.locator('[data-testid="player-profile"] [data-testid="profile-name"]').first().textContent().catch(() => '')) ?? '';
+      record(
+        "a friend's name opens their profile",
+        opened && name.trim() === newName && /Level \d+/.test(level),
+        `"${name.trim()}", "${level.trim()}"`,
+      );
+      await closeAllProfiles();
+
+      const li = page.locator('ul.rows li', { has: row });
+      const remove = li.getByRole('button', { name: /^(Remove|Really remove\?)$/ }).first();
+      await remove.click();
+      await remove.click();
+      let gone = false;
+      for (let i = 0; i < 20 && !gone; i++) {
+        await page.waitForTimeout(500);
+        gone = !((await apiGet('/api/v1/friends/list')) ?? []).some((f) => f.Username === newName);
+      }
+      record(
+        'the friend added for the profile check is removed again',
+        gone,
+        gone ? '' : `${newName} is still on the fixture's friend list - remove it by hand`,
+      );
+    }
+  }
 
   if (registered) {
     await fresh.waitForTimeout(2500);

@@ -10,7 +10,7 @@
   } from '../lib/net/rest';
   import { connection } from '../lib/net/connection';
   import Skeleton from '../lib/ui/Skeleton.svelte';
-  import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
+  import { profileLink, guildLink } from '../lib/ui/profileLink';
   import { tierNameStyle } from '../lib/ui/leaderboardTiers';
 
   const leaderboard = createQuery(() => ({ queryKey: queryKeys.leaderboard, queryFn: fetchLeaderboard }));
@@ -23,8 +23,6 @@
     ("how far down did anyone get this week") and it resets weekly.
   */
   let tab = $state<'standing' | 'deepest'>('standing');
-  /** The board row whose profile is open - a title is worn to be seen. */
-  let inspectPlayerId = $state<number | null>(null);
   const deepest = createQuery(() => ({
     queryKey: queryKeys.deepestBoard,
     queryFn: fetchDeepestBoard,
@@ -61,7 +59,7 @@
           {#each deepest.data ?? [] as row (row.PlayerId)}
             <li class:self={row.PlayerId === connection.currentPlayerId}>
               <span class="rank dim">#{row.Rank}</span>
-              <button class="who who-btn" onclick={() => (inspectPlayerId = row.PlayerId)}>
+              <button class="who who-btn" use:profileLink={{ playerId: row.PlayerId, name: row.Name }}>
                 <PlayerAvatar playerId={row.PlayerId} size="sm" />
                 {row.Name}
                 {#if row.Title}<span class="title tiny">{row.Title}</span>{/if}
@@ -110,7 +108,7 @@
               class="who who-btn tiered"
               style={tierNameStyle(row.TierId)}
               title={row.TierName}
-              onclick={() => (inspectPlayerId = row.PlayerId)}
+              use:profileLink={{ playerId: row.PlayerId, name: row.DisplayName }}
             >
               <PlayerAvatar playerId={row.PlayerId} size="sm" />
               {row.DisplayName}
@@ -159,7 +157,8 @@
         {#each guildBoard.data ?? [] as row (row.GuildId)}
           <li>
             <span class="rank dim">#{row.Rank}</span>
-            <span class="who">{row.Name}</span>
+            <!-- A guild row opens the guild's public view (stores/profile.ts). -->
+            <button class="who who-btn" use:guildLink={{ guildId: row.GuildId, name: row.Name }}>{row.Name}</button>
             <span class="dim tiny">tier {row.GuildTier}</span>
             <span class="xp">{formatNumber(row.GuildMMR)} MMR</span>
           </li>
@@ -170,9 +169,6 @@
 </div>
 {/if}
 
-{#if inspectPlayerId !== null}
-  <PlayerProfileModal playerId={inspectPlayerId} onClose={() => (inspectPlayerId = null)} />
-{/if}
 
 <style>
   /* Task 54: the face sits inside the name cell, so the grid keeps its columns. */

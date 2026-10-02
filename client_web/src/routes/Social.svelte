@@ -16,7 +16,7 @@
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
-  import PlayerProfileModal from '../lib/ui/PlayerProfileModal.svelte';
+  import { profileLink } from '../lib/ui/profileLink';
 
   const client = useQueryClient();
   const friends = createQuery(() => ({ queryKey: queryKeys.friends, queryFn: fetchFriends }));
@@ -28,7 +28,6 @@
   // --- friends --------------------------------------------------------------
   let friendName = $state('');
   let busy = $state(false);
-  let inspectPlayerId = $state<number | null>(null);
 
   // Modul: the relationship commands take a numeric player id, but a player
   // knows a username - hence the resolve endpoint. Two steps rather than one
@@ -84,8 +83,9 @@
             <button 
               class="name-btn" 
               class:blocked={friend.IsBlocked}
-              onclick={() => { inspectPlayerId = friend.PlayerId; }}
-              title="Click to view profile"
+              data-testid="friend-name"
+              use:profileLink={{ playerId: friend.PlayerId, name: friend.Username }}
+              title="View profile"
             >
               {friend.Username}
             </button>
@@ -235,9 +235,3 @@
   }
 </style>
 
-{#if inspectPlayerId !== null}
-  <PlayerProfileModal 
-    playerId={inspectPlayerId} 
-    onClose={() => { inspectPlayerId = null; }} 
-  />
-{/if}
