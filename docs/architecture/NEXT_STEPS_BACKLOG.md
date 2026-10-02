@@ -4897,6 +4897,13 @@ threshold `UiRarityPalette` uses for glow so the two cannot disagree.
 Enqueued only AFTER the transaction commits and cleared on rollback: the
 queue drains on another thread, and nothing can retract a chat line.
 
+**Superseded 2026-10-02** ("when I reroll it spams the chat"): a reroll is
+announced only at Legendary, at most once per player per 10 minutes, and an
+auto-reroll run announces only its final result
+(`RerollAnnouncementPolicy`). Every announcement's wording now lives in
+`AnnouncementText` as one compact line with no "Congratulations!"; the old
+drop sentence could overrun the 128-byte chat buffer.
+
 The congratulate button sends through the ordinary chat path, inheriting the
 server's rate limiting, mute and profanity handling. A dedicated command
 would have bypassed all three.
