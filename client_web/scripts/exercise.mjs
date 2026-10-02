@@ -935,10 +935,13 @@ await go('Gathering');
   // display format nobody can change afterwards.
   const readMastery = async (name) => {
     const found = await page.evaluate((trackName) => {
+      // Task 101: mastery moved into each profession's card as a bar, marked
+      // data-mastery. The old <dt>/<dd> table is the fallback.
+      const marked = document.querySelector(`[data-mastery="${trackName}"]`);
       const term = [...document.querySelectorAll('dt')].find(
         (el) => el.textContent.trim() === trackName,
       );
-      const detail = term?.nextElementSibling;
+      const detail = marked ?? term?.nextElementSibling;
       if (!detail) return null;
 
       const exact = detail.querySelector('[data-exact]')?.getAttribute('data-exact');
@@ -992,6 +995,13 @@ await go('Gathering');
     miningAfter !== null &&
     miningBefore !== null &&
     (miningAfter.xp > miningBefore.xp || miningAfter.level > miningBefore.level);
+
+  // Task 101: the status says WHAT, not only where ("Fishing Sunlit Perch -
+  // Sunlit Plains"), so a working node is identifiable at a glance.
+  if (deployed) {
+    const status = await page.getByTestId('gathering-status').innerText().catch(() => '');
+    record('the gathering status names the catch and the place', /^Fishing \S.* - \S/.test(status.trim()), status.trim() || 'no status');
+  }
 
   if (deployed) {
     record('fishing raises fishing mastery', fishingMoved, `fishing xp ${fishingBefore?.xp} -> ${fishingAfter?.xp}`);
@@ -1071,6 +1081,9 @@ await go('Auto-Eat');
 // its price back, and the collected piece is binned - so the stock and the
 // chest end where they started and this passes on every run, not once.
 await go('Crafting');
+// Task 101: commissions are a tab of the Crafting screen now.
+const openCommissions = () => page.getByTestId('crafting-tab-commissions').click().catch(() => {});
+await openCommissions();
 {
   const panel = page.locator('[data-testid="workshop-commissions"]');
   const shown = await panel.waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
@@ -1133,6 +1146,7 @@ await go('Crafting');
     await page.waitForTimeout(1200);
     await dismissOfflineSummary(3000);
     await go('Crafting');
+    await openCommissions();
 
     const inventoryBefore = ((await apiGet('/api/v1/player/inventory'))?.Equipment ?? []).map((e) => e.Id);
     const collectBtn = panel.locator('[data-testid="workshop-collect"]');
@@ -1201,9 +1215,10 @@ await go('Crafting');
   record('the crafting screen offers a direct Craft button', canCraft);
 
   if (canCraft) {
-    // Tick "Craft x10" by its label so this does not depend on checkbox order.
-    const tenLabel = page.locator('label.check', { hasText: /Craft x10/i }).locator('input');
-    if ((await tenLabel.count()) > 0) await tenLabel.check().catch(() => {});
+    // Task 101: the batch is a "Make 1 / Make 10" toggle, and the number is
+    // on every Craft button.
+    const ten = page.getByRole('radio', { name: 'Make 10' });
+    if ((await ten.count()) > 0) await ten.click().catch(() => {});
     await page.waitForTimeout(300);
 
     const enabled = page.getByRole('button', { name: /^Craft x10$/ }).and(page.locator('button:not([disabled])')).first();

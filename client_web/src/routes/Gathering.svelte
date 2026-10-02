@@ -8,7 +8,13 @@
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import Bar from '../lib/ui/Bar.svelte';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
-  import Hint from '../lib/ui/Hint.svelte';
+  import ItemIcon from '../lib/ui/ItemIcon.svelte';
+  import WorkerPicker from '../lib/ui/WorkerPicker.svelte';
+  import { createQuery } from '@tanstack/svelte-query';
+  import { queryKeys, fetchBreedingRoster } from '../lib/net/rest';
+  import { prettifyBaseId, monsterName } from '../lib/net/content';
+  import { workersOf, workerName, describeJob, type Worker } from '../lib/ui/workers';
+  import { nodeYieldBaseId, nodeRareBaseId, masteryXpForLevel } from '../lib/ui/gatheringNodes';
 
   let registry = $state<ContentRegistry | null>(null);
   let contentError = $state('');
@@ -23,8 +29,32 @@
 
   const snap = $derived($playerState);
   const visual = $derived($visualState);
-  const activeActivity = $derived(snap ? Number(snap.ActiveActivityId) : 0);
+
+  // Modul: ANY PERSON CAN GATHER (task 101). This screen always sent slot 1's
+  // character. Checked first, as the task asked: SimulationEngine's
+  // ChangeActivity takes any of the player's characters by TargetGuid, and
+  // ProcessAllSlotSubTicks runs a sub-tick for every unlocked slot that is
+  // working - gathering included. So the person is a choice now, by name. Only
+  // slot 1's progress ticks are on the wire, which is why the bar is shown for
+  // slot 1 alone.
+  const names = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster, staleTime: 60_000 }));
+  const nameById = $derived(new Map((names.data ?? []).map((c) => [c.CharacterId, c.Name])));
+  const workers = $derived(workersOf(snap));
+  let workerSlot = $state(1);
+  const chosen = $derived<Worker | null>(workers.find((w) => w.slot === workerSlot) ?? workers[0] ?? null);
+
+  const activeActivity = $derived(chosen?.activity ?? 0);
   const isGathering = $derived(isGatheringActivity(activeActivity));
+
+  const jobOf = (w: Worker) => describeJob(w.activity, w.halt, { monsterName: (id) => monsterName(registry, id) });
+
+  /** Another of your people already works this node (NodeOccupied). */
+  function takenBy(activityId: number): string | null {
+    const other = workers.find((w) => w.slot !== chosen?.slot && w.activity === activityId);
+    return other ? workerName(other, nameById) : null;
+  }
+
+  let showWhy = $state(false);
 
   const byProfession = $derived.by(() => {
     const nodes = registry?.gatheringNodes ?? [];
@@ -86,10 +116,10 @@
   // and pressing F5 put the character back on mining.
   //
   // Naming the character takes the branch that persists AND applies live.
-  const activeCharacterId = $derived(snap?.Slot1_CharacterId ?? EMPTY_GUID);
+  const activeCharacterId = $derived(chosen?.id ?? EMPTY_GUID);
 
   function deploy(node: GatheringNodeDefinition) {
-    const outcome = assignCharacterActivity(activeCharacterId, node.ActivityId);
+    const outcome = assignCharacterActivity(activeCharacterId, node.ActivityId, { takenBy: takenBy(node.ActivityId) });
     if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
@@ -203,13 +233,25 @@
   {/if}
 
   {#if snap}
+    <!-- Modul: ACTIONS FIRST (task 101). The first Gather button sat at about
+         y 990 at 390 px, below the mastery table, the speed table and an empty
+         haul. The order is now: who is doing what, the three professions with
+         their nodes, what came in, and a closed "How fast and why". -->
     <section class="panel status">
-      <div>
-        <h2>Gathering</h2>
-        {#if isGathering}
-          <p class="active">
-            Working {locationName(nodeLocation(activeActivity))}
-            {#if snap.RequiredProgressTicks > 0}
+      <h2>Gathering</h2>
+      <WorkerPicker
+        {workers}
+        names={nameById}
+        selected={chosen?.slot ?? 1}
+        describe={jobOf}
+        onpick={(slot) => (workerSlot = slot)}
+        label="Who gathers"
+      />
+      <div class="nowline">
+        {#if isGathering && chosen}
+          <p class="active" data-testid="gathering-status">
+            {jobOf(chosen)}
+            {#if chosen.slot === 1 && snap.RequiredProgressTicks > 0}
               &middot; {Math.floor(
                 ((visual?.CurrentProgressTicks ?? snap.CurrentProgressTicks) /
                   snap.RequiredProgressTicks) *
@@ -217,17 +259,17 @@
               )}%
             {/if}
           </p>
-        {:else if activeActivity > 0}
-          <p class="dim">Currently in combat. Deploying to a node will move this character.</p>
+          <button class="stopbtn" onclick={stop}>Stop</button>
+        {:else if activeActivity > 0 && chosen}
+          <p class="dim" data-testid="gathering-status">{jobOf(chosen)}. Gathering moves them off it.</p>
         {:else}
-          <p class="dim">Idle.</p>
-        {/if}
-        {#if snap.ActivityHaltReason !== 0}
-          <p class="halt">{HALT_REASONS[snap.ActivityHaltReason]}</p>
+          <p class="dim" data-testid="gathering-status">
+            Idle. Pick a node below - {prettifyBaseId(nodeYieldBaseId(1001))} in
+            {locationName(1)} is where everyone starts.
+          </p>
         {/if}
       </div>
-
-      {#if snap.RequiredProgressTicks > 0 && isGathering}
+      {#if chosen?.slot === 1 && snap.RequiredProgressTicks > 0 && isGathering}
         <div class="progress">
           <Bar
             value={visual?.CurrentProgressTicks ?? snap.CurrentProgressTicks}
@@ -236,132 +278,67 @@
           />
         </div>
       {/if}
-
-      {#if isGathering}
-        <button onclick={stop}>Stop gathering</button>
+      {#if chosen && chosen.halt !== 0 && HALT_REASONS[chosen.halt]}
+        <p class="halt">{HALT_REASONS[chosen.halt]}</p>
       {/if}
-    </section>
-
-    <section class="panel">
-      <h3>Mastery</h3>
-      <p class="dim small">
-        Each profession levels on its own. Mastery makes that profession's
-        nodes faster, most of all in the first levels.
-      </p>
-      <dl class="mastery">
-        {#each MASTERY_TRACKS as track (track.id)}
-          <div>
-            <dt>{track.name}</dt>
-            <dd>
-              level {masteryLevelOf(track.id)} &middot;
-              <!-- Modul: the exact figure is PUBLISHED, not left to be parsed
-                   back out of the text. Mastery XP is the one number
-                   exercise.mjs reads from this DOM, and its regex is written
-                   against digits and separators - so a compacted "1.2M" would
-                   have been read as 12. data-exact is what makes the display
-                   free to change. -->
-              <span data-exact={masteryXpOf(track.id)} title={numberTitle(masteryXpOf(track.id))}>{formatNumber(masteryXpOf(track.id))}</span> xp
-            </dd>
-          </div>
-        {/each}
-      </dl>
-
-      <h3>Speed and yield</h3>
-      <dl class="mastery">
-        <div>
-          <dt>Tools</dt>
-          <dd class="bonus">
-            axe {toolTierFor(0)} &middot; pickaxe {toolTierFor(1)} &middot; rod {toolTierFor(2)}
-          </dd>
-        </div>
-        <div>
-          <dt>Mastery</dt>
-          <dd class="bonus">
-            <!-- Modul: this printed `-level * 2` ("-112 mining") for weeks after
-                 mastery stopped subtracting ticks - the retired rule, shown
-                 beside rates that already used the new one. The label reads
-                 the same masterySpeedPct the rates do, so the two cannot part. -->
-            +{masterySpeedPct(masteryLevelOf(0))}% wood, +{masterySpeedPct(masteryLevelOf(1))}% mining,
-            +{masterySpeedPct(masteryLevelOf(2))}% fish speed
-          </dd>
-        </div>
-        <div>
-          <dt>Woodcutting monolith</dt>
-          <dd class="bonus">
-            +{Math.min(woodMonolith, MONOLITH_CAP_PCT)}% yield
-            {#if woodMonolith > MONOLITH_CAP_PCT}<span class="dim tiny">(capped)</span>{/if}
-          </dd>
-        </div>
-        <div>
-          <dt>Mining monolith</dt>
-          <dd class="bonus">
-            +{Math.min(mineMonolith, MONOLITH_CAP_PCT)}% yield
-            {#if mineMonolith > MONOLITH_CAP_PCT}<span class="dim tiny">(capped)</span>{/if}
-          </dd>
-        </div>
-      </dl>
-      <p class="dim small">
-        Monoliths are a guild upgrade, so these move without you doing anything.
-        The rates in the node lists below already include your tool and mastery.
-      </p>
     </section>
   {/if}
 
   <div class="professions">
-    <section class="panel">
-      <h2>Hauled this session</h2>
-      <!-- Modul: this panel exists because gathering used to show nothing
-           at all while it ran, so a working node and a broken one looked
-           identical. That was the reason; the player only needs the what. -->
-      <p class="dim small">What this character has pulled out of the ground and the water.</p>
-      <SessionLoot {registry} showEquipment={false} />
-    </section>
-
     {#each byProfession as profession}
+      {@const track = masteryFor(profession.id)}
       <section class="panel">
         <h2>{profession.name}</h2>
-        <p class="dim small">
-          {#if masteryFor(profession.id)}
-            &middot; {masteryFor(profession.id)?.name} mastery {masteryFor(profession.id)?.level}
-          {/if}
-          {#if monolithFor(profession.id) > 0}
-            &middot; <span class="bonus">+{Math.min(monolithFor(profession.id), MONOLITH_CAP_PCT)}% yield</span>
-          {/if}
-        </p>
-
-        <p class="speed-help">
-          <Hint
-            class="speed-hint"
-            text="The time per unit is at your mastery, tool and village bonuses. The server also applies a logistics bonus this screen cannot see, so the real speed is this or better. 0.2s is the hard minimum for any gathering action: a node marked 'as fast as it goes' will not get faster with more mastery or a better tool - a higher-tier node will."
-            >How speed works</Hint
-          >
-        </p>
+        {#if track}
+          <!-- Modul: data-mastery + data-exact are what exercise.mjs reads -
+               the exact XP, never the compacted display. -->
+          <div class="masteryline" data-mastery={track.name}>
+            <span class="small-line">
+              Mastery level {track.level}
+              <span class="dim tiny">
+                <span data-exact={track.xp} title={numberTitle(track.xp)}>{formatNumber(track.xp)}</span>
+                / {formatNumber(masteryXpForLevel(track.level))} xp
+              </span>
+              {#if monolithFor(profession.id) > 0}
+                <span class="bonus tiny">+{Math.min(monolithFor(profession.id), MONOLITH_CAP_PCT)}% yield</span>
+              {/if}
+            </span>
+            <Bar value={track.xp} max={masteryXpForLevel(track.level)} color="var(--brass-lit)" />
+          </div>
+        {/if}
 
         <ul class="nodes">
           {#each profession.nodes as node (node.ActivityId)}
             {@const locked = isLocked(node)}
-            <li class:current={activeActivity === node.ActivityId} class:locked>
-              <span class="place">{locationName(nodeLocation(node.ActivityId))}</span>
-              <!-- Modul: plain text, explained ONCE above the list. The base
-                   time, the logistics caveat and the 0.2s floor were tooltips,
-                   so a phone could never show them; then they were a Hint per
-                   row, fourteen dotted triggers 17px tall that check:touch
-                   failed one by one. One 44px "How speed works" per profession
-                   says the same thing with a target a thumb can hit. -->
-              <span class="dim tiny">
-                {secondsPerUnit(node)}s / unit{#if isFloored(node)}
-                  <span class="floored">(as fast as it goes)</span>{/if}
+            {@const yieldId = nodeYieldBaseId(node.ActivityId)}
+            {@const working = activeActivity === node.ActivityId}
+            <li class:current={working} class:locked>
+              <span class="what">
+                {#if yieldId}<ItemIcon baseItemId={yieldId} name={prettifyBaseId(yieldId)} size="sm" />{/if}
+                <span class="whattext">
+                  <span class="yield">{yieldId ? prettifyBaseId(yieldId) : profession.name}</span>
+                  <span class="place dim tiny">{locationName(nodeLocation(node.ActivityId))}</span>
+                </span>
               </span>
-              <span class="dim tiny">{node.BaseMasteryXpReward} xp</span>
+              <!-- Modul: plain text, explained ONCE in "How fast and why".
+                   The caveats were tooltips (a phone could never show them),
+                   then a Hint per row (fourteen 17px triggers check:touch
+                   failed one by one). -->
+              <span class="dim tiny rate">
+                {secondsPerUnit(node)}s{#if isFloored(node)}<span class="floored"> (max)</span>{/if}
+                <br />{node.BaseMasteryXpReward} xp
+              </span>
               {#if locked}
                 <span class="dim tiny lock">Fight here first</span>
               {:else}
                 <button
                   class="tiny-btn"
-                  disabled={activeActivity === node.ActivityId}
+                  class:primary={!working}
+                  disabled={working}
+                  title={nodeRareBaseId(node.ActivityId) ? `Sometimes ${prettifyBaseId(nodeRareBaseId(node.ActivityId))}` : undefined}
                   onclick={() => deploy(node)}
                 >
-                  {activeActivity === node.ActivityId ? 'Working' : 'Gather'}
+                  {working ? 'Working' : 'Gather'}
                 </button>
               {/if}
             </li>
@@ -369,10 +346,71 @@
         </ul>
       </section>
     {/each}
+
+    <section class="panel">
+      <h2>Hauled this session</h2>
+      <!-- Modul: this panel exists because gathering used to show nothing
+           at all while it ran, so a working node and a broken one looked
+           identical. Its own "Loot drops" heading is off here: an h2 inside
+           the card outranked the card's title. -->
+      <SessionLoot {registry} showEquipment={false} title={false} />
+    </section>
   </div>
 
+  {#if snap}
+    <section class="panel">
+      <button class="whytoggle" aria-expanded={showWhy} onclick={() => (showWhy = !showWhy)}>
+        {showWhy ? 'Hide' : 'How fast and why'}
+      </button>
+      {#if showWhy}
+        <dl class="mastery">
+          <div>
+            <dt>Tools</dt>
+            <dd class="bonus">
+              axe {toolTierFor(0)} &middot; pickaxe {toolTierFor(1)} &middot; rod {toolTierFor(2)}
+            </dd>
+          </div>
+          <div>
+            <dt>Mastery speed</dt>
+            <dd class="bonus">
+              <!-- Modul: this printed `-level * 2` ("-112 mining") for weeks
+                   after mastery stopped subtracting ticks - the retired rule,
+                   shown beside rates that already used the new one. The label
+                   reads the same masterySpeedPct the rates do. -->
+              +{masterySpeedPct(masteryLevelOf(0))}% wood, +{masterySpeedPct(masteryLevelOf(1))}% mining,
+              +{masterySpeedPct(masteryLevelOf(2))}% fish
+            </dd>
+          </div>
+          <div>
+            <dt>Woodcutting monolith</dt>
+            <dd class="bonus">
+              +{Math.min(woodMonolith, MONOLITH_CAP_PCT)}% yield
+              {#if woodMonolith > MONOLITH_CAP_PCT}<span class="dim tiny">(capped)</span>{/if}
+            </dd>
+          </div>
+          <div>
+            <dt>Mining monolith</dt>
+            <dd class="bonus">
+              +{Math.min(mineMonolith, MONOLITH_CAP_PCT)}% yield
+              {#if mineMonolith > MONOLITH_CAP_PCT}<span class="dim tiny">(capped)</span>{/if}
+            </dd>
+          </div>
+        </dl>
+        <p class="dim small">
+          The time per unit already counts your tool, mastery and village
+          buildings. The server also applies a logistics bonus this screen
+          cannot see, so the real speed is this or better. 0.2s is the floor
+          for any node - one marked "(max)" will not get faster with mastery or
+          a better tool; a higher node will. Each node also has a one-in-ten
+          rare find. Monoliths are a guild upgrade, so they move without you
+          doing anything.
+        </p>
+      {/if}
+    </section>
+  {/if}
+
   {#if registry && registry.gatheringNodes.length === 0}
-    <p class="dim pad">No gathering nodes in the content files.</p>
+    <p class="dim pad">Gathering is unavailable right now - the list of places to gather did not load. Try again in a moment.</p>
   {/if}
 </div>
 
@@ -405,14 +443,6 @@
   h2 {
     margin: 0 0 0.35rem;
     font-size: 1.05rem;
-  }
-
-  h3 {
-    margin: 0 0 0.35rem;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--text-dim);
   }
 
   .dim {
@@ -496,7 +526,7 @@
        The children carry min-width: 0 because a grid item's default
        min-width:auto refuses to shrink below its content and would reinstate
        the floor. */
-    grid-template-columns: minmax(0, 1.4fr) auto auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto;
     gap: 0.5rem;
     align-items: center;
     font-size: 0.82rem;
@@ -518,7 +548,6 @@
      overlapped it. A grid gives the name its own column and lets it wrap
      inside it instead of into its neighbours. */
   .place {
-    font-weight: 600;
     line-height: 1.15;
   }
 
@@ -541,16 +570,65 @@
     color: var(--rarity-12);
   }
 
-  .speed-help {
-    margin: 0.2rem 0 0.4rem;
-    font-size: 0.8rem;
-    color: var(--text-dim);
+  .nowline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
   }
 
-  @media (max-width: 40rem) {
-    .speed-help :global(.speed-hint) {
-      min-height: 44px;
-    }
+  .nowline p {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .stopbtn {
+    flex-shrink: 0;
+  }
+
+  .masteryline {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0 0 0.6rem;
+    font-size: 0.82rem;
+  }
+
+  .small-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.2rem 0.5rem;
+  }
+
+  .what {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+
+  .whattext {
+    display: grid;
+    min-width: 0;
+    line-height: 1.2;
+  }
+
+  .yield {
+    font-weight: 600;
+  }
+
+  .rate {
+    text-align: right;
+    line-height: 1.25;
+  }
+
+  .nodes li.current {
+    outline: 1px solid var(--good);
+    border-radius: var(--radius-xs);
+  }
+
+  .whytoggle {
+    width: 100%;
+    text-align: left;
   }
 
   .tiny-btn {
