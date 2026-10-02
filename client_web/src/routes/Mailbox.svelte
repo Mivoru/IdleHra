@@ -158,13 +158,6 @@
     max-width: 46rem;
   }
 
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
-
   .head {
     display: flex;
     align-items: baseline;
@@ -257,11 +250,6 @@
 
   .when {
     white-space: nowrap;
-  }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.55rem;
   }
 
   .message-content {

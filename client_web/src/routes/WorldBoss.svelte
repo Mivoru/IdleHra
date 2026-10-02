@@ -531,13 +531,6 @@
     margin: 0 auto;
   }
 
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
-
   .panel.live {
     border-color: var(--rarity-10);
   }

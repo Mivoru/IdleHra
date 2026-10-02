@@ -231,7 +231,7 @@ async function dismissOfflineSummary(waitMs = 6000) {
 
 {
   const shown = await dismissOfflineSummary();
-  const stillBlocked = await page.locator('.backdrop').count();
+  const stillBlocked = await page.locator('.backdrop, .modal-scrim').count();
   record('offline summary can be dismissed', stillBlocked === 0, shown ? 'was shown' : 'not shown');
 }
 

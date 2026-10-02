@@ -1118,13 +1118,6 @@
     width: 100%;
   }
 
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
-
   h2 {
     margin: 0 0 0.5rem;
     font-size: 1.05rem;
@@ -1290,11 +1283,6 @@
 
   .mat-ok { color: var(--good); }
   .mat-low { color: var(--danger); }
-
-  .tiny-btn {
-    white-space: nowrap;
-    font-size: 0.72rem;
-  }
 
   .rare-btn {
     background: color-mix(in srgb, var(--accent) 20%, transparent);

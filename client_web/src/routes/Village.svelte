@@ -408,9 +408,6 @@
      phone app.css forces every panel to 0.7rem, so the last child carries the
      gap there. */
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
     padding: 1rem 1rem 1.5rem;
   }
 

@@ -38,8 +38,10 @@
     watchHardwareBack,
     exitApp,
     isCloseOutcome,
+    LAYER_Z,
     type BackOutcome,
   } from './lib/net/backButton';
+  import Modal from './lib/ui/Modal.svelte';
   import {
     storedToken,
     clearToken,
@@ -935,7 +937,9 @@
        it has to work on the login screen as well as in the game.
        Rendered outside the signed-in branch for that reason. -->
   {#if exitPromptOpen}
-    <div class="exitbackdrop" role="dialog" aria-modal="true" aria-label="Leave FolkIdle">
+    <!-- Back and Escape close it through exitPromptOpen (resolveBack), so the
+         Modal registers nothing; a tap outside does not answer the question. -->
+    <Modal label="Leave FolkIdle" z={LAYER_Z.exitPrompt} width="22rem" layout="block" register={false}>
       <div class="exitcard">
         <h2>Leave FolkIdle?</h2>
         <p>
@@ -953,7 +957,7 @@
           >
         </div>
       </div>
-    </div>
+    </Modal>
   {/if}
 </QueryClientProvider>
 
@@ -1269,31 +1273,6 @@
   .restoring strong {
     font-size: 1.3rem;
     color: var(--text);
-  }
-
-  .exitbackdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 1100;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    /* Fixed, so body's safe-area padding does not reach it - its own inset. */
-    padding: calc(1rem + var(--sa-top)) calc(1rem + var(--sa-right)) calc(1rem + var(--sa-bottom))
-      calc(1rem + var(--sa-left));
-    background: rgba(0, 0, 0, 0.62);
-  }
-
-  /* The vh line is the fallback for an engine without dvh. */
-  .exitcard {
-    max-height: calc(100vh - 2rem);
-    max-height: calc(100dvh - 2rem - var(--sa-top) - var(--sa-bottom));
-    overflow-y: auto;
-    width: min(22rem, 100%);
-    padding: 1rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius, 8px);
-    background: var(--bg-panel);
   }
 
   .exitcard h2 {

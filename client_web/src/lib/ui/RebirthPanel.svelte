@@ -152,10 +152,6 @@
 
 <style>
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
     display: grid;
     gap: 0.5rem;
   }
@@ -191,11 +187,6 @@
   .rebirth-open {
     flex-shrink: 0;
     justify-self: start;
-  }
-
-  .danger {
-    border-color: var(--warn);
-    color: var(--warn);
   }
 
   .dim {

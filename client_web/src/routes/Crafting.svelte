@@ -330,13 +330,6 @@
     gap: 0.75rem;
   }
 
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
-
   /* Underlined sub-tabs, deliberately unlike the filled top tabs. */
   .tabs {
     display: flex;
@@ -562,10 +555,5 @@
     width: 100%;
     margin-top: 0.8rem;
     text-align: left;
-  }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
   }
 </style>

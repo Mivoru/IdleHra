@@ -864,8 +864,6 @@
   }
 
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
     border-radius: 8px;
     padding: 1rem 1.15rem 1.25rem;
   }

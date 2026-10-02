@@ -25,6 +25,7 @@
   import { contentQuery } from '../lib/net/registry.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
+  import Tabs from '../lib/ui/Tabs.svelte';
   import { rarityColor, rarityName, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from '../lib/ui/slots';
   import { locationName } from '../lib/ui/locations';
@@ -351,13 +352,16 @@
 
 <!-- Modul: UNDERLINED, because these are sub-tabs of the Market and the
      filled buttons made them look like the screen's own top tabs. -->
-<div class="market-tabs" role="tablist">
-  <button role="tab" class:active={marketTab === 'equipment'} aria-selected={marketTab === 'equipment'} onclick={() => (marketTab = 'equipment')}>
-    Equipment
-  </button>
-  <button role="tab" class:active={marketTab === 'cosmetics'} aria-selected={marketTab === 'cosmetics'} onclick={() => (marketTab = 'cosmetics')} data-testid="market-tab-cosmetics">
-    Cosmetics
-  </button>
+<div class="market-tabs">
+  <Tabs
+    bind:value={marketTab}
+    label="Market"
+    variant="underline"
+    tabs={[
+      { value: 'equipment', label: 'Equipment' },
+      { value: 'cosmetics', label: 'Cosmetics', testid: 'market-tab-cosmetics' },
+    ]}
+  />
 </div>
 
 {#snippet licenceWarning()}
@@ -818,31 +822,7 @@
 
 <style>
   .market-tabs {
-    display: flex;
-    gap: 0.25rem;
     margin: 1rem 1rem 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .market-tabs button {
-    min-height: 44px;
-    flex-shrink: 0;
-    padding: 0.4rem 0.9rem;
-    border: 0;
-    border-bottom: 2px solid transparent;
-    border-radius: 0;
-    background: none;
-    background-image: none;
-    box-shadow: none;
-    color: var(--text-dim);
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .market-tabs button.active {
-    color: var(--text);
-    border-bottom-color: var(--brass-lit);
-    font-weight: 700;
   }
 
   .phone {
@@ -939,10 +919,6 @@
   .sortlabel select {
     flex: 1 1 auto;
     min-width: 0;
-  }
-
-  .sortrow .tiny-btn {
-    flex-shrink: 0;
   }
 
   .filters {
@@ -1120,10 +1096,6 @@
   }
 
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
     min-width: 0;
   }
 
@@ -1178,11 +1150,6 @@
     font-variant-numeric: tabular-nums;
     font-weight: 700;
     color: var(--gold);
-  }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
   }
 
   /* Modul: an inline button styled as a link - screens are modal panels, not

@@ -5,6 +5,7 @@
   import { raceName } from './races';
   import { HALT_REASONS } from './slots';
   import { requestScreen } from '../stores/navigation';
+  import Modal from './Modal.svelte';
 
   function duration(seconds: number): string {
     if (seconds < 60) return `${seconds} seconds`;
@@ -66,19 +67,11 @@
   <!-- Modul: A TAP ON THE CARD IS READING, NOT DISMISSING. The backdrop was
        one big button and the card did not stop the click, so a player
        touching the crew table to read it closed the summary it was built
-       for. Only the dim area around the card dismisses now; Escape and the
-       hardware back button reach it through App.svelte. -->
-  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-  <div class="backdrop" onclick={dismissOfflineSummary}>
-    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-    <div
-      class="card"
-      role="dialog"
-      tabindex="-1"
-      aria-modal="true"
-      aria-label="Welcome back"
-      onclick={(e) => e.stopPropagation()}
-    >
+       for. Only the dim area around the card dismisses now (Modal's scrim);
+       Escape and the hardware back button reach it through App.svelte's
+       offlineSummary store, so it registers no closer of its own. -->
+  <Modal label="Welcome back" width="30rem" layout="block" register={false} onClose={dismissOfflineSummary}>
+    <div class="summary">
       <h2>Welcome back</h2>
       <p class="lead">You were away for {duration(summary.elapsedSeconds)}.</p>
 
@@ -190,7 +183,7 @@
 
       <button onclick={dismissOfflineSummary}>Continue</button>
     </div>
-  </div>
+  </Modal>
 {/if}
 
 <style>
@@ -244,7 +237,7 @@
   .crew td {
     text-align: right;
     padding: 0.25rem 0.3rem;
-    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-top: 1px solid var(--edge-soft);
     font-variant-numeric: tabular-nums;
   }
 
@@ -259,39 +252,8 @@
     opacity: 0.55;
   }
 
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: grid;
-    place-items: center;
-    /* Modul: 60, THE MODAL LAYER (LAYER_Z.modal), not 50. At 50 it tied with
-       the phone's tab bar, which comes later in the DOM and so painted OVER
-       the backdrop - five live buttons on top of the first thing a returning
-       player sees. */
-    z-index: 60;
-    border: 0;
-    /* Fixed, so body's safe-area padding does not reach it. */
-    padding: calc(1rem + var(--sa-top)) calc(1rem + var(--sa-right)) calc(1rem + var(--sa-bottom))
-      calc(1rem + var(--sa-left));
-  }
-
-  /* Modul: THE CARD SCROLLS, because a fixed backdrop cannot. Its worst case -
-     three workers with one idle, an empty larder, a full warehouse - measured
-     650-750px on a 640px phone, and a centred grid clips the top and the
-     bottom equally: the heading and "Stock the larder" were the parts lost.
-     The vh line is the fallback for an engine without dvh. */
-  .card {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.5rem;
-    min-width: min(22rem, 90vw);
-    max-width: 100%;
-    max-height: calc(100vh - 2rem);
-    max-height: calc(100dvh - 2rem - var(--sa-top) - var(--sa-bottom));
-    overflow-y: auto;
-    overscroll-behavior: contain;
+  /* The card, its scrolling and its safe-area inset are Modal's now. */
+  .summary {
     text-align: center;
   }
 

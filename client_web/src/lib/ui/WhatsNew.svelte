@@ -1,8 +1,7 @@
 <script lang="ts">
   import { pendingNotes, acknowledgeNotes, updateAvailable } from '../stores/version';
   import { reserveBottom, releaseBottom } from '../stores/bottomInset';
-  import { registerOverlay } from '../stores/sheet';
-  import { LAYER_Z } from '../net/backButton';
+  import Modal from './Modal.svelte';
 
   const BOTTOM_INSET_KEY = 'update-prompt';
 
@@ -19,12 +18,9 @@
   // Modul: BACK MEANS "GOT IT". The notes are a modal, and after every OTA
   // update an APK player meets them first - but back could not see them, so it
   // changed the screen underneath (or, on the map, opened "Leave FolkIdle?" on
-  // top of them). Registered only while the notes show; the reload chip below
-  // covers nothing and leaves back alone.
-  $effect(() => {
-    if (!showNotes) return;
-    return registerOverlay(acknowledgeNotes, LAYER_Z.modal);
-  });
+  // top of them). The Modal registers acknowledgeNotes on the overlay stack
+  // while the notes show; the reload chip below covers nothing and leaves back
+  // alone.
 
   let dismissedReload = $state(false);
   let toastEl = $state<HTMLElement | null>(null);
@@ -55,11 +51,14 @@
 </script>
 
 {#if showNotes}
-  <div class="backdrop" role="dialog" aria-modal="true" aria-label="What's new">
-    <div class="card">
-      <h2>What&rsquo;s new</h2>
+  <!-- Modul: THE DISMISS BUTTON DOES NOT SCROLL AWAY. The card used to
+       scroll as one piece, so with a release of any length the only way out
+       was to scroll to the bottom of it first. Header and footer are pinned
+       by the Modal; only the notes move. -->
+  <Modal label="What's new" tone="brass" width="32rem" layout="block" onClose={acknowledgeNotes} dismissOnScrim={false}>
+      {#snippet header()}<h2>What&rsquo;s new</h2>{/snippet}
+      {#snippet footer()}<button class="got-it" onclick={acknowledgeNotes}>Got it</button>{/snippet}
 
-      <div class="scroll">
       {#each $pendingNotes as release (release.version)}
         <div class="release">
           <p class="version">
@@ -81,11 +80,7 @@
           {/each}
         </div>
       {/each}
-      </div>
-
-      <button onclick={acknowledgeNotes}>Got it</button>
-    </div>
-  </div>
+  </Modal>
 {:else if showReload && !dismissedReload}
   <!-- Modul: NOT a backdrop. This one interrupts a session already in
        progress, and a modal over a fight the player is watching is worse than
@@ -101,46 +96,6 @@
 {/if}
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    display: grid;
-    place-items: center;
-    z-index: 60;
-    padding: calc(1rem + var(--sa-top)) calc(1rem + var(--sa-right)) calc(1rem + var(--sa-bottom))
-      calc(1rem + var(--sa-left));
-  }
-
-  /* Modul: THE DISMISS BUTTON DOES NOT SCROLL AWAY.
-     The card used to scroll as one piece, so with a release of any length the
-     only way out of a modal was to scroll to the bottom of it first - and the
-     onboarding coach's own "Got it" showed through the backdrop above it,
-     which is two buttons with one name and only one of them reachable.
-     Header and action bar are fixed; only the notes move. */
-  .card {
-    width: min(32rem, 100%);
-    max-height: 86vh;
-    /* dvh after vh (the fallback): on mobile web vh is the LARGE viewport, so
-       an 86vh card could push "Got it" below the URL bar's fold. Minus the
-       backdrop's padding and insets. */
-    max-height: min(86dvh, calc(100dvh - 2rem - var(--sa-top) - var(--sa-bottom)));
-    background: var(--bg-panel);
-    border: 1px solid var(--brass);
-    border-radius: var(--radius);
-    padding: 1.2rem;
-    display: grid;
-    grid-template-rows: auto minmax(0, 1fr) auto;
-    gap: 0.5rem;
-  }
-
-  .scroll {
-    overflow-y: auto;
-    /* Anything arriving at the top of a scroller wants this - see the loot
-       list. Harmless here and correct if a release is ever prepended. */
-    overflow-anchor: none;
-  }
-
   h2 {
     margin: 0;
     font-size: 1.1rem;
@@ -237,14 +192,10 @@
     flex-shrink: 0;
   }
 
-  .ghost {
-    background: transparent;
-    color: var(--text-dim);
-  }
-
   /* The touch floor, and the card's own action is the one control a player
      must always be able to hit. */
-  .card > button {
+  .got-it {
     min-height: 44px;
+    width: 100%;
   }
 </style>

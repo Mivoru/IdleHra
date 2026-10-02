@@ -188,7 +188,7 @@
 
   /* The touch floor (client_web/CLAUDE.md). The items are full-width rows, so
      only their height needs raising. */
-  @media (max-width: 40rem) {
+  @media (max-width: 40rem), (pointer: coarse) {
     button {
       min-height: 44px;
     }

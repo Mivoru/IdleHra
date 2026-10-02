@@ -15,6 +15,7 @@
   import { prettifyBaseId } from '../net/content';
   import { formatNumber } from './format';
   import Money from './Money.svelte';
+  import ChipGroup from './ChipGroup.svelte';
 
   const ledger = createQuery(() => ({ queryKey: queryKeys.goldLedger, queryFn: fetchGoldLedger }));
 
@@ -50,10 +51,10 @@
   };
 
   type Window = 'Last7Days' | 'Last30Days' | 'SinceRecorded';
-  const WINDOWS: { key: Window; label: string }[] = [
-    { key: 'Last7Days', label: '7 days' },
-    { key: 'Last30Days', label: '30 days' },
-    { key: 'SinceRecorded', label: 'All' },
+  const WINDOWS: { value: Window; label: string }[] = [
+    { value: 'Last7Days', label: '7 days' },
+    { value: 'Last30Days', label: '30 days' },
+    { value: 'SinceRecorded', label: 'All' },
   ];
   let period = $state<Window>('Last30Days');
 
@@ -102,10 +103,8 @@
 </script>
 
 {#if ledger.data}
-  <div class="windows" role="group" aria-label="Period">
-    {#each WINDOWS as w (w.key)}
-      <button class:active={period === w.key} onclick={() => (period = w.key)}>{w.label}</button>
-    {/each}
+  <div class="windows">
+    <ChipGroup options={WINDOWS} bind:value={period} label="Period" size="sm" />
   </div>
 
   <h3>Where your gold came from</h3>
@@ -116,7 +115,7 @@
       {#each earned as r (r.label)}
         <li>
           <span class="label">{r.label}</span>
-          <span class="bar in" aria-hidden="true"><span style="width: {Math.max(2, (r.amount / earnedTotal) * 100)}%"></span></span>
+          <span class="share in" aria-hidden="true"><span style="width: {Math.max(2, (r.amount / earnedTotal) * 100)}%"></span></span>
           <span class="amount"><Money amount={r.amount} /></span>
         </li>
       {/each}
@@ -139,7 +138,7 @@
       {#each spent as r (r.label)}
         <li>
           <span class="label">{r.label}</span>
-          <span class="bar" aria-hidden="true"><span style="width: {Math.max(2, (r.amount / spentTotal) * 100)}%"></span></span>
+          <span class="share" aria-hidden="true"><span style="width: {Math.max(2, (r.amount / spentTotal) * 100)}%"></span></span>
           <span class="amount"><Money amount={r.amount} /></span>
         </li>
       {/each}
@@ -186,18 +185,7 @@
 
 <style>
   .windows {
-    display: flex;
-    gap: 0.35rem;
     margin-bottom: 0.5rem;
-  }
-
-  .windows button {
-    font-size: 0.78rem;
-  }
-
-  .windows button.active {
-    border-color: var(--accent);
-    color: var(--accent);
   }
 
   .split {
@@ -222,20 +210,24 @@
     white-space: nowrap;
   }
 
-  .bar {
+  /* Modul: `.share`, NOT `.bar`. The global .bar (app.css) is the Bar
+     component's carved trough - 1.25rem, a brass border, an inset shadow - and
+     this scoped class inherited all of it on top of its own 0.5rem, so the
+     ledger's thin share lines were drawn as squashed health bars. */
+  .share {
     height: 0.5rem;
     background: var(--bg-raised);
     border-radius: 999px;
     overflow: hidden;
   }
 
-  .bar span {
+  .share span {
     display: block;
     height: 100%;
     background: var(--accent);
   }
 
-  .bar.in span {
+  .share.in span {
     background: var(--good);
   }
 

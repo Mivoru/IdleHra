@@ -1139,13 +1139,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
-
   h2 {
     margin: 0 0 0.75rem;
     font-size: 1.05rem;

@@ -419,7 +419,7 @@
     min-width: 2.2rem;
   }
 
-  @media (max-width: 40rem) {
+  @media (max-width: 40rem), (pointer: coarse) {
     .spend button {
       min-width: 44px;
     }
