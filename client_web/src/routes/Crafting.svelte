@@ -330,13 +330,6 @@
     gap: 0.75rem;
   }
 
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
-
   /* Underlined sub-tabs, deliberately unlike the filled top tabs. */
   .tabs {
     display: flex;

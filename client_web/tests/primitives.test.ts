@@ -6,12 +6,23 @@
 // thirteenth copy of .tiny-btn. The geometry checks need a running stack;
 // these need nothing.
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const srcRoot = join(dirname(fileURLToPath(import.meta.url)), '..', 'src');
 const appCss = readFileSync(join(srcRoot, 'app.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+
+function svelteFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) out.push(...svelteFiles(full));
+    else if (entry.name.endsWith('.svelte')) out.push(full);
+  }
+  return out;
+}
+const svelte = svelteFiles(srcRoot).map((f) => ({ f, text: readFileSync(f, 'utf8') }));
 
 describe('app.css shared rules', () => {
   it('applies the 44px touch floor to a coarse pointer as well as a phone width (110a)', () => {
@@ -27,5 +38,19 @@ describe('app.css shared rules', () => {
     expect(glow![1]).not.toContain('currentColor');
     const halo = /\.rarity-glow-live::after\s*\{([^}]*)\}/.exec(appCss);
     expect(halo![1]).toContain('var(--rarity-sheen)');
+  });
+
+  it('defines the .panel surface once, in app.css (106)', () => {
+    expect(appCss).toMatch(/\.panel \{\s*background: var\(--bg-panel\);/);
+    const copies = svelte
+      .filter(({ text }) => /\.panel \{[^}]*background: var\(--bg-panel\)/.test(text))
+      .map(({ f }) => f);
+    expect(copies).toEqual([]);
+  });
+
+  it('defines .tiny-btn / .btn-sm once, in app.css (106)', () => {
+    const copies = svelte.filter(({ text }) => /^\s*\.(tiny-btn|btn-sm)\s*[,{]/m.test(text)).map(({ f }) => f);
+    expect(copies).toEqual([]);
+    expect(appCss).toMatch(/\.tiny-btn,\s*\.btn-sm\s*\{/);
   });
 });

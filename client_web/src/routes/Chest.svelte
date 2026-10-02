@@ -1161,13 +1161,6 @@
     top: 1rem;
   }
 
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
-
   .head {
     display: flex;
     align-items: baseline;

@@ -1172,9 +1172,6 @@
 
   /* ------------------------------------------------------------ shared */
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
     padding: 0.9rem;
     min-width: 0;
   }

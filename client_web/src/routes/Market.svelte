@@ -921,10 +921,6 @@
     min-width: 0;
   }
 
-  .sortrow .tiny-btn {
-    flex-shrink: 0;
-  }
-
   .filters {
     display: grid;
     gap: 0.4rem;
@@ -1100,10 +1096,6 @@
   }
 
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
     min-width: 0;
   }
 

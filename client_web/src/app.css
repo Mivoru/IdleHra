@@ -1094,6 +1094,25 @@ button:focus-visible {
 
 /* --- surfaces ------------------------------------------------------------ */
 
+/* Modul: THE .panel BASE, ONCE (task 106). Twenty-nine components each wrote
+   the same four lines - surface, edge, radius, padding - and five that used
+   the class without a copy (the Book of Deeds, the collection log, the
+   insights, standing orders, the wiki) drew no surface at all beside panels
+   that had one. A component now writes only what DIFFERS (its own padding, a
+   max-width); a scoped rule still wins over this one. */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+/* A panel set INTO another one: a well rather than a second raised card. */
+.panel.panel--sunken {
+  background: var(--bg-sunken);
+  box-shadow: var(--shadow-well);
+}
+
 .panel {
   /* The component sets `background:` (a shorthand, so it clears the image);
      only the image is taken back, so each panel keeps its own colour.
