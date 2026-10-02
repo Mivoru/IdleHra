@@ -13,10 +13,13 @@
   import {
     APP_DOWNLOAD_PATH,
     appDownloadUrl,
+    markPlayed,
     markPromoSeen,
+    playedBefore,
     promoSeen,
     shouldOfferApp,
   } from '../lib/net/appDownload';
+  import { backgroundUrl } from '../lib/ui/sprites';
 
   // Modul: a misconfigured native build fails as a connection timeout, which
   // reads like the server being down. Said plainly here instead - this is the
@@ -51,8 +54,13 @@
   // is marked seen the moment it opens, so closing the tab does not bring it
   // back. Not during a password reset: that player came from an email link to
   // do one thing.
+  //
+  // Task 109: NOT ON THE VERY FIRST VISIT. A stranger who had not played yet
+  // was asked to install an app before seeing a single screen of the game, on
+  // top of the pitch. It waits until this browser has been through one
+  // session (markPlayed, on every successful sign-in below).
   const offerApp = shouldOfferApp();
-  let promoOpen = $state(offerApp && linkedResetToken === null && !promoSeen());
+  let promoOpen = $state(offerApp && linkedResetToken === null && !promoSeen() && playedBefore());
   if (promoOpen) markPromoSeen();
   // Already on the phone: the address to type elsewhere is noise.
   const onAndroid = /Android/i.test(globalThis.navigator?.userAgent ?? '');
@@ -63,6 +71,9 @@
   let username = $state('');
   let busy = $state(false);
   let error = $state('');
+  let showPassword = $state(false);
+
+  const scene = backgroundUrl('main_hub');
 
   // Modul: ALWAYS THE SAME MESSAGE, whether or not that address has an
   // account. Anything else would rebuild the enumeration oracle that
@@ -101,6 +112,7 @@
     error = '';
     try {
       const session = await action();
+      markPlayed();
       onAuthenticated(session.token);
     } catch (err) {
       // Registration failures carry a Reason; a dead backend does not, and
@@ -125,10 +137,30 @@
   {/if}
 
   {#if mode === 'choose'}
-    <p class="hint">Play instantly, or sign in to an account you can keep.</p>
-    <button disabled={busy} onclick={() => run(loginWithDevice)}>Play as guest</button>
-    <button disabled={busy} onclick={() => (mode = 'login')}>Sign in</button>
-    <button disabled={busy} onclick={() => (mode = 'register')}>Create an account</button>
+    <!-- Task 109: THE FIRST IMPRESSION SAYS WHAT THE GAME IS. Three identical
+         buttons and no picture was the whole pitch. The painting is the Home
+         valley the player lands in, and "Play now" is the one filled action. -->
+    <div class="art" style="background-image: url('{scene}')" role="img" aria-label="The valley at Home"></div>
+    <p class="pitch">
+      Raise a family of fighters, send them into the wilds, and let the village
+      keep working while you are away.
+    </p>
+    <button class="primary" disabled={busy} onclick={() => run(loginWithDevice)}>Play now</button>
+    <!-- Modul: THE GUEST NOTE IS THE TRUTH ABOUT GUESTS. A guest account is
+         keyed to a device id held in this browser (auth.ts deviceId), and
+         RegisterWithEmailAsync creates a NEW account rather than claiming the
+         guest's - "the guest keeps the device". Nothing in the client links an
+         email to a guest, so "sign up later and keep your progress" would be a
+         lie. This says what actually happens. -->
+    <p class="hint guest">
+      Play now starts a guest game kept in this browser. It cannot be turned
+      into an account later - to play on another device too, create an account
+      first.
+    </p>
+    <div class="choose-row">
+      <button disabled={busy} onclick={() => (mode = 'login')}>Sign in</button>
+      <button disabled={busy} onclick={() => (mode = 'register')}>Create an account</button>
+    </div>
   {:else if mode === 'login' || mode === 'register'}
     <label>
       Email
@@ -138,17 +170,28 @@
     {#if mode === 'register'}
       <label>
         Username
-        <input bind:value={username} autocomplete="username" />
+        <input bind:value={username} autocomplete="username" maxlength="20" />
+        <!-- RegisterWithEmailAsync: 3 to 20 characters after trimming. It is
+             the DisplayName other players see. -->
+        <span class="hint-small">3 to 20 characters. Other players see this name.</span>
       </label>
     {/if}
 
     <label>
       Password
-      <input
-        type="password"
-        bind:value={password}
-        autocomplete={mode === 'register' ? 'new-password' : 'current-password'}
-      />
+      <span class="pw-row">
+        <input
+          type={showPassword ? 'text' : 'password'}
+          bind:value={password}
+          autocomplete={mode === 'register' ? 'new-password' : 'current-password'}
+        />
+        <button
+          type="button"
+          class="pw-toggle"
+          aria-pressed={showPassword}
+          onclick={() => (showPassword = !showPassword)}>{showPassword ? 'Hide' : 'Show'}</button
+        >
+      </span>
       <!-- Modul: SAY THE RULE BEFORE IT IS BROKEN. The minimum moved from six
            to eight and the form said nothing either way, so the only way to
            discover it was to be refused. Length only - there is no required
@@ -159,6 +202,7 @@
     </label>
 
     <button
+      class="primary"
       disabled={busy || !email || !password || (mode === 'register' && !username)}
       onclick={() =>
         run(() =>
@@ -169,7 +213,8 @@
     >
       {mode === 'register' ? 'Create account' : 'Sign in'}
     </button>
-    <button disabled={busy} onclick={() => (mode = 'choose')}>Back</button>
+    <!-- Back is a way out, not a choice of equal weight to the form's action. -->
+    <button class="link back" disabled={busy} onclick={() => (mode = 'choose')}>Back</button>
 
     {#if mode === 'login'}
       <button class="link" disabled={busy} onclick={() => (mode = 'forgot')}>
@@ -226,7 +271,7 @@
         <p class="promourl">On your phone, open <strong>{appDownloadUrl()}</strong></p>
       {/if}
       <div class="promorow">
-        <button onclick={() => (promoOpen = false)}>Not now</button>
+        <button class="quiet" onclick={() => (promoOpen = false)}>Not now</button>
         <a
           class="promoget"
           href={APP_DOWNLOAD_PATH}
@@ -378,14 +423,73 @@
     min-width: 44px;
   }
 
+  /* Download is what the card is for, so it is the filled one - the same
+     treatment as app.css's button.primary. */
   .promoget {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid var(--brass, var(--accent));
+    border: 1px solid var(--brass-lit, var(--accent));
     border-radius: var(--radius);
-    background: var(--bg-raised);
-    color: inherit;
+    background-color: var(--brass, var(--accent));
+    background-image: linear-gradient(180deg, rgba(255, 234, 190, 0.28), rgba(0, 0, 0, 0.12));
+    color: #1d1408;
+    font-weight: 700;
     text-decoration: none;
+  }
+
+  .quiet {
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-dim);
+  }
+
+  .art {
+    /* main_hub is 1920x1072; cropped to a strip so the buttons stay in the
+       first viewport on a phone. */
+    aspect-ratio: 1920 / 760;
+    margin: -0.25rem 0 0.1rem;
+    background-size: cover;
+    background-position: center 60%;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  .pitch {
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  .hint.guest {
+    margin: 0;
+  }
+
+  .choose-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .pw-row {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .pw-row input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .pw-toggle {
+    flex-shrink: 0;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 0.8rem;
+  }
+
+  .link.back {
+    justify-self: center;
+    min-height: 44px;
+    font-size: 0.9rem;
   }
 </style>

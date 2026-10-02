@@ -25,7 +25,7 @@ for (const width of WIDTHS) {
   const page = await browser.newPage({ viewport: { width, height: 800 }, deviceScaleFactor: 2 });
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   // The once-per-browser Android popup covers the login buttons on a fresh page.
-  await page.getByRole('button', { name: 'Play as guest' }).waitFor();
+  await page.getByRole('button', { name: 'Play now', exact: true }).waitFor();
   const notNow = page.getByRole('button', { name: 'Not now', exact: true });
   if ((await notNow.count()) > 0) await notNow.click();
   await page.getByRole('button', { name: 'Sign in' }).click();
