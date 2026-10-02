@@ -336,9 +336,4 @@
   .bar-fill.over {
     background: var(--danger);
   }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.55rem;
-  }
 </style>

@@ -1180,11 +1180,6 @@
     color: var(--gold);
   }
 
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-  }
-
   /* Modul: an inline button styled as a link - screens are modal panels, not
      URLs, so there is no href to give it. */
   .linkish {

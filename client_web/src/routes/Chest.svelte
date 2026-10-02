@@ -1397,18 +1397,6 @@
     font-size: 0.8rem;
   }
 
-  .tiny-btn {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.5rem;
-  }
-
-  /* Only after the first press. The unconfirmed button looks like every other
-     one, so nothing is destroyed by a mis-click on a crowded row. */
-  .danger {
-    border-color: var(--danger);
-    color: var(--danger);
-  }
-
   /* Modul: a caret drawn rather than typed. A glyph is a font's opinion about
      a shape - it differs by family, is not guaranteed to be present, and a
      screen reader announces it as "black down-pointing small triangle" in the

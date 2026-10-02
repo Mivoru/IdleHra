@@ -193,11 +193,6 @@
     justify-self: start;
   }
 
-  .danger {
-    border-color: var(--warn);
-    color: var(--warn);
-  }
-
   .dim {
     color: var(--text-dim);
   }

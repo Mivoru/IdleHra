@@ -588,7 +588,8 @@ input {
      lives in one place at the bottom of this file rather than here. Kept as
      the LOWER bound for anything that opts out of that floor. */
   nav button,
-  .tiny-btn {
+  .tiny-btn,
+  .btn-sm {
     min-height: 2rem;
   }
 
@@ -835,13 +836,82 @@ button:active:not(:disabled) {
 /* Modul: THE ONE FILLED BUTTON on a row or card - Craft, Fuse, Gather
    (tasks 100/101). `class="tiny-btn primary"` was written in several places
    and styled nowhere, so the action a player came for looked exactly like
-   the secondary one beside it. */
-button.primary:not(:disabled) {
+   the secondary one beside it.
+   Disabled keeps the fill (at --opacity-disabled), so the action a player is
+   working towards still reads as THE action rather than as a grey twin of the
+   button beside it. `:not(:disabled)` / `:disabled` both carry the extra
+   pseudo-class for specificity: a component's scoped `button {}` is (0,1,1)
+   and would otherwise win. */
+button.primary:not(:disabled),
+button.primary:disabled {
   background-color: var(--brass);
   background-image: linear-gradient(180deg, rgba(255, 234, 190, 0.28), rgba(0, 0, 0, 0.12));
   border-color: var(--brass-lit);
   color: #1d1408;
   font-weight: 700;
+}
+
+/* Modul: TASK 106 - ONE BUTTON VOCABULARY, NOT THIRTEEN COPIES.
+   `.tiny-btn` was defined in thirteen screens' <style> blocks in three sizes
+   (0.7 / 0.72rem, 0.45 / 0.5 / 0.55rem of side padding) and used undefined in
+   two more, so the same small button was a different size depending on which
+   screen drew it. It lives here once now, with `.btn-sm` as its name for new
+   code. The variants are classes on a plain <button> rather than a component,
+   because 46 call sites already speak `class="tiny-btn primary"` and a class
+   needs no import:
+
+     (none)   the default raised brass button (the base `button` rules above)
+     primary  the one filled call to action on a card or row (the rule above)
+     danger   destroys or spends something that cannot be had back
+     ghost    a secondary action beside a primary one - outline, no fill
+     quiet    text-only, for "Skip", "Later", "Not now"
+
+   Sizes: md is the base button; sm is `.tiny-btn` / `.btn-sm`. A component may
+   still set its own size for a control that is genuinely different (a close
+   cross, a map plate) - this is the default, not a cage. The 44px phone floor
+   at the bottom of this file applies to every one of them. */
+.tiny-btn,
+.btn-sm {
+  font-size: var(--fs-xs);
+  padding: 0.2rem 0.45rem;
+  /* A small button in a flex row must keep its label: min-width 0 on a flex
+     item lets it shrink below its own text (see client_web/CLAUDE.md). */
+  flex-shrink: 0;
+}
+
+.btn-md {
+  font-size: inherit;
+  padding: 0.45rem 0.8rem;
+}
+
+button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.ghost {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+button.quiet {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  border-color: transparent;
+  color: var(--text-dim);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.ghost:hover:not(:disabled),
+  button.quiet:hover:not(:disabled) {
+    color: var(--text);
+    background-color: var(--tint-hover);
+    box-shadow: none;
+  }
 }
 
 button.active,

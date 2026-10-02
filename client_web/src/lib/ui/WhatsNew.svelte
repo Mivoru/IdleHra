@@ -237,11 +237,6 @@
     flex-shrink: 0;
   }
 
-  .ghost {
-    background: transparent;
-    color: var(--text-dim);
-  }
-
   /* The touch floor, and the card's own action is the one control a player
      must always be able to hit. */
   .card > button {

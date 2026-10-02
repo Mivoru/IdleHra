@@ -395,11 +395,6 @@
     font-weight: 700;
   }
 
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-  }
-
   .pm {
     display: inline-flex;
     gap: 0.25rem;

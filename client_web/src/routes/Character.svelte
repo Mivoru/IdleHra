@@ -1231,11 +1231,6 @@
     overflow-wrap: anywhere;
   }
 
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-  }
-
   /* Wider screens: bigger tiles, the same four columns. */
   @media (min-width: 52rem) {
     .gearslot {

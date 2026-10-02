@@ -199,9 +199,4 @@
     flex-basis: 100%;
     margin: 0;
   }
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-    flex: none;
-  }
 </style>

@@ -377,10 +377,4 @@
   .actions button {
     min-height: 2rem;
   }
-
-  .quiet {
-    background: transparent;
-    border-color: transparent;
-    color: var(--text-dim);
-  }
 </style>

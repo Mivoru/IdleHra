@@ -259,11 +259,6 @@
     white-space: nowrap;
   }
 
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.55rem;
-  }
-
   .message-content {
     grid-column: 1 / -1;
     background: rgba(255, 255, 255, 0.03);

@@ -563,9 +563,4 @@
     margin-top: 0.8rem;
     text-align: left;
   }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-  }
 </style>

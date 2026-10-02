@@ -227,11 +227,5 @@
   .dot.online {
     background: var(--good);
   }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-    flex: none;
-  }
 </style>
 

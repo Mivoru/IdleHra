@@ -1291,11 +1291,6 @@
   .mat-ok { color: var(--good); }
   .mat-low { color: var(--danger); }
 
-  .tiny-btn {
-    white-space: nowrap;
-    font-size: 0.72rem;
-  }
-
   .rare-btn {
     background: color-mix(in srgb, var(--accent) 20%, transparent);
     border-color: var(--accent);
