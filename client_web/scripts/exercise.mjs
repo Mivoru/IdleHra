@@ -46,9 +46,9 @@ const SUB_TABS = {
   Ancestors: ['Bloodline', 'ancestors'],
   Inheritance: ['Bloodline', 'inheritance'],
   // Task 76 made Friends, Market, Guild and Leaderboards one family. Task 95
-  // gave Friends, Market and Guild menu entries of their own; Leaderboards is
-  // still only a tab.
-  Leaderboards: ['Friends', 'leaderboards'],
+  // gave Community (which opens Friends), Market and Guild menu entries of
+  // their own; Leaderboards is still only a tab.
+  Leaderboards: ['Community', 'leaderboards'],
 };
 
 const go = async (label) => {
@@ -971,12 +971,12 @@ await go('Market');
 }
 
 // --- social: friends ---------------------------------------------------------
-// Modul: this nav item is 'Friends'. It was 'Social' until the menu was
+// Modul: this nav item is 'Community'. It was 'Social' until the menu was
 // reorganised on 2026-08-10 and this script was not updated with it, so every
 // run since then died here - which is how the one verification that proves
 // gameplay works went three weeks without being run. If a go() target ever
 // times out, check App.svelte's labels before suspecting the screen.
-await go('Friends');
+await go('Community');
 {
   const text = await page.evaluate(() => document.body.innerText);
   record('social screen shows a friend list section', /Friend/i.test(text));
@@ -4933,7 +4933,7 @@ await go('Ancestors');
   // list, and removes it again - a round trip, so the list starts empty next run.
   if (registered) {
     const newName = `exercise${stamp % 1_000_000}`;
-    await go('Friends');
+    await go('Community');
     const input = page.getByPlaceholder('Username').first();
     await input.fill(newName);
     await page.getByRole('button', { name: /^Add/ }).first().click();
@@ -4982,9 +4982,9 @@ await go('Ancestors');
         ),
       );
       // Task 95: the Market is a menu entry of its own again as well as a tab
-      // of the Friends family (task 76), so the lock shows on both - and the
-      // Friends entry stays open for Friends and Leaderboards.
-      const friends = locked.find((l) => l.startsWith('Friends='));
+      // of the Community family (task 76), so the lock shows on both - and the
+      // Community entry stays open for Friends and Leaderboards.
+      const friends = locked.find((l) => l.startsWith('Community='));
       const marketEntry = locked.find((l) => l.startsWith('Market='));
       // A DOM click, not a pointer one: a brand-new account has onboarding
       // overlays up at this point, and what is checked is the lock state,
@@ -4997,9 +4997,9 @@ await go('Ancestors');
         .getAttribute('data-locked')
         .catch(() => null);
       record(
-        'a new account sees Market greyed until level 10 (entry and tab), Friends open',
+        'a new account sees Market greyed until level 10 (entry and tab), Community open',
         friends === undefined && marketEntry === 'Market=Level 10' && marketTab === 'Level 10',
-        `Friends ${friends ?? 'open'}; ${marketEntry ?? 'Market entry open'}; Market tab ${marketTab ?? 'open'}`,
+        `Community ${friends ?? 'open'}; ${marketEntry ?? 'Market entry open'}; Market tab ${marketTab ?? 'open'}`,
       );
       record(
         'a new account keeps Combat, Character and Auto-Eat open',

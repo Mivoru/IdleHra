@@ -3,7 +3,7 @@
 // This existed three times - in smoke-screens.mjs, overlap-check.mjs and now a
 // third checker - and every copy rotted separately. smoke-screens was still
 // asking for 'Larder' (the nav has said 'Auto-Eat' for a long time), 'Social'
-// (it is 'Friends'), 'Chat' (a dock, not a screen) and 'Bank' (the chrono bank,
+// (it is 'Community'), 'Chat' (a dock, not a screen) and 'Bank' (the chrono bank,
 // deleted 2026-09-02), while never visiting Map, Leaderboards, Ancestors,
 // Inheritance, Skill Tree or Wiki at all. overlap-check had its own different
 // subset with its own different gaps.
@@ -55,9 +55,9 @@ export const SCREENS = [
   'Home', 'Combat', 'Gathering', 'World Boss', 'The Delve',
   'Character', 'Skill Tree', 'Wardrobe', 'Chest', 'Auto-Eat',
   'Village', 'Crafting', 'Forge', 'Bloodline', 'Codex',
-  // Friends, Guild and Market are menu entries of their own since task 95, as
+  // Community, Guild and Market are menu entries of their own since task 95, as
   // well as tabs of one family; Leaderboards is only a tab (OVERLAYS below).
-  'Friends', 'Guild', 'Market', 'Mail', 'Leaderboards',
+  'Community', 'Guild', 'Market', 'Mail', 'Leaderboards',
   // 'Store' left the menu while it sells nothing (task 71); the route stays.
   'Progress', 'Wiki', 'Settings',
   // Not a nav button: a STATE of one. See OVERLAYS below.
@@ -108,7 +108,7 @@ export const OVERLAYS = {
   'Auto-Eat · Boosts': subTab('Auto-Eat', 'boosts'),
   'Bloodline · Ancestors': subTab('Bloodline', 'ancestors'),
   'Bloodline · Inheritance': subTab('Bloodline', 'inheritance'),
-  'Leaderboards': subTab('Friends', 'leaderboards'),
+  'Leaderboards': subTab('Community', 'leaderboards'),
   // Task 95: the phone's More sheet, measured OPEN - its tiles, the tab bar
   // under it and the header over it are what check:touch and check:overlap
   // have to judge. A desktop has no ≡, so there it measures plain Home.

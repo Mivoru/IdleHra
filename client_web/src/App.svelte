@@ -104,15 +104,15 @@
   //   Play             - what the character is doing right now
   //   Hero             - the character and what it carries
   //   Make             - what the village builds and breeds
-  //   Friends & Guilds - other players, and the post
+  //   Community        - other players, and the post
   //   Game             - your record, the rules, the settings
   //
   // ONE NAME PER CONCEPT (task 95, owner-approved 2026-10-02). An entry, its
   // tab, its heading, the Wiki and the tutorial say the same word: Home (not
   // Map), Auto-Eat (not Supplies - the first guided step already said "Go to
   // Auto-Eat" and pointed at an entry called something else), Bloodline >
-  // Breeding / Ancestors / Inheritance, and Friends (the entry that used to be
-  // called Community and opened a page called Friends).
+  // Breeding / Ancestors / Inheritance. Community keeps its name (owner, 2026-10-03)
+  // - it opens the Friends tab.
   const GROUPS = [
     {
       name: 'Play',
@@ -152,13 +152,13 @@
       ],
     },
     {
-      name: 'Friends & Guilds',
+      name: 'Community',
       screens: [
         // Task 76 made Friends, Market, Guild and Leaderboards one family with
         // four tabs. Task 95 gives Guild and Market an entry of their own as
         // well: a player looking for the Market finds the word Market in the
         // menu, not inside an entry with another name.
-        { key: 'social', label: 'Friends' },
+        { key: 'social', label: 'Community' },
         { key: 'guildops', label: 'Guild' },
         { key: 'market', label: 'Market' },
         // Modul: Mail has its own entry - world boss rewards land there, and
@@ -181,7 +181,7 @@
   ] as const;
 
   /** The group whose sheet section carries the chat entry (task 95). */
-  const CHAT_GROUP = 'Friends & Guilds';
+  const CHAT_GROUP = 'Community';
 
   /** The tab bar's own screens: a phone's sheet does not list them twice. */
   const TAB_BAR_KEYS: ReadonlySet<string> = new Set(MAIN_TABS.map((t) => t.key));
@@ -220,7 +220,7 @@
       ],
     },
     social: {
-      name: 'Friends & Guilds',
+      name: 'Community',
       tabs: [
         { key: 'social', label: 'Friends' },
         { key: 'market', label: 'Market' },

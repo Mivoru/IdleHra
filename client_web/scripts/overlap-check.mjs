@@ -20,7 +20,7 @@
 // another is not.
 // Modul: the screen list is SHARED now (scripts/screens.mjs). This file kept
 // its own copy, which had drifted its own way: it still said 'Social' where the
-// nav says 'Friends', and it never visited Leaderboards or Wiki at all.
+// nav says 'Community', and it never visited Leaderboards or Wiki at all.
 import { SCREENS, assertMatchesNav, go, open, signIn } from './screens.mjs';
 
 const OVERLAP_RATIO = 0.18;   // ignore hairline touches
