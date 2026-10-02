@@ -50,24 +50,27 @@ if (LANGUAGE_CODES.length === 0) {
 
 /** Every navigable destination, in the header's own order and grouping. */
 export const SCREENS = [
-  'Map', 'Combat', 'Gathering', 'World Boss', 'The Delve',
-  'Character', 'Wardrobe', 'Chest', 'Supplies', 'Crafting', 'Forge',
-  // Task 76: one Community entry; Friends, Market, Guild and Leaderboards
-  // are its tabs, reached through OVERLAYS below.
-  'Community', 'Friends', 'Market', 'Guild', 'Mail', 'Leaderboards',
+  // Task 95: regrouped (Play, Hero, Make, Friends & Guilds, Game) and renamed
+  // - Home not Map, Auto-Eat not Supplies, Friends not Community.
+  'Home', 'Combat', 'Gathering', 'World Boss', 'The Delve',
+  'Character', 'Skill Tree', 'Wardrobe', 'Chest', 'Auto-Eat',
+  'Village', 'Crafting', 'Forge', 'Bloodline', 'Codex',
+  // Friends, Guild and Market are menu entries of their own since task 95, as
+  // well as tabs of one family; Leaderboards is only a tab (OVERLAYS below).
+  'Friends', 'Guild', 'Market', 'Mail', 'Leaderboards',
   // 'Store' left the menu while it sells nothing (task 71); the route stays.
-  'Village', 'Bloodline', 'Skill Tree', 'Progress', 'Codex', 'Settings',
-  'Wiki',
+  'Progress', 'Wiki', 'Settings',
   // Not a nav button: a STATE of one. See OVERLAYS below.
   'World Boss · shield wheel',
   'Market · cosmetics',
-  'Supplies · Boosts',
+  'Auto-Eat · Boosts',
   'Bloodline · Ancestors',
   'Bloodline · Inheritance',
+  'Home · More sheet',
 ];
 
 /**
- * Task 59: Supplies and Bloodline are one menu entry each, with the other
+ * Task 59: Auto-Eat and Bloodline are one menu entry each, with the other
  * screens behind a tab strip. A tab is opened the way a player opens it.
  */
 function subTab(screen, key) {
@@ -102,13 +105,24 @@ function subTab(screen, key) {
  * smoke:screens.
  */
 export const OVERLAYS = {
-  'Supplies · Boosts': subTab('Supplies', 'boosts'),
+  'Auto-Eat · Boosts': subTab('Auto-Eat', 'boosts'),
   'Bloodline · Ancestors': subTab('Bloodline', 'ancestors'),
   'Bloodline · Inheritance': subTab('Bloodline', 'inheritance'),
-  'Friends': subTab('Community', 'social'),
-  'Market': subTab('Community', 'market'),
-  'Guild': subTab('Community', 'guildops'),
-  'Leaderboards': subTab('Community', 'leaderboards'),
+  'Leaderboards': subTab('Friends', 'leaderboards'),
+  // Task 95: the phone's More sheet, measured OPEN - its tiles, the tab bar
+  // under it and the header over it are what check:touch and check:overlap
+  // have to judge. A desktop has no ≡, so there it measures plain Home.
+  'Home · More sheet': {
+    screen: 'Home',
+    open: async (page) => {
+      const menu = page.locator('header').getByRole('button', { name: 'Menu', exact: true }).first();
+      if (!(await menu.isVisible().catch(() => false))) return false;
+      await menu.click();
+      await page.locator('#more-sheet').waitFor({ timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(300);
+      return true;
+    },
+  },
   'World Boss · shield wheel': {
     screen: 'World Boss',
     open: async (page) => {
@@ -138,9 +152,9 @@ export const OVERLAYS = {
  * Header buttons that are not destinations, and so are not expected in SCREENS.
  * Named rather than pattern-matched, so a new one has to be looked at once.
  */
-// 'Chat': task 71 - the chat's header button while nobody is online. It opens
-// the dock, it is not a screen.
-const NON_DESTINATIONS = ['Menu · Map', 'Sign out', 'Chat'];
+// 'Chat': task 95 - the one chat entry (ChatButton, data-label="Chat"). It
+// opens the chat window, it is not a screen. The phone's ≡ has no text.
+const NON_DESTINATIONS = ['Sign out', 'Chat'];
 
 export const BASE = process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/';
 
@@ -208,7 +222,7 @@ export async function open({ width = 1500, height = 1000 } = {}) {
  * the popup's own button is exercised on every run.
  */
 export async function dismissAppPromo(page) {
-  await page.getByRole('button', { name: 'Play as guest' }).waitFor({ timeout: 25000 });
+  await page.getByRole('button', { name: 'Play now', exact: true }).waitFor({ timeout: 25000 });
   const notNow = page.getByRole('button', { name: 'Not now', exact: true });
   if ((await notNow.count()) > 0) await notNow.click();
 }
@@ -221,7 +235,7 @@ export async function dismissAppPromo(page) {
 export async function signInAsGuest(page) {
   await page.goto(BASE, { waitUntil: 'networkidle' });
   await dismissAppPromo(page);
-  await page.getByRole('button', { name: 'Play as guest' }).click();
+  await page.getByRole('button', { name: 'Play now', exact: true }).click();
   await waitForShell(page);
   await page.waitForTimeout(500);
   // Modul: a brand-new account is FENCED by the guided first minute
@@ -305,11 +319,12 @@ export async function assertMatchesNav(page) {
 }
 
 /**
- * The header button for a destination, REVEALED. A phone folds the nav behind
- * "Menu", and (task 82) a desktop folds each group behind a dropdown toggle
- * (`[data-group-toggle]`), so a closed group's entries are display:none and an
- * unrevealed click times out for thirty seconds. Every script that navigates
- * through the header goes through this one function.
+ * The button for a destination, REVEALED. A desktop (task 82) folds each group
+ * behind a dropdown toggle (`[data-group-toggle]`), so a closed group's entries
+ * are display:none and an unrevealed click times out for thirty seconds. A
+ * phone (task 95) hides the header's groups altogether: four screens are in
+ * the tab bar and every other one is in the More sheet, opened by the
+ * header's ≡. Every script that navigates goes through this one function.
  *
  * `name` is a string (exact, a badge count tolerated) or a RegExp.
  */
@@ -319,13 +334,28 @@ export async function navButton(page, name) {
       ? name
       : new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\s+\\d+)?$`);
   const target = page.locator('header nav').getByRole('button', { name: pattern }).first();
-  if (!(await target.isVisible().catch(() => false))) {
-    const menu = page.locator('header').getByRole('button', { name: /^Menu( ·|$)/ }).first();
+  if (await target.isVisible().catch(() => false)) return target;
+
+  // Modul: THE TAB BAR IS MATCHED ON ITS .label, not on the button's name. A
+  // tab's attention dot is a span with aria-label="needs attention", so the
+  // accessible name of Character with points to spend is "Character needs
+  // attention", and an anchored pattern would miss it on exactly that run.
+  const tab = page
+    .locator('.tabbar button')
+    .filter({ has: page.locator('.label', { hasText: pattern }) })
+    .first();
+  if (await tab.isVisible().catch(() => false)) return tab;
+
+  const sheetEntry = page.locator('#more-sheet').getByRole('button', { name: pattern }).first();
+  if (!(await sheetEntry.isVisible().catch(() => false))) {
+    const menu = page.locator('header').getByRole('button', { name: 'Menu', exact: true }).first();
     if (await menu.isVisible().catch(() => false)) {
       await menu.click();
       await page.waitForTimeout(300);
     }
   }
+  if (await sheetEntry.isVisible().catch(() => false)) return sheetEntry;
+
   if (!(await target.isVisible().catch(() => false))) {
     // Modul: `has:` is evaluated INSIDE each .group, so it must be a relative
     // locator - `target` starts at `header nav`, which is never inside a
@@ -346,9 +376,8 @@ export async function navButton(page, name) {
 /**
  * Navigates by nav label and waits for the screen's own queries to settle.
  *
- * Modul: OPENS THE HAMBURGER FIRST when the nav is collapsed. Below the mobile
- * breakpoint the header folds every destination behind a "Menu · <screen>"
- * toggle, so a direct click waits the full thirty seconds and dies on a
+ * Modul: OPENS THE MORE SHEET FIRST on a phone (navButton). Below the mobile
+ * breakpoint the header's groups are hidden, so a direct click waits the full thirty seconds and dies on a
  * timeout that names the locator and says nothing about the breakpoint - which
  * is what stopped the first narrow-width sweep dead.
  */

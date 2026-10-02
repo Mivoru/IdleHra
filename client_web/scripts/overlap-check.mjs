@@ -21,7 +21,7 @@
 // Modul: the screen list is SHARED now (scripts/screens.mjs). This file kept
 // its own copy, which had drifted its own way: it still said 'Social' where the
 // nav says 'Friends', and it never visited Leaderboards or Wiki at all.
-import { SCREENS, assertMatchesNav, go, navButton, open, signIn } from './screens.mjs';
+import { SCREENS, assertMatchesNav, go, open, signIn } from './screens.mjs';
 
 const OVERLAP_RATIO = 0.18;   // ignore hairline touches
 const MIN_AREA = 120;         // ignore slivers
@@ -139,14 +139,16 @@ for (const width of [1500, 390]) {
   console.log(`\n=== ${width}px ===`);
   for (const label of SCREENS) {
     try {
-      if (width === 390) {
-        const menu = page.getByRole('button', { name: /Menu/ }).first();
-        if ((await menu.count()) > 0) await menu.click();
-        await page.waitForTimeout(200);
+      // Modul: go(), not navButton() (task 106). Ten destinations exist only
+      // in OVERLAYS - a tab or a panel opened inside another screen - and a
+      // nav-button lookup found nothing for them and quietly `continue`d, so
+      // the check reported them clean without ever looking. go() opens the
+      // phone Menu itself and reports a locked entry instead of throwing.
+      const reached = await go(page, label);
+      if (reached?.locked) {
+        console.log(`  ${label}: locked (${reached.locked})`);
+        continue;
       }
-      const nav = await navButton(page, label);
-      if ((await nav.count()) === 0) { continue; }
-      await nav.click({ timeout: 5000 });
       await page.waitForFunction(() => !/\bLoading\.\.\./.test(document.body.innerText), { timeout: 12000 });
       await page.waitForTimeout(500);
       const hits = await findOverlaps();

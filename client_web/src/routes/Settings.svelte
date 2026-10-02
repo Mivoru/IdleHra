@@ -930,9 +930,6 @@
   }
 
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
     padding: 0.7rem;
   }
 
@@ -1004,10 +1001,6 @@
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
-  }
-
-  .tracks li .tiny-btn {
-    flex-shrink: 0;
   }
 
   .music-mode {
@@ -1085,11 +1078,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: 0.3rem;
-  }
-
-  .tiny-btn {
-    font-size: 0.7rem;
-    padding: 0.2rem 0.45rem;
   }
 
   /* A text-styled toggle for a disclosure inside a panel. */

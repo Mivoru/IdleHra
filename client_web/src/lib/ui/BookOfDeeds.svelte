@@ -89,6 +89,18 @@
       .find((d) => !d.Done) ?? null,
   );
 
+  // Task 109: a SEALED chapter is history - all its deeds are done and its
+  // Seal is banked - so it folds to its one-line header and opens on demand.
+  // The book used to spend the first phone screens on five sealed lists of
+  // struck-through lines above the chapter the player is actually on.
+  let openSealed = $state<ReadonlySet<number>>(new Set());
+  function toggleSealed(index: number) {
+    const next = new Set(openSealed);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    openSealed = next;
+  }
+
   function doneCount(deeds: DeedEntry[]): number {
     return deeds.filter((d) => d.Done).length;
   }
@@ -139,9 +151,16 @@
           <span class="tally" class:complete={chapter.IsComplete}>
             {doneCount(chapter.Deeds)} / {chapter.Deeds.length}
           </span>
+          {#if chapter.HasSeal}
+            <button
+              class="fold"
+              aria-expanded={openSealed.has(chapter.Index)}
+              onclick={() => toggleSealed(chapter.Index)}
+            >{openSealed.has(chapter.Index) ? 'Hide deeds' : 'Show deeds'}</button>
+          {/if}
         </div>
 
-        {#if chapter.IsOpen}
+        {#if chapter.IsOpen && (!chapter.HasSeal || openSealed.has(chapter.Index))}
           <ol>
             {#each chapter.Deeds as deed (deed.Id)}
               {@const isNext = upNext?.Id === deed.Id}
@@ -206,11 +225,16 @@
             <li class:done={next === null}>
               <div class="text">
                 <strong>{a.Title}</strong>
-                <div class="tiers">
-                  {#each a.Tiers as t (t.Name)}
-                    <span class="tier" class:reached={t.Reached} title={`${t.Goal} - ${t.Diamonds} diamonds`}>{t.Name}</span>
-                  {/each}
-                </div>
+                <!-- Task 109: a one-tier achievement named after itself read
+                     "Monster Slayer / [Monster Slayer]". The chips only earn
+                     their place when there is a ladder to show. -->
+                {#if a.Tiers.length > 1 || a.Tiers[0]?.Name !== a.Title}
+                  <div class="tiers">
+                    {#each a.Tiers as t (t.Name)}
+                      <span class="tier" class:reached={t.Reached} title={`${t.Goal} - ${t.Diamonds} diamonds`}>{t.Name}</span>
+                    {/each}
+                  </div>
+                {/if}
                 {#if next}
                   <p class="body">Next: <strong>{next.Name}</strong> - {next.Goal}. Pays {next.Diamonds} diamonds.</p>
                   {#if a.Progress > 0}
@@ -358,9 +382,28 @@
     background: rgba(0, 0, 0, 0.04);
   }
 
+  /* Task 109: a done deed is quiet - one dim line, no strike-through shouting
+     across the row. The tick says it is done. */
+  li.done {
+    padding-block: 0.1rem;
+  }
+
   li.done .text strong {
     color: var(--text-dim);
-    text-decoration: line-through;
+    font-weight: 400;
+    font-size: 0.85rem;
+  }
+
+  .fold {
+    grid-column: 1 / -1;
+    justify-self: start;
+    min-height: 44px;
+    padding: 0.1rem 0.6rem;
+    font-size: 0.8rem;
+    background: transparent;
+    border-color: transparent;
+    color: var(--text-dim);
+    text-decoration: underline;
   }
 
   .mark {
@@ -382,12 +425,16 @@
     color: var(--text-dim);
   }
 
+  /* Task 109: the meter has a TRACK. On the parchment panel --bg vanished, so
+     a deed at 3% showed as a speck with nothing to be 3% of. */
   .meter {
-    height: 4px;
-    background: var(--bg);
-    border-radius: 2px;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.32);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+    border-radius: 3px;
     overflow: hidden;
   }
+
 
   .meter span {
     display: block;

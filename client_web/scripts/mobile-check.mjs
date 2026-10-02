@@ -13,9 +13,9 @@ const BASE = process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/';
 const WIDTHS = [320, 360, 414];
 const SCREENS = [
   'Character', 'Chest', 'Combat', 'Gathering', 'Forge', 'Market',
-  'Village', 'Progress', 'Skill Tree', 'Supplies', 'Crafting',
-  'Codex', 'Bloodline', 'Settings', 'Social', 'Guild',
-  'World Boss', 'Map', 'Mail',
+  'Village', 'Progress', 'Skill Tree', 'Auto-Eat', 'Crafting',
+  'Codex', 'Bloodline', 'Settings', 'Friends', 'Guild',
+  'World Boss', 'Home', 'Mail',
 ];
 
 let failures = 0;
@@ -25,7 +25,7 @@ for (const width of WIDTHS) {
   const page = await browser.newPage({ viewport: { width, height: 800 }, deviceScaleFactor: 2 });
   await page.goto(BASE, { waitUntil: 'domcontentloaded' });
   // The once-per-browser Android popup covers the login buttons on a fresh page.
-  await page.getByRole('button', { name: 'Play as guest' }).waitFor();
+  await page.getByRole('button', { name: 'Play now', exact: true }).waitFor();
   const notNow = page.getByRole('button', { name: 'Not now', exact: true });
   if ((await notNow.count()) > 0) await notNow.click();
   await page.getByRole('button', { name: 'Sign in' }).click();
@@ -33,7 +33,7 @@ for (const width of WIDTHS) {
   await page.locator('input[type="password"]').fill('FolkIdleDev123!');
   await page.getByRole('button', { name: 'Sign in', exact: true }).last().click();
   // Modul: NOT 'text=Combat' - that is a nav entry, and on these widths the
-  // nav is collapsed behind the Menu button, so waiting for it waits forever.
+  // nav is folded into the tab bar and the More sheet, so it is not visible.
   // Signed-in is signed-in regardless of what the nav is doing.
   await page.waitForSelector('header button.navtoggle', { timeout: 20000 });
   await page.waitForTimeout(2500);
@@ -58,16 +58,9 @@ for (const width of WIDTHS) {
   }
 
   for (const screen of SCREENS) {
-    // Modul: the nav collapses behind a Menu button on narrow screens, so it
-    // has to be opened before a destination can be reached - which is also
-    // worth exercising, because a menu that does not open is a game with one
-    // screen.
-    const toggle = page.locator('header button.navtoggle');
-    if (await toggle.isVisible().catch(() => false)) {
-      await toggle.click();
-      await page.waitForTimeout(150);
-    }
-
+    // Modul: navButton reaches the destination the way a thumb does - the tab
+    // bar, or the More sheet behind the header's ≡ (task 95). Opening ≡ here
+    // as well would toggle the sheet shut again before navButton looked.
     const nav = await navButton(page, screen);
     if ((await nav.count()) === 0) continue;
     await nav.click().catch(() => {});
@@ -98,7 +91,7 @@ for (const width of WIDTHS) {
     // T". Nothing above would ever catch that, because nothing crosses the
     // viewport. Reported from a phone as the last letter jumping to its own
     // line.
-    if (screen === 'Map') {
+    if (screen === 'Home') {
       const wrapped = await page.evaluate(() =>
         [...document.querySelectorAll('.place span')]
           .filter((el) => {
@@ -112,7 +105,7 @@ for (const width of WIDTHS) {
           .map((el) => (el.textContent ?? '').trim()),
       );
       if (wrapped.length > 0) {
-        console.log(`FAIL ${width}px Map: plate labels wrap - ${wrapped.join(', ')}`);
+        console.log(`FAIL ${width}px Home: plate labels wrap - ${wrapped.join(', ')}`);
         failures++;
       }
     }

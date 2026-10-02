@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  connectionChip,
   describeConnection,
   shouldShowConnectionPanel,
   CONNECTION_GRACE_MS,
@@ -144,5 +145,21 @@ describe('when the panel appears at all', () => {
     // into the login screen, and a panel offering "try again" on top of that
     // would be offering an action that cannot work.
     expect(shouldShowConnectionPanel('signedout', 60_000)).toBe(false);
+  });
+});
+
+describe('connectionChip (task 95)', () => {
+  it('says nothing while connected', () => {
+    expect(connectionChip('live')).toBeNull();
+    expect(connectionChip('idle')).toBeNull();
+  });
+
+  it('never prints a phase name or a retry counter', () => {
+    for (const phase of ['connecting', 'authenticating', 'reconnecting', 'failed', 'signedout'] as const) {
+      const chip = connectionChip(phase);
+      expect(chip).not.toBeNull();
+      expect(chip).not.toMatch(/retry|attempt|\d|signedout|authenticating/i);
+      expect(chip![0]).toBe(chip![0].toUpperCase());
+    }
   });
 });

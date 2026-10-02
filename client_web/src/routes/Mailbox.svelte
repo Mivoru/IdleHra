@@ -46,7 +46,10 @@
     // one frame looks exactly like an attack.
     // Each one through the same pending key, so a row the player has already
     // tapped is not sent twice.
-    entries.slice(0, 10).forEach((entry, index) => {
+    // Modul: task 109 - this was "Claim up to 10", a batch limit the player had
+    // to know about and press again. It walks every row now; the 250 ms spacing
+    // is what keeps it under the throttle, not the count.
+    entries.forEach((entry, index) => {
       setTimeout(() => commandInFlight.run(mailKey(entry.Id), () => claimMailItem(entry.Id)), index * 250);
     });
   }
@@ -71,10 +74,13 @@
       {/if}
     </header>
 
+    <!-- Was a note about the server filtering claimed rows. What a player
+         needs is what arrives here. Senders: MarketEscrowEngine (the buyer),
+         WorldBossEngine, and the admin/overflow paths. -->
     <p class="dim small">
-      Only unclaimed mail appears here - the server filters out anything already
-      taken, so everything below is actionable and there is no read/unread state
-      to track.
+      Mail brings what the game sends rather than hands you: items you buy on
+      the market, world boss rewards, and messages with gifts attached. Claim a
+      letter to take what it carries.
     </p>
 
     {#if mailbox.isPending}
@@ -82,10 +88,10 @@
     {:else if mailbox.isError}
       <p class="warn">Could not load the mailbox.</p>
     {:else if entries.length === 0}
-      <p class="dim">No mail waiting.</p>
+      <p class="dim">No mail waiting. Anything you buy on the market arrives here.</p>
     {:else}
       <div class="actions">
-        <button onclick={claimAll}>Claim up to 10</button>
+        <button onclick={claimAll}>Claim all</button>
         {#if totalGold > 0}
           <span class="gold"><Money amount={totalGold} /> waiting</span>
         {/if}
@@ -156,13 +162,6 @@
   .wrap {
     padding: 1rem;
     max-width: 46rem;
-  }
-
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
   }
 
   .head {
@@ -257,11 +256,6 @@
 
   .when {
     white-space: nowrap;
-  }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.55rem;
   }
 
   .message-content {

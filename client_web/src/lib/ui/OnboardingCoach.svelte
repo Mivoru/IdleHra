@@ -24,6 +24,7 @@
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchStatistics } from '../net/rest';
   import { requestScreen, currentScreen } from '../stores/navigation';
+  import { guidedShowing } from '../stores/guided';
   import {
     onboardingCue,
     acknowledgeCue,
@@ -152,7 +153,7 @@
 
   $effect(() => {
     // Read cue so this re-runs when the panel's content (and height) changes.
-    const showing = cue;
+    const showing = cue && !$guidedShowing;
     if (typeof document === 'undefined') return;
 
     if (!showing || !panel) {
@@ -196,8 +197,11 @@
   }
 </script>
 
+<!-- Not while the guided overlay is up (task 109): one tutorial voice at a
+     time. Hidden rather than unmounted, so the cue stays in the DOM for
+     whatever reads it (exercise.mjs follows the steps through it). -->
 {#if cue}
-  <div class="coach" bind:this={panel} role="status" data-onboarding-cue={cue.id} data-onboarding-kind={cue.kind}>
+  <div class="coach" class:behind-guide={$guidedShowing} aria-hidden={$guidedShowing} bind:this={panel} role="status" data-onboarding-cue={cue.id} data-onboarding-kind={cue.kind}>
     <!-- Modul: THE WHOLE HEADER IS THE TOGGLE, and that is the third attempt.
          A separate 19x18 caret button failed check:touch. Growing it to the
          44px floor then failed check:overlap - a 44px box on a panel whose
@@ -378,9 +382,7 @@
     min-height: 2rem;
   }
 
-  .quiet {
-    background: transparent;
-    border-color: transparent;
-    color: var(--text-dim);
+  .coach.behind-guide {
+    display: none;
   }
 </style>

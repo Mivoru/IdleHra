@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatOfflineCap, nextUnlockLine } from '../src/lib/ui/homeNow';
+import { formatOfflineCap, nearestScreenUnlock, nextUnlockLine } from '../src/lib/ui/homeNow';
 
 describe('home offline cap', () => {
   it('says hours and minutes, and nothing when the server has not said', () => {
@@ -22,5 +22,21 @@ describe('home next unlock', () => {
     expect(line).toContain('Region 2');
     expect(line).toContain('Big Rat');
     expect(line).toContain('0 of 8');
+  });
+});
+
+describe('home next unlock on day one (task 109)', () => {
+  const none = () => 1;
+  const locks = (closed: string[]) => (screen: string) => (closed.includes(screen) ? 'x' : null);
+  it('names the nearest locked screen in reach order', () => {
+    expect(nearestScreenUnlock(2, locks(['forge', 'market', 'delve']))).toBe('The Forge opens at level 5 - you are level 2.');
+    expect(nearestScreenUnlock(7, locks(['market', 'delve']))).toContain('level 10');
+    expect(nearestScreenUnlock(12, locks(['delve']))).toMatch(/7\D?000 gold/);
+    expect(nearestScreenUnlock(40, locks([]))).toBeNull();
+  });
+  it('prefers the nearer unlock while not one boss piece is worn', () => {
+    expect(nextUnlockLine(1, 5, 'Big Rat', [], none, 'Forge soon')).toBe('Forge soon');
+    const worn = [{ SlotIndex: 0, QualityTier: 14, BaseItemId: 'x' }];
+    expect(nextUnlockLine(1, 5, 'Big Rat', worn, none, 'Forge soon')).toContain('Big Rat');
   });
 });

@@ -41,7 +41,8 @@ import { SCREENS, open, signIn, go, assertMatchesNav } from './screens.mjs';
  *
  * The sides are 0 in portrait on every phone made. They are non-zero in
  * LANDSCAPE on a notched device, which is why they are exercised at all - the
- * app allows landscape (Info.plist lists both orientations).
+ * app still rotates on an iPad (Info.plist's `~ipad` list) and on Android
+ * tablets, foldables and split-screen; phones are portrait-only.
  */
 const PORTRAIT = { top: 48, right: 0, bottom: 24, left: 0 };
 const LANDSCAPE = { top: 0, right: 44, bottom: 21, left: 44 };

@@ -26,10 +26,6 @@
   }
 
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
     max-width: 32rem;
   }
 

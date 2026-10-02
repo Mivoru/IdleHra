@@ -421,13 +421,6 @@
     gap: 1rem;
   }
 
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
-
   .status {
     display: grid;
     gap: 0.7rem;
@@ -540,7 +533,7 @@
   }
 
   .nodes li.current {
-    background: rgba(74, 163, 223, 0.08);
+    background: var(--tint-selected);
   }
 
   /* Modul: the node rows were a flex line, and a two-word location name
@@ -629,10 +622,5 @@
   .whytoggle {
     width: 100%;
     text-align: left;
-  }
-
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
   }
 </style>

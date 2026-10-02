@@ -291,6 +291,38 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("characters");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.ChatChannelMessage", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<byte>("ChannelType")
+                        .HasColumnType("smallint");
+
+                    b.Property<long>("GuildId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("MessageText")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<long>("SenderPlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("SentAtEpochMs")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ChannelType", "GuildId", "SentAtEpochMs");
+
+                    b.ToTable("chat_channel_messages");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.CommodityRecord", b =>
                 {
                     b.Property<long>("Id")

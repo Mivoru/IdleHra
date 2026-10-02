@@ -26,6 +26,7 @@ import { connection } from './connection';
 import { CommandType } from './protocol.generated';
 import { computeGdprConfirmationHash } from './antiCheat';
 import { formatNumber } from '../ui/format';
+import { formatWhen } from '../ui/when';
 
 export interface CommandRefusal {
   ok: false;
@@ -345,7 +346,7 @@ export function attackWorldBoss(options: {
     return refuse('The boss is already dead.');
   }
   if (attemptCount >= MAX_BOSS_ATTEMPTS) {
-    return refuse("You have used today's strike. It comes back at midnight UTC.");
+    return refuse(`You have used today's strike. It comes back ${formatWhen(nextStrikeRefill(new Date()))}.`);
   }
 
   if (!Number.isInteger(plateIndex) || plateIndex < 0 || plateIndex >= BOSS_PLATE_COUNT) {

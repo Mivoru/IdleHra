@@ -17,6 +17,7 @@
   import { onMount } from 'svelte';
   import { loadContent, monsterName, type ContentRegistry } from '../net/content';
   import { requestScreen } from '../stores/navigation';
+  import Modal from './Modal.svelte';
 
   // The monster table is content, not state - loaded once, the same way
   // Combat loads it. A card that says "monster 105" is not a card.
@@ -68,8 +69,9 @@
 </script>
 
 {#if death}
-  <div class="backdrop" role="dialog" aria-modal="true" aria-label="Your character died">
-    <div class="card">
+  <!-- Back and Escape reach it through App's deathSummary store, so it does
+       not register a closer of its own (see Modal.svelte). -->
+  <Modal label="Your character died" tone="danger" register={false}>
       <p class="kicker">Down</p>
       <h2>
         {#if death.monsterId > 0}
@@ -133,40 +135,10 @@
         {/if}
         <button onclick={dismissDeath}>Close</button>
       </div>
-    </div>
-  </div>
+  </Modal>
 {/if}
 
 <style>
-  .backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.55);
-    display: grid;
-    place-items: center;
-    z-index: 60;
-    /* Fixed, so body's safe-area padding does not reach it - its own inset. */
-    padding: calc(1rem + var(--sa-top)) calc(1rem + var(--sa-right)) calc(1rem + var(--sa-bottom))
-      calc(1rem + var(--sa-left));
-  }
-
-  /* The card scrolls rather than running off a short screen (a landscape
-     phone, a large font setting): a fixed backdrop cannot scroll for it. The
-     vh line is the fallback for an engine without dvh. */
-  .card {
-    width: min(26rem, 100%);
-    max-height: calc(100vh - 2rem);
-    max-height: calc(100dvh - 2rem - var(--sa-top) - var(--sa-bottom));
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    background: var(--bg-panel);
-    border: 1px solid var(--danger);
-    border-radius: var(--radius);
-    padding: 1.2rem;
-    display: grid;
-    gap: 0.5rem;
-  }
-
   .kicker {
     margin: 0;
     font-size: 0.7rem;
@@ -200,21 +172,6 @@
     flex-wrap: wrap;
     gap: 0.4rem;
     margin-top: 0.5rem;
-  }
-
-  button {
-    font: inherit;
-    padding: 0.4rem 0.7rem;
-    color: inherit;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    cursor: pointer;
-  }
-
-  .primary {
-    border-color: var(--brass);
-    color: var(--brass-lit);
   }
 
   .dim {

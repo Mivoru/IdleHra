@@ -437,9 +437,6 @@
   /* Modul: bottom padding past the panel's corner bracket (an 18px background
      layer at 4px in, app.css) so the last row or button never sits on it. */
   .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
     padding: 1rem 1rem 1.6rem;
   }
 

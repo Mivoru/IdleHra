@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { hotkeyTab, MAIN_TABS } from '../src/lib/ui/tabs';
+import { hotkeyTab, MAIN_TABS, HOTKEY_SCREENS } from '../src/lib/ui/tabs';
 import { readPrefAs, writePref } from '../src/lib/net/prefs';
 
 function key(k: string, extra: Record<string, unknown> = {}) {
@@ -7,8 +7,14 @@ function key(k: string, extra: Record<string, unknown> = {}) {
 }
 
 describe('task 52 hotkeys', () => {
-  it('maps 1-5 onto the tab bar in order', () => {
-    expect(['1', '2', '3', '4', '5'].map((k) => hotkeyTab(key(k)))).toEqual(MAIN_TABS.map((t) => t.key));
+  it('maps 1-4 onto the tab bar in order, and 5 onto Village', () => {
+    // Task 95: the fifth tab is More, which is a sheet rather than a screen.
+    expect(['1', '2', '3', '4', '5'].map((k) => hotkeyTab(key(k)))).toEqual([
+      ...MAIN_TABS.slice(0, 4).map((t) => t.key),
+      'village',
+    ]);
+    expect(HOTKEY_SCREENS).toHaveLength(5);
+    expect(MAIN_TABS[4].key).toBe('more');
   });
 
   it('leaves other keys, modifiers and repeats alone', () => {

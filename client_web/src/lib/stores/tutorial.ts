@@ -40,6 +40,7 @@ import { nextObjective, type Objective } from './tutorialObjectives';
 import { lockedRequirement } from '../ui/unlocks';
 import {
   adoptPlayer,
+  forgetSeen,
   markAllSeen,
   markSeen,
   seenExplanations,
@@ -60,7 +61,23 @@ const STORAGE_KEY = 'folkidle.tutorialDismissed';
  * already know it, and "skip onboarding" that only skipped the first three
  * steps would be a lie.
  */
-const dismissed = writable<boolean>(readDismissed());
+const localDismissed = writable<boolean>(readDismissed());
+
+/**
+ * Modul: TASK 109 - THE SKIP IS ON THE ACCOUNT. It lived only under the
+ * localStorage key above, so a player who skipped the tutorial met it again on
+ * the next browser, phone or private window. It now also rides in the
+ * account's server-side seen-set (PlayerRecord.OnboardingSeenIds, which takes
+ * any id up to 64 characters) as this sentinel, so it follows the account the
+ * way the explanations already do. The local key stays as the synchronous
+ * first answer; the seen-set adds the account's answer once it is fetched.
+ */
+export const TUTORIAL_SKIPPED_ID = 'tutorial-skipped';
+
+const dismissed = derived(
+  [localDismissed, seenExplanations],
+  ([$local, $seen]) => $local || $seen.has(TUTORIAL_SKIPPED_ID),
+);
 
 function readDismissed(): boolean {
   try {
@@ -73,7 +90,8 @@ function readDismissed(): boolean {
 export const onboardingDismissed = { subscribe: dismissed.subscribe };
 
 export function skipTutorial(): void {
-  dismissed.set(true);
+  localDismissed.set(true);
+  markSeen(TUTORIAL_SKIPPED_ID);
   try {
     localStorage.setItem(STORAGE_KEY, '1');
   } catch {
@@ -87,7 +105,8 @@ export function skipTutorial(): void {
  * who did it by accident had no way back at all.
  */
 export function unskipTutorial(): void {
-  dismissed.set(false);
+  localDismissed.set(false);
+  forgetSeen(TUTORIAL_SKIPPED_ID);
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {

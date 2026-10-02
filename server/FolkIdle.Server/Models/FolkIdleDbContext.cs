@@ -78,6 +78,9 @@ namespace FolkIdle.Server.Models
         // both history and any whisper sent to an offline player.
         public DbSet<ConversationMessage> ConversationMessages { get; set; }
 
+        // Modul: world, guild and announcement history - see ChatChannelMessage.
+        public DbSet<ChatChannelMessage> ChatChannelMessages { get; set; }
+
         // Modul: what a season leaves behind - see PlayerInheritanceStat.
         public DbSet<PlayerInheritanceStat> PlayerInheritanceStats { get; set; }
 
@@ -204,6 +207,12 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<ConversationMessage>()
                 .HasIndex(c => new { c.RecipientPlayerId, c.ReadAtEpochMs });
+
+            // Every history read is "the newest N of one channel" (and of one
+            // guild for the guild channel), so the index leads with exactly
+            // those and ends on the time it orders by.
+            modelBuilder.Entity<ChatChannelMessage>()
+                .HasIndex(c => new { c.ChannelType, c.GuildId, c.SentAtEpochMs });
 
             modelBuilder.Entity<PrimaryPurchaseLedger>()
                 .HasIndex(p => p.PlayerId);

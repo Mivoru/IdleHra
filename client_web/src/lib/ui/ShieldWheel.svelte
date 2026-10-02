@@ -1,5 +1,7 @@
 <script lang="ts">
   import { formatNumber, numberTitle } from './format';
+  import { formatWhen } from './when';
+  import { nextStrikeRefill } from '../net/commands';
   // Modul: THE SHIELD WHEEL OVERLAY (task 36, spec 2 and 7). A practice run
   // posts to /practice/score and deals no damage; a real one (Phase 2) posts
   // the same log to /strike, spends today's strike and shows the damage.
@@ -42,15 +44,22 @@
   import { tap } from '../net/haptics';
   import { registerOverlay } from '../stores/sheet';
   import { LAYER_Z } from '../net/backButton';
+  import { portal } from './portal';
 
   // `challenge` is read ONCE, on purpose, which is what svelte-check's
   // state_referenced_locally warnings on this file are about: a challenge
   // never changes during a run, and the parent keys this component on the
   // ChallengeId, so a new challenge is always a new instance.
-  let { challenge, onclose, onagain }: {
+  let { challenge, onclose, onagain, onleave }: {
     challenge: ShieldWheelChallenge;
     onclose: () => void;
     onagain: () => void;
+    /**
+     * Leave mid-run (task 105). Practice: drop it - nothing was at stake. A
+     * real strike: close the overlay only; the server keeps the run, its
+     * throws and its clock, and the World Boss screen offers to finish it.
+     */
+    onleave: () => void;
   } = $props();
 
   const schedule: WheelSchedule = {
@@ -215,7 +224,7 @@
   function frame() {
     if (phase !== 'play') return;
     const t = now();
-    if (ring) ring.style.transform = `rotate(${-angleAt(schedule, t)}deg)`;
+    placeRing(angleAt(schedule, t));
 
     const s = Math.max(0, Math.ceil((challenge.MaxPlayMs - t) / 1000));
     if (s !== secondsLeft) secondsLeft = s;
@@ -384,6 +393,22 @@
   }
   document.addEventListener('visibilitychange', onVisibility);
 
+  // Modul: A WAY OUT MID-RUN (task 105). Close existed only on the result and
+  // error cards, so a practice run had to be played to the end to be left, and
+  // back is consumed while a run is live (above). Leaving stops this screen's
+  // clocks and hands over to the parent: a practice run is simply dropped, and
+  // a real strike is only closed - the server kept its throws and its clock,
+  // and the World Boss screen offers "Finish your strike". Nothing is sent
+  // here, on purpose: submitting would spend the strike the player is leaving
+  // to keep.
+  function leave() {
+    if (phase !== 'countdown' && phase !== 'play') return;
+    finished = true;
+    cancelAnimationFrame(raf);
+    clearInterval(countdownTimer);
+    onleave();
+  }
+
   onDestroy(() => {
     cancelAnimationFrame(raf);
     clearInterval(countdownTimer);
@@ -403,10 +428,28 @@
     const large = toDeg - fromDeg > 180 ? 1 : 0;
     return `M ${p(rOut, fromDeg)} A ${rOut} ${rOut} 0 ${large} 1 ${p(rOut, toDeg)} L ${p(rIn, toDeg)} A ${rIn} ${rIn} 0 ${large} 0 ${p(rIn, fromDeg)} Z`;
   }
-  function labelAt(plate: number): { x: number; y: number } {
-    const rad = ((90 + plate * PLATE_DEGREES + PLATE_DEGREES / 2) * Math.PI) / 180;
+  // Modul: THE NUMBERS STAY UPRIGHT (task 105). They used to be drawn inside
+  // the rotating group, so a plate at the bottom of the ring - the one about
+  // to be hit, the one a player most needs to read - showed its number upside
+  // down. They live outside the ring now and only their POSITION follows it:
+  // a point at local angle a sits at 90 + a - spin once the ring is rotated by
+  // -spin, which is what labelAt computes. Five setAttribute calls a frame, no
+  // Svelte state (see the rAF note at the top of this file).
+  function labelAt(plate: number, spinDeg = 0): { x: number; y: number } {
+    const rad = ((90 + plate * PLATE_DEGREES + PLATE_DEGREES / 2 - spinDeg) * Math.PI) / 180;
     const r = (R_OUT + R_IN) / 2;
     return { x: r * Math.cos(rad), y: r * Math.sin(rad) };
+  }
+  const labelEls: SVGTextElement[] = [];
+  function placeRing(spinDeg: number) {
+    if (ring) ring.style.transform = `rotate(${-spinDeg}deg)`;
+    for (let plate = 0; plate < labelEls.length; plate++) {
+      const el = labelEls[plate];
+      if (!el) continue;
+      const p = labelAt(plate, spinDeg);
+      el.setAttribute('x', p.x.toFixed(2));
+      el.setAttribute('y', p.y.toFixed(2));
+    }
   }
   const plates = Array.from({ length: PLATE_COUNT }, (_, i) => i);
   const seamHalf = SEAM_DEGREES / 2;
@@ -414,7 +457,10 @@
   const scheduleJson = JSON.stringify(challenge);
 </script>
 
+<!-- Portalled to <body> (task 105): inside the page, an ancestor's stacking
+     context let the shell header and part of the panel draw over the wheel. -->
 <div
+  use:portal
   class="overlay"
   role="dialog"
   aria-modal="true"
@@ -424,9 +470,16 @@
   data-phase={phase}
 >
   <div class="top">
-    <span class="mode">{practice ? 'Practice - no damage, no attempt spent' : "Today's strike - this one counts"}</span>
-    {#if challenge.Enraged}
-      <span class="enraged"><span aria-hidden="true">&#x2620;</span> The boss is enraged</span>
+    <div class="top-text">
+      <span class="mode">{practice ? 'Practice - no damage, no attempt spent' : "Today's strike - this one counts"}</span>
+      {#if challenge.Enraged}
+        <span class="enraged"><span aria-hidden="true">&#x2620;</span> The boss is enraged</span>
+      {/if}
+    </div>
+    {#if phase === 'countdown' || phase === 'play'}
+      <button type="button" class="leave" data-testid="wheel-leave" onclick={leave}>
+        {practice ? 'Leave practice' : 'Leave - finish later'}
+      </button>
     {/if}
   </div>
 
@@ -445,9 +498,11 @@
             <path d={arc(from + PLATE_DEGREES / 2 - seamHalf, from + PLATE_DEGREES / 2 + seamHalf)} class="seam" />
             <path d={arc(from, from + RIVET_DEGREES)} class="rivet" />
             <path d={arc(from + PLATE_DEGREES - RIVET_DEGREES, from + PLATE_DEGREES)} class="rivet" />
-            <text x={labelAt(plate).x} y={labelAt(plate).y} class="label">{plate + 1}</text>
           {/each}
         </g>
+        {#each plates as plate (plate)}
+          <text bind:this={labelEls[plate]} x={labelAt(plate).x} y={labelAt(plate).y} class="label">{plate + 1}</text>
+        {/each}
         <path d="M -7 104 L 7 104 L 0 92 Z" class="impact" />
       </svg>
     </div>
@@ -456,6 +511,12 @@
       <span>{secondsLeft}s</span>
       <span aria-label="{spearsLeft} spears left">Spears: {spearsLeft}</span>
     </div>
+
+    <!-- The rules in one line while playing: the full sentence above shows
+         only during the countdown, and a player who missed it had nothing. -->
+    {#if phase === 'play' && !parryOpen && !counterOpen}
+      <p class="legend">Throw when a seam nears the marker &middot; seams hit hardest &middot; when the wheel stops, say where the blow comes from</p>
+    {/if}
 
     <div class="landed" aria-live="polite">
       {#each spears as spear (spear.seq)}
@@ -491,14 +552,16 @@
           {/each}
         </div>
       {:else if phase === 'play'}
+        <!-- Modul: A BUTTON, NOT A DROP ZONE (task 105). A dashed box reading
+             "Tap to throw" looked like somewhere to drag a thing to; this is
+             one solid thumb target that says what it does and what is left. -->
         <button
           type="button"
-          class="throw-zone"
-          aria-label="Throw a spear"
+          class="throw-zone primary"
           disabled={spearsLeft <= 0 || activeInterrupt >= 0}
           onpointerdown={throwAtWheel}
         >
-          {activeInterrupt >= 0 ? 'The wheel has stopped' : 'Tap to throw'}
+          {activeInterrupt >= 0 ? 'The wheel has stopped' : `Throw - ${spearsLeft} left`}
         </button>
       {/if}
     </div>
@@ -557,7 +620,7 @@
       </dl>
       <p class="damage"><strong data-testid="strike-damage" title={numberTitle(strike.Damage)}>{formatNumber(strike.Damage)}</strong> damage dealt</p>
       {#if strike.BrokePlate >= 0}
-        <p class="hint">You broke plate {strike.BrokePlate + 1} for everyone until midnight UTC.</p>
+        <p class="hint">You broke plate {strike.BrokePlate + 1} for everyone until {formatWhen(nextStrikeRefill(new Date()))}.</p>
       {/if}
       <p class="hint">The weak plate was yours alone to find - the next strike draws a new one.</p>
       <div class="row">
@@ -600,12 +663,38 @@
     touch-action: manipulation;
   }
 
+  /* Its own top bar: the overlay covers the shell header, so the way out
+     lives here. */
   .top {
     display: flex;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
     gap: 0.6rem;
-    justify-content: center;
+    width: 100%;
+    max-width: 26rem;
     font-size: 0.8rem;
+  }
+
+  .top-text {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.6rem;
+    min-width: 0;
+  }
+
+  .leave {
+    flex-shrink: 0;
+    min-height: 44px;
+    padding: 0.3rem 0.7rem;
+    font-size: 0.8rem;
+  }
+
+  .legend {
+    margin: 0;
+    max-width: 26rem;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-align: center;
   }
 
   .mode {
@@ -638,9 +727,11 @@
     margin: 0;
   }
 
+  /* Sized to the height as well as the width, so a tall phone gets a bigger
+     ring instead of ~180px of nothing between the ring and the controls. */
   .stage {
     position: relative;
-    width: min(78vw, 22rem);
+    width: min(86vw, 24rem, 48vh);
   }
 
   .wheel {
@@ -788,7 +879,6 @@
   .controls {
     width: 100%;
     max-width: 26rem;
-    margin-top: auto;
     display: grid;
     gap: 0.5rem;
   }
@@ -815,11 +905,10 @@
 
   .throw-zone {
     width: 100%;
-    min-height: 34vh;
-    font-weight: 700;
-    border: 2px dashed var(--border);
+    min-height: 5.5rem;
+    font-size: 1.15rem;
+    font-weight: 800;
     border-radius: var(--radius);
-    background: color-mix(in srgb, var(--bg-panel) 60%, transparent);
     touch-action: manipulation;
     user-select: none;
   }
@@ -910,6 +999,7 @@
 
     .big,
     .hint,
+    .legend,
     .status,
     .landed,
     .controls {
@@ -921,7 +1011,7 @@
     }
 
     .throw-zone {
-      min-height: 38vh;
+      min-height: 30vh;
     }
   }
 </style>

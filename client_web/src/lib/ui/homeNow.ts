@@ -9,6 +9,9 @@
 import { PREF_LAST_MONSTER, readPref } from '../net/prefs';
 import { rarityName } from './rarity';
 import { bossGearProgress } from './victories';
+import { DELVE_FIRST_ENTRY_GOLD, FORGE_OPEN_LEVEL, MARKET_OPEN_LEVEL } from './unlocks';
+import { formatNumber } from './format';
+
 
 /** Per-character last job, remembered on this device (see prefs.ts). */
 export const PREF_LAST_ACTIVITY_PREFIX = 'folkidle.home.lastActivity.';
@@ -33,6 +36,20 @@ export function rememberedActivity(characterId: string, slot: number): number {
 }
 
 /** "12 h", "12 h 30 min", "45 min" - or null when the server has not said. */
+/**
+ * Task 109: the nearest SCREEN that is still locked, in the order a new player
+ * reaches them, as a sentence - or null when all of them are open. `locked`
+ * is the menu's own rule (ui/unlocks.ts through tutorial.ts screenLocks), so
+ * the Home line and the greyed menu entry cannot disagree.
+ */
+export function nearestScreenUnlock(level: number, locked: (screen: string) => string | null): string | null {
+  const you = Number.isFinite(level) && level > 0 ? ` - you are level ${level}` : '';
+  if (locked('forge')) return `The Forge opens at level ${FORGE_OPEN_LEVEL}${you}.`;
+  if (locked('market')) return `The Market and guilds open at level ${MARKET_OPEN_LEVEL}${you}.`;
+  if (locked('delve')) return `The Delve opens once you hold ${formatNumber(DELVE_FIRST_ENTRY_GOLD)} gold.`;
+  return null;
+}
+
 export function formatOfflineCap(seconds: number): string | null {
   if (!Number.isFinite(seconds) || seconds <= 0) return null;
   const minutes = Math.round(seconds / 60);
@@ -53,9 +70,13 @@ export function nextUnlockLine(
   bossName: string | null,
   pieces: readonly { SlotIndex: number; QualityTier: number; BaseItemId: string }[] | null,
   regionTierOf: (baseItemId: string) => number,
+  nearer: string | null = null,
 ): string | null {
-  if (!pieces || unlockedRegion < 1 || unlockedRegion >= regionCount) return null;
+  if (!pieces || unlockedRegion < 1 || unlockedRegion >= regionCount) return nearer;
   const progress = bossGearProgress(unlockedRegion, pieces, regionTierOf);
+  // Task 109: not one piece towards the boss yet - the boss line is a goal
+  // for weeks from now. Say the unlock that is days (or minutes) away.
+  if (progress.meets === 0 && nearer) return nearer;
   const boss = bossName ? `beat ${bossName}` : 'beat the boss';
   return (
     `Region ${unlockedRegion + 1} opens when you ${boss}. ` +

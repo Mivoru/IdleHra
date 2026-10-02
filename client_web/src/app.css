@@ -61,6 +61,13 @@
   --glow-warm: #ffd98a;
   --glow-soft: rgba(255, 217, 138, 0.28);
   --glow-hot: #ffe9b0;
+  /* Modul: THE TOP-TIER SHEEN IS GOLD, NOT THE TIER'S OWN COLOUR (task 110f,
+     owner 2026-10-02). The glow used currentColor, and tiers 10-11 are red and
+     orange: on parchment a red halo around an item name read as an error on
+     Chest, Character and the loot reveal. Gold is the one colour this game
+     already means "valuable" by, and it is the same for every glowing tier,
+     so the text keeps the rarity and the halo says "top tier". */
+  --rarity-sheen: rgba(255, 217, 138, 0.85);
 
   /* Modul: textures as inline SVG, not files.
      A parchment or a woodgrain PNG is 40-200 kB and one more thing to serve;
@@ -219,6 +226,7 @@
   --tint-hover: rgba(216, 180, 90, 0.06);
   --tint-selected: rgba(201, 162, 39, 0.16);
   --scrim: rgba(0, 0, 0, 0.58);
+  --bar-track: #0b0907;
   --text-muted: var(--text-dim);
   --opacity-disabled: 0.5;
 }
@@ -281,9 +289,12 @@
     --bg-sunken: rgba(120, 92, 46, 0.08);
     --line: rgba(120, 92, 46, 0.2);
     --edge-soft: rgba(90, 68, 34, 0.18);
+    /* A darker gold: the dark theme's pale one vanishes on parchment. */
+    --rarity-sheen: rgba(184, 134, 11, 0.7);
     --tint-hover: rgba(120, 92, 46, 0.06);
     --tint-selected: rgba(138, 106, 52, 0.14);
     --scrim: rgba(40, 28, 12, 0.45);
+    --bar-track: #ddcca6;
 
     --shadow-sm: 0 1px 2px rgba(90, 68, 34, 0.2);
     --shadow-md: 0 4px 12px rgba(90, 68, 34, 0.16);
@@ -341,8 +352,8 @@
   --tabbar-h: 0px;
   /* The height of an app header that stays pinned while the page scrolls, so
      a screen's own sticky strip (Combat's status, task 98) sits under it
-     instead of behind it. 0 while the header scrolls away with the page; a
-     sticky header sets it. */
+     instead of behind it. App.svelte measures the header and sets it (task 95,
+     when the header became sticky); 0 before sign-in. */
   --sticky-header-h: 0px;
 }
 
@@ -417,14 +428,24 @@ input {
 /* Replaces Image.Type.Filled, and with it an entire class of bug: a filled
    Image silently ignores fillAmount when its sprite is null, which left all 33
    bars in the Unity client rendering permanently full. A div's width cannot
-   fail that way. */
+   fail that way.
+
+   Modul: THE TRACK IS ITS OWN TOKEN (task 106). It was --bg, which on the
+   parchment theme is a shade off the panel, so an empty Progress or Codex
+   meter was a brass outline around nothing. --bar-track is a well in both
+   themes. */
 .bar {
   position: relative;
   height: 1.25rem;
-  background: var(--bg);
+  background: var(--bar-track);
   border: 1px solid var(--border);
   border-radius: 999px;
   overflow: hidden;
+}
+
+/* A thin meter: no label inside it (Bar.svelte still reads the label out). */
+.bar.bar-sm {
+  height: 0.5rem;
 }
 
 .bar-fill {
@@ -458,7 +479,7 @@ input {
    layer whose only animated property is `opacity`, which the compositor runs
    without repainting the text. */
 .rarity-glow {
-  text-shadow: 0 0 4px currentColor;
+  text-shadow: 0 0 4px var(--rarity-sheen);
 }
 
 .rarity-glow-live {
@@ -472,7 +493,7 @@ input {
   inset: -0.2em -0.45em;
   z-index: -1;
   border-radius: 999px;
-  background: radial-gradient(closest-side, currentColor, transparent);
+  background: radial-gradient(closest-side, var(--rarity-sheen), transparent);
   opacity: 0;
   animation: rarity-halo 2.2s ease-in-out infinite;
   pointer-events: none;
@@ -588,7 +609,8 @@ input {
      lives in one place at the bottom of this file rather than here. Kept as
      the LOWER bound for anything that opts out of that floor. */
   nav button,
-  .tiny-btn {
+  .tiny-btn,
+  .btn-sm {
     min-height: 2rem;
   }
 
@@ -835,13 +857,82 @@ button:active:not(:disabled) {
 /* Modul: THE ONE FILLED BUTTON on a row or card - Craft, Fuse, Gather
    (tasks 100/101). `class="tiny-btn primary"` was written in several places
    and styled nowhere, so the action a player came for looked exactly like
-   the secondary one beside it. */
-button.primary:not(:disabled) {
+   the secondary one beside it.
+   Disabled keeps the fill (at --opacity-disabled), so the action a player is
+   working towards still reads as THE action rather than as a grey twin of the
+   button beside it. `:not(:disabled)` / `:disabled` both carry the extra
+   pseudo-class for specificity: a component's scoped `button {}` is (0,1,1)
+   and would otherwise win. */
+button.primary:not(:disabled),
+button.primary:disabled {
   background-color: var(--brass);
   background-image: linear-gradient(180deg, rgba(255, 234, 190, 0.28), rgba(0, 0, 0, 0.12));
   border-color: var(--brass-lit);
   color: #1d1408;
   font-weight: 700;
+}
+
+/* Modul: TASK 106 - ONE BUTTON VOCABULARY, NOT THIRTEEN COPIES.
+   `.tiny-btn` was defined in thirteen screens' <style> blocks in three sizes
+   (0.7 / 0.72rem, 0.45 / 0.5 / 0.55rem of side padding) and used undefined in
+   two more, so the same small button was a different size depending on which
+   screen drew it. It lives here once now, with `.btn-sm` as its name for new
+   code. The variants are classes on a plain <button> rather than a component,
+   because 46 call sites already speak `class="tiny-btn primary"` and a class
+   needs no import:
+
+     (none)   the default raised brass button (the base `button` rules above)
+     primary  the one filled call to action on a card or row (the rule above)
+     danger   destroys or spends something that cannot be had back
+     ghost    a secondary action beside a primary one - outline, no fill
+     quiet    text-only, for "Skip", "Later", "Not now"
+
+   Sizes: md is the base button; sm is `.tiny-btn` / `.btn-sm`. A component may
+   still set its own size for a control that is genuinely different (a close
+   cross, a map plate) - this is the default, not a cage. The 44px phone floor
+   at the bottom of this file applies to every one of them. */
+.tiny-btn,
+.btn-sm {
+  font-size: var(--fs-xs);
+  padding: 0.2rem 0.45rem;
+  /* A small button in a flex row must keep its label: min-width 0 on a flex
+     item lets it shrink below its own text (see client_web/CLAUDE.md). */
+  flex-shrink: 0;
+}
+
+.btn-md {
+  font-size: inherit;
+  padding: 0.45rem 0.8rem;
+}
+
+button.danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+button.ghost {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  border-color: var(--border);
+  color: var(--text-dim);
+}
+
+button.quiet {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  border-color: transparent;
+  color: var(--text-dim);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  button.ghost:hover:not(:disabled),
+  button.quiet:hover:not(:disabled) {
+    color: var(--text);
+    background-color: var(--tint-hover);
+    box-shadow: none;
+  }
 }
 
 button.active,
@@ -892,10 +983,19 @@ option:checked {
   }
 }
 
+/* Modul: EVERY KEYBOARD-REACHABLE THING, not only form controls (task 106).
+   A link, a <summary>, a [role=button] div and a roving-tabindex tab had no
+   focus ring at all, so a keyboard player could not see where they were.
+   tabindex="-1" is left out: that is a container focused from script (the
+   Modal card on open), and a ring around the whole dialog is noise. */
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
-button:focus-visible {
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+[role='button']:focus-visible,
+[tabindex]:not([tabindex='-1']):focus-visible {
   outline: 2px solid var(--brass-lit);
   outline-offset: 1px;
 }
@@ -956,7 +1056,12 @@ button:focus-visible {
 }
 
 .panel {
-  animation: folk-rise 180ms ease-out both;
+  /* Modul: `backwards`, NOT `both` (task 106). A forwards fill keeps the
+     animation applied after it ends, and an applied opacity animation keeps
+     the panel a stacking context for as long as it is on screen - which is
+     what trapped every z-index inside a panel under its neighbours. Backwards
+     still holds opacity 0 through the (zero) delay, so nothing flashes in. */
+  animation: folk-rise 180ms ease-out backwards;
 }
 
 /* A slow brass sheen, for the one control on a screen that matters most.
@@ -1002,6 +1107,25 @@ button:focus-visible {
 }
 
 /* --- surfaces ------------------------------------------------------------ */
+
+/* Modul: THE .panel BASE, ONCE (task 106). Twenty-nine components each wrote
+   the same four lines - surface, edge, radius, padding - and five that used
+   the class without a copy (the Book of Deeds, the collection log, the
+   insights, standing orders, the wiki) drew no surface at all beside panels
+   that had one. A component now writes only what DIFFERS (its own padding, a
+   max-width); a scoped rule still wins over this one. */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+}
+
+/* A panel set INTO another one: a well rather than a second raised card. */
+.panel.panel--sunken {
+  background: var(--bg-sunken);
+  box-shadow: var(--shadow-well);
+}
 
 .panel {
   /* The component sets `background:` (a shorthand, so it clears the image);
@@ -1331,7 +1455,8 @@ h3:not(.place):not([style*='background-image'])::before {
  * viewport is a phone, cannot be forgotten - and check:touch fails the build if
  * it ever is.
  *
- * WHY ONLY ON A PHONE. 44px is a thumb, not a mouse. Applying it at 1500px
+ * WHY ONLY UNDER A THUMB (a phone, or a tablet - see 110a below). 44px is a
+ * thumb, not a mouse. Applying it at 1500px
  * would inflate every dense table in the game to no benefit; a cursor hits a
  * 24px target perfectly well, which is why WCAG's AA figure is 24 rather than
  * 44.
@@ -1354,7 +1479,13 @@ h3:not(.place):not([style*='background-image'])::before {
  * The :not() raises this to (0,1,1) so it lands, and gives any control that
  * genuinely must stay small a named way out - which is better than a component
  * quietly winning by accident. */
-@media (max-width: 40rem) {
+/* Modul: `(pointer: coarse)` AS WELL AS THE WIDTH (task 110a, owner
+   2026-10-02: tablets are a target). A portrait tablet is 744-834 CSS px, so
+   the APK on one fell outside the 40rem query and got desktop sizes -
+   check:touch at 768px found 153 controls under 44px. A coarse primary
+   pointer is the honest signal for "a thumb is aiming at this", whatever the
+   width; a desktop with a mouse still keeps its dense tables. */
+@media (max-width: 40rem), (pointer: coarse) {
   button:not(.touch-exempt),
   [role='button']:not(.touch-exempt),
   a.button:not(.touch-exempt),
@@ -1530,4 +1661,90 @@ input[type='radio']:disabled {
   input[type='radio'] {
     transition: none;
   }
+}
+
+/* ===========================================================================
+   THE UNDERGROUND MOOD (task 105, owner decision 2026-10-02).
+
+   Modul: THE DELVE IS DARK IN BOTH THEMES, AND IT IS ONE PALETTE, NOT 34
+   LITERALS. Delve.svelte used to hard-code its own browns and its own
+   button.primary, so on the parchment theme it was a dark island floating on
+   a light page, with an intro paragraph in pale grey on cream. The owner chose
+   a full dark "underground" mode: the page itself goes dark while the Delve
+   is open (Delve.svelte sets data-mood on <html> and removes it on leave),
+   and every colour on that screen is one of these tokens.
+
+   Two layers:
+   - the --ug-* palette, theme-independent on purpose (it is a place, not a
+     preference), defined once on :root;
+   - `.underground`, which re-points the shared tokens (--text, --bg-panel,
+     --gold, ...) at that palette for everything inside it, so a shared
+     component such as Money reads a value legible on stone rather than the
+     parchment theme's dark ink.
+   =========================================================================== */
+:root {
+  --ug-bg: #0d0b09;
+  --ug-panel: #1e1a16;
+  --ug-raised: #2a231c;
+  --ug-sunken: #241f1a;
+  --ug-track: #2c251f;
+  --ug-border: #3a322a;
+  --ug-border-strong: #4a3f33;
+  --ug-edge: #6b5a3f;
+  --ug-text: #e8e2d4;
+  --ug-text-soft: #b6ae9c;
+  --ug-text-dim: #938b7a;
+  /* Lamplight: headings, the primary action, a worn title, the door wanted. */
+  --ug-lamp: #d9c48b;
+  --ug-on-lamp: #1b1712;
+  /* A lantern charge, lit and spent. */
+  --ug-flame: #e0b74a;
+  --ug-flame-out: #4a4038;
+  --ug-callout: #2b2418;
+  --ug-callout-edge: #5c4a22;
+  --ug-error: #e08a7a;
+  --ug-good: #9cc76c;
+  /* The dark theme's currency colours: the parchment ones are ink, and ink
+     on stone is unreadable. */
+  --ug-gold: #e8c13a;
+  --ug-diamond: #8fd3ff;
+}
+
+:root[data-mood='underground'] {
+  color-scheme: dark;
+}
+
+:root[data-mood='underground'] body {
+  background-color: var(--ug-bg);
+}
+
+/* Beats both theme rules for the fixed layer (see body::before): the stones
+   stay, the candle-light from above becomes a faint lamp, and the parchment
+   theme's paper is not drawn here at all. */
+:root[data-mood='underground'] body::before {
+  background-image:
+    var(--grain),
+    var(--cobble),
+    radial-gradient(90% 60% at 50% -10%, rgba(217, 196, 139, 0.06), transparent 60%),
+    radial-gradient(100% 100% at 50% 120%, rgba(0, 0, 0, 0.7), transparent 55%);
+  background-repeat: repeat, repeat, no-repeat, no-repeat;
+}
+
+.underground {
+  color-scheme: dark;
+  --bg: var(--ug-bg);
+  --bg-panel: var(--ug-panel);
+  --bg-raised: var(--ug-raised);
+  --bg-sunken: var(--ug-sunken);
+  --border: var(--ug-border);
+  --text: var(--ug-text);
+  --text-dim: var(--ug-text-dim);
+  --text-muted: var(--ug-text-dim);
+  --accent: var(--ug-lamp);
+  --on-accent: var(--ug-on-lamp);
+  --good: var(--ug-good);
+  --danger: var(--ug-error);
+  --gold: var(--ug-gold);
+  --diamond: var(--ug-diamond);
+  color: var(--ug-text);
 }

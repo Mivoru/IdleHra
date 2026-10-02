@@ -13,6 +13,7 @@ import {
 } from '../src/lib/ui/victories';
 import { TIER_STYLES } from '../src/lib/ui/leaderboardTiers';
 import { GUILD_JOIN_MIN_LEVEL } from '../src/lib/ui/unlocks';
+import { FOOD_HEAL_PCT_PER_TIER } from '../src/lib/net/content';
 import { LEVEL_CURVE_BASE, LEVEL_CURVE_GROWTH, xpToNextLevel } from '../src/lib/ui/levelCurve';
 import { nextBossMonday, nextStrikeRefill } from '../src/lib/net/commands';
 import {
@@ -166,6 +167,14 @@ describe('the numbers the client mirrors still match the server', () => {
     );
     expect(num(commands, /Math\.ceil\(\d+ \* Math\.pow\(([\d.]+),/, 'client village growth')).toBe(
       num(village, /BaseUpgradeCost \* Math\.Pow\(([\d.]+),/, 'server village growth'),
+    );
+  });
+
+  // Auto-Eat prints "heals about N%" per fish from this share (task 109).
+  it('food: the heal share of max HP per tier', () => {
+    const food = read(serverRoot, 'Engine', 'FoodRegistry.cs');
+    expect(FOOD_HEAL_PCT_PER_TIER).toBe(
+      num(food, /const int HealPercentOfMaxHpPerTier = (\d+);/, 'server food heal share'),
     );
   });
 

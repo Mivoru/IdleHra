@@ -33,7 +33,8 @@ import { queryClient } from '../net/queryClient';
 import type { QueryClient } from '@tanstack/svelte-query';
 import { play, playHit, playWithFallback } from '../ui/audio';
 import { playDeathFor } from '../ui/deathSound';
-import { fetchAchievements, fetchRecords, type AchievementEntry } from '../net/rest';
+import { fetchAchievements, fetchRecords, fetchChatHistory, type AchievementEntry } from '../net/rest';
+import { mergeChatHistory, alreadyLogged, type ChatEntry } from './chatHistory';
 import { RecordWatch, dropRecordMessage } from './records';
 import {
   createWatermark,
@@ -172,6 +173,8 @@ export interface LootEntry {
   atMs: number;
   /** EquipmentInstances.Id of an equipment drop, 0 otherwise (task 49). */
   instanceId: number;
+  /** Task 109: a best-drop record, shown as a badge on the reveal card. */
+  record?: boolean;
 }
 
 // Modul: TWO BUFFERS, BECAUSE ONE LET MATERIALS EVICT EVERY PIECE OF GEAR.
@@ -254,11 +257,9 @@ export function acceptLootDrop(packet: ResponseLootDrop): void {
   if (tier >= 10) tap('success');
 
   // Task 51: a best-drop record (Rare+, against the durable baseline).
-  if (recordWatch.observeDrop(tier, kind)) {
-    void loadContent()
-      .then((registry) => pushLocalNotice(dropRecordMessage(tier, itemName(registry, packet.ItemId)), 'info'))
-      .catch(() => pushLocalNotice(dropRecordMessage(tier, 'item'), 'info'));
-  }
+  // Observed here, in arrival order; announced below once it is known whether
+  // the reveal card is showing this drop.
+  const isRecord = recordWatch.observeDrop(tier, kind);
 
   const entry: LootEntry = {
     id: ++lootSequence,
@@ -282,7 +283,18 @@ export function acceptLootDrop(packet: ResponseLootDrop): void {
 
   const feel = lootFeel.accept(tier, kind, Date.now());
   if (feel.flash) lootFlash.set({ id: entry.id, itemId: entry.itemId, qualityTier: tier });
-  if (feel.reveal && shouldReplaceReveal(get(lootReveal)?.qualityTier ?? null, tier)) lootReveal.set(entry);
+  const revealed = feel.reveal && shouldReplaceReveal(get(lootReveal)?.qualityTier ?? null, tier);
+  if (revealed) lootReveal.set(isRecord ? { ...entry, record: true } : entry);
+
+  // Modul: task 109 - a Legendary record was announced TWICE, by the reveal
+  // card and by a "New record" toast on top of it. When the card shows the
+  // drop, the record is a badge on the card; the toast is only for a record
+  // the card does not show (a Rare or Epic best, below the reveal tier).
+  if (isRecord && !revealed) {
+    void loadContent()
+      .then((registry) => pushLocalNotice(dropRecordMessage(tier, itemName(registry, packet.ItemId)), 'info'))
+      .catch(() => pushLocalNotice(dropRecordMessage(tier, 'item'), 'info'));
+  }
 }
 
 
@@ -315,18 +327,27 @@ export const lootLogMaterials = writable<LootEntry[]>([]);
 // Chat
 // ---------------------------------------------------------------------------
 
-export interface ChatEntry {
-  id: number;
-  senderPlayerId: number;
-  channelType: number;
-  text: string;
-  atMs: number;
-}
+export type { ChatEntry } from './chatHistory';
 
 const MAX_CHAT_ENTRIES = 200;
 let chatSequence = 0;
 
 export const chatLog = writable<ChatEntry[]>([]);
+
+/**
+ * Task 110e: fill the log with what was said before this connection - world,
+ * News and the player's own guild. Called each time the socket goes live, so a
+ * reconnect also recovers what the gap missed; the merge drops anything the
+ * log already holds. A failure leaves the live log as it was.
+ */
+async function loadChatHistory(): Promise<void> {
+  try {
+    const rows = await fetchChatHistory();
+    chatLog.update((entries) => mergeChatHistory(entries, rows, MAX_CHAT_ENTRIES));
+  } catch {
+    /* History is a courtesy; live chat works without it. */
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Command results
@@ -740,6 +761,7 @@ let sessionAccountId: string | null = null;
 /** Signing out: the next session starts clean even for the same account. */
 export function forgetSession(): void {
   sessionAccountId = null;
+  chatLog.set([]);
   lootLogEquipment.set([]);
   lootLogMaterials.set([]);
   offlineSummary.set(null);
@@ -764,6 +786,9 @@ export function startSession(token: string): void {
     // session's drops as if they were this one's.
     lootLogEquipment.set([]);
     lootLogMaterials.set([]);
+    // Another account must not inherit this one's guild and world lines; its
+    // own history loads when the socket goes live.
+    chatLog.set([]);
     offlineSummary.set(null);
     // Kept for the same player, so the restarted session's catch-up (a few
     // seconds) is not "the first packet" and cannot replace an open summary.
@@ -827,8 +852,10 @@ export function startSession(token: string): void {
 
   connection.connect(token, {
     onStatus: (status) => {
+      const wasLive = get(connectionStatus)?.phase === 'live';
       connectionStatus.set(status);
       if (status.phase === 'live') startPump();
+      if (status.phase === 'live' && !wasLive) void loadChatHistory();
       // The interpolator is reset (not just paused) on a drop: resuming with a
       // stale "previous" snapshot would animate every bar from wherever it was
       // minutes ago, across the whole gap.
@@ -1102,6 +1129,12 @@ export function startSession(token: string): void {
     onLootDrop: (packet: ResponseLootDrop) => acceptLootDrop(packet),
     onChatMessage: (packet: ResponseChatMessage) => {
       chatLog.update((entries) => {
+        // History fetched a moment ago may already hold this very message.
+        if (alreadyLogged(entries, {
+          channelType: packet.ChannelType,
+          senderPlayerId: packet.SenderPlayerId,
+          atMs: packet.TimestampEpochMs,
+        })) return entries;
         const next: ChatEntry[] = [
           {
             id: ++chatSequence,

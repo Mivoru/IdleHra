@@ -141,12 +141,6 @@
 </section>
 
 <style>
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1rem;
-  }
   h2 {
     margin: 0 0 0.6rem;
     font-size: 1.05rem;
@@ -198,10 +192,5 @@
   .meta {
     flex-basis: 100%;
     margin: 0;
-  }
-  .tiny-btn {
-    font-size: 0.72rem;
-    padding: 0.2rem 0.45rem;
-    flex: none;
   }
 </style>

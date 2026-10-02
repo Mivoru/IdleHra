@@ -576,14 +576,14 @@ export interface ScreenCoverage {
  * rather than being noticed a season later.
  */
 export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
-  { screen: 'Hub', label: 'Hub', status: 'no-page-needed', note: 'The menu itself. Documenting a list of links is documenting this wiki’s own table of contents.' },
+  { screen: 'Hub', label: 'Home', status: 'no-page-needed', note: 'The menu itself. Documenting a list of links is documenting this wiki’s own table of contents.' },
   { screen: 'Login', label: 'Sign in', status: 'no-page-needed', note: 'Happens before the game; nothing about it is a rule a player can play around.' },
   { screen: 'Settings', label: 'Settings', status: 'no-page-needed', note: 'Volume, theme and account options. Every control says what it does on the screen.' },
   { screen: 'Wiki', label: 'Wiki', status: 'no-page-needed', note: 'This. A wiki page about the wiki would be a table of contents for the table of contents.' },
   { screen: 'Boosts', label: 'Chrono bank', status: 'removed', note: 'The banked-seconds system was deleted on 2026-09-02; the screen keeps its consumables and buffs. Nothing to document.' },
 
   { screen: 'Combat', label: 'Combat', status: 'documented', tab: 'combat', note: 'Attributes, the damage model, auto-eat, death and halt reasons.' },
-  { screen: 'Larder', label: 'Larder', status: 'documented', tab: 'combat', note: 'Auto-eat and what counts as food.' },
+  { screen: 'Larder', label: 'Auto-Eat', status: 'documented', tab: 'combat', note: 'Auto-eat and what counts as food.' },
   { screen: 'Character', label: 'Character', status: 'documented', tab: 'combat', note: 'The eleven equipment slots and armour set bonuses.' },
   { screen: 'Progression', label: 'Progression', status: 'documented', tab: 'skills', note: 'Skill points, the three rings, respec - and the Book of Deeds, which is on the Long Game page.' },
   { screen: 'Wardrobe', label: 'Wardrobe', status: 'documented', tab: 'items', note: 'Cosmetic chests, avatars and frames - how each is earned. Nothing there adds power.' },
@@ -593,7 +593,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Gathering', label: 'Gathering', status: 'documented', tab: 'gathering', note: 'Nodes, mastery, and the tools that accelerate them.' },
   { screen: 'Crafting', label: 'Crafting', status: 'documented', tab: 'crafting', note: 'The live recipe list, read from the same endpoint the screen uses.' },
   { screen: 'Village', label: 'Village', status: 'documented', tab: 'village', note: 'Every building, the Town Hall ceiling, the tier materials and the generated cost table.' },
-  { screen: 'Breeding', label: 'Breeding', status: 'documented', tab: 'breeding', note: 'Aptitudes, genes, the two pairings and what a child inherits.' },
+  { screen: 'Breeding', label: 'Bloodline: Breeding', status: 'documented', tab: 'breeding', note: 'Aptitudes, genes, the two pairings and what a child inherits.' },
   { screen: 'Ancestors', label: 'Hall of Ancestors', status: 'documented', tab: 'longgame', note: 'The roster, the cap, fielding, and who survives the cull.' },
   { screen: 'Inheritance', label: 'Inheritance', status: 'documented', tab: 'longgame', note: 'The six permanent bonuses diamonds buy, and their cost curve.' },
   { screen: 'Leaderboards', label: 'Leaderboards', status: 'documented', tab: 'longgame', note: 'Seasonal ranking and what a placement is worth.' },

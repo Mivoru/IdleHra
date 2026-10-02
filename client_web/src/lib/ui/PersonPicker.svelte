@@ -276,7 +276,7 @@
   .mark {
     margin-left: 0.3rem;
     padding: 0 0.3rem;
-    font-size: 0.65rem;
+    font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -317,8 +317,9 @@
     color: var(--brass-lit, inherit);
   }
 
+  /* Was 0.55rem, 8.8 px: the aptitude names under each number (task 109). */
   .apt small {
-    font-size: 0.55rem;
+    font-size: 0.68rem;
     font-weight: 600;
     color: var(--text-dim);
     letter-spacing: 0.04em;

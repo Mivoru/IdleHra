@@ -6367,8 +6367,31 @@ before. The guild-name cap is now 32 on the server too.
 
 ## 95. Phone navigation: More sheet, sticky header, one name per concept
 
-**OPEN.** Report sections 4.M and 8 (sketch R1). This is visual review C,
-N1-N7.
+**BUILT on branch `claude/ui-95-nav`, not merged.** Renames owner-approved
+2026-10-02. The fifth tab is More, a bottom sheet holding every other
+destination plus the chat entry. It badges unclaimed mail and dots unspent
+skill points. Village moved into the sheet, and hotkey 5 still opens it.
+The header is sticky and one row on a phone: name, purse, ≡. Its measured
+height is published as `--sticky-header-h`, which ConnectionNotice,
+Character's switcher, Chest's detail, the Wiki sidebar and the chat sheet
+add to their offsets. Every tab family has a breadcrumb and one tab row
+that scrolls sideways. On desktop the active group is bold and underlined,
+and the coach-mark on a group toggle is a dot. There is one chat entry
+(`ChatButton.svelte`) with "N online": in the header on desktop, in the
+sheet on a phone. On a phone the chat is a full-height sheet with the
+sender above the message, and the Guild channel is hidden without a guild.
+Groups are now Play / Hero / Make / Friends & Guilds / Game, and group
+labels use `--fs-xs` at full dim colour. Renames: Map -> Home,
+Supplies -> Auto-Eat, Community -> Friends (Guild and Market have entries
+of their own), and Bloodline is the family name on the page and in the
+Wiki. Time convention: `lib/ui/when.ts`. `screens.mjs`, `exercise.mjs`
+and `mobile-check.mjs` use the new labels. `navButton` reaches the tab bar
+and the sheet, and the new destination "Home · More sheet" measures the
+sheet open. Verified so far: `check:ratchet` 4 and vitest green.
+**Not yet run:** `exercise`, `check:touch`, `check:overlap`, the 390px
+two-tap check and the owner's screenshot. "The Deep" vs "the Delve" was
+not touched. Report sections 4.M and 8 (sketch R1). This is visual review
+C, N1-N7.
 
 **What is actually true.**
 - **The Menu is only at the top.** The header is in flow, not sticky
@@ -6976,7 +6999,36 @@ MC1-MC4.
 
 ## 105. World Boss and the Delve
 
-**OPEN.** Report sections 4.A8, 4.H, 4.J and 8. This is visual review A1,
+**BUILT 2026-10-02, branch `claude/ui-105-delve`, not merged or deployed.**
+Owner decisions: the Delve goes full dark "underground" (page background
+included, both themes), and the boss is named from content.
+- *Boss name:* `WorldBossIdentity` names it from monsters.json id 30
+  ("Perun's Celestial Avatar", the boss the payout token already belonged to)
+  and `/api/v1/worldboss/board` carries `BossName` + `BossMonsterId`. REST
+  only, no packet change. Id 30 has no portrait art yet, so `MonsterPortrait`
+  shows its initials over the yggdrasil banner.
+- *World Boss:* hero block with name, "Active" in the good colour and
+  "4d 1h left" (`lib/game/worldBossTime.ts`); the HP numbers sit above the bar;
+  the strike is a filled primary straight under HP with a "1 strike ready"
+  chip; armour is read-only status and the plate is picked only inside
+  "Quick strike (no skill bonus)" (or beside the strike with the wheel off);
+  the rules and payout tiers are a disclosure, open until the first strike;
+  two columns from 60rem.
+- *Shield wheel:* portalled to `<body>`, its own top bar with "Leave
+  practice" / "Leave - finish later" (a real strike resumes as "Finish your
+  strike"), a one-line legend during play, a solid "Throw - 5 left" button,
+  upright plate numbers, and a ring sized to the height.
+- *Delve:* the `--ug-*` palette and `.underground` in app.css, no colour
+  literals in Delve.svelte (guarded by `tests/worldBossDelveUi.test.ts`);
+  the gate leads, the records fold to one line, "Wear a title" with a Worn
+  mark, an owned next title is not shown as a goal, one reset time, and the
+  glitches fixed.
+- `exercise.mjs`'s world boss step now opens Quick strike and reads the spent
+  count off the strike chip. **Not yet run**: exercise, check:touch and the
+  geometry checks still need a dev box, and the wheel's above-the-header fix
+  needs a real phone.
+
+Report sections 4.A8, 4.H, 4.J and 8. This is visual review A1,
 W1-W6, S1-S3 and D1-D6.
 
 **What is actually true.**
@@ -7066,7 +7118,9 @@ the boss name comes from.
 
 ## 106. Shared primitives and sweeps
 
-**OPEN.** It runs alongside 95-105, and each redesign adopts what it needs.
+**BUILT on branch `claude/ui-106-primitives`, not merged, not run in a browser.** Button vocabulary in `app.css` (default/primary/danger/ghost/quiet, `.tiny-btn`/`.btn-sm` and `.btn-md`; the 12 copies deleted). `ui/Modal.svelte` + `modalStack.ts` (portal, inert app root, focus trap and return, closer stack, `--scrim`, dvh cap, sheet variant); DeathCard, VictoryCard, WhatsNew, OfflineSummary, PlayerProfileModal, the exit confirm and Login's Android promo migrated, `tests/modal.test.ts` keeps the rest on a shrinking list (DetailSheet, GuidedOverlay, ShieldWheel - 105). `ui/Tabs.svelte` (ARIA, roving tabindex, pill/underline) and `ui/ChipGroup.svelte`, adopted on Leaderboards, Market and the gold ledger. `Bar` takes `size`, `tone`, `ariaLabel` on a `--bar-track` well; GoldLedger's `.bar` is `.share`. One `.panel` base and `.panel--sunken` in `app.css` (30 copies trimmed; five panels that had no surface now get one). `folk-rise` fills `backwards`; global `:focus-visible` for `a`, `summary`, `[role=button]`, `[tabindex]`; TabBar press tint; OfflineSummary and Gathering rethemed. overlap-check reaches OVERLAYS through `go()`; clipping-check opens the chat dock. `tests/primitives.test.ts` holds the app.css rules. **Left:** `ItemRow` exists (task 99) but only the Chest uses it - the other five row shapes; the type/spacing sweep (with 109); the z-index literals in components onto the scale; `check:overlap`/`check:clipping`/`check:touch` and the light-theme screenshots were not run (no stack in this session).
+
+**OPEN (original brief).** It runs alongside 95-105, and each redesign adopts what it needs.
 Report sections 4.I, 4.J, 4.K and 7.
 
 **What is actually true.**
@@ -7239,7 +7293,34 @@ All of these already have reduced-motion fallbacks.
 
 ## 109. Polish bundle
 
-**OPEN.** These are small, independent fixes. Take them a few at a time, one
+**BUILT 2026-10-02** on `claude/ui-109-polish`, one commit per screen. Not
+yet verified with `exercise.mjs` or the geometry checks (the branch is meant
+to be merged with 95, 105, 106 and 110 first and checked on the merge).
+`check:ratchet` is at the baseline of 4 and vitest is green.
+
+- **Done:** Login and Register; Map/Home; Skill tree; Progress (one row of
+  tabs, not yet the 106 `Tabs` primitive); Codex (portraits not checked on a
+  phone); Wardrobe (locked tiles say chest-of-rarity or Boss Ascension);
+  Wiki; Loot reveal and the deed card (opens Progress on Goals via a new
+  `tab` on `requestScreen`); Auto-Eat (heal % mirrors
+  `FoodRegistry.HealPercentOfMaxHpPerTier`, pinned in `serverMirrors.test.ts`);
+  Boosts; Mailbox; Bloodline; ItemIcon and PersonPicker type; the skip
+  stored on the account (a `tutorial-skipped` id in the server seen-set);
+  coach hidden under the guided card; Chest Reroll greyed below the Forge.
+- **Findings:** Boosts - items.json holds **five** consumables, not eight,
+  and per `FoodRegistry`'s own comment no recipe or drop produces any of
+  them. The empty state lists them with what each does and names no source.
+  It needs an owner decision: give them a source, or cut them. The Inn copy
+  ("up to 9" at Inn 5) is correct: the fixture's newcomers at 10 are
+  hand-seeded by `DevFixtureSeeder`. "Join a guild to use its depot" can no
+  longer render, because 107 shows guildless players only the browser.
+- **Left for the merge:** the tab-bar label size (95 rewrites `TabBar`), and
+  moving Progress's tabs onto 106's `Tabs`.
+- **Left open:** whether a guest really "would die" on every Sunlit Plains
+  monster needs a measurement on a fresh account (the 2026-09-02 precedent);
+  blank Codex portraits need a phone.
+
+These are small, independent fixes. Take them a few at a time, one
 PR per screen or per theme. Each line names its report source.
 
 **Login and Register** (A2 LG-1 to LG-3, RG-1 and RG-2):
@@ -7388,7 +7469,12 @@ screenshots of the touched screens. Checkers clean. `exercise.mjs` green.
 
 **OPEN.** Ask these in one message, in Czech.
 
-- **a. A touch floor for tablets.** At 768 px, `check:touch` finds 153
+- **a. A touch floor for tablets.** **DECIDED 2026-10-02: yes. BUILT on
+  `claude/ui-106-primitives`:** the global floor in `app.css` and the scoped
+  floors in ContextMenu and AttributePanel read
+  `(max-width: 40rem), (pointer: coarse)`. Not yet measured at 768px with a
+  coarse pointer; scoped component sizes outside a floor block may still be
+  short there. At 768 px, `check:touch` finds 153
   controls under 44 px. Examples: header toggles 32 px tall, Chest `More`
   32×22, Supplies `+`/`−` 24×26, Ancestors trait buttons 18 px. The floor
   lives only in `@media (max-width: 40rem)`, and a portrait tablet is
@@ -7408,11 +7494,46 @@ screenshots of the touched screens. Checkers clean. `exercise.mjs` green.
 - **e. Is world chat live-only by design?** A player who signs in again a
   minute later sees "Nothing in this channel yet" (evidence item 7). If
   history is meant to load, that is a defect to file.
-- **f. The rarity glow's colour.** On parchment, the top-tier red halo reads
+- **f. The rarity glow's colour.** **DECIDED 2026-10-02: a gold sheen. BUILT
+  on `claude/ui-106-primitives`:** `--rarity-sheen` (pale gold dark, darker
+  gold on parchment) draws `.rarity-glow`, the loot reveal's halo and
+  ItemIcon's box glow, for every tier that glows (10+); the name and border
+  keep the tier colour. On parchment, the top-tier red halo reads
   as an error (Chest, Character, loot reveal). Choose between a gold sheen, a
   rarity pip and a left border. 108 removes the animation regardless.
 
 **Size:** S. **Needs the owner:** yes.
+
+**Owner decisions (2026-10-02):** b - iPhone portrait-only; d - yes, the web
+app should be installable; e - world chat loads its history at sign-in.
+a and f are handled on another branch.
+
+**b, c, d, e BUILT on branch `claude/ui-110-chat-mobile`, not merged.**
+- **b.** `Info.plist`: the unsuffixed (iPhone) orientation list is portrait
+  only; `~ipad` keeps all four, because iPad multitasking requires them
+  unless the app sets `UIRequiresFullScreen` (not done - a separate call).
+  `nativeProjects.test.ts` pins both platforms.
+- **c.** `MOBILE.md`'s A2 checklist: Rotation per platform (phones locked;
+  tablet, foldable, split-screen and iPad still rotate), the audit's
+  section-6 phone checks, and "Add to Home Screen" on both mobile browsers.
+- **d.** `public/manifest.webmanifest` (standalone, portrait, dark `--bg`)
+  plus `apple-touch-icon` and the `apple-*` metas in `index.html`; the 192,
+  512 and 180 px icons come from `resources/icon.svg` via `generate:icons`.
+  A test checks every file the manifest and the touch-icon link name exists.
+- **e.** World, guild and announcement messages are written to
+  `chat_channel_messages` once, on the sender's pod (`ChatEngine.Publish*`,
+  the announcement worker and the admin announce route), with the live
+  packet's timestamp. `GET /api/v1/chat/recent` returns the newest 50 per
+  channel (own CURRENT guild only, blocked senders filtered); the client
+  fetches it each time the socket goes live and dedupes on (channel, sender,
+  timestamp). Bounded: rows older than 14 days are pruned every 200th write.
+  History rows get negative ids so sign-in does not show "50 unread".
+  **Carries an additive migration, `AddChatChannelMessages`** - deploys apply
+  it; locally run `--migrate` by hand. Verified: 17 server tests matching Chat or
+  Migration (incl. `ChatHistoryTests`), vitest 784, svelte-check 4, EF reports no
+  pending model changes. NOT run here: `npm run exercise` (its world chat
+  step now also checks the reload shows the line exactly once) and a real
+  phone install.
 
 ## Wave 1 result (2026-10-01): 89-93 built and verified together
 

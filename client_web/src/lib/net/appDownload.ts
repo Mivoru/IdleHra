@@ -58,3 +58,29 @@ export function markPromoSeen(): void {
     // Nothing to do: at worst the popup comes back next visit.
   }
 }
+
+const PLAYED_KEY = 'folkidle.playedBefore';
+
+/**
+ * Whether this browser has been through at least one signed-in session.
+ *
+ * Task 109: the app popup waits for this, so a first-time visitor sees the
+ * game's pitch rather than an install prompt. Same failure direction as
+ * promoSeen: storage that cannot be read means "not yet", which only delays
+ * the popup.
+ */
+export function playedBefore(): boolean {
+  try {
+    return localStorage.getItem(PLAYED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function markPlayed(): void {
+  try {
+    localStorage.setItem(PLAYED_KEY, '1');
+  } catch {
+    // At worst the popup never appears in this browser; the link still does.
+  }
+}

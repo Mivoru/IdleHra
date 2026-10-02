@@ -168,11 +168,18 @@ namespace FolkIdle.Server.Domain.Social
                 // has id 0, so the client can trust the distinction.
                 while (SystemAnnouncementQueue.TryDequeue(out string? announcement))
                 {
+                    long announcedAtEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     ResponseChatMessagePacket announcementPacket = BuildResponsePacket(
                         senderPlayerId: 0L,
-                        timestampEpochMs: DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                        timestampEpochMs: announcedAtEpochMs,
                         messageText: announcement,
                         channelType: AnnouncementChannelType);
+
+                    // Task 110e: written down so a player who signs in later
+                    // still sees the News tab. Not awaited - this worker
+                    // delivers every channel, and a slow insert must not hold
+                    // the next message. RecordAsync never throws.
+                    _ = ChatHistory.RecordAsync(_serviceProvider, AnnouncementChannelType, 0, 0L, announcement, announcedAtEpochMs);
 
                     OutboundDispatchQueue.Enqueue(new ChatDispatchItem(announcementPacket, DispatchModeGlobal, guildId: 0, targetPlayerId: 0));
                 }
@@ -515,6 +522,13 @@ namespace FolkIdle.Server.Domain.Social
 
             long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
+            // Modul: task 110e. Written HERE, on the sender's pod, once - not in
+            // HandleRedisMessageAsync, which runs on every pod. Same timestamp
+            // as the packet, because the client deduplicates history against
+            // live arrivals on it. Already profanity-filtered upstream (see
+            // the whisper note below).
+            await ChatHistory.RecordAsync(_serviceProvider, GlobalChannelType, 0, playerId, trimmed, timestampEpochMs);
+
             var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
             if (redis == null || !redis.IsConnected)
             {
@@ -560,6 +574,10 @@ namespace FolkIdle.Server.Domain.Social
             }
 
             long timestampEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            // Task 110e - see PublishMessageAsync. guildId is the sender's
+            // server-cached guild, never a client-supplied one.
+            await ChatHistory.RecordAsync(_serviceProvider, GuildChannelType, guildId, playerId, trimmed, timestampEpochMs);
 
             var redis = _serviceProvider.GetService<IConnectionMultiplexer>();
             if (redis == null || !redis.IsConnected)

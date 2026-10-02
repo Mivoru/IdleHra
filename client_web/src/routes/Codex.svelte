@@ -73,52 +73,23 @@
       <h2>Monster codex</h2>
       <span class="dim tiny">{discovered} of 25 encountered</span>
     </div>
+    <!-- Modul: task 109 - this said "Only the 25 canonical monsters
+         appear...", a note to a developer. What a player needs is what a codex
+         level is FOR: CodexEngine.DamageMultiplierFor turns the level sum into
+         damage against every monster, on a square root, so the first levels
+         pay the most. -->
     <p class="dim small">
-      Kill counts level each entry. Only the 25 canonical monsters appear -
-      the content file holds more ids, but they are not part of any region.
-    </p>
-
-    <h3>
-      Region completion
+      Kills level each entry. Every codex level you hold, on any monster, adds
+      to your damage against all of them - the first levels add the most.
+      {#if regions.length > 0}
+        A region is complete at {formatNumber(regions[0].RequiredKills)} kills
+        of each ordinary monster and {formatNumber(regions[0].RequiredBossKills)}
+        of its boss, and is worth +{LOOT_LUCK_PER_REGION_PCT}% loot luck for good.
+      {/if}
       {#if totalLootLuck > 0}
         <span class="earned">+{totalLootLuck}% loot luck earned</span>
       {/if}
-    </h3>
-
-    {#if regionsQuery.isPending}
-      <Skeleton rows={2} />
-    {:else if regions.length === 0}
-      <p class="dim tiny">No region requirements are defined.</p>
-    {:else}
-      <p class="dim tiny reg-note">
-        Each region needs {formatNumber(regions[0].RequiredKills)} kills of every
-        ordinary monster and {formatNumber(regions[0].RequiredBossKills)} of its
-        boss. The bar tracks your <em>least</em>-killed ordinary monster, not your
-        total. Finishing one grants +{LOOT_LUCK_PER_REGION_PCT}% loot luck
-        permanently.
-      </p>
-      <ul class="regions">
-        {#each regions as region (region.RegionId)}
-          <li>
-            <span class="region-name">
-              {locationName(region.RegionId)}
-              <!-- The word as well as the colour, so a completed region reads
-                   as completed without relying on the green. -->
-              {#if region.IsCompleted}<span class="done">complete</span>{/if}
-            </span>
-            <Bar
-              value={Math.min(region.CurrentKills, region.RequiredKills)}
-              max={Math.max(1, region.RequiredKills)}
-              color={region.IsCompleted ? 'var(--good)' : 'var(--rarity-6)'}
-              label={`${formatNumber(region.CurrentKills)} / ${formatNumber(region.RequiredKills)}`}
-            />
-            <span class="dim tiny">
-              Boss {formatNumber(region.BossKills)} / {formatNumber(region.RequiredBossKills)}
-            </span>
-          </li>
-        {/each}
-      </ul>
-    {/if}
+    </p>
 
     {#if codex.isPending}
       <Skeleton />
@@ -128,9 +99,23 @@
       <p class="dim">Loading content...</p>
     {:else}
       {#each registry.regions as region, regionIndex}
+        {@const progress = regions.find((r) => r.RegionId === regionIndex + 1)}
+        <!-- Modul: task 109 - region completion used to be its own block of
+             five bars above the codex, a phone screen of context before the
+             subject. It lives on the region's own heading now: the weakest
+             ordinary monster's count (what the server measures) and the boss. -->
         <h3>
           {locationName(regionIndex + 1)}
-          {#if regionComplete(regionIndex)}<span class="done">complete</span>{/if}
+          {#if regionComplete(regionIndex) || progress?.IsCompleted}
+            <span class="done">complete</span>
+          {:else if progress}
+            <span class="reg-progress">
+              weakest {formatNumber(Math.min(progress.CurrentKills, progress.RequiredKills))}
+              / {formatNumber(progress.RequiredKills)} &middot; boss
+              {formatNumber(Math.min(progress.BossKills, progress.RequiredBossKills))}
+              / {formatNumber(progress.RequiredBossKills)}
+            </span>
+          {/if}
         </h3>
         <ul class="entries">
           {#each region as monster (monster.Id)}
@@ -149,19 +134,20 @@
                 <span class="name">{monster.Name}</span>
                 <span class="dim tiny">
                   {#if entry && entry.Kills > 0}
-                    lv {entry.Level} &middot; {formatNumber(entry.Kills)} kills
+                    <!-- "lv 0" read as a broken number; below the first
+                         level the kill count says it all. -->
+                    {#if entry.Level > 0}level {entry.Level} &middot; {/if}{formatNumber(entry.Kills)} kills
                   {:else}
                     never encountered
                   {/if}
                 </span>
               </div>
               {#if entry && entry.Kills > 0}
-                <Bar
-                  value={entry.Kills}
-                  max={Math.max(1, entry.NextLevelKills)}
-                  color="var(--rarity-6)"
-                  label={`${formatNumber(entry.Kills)} / ${formatNumber(entry.NextLevelKills)}`}
-                />
+                <!-- Theme accent, not --rarity-6: a purple bar read as an
+                     item tier. The count sits beside it rather than across
+                     the fill, where it straddled the colour edge. -->
+                <Bar value={entry.Kills} max={Math.max(1, entry.NextLevelKills)} />
+                <div class="dim tiny next">next level at {formatNumber(entry.NextLevelKills)}</div>
               {/if}
               <div class="dim tiny stats">
                 {formatNumber(monster.MaxHp)} HP &middot;
@@ -178,13 +164,6 @@
 
 <style>
   .wrap {
-    padding: 1rem;
-  }
-
-  .panel {
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
     padding: 1rem;
   }
 
@@ -224,31 +203,16 @@
     font-weight: 700;
   }
 
-  /* Five short columns rather than five full-width bars: the region strip is
-     context for the codex below it, not the subject of the screen. */
-  .regions {
-    list-style: none;
-    margin: 0 0 0.5rem;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-    gap: 0.55rem;
+  .reg-progress {
+    text-transform: none;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
   }
 
-  .reg-note {
-    margin: 0 0 0.5rem;
-  }
-
-  .regions li {
-    display: grid;
-    gap: 0.15rem;
-  }
-
-  .region-name {
-    font-size: 0.8rem;
-    display: flex;
-    align-items: baseline;
-    gap: 0.4rem;
+  .next {
+    margin-top: 0.15rem;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
   }
 
   .dim {
