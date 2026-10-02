@@ -48,7 +48,10 @@ function nativeApp(): CapacitorAppPlugin | undefined {
  * The z-index each dismissable layer paints at, named once so the resolver
  * below and the components that register themselves agree on it. The CSS in
  * each component carries the same literal - a stylesheet cannot import a
- * TypeScript constant - so a change to one is a change to both.
+ * TypeScript constant - so a change to one is a change to both. A `Modal`
+ * (ui/Modal.svelte) takes its z from here as a prop, so the cards built on it
+ * (death, victory, What's new, Welcome back, the profile, the exit prompt)
+ * carry no literal at all.
  */
 export const LAYER_Z = {
   contextMenu: 10000,

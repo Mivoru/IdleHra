@@ -19,7 +19,7 @@
   import { prettifyBaseId } from '../net/content';
   import { rarityColor, rarityName } from './rarity';
   import { formatNumber } from './format';
-  import { portal } from './portal';
+  import Modal from './Modal.svelte';
   import { profileLink, guildLink } from './profileLink';
   import { registerOverlay } from '../stores/sheet';
   import { LAYER_Z } from '../net/backButton';
@@ -108,22 +108,24 @@
 </script>
 
 {#if top}
-  <!-- Modul: PORTALLED TO <body>. Chat opens this from inside the chat dock,
-       whose window is blurred - and a backdrop-filter makes an ancestor the
-       box a position: fixed child is laid out in, so the "full-screen" overlay
-       was the size of the chat window. See ui/portal.ts. -->
-  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-  <div class="overlay" onclick={closeProfiles} use:portal>
-    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-    <div
-      class="modal"
-      role="dialog"
-      tabindex="-1"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      data-testid={top.kind === 'player' ? 'player-profile' : 'guild-view'}
-      onclick={(e) => e.stopPropagation()}
-    >
+  <!-- Modul: PORTALLED TO <body> (Modal does it). Chat opens this from inside
+       the chat dock, whose window is blurred - and a backdrop-filter makes an
+       ancestor the box a position: fixed child is laid out in, so the
+       "full-screen" overlay was the size of the chat window. See ui/portal.ts.
+       The scrim closes the whole stack; back and Escape pop one level through
+       the registerOverlay above, so the Modal registers nothing itself. -->
+  <Modal
+    labelledby={titleId}
+    z={LAYER_Z.playerProfile}
+    width="500px"
+    flush
+    layout="block"
+    register={false}
+    onClose={closeProfiles}
+    class="modal"
+    testid={top.kind === 'player' ? 'player-profile' : 'guild-view'}
+  >
+    {#snippet header()}
       <div class="header">
         {#if depth > 1}
           <button class="back-btn" aria-label="Back" data-testid="profile-back" onclick={popProfile}>&lsaquo;</button>
@@ -140,6 +142,7 @@
         </h3>
         <button class="close-btn" aria-label="Close profile" onclick={closeProfiles}>&times;</button>
       </div>
+    {/snippet}
 
       <div class="content">
         {#if top.kind === 'player'}
@@ -277,8 +280,7 @@
           {/if}
         {/if}
       </div>
-    </div>
-  </div>
+  </Modal>
 
   {#if piece}
     {@const label = prettifyBaseId(piece.BaseItemId)}
@@ -303,34 +305,6 @@
     font-weight: 600;
   }
 
-  /* z-index 1000 is LAYER_Z.playerProfile in net/backButton.ts. */
-  .overlay {
-    position: fixed;
-    inset: 0;
-    /* TODO(tokens): --scrim once app.css defines it. */
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-    /* Fixed, so body's safe-area padding does not reach it - its own inset. */
-    padding: calc(0.5rem + var(--sa-top)) calc(0.5rem + var(--sa-right)) calc(0.5rem + var(--sa-bottom))
-      calc(0.5rem + var(--sa-left));
-  }
-  .modal {
-    background: var(--bg-panel);
-    color: var(--text);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    width: 100%;
-    max-width: 500px;
-    max-height: 90vh;
-    /* dvh after vh: the vh line is the fallback for an engine without it. */
-    max-height: calc(100dvh - 1rem - var(--sa-top) - var(--sa-bottom));
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
   .header {
     display: flex;
     align-items: center;
@@ -373,9 +347,6 @@
   }
   .content {
     padding: 0.75rem;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    min-height: 0;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
