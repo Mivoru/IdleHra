@@ -780,38 +780,39 @@ await go('Market');
     'browse is the default',
   );
 
-  const filterCount = await page.locator('.filters select').count();
-  record(
-    'the market filters by type and rarity',
-    filterCount >= 3,
-    `${filterCount} filter dropdowns`,
-  );
-
   record(
     'the market pages rather than dumping the book',
     /Page \d+ of \d+/.test(before) || /Nothing matches|market is empty/i.test(before),
   );
 
-  // Narrowing to a slot must actually change the request, not just the UI.
-  //
-  // Modul: A CHECKBOX, NOT A DROPDOWN. The type filter became checkboxes when
-  // the market gained multi-select, and this step kept calling selectOption on
-  // `.filters select` - which now resolves to the RARITY dropdown, where no
-  // option is named "Helmet". It threw rather than failed, so the whole script
-  // died here and every check below the market - crafting, guild, the paper
-  // doll, the chest - silently stopped running for as long as that shipped.
-  // A crash in a test suite is worse than a red line: a red line is reported.
-  const helmet = page.locator('.filters label').filter({ hasText: 'Helmet' }).locator('input[type="checkbox"]').first();
-  await helmet.check();
-  await page.waitForTimeout(1200);
-  const narrowed = await page.evaluate(() => document.body.innerText);
+  // Task 102: the filters are chips in a sheet behind "Filters (n)", so the
+  // results are not pushed below 650 px of checkboxes on a phone.
+  await page.getByTestId('market-filters').click();
+  const sheet = page.getByTestId('market-filter-sheet');
+  await sheet.waitFor({ timeout: 5000 }).catch(() => {});
+  const chipCount = await sheet.locator('.chip').count();
+  const rarityCount = await sheet.locator('select').count();
   record(
-    'narrowing by slot re-queries the market',
-    narrowed !== before,
-    'the listing panel changed',
+    'the market filters by type and rarity',
+    chipCount >= 6 && rarityCount >= 2,
+    `${chipCount} chips, ${rarityCount} rarity selects`,
   );
 
-  const listButton = page.getByRole('button', { name: /^List for/ });
+  // Narrowing to a slot must actually change the REQUEST, not just the UI -
+  // asserted on the request the chip sends.
+  const narrowed = page
+    .waitForRequest((r) => r.url().includes('/api/v1/market/listings') && /slotIndexes=\d/.test(r.url()), { timeout: 8000 })
+    .then(() => true)
+    .catch(() => false);
+  await sheet.getByRole('button', { name: 'Helmet', exact: true }).click().catch(() => {});
+  record('narrowing by slot re-queries the market', await narrowed, 'the listings request carries the slot');
+  await sheet.getByRole('button', { name: 'Clear all' }).click().catch(() => {});
+  await sheet.getByRole('button', { name: 'Close' }).click().catch(() => {});
+
+  // Sell is a segment on a phone and a side column on a desktop.
+  const sellSeg = page.getByTestId('market-seg-sell');
+  if ((await sellSeg.count()) > 0) await sellSeg.click();
+  const listButton = page.getByTestId('market-list');
   const hasList = (await listButton.count()) > 0;
   record('market has a list-for-price button', hasList);
 
@@ -822,7 +823,34 @@ await go('Market');
       true,
       disabled ? 'disabled (no guild licence or no item picked)' : 'enabled',
     );
+
+    // Task 102: the sell flow names the item before listing. Picking a piece
+    // swaps the picker for a card, and the button says what it lists.
+    const firstPiece = page.locator('[data-testid="market-sell"] button.row').first();
+    if ((await firstPiece.count()) > 0) {
+      await firstPiece.click();
+      const label = (await listButton.first().innerText().catch(() => '')).trim();
+      record(
+        'the sell flow names the item before listing',
+        /^List \S.* for /.test(label) && (await page.getByTestId('market-sell-card').count()) > 0,
+        label || 'no label',
+      );
+      await page.getByTestId('market-sell-card').getByRole('button', { name: 'Change' }).click().catch(() => {});
+    }
   }
+
+  // Task 102: My orders reads the player's own open orders from the server.
+  const ordersSeg = page.getByTestId('market-seg-orders');
+  if ((await ordersSeg.count()) > 0) await ordersSeg.click();
+  const mine = await apiGet('/api/v1/market/mine');
+  const ordersText = await page.getByTestId('market-orders').innerText().catch(() => '');
+  record(
+    'My orders lists what the player has on the book',
+    Array.isArray(mine) && (mine.length === 0 ? /nothing on the market/i.test(ordersText) : /Selling|Buying/.test(ordersText)),
+    Array.isArray(mine) ? `${mine.length} open` : 'the route did not answer',
+  );
+  const buySeg = page.getByTestId('market-seg-buy');
+  if ((await buySeg.count()) > 0) await buySeg.click();
 }
 
 // --- social: friends ---------------------------------------------------------

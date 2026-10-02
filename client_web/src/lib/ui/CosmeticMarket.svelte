@@ -60,6 +60,11 @@
     if (selfId > 0) requestWorn(selfId);
   });
   const selfWorn = $derived(selfId > 0 ? ($wornByPlayer.get(selfId)?.worn ?? null) : null);
+  const KIND_WORDS: Record<number, string> = {
+    [COSMETIC_KIND.Chest]: 'chest',
+    [COSMETIC_KIND.Avatar]: 'avatar',
+    [COSMETIC_KIND.Frame]: 'frame',
+  };
   const rarityNames = $derived(catalogue?.RarityNames ?? ['', 'Common', 'Rare', 'Epic', 'Legendary']);
 
   function nameOf(definitionId: string): string {
@@ -201,6 +206,9 @@
           >
             {@render Face(o.DefinitionId, o.Kind, o.Rarity)}
             <span class="pick-name">{nameOf(o.DefinitionId)}</span>
+            <!-- Modul: "Rare avatar" under the name (task 102): two "River
+                 Stone"s of different rarity or kind were the same tile. -->
+            <span class="pick-meta">{rarityNames[o.Rarity]} {KIND_WORDS[o.Kind] ?? 'cosmetic'}</span>
           </button>
         {/each}
       </div>
@@ -361,6 +369,12 @@
 
   .pick.chosen {
     box-shadow: 0 0 0 2px var(--c);
+  }
+
+  .pick-meta {
+    text-align: center;
+    font-size: 0.68rem;
+    color: var(--text-dim);
   }
 
   .pick-name {
