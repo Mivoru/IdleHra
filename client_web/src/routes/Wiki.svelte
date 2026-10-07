@@ -473,12 +473,23 @@
             meal. Running out does not stop combat, but it removes the only healing
             you have, and the game says so.
           </p>
+          <p class="dim small">
+            <strong>Rations.</strong> From region 2 on, a fighting character eats one
+            fish every 10 seconds (region 2), 8 (region 3), 7 (region 4) or 6 (region 5)
+            whether it is hurt or not - 360 to 600 fish an hour. A ration heals nothing;
+            it is upkeep. It takes a fish of the monster's region or a later one, and an
+            older fish costs double for every region it is behind (a region-2 fish in
+            region 4 is four fish a ration). With no ration in the larder the character is
+            <strong>hungry</strong>: it keeps fighting, but every kill pays half its XP
+            and gold until the larder is stocked again. Region 1 eats no rations. An
+            order (Character screen) can send a hungry character fishing by itself.
+          </p>
 
           <h3 id="boss-challenges">Boss challenges</h3>
           <p>
             Every region boss has three optional challenges, listed under its region on the
             Combat screen: <strong>Starved</strong> (win without eating a single bite during the
-            fight), <strong>Young blood</strong> (win at or below a level cap - 15, 35, 45, 60 and
+            fight; rations heal nothing and do not count), <strong>Young blood</strong> (win at or below a level cap - 15, 35, 45, 60 and
             75 for the five regions) and <strong>Swift</strong> (win within a time limit - 80, 110,
             120, 110 and 110 seconds; the region's best gear at its level makes it, or come back
             stronger). They count on any kill, not only the first, and each pays a cosmetic

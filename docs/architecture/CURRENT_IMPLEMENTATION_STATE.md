@@ -659,7 +659,24 @@ The auto-eat larder is three persisted slots on `PlayerRecord`, filled with
 `CommandType.StockFoodSlot` (65) through `LarderEngine`. `FoodRegistry` holds
 the GDD's ten cooked-food heal payouts (40 to 82,000 flat HP); food is
 classified by the `_food` BaseId marker, since the ten real cooked foods
-(items 194-203) never carried the older `_food_consumable` marker.
+(items 194-203) never carried the older `_food_consumable` marker. (The
+cooked foods were deleted 2026-09-25; raw fish eat on the same table.)
+
+**Rations (2026-10-07).** Besides healing bites, a character fighting in
+region 2+ eats one ration every `FoodRegistry.RationIntervalTicks` (10/8/7/6 s
+for regions 2-5): one fish of the monster's region or later, or
+`RationCost` = 2^(regions behind) of an older one, with no heal. Unpaid, the
+runtime-only `TickStatePayload.Hungry` is set, `OutOfFood` is raised, and
+kills pay `HungryRewardPct` (50%) of XP and gold. `SimulationEngine.TickRation`
+runs it live; `HuntingProjection.Advance` mirrors it for the offline window
+and the hunting advisor.
+
+**Compressed frames (2026-10-07, task 46).** A JSON client that sends
+`"compress":"deflate-raw"` in its handshake receives every text frame as a
+binary frame of raw deflate from one per-session stream
+(`Network/FrameDeflater.cs`), inflated in the client by
+`lib/net/frameInflater.ts`. HttpListener cannot negotiate
+permessage-deflate, hence the hand-rolled version.
 
 The Village Chest (`VillageStashInstances`) is unbounded - unlimited stacks
 and unlimited stack height - and every consumption path reads Backpack +

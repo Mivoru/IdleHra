@@ -4096,6 +4096,64 @@ namespace FolkIdle.Server.Domain.Combat
         internal const int AutoEatCooldownTicks = 25;
 
         /// <summary>
+        /// One combat tick of rations (FoodRegistry.RationIntervalTicks): count
+        /// towards the next ration, and at the interval eat one eligible fish or
+        /// go hungry. A hungry character retries every tick, so stocking the
+        /// larder ends the hunger at once rather than at the next interval.
+        /// HuntingProjection.Advance mirrors this for the offline fight.
+        /// </summary>
+        internal static void TickRation(ref TickStatePayload payload)
+        {
+            // No monster standing (between spawns): nothing to count, and
+            // nothing to forgive either - hunger is the larder's, not the gap's.
+            if (payload.CurrentMonsterId <= 0) return;
+
+            int region = ContentRegistry.GetMonsterRegionTier(payload.CurrentMonsterId);
+            int interval = FoodRegistry.RationIntervalTicks(region);
+            if (interval <= 0)
+            {
+                // Region 1 eats no rations, so nobody starves there.
+                payload.RationTicksSinceMeal = 0;
+                payload.Hungry = false;
+                return;
+            }
+
+            if (!payload.Hungry && ++payload.RationTicksSinceMeal < interval)
+            {
+                return;
+            }
+
+            int slot = FoodRegistry.PickRationSlot(
+                payload.Food1_ItemId, payload.Food1_Count,
+                payload.Food2_ItemId, payload.Food2_Count,
+                payload.Food3_ItemId, payload.Food3_Count,
+                region,
+                out int cost);
+            if (slot == 0)
+            {
+                if (!payload.Hungry)
+                {
+                    payload.Hungry = true;
+                    payload.ActivityHaltReason = Network.ActivityHaltReason.OutOfFood;
+                }
+                return;
+            }
+
+            if (slot == 1) payload.Food1_Count -= cost;
+            else if (slot == 2) payload.Food2_Count -= cost;
+            else payload.Food3_Count -= cost;
+            payload.RationTicksSinceMeal = 0;
+            if (payload.Hungry)
+            {
+                payload.Hungry = false;
+                if (payload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood)
+                {
+                    payload.ActivityHaltReason = Network.ActivityHaltReason.None;
+                }
+            }
+        }
+
+        /// <summary>
         /// One hour at 10 Hz - Last Stand's cooldown. See the crown's use site;
         /// without it the effect is flat immortality rather than a reprieve.
         /// </summary>
@@ -4939,7 +4997,8 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.AutoEatCooldownTicks = AutoEatCooldownTicks;
                     payload.AteThisFight = true;
 
-                    if (payload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood)
+                    // Not while hungry: the warning is the ration's to clear.
+                    if (payload.ActivityHaltReason == Network.ActivityHaltReason.OutOfFood && !payload.Hungry)
                     {
                         payload.ActivityHaltReason = Network.ActivityHaltReason.None;
                     }
@@ -4977,6 +5036,8 @@ namespace FolkIdle.Server.Domain.Combat
                 if (payload.PlayerHp > effectiveMaxHp) payload.PlayerHp = effectiveMaxHp;
             }
 
+            TickRation(ref payload);
+
             if (payload.PlayerHp <= 0)
             {
                 // Read before anything below can clear it.
@@ -5004,6 +5065,10 @@ namespace FolkIdle.Server.Domain.Combat
 
                 // Shared with the hunting advisor - see LiveKillXpMultiplierPct.
                 int finalXpMultiplier = LiveKillXpMultiplierPct(in payload, localXpMultiplier);
+                // Modul: a HUNGRY character (an unpaid ration, FoodRegistry) is
+                // paid half. Here rather than in LiveKillXpMultiplierPct, which
+                // the hunting advisor shares and which prices a fed character.
+                if (payload.Hungry) finalXpMultiplier = finalXpMultiplier * FoodRegistry.HungryRewardPct / 100;
 
                 // Modul: SCHOLAR PAYS PER KILL (ScholarRate, owner decision
                 // 2026-09-30): with the crown's chance this kill is paid as two -
@@ -5174,6 +5239,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul: the one gold formula, shared with the offline
                 // projection - see CombatGoldReward.
                 long goldReward = CombatGoldReward.PerKill(in payload, in activeMonster, combatStats.GoldAcquisitionMultiplierPct) * paidKills;
+                if (payload.Hungry) goldReward = goldReward * FoodRegistry.HungryRewardPct / 100;
 
                 if (goldReward > 0)
                 {

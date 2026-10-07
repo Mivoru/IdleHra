@@ -189,8 +189,10 @@
     <h2>Auto-Eat</h2>
     <p class="dim small">
       Load up to three foods. When health drops below the threshold your
-      character eats the one that heals most, automatically. If the larder runs
-      out you keep fighting, just without healing.
+      character eats the one that heals most, automatically. From region 2 a
+      fighting character also eats a ration now and then, hurt or not - a fish
+      of the region or later, or more of an older one. If the larder runs out
+      you keep fighting, but without healing, and hungry: kills pay half.
     </p>
 
     <!-- Modul: "there is none" is a claim, and it needs the answer to have

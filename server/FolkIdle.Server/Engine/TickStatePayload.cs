@@ -158,6 +158,14 @@ namespace FolkIdle.Server.Engine
         // fresh fight, and a missed clear could only make the challenge harder.
         public bool AteThisFight;
 
+        // Modul: RATIONS (FoodRegistry.RationIntervalTicks). Ticks of combat
+        // since the last ration, and whether the last one went unpaid. Runtime
+        // only, like AteThisFight: a relogin restarts the count, which can only
+        // delay one ration by a few seconds, and Hungry is re-derived at the
+        // next ration from what the larder actually holds.
+        public int RationTicksSinceMeal;
+        public bool Hungry;
+
         // Modul: TASK 87 - the Boss Ascension ladder. BossAscensionPacked is a
         // CACHE of boss_ascension_progress (the authority), four bits a region,
         // filled at login and raised at a clear, so the tick can validate a

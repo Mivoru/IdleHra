@@ -9,6 +9,7 @@
 
 import { WS_URL } from './config';
 import { computeChallengeHash } from './antiCheat';
+import { canInflate, COMPRESS_PROPERTY, COMPRESS_VALUE, FrameInflater } from './frameInflater';
 import {
   PacketType,
   CommandType,
@@ -245,6 +246,23 @@ export class GameConnection {
     const socket = new WebSocket(WS_URL);
     this.socket = socket;
 
+    // Task 46 (frameInflater.ts): ask for compressed frames when this runtime
+    // can inflate them. One inflater per socket, for the socket's life - the
+    // frames share one deflate stream, so a new socket needs a new one.
+    const inflater = canInflate()
+      ? new FrameInflater(
+          (json) => this.receiveText(json),
+          (error) => {
+            console.error('compressed frame stream broke - reconnecting', error);
+            if (this.socket !== socket) return;
+            this.socket = null;
+            socket.close();
+            this.scheduleReconnect('the connection garbled a frame');
+          },
+        )
+      : null;
+    if (inflater) socket.binaryType = 'arraybuffer';
+
     // Modul: the watchdog is armed BEFORE any handler, and every exit from
     // CONNECTING clears it - open, close, and the timeout itself.
     this.clearConnectTimer();
@@ -273,16 +291,22 @@ export class GameConnection {
           JwtTokenLength: tokenBytes,
           AssetHash: 0,
           PlatformSignature: 0,
+          ...(inflater ? { [COMPRESS_PROPERTY]: COMPRESS_VALUE } : {}),
         }),
       );
     };
 
     socket.onmessage = (event) => {
       this.lastInboundAt = Date.now();
+      if (inflater && typeof event.data !== 'string') {
+        inflater.push(event.data as ArrayBuffer);
+        return;
+      }
       this.receive(event);
     };
 
     socket.onclose = (event) => {
+      inflater?.close();
       this.clearConnectTimer();
       if (this.socket !== socket) return;
       this.socket = null;
@@ -439,15 +463,20 @@ export class GameConnection {
 
   private receive(event: MessageEvent): void {
     if (typeof event.data !== 'string') {
-      // A JSON session never receives binary. If one arrives, the connection
+      // Binary only arrives deflated, and only when we asked (onmessage hands
+      // those to the inflater). Any other binary frame means the connection
       // is not in the mode we asked for and guessing would be worse.
       console.error('binary frame on a JSON session - protocol mode mismatch');
       return;
     }
+    this.receiveText(event.data);
+  }
 
+  /** One JSON packet - from a text frame, or inflated out of a binary one. */
+  private receiveText(text: string): void {
     let packet: { [key: string]: unknown };
     try {
-      packet = JSON.parse(event.data);
+      packet = JSON.parse(text);
     } catch {
       console.error('unparseable packet from server');
       return;
