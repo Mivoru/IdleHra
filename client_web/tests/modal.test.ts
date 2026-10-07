@@ -20,9 +20,6 @@ const NOT_YET_MODAL = new Set([
   'lib/ui/GuidedOverlay.svelte',
   // Task 105 owns the shield wheel.
   'lib/ui/ShieldWheel.svelte',
-  // Task 95's More sheet landed in parallel with 106; the Modal sheet variant
-  // can absorb it, as with DetailSheet.
-  'App.svelte',
   // The chat window is NOT modal: on a desktop the game keeps running and
   // stays clickable beside it, so it must not inert the app root.
   'lib/ui/ChatDock.svelte',

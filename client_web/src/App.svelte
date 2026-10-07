@@ -132,9 +132,9 @@
         // Task 54: cosmetic chests, avatars and frames.
         { key: 'wardrobe', label: 'Wardrobe' },
         { key: 'chest', label: 'Chest' },
-        // Task 59: Auto-Eat and Boosts are one entry with two tabs - both are
-        // what you take into a fight. See TAB_FAMILIES. Task 95 renamed the
-        // entry from "Supplies" to the word the tutorial uses.
+        // Task 95 renamed the entry from "Supplies" to the word the tutorial
+        // uses. It had a Boosts tab until 2026-10-07, when the five
+        // consumables it listed were deleted - nothing ever produced one.
         { key: 'larder', label: 'Auto-Eat' },
       ],
     },
@@ -204,13 +204,6 @@
   // ("Bloodline > Ancestors"). Before it, the word Bloodline was on the menu
   // entry and nowhere on the page it opened.
   const TAB_FAMILIES: Record<string, { name: string; tabs: readonly { key: string; label: string }[] }> = {
-    larder: {
-      name: 'Auto-Eat',
-      tabs: [
-        { key: 'larder', label: 'Auto-Eat' },
-        { key: 'boosts', label: 'Boosts' },
-      ],
-    },
     breeding: {
       name: 'Bloodline',
       tabs: [
@@ -229,7 +222,7 @@
       ],
     },
   };
-  const TAB_ONLY_KEYS = ['boosts', 'ancestors', 'inheritance', 'market', 'guildops', 'leaderboards'] as const;
+  const TAB_ONLY_KEYS = ['ancestors', 'inheritance', 'market', 'guildops', 'leaderboards'] as const;
 
   type ScreenKey =
     | (typeof GROUPS)[number]['screens'][number]['key']
@@ -340,7 +333,6 @@
     mailbox: () => import('./routes/Mailbox.svelte'),
     chest: () => import('./routes/Chest.svelte'),
     worldboss: () => import('./routes/WorldBoss.svelte'),
-    boosts: () => import('./routes/Boosts.svelte'),
     leaderboards: () => import('./routes/Leaderboards.svelte'),
     wiki: () => import('./routes/Wiki.svelte'),
     // The skill tree has its own screen now. It lived inside the character
@@ -1014,12 +1006,20 @@
       <!-- Modul: TASK 95 - THE MORE SHEET. Every destination the tab bar does
            not hold, grouped, rising from the tab bar the thumb is already on:
            from the bottom of a long Chest, Mail and Settings are two taps away
-           and no scrolling. Phone only - a desktop never sets navOpen, and the
-           CSS hides it above the breakpoint in case a resize leaves it set.
-           The tab bar stays on top of the backdrop, so More closes it again
-           and the other four tabs still work. -->
-      <button class="sheet-backdrop" aria-label="Close menu" tabindex="-1" onclick={() => setNavOpen(false)}></button>
-      <div class="more-sheet" id="more-sheet" role="dialog" aria-label="More">
+           and no scrolling. Phone only - a desktop never sets navOpen.
+           Task 106: it is a Modal (sheet variant), so Escape, back, the focus
+           trap and scroll lock are the shared ones. register={false} because
+           resolveBack already reads navOpen ('close-nav'); registering it on
+           the overlay stack as well would be a second copy of that truth. The
+           app root is inert behind it, tab bar included, so the sheet covers
+           the bar and closes from its Close button, the scrim or Escape.
+           #more-sheet is the wrapper scripts/screens.mjs looks inside. -->
+      <Modal variant="sheet" label="More" register={false} z={LAYER_Z.nav} layout="block" onClose={() => setNavOpen(false)}>
+      <div class="more-sheet" id="more-sheet">
+        <div class="sheet-head">
+          <h2 class="sheet-title">More</h2>
+          <button class="sheet-close" onclick={() => setNavOpen(false)}>Close</button>
+        </div>
         <div class="sheet-event"><EventBanner /></div>
         {#each GROUPS as group}
           {@const items = group.screens.filter((s) => !MENU_HIDDEN.has(s.key) && !TAB_BAR_KEYS.has(s.key))}
@@ -1038,6 +1038,7 @@
           {/if}
         {/each}
       </div>
+      </Modal>
     {/if}
 
     <TabBar
@@ -1242,9 +1243,7 @@
 
   /* The ≡ and the More sheet are the phone's; a desktop header has room for
      the groups themselves. */
-  .navtoggle,
-  .more-sheet,
-  .sheet-backdrop {
+  .navtoggle {
     display: none;
   }
 
@@ -1383,45 +1382,30 @@
       color: var(--accent);
     }
 
-    /* Modul: THE MORE SHEET (task 95) rises from the tab bar and stops under
-       the sticky header, so both stay usable: More or ≡ closes it, any other
-       tab goes there. Fixed, so it carries its own side insets - body's
-       padding never reaches a fixed box. Above the chat window (40), which
-       opening it closes anyway; below the header and the tab bar (50). */
-    .sheet-backdrop {
-      display: block;
-      position: fixed;
-      inset: 0;
-      z-index: 44;
-      width: 100%;
-      height: 100%;
-      min-height: 0;
-      margin: 0;
-      padding: 0;
-      border: none;
-      border-radius: 0;
-      box-shadow: none;
-      background: rgba(0, 0, 0, 0.5);
-    }
-
+    /* Modul: THE MORE SHEET (task 95) is a Modal sheet since task 106: the
+       scrim, the docking, the safe-area insets and the dvh cap are Modal's.
+       What is left is the layout of what is inside. */
     .more-sheet {
       display: grid;
       align-content: start;
       gap: 0.85rem;
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: calc(var(--tabbar-h) + var(--sa-bottom));
-      z-index: 45;
-      max-height: calc(100vh - var(--tabbar-h) - 4rem);
-      max-height: calc(100dvh - var(--sa-top) - var(--sticky-header-h) - var(--tabbar-h) - var(--sa-bottom));
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      padding: 0.85rem calc(0.75rem + var(--sa-right)) 0.85rem calc(0.75rem + var(--sa-left));
-      background: var(--bg-panel);
-      border-top: 1px solid var(--border);
-      border-radius: 12px 12px 0 0;
-      box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    .sheet-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .sheet-title {
+      margin: 0;
+      font-size: var(--fs-md);
+    }
+
+    .sheet-close {
+      min-height: 44px;
+      min-width: 44px;
     }
 
     .sheet-event:empty {

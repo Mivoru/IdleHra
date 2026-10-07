@@ -206,9 +206,13 @@
     padding: 0.1rem 0.25rem;
   }
 
+  /* Modul: --fs-xs, not --fs-badge. The label was 0.68rem, which the type
+     scale reserves for counts and tiers, so the text a thumb reads every few
+     seconds was smaller than any body copy. --fs-xs is the smallest step that
+     is not a badge; "Gathering" still fits a 72px cell at 360px. */
   .label {
-    font-size: 0.68rem;
-    line-height: 1;
+    font-size: var(--fs-xs);
+    line-height: 1.1;
     letter-spacing: 0.01em;
     white-space: nowrap;
     overflow: hidden;

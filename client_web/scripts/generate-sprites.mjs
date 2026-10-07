@@ -134,14 +134,12 @@ const MATERIAL_ALIASES = {
   'Golden Acatia twig': 'ironwood_twig',
   Absidian: 'obsidian_ore',
   'volcanic sulfur': 'sulfur_ore',
-  'Bear stew': 'bear_stew_food_consumable',
 
   // Region 04
   'Golden Frostpine log': ['golden_frostpine_log', 'glacier_pine_log'],
   'Golden Frostpine twig': 'glacier_pine_twig',
   'Silver bar': 'silver_ore',
   'Cobalt bar': 'cobalt_ore',
-  'yeti meat platter': 'yeti_platter_food_consumable',
 
   // Region 05
   'Golden Ebon log': ['golden_ebon_log', 'void_bark_log'],
@@ -168,11 +166,6 @@ const MATERIAL_ALIASES = {
   // `eq_dread_*` for everything else, so the (set, slot) rule cannot reach it
   // from an art file called dread_helm.
   dread_helm: 'eq_dreadnought_helm_helmet_armor_slot_base',
-
-  // Named by the art brief, which lists this file as
-  // "pot_r5_death_ward_elixir.png (Emergency Revive)" - the art's title and
-  // the item's name differ, and only the brief connects them.
-  'Emergency Revive': 'death_ward_elixir_defensive_potion_consumable',
 };
 
 /** Sprites that deliberately get no item icon, and why.

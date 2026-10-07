@@ -9178,6 +9178,9 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0L, after - before);
         }
 
+        // An id past the end of items.json, so no content can ever hold it.
+        private const int TestDeathWardItemId = 999_001;
+
         // Modul: Deferred Part 5 Implementation, Part 2/4. Consumable
         // lifecycle: applying a potion by item id populates the correct
         // unmanaged buff slot, the countdown expires it deterministically
@@ -9187,24 +9190,21 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void Test_ConsumableEngine_PotionLifecycleAndDeathWardIntercept()
         {
-            Assert.True(ContentRegistry.TryGetItemDefinitionByBaseId("roasted_perch_food_consumable", out var perchDef));
-            Assert.True(ConsumableEngine.DeathWardItemId > 0, "The Death Ward Elixir item must resolve from content.");
+            // Modul: content holds NO consumable since 2026-10-07 (see
+            // ConsumableEngine), so nothing here can be applied through
+            // TryApplyConsumable. The slots are armed by hand and the ward
+            // points at a test id; what is left to prove is the countdown and
+            // the lethal intercept, which the combat tick still runs.
+            ConsumableEngine.UseDeathWardItemIdForTests(TestDeathWardItemId);
             int wardId = ConsumableEngine.DeathWardItemId;
+            const int otherBuffId = TestDeathWardItemId + 1;
 
             var payload = new TickStatePayload { PlayerId = 970007001L };
 
-            // Modul: the three *_potion_consumable items this used to apply
-            // were deleted 2026-09-25. The Death Ward is the only potion left,
-            // so it carries the apply-and-expire half. The offensive slot has
-            // no content now; its countdown is armed by hand below.
-            Assert.True(ConsumableEngine.TryApplyConsumable(ref payload, wardId));
-            Assert.Equal(wardId, payload.ActiveDefensivePotionId);
-            Assert.Equal(ConsumableEngine.PotionDurationMs, payload.DefensivePotionDurationMs);
-            payload.ActiveOffensivePotionId = perchDef.Id;
+            payload.ActiveDefensivePotionId = wardId;
+            payload.DefensivePotionDurationMs = ConsumableEngine.PotionDurationMs;
+            payload.ActiveOffensivePotionId = otherBuffId;
             payload.OffensivePotionDurationMs = ConsumableEngine.PotionDurationMs;
-
-            Assert.True(ConsumableEngine.TryApplyConsumable(ref payload, perchDef.Id));
-            Assert.Equal(perchDef.Id, payload.ActiveFoodBuffId);
 
             // A non-consumable item id must be left to the legacy path.
             Assert.False(ConsumableEngine.TryApplyConsumable(ref payload, 1));
@@ -9217,7 +9217,7 @@ namespace FolkIdle.Server.Tests
                 ConsumableEngine.TickBuffCountdowns(ref payload);
             }
             Assert.Equal(wardId, payload.ActiveDefensivePotionId);
-            Assert.Equal(perchDef.Id, payload.ActiveOffensivePotionId);
+            Assert.Equal(otherBuffId, payload.ActiveOffensivePotionId);
             ConsumableEngine.TickBuffCountdowns(ref payload);
             Assert.Equal(0, payload.ActiveDefensivePotionId);
             Assert.Equal(0, payload.DefensivePotionDurationMs);
@@ -9227,8 +9227,8 @@ namespace FolkIdle.Server.Tests
             // Death Ward: occupies the defensive slot, intercepts the
             // lethal blow at exactly 20 percent max HP, consumes itself,
             // and cannot fire twice.
-            Assert.True(ConsumableEngine.TryApplyConsumable(ref payload, ConsumableEngine.DeathWardItemId));
-            Assert.Equal(ConsumableEngine.DeathWardItemId, payload.ActiveDefensivePotionId);
+            payload.ActiveDefensivePotionId = wardId;
+            payload.DefensivePotionDurationMs = ConsumableEngine.PotionDurationMs;
 
             payload.PlayerHp = 0;
             const int maxHp = 500000;

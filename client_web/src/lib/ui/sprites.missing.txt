@@ -9,7 +9,7 @@
 # exactly after the BaseId (an exact filename match wins outright), or add an
 # explicitly verified alias to MATERIAL_ALIASES. Then lower the budget.
 
-total 24 of 185 catalogued items have no artwork
+total 24 of 180 catalogued items have no artwork
 
 ## other (24)
 mat_basilisk_scale

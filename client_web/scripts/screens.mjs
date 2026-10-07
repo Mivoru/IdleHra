@@ -63,7 +63,6 @@ export const SCREENS = [
   // Not a nav button: a STATE of one. See OVERLAYS below.
   'World Boss · shield wheel',
   'Market · cosmetics',
-  'Auto-Eat · Boosts',
   'Bloodline · Ancestors',
   'Bloodline · Inheritance',
   'Home · More sheet',
@@ -105,7 +104,6 @@ function subTab(screen, key) {
  * smoke:screens.
  */
 export const OVERLAYS = {
-  'Auto-Eat · Boosts': subTab('Auto-Eat', 'boosts'),
   'Bloodline · Ancestors': subTab('Bloodline', 'ancestors'),
   'Bloodline · Inheritance': subTab('Bloodline', 'inheritance'),
   'Leaderboards': subTab('Community', 'leaderboards'),

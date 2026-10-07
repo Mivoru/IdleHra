@@ -5589,7 +5589,8 @@ it to the server constants.
 dropdown groups (Play / Items / Village / You / Community) at desktop widths;
 keys 1-5 stay. Show the owner a screenshot first.
 
-**BUILT 2026-09-30, awaiting the owner's look at a screenshot.** Above 40 rem
+**LIVE: merged in PR #115 and deployed (confirmed on main 2026-10-07).**
+Above 40 rem
 the header is five dropdown toggles (Play / Items / Village / You / Community;
 Codex moved to Village, Wiki and Settings to You). Escape, a click outside,
 focus leaving the group, and ArrowDown on a toggle are handled; entries keep
@@ -5702,6 +5703,9 @@ three through the same guard, each at its own rank
 (`FieldedActivityPersistenceTests`).
 
 ## 86. A deterministic affix step beside the reroll - design with the owner
+
+**DEFERRED by the owner (2026-09-30), still deferred 2026-10-07.** Needs a
+design conversation before any code.
 
 For region materials, add or replace one CHOSEN affix at Common rarity, so
 randomness stays in magnitude only. Also: an auto-reroll stop on a
@@ -7310,7 +7314,12 @@ to be merged with 95, 105, 106 and 110 first and checked on the merge).
 - **Findings:** Boosts - items.json holds **five** consumables, not eight,
   and per `FoodRegistry`'s own comment no recipe or drop produces any of
   them. The empty state lists them with what each does and names no source.
-  It needs an owner decision: give them a source, or cut them. The Inn copy
+  It needed an owner decision: give them a source, or cut them.
+  **DECIDED 2026-10-07: cut.** Items 372-375 and 379 are retired in the id
+  ledger (production held none of them) and the Boosts tab is gone; Auto-Eat
+  is one screen. ConsumableEngine stays, inert, documented in its own
+  comment - removing it would reach the combat tick, the offline projection,
+  the wire and PlayerRecords. The Inn copy
   ("up to 9" at Inn 5) is correct: the fixture's newcomers at 10 are
   hand-seeded by `DevFixtureSeeder`. "Join a guild to use its depot" can no
   longer render, because 107 shows guildless players only the browser.
