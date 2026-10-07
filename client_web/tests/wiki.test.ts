@@ -23,6 +23,8 @@ import {
   WORLD_BOSS_ATTEMPTS,
   WORLD_BOSS_REWARDS,
   DEEP_STAKE_PCT,
+  DEEP_RECORD_DIAMONDS,
+  DELVE_WEEKLY_DIAMOND_CEILING,
   DEEP_TOLL_GROWTH_PCT,
   DEEP_MIN_DOOR_CHANCE_PCT,
   DEEP_MAX_LANTERNS,
@@ -363,6 +365,8 @@ describe('the tables the wiki restates still match the server', () => {
     expect(DEEP_TOLL_GROWTH_PCT).toBe(Math.round((pct(/TollGrowth = ([\d.]+);/, 'toll growth') - 100) * 100) / 100);
     expect(DEEP_MIN_DOOR_CHANCE_PCT).toBe(pct(/MinSuccessChance = ([\d.]+);/, 'door floor'));
     expect(DEEP_MAX_LANTERNS).toBe(num(delve, /MaxLanternRefills = (\d+);/, 'lantern cap'));
+    expect(DEEP_RECORD_DIAMONDS).toBe(num(delve, /DeepRecordDiamonds = (\d+);/, 'deep record diamonds'));
+    expect(DELVE_WEEKLY_DIAMOND_CEILING).toBe(num(delve, /MaxDiamondsPerWeek = (\d+);/, 'weekly diamond ceiling'));
 
     const floors = [...titles.matchAll(/new TitleDefinition\("[a-z0-9_]+", "[^"]+", (\d+)\)/g)]
       .map((m) => Number(m[1]))

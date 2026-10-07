@@ -119,7 +119,7 @@ namespace FolkIdle.Server.Tests
         /// </summary>
         private static double AttackHeadroom(int region, int step, in ReferenceLoadout gear)
         {
-            var mods = BossAscensionRegistry.ModifiersFor(step);
+            var mods = BossAscensionRegistry.ModifiersFor(region, step);
             double lo = 1.0, hi = 64.0;
             if (!BossGearBenchmark.ProjectAscension(BossOf(region), in gear, in mods, lo).PlayerWins) return 0.0;
             for (int i = 0; i < 24; i++)
@@ -135,14 +135,14 @@ namespace FolkIdle.Server.Tests
         {
             int limit = BossAscensionRegistry.TimeLimitSecondsFor(region, step);
             if (limit <= 0) return 0.0;
-            var mods = BossAscensionRegistry.ModifiersFor(step);
+            var mods = BossAscensionRegistry.ModifiersFor(region, step);
             var fight = BossGearBenchmark.ProjectAscension(BossOf(region), in gear, in mods);
             return fight.PlayerWins ? fight.SecondsToKillBoss / limit : double.PositiveInfinity;
         }
 
         private static double KillSecondsAt(int region, int step, in ReferenceLoadout gear)
         {
-            var mods = BossAscensionRegistry.ModifiersFor(step);
+            var mods = BossAscensionRegistry.ModifiersFor(region, step);
             var fight = BossGearBenchmark.ProjectAscension(BossOf(region), in gear, in mods);
             return fight.PlayerWins ? fight.SecondsToKillBoss : double.PositiveInfinity;
         }
@@ -183,24 +183,26 @@ namespace FolkIdle.Server.Tests
 
                 Assert.True(headroom <= prevHeadroom + 1e-9, $"region {region} step {step} EASES survival ({headroom:F3} > {prevHeadroom:F3})");
                 Assert.True(kill >= prevKill - 1e-9, $"region {region} step {step} EASES the kill time ({kill:F1} < {prevKill:F1})");
-                Assert.True(load >= prevLoad - 1e-9, $"region {region} step {step} EASES the clock ({load:F3} < {prevLoad:F3})");
-
-                switch (kind)
+                
+                // Every step grows BOTH health and attack (2026-10-07 ladder), so each
+                // must move survival headroom and, while the boss still falls, the
+                // kill time. Once a step is LOST outright (headroom 0, kill infinite)
+                // the ladder has run past this gear and there is nothing left to move.
+                if (prevHeadroom > 0.0)
                 {
-                    case AscensionModifierKind.BossAttackPct:
-                        Assert.True(headroom < prevHeadroom - 1e-6, $"region {region} step {step}: more boss attack costs the best gear no survival headroom");
-                        break;
-                    case AscensionModifierKind.BossHpPct:
-                        Assert.True(kill > prevKill + 1e-6, $"region {region} step {step}: more boss health does not lengthen the fight");
-                        break;
-                    case AscensionModifierKind.TimeLimitPctOfSwift:
-                        int prevLimit = BossAscensionRegistry.TimeLimitSecondsFor(region, step - 1);
-                        Assert.True(prevLimit == 0 || limit < prevLimit, $"region {region} step {step}: the limit {limit} s does not tighten {prevLimit} s");
-                        Assert.True(load > prevLoad, $"region {region} step {step}: the clock is no tighter ({load:F3} vs {prevLoad:F3})");
-                        break;
-                    default:
-                        Assert.Fail($"step {step}: kind {kind} has no calibrated scalar - add one before putting it on the ladder");
-                        break;
+                    Assert.True(headroom < prevHeadroom - 1e-6, $"region {region} step {step}: more boss attack costs the gear no survival headroom");
+                }
+                if (!double.IsInfinity(prevKill))
+                {
+                    Assert.True(kill > prevKill + 1e-6, $"region {region} step {step}: more boss health does not lengthen the fight");
+                }
+                if (kind == AscensionModifierKind.TimeLimitPctOfSwift)
+                {
+                    // The limit TIGHTENS in percent of Swift; in seconds it follows the boss's
+                    // health (see BossAscensionRegistry.TimeLimitSecondsFor), so it need not fall.
+                    int prevPct = BossAscensionRegistry.ModifiersFor(region, step - 1).TimeLimitPctOfSwift;
+                    int pct = BossAscensionRegistry.ModifiersFor(region, step).TimeLimitPctOfSwift;
+                    Assert.True(prevPct == 0 || pct < prevPct, $"region {region} step {step}: the limit {pct}% does not tighten {prevPct}%");
                 }
 
                 prevHeadroom = headroom;
@@ -210,10 +212,13 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
-        /// The top of the ladder can be won: step 10, with every modifier on,
-        /// against the region's best gear at its reference level - inside its
-        /// time limit, with real survival headroom left - and it is not free: the
-        /// gear the boss wall itself asks for loses it.
+        /// The top of the ladder, 2026-10-07: A10 is the boss TWO regions ahead, so
+        /// the region's own best gear (and certainly the wall's required gear) does
+        /// not clear it, while the gear two regions ahead - the gear that boss is
+        /// the peer of - does, inside the clock and with survival headroom.
+        /// Malakor has nothing ahead of it: region 5's best gear is already the
+        /// ceiling, so for the last region the capstone is that the ceiling gear
+        /// still clears it (and the wall's required gear does not).
         /// </summary>
         [Theory]
         [InlineData(1)]
@@ -221,24 +226,35 @@ namespace FolkIdle.Server.Tests
         [InlineData(3)]
         [InlineData(4)]
         [InlineData(5)]
-        public void StepTenIsWinnableByBestInSlot_AndNotByTheWallsGear(int region)
+        public void StepTenIsBeyondTheRegionsBestGear_ButWinnableByTheGearAhead(int region)
         {
             int top = BossAscensionRegistry.MaxStep;
-            var mods = BossAscensionRegistry.ModifiersFor(top);
-            var best = BestInSlot(region);
-            var fight = BossGearBenchmark.ProjectAscension(BossOf(region), in best, in mods);
+            var mods = BossAscensionRegistry.ModifiersFor(region, top);
             int limit = BossAscensionRegistry.TimeLimitSecondsFor(region, top);
-            double headroom = AttackHeadroom(region, top, in best);
+
+            var best = BestInSlot(region);
+            var bestFight = BossGearBenchmark.ProjectAscension(BossOf(region), in best, in mods);
+            bool bestClears = bestFight.PlayerWins && bestFight.SecondsToKillBoss <= limit;
+
+            var ahead = BestInSlot(Math.Min(region + BossAscensionRegistry.RegionsAhead, RaceUnlockRegistry.LastRegion));
+            var aheadFight = BossGearBenchmark.ProjectAscension(BossOf(region), in ahead, in mods);
+            double headroom = AttackHeadroom(region, top, in ahead);
 
             var required = RequiredGear(region);
             var requiredFight = BossGearBenchmark.ProjectAscension(BossOf(region), in required, in mods);
             _o.WriteLine(
-                $"region {region} step {top}: best gear Q{best.QualityTier} kills in {fight.SecondsToKillBoss:F0} s of {limit} s, " +
-                $"wins {fight.PlayerWins}, headroom x{headroom:F2}; wall gear Q{required.QualityTier} wins {requiredFight.PlayerWins}, kills in {requiredFight.SecondsToKillBoss:F0} s");
+                $"region {region} step {top} (limit {limit} s): own best Q{best.QualityTier} wins {bestFight.PlayerWins} in {bestFight.SecondsToKillBoss:F0} s; " +
+                $"gear ahead (region {ahead.GearRegionTier} Q{ahead.QualityTier}) wins {aheadFight.PlayerWins} in {aheadFight.SecondsToKillBoss:F0} s, headroom x{headroom:F2}; " +
+                $"wall gear Q{required.QualityTier} wins {requiredFight.PlayerWins}");
 
-            Assert.True(fight.PlayerWins, $"region {region}: best-in-slot gear cannot survive step {top}");
-            Assert.True(fight.SecondsToKillBoss <= limit * 0.99, $"region {region}: best-in-slot kills in {fight.SecondsToKillBoss:F0} s against a {limit} s limit");
-            Assert.True(headroom >= 1.10, $"region {region}: best-in-slot has only x{headroom:F2} attack headroom at step {top}");
+            if (region < RaceUnlockRegistry.LastRegion)
+            {
+                Assert.False(bestClears, $"region {region}: the region's own best gear clears step {top}, which is meant to be a boss two regions ahead");
+            }
+
+            Assert.True(aheadFight.PlayerWins, $"region {region}: even the gear two regions ahead cannot survive step {top}");
+            Assert.True(aheadFight.SecondsToKillBoss <= limit * 0.99, $"region {region}: the gear ahead kills in {aheadFight.SecondsToKillBoss:F0} s against a {limit} s limit");
+            Assert.True(headroom >= 1.05, $"region {region}: the gear ahead has only x{headroom:F2} attack headroom at step {top}");
 
             bool wallGearClears = requiredFight.PlayerWins && requiredFight.SecondsToKillBoss <= limit;
             Assert.False(wallGearClears, $"region {region}: the wall's own gear clears step {top} - the ladder asks nothing of gear");
@@ -247,10 +263,13 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void TheLadderTablePrinted()
         {
-            for (int step = 1; step <= BossAscensionRegistry.MaxStep; step++)
+            for (int region = 1; region <= 5; region++)
             {
-                var m = BossAscensionRegistry.ModifiersFor(step);
-                _o.WriteLine($"step {step,2}: attack +{m.AttackPct}% hp +{m.BossHpPct}% limit {m.TimeLimitPctOfSwift}% of Swift | {BossAscensionRegistry.Step(step).Summary}");
+                for (int step = 1; step <= BossAscensionRegistry.MaxStep; step++)
+                {
+                    var m = BossAscensionRegistry.ModifiersFor(region, step);
+                    _o.WriteLine($"region {region} step {step,2}: attack +{m.AttackPct}% hp +{m.BossHpPct}% limit {m.TimeLimitPctOfSwift}% of Swift | {BossAscensionRegistry.SummaryFor(region, step)}");
+                }
             }
         }
     }

@@ -265,7 +265,11 @@ namespace FolkIdle.Server.Tests
         // What this test is FOR is that the two models agree, and the two
         // survivable monsters prove that as well as four did.
         [InlineData(91)] // Field Mouse
-        [InlineData(92)] // Horned Rabbit
+        // Modul: 2026-10-07, Horned Rabbit is OUT. Regular monster attack went x1.5 (owner balance
+        // pass) and a bare level-1 character - which is all this test dresses - now dies to it
+        // (22 a swing against 100 HP) before the 78 s the projection says a kill takes, so the
+        // live run lands no kills and measures nothing. The entrance itself is guarded by
+        // TheFirstMonsterTakesAboutSeventyFiveSeconds (a bare new account still beats the Field Mouse).
         public void ProjectedKillRateMatchesTheLiveOne(int monsterId)
         {
             var payload = FreshPayload(monsterId);
@@ -298,6 +302,64 @@ namespace FolkIdle.Server.Tests
             // and per-swing variance, so this is a "same order, not drifting"
             // bound rather than an equality.
             Assert.InRange(projected, liveSecondsPerKill * 0.5, liveSecondsPerKill * 1.6);
+        }
+
+        /// <summary>
+        /// Modul: 2026-10-07 - THE OWNER'S PACING MILESTONES, asserted.
+        ///
+        /// Target, in cumulative GEARED progress-hours (a player who checks in twice a
+        /// day banks about 24 of them per real day): level 25 about 24 h, 50 about
+        /// 108 h, 75 about 336 h, 100 about 770 h. The model is the doc's geared table
+        /// on ProgressionEngine.LevelCurveBase - hours per region of 0.8 / 3.7 / 15.5 /
+        /// 66 / 261 on the OLD curve (250 * 1.16^l) - which matched the live evidence
+        /// (the level-71 and level-78 players are ~50 and ~75 geared hours). That fixes
+        /// a hours-per-XP rate for each region; the new curve is then read through the
+        /// same rates, so only the XP curve is under test.
+        /// </summary>
+        [Fact]
+        public void TheCurveHitsTheOwnersPacingMilestones()
+        {
+            double[] oldRegionHours = { 0.8, 3.7, 15.5, 66.0, 261.0 };
+            double OldXp(int level) => 250.0 * Math.Pow(1.16, level);
+            int RegionOf(int level) => Math.Min((level - 1) / 20 + 1, 5);
+
+            var hoursPerXp = new double[6];
+            for (int region = 1; region <= 5; region++)
+            {
+                double xp = 0;
+                for (int level = (region - 1) * 20 + 1; level <= region * 20; level++) xp += OldXp(level);
+                hoursPerXp[region] = oldRegionHours[region - 1] / xp;
+            }
+
+            double Hours(int toLevel, bool oldCurve)
+            {
+                double hours = 0;
+                for (int level = 1; level < toLevel; level++)
+                {
+                    double xp = oldCurve ? OldXp(level) : ProgressionEngine.GetRequiredXpForLevel(level);
+                    hours += xp * hoursPerXp[RegionOf(level)];
+                }
+                return hours;
+            }
+
+            _output.WriteLine("level   old h    new h");
+            foreach (int level in new[] { 10, 20, 25, 40, 50, 60, 75, 80, 100 })
+            {
+                _output.WriteLine($"{level,5} {Hours(level, true),7:F1} {Hours(level, false),8:F1}");
+            }
+
+            // 15% either side of the owner's numbers: the curve is rounded to three
+            // significant constants, and the model is a calibration, not a clock.
+            foreach (var (level, target) in new[] { (25, 24.0), (50, 108.0), (75, 336.0), (100, 770.0) })
+            {
+                double actual = Hours(level, false);
+                Assert.InRange(actual, target * 0.85, target * 1.15);
+            }
+
+            // The opening must stay snappy: a bare new account's second level is a
+            // handful of Field Mice (482 XP at 93 XP a kill), and level 10 is an evening.
+            Assert.InRange(ProgressionEngine.GetRequiredXpForLevel(1), 300, 700);
+            Assert.InRange(Hours(10, false), 0.5, 3.0);
         }
 
         /// <summary>
@@ -468,14 +530,26 @@ namespace FolkIdle.Server.Tests
                 // two drifting apart again in silence - printing a number nobody
                 // reads is how it got to 104% in the first place.
                 double sharePerSecond = incomingPerSecond / gearedMilliHp;
-                Assert.InRange(sharePerSecond, 0.04, 0.25);
+                // Modul: 2026-10-07, upper bound 0.25 -> 0.40. Regular monster attack went
+                // x1.5 (owner balance pass: "food matters again"), so the strongest regular's
+                // share of the geared bar per second is 1.5x what it was: region 2 reads 0.37
+                // (0.25 before), region 3 0.30 (0.20), regions 1/4/5 0.14 / 0.24 / 0.18. The
+                // share is the larder's price, and raising it is the point of the change.
+                Assert.InRange(sharePerSecond, 0.04, 0.40);
 
                 // A single blow must never take the whole bar. A hit larger than
                 // the pool cannot be healed, dodged or geared around - it is not
                 // a difficulty, it is a wall, and the model here is the FLOOR
                 // player (no attack affixes, five health rolls).
+                //
+                // Modul: 2026-10-07, one half -> four fifths of the bar. The x1.5 monster
+                // attack (owner balance pass) puts the strongest regular of region 2 at 74% of
+                // the FLOOR player's bar in one blow and region 3 at 61% (49% and 35% before);
+                // regions 1/4/5 stay under half. The floor player wears no armour affixes, so
+                // a real character takes far less - the bound still says what it always
+                // meant, that no single blow is the whole bar.
                 Assert.True(
-                    netMilliPerHit < gearedMilliHp / 2,
+                    netMilliPerHit < gearedMilliHp * 4 / 5,
                     $"region {region}: one hit from the strongest regular takes {netMilliPerHit / (double)gearedMilliHp:P0} of the geared bar.");
             }
 

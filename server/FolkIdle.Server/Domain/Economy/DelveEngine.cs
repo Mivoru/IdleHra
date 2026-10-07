@@ -185,7 +185,7 @@ namespace FolkIdle.Server.Domain.Economy
         public DelveResult Result { get; set; }
         public DelveRunView View { get; set; } = new();
 
-        /// <summary>Set only by a bank (walking out, or the floors-1-8 bank a descent makes). Both are what the player was actually paid.</summary>
+        /// <summary>Set by a bank (walking out, or the floors-1-8 bank a descent makes) and by a Deep floor that is a new weekly record. All are what the player was actually paid.</summary>
         public int DiamondsGranted { get; set; }
         public long GoldReturned { get; set; }
 
@@ -679,7 +679,24 @@ namespace FolkIdle.Server.Domain.Economy
                     // transaction, and offers "walk out" or "descend to d+1".
                     run.FloorsCleared = run.CurrentFloor;
                     run.RevealedDoorMask = 0;
+
+                    // Modul: 2026-10-07 - A NEW PERSONAL DEEPEST FLOOR OF THE WEEK PAYS
+                    // ONE DIAMOND, AND IT IS WRITTEN HERE, in the transaction that
+                    // records the floor. RollWeek first, so a record set on the first
+                    // clear of a new week is compared against 0 rather than against
+                    // last week's. Capped by exactly what floors 1-8 are capped by
+                    // (MaxDiamondsPerWeek - DelveDiamondsThisWeek, BankFloorsAsync), and
+                    // the compare is against DelveDeepestThisWeek BEFORE RecordDepth
+                    // raises it, so re-clearing the same floor (a second run reaching a
+                    // floor already recorded) pays nothing. The client sends no floor and
+                    // no amount; nothing here is a number a tampered client can touch.
+                    RollWeek(player, Now());
+                    bool newWeeklyDeepest = run.CurrentFloor > player.DelveDeepestThisWeek;
                     RecordDepth(player, run.CurrentFloor, Now());
+                    if (newWeeklyDeepest)
+                    {
+                        outcome.DiamondsGranted = PayDeepRecordDiamond(player);
+                    }
 
                     // Modul: THE TITLE IS GRANTED IN THE SAME TRANSACTION AS THE
                     // RECORD THAT EARNED IT. Every milestone at or above this
@@ -815,6 +832,30 @@ namespace FolkIdle.Server.Domain.Economy
             var goldRow = await LockGoldRowAsync(db, playerId);
 
             return (granted, consolation, goldRow);
+        }
+
+        /// <summary>
+        /// Pays the Deep's record diamond onto the locked player row and returns what
+        /// was actually paid (0 when the weekly ceiling is spent). Changes the tracked
+        /// entity only; the caller saves and commits in the same transaction as the
+        /// floor clear.
+        ///
+        /// Modul: THE SECOND AND LAST DIAMOND WRITE IN THIS FILE, kept beside
+        /// BankFloorsAsync on purpose: DeepestBoardTests.NothingInTheDeepOrTheBoard
+        /// AssignsDiamonds pins that every PremiumDiamonds assignment sits in that
+        /// span, so a third, stray grant fails a test rather than shipping. It uses the
+        /// SAME counter and ceiling as the bank (DelveDiamondsThisWeek against
+        /// MaxDiamondsPerWeek), so the Deep cannot raise the weekly total.
+        /// </summary>
+        private static int PayDeepRecordDiamond(PlayerRecord player)
+        {
+            int room = Math.Max(0, DelveRegistry.MaxDiamondsPerWeek - player.DelveDiamondsThisWeek);
+            int paid = Math.Min(DelveRegistry.DeepRecordDiamonds, room);
+            if (paid <= 0) return 0;
+
+            player.PremiumDiamonds += paid;
+            player.DelveDiamondsThisWeek += paid;
+            return paid;
         }
 
         private static Task<PlayerRecord?> LockPlayerAsync(FolkIdleDbContext db, long playerId)

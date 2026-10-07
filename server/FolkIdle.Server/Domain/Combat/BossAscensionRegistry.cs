@@ -6,20 +6,28 @@ namespace FolkIdle.Server.Domain.Combat
 {
     public enum AscensionModifierKind : byte
     {
-        /// <summary>The boss hits harder: +Value percent attack power.</summary>
-        BossAttackPct = 1,
-        /// <summary>The boss is tougher: +Value percent hit points.</summary>
-        BossHpPct = 2,
-        /// <summary>Time limit: the kill must land within Value percent of the region's Swift limit (BossChallenge.Swift).</summary>
+        /// <summary>
+        /// The boss is stronger: health AND attack grow geometrically per step
+        /// (see <see cref="BossAscensionRegistry.ModifiersFor"/>). Every step
+        /// carries this; it is the kind of the steps with no new time limit.
+        /// </summary>
+        BossStrength = 8,
+        /// <summary>Time limit: the kill must land within Value percent of the region's Swift limit (BossChallenge.Swift). The step ALSO grows the boss.</summary>
         TimeLimitPctOfSwift = 4,
     }
 
-    /// <summary>What one step ADDS to the steps below it.</summary>
-    public sealed record AscensionStepDefinition(int Step, AscensionModifierKind Kind, int Value, string Summary);
+    /// <summary>
+    /// What one step is: every step grows the boss; a step whose Kind is
+    /// TimeLimitPctOfSwift also tightens the clock to Value percent of Swift.
+    /// The words players read are region-specific (the multipliers are), so they
+    /// come from <see cref="BossAscensionRegistry.SummaryFor"/>, not from here.
+    /// </summary>
+    public sealed record AscensionStepDefinition(int Step, AscensionModifierKind Kind, int Value);
 
     /// <summary>
-    /// The cumulative modifiers of a step (every step up to and including it),
-    /// flattened so the tick and the projection read one shape. A plain struct:
+    /// The cumulative modifiers of a step, flattened so the tick and the
+    /// projection read one shape. AttackPct and BossHpPct are the TOTAL percent
+    /// over the cleared boss at this step (not per-step increments). A plain struct:
     /// it is built on the tick thread for an Ascension fight, so no allocation.
     /// </summary>
     public readonly record struct AscensionModifiers(
@@ -68,20 +76,92 @@ namespace FolkIdle.Server.Domain.Combat
         /// <summary>Steps that also pay a bound frame, on top of their title.</summary>
         public static readonly int[] FrameSteps = { 5, 10 };
 
-        // ---- THE LADDER: step 1..10, each ADDING one modifier -------------
+        // ---- THE LADDER: step 1..10 ----------------------------------------
+        // Modul: 2026-10-07, THE LADDER IS GEOMETRIC AND ENDS ON A BOSS TWO REGIONS AHEAD.
+        //
+        // It was cumulative +45% attack / +20% health over ten steps (15% on
+        // steps 1, 5, 9; 10% on 3 and 7) and the level-78 players walked through
+        // it: A10 was a Malakor-wall cousin of the boss they had already beaten.
+        // Owner decision 2026-10-07: step 10 is the boss TWO regions ahead.
+        //
+        //   health(r, s) = base * (B(r+2).Hp / B(r).Hp) ^ (s / 10)
+        //   attack(r, s) = base * (B(r+2).Atk / B(r).Atk) ^ (s / 10)
+        //
+        // every step grows BOTH, geometrically, so the ladder has no flat stretch
+        // and no step that only moves one number. The step-10 ratios are computed
+        // from the live boss stats (so a boss retune moves the ladder with it) and
+        // printed by BossAscensionTests.WhatTheLadderIsPrinted.
+        //
+        // Nothing sits beyond Malakor, so Frost Titan and Malakor are extrapolated
+        // at ExtrapolatedRegionRatio. The time-limit steps are kept (200% -> 120%
+        // of Swift on steps 2, 4, 6, 8, 10).
         public static readonly IReadOnlyList<AscensionStepDefinition> Steps = new[]
         {
-            new AscensionStepDefinition(1, AscensionModifierKind.BossAttackPct, 15, "The boss hits 15% harder."),
-            new AscensionStepDefinition(2, AscensionModifierKind.TimeLimitPctOfSwift, 200, "Time limit: 200% of the boss's Swift time."),
-            new AscensionStepDefinition(3, AscensionModifierKind.BossHpPct, 10, "The boss has 10% more health."),
-            new AscensionStepDefinition(4, AscensionModifierKind.TimeLimitPctOfSwift, 175, "Time limit tightens to 175% of Swift."),
-            new AscensionStepDefinition(5, AscensionModifierKind.BossAttackPct, 15, "The boss hits another 15% harder."),
-            new AscensionStepDefinition(6, AscensionModifierKind.TimeLimitPctOfSwift, 155, "Time limit tightens to 155% of Swift."),
-            new AscensionStepDefinition(7, AscensionModifierKind.BossHpPct, 10, "The boss has another 10% more health."),
-            new AscensionStepDefinition(8, AscensionModifierKind.TimeLimitPctOfSwift, 140, "Time limit tightens to 140% of Swift."),
-            new AscensionStepDefinition(9, AscensionModifierKind.BossAttackPct, 15, "The boss hits another 15% harder."),
-            new AscensionStepDefinition(10, AscensionModifierKind.TimeLimitPctOfSwift, 120, "Time limit tightens to 120% of Swift."),
+            new AscensionStepDefinition(1, AscensionModifierKind.BossStrength, 0),
+            new AscensionStepDefinition(2, AscensionModifierKind.TimeLimitPctOfSwift, 200),
+            new AscensionStepDefinition(3, AscensionModifierKind.BossStrength, 0),
+            new AscensionStepDefinition(4, AscensionModifierKind.TimeLimitPctOfSwift, 175),
+            new AscensionStepDefinition(5, AscensionModifierKind.BossStrength, 0),
+            new AscensionStepDefinition(6, AscensionModifierKind.TimeLimitPctOfSwift, 155),
+            new AscensionStepDefinition(7, AscensionModifierKind.BossStrength, 0),
+            new AscensionStepDefinition(8, AscensionModifierKind.TimeLimitPctOfSwift, 140),
+            new AscensionStepDefinition(9, AscensionModifierKind.BossStrength, 0),
+            new AscensionStepDefinition(10, AscensionModifierKind.TimeLimitPctOfSwift, 120),
         };
+
+        /// <summary>How many regions ahead step 10 lands.</summary>
+        public const int RegionsAhead = 2;
+
+        /// <summary>
+        /// The per-region growth of (health, attack) beyond the last boss, for the
+        /// two bosses with nothing two regions ahead of them. The geometric mean
+        /// of the region 2->3, 3->4 and 4->5 ratios. Region 1 -> 2 is left out on
+        /// purpose: it is the opening's own jump (x3.3 health, x12.5 attack from
+        /// the first boss to the second) and every later step is a steady x2.6
+        /// health / x4.2 attack, which is the slope the extrapolation should
+        /// continue.
+        /// </summary>
+        public static (double Hp, double Attack) ExtrapolatedRegionRatio()
+        {
+            int first = FirstRegion + 1, last = LastRegion;
+            double hpFirst = BossHp(first), atkFirst = BossAttack(first);
+            double hpLast = BossHp(last), atkLast = BossAttack(last);
+            if (hpFirst <= 0 || atkFirst <= 0 || hpLast <= 0 || atkLast <= 0) return (1.0, 1.0);
+            double n = last - first;
+            return (Math.Pow(hpLast / hpFirst, 1.0 / n), Math.Pow(atkLast / atkFirst, 1.0 / n));
+        }
+
+        private static double BossHp(int region) => ContentRegistry.GetScaledMonsterMaxHp(RaceUnlockRegistry.GetRegionBossMonsterId(region));
+
+        private static double BossAttack(int region) => ContentRegistry.GetScaledMonsterAttackPower(RaceUnlockRegistry.GetRegionBossMonsterId(region));
+
+        /// <summary>
+        /// The (health, attack) multiplier at step 10 for a region's boss: the boss
+        /// <see cref="RegionsAhead"/> regions ahead, over this one, on base stats.
+        /// </summary>
+        public static (double Hp, double Attack) StepTenRatio(int region)
+        {
+            if (!IsValidRegion(region)) return (1.0, 1.0);
+            double hp0 = BossHp(region), atk0 = BossAttack(region);
+            if (hp0 <= 0 || atk0 <= 0) return (1.0, 1.0);
+
+            int target = region + RegionsAhead;
+            double hpT, atkT;
+            if (target <= LastRegion)
+            {
+                hpT = BossHp(target);
+                atkT = BossAttack(target);
+            }
+            else
+            {
+                var g = ExtrapolatedRegionRatio();
+                int beyond = target - LastRegion;
+                hpT = BossHp(LastRegion) * Math.Pow(g.Hp, beyond);
+                atkT = BossAttack(LastRegion) * Math.Pow(g.Attack, beyond);
+            }
+            if (hpT <= 0 || atkT <= 0) return (1.0, 1.0);
+            return (hpT / hp0, atkT / atk0);
+        }
 
         public static string TitleSlug(int region, int step) => $"ascension_r{region}_s{step}";
 
@@ -103,22 +183,54 @@ namespace FolkIdle.Server.Domain.Combat
 
         public static bool IsValidStep(int step) => step >= 1 && step <= MaxStep;
 
-        /// <summary>Every step up to and including <paramref name="step"/>, folded into one set of modifiers.</summary>
-        public static AscensionModifiers ModifiersFor(int step)
+        /// <summary>
+        /// The cumulative modifiers at a step for a region's boss: health and attack
+        /// at ratio^(step/10), as TOTAL percent over the cleared boss, and the
+        /// tightest time limit in force. Step 0 (or a bad region) is none.
+        /// </summary>
+        public static AscensionModifiers ModifiersFor(int region, int step)
         {
-            int attack = 0, hp = 0, limit = 0;
-            for (int s = 1; s <= Math.Min(step, MaxStep); s++)
+            int s = Math.Min(step, MaxStep);
+            if (s <= 0 || !IsValidRegion(region)) return default;
+
+            var ratio = StepTenRatio(region);
+            int hpPct = (int)Math.Round((Math.Pow(ratio.Hp, s / (double)MaxStep) - 1.0) * 100.0);
+            int atkPct = (int)Math.Round((Math.Pow(ratio.Attack, s / (double)MaxStep) - 1.0) * 100.0);
+
+            int limit = 0;
+            for (int i = 1; i <= s; i++)
             {
-                var m = Steps[s - 1];
-                switch (m.Kind)
-                {
-                    case AscensionModifierKind.BossAttackPct: attack += m.Value; break;
-                    case AscensionModifierKind.BossHpPct: hp += m.Value; break;
-                    // A later time limit REPLACES an earlier one; it only ever tightens.
-                    case AscensionModifierKind.TimeLimitPctOfSwift: limit = limit == 0 ? m.Value : Math.Min(limit, m.Value); break;
-                }
+                var d = Steps[i - 1];
+                // A later time limit REPLACES an earlier one; it only ever tightens.
+                if (d.Kind == AscensionModifierKind.TimeLimitPctOfSwift) limit = limit == 0 ? d.Value : Math.Min(limit, d.Value);
             }
-            return new AscensionModifiers(attack, hp, limit);
+            return new AscensionModifiers(atkPct, hpPct, limit);
+        }
+
+        /// <summary>"x2.1" - a total percent over base, said as a multiplier.</summary>
+        private static string Times(int totalPct)
+        {
+            double m = (100 + totalPct) / 100.0;
+            return m >= 10
+                ? "x" + m.ToString("F0", System.Globalization.CultureInfo.InvariantCulture)
+                : "x" + m.ToString("F1", System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        /// <summary>
+        /// The one sentence a step is, in the real cumulative numbers. The old text
+        /// ("The boss hits 15% harder.") described a per-step increment and so said
+        /// nothing true about how strong the boss had become.
+        /// </summary>
+        public static string SummaryFor(int region, int step)
+        {
+            var m = ModifiersFor(region, step);
+            string strength = $"The boss has {Times(m.BossHpPct)} health and {Times(m.AttackPct)} attack.";
+            var def = Step(step);
+            if (def.Kind != AscensionModifierKind.TimeLimitPctOfSwift) return strength;
+            string clock = step == 2
+                ? $"Time limit: {def.Value}% of the boss's Swift time."
+                : $"Time limit tightens to {def.Value}% of Swift.";
+            return $"{strength} {clock}";
         }
 
         /// <summary>
@@ -127,20 +239,35 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         public static string[] DescribeEffects(int region, int step)
         {
-            var m = ModifiersFor(step);
+            var m = ModifiersFor(region, step);
             var lines = new System.Collections.Generic.List<string>();
-            if (m.AttackPct > 0) lines.Add($"Boss attack +{m.AttackPct}%");
-            if (m.BossHpPct > 0) lines.Add($"Boss health +{m.BossHpPct}%");
+            if (m.AttackPct > 0) lines.Add($"Boss attack {Times(m.AttackPct)}");
+            if (m.BossHpPct > 0) lines.Add($"Boss health {Times(m.BossHpPct)}");
             if (m.TimeLimitPctOfSwift > 0) lines.Add($"Kill it within {TimeLimitSecondsFor(region, step)} s");
             return lines.ToArray();
         }
 
         /// <summary>The step's kill-time limit in seconds for a region, or 0 for none.</summary>
+        // Modul: 2026-10-07 - THE CLOCK SCALES WITH THE BOSS'S HEALTH.
+        //
+        // "N% of the boss's Swift time" was a fixed number of seconds per region
+        // while the boss was a few percent tougher per step. With the geometric
+        // ladder the boss is up to x8.7 the health at A10, so the same seconds
+        // became arithmetically unreachable: measured with the benchmark's best
+        // gear (Q14, region 5, level 100) Malakor A10 dies in 888 s against a
+        // 172 s limit, and A5 against 251 s needs 338 s. A step nobody can clear
+        // is a broken step, not a hard one. The Swift time of a boss with x6.9
+        // the health IS x6.9 longer at the same damage, so the limit is
+        // Swift * pct * (health multiplier at that step): the TIGHTENING (200% ->
+        // 120%) stays exactly as the owner specified, the absolute seconds follow
+        // the boss.
         public static int TimeLimitSecondsFor(int region, int step)
         {
-            int pct = ModifiersFor(step).TimeLimitPctOfSwift;
+            var m = ModifiersFor(region, step);
+            int pct = m.TimeLimitPctOfSwift;
             if (pct <= 0) return 0;
-            return (int)Math.Ceiling(BossChallengeRegistry.TimeLimitSecondsFor(region) * pct / 100.0);
+            double hpMultiplier = 1.0 + m.BossHpPct / 100.0;
+            return (int)Math.Ceiling(BossChallengeRegistry.TimeLimitSecondsFor(region) * pct / 100.0 * hpMultiplier);
         }
 
         // ---- the packed cache the tick reads ------------------------------

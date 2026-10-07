@@ -72,7 +72,45 @@ namespace FolkIdle.Server.Engine
         // untouched, so the XP = MaxHp/5 identity that makes this analytically
         // solvable at all still holds.
         //
-        public const double LevelCurveBase = 250.0;
+        public const double LevelCurveBase = 220.0;
+        // Modul: 2026-10-07, THE CURVE IS NOT A PURE POWER ANY MORE (owner balance pass).
+        //
+        // Live evidence: two friends reached level 71 and 78 in a few real days,
+        // the level-78 one killing the region-1 boss in 1.3 s with the larder
+        // always full. The table above is the geared model and it matched: level
+        // 78 is ~75 geared hours, i.e. three days at 24 h of progress a day.
+        // Targets in cumulative geared hours (owner-approved):
+        //
+        //   level      25     50     75     100
+        //   target     24h    108h   336h   770h
+        //
+        // 250 * 1.16^l cannot reach those: the per-region gear speed-up is a STEP
+        // (each region's monsters pay ~4x more XP per hour than the last), so a
+        // single growth rate that is right at level 100 is 25x too fast at level
+        // 25, and one that is right at 25 is 3x too slow at 100. The targets
+        // bend (4.5x over 25-50, 3.1x over 50-75, 2.3x over 75-100), which is a
+        // CONCAVE log-curve, and the opening must stay snappy (level 2 inside a
+        // minute for a bare new account) so it is also steep in the first levels.
+        // Both are one term: the growth rate per level starts high and decays to
+        // an asymptote,
+        //
+        //   XP(l) = Base * Growth^l * exp(OpeningLog * (1 - exp(-l / OpeningTau)))
+        //
+        //   growth per level: x2.1 at level 1, x1.27 at 10, x1.12 at 25, x1.114 after.
+        //
+        // Fitted (least squares in log-hours, k per region calibrated from the
+        // old geared table 0.8/4.5/20/86/347 cumulative hours) and then rounded:
+        //
+        //   level     10     20     25     40     50     60     75     80     100
+        //   old h    0.12   0.68   0.96   4.0    6.9    17.8   45     76     309
+        //   new h    1.4    16     24     76     110    193    315    414    804
+        //
+        // (the old column is the old curve through the same model, so it reads
+        // 309h at level 100 where the table above says 347h at level 101.)
+        // 250 -> 220, 1.16 -> 1.114, plus the opening term below. XP = MaxHp/5 on
+        // the monster side is untouched.
+        public const double LevelCurveOpeningLog = 4.4;
+        public const double LevelCurveOpeningTau = 6.0;
         // Modul: 1.13 -> 1.16, and it is the offline cap that forced it.
         //
         // The season was sized against "200 active hours" - an assumption about
@@ -91,7 +129,7 @@ namespace FolkIdle.Server.Engine
         // It also puts the weight where the content is: region 5 is 86% of the
         // game now rather than 76%, and that is the stretch where races,
         // character slots and the deeper tools unlock.
-        public const double LevelCurveGrowth = 1.16;
+        public const double LevelCurveGrowth = 1.114;
 
         /// <summary>
         /// The health pool a character has before lineage, CON and affixes -
@@ -153,7 +191,8 @@ namespace FolkIdle.Server.Engine
 
         public static long GetRequiredXpForLevel(int currentLevel)
         {
-            return (long)Math.Ceiling(LevelCurveBase * Math.Pow(LevelCurveGrowth, currentLevel));
+            double opening = Math.Exp(LevelCurveOpeningLog * (1.0 - Math.Exp(-currentLevel / LevelCurveOpeningTau)));
+            return (long)Math.Ceiling(LevelCurveBase * Math.Pow(LevelCurveGrowth, currentLevel) * opening);
         }
 
         // Static read-only span of available lineages

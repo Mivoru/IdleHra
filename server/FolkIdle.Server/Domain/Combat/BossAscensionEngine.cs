@@ -189,7 +189,7 @@ namespace FolkIdle.Server.Domain.Combat
                 {
                     string? frame = BossAscensionRegistry.RewardFrameIdFor(region, def.Step);
                     steps.Add(new AscensionStepView(
-                        def.Step, def.Summary, def.Kind.ToString(), def.Value,
+                        def.Step, BossAscensionRegistry.SummaryFor(region, def.Step), def.Kind.ToString(), def.Value,
                         BossAscensionRegistry.TimeLimitSecondsFor(region, def.Step),
                         BossAscensionRegistry.DescribeEffects(region, def.Step),
                         Cleared: def.Step <= highest,

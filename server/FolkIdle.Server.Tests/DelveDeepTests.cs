@@ -338,7 +338,7 @@ namespace FolkIdle.Server.Tests
             await laterInTheWeek.DevPlaceRunAtBottomAsync(playerId);
             var outcome = await laterInTheWeek.DescendAsync(playerId, long.MaxValue, Pass);
             Assert.Equal(DelveResult.Ok, outcome.Result);
-            Assert.Equal(250_000, outcome.GoldCharged); // 0.005 x 50M, not the 7k region floor
+            Assert.Equal(100_000, outcome.GoldCharged); // 0.002 x 50M, not the 7k region floor
 
             // Day 8: the 50M row has aged out; priced on what is held.
             await laterInTheWeek.BankAsync(playerId);
@@ -347,7 +347,7 @@ namespace FolkIdle.Server.Tests
             await nextWeek.DevPlaceRunAtBottomAsync(playerId);
             var fresh = await nextWeek.GetViewAsync(playerId);
             Assert.Equal(DelveRegistry.Stake(RegionOneFee, 2_000_000 + fresh.ConsolationGoldIfCapped), fresh.StakeGold);
-            Assert.True(fresh.StakeGold < 250_000);
+            Assert.True(fresh.StakeGold < 100_000);
         }
 
         [Fact]
@@ -532,7 +532,10 @@ namespace FolkIdle.Server.Tests
             var player = await PlayerAsync(playerId);
             Assert.Equal(DelveEngine.CurrentWeekKey(DateTime.UtcNow), player.DelveWeekKey);
             Assert.Equal(9, player.DelveDeepestThisWeek);
-            Assert.Equal(0, player.DelveDiamondsThisWeek);
+            // The week turned over BEFORE the record was compared, so the new week's
+            // first Deep floor pays its one record diamond - and last week's full count
+            // did not carry forward to block it (2026-10-07).
+            Assert.Equal(DelveRegistry.DeepRecordDiamonds, player.DelveDiamondsThisWeek);
 
             // And a bank later this week is paid in full, not shut by last week's count.
             await engine.BankAsync(playerId);
@@ -609,8 +612,15 @@ namespace FolkIdle.Server.Tests
         // Guard rails (spec §6).
         // ------------------------------------------------------------------
 
+        /// <summary>
+        /// Modul: 2026-10-07 - THE DEEP MINTS DIAMONDS ONLY FOR A NEW WEEKLY DEEPEST
+        /// FLOOR (this used to be "mints no diamonds", and was the right test for
+        /// the old rule). A walker who goes 9, 10, 11 earns exactly three, through
+        /// the same counter the Delve is capped by; a run that never clears a Deep
+        /// floor earns none.
+        /// </summary>
         [Fact]
-        public async Task AWholeDeepSessionMintsNoDiamonds()
+        public async Task AWholeDeepSessionMintsOnlyTheRecordDiamonds()
         {
             const long walkerId = 982000017L;
             const long loserId = 982000018L;
@@ -625,7 +635,9 @@ namespace FolkIdle.Server.Tests
 
             for (int i = 0; i < 3; i++)
             {
-                Assert.Equal(DelveResult.FloorCleared, (await engine.ChooseDoorAsync(walkerId, 0, Pass)).Result);
+                var cleared = await engine.ChooseDoorAsync(walkerId, 0, Pass);
+                Assert.Equal(DelveResult.FloorCleared, cleared.Result);
+                Assert.Equal(DelveRegistry.DeepRecordDiamonds, cleared.DiamondsGranted);
                 if (i < 2)
                 {
                     var landing = await engine.GetViewAsync(walkerId);
@@ -635,12 +647,12 @@ namespace FolkIdle.Server.Tests
             await engine.BankAsync(walkerId);
 
             var walker = await PlayerAsync(walkerId);
-            Assert.Equal(afterBank.PremiumDiamonds, walker.PremiumDiamonds);
-            Assert.Equal(afterBank.DelveDiamondsThisWeek, walker.DelveDiamondsThisWeek);
+            Assert.Equal(afterBank.PremiumDiamonds + 3 * DelveRegistry.DeepRecordDiamonds, walker.PremiumDiamonds);
+            Assert.Equal(afterBank.DelveDiamondsThisWeek + 3 * DelveRegistry.DeepRecordDiamonds, walker.DelveDiamondsThisWeek);
             Assert.Equal(11, walker.DelveDeepestFloor);
 
             // Descend, buy a lantern, fail to 0 charges with every lantern
-            // bought: RunLost, and still nothing minted.
+            // bought: RunLost, and nothing minted.
             await SeedAsync(loserId, gold: 50_000_000);
             view = await engine.DevPlaceRunAtBottomAsync(loserId);
             await engine.DescendAsync(loserId, view.StakeGold, Pass);
@@ -658,6 +670,114 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(afterLoserBank.DelveDiamondsThisWeek, loser.DelveDiamondsThisWeek);
             Assert.Equal(8, loser.DelveDeepestFloor);
             Assert.Null(await RunAsync(loserId));
+        }
+
+        private async Task SetWeekDiamondsAsync(long playerId, int diamonds)
+        {
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"DelveDiamondsThisWeek\" = {1} WHERE \"Id\" = {0}", playerId, diamonds);
+        }
+
+        /// <summary>
+        /// 2026-10-07: a Deep floor pays ONE diamond when it is the player's new
+        /// deepest of the week - and not for a floor already recorded this week,
+        /// however it is reached. The second run below clears floor 9 again (its
+        /// record already stands) and is paid nothing; floor 10 then pays.
+        /// </summary>
+        [Fact]
+        public async Task ANewWeeklyDeepestFloorPaysOneDiamondAndAReclearPaysNothing()
+        {
+            const long playerId = 982000051L;
+            await SeedAsync(playerId, gold: 500_000_000);
+            var engine = Engine();
+
+            var view = await engine.DevPlaceRunAtBottomAsync(playerId);
+            await engine.DescendAsync(playerId, view.StakeGold, Pass);
+            var beforeNine = await PlayerAsync(playerId);
+
+            var nine = await engine.ChooseDoorAsync(playerId, 0, Pass);
+            Assert.Equal(DelveRegistry.DeepRecordDiamonds, nine.DiamondsGranted);
+            var afterNine = await PlayerAsync(playerId);
+            Assert.Equal(beforeNine.PremiumDiamonds + 1, afterNine.PremiumDiamonds);
+            Assert.Equal(beforeNine.DelveDiamondsThisWeek + 1, afterNine.DelveDiamondsThisWeek);
+            Assert.Equal(9, afterNine.DelveDeepestThisWeek);
+
+            // Walk out and go again to the same floor.
+            await engine.BankAsync(playerId);
+            view = await engine.DevPlaceRunAtBottomAsync(playerId);
+            await engine.DescendAsync(playerId, view.StakeGold, Pass);
+            var beforeRepeat = await PlayerAsync(playerId);
+
+            var repeat = await engine.ChooseDoorAsync(playerId, 0, Pass);
+            Assert.Equal(DelveResult.FloorCleared, repeat.Result);
+            Assert.Equal(0, repeat.DiamondsGranted);
+            var afterRepeat = await PlayerAsync(playerId);
+            Assert.Equal(beforeRepeat.PremiumDiamonds, afterRepeat.PremiumDiamonds);
+            Assert.Equal(beforeRepeat.DelveDiamondsThisWeek, afterRepeat.DelveDiamondsThisWeek);
+
+            // One floor deeper IS a new record.
+            var landing = await engine.GetViewAsync(playerId);
+            await engine.DescendAsync(playerId, landing.StakeGold, Pass);
+            var ten = await engine.ChooseDoorAsync(playerId, 0, Pass);
+            Assert.Equal(DelveRegistry.DeepRecordDiamonds, ten.DiamondsGranted);
+            var afterTen = await PlayerAsync(playerId);
+            Assert.Equal(afterRepeat.PremiumDiamonds + 1, afterTen.PremiumDiamonds);
+            Assert.Equal(10, afterTen.DelveDeepestThisWeek);
+        }
+
+        /// <summary>The weekly ceiling is shared: at 59 the next record pays the last diamond and every record after pays none.</summary>
+        [Fact]
+        public async Task TheDeepRecordDiamondNeverPassesTheWeeklyCeiling()
+        {
+            const long playerId = 982000052L;
+            await SeedAsync(playerId, gold: 500_000_000);
+            var engine = Engine();
+
+            var view = await engine.DevPlaceRunAtBottomAsync(playerId);
+            await engine.DescendAsync(playerId, view.StakeGold, Pass);
+            // The descent's own bank is capped too; park the week one short of the ceiling afterwards.
+            await SetWeekDiamondsAsync(playerId, DelveRegistry.MaxDiamondsPerWeek - 1);
+            var before = await PlayerAsync(playerId);
+
+            var nine = await engine.ChooseDoorAsync(playerId, 0, Pass);
+            Assert.Equal(1, nine.DiamondsGranted);
+            var landing = await engine.GetViewAsync(playerId);
+            await engine.DescendAsync(playerId, landing.StakeGold, Pass);
+            var ten = await engine.ChooseDoorAsync(playerId, 0, Pass);
+            Assert.Equal(0, ten.DiamondsGranted);
+
+            var after = await PlayerAsync(playerId);
+            Assert.Equal(DelveRegistry.MaxDiamondsPerWeek, after.DelveDiamondsThisWeek);
+            Assert.Equal(before.PremiumDiamonds + 1, after.PremiumDiamonds);
+            Assert.Equal(10, after.DelveDeepestThisWeek); // the record itself still counts
+        }
+
+        /// <summary>A record stored from LAST week must not block this week's first Deep floor, and the week turns over before the compare.</summary>
+        [Fact]
+        public async Task AStaleWeeksRecordDoesNotBlockThisWeeksFirstDeepDiamond()
+        {
+            const long playerId = 982000053L;
+            await SeedAsync(playerId, gold: 500_000_000);
+            var engine = Engine();
+            var view = await engine.DevPlaceRunAtBottomAsync(playerId);
+            await engine.DescendAsync(playerId, view.StakeGold, Pass);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                int lastWeek = DelveEngine.CurrentWeekKey(DateTime.UtcNow.AddDays(-7));
+                await db.Database.ExecuteSqlRawAsync(
+                    "UPDATE \"PlayerRecords\" SET \"DelveWeekKey\" = {1}, \"DelveDeepestThisWeek\" = 15, \"DelveDiamondsThisWeek\" = 60 WHERE \"Id\" = {0}",
+                    playerId, lastWeek);
+            }
+            var before = await PlayerAsync(playerId);
+
+            var nine = await engine.ChooseDoorAsync(playerId, 0, Pass);
+            Assert.Equal(DelveRegistry.DeepRecordDiamonds, nine.DiamondsGranted);
+            var after = await PlayerAsync(playerId);
+            Assert.Equal(before.PremiumDiamonds + 1, after.PremiumDiamonds);
+            Assert.Equal(1, after.DelveDiamondsThisWeek); // last week's 60 did not carry
+            Assert.Equal(9, after.DelveDeepestThisWeek);
+            Assert.Equal(15, after.DelveDeepestLastWeek);
         }
 
         /// <summary>
@@ -693,6 +813,9 @@ namespace FolkIdle.Server.Tests
                 nameof(PlayerRecord.DelveDeepestThisWeekAtUtc),
                 nameof(PlayerRecord.DelveWeekKey),
                 nameof(PlayerRecord.ActiveTitleSlug),
+                // 2026-10-07: two new Deep floors pay one diamond each, inside the weekly ceiling.
+                nameof(PlayerRecord.PremiumDiamonds),
+                nameof(PlayerRecord.DelveDiamondsThisWeek),
                 // What the tolls came to - its own test pins the amount.
                 nameof(PlayerRecord.DelveDeepGoldSpent),
                 // Task 79: the gold ledger's lifetime total - the tolls are spends.
@@ -707,6 +830,7 @@ namespace FolkIdle.Server.Tests
                     $"a Deep session changed PlayerRecords.{property.Name}: {property.GetValue(before)} -> {property.GetValue(after)}");
             }
             Assert.Equal(10, after.DelveDeepestFloor);
+            Assert.Equal(before.PremiumDiamonds + 2, after.PremiumDiamonds);
         }
 
         // Modul: THE DEEP SHOWS UP IN THE ECONOMY'S LEDGER (2026-09-25). The eco

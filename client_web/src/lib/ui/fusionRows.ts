@@ -7,9 +7,9 @@
 // ("3 Mythic -> 1 Relic, up to 12k gold") and carries its own Fuse. Pure, so
 // the grouping, the choice of target and the ledger are tested without a DOM.
 
-/** ForgeSplicingEngine.FusionFee: BaseGoldCost * 1.35^currentTier, rounded up. */
-export const FORGE_BASE_FEE = 200;
-export const FORGE_FEE_GROWTH = 1.35;
+/** ForgeSplicingEngine.FusionFee: BaseGoldCost * 2.5^currentTier, rounded up (was 200 * 1.35^tier until 2026-10-07). */
+export const FORGE_BASE_FEE = 10000;
+export const FORGE_FEE_GROWTH = 2.5;
 
 /**
  * The fee before discounts. Luck and the Diamond Star event take up to 25 %

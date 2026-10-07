@@ -67,7 +67,12 @@ namespace FolkIdle.Server.Domain.Combat
 
         private static readonly int[] LevelCapByRegion = { 15, 35, 45, 60, 75 };
 
-        private static readonly int[] TimeLimitSecondsByRegion = { 80, 110, 120, 110, 110 };
+        // Modul: 2026-10-07 balance pass: every region boss has 1.3x its old base health, and a
+        // kill takes proportionally longer, so Swift scales with it. Old { 80, 110, 120, 110, 110 }
+        // -> new { 104, 143, 156, 143, 143 } (x1.3). Measured with the same projection after the
+        // change: the region's best gear at level takes 99 / 135 / 152 / 136 / 130 s (all under the
+        // limit), the wall's required gear takes more than every limit (calibration test).
+        private static readonly int[] TimeLimitSecondsByRegion = { 104, 143, 156, 143, 143 };
 
         /// <summary>How many quality tiers above the wall's requirement "the region's best gear" is.</summary>
         public const int SwiftCalibrationQualityStep = 4;

@@ -116,7 +116,12 @@ namespace FolkIdle.Server.Tests
                 // threefold puts region 3 back near 17% and still leaves the
                 // overall gathering share inside its band.
                 double toolShare = m.ToolHours / (m.ToolHours + m.CombatHours);
-                Assert.InRange(toolShare, 0.02, 0.26);
+                // Modul: 2026-10-07, the floor 0.02 -> 0.005. The XP curve was slowed (owner
+                // balance pass) so a region is 2.5-8x more combat hours (33 / 202 / 612 /
+                // 1,632 / 4,213 h) against the same tool materials (0.2 / 1.2 / 4.1 / 21 / 79 h),
+                // which reads 0.6% / 0.6% / 0.7% / 1.3% / 1.8% - the tool half did not change,
+                // the denominator did. The ceiling is untouched.
+                Assert.InRange(toolShare, 0.005, 0.26);
             }
 
             // THE FOOD HALF ROSE ON PURPOSE, and this records the trade rather
