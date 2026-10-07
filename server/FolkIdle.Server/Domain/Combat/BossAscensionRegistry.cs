@@ -139,9 +139,47 @@ namespace FolkIdle.Server.Domain.Combat
         /// The (health, attack) multiplier at step 10 for a region's boss: the boss
         /// <see cref="RegionsAhead"/> regions ahead, over this one, on base stats.
         /// </summary>
+        // Modul: MALAKOR'S LADDER IS MEASURED AGAINST PLAYERS, NOT EXTRAPOLATED
+        // FROM MONSTERS (owner, 2026-10-07 evening). "Two regions ahead" put
+        // Malakor A10 at x17.4 attack, and the owner beat it the same day with
+        // no rebirth, partial inheritance and mixed gear - because the larder
+        // heals a SHARE of the bar, a strong character's headroom grows far
+        // faster than the monster tables do. AscensionCalibrationHarness loads
+        // that real character from a production copy and finds the largest
+        // attack multiplier it still beats (health rising as attack^0.68, the
+        // split the old ladder had): about x19 on the post-2026-10-07 base. A
+        // maxed endgame profile built on the same character (the better of its
+        // gear and Transcendent region-5 Legendary in every stat, inheritance
+        // 20/20, twelve renowned rebirths) beats about x34.
+        //
+        // The owner's targets: that character clears roughly A2-A3, the maxed
+        // one A5-A7 with effort, and A10 needs about twice the maxed power. So
+        // A3 sits at the real headroom, every later step is x1.2 (the maxed
+        // profile's x34 lands between A6 x32.8 and A7 x39.4), and A10 is x68.
+        // Steps 1-2 climb geometrically from 1 to A3. Re-run the harness after
+        // any change to what makes a character strong; these numbers are only
+        // as true as the last measurement.
+        internal const double MalakorHeadroomAtStepThree = 19.0;
+        internal const double MalakorStepGrowth = 1.2;
+        internal const double MalakorHpExponent = 0.68;
+
+        /// <summary>Malakor's attack multiplier at an Ascension step (1 = unchanged at step 0).</summary>
+        internal static double MalakorAttackMultiplier(int step)
+        {
+            if (step <= 0) return 1.0;
+            return step <= 3
+                ? Math.Pow(MalakorHeadroomAtStepThree, step / 3.0)
+                : MalakorHeadroomAtStepThree * Math.Pow(MalakorStepGrowth, step - 3);
+        }
+
         public static (double Hp, double Attack) StepTenRatio(int region)
         {
             if (!IsValidRegion(region)) return (1.0, 1.0);
+            if (region == LastRegion)
+            {
+                double attack = MalakorAttackMultiplier(MaxStep);
+                return (Math.Pow(attack, MalakorHpExponent), attack);
+            }
             double hp0 = BossHp(region), atk0 = BossAttack(region);
             if (hp0 <= 0 || atk0 <= 0) return (1.0, 1.0);
 
@@ -188,14 +226,33 @@ namespace FolkIdle.Server.Domain.Combat
         /// at ratio^(step/10), as TOTAL percent over the cleared boss, and the
         /// tightest time limit in force. Step 0 (or a bad region) is none.
         /// </summary>
+        /// <summary>
+        /// Calibration seam (AscensionCalibrationHarness): when set, every armed
+        /// step fights with these modifiers instead. Thread-static, so a harness
+        /// driving the tick on its own thread cannot leak into a parallel test.
+        /// </summary>
+        [ThreadStatic] internal static AscensionModifiers? CalibrationOverride;
+
         public static AscensionModifiers ModifiersFor(int region, int step)
         {
+            if (CalibrationOverride is { } calibration) return calibration;
+
             int s = Math.Min(step, MaxStep);
             if (s <= 0 || !IsValidRegion(region)) return default;
 
-            var ratio = StepTenRatio(region);
-            int hpPct = (int)Math.Round((Math.Pow(ratio.Hp, s / (double)MaxStep) - 1.0) * 100.0);
-            int atkPct = (int)Math.Round((Math.Pow(ratio.Attack, s / (double)MaxStep) - 1.0) * 100.0);
+            int hpPct, atkPct;
+            if (region == LastRegion)
+            {
+                double attack = MalakorAttackMultiplier(s);
+                atkPct = (int)Math.Round((attack - 1.0) * 100.0);
+                hpPct = (int)Math.Round((Math.Pow(attack, MalakorHpExponent) - 1.0) * 100.0);
+            }
+            else
+            {
+                var ratio = StepTenRatio(region);
+                hpPct = (int)Math.Round((Math.Pow(ratio.Hp, s / (double)MaxStep) - 1.0) * 100.0);
+                atkPct = (int)Math.Round((Math.Pow(ratio.Attack, s / (double)MaxStep) - 1.0) * 100.0);
+            }
 
             int limit = 0;
             for (int i = 1; i <= s; i++)

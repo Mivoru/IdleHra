@@ -132,7 +132,10 @@ namespace FolkIdle.Server.Engine
         /// minutes of play, because a number a test prints is not a number a
         /// test checks.
         /// </summary>
-        private static readonly long[] EntryFeeByRegion = { 7_000, 17_000, 42_000, 100_000, 250_000 };
+        // Modul: 2026-10-07 evening - regions 3-5 pay x1.25 / x1.5 / x2 gold per
+        // kill now (harder monsters), so their fees follow or a run stops
+        // being an evening's decision. Was 42,000 / 100,000 / 250,000.
+        private static readonly long[] EntryFeeByRegion = { 7_000, 17_000, 52_500, 150_000, 500_000 };
 
         public static long EntryFeeForRegion(int highestUnlockedRegion)
         {

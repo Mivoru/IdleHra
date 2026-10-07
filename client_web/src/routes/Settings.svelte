@@ -37,6 +37,7 @@
   import { submitSupportTicket, scrubTrace, fetchAdminStatus, fetchAdminSeason, adminEndSeasonNow, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
   import { runningBundleVersion } from '../lib/net/liveUpdate';
+  import ItemIdPicker from '../lib/ui/ItemIdPicker.svelte';
   import SettingsFold from '../lib/ui/SettingsFold.svelte';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
@@ -904,7 +905,7 @@
           <p class="dim tiny">Leave the target username empty to send to ALL players.</p>
           <div class="form-grid">
             <input type="text" bind:value={devMailUsername} placeholder="Target username (empty = ALL)" />
-            <input type="text" bind:value={devMailItem} placeholder="Base item id (e.g. axe_copper)" />
+            <ItemIdPicker bind:value={devMailItem} placeholder="Search item (name or base id)" />
             <input type="number" bind:value={devMailQty} placeholder="Quantity" />
             <input type="number" bind:value={devMailGold} placeholder="Gold amount" />
             <input type="text" bind:value={devMailMsg} placeholder="Text message (optional)" class="span-all" />

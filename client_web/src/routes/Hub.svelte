@@ -108,8 +108,29 @@
 </div>
 
 <style>
+  /* Modul: ONE COLUMN, ONE WIDTH, ONE GAP (owner, 2026-10-07). The cards
+     spanned the whole page while the quest panel capped itself at 40rem and
+     centred, and every block owned a different margin - so on a 1900px screen
+     the quest line was narrower than the cards above it and sat flush against
+     them. The column now owns both the width and the spacing; the children's
+     own margins are zeroed below, because two sources of vertical rhythm is
+     how a gap goes missing. */
   .hub {
     padding: 1rem;
+    display: grid;
+    gap: 1rem;
+    align-content: start;
+    max-width: 64rem;
+    margin: 0 auto;
+    box-sizing: border-box;
+  }
+
+  .hub > :global(.cards),
+  .hub > :global(.quests) {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    box-sizing: border-box;
   }
 
   .scene {
@@ -119,7 +140,7 @@
        about 350px tall on a desktop. The plates are percentages of THIS box,
        so shrinking it keeps them on their landmarks. */
     max-width: 40rem;
-    margin: 1rem auto 0;
+    margin: 0 auto;
     /* The painting's own proportions, so the plates stay on their landmarks. */
     aspect-ratio: 1920 / 1072;
     background-size: cover;

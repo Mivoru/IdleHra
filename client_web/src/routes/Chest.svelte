@@ -864,8 +864,10 @@
          are NOT IN THE DOM, so they cannot be measured, hit, tabbed to or
          reported by the overlap audit - which is the actual requirement. -->
     <section class="sweep">
+      <!-- data-guide: the quest line's "Clear out the chest" step lights these. -->
       <button
         class="sweeptoggle"
+        data-guide="chest-sweep"
         aria-expanded={sweepOpen}
         onclick={() => (sweepOpen = !sweepOpen)}
       >
@@ -896,7 +898,7 @@
 
         {#if confirmingSweep === null}
           <div class="sweepbtns">
-            <button disabled={sweeping || sweepCount === 0} onclick={() => (confirmingSweep = 'sell')}>
+            <button data-guide="chest-sweep-sell" disabled={sweeping || sweepCount === 0} onclick={() => (confirmingSweep = 'sell')}>
               Sell them all
             </button>
             <button
@@ -941,6 +943,7 @@
     <section class="rules">
       <button
         class="sweeptoggle"
+        data-guide="chest-rules"
         aria-expanded={rulesOpen}
         onclick={() => (rulesOpen = !rulesOpen)}
       >

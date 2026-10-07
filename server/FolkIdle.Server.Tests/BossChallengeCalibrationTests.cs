@@ -247,10 +247,17 @@ namespace FolkIdle.Server.Tests
                 $"gear ahead (region {ahead.GearRegionTier} Q{ahead.QualityTier}) wins {aheadFight.PlayerWins} in {aheadFight.SecondsToKillBoss:F0} s, headroom x{headroom:F2}; " +
                 $"wall gear Q{required.QualityTier} wins {requiredFight.PlayerWins}");
 
-            if (region < RaceUnlockRegistry.LastRegion)
+            if (region == RaceUnlockRegistry.LastRegion)
             {
-                Assert.False(bestClears, $"region {region}: the region's own best gear clears step {top}, which is meant to be a boss two regions ahead");
+                // Owner, 2026-10-07 evening: Malakor A10 is meant to be all but
+                // impossible - about twice what a maxed endgame character survives
+                // (BossAscensionRegistry.MalakorAttackMultiplier). The best gear in
+                // the game must not clear it.
+                Assert.False(bestClears, $"the best gear in the game clears Malakor step {top}");
+                return;
             }
+
+            Assert.False(bestClears, $"region {region}: the region's own best gear clears step {top}, which is meant to be a boss two regions ahead");
 
             Assert.True(aheadFight.PlayerWins, $"region {region}: even the gear two regions ahead cannot survive step {top}");
             Assert.True(aheadFight.SecondsToKillBoss <= limit * 0.99, $"region {region}: the gear ahead kills in {aheadFight.SecondsToKillBoss:F0} s against a {limit} s limit");

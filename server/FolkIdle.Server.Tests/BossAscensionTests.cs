@@ -63,6 +63,9 @@ namespace FolkIdle.Server.Tests
                 Assert.InRange(1 + top.AttackPct / 100.0, ratio.Attack * 0.99, ratio.Attack * 1.01);
                 Assert.Equal(120, top.TimeLimitPctOfSwift);
                 Assert.Equal(top, BossAscensionRegistry.ModifiersFor(region, 99));
+                // Malakor's ladder is measured, not a tenth-power curve - see
+                // MalakorLadder_IsTheMeasuredCurve.
+                if (region == 5) continue;
                 var five = BossAscensionRegistry.ModifiersFor(region, 5);
                 Assert.InRange(1 + five.BossHpPct / 100.0, Math.Sqrt(ratio.Hp) * 0.99, Math.Sqrt(ratio.Hp) * 1.01);
                 Assert.InRange(1 + five.AttackPct / 100.0, Math.Sqrt(ratio.Attack) * 0.99, Math.Sqrt(ratio.Attack) * 1.01);
@@ -89,14 +92,37 @@ namespace FolkIdle.Server.Tests
 
             var g = BossAscensionRegistry.ExtrapolatedRegionRatio();
             var frost = BossAscensionRegistry.StepTenRatio(4);
-            var malakor = BossAscensionRegistry.StepTenRatio(5);
             Assert.Equal(Hp(5) * g.Hp / Hp(4), frost.Hp, 6);
             Assert.Equal(Atk(5) * g.Attack / Atk(4), frost.Attack, 6);
-            Assert.Equal(g.Hp * g.Hp, malakor.Hp, 6);
-            Assert.Equal(g.Attack * g.Attack, malakor.Attack, 6);
-            // The owner's own estimate for Malakor: roughly 7x health and 17x attack.
-            Assert.InRange(malakor.Hp, 6.0, 8.0);
-            Assert.InRange(malakor.Attack, 15.0, 19.0);
+        }
+
+        /// <summary>
+        /// Owner, 2026-10-07 evening: the owner beat Malakor A10 with no rebirth,
+        /// so Malakor's ladder is solved against measured character headroom
+        /// (AscensionCalibrationHarness): A3 at the owner's own (~x19 attack),
+        /// x1.2 a step after it, A10 about twice what a maxed endgame profile
+        /// (~x34) survives.
+        /// </summary>
+        [Fact]
+        public void MalakorLadder_IsTheMeasuredCurve()
+        {
+            double Attack(int step) => 1 + BossAscensionRegistry.ModifiersFor(5, step).AttackPct / 100.0;
+            double Health(int step) => 1 + BossAscensionRegistry.ModifiersFor(5, step).BossHpPct / 100.0;
+
+            Assert.InRange(Attack(3), 18.9, 19.1);
+            for (int step = 4; step <= 10; step++)
+            {
+                Assert.InRange(Attack(step) / Attack(step - 1), 1.19, 1.21);
+            }
+            // The maxed profile's ~x34 falls between A6 and A7...
+            Assert.True(Attack(6) < 34 && Attack(7) > 34, $"A6 x{Attack(6):F1}, A7 x{Attack(7):F1}");
+            // ...and A10 asks about twice that.
+            Assert.InRange(Attack(10), 2 * 32.0, 2 * 36.0);
+            // Health rides on attack, as the old ladder's split did.
+            for (int step = 1; step <= 10; step++)
+            {
+                Assert.InRange(Health(step), Math.Pow(Attack(step), 0.68) * 0.99, Math.Pow(Attack(step), 0.68) * 1.01);
+            }
         }
 
         [Fact]
@@ -295,7 +321,7 @@ namespace FolkIdle.Server.Tests
             Tick(ref armed);
 
             var mods = BossAscensionRegistry.ModifiersFor(region, 3);
-            Assert.InRange(mods.BossHpPct, 85, 95); // x1.9 health at step 3 of region 1
+            Assert.InRange(mods.BossHpPct, 100, 110); // x2.0 health at step 3 of region 1 (Magma Wyrm x1.25 since 2026-10-07)
             Assert.True(plain.CurrentMonsterHp <= baseHp);
             Assert.True(armed.CurrentMonsterHp > baseHp, $"armed {armed.CurrentMonsterHp} vs base {baseHp}");
             Assert.Equal(BossAscensionRules.ScaleBossHp(baseHp, in mods), armed.CurrentMonsterHp);
@@ -305,7 +331,7 @@ namespace FolkIdle.Server.Tests
         public void AKillInsideTheLimitClearsTheStep_AndNotesItOnce()
         {
             DrainClears();
-            var p = AboutToKill(region: 1, step: 3, fightTicks: 5); // 398 s limit at step 3 (200% of 104 s Swift, times the x1.9 health)
+            var p = AboutToKill(region: 1, step: 3, fightTicks: 5); // 427 s limit at step 3 (200% of 104 s Swift, times the x2.0 health)
             TickUntilCleared(ref p);
 
             Assert.Equal(0, p.AscensionPendingResult);
@@ -470,7 +496,7 @@ namespace FolkIdle.Server.Tests
             Assert.True(r1.BossDefeated);
             Assert.Equal(2, r1.HighestStep);
             Assert.Equal(3, r1.NextStep);
-            Assert.Equal(new[] { "Boss attack x3.3", "Boss health x1.9", "Kill it within 398 s" }, r1.Steps[2].Effects);
+            Assert.Equal(new[] { "Boss attack x3.5", "Boss health x2.0", "Kill it within 427 s" }, r1.Steps[2].Effects);
             Assert.Equal(new[] { true, true, false }, r1.Steps.Take(3).Select(s => s.Cleared));
             Assert.Equal(3, r1.Steps.Count(s => s.Startable));
             Assert.Equal("Wolfbane V", r1.Steps[4].RewardTitle);

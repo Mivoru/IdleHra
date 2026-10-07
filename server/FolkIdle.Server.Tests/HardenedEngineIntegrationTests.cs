@@ -8963,15 +8963,19 @@ namespace FolkIdle.Server.Tests
                 // five times that health until it falls once (see
                 // BossFirstClearRules), and a first clear is explicitly not
                 // something arrival gear is meant to manage.
+                // Modul: 2026-10-07 (evening), owner: regions 3-5 harder - their
+                // monsters carry x1.25 / x1.5 / x2 health, so the bands stretch by
+                // the same factor. Slower there is the point, not a regression.
+                double regionStretch = row.Region switch { 3 => 1.25, 4 => 1.5, 5 => 2.0, _ => 1.0 };
                 if (row.Index < 4)
                 {
-                    Assert.InRange(row.Seconds, 12.0, 180.0);
+                    Assert.InRange(row.Seconds, 12.0, 180.0 * regionStretch);
                 }
                 else
                 {
                     // Modul: 2026-10-07, 900 -> 1,200 s. Boss HP x1.3 (owner balance pass) makes
                     // the worst arrival (region 1, bare) 1,162 s against 894 before.
-                    Assert.InRange(row.Seconds, 300.0, 1200.0);
+                    Assert.InRange(row.Seconds, 300.0, 1200.0 * regionStretch);
                 }
             }
         }

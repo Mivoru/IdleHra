@@ -490,8 +490,8 @@
             Every region boss has three optional challenges, listed under its region on the
             Combat screen: <strong>Starved</strong> (win without eating a single bite during the
             fight; rations heal nothing and do not count), <strong>Young blood</strong> (win at or below a level cap - 15, 35, 45, 60 and
-            75 for the five regions) and <strong>Swift</strong> (win within a time limit - 80, 110,
-            120, 110 and 110 seconds; the region's best gear at its level makes it, or come back
+            75 for the five regions) and <strong>Swift</strong> (win within a time limit - 104, 143,
+            195, 215 and 286 seconds; the region's best gear at its level makes it, or come back
             stronger). They count on any kill, not only the first, and each pays a cosmetic
             chest once: Rare for the first two regions, Epic for the next two, Legendary for
             Malakor. Every one was measured to be winnable with the gear the boss is tuned for.
@@ -1463,7 +1463,7 @@
             nothing out.
           </p>
           <ul class="styled-list">
-            <li><strong>The fee follows the region you have reached</strong> — about forty minutes of that region's own income, from 7,000 gold at the start to 250,000 at the top. It is the same weight whenever you play it.</li>
+            <li><strong>The fee follows the region you have reached</strong> — about forty minutes of that region's own income, from 7,000 gold at the start to 500,000 at the top. It is the same weight whenever you play it.</li>
             <li><strong>The reward follows your sheet, not your region.</strong> Each floor asks for a fixed attribute value — 20 on the first, 270 on the eighth — so how deep you get is decided by the attributes you placed.</li>
             <li><strong>Every door wants one attribute</strong>, and each floor offers three. A door that shows what it wants also shows your odds; a door that does not is the gamble.</li>
             <li><strong>Fortune decides how often a door tells you.</strong> 55% with none, 77% at 100, and it never reaches certainty. This is the one place Fortune does something you can watch happen.</li>

@@ -86,6 +86,7 @@ namespace FolkIdle.Server.Domain.Progression
                 {
                     p.CurrentLevel, p.PremiumDiamonds, p.ForgeFusionsCompleted, p.AffixRerollsPerformed,
                     p.DelveDeepestFloor, p.RebirthCount, p.GuildId,
+                    p.AutoSalvageBelowTier, p.AutoSalvageRegionTiers,
                 })
                 .SingleOrDefaultAsync();
             if (player == null) return null;
@@ -123,6 +124,9 @@ namespace FolkIdle.Server.Domain.Progression
             // PlayerRecord.GuildId is not set), so the
             // step cannot be "available" to a player who has no guild - the
             // button it points at is disabled for them.
+            long chestSales = await db.GoldIncomeDaily.AsNoTracking()
+                .Where(g => g.PlayerId == playerId && g.Source == (short)GoldIncomeSource.ChestSale)
+                .SumAsync(g => (long?)g.Amount) ?? 0L;
             bool inGuild = player.GuildId > 0;
 
             bool bossRow = await db.PlayerWorldBossAttempts.AsNoTracking()
@@ -161,6 +165,8 @@ namespace FolkIdle.Server.Domain.Progression
                 HasWorldBossAttemptRow = bossRow,
                 HighestAscensionStep = ascension,
                 RebirthCount = player.RebirthCount,
+                GoldFromChestSales = chestSales,
+                AutoSellRuleSet = player.AutoSalvageBelowTier > 0 || player.AutoSalvageRegionTiers != 0,
             };
         }
 

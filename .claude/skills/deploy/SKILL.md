@@ -38,7 +38,16 @@ curl -s -o /dev/null -w "%{http_code}\n" https://folkidle.duckdns.org/api/v1/<en
    `VITE_FOLKIDLE_SERVER` build arg in `ops/oracle/docker-compose.yml` and
    `FOLKIDLE_WEB_ORIGINS` in `.env` — then rebuilding. It is a rebuild, not a
    restart.
-4. **Never rotate `JWT_SECRET_KEY` casually.** Tokens are signed with it; a new
+4. **Does this release change anything a player would notice? Then bump the
+   version and write the notes.** The What's New window is keyed on
+   `client_web/package.json`'s version and reads
+   `client_web/src/lib/ui/releaseNotes.ts`. Bump the minor version (also in
+   `package-lock.json`) and add an entry written for players.
+   `releaseNotes.test.ts` keeps the two in step. From 2026-09-13 to
+   2026-10-07 nobody bumped the version, so a month of deploys, including a
+   whole balance pass, opened no window at all. The owner noticed because
+   the popup "never appeared".
+5. **Never rotate `JWT_SECRET_KEY` casually.** Tokens are signed with it; a new
    secret silently logs out every player and bounces them to the login screen
    with no explanation.
 

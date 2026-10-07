@@ -33,7 +33,7 @@ export function canInflate(): boolean {
 }
 
 export class FrameInflater {
-  private readonly writer: WritableStreamDefaultWriter<Uint8Array>;
+  private readonly writer: WritableStreamDefaultWriter<BufferSource>;
   private readonly decoder = new TextDecoder();
   private pending = '';
   private closed = false;
@@ -50,7 +50,10 @@ export class FrameInflater {
   /** One binary frame, in the order it arrived. */
   push(frame: ArrayBuffer | Uint8Array): void {
     if (this.closed) return;
-    const bytes = frame instanceof Uint8Array ? frame : new Uint8Array(frame);
+    // Always a fresh ArrayBuffer-backed view: the stream API types reject a
+    // view whose buffer might be a SharedArrayBuffer (a Uint8Array argument is
+    // copied, an ArrayBuffer is wrapped).
+    const bytes = new Uint8Array(frame);
     this.writer.write(bytes).catch((error) => this.fail(error));
   }
 

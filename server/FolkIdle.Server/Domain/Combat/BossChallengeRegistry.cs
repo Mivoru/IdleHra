@@ -72,7 +72,11 @@ namespace FolkIdle.Server.Domain.Combat
         // -> new { 104, 143, 156, 143, 143 } (x1.3). Measured with the same projection after the
         // change: the region's best gear at level takes 99 / 135 / 152 / 136 / 130 s (all under the
         // limit), the wall's required gear takes more than every limit (calibration test).
-        private static readonly int[] TimeLimitSecondsByRegion = { 104, 143, 156, 143, 143 };
+        // Modul: 2026-10-07 (evening), regions 3-5 x1.25 / x1.5 / x2 boss health,
+        // limits stretched by the same factor (156, 143, 143 before) and checked
+        // against BossChallengeCalibrationTests: best gear 189 / 203 / 259 s
+        // makes them, the wall's required gear 219 / 247 / 315 s does not.
+        private static readonly int[] TimeLimitSecondsByRegion = { 104, 143, 195, 215, 286 };
 
         /// <summary>How many quality tiers above the wall's requirement "the region's best gear" is.</summary>
         public const int SwiftCalibrationQualityStep = 4;
