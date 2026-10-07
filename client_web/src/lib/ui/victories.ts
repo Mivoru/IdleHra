@@ -96,8 +96,8 @@ export function unlocksFor(monsterId: number): VictoryUnlocks {
  * serverMirrors.test.ts parses the C# arrays and compares these element by
  * element. Do not edit one side alone.
  */
-export const FIRST_CLEAR_HP_MULTIPLIERS: readonly number[] = [3, 4, 6, 9, 14];
-export const FIRST_CLEAR_ATTACK_MULTIPLIERS: readonly number[] = [2.47, 1.85, 3.85, 7.7, 14.3];
+export const FIRST_CLEAR_HP_MULTIPLIERS: readonly number[] = [3, 4, 4.8, 6, 7];
+export const FIRST_CLEAR_ATTACK_MULTIPLIERS: readonly number[] = [2.47, 1.85, 3.08, 5.13, 7.15];
 
 /**
  * The gear each boss is calibrated to need, as QualityTier, in the boss's OWN
