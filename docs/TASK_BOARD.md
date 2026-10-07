@@ -33,8 +33,10 @@ something to learn:
   earlier. `gh pr list --state all` first.
 - **Verify gameplay with `npm run exercise`**, not with `smoke:screens`.
   Re-seed (`--seed-dev`) between runs; a spent villager pool skips steps.
-- **Balance and economy numbers go to the council first** (owner's global
-  rule). When it is down, propose numbers to the owner and say so.
+- **Balance and economy numbers are measured, then proposed to the owner.**
+  The council plugin was removed on 2026-10-07 (it was down every time).
+  For Ascension, `AscensionCalibrationHarness` fights a real character from
+  a restored production copy (set `FOLKIDLE_CALIBRATION_DB`).
 - **Once the owner approves a batch, carry it to production** without
   re-asking at every step.
 - **One PR per batch, not a stack.** Stacked PRs merged into their base
@@ -72,6 +74,17 @@ per region behind, no heal. Unpaid = hungry, kills pay half XP and gold.
   expect the share to rise, and re-check the 10-40% band.
 - If hunger hits too hard, the lever is `RationIntervalTicks`, not
   `HungryRewardPct` - halving pay is the signal, the interval is the cost.
+
+### 112. Re-measure Malakor's Ascension after power changes
+
+Malakor's ladder (`BossAscensionRegistry.MalakorAttackMultiplier`) is solved
+against measured headroom: about x19 attack for the owner's character on
+2026-10-07, about x34 for a maxed profile. Anything that makes characters
+stronger (new affixes, inheritance caps, skills, rebirth bonus) moves those
+numbers. Restore a production dump into a local database, set
+`FOLKIDLE_CALIBRATION_DB`, run the harness, and move the constants if the
+targets drift (owner clears ~A2-A3, maxed ~A5-A7, A10 about 2x maxed).
+Regions 1-4 still use "A10 = the boss two regions ahead".
 
 ### 46 follow-up. Confirm the compression ratio live
 
