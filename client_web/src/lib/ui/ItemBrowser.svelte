@@ -20,6 +20,7 @@
   import { summarizeAffixes } from './itemRow';
   import { EQUIPMENT_SLOTS, resolveSlotIndex } from './slots';
   import { prettifyBaseId } from '../net/content';
+  import { locationName } from './locations';
 
   type Item = {
     Id: number;
@@ -35,17 +36,24 @@
     onselect,
     emptyText = 'Nothing here.',
     compact = false,
+    regionOf,
   }: {
     items: Item[];
     selectedId?: number;
     onselect?: (item: Item) => void;
     emptyText?: string;
     compact?: boolean;
+    /**
+     * Resolves an item's REGION tier (1-5, the set it belongs to - not its
+     * rarity). Passing it adds the Region filter; the chest and Forge do not.
+     */
+    regionOf?: (baseItemId: string) => number;
   } = $props();
 
   let search = $state('');
   let slotFilter = $state<number | -1>(-1);
   let minRarity = $state(0);
+  let regionFilter = $state(0);
   let sortBy = $state<'rarity' | 'name' | 'slot'>('rarity');
 
   // Modul: memoised, because the sort comparator calls it.
@@ -73,6 +81,7 @@
       // Integer compares first, string work last - the search allocates a
       // haystack per row and most rows are rejected before it is asked.
       if (minRarity > 0 && item.QualityTier < minRarity) return false;
+      if (regionFilter > 0 && regionOf?.(item.BaseItemId) !== regionFilter) return false;
       if (slotFilter >= 0 && resolveSlotIndex(item.BaseItemId) !== slotFilter) return false;
       if (needle) {
         const haystack = `${prettifyBaseId(item.BaseItemId)} ${slotLabel(item.BaseItemId)} ${rarityName(item.QualityTier)}`;
@@ -134,6 +143,15 @@
       {/each}
     </select>
 
+    {#if regionOf}
+      <select bind:value={regionFilter} aria-label="Filter by region" data-testid="item-region-filter">
+        <option value={0}>All regions</option>
+        {#each [1, 2, 3, 4, 5] as tier (tier)}
+          <option value={tier}>{locationName(tier)}</option>
+        {/each}
+      </select>
+    {/if}
+
     <select bind:value={minRarity} aria-label="Minimum rarity">
       <option value={0}>Any rarity</option>
       {#each Array(MAX_QUALITY_TIER) as _, i}
@@ -144,7 +162,7 @@
     <!-- Modul: "Sort:" IS SAID. The third select read "Rarity" beside the
          second's "Any rarity", so a sort looked like a second rarity filter. -->
     <label class="sort">
-      <span class="dim tiny">Sort:</span>
+      <span class="dim tiny sortword">Sort:</span>
       <select bind:value={sortBy} aria-label="Sort by">
         <option value="rarity">Rarity</option>
         <option value="name">Name</option>
@@ -247,6 +265,12 @@
     gap: 0.3rem;
     flex: 1 1 8rem;
     min-width: 0;
+  }
+
+  /* Modul: never let the flex row squeeze the word to "Sor" / "t:". */
+  .sortword {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .sort select {

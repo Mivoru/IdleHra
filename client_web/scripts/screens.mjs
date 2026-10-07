@@ -292,6 +292,13 @@ export async function signIn(page) {
     await page.waitForTimeout(300);
   }
   await page.waitForTimeout(500);
+  // The What's new window opens after the summary closes and has its own
+  // backdrop; close it the way a player would.
+  const notes = page.getByRole('dialog', { name: "What's new" });
+  if ((await notes.count()) > 0) {
+    await notes.getByRole('button', { name: 'Close' }).first().click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
 }
 
 /**

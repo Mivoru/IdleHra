@@ -286,44 +286,19 @@ namespace FolkIdle.Server.Engine
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
+            // Modul: no price corridor (owner, 2026-10-07) - only the arithmetic's
+            // own fence, shared with direct listings.
+            if (price < MarketEscrowEngine.MinListingPrice || price > MarketEscrowEngine.MaxListingPrice)
+            {
+                _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
+                return;
+            }
+
             using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             try
             {
                 if (isBuy)
                 {
-                    // Modul 40/51: strict 20%-to-300% volatility corridor
-                    // (P_min = P_avg * 0.80, P_max = P_avg * 3.00), computed
-                    // from real completed-order history. baseItemId is already
-                    // the real item identity for a BUY order at this point.
-                    //
-                    // Modul: fails closed on an unpriceable item, the same way
-                    // the direct SELL path in MarketEscrowEngine now does and
-                    // for the same reason - a BUY order at an arbitrary price
-                    // moves gold between two players just as effectively as a
-                    // SELL does. There is no baseline only when the item is
-                    // absent from the catalogue AND has never traded, which
-                    // after the catalogue cut describes every legacy piece.
-                    double? buyRollingAveragePrice = await CalculateRollingAveragePriceAsync(db, baseItemId, qualityTier);
-                    if (!buyRollingAveragePrice.HasValue)
-                    {
-                        await transaction.RollbackAsync();
-                        _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.GenericValidationFailure);
-                        Console.WriteLine($"BUY Order rejected: no price baseline for {baseItemId} - not in the catalogue and never traded.");
-                        return;
-                    }
-
-                    {
-                        double buyMinPrice = buyRollingAveragePrice.Value * 0.80;
-                        double buyMaxPrice = buyRollingAveragePrice.Value * 3.00;
-                        if (price < buyMinPrice || price > buyMaxPrice)
-                        {
-                            await transaction.RollbackAsync();
-                            _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
-                            Console.WriteLine($"BUY Order rejected: price {price} outside volatility corridor [{buyMinPrice}, {buyMaxPrice}] for {baseItemId} T{qualityTier}.");
-                            return;
-                        }
-                    }
-
                     var goldQuery = "SELECT * FROM \"CommodityRecords\" WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold' FOR UPDATE";
                     var goldRecord = await db.CommodityRecords.FromSqlRaw(goldQuery, playerId).SingleOrDefaultAsync();
 
@@ -373,24 +348,6 @@ namespace FolkIdle.Server.Engine
 
                     baseItemId = equip.BaseItemId;
                     qualityTier = equip.QualityTier;
-
-                    // Modul 40/51: strict 20%-to-300% volatility corridor,
-                    // checked here (not before the transaction) since the
-                    // caller does not know the real item identity for a SELL
-                    // order until the equipment row above is resolved.
-                    double? sellRollingAveragePrice = await CalculateRollingAveragePriceAsync(db, baseItemId, qualityTier);
-                    if (sellRollingAveragePrice.HasValue)
-                    {
-                        double sellMinPrice = sellRollingAveragePrice.Value * 0.80;
-                        double sellMaxPrice = sellRollingAveragePrice.Value * 3.00;
-                        if (price < sellMinPrice || price > sellMaxPrice)
-                        {
-                            await transaction.RollbackAsync();
-                            _playerRegistry.EnqueueCommandResult(playerId, (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
-                            Console.WriteLine($"SELL Order rejected: price {price} outside volatility corridor [{sellMinPrice}, {sellMaxPrice}] for {baseItemId} T{qualityTier}.");
-                            return;
-                        }
-                    }
 
                     equip.IsLockedInEscrow = true;
                     equip.IsQuarantined = isQuarantined;

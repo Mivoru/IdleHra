@@ -4035,79 +4035,45 @@ namespace FolkIdle.Server.Tests
             Assert.True(order.IsQuarantined);
         }
 
+        // Modul: NO PRICE CORRIDOR (owner, 2026-10-07). This used to prove the
+        // 20%-300% corridor refused an extreme price; the owner wants only the
+        // arithmetic's fence, 1 .. 1,000,000,000. A price above it, or below 1,
+        // is refused without touching the item; a price inside it lists, even
+        // for an item the catalogue cannot price.
         [Fact]
-        public async Task Test_MarketEscrow_UntradedItem_ExtremePriceBlockedByFallbackCorridor()
+        public async Task Test_MarketEscrow_PriceFence_OnlyRangeEnforced()
         {
             const long testPlayerId = 970000004L;
-            // Modul: a CANONICAL item. This named a legacy piece that the
-            // catalogue cut removed, so ContentRegistry could no longer price
-            // it - and the corridor, which only ran when a price existed, waved
-            // the listing straight through. The test failed for the right
-            // reason and the failure was a live hole rather than a stale
-            // literal: see the unknown-item case at the end of this method,
-            // which is the other half and did not exist before.
-            const string baseItemId = "eq_steel_sabatons_boots_armor_slot_base"; // ItemDefinition Id 255, BaseValueGold 50
-            const int qualityTier = 0;
-            long equipmentId;
+            const string baseItemId = "eq_steel_sabatons_boots_armor_slot_base";
+            long tooHighId, tooLowId, okId, orphanId;
 
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                // GuildId: market access now requires a guild trade license
-                // (Advanced Economy Refactoring, Part 2.1) - this test is
-                // about the price corridor, so the license must pass.
                 db.GuildRecords.Add(new GuildRecord { Id = 970000904L, Name = "CorridorTestGuild970000904" });
                 db.PlayerRecords.Add(new PlayerRecord { Id = testPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), GuildId = 970000904L });
-                var equipment = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = qualityTier };
-                db.EquipmentInstances.Add(equipment);
+                var e1 = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = 0 };
+                var e2 = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = 0 };
+                var e3 = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = baseItemId, QualityTier = 0 };
+                var e4 = new EquipmentInstance { PlayerId = testPlayerId, BaseItemId = "gilded_sabatons_boots_armor_slot_base", QualityTier = 0 };
+                db.EquipmentInstances.AddRange(e1, e2, e3, e4);
                 await db.SaveChangesAsync();
-                equipmentId = equipment.Id;
+                tooHighId = e1.Id; tooLowId = e2.Id; okId = e3.Id; orphanId = e4.Id;
             }
 
             var escrowEngine = new MarketEscrowEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
 
-            // No HistoricalMarketArchives rows exist for this item, so the
-            // corridor must fall back to the ContentRegistry baseline
-            // (50 * 1.0 = 50, corridor [40, 150]) rather than allowing
-            // an arbitrary RMT-laundering price through.
-            bool accepted = await escrowEngine.ListItemAsync(testPlayerId, equipmentId, 999999999L);
+            Assert.False(await escrowEngine.ListItemAsync(testPlayerId, tooHighId, 1_000_000_001L));
+            Assert.False(await escrowEngine.ListItemAsync(testPlayerId, tooLowId, 0L));
 
-            Assert.False(accepted);
-
-            await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
-            var stillInBag = await verifyDb.EquipmentInstances.AsNoTracking().SingleOrDefaultAsync(e => e.Id == equipmentId);
-            Assert.NotNull(stillInBag);
-
-            bool anyMarketMirror = await verifyDb.MarketEquipmentInstances.AsNoTracking().AnyAsync(e => e.PlayerId == testPlayerId);
-            Assert.False(anyMarketMirror);
-
-            // And the item nobody can price at all. An instance whose BaseItemId
-            // is not in the catalogue has no rolling average and no baseline;
-            // the corridor used to skip on that and let ANY price through, which
-            // is the laundering route it exists to close. It fails closed now,
-            // and this asserts a sane price rather than an extreme one so that
-            // it can only pass by the item being refused outright.
-            long orphanEquipmentId;
-            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            await using (var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var orphan = new EquipmentInstance
-                {
-                    PlayerId = testPlayerId,
-                    BaseItemId = "gilded_sabatons_boots_armor_slot_base", // removed by the catalogue cut
-                    QualityTier = qualityTier
-                };
-                db.EquipmentInstances.Add(orphan);
-                await db.SaveChangesAsync();
-                orphanEquipmentId = orphan.Id;
+                Assert.NotNull(await verifyDb.EquipmentInstances.AsNoTracking().SingleOrDefaultAsync(e => e.Id == tooHighId));
+                Assert.NotNull(await verifyDb.EquipmentInstances.AsNoTracking().SingleOrDefaultAsync(e => e.Id == tooLowId));
             }
 
-            bool orphanAccepted = await escrowEngine.ListItemAsync(testPlayerId, orphanEquipmentId, 100L);
-            Assert.False(orphanAccepted);
-
-            await using (var orphanDb = await _fixture.DbContextFactory.CreateDbContextAsync())
-            {
-                Assert.NotNull(await orphanDb.EquipmentInstances.AsNoTracking()
-                    .SingleOrDefaultAsync(e => e.Id == orphanEquipmentId));
-            }
+            // 999,999,999 against a 50 gold baseline: far outside the old corridor, fine now.
+            Assert.True(await escrowEngine.ListItemAsync(testPlayerId, okId, 999_999_999L));
+            Assert.True(await escrowEngine.ListItemAsync(testPlayerId, orphanId, 100L));
         }
 
         [Fact]

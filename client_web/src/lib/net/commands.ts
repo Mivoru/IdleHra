@@ -51,6 +51,13 @@ function refuse(reason: string): CommandRefusal {
 // ---------------------------------------------------------------------------
 
 /**
+ * Modul: the one price ceiling for equipment listings and limit orders - the
+ * owner removed the price corridor (2026-10-07), so this is the only fence.
+ * Mirrors MarketEscrowEngine.MaxListingPrice.
+ */
+export const MAX_MARKET_PRICE = 1_000_000_000;
+
+/**
  * Mirrors ValidateMarketCommands: a listing needs a positive price and every
  * market command needs a positive target. Either violation disconnects.
  */
@@ -60,6 +67,9 @@ export function listItemOnMarket(equipmentInstanceId: number, price: number): Co
   }
   if (!Number.isInteger(price) || price <= 0) {
     return refuse('Set a price above zero.');
+  }
+  if (price > MAX_MARKET_PRICE) {
+    return refuse('The highest price is 1,000,000,000 gold.');
   }
 
   connection.send({
@@ -125,6 +135,9 @@ export function placeLimitOrder(options: {
   }
   if (!Number.isInteger(price) || price <= 0) {
     return refuse('Set a price above zero.');
+  }
+  if (price > MAX_MARKET_PRICE) {
+    return refuse('The highest price is 1,000,000,000 gold.');
   }
 
   const qualityTier = Math.max(0, Math.trunc(options.qualityTier ?? 0));
@@ -1920,3 +1933,11 @@ export function purchaseLegacyUnlock(unlockId: number): CommandOutcome {
 }
 
 // ---------------------------------------------------------------------------
+
+/**
+ * Modul: the highest Forge level that can ever exist, so the highest rarity
+ * fusion can ever produce (a fusion needs Forge level >= its result tier).
+ * Mirrors VillageManagementEngine.GetMaxBuildingLevelCeiling(MaxStructuralBuildingLevel)
+ * = 2 + 5 * 2. serverMirrors.test.ts compares it to the server source.
+ */
+export const MAX_FORGE_LEVEL = 12;

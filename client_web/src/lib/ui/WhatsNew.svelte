@@ -1,5 +1,6 @@
 <script lang="ts">
   import { pendingNotes, acknowledgeNotes, updateAvailable } from '../stores/version';
+  import { offlineSummary, playerState } from '../stores/game';
   import { reserveBottom, releaseBottom } from '../stores/bottomInset';
   import Modal from './Modal.svelte';
 
@@ -12,7 +13,15 @@
   // been replaced while this tab was open. A player who leaves a tab open for
   // days across two deploys can genuinely be owed both, so the reload prompt
   // waits for the notes to be dismissed rather than stacking on top of them.
-  const showNotes = $derived($pendingNotes.length > 0);
+  //
+  // Modul: AFTER "WELCOME BACK" (owner, 2026-10-07). The notes used to open the
+  // moment the app mounted, on top of (or beside) the offline summary, so a
+  // returning player met two windows at once and the one with their earnings
+  // was the one pushed behind. They now wait for the first state snapshot - the
+  // summary is built from that same packet, so by then we know whether there IS
+  // one - and for it to be closed. With no summary they show right after login.
+  // `pendingNotes` is untouched, so the seen-version tracking is unchanged.
+  const showNotes = $derived($pendingNotes.length > 0 && $playerState !== null && $offlineSummary === null);
   const showReload = $derived(!showNotes && $updateAvailable);
 
   // Modul: BACK MEANS "GOT IT". The notes are a modal, and after every OTA
@@ -56,7 +65,12 @@
        was to scroll to the bottom of it first. Header and footer are pinned
        by the Modal; only the notes move. -->
   <Modal label="What's new" tone="brass" width="32rem" layout="block" onClose={acknowledgeNotes} dismissOnScrim={false}>
-      {#snippet header()}<h2>What&rsquo;s new</h2>{/snippet}
+      {#snippet header()}
+        <div class="head">
+          <h2>What&rsquo;s new</h2>
+          <button class="close" aria-label="Close" onclick={acknowledgeNotes}>&times;</button>
+        </div>
+      {/snippet}
       {#snippet footer()}<button class="got-it" onclick={acknowledgeNotes}>Got it</button>{/snippet}
 
       {#each $pendingNotes as release (release.version)}
@@ -96,6 +110,22 @@
 {/if}
 
 <style>
+  .head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .close {
+    flex: 0 0 auto;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 1.4rem;
+    line-height: 1;
+    padding: 0;
+  }
+
   h2 {
     margin: 0;
     font-size: 1.1rem;
