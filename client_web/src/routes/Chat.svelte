@@ -278,15 +278,6 @@
       draft = '';
     }
   }
-
-  // Modul: the congratulate button. NOT a dedicated command - the Unity client
-  // sends the literal string "gz!" on the Global channel, so it inherits the
-  // ordinary chat rate limit and profanity path rather than needing its own.
-  // Kept identical rather than "improved" into something friendlier, because
-  // both clients write into the same world chat.
-  function congratulate() {
-    connection.sendChat('gz!', GLOBAL);
-  }
 </script>
 
 <div class="wrap" class:docked>
@@ -369,7 +360,6 @@
           <li class="sys">
             <span class="time dim">{timeOf(message.atMs)}</span>
             <span class="text announcement">{message.text}</span>
-            <button class="gz" title="Say gz! in world chat" onclick={congratulate}>gz!</button>
           </li>
         {:else}
           <li class="msg">
@@ -514,13 +504,13 @@
     .wrap.docked .log {
       border: none;
       background: transparent;
-      padding: 0.2rem 0;
+      padding: 0.2rem 0 1rem;
       gap: 0.35rem;
     }
     .wrap.docked .log li.msg {
       grid-template-columns: auto 1fr;
       grid-template-areas: 'who time' 'text text';
-      row-gap: 0;
+      row-gap: 0.15rem;
       align-items: baseline;
     }
     .wrap.docked .log li.msg .who {
@@ -688,7 +678,10 @@
   .log {
     list-style: none;
     margin: 0;
-    padding: 0.4rem 0.5rem;
+    /* Modul: the bottom padding is deeper than the top because the newest
+       message sits at the bottom edge, and the rounded corners (and on a phone
+       the sheet's edge) were clipping its last line. */
+    padding: 0.4rem 0.5rem 1rem;
     display: flex;
     flex-direction: column-reverse;
     gap: 0.1rem;
@@ -704,8 +697,13 @@
   .log li {
     display: grid;
     grid-template-columns: auto auto 1fr;
-    gap: 0.4rem;
+    gap: 0.4rem 0.7rem;
     align-items: center;
+    /* Modul: a flex item shrinks by default. With the soft keyboard up the
+       list gets shorter, and every row was squeezed below its content height,
+       so names and messages overprinted each other. Rows keep their height;
+       the list scrolls instead. */
+    flex-shrink: 0;
   }
 
   .time {
@@ -716,7 +714,7 @@
   .who {
     display: inline-flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.4rem;
     /* Text, not a chip: no fill, no border, no padding. */
     background: none;
     border: none;
@@ -724,7 +722,7 @@
        overhangs its 28px row it drew a pale slab across the neighbouring rows. */
     box-shadow: none;
     border-radius: var(--radius-xs);
-    padding: 0 0.1rem;
+    padding: 0 0.25rem 0 0.1rem;
     font-weight: var(--fw-medium);
     line-height: inherit;
     color: var(--text);
@@ -734,6 +732,7 @@
   }
 
   .who-name {
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
   }
@@ -750,7 +749,7 @@
   /* An announcement is a system line: smaller, coloured, marked by an edge
      rather than drawn as somebody's message. */
   .log li.sys {
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: auto 1fr;
     padding-left: 0.35rem;
     border-left: 2px solid var(--rarity-12);
     background: color-mix(in srgb, var(--rarity-12) 7%, transparent);
@@ -762,14 +761,8 @@
     color: var(--rarity-12);
   }
 
-  .gz {
-    padding: 0 0.35rem;
-    font-size: var(--fs-badge);
-    line-height: 1.4;
-  }
-
   /* Modul: THE FLOOR IS ON THE BUTTON, NOT ON THE ROW. app.css gives every
-     button a 44px min-height on a phone, and it stays: the name and gz! boxes
+     button a 44px min-height on a phone, and it stays: the name box
      still MEASURE 44px tall (check:touch reads the element's own box). The
      negative block margin only stops that box from setting the row's height,
      so it overhangs its 28px row by 8px each way instead of padding it out.
@@ -777,8 +770,7 @@
      neighbouring line's centred text, not on that row's name. A taller row
      (a wrapped message) only widens the clearance. */
   @media (max-width: 40rem) {
-    .log li .who,
-    .log li .gz {
+    .log li .who {
       margin-block: -8px;
       flex-shrink: 0;
     }
