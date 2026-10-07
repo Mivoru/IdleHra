@@ -35,6 +35,46 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.5.0',
+    date: '2026-10-07',
+    headline: 'A harder road to the top, and a guide for everything on it.',
+    sections: [
+      {
+        title: 'Challenge',
+        items: [
+          'Regions 3, 4 and 5 are tougher: their monsters and bosses have more health and hit harder (a quarter more in region 3, half again in region 4, double in region 5), and pay more XP and gold to match. A boss’s first clear is exactly as hard as before; farming it again is not.',
+          'Malakor’s Ascension ladder is far steeper. Steps 1-3 are a real fight for a level-100 hero, step 5 and up needs a fully built endgame character, and step 10 is meant to be all but out of reach.',
+          'Levels come more slowly, and every boss hits harder than it did a week ago.',
+          'Fusing costs real money now: from about a million gold for a middling piece to hundreds of millions at the top.',
+        ],
+      },
+      {
+        title: 'Food',
+        items: [
+          'From region 2 on, a fighting hero eats a ration now and then whether hurt or not - one fish every 6 to 10 seconds. A ration heals nothing; it is upkeep.',
+          'A ration wants a fish from the region you fight in or a later one. Older fish still work, at two for every region they are behind.',
+          'With nothing to eat your hero goes hungry: it keeps fighting, but kills pay half XP and gold until the larder is stocked again. Region 1 eats no rations.',
+        ],
+      },
+      {
+        title: 'Learning the game',
+        items: [
+          'A quest line on Home walks you through every system, one hands-on step at a time - the chest, auto-sell, fusing, rerolling, the village, the market, breeding, inheritance, the Delve, the world boss, Ascension and Rebirth. Each step pays a reward scaled to your region.',
+          'What’s New (this window) now opens after the Welcome Back summary instead of on top of it.',
+        ],
+      },
+      {
+        title: 'Fixes and comfort',
+        items: [
+          'Chat on phones keeps its layout when the keyboard opens, the newest message is no longer cut off at the bottom, and names sit apart from the text.',
+          'The Home cards line up in one column instead of overlapping.',
+          'The game uses far less mobile data: updates from the server are compressed, about thirty times smaller.',
+          'The unobtainable boost items are gone from the store.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.4.0',
     date: '2026-09-13',
     headline: 'Breeding works. It never has before.',
