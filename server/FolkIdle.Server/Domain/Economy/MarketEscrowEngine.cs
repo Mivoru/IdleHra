@@ -223,6 +223,11 @@ namespace FolkIdle.Server.Domain.Economy
                 };
                 db.MarketOrderRecords.Add(order);
 
+                // Modul: the quest line's "list an item" step. A cancelled
+                // listing leaves no row behind, so the act is recorded HERE, in
+                // the transaction that makes the listing.
+                await QuestLineEngine.NoteFactAsync(db, playerId, QuestLineRegistry.Market);
+
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 

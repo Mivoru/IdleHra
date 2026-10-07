@@ -616,6 +616,7 @@
       onclick={sell}
       disabled={!hasGuildLicense || !sellItem || sellPrice < 1 || sellPrice > MAX_MARKET_PRICE}
       data-testid="market-list"
+      data-guide="market-list"
     >
       {sellItem
         ? `List ${prettifyBaseId(sellItem.BaseItemId)} for ${formatGold(Math.max(1, sellPrice))}`

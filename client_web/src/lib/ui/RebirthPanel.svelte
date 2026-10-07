@@ -72,7 +72,7 @@
   }
 </script>
 
-<section class="panel rebirth" data-testid="rebirth-panel">
+<section class="panel rebirth" data-testid="rebirth-panel" data-guide="rebirth">
   <h2>Rebirth</h2>
   <p class="dim small">
     End this run whenever you choose and start again at level 1 with the
@@ -96,7 +96,7 @@
     </p>
 
     {#if !confirming}
-      <button class="rebirth-open" disabled={working} onclick={() => (confirming = true)}>
+      <button class="rebirth-open" data-guide="rebirth-start" disabled={working} onclick={() => (confirming = true)}>
         Rebirth&hellip;
       </button>
       {#if p.RebirthCount > 0}

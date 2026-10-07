@@ -611,6 +611,7 @@
                 <button
                   class="tiny-btn primary"
                   data-testid="fusion-row-fuse"
+                  data-guide={blocked === null ? 'forge-fuse' : undefined}
                   disabled={blocked !== null || $commandInFlight.has(rowKey(row))}
                   onclick={() => fuseRow(row)}
                 >Fuse</button>
@@ -699,6 +700,7 @@
     {/if}
 
     <button
+      data-guide={fuseBlocked === null ? 'forge-fuse' : undefined}
       onclick={fuse}
       disabled={fuseBlocked !== null || $commandInFlight.has(`fuse:${fusionTarget}`)}
     >
@@ -793,18 +795,23 @@
     {#if forge.isError && forge.data === undefined}
       <QueryError query={forge} what="your equipment" />
     {/if}
-    <ItemBrowser
-      items={rerollChoices}
-      selectedId={rerollItemId}
-      compact
-      emptyText={showAllForReroll
-        ? 'Nothing to reroll.'
-        : 'Nothing equipped. Dress a character on the Character screen, or show all.'}
-      onselect={(item) => {
-        rerollItemId = item.Id;
-        rerollAffixIndex = 0;
-      }}
-    />
+    <!-- Modul: the quest line's second target (data-guide, server-named in
+         QuestLineRegistry): before an item is picked there is no Reroll button
+         to light, so the picker is what it points at. -->
+    <div data-guide="forge-reroll-item">
+      <ItemBrowser
+        items={rerollChoices}
+        selectedId={rerollItemId}
+        compact
+        emptyText={showAllForReroll
+          ? 'Nothing to reroll.'
+          : 'Nothing equipped. Dress a character on the Character screen, or show all.'}
+        onselect={(item) => {
+          rerollItemId = item.Id;
+          rerollAffixIndex = 0;
+        }}
+      />
+    </div>
 
     {#if rerollItem}
       {#if rerollItem.IsAffixLocked}
@@ -930,6 +937,7 @@
         {#key `${rerollItemId}:${rerollAffixIndex}`}
           <ConfirmButton
             label="{autoReroll ? `Auto-reroll up to ${autoAttempts}x` : 'Reroll once'} · {formatGold(rerollFee)}{autoReroll ? ' each' : ''}"
+            guide="forge-reroll"
             confirmLabel="Really reroll {rerollGuard.what}?"
             disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
             onConfirm={doReroll}
@@ -937,6 +945,7 @@
         {/key}
       {:else}
         <button
+          data-guide="forge-reroll"
           onclick={doReroll}
           disabled={rerollAffixRows.length === 0 || rerollItem.IsAffixLocked || gold < rerollFee}
         >

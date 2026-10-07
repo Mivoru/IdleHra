@@ -365,6 +365,10 @@ namespace FolkIdle.Server.Engine
                         CreatedAtEpoch = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                     };
                     db.MarketOrderRecords.Add(order);
+
+                    // Modul: the quest line's "list an item" step - see
+                    // MarketEscrowEngine for why it is written at the act.
+                    await Domain.Progression.QuestLineEngine.NoteFactAsync(db, playerId, Domain.Progression.QuestLineRegistry.Market);
                 }
 
                 await db.SaveChangesAsync();

@@ -327,7 +327,7 @@
           <h2>The gate</h2>
           <span class="gate-cost">A run costs <strong><Money amount={view.EntryFeeForNextRun} /></strong></span>
         </div>
-        <button class="primary" disabled={busy || !canAfford} onclick={() => act(startDelve)}>
+        <button class="primary" data-guide="delve-start" disabled={busy || !canAfford} onclick={() => act(startDelve)}>
           {canAfford ? 'Pay and descend' : 'Not enough gold'}
         </button>
         <p class="muted small">

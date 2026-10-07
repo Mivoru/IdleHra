@@ -11,6 +11,7 @@
   import { backgroundUrl } from '../lib/ui/sprites';
   import type { ScreenKey } from '../lib/ui/screens';
   import HomeCards from '../lib/ui/HomeCards.svelte';
+  import QuestPanel from '../lib/ui/QuestPanel.svelte';
   import MonumentGlyph from '../lib/ui/MonumentGlyph.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import { fetchGreatWorks, greatWorksKeys } from '../lib/net/greatWorks';
@@ -68,6 +69,10 @@
 <div class="hub">
   <!-- Modul: TASK 73 - THE ANSWER COMES BEFORE THE PAINTING. -->
   <HomeCards />
+
+  <!-- Modul: THE QUEST LINE (owner, 2026-10-07) sits between the answers and
+       the map: it is the one list that makes a player TRY the features. -->
+  <QuestPanel />
 
   <div class="scene" style="background-image: url('{scene}')">
     {#each built as work (work.Region)}

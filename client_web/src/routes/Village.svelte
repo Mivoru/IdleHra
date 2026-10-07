@@ -264,6 +264,7 @@
                 <button
                   type="button"
                   class="upgrade"
+                  data-guide={row.state === 'ready' && pendingId === 0 ? 'village-upgrade' : undefined}
                   class:primary={row.state === 'ready' && pendingId === 0}
                   disabled={pendingId !== 0 || row.state !== 'ready'}
                   title={pendingId !== 0

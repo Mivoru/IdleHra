@@ -252,6 +252,11 @@
         {#if cue.kind !== 'step'}
           <button onclick={acknowledgeCue}>Got it</button>
         {/if}
+        {#if cue.kind !== 'step' && $currentScreen !== 'hub'}
+          <!-- Modul: the quest line lives on Home; the coach is what shows on
+               every other screen, so it carries the way back. -->
+          <button data-testid="coach-quests" onclick={() => requestScreen('hub')}>Quest line</button>
+        {/if}
         <button class="quiet" onclick={skipTutorial}>Skip onboarding</button>
       </div>
     {/if}

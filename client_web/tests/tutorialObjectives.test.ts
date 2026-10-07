@@ -87,29 +87,9 @@ describe('the objective track', () => {
     expect(idsDueOn({ CurrentLevel: 3 })).not.toContain('first_region_boss');
   });
 
-  it('offers the Delve only once there is real gold to burn', () => {
-    // Modul: THE DELVE HAD NOTHING TEACHING IT. It shipped as task 11 with no
-    // tier-two moment, because tier two fires on reaching a system and there is
-    // no way to "reach" a screen nobody has told you about. This is the entry
-    // that closes that, and it is the clearest example of what tier three is
-    // for.
-    expect(idsDueOn({ Gold: 1000 })).not.toContain('try_the_delve');
-    expect(idsDueOn({ Gold: 25_000 })).toContain('try_the_delve');
-  });
-
   it('mentions the guild only to someone who is not in one', () => {
     expect(idsDueOn({ CurrentLevel: 10 }, { hasGuild: false })).toContain('join_a_guild');
     expect(idsDueOn({ CurrentLevel: 10 }, { hasGuild: true })).not.toContain('join_a_guild');
-  });
-
-  it('raises the market when the bags are nearly full, not when they are empty', () => {
-    expect(idsDueOn({ CurrentLevel: 10, InventorySpaceRemaining: 100 })).not.toContain('sell_on_the_market');
-    expect(idsDueOn({ CurrentLevel: 10, InventorySpaceRemaining: 4 })).toContain('sell_on_the_market');
-  });
-
-  // Task 60: an objective never points at a greyed menu button.
-  it('does not send a player to the Market before it opens at level 10', () => {
-    expect(idsDueOn({ CurrentLevel: 3, InventorySpaceRemaining: 4 })).not.toContain('sell_on_the_market');
   });
 
   it('names the Town Hall only when it is the thing in the way', () => {
@@ -119,11 +99,6 @@ describe('the objective track', () => {
     expect(idsDueOn({ TownHallLevel: 2, LumberjackLevel: 2 })).toContain('raise_the_town_hall');
     // Room left below the ceiling.
     expect(idsDueOn({ TownHallLevel: 5, LumberjackLevel: 2 })).not.toContain('raise_the_town_hall');
-  });
-
-  it('mentions the Forge only once one exists and there is something to reroll', () => {
-    expect(idsDueOn({ ForgeLevel: 1 })).not.toContain('reroll_an_affix');
-    expect(idsDueOn({ ForgeLevel: 1, EquippedWeaponId: 12 })).toContain('reroll_an_affix');
   });
 
   it('hands over the next objective once one is dismissed', () => {
@@ -143,6 +118,20 @@ describe('the objective track', () => {
 });
 
 describe('the objective table itself', () => {
+  it('no longer carries the three objectives the quest line replaced', () => {
+    // Modul: the quest line (server QuestLineRegistry, QuestPanel.svelte) owns
+    // the Delve, the Forge reroll and the market, and ticks only when the act
+    // HAPPENED. An objective for the same act, cleared by being read, would be
+    // a second opinion about one truth.
+    const ids = ALL_OBJECTIVES.map((o) => o.id as string);
+    for (const gone of ['try_the_delve', 'reroll_an_affix', 'sell_on_the_market']) {
+      expect(ids).not.toContain(gone);
+    }
+    expect(idsDueOn({ CurrentLevel: 10, Gold: 500_000, InventorySpaceRemaining: 2, ForgeLevel: 1, EquippedWeaponId: 12 }))
+      .not.toEqual(expect.arrayContaining(['try_the_delve']));
+  });
+
+
   it('points every objective at a screen that exists', () => {
     // Modul: a nav key that does not exist sends the player nowhere and
     // announces nothing - the same class as the screen list that went stale in

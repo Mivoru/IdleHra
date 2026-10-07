@@ -3271,6 +3271,102 @@ await go('The Delve');
   }
 }
 
+// --- the quest line (owner, 2026-10-07) --------------------------------------
+// A friend played for weeks without learning fusion or affix reroll existed, so
+// ten acts are listed on Home, ticked only when the act HAPPENED, and paid once
+// each by a server-checked claim. The fixture has done many of them, which is
+// what makes the claim checkable here - and the claim is ROUND-TRIPPED: the dev
+// route takes back exactly what was paid, so a re-run starts where this one did
+// (a check that spends fixture state passes once and fails forever). If a step
+// is ALREADY claimed (an interrupted earlier run), the pay check is skipped and
+// the refusal checks still run.
+{
+  const view = await apiGet('/api/v1/quests');
+  const steps = view?.Steps ?? [];
+  record(
+    "the server lists the quest line: ten steps, in the owner's order, each with a screen and a target",
+    steps.length === 10
+      && steps.every((st, i) => st.Order === i + 1 && st.Screen && st.GuideTargets.length > 0 && st.Title)
+      && steps.map((st) => st.Id).join(',') === 'fuse,reroll,village,market,breed,inheritance,delve,world_boss,ascension,rebirth',
+    steps.map((st) => `${st.Id}:${st.State}`).join(' '),
+  );
+  record(
+    'a locked quest step says what unlocks it, and an open one does not',
+    steps.every((st) => (st.State === 'locked') === (st.UnlockHint !== '')),
+    steps.filter((st) => st.State === 'locked').map((st) => `${st.Id} (${st.UnlockHint})`).join('; ') || 'nothing locked on this fixture',
+  );
+
+  // A step this account has not unlocked cannot be claimed, and pays nothing.
+  const locked = steps.find((st) => st.State === 'locked');
+  if (locked) {
+    const refused = await apiPost(`/api/v1/quests/${locked.Id}/claim`, {});
+    record('a locked quest step cannot be claimed', refused?.Result === 'Locked', `${locked.Id} -> ${refused?.Result}`);
+  } else {
+    record('a locked quest step cannot be claimed (nothing locked on this fixture)', true);
+  }
+
+  const waiting = steps.find((st) => st.State === 'done');
+  const alreadyClaimed = steps.find((st) => st.State === 'claimed');
+  if (waiting) {
+    const goldBefore = (await apiGet('/api/v1/delve'))?.CurrentGold ?? 0;
+    const paid = await apiPost(`/api/v1/quests/${waiting.Id}/claim`, {});
+    await page.waitForTimeout(1500);
+    const goldAfter = (await apiGet('/api/v1/delve'))?.CurrentGold ?? 0;
+    const rewardGold = view.Reward.Gold;
+    record(
+      'claiming a finished quest step pays the region reward once',
+      paid?.Result === 'Ok' && paid.Steps.find((st) => st.Id === waiting.Id)?.State === 'claimed' && goldAfter - goldBefore >= rewardGold,
+      `${waiting.Id}: ${paid?.Result}, gold ${goldBefore.toLocaleString()} -> ${goldAfter.toLocaleString()} (reward ${rewardGold.toLocaleString()})`,
+    );
+    const again = await apiPost(`/api/v1/quests/${waiting.Id}/claim`, {});
+    record('claiming the same step again pays nothing', again?.Result === 'AlreadyClaimed' && again.Claimed === paid?.Claimed, `${again?.Result}, claimed ${again?.Claimed}`);
+
+    // Put everything back: the reward taken back, the step claimable again.
+    const undone = await apiPost('/api/v1/dev/quests/unclaim', { StepId: waiting.Id });
+    const restored = await apiGet('/api/v1/quests');
+    record(
+      'the quest claim round-trips: the fixture is back where it started',
+      undone?.Unclaimed === true && restored?.Steps.find((st) => st.Id === waiting.Id)?.State === 'done',
+      `${waiting.Id} -> ${restored?.Steps.find((st) => st.Id === waiting.Id)?.State}`,
+    );
+  } else {
+    record(
+      `the quest claim pays once (skipped: ${alreadyClaimed ? alreadyClaimed.Id + ' is already claimed on this fixture' : 'no finished step on this fixture'})`,
+      true,
+    );
+  }
+
+  // The panel itself, on Home. The fixture has finished the first minute, so it
+  // shows the list rather than "opens after the first steps".
+  await go('Home');
+  const panel = page.getByTestId('quest-panel');
+  await panel.waitFor({ timeout: 8000 }).catch(() => {});
+  record('Home shows the quest line', (await panel.count()) > 0, (await panel.count()) > 0 ? ((await panel.innerText()).split('\n')[0] ?? '') : 'no panel');
+  if ((await panel.count()) > 0) {
+    const fold = page.getByTestId('quest-fold');
+    if ((await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
+    const toggle = page.getByTestId('quest-all-toggle');
+    if ((await toggle.count()) > 0) await toggle.click();
+    const rows = await page.locator('[data-testid^="quest-step-"]').count();
+    record('the quest panel lists every step, skipped ones included', rows === 10, `${rows} rows`);
+
+    // "Show me" goes to the screen and lights the control - when a step is open.
+    const open = steps.find((st) => st.State === 'available');
+    const show = open ? page.getByTestId(`quest-show-${open.Id}`) : null;
+    if (open && show && (await show.count()) > 0) {
+      await show.click();
+      const spot = page.getByTestId('quest-spotlight');
+      await spot.waitFor({ timeout: 6000 }).catch(() => {});
+      record('"Show me" takes the player to the step and explains it', (await spot.count()) > 0, `${open.Id} -> ${open.Screen}`);
+      const got = spot.getByRole('button', { name: 'Got it' });
+      if ((await got.count()) > 0) await got.click();
+      await go('Home');
+    } else {
+      record('"Show me" (skipped: no open quest step on this fixture)', true);
+    }
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character
@@ -5052,6 +5148,42 @@ await go('Ancestors');
       first !== null && first.kind === 'step',
       first ? `${first.id} - ${first.text.slice(0, 60)}` : 'no coach panel rendered',
     );
+    // 1b. THE QUEST LINE is on Home from the first minute. Nothing is open to a
+    //     level-1 account, so it must say when it opens rather than offer a
+    //     step, and the server must refuse to pay a locked one.
+    {
+      // A DOM click only if Home is not already showing: the guided first
+      // minute covers the page with a layer a pointer click cannot get through.
+      if ((await fresh.getByTestId('quest-panel').count()) === 0) {
+        await fresh.evaluate(() => document.querySelector('header [data-nav="hub"]')?.click());
+      }
+      const panel = fresh.getByTestId('quest-panel');
+      await panel.waitFor({ timeout: 8000 }).catch(() => {});
+      // Expanded, whatever a previous fold left behind in this browser.
+      const fold = fresh.getByTestId('quest-fold');
+      if ((await fold.count()) > 0 && (await fold.getAttribute('aria-expanded')) !== 'true') await fold.click();
+      const text = (await panel.count()) > 0 ? ((await panel.innerText()).replace(/\s+/g, ' ').trim()) : '';
+      record(
+        'a new account sees the quest line on Home, waiting behind the first steps',
+        /Quest line/.test(text) && /0 of 10 done/.test(text) && (await fresh.getByTestId('quest-waiting').count()) > 0,
+        text.slice(0, 90) || 'no quest panel',
+      );
+      const token = await fresh.evaluate(() => sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token'));
+      const call = async (path, method = 'GET') => {
+        const res = await fetch(`${API_BASE}${path}`, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: method === 'POST' ? '{}' : undefined });
+        return res.ok ? res.json() : null;
+      };
+      const list = await call('/api/v1/quests');
+      const refused = await call('/api/v1/quests/fuse/claim', 'POST');
+      const afterRefusal = await call('/api/v1/quests');
+      record(
+        'a new account has every quest step locked and cannot claim any',
+        Boolean(list) && list.Steps.every((st) => st.State === 'locked')
+          && refused?.Result === 'Locked' && afterRefusal?.Claimed === 0,
+        list ? list.Steps.map((st) => st.State[0]).join('') : 'no list',
+      );
+    }
+
     // Modul: THE LARDER, and this is a regression test for a closed entrance.
     //
     // The first step used to be "press Fight on Field Mouse", which a new

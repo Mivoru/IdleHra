@@ -48,6 +48,7 @@
     Delve: 'Delve consolation',
     Starter: 'Starting gold',
     Other: 'Delayed grants',
+    QuestLine: 'Quest rewards',
   };
 
   type Window = 'Last7Days' | 'Last30Days' | 'SinceRecorded';

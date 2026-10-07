@@ -114,6 +114,9 @@ namespace FolkIdle.Server.Models
         public DbSet<BossAscensionProgress> BossAscensionProgress { get; set; }
         public DbSet<GreatWorkProgress> GreatWorkProgress { get; set; }
 
+        // The quest line: what a player has done and what they have claimed.
+        public DbSet<QuestLineClaim> QuestLineClaims { get; set; }
+
         // The new-player funnel (task 39): the first time each player reached
         // each step. See PlayerFunnelEvent and FunnelRecorder.
         public DbSet<PlayerFunnelEvent> PlayerFunnelEvents { get; set; }
@@ -308,6 +311,9 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<BossAscensionProgress>()
                 .HasKey(b => new { b.PlayerId, b.Region });
+
+            modelBuilder.Entity<QuestLineClaim>()
+                .HasKey(q => new { q.PlayerId, q.StepId });
 
             modelBuilder.Entity<GreatWorkProgress>()
                 .HasKey(g => new { g.PlayerId, g.Region });

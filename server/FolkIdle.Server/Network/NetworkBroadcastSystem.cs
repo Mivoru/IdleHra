@@ -2364,6 +2364,12 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // The quest line (owner, 2026-10-07) - see NetworkBroadcastSystem.QuestLine.cs.
+            if (await TryHandleQuestLineAsync(context, requestPath))
+            {
+                return;
+            }
+
             // Titles (task 37): REST, not the wire - no StateUpdatePacket field.
             if (requestPath == "/api/v1/player/titles" && context.Request.HttpMethod == "GET")
             {
@@ -12245,6 +12251,14 @@ namespace FolkIdle.Server.Network
                 if (requestPath == "/api/v1/dev/workshop/finish" && context.Request.HttpMethod == "POST")
                 {
                     await HandleDevWorkshopFinish(context, playerId);
+                    return;
+                }
+
+                // The quest line: take back a claim's reward so exercise.mjs
+                // can claim on the fixture and round-trip it.
+                if (requestPath == "/api/v1/dev/quests/unclaim" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevQuestUnclaim(context, playerId);
                     return;
                 }
 

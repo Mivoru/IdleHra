@@ -772,6 +772,11 @@ namespace FolkIdle.Server.Engine
 
                 attempt.AttemptCount++;
                 attempt.TotalInflictedDamage += appliedDamage;
+                // Modul: the quest line's "strike the world boss" step. The
+                // attempt rows are DELETED when the boss dies, so they cannot be
+                // the evidence; the act is latched here, in the strike's own
+                // transaction.
+                await QuestLineEngine.NoteFactAsync(db, playerId, QuestLineRegistry.WorldBoss);
 
                 byte updatedAttemptCount = (byte)attempt.AttemptCount;
 
@@ -994,6 +999,11 @@ namespace FolkIdle.Server.Engine
 
                 attempt.AttemptCount++;
                 attempt.TotalInflictedDamage += appliedDamage;
+                // Modul: the quest line's "strike the world boss" step. The
+                // attempt rows are DELETED when the boss dies, so they cannot be
+                // the evidence; the act is latched here, in the strike's own
+                // transaction.
+                await QuestLineEngine.NoteFactAsync(db, playerId, QuestLineRegistry.WorldBoss);
                 byte updatedAttemptCount = (byte)attempt.AttemptCount;
 
                 await db.SaveChangesAsync();

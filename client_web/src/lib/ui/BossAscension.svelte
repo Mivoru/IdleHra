@@ -53,7 +53,7 @@
   {#if !boss.BossDefeated}
     <p class="dim tiny">Beat this boss once, and its ladder opens.</p>
   {:else}
-    <div class="steps" role="group" aria-label="Ascension steps">
+    <div class="steps" role="group" aria-label="Ascension steps" data-guide="ascension">
       {#each boss.Steps as s (s.Step)}
         <button
           type="button"
@@ -91,6 +91,7 @@
         <button
           type="button"
           class="start"
+          data-guide="ascension-start"
           data-testid="ascension-start-{boss.Region}"
           disabled={!live || !step.Startable}
           onclick={start}

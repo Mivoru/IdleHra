@@ -20,6 +20,8 @@
     /** The compact size the row buttons around it use (still 44px on a phone). */
     small?: boolean;
     title?: string;
+    /** A `data-guide` value, so the quest line can light this button. */
+    guide?: string;
     timeoutMs?: number;
     class?: string;
   }
@@ -32,6 +34,7 @@
     danger = true,
     small = false,
     title,
+    guide,
     timeoutMs = 4000,
     class: extraClass = '',
   }: Props = $props();
@@ -67,6 +70,7 @@
   class:small
   {disabled}
   {title}
+  data-guide={guide}
   onclick={(event) => {
     event.stopPropagation();
     arm.press();
