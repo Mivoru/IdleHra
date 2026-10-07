@@ -104,6 +104,17 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void TheGapBetweenMonsters_NeitherCountsNorForgivesHunger()
+        {
+            var payload = Fighting(97, 0, 0);
+            payload.Hungry = true;
+            payload.CurrentMonsterId = 0;
+            SimulationEngine.TickRation(ref payload);
+            Assert.True(payload.Hungry);
+            Assert.Equal(0, payload.RationTicksSinceMeal);
+        }
+
+        [Fact]
         public void TickRation_InRegionOne_EatsNothing()
         {
             var payload = Fighting(91, Fish(1), 10);

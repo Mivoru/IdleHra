@@ -4104,8 +4104,12 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         internal static void TickRation(ref TickStatePayload payload)
         {
+            // No monster standing (between spawns): nothing to count, and
+            // nothing to forgive either - hunger is the larder's, not the gap's.
+            if (payload.CurrentMonsterId <= 0) return;
+
             int region = ContentRegistry.GetMonsterRegionTier(payload.CurrentMonsterId);
-            int interval = payload.CurrentMonsterId > 0 ? FoodRegistry.RationIntervalTicks(region) : 0;
+            int interval = FoodRegistry.RationIntervalTicks(region);
             if (interval <= 0)
             {
                 // Region 1 eats no rations, so nobody starves there.
