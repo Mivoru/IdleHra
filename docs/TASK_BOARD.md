@@ -3154,6 +3154,8 @@ the wire.
 
 ## 21. `SimulationEngine.cs` is a single 6,650-line file spanning every subsystem (architecture, was P1)
 
+**DONE - Phases 1, 2 and 3 merged in PR #16 (11e89e50, 2026-09-23); confirmed against the code 2026-10-07.** The "not started" note below predates that merge. Command dispatch is the `BuildCommandHandlers()` table plus `CommandGate.cs` and the per-domain `*TickCoordinator.cs` files; only the seven commands the plan keeps on purpose still branch in `EngineLoop`. The file has grown back from 5,020 to 5,655 lines as features landed - new commands go in the table, not the loop.
+
 **ALL THREE PHASES DONE, 2026-09-23.** Phase 2 (command dispatch: the
 anti-cheat/epoch gate is `Domain/Shared/CommandGate.cs`, pinned by the new
 `CommandGateOrderingTests`; 61 commands go through a dispatch table in
