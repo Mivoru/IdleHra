@@ -1463,7 +1463,7 @@
             nothing out.
           </p>
           <ul class="styled-list">
-            <li><strong>The fee follows the region you have reached</strong> — about forty minutes of that region's own income, from 7,000 gold at the start to 250,000 at the top. It is the same weight whenever you play it.</li>
+            <li><strong>The fee follows the region you have reached</strong> — about forty minutes of that region's own income, from 7,000 gold at the start to 500,000 at the top. It is the same weight whenever you play it.</li>
             <li><strong>The reward follows your sheet, not your region.</strong> Each floor asks for a fixed attribute value — 20 on the first, 270 on the eighth — so how deep you get is decided by the attributes you placed.</li>
             <li><strong>Every door wants one attribute</strong>, and each floor offers three. A door that shows what it wants also shows your odds; a door that does not is the gamble.</li>
             <li><strong>Fortune decides how often a door tells you.</strong> 55% with none, 77% at 100, and it never reaches certainty. This is the one place Fortune does something you can watch happen.</li>
