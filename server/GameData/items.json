@@ -952,46 +952,6 @@
     "BaseId": "spectral_lanternfish"
   },
   {
-    "Id": 372,
-    "RegionTier": 1,
-    "BaseValueGold": 20,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "roasted_perch_food_consumable"
-  },
-  {
-    "Id": 373,
-    "RegionTier": 1,
-    "BaseValueGold": 35,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "viper_stew_food_consumable"
-  },
-  {
-    "Id": 374,
-    "RegionTier": 2,
-    "BaseValueGold": 140,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "bear_stew_food_consumable"
-  },
-  {
-    "Id": 375,
-    "RegionTier": 4,
-    "BaseValueGold": 2200,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "yeti_platter_food_consumable"
-  },
-  {
-    "Id": 379,
-    "RegionTier": 5,
-    "BaseValueGold": 25000,
-    "FlatAttackPower": 0,
-    "FlatDefenseRating": 0,
-    "BaseId": "death_ward_elixir_defensive_potion_consumable"
-  },
-  {
     "Id": 380,
     "RegionTier": 1,
     "BaseValueGold": 50,

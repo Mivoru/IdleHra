@@ -232,9 +232,19 @@ async function intrude(insets, tolerance, { bottomMode }) {
         // panel's edge, measured separately above - not by where the row
         // happened to be when the window stopped scrolling.
         const ownScroller = scrollerOf(el);
-        const bottomCounts = pinned || (bottomMode === 'end' && (ownScroller === null || scrolls(el)));
+        const bottomCounts =
+          (pinned && ownScroller === null) || (bottomMode === 'end' && (ownScroller === null || scrolls(el)));
 
-        if (bottomCounts && i.bottom > 0 && r.bottom > vh - i.bottom + tol && r.top < vh) {
+        // Modul: A SCROLLER'S EDGE IS ITS CONTENT BOX. A bottom sheet docks to
+        // the screen edge on purpose and keeps the gesture bar's inset as its
+        // own padding-bottom, so the last row scrolls to clear the bar. Its
+        // border box ends under the bar; judging that edge flagged every sheet.
+        // Rows inside a pinned scroller are the same case (markPinned tags
+        // them, but they are reached by scrolling the sheet), so only the
+        // content edge counts.
+        const edge = scrolls(el) ? r.bottom - (parseFloat(getComputedStyle(el).paddingBottom) || 0) : r.bottom;
+
+        if (bottomCounts && i.bottom > 0 && edge > vh - i.bottom + tol && r.top < vh) {
           hits.push({
             band: 'bottom',
             label: pinned ? `${label} (pinned)` : label,

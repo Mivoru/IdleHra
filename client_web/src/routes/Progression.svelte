@@ -19,6 +19,7 @@
     fetchRecords,
   } from '../lib/net/rest';
   import Bar from '../lib/ui/Bar.svelte';
+  import Tabs from '../lib/ui/Tabs.svelte';
   import CollectionLog from '../lib/ui/CollectionLog.svelte';
   import PlayerInsights from '../lib/ui/PlayerInsights.svelte';
   import Money from '../lib/ui/Money.svelte';
@@ -79,12 +80,8 @@
   }
 </script>
 
-<div class="progress-tabs" role="tablist" aria-label="Progress">
-  {#each TABS as t (t.key)}
-    <button role="tab" class:active={tab === t.key} aria-selected={tab === t.key} data-progress-tab={t.key} onclick={() => (tab = t.key)}>
-      {t.label}
-    </button>
-  {/each}
+<div class="progress-tabs">
+  <Tabs tabs={TABS.map((t) => ({ value: t.key, label: t.label }))} bind:value={tab} label="Progress" dataAttr="data-progress-tab" />
 </div>
 
 <div class="grid">
@@ -249,40 +246,27 @@
 
 <style>
   /* Task 109: ONE ROW THAT SCROLLS, not a row that wraps - at 390px "Daily &
-     races" fell onto a line of its own and the tabs read as two groups. A
-     stopgap until task 106's shared Tabs replaces this block. */
+     races" fell onto a line of its own and the tabs read as two groups. The row
+     itself is the shared Tabs (task 106); only its overflow is set here. */
   .progress-tabs {
-    display: flex;
-    gap: 0.5rem;
     padding: 1rem 1rem 0;
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
     max-width: 72rem;
     margin-inline: auto;
   }
 
-  .progress-tabs::-webkit-scrollbar {
+  .progress-tabs :global(.tabs) {
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .progress-tabs :global(.tabs::-webkit-scrollbar) {
     display: none;
   }
 
-  .progress-tabs button {
-    min-height: 44px;
-    flex-shrink: 0;
+  .progress-tabs :global(.tabs button) {
     white-space: nowrap;
-    padding: 0.4rem 0.9rem;
-    border-radius: var(--radius);
-    border: 1px solid var(--border);
-    background: var(--bg-panel);
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-  }
-
-  .progress-tabs button.active {
-    border-color: var(--accent);
-    color: var(--accent);
-    font-weight: 700;
   }
 
 

@@ -213,8 +213,9 @@ export interface MaterialsSnapshot {
  * Modul: THE LARDER WAS DOWNLOADING MEGABYTES TO COUNT FISH.
  *
  * `fetchInventory` answers three questions in one blob - equipment, stacks and
- * per-character combat ratings - and three screens (Larder, Boosts, the guild
- * deposit) read only `Stacks`, which is 63 rows on the live database. They were
+ * per-character combat ratings - and the screens that count stock (the Larder,
+ * the guild deposit; Boosts too, until it was deleted) read only `Stacks`,
+ * which is 63 rows on the live database. They were
  * pulling the equipment list to get there, and on a long-played account that
  * list is 17,836 rows and 3.2 MB. Every command result invalidates the query,
  * so it was not once per visit either.

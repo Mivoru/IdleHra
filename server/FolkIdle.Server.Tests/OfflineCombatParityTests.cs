@@ -220,9 +220,13 @@ namespace FolkIdle.Server.Tests
             }
             else if (variant == 5)
             {
+                // Modul: content holds no Death Ward since 2026-10-07, so the
+                // ward points at a test id. The parity question - does the
+                // offline projection rescue the same blow the tick does - does
+                // not depend on where the ward came from.
+                ConsumableEngine.UseDeathWardItemIdForTests(999_001);
                 payload.ActiveFoodBuffId = 1;
                 payload.ActiveDefensivePotionId = ConsumableEngine.DeathWardItemId;
-                Assert.True(payload.ActiveDefensivePotionId > 0, "no Death Ward in the catalogue");
             }
             else if (variant == 6)
             {

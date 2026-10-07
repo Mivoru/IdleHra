@@ -9,7 +9,6 @@ export const SCREEN_KEYS = [
   'combat',
   'gathering',
   'worldboss',
-  'boosts',
   'delve',
   'character',
   'chest',

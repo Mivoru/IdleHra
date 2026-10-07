@@ -1376,24 +1376,33 @@ h3:not(.place):not([style*='background-image'])::before {
   overflow: hidden;
 }
 
+/* Modul: THE BAND MOVES BY BACKGROUND-POSITION, NOT BY TRANSLATING THE
+   PSEUDO-ELEMENT. A translated ::after sat 110% of the row beyond its edge, and
+   that counts toward the row's scrollWidth even inside overflow:hidden - the
+   Chest's rare rows reported 950px of "overflow" (box 1002px) and
+   check:clipping could not tell it from content cut off. The box stays at
+   inset:0; a gradient three times as wide slides across it, and the visible
+   third holds the band only mid-run, so it still enters and leaves. */
 .folk-sweep::after {
   content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
     100deg,
-    transparent 20%,
-    rgba(255, 240, 200, 0.34) 48%,
-    transparent 74%
+    transparent 38%,
+    rgba(255, 240, 200, 0.34) 50%,
+    transparent 62%
   );
-  translate: -110% 0;
+  background-size: 300% 100%;
+  background-position: 0% 0;
+  background-repeat: no-repeat;
   animation: folk-sweep-across 900ms ease-out 140ms;
   pointer-events: none;
 }
 
 @keyframes folk-sweep-across {
   to {
-    translate: 110% 0;
+    background-position: 100% 0;
   }
 }
 

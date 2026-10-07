@@ -58,6 +58,39 @@ const findings = [];
 // same rules as every screen. It runs in the page, so it closes over nothing.
 const measureClipping = (tolerance) => {
   const out = [];
+
+  // Modul: HOW FAR PAST ITS BOX THE IN-FLOW CONTENT REACHES. scrollWidth also
+  // counts out-of-flow decoration - a ::after hit area (Hint's inset: -10px
+  // -6px), a notification dot hanging off an icon (right: -5px), a sweep
+  // overshooting its row - none of which is content that gets cut off. Those
+  // flagged "Diamond Star" and the tab bar's icon on every screen. Text and
+  // in-flow descendants are measured by their own rects instead; an absolutely
+  // positioned element is a box of its own and is visited as one by the loop.
+  const contentOver = (el) => {
+    const box = el.getBoundingClientRect();
+    const edge = box.left + el.clientLeft + el.clientWidth;
+    let right = -Infinity;
+    const walk = (node) => {
+      for (const n of node.childNodes) {
+        if (n.nodeType === Node.TEXT_NODE) {
+          if (!n.textContent.trim()) continue;
+          const range = document.createRange();
+          range.selectNodeContents(n);
+          for (const rc of range.getClientRects()) right = Math.max(right, rc.right);
+        } else if (n.nodeType === Node.ELEMENT_NODE) {
+          const cs = getComputedStyle(n);
+          if (cs.display === 'none' || cs.position === 'absolute' || cs.position === 'fixed') continue;
+          // A spinning icon's bounding box swings out past its layout box
+          // (the connection notice's 22px arc read as 5px of overflow); a
+          // transformed child is not measured by its drawn corners.
+          if (cs.transform !== 'none' || cs.rotate !== 'none' || cs.translate !== 'none' || cs.scale !== 'none') continue;
+          right = Math.max(right, n.getBoundingClientRect().right);
+        }
+      }
+    };
+    walk(el);
+    return right === -Infinity ? 0 : Math.round(right - edge);
+  };
   // Modul: A VIRTUALISED ROW TALLER THAN ITS SLOT LANDS ON ITS NEIGHBOUR,
   // and that was invisible to all five checkers.
   //
@@ -109,7 +142,13 @@ const measureClipping = (tolerance) => {
     // getBoundingClientRect is in VIEWPORT pixels for every element, SVG
     // included. So the viewport test below is valid where the box test is
     // not, and it is the one that catches this.
-    const isSvg = el.ownerSVGElement !== null || el.tagName.toLowerCase() === 'svg';
+    // Modul: `el.ownerSVGElement !== null` was true for EVERY HTML element -
+    // the property does not exist there, so it is undefined, not null - and
+    // every element took this branch and `continue`d. From 2026-09-11 until
+    // 2026-10-07 the box test below never ran on anything; the script only
+    // ever measured "is it past the edge of the viewport", which also flagged
+    // honest horizontal scrollers.
+    const isSvg = el instanceof SVGElement;
     if (isSvg) {
       const r = el.getBoundingClientRect();
       if (r.width >= 1 && r.height >= 1) {
@@ -132,6 +171,16 @@ const measureClipping = (tolerance) => {
 
     const style = getComputedStyle(el);
     if (style.display === 'none' || style.visibility === 'hidden') continue;
+
+    // Modul: VISUALLY HIDDEN IS NOT CLIPPED. .sr-only text lives in a 1px
+    // box on purpose (screen readers read it, eyes never see it), so its
+    // scrollWidth always exceeds its clientWidth. Exempt the class and the
+    // 1px / absolute / overflow-hidden pattern it is built from.
+    if (el.classList.contains('sr-only')) continue;
+    {
+      const hb = el.getBoundingClientRect();
+      if (style.position === 'absolute' && hb.width <= 1.5 && hb.height <= 1.5 && style.overflowX !== 'visible') continue;
+    }
 
     const overflowX = style.overflowX;
     // A box you can scroll is not a box that hides things.
@@ -228,7 +277,8 @@ const measureClipping = (tolerance) => {
       }
     }
 
-    const over = el.scrollWidth - el.clientWidth;
+    if (el.scrollWidth - el.clientWidth <= tolerance) continue;
+    const over = contentOver(el);
     if (over <= tolerance) continue;
     // clientWidth is 0 for inline elements; their overflow is their
     // parent's business and would be reported twice.
@@ -237,6 +287,7 @@ const measureClipping = (tolerance) => {
     // Report the innermost offender only: if a child is already clipped,
     // the parent is usually just carrying it.
     if ([...el.children].some((c) => c.scrollWidth - c.clientWidth > tolerance
+      && contentOver(c) > tolerance
       && c.clientWidth > 0
       && !['auto', 'scroll'].includes(getComputedStyle(c).overflowX))) continue;
 

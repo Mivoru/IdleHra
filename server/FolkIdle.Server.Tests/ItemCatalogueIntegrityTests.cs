@@ -194,7 +194,8 @@ namespace FolkIdle.Server.Tests
         // 194..203 and the three *_potion_consumable items 376-378. The owner
         // ruled they go. FoodRegistry, BossGearBenchmark and the dev fixture
         // now use each region's raw fish instead. What code still needs from
-        // content is below: a fish for every region tier, and the Death Ward.
+        // content is below: a fish for every region tier. (It also needed the
+        // Death Ward until that was retired on 2026-10-07.)
         [Fact]
         public void EveryItemTheCodeResolvesFromContentIsLive()
         {
@@ -206,13 +207,19 @@ namespace FolkIdle.Server.Tests
                     failures.Add($"no fishing node drops a tier-{tier} fish - the boss benchmark and the dev fixture's larder eat one");
             }
 
-            if (ConsumableEngine.DeathWardItemId <= 0)
-                failures.Add("the Death Ward Elixir no longer resolves from content");
-
             foreach (int id in new[] { 194, 195, 196, 197, 198, 199, 200, 201, 202, 203, 376, 377, 378 })
             {
                 if (ContentRegistry.ItemExists(id))
                     failures.Add($"id {id} was retired on 2026-09-25 and is an item again - the ledger forbids reuse");
+            }
+
+            // Modul: the last five consumables went on 2026-10-07 (owner:
+            // nothing produced them). The ledger already forbids reusing the
+            // ids; this names them so the reason sits beside the check.
+            foreach (int id in new[] { 372, 373, 374, 375, 379 })
+            {
+                if (ContentRegistry.ItemExists(id))
+                    failures.Add($"id {id} was retired on 2026-10-07 and is an item again - the ledger forbids reuse");
             }
 
             Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));

@@ -69,7 +69,7 @@ export const contentRegistry = {
 };
 
 // Modul: THE SAME REGISTRY, SHAPED LIKE A QUERY, for the screens that cannot
-// render without it (Auto-Eat, Boosts, the Market's order panel).
+// render without it (Auto-Eat, the Market's order panel).
 //
 // They used to wait on `!registry` after a `loadContent()` with no catch, so a
 // failed fetch left them on "Checking the chest..." for ever. QueryState and

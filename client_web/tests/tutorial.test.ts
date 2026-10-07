@@ -298,7 +298,7 @@ describe('the table itself', () => {
   // which is this repo's dominant defect class in miniature.
   it('points every moment at a real screen', () => {
     const screens = new Set([
-      'hub', 'combat', 'gathering', 'worldboss', 'boosts', 'delve', 'character', 'chest', 'larder',
+      'hub', 'combat', 'gathering', 'worldboss', 'delve', 'character', 'chest', 'larder',
       'crafting', 'forge', 'market', 'social', 'guildops', 'mailbox', 'leaderboards',
       'breeding', 'ancestors', 'inheritance', 'village', 'skills', 'progression', 'codex',
       'store', 'settings', 'wiki',

@@ -36,7 +36,21 @@ namespace FolkIdle.Server.Domain.Shared
         // (10Hz), i.e. 2 percent of max HP per second.
         public const int FoodRegenDivisor = 500;
 
+        // Modul: NO CONTENT FEEDS THIS ENGINE, 2026-10-07. The last five
+        // consumables (roasted_perch, viper_stew, bear_stew, yeti_platter
+        // and the Death Ward Elixir, ids 372-375 and 379) were deleted by
+        // owner decision: no recipe, drop, shop or reward ever produced one,
+        // and production held none. The Boosts tab went with them. The
+        // engine itself was kept on purpose - removing it reaches into the
+        // combat tick, the offline projection, the wire and PlayerRecords -
+        // so DeathWardItemId resolves to 0 and every path below is inert.
+        // A new consumable only needs an items.json entry with the BaseId
+        // marker; the tests arm the ward with UseDeathWardItemIdForTests.
         private static int _deathWardItemId = -1;
+
+        // Test-only: content holds no Death Ward, so tests point the ward at
+        // an id no item uses. Never called by the server.
+        internal static void UseDeathWardItemIdForTests(int itemId) => _deathWardItemId = itemId;
 
         // Resolved once (first access after ContentRegistry.Initialize),
         // then a plain int compare on every subsequent call - the lethal

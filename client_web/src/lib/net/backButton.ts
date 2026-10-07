@@ -62,11 +62,12 @@ export const LAYER_Z = {
   modal: 60,
   /**
    * Task 95: the phone's More sheet. Above the chat (it closes the chat when it
-   * opens, but a layer that paints on top has to be peeled first) and below
-   * the tab bar (50), which stays usable under it - tapping More again closes
-   * it.
+   * opens, but a layer that paints on top has to be peeled first) and ABOVE
+   * the tab bar (50): it is a Modal now (task 106), so the app root, tab bar
+   * included, is inert behind it and a bar painting over the scrim would be a
+   * row of buttons that do nothing. Below the cards at 60.
    */
-  nav: 45,
+  nav: 55,
   chatDock: 40,
 } as const;
 
@@ -81,7 +82,7 @@ export const LAYER_Z = {
  * layer is on top. The z-indexes it mirrors are LAYER_Z above: the exit
  * prompt (1100) over the death card, the victory card and the offline summary
  * (all 60 - a tie decided by DOM order, death last and therefore on top), over
- * the phone's More sheet (45), over the chat window (40).
+ * the phone's More sheet (55), over the chat window (40).
  *
  * Get this order wrong and back appears to skip a layer: it would close
  * something behind whatever is covering the screen, and the player would see

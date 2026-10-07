@@ -75,7 +75,7 @@ describe('what one back press means', () => {
     // exact "the output side was never wired" symptom this repo keeps
     // shipping. The order mirrors the z-indexes in the components: exit prompt
     // (1100) > death (60, last in the DOM) > victory (60) > offline summary
-    // (60, first of the three) > the More sheet (45) > chat window (40).
+    // (60, first of the three) > the More sheet (55) > chat window (40).
     const everything: BackPressState = {
       exitPromptOpen: true,
       deathCardOpen: true,

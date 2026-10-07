@@ -1289,11 +1289,24 @@
     gap: 0.1rem;
   }
 
+  /* Modul: THE LINE WRAPS. "first clear needs food (~59/h)" is a chip with
+     nowrap and flex: none, so beside a boss name on a 390px phone it ran 41px
+     past the card with nothing to show it. Wrapping drops the verdict to its
+     own line under the name; max-width keeps one chip inside the card even
+     when it is longer than the card is wide. */
   .line1 {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.35rem;
+    gap: 0.1rem 0.35rem;
     min-width: 0;
+  }
+
+  .line1 .chip {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    border-radius: 0.8rem;
   }
 
   .line2 {

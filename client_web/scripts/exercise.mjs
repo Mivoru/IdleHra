@@ -35,13 +35,12 @@ page.on('response', (r) => { if (r.status() === 404) missedUrls.push(r.url()); }
 // screens open on a query, and a cold server answers the first one slowly
 // enough that a fixed wait passes locally and fails on a fresh boot - which is
 // a flaky test pretending to be a bug report.
-// Task 59: these screens are tabs under one menu entry now - Auto-Eat holds
-// Auto-Eat and Boosts, Bloodline holds Breeding, Ancestors and Inheritance.
+// Task 59: these screens are tabs under one menu entry now - Bloodline holds
+// Breeding, Ancestors and Inheritance. (Auto-Eat held a Boosts tab until
+// 2026-10-07, when its five consumables were deleted.)
 // A step still names the screen it means; go() takes the menu entry and then
 // the tab, the way a player would.
 const SUB_TABS = {
-  'Auto-Eat': ['Auto-Eat', 'larder'],
-  Boosts: ['Auto-Eat', 'boosts'],
   Breeding: ['Bloodline', 'breeding'],
   Ancestors: ['Bloodline', 'ancestors'],
   Inheritance: ['Bloodline', 'inheritance'],
@@ -1035,7 +1034,7 @@ await page.waitForTimeout(600);
   await dismissToasts();
   await page.getByRole('button', { name: /Show chat/i }).first().click();
   await page.waitForTimeout(600);
-  await page.getByRole('button', { name: 'World', exact: true }).first().click().catch(() => {});
+  await page.getByRole('tab', { name: 'World', exact: true }).first().click().catch(() => {});
   await page.waitForTimeout(1500);
   const afterReload = await page.evaluate(() => document.body.innerText);
   const occurrences = afterReload.split(marker).length - 1;
@@ -1229,7 +1228,9 @@ await go('Auto-Eat');
   const tabs = await page.evaluate(() =>
     [...document.querySelectorAll('[data-subtab]')].map((b) => b.getAttribute('data-subtab')),
   );
-  record('Auto-Eat opens on its own tab with a Boosts tab beside it', tabs.join(',') === 'larder,boosts', tabs.join(','));
+  // Modul: Boosts was deleted 2026-10-07 (nothing produced its five
+  // consumables), so Auto-Eat is one screen. A tab row here is a leftover.
+  record('Auto-Eat is one screen with no Boosts tab left over', tabs.length === 0, tabs.join(',') || 'no tabs');
 }
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -1270,6 +1271,15 @@ await openCommissions();
     const leftover = await apiPost('/api/v1/workshop/collect', {});
     if (leftover?.Collected) await apiPost('/api/v1/chest/discard', { equipmentId: leftover.Collected.InstanceId });
     view = await apiGet('/api/v1/workshop');
+    // Modul: the panel already rendered the standing order before the API
+    // cleared it, so it kept showing "running" with no piece buttons and the
+    // step timed out - which stopped the whole script, not just this check.
+    // Reopen it so it reads the empty Workshop.
+    await page.reload({ waitUntil: 'networkidle' });
+    await page.waitForTimeout(1200);
+    await dismissOfflineSummary(3000);
+    await go('Crafting');
+    await openCommissions();
   }
 
   // Region 1, always: it is open to every account, and its Common floor costs
@@ -1777,7 +1787,7 @@ await go('Guild');
 await page.getByRole('button', { name: /Show chat/i }).first().click();
 await page.waitForTimeout(600);
 {
-  await page.getByRole('button', { name: 'World', exact: true }).first().click().catch(() => {});
+  await page.getByRole('tab', { name: 'World', exact: true }).first().click().catch(() => {});
   const box = page.getByPlaceholder(/Say something|Message your guild/).first();
   await box.fill(`profile-probe-${Date.now()}`);
   await box.press('Enter');
@@ -1814,9 +1824,17 @@ await page.getByRole('button', { name: /Show chat/i }).first().click();
 await page.waitForTimeout(600);
 {
   const stamp = `e2e-${Date.now()}`;
-  const whisperTab = page.getByRole('button', { name: 'Whispers', exact: true });
-  const hasWhispers = (await whisperTab.count()) > 0;
-  record('chat offers a whispers channel', hasWhispers);
+  // Modul: the channels are role="tab" since task 95 (a332e1fe), and the tab's
+  // name grows an unread count, so match the prefix. Querying 'button' found
+  // nothing and failed this check on a working chat.
+  const whisperTab = page.getByRole('tab', { name: /^Whispers/ });
+  // Wait rather than count at once: the chat window opens a beat after the
+  // click, and an instant count() read a working chat as having no tab.
+  const hasWhispers = await whisperTab.first().waitFor({ timeout: 5000 }).then(() => true).catch(() => false);
+  const chatState = hasWhispers
+    ? ''
+    : `chat buttons: ${(await page.locator('button[aria-label*="chat" i]').evaluateAll((bs) => bs.map((b) => b.getAttribute('aria-label') + (b.closest('[inert]') ? ' (inert)' : '')))).join(' / ')}; tabs: ${(await page.getByRole('tab').allInnerTexts()).join(',')}; modals: ${await page.locator('.modal, [role="dialog"]').count()}`;
+  record('chat offers a whispers channel', hasWhispers, chatState);
 
   if (hasWhispers) {
     // Modul: the recipient must exist on ANY database, not only the owner's
@@ -1881,7 +1899,7 @@ await page.waitForTimeout(600);
       await dismissToasts();
       await page.getByRole('button', { name: /Show chat/i }).first().click();
       await page.waitForTimeout(600);
-      await page.getByRole('button', { name: 'Whispers', exact: true }).first().click();
+      await page.getByRole('tab', { name: /^Whispers/ }).first().click();
       await page.waitForTimeout(1200);
 
       const listed = page.locator('.thread', { hasText: whisperName }).first();
@@ -5147,6 +5165,13 @@ await go('Ancestors');
       // learns its mode from a REST call after it renders, so wait for it:
       // counting too early picked button.attack, which under the wheel opens
       // a real run whose overlay then covered everything below.
+      // Task 105 folded the auto-strike into a "Quick strike" disclosure, so
+      // open it first - the fixture's step above already does. Without this
+      // the wait timed out, button.attack opened a real wheel run, and its
+      // overlay stopped the rest of the script.
+      const quickToggle = fresh.locator('[data-testid="quick-strike-toggle"]');
+      await quickToggle.waitFor({ timeout: 5000 }).catch(() => {});
+      if ((await quickToggle.getAttribute('aria-expanded').catch(() => null)) === 'false') await quickToggle.click();
       await fresh.waitForSelector('[data-testid="auto-strike"]', { timeout: 5000 }).catch(() => {});
       const strike = (await fresh.locator('button.auto').count()) > 0 ? fresh.locator('button.auto').first() : fresh.locator('button.attack').first();
       const grey = await strike.isDisabled().catch(() => true);
@@ -5253,10 +5278,17 @@ await go('Ancestors');
       await (await navButton(fresh, 'Auto-Eat')).click();
       await fresh.waitForTimeout(1500);
 
-      const foodSelect = fresh.locator('select').first();
-      // No select at all is the empty state - the guided step loaded every
-      // starter fish, so only a catch can bring it back.
-      const caught = (await foodSelect.count()) > 0 ? await foodSelect.evaluate((s) => [...s.options].length - 1) : 0;
+      // Task 109 replaced the food <select> with "+ Add food", which opens a
+      // row of the chest's foods under the slot; this still read the select,
+      // found none and called a working catch "0 fish". A disabled "+ Add
+      // food" is the empty state - the guided step loaded every starter fish,
+      // so only a catch can enable it again.
+      const addFood = fresh.locator('button.add-food:not([disabled])').first();
+      let caught = 0;
+      if ((await addFood.count()) > 0) {
+        await addFood.click();
+        caught = await fresh.locator('li.picker button.pick').count();
+      }
       record('fishing puts food in the village chest', caught > 0, `${caught} kind(s) of fish offered`);
 
     }

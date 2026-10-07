@@ -25,10 +25,12 @@
     /** The accessible name of the row. */
     label: string;
     variant?: 'pill' | 'underline';
+    /** A data-* attribute name to set to each tab's value, for scripts that select tabs by key (data-progress-tab). */
+    dataAttr?: string;
     onchange?: (value: T) => void;
   }
 
-  let { tabs, value = $bindable(), label, variant = 'pill', onchange }: Props = $props();
+  let { tabs, value = $bindable(), label, variant = 'pill', dataAttr, onchange }: Props = $props();
 
   let root = $state<HTMLElement | null>(null);
 
@@ -61,6 +63,7 @@
       aria-selected={tab.value === value}
       tabindex={tab.value === value ? 0 : -1}
       data-testid={tab.testid}
+      {...dataAttr ? { [dataAttr]: tab.value } : {}}
       onclick={() => choose(tab.value)}
     >
       {tab.label}

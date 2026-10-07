@@ -39,7 +39,7 @@ describe('screens unlock as they become useful', () => {
   });
 
   it('never greys the screens a new player needs', () => {
-    for (const screen of ['hub', 'combat', 'character', 'larder', 'boosts', 'chest', 'village', 'settings', 'wiki']) {
+    for (const screen of ['hub', 'combat', 'character', 'larder', 'chest', 'village', 'settings', 'wiki']) {
       expect(lockedRequirement(screen, snapshot(), NO_GUILD, NONE), screen).toBeNull();
     }
   });
