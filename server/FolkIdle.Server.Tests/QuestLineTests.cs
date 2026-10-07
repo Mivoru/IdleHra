@@ -23,16 +23,17 @@ namespace FolkIdle.Server.Tests
         public QuestLineRulesTests(ITestOutputHelper o) => _o = o;
 
         [Fact]
-        public void TheStepsAreTheOwnersTenInTheOwnersOrder()
+        public void TheStepsAreTheOwnersTwelveInTheOwnersOrder()
         {
             var ids = QuestLineRegistry.Steps.OrderBy(s => s.Order).Select(s => s.Id).ToArray();
             Assert.Equal(new[]
             {
+                QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell,
                 QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Market,
                 QuestLineRegistry.Breed, QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
                 QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Rebirth,
             }, ids);
-            Assert.Equal(Enumerable.Range(1, 10), QuestLineRegistry.Steps.Select(s => s.Order).OrderBy(o => o));
+            Assert.Equal(Enumerable.Range(1, 12), QuestLineRegistry.Steps.Select(s => s.Order).OrderBy(o => o));
             Assert.Equal(ids.Length, ids.Distinct().Count());
             // The StepId column is varchar(32).
             Assert.All(ids, id => Assert.InRange(id.Length, 1, 32));
@@ -246,13 +247,13 @@ namespace FolkIdle.Server.Tests
         private static string StateOf(QuestLineView view, string step) => view.Steps.Single(s => s.Id == step).State;
 
         [Fact]
-        public async Task TheViewListsTenStepsInOrderWithTheirState()
+        public async Task TheViewListsTwelveStepsInOrderWithTheirState()
         {
             long id = await CreatePlayerAsync(level: 1);
             var view = await ViewAsync(id);
 
-            Assert.Equal(10, view.Total);
-            Assert.Equal(Enumerable.Range(1, 10), view.Steps.Select(s => s.Order));
+            Assert.Equal(12, view.Total);
+            Assert.Equal(Enumerable.Range(1, 12), view.Steps.Select(s => s.Order));
             Assert.All(view.Steps, s => Assert.Equal("locked", s.State));
             Assert.All(view.Steps, s => Assert.False(string.IsNullOrEmpty(s.UnlockHint)));
             Assert.All(view.Steps, s => Assert.False(s.Claimable));
@@ -269,6 +270,7 @@ namespace FolkIdle.Server.Tests
                 p.DelveDeepestFloor = 2;
                 p.RebirthCount = 1;
                 p.PremiumDiamonds = 100;
+                p.AutoSalvageBelowTier = 3;
             });
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
@@ -279,11 +281,14 @@ namespace FolkIdle.Server.Tests
                 db.PlayerWorldBossAttempts.Add(new PlayerWorldBossAttempt { PlayerId = id, BossInstanceId = 987654, AttemptCount = 1, TotalInflictedDamage = 10 });
                 await db.SaveChangesAsync();
                 await GoldLedger.RecordSpendAsync(db, id, GoldSpendCategory.Breeding, 500);
+                await GoldLedger.RecordIncomeAsync(db, id, GoldIncomeSource.ChestSale, 120);
+                await db.SaveChangesAsync();
             }
 
             var view = await ViewAsync(id);
             foreach (var step in new[]
             {
+                QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell,
                 QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Market,
                 QuestLineRegistry.Breed, QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
                 QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Rebirth,
@@ -291,7 +296,7 @@ namespace FolkIdle.Server.Tests
             {
                 Assert.Equal("done", StateOf(view, step));
             }
-            Assert.Equal(10, view.Done);
+            Assert.Equal(12, view.Done);
             Assert.All(view.Steps, s => Assert.True(s.Claimable));
         }
 

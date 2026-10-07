@@ -5165,7 +5165,7 @@ await go('Ancestors');
       const text = (await panel.count()) > 0 ? ((await panel.innerText()).replace(/\s+/g, ' ').trim()) : '';
       record(
         'a new account sees the quest line on Home, waiting behind the first steps',
-        /Quest line/.test(text) && /0 of 10 done/.test(text) && (await fresh.getByTestId('quest-waiting').count()) > 0,
+        /Quest line/.test(text) && /0 of 12 done/.test(text) && (await fresh.getByTestId('quest-waiting').count()) > 0,
         text.slice(0, 90) || 'no quest panel',
       );
       const token = await fresh.evaluate(() => sessionStorage.getItem('folkidle.token') ?? localStorage.getItem('folkidle.token'));
