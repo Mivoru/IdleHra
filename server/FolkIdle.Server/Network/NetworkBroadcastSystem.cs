@@ -179,6 +179,13 @@ namespace FolkIdle.Server.Network
         // send path below takes the blittable-write route it always has.
         public bool UseJsonProtocol { get; }
 
+        // Task 46: text frames go out deflated (FrameDeflater), when the
+        // client asked for it in the handshake. Owned by the writer loop.
+        private readonly FrameDeflater? _deflater;
+
+        /// <summary>Whether this session's text frames are sent deflated.</summary>
+        public bool CompressFrames => _deflater != null;
+
         /// <summary>How many events one session may hold before the oldest is dropped.</summary>
         public const int EventCapacity = 512;
 
@@ -271,18 +278,19 @@ namespace FolkIdle.Server.Network
 
         private readonly Task _writer;
 
-        public WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol = false)
-            : this(socket, redisLockToken, useJsonProtocol, DefaultSendTimeout)
+        public WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol = false, bool compressFrames = false)
+            : this(socket, redisLockToken, useJsonProtocol, DefaultSendTimeout, compressFrames)
         {
         }
 
         // Test seam: SessionOutboxTests drives the wedge path with a
         // millisecond timeout rather than waiting twenty real seconds.
-        internal WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol, TimeSpan sendTimeout)
+        internal WebSocketSession(WebSocket socket, string redisLockToken, bool useJsonProtocol, TimeSpan sendTimeout, bool compressFrames = false)
         {
             Socket = socket;
             RedisLockToken = redisLockToken;
             UseJsonProtocol = useJsonProtocol;
+            _deflater = useJsonProtocol && compressFrames ? new FrameDeflater() : null;
             Throttler = new ClientInputThrottler();
             TokenBucket = NetworkThrottlingEngine.CreateBucket();
             ChatTokenBucket = ChatEngine.CreateChatBucket();
@@ -525,6 +533,8 @@ namespace FolkIdle.Server.Network
             }
             finally
             {
+                // The deflater's only caller is this loop, so it ends with it.
+                _deflater?.Dispose();
                 ExitWriter();
             }
         }
@@ -538,6 +548,14 @@ namespace FolkIdle.Server.Network
                 // CloseReceived: the peer is leaving and the receive loop is
                 // about to request the close - keep going so it can.
                 return !IsTerminal(state);
+            }
+
+            if (_deflater != null && type == WebSocketMessageType.Text)
+            {
+                // Every text frame, events and snapshots alike, through the one
+                // stream: the client inflates them in the order they were sent.
+                segment = _deflater.Compress(segment);
+                type = WebSocketMessageType.Binary;
             }
 
             using var timeout = new CancellationTokenSource(_sendTimeout);
@@ -10767,6 +10785,12 @@ namespace FolkIdle.Server.Network
                 body.Append("# HELP folkidle_state_frame_bytes_total Bytes of state frame (JSON serialize output, or the binary struct size) offered to a session, summed since start.\n");
                 body.Append("# TYPE folkidle_state_frame_bytes_total counter\n");
                 body.Append("folkidle_state_frame_bytes_total ").Append(StateFrameMetrics.BytesTotal).Append('\n');
+                body.Append("# HELP folkidle_ws_deflate_input_bytes_total Bytes of text frames handed to a session deflater (task 46), summed since start.\n");
+                body.Append("# TYPE folkidle_ws_deflate_input_bytes_total counter\n");
+                body.Append("folkidle_ws_deflate_input_bytes_total ").Append(FrameDeflater.InputBytesTotal).Append('\n');
+                body.Append("# HELP folkidle_ws_deflate_output_bytes_total Bytes those deflaters put on the wire, summed since start.\n");
+                body.Append("# TYPE folkidle_ws_deflate_output_bytes_total counter\n");
+                body.Append("folkidle_ws_deflate_output_bytes_total ").Append(FrameDeflater.OutputBytesTotal).Append('\n');
                 body.Append('\n');
                 body.Append("# HELP folkidle_state_frames_total State frames (JSON or binary) offered to a session, summed since start.\n");
                 body.Append("# TYPE folkidle_state_frames_total counter\n");
@@ -11653,6 +11677,7 @@ namespace FolkIdle.Server.Network
                 // rather than implied; it is validated, not inferred.
                 AuthHandshakePacket authPacket;
                 bool useJsonProtocol = false;
+                bool compressFrames = false;
 
                 if (result.MessageType == WebSocketMessageType.Text)
                 {
@@ -11691,6 +11716,13 @@ namespace FolkIdle.Server.Network
                                 return;
                             }
                         }
+
+                        // Task 46: a client that can inflate says so (FrameDeflater).
+                        // Anything else, or nothing, is the plain JSON text every
+                        // existing client expects.
+                        compressFrames = handshakeDocument.RootElement.TryGetProperty(FrameDeflater.HandshakeProperty, out JsonElement compressElement)
+                            && compressElement.ValueKind == JsonValueKind.String
+                            && string.Equals(compressElement.GetString(), FrameDeflater.HandshakeValue, StringComparison.Ordinal);
 
                         if (!PacketJsonCodec.TryRead(handshakeDocument.RootElement, out authPacket, out string? readError))
                         {
@@ -11786,7 +11818,7 @@ namespace FolkIdle.Server.Network
                         }
                     }
 
-                    _connectedClients[playerId] = new WebSocketSession(socket, redisLockToken ?? string.Empty, useJsonProtocol);
+                    _connectedClients[playerId] = new WebSocketSession(socket, redisLockToken ?? string.Empty, useJsonProtocol, compressFrames);
                     CommandQueue.Enqueue(new PlayerCommand { PlayerId = playerId, Packet = new ClientCommandPacket { Command = CommandType.Login, TargetId = playerId } });
                 }
 
