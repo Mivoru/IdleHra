@@ -4012,11 +4012,38 @@ The economy it has to act on:
 So the Deep's effect is, in practice, whether that one account descends.
 Its stake would be 0.5% of its 7-day high, about 2.8M.
 
-**Week 1 (2026-10-02):** *to be filled in from `deep-phase3.sql`.* The
-owner's PC runs it automatically: the one-time scheduled task **"FolkIdle
-Deep phase 3 capture"** fires at 10:30 that day, or at the next logon if the
-PC is off, and writes `D:\FolkIdleBackups\deep-phase3-week1.txt`. Copy its
-numbers here.
+**Week 1 (2026-10-02, 159.4 h after the column existed)**, from
+`D:\FolkIdleBackups\deep-phase3-week1.txt`:
+- **one** player paid: the owner's account (Mivoru, level 99) spent
+  **683.8M** in the Deep;
+- deepest floor 13 lifetime, 12 that week; one `deep_10` title
+  (2026-09-27); no open runs at capture time;
+- the economy minted **591.8M** in the window and consumed **683.8M**, i.e.
+  **115.5%** of what was minted. The Deep alone drained more gold than the
+  whole game created that week.
+
+So the sink works, on a population of one. The owner's verdict on it
+(2026-10-07): the lower floors cost too much gold for the diamonds they pay.
+That became item E of the balance pass, **deployed 2026-10-07 as 1.0.1117**:
+the stake fell from 0.5% to **0.2%** of the 7-day high, the toll grows
+**x1.35** a floor instead of x1.25 (floor 20 costs 27x the stake instead of
+11.6x), and every new deepest floor of the week pays **1 diamond**, inside
+the existing 60/week cap. `DelveRegistry.StakeFraction` / `TollGrowth`.
+
+**Day 12 (2026-10-07, 288.5 h, a few hours after the retune went live):**
+still one payer, now **1,145.2M** spent lifetime; deepest floor still 13.
+Minted 2,027.2M, consumed 1,145.2M = **56.5%** over the whole window. The
+ratio fell because minting rose (the level-100 account earns faster), not
+because the Deep got cheaper - the retune had been live for hours.
+
+**Week 2 after the retune (2026-10-14):** the same scheduled-task pattern
+captures it: **"FolkIdle Deep retune capture"** runs `deep-phase3.sql` at
+10:30 that day (or at the next logon) into
+`D:\FolkIdleBackups\deep-retune-week1.txt`. Read it for: did the payer go
+deeper than 13 now that the first floors are cheaper, did a second player
+pay, and did the diamond-per-floor rule pay inside the cap. Nothing changes
+before that; the numbers above are one account deep and say nothing about
+a population.
 
 ## 38. Guild Wars: design the whole system (XL, design with the owner first)
 
@@ -4274,7 +4301,35 @@ server-computed field, so file it separately if wanted.
 - the unit tests pass;
 - on the owner's Android phone, a boss first clear or a plate break vibrates and backgrounding schedules the notification.
 
-## 46. State-frame size (S to L) - plan item 8
+## DONE 2026-10-07 - 46. State-frame size (S to L) - plan item 8
+
+**Result (2026-10-07): GO on bandwidth, shipped as hand-rolled deflate.**
+- **Live numbers** (`/metrics` on the box, 22 minutes after a deploy):
+  203,741 bytes over 38 state frames = **5,362 B a frame**. The counters
+  are in-memory and reset at every deploy, and there were several deploys a
+  week, so "a week of `/metrics`" was never going to accumulate. The
+  per-frame size is what the synthetic test predicted, and it is the number
+  that matters: at ~1 frame a second that is **~320 KB a player a minute**,
+  2x the threshold. Serialization stays far inside the CPU budget (37 of 38
+  frames under 250 us).
+- **Permessage-deflate (8c) is not available:** the server runs on
+  `System.Net.HttpListener`, whose `AcceptWebSocketAsync` cannot negotiate
+  it, and moving the socket to Kestrel is the whole HTTP layer.
+- **What shipped instead:** a client that sends `"compress":"deflate-raw"`
+  in its JSON handshake gets every text frame as a binary frame of raw
+  deflate, all from one deflate stream per session, sync-flushed per frame
+  (`Network/FrameDeflater.cs`). The browser inflates them through one
+  `DecompressionStream('deflate-raw')` and splits on `'\n'`
+  (`client_web/src/lib/net/frameInflater.ts`). The shared stream is what
+  makes it work: deflate finds the previous, nearly identical snapshot in
+  its window. `FrameDeflaterTests`: a realistic 6,340 B frame compresses to
+  2,627 B alone, and the following 60 average **162 B** = **9.5 KB a player
+  a minute**, ~39x less. A client that does not ask (every APK built
+  before this) gets plain JSON text as before.
+- `/metrics` now also carries `folkidle_ws_deflate_input_bytes_total` and
+  `folkidle_ws_deflate_output_bytes_total`; their ratio is the live answer.
+- Deltas (8b) are not needed at this ratio. Moving serialization off the
+  tick thread is not needed either.
 
 **Why:** web clients get JSON snapshots of about 230 fields, serialized on the
 tick thread with no WebSocket compression.

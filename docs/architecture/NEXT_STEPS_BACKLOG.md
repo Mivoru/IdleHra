@@ -19,7 +19,28 @@ do next.
 
 ---
 
-# HANDOFF 2026-09-29 (evening) - START HERE
+# HANDOFF 2026-10-07 - START HERE
+
+**`docs/TASK_BOARD.md` was rewritten to hold only open work.** The old
+board (tasks 1-110 with every write-up) is
+`docs/archive/TASK_BOARD_1-110.md`, unchanged apart from the two sections
+below. The handoffs further down this file are history.
+
+Production through PR #139 (1.0.1120) is described in the new board's
+"State" block. Branch `claude/larder-46-deep-board` adds:
+- **Rations** (board task 111): from region 2 a fighting character eats a
+  fish on a fixed interval whether hurt or not; unpaid it is hungry and
+  kills pay half. Live tick, offline projection and advisor share it
+  (`SimulationEngine.TickRation`, `HuntingProjection.Advance`).
+- **Task 46 done:** compressed state frames over the existing HttpListener
+  socket (`FrameDeflater`, `frameInflater.ts`), negotiated in the handshake,
+  ~39x on a synthetic stream; old APKs keep plain JSON.
+- **Task 37:** week-1 Deep numbers recorded (archive section 37); a capture
+  of the first week after the retune is scheduled for 2026-10-14.
+
+---
+
+# HANDOFF 2026-09-29 (evening) - superseded by the block above
 
 **Production is 1.0.911** = `main` at `757b014` (PRs #101-#107), deployed
 2026-09-29 through the deploy skill. Backup first:
