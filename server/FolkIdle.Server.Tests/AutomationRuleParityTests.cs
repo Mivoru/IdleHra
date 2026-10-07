@@ -208,7 +208,12 @@ namespace FolkIdle.Server.Tests
             // A bare region-1 character with no food against the region's
             // first-clear boss: the wall holds and it dies. The rule sends it
             // down the ladder until it can stand.
-            var payload = OfflineCombatParityTests.Character(1, false, RaceUnlockRegistry.GetRegionBossMonsterId(1), 0);
+            // Modul: 2026-10-07, the larder is 300, was 0. With monsters hitting 1.5x as hard
+            // (owner balance pass) a bare level-20 character with NO food dies on every rung
+            // of region 1 - the ladder bottoms out and both paths end on activity 0 (halted,
+            // OutOfFood), which says nothing about the step-down rule. A stocked larder
+            // lets it stand on the Horned Rabbit after three deaths, on both paths.
+            var payload = OfflineCombatParityTests.Character(1, false, RaceUnlockRegistry.GetRegionBossMonsterId(1), 300);
             payload.DefeatedRegionBossMask = 0;
             payload = WithRules(payload, new AutomationRules.Rule { Type = AutomationRules.StepDownOnDeath });
 

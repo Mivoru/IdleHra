@@ -15,7 +15,7 @@ import {
 import { TIER_STYLES } from '../src/lib/ui/leaderboardTiers';
 import { GUILD_JOIN_MIN_LEVEL } from '../src/lib/ui/unlocks';
 import { FOOD_HEAL_PCT_PER_TIER } from '../src/lib/net/content';
-import { LEVEL_CURVE_BASE, LEVEL_CURVE_GROWTH, xpToNextLevel } from '../src/lib/ui/levelCurve';
+import { LEVEL_CURVE_BASE, LEVEL_CURVE_GROWTH, LEVEL_CURVE_OPENING_LOG, LEVEL_CURVE_OPENING_TAU, xpToNextLevel } from '../src/lib/ui/levelCurve';
 import { nextBossMonday, nextStrikeRefill } from '../src/lib/net/commands';
 import {
   VILLAGE_UPGRADE_BASE_SECONDS,
@@ -479,8 +479,12 @@ describe('the numbers the client mirrors still match the server', () => {
     const engine = read(serverRoot, 'Engine', 'ProgressionEngine.cs');
     expect(LEVEL_CURVE_BASE).toBe(num(engine, /const double LevelCurveBase\s*=\s*([\d.]+)/, 'LevelCurveBase'));
     expect(LEVEL_CURVE_GROWTH).toBe(num(engine, /const double LevelCurveGrowth\s*=\s*([\d.]+)/, 'LevelCurveGrowth'));
-    expect(engine).toMatch(/Math\.Ceiling\(LevelCurveBase \* Math\.Pow\(LevelCurveGrowth, currentLevel\)\)/);
-    expect(xpToNextLevel(1)).toBe(290);
+    expect(LEVEL_CURVE_OPENING_LOG).toBe(num(engine, /const double LevelCurveOpeningLog\s*=\s*([\d.]+)/, 'LevelCurveOpeningLog'));
+    expect(LEVEL_CURVE_OPENING_TAU).toBe(num(engine, /const double LevelCurveOpeningTau\s*=\s*([\d.]+)/, 'LevelCurveOpeningTau'));
+    expect(engine).toMatch(/Math\.Ceiling\(LevelCurveBase \* Math\.Pow\(LevelCurveGrowth, currentLevel\) \* opening\)/);
+    expect(engine).toMatch(/Math\.Exp\(LevelCurveOpeningLog \* \(1\.0 - Math\.Exp\(-currentLevel \/ LevelCurveOpeningTau\)\)\)/);
+    // Pinned from the C# (level 1 = 220 * 1.114 * exp(4.4 * (1 - exp(-1/6)))).
+    expect(xpToNextLevel(1)).toBe(482);
     expect(xpToNextLevel(0)).toBe(0);
   });
 

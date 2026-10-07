@@ -226,8 +226,9 @@ namespace FolkIdle.Server.Tests
                 forgeEngine);
 
             // Target starts at QualityTier 1, so the fee is
-            // ceil(200 * 1.35^1) = 270 - flat, with no fodder modifier.
-            Assert.Equal(270L, matchedCost);
+            // ceil(10000 * 2.5^1) = 25,000 - flat, with no fodder modifier.
+            // (270 = ceil(200 * 1.35^1) until the 2026-10-07 fusion repricing.)
+            Assert.Equal(25_000L, matchedCost);
 
             // Tier-4 sacrifices against a tier-1 target are refused before any
             // gold moves. Not "more expensive" - rejected.
@@ -292,6 +293,16 @@ namespace FolkIdle.Server.Tests
             Assert.False(string.IsNullOrEmpty(starterBaseId), "the catalogue must contain region-1 armour");
 
             var forgeEngine = new ForgeSplicingEngine(_fixture.ServiceProvider);
+
+            // 2026-10-07: fusion costs 10,000 * 2.5^tier now (13 -> 14 is about 1.5
+            // billion), so the seeded player is topped up - this test is about the
+            // CEILING, not about whether the account can pay.
+            await using (var topUp = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await topUp.Database.ExecuteSqlRawAsync(
+                    "UPDATE \"CommodityRecords\" SET \"Quantity\" = {1} WHERE \"PlayerId\" = {0} AND \"ItemId\" = 'gold'",
+                    DbSeeder.PlayerHighId, 50_000_000_000L);
+            }
 
             // Rarity 5 is exactly where region 1-2 gear used to stop.
             var result = await RunFusionAndReturnResultAsync(starterBaseId, startingTier: 5, forgeEngine);
@@ -6502,13 +6513,24 @@ namespace FolkIdle.Server.Tests
             // and asserted 1.06 against an engine that had moved to 1.13. It is
             // the whole point of the test - a curve nobody can change by
             // accident - so it is updated, not loosened.
-            Assert.Equal(1.16, ProgressionEngine.LevelCurveGrowth, 3);
-            for (int level = 1; level <= 8; level++)
+            //
+            // Modul: 2026-10-07, the curve is no longer a pure power (see the long
+            // note on ProgressionEngine.LevelCurveBase): 220 * 1.114^l with an opening
+            // term whose growth rate starts near x2.2 a level and decays onto the
+            // asymptote. The property this test guards is unchanged - the cost grows
+            // every level, geometrically - so it now asserts the asymptote at depth
+            // and a rate that only ever falls toward it.
+            Assert.Equal(1.114, ProgressionEngine.LevelCurveGrowth, 3);
+            double previousRatio = double.MaxValue;
+            for (int level = 1; level <= 60; level++)
             {
                 double ratio = ProgressionEngine.GetRequiredXpForLevel(level)
                     / (double)ProgressionEngine.GetRequiredXpForLevel(level - 1);
-                Assert.InRange(ratio, 1.15, 1.17);
+                Assert.True(ratio > 1.10, $"level {level}: the cost grew only x{ratio:F3}");
+                Assert.True(ratio <= previousRatio + 1e-3, $"level {level}: the growth rate rose (x{ratio:F3} after x{previousRatio:F3})");
+                previousRatio = ratio;
             }
+            Assert.InRange(previousRatio, 1.113, 1.125);
 
             for (int level = 1; level <= 8; level++)
             {
@@ -7051,18 +7073,19 @@ namespace FolkIdle.Server.Tests
             long costAtTier2 = await MeasureForgeCostAtTierAsync(testPlayerId, "integration_test_forge_exp_tier2", startingTier: 2, forgeEngine);
             long costAtTier3 = await MeasureForgeCostAtTierAsync(testPlayerId, "integration_test_forge_exp_tier3", startingTier: 3, forgeEngine);
 
-            // Modul: 200 and 1.35, from 1,000 and 1.5. The THREE ITEMS are the
+            // Modul: 2026-10-07 this is 10,000 and 2.5 (it was 200 and 1.35, and 1,000 and 1.5
+            // before that; the note below is the history of the first repricing). The THREE ITEMS are the
             // cost of a fusion - assembling three identical pieces at the same
             // rarity is the work - and the gold was meant to be a fee on top,
             // not a second gate. At the old curve raising a tier-8 piece cost
             // 25,628, about an hour of region-2 income for one step.
-            Assert.Equal((long)Math.Ceiling(200.0 * Math.Pow(1.35, 2)), costAtTier2);
-            Assert.Equal((long)Math.Ceiling(200.0 * Math.Pow(1.35, 3)), costAtTier3);
+            Assert.Equal((long)Math.Ceiling(10000.0 * Math.Pow(2.5, 2)), costAtTier2);
+            Assert.Equal((long)Math.Ceiling(10000.0 * Math.Pow(2.5, 3)), costAtTier3);
 
             // The SHAPE is what this test is for - still exponential in the
             // current tier, just at a rate a player can pay.
             double ratio = costAtTier3 / (double)costAtTier2;
-            Assert.InRange(ratio, 1.34, 1.36);
+            Assert.InRange(ratio, 2.49, 2.51);
         }
 
         private async Task<long> MeasureForgeCostAtTierAsync(long playerId, string baseItemId, int startingTier, ForgeSplicingEngine forgeEngine)
@@ -8423,8 +8446,11 @@ namespace FolkIdle.Server.Tests
                 // A boss is a capstone, not a wall: hard enough to be a real
                 // gate, not so hard that it dwarfs everything around it.
                 double hpRatio = (double)boss.MaxHp / strongestRegular.MaxHp;
-                Assert.True(hpRatio >= 4.0 && hpRatio <= 6.5,
-                    $"Region {region} boss HP is {hpRatio:F1}x its strongest regular; expected 4.0-6.5x.");
+                // Modul: 2026-10-07, 4.0-6.5x -> 4.0-8.5x. The balance pass gave every region
+                // boss 1.3x its base health and left the regulars alone, so the ratio rose
+                // by exactly that (region 5 is 6.5x on the stats as authored: 453,271 / 69,700).
+                Assert.True(hpRatio >= 4.0 && hpRatio <= 8.5,
+                    $"Region {region} boss HP is {hpRatio:F1}x its strongest regular; expected 4.0-8.5x.");
 
                 // Modul: 3.0-8.0x, and the reason is a design decision rather
                 // than a tuning drift.
@@ -8826,7 +8852,16 @@ namespace FolkIdle.Server.Tests
             // one band, so what is pinned now is the intent itself: a brisk
             // opening, each region a multiple of the one before it, and a total
             // that is a season rather than a weekend.
-            Assert.InRange(regionMinutes[1], 45.0, 240.0);
+            // Modul: 2026-10-07 (owner balance pass), the XP curve was refitted to hit
+            // 24 / 108 / 336 / 770 geared hours at levels 25 / 50 / 75 / 100 (see
+            // ProgressionEngine.LevelCurveBase) from 1 / 7 / 45 / 309. This floor
+            // model reads about three times the geared figure, so region 1 is now
+            // about 53 hours of floor combat instead of 45-240 MINUTES, and each region
+            // costs 3-8x the one before rather than 5-12x (the curve is flatter on
+            // purpose: the old 1.16 per level front-loaded nothing and back-loaded
+            // everything). Measured: 3,173 / 24,890 / 91,812 / 288,861 / 859,553 minutes.
+            Console.WriteLine($"REGIONMIN {regionMinutes[1]:F0} {regionMinutes[2]:F0} {regionMinutes[3]:F0} {regionMinutes[4]:F0} {regionMinutes[5]:F0}");
+            Assert.InRange(regionMinutes[1], 1500.0, 6000.0);
 
             for (int regionTier = 2; regionTier <= 5; regionTier++)
             {
@@ -8837,7 +8872,8 @@ namespace FolkIdle.Server.Tests
                 // back-loaded season where the last region is most of it - and
                 // the intent got steeper on purpose.
                 double ratio = regionMinutes[regionTier] / regionMinutes[regionTier - 1];
-                Assert.InRange(ratio, 5.0, 12.0);
+                // Modul: 2026-10-07, 5.0-12.0 -> 2.5-9.0 (measured 7.8, 3.7, 3.1, 3.0).
+                Assert.InRange(ratio, 2.5, 9.0);
             }
 
             double totalHours = (regionMinutes[1] + regionMinutes[2] + regionMinutes[3]
@@ -8852,7 +8888,12 @@ namespace FolkIdle.Server.Tests
             // stated intent is that it should not be. At three times gear speed
             // this floor still has to outlast one season, which puts the bottom
             // of the band near 6,500 hours.
-            Assert.InRange(totalHours, 6500.0, 20000.0);
+            //
+            // Modul: 2026-10-07, 6500-20000 -> 6500-40000 floor hours (measured 21,138). The
+            // owner's new targets put level 100 at about 770 GEARED hours - a month at
+            // 24 hours of progress a day - so "does not finish inside one season" is no
+            // longer the intent; the floor model still reads about three times that.
+            Assert.InRange(totalHours, 6500.0, 40000.0);
         }
 
         // Modul: Full-Stack Expansion, Part 2/7. The 25 new regional
@@ -8928,7 +8969,9 @@ namespace FolkIdle.Server.Tests
                 }
                 else
                 {
-                    Assert.InRange(row.Seconds, 300.0, 900.0);
+                    // Modul: 2026-10-07, 900 -> 1,200 s. Boss HP x1.3 (owner balance pass) makes
+                    // the worst arrival (region 1, bare) 1,162 s against 894 before.
+                    Assert.InRange(row.Seconds, 300.0, 1200.0);
                 }
             }
         }

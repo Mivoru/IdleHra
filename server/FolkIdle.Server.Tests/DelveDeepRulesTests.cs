@@ -20,11 +20,11 @@ namespace FolkIdle.Server.Tests
         {
             long regionFee = DelveRegistry.EntryFeeForRegion(5);
 
-            // 1M held: 0.5% is 5k, well under the region-5 fee.
+            // 1M held: 0.2% is 2k, well under the region-5 fee.
             Assert.Equal(regionFee, DelveRegistry.Stake(regionFee, 1_000_000));
 
-            // The top account on 2026-09-23: 492M held -> 2.46M.
-            Assert.Equal(2_460_000, DelveRegistry.Stake(regionFee, 492_000_000));
+            // The top account on 2026-09-23: 492M held -> 984k (0.2%; it was 2.46M at 0.5% until 2026-10-07).
+            Assert.Equal(984_000, DelveRegistry.Stake(regionFee, 492_000_000));
 
             // Negative wealth (it cannot happen, but a sum can) never goes under the fee.
             Assert.Equal(regionFee, DelveRegistry.Stake(regionFee, -5));
@@ -33,7 +33,7 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void TheFirstTollIsTheStakeAndTollsStrictlyRiseToFloorSixty()
         {
-            const long stake = 2_460_000;
+            const long stake = 984_000;
             Assert.Equal(stake, DelveRegistry.TollForFloor(stake, 9));
 
             long previous = DelveRegistry.TollForFloor(stake, 9);
@@ -52,7 +52,7 @@ namespace FolkIdle.Server.Tests
         {
             long toll = DelveRegistry.TollForFloor(long.MaxValue / 2, 500);
             Assert.Equal(DelveRegistry.PriceCeiling, toll);
-            Assert.Equal(DelveRegistry.PriceCeiling, DelveRegistry.TollForFloor(2_460_000, 500));
+            Assert.Equal(DelveRegistry.PriceCeiling, DelveRegistry.TollForFloor(984_000, 500));
             Assert.Equal(DelveRegistry.PriceCeiling, DelveRegistry.LanternRefillPrice(DelveRegistry.PriceCeiling, 7));
 
             // Two saturated prices still add without wrapping.

@@ -29,8 +29,9 @@
     landing, not an end: "Descend into the Deep" banks floors 1-8 exactly as
     walking out would, then pays a toll priced on what the player HOLDS. The
     only number this screen sends is the stake it was shown (QuotedStake), and
-    the server charges its own - never more than that. The Deep pays records,
-    not diamonds, and the screen says so.
+    the server charges its own - never more than that. The Deep pays records and
+    titles, plus one diamond per new weekly-deepest floor (inside the weekly
+    ceiling); it pays no other diamonds, and the screen says so.
   */
   import { onMount } from 'svelte';
   import { play } from '../lib/ui/audio';
@@ -157,7 +158,9 @@
           : 'The way is barred. A lantern charge burns out, and the floor offers new doors.';
       case 'FloorCleared':
         return outcome.View.IsDeep
-          ? `Floor ${outcome.View.CurrentFloor} is yours. The dark goes on below.`
+          ? `Floor ${outcome.View.CurrentFloor} is yours` +
+            (outcome.DiamondsGranted > 0 ? ` - a new deepest this week: ${outcome.DiamondsGranted} diamond.` : '.') +
+            ' The dark goes on below.'
           : 'Through. The stair keeps going down.';
       case 'AtTheBottom':
         return outcome.View.CanDescend
@@ -383,7 +386,7 @@
         {:else if atBottom && isDeep}
           <p class="bottom">Floor {view.CurrentFloor} is behind you. The water below is darker.</p>
         {:else if atBottom && view.CanDescend}
-          <p class="bottom">The floor of the Delve. Below floor 8 lies the Deep: no diamonds down there, only how far you went.</p>
+          <p class="bottom">The floor of the Delve. Below floor 8 lies the Deep: one diamond for each floor that is your new deepest of the week, and nothing else but how far you went.</p>
         {:else if atBottom}
           <p class="bottom">You are standing on the floor of the world. There is nothing below.</p>
         {:else}
@@ -530,7 +533,7 @@
             {/if}
           </div>
         {:else}
-          <p class="muted small">No titles yet. The Deep pays in these, not in diamonds.</p>
+          <p class="muted small">No titles yet. The Deep pays in these, and in one diamond for each new weekly-deepest floor.</p>
         {/if}
         {#if nextTitle}
           <p class="muted small">

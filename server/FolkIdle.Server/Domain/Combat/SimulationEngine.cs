@@ -4132,7 +4132,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (payload.AscensionStep == 0) return false;
             if (payload.Slot1_CharacterId != payload.AscensionCharacterId) return false;
             if (payload.CurrentMonsterId != RaceUnlockRegistry.GetRegionBossMonsterId(payload.AscensionRegion)) return false;
-            modifiers = BossAscensionRegistry.ModifiersFor(payload.AscensionStep);
+            modifiers = BossAscensionRegistry.ModifiersFor(payload.AscensionRegion, payload.AscensionStep);
             return true;
         }
 

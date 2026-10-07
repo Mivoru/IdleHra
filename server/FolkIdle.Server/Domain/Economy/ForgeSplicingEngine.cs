@@ -39,7 +39,22 @@ namespace FolkIdle.Server.Domain.Economy
         // 1.5^tier it was 25,628 to raise a tier-8 piece, about an hour of
         // region-2 income for one step, which is more than the items themselves
         // are worth to most players.
-        private const long BaseGoldCost = 200;
+        private const long BaseGoldCost = 10000;
+        // Modul: 2026-10-07, FUSION COST 200 * 1.35^tier -> 10,000 * 2.5^tier (owner
+        // balance pass). The note above argued the three items were the cost and the
+        // gold a small fee on top; the owner reversed that: with progression slowed
+        // (see ProgressionEngine) and gold flowing for days, a 200-gold fee was a
+        // rounding error, so fusion was never a gold sink. 50x at the bottom and a
+        // steeper curve (x2.5 a tier against x1.35) so the top of the ladder is a
+        // real endgame sink. Per fusion at the piece's CURRENT tier, before the
+        // Luck / event discount (ForgeSplicingEngineTests prints the table):
+        //
+        //   tier   1: 25,000        tier   7: 6,103,516
+        //   tier   2: 62,500        tier   8: 15,258,790
+        //   tier   3: 156,250       tier   9: 38,146,973
+        //   tier   4: 390,625       tier  10: 95,367,432
+        //   tier   5: 976,563       tier  11: 238,418,580
+        //   tier   6: 2,441,407     tier  12: 596,046,448 (never charged: 12 is the ceiling)
 
         // Modul: fusion is no longer a gamble. Three IDENTICAL items of the
         // SAME rarity produce one of the next rarity, for a gold fee. The
@@ -411,11 +426,11 @@ namespace FolkIdle.Server.Domain.Economy
 
         /// <summary>
         /// The gold one fusion of a piece at <paramref name="currentTier"/>
-        /// costs: <c>200 * 1.35^tier</c>, less the discount.
+        /// costs: <c>10,000 * 2.5^tier</c>, less the discount.
         /// </summary>
         public static long FusionFee(int currentTier, double feeDiscount)
         {
-            long cost = (long)Math.Ceiling(BaseGoldCost * Math.Pow(1.35, currentTier));
+            long cost = (long)Math.Ceiling(BaseGoldCost * Math.Pow(2.5, currentTier));
             return (long)Math.Ceiling(cost * (1.0 - feeDiscount));
         }
 

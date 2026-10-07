@@ -1,4 +1,5 @@
 using System;
+using FolkIdle.Server.Domain.Economy;
 using FolkIdle.Server.Engine;
 using Xunit;
 using Xunit.Abstractions;
@@ -241,9 +242,10 @@ namespace FolkIdle.Server.Tests
         {
             // Repeatable, and meant to be cheap per click: volume is the sink.
             new SinkRow("affix reroll (r5)", AffixRegistry.CalculateRerollGoldCost(5, 0, false), true, 0.0, 1.0),
-            // The fusion fee at the last fusable tier (13 -> 14). Formula restated
-            // from ForgeSplicingEngine, as AFusionFeeIsSmallerThan... does.
-            new SinkRow("fusion (into tier 14)", Math.Ceiling(200.0 * Math.Pow(1.35, 13)), true, 0.0, 1.0),
+            // Modul: 2026-10-07, fusion is a real endgame sink now (10,000 * 2.5^tier).
+            // The last fusion the Forge's ceiling allows is 11 -> 12: 238M, about
+            // 140 hours of top income per fusion. Read from the engine, not restated.
+            new SinkRow("fusion (into tier 12)", ForgeSplicingEngine.FusionFee(11, 0.0), true, 1_000.0, 20_000.0),
             // One-off per building level.
             new SinkRow("village level 20", FolkIdle.Server.Domain.Progression.VillageManagementEngine.CalculateUpgradeCost(20), false, 5.0, 60.0),
             // Modul: the feast climbs with use, but it is NOT a repeatable sink:
@@ -256,7 +258,7 @@ namespace FolkIdle.Server.Tests
             // Modul: THE DEEP (task 37 phase 1). A descent's first toll is the
             // stake, a share of HOLDINGS - so it is priced for the account that
             // holds the hoard, and repeats every run. At the top account's 492M
-            // it is 2.46M, about an hour and a half of top income.
+            // it is 984k (0.2%; 2.46M at 0.5% until 2026-10-07), about 35 minutes of top income.
             new SinkRow("Deep descent (492M held)", DelveRegistry.Stake(DelveRegistry.EntryFeeForRegion(5), TopAccountHeld), true, 30.0, 600.0),
         };
 
@@ -291,9 +293,9 @@ namespace FolkIdle.Server.Tests
         public void TheDeepsWorkedPricesAreTheSpecs()
         {
             long stake = DelveRegistry.Stake(DelveRegistry.EntryFeeForRegion(5), TopAccountHeld);
-            Assert.Equal(2_460_000, stake);
+            Assert.Equal(984_000, stake);
 
-            foreach (var (floor, spec) in new[] { (12, 31_400_000.0), (16, 66_000_000.0), (20, 150_000_000.0) })
+            foreach (var (floor, spec) in new[] { (12, 13_414_749.0), (16, 35_093_385.0), (20, 107_099_113.0) } /* was 31.4M / 66M / 150M at 0.5 percent and x1.25 (2026-10-07) */)
             {
                 double cost = DeepPushCost(stake, floor, refills: 3);
                 _output.WriteLine(
@@ -443,15 +445,28 @@ namespace FolkIdle.Server.Tests
         /// gate wearing a fee's clothes.
         /// </summary>
         [Fact]
-        public void AFusionFeeIsSmallerThanAssemblingTheItemsItConsumes()
+        public void AFusionFeeIsTheDeliberateEndgameSink_AndTheEntryTiersAreStillAffordable()
         {
-            for (int tier = 1; tier <= 10; tier++)
+            // Modul: 2026-10-07 - THIS TEST ASSERTED THE OPPOSITE. It said a fee that
+            // outweighs the items it is attached to is "a second gate wearing a fee's
+            // clothes" and capped every tier at 20 minutes of play. The owner reversed
+            // that on purpose (fusion = 10,000 * 2.5^tier): the low tiers stay a
+            // fee a region-2 player pays in an evening, and the high tiers are the
+            // sink the game was missing. The bands below say so, and the fee is read
+            // from the engine so a retune cannot leave this restating a dead formula.
+            for (int tier = 1; tier <= 11; tier++)
             {
-                double fee = Math.Ceiling(200.0 * Math.Pow(1.35, tier));
+                double fee = ForgeSplicingEngine.FusionFee(tier, 0.0);
+                Assert.Equal(Math.Ceiling(10000.0 * Math.Pow(2.5, tier)), fee);
                 double minutes = MinutesOfPlay(fee, region: 2);
-                _output.WriteLine($"fusion at tier {tier}: {fee:N0}g = {minutes:F1} min");
-                Assert.InRange(minutes, 0.05, 20.0);
+                double topMinutes = MinutesOfTopIncome(fee);
+                _output.WriteLine($"fusion at tier {tier,2}: {fee,14:N0}g = {minutes,12:F1} min of region-2 play = {topMinutes,10:F1} min of top income");
             }
+
+            // Tier 1 -> 2 (25,000) is an entry fee: under an hour of region-2 play.
+            Assert.InRange(MinutesOfPlay(ForgeSplicingEngine.FusionFee(1, 0.0), region: 2), 0.05, 60.0);
+            // The top fusion is the sink: hours to days of TOP income, never free, never infinite.
+            Assert.InRange(MinutesOfTopIncome(ForgeSplicingEngine.FusionFee(11, 0.0)), 1_000.0, 20_000.0);
         }
 
         /// <summary>

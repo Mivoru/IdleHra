@@ -10,6 +10,7 @@ using FolkIdle.Server.Models;
 using FolkIdle.Server.Network;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace FolkIdle.Server.Tests
 {
@@ -23,42 +24,93 @@ namespace FolkIdle.Server.Tests
     public class BossAscensionTests
     {
         private readonly PostgresTestFixture _fixture;
+        private readonly ITestOutputHelper _output;
 
-        public BossAscensionTests(PostgresTestFixture fixture)
+        public BossAscensionTests(PostgresTestFixture fixture, ITestOutputHelper output)
         {
             _fixture = fixture;
+            _output = output;
             ContentRegistry.Initialize();
         }
 
         // ---- the table ------------------------------------------------------
 
         [Fact]
-        public void TheLadderIsTenStepsEachAddingOneModifier()
+        public void TheLadderIsTenStepsEachGrowingTheBossGeometrically()
         {
             Assert.Equal(10, BossAscensionRegistry.MaxStep);
             Assert.Equal(10, BossAscensionRegistry.Steps.Count);
             for (int i = 0; i < 10; i++) Assert.Equal(i + 1, BossAscensionRegistry.Steps[i].Step);
 
-            var before = BossAscensionRegistry.ModifiersFor(0);
-            Assert.True(before.IsNone);
-            for (int step = 1; step <= 10; step++)
+            for (int region = 1; region <= 5; region++)
             {
-                var after = BossAscensionRegistry.ModifiersFor(step);
-                // Exactly one of the three components moved, and never loosened.
-                int moved = (after.AttackPct != before.AttackPct ? 1 : 0)
-                    + (after.BossHpPct != before.BossHpPct ? 1 : 0)
-                    + (after.TimeLimitPctOfSwift != before.TimeLimitPctOfSwift ? 1 : 0);
-                Assert.Equal(1, moved);
-                Assert.True(after.AttackPct >= before.AttackPct && after.BossHpPct >= before.BossHpPct);
-                Assert.True(before.TimeLimitPctOfSwift == 0 || after.TimeLimitPctOfSwift <= before.TimeLimitPctOfSwift);
-                before = after;
+                var before = BossAscensionRegistry.ModifiersFor(region, 0);
+                Assert.True(before.IsNone);
+                for (int step = 1; step <= 10; step++)
+                {
+                    var after = BossAscensionRegistry.ModifiersFor(region, step);
+                    // Every step grows BOTH health and attack, and never loosens the clock.
+                    Assert.True(after.AttackPct > before.AttackPct, $"region {region} step {step}: attack did not grow");
+                    Assert.True(after.BossHpPct > before.BossHpPct, $"region {region} step {step}: health did not grow");
+                    Assert.True(before.TimeLimitPctOfSwift == 0 || after.TimeLimitPctOfSwift <= before.TimeLimitPctOfSwift);
+                    before = after;
+                }
+
+                // Step 10 IS the ratio, and the step multipliers are its tenth powers.
+                var ratio = BossAscensionRegistry.StepTenRatio(region);
+                var top = BossAscensionRegistry.ModifiersFor(region, 10);
+                Assert.InRange(1 + top.BossHpPct / 100.0, ratio.Hp * 0.999, ratio.Hp * 1.001);
+                Assert.InRange(1 + top.AttackPct / 100.0, ratio.Attack * 0.99, ratio.Attack * 1.01);
+                Assert.Equal(120, top.TimeLimitPctOfSwift);
+                Assert.Equal(top, BossAscensionRegistry.ModifiersFor(region, 99));
+                var five = BossAscensionRegistry.ModifiersFor(region, 5);
+                Assert.InRange(1 + five.BossHpPct / 100.0, Math.Sqrt(ratio.Hp) * 0.99, Math.Sqrt(ratio.Hp) * 1.01);
+                Assert.InRange(1 + five.AttackPct / 100.0, Math.Sqrt(ratio.Attack) * 0.99, Math.Sqrt(ratio.Attack) * 1.01);
+            }
+        }
+
+        /// <summary>
+        /// Owner decision 2026-10-07: A10 is the boss TWO regions ahead. For the
+        /// first three bosses that is a real boss and the ratio is exactly its
+        /// stats over this one's; the last two are extrapolated.
+        /// </summary>
+        [Fact]
+        public void StepTenIsTheBossTwoRegionsAhead_ExtrapolatedPastMalakor()
+        {
+            double Hp(int region) => ContentRegistry.GetScaledMonsterMaxHp(RaceUnlockRegistry.GetRegionBossMonsterId(region));
+            double Atk(int region) => ContentRegistry.GetScaledMonsterAttackPower(RaceUnlockRegistry.GetRegionBossMonsterId(region));
+
+            for (int region = 1; region <= 3; region++)
+            {
+                var r = BossAscensionRegistry.StepTenRatio(region);
+                Assert.Equal(Hp(region + 2) / Hp(region), r.Hp, 6);
+                Assert.Equal(Atk(region + 2) / Atk(region), r.Attack, 6);
             }
 
-            var top = BossAscensionRegistry.ModifiersFor(10);
-            Assert.Equal(45, top.AttackPct);
-            Assert.Equal(20, top.BossHpPct);
-            Assert.Equal(120, top.TimeLimitPctOfSwift);
-            Assert.Equal(top, BossAscensionRegistry.ModifiersFor(99));
+            var g = BossAscensionRegistry.ExtrapolatedRegionRatio();
+            var frost = BossAscensionRegistry.StepTenRatio(4);
+            var malakor = BossAscensionRegistry.StepTenRatio(5);
+            Assert.Equal(Hp(5) * g.Hp / Hp(4), frost.Hp, 6);
+            Assert.Equal(Atk(5) * g.Attack / Atk(4), frost.Attack, 6);
+            Assert.Equal(g.Hp * g.Hp, malakor.Hp, 6);
+            Assert.Equal(g.Attack * g.Attack, malakor.Attack, 6);
+            // The owner's own estimate for Malakor: roughly 7x health and 17x attack.
+            Assert.InRange(malakor.Hp, 6.0, 8.0);
+            Assert.InRange(malakor.Attack, 15.0, 19.0);
+        }
+
+        [Fact]
+        public void WhatTheLadderIsPrinted()
+        {
+            for (int region = 1; region <= 5; region++)
+            {
+                var boss = ContentRegistry.GetMonsterName(RaceUnlockRegistry.GetRegionBossMonsterId(region));
+                foreach (int step in new[] { 1, 5, 10 })
+                {
+                    var m = BossAscensionRegistry.ModifiersFor(region, step);
+                    _output.WriteLine($"{boss,-12} A{step,-2} HP x{1 + m.BossHpPct / 100.0,7:F2}  attack x{1 + m.AttackPct / 100.0,7:F2}  | {BossAscensionRegistry.SummaryFor(region, step)}");
+                }
+            }
         }
 
         [Fact]
@@ -239,11 +291,11 @@ namespace FolkIdle.Server.Tests
             Tick(ref plain);
 
             var armed = Fighter(region, beaten, 0);
-            Arm(ref armed, region, 3); // step 3 is the first with +10% health
+            Arm(ref armed, region, 3); // step 3 is the first with a health bump you can see
             Tick(ref armed);
 
-            var mods = BossAscensionRegistry.ModifiersFor(3);
-            Assert.Equal(10, mods.BossHpPct);
+            var mods = BossAscensionRegistry.ModifiersFor(region, 3);
+            Assert.InRange(mods.BossHpPct, 85, 95); // x1.9 health at step 3 of region 1
             Assert.True(plain.CurrentMonsterHp <= baseHp);
             Assert.True(armed.CurrentMonsterHp > baseHp, $"armed {armed.CurrentMonsterHp} vs base {baseHp}");
             Assert.Equal(BossAscensionRules.ScaleBossHp(baseHp, in mods), armed.CurrentMonsterHp);
@@ -253,7 +305,7 @@ namespace FolkIdle.Server.Tests
         public void AKillInsideTheLimitClearsTheStep_AndNotesItOnce()
         {
             DrainClears();
-            var p = AboutToKill(region: 1, step: 3, fightTicks: 5); // 160 s limit at step 3
+            var p = AboutToKill(region: 1, step: 3, fightTicks: 5); // 398 s limit at step 3 (200% of 104 s Swift, times the x1.9 health)
             TickUntilCleared(ref p);
 
             Assert.Equal(0, p.AscensionPendingResult);
@@ -418,7 +470,7 @@ namespace FolkIdle.Server.Tests
             Assert.True(r1.BossDefeated);
             Assert.Equal(2, r1.HighestStep);
             Assert.Equal(3, r1.NextStep);
-            Assert.Equal(new[] { "Boss attack +15%", "Boss health +10%", "Kill it within 160 s" }, r1.Steps[2].Effects);
+            Assert.Equal(new[] { "Boss attack x3.3", "Boss health x1.9", "Kill it within 398 s" }, r1.Steps[2].Effects);
             Assert.Equal(new[] { true, true, false }, r1.Steps.Take(3).Select(s => s.Cleared));
             Assert.Equal(3, r1.Steps.Count(s => s.Startable));
             Assert.Equal("Wolfbane V", r1.Steps[4].RewardTitle);

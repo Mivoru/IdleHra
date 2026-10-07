@@ -104,8 +104,10 @@ namespace FolkIdle.Server.Tests
                 Assert.DoesNotContain("PremiumDiamonds", DelveDeepTests.CodeWithoutComments(file));
             }
 
-            // DelveEngine does write diamonds - in the ONE floors-1-8 bank, and
-            // nowhere else. Every assignment must sit inside BankFloorsAsync.
+            // DelveEngine does write diamonds - in the ONE floors-1-8 bank and, since
+            // 2026-10-07, in the Deep's record diamond (PayDeepRecordDiamond), which
+            // is kept in the same span on purpose. Every assignment must sit between
+            // BankFloorsAsync and LockPlayerAsync; a stray third one fails here.
             string engine = File.ReadAllText(Path.Combine(root, "Domain", "Economy", "DelveEngine.cs"));
             int bankStart = engine.IndexOf("private async Task<(int Granted, long Consolation, CommodityRecord? GoldRow)> BankFloorsAsync", StringComparison.Ordinal);
             Assert.True(bankStart > 0, "BankFloorsAsync moved - restate this guard");

@@ -86,6 +86,8 @@
     WORLD_BOSS_HP,
     WORLD_BOSS_ATTEMPTS,
     DEEP_STAKE_PCT,
+    DEEP_RECORD_DIAMONDS,
+    DELVE_WEEKLY_DIAMOND_CEILING,
     DEEP_TOLL_GROWTH_PCT,
     DEEP_MIN_DOOR_CHANCE_PCT,
     DEEP_MAX_LANTERNS,
@@ -1466,8 +1468,9 @@
           <h3 id="deep">The Deep</h3>
           <p class="dim small">
             Below the eighth floor of the Delve, the dark goes on. The Deep pays no
-            diamonds and no power, only how far you went: a record, titles, and a
-            place on a weekly board.
+            power. It pays how far you went - a record, titles and a place on a weekly
+            board - and {DEEP_RECORD_DIAMONDS} diamond for each floor that is your new deepest of
+            the week, counted inside the same {DELVE_WEEKLY_DIAMOND_CEILING}-diamond weekly ceiling as the Delve above it.
           </p>
           <ul class="styled-list">
             <li><strong>Descending banks floors 1-8 first</strong>, exactly as climbing out would, then charges the first toll.</li>
@@ -1475,7 +1478,7 @@
             <li><strong>Each floor down tolls {DEEP_TOLL_GROWTH_PCT}% more than the last.</strong> The doors get harder too, slowly, but a door never drops below a {DEEP_MIN_DOOR_CHANCE_PCT}% chance.</li>
             <li><strong>When your lantern goes out, you can light another</strong> at the stake, then twice that, then twice again: up to {DEEP_MAX_LANTERNS} on one run. Or walk out. Walking out of the Deep ends the run and pays nothing, because the Deep was never about the gold.</li>
             <li><strong>Titles</strong> are earned at floors {DEEP_TITLE_FLOORS.join(', ')} of the Deep. Wear one from the Delve screen; it shows on your profile and on the board.</li>
-            <li><strong>Deepest this week</strong> is its own tab on the Leaderboards. It starts again every Monday, and it pays nothing.</li>
+            <li><strong>Deepest this week</strong> is its own tab on the Leaderboards. It starts again every Monday. The board itself pays nothing; the diamond comes from reaching a new deepest floor, not from rank.</li>
           </ul>
 
         <!-- ================================================== EVENTS -->

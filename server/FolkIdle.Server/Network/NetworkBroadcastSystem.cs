@@ -4200,12 +4200,17 @@ namespace FolkIdle.Server.Network
                 //
                 // A descent moves both: it banks floors 1-8 (diamonds or
                 // consolation gold) and debits a toll, all in the database.
+                //
+                // A Deep floor that is a new weekly record pays one diamond on the
+                // door endpoint (2026-10-07), so a cleared floor that paid reloads too.
                 bool changedBalances =
-                    outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.Ok
-                    && (requestPath == "/api/v1/delve/start"
-                        || requestPath == "/api/v1/delve/bank"
-                        || requestPath == "/api/v1/delve/deep/descend"
-                        || requestPath == "/api/v1/delve/deep/lantern");
+                    (outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.Ok
+                        && (requestPath == "/api/v1/delve/start"
+                            || requestPath == "/api/v1/delve/bank"
+                            || requestPath == "/api/v1/delve/deep/descend"
+                            || requestPath == "/api/v1/delve/deep/lantern"))
+                    || (outcome.Result == FolkIdle.Server.Domain.Economy.DelveResult.FloorCleared
+                        && outcome.DiamondsGranted > 0);
 
                 if (changedBalances)
                 {

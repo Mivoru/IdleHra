@@ -276,7 +276,7 @@ namespace FolkIdle.Server.Engine
                         newlyUnlockedRaces.Add((key.PlayerId, raceUnlockedByThisMonster, key.MonsterId));
                     }
 
-                    // Modul: THE FIRST-CLEAR TROPHY, 2026-09-12. One Transcendent
+                    // Modul: THE FIRST-CLEAR TROPHY, 2026-09-12. One Demonic
                     // piece of the boss's own gear, once per region boss, ever.
                     //
                     // Granted HERE for the same reason the race unlock above is:
@@ -309,13 +309,13 @@ namespace FolkIdle.Server.Engine
                         dbContext.EquipmentInstances.Add(trophy);
 
                         // Modul: the drop record (task 26). A trophy is always
-                        // notable - it is the one Transcendent a player is given
+                        // notable - it is the one Demonic a player is given
                         // rather than rolls, and must not be mistaken for a drop.
                         await DropRecord.RecordOneAsync(dbContext, key.PlayerId, DropSource.FirstClearTrophy, trophyRegion,
                             trophy, trophyBaseId, trophy.QualityTier, trophy.QualityTier, alwaysNotable: true);
 
                         Console.WriteLine(
-                            $"First-clear trophy: player {key.PlayerId} earned a Transcendent {trophyBaseId} for beating monster {key.MonsterId}.");
+                            $"First-clear trophy: player {key.PlayerId} earned a Demonic {trophyBaseId} for beating monster {key.MonsterId}.");
                     }
 
                     if (codexEntries.TryGetValue(key, out var entry))

@@ -470,8 +470,12 @@ export const MARKET_FEE_BRACKETS: readonly { wealth: string; feePct: number }[] 
  * from TitleRegistry - floors only, never names: the client keeps no list of
  * title names (tests/titles.test.ts).
  */
-export const DEEP_STAKE_PCT = 0.5;
-export const DEEP_TOLL_GROWTH_PCT = 25;
+export const DEEP_STAKE_PCT = 0.2;
+export const DEEP_TOLL_GROWTH_PCT = 35;
+/** Diamonds a Deep floor pays when it is a new personal deepest floor of the week (DelveRegistry.DeepRecordDiamonds). */
+export const DEEP_RECORD_DIAMONDS = 1;
+/** The weekly diamond ceiling the Deep shares with the Delve (DelveRegistry.MaxDiamondsPerWeek). */
+export const DELVE_WEEKLY_DIAMOND_CEILING = 60;
 export const DEEP_MIN_DOOR_CHANCE_PCT = 25;
 export const DEEP_MAX_LANTERNS = 8;
 export const DEEP_TITLE_FLOORS: readonly number[] = [10, 15, 20, 30, 40, 50];

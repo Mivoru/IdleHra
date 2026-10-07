@@ -256,19 +256,45 @@ namespace FolkIdle.Server.Engine
         // that. The Deep prices itself off what the player HOLDS instead
         // (spec docs/superpowers/specs/2026-09-24-the-deep-gold-sink-design.md
         // §3), so it keeps its weight however income moves. It pays records,
-        // titles and a weekly board - NO diamonds and no power - so it can be
-        // bottomless without being a tap.
+        // titles and a weekly board and, since 2026-10-07, ONE diamond per new personal
+        // weekly-deepest floor (DeepRecordDiamonds, inside the weekly ceiling) - no power -
+        // so it can be bottomless without being a tap.
         // ------------------------------------------------------------------
 
         /// <summary>
         /// The stake is this share of the player's wealth (the larger of gold
-        /// held and the 7-day high-water mark). 0.5% of the top account's 492M
+        /// held and the 7-day high-water mark). 0.5% of the top account's 492M (0.2% now, see below)
         /// is 2.46M: a descent is felt without being a week's income.
         /// </summary>
-        public const double StakeFraction = 0.005;
+        // Modul: 2026-10-07, 0.005 -> 0.002 (owner balance pass). The toll curve below also
+        // went steeper, and the two together move the Deep's price the other way round
+        // from how it reads: a descent STARTS cheaper (0.2% of wealth, 984k for the
+        // 492M account instead of 2.46M) and gets expensive faster (x1.35 a floor
+        // instead of x1.25). Floor 9 costs the stake, floor 20 costs 1.35^11 = 27x it
+        // (it was 1.25^11 = 11.6x), floor 30 is 1.35^21 = 545x (was 108x). The
+        // opening is cheap enough that the new weekly-deepest diamond is reachable by
+        // someone who is not the richest account.
+        public const double StakeFraction = 0.002;
 
         /// <summary>Each floor past 9 tolls this much more than the one before: floor 12 is ~2x the stake, floor 20 ~12x.</summary>
-        public const double TollGrowth = 1.25;
+        // Modul: 2026-10-07, 1.25 -> 1.35 - see StakeFraction. The summary above said
+        // "floor 12 ~2x, floor 20 ~12x" for 1.25; at 1.35 floor 12 is 2.5x and floor 20 is 27x.
+        public const double TollGrowth = 1.35;
+
+        /// <summary>
+        /// Diamonds a Deep floor pays when it is the player's new deepest floor of
+        /// the ISO week. One, and counted inside MaxDiamondsPerWeek - the same
+        /// counter (DelveDiamondsThisWeek) floors 1-8 are capped by.
+        ///
+        /// Modul: 2026-10-07, owner balance pass. The Deep used to pay no diamonds
+        /// at all. Diamonds are a PURCHASED currency, so this cannot be a tap: it
+        /// pays only on a PERSONAL WEEKLY RECORD (re-clearing a floor, or any floor
+        /// at or below this week's deepest, pays nothing), so the most the Deep can
+        /// ever add in a week is one diamond per floor of new depth, and the
+        /// existing ceiling of 60 is shared with the Delve proper - the Deep cannot
+        /// raise the weekly total, only change where it comes from.
+        /// </summary>
+        public const int DeepRecordDiamonds = 1;
 
         /// <summary>
         /// Per floor below 8, the pass chance is multiplied by this. 3% a floor
@@ -282,7 +308,7 @@ namespace FolkIdle.Server.Engine
 
         /// <summary>
         /// Modul: EVERY DEEP PRICE SATURATES HERE, computed in double and
-        /// clamped before it ever becomes a long. 1.25^d passes long.MaxValue a
+        /// clamped before it ever becomes a long. 1.35^d passes long.MaxValue a
         /// little past floor 200, and a wrapped price would be negative - a
         /// toll that PAYS. A quarter of long.MaxValue leaves room to add two
         /// prices without overflow; no real balance comes near it.

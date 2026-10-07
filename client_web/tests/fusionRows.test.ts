@@ -90,8 +90,8 @@ describe('the in-flight ledger: the quick second Fuse', () => {
 });
 
 describe('fusionFeeCeiling', () => {
-  it('is BaseGoldCost * 1.35^tier, rounded up', () => {
-    expect(fusionFeeCeiling(1)).toBe(270);
-    expect(fusionFeeCeiling(8)).toBe(Math.ceil(200 * Math.pow(1.35, 8)));
+  it('is BaseGoldCost * 2.5^tier, rounded up (10,000 and 2.5 since 2026-10-07)', () => {
+    expect(fusionFeeCeiling(1)).toBe(25_000);
+    expect(fusionFeeCeiling(8)).toBe(Math.ceil(10_000 * Math.pow(2.5, 8)));
   });
 });

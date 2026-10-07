@@ -56,7 +56,25 @@ namespace FolkIdle.Server.Domain.Combat
         // boss one region behind. Measured window with every set in the game
         // applied: 2.75-2.80 (the fights are binary - the larder either
         // sustains you or it does not - so only the attack moves the line).
-        private static readonly float[] _attackMultiplierByRegion = { 3.7f, 2.78f, 5.7f, 11.4f, 21.4f };
+        // Modul: 2026-10-07, balance pass - every boss's BASE attack went x1.5 (and base
+        // health x1.3), and this table is re-solved so the SAME gear requirement
+        // holds. Old { 3.7, 2.78, 5.7, 11.4, 21.4 } -> new { 2.47, 1.85, 3.85, 7.7, 14.3 }.
+        //
+        // Left as it was, base x first-clear multiplier would have been 1.5x too
+        // hard: the measured windows (a ZzWallScan-style sweep of BossGearBenchmark:
+        // required gear wins, required-2 loses, a full region-behind set loses at
+        // every quality tier, bare and with either set) moved to
+        //
+        //   region   1          2          3          4          5
+        //   window   2.11-2.82  1.83-1.87  3.77-3.94  6.69-8.67  12.3-17.3
+        //
+        // and the old region-1 value 3.7 was outside its window (the required set
+        // died). The windows are exactly the old ones divided by 1.5, so the
+        // effective first-clear attack is UNCHANGED in absolute terms and only the
+        // post-clear (farmable) boss is 1.5x tougher. The HP multipliers stay: the
+        // fight is binary on the larder, and the window is flat across HP
+        // multipliers from 0.6x to 1x of these (measured at 4 settings per region).
+        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.85f, 3.85f, 7.7f, 14.3f };
 
         // The gear each boss is calibrated to need: all eight combat slots of
         // the boss's OWN RegionTier, at this QualityTier, with affixes of at

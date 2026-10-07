@@ -11,13 +11,10 @@ namespace FolkIdle.Server.Tests
     /// "It would be cool if the first clear would drop one of the things
     /// (equipment) in transcendent tier, but only on first clear."
     ///
-    /// Transcendent is QualityTier 14 - five affixes and the top of
-    /// RarityTier.PowerMultiplier. It is also effectively unobtainable any other
-    /// way: fusion cannot exceed the Forge's ceiling of 12, and the drop roll for
-    /// tier 14 is a weight of 0.0001 against a total of 196.7, about one in two
-    /// million. So these five trophies - one per region boss, once each, ever -
-    /// are the game's only reliable source of its best item frame, which is
-    /// exactly the right reward for the only fight that is a wall.
+    /// It was Transcendent (QualityTier 14, five affixes) and became Demonic
+    /// (QualityTier 12, four affixes) on 2026-10-07 by owner decision: the top
+    /// tier is no longer a handout. Demonic is the Forge's fusion ceiling, so a
+    /// trophy is a frame fusion can also reach - earned once, without the cost.
     /// </summary>
     public class BossFirstClearTrophyTests
     {
@@ -94,10 +91,10 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void ATrophyIsTranscendentAndCarriesFiveAffixes()
+        public void ATrophyIsDemonicAndCarriesFourAffixes()
         {
-            Assert.Equal(RarityTier.Transcendent, BossFirstClearTrophy.QualityTier);
-            Assert.Equal(5, RarityTier.GetAffixCount(BossFirstClearTrophy.QualityTier));
+            Assert.Equal(RarityTier.Demonic, BossFirstClearTrophy.QualityTier);
+            Assert.Equal(4, RarityTier.GetAffixCount(BossFirstClearTrophy.QualityTier));
         }
 
         /// <summary>

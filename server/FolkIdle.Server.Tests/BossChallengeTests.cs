@@ -28,10 +28,10 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void TheRulesAreWhatTheySay()
         {
-            // Region 1: level cap 15, time limit 80 s = 800 tenths.
+            // Region 1: level cap 15, time limit 104 s = 1040 tenths (80 s until the 2026-10-07 boss HP x1.3).
             Assert.Equal(new[] { BossChallenge.Starved, BossChallenge.Young, BossChallenge.Swift },
-                BossChallengeRegistry.Met(region: 1, level: 15, ateDuringFight: false, fightTenths: 800));
-            Assert.Empty(BossChallengeRegistry.Met(region: 1, level: 16, ateDuringFight: true, fightTenths: 801));
+                BossChallengeRegistry.Met(region: 1, level: 15, ateDuringFight: false, fightTenths: 1040));
+            Assert.Empty(BossChallengeRegistry.Met(region: 1, level: 16, ateDuringFight: true, fightTenths: 1041));
             Assert.Equal(new[] { BossChallenge.Swift }, BossChallengeRegistry.Met(5, 99, true, 30));
             // A fight with no recorded length is not a fast one.
             Assert.Empty(BossChallengeRegistry.Met(5, 99, true, 0));
