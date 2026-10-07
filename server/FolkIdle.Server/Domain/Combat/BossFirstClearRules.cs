@@ -49,7 +49,14 @@ namespace FolkIdle.Server.Domain.Combat
         // reach region 2 at all, and "a new player died to the first monster and
         // onboarding stalled there forever" is a defect this repo has already
         // shipped once.
-        private static readonly float[] _hpMultiplierByRegion = { 3.0f, 4.0f, 6.0f, 9.0f, 14.0f };
+        // Modul: 2026-10-07 (evening), owner: regions 3-5 harder. Their base
+        // monsters went x1.25 / x1.5 / x2 (health, attack, XP, gold), and both
+        // first-clear tables divide by the same factor so the FIRST clear is
+        // exactly as hard in absolute terms as before - the gear wall below
+        // still holds - and only the farmed boss and its Ascension got harder.
+        // Old health { 3.0, 4.0, 6.0, 9.0, 14.0 }, old attack (see below)
+        // { 2.47, 1.85, 3.85, 7.7, 14.3 }.
+        private static readonly float[] _hpMultiplierByRegion = { 3.0f, 4.0f, 4.8f, 6.0f, 7.0f };
         // Modul: region 2 went 2.6 -> 2.78 when set bonuses started paying
         // (task 63). A region-1 DEFENCE set at Transcendent (+64% armour) had
         // become as tough as region-2 gear at the old bar, so it beat this
@@ -74,7 +81,7 @@ namespace FolkIdle.Server.Domain.Combat
         // post-clear (farmable) boss is 1.5x tougher. The HP multipliers stay: the
         // fight is binary on the larder, and the window is flat across HP
         // multipliers from 0.6x to 1x of these (measured at 4 settings per region).
-        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.85f, 3.85f, 7.7f, 14.3f };
+        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.85f, 3.08f, 5.13f, 7.15f };
 
         // The gear each boss is calibrated to need: all eight combat slots of
         // the boss's OWN RegionTier, at this QualityTier, with affixes of at
