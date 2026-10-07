@@ -4,6 +4,7 @@ import {
   APTITUDE_MAX,
   APTITUDE_VILLAGE_CEILING,
 } from '../src/lib/net/commands';
+import { MAX_MARKET_PRICE, MAX_FORGE_LEVEL } from '../src/lib/net/commands';
 import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
 import { LANGUAGES } from '../src/lib/ui/i18n';
 import {
@@ -942,5 +943,23 @@ describe('no screen asks for a level to breed', () => {
     const gate = withoutComments(read(join(serverRoot, 'Engine', 'BreedingGateRules.cs')))
       .replace(/^\s*\/\/\/.*$/gm, '');
     expect(gate).not.toMatch(/Level\s*[<>=]/);
+  });
+});
+
+// Modul: two more numbers the client states twice (owner quick fixes, 2026-10-07).
+describe('market price ceiling and Forge cap', () => {
+  it('MAX_MARKET_PRICE equals the server listing ceiling', () => {
+    const engine = read(serverRoot, 'Domain', 'Economy', 'MarketEscrowEngine.cs');
+    const m = engine.match(/MaxListingPrice\s*=\s*([\d_]+)L?\s*;/);
+    expect(m).not.toBeNull();
+    expect(Number(m![1].replace(/_/g, ''))).toBe(MAX_MARKET_PRICE);
+  });
+
+  it('MAX_FORGE_LEVEL equals the Town Hall ceiling at the structural max', () => {
+    const village = read(serverRoot, 'Domain', 'Progression', 'VillageManagementEngine.cs');
+    const cap = Number(village.match(/MaxStructuralBuildingLevel\s*=\s*(\d+)/)![1]);
+    const ceiling = village.match(/GetMaxBuildingLevelCeiling\(int townHallLevel\)\s*\{\s*return\s+(\d+)\s*\+\s*townHallLevel\s*\*\s*(\d+)/);
+    expect(ceiling).not.toBeNull();
+    expect(Number(ceiling![1]) + cap * Number(ceiling![2])).toBe(MAX_FORGE_LEVEL);
   });
 });

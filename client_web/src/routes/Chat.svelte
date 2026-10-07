@@ -421,8 +421,19 @@
         bind:value={draft}
         onkeydown={(e) => e.key === 'Enter' && send()}
         maxlength="128"
+        enterkeyhint="send"
       />
+      <!-- Modul: ONE TAP SENDS (owner, APK). The first tap on Send only closed the
+           keyboard: the press blurred the input, App drops `html.typing` on
+           focusout and the tab bar/coach come back, the layout shifted under the
+           finger, and the click that followed landed on nothing. Cancelling the
+           press default keeps focus in the input (the keyboard stays up, which
+           is also what you want while chatting) and click still fires. Both
+           events, because Android's WebView moves focus on the synthesized
+           mouse event as well as on the pointer one. -->
       <button
+        onpointerdown={(e) => e.preventDefault()}
+        onmousedown={(e) => e.preventDefault()}
         onclick={send}
         disabled={!draft.trim() || (active === WHISPER && openThreadWith === null && !whisperTarget.trim())}
       >

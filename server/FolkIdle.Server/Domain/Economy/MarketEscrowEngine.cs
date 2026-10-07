@@ -121,8 +121,20 @@ namespace FolkIdle.Server.Domain.Economy
             return outcome.Listed;
         }
 
+        // Modul: the one price fence for equipment, listing and order book alike.
+        // Matches CosmeticRegistry.MaxMarketPrice and the client's input max.
+        public const long MinListingPrice = 1;
+        public const long MaxListingPrice = 1_000_000_000;
+
         private async Task<ListAttemptOutcome> AttemptListAsync(FolkIdleDbContext db, long playerId, long instanceId, long limitPrice)
         {
+            if (limitPrice < MinListingPrice || limitPrice > MaxListingPrice)
+            {
+                return ListAttemptOutcome.Rejected(
+                    $"MarketListItem rejected: price {limitPrice} outside [{MinListingPrice}, {MaxListingPrice}].",
+                    (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
+            }
+
             using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
             {
                 var player = await db.PlayerRecords
@@ -174,46 +186,12 @@ namespace FolkIdle.Server.Domain.Economy
                         (byte)FolkIdle.Server.Network.CommandResultCode.ItemEquipped);
                 }
 
-                // Modul 40/51: strict 20%-to-300% volatility corridor against
-                // the 7-day rolling average, falling back to a deterministic
-                // ContentRegistry baseline for untraded items so this direct
-                // listing path cannot be used to launder gold via an
-                // arbitrarily priced never-before-traded item.
-                //
-                // Modul: AN ITEM WITH NO PRICE IS NOT AN ITEM WITH NO LIMIT.
-                // This ran the corridor only when a price could be computed and
-                // let everything else straight through - which was harmless
-                // while every item in the database was in the catalogue, and
-                // stopped being harmless the moment the catalogue was cut from
-                // 437 entries to its 75 canonical pieces. Every instance of a
-                // removed item still sits in EquipmentInstances, has no
-                // baseline, has never traded, and could therefore be listed at
-                // any price at all: exactly the laundering route the corridor
-                // exists to close, handed out by a content change.
-                //
-                // Fails closed. An item nobody can price is an item nobody can
-                // sell, which costs a player nothing they can name - the pieces
-                // this rejects cannot be equipped or valued either.
-                double? rollingAveragePrice = await MarketOrderBookEngine.CalculateRollingAveragePriceAsync(db, equip.BaseItemId, equip.QualityTier);
-                if (!rollingAveragePrice.HasValue)
-                {
-                    await transaction.RollbackAsync();
-                    return ListAttemptOutcome.Rejected(
-                        $"MarketListItem rejected: no price baseline for {equip.BaseItemId} - not in the catalogue and never traded.",
-                        (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
-                }
-
-                {
-                    double minPrice = rollingAveragePrice.Value * 0.80;
-                    double maxPrice = rollingAveragePrice.Value * 3.00;
-                    if (limitPrice < minPrice || limitPrice > maxPrice)
-                    {
-                        await transaction.RollbackAsync();
-                        return ListAttemptOutcome.Rejected(
-                            $"MarketListItem rejected: price {limitPrice} outside volatility corridor [{minPrice}, {maxPrice}] for {equip.BaseItemId} T{equip.QualityTier}.",
-                            (byte)FolkIdle.Server.Network.CommandResultCode.InvalidPrice);
-                    }
-                }
+                // Modul: NO PRICE CORRIDOR (owner, 2026-10-07). The 20%-300% corridor
+                // against the rolling average refused ordinary listings as "invalid
+                // price" and, for an item with no baseline, refused them outright.
+                // The seller chooses the price, as for cosmetics; the only fences
+                // are the arithmetic's own (1 .. MaxListingPrice), checked below
+                // before any row is touched.
 
                 bool isQuarantined = player.Quarantine_Active || player.IsQuarantined;
 

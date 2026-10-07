@@ -231,6 +231,14 @@ async function dismissOfflineSummary(waitMs = 6000) {
     await page.waitForTimeout(250);
   }
   await page.waitForTimeout(300);
+  // The What's new window opens AFTER the summary closes (or right after login
+  // when there is none), and its backdrop swallows clicks the same way. A
+  // returning profile owes it; a fresh one is recorded silently and never sees it.
+  const notes = page.getByRole('dialog', { name: "What's new" });
+  if ((await notes.count()) > 0) {
+    await notes.getByRole('button', { name: 'Close' }).first().click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
   return dismissed;
 }
 

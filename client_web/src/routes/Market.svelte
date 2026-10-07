@@ -21,7 +21,7 @@
   import { summarizeAffixes } from '../lib/ui/itemRow';
   import { isWide } from '../lib/ui/media';
   import { prettifyBaseId } from '../lib/net/content';
-  import { listItemOnMarket, buyMarketListing, placeLimitOrder } from '../lib/net/commands';
+  import { listItemOnMarket, buyMarketListing, placeLimitOrder, MAX_MARKET_PRICE } from '../lib/net/commands';
   import { contentQuery } from '../lib/net/registry.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
   import ItemBrowser from '../lib/ui/ItemBrowser.svelte';
@@ -500,6 +500,7 @@
            then it gives way to a card that names the piece. -->
       <ItemBrowser
         items={sellable}
+        regionOf={(baseId) => registry?.itemsByBaseId.get(baseId)?.RegionTier ?? 0}
         selectedId={sellInstanceId}
         compact
         emptyText="Nothing carried. Take a piece off in the chest to sell it."
@@ -584,7 +585,7 @@
       <!-- The server DISCONNECTS on a price of zero or less rather than
            rejecting it, so this is bounded at the input as well as guarded in
            the command layer. -->
-      <input type="number" min="1" step="1" bind:value={sellPrice} />
+      <input type="number" min="1" max={MAX_MARKET_PRICE} step="1" bind:value={sellPrice} />
     </label>
 
     <!-- Modul: the cut, BEFORE confirming. Both figures come from the server
@@ -613,7 +614,7 @@
     <button
       class="primary listbtn"
       onclick={sell}
-      disabled={!hasGuildLicense || !sellItem || sellPrice < 1}
+      disabled={!hasGuildLicense || !sellItem || sellPrice < 1 || sellPrice > MAX_MARKET_PRICE}
       data-testid="market-list"
     >
       {sellItem
@@ -722,7 +723,7 @@
 
     <label>
       Price
-      <input type="number" min="1" step="1" bind:value={orderPrice} />
+      <input type="number" min="1" max={MAX_MARKET_PRICE} step="1" bind:value={orderPrice} />
     </label>
 
     <button
@@ -914,6 +915,14 @@
     margin: 0;
     flex: 1 1 auto;
     min-width: 0;
+  }
+
+  /* Modul: the label is a flex item with the default shrink, so on a narrow
+     phone it was squeezed to the width of "Sor" and wrapped "t:" under it.
+     It never shrinks; the select beside it absorbs the squeeze (min-width: 0). */
+  .sortlabel span {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 
   .sortlabel select {

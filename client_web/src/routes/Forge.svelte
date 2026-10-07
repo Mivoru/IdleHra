@@ -5,7 +5,7 @@
   import { invalidateOwnedItems } from '../lib/net/queryClient';
   import { queryKeys, fetchForge, fetchForgeStackPreview, type ForgeEquipment } from '../lib/net/rest';
   import { prettifyBaseId, loadContent, type ContentRegistry } from '../lib/net/content';
-  import { executeForgeFusion, fuseStack, rerollAffix, REROLL_OPERATIONS } from '../lib/net/commands';
+  import { executeForgeFusion, fuseStack, rerollAffix, REROLL_OPERATIONS, MAX_FORGE_LEVEL } from '../lib/net/commands';
   import Burst from '../lib/ui/Burst.svelte';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
@@ -101,7 +101,14 @@
   // 14, not 13. The server's old constant read the fourteen tiers as "0-13"
   // while every item in the game is 1-based, which quietly made Transcendent
   // the one rarity that exists and cannot be reached.
-  const atMaxTier = $derived((fusionTargetItem?.QualityTier ?? 0) >= MAX_QUALITY_TIER);
+  //
+  // Modul: BUT THE FORGE STOPS AT 12. A fusion needs Forge level >= the rarity it
+  // produces, and the Forge tops out at 12 (Town Hall 5 -> ceiling 2 + 5*2), so
+  // Godly (13) and Transcendent (14) are unreachable by fusion - they were
+  // offered, with a "needs Forge 13" no player can ever meet. Every fusion
+  // target above FUSION_CEILING is hidden here.
+  const FUSION_CEILING = Math.min(MAX_QUALITY_TIER, MAX_FORGE_LEVEL);
+  const atMaxTier = $derived((fusionTargetItem?.QualityTier ?? 0) >= FUSION_CEILING);
 
   // Modul: fusion now takes THREE IDENTICAL items of the SAME RARITY. Once a
   // target is picked, the only legal partners are its exact twins, so the two
@@ -131,7 +138,7 @@
   const fusableSets = $derived.by(() => {
     const groups = new Map<string, { base: string; tier: number; count: number }>();
     for (const item of owned) {
-      if (item.QualityTier >= MAX_QUALITY_TIER) continue;
+      if (item.QualityTier >= FUSION_CEILING) continue;
       const key = `${item.BaseItemId}#${item.QualityTier}`;
       const seen = groups.get(key) ?? { base: item.BaseItemId, tier: item.QualityTier, count: 0 };
       seen.count++;
@@ -188,7 +195,7 @@
     if (forgeLevel === 0) return 'Build a Forge in your village first.';
     if (fusionTarget === 0) return 'Choose the item to upgrade.';
     if (fusionSacOne === 0 || fusionSacTwo === 0) return 'Choose two matching items to fuse into it.';
-    if (atMaxTier) return 'That item is already at the highest rarity.';
+    if (atMaxTier) return 'That item is already at the highest rarity the Forge can make.';
     if (gold < fusionFee) return `Not enough gold - the fee is up to ${formatGold(fusionFee)}.`;
     return null;
   });
@@ -242,7 +249,7 @@
   // about 2,500 presses of the single fusion above for no choice at all. The
   // plan and its price come from the server (the same planner the fusion
   // runs), never from a copy of the fee curve here.
-  const stackMaxReach = $derived(Math.min(forgeLevel, MAX_QUALITY_TIER));
+  const stackMaxReach = $derived(Math.min(forgeLevel, FUSION_CEILING));
   const stackTiers = $derived(
     fusionTargetItem
       ? Array.from(
@@ -352,7 +359,7 @@
   const wornAnywhere = $derived(
     new Set<number>([...equippedIds, ...owned.filter((i) => i.IsEquipped).map((i) => i.Id)]),
   );
-  const allRows = $derived(buildFusionRows(owned, wornAnywhere, hiddenIds, MAX_QUALITY_TIER));
+  const allRows = $derived(buildFusionRows(owned, wornAnywhere, hiddenIds, FUSION_CEILING));
   const matchedRows = $derived.by(() => {
     const needle = rowSearch.trim().toLowerCase();
     if (!needle) return allRows;
@@ -679,7 +686,7 @@
             {rarityName(fusionTargetItem.QualityTier + 1)}
           </b>
         {:else}
-          &middot; <span class="blocked">already at the maximum tier</span>
+          &middot; <span class="blocked">already at the highest rarity the Forge can make</span>
         {/if}
       </p>
 

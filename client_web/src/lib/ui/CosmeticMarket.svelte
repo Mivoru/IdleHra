@@ -80,9 +80,28 @@
 
   // What the player can put up: everything they own that is not listed.
   const sellable = $derived((mine.data?.Owned ?? []).filter((o) => !o.IsListed));
-  let sellId = $state(0);
+
+  // Modul: ONE TILE PER KIND OF COSMETIC, with a count. Three copies of the same
+  // avatar were three identical tiles, so a stash of duplicates (the whole
+  // reason to use this tab) was a wall of repeats. The tile stands for its
+  // first copy; listing sells exactly one, and the next copy takes its place.
+  // Grouped on DefinitionId alone: kind and rarity belong to the definition.
+  let duplicatesOnly = $state(false);
+  const groups = $derived.by(() => {
+    const byDefinition = new Map<string, { first: (typeof sellable)[number]; count: number }>();
+    for (const o of sellable) {
+      const seen = byDefinition.get(o.DefinitionId);
+      if (seen) seen.count++;
+      else byDefinition.set(o.DefinitionId, { first: o, count: 1 });
+    }
+    return [...byDefinition.values()];
+  });
+  const shownGroups = $derived(duplicatesOnly ? groups.filter((g) => g.count > 1) : groups);
+
+  let sellDefinition = $state('');
   let sellPrice = $state(1000);
-  const sellItem = $derived(sellable.find((o) => o.Id === sellId) ?? null);
+  const sellGroup = $derived(groups.find((g) => g.first.DefinitionId === sellDefinition) ?? null);
+  const sellItem = $derived(sellGroup?.first ?? null);
   const priceValid = $derived(Number.isInteger(sellPrice) && sellPrice >= 1 && sellPrice <= MAX_COSMETIC_PRICE);
 
   let busy = $state(false);
@@ -113,7 +132,8 @@
     act(async () => {
       if (!sellItem || !priceValid) return;
       await settle(await listCosmetic(sellItem.Id, sellPrice), `${nameOf(sellItem.DefinitionId)} is on the market.`);
-      sellId = 0;
+      // The group's next copy (if any) is still selectable; keep the choice only while one is left.
+      if ((sellGroup?.count ?? 0) <= 1) sellDefinition = '';
     });
 
   const buy = (id: number, name: string) => act(async () => settle(await buyCosmetic(id), `You bought ${name}.`));
@@ -194,18 +214,26 @@
     {:else if sellable.length === 0}
       <p class="dim">You have nothing to sell. Chests come every five levels and, rarely, from monsters.</p>
     {:else}
+      <label class="dupes">
+        <input type="checkbox" bind:checked={duplicatesOnly} data-testid="cosmetic-duplicates-only" />
+        Duplicates only
+      </label>
+      {#if shownGroups.length === 0}
+        <p class="dim">You have no duplicates.</p>
+      {/if}
       <div class="sell-pick" role="listbox" aria-label="What to sell">
-        {#each sellable as o (o.Id)}
+        {#each shownGroups as g (g.first.DefinitionId)}
+          {@const o = g.first}
           <button
             class="pick {rarityClass(o.Rarity)}"
-            class:chosen={o.Id === sellId}
+            class:chosen={o.DefinitionId === sellDefinition}
             role="option"
-            aria-selected={o.Id === sellId}
-            onclick={() => (sellId = o.Id)}
+            aria-selected={o.DefinitionId === sellDefinition}
+            onclick={() => (sellDefinition = o.DefinitionId)}
             data-testid="cosmetic-sell-{o.Id}"
           >
             {@render Face(o.DefinitionId, o.Kind, o.Rarity)}
-            <span class="pick-name">{nameOf(o.DefinitionId)}</span>
+            <span class="pick-name">{nameOf(o.DefinitionId)}{#if g.count > 1} <b class="count" data-testid="cosmetic-count">x{g.count}</b>{/if}</span>
             <!-- Modul: "Rare avatar" under the name (task 102): two "River
                  Stone"s of different rarity or kind were the same tile. -->
             <span class="pick-meta">{rarityNames[o.Rarity]} {KIND_WORDS[o.Kind] ?? 'cosmetic'}</span>
@@ -371,6 +399,19 @@
     text-align: center;
     font-size: 0.68rem;
     color: var(--text-dim);
+  }
+
+  .dupes {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-height: 44px;
+    margin: 0.3rem 0 0;
+  }
+
+  .count {
+    white-space: nowrap;
+    color: var(--c);
   }
 
   .pick-name {
