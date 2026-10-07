@@ -234,5 +234,97 @@ namespace FolkIdle.Server.Engine
             int tierIndex = Math.Clamp(regionTier - 1, 0, _healPayoutFlatHp.Length - 1);
             return _healPayoutFlatHp[tierIndex] * 1000;
         }
+
+        // Modul: RATIONS, owner request 2026-10-07 ("fishing must matter again").
+        //
+        // Food demand used to be driven ONLY by damage taken. That is the right
+        // model for sustain, and the wrong one for an economy: a character whose
+        // affixes, rebirth power and armour keep it above the eat threshold
+        // never takes a bite, so the larder filled once and fishing stopped
+        // mattering. Production on 2026-10-07: a level-78 account sat on
+        // 3 x 9,999 and had not fished in days, while GatheringShareTests (which
+        // models gear with no affixes) still reported fishing at 20-42% of
+        // playtime. The model was right about the gear it modelled; real
+        // players are past it.
+        //
+        // A ration is upkeep, not healing: a fighting character eats one fish
+        // every RationIntervalTicks whatever its health, and the fish restores
+        // NOTHING. It deliberately does not heal, so the sustain ceiling (the
+        // real difficulty knob, see the auto-eat cooldown) and the "Starved"
+        // boss challenge (AteThisFight) are exactly what they were. A ration is
+        // one fish of the monster's region or later, and doubles for every tier
+        // below (RationCost) - otherwise the cheapest region-1 minnow at the
+        // fastest node would feed region 5, and a flat refusal would have made
+        // the 30,000 early fish a real player already held worthless overnight.
+        //
+        // Region 1 eats no rations: a new player owns ten starter fish and has
+        // not been taught to fish yet, and region 1 is where that happens.
+        //
+        // Intervals: one fish every 10 s in region 2 down to every 6 s in
+        // region 5 - 360 to 600 fish an hour. A region-typical node with
+        // mastery and a tool catches roughly four times that, so about a fifth
+        // of playtime goes to the river, GatheringShareTests' own design target.
+        // A full larder (3 x 9,999) is 50-80 hours of fighting.
+        //
+        // Unpaid, the character is HUNGRY: it keeps fighting (an idle game must
+        // not go quiet), auto-eat still heals from whatever is loaded, but every
+        // kill pays HungryRewardPct of its XP and gold. Shown to the player as
+        // the existing OutOfFood warning.
+        public static int RationIntervalTicks(int monsterRegionTier) => monsterRegionTier switch
+        {
+            <= 1 => 0,
+            2 => 100,
+            3 => 80,
+            4 => 70,
+            _ => 60,
+        };
+
+        /// <summary>Share of a kill's XP and gold a hungry character is paid.</summary>
+        public const int HungryRewardPct = 50;
+
+        /// <summary>
+        /// Fish a ration costs in food of <paramref name="foodTier"/> against a
+        /// monster of <paramref name="monsterRegionTier"/>: one fish of the
+        /// region or later, and twice as many for every tier below it (a
+        /// region-2 eel in region 4 is four fish a ration). So a stockpile of
+        /// early fish is still food - it just runs out fast - and the river of
+        /// the region being fought in is always the cheap way to eat. 0 = not food.
+        /// </summary>
+        public static int RationCost(int foodTier, int monsterRegionTier)
+        {
+            if (foodTier <= 0) return 0;
+            int below = monsterRegionTier - foodTier;
+            return below <= 0 ? 1 : 1 << Math.Min(below, 20);
+        }
+
+        /// <summary>
+        /// The larder slot (1-3) a ration is taken from, and how many fish it
+        /// takes. Cheapest ration first; between equally cheap slots the lower
+        /// tier, so a ration never burns the best fish while a poorer one that
+        /// still costs a single fish is loaded. 0 when no slot holds enough for
+        /// one ration - the character goes hungry.
+        /// </summary>
+        public static int PickRationSlot(int item1, int count1, int item2, int count2, int item3, int count3, int monsterRegionTier, out int cost)
+        {
+            int best = 0;
+            int bestCost = int.MaxValue;
+            int bestTier = int.MaxValue;
+            Consider(1, item1, count1);
+            Consider(2, item2, count2);
+            Consider(3, item3, count3);
+            cost = best == 0 ? 0 : bestCost;
+            return best;
+
+            void Consider(int slot, int itemId, int count)
+            {
+                int tier = GetTier(itemId);
+                int slotCost = RationCost(tier, monsterRegionTier);
+                if (slotCost <= 0 || count < slotCost) return;
+                if (slotCost > bestCost || (slotCost == bestCost && tier >= bestTier)) return;
+                best = slot;
+                bestCost = slotCost;
+                bestTier = tier;
+            }
+        }
     }
 }

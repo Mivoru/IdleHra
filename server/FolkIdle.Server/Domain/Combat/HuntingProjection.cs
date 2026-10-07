@@ -126,9 +126,10 @@ namespace FolkIdle.Server.Domain.Combat
                 SurvivesWithFood = !withFood.Died,
                 SurvivesWithoutFood = !noFood.Died,
                 KillsBeforeDeathWithoutFood = noFood.Died ? (int)noFood.Kills : 0,
+                // Bites and rations both leave the larder.
                 FoodPerHour = withFood.Died
-                    ? withFood.Bites * (3600.0 / Math.Max(1.0, withFood.Ticks * TickMs / 1000.0))
-                    : withFood.Bites,
+                    ? (withFood.Bites + withFood.Rations) * (3600.0 / Math.Max(1.0, withFood.Ticks * TickMs / 1000.0))
+                    : withFood.Bites + withFood.Rations,
             };
         }
 
@@ -168,6 +169,17 @@ namespace FolkIdle.Server.Domain.Combat
             public int Heal2 { get; init; }
             public int Heal3 { get; init; }
             public double ThornsFraction { get; init; }
+
+            /// <summary>The larder's item ids, for rations (FoodRegistry.PickRationSlot).</summary>
+            public int FoodItem1 { get; init; }
+            public int FoodItem2 { get; init; }
+            public int FoodItem3 { get; init; }
+
+            /// <summary>Ticks between rations against this monster; 0 = none (region 1).</summary>
+            public int RationIntervalTicks { get; init; }
+
+            /// <summary>The monster's region, the lowest food tier a ration accepts.</summary>
+            public int RationRegionTier { get; init; }
 
             /// <summary>The food buff's regen, per tick (timed effects only).</summary>
             public int RegenPerTick { get; init; }
@@ -235,6 +247,11 @@ namespace FolkIdle.Server.Domain.Combat
                     Heal1 = FoodRegistry.GetHealMilliHp(copy.Food1_ItemId, maxMilliHp),
                     Heal2 = FoodRegistry.GetHealMilliHp(copy.Food2_ItemId, maxMilliHp),
                     Heal3 = FoodRegistry.GetHealMilliHp(copy.Food3_ItemId, maxMilliHp),
+                    FoodItem1 = copy.Food1_ItemId,
+                    FoodItem2 = copy.Food2_ItemId,
+                    FoodItem3 = copy.Food3_ItemId,
+                    RationIntervalTicks = FoodRegistry.RationIntervalTicks(ContentRegistry.GetMonsterRegionTier(monsterId)),
+                    RationRegionTier = ContentRegistry.GetMonsterRegionTier(monsterId),
                     ThornsFraction = thorns ? SimulationEngine.ThornsReflectionFraction : 0.0,
                     RegenPerTick = timedEffects && copy.ActiveFoodBuffId > 0
                         ? Math.Max(1, effectiveMaxHp / ConsumableEngine.FoodRegenDivisor)
@@ -274,6 +291,14 @@ namespace FolkIdle.Server.Domain.Combat
             public long Kills;
             public long FirstClearKills;
             public long Bites;
+
+            /// <summary>Fish eaten as rations (FoodRegistry.RationIntervalTicks) - upkeep, no heal.</summary>
+            public long Rations;
+            public int RationTicks;
+
+            /// <summary>The last ration went unpaid; kills pay HungryRewardPct.</summary>
+            public bool Hungry;
+            public long HungryKills;
             public long Ticks;
             public bool Died;
 
@@ -309,6 +334,8 @@ namespace FolkIdle.Server.Domain.Combat
                     Food2 = payload.Food2_Count,
                     Food3 = payload.Food3_Count,
                     WithFood = withFood,
+                    RationTicks = payload.RationTicksSinceMeal,
+                    Hungry = payload.Hungry,
                     FirstClearPending = BossFirstClearRules.IsFirstClearPending(payload.DefeatedRegionBossMask, setup.Monster.Id),
                     DeathWardUp = setup.DeathWardArmed,
                 };
@@ -432,6 +459,29 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
+                // SimulationEngine.TickRation, at the same point of the tick.
+                // The advisor's food-less run eats no rations either: it prices
+                // the fight, and a ration never touches health.
+                if (s.WithFood && setup.RationIntervalTicks > 0
+                    && (s.Hungry || ++s.RationTicks >= setup.RationIntervalTicks))
+                {
+                    int slot = FoodRegistry.PickRationSlot(
+                        setup.FoodItem1, s.Food1, setup.FoodItem2, s.Food2, setup.FoodItem3, s.Food3,
+                        setup.RationRegionTier, out int cost);
+                    if (slot == 0)
+                    {
+                        s.Hungry = true;
+                        s.Starved = true;
+                    }
+                    else
+                    {
+                        if (slot == 1) s.Food1 -= cost; else if (slot == 2) s.Food2 -= cost; else s.Food3 -= cost;
+                        s.RationTicks = 0;
+                        s.Hungry = false;
+                        s.Rations += cost;
+                    }
+                }
+
                 if (s.PlayerHp <= 0)
                 {
                     if (s.DeathWardUp)
@@ -451,6 +501,7 @@ namespace FolkIdle.Server.Domain.Combat
                 if (monsterDown)
                 {
                     s.Kills++;
+                    if (s.Hungry) s.HungryKills++;
                     if (s.FirstClearPending) s.FirstClearKills++;
                     s.FirstClearPending = false;
                     StartFight(ref s, in setup);

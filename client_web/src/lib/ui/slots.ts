@@ -248,7 +248,7 @@ export function craftingActivityId(recipeIndex: number): number {
 
 export const HALT_REASONS: Record<number, string> = {
   0: '',
-  1: 'Out of food - auto-eat has nothing left, so you are fighting without healing.',
+  1: 'Out of food - nothing left to heal with, and from region 2 a character without rations is hungry: kills pay half XP and gold. Fish the region you fight in.',
   2: 'Died and respawned. Combat activities stop on death; gathering does not.',
   // 3 was "backpack full". The backpack is gone - storage is one unlimited
   // village chest - and the server no longer sets this reason. Kept mapped so

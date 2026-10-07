@@ -908,6 +908,7 @@ namespace FolkIdle.Server.Engine
             {
                 int stretch = (int)Math.Min(remainingTicks, CombatStretchTicks);
                 long killsBefore = state.Kills;
+                long hungryBefore = state.HungryKills;
                 long ticksBefore = state.Ticks;
                 HuntingProjection.Advance(ref state, in setup, stretch);
                 remainingTicks -= state.Ticks - ticksBefore;
@@ -922,17 +923,24 @@ namespace FolkIdle.Server.Engine
                 long paidKills = ScholarRate.RewardUnits(Random.Shared, kills, payload.Skill_Scholar);
                 totalPaidKills += paidKills;
 
+                // Rations: the kills made hungry pay HungryRewardPct, as the
+                // live kill does. Scaled as a share of the stretch's pay so the
+                // Scholar draw above stays one draw.
+                long hungryKills = state.HungryKills - hungryBefore;
+                long payNumerator = (kills - hungryKills) * 100 + hungryKills * FoodRegistry.HungryRewardPct;
+                long payDenominator = kills * 100;
+
                 // Each kill at the level it was made at - the stretch is short
                 // enough that the mentorship term (level < 50) is the only
                 // per-level input, and it moves once.
                 long xpPerKill = HuntingProjection.XpPerKill(in payload, in monster, globalXpMultiplier, globalEventId);
                 long seasonalPerKill = (long)monster.BaseXpReward * SimulationEngine.LiveKillXpMultiplierPct(in payload, globalXpMultiplier) / 100;
-                SimulationEngine.AddSeasonalXp(ref payload, (int)Math.Min(int.MaxValue, seasonalPerKill * paidKills));
+                SimulationEngine.AddSeasonalXp(ref payload, (int)Math.Min(int.MaxValue, seasonalPerKill * paidKills * payNumerator / payDenominator));
                 QuestEngine.IncrementProgress(ref payload, QuestEngine.QuestTypeKillMonsters, (int)Math.Min(int.MaxValue, kills));
-                totalGold += paidKills * CombatGoldReward.PerKill(in payload, in monster, setup.Stats.GoldAcquisitionMultiplierPct);
+                totalGold += paidKills * CombatGoldReward.PerKill(in payload, in monster, setup.Stats.GoldAcquisitionMultiplierPct) * payNumerator / payDenominator;
 
                 int levelBefore = payload.CurrentLevel;
-                ApplyCombatXp(ref payload, xpPerKill * paidKills);
+                ApplyCombatXp(ref payload, xpPerKill * paidKills * payNumerator / payDenominator);
                 if (payload.CurrentLevel != levelBefore && remainingTicks > 0)
                 {
                     // A bigger bar (and, for a lineage, a harder swing) from here on.
@@ -961,6 +969,8 @@ namespace FolkIdle.Server.Engine
             payload.Food1_Count = state.Food1;
             payload.Food2_Count = state.Food2;
             payload.Food3_Count = state.Food3;
+            payload.RationTicksSinceMeal = state.RationTicks;
+            payload.Hungry = state.Hungry;
 
             int effectiveMaxHp = (int)setup.MaxMilliHp;
             if (state.DeathWardUsed)
