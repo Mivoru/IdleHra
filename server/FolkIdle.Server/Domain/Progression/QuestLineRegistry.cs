@@ -212,7 +212,7 @@ namespace FolkIdle.Server.Domain.Progression
         ///
         /// GOLD is a quarter of the region's Delve entry fee
         /// (DelveRegistry.EntryFeeByRegion: 7,000 / 17,000 / 52,500 / 150,000 /
-        /// 250,000). That table is already written as "minutes of the region's
+        /// 500,000). That table is already written as "minutes of the region's
         /// own income" and asserted against measured income, so a reward that is
         /// a fixed fraction of it scales with the economy and moves when the
         /// economy is retuned - rather than being a second set of numbers that
