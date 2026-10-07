@@ -397,7 +397,7 @@
         This villager is <strong>spent for ever</strong> once married.
       </p>
     {/if}
-    <button class="breed" onclick={breed} disabled={!canBreed}>Breed</button>
+    <button class="breed" data-guide="breeding-start" onclick={breed} disabled={!canBreed}>Breed</button>
 
     <p class="dim tiny">
       The child joins the <strong>Hall of Ancestors</strong>; field it and it is

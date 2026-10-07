@@ -27,20 +27,26 @@
 //      keeps asking is worse than one that never existed.
 //   3. Tier one still wins outright, then tier two, then this. A player who has
 //      not yet won a fight is not asked to think about guild buffs.
+//
+// THE QUEST LINE REPLACED THREE OF THESE (owner, 2026-10-07). 'try_the_delve',
+// 'reroll_an_affix' and 'sell_on_the_market' each said "here is a feature you have
+// not tried" and were cleared by being READ. The quest line (QuestPanel.svelte,
+// served by the server's QuestLineRegistry) says the same thing about the same
+// three acts, but only ticks when the act HAPPENED, and keeps asking until it
+// has - so two panels with two opinions about one act would have been two
+// sources of truth. They are deleted rather than kept as a fallback, and a
+// test (tutorialObjectives.test.ts) pins that they stay gone.
 import type { StateUpdate } from '../net/protocol.generated';
-import { DELVE_FIRST_ENTRY_GOLD, lockedRequirement } from '../ui/unlocks';
+import { lockedRequirement } from '../ui/unlocks';
 import type { OnboardingFacts } from './tutorialDiscoveries';
 
 export type ObjectiveId =
   | 'place_attribute_points'
   | 'spend_skill_points'
   | 'first_region_boss'
-  | 'try_the_delve'
   | 'join_a_guild'
-  | 'sell_on_the_market'
   | 'read_your_mail'
-  | 'raise_the_town_hall'
-  | 'reroll_an_affix';
+  | 'raise_the_town_hall';
 
 export interface Objective {
   id: ObjectiveId;
@@ -56,18 +62,6 @@ interface ObjectiveRule extends Objective {
   /** True when this is worth doing NOW and has not been done. */
   due: (s: StateUpdate, facts: OnboardingFacts) => boolean;
 }
-
-/**
- * The cheapest Delve run, mirroring DelveRegistry.EntryFeeByRegion.
- *
- * Modul: only the FIRST entry is mirrored, deliberately. A full copy of the fee
- * table on the client would be the two-sources-of-truth surface this codebase
- * loses most of its bugs to; the objective only has to know when the gate is
- * plausibly affordable, and the screen itself asks the server for the real
- * price. Being a little early here costs nothing - being wrong about the price
- * on a button would cost a refused run.
- */
-const CHEAPEST_DELVE_ENTRY = DELVE_FIRST_ENTRY_GOLD;
 
 /**
  * Ordered by what is worth doing first, not by when it unlocks.
@@ -115,29 +109,6 @@ const OBJECTIVES: readonly ObjectiveRule[] = [
       'it drops better gear, and a region step is worth more than the whole rarity ladder.',
   },
   {
-    id: 'try_the_delve',
-    system: 'The Delve',
-    screen: 'delve',
-    title: 'Gold is piling up',
-    due: (s) => Number(s.Gold) >= CHEAPEST_DELVE_ENTRY * 3,
-    body:
-      'The Delve turns gold into diamonds, if your nerve holds. Eight floors, three doors each, ' +
-      'and every door wants one of your attributes — bank what you have or push for more, ' +
-      'and three failures lose the lot.',
-  },
-  {
-    id: 'reroll_an_affix',
-    system: 'Forge',
-    screen: 'forge',
-    title: 'Your gear can be rerolled',
-    // A Forge exists and the worn weapon has never had its affixes locked -
-    // the one packet fact that means "has used this feature".
-    due: (s) => Number(s.ForgeLevel) >= 1 && Number(s.EquippedWeaponId) > 0,
-    body:
-      'The Forge rerolls the affixes on a piece you already own and fuses two into a better ' +
-      'one. Its building level is the rarity ceiling, so raising it raises what you can make.',
-  },
-  {
     id: 'raise_the_town_hall',
     system: 'Village',
     screen: 'village',
@@ -158,16 +129,6 @@ const OBJECTIVES: readonly ObjectiveRule[] = [
     body:
       'A guild gives every member buffs funded by what the members donate — gathering ' +
       'speed, combat damage, crafting. Joining one costs nothing.',
-  },
-  {
-    id: 'sell_on_the_market',
-    system: 'Market',
-    screen: 'market',
-    title: 'Other players will buy what you do not need',
-    due: (s) => Number(s.InventoryCapacity) > 0 && Number(s.InventorySpaceRemaining) <= 10,
-    body:
-      'Your bags are nearly full. The market is player-to-player: list what you will not wear ' +
-      'rather than salvaging it, and buy the piece you are missing.',
   },
   {
     id: 'read_your_mail',

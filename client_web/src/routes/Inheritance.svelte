@@ -111,6 +111,7 @@
                 <span class="dim tiny">At maximum.</span>
               {:else}
                 <button
+                  data-guide={row.affordable ? 'inheritance-buy' : undefined}
                   disabled={!row.affordable}
                   title={row.affordable ? '' : `Needs ${formatNumber(row.cost)} diamonds`}
                   onclick={() => buy(row.id, row.level)}

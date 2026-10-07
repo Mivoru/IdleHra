@@ -47,6 +47,8 @@ namespace FolkIdle.Server.Engine
         Starter = 11,
         /// <summary>A delayed grant (PendingGrantOutbox) whose origin has no source of its own.</summary>
         Other = 12,
+        /// <summary>A quest-line step's reward (QuestLineEngine).</summary>
+        QuestLine = 13,
     }
 
     /// <summary>

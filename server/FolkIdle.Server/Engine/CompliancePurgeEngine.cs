@@ -67,6 +67,8 @@ namespace FolkIdle.Server.Engine
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM \"PlayerCraftingSlots\" WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
                 // Task 79: the gold ledger is per-player history.
                 await db.Database.ExecuteSqlRawAsync("DELETE FROM gold_spend_daily WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
+                // The quest line's latches and claims.
+                await db.Database.ExecuteSqlRawAsync("DELETE FROM quest_line_claims WHERE \"PlayerId\" = {0}", new object[] { playerId }, timeout.Token);
 
                 // Modul: A PURGED ACCOUNT MUST NOT LEAVE A WORKING CREDENTIAL
                 // BEHIND, and a refresh token is one.

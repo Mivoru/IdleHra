@@ -57,6 +57,7 @@
   import { startMusic, stopMusic } from './lib/ui/music';
   import OnboardingCoach from './lib/ui/OnboardingCoach.svelte';
   import GuidedOverlay from './lib/ui/GuidedOverlay.svelte';
+  import QuestSpotlight from './lib/ui/QuestSpotlight.svelte';
   import LootReveal from './lib/ui/LootReveal.svelte';
   import WhatsNew from './lib/ui/WhatsNew.svelte';
   import PlayerProfileModal from './lib/ui/PlayerProfileModal.svelte';
@@ -983,6 +984,7 @@
          come in kinds. -->
     <OnboardingCoach />
     <GuidedOverlay />
+    <QuestSpotlight />
 
     <!-- Modul: what changed since the player was last here, and whether the
          bundle this tab is running has been replaced since it loaded. Both

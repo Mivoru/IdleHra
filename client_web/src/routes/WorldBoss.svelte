@@ -409,6 +409,7 @@
              less than a quick strike on the best plate it struck. -->
         <button
           class="attack primary"
+          data-guide="worldboss-strike"
           data-testid="wheel-strike"
           disabled={(strikeBlockedReason !== '' && !resumable) || openingStrike}
           onclick={openStrike}
@@ -417,7 +418,7 @@
         </button>
       {:else}
         {@render platePicker()}
-        <button class="attack primary" disabled={strikeBlockedReason !== ''} onclick={attack}>
+        <button class="attack primary" data-guide="worldboss-strike" disabled={strikeBlockedReason !== ''} onclick={attack}>
           Strike plate {selectedPlate + 1}
         </button>
       {/if}
