@@ -143,6 +143,43 @@ namespace FolkIdle.Server.Domain.Progression
             return pool[random.Next(pool.Count)];
         }
 
+        // Modul: A CHEST'S RARITY IS ITS ODDS, NOT ITS CONTENTS (owner,
+        // 2026-10-08). A chest used to give exactly its own rarity; now the
+        // rarity shifts the odds. Per mille, rows = chest, columns = what it
+        // gives (Common, Rare, Epic, Legendary).
+        //
+        // Measured against the drop mix before it was chosen: monster chests
+        // fall 0.5 : 0.1 : 0.05 : 0.01 (TwinItemTier), so most legendaries
+        // would come from COMMON chests under a generous Common row. The
+        // owner's first draft (Common 2% legendary, Legendary 35%) took the
+        // legendary share of all openings from 1.52% to 3.56% and made a
+        // Legendary chest worth little on the market. This table takes it to
+        // 2.35%, keeps every chest's own rarity its most likely result, and
+        // never gives a Common from a Legendary chest. Each row dominates the
+        // one below it (CosmeticTests pins that), so a rarer chest is never a
+        // worse bet.
+        public static readonly int[][] ChestContentPermille =
+        {
+            new[] { 0, 0, 0, 0, 0 },
+            new[] { 0, 750, 200, 45, 5 },   // Common chest
+            new[] { 0, 250, 600, 130, 20 }, // Rare chest
+            new[] { 0, 100, 250, 550, 100 }, // Epic chest
+            new[] { 0, 0, 100, 300, 600 },  // Legendary chest
+        };
+
+        /// <summary>What a chest of <paramref name="chestRarity"/> gives for a roll in [0, 1).</summary>
+        public static int RollChestContent(int chestRarity, double roll)
+        {
+            var row = ChestContentPermille[Math.Clamp(chestRarity, Common, Legendary)];
+            double threshold = 0.0;
+            for (int r = Common; r <= Legendary; r++)
+            {
+                threshold += row[r] / 1000.0;
+                if (roll < threshold) return r;
+            }
+            return Legendary;
+        }
+
         // Modul: MONSTER CHEST RATES (owner, 2026-09-28): "as rare as
         // Mythic / Relic / Ancient / Divine". Each chest rarity drops exactly
         // as often as an equipment piece of its twin tier would -

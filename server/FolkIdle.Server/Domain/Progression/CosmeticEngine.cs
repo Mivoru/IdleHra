@@ -102,7 +102,10 @@ namespace FolkIdle.Server.Domain.Progression
                 return (CosmeticResult.NoChest, null);
             }
 
-            var def = CosmeticRegistry.PickFromChest(rarity, random);
+            // The chest's rarity sets the odds; the roll picks the result
+            // (CosmeticRegistry.ChestContentPermille).
+            int resultRarity = CosmeticRegistry.RollChestContent(rarity, random.NextDouble());
+            var def = CosmeticRegistry.PickFromChest(resultRarity, random);
             db.CosmeticItems.Remove(chest);
             var item = new CosmeticItem
             {

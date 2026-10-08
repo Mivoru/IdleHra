@@ -213,7 +213,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task OpeningAChestTurnsItIntoACosmeticOfItsRarity()
+        public async Task OpeningAChestTurnsItIntoACosmetic()
         {
             const long playerId = 954000003L;
             await SeedPlayerAsync(playerId, level: 1);
@@ -227,7 +227,9 @@ namespace FolkIdle.Server.Tests
             var (ok, opened) = await CosmeticEngine.OpenAsync(db, playerId, CosmeticRegistry.Epic, new Random(1), DateTime.UtcNow);
             Assert.Equal(CosmeticResult.Ok, ok);
             Assert.NotNull(opened);
-            Assert.Equal(CosmeticRegistry.Epic, opened!.Rarity);
+            // Any rarity the Epic row allows (2026-10-08: rarity is odds now).
+            Assert.InRange(opened!.Rarity, (byte)CosmeticRegistry.Common, (byte)CosmeticRegistry.Legendary);
+            Assert.True(CosmeticRegistry.ChestContentPermille[CosmeticRegistry.Epic][opened.Rarity] > 0);
             Assert.NotEqual((byte)CosmeticKind.Chest, opened.Kind);
 
             var view = await CosmeticEngine.ViewAsync(db, playerId);
@@ -238,6 +240,57 @@ namespace FolkIdle.Server.Tests
             // The chest is gone: a second open finds nothing.
             var (again, _) = await CosmeticEngine.OpenAsync(db, playerId, CosmeticRegistry.Epic, new Random(1), DateTime.UtcNow);
             Assert.Equal(CosmeticResult.NoChest, again);
+        }
+
+        // Modul: chest odds (owner, 2026-10-08). Every row sums to 1000, each
+        // chest's own rarity is its most likely result, a Legendary chest
+        // never gives a Common, and every rarer chest DOMINATES the one below
+        // it - for every k, P(result >= k) does not fall as the chest rises.
+        [Fact]
+        public void ChestOddsAreSaneAndARarerChestIsNeverAWorseBet()
+        {
+            var t = CosmeticRegistry.ChestContentPermille;
+            for (int chest = CosmeticRegistry.Common; chest <= CosmeticRegistry.Legendary; chest++)
+            {
+                Assert.Equal(1000, t[chest].Sum());
+                int mode = Array.IndexOf(t[chest], t[chest].Max());
+                Assert.Equal(chest, mode);
+            }
+            Assert.Equal(0, t[CosmeticRegistry.Legendary][CosmeticRegistry.Common]);
+
+            for (int chest = CosmeticRegistry.Rare; chest <= CosmeticRegistry.Legendary; chest++)
+            {
+                for (int k = CosmeticRegistry.Rare; k <= CosmeticRegistry.Legendary; k++)
+                {
+                    int lower = t[chest - 1].Skip(k).Sum();
+                    int higher = t[chest].Skip(k).Sum();
+                    Assert.True(higher >= lower, $"chest {chest} is a worse bet than {chest - 1} at rarity >= {k}");
+                }
+            }
+
+            // The roll walks the row: the very bottom of a Common chest's range
+            // is Common, the very top of a Legendary chest's is Legendary.
+            Assert.Equal(CosmeticRegistry.Common, CosmeticRegistry.RollChestContent(CosmeticRegistry.Common, 0.0));
+            Assert.Equal(CosmeticRegistry.Legendary, CosmeticRegistry.RollChestContent(CosmeticRegistry.Legendary, 0.9999));
+            Assert.Equal(CosmeticRegistry.Rare, CosmeticRegistry.RollChestContent(CosmeticRegistry.Legendary, 0.0));
+        }
+
+        // Measured, not asserted from the table alone: the share of legendary
+        // results across the real monster-chest mix stays near 2.35% (it was
+        // 1.52% when a chest gave its own rarity). A retune that inflates the
+        // legendary supply fails here.
+        [Fact]
+        public void LegendarySupplyFromMonsterChestsStaysBounded()
+        {
+            double total = 0, legendary = 0;
+            for (int chest = CosmeticRegistry.Common; chest <= CosmeticRegistry.Legendary; chest++)
+            {
+                double weight = CosmeticRegistry.ChestChancePerKill(chest);
+                total += weight;
+                legendary += weight * CosmeticRegistry.ChestContentPermille[chest][CosmeticRegistry.Legendary] / 1000.0;
+            }
+            double share = legendary / total;
+            Assert.InRange(share, 0.020, 0.028);
         }
 
         [Fact]

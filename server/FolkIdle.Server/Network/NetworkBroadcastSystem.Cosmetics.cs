@@ -85,6 +85,9 @@ namespace FolkIdle.Server.Network
                     ChestChancePerKill = Enumerable.Range(0, CosmeticRegistry.MaxRarity + 1)
                         .Select(r => r == 0 ? 0.0 : CosmeticRegistry.ChestChancePerKill(r)),
                     CosmeticRegistry.LevelsPerChest,
+                    // The odds a chest is opened against, so the Wardrobe
+                    // shows the server's table rather than a copy of it.
+                    CosmeticRegistry.ChestContentPermille,
                 });
             }
             catch (Exception ex)

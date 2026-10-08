@@ -48,6 +48,9 @@ export const CLIPS = {
   raceUnlocked: 'race_unlocked.wav',
   achievementUnlock: 'achievement_unlock.wav',
   error: 'error.wav',
+  // The burst of light when a cosmetic chest opens (owner, 2026-10-08). The
+  // shake's crunch is the clip's own track; this plays with the light.
+  chestShine: 'chest_open_shine.wav',
 } as const;
 
 export type ClipName = keyof typeof CLIPS;

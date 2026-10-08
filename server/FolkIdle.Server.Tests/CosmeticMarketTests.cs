@@ -125,7 +125,8 @@ namespace FolkIdle.Server.Tests
             // The buyer can open what they bought.
             var (opened, contents) = await CosmeticEngine.OpenAsync(verify, buyer, CosmeticRegistry.Legendary, new Random(3), DateTime.UtcNow);
             Assert.Equal(CosmeticResult.Ok, opened);
-            Assert.Equal(CosmeticRegistry.Legendary, contents!.Rarity);
+            // A Legendary chest gives Rare or better (odds since 2026-10-08).
+            Assert.InRange(contents!.Rarity, (byte)CosmeticRegistry.Rare, (byte)CosmeticRegistry.Legendary);
 
             // And a sold listing cannot be bought twice.
             Assert.Equal(CosmeticMarketResult.NotFound, (await CosmeticMarketEngine.BuyAsync(verify, null, poorBuyer, listingId, DateTime.UtcNow)).Result);
