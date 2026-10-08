@@ -19,6 +19,47 @@ do next.
 
 ---
 
+# 2026-10-08 - one character per kind of work, per-character bars
+
+Branch `claude/character-work-exclusivity`:
+- **One character per kind of work.** `CharacterSlotEngine.ActivityCategory`
+  (combat, woodcutting, mining, fishing, crafting, world boss) replaced the
+  "never the same activity id" rule. Checked against the LIVE payload in the
+  ChangeActivity handler, again in the `ActivityChangeQueue` drain, in the
+  legacy slot-1 path, the automation rules and the Ascension start. The DB
+  check in `ChangeCharacterActivityAsync` reads the live slot activities when
+  a session passes them (rows lag by a checkpoint). Accounts that already
+  fielded two fighters keep the first at hydration
+  (`ResolveKindOfWorkConflicts`). Client mirror: `kindOfWork` in `slots.ts`,
+  pinned by `tests/kindOfWork.test.ts`.
+- **The picked character works.** `stores/selectedCharacter.ts` is one pick
+  shared by Character, Combat, Gathering and Crafting; Combat used to send
+  every Fight for slot 1.
+- **Per-character bars on the wire** (811 -> 855): slots 2 and 3's HP, max HP,
+  monster, monster HP/max and job progress. `CachedEffectiveMaxHp` moved into
+  `CharacterActivityState` - account-wide, it was whichever slot fought last,
+  which is the "max HP 2000 that crept up" report.
+- **Rested health.** `RestedHpPending`: login, non-combat work and a deploy
+  into combat from elsewhere fill the bar on the first combat tick (slots 2/3
+  used to start every session at the 100 HP hydration default).
+- **Crafting progress bar**, and Gathering's bar now reads
+  `GatheringProgressTicks` (it read `CurrentProgressTicks`, which nothing
+  advances, so it sat at 0%).
+- **Drop comparison** holds a drop against the FIGHTER's gear
+  (`/player/worn?characterId=`), and Wear dresses the fighter.
+- Auto-eat at a 100% threshold was checked: the 25-tick cooldown applies
+  regardless of threshold, so it cannot heal instantly.
+
+Owner-side data fix the same day: player 107 (Tomda) rebirthed by accident at
+18:40 UTC; restored from the 03:17 UTC dump (gear, stock, level 73, tree,
+characters, chronicle pass; rebirth count and shards undone). Player 108
+((pro)boss) the same at 19:04 UTC, restored from the 18:53 UTC dump (level 79,
+240,482 items). Dumps and both extracts kept in `~/backups/tomda-rebirth/` on
+the box. Rebirth has no confirmation strong enough to stop two accidents in
+one evening - worth a second step before it fires.
+
+---
+
 # HANDOFF 2026-10-07 - START HERE
 
 **`docs/TASK_BOARD.md` was rewritten to hold only open work.** The old

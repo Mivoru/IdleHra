@@ -36,6 +36,12 @@ namespace FolkIdle.Server.Engine
         // Milli-HP. Long for the same reason as TickStatePayload's copy.
         public long CurrentMonsterHp;
         public int PlayerHp;
+        // Per character since 2026-10-08: the maximum and the rested flag
+        // belong to the bar they describe - see TickStatePayload's copies.
+        // Account-wide, the maximum was whichever slot fought LAST, so slot 1's
+        // bar was drawn against slot 3's pool.
+        public long CachedEffectiveMaxHp;
+        public bool RestedHpPending;
         public int CombatTargetTickAccumulator;
         public byte TargetStatusEffectBitmask;
 

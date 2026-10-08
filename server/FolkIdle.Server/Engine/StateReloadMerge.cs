@@ -152,6 +152,8 @@ namespace FolkIdle.Server.Engine
                 reloaded.CurrentMonsterId = live.CurrentMonsterId;
                 reloaded.CurrentMonsterHp = live.CurrentMonsterHp;
                 reloaded.PlayerHp = live.PlayerHp;
+                reloaded.CachedEffectiveMaxHp = live.CachedEffectiveMaxHp;
+                reloaded.RestedHpPending = live.RestedHpPending;
                 reloaded.CombatTargetTickAccumulator = live.CombatTargetTickAccumulator;
                 reloaded.TargetStatusEffectBitmask = live.TargetStatusEffectBitmask;
                 reloaded.GatheringProgressTicks = live.GatheringProgressTicks;
@@ -178,6 +180,8 @@ namespace FolkIdle.Server.Engine
             reloaded.CurrentMonsterId = live.CurrentMonsterId;
             reloaded.CurrentMonsterHp = live.CurrentMonsterHp;
             reloaded.PlayerHp = live.PlayerHp;
+            reloaded.CachedEffectiveMaxHp = live.CachedEffectiveMaxHp;
+            reloaded.RestedHpPending = live.RestedHpPending;
             reloaded.CombatTargetTickAccumulator = live.CombatTargetTickAccumulator;
             reloaded.TargetStatusEffectBitmask = live.TargetStatusEffectBitmask;
             reloaded.GatheringProgressTicks = live.GatheringProgressTicks;

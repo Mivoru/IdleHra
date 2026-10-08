@@ -1,7 +1,7 @@
 <script lang="ts">
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import { onMount } from 'svelte';
-  import { playerState, visualState, pushLocalNotice } from '../lib/stores/game';
+  import { playerState, pushLocalNotice } from '../lib/stores/game';
   import { loadContent, type ContentRegistry, type GatheringNodeDefinition } from '../lib/net/content';
   import { PROFESSIONS, isGatheringActivity, HALT_REASONS } from '../lib/ui/slots';
   import { locationName, nodeLocation } from '../lib/ui/locations';
@@ -13,7 +13,8 @@
   import { createQuery } from '@tanstack/svelte-query';
   import { queryKeys, fetchBreedingRoster } from '../lib/net/rest';
   import { prettifyBaseId, monsterName } from '../lib/net/content';
-  import { workersOf, workerName, describeJob, type Worker } from '../lib/ui/workers';
+  import { workersOf, workerName, describeJob, kindTakenBy, slotBars, type Worker } from '../lib/ui/workers';
+  import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
   import { nodeYieldBaseId, nodeRareBaseId, masteryXpForLevel } from '../lib/ui/gatheringNodes';
 
   let registry = $state<ContentRegistry | null>(null);
@@ -28,7 +29,6 @@
   });
 
   const snap = $derived($playerState);
-  const visual = $derived($visualState);
 
   // Modul: ANY PERSON CAN GATHER (task 101). This screen always sent slot 1's
   // character. Checked first, as the task asked: SimulationEngine's
@@ -40,8 +40,13 @@
   const names = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster, staleTime: 60_000 }));
   const nameById = $derived(new Map((names.data ?? []).map((c) => [c.CharacterId, c.Name])));
   const workers = $derived(workersOf(snap));
-  let workerSlot = $state(1);
+  // Shared with Character, Combat and Crafting (2026-10-08): one pick.
+  const workerSlot = $derived($selectedCharacterSlot);
   const chosen = $derived<Worker | null>(workers.find((w) => w.slot === workerSlot) ?? workers[0] ?? null);
+  // The picked character's job progress. Slot 1's bar used to read
+  // CurrentProgressTicks, which nothing on the server advances - gathering
+  // counts GatheringProgressTicks - so it sat at 0% forever.
+  const bars = $derived(slotBars(snap, chosen?.slot ?? 1));
 
   const activeActivity = $derived(chosen?.activity ?? 0);
   const isGathering = $derived(isGatheringActivity(activeActivity));
@@ -50,7 +55,9 @@
 
   /** Another of your people already works this node (NodeOccupied). */
   function takenBy(activityId: number): string | null {
-    const other = workers.find((w) => w.slot !== chosen?.slot && w.activity === activityId);
+    // One character per KIND of work: a second miner is refused, not just a
+    // second miner on the same vein.
+    const other = kindTakenBy(workers, chosen?.slot, activityId);
     return other ? workerName(other, nameById) : null;
   }
 
@@ -244,19 +251,15 @@
         names={nameById}
         selected={chosen?.slot ?? 1}
         describe={jobOf}
-        onpick={(slot) => (workerSlot = slot)}
+        onpick={(slot) => selectedCharacterSlot.set(slot)}
         label="Who gathers"
       />
       <div class="nowline">
         {#if isGathering && chosen}
           <p class="active" data-testid="gathering-status">
             {jobOf(chosen)}
-            {#if chosen.slot === 1 && snap.RequiredProgressTicks > 0}
-              &middot; {Math.floor(
-                ((visual?.CurrentProgressTicks ?? snap.CurrentProgressTicks) /
-                  snap.RequiredProgressTicks) *
-                  100,
-              )}%
+            {#if bars.requiredTicks > 0}
+              &middot; {Math.min(100, Math.floor((bars.progressTicks / bars.requiredTicks) * 100))}%
             {/if}
           </p>
           <button class="stopbtn" onclick={stop}>Stop</button>
@@ -269,11 +272,11 @@
           </p>
         {/if}
       </div>
-      {#if chosen?.slot === 1 && snap.RequiredProgressTicks > 0 && isGathering}
+      {#if bars.requiredTicks > 0 && isGathering}
         <div class="progress">
           <Bar
-            value={visual?.CurrentProgressTicks ?? snap.CurrentProgressTicks}
-            max={snap.RequiredProgressTicks}
+            value={bars.progressTicks}
+            max={bars.requiredTicks}
             color="var(--accent)"
           />
         </div>

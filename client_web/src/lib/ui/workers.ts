@@ -8,7 +8,7 @@
 // Pure, so it is tested without a store.
 
 import { EMPTY_GUID } from '../net/commands';
-import { HALT_REASON_SHORT, SLOT_UNLOCK_TOWN_HALL, isCraftingActivity, isGatheringActivity } from './slots';
+import { HALT_REASON_SHORT, SLOT_UNLOCK_TOWN_HALL, WORK_KIND_NAMES, isCraftingActivity, isGatheringActivity, isSameKindOfWork, kindOfWork } from './slots';
 import { locationName, nodeLocation } from './locations';
 import { raceName } from './races';
 import { nodeYieldBaseId, PROFESSION_VERBS } from './gatheringNodes';
@@ -29,6 +29,92 @@ export interface WorkerSnapshot {
   ActivityHaltReason: number;
   Slot2ActivityHaltReason: number;
   Slot3ActivityHaltReason: number;
+  // Each character's bars (slot 1's are the original fields).
+  PlayerHp?: number;
+  PlayerMaxHp?: number;
+  CurrentMonsterId?: number;
+  CurrentMonsterHp?: number;
+  CurrentMonsterMaxHp?: number;
+  GatheringProgressTicks?: number;
+  RequiredProgressTicks?: number;
+  Slot2PlayerHp?: number;
+  Slot2PlayerMaxHp?: number;
+  Slot2MonsterId?: number;
+  Slot2MonsterHp?: number;
+  Slot2MonsterMaxHp?: number;
+  Slot2WorkProgressTicks?: number;
+  Slot2WorkRequiredTicks?: number;
+  Slot3PlayerHp?: number;
+  Slot3PlayerMaxHp?: number;
+  Slot3MonsterId?: number;
+  Slot3MonsterHp?: number;
+  Slot3MonsterMaxHp?: number;
+  Slot3WorkProgressTicks?: number;
+  Slot3WorkRequiredTicks?: number;
+}
+
+/**
+ * One character's live bars, whichever slot it stands in. Slot 1's come from
+ * the original fields, 2 and 3 from their own (StateUpdatePacket, 2026-10-08):
+ * the combat screen and the job progress bars show the PICKED character, not
+ * always slot 1.
+ */
+export interface SlotBars {
+  playerHp: number;
+  playerMaxHp: number;
+  monsterId: number;
+  monsterHp: number;
+  monsterMaxHp: number;
+  progressTicks: number;
+  requiredTicks: number;
+}
+
+export function slotBars(snap: WorkerSnapshot | null | undefined, slot: number): SlotBars {
+  const n = (value: number | bigint | undefined) => Number(value ?? 0);
+  if (!snap) return { playerHp: 0, playerMaxHp: 0, monsterId: 0, monsterHp: 0, monsterMaxHp: 0, progressTicks: 0, requiredTicks: 0 };
+  if (slot === 2) {
+    return {
+      playerHp: n(snap.Slot2PlayerHp), playerMaxHp: n(snap.Slot2PlayerMaxHp),
+      monsterId: n(snap.Slot2MonsterId), monsterHp: n(snap.Slot2MonsterHp), monsterMaxHp: n(snap.Slot2MonsterMaxHp),
+      progressTicks: n(snap.Slot2WorkProgressTicks), requiredTicks: n(snap.Slot2WorkRequiredTicks),
+    };
+  }
+  if (slot === 3) {
+    return {
+      playerHp: n(snap.Slot3PlayerHp), playerMaxHp: n(snap.Slot3PlayerMaxHp),
+      monsterId: n(snap.Slot3MonsterId), monsterHp: n(snap.Slot3MonsterHp), monsterMaxHp: n(snap.Slot3MonsterMaxHp),
+      progressTicks: n(snap.Slot3WorkProgressTicks), requiredTicks: n(snap.Slot3WorkRequiredTicks),
+    };
+  }
+  return {
+    playerHp: n(snap.PlayerHp), playerMaxHp: n(snap.PlayerMaxHp),
+    monsterId: n(snap.CurrentMonsterId), monsterHp: n(snap.CurrentMonsterHp), monsterMaxHp: n(snap.CurrentMonsterMaxHp),
+    progressTicks: n(snap.GatheringProgressTicks), requiredTicks: n(snap.RequiredProgressTicks),
+  };
+}
+
+/**
+ * Another of your people already does this KIND of work (CharacterSlotEngine:
+ * one fighter, one woodcutter, one miner, one fisher, one crafter). The server
+ * answers NodeOccupied; asking here first means the player is told why.
+ */
+export function kindTakenBy(workers: readonly Worker[], chosenSlot: number | undefined, activityId: number): Worker | null {
+  if (!(activityId > 0)) return null;
+  return workers.find((w) => w.slot !== chosenSlot && isSameKindOfWork(w.activity, activityId)) ?? null;
+}
+
+/**
+ * Whose gear a fresh drop is held against: the character fighting (drops come
+ * from fights, and there is one fighter), else the picked one, else the first.
+ */
+export function lootOwner(workers: readonly Worker[], pickedSlot: number): Worker | null {
+  return workers.find((w) => kindOfWork(w.activity) === 1) ?? workers.find((w) => w.slot === pickedSlot) ?? workers[0] ?? null;
+}
+
+/** "Aila is already fighting." */
+export function kindTakenMessage(other: Worker, names: ReadonlyMap<string, string>, activityId: number): string {
+  const kind = WORK_KIND_NAMES[kindOfWork(activityId)] ?? 'doing that';
+  return `${workerName(other, names)} is already ${kind}. One character per kind of work - stop them first.`;
 }
 
 export interface Worker {

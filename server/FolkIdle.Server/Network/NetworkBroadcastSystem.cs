@@ -8260,10 +8260,21 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
+                // Modul: ?characterId= names whose gear to compare against
+                // (2026-10-08). A drop belongs to whichever character is
+                // fighting, and that is not always the main one - comparing a
+                // fighter's boots drop against the main character's empty boot
+                // slot told the player "+1000 DEF, boots slot is empty" while
+                // the fighter wore Transcendent boots. Must be this player's
+                // own character; anything else falls back to the main one.
                 var mainGuid = await db.PlayerRecords.AsNoTracking()
                     .Where(p => p.Id == playerId)
                     .Select(p => p.PlayerGuid)
                     .FirstOrDefaultAsync();
+                if (Guid.TryParse(context.Request.QueryString["characterId"], out var askedFor) && askedFor != Guid.Empty)
+                {
+                    mainGuid = askedFor;
+                }
                 var main = mainGuid == Guid.Empty
                     ? null
                     : await db.CharacterRecords.AsNoTracking()

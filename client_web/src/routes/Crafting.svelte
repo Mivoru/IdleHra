@@ -13,7 +13,9 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { commandInFlight } from '../lib/ui/commandInFlight';
   import { requestScreen } from '../lib/stores/navigation';
-  import { workersOf, workerName, describeJob, type Worker } from '../lib/ui/workers';
+  import { workersOf, workerName, describeJob, kindTakenBy, kindTakenMessage, slotBars, type Worker } from '../lib/ui/workers';
+  import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
+  import Bar from '../lib/ui/Bar.svelte';
   import { affordableUnits as unitsFor, recipeGroup, toolEffect, firstStepLine } from '../lib/ui/craftingCards';
 
   const client = useQueryClient();
@@ -117,7 +119,8 @@
   const names = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster, staleTime: 60_000 }));
   const nameById = $derived(new Map((names.data ?? []).map((c) => [c.CharacterId, c.Name])));
   const workers = $derived(workersOf(snap));
-  let worker = $state(1);
+  // Shared with Character, Combat and Gathering (2026-10-08): one pick.
+  const worker = $derived($selectedCharacterSlot);
   const chosen = $derived<Worker | null>(workers.find((w) => w.slot === worker) ?? workers[0] ?? null);
 
   function recipeName(activityId: number): string | null {
@@ -125,6 +128,9 @@
     const recipe = allRecipes[activityId - CRAFTING_BAND];
     return recipe ? prettifyBaseId(recipe.ResultBaseItemId) : null;
   }
+
+  // The person crafting right now, if anyone (one at a time).
+  const crafter = $derived(workers.find((w) => isCraftingActivity(w.activity)) ?? null);
 
   const jobOf = (w: Worker) => describeJob(w.activity, w.halt, { recipeName, monsterName: (id) => monsterName(registry, id) });
 
@@ -142,10 +148,10 @@
     const activityId = activityIdFor(recipe);
     if (activityId < 0) return pushLocalNotice('That recipe is not on the server list.', 'error');
 
-    const clash = workers.find((w) => w.slot !== chosen.slot && w.activity === activityId);
-    const outcome = assignCharacterActivity(chosen.id, activityId, {
-      takenBy: clash ? workerName(clash, nameById) : null,
-    });
+    // One crafter at a time (CharacterSlotEngine's kind-of-work rule).
+    const clash = kindTakenBy(workers, chosen.slot, activityId);
+    if (clash) return pushLocalNotice(kindTakenMessage(clash, nameById, activityId), 'error');
+    const outcome = assignCharacterActivity(chosen.id, activityId);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
 
     pushLocalNotice(`${workerName(chosen, nameById)} is now making ${prettifyBaseId(recipe.ResultBaseItemId)}.`, 'info');
@@ -194,6 +200,10 @@
         &middot; {(recipe.CraftingTimeMs / 1000).toFixed(1)}s each
         {#if working}&middot; {workerName(working, nameById)} is making these{/if}
       </span>
+      {#if working}
+        {@const wb = slotBars(snap, working.slot)}
+        <Bar value={wb.progressTicks} max={Math.max(1, wb.requiredTicks)} color="var(--accent)" />
+      {/if}
     </div>
     <!-- Modul: AN ALIGNED BUTTON GROUP at the card's edge. The buttons used to
          follow the name, so they floated with its length and formed a ragged
@@ -273,9 +283,27 @@
         names={nameById}
         selected={chosen?.slot ?? 1}
         describe={jobOf}
-        onpick={(slot) => (worker = slot)}
+        onpick={(slot) => selectedCharacterSlot.set(slot)}
         label="Who works"
       />
+
+      <!-- Modul: A JOB YOU CAN SEE MOVING (2026-10-08). "Put to work" used to
+           show nothing but the word Working; the craft's own clock is on the
+           wire now (GatheringProgressTicks / RequiredProgressTicks, per slot),
+           so the bar fills once per item made. -->
+      {#if crafter}
+        {@const b = slotBars(snap, crafter.slot)}
+        <div class="jobbar" data-testid="crafting-progress">
+          <span class="dim tiny">
+            {workerName(crafter, nameById)} &middot; {jobOf(crafter)}
+            {#if b.requiredTicks > 0}
+              &middot; {Math.min(100, Math.floor((b.progressTicks / b.requiredTicks) * 100))}%
+              &middot; {(Math.max(0, b.requiredTicks - b.progressTicks) / 10).toFixed(1)}s to the next
+            {/if}
+          </span>
+          <Bar value={b.progressTicks} max={Math.max(1, b.requiredTicks)} color="var(--accent)" />
+        </div>
+      {/if}
 
       <div class="filters">
         <input placeholder="Filter by name..." bind:value={search} aria-label="Filter recipes" />
@@ -532,6 +560,11 @@
     color: var(--danger);
   }
 
+  .jobbar {
+    display: grid;
+    gap: 4px;
+    margin: 8px 0;
+  }
   .thin {
     grid-column: 1 / -1;
     display: block;

@@ -173,8 +173,9 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         private static bool TakenByAnotherSlot(in TickStatePayload payload, long activityId)
         {
-            return payload.Slot2Activity.ActiveActivityId == activityId
-                || payload.Slot3Activity.ActiveActivityId == activityId;
+            // Modul: the KIND of work, not the id (2026-10-08) - a rule must not
+            // send a second character fishing while another one fishes.
+            return CharacterSlotEngine.IsKindOfWorkTakenByParkedSlot(in payload, activityId);
         }
 
         /// <summary>

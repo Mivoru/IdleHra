@@ -596,7 +596,7 @@ export function assignCharacterActivity(
     return refuse('Pick something for this character to do.');
   }
   if (activityId > 0 && options?.takenBy) {
-    return refuse(`${options.takenBy} is already working that.`);
+    return refuse(`${options.takenBy} is already doing that kind of work. One character per kind of work - stop them first.`);
   }
 
   connection.send({
@@ -1433,6 +1433,12 @@ export function equipRequirement(
  */
 export function wearOnMain(instanceId: number): void {
   connection.send({ Command: CommandType.EquipItem, TargetId: instanceId });
+}
+
+/** Wear a piece on one named character - the one a drop is compared against. */
+export function wearOn(instanceId: number, characterId: string | null | undefined): void {
+  if (!characterId || characterId === EMPTY_GUID) return wearOnMain(instanceId);
+  connection.send({ Command: CommandType.EquipItem, TargetId: instanceId, TargetGuid: characterId });
 }
 
 /** Refund every placed point. Free - see the server handler for why. */

@@ -183,8 +183,11 @@ export interface WornPiece {
  * At most eleven rows; the loot list compares a drop against it without
  * pulling the whole inventory (task 49).
  */
-export function fetchWorn(): Promise<{ Pieces: WornPiece[] }> {
-  return authedGet<{ Pieces: WornPiece[] }>('/api/v1/player/worn');
+export function fetchWorn(characterId?: unknown): Promise<{ Pieces: WornPiece[] }> {
+  // A string names whose gear (the fighter's, for a drop - 2026-10-08); a
+  // TanStack query context passed as `queryFn: fetchWorn` is not one.
+  const who = typeof characterId === 'string' && characterId ? `?characterId=${encodeURIComponent(characterId)}` : '';
+  return authedGet<{ Pieces: WornPiece[] }>(`/api/v1/player/worn${who}`);
 }
 
 /** Task 51: the durable personal records (the hit and boss times also ride StateUpdate). */

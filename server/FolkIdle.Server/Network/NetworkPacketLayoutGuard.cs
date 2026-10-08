@@ -218,7 +218,12 @@ namespace FolkIdle.Server.Network
         // Modul: Boss Ascension, 810 -> 811 (task 87). AscensionStep (1 byte),
         // the step armed on the live boss fight. The client cannot derive it: a
         // death, a reload or a change of activity ends an attempt silently.
-        public const int ExpectedStateUpdateSize = 811;
+        //
+        // Modul: characters 2 and 3 at work, 811 -> 855 (2026-10-08). Per slot:
+        // health, its maximum, the monster, its health and maximum, and the
+        // job's progress - 22 bytes each. Fight and work as the PICKED
+        // character needs the other two characters' bars on the stream.
+        public const int ExpectedStateUpdateSize = 855;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

@@ -1174,6 +1174,16 @@ namespace FolkIdle.Server.Domain.Combat
                     // register discipline the tick loop uses, so a change to
                     // slot 3 cannot clobber slot 1's fight.
                     SwapSlotIntoActiveRegister(ref currentPayload, targetSlotIndex);
+                    // Modul: the second half of the kind-of-work check (see the
+                    // ChangeActivity handler). The row was already written;
+                    // leaving the payload alone is enough, because the
+                    // checkpoint writes the live activity back over it.
+                    if (CharacterSlotEngine.IsKindOfWorkTakenByParkedSlot(in currentPayload, activityChange.TargetActivityId))
+                    {
+                        SwapSlotIntoActiveRegister(ref currentPayload, targetSlotIndex);
+                        _playerRegistry.EnqueueCommandResult(activityChange.PlayerId, (byte)Network.CommandResultCode.NodeOccupied);
+                        continue;
+                    }
                     ApplyActivityChangeToPayload(ref currentPayload, activityChange.TargetActivityId);
                     SwapSlotIntoActiveRegister(ref currentPayload, targetSlotIndex);
                 }
@@ -1747,8 +1757,24 @@ namespace FolkIdle.Server.Domain.Combat
                             Guid characterId = cmd.TargetGuid;
                             long targetActivityId = cmd.TargetId;
 
+                            // Modul: ONE CHARACTER PER KIND OF WORK, checked
+                            // against the LIVE payload. The database row lags
+                            // the session by up to a checkpoint: a death, an
+                            // automation rule or a deploy still in the queue
+                            // changes the payload first. Checked here so a
+                            // refusal costs no database round trip, and again
+                            // when the change is applied (the drain), because
+                            // two deploys sent in one breath both pass here.
+                            long[] liveActivities = LiveSlotActivities(ref currentPayload);
+                            int liveSlot = ResolveSlotIndexForCharacter(ref currentPayload, characterId);
+                            if (liveSlot >= 0 && CharacterSlotEngine.IsActivityOccupiedByAnotherSlot(liveActivities, liveSlot, targetActivityId))
+                            {
+                                _playerRegistry.EnqueueCommandResult(routingPlayerId, (byte)CommandResultCode.NodeOccupied);
+                                continue;
+                            }
+
                             SafeDispatchAsync("Character.ChangeActivity", pId, async () => {
-                                var resultCode = await ChangeCharacterActivityAsync(pId, characterId, targetActivityId);
+                                var resultCode = await ChangeCharacterActivityAsync(pId, characterId, targetActivityId, liveActivities, liveSlot);
                                 _playerRegistry?.EnqueueCommandResult(pId, (byte)resultCode);
                                 if (resultCode == Network.CommandResultCode.Success)
                                 {
@@ -1775,6 +1801,13 @@ namespace FolkIdle.Server.Domain.Combat
                         }
                         else
                         {
+                            // The legacy path is slot 1 in the register; the
+                            // same rule applies to it.
+                            if (CharacterSlotEngine.IsKindOfWorkTakenByParkedSlot(in currentPayload, cmd.TargetId))
+                            {
+                                _playerRegistry.EnqueueCommandResult(routingPlayerId, (byte)CommandResultCode.NodeOccupied);
+                                continue;
+                            }
                             ApplyActivityChangeToPayload(ref currentPayload, cmd.TargetId);
                         }
                     }
@@ -2450,6 +2483,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 OfflineCapSeconds = (int)OfflineSimulationEngine.EffectiveOfflineCapSeconds(
                                     currentPayload.VodnikMasteryLevel, currentPayload.GreatWorksStagesPacked)
                             };
+                            WriteParkedSlotBars(ref packet, in currentPayload);
                             // Modul: this packet carries currentPayload's own
                             // private data (gold, stats, equipment, mana,
                             // skill cooldowns) - it must go to that player's
@@ -2589,6 +2623,46 @@ namespace FolkIdle.Server.Domain.Combat
         // CombatTargetTickAccumulator would land a free hit on arrival.
         // Modul: multi-slot simulation. Which slot holds this character, or -1
         // if the player is not carrying them in an unlocked slot this session.
+        // Characters 2 and 3's bars onto the wire, from their parked state.
+        // Called outside the slot loop, so the register holds slot 1 and the
+        // parked copies are slots 2 and 3 in order.
+        private static void WriteParkedSlotBars(ref StateUpdatePacket packet, in TickStatePayload payload)
+        {
+            WriteSlotBars(in payload.Slot2Activity, in payload, out packet.Slot2PlayerHp, out packet.Slot2PlayerMaxHp,
+                out packet.Slot2MonsterId, out packet.Slot2MonsterHp, out packet.Slot2MonsterMaxHp,
+                out packet.Slot2WorkProgressTicks, out packet.Slot2WorkRequiredTicks);
+            WriteSlotBars(in payload.Slot3Activity, in payload, out packet.Slot3PlayerHp, out packet.Slot3PlayerMaxHp,
+                out packet.Slot3MonsterId, out packet.Slot3MonsterHp, out packet.Slot3MonsterMaxHp,
+                out packet.Slot3WorkProgressTicks, out packet.Slot3WorkRequiredTicks);
+        }
+
+        private static void WriteSlotBars(
+            in CharacterActivityState slot, in TickStatePayload payload,
+            out int playerHp, out int playerMaxHp, out ushort monsterId, out int monsterHp, out int monsterMaxHp,
+            out ushort progressTicks, out ushort requiredTicks)
+        {
+            playerHp = slot.PlayerHp / 1000;
+            playerMaxHp = (int)(slot.CachedEffectiveMaxHp / 1000L);
+            monsterId = (ushort)Math.Clamp(slot.CurrentMonsterId, 0, ushort.MaxValue);
+            monsterHp = (int)(slot.CurrentMonsterHp / 1000L);
+            monsterMaxHp = slot.CurrentMonsterId > 0
+                ? (int)BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, slot.CurrentMonsterId, payload.Skill_FirstBlood)
+                : 0;
+            progressTicks = (ushort)Math.Clamp(slot.GatheringProgressTicks, 0, ushort.MaxValue);
+            requiredTicks = (ushort)Math.Clamp(slot.RequiredProgressTicks, 0, ushort.MaxValue);
+        }
+
+        // Each fielded slot's activity, slot order, read without swapping.
+        internal static long[] LiveSlotActivities(ref TickStatePayload payload)
+        {
+            return new long[]
+            {
+                payload.ActiveActivityId,
+                payload.Slot2_CharacterId != System.Guid.Empty ? payload.Slot2Activity.ActiveActivityId : 0L,
+                payload.Slot3_CharacterId != System.Guid.Empty ? payload.Slot3Activity.ActiveActivityId : 0L
+            };
+        }
+
         private static int ResolveSlotIndexForCharacter(ref TickStatePayload payload, System.Guid characterId)
         {
             if (characterId == System.Guid.Empty) return -1;
@@ -2603,6 +2677,13 @@ namespace FolkIdle.Server.Domain.Combat
             // Task 87: any change of activity ends an Ascension attempt; the start
             // command changes the activity FIRST and arms after.
             DisarmAscension(ref payload);
+            // Coming into a fight from anything else (idle, a job) is coming in
+            // rested. Fight to fight is not: that would make switching monsters
+            // a free heal.
+            if (ActivityIdBands.IsCombatActivity(targetActivityId) && !ActivityIdBands.IsCombatActivity(payload.ActiveActivityId))
+            {
+                payload.RestedHpPending = true;
+            }
             payload.ActiveActivityId = targetActivityId;
             payload.CurrentProgressTicks = 0;
             payload.CurrentMonsterId = 0;
@@ -2621,7 +2702,11 @@ namespace FolkIdle.Server.Domain.Combat
             payload.IsDirty = true;
         }
 
-        internal async Task<Network.CommandResultCode> ChangeCharacterActivityAsync(long playerId, Guid characterId, long targetActivityId)
+        // liveActivitiesBySlot: the session's own view of slots 0-2, when there
+        // is a session. The rows lag it by up to a checkpoint (a death idles a
+        // character on the payload first), so a stale row must not refuse a
+        // deploy the live state allows. Null reads the rows (no session).
+        internal async Task<Network.CommandResultCode> ChangeCharacterActivityAsync(long playerId, Guid characterId, long targetActivityId, long[]? liveActivitiesBySlot = null, int liveRequestingSlot = -1)
         {
             await using var db = await _contextFactory.CreateDbContextAsync();
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
@@ -2655,16 +2740,26 @@ namespace FolkIdle.Server.Domain.Combat
                 }
 
                 long[] activeActivityIds = new long[CharacterSlotEngine.MaxCharacterSlots];
-                for (int i = 0; i < characters.Count; i++)
+                if (liveActivitiesBySlot != null && liveActivitiesBySlot.Length == CharacterSlotEngine.MaxCharacterSlots)
                 {
-                    int slot = characters[i].SlotIndex;
-                    if (slot >= 0 && slot < CharacterSlotEngine.MaxCharacterSlots)
+                    Array.Copy(liveActivitiesBySlot, activeActivityIds, activeActivityIds.Length);
+                }
+                else
+                {
+                    for (int i = 0; i < characters.Count; i++)
                     {
-                        activeActivityIds[slot] = characters[i].ActiveActivityId;
+                        int slot = characters[i].SlotIndex;
+                        if (slot >= 0 && slot < CharacterSlotEngine.MaxCharacterSlots)
+                        {
+                            activeActivityIds[slot] = characters[i].ActiveActivityId;
+                        }
                     }
                 }
 
-                if (CharacterSlotEngine.IsActivityOccupiedByAnotherSlot(activeActivityIds, requesting.SlotIndex, targetActivityId))
+                // The live array is indexed by fielded rank, which is not always
+                // the row's SlotIndex (an escrowed character leaves a gap).
+                int requestingIndex = liveActivitiesBySlot != null && liveRequestingSlot >= 0 ? liveRequestingSlot : requesting.SlotIndex;
+                if (CharacterSlotEngine.IsActivityOccupiedByAnotherSlot(activeActivityIds, requestingIndex, targetActivityId))
                 {
                     await transaction.RollbackAsync();
                     return Network.CommandResultCode.NodeOccupied;
@@ -3976,6 +4071,8 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.CurrentMonsterId, ref parked.CurrentMonsterId);
             Swap(ref payload.CurrentMonsterHp, ref parked.CurrentMonsterHp);
             Swap(ref payload.PlayerHp, ref parked.PlayerHp);
+            Swap(ref payload.CachedEffectiveMaxHp, ref parked.CachedEffectiveMaxHp);
+            Swap(ref payload.RestedHpPending, ref parked.RestedHpPending);
             Swap(ref payload.CombatTargetTickAccumulator, ref parked.CombatTargetTickAccumulator);
             Swap(ref payload.TargetStatusEffectBitmask, ref parked.TargetStatusEffectBitmask);
             Swap(ref payload.GatheringProgressTicks, ref parked.GatheringProgressTicks);
@@ -4347,6 +4444,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (ContentRegistry.TryGetRecipeByActivityId(payload.ActiveActivityId, out var craftingRecipe))
             {
+                RefreshRestingHealth(ref payload);
                 RunCraftingProgressTick(ref payload, in craftingRecipe);
 
                 // Modul: dispatch exclusivity, 2026-09-17. This branch had no
@@ -4364,11 +4462,27 @@ namespace FolkIdle.Server.Domain.Combat
             }
             else if (ContentRegistry.TryGetGatheringNode(payload.ActiveActivityId, out var gatheringNode))
             {
+                RefreshRestingHealth(ref payload);
                 RunGatheringTick(ref payload, in gatheringNode, localDropMultiplier);
                 return;
             }
 
             RunCombatTick(ref payload, localXpMultiplier, localDropMultiplier, guildWarPointQueue, liveSessionContexts);
+        }
+
+        /// <summary>
+        /// A character at work away from a fight: its health maximum is kept
+        /// current (the wire draws its bar against it, and gear or a level can
+        /// move it mid-job) and the bar counts as rested, so the next fight
+        /// opens full. Same helpers the combat tick uses - one definition of
+        /// the pool.
+        /// </summary>
+        private static void RefreshRestingHealth(ref TickStatePayload payload)
+        {
+            var combatStats = LiveCombatStats(in payload);
+            payload.CachedEffectiveMaxHp = EffectiveMaxMilliHpFor(in payload, in combatStats);
+            payload.PlayerHp = (int)payload.CachedEffectiveMaxHp;
+            payload.RestedHpPending = true;
         }
 
         /// <summary>
@@ -4434,6 +4548,14 @@ namespace FolkIdle.Server.Domain.Combat
             // term above this line feeds it, and all of it used to be discarded
             // at the end of the tick - see TickStatePayload.CachedEffectiveMaxHp.
             payload.CachedEffectiveMaxHp = effectiveMilliHp;
+
+            // A rested character starts the fight with a full bar (see
+            // TickStatePayload.RestedHpPending).
+            if (payload.RestedHpPending)
+            {
+                payload.PlayerHp = effectiveMaxHp;
+                payload.RestedHpPending = false;
+            }
 
             // Modul: the same, for the attack side. Computed unconditionally
             // rather than inside the swing branch, because the world boss

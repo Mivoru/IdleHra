@@ -13,6 +13,8 @@
   // rather than just reporting the fact.
   import { deathSummary, dismissDeath, playerState, pushLocalNotice } from '../stores/game';
   import { assignCharacterActivity, EMPTY_GUID } from '../net/commands';
+  import { workersOf } from './workers';
+  import { selectedCharacterSlot } from '../stores/selectedCharacter';
   import { writePref, PREF_LAST_MONSTER } from '../net/prefs';
   import { onMount } from 'svelte';
   import { loadContent, monsterName, type ContentRegistry } from '../net/content';
@@ -59,7 +61,13 @@
   });
 
   function refight(monsterId: number) {
-    const character = snap?.Slot1_CharacterId ?? EMPTY_GUID;
+    // The character that died, not always slot 1: a death idles its slot with
+    // halt reason Died (2) or Stepped down (7). Falls back to the picked one.
+    const people = workersOf(snap);
+    const fallen = people.find((w) => w.activity === 0 && (w.halt === 2 || w.halt === 7))
+      ?? people.find((w) => w.slot === $selectedCharacterSlot)
+      ?? people[0];
+    const character = fallen?.id ?? EMPTY_GUID;
     const outcome = assignCharacterActivity(character, monsterId);
     dismissDeath();
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');

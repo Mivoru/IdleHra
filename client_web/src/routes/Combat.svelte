@@ -21,6 +21,10 @@
   import Money from '../lib/ui/Money.svelte';
   import { readPref, writePref, PREF_LAST_MONSTER } from '../lib/net/prefs';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
+  import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
+  import { workersOf, describeJob, kindTakenBy, kindTakenMessage, slotBars, type Worker } from '../lib/ui/workers';
+  import WorkerPicker from '../lib/ui/WorkerPicker.svelte';
+  import { fetchBreedingRoster } from '../lib/net/rest';
   import { locationBackground } from '../lib/ui/sprites';
   import { onMount } from 'svelte';
   import { playerState, visualState, connectionStatus, damageEvents, pushLocalNotice, levelUpPulse } from '../lib/stores/game';
@@ -69,6 +73,22 @@
 
   const snap = $derived($playerState);
 
+  // Modul: THE PICKED CHARACTER FIGHTS (2026-10-08). This screen sent every
+  // Fight for slot 1 and drew slot 1's bars, whoever was picked on the
+  // Character screen - so picking slot 3 and pressing Fight pulled slot 1 off
+  // its gathering node. The pick is shared now (selectedCharacterSlot), and
+  // every bar below reads the picked character's slot. Slot 1 keeps the
+  // interpolated values (visualState); 2 and 3 draw the raw snapshot.
+  const rosterNames = createQuery(() => ({ queryKey: queryKeys.breedingRoster, queryFn: fetchBreedingRoster, staleTime: 60_000 }));
+  const nameById = $derived(new Map((rosterNames.data ?? []).map((c) => [c.CharacterId, c.Name])));
+  const workers = $derived(workersOf(snap));
+  const chosen = $derived<Worker | null>(workers.find((w) => w.slot === $selectedCharacterSlot) ?? workers[0] ?? null);
+  const chosenSlot = $derived(chosen?.slot ?? 1);
+  const bars = $derived(slotBars(snap, chosenSlot));
+  const jobOf = (w: Worker) => describeJob(w.activity, w.halt, { monsterName: (id) => registry?.monsters.get(id)?.Name ?? 'a monster' });
+  const shownPlayerHp = $derived(chosenSlot === 1 ? ($visualState?.PlayerHp ?? bars.playerHp) : bars.playerHp);
+  const shownMonsterHp = $derived(chosenSlot === 1 ? ($visualState?.CurrentMonsterHp ?? bars.monsterHp) : bars.monsterHp);
+
   // Modul: region progression. The server refuses a target in a region whose
   // Modul: A BOSS YOU HAVE NEVER BEATEN IS FIVE TIMES THE MONSTER THE CONTENT
   // TABLES DESCRIBE.
@@ -102,7 +122,7 @@
   let lastFlashAtMs = 0;
 
   $effect(() => {
-    const hp = Number(snap?.CurrentMonsterHp ?? 0);
+    const hp = bars.monsterHp;
     const previous = lastServerMonsterHp;
     lastServerMonsterHp = hp;
 
@@ -166,7 +186,7 @@
   // snapshot for a monster the player is not fighting - and being approximate
   // about a monster you have not met is fine in a way that being wrong about
   // the one in front of you is not.
-  const serverMonsterMaxHp = $derived(snap?.CurrentMonsterMaxHp ?? 0);
+  const serverMonsterMaxHp = $derived(bars.monsterMaxHp);
 
   function shownMaxHp(monster: { Id: number; MaxHp: number }): number {
     return isFirstClearPending(monster.Id)
@@ -185,7 +205,7 @@
   // "2320 / 2320" while PlayerHp was 3701: the mark starts at whatever the
   // first snapshot happened to show and only ever grows. That estimate is gone;
   // before the first snapshot the bar is simply scaled against itself.
-  const playerMaxHp = $derived(Math.max(1, snap?.PlayerMaxHp ?? 0, snap?.PlayerHp ?? 0));
+  const playerMaxHp = $derived(Math.max(1, bars.playerMaxHp, bars.playerHp));
 
   // predecessor's boss is still standing (CommandResultCode.RegionLocked), so
   // the list has to say which those are. Offering a Fight button that is
@@ -238,9 +258,9 @@
 
   const visual = $derived($visualState);
   const activeMonster = $derived(
-    snap && snap.CurrentMonsterId > 0 ? (registry?.monsters.get(snap.CurrentMonsterId) ?? null) : null,
+    bars.monsterId > 0 ? (registry?.monsters.get(bars.monsterId) ?? null) : null,
   );
-  const haltMessage = $derived(snap ? (HALT_REASONS[snap.ActivityHaltReason] ?? '') : '');
+  const haltMessage = $derived(chosen ? (HALT_REASONS[chosen.halt] ?? '') : '');
 
   // Modul: DEPLOYED IS NOT THE SAME AS FIGHTING, and conflating them made a
   // real fault look like a no-op button.
@@ -255,7 +275,7 @@
   // Named as its own state so the player is told they ARE deployed and what is
   // blocking them, instead of being shown the idle screen.
   const deployedTo = $derived(
-    snap && snap.ActiveActivityId > 0 ? (registry?.monsters.get(Number(snap.ActiveActivityId)) ?? null) : null,
+    chosen && chosen.activity > 0 ? (registry?.monsters.get(chosen.activity) ?? null) : null,
   );
   const stalled = $derived(deployedTo !== null && activeMonster === null);
 
@@ -306,8 +326,9 @@
   // held to the real tick by HuntingProjectionTests) and caches it for a
   // minute. This side only words it. A 409 (no session) shows nothing.
   const projection = createQuery(() => ({
-    queryKey: queryKeys.combatProjection(0),
-    queryFn: () => fetchCombatProjection(0),
+    // The picked character's fight - its gear and health, not slot 1's.
+    queryKey: queryKeys.combatProjection(chosenSlot - 1),
+    queryFn: () => fetchCombatProjection(chosenSlot - 1),
     enabled: $connectionStatus.phase === 'live',
     staleTime: 60_000,
     refetchInterval: 60_000,
@@ -341,12 +362,16 @@
     }
   }
 
-  const activeCharacterId = $derived(snap?.Slot1_CharacterId ?? EMPTY_GUID);
+  const activeCharacterId = $derived(chosen?.id ?? EMPTY_GUID);
 
   // Modul: Fight no longer opens the drop table. With the table inline under
   // its card, opening it on Fight pushed every row below down by its height at
   // the moment the player's thumb was over the list.
   function fight(monster: MonsterDefinition) {
+    // One fighter per account (CharacterSlotEngine's kind-of-work rule):
+    // say who is fighting instead of letting the server refuse it.
+    const clash = kindTakenBy(workers, chosen?.slot, monster.Id);
+    if (clash) return pushLocalNotice(kindTakenMessage(clash, nameById, monster.Id), 'error');
     // See Gathering.svelte: a bare TargetId does not persist.
     const outcome = assignCharacterActivity(activeCharacterId, monster.Id);
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
@@ -372,7 +397,11 @@
   // Task 72: what the next region's boss asks for, against what the main
   // character wears. Read from /player/worn (at most eleven rows), refreshed
   // while the screen is open so wearing a piece moves the count.
-  const worn = createQuery(() => ({ queryKey: queryKeys.worn, queryFn: fetchWorn, refetchInterval: 30_000 }));
+  const worn = createQuery(() => ({
+    queryKey: [...queryKeys.worn, chosen?.id ?? ''],
+    queryFn: () => fetchWorn(chosen?.id ?? ''),
+    refetchInterval: 30_000,
+  }));
   const wallProgress = $derived.by(() => {
     if (!registry || !worn.data) return null;
     const content = registry;
@@ -491,13 +520,22 @@
           </div>
         </div>
 
+        <WorkerPicker
+          {workers}
+          names={nameById}
+          selected={chosenSlot}
+          describe={jobOf}
+          onpick={(slot) => selectedCharacterSlot.set(slot)}
+          label="Who fights"
+        />
+
         <div class="hpblock">
           <span class="sr-only">Your health</span>
           <Bar
-            value={visual?.PlayerHp ?? snap.PlayerHp}
+            value={shownPlayerHp}
             max={playerMaxHp}
             color="var(--good)"
-            label={`HP ${formatNumber(Math.round(visual?.PlayerHp ?? snap.PlayerHp))} / ${formatNumber(playerMaxHp)}`}
+            label={`HP ${formatNumber(Math.round(shownPlayerHp))} / ${formatNumber(playerMaxHp)}`}
           />
         </div>
 
@@ -524,10 +562,10 @@
             <div class="hpblock grow">
               <span class="target">Fighting {activeMonster.Name}</span>
               <Bar
-                value={visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp}
+                value={shownMonsterHp}
                 max={activeMaxHp(activeMonster)}
                 color="var(--danger)"
-                label={`${formatNumber(Math.round(visual?.CurrentMonsterHp ?? snap.CurrentMonsterHp))} / ${formatNumber(activeMaxHp(activeMonster))}`}
+                label={`${formatNumber(Math.round(shownMonsterHp))} / ${formatNumber(activeMaxHp(activeMonster))}`}
               />
             </div>
             <button class="standdown" onclick={stop}>Stand down</button>
@@ -544,7 +582,7 @@
                missed it. -->
           <div class="idle">
             <p class="stalled">
-              Deployed to {deployedTo?.Name ?? `activity ${snap.ActiveActivityId}`}, but nothing is
+              Deployed to {deployedTo?.Name ?? `activity ${chosen?.activity ?? 0}`}, but nothing is
               happening.{haltMessage ? ' See below for why.' : ''}
             </p>
             <button class="standdown" onclick={stop}>Stand down</button>

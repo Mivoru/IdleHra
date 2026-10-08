@@ -27,6 +27,13 @@ namespace FolkIdle.Server.Domain.Combat
             int step = (int)cmd.SecondaryId;
 
             var code = Validate(in currentPayload, region, step);
+            // One fighter per account (2026-10-08): the attempt is slot 1's,
+            // so it is refused while another character is fighting.
+            if (code == CommandResultCode.Success
+                && CharacterSlotEngine.IsKindOfWorkTakenByParkedSlot(in currentPayload, RaceUnlockRegistry.GetRegionBossMonsterId(region)))
+            {
+                code = CommandResultCode.NodeOccupied;
+            }
             if (code == CommandResultCode.Success)
             {
                 // The activity change FIRST: it disarms whatever was armed and

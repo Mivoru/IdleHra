@@ -964,6 +964,29 @@ namespace FolkIdle.Server.Network
         // survive a relogin.
         public byte AscensionStep;
 
+        // Modul: characters 2 and 3 at work, 811 -> 855 (2026-10-08). Slot 1's
+        // fight and job progress have always been on this wire (PlayerHp,
+        // PlayerMaxHp, CurrentMonster*, GatheringProgressTicks,
+        // RequiredProgressTicks); the other two characters' were not, so the
+        // combat screen could only ever show slot 1 and sent every Fight for
+        // slot 1 - the character picked on the Character screen was ignored.
+        // Same units as slot 1's fields. Not duplicated for slot 1. Runtime
+        // only: a relogin starts every bar afresh.
+        public int Slot2PlayerHp;
+        public int Slot2PlayerMaxHp;
+        public ushort Slot2MonsterId;
+        public int Slot2MonsterHp;
+        public int Slot2MonsterMaxHp;
+        public ushort Slot2WorkProgressTicks;
+        public ushort Slot2WorkRequiredTicks;
+        public int Slot3PlayerHp;
+        public int Slot3PlayerMaxHp;
+        public ushort Slot3MonsterId;
+        public int Slot3MonsterHp;
+        public int Slot3MonsterMaxHp;
+        public ushort Slot3WorkProgressTicks;
+        public ushort Slot3WorkRequiredTicks;
+
         // Modul: Production Release Hardening, Part 2. ClaimedMilestonesBitmask,
         // ActiveChroniclePassLevel, AccumulatedSeasonalXp,
         // ClaimedAchievementFlags, TotalAchievementsClaimedCount, and
