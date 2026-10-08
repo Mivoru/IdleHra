@@ -8,8 +8,8 @@ smoke-*.png
 # `npm run screenshots:store` writes eighteen full-resolution PNGs - tens of
 # megabytes that change whenever any screen does. Unlike the app icons, nothing
 # in the build or in CI reads them: they are uploaded to a store console by
-# hand, once per release. The SOURCES that matter (resources/icon.svg and
-# resources/splash.svg) are committed; these are output.
+# hand, once per release. The SOURCES that matter (resources/icon.png and the
+# two resources/loading-*.jpg) are committed; these are output.
 resources/store-screenshots/
 
 # Modul: the packaged over-the-air bundle - a ~17 MB build artefact produced by

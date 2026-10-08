@@ -2,6 +2,10 @@ import { mount } from 'svelte';
 import './app.css';
 import App from './App.svelte';
 import { confirmBundleBooted } from './lib/net/liveUpdate';
+import { bootStep } from './lib/ui/boot';
+
+// The bundle has downloaded and parsed - the longest wait on a phone is over.
+bootStep(35, 'Preparing the world…', 45);
 
 const app = mount(App, { target: document.getElementById('app')! });
 

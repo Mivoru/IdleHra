@@ -40,11 +40,12 @@
          with the URL bar. The manifest gives Chrome on Android the name, icon,
          standalone display and portrait lock (the APK's own lock); iOS Safari
          ignores most of it and reads the apple-* tags below instead. Icons are
-         rasterised from resources/icon.svg by `npm run generate:icons`, and
+         composed from resources/icon.png by `npm run generate:icons`, and
          Vite copies public/ to the site root. The manifest's colours are the
          dark theme's --bg, the default: a manifest cannot follow the system
          scheme the way the two theme-color metas above do. -->
     <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -55,16 +56,279 @@
          (see client_web/CLAUDE.md, "The phone draws under the status bar"). -->
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
+    <!-- Modul: ONE ADDRESS FOR SEARCH ENGINES. The same page answers on
+         folkidle.cz, www.folkidle.cz, folkidle.duckdns.org and the sslip.io
+         name (the APK still talks to duckdns, so none can be dropped - see
+         ops/oracle/caddy/Caddyfile). Four copies of one page split whatever
+         ranking it earns four ways, and the engine picks which one to show.
+         The canonical link tells it: show folkidle.cz. -->
+    <link rel="canonical" href="https://folkidle.cz/" />
+    <!-- What a search result is titled with and what the brand search
+         ("folkidle", "folk idle", "folkidle hra") is matched against. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "FolkIdle",
+            "alternateName": ["Folk Idle", "FolkIdle game", "FolkIdle hra"],
+            "url": "https://folkidle.cz/"
+          },
+          {
+            "@type": "VideoGame",
+            "name": "FolkIdle",
+            "alternateName": "Folk Idle",
+            "url": "https://folkidle.cz/",
+            "image": "https://folkidle.cz/loading/landscape-1280.jpg",
+            "description": "A browser idle RPG rooted in Slavic folklore. Fight through five regions, craft, fish, mine and build a village - it keeps playing while you are away.",
+            "genre": ["Idle game", "Incremental game", "RPG"],
+            "gamePlatform": ["Web browser", "Android"],
+            "applicationCategory": "Game",
+            "operatingSystem": "Any",
+            "inLanguage": "en",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" }
+          }
+        ]
+      }
+    </script>
+
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://folkidle.cz/" />
+    <meta property="og:image" content="https://folkidle.cz/loading/landscape-1280.jpg" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="715" />
     <meta property="og:site_name" content="FolkIdle" />
     <meta property="og:title" content="FolkIdle - a Slavic idle RPG" />
     <meta
       property="og:description"
       content="Fight, craft, fish and build a village in a browser idle RPG rooted in Slavic folklore. It keeps playing while you are away."
     />
-    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Modul: THE LOADING SCREEN LIVES HERE, NOT IN A COMPONENT.
+         Its whole job is to cover the time BEFORE the app exists: the bundle
+         downloading and parsing, then the session restore, the socket and the
+         first snapshot. A Svelte component could only appear after the first
+         of those, so the player would still stare at a blank page for the
+         longest part. Plain HTML and CSS paint with the first byte.
+
+         The app reports what it is doing through window.__boot (the script at
+         the top of <body>; typed wrapper and the steps in src/lib/ui/boot.ts)
+         and this is removed when the first state arrives, or when a login
+         form, a connection problem or the 25 s safety timeout means the
+         player needs to see the app instead. -->
+    <style>
+      #boot {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483000;
+        background: #100d0a;
+        color: #f1e4c4;
+        font-family: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+        transition: opacity 0.45s ease;
+      }
+      #boot.boot-out {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #boot picture,
+      #boot img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+      }
+      #boot img {
+        object-fit: cover;
+        /* The art's title sits in its top band; on a screen shaped unlike the
+           art, crop from the bottom so the name stays in view (a portrait
+           tablet lost the top of the letters at 20%). */
+        object-position: 50% 0;
+        animation: boot-in 0.6s ease both;
+      }
+      /* A phone is narrower than the portrait art (390x844 against 1536x2752),
+         and cover would cut both ends off the painted title. Fit the width
+         instead, pinned under the status bar; the band left at the bottom is
+         where the bar sits anyway. */
+      @media (max-aspect-ratio: 1536/2752) {
+        #boot img {
+          object-fit: contain;
+          object-position: 50% var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+        }
+      }
+      /* A scrim under the bar so the message reads over any part of the art. */
+      #boot::after {
+        content: '';
+        position: absolute;
+        inset: auto 0 0 0;
+        height: 34%;
+        background: linear-gradient(to bottom, rgba(16, 13, 10, 0), rgba(16, 13, 10, 0.88) 62%);
+      }
+      .boot-panel {
+        position: absolute;
+        z-index: 1;
+        left: 50%;
+        bottom: calc(var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px)) + clamp(28px, 7vh, 72px));
+        transform: translateX(-50%);
+        width: min(560px, calc(100% - 48px));
+        text-align: center;
+      }
+      /* The trough: a forged iron bar with a brass rim, and diamond end caps
+         like the studs on the icon's frame. */
+      .boot-bar {
+        position: relative;
+        height: 18px;
+        padding: 3px;
+        border: 2px solid #8a6a34;
+        border-radius: 3px;
+        background: linear-gradient(#0b0907, #231b13);
+        box-shadow:
+          inset 0 2px 4px rgba(0, 0, 0, 0.8),
+          0 0 0 1px #2a1f14,
+          0 4px 14px rgba(0, 0, 0, 0.6);
+      }
+      .boot-bar::before,
+      .boot-bar::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        width: 14px;
+        height: 14px;
+        border: 2px solid #d8b45a;
+        background: radial-gradient(circle at 35% 35%, #f6dc8f, #8a6a34 60%, #3b2a14);
+        transform: translateY(-50%) rotate(45deg);
+        box-shadow: 0 0 6px rgba(0, 0, 0, 0.7);
+      }
+      .boot-bar::before { left: -12px; }
+      .boot-bar::after { right: -12px; }
+      .boot-fill {
+        position: relative;
+        display: block;
+        height: 100%;
+        width: 0%;
+        border-radius: 1px;
+        background: linear-gradient(to bottom, #ffcf6e, #e2731f 45%, #9c3a0c);
+        box-shadow: 0 0 10px rgba(255, 140, 40, 0.55);
+        transition: width 0.5s cubic-bezier(0.25, 0.8, 0.3, 1);
+      }
+      /* A sheen sliding along the molten metal, and an ember at its edge. */
+      .boot-fill::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(100deg, transparent 30%, rgba(255, 244, 210, 0.55) 50%, transparent 70%);
+        background-size: 200% 100%;
+        animation: boot-sheen 1.8s linear infinite;
+      }
+      .boot-fill::after {
+        content: '';
+        position: absolute;
+        top: -4px;
+        right: -6px;
+        width: 12px;
+        height: calc(100% + 8px);
+        border-radius: 50%;
+        background: radial-gradient(#fff6d8, rgba(255, 170, 60, 0.7) 45%, transparent 70%);
+        animation: boot-ember 0.9s ease-in-out infinite alternate;
+      }
+      .boot-msg {
+        margin: 14px 0 0;
+        min-height: 1.4em;
+        font-size: clamp(15px, 2.2vw, 18px);
+        letter-spacing: 0.02em;
+        text-shadow: 0 1px 3px #000, 0 0 12px rgba(0, 0, 0, 0.8);
+      }
+      .boot-pct {
+        margin-left: 0.5em;
+        color: #d8b45a;
+        font-variant-numeric: tabular-nums;
+      }
+      @keyframes boot-in { from { opacity: 0; } }
+      @keyframes boot-sheen { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+      @keyframes boot-ember { from { opacity: 0.55; } to { opacity: 1; } }
+      @media (prefers-reduced-motion: reduce) {
+        #boot img, .boot-fill::before, .boot-fill::after { animation: none; }
+        .boot-fill { transition: none; }
+      }
+    </style>
   </head>
   <body>
+    <div id="boot">
+      <h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">FolkIdle - a Slavic folklore idle RPG</h1>
+      <!-- One image per orientation: a phone downloads the portrait art at
+           its own width and never the landscape file. -->
+      <picture>
+        <source
+          media="(orientation: portrait)"
+          srcset="/loading/portrait-720.jpg 720w, /loading/portrait-1080.jpg 1080w"
+          sizes="100vw"
+        />
+        <img
+          src="/loading/landscape-1920.jpg"
+          srcset="/loading/landscape-1280.jpg 1280w, /loading/landscape-1920.jpg 1920w"
+          sizes="100vw"
+          alt=""
+          fetchpriority="high"
+        />
+      </picture>
+      <div class="boot-panel">
+        <div class="boot-bar" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="boot-fill"></span>
+        </div>
+        <p class="boot-msg" aria-live="polite"><span class="boot-text">Loading the game&hellip;</span><span class="boot-pct">0%</span></p>
+      </div>
+    </div>
+    <script>
+      // Modul: THE BAR MUST NOT LOOK STUCK. The real steps are few and uneven
+      // - the bundle download can take seconds on a phone and then four steps
+      // land within 200 ms - so between two reported steps the bar creeps
+      // toward the next step's percentage and never reaches it. It never goes
+      // backwards and never shows 100 until the app says it is done.
+      (function () {
+        var root = document.getElementById('boot');
+        if (!root) return;
+        var fill = root.querySelector('.boot-fill');
+        var bar = root.querySelector('.boot-bar');
+        var text = root.querySelector('.boot-text');
+        var pct = root.querySelector('.boot-pct');
+        var shown = 0;
+        var ceiling = 30;
+        var finished = false;
+        function paint(value) {
+          shown = Math.max(shown, Math.min(100, value));
+          var whole = Math.round(shown);
+          fill.style.width = shown + '%';
+          pct.textContent = whole + '%';
+          bar.setAttribute('aria-valuenow', String(whole));
+        }
+        var creep = setInterval(function () {
+          if (shown < ceiling - 1) paint(shown + (ceiling - shown) * 0.06);
+        }, 250);
+        function done() {
+          if (finished) return;
+          finished = true;
+          clearInterval(creep);
+          paint(100);
+          setTimeout(function () {
+            root.classList.add('boot-out');
+            setTimeout(function () { root.remove(); }, 500);
+          }, 250);
+        }
+        window.__boot = {
+          step: function (percent, message, next) {
+            if (finished) return;
+            ceiling = Math.max(ceiling, next);
+            if (message) text.textContent = message;
+            paint(percent);
+          },
+          done: done,
+        };
+        // A boot that never reports (a bundle that throws before mounting)
+        // must not leave the player behind an opaque picture for ever.
+        setTimeout(done, 25000);
+        paint(5);
+      })();
+    </script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

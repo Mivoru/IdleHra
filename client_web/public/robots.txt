@@ -10,9 +10,10 @@
 # runs. See ops/oracle/Caddyfile on why the ordering of those handle blocks is
 # load-bearing.
 #
-# Add a Sitemap line here once the game has a settled hostname. It is a single
-# page today, so a sitemap would list exactly one URL and tell a crawler
-# nothing it could not find by fetching that URL.
+# The hostname settled on folkidle.cz (2026-10-08). The sitemap lists the one
+# page and the privacy policy; its real use is that Search Console and
+# Seznam Webmaster accept it as "here is the site", which is what gets a new
+# domain crawled in days rather than whenever a link happens to be found.
 
 User-agent: *
 Allow: /
@@ -21,3 +22,5 @@ Allow: /
 # work and produces nothing anyone would want in a search result.
 Disallow: /api/
 Disallow: /gamedata/
+
+Sitemap: https://folkidle.cz/sitemap.xml
