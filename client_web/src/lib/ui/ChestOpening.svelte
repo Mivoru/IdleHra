@@ -27,6 +27,7 @@
     CHEST_IDLE_IMAGE,
     OPEN_MS,
     SHAKE_MS,
+    SHAKE_RATE,
     TAPS_TO_OPEN,
     chestClip,
     initialChestState,
@@ -116,6 +117,7 @@
     chest = next;
     if (flavour !== 'none' && shakeEl) {
       shakeEl.currentTime = 0;
+      shakeEl.playbackRate = SHAKE_RATE;
       shakeEl.play().catch(() => (flavour = 'none'));
     } else {
       cssShake++;
@@ -124,7 +126,7 @@
     }
     if (sendOpen) {
       // Safety net: a clip that never reports `ended` must not hold the prize.
-      later(onShakeEnded, SHAKE_MS + 600);
+      later(onShakeEnded, SHAKE_MS / SHAKE_RATE + 600);
       open()
         .then((result) => {
           if (!result) {
@@ -215,9 +217,23 @@
         <span class="chip {rarityClass(chestRarity)}">{chestName} chest</span>
         {#if odds}<span class="odds">{oddsLine(odds, rarityNames)}</span>{/if}
       </div>
-      <button class="close" aria-label="Close" data-testid="chest-close" onclick={onClose}>&times;</button>
+      <button class="close" aria-label="Close" data-testid="chest-close" onclick={onClose}>
+        <!-- An icon, not the × glyph: the glyph sits on the font's baseline
+             and read as off-centre in the ring. -->
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" fill="none" />
+        </svg>
+      </button>
     </header>
 
+    <!-- Modul: THE SCENE IS THE PAINTING, NOT THE WINDOW (2026-10-08). The
+         background is drawn `cover`, so how much of it is cut off depends on
+         the window's shape - and a chest placed by the window drifted off the
+         lit spot on the floor on a wide monitor. The scene box is sized
+         exactly like `cover` (max of width-led and height-led) with the
+         painting on it at 100%, so a position in % of the scene is a position
+         on the painting, at any window size. -->
+    <div class="scene">
     <!-- Modul: a div with a button's role, not a <button>. The global
          `button:disabled` style halves the opacity, and the box is disabled
          for the whole burst - so the chest played as glass. -->
@@ -271,6 +287,7 @@
         {/if}
       {/if}
     </div>
+    </div>
 
     {#if chest.phase === 'waiting-taps'}
       <div class="prompt" aria-hidden="true">
@@ -322,23 +339,48 @@
 
 <style>
   .chest-stage {
+    /* The painting's shape, and where its lit floor spot is - the chest's
+       base goes there. Portrait art for a portrait window. */
+    --art-ratio: 1.7917; /* 2752 x 1536 */
+    --floor: 78%;
+    --chest-h: 62%;
     position: fixed;
     inset: 0;
-    background: #0d0b09 var(--landscape) center / cover no-repeat;
+    background: #0d0b09;
     color: #f3ece0;
-    overflow: hidden;
+    /* clip, not hidden: a hidden box can still be SCROLLED, and focusing the
+       chest (which the scene may push past the window's edge) scrolled the
+       whole stage 50px up on the first click. */
+    overflow: clip;
     animation: stage-in 220ms ease-out;
   }
 
   @media (orientation: portrait) {
     .chest-stage {
+      --art-ratio: 0.5581; /* 1536 x 2752 */
+      --floor: 73%;
+      /* Capped by the window: a portrait tablet crops the painting's sides
+         and blows it up, and the chest with it. */
+      --chest-h: min(68%, 64dvh);
+    }
+    .scene {
       background-image: var(--portrait);
     }
   }
 
+  .scene {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100vw, calc(100dvh * var(--art-ratio)));
+    height: max(100dvh, calc(100vw / var(--art-ratio)));
+    transform: translate(-50%, -50%);
+    background: var(--landscape) center / 100% 100% no-repeat;
+  }
+
   /* A soft dark rim, so the text at the top and the card at the bottom read
      on any part of the painting. */
-  .chest-stage::before {
+  .scene::before {
     content: '';
     position: absolute;
     inset: 0;
@@ -395,26 +437,35 @@
   }
 
   .close {
-    flex-shrink: 0;
+    flex: none;
+    box-sizing: border-box;
     width: 44px;
     height: 44px;
+    min-width: 44px;
+    aspect-ratio: 1;
+    display: grid;
+    place-items: center;
     border-radius: 50%;
     border: 1px solid rgb(255 255 255 / 0.35);
     background: rgb(0 0 0 / 0.55);
     color: #fff;
-    font-size: 1.6rem;
-    line-height: 1;
     padding: 0;
     cursor: pointer;
   }
 
+  .close svg {
+    display: block;
+  }
+
   /* The chest's box: the clips are 406x720, the chest sits at about 40-78%
      of that height, so this puts its base on the painted floor. */
+  /* The clips are 406x720 and the chest's base sits at 66% of their height
+     (measured), so this stands the chest on --floor of the painting. */
   .chest-hit {
     position: absolute;
     left: 50%;
-    bottom: 3dvh;
-    height: min(74dvh, 150vw);
+    top: calc(var(--floor) - 0.66 * var(--chest-h));
+    height: var(--chest-h);
     aspect-ratio: 406 / 720;
     transform: translateX(-50%);
     padding: 0;
@@ -470,7 +521,7 @@
   }
 
   .still.shaking {
-    animation: css-shake 420ms ease-in-out;
+    animation: css-shake 340ms ease-in-out;
   }
 
   .still.flash {
