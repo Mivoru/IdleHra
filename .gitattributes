@@ -64,3 +64,12 @@ client/Assets/Resources/Audio/*.wav !filter binary
 # stub and play as silence. Three tracks, about 13 MB (owner's soundtracks,
 # 2026-09-28). Also last, to override the blanket *.mp3 rule.
 client/Assets/Resources/Audio/Music/*.mp3 !filter binary
+
+# Modul: client_web/public is served AS COMMITTED, so it must not be LFS.
+# The box receives the repo by `git push` over SSH and has no LFS objects, so
+# every PNG/JPG under public/ arrived as a 131-byte pointer file and was served
+# with a 200: the loading-screen art (2026-10-08) showed nothing and the web
+# icons had been pointers all along. Later rules win, so these undo the
+# *.png/*.jpg LFS rules above for this one directory.
+client_web/public/**/*.png -filter -diff -merge binary
+client_web/public/**/*.jpg -filter -diff -merge binary
