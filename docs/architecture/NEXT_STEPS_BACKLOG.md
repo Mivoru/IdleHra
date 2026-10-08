@@ -19,6 +19,34 @@ do next.
 
 ---
 
+# 2026-10-08 (late) - chest opening stage, chest odds
+
+Branch `claude/chest-opening`:
+- **A chest's rarity is its odds.** `CosmeticRegistry.ChestContentPermille`
+  (per mille, rows = chest): Common 750/200/45/5, Rare 250/600/130/20, Epic
+  100/250/550/100, Legendary 0/100/300/600. Measured before it was chosen:
+  across the monster-chest mix the legendary share goes 1.52% -> 2.35% (the
+  owner's first draft was 3.56%, most of it from Common chests).
+  `CosmeticTests` pins sums, mode, dominance and the legendary-supply band.
+  The catalogue route sends the table; the Wardrobe shows it per chest.
+- **The opening stage** (`ChestOpening.svelte`, rules in `chestOpening.ts`):
+  full screen in the cellar (`public/chest/bg-pc.jpg` / `bg-mobile.jpg`),
+  three taps shake it, the third sends the open, the burst clip is the
+  RESULT's rarity. Closing before the third tap spends nothing.
+- **The clips** are the owner's DaVinci renders, which were H.264 - H.264
+  has no alpha, so the 3D keyer's alpha was dropped and the background
+  rendered black. They were cut to the 608px strip the chest lives in and
+  luma-keyed to VP9 WebM with alpha (`public/chest/*.webm`), with an H.264
+  `screen`-blended fallback for Safari and a still + CSS shake where neither
+  plays (Playwright's Chromium has no H.264). A ProRes 4444 export with
+  "Export Alpha" would give cleaner edges. The shake keeps its own sound;
+  `chest_open_shine.wav` plays with the burst.
+- Trap found on the way: the chest sat in a `<button>` that is disabled during
+  the burst, and the global `button:disabled` opacity turned the chest to
+  glass. It is a `role="button"` div now.
+
+---
+
 # 2026-10-08 - one character per kind of work, per-character bars
 
 Branch `claude/character-work-exclusivity`:

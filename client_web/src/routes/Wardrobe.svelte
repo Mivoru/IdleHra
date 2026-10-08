@@ -1,4 +1,6 @@
 <script lang="ts">
+  import ChestOpening from '../lib/ui/ChestOpening.svelte';
+  import { oddsLine } from '../lib/ui/chestOpening';
   // Task 54: the Wardrobe - open cosmetic chests, and choose the face and the
   // frame other players see. Nothing here adds power.
   //
@@ -24,7 +26,6 @@
   } from '../lib/net/cosmetics';
   import { playerState } from '../lib/stores/game';
   import { forgetWorn, requestWorn, wornByPlayer } from '../lib/stores/worn';
-  import { play } from '../lib/ui/audio';
   import { noteCosmeticsView } from '../lib/stores/cosmeticChests';
   import QueryError from '../lib/ui/QueryError.svelte';
 
@@ -51,7 +52,9 @@
 
   let busy = $state(false);
   let message = $state('');
-  let opened = $state<OpenedCosmetic | null>(null);
+  // The chest being opened on the full-screen stage (ChestOpening.svelte),
+  // or 0. The stage sends the open itself, on the third tap.
+  let openingRarity = $state(0);
 
   const ownedIds = $derived(new Set((view?.Owned ?? []).filter((o) => !o.IsListed && o.Kind !== COSMETIC_KIND.Chest).map((o) => o.DefinitionId)));
   const copies = $derived.by(() => {
@@ -82,19 +85,18 @@
     message = next.Result && next.Result !== 'Ok' ? COSMETIC_RESULT_SENTENCES[next.Result] : '';
   }
 
-  async function open(rarity: number): Promise<void> {
+  function open(rarity: number): void {
     if (busy) return;
-    busy = true;
-    try {
-      const next = await openChest(rarity);
-      settle(next);
-      if (next?.Opened) {
-        opened = next.Opened;
-        play('lootRare');
-      }
-    } finally {
-      busy = false;
-    }
+    message = '';
+    openingRarity = rarity;
+  }
+
+  // Called by the stage on the third tap. A refusal is said on this screen by
+  // settle(); the stage only needs to know there is nothing to show.
+  async function sendOpen(): Promise<OpenedCosmetic | null> {
+    const next = await openChest(openingRarity);
+    settle(next);
+    return next?.Opened ?? null;
   }
 
   // Modul: task 109 - a locked tile was a disabled button with the source in a
@@ -104,7 +106,7 @@
   function sourceOf(def: CosmeticDefinition): string {
     return def.Bound
       ? `${def.Name} is earned on the Boss Ascension ladder, never found in a chest.`
-      : `${def.Name} comes from a ${rarityNames[def.Rarity]} chest, or from another player on the market.`;
+      : `${def.Name} is most likely from a ${rarityNames[def.Rarity]} chest (any chest can give it), or from another player on the market.`;
   }
 
   // "×4" said nothing; spare copies are what the cosmetic market sells.
@@ -174,7 +176,7 @@
     <h2>Chests {#if totalChests > 0}<span class="count">{totalChests}</span>{/if}</h2>
     <p class="dim small">
       One every {catalogue?.LevelsPerChest ?? 5} levels, and a rare drop from any monster. A chest
-      gives an avatar or a frame of its own rarity.
+      gives an avatar or a frame - the rarer the chest, the better the odds.
     </p>
     <!-- Four cards reading "0" were the first thing on the screen for most
          players. With nothing to open, the sentence above is all there is. -->
@@ -187,28 +189,29 @@
         <div class="chest {rarityClass(rarity)}" class:has={count > 0}>
           <span class="chest-name">{rarityNames[rarity]}</span>
           <span class="chest-count">{count}</span>
+          {#if catalogue?.ChestContentPermille?.[rarity]}
+            <span class="chest-odds" data-testid="chest-odds-{rarity}">{oddsLine(catalogue.ChestContentPermille[rarity], rarityNames)}</span>
+          {/if}
           <button disabled={busy || count === 0} onclick={() => open(rarity)} data-testid="open-chest-{rarity}">Open</button>
         </div>
       {/each}
     </div>
     {/if}
 
-    {#if opened}
-      <div class="reveal {rarityClass(opened.Rarity)}" data-testid="chest-reveal">
-        {#if opened.Kind === COSMETIC_KIND.Avatar}
-          <Avatar avatarId={opened.DefinitionId} frameId={view?.EquippedFrameId ?? null} size="md" />
-        {:else}
-          <Avatar avatarId={view?.EquippedAvatarId ?? null} frameId={opened.DefinitionId} raceId={selfWorn?.RaceId ?? 0} female={selfWorn?.IsFemale ?? false} size="md" />
-        {/if}
-        <div>
-          <strong>{opened.Name}</strong>
-          <span class="dim small">{rarityNames[opened.Rarity]} {opened.Kind === COSMETIC_KIND.Avatar ? 'avatar' : 'frame'}</span>
-        </div>
-        <button
-          disabled={busy}
-          onclick={() => opened && wear(opened.Kind, opened.DefinitionId)}
-        >Wear it</button>
-      </div>
+    {#if openingRarity > 0}
+      <ChestOpening
+        chestRarity={openingRarity}
+        remaining={view?.Chests[openingRarity] ?? 0}
+        {rarityNames}
+        odds={catalogue?.ChestContentPermille?.[openingRarity]}
+        equippedAvatarId={view?.EquippedAvatarId ?? null}
+        equippedFrameId={view?.EquippedFrameId ?? null}
+        raceId={selfWorn?.RaceId ?? 0}
+        female={selfWorn?.IsFemale ?? false}
+        open={sendOpen}
+        onWear={(o) => wear(o.Kind, o.DefinitionId)}
+        onClose={() => (openingRarity = 0)}
+      />
     {/if}
   </section>
 
@@ -364,6 +367,13 @@
   .chest-name {
     color: var(--c);
     font-weight: 600;
+  }
+
+  .chest-odds {
+    font-size: 0.68rem;
+    line-height: 1.3;
+    color: var(--text-dim);
+    text-align: center;
   }
 
   .chest-count {

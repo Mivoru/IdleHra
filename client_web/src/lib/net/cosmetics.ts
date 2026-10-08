@@ -26,6 +26,12 @@ export interface CosmeticCatalogue {
   Items: CosmeticDefinition[];
   ChestChancePerKill: number[];
   LevelsPerChest: number;
+  /**
+   * What a chest gives, per mille: [chestRarity][resultRarity]
+   * (CosmeticRegistry.ChestContentPermille, 2026-10-08). A chest's rarity is
+   * its ODDS, not its contents.
+   */
+  ChestContentPermille?: number[][];
 }
 
 export interface OwnedCosmetic {

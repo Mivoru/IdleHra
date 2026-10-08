@@ -3032,8 +3032,32 @@ await go('The Delve');
   const openable = granted === 200 && (await openButton.count()) > 0 && (await openButton.isEnabled());
   record('the Wardrobe offers the granted chest', openable, `grant ${granted}, button ${await openButton.count()}`);
   if (openable) {
+    // 2026-10-08: Open shows the stage; the chest opens on the THIRD tap, and
+    // closing before that spends nothing.
+    const stage = page.getByTestId('chest-opening');
+    const tap = page.getByTestId('chest-tap');
     await openButton.click();
-    await page.waitForTimeout(1500);
+    await stage.waitFor({ timeout: 5000 }).catch(() => {});
+    const prompt = ((await stage.innerText().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+    record('Open shows the chest stage with its prompt', /CLICK!|TAP!/.test(prompt) && /% Common|% Rare/.test(prompt), prompt.slice(0, 120));
+    await tap.click();
+    await page.waitForTimeout(400);
+    await page.getByTestId('chest-close').click();
+    await page.waitForTimeout(500);
+    const untouched = await apiGet('/api/v1/cosmetics');
+    record(
+      'closing the stage before the third tap spends nothing',
+      (await stage.count()) === 0 && untouched?.Chests[2] === (before?.Chests[2] ?? 0) + 1 && cosmeticsHeld(untouched) === cosmeticsHeld(before),
+      `rare chests ${untouched?.Chests[2]}, cosmetics ${cosmeticsHeld(untouched)}`,
+    );
+
+    await openButton.click();
+    await stage.waitFor({ timeout: 5000 }).catch(() => {});
+    for (let i = 0; i < 3; i++) {
+      await tap.click().catch(() => {});
+      await page.waitForTimeout(250);
+    }
+    await page.getByTestId('chest-reveal').waitFor({ timeout: 12000 }).catch(() => {});
     const after = await apiGet('/api/v1/cosmetics');
     record(
       'opening a chest turns it into a cosmetic',
@@ -3042,10 +3066,11 @@ await go('The Delve');
     );
     const reveal = page.getByTestId('chest-reveal');
     const revealed = (await reveal.count()) > 0 ? ((await reveal.textContent()) ?? '').trim().replace(/\s+/g, ' ') : '';
-    record('the reveal names what came out', revealed.length > 0, revealed);
+    record('the reveal names what came out', revealed.length > 0, `${revealed} [${await stage.getAttribute('data-flavour').catch(() => '?')}]`);
 
-    await reveal.getByRole('button', { name: 'Wear it' }).click().catch(() => {});
+    await page.getByTestId('chest-wear').click().catch(() => {});
     await page.waitForTimeout(1200);
+    await page.getByTestId('chest-close').click().catch(() => {});
     const worn = await apiGet('/api/v1/cosmetics');
     const newest = [...(after?.Owned ?? [])].filter((o) => o.Kind !== 0).sort((a, b) => b.Id - a.Id)[0];
     const wearing = newest?.Kind === 1 ? worn?.EquippedAvatarId : worn?.EquippedFrameId;

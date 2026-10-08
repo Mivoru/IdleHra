@@ -23,6 +23,11 @@ const NOT_YET_MODAL = new Set([
   // The chat window is NOT modal: on a desktop the game keeps running and
   // stays clickable beside it, so it must not inert the app root.
   'lib/ui/ChatDock.svelte',
+  // A full-screen stage, not a card (2026-10-08). It already uses Modal's own
+  // parts - portal, openModal (inert root, focus trap and return) and the
+  // overlay stack - and has no scrim to duplicate; a Modal card would put the
+  // dungeon in a box.
+  'lib/ui/ChestOpening.svelte',
 ]);
 
 function svelteFiles(dir: string): string[] {

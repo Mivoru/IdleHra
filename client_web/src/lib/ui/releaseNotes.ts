@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.7.0',
+    date: '2026-10-08',
+    headline: 'Opening a chest is an event now.',
+    sections: [
+      {
+        title: 'Chests',
+        items: [
+          'Opening a cosmetic chest takes you down to the cellar: tap (or click) the chest three times to shake it open, and the light that bursts out shows what you got.',
+          'A chest’s rarity is now its odds, not a promise. A Common chest is mostly Common but can surprise you; a Legendary chest gives a Legendary 60% of the time and never anything below Rare. Each chest shows its odds before you open it.',
+          'After opening you can wear the prize at once or open the next chest straight away.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.6.0',
     date: '2026-10-08',
     headline: 'Your characters each have one job, and the one you pick is the one that goes.',
