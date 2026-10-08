@@ -445,5 +445,20 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0L, reloaded.ActiveActivityId);
             Assert.Equal(0, reloaded.CurrentMonsterId);
         }
+
+        // 2026-10-08: two accidental rebirths in one evening. The endpoint
+        // refuses a request without the typed word; this pins the word rule.
+        [Theory]
+        [InlineData("REBIRTH", true)]
+        [InlineData(" rebirth ", true)]
+        [InlineData("Rebirth", true)]
+        [InlineData("", false)]
+        [InlineData(null, false)]
+        [InlineData("REBIRT", false)]
+        [InlineData("yes", false)]
+        public void ARebirthNeedsTheTypedWord(string? typed, bool accepted)
+        {
+            Assert.Equal(accepted, RebirthRules.IsConfirmed(typed));
+        }
     }
 }

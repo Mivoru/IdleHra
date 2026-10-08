@@ -2444,7 +2444,7 @@ export function fetchRebirthPreview(): Promise<RebirthPreview> {
   return authedGet<RebirthPreview>('/api/v1/rebirth/preview');
 }
 
-export type RebirthResultName = 'Ok' | 'AlreadyReborn' | 'InFlight' | 'NotFound' | 'Failed';
+export type RebirthResultName = 'Ok' | 'AlreadyReborn' | 'InFlight' | 'NotFound' | 'Failed' | 'ConfirmationRequired';
 
 export interface RebirthOutcome {
   Result: RebirthResultName;
@@ -2463,14 +2463,17 @@ export interface RebirthOutcome {
  * Not `authedPost`: that throws away the body of a non-2xx answer, and every
  * refusal here carries a Result the panel has to show.
  */
-export async function requestRebirth(expectedRebirthCount: number): Promise<RebirthOutcome> {
+/** The word the player types to rebirth - RebirthRules.ConfirmationWord on the server. */
+export const REBIRTH_CONFIRMATION_WORD = 'REBIRTH';
+
+export async function requestRebirth(expectedRebirthCount: number, confirm: string): Promise<RebirthOutcome> {
   const token = storedToken();
   if (!token) throw new AuthError('not signed in', 401);
 
   const response = await fetch(api('/api/v1/rebirth'), {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ExpectedRebirthCount: expectedRebirthCount }),
+    body: JSON.stringify({ ExpectedRebirthCount: expectedRebirthCount, Confirm: confirm }),
   });
   const text = await response.text();
   if (text) {

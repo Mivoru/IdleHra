@@ -40,6 +40,19 @@ namespace FolkIdle.Server.Engine
         /// </remarks>
         public const long EpochFence = 3L;
 
+        /// <summary>
+        /// Modul: THE WORD THE PLAYER TYPES (2026-10-08). Two players rebirthed
+        /// by accident in one evening - the panel's second button sat exactly
+        /// where its first had been, so a double tap was a rebirth. The request
+        /// must now carry this word, typed by the player; a client that does
+        /// not ask for it (an old bundle) is refused rather than trusted.
+        /// Compared case-insensitively after trimming.
+        /// </summary>
+        public const string ConfirmationWord = "REBIRTH";
+
+        public static bool IsConfirmed(string? typed)
+            => typed != null && string.Equals(typed.Trim(), ConfirmationWord, System.StringComparison.OrdinalIgnoreCase);
+
         /// <summary>Whether a rebirth taken at this level counts toward Renown.</summary>
         public static bool IsRenowned(int level) => level >= RenownLevel;
 

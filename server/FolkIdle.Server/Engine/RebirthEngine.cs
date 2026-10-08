@@ -20,6 +20,8 @@ namespace FolkIdle.Server.Engine
         Failed = 3,
         /// <summary>A rebirth for this player is already in flight on the tick.</summary>
         InFlight = 4,
+        /// <summary>The request did not carry the typed confirmation word - see RebirthRules.ConfirmationWord.</summary>
+        ConfirmationRequired = 5,
     }
 
     public readonly record struct RebirthOutcome(

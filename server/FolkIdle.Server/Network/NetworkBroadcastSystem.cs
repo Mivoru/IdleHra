@@ -6442,6 +6442,8 @@ namespace FolkIdle.Server.Network
         private sealed class RebirthRequestBody
         {
             public int ExpectedRebirthCount { get; set; } = -1;
+            // What the player typed - RebirthRules.ConfirmationWord.
+            public string? Confirm { get; set; }
         }
 
         /// <summary>
@@ -6476,6 +6478,14 @@ namespace FolkIdle.Server.Network
             {
                 context.Response.StatusCode = 400;
                 context.Response.Close();
+                return;
+            }
+
+            // Not without the typed word - a reason, not a bare 400, so the
+            // panel can say what is missing.
+            if (!RebirthRules.IsConfirmed(body.Confirm))
+            {
+                await WriteRebirthAsync(context, 400, new RebirthOutcome(RebirthResult.ConfirmationRequired, body.ExpectedRebirthCount, 0, 0, 0, false));
                 return;
             }
 

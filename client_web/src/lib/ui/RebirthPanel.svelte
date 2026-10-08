@@ -17,11 +17,20 @@
   //
   // Prose and <p>, never <li>: exercise.mjs counts `.panel li` on this screen
   // to find the Hall's roster rows.
+  //
+  // Modul: AND THE PLAYER TYPES THE WORD (2026-10-08). Two players rebirthed
+  // by accident in one evening: "Yes, rebirth now" appeared exactly where
+  // "Rebirth..." had been, so a double tap went straight through. Step two now
+  // states plainly that it cannot be undone, Cancel comes first, and the
+  // confirm button stays disabled until REBIRTH is typed. The server refuses
+  // a request without the word (ConfirmationRequired), so an old bundle
+  // cannot skip it.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import {
     queryKeys,
     fetchRebirthPreview,
     requestRebirth,
+    REBIRTH_CONFIRMATION_WORD,
     type RebirthOutcome,
   } from '../net/rest';
   import { invalidateOwnedItems } from '../net/queryClient';
@@ -33,6 +42,8 @@
   const p = $derived(preview.data);
 
   let confirming = $state(false);
+  let typed = $state('');
+  const wordTyped = $derived(typed.trim().toUpperCase() === REBIRTH_CONFIRMATION_WORD);
   let working = $state(false);
   let last = $state<RebirthOutcome | null>(null);
 
@@ -45,10 +56,10 @@
   }
 
   async function rebirth() {
-    if (!p || working) return;
+    if (!p || working || !wordTyped) return;
     working = true;
     try {
-      const outcome = await requestRebirth(p.RebirthCount);
+      const outcome = await requestRebirth(p.RebirthCount, typed);
       last = outcome;
       if (outcome.Result === 'Ok') {
         pushLocalNotice(
@@ -57,6 +68,8 @@
             : `Reborn, below level ${p.RenownLevel}: no Renown this time. +${formatNumber(outcome.ShardsEarned)} shards.`,
           'info',
         );
+      } else if (outcome.Result === 'ConfirmationRequired') {
+        pushLocalNotice(`Type ${REBIRTH_CONFIRMATION_WORD} to confirm. Nothing was reset.`, 'error');
       } else if (outcome.Result === 'AlreadyReborn' || outcome.Result === 'InFlight') {
         pushLocalNotice('That rebirth has already happened - the page was out of date.', 'error');
       } else {
@@ -67,6 +80,7 @@
     } finally {
       working = false;
       confirming = false;
+      typed = '';
       refreshAll();
     }
   }
@@ -104,6 +118,11 @@
       {/if}
     {:else}
       <div class="terms" data-testid="rebirth-terms">
+        <p class="danger-note" data-testid="rebirth-warning">
+          <strong>This cannot be undone.</strong> Your character goes back to
+          level 1 and loses the gear, gold and materials listed below, for good.
+          Read it through before you confirm.
+        </p>
         <p>
           <strong>You lose:</strong> level {p.Level} (back to 1), {formatNumber(p.Gold)} gold,
           {p.MaterialStacks} material {p.MaterialStacks === 1 ? 'stack' : 'stacks'},
@@ -131,12 +150,24 @@
           <strong>You gain:</strong> {formatNumber(p.ShardsEarned)} shards{#if p.Renowned}, and Renown
             {p.RenownedRebirths + 1} (+{p.DamageBonusPctAfter}% damage){/if}.
         </p>
+        <label class="typeword">
+          <span>Type <strong>{REBIRTH_CONFIRMATION_WORD}</strong> to confirm</span>
+          <input
+            data-testid="rebirth-confirm-word"
+            bind:value={typed}
+            autocomplete="off"
+            autocapitalize="characters"
+            spellcheck="false"
+            placeholder={REBIRTH_CONFIRMATION_WORD}
+            disabled={working}
+          />
+        </label>
         <div class="confirm-row">
-          <button class="rebirth-confirm danger" disabled={working} onclick={rebirth}>
-            {working ? 'Rebirthing…' : 'Yes, rebirth now'}
-          </button>
-          <button class="rebirth-cancel" disabled={working} onclick={() => (confirming = false)}>
+          <button class="rebirth-cancel" disabled={working} onclick={() => { confirming = false; typed = ''; }}>
             Cancel
+          </button>
+          <button class="rebirth-confirm danger" disabled={working || !wordTyped} onclick={rebirth}>
+            {working ? 'Rebirthing…' : 'Yes, rebirth now'}
           </button>
         </div>
       </div>
@@ -200,5 +231,23 @@
   }
   .warn {
     color: var(--warn);
+  }
+
+  .danger-note {
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    color: var(--danger);
+  }
+
+  .typeword {
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.85rem;
+  }
+
+  .typeword input {
+    max-width: 14rem;
+    text-transform: uppercase;
   }
 </style>

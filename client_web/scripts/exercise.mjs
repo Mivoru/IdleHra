@@ -5076,6 +5076,20 @@ await go('Ancestors');
       'step one does not rebirth - step two is its own button',
       (await panel.locator('button.rebirth-confirm').count()) === 1,
     );
+    // 2026-10-08: the confirm stays disabled until the word is typed, and the
+    // warning says it cannot be undone. Typed, checked, then cleared - Cancel
+    // below is what this check ends on, so nothing is reborn.
+    const confirmBtn = panel.locator('button.rebirth-confirm');
+    const lockedBefore = await confirmBtn.isDisabled();
+    await panel.locator('[data-testid="rebirth-confirm-word"]').fill('rebirth');
+    const openAfter = await confirmBtn.isEnabled();
+    await panel.locator('[data-testid="rebirth-confirm-word"]').fill('');
+    const warning = await panel.locator('[data-testid="rebirth-warning"]').innerText().catch(() => '');
+    record(
+      'rebirth asks for the typed word and warns it cannot be undone',
+      lockedBefore && openAfter && /cannot be undone/i.test(warning),
+      `disabled before typing: ${lockedBefore}, enabled after: ${openAfter}`,
+    );
 
     await panel.locator('button.rebirth-cancel').click();
     await page.waitForTimeout(500);
@@ -5657,14 +5671,23 @@ await go('Ancestors');
 
     const before = await call('GET', '/api/v1/rebirth/preview');
     const count = before.json?.RebirthCount ?? -1;
-    const first = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count });
+    // 2026-10-08: no typed word, no rebirth - an old bundle cannot skip it.
+    const unconfirmed = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count });
+    const stillThere = await call('GET', '/api/v1/rebirth/preview');
+    record(
+      'a rebirth without the typed word is refused and resets nothing',
+      unconfirmed.status === 400 && unconfirmed.json?.Result === 'ConfirmationRequired'
+        && stillThere.json?.RebirthCount === count && stillThere.json?.Level === before.json?.Level,
+      `HTTP ${unconfirmed.status} ${JSON.stringify(unconfirmed.json)}`,
+    );
+    const first = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count, Confirm: 'REBIRTH' });
     record(
       'a throwaway account is reborn, live',
       first.status === 200 && first.json?.Result === 'Ok' && first.json?.RebirthCount === count + 1,
       `HTTP ${first.status} ${JSON.stringify(first.json)}`,
     );
 
-    const second = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count });
+    const second = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count, Confirm: 'REBIRTH' });
     record(
       'the same preview submitted twice is refused, not a second rebirth',
       second.status === 409 && second.json?.Result === 'AlreadyReborn',

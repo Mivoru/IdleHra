@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { kindOfWork, isSameKindOfWork } from '../src/lib/ui/slots';
 import { kindTakenBy, lootOwner, slotBars, type Worker } from '../src/lib/ui/workers';
+import { REBIRTH_CONFIRMATION_WORD } from '../src/lib/net/rest';
 
 // 2026-10-08: one character per kind of work. kindOfWork mirrors
 // CharacterSlotEngine.ActivityCategory; the numbers are read from the C# so the
@@ -68,5 +69,15 @@ describe('kind of work', () => {
     };
     expect(slotBars(snap, 1)).toMatchObject({ playerHp: 10, playerMaxHp: 20, progressTicks: 3, requiredTicks: 9 });
     expect(slotBars(snap, 3)).toMatchObject({ playerHp: 400, playerMaxHp: 900, monsterId: 91, monsterHp: 50, monsterMaxHp: 60 });
+  });
+});
+
+// 2026-10-08: the rebirth confirmation word, read from RebirthRules.cs so the
+// panel and the endpoint cannot ask for different words.
+describe('rebirth confirmation word', () => {
+  it('is the server word', () => {
+    const rules = readFileSync(join(here, '..', '..', 'server', 'FolkIdle.Server', 'Engine', 'RebirthRules.cs'), 'utf8');
+    const match = rules.match(/ConfirmationWord = "([A-Z]+)"/);
+    expect(match?.[1]).toBe(REBIRTH_CONFIRMATION_WORD);
   });
 });

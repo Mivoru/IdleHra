@@ -35,6 +35,35 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.6.0',
+    date: '2026-10-08',
+    headline: 'Your characters each have one job, and the one you pick is the one that goes.',
+    sections: [
+      {
+        title: 'Characters at work',
+        items: [
+          'One character per kind of work: only one of your characters can fight at a time, one can chop wood, one can mine, one can fish and one can craft. Pick a different job for the others.',
+          'The character you choose on the Character screen is now the one that fights, gathers or crafts. Fight used to send your first character whoever you had picked.',
+          'Combat has a "Who fights" choice at the top and shows that character’s own health and monster.',
+          'A character put to work on crafting shows a progress bar, and the gathering bar finally moves.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'Your maximum health no longer drops and creeps back up. Each character keeps its own, and a character coming back from work or from being away starts the next fight at full health.',
+          'A new drop is compared with what your fighting character wears, and Wear puts it on that character. It used to say a slot was empty when it was not.',
+        ],
+      },
+      {
+        title: 'Rebirth',
+        items: [
+          'Rebirth now warns that it cannot be undone and asks you to type REBIRTH before it goes through, so a double tap can no longer reset your run by accident.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.5.0',
     date: '2026-10-07',
     headline: 'A harder road to the top, and a guide for everything on it.',
