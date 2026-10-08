@@ -21,8 +21,8 @@
 
 
     <!-- Android 12+ ignores the splash drawable and draws the launcher icon
-         on windowSplashScreenBackground instead, so that colour is set to
-         --bg too: the next thing painted is the dark loading screen in
+         on windowSplashScreenBackground instead, so that colour is set to the
+         page background too: the next thing painted is the dark loading screen in
          index.html, and anything lighter flashes between the two. -->
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@drawable/splash</item>
