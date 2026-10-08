@@ -1343,6 +1343,9 @@ namespace FolkIdle.Server.Domain.Shared
                 AutoSalvageRegionTiers = Engine.ChestSalvageRules.Sanitise(player.AutoSalvageRegionTiers),
 
                 PlayerHp = 100000,
+                // Filled to the real maximum by the first combat tick - see
+                // TickStatePayload.RestedHpPending.
+                RestedHpPending = true,
                 CurrentGold = loadedGold,
                 PremiumCurrency = player.PremiumDiamonds,
                 GuildId = player.GuildId,
@@ -1582,6 +1585,7 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot2Activity.ActiveActivityId = characters[1].ActiveActivityId;
                 payload.Slot2Activity.AutomationRules = characters[1].AutomationRules;
                 payload.Slot2Activity.PlayerHp = CharacterSlotDefaults.MilliHp;
+                payload.Slot2Activity.RestedHpPending = true;
                 payload.Slot2Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
                 payload.Slot2Activity = await HydrateSlotEquipmentAsync(dbContext, characters[1], payload.Slot2Activity);
             }
@@ -1595,9 +1599,24 @@ namespace FolkIdle.Server.Domain.Shared
                 payload.Slot3Activity.ActiveActivityId = characters[2].ActiveActivityId;
                 payload.Slot3Activity.AutomationRules = characters[2].AutomationRules;
                 payload.Slot3Activity.PlayerHp = CharacterSlotDefaults.MilliHp;
+                payload.Slot3Activity.RestedHpPending = true;
                 payload.Slot3Activity.RequiredProgressTicks = CharacterSlotDefaults.RequiredProgressTicks;
                 payload.Slot3Activity = await HydrateSlotEquipmentAsync(dbContext, characters[2], payload.Slot3Activity);
             }
+
+            // Modul: one character per kind of work (2026-10-08). An account
+            // that fielded two fighters before the rule keeps the first, in
+            // slot order; the checkpoint writes the idles back to the rows.
+            long[] fielded = new long[]
+            {
+                payload.ActiveActivityId,
+                payload.Slot2Activity.ActiveActivityId,
+                payload.Slot3Activity.ActiveActivityId
+            };
+            Domain.Combat.CharacterSlotEngine.ResolveKindOfWorkConflicts(fielded);
+            payload.ActiveActivityId = fielded[0];
+            payload.Slot2Activity.ActiveActivityId = fielded[1];
+            payload.Slot3Activity.ActiveActivityId = fielded[2];
 
             return payload;
         }

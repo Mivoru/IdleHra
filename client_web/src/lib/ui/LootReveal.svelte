@@ -20,7 +20,9 @@
   import { lootReveal, dismissLootReveal, playerState } from '../stores/game';
   import { loadContent, itemName, type ContentRegistry } from '../net/content';
   import { queryKeys, fetchWorn } from '../net/rest';
-  import { wearOnMain } from '../net/commands';
+  import { wearOn } from '../net/commands';
+  import { lootOwner, workersOf } from './workers';
+  import { selectedCharacterSlot } from '../stores/selectedCharacter';
   import { play } from './audio';
   import { rarityColor, rarityName } from './rarity';
   import { compareDrop, comparisonLine, dropRequirement, isUpgrade } from './lootCompare';
@@ -40,7 +42,14 @@
   const drop = $derived($lootReveal);
   const def = $derived(drop ? (registry?.items.get(drop.itemId) ?? null) : null);
 
-  const worn = createQuery(() => ({ queryKey: queryKeys.worn, queryFn: fetchWorn, enabled: drop !== null }));
+  // Held against the FIGHTER's gear, and worn on the fighter (see SessionLoot).
+  const owner = $derived(lootOwner(workersOf($playerState), $selectedCharacterSlot));
+  const ownerId = $derived(owner?.id ?? '');
+  const worn = createQuery(() => ({
+    queryKey: [...queryKeys.worn, ownerId],
+    queryFn: () => fetchWorn(ownerId),
+    enabled: drop !== null,
+  }));
   const cmp = $derived(def && drop && worn.data ? compareDrop(registry, def.BaseId, drop.qualityTier, worn.data.Pieces) : null);
   const req = $derived(def ? dropRequirement(registry, def.BaseId, $playerState ?? {}) : null);
 
@@ -53,7 +62,7 @@
 
   function wear() {
     if (!drop) return;
-    wearOnMain(drop.instanceId);
+    wearOn(drop.instanceId, ownerId);
     play('itemEquipped');
     held = false;
     dismissLootReveal();

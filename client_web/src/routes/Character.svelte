@@ -46,6 +46,7 @@
     SLOT_AXE,
     SLOT_PICKAXE,
     SLOT_ROD,
+    isSameKindOfWork,
   } from '../lib/ui/slots';
   import { rarityColor, rarityName, shouldGlow } from '../lib/ui/rarity';
   import Affixes from '../lib/ui/Affixes.svelte';
@@ -55,6 +56,7 @@
   import Hint from '../lib/ui/Hint.svelte';
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
   import { pickerRows } from '../lib/ui/equipPicker';
+  import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
   import AutomationRulesPanel from '../lib/ui/AutomationRulesPanel.svelte';
@@ -141,7 +143,9 @@
         .map((item) => item.Id),
     ),
   );
-  let selectedSlot = $state(1);
+  // The pick is shared with Combat, Gathering and Crafting (2026-10-08) - the
+  // person chosen here is the one those screens put to work.
+  const selectedSlot = $derived($selectedCharacterSlot);
 
   // Modul: StateUpdate's three combat rating fields are the ACTIVE character's
   // only. /api/v1/player/inventory carries each character's own rating,
@@ -205,14 +209,15 @@
   const craftingJobs = $derived(jobChoices.filter((j) => j.group === 'Crafting'));
 
   // CharacterSlotEngine.IsActivityOccupiedByAnotherSlot: two of your own
-  // characters may not work the same activity. The server answers NodeOccupied;
+  // characters may not do the same KIND of work (one fighter, one woodcutter,
+  // one miner, one fisher, one crafter). The server answers NodeOccupied;
   // showing it here means the player never has to find out that way.
   function occupiedBy(activityId: number, bySlot: number): string | null {
     if (activityId <= 0 || !snap) return null;
     const who = (slot: number, id: string) => personName(id, 0) || `Slot ${slot}`;
-    if (bySlot !== 1 && Number(snap.ActiveActivityId) === activityId) return who(1, snap.Slot1_CharacterId);
-    if (bySlot !== 2 && snap.Slot2ActivityId === activityId) return who(2, snap.Slot2_CharacterId);
-    if (bySlot !== 3 && snap.Slot3ActivityId === activityId) return who(3, snap.Slot3_CharacterId);
+    if (bySlot !== 1 && isSameKindOfWork(Number(snap.ActiveActivityId), activityId)) return who(1, snap.Slot1_CharacterId);
+    if (bySlot !== 2 && isSameKindOfWork(snap.Slot2ActivityId, activityId)) return who(2, snap.Slot2_CharacterId);
+    if (bySlot !== 3 && isSameKindOfWork(snap.Slot3ActivityId, activityId)) return who(3, snap.Slot3_CharacterId);
     return null;
   }
 
@@ -300,7 +305,7 @@
   const selected = $derived(people.find((c) => c.slot === selectedSlot) ?? people[0] ?? null);
 
   function choosePerson(slot: number) {
-    selectedSlot = slot;
+    selectedCharacterSlot.set(slot);
     pickerSlot = -1;
   }
 

@@ -21,6 +21,7 @@
   import { playerState, pushLocalNotice } from '../stores/game';
   import { requestScreen } from '../stores/navigation';
   import { queryKeys, fetchDeeds, fetchWorn, fetchBreedingRoster } from '../net/rest';
+  import { isSameKindOfWork } from './slots';
   import { assignCharacterActivity } from '../net/commands';
   import { writePref } from '../net/prefs';
   import { bossRegionOf } from './victories';
@@ -118,9 +119,10 @@
 
   function takenBy(activityId: number, bySlot: number): string | null {
     if (!snap) return null;
-    if (bySlot !== 1 && Number(snap.ActiveActivityId) === activityId) return 'Slot 1';
-    if (bySlot !== 2 && snap.Slot2ActivityId === activityId) return 'Slot 2';
-    if (bySlot !== 3 && snap.Slot3ActivityId === activityId) return 'Slot 3';
+    // One character per KIND of work (CharacterSlotEngine, 2026-10-08).
+    if (bySlot !== 1 && isSameKindOfWork(Number(snap.ActiveActivityId), activityId)) return 'Slot 1';
+    if (bySlot !== 2 && isSameKindOfWork(snap.Slot2ActivityId, activityId)) return 'Slot 2';
+    if (bySlot !== 3 && isSameKindOfWork(snap.Slot3ActivityId, activityId)) return 'Slot 3';
     return null;
   }
 

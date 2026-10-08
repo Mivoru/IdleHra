@@ -7229,11 +7229,17 @@ namespace FolkIdle.Server.Tests
         // than to a round large number on purpose: at 832 the next addition has
         // 57 bytes of room and then has to argue for itself, which is the only
         // thing this assertion has ever been for.
+        //
+        // Modul: 832 -> 896 (2026-10-08). Characters 2 and 3's bars - health,
+        // its maximum, the monster and the job's progress, 44 bytes - took the
+        // packet to 855: fighting and working as the PICKED character needs the
+        // other two characters on the stream. One more 64-byte step, same
+        // argument as before: 41 bytes of room, then the next addition argues.
         [Fact]
-        public void Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder832Bytes()
+        public void Test_StateUpdatePacket_StructuralSizeIsStrictlyUnder896Bytes()
         {
             int actualSize = System.Runtime.InteropServices.Marshal.SizeOf<StateUpdatePacket>();
-            Assert.True(actualSize < 832, $"StateUpdatePacket is {actualSize} bytes - expected strictly under 832.");
+            Assert.True(actualSize < 896, $"StateUpdatePacket is {actualSize} bytes - expected strictly under 896.");
         }
 
         // Modul: Production Release Hardening, Part 3. Exercises
@@ -9538,28 +9544,31 @@ namespace FolkIdle.Server.Tests
 
             // Town Hall 2: slot 2 (requires 3) is still locked, despite the
             // character being level 99.
-            var slot2AtTownHall2 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 92L);
+            var slot2AtTownHall2 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 1001L);
             Assert.Equal(CommandResultCode.LevelTooLow, slot2AtTownHall2);
 
             await SetTownHallLevelAsync(testPlayerId, 3);
 
             // Town Hall 3: slot 2 unlocks, slot 3 (requires 5) stays locked.
-            var slot2AtTownHall3 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 92L);
+            var slot2AtTownHall3 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot2CharacterId, 1001L);
             Assert.Equal(CommandResultCode.Success, slot2AtTownHall3);
 
-            var slot3AtTownHall3 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 93L);
+            var slot3AtTownHall3 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 2001L);
             Assert.Equal(CommandResultCode.LevelTooLow, slot3AtTownHall3);
 
             await SetTownHallLevelAsync(testPlayerId, 5);
 
             // Town Hall 5: the third slot finally opens.
-            var slot3AtTownHall5 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 93L);
+            var slot3AtTownHall5 = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 2001L);
             Assert.Equal(CommandResultCode.Success, slot3AtTownHall5);
 
-            // And the occupancy mutex still applies across all three: any
-            // character may do anything, but never the SAME thing as another.
-            var slot3OntoSlot2sMonster = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 92L);
-            Assert.Equal(CommandResultCode.NodeOccupied, slot3OntoSlot2sMonster);
+            // And the occupancy mutex applies across all three: one character
+            // per KIND of work (2026-10-08) - slot 1 fights, so slot 3 cannot
+            // fight even a different monster, nor chop a different tree.
+            var slot3OntoAnotherMonster = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 92L);
+            Assert.Equal(CommandResultCode.NodeOccupied, slot3OntoAnotherMonster);
+            var slot3OntoAnotherTree = await simulationEngine.ChangeCharacterActivityAsync(testPlayerId, slot3CharacterId, 1002L);
+            Assert.Equal(CommandResultCode.NodeOccupied, slot3OntoAnotherTree);
 
             Assert.Equal(0, CharacterSlotEngine.GetSlotUnlockTownHallRequirement(0));
             Assert.Equal(3, CharacterSlotEngine.GetSlotUnlockTownHallRequirement(1));

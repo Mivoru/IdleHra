@@ -126,21 +126,25 @@ namespace FolkIdle.Server.Tests
         public async Task SlotTwoAndThreeActivitiesSurviveAFlushAndAFreshLoad()
         {
             const long playerId = 950_025_004L;
-            const long OneEasier = 92L;
+            // One character per kind of work (2026-10-08): slot 1 fights, so
+            // slots 2 and 3 work other kinds - a second fighter would be idled
+            // at hydration. The story is the same: a live-only change of a
+            // parked slot's activity must survive a flush and a fresh load.
+            const long OneEasier = 2002L;
             const long FishingSpot = 3001L;
             var first = Guid.NewGuid();
             var second = Guid.NewGuid();
             var third = Guid.NewGuid();
             await SeedAsync(playerId,
                 new CharacterRecord { Id = first, PlayerId = playerId, AgePhase = 1, SlotIndex = 0, ActiveActivityId = FieldMouse },
-                new CharacterRecord { Id = second, PlayerId = playerId, AgePhase = 1, SlotIndex = 1, ActiveActivityId = 93L },
-                new CharacterRecord { Id = third, PlayerId = playerId, AgePhase = 1, SlotIndex = 2, ActiveActivityId = 94L });
+                new CharacterRecord { Id = second, PlayerId = playerId, AgePhase = 1, SlotIndex = 1, ActiveActivityId = 2001L },
+                new CharacterRecord { Id = third, PlayerId = playerId, AgePhase = 1, SlotIndex = 2, ActiveActivityId = 1001L });
             var checkpoints = new StateCheckpointManager(_fixture.ServiceProvider);
 
             var live = await checkpoints.LoadPlayerState(playerId);
             Assert.Equal(second, live.Slot2_CharacterId);
             Assert.Equal(third, live.Slot3_CharacterId);
-            live.Slot2Activity.ActiveActivityId = OneEasier;   // stepped down after a death
+            live.Slot2Activity.ActiveActivityId = OneEasier;   // moved to another vein
             live.Slot3Activity.ActiveActivityId = FishingSpot; // sent fishing by an order
 
             Assert.True(await checkpoints.FlushState(live));

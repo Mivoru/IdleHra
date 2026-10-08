@@ -631,6 +631,88 @@ await go('Combat');
   );
 }
 
+// --- combat: the PICKED character fights, and only one fights (2026-10-08) ---
+// Combat used to send every Fight for slot 1 whoever was picked, and any number
+// of characters could fight at once. Now the pick is shared and the server
+// allows one character per kind of work. Round trip: the original fighter is
+// fighting its original monster again at the end; the other person ends idle.
+await go('Combat');
+{
+  const picker = page.getByTestId('worker-picker').first();
+  const people = picker.getByRole('radio');
+  const count = (await picker.count()) > 0 ? await people.count() : 0;
+  const jobOf = async (i) => ((await people.nth(i).innerText().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+  const stop = page.getByRole('button', { name: 'Stand down', exact: true });
+  const firstEnabledFight = async () => {
+    const buttons = page.getByRole('button', { name: 'Fight', exact: true });
+    const n = await buttons.count();
+    for (let i = 0; i < n; i++) if (await buttons.nth(i).isEnabled()) return buttons.nth(i);
+    return null;
+  };
+  const waitFor = async (predicate, ms = 8000) => {
+    for (let t = 0; t < ms; t += 400) {
+      if (await predicate()) return true;
+      await page.waitForTimeout(400);
+    }
+    return false;
+  };
+
+  if (count < 2) {
+    record('only one character may fight at a time', true, 'one person fielded - skipped');
+    record('Fight sends the character picked, not slot 1', true, 'one person fielded - skipped');
+  } else {
+    let fighter = -1;
+    for (let i = 0; i < count; i++) if (/Fighting/.test(await jobOf(i))) fighter = i;
+    const other = fighter === 0 ? 1 : 0;
+    const originalMonster = await page.evaluate(() => localStorage.getItem('folkidle.combat.lastMonster'));
+
+    if (fighter >= 0) {
+      await dismissToasts();
+      await people.nth(other).click();
+      await page.waitForTimeout(300);
+      const fight = await firstEnabledFight();
+      if (fight) await fight.click();
+      await page.waitForTimeout(1500);
+      const refusal = (await toasts()).join(' | ');
+      record(
+        'only one character may fight at a time',
+        /already fighting/i.test(refusal) && !/Fighting/.test(await jobOf(other)),
+        refusal.slice(0, 140) || 'no toast',
+      );
+      // Free the fighter so the other can be sent.
+      await people.nth(fighter).click();
+      await page.waitForTimeout(300);
+      if ((await stop.count()) > 0) await stop.first().click();
+      await waitFor(async () => !/Fighting/.test(await jobOf(fighter)));
+    } else {
+      record('only one character may fight at a time', true, 'nobody was fighting - refusal not exercised');
+    }
+
+    await people.nth(other).click();
+    await page.waitForTimeout(300);
+    const fight = await firstEnabledFight();
+    if (fight) await fight.click();
+    const picked = await waitFor(async () => /Fighting/.test(await jobOf(other)));
+    const firstStayed = fighter >= 0 ? !/Fighting/.test(await jobOf(fighter)) : true;
+    record('Fight sends the character picked, not slot 1', picked && firstStayed, `${await jobOf(other)} || ${fighter >= 0 ? await jobOf(fighter) : '-'}`);
+
+    // Restore: the other person stands down; the original fighter goes back
+    // to its own monster through "Continue" (the remembered last monster).
+    if ((await stop.count()) > 0) await stop.first().click();
+    await waitFor(async () => !/Fighting/.test(await jobOf(other)));
+    if (originalMonster !== null) await page.evaluate((id) => localStorage.setItem('folkidle.combat.lastMonster', id), originalMonster);
+    if (fighter >= 0) {
+      await go('Gathering');
+      await go('Combat');
+      await page.getByTestId('worker-picker').first().getByRole('radio').nth(fighter).click();
+      await page.waitForTimeout(300);
+      const cont = page.getByTestId('combat-continue');
+      if ((await cont.count()) > 0) await cont.first().click();
+      await stop.first().waitFor({ timeout: 10000 }).catch(() => {});
+    }
+  }
+}
+
 // --- forge: fusion and reroll ------------------------------------------------
 await go('Forge');
 {
@@ -1446,6 +1528,17 @@ await page.getByRole('tab', { name: 'Recipes' }).click().catch(() => {});
   if (hasWork) {
     await work.click();
     await page.waitForTimeout(1500);
+
+    // 2026-10-08: a job you can see moving. The crafter's own clock is on the
+    // wire per slot now; two samples a second apart must differ (or the bar
+    // wrapped, which also means it moved).
+    const progress = page.getByTestId('crafting-progress');
+    const shownBar = (await progress.count()) > 0;
+    const sample = async () => ((await progress.first().innerText().catch(() => '')) ?? '').replace(/\s+/g, ' ');
+    const first = shownBar ? await sample() : '';
+    await page.waitForTimeout(1200);
+    const second = shownBar ? await sample() : '';
+    record('a character put to work shows the craft moving', shownBar && first !== second, `${first} -> ${second}`.slice(0, 160));
 
     await go('Character');
     // The person switcher names each person's job; the craft may be on any of them.
@@ -4983,6 +5076,20 @@ await go('Ancestors');
       'step one does not rebirth - step two is its own button',
       (await panel.locator('button.rebirth-confirm').count()) === 1,
     );
+    // 2026-10-08: the confirm stays disabled until the word is typed, and the
+    // warning says it cannot be undone. Typed, checked, then cleared - Cancel
+    // below is what this check ends on, so nothing is reborn.
+    const confirmBtn = panel.locator('button.rebirth-confirm');
+    const lockedBefore = await confirmBtn.isDisabled();
+    await panel.locator('[data-testid="rebirth-confirm-word"]').fill('rebirth');
+    const openAfter = await confirmBtn.isEnabled();
+    await panel.locator('[data-testid="rebirth-confirm-word"]').fill('');
+    const warning = await panel.locator('[data-testid="rebirth-warning"]').innerText().catch(() => '');
+    record(
+      'rebirth asks for the typed word and warns it cannot be undone',
+      lockedBefore && openAfter && /cannot be undone/i.test(warning),
+      `disabled before typing: ${lockedBefore}, enabled after: ${openAfter}`,
+    );
 
     await panel.locator('button.rebirth-cancel').click();
     await page.waitForTimeout(500);
@@ -5564,14 +5671,23 @@ await go('Ancestors');
 
     const before = await call('GET', '/api/v1/rebirth/preview');
     const count = before.json?.RebirthCount ?? -1;
-    const first = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count });
+    // 2026-10-08: no typed word, no rebirth - an old bundle cannot skip it.
+    const unconfirmed = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count });
+    const stillThere = await call('GET', '/api/v1/rebirth/preview');
+    record(
+      'a rebirth without the typed word is refused and resets nothing',
+      unconfirmed.status === 400 && unconfirmed.json?.Result === 'ConfirmationRequired'
+        && stillThere.json?.RebirthCount === count && stillThere.json?.Level === before.json?.Level,
+      `HTTP ${unconfirmed.status} ${JSON.stringify(unconfirmed.json)}`,
+    );
+    const first = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count, Confirm: 'REBIRTH' });
     record(
       'a throwaway account is reborn, live',
       first.status === 200 && first.json?.Result === 'Ok' && first.json?.RebirthCount === count + 1,
       `HTTP ${first.status} ${JSON.stringify(first.json)}`,
     );
 
-    const second = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count });
+    const second = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count, Confirm: 'REBIRTH' });
     record(
       'the same preview submitted twice is refused, not a second rebirth',
       second.status === 409 && second.json?.Result === 'AlreadyReborn',

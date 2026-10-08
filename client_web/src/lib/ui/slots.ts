@@ -166,6 +166,39 @@ export function isGatheringActivity(activityId: number): boolean {
   return activityId >= GATHERING_FIRST && activityId <= GATHERING_LAST;
 }
 
+/**
+ * Modul: ONE CHARACTER PER KIND OF WORK (2026-10-08). CharacterSlotEngine
+ * .ActivityCategory, mirrored: the server refuses a second fighter, woodcutter,
+ * miner, fisher or crafter with NodeOccupied, and the screens grey the choice
+ * out first. 0 is idle. serverMirrors.test.ts pins the bands.
+ */
+export const WORK_KIND_NAMES: Record<number, string> = {
+  1: 'fighting',
+  2: 'woodcutting',
+  3: 'mining',
+  4: 'fishing',
+  5: 'gathering',
+  6: 'crafting',
+  7: 'the world boss',
+};
+
+export function kindOfWork(activityId: number): number {
+  if (!(activityId > 0)) return 0;
+  if (isCombatActivity(activityId)) return 1;
+  if (activityId >= 5000 && activityId < 6000) return 6;
+  if (activityId === ACTIVITY_BANDS.worldBoss) return 7;
+  if (isGatheringActivity(activityId)) {
+    const band = Math.floor(activityId / 1000);
+    return band === 1 ? 2 : band === 2 ? 3 : band === 3 ? 4 : 5;
+  }
+  return 1000 + activityId;
+}
+
+export function isSameKindOfWork(left: number, right: number): boolean {
+  const kind = kindOfWork(left);
+  return kind !== 0 && kind === kindOfWork(right);
+}
+
 /** 0 Woodcutting, 1 Mining, 2 Fishing, 3 Herbalism - GatheringNodeDefinition's own numbering. */
 export const PROFESSIONS: readonly { id: number; name: string; band: number }[] = [
   { id: 0, name: 'Woodcutting', band: ACTIVITY_BANDS.woodcutting },

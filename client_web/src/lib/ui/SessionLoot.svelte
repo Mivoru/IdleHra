@@ -33,7 +33,9 @@
   import { playerState } from '../stores/game';
   import { lootFlash } from '../stores/game';
   import { queryKeys, fetchWorn } from '../net/rest';
-  import { wearOnMain } from '../net/commands';
+  import { wearOn } from '../net/commands';
+  import { lootOwner, workersOf } from './workers';
+  import { selectedCharacterSlot } from '../stores/selectedCharacter';
   import { play } from './audio';
   import { compareDrop, comparisonLine, dropRequirement, isUpgrade } from './lootCompare';
   import { requestScreen } from '../stores/navigation';
@@ -129,13 +131,16 @@
   // four taps away (Character -> slot -> picker -> Wear) with nothing saying
   // whether the drop beat what was worn. The row now says so and wears it.
   //
-  // Wear sends EquipItem with NO TargetGuid, which the server resolves to the
-  // MAIN character - so the comparison is against /player/worn, which is that
-  // same character's gear. The instance id is the exact row that dropped
-  // (ResponseLootDropPacket.InstanceId), never a guess among identical pieces.
+  // Wear and the comparison name the SAME character: the one fighting
+  // (lootOwner), since that is who the drop came to. It used to be the main
+  // character for both, which said "boots slot is empty" about a drop while the
+  // fighter wore Transcendent boots (2026-10-08). The instance id is the exact
+  // row that dropped (ResponseLootDropPacket.InstanceId).
+  const owner = $derived(lootOwner(workersOf($playerState), $selectedCharacterSlot));
+  const ownerId = $derived(owner?.id ?? '');
   const worn = createQuery(() => ({
-    queryKey: queryKeys.worn,
-    queryFn: fetchWorn,
+    queryKey: [...queryKeys.worn, ownerId],
+    queryFn: () => fetchWorn(ownerId),
     enabled: showEquipment && equipmentRows.some((r) => r.instanceIds.length > 0),
   }));
   const wornPieces = $derived(worn.data?.Pieces ?? []);
@@ -164,7 +169,7 @@
 
   function wear(instanceId: number) {
     pending = [...pending, instanceId];
-    wearOnMain(instanceId);
+    wearOn(instanceId, ownerId);
     // On send, like every command: a refusal answers with the error tone.
     play('itemEquipped');
   }

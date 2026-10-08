@@ -6442,6 +6442,8 @@ namespace FolkIdle.Server.Network
         private sealed class RebirthRequestBody
         {
             public int ExpectedRebirthCount { get; set; } = -1;
+            // What the player typed - RebirthRules.ConfirmationWord.
+            public string? Confirm { get; set; }
         }
 
         /// <summary>
@@ -6476,6 +6478,14 @@ namespace FolkIdle.Server.Network
             {
                 context.Response.StatusCode = 400;
                 context.Response.Close();
+                return;
+            }
+
+            // Not without the typed word - a reason, not a bare 400, so the
+            // panel can say what is missing.
+            if (!RebirthRules.IsConfirmed(body.Confirm))
+            {
+                await WriteRebirthAsync(context, 400, new RebirthOutcome(RebirthResult.ConfirmationRequired, body.ExpectedRebirthCount, 0, 0, 0, false));
                 return;
             }
 
@@ -8260,10 +8270,21 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
+                // Modul: ?characterId= names whose gear to compare against
+                // (2026-10-08). A drop belongs to whichever character is
+                // fighting, and that is not always the main one - comparing a
+                // fighter's boots drop against the main character's empty boot
+                // slot told the player "+1000 DEF, boots slot is empty" while
+                // the fighter wore Transcendent boots. Must be this player's
+                // own character; anything else falls back to the main one.
                 var mainGuid = await db.PlayerRecords.AsNoTracking()
                     .Where(p => p.Id == playerId)
                     .Select(p => p.PlayerGuid)
                     .FirstOrDefaultAsync();
+                if (Guid.TryParse(context.Request.QueryString["characterId"], out var askedFor) && askedFor != Guid.Empty)
+                {
+                    mainGuid = askedFor;
+                }
                 var main = mainGuid == Guid.Empty
                     ? null
                     : await db.CharacterRecords.AsNoTracking()

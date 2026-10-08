@@ -341,6 +341,16 @@ namespace FolkIdle.Server.Engine
         // from scratch on every tick anyway.
         public long CachedEffectiveMaxHp;
 
+        // Modul: A RESTED CHARACTER WALKS INTO A FIGHT AT FULL HEALTH,
+        // 2026-10-08. PlayerHp is only ever moved by the combat tick, so a
+        // character that had been crafting, gathering or offline arrived at
+        // whatever the hydration default (100 HP) or its last fight left -
+        // reported as "my max HP was 2000 and crept up". Set at login, by any
+        // non-combat work and by a deploy INTO combat; the combat tick spends
+        // it by filling the bar against the real maximum it just computed.
+        // Per character: it travels in CharacterActivityState with the bar.
+        public bool RestedHpPending;
+
         // Modul: the character's attack power, in milli, before any per-swing
         // roll. Cached for the same reason the health pool above is - it is
         // rebuilt from gear, lineage, level, inheritance, the guild buff, the
