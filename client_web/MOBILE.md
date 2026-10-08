@@ -498,20 +498,31 @@ Two things, and neither is code.
 The bundle id is **`com.folkidle.game`** on both platforms. It cannot be changed
 after the first store upload, so it is decided rather than pending.
 
-`resources/icon.svg` and `resources/splash.svg` are the SOURCES; every PNG the
-two platforms want is rasterised from them:
+`resources/icon.png` (the painted icon, 2026-10-08) and the two
+`resources/loading-*.jpg` are the SOURCES; every PNG the two platforms want, the
+web icons and the loading-screen images in `public/loading/` are composed from
+them:
 
 ```bash
-npm run generate:icons     # 30 files, Android mipmaps + iOS + both splashes
+npm run generate:icons     # 39 files: Android mipmaps + splashes, iOS, web icons, loading art
 ```
+
+The native splash on both platforms is the icon on `#100D0A`, not the loading
+art: Android 12+ draws the launcher icon whatever the splash bitmap says, and
+iOS aspect-fills its launch image into any screen shape. The illustrated
+loading screen with the progress bar is HTML (`index.html`, `#boot`, steps in
+`src/lib/ui/boot.ts`) and takes over as soon as the WebView paints. A new icon
+or splash reaches phones only with a new APK - the over-the-air bundle carries
+the web assets, not the native resources.
 
 The outputs are committed, because CI runs `cap sync` and then fails on a dirty
 tree, and a build machine should not need a browser to produce an icon. Run it
 when the artwork changes and commit what it writes.
 
-The icon is drawn for the **mask**: Android crops an adaptive icon to whatever
-shape the launcher fancies and only the middle 66% survives, so everything that
-carries meaning sits inside that circle. `ic_launcher_background.xml` is
+The icon is a framed tile, so it is placed for the **mask** rather than drawn
+for it: Android crops an adaptive icon to whatever shape the launcher fancies
+and only the middle 66% survives, so the foreground layer holds the tile at 0.62
+of its size and the circle trims only the frame's corners. `ic_launcher_background.xml` is
 `#100D0A` rather than Capacitor's white - a circular mask on a white background
 draws a white ring around dark artwork.
 

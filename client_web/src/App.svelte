@@ -64,6 +64,7 @@
   import { closeProfiles } from './lib/stores/profile';
   import { resolveNotesOnStartup, startUpdatePolling } from './lib/stores/version';
   import { coachTargetScreen, screenLocks } from './lib/stores/tutorial';
+  import { bootStage, bootStep, bootDone } from './lib/ui/boot';
   import { tick, untrack, type Component } from 'svelte';
 
   initLanguage();
@@ -736,6 +737,20 @@
   });
 
   const snap = $derived($playerState);
+
+  // Modul: the loading screen (index.html #boot) stays up until the first
+  // snapshot, so a signed-in launch goes straight from the picture to a
+  // populated Hub instead of through an empty one. See lib/ui/boot.ts.
+  $effect(() => {
+    const stage = bootStage({
+      restoring,
+      signedIn: token !== null,
+      phase: $connectionStatus.phase,
+      hasState: snap !== null,
+    });
+    if (stage === 'done') bootDone();
+    else bootStep(stage.percent, stage.message, stage.next);
+  });
   // Task 74: the same rule TabBar dots Character with - unspent attribute
   // points or an unopened cosmetic chest.
   const characterWants = $derived((snap ? Number(snap.UnspentAttributePoints) > 0 : false) || $unopenedChests > 0);
