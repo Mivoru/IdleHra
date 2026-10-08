@@ -18,6 +18,8 @@ export const TAPS_TO_OPEN = 3;
 
 /** Shake clip length; the open is triggered off its `ended`, this is only a safety net. */
 export const SHAKE_MS = 1460;
+/** The shake plays 20% faster than rendered (owner, 2026-10-08). */
+export const SHAKE_RATE = 1.25;
 export const OPEN_MS = 2460;
 
 export type ChestClip = 'shake' | 1 | 2 | 3 | 4;
