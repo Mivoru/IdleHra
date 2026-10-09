@@ -12930,6 +12930,9 @@ namespace FolkIdle.Server.Network
                     }));
                     await db.SaveChangesAsync();
 
+                    // Modul: the wrapper is CZECH on purpose (owner, 2026-10-09):
+                    // the testers are Czech and the owner writes the message in
+                    // Czech, so an English greeting around it read as mixed.
                     // The same message by email, to the named recipients that
                     // have an address. Never to "everyone": that is a newsletter,
                     // and it needs consent this endpoint does not check.
@@ -12937,10 +12940,10 @@ namespace FolkIdle.Server.Network
                     if (req.SendEmail && names.Count > 0 && !string.IsNullOrWhiteSpace(req.MessageText))
                     {
                         var sender = _serviceProvider.GetRequiredService<Engine.IEmailSender>();
-                        string subject = string.IsNullOrWhiteSpace(req.EmailSubject) ? "A message from FolkIdle" : req.EmailSubject!;
+                        string subject = string.IsNullOrWhiteSpace(req.EmailSubject) ? "Zpráva z FolkIdle" : req.EmailSubject!;
                         foreach (var t in targets.Where(t => !string.IsNullOrWhiteSpace(t.Email)))
                         {
-                            string text = $"Hi {t.Username},\n\n{req.MessageText}\n\nYour gift is waiting in the in-game mailbox.\n\nhttps://folkidle.duckdns.org";
+                            string text = $"Ahoj {t.Username},\n\n{req.MessageText}\n\nOdměnu najdeš v ingame mailboxu.\n\nhttps://folkidle.duckdns.org";
                             if (await sender.SendAsync(t.Email!, subject, text)) emailed++;
                         }
                     }
