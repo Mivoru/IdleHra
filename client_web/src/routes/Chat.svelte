@@ -496,6 +496,31 @@
     overflow-y: auto;
   }
 
+  /* Modul: THE SENDER ABOVE THE MESSAGE IN THE DOCK, ON EVERY SCREEN. It
+     was phone-only, and the desktop dock kept one row of time | name | text
+     with the name capped at 9rem - an avatar, "(pro)Wolfbane" and a title
+     chip do not fit in 9rem, so the desktop showed "(pro)..." beside
+     "Wolfb..." while the phone showed both whole (owner, 2026-10-09). On its
+     own line the name has the dock's width, and the message keeps the whole
+     width under it. Phone-only below: the 14rem cap and the frame. */
+  .wrap.docked .log li.msg {
+    grid-template-columns: minmax(0, auto) 1fr;
+    grid-template-areas: 'who time' 'text text';
+    row-gap: 0.15rem;
+    align-items: baseline;
+  }
+  .wrap.docked .log li.msg .who {
+    grid-area: who;
+    min-width: 0;
+    max-width: 100%;
+  }
+  .wrap.docked .log li.msg .time {
+    grid-area: time;
+  }
+  .wrap.docked .log li.msg .text {
+    grid-area: text;
+  }
+
   /* Modul: TASK 95 - ONE FRAME, AND THE SENDER ABOVE THE MESSAGE, ON A PHONE.
      Docked on a phone the window is a full-height sheet (ChatDock.svelte), and
      the log's own border and darker well were a frame inside its frame. And a
@@ -509,21 +534,8 @@
       padding: 0.2rem 0 1rem;
       gap: 0.35rem;
     }
-    .wrap.docked .log li.msg {
-      grid-template-columns: auto 1fr;
-      grid-template-areas: 'who time' 'text text';
-      row-gap: 0.15rem;
-      align-items: baseline;
-    }
     .wrap.docked .log li.msg .who {
-      grid-area: who;
       max-width: 14rem;
-    }
-    .wrap.docked .log li.msg .time {
-      grid-area: time;
-    }
-    .wrap.docked .log li.msg .text {
-      grid-area: text;
     }
     .wrap.docked .threads {
       border: none;

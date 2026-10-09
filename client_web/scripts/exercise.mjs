@@ -2998,7 +2998,8 @@ await go('The Delve');
         if (nameButton && (await nameButton.count()) > 0) {
           await nameButton.click();
           await page.waitForTimeout(1500);
-          modalTitle = (await page.locator('.modal .title-badge').first().textContent().catch(() => '')) ?? '';
+          // The badge became TitleChip (16fb804d); its class moved with it.
+          modalTitle = (await page.locator('.modal [data-testid="title-chip"]').first().textContent().catch(() => '')) ?? '';
           await page.locator('.modal .close-btn').first().click().catch(() => {});
         }
         record('the profile shows the title the server named', modalTitle.trim() === 'Lamplighter', `badge "${modalTitle.trim()}"`);

@@ -75,10 +75,14 @@ describe('the profile modal is mounted once', () => {
       e.isDirectory() ? files(join(dir, e.name)) : e.name.endsWith('.svelte') ? [join(dir, e.name)] : [],
     );
 
-  it('only App.svelte renders <PlayerProfileModal', () => {
-    const mounting = files(srcRoot)
-      .filter((f) => /<PlayerProfileModal\b/.test(readFileSync(f, 'utf8')))
-      .map((f) => relative(srcRoot, f).replace(/\\/g, '/'));
-    expect(mounting).toEqual(['App.svelte']);
+  // The host moved into the lazily loaded SignedInOverlays (2026-10-09), which
+  // App.svelte in turn mounts once - the chain is what "once" means now.
+  it('only SignedInOverlays renders <PlayerProfileModal, and only App renders that', () => {
+    const mounting = (pattern: RegExp) =>
+      files(srcRoot)
+        .filter((f) => pattern.test(readFileSync(f, 'utf8')))
+        .map((f) => relative(srcRoot, f).replace(/\\/g, '/'));
+    expect(mounting(/<PlayerProfileModal\b/)).toEqual(['lib/ui/SignedInOverlays.svelte']);
+    expect(mounting(/<SignedInOverlays\b/)).toEqual(['App.svelte']);
   });
 });
