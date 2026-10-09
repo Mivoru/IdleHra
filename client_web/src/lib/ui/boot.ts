@@ -4,12 +4,12 @@ import type { ConnectionPhase } from '../net/connection';
 //
 // The screen itself is plain HTML in index.html (#boot) because it has to
 // paint before this bundle exists; this module is only the typed door to the
-// `window.__boot` it defines. Every call is a no-op when that object is
+// `window.__boot` that public/boot.js defines. Every call is a no-op when that object is
 // missing - a test page, or a second call after the screen has gone - so no
 // caller has to guard it.
 //
 // `percent` is where the bar jumps when the step starts and `next` is the
-// percentage it creeps toward while the step lasts (index.html never lets it
+// percentage it creeps toward while the step lasts (boot.js never lets it
 // reach `next` on its own). The numbers are proportions of a typical launch,
 // not measurements of anything; what matters is that they only rise.
 

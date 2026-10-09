@@ -69,7 +69,7 @@
          parsed and mounted Login - measured on a throttled phone, the request
          started 5.2 s in. Same URL Login.svelte builds (sprites.ts, same
          origin on https), or the browser downloads it twice. -->
-    <link rel="preload" as="image" href="/sprites/Backgrounds/login_valley.webp" type="image/webp" />
+    <link rel="preload" as="image" href="/sprites/Backgrounds/login_valley.webp" type="image/webp" fetchpriority="high" />
     <!-- What a search result is titled with and what the brand search
          ("folkidle", "folk idle", "folkidle hra") is matched against. -->
     <script type="application/ld+json">
@@ -208,26 +208,48 @@
       }
       .boot-bar::before { left: -12px; }
       .boot-bar::after { right: -12px; }
-      .boot-fill {
-        position: relative;
-        display: block;
-        height: 100%;
-        width: 0%;
+      /* Modul: EVERY MOVING PART IS A TRANSFORM. The fill grew by `width` and
+         the sheen slid by `background-position`, neither of which the
+         compositor can run, so each frame was a main-thread layout and paint
+         while the bundle was parsing on that same thread (PageSpeed,
+         "non-composited animations"). Now the fill is full width and slides
+         in from the left inside a clipping track, the sheen is a wider layer
+         translated across it, and the ember rides its own full-width rail -
+         outside the track, so the clip does not cut its glow. The script
+         below sets the same translateX on the fill and the rail. */
+      .boot-track,
+      .boot-rail {
+        position: absolute;
+        inset: 3px;
+      }
+      .boot-track {
+        overflow: hidden;
         border-radius: 1px;
+      }
+      .boot-fill,
+      .boot-rail {
+        transform: translateX(-100%);
+        transition: transform 0.5s cubic-bezier(0.25, 0.8, 0.3, 1);
+      }
+      .boot-fill {
+        position: absolute;
+        inset: 0;
+        overflow: hidden;
         background: linear-gradient(to bottom, #ffcf6e, #e2731f 45%, #9c3a0c);
         box-shadow: 0 0 10px rgba(255, 140, 40, 0.55);
-        transition: width 0.5s cubic-bezier(0.25, 0.8, 0.3, 1);
       }
       /* A sheen sliding along the molten metal, and an ember at its edge. */
       .boot-fill::before {
         content: '';
         position: absolute;
-        inset: 0;
-        background: linear-gradient(100deg, transparent 30%, rgba(255, 244, 210, 0.55) 50%, transparent 70%);
-        background-size: 200% 100%;
+        top: 0;
+        bottom: 0;
+        left: 0;
+        width: 200%;
+        background: linear-gradient(100deg, transparent 40%, rgba(255, 244, 210, 0.55) 50%, transparent 60%);
         animation: boot-sheen 1.8s linear infinite;
       }
-      .boot-fill::after {
+      .boot-rail::after {
         content: '';
         position: absolute;
         top: -4px;
@@ -251,11 +273,11 @@
         font-variant-numeric: tabular-nums;
       }
       @keyframes boot-in { from { opacity: 0; } }
-      @keyframes boot-sheen { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+      @keyframes boot-sheen { from { transform: translateX(-100%); } to { transform: translateX(50%); } }
       @keyframes boot-ember { from { opacity: 0.55; } to { opacity: 1; } }
       @media (prefers-reduced-motion: reduce) {
-        #boot img, .boot-fill::before, .boot-fill::after { animation: none; }
-        .boot-fill { transition: none; }
+        #boot img, .boot-fill::before, .boot-rail::after { animation: none; }
+        .boot-fill, .boot-rail { transition: none; }
       }
     </style>
   </head>
@@ -264,7 +286,9 @@
       <h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">FolkIdle - a Slavic folklore idle RPG</h1>
       <!-- One image per orientation: a phone downloads the portrait art at
            its own width and never the landscape file. -->
-      <!-- AVIF first: half the bytes of the JPEG at no visible cost (q50,
+      <!-- portrait-800 exists for the common phone: 412 CSS px at DPR 1.75
+           needs 721 px, one past 720, and without it the browser took 1080.
+           AVIF first: half the bytes of the JPEG at no visible cost (q50,
            compared crop against crop), and on a phone this picture shares the
            first seconds of bandwidth with the bundle. The JPEGs stay as the
            fallback and as og:image - preview cards do not all read AVIF. -->
@@ -272,7 +296,7 @@
         <source
           media="(orientation: portrait)"
           type="image/avif"
-          srcset="/loading/portrait-720.avif 720w, /loading/portrait-1080.avif 1080w"
+          srcset="/loading/portrait-720.avif 720w, /loading/portrait-800.avif 800w, /loading/portrait-1080.avif 1080w"
           sizes="100vw"
         />
         <source
@@ -295,62 +319,13 @@
       </picture>
       <div class="boot-panel">
         <div class="boot-bar" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <span class="boot-fill"></span>
+          <span class="boot-track"><span class="boot-fill"></span></span>
+          <span class="boot-rail"></span>
         </div>
         <p class="boot-msg" aria-live="polite"><span class="boot-text">Loading the game&hellip;</span><span class="boot-pct">0%</span></p>
       </div>
     </div>
-    <script>
-      // Modul: THE BAR MUST NOT LOOK STUCK. The real steps are few and uneven
-      // - the bundle download can take seconds on a phone and then four steps
-      // land within 200 ms - so between two reported steps the bar creeps
-      // toward the next step's percentage and never reaches it. It never goes
-      // backwards and never shows 100 until the app says it is done.
-      (function () {
-        var root = document.getElementById('boot');
-        if (!root) return;
-        var fill = root.querySelector('.boot-fill');
-        var bar = root.querySelector('.boot-bar');
-        var text = root.querySelector('.boot-text');
-        var pct = root.querySelector('.boot-pct');
-        var shown = 0;
-        var ceiling = 30;
-        var finished = false;
-        function paint(value) {
-          shown = Math.max(shown, Math.min(100, value));
-          var whole = Math.round(shown);
-          fill.style.width = shown + '%';
-          pct.textContent = whole + '%';
-          bar.setAttribute('aria-valuenow', String(whole));
-        }
-        var creep = setInterval(function () {
-          if (shown < ceiling - 1) paint(shown + (ceiling - shown) * 0.06);
-        }, 250);
-        function done() {
-          if (finished) return;
-          finished = true;
-          clearInterval(creep);
-          paint(100);
-          setTimeout(function () {
-            root.classList.add('boot-out');
-            setTimeout(function () { root.remove(); }, 500);
-          }, 250);
-        }
-        window.__boot = {
-          step: function (percent, message, next) {
-            if (finished) return;
-            ceiling = Math.max(ceiling, next);
-            if (message) text.textContent = message;
-            paint(percent);
-          },
-          done: done,
-        };
-        // A boot that never reports (a bundle that throws before mounting)
-        // must not leave the player behind an opaque picture for ever.
-        setTimeout(done, 25000);
-        paint(5);
-      })();
-    </script>
+    <script src="/boot.js"></script>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

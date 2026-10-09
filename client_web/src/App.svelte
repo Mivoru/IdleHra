@@ -1,18 +1,13 @@
 <script lang="ts">
   import { QueryClientProvider } from '@tanstack/svelte-query';
   import Login from './routes/Login.svelte';
-  import ChatDock from './lib/ui/ChatDock.svelte';
   import ChatButton from './lib/ui/ChatButton.svelte';
   import { screenRequest, signOutRequest, publishCurrentScreen } from './lib/stores/navigation';
-  import Hub from './routes/Hub.svelte';
-  import OfflineSummary from './lib/ui/OfflineSummary.svelte';
-  import VictoryCard from './lib/ui/VictoryCard.svelte';
   import TabBar from './lib/ui/TabBar.svelte';
   import { hotkeyTab, MAIN_TABS } from './lib/ui/tabs';
   import { connectionChip } from './lib/ui/connectionMessage';
   import { refreshUnopenedChests, unopenedChests } from './lib/stores/cosmeticChests';
   import { PREF_LAST_SCREEN, readPrefAs, writePref } from './lib/net/prefs';
-  import DeathCard from './lib/ui/DeathCard.svelte';
   import Toasts from './lib/ui/Toasts.svelte';
   import AchievementToast from './lib/ui/AchievementToast.svelte';
   import MailBadge from './lib/ui/MailBadge.svelte';
@@ -55,12 +50,6 @@
   import { initLanguage, loadTranslations } from './lib/ui/i18n';
   import { unlockAudio, play } from './lib/ui/audio';
   import { startMusic, stopMusic } from './lib/ui/music';
-  import OnboardingCoach from './lib/ui/OnboardingCoach.svelte';
-  import GuidedOverlay from './lib/ui/GuidedOverlay.svelte';
-  import QuestSpotlight from './lib/ui/QuestSpotlight.svelte';
-  import LootReveal from './lib/ui/LootReveal.svelte';
-  import WhatsNew from './lib/ui/WhatsNew.svelte';
-  import PlayerProfileModal from './lib/ui/PlayerProfileModal.svelte';
   import { closeProfiles } from './lib/stores/profile';
   import { resolveNotesOnStartup, startUpdatePolling } from './lib/stores/version';
   import { coachTargetScreen, screenLocks } from './lib/stores/tutorial';
@@ -299,9 +288,16 @@
   //
   // All 26 were static imports, so the first paint waited on one ~660 KB chunk
   // holding the Wiki, the Forge and the guild war UI for a player who had only
-  // asked to see the map. Login and Hub stay static because one of them is
-  // always the first thing drawn; everything else is a dynamic import() and
-  // its own chunk.
+  // asked to see the map. Login stays static because it is the first thing a
+  // stranger is drawn; everything else is a dynamic import() and its own chunk.
+  //
+  // Modul: HUB IS LAZY TOO (2026-10-09). Static, it dragged HomeCards, the
+  // crafting and gathering cards and the 22 KB wiki data into the bundle a
+  // stranger downloads to see a login form - PageSpeed counted 80 KiB of that
+  // bundle unused on the landing page. It is requested the moment a session
+  // exists (below), in parallel with the socket, and the loading screen stays
+  // up until the first snapshot - so a signed-in launch still opens on a
+  // drawn Hub, not on "Loading...".
   //
   // Resolved components are kept in a $state map rather than behind an
   // {#await}: a second visit then renders synchronously, with no one-frame
@@ -311,8 +307,9 @@
   // bundle names no longer exists on the server. That is answered with a
   // reload button, not a blank screen - and not an automatic reload, which
   // would loop if the network, rather than the deploy, is the cause.
-  type LazyScreen = Exclude<ScreenKey, 'hub'>;
+  type LazyScreen = ScreenKey;
   const SCREEN_LOADERS: Record<LazyScreen, () => Promise<{ default: Component<any> }>> = {
+    hub: () => import('./routes/Hub.svelte'),
     combat: () => import('./routes/Combat.svelte'),
     gathering: () => import('./routes/Gathering.svelte'),
     character: () => import('./routes/Character.svelte'),
@@ -363,10 +360,33 @@
   }
 
   $effect(() => {
-    if (screen !== 'hub') ensureScreenLoaded(screen);
+    ensureScreenLoaded(screen);
   });
 
-  const ActiveScreen = $derived(screen === 'hub' ? null : (loadedScreens[screen] ?? null));
+  const ActiveScreen = $derived(loadedScreens[screen] ?? null);
+
+  // Modul: THE SIGNED-IN OVERLAYS, ONE CHUNK. Chat, the profile modal, What's
+  // New, the loot/victory/death cards and the tutorial surfaces only ever
+  // render behind a session, so a stranger on the login form has no use for
+  // any of them. All of them read state stores rather than one-shot events,
+  // so mounting them a moment after the session starts loses nothing: what
+  // arrived in between is still in the store when they subscribe.
+  let SignedInOverlays = $state<Component | null>(null);
+  let overlaysRequested = false;
+  $effect(() => {
+    if (!token) return;
+    ensureScreenLoaded('hub');
+    if (overlaysRequested) return;
+    overlaysRequested = true;
+    import('./lib/ui/SignedInOverlays.svelte')
+      .then((mod) => (SignedInOverlays = mod.default))
+      .catch((err) => {
+        // A deploy replaced the chunk under this tab. The game still plays;
+        // the next navigation's screen load offers the reload.
+        console.warn('signed-in overlays failed to load', err);
+        overlaysRequested = false;
+      });
+  });
 
   let navOpen = $state(false);
 
@@ -978,8 +998,8 @@
          the header to the screen. display: contents keeps it out of the
          layout - every screen was styled as a direct child of this level. -->
     <main class="screen-main">
-    {#if screen === 'hub'}
-      <Hub onNavigate={(next) => goTo(next)} />
+    {#if screen === 'hub' && ActiveScreen}
+      <ActiveScreen onNavigate={(next: ScreenKey) => goTo(next)} />
     {:else if ActiveScreen}
       <ActiveScreen />
     {:else if failedScreen === screen}
@@ -992,37 +1012,11 @@
     {/if}
     </main>
 
-    <!-- Modul: A BANNER THAT DOES SOMETHING.
-         The old one printed "Step 1 of 3" and a sentence, and its only button
-         went to Settings to turn itself off - so the one action it offered was
-         to make it go away. It names the step, says WHY the step matters, and
-         its main button takes the player to the screen where the thing is
-         done. Pointing is the whole job.
-         It is now ONE surface for both onboarding tiers - the three
-         first-session steps and the seventeen discovery moments - because a
-         second, differently-shaped hint box would teach the player that hints
-         come in kinds. -->
-    <OnboardingCoach />
-    <GuidedOverlay />
-    <QuestSpotlight />
-
-    <!-- Modul: what changed since the player was last here, and whether the
-         bundle this tab is running has been replaced since it loaded. Both
-         live in one component - see WhatsNew.svelte for why the second waits
-         for the first. -->
-    <WhatsNew />
-
-    <OfflineSummary />
-    <!-- Modul: the two moments the game never marked - a first boss
-         clear and a death. Both are modal because both are things the
-         player must not miss while looking at another screen. -->
-    <!-- Task 50: a Legendary+ drop, shown over any screen for a moment. -->
-    <LootReveal />
-    <VictoryCard />
-    <DeathCard />
-    <ChatDock />
-    <!-- The one profile host: any name opens it through stores/profile.ts. -->
-    <PlayerProfileModal />
+    <!-- The overlays only a session can need, loaded with it: see
+         SignedInOverlays.svelte and the effect that requests it. -->
+    {#if SignedInOverlays}
+      <SignedInOverlays />
+    {/if}
 
     {#if navOpen}
       <!-- Modul: TASK 95 - THE MORE SHEET. Every destination the tab bar does

@@ -73,13 +73,31 @@ folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	#   Permissions     the game asks for no camera, microphone or location, so
 	#                   saying so removes the question.
 	#
-	# No Content-Security-Policy yet, deliberately: the bundle inlines what Vite
-	# inlines and a CSP written blind breaks the page in ways that look like
-	# random bugs. It wants a pass with the built output in front of us.
+	#   CSP script-src (2026-10-09, with the built output in front of us)
+	#                   'self' only: the built index.html carries no inline
+	#                   script - the loading screen's moved to /boot.js for
+	#                   this, and tests/contentSecurityPolicy.test.ts keeps it
+	#                   so - and the bundle never evals. object-src 'none'
+	#                   (no plugins) and base-uri 'self' close the two
+	#                   injection routes script-src does not. style-src and
+	#                   connect-src are left open on purpose: Svelte writes
+	#                   style attributes, and the socket and the API are the
+	#                   page's own origin anyway. NOT on the phone: the APK
+	#                   and its over-the-air bundles never pass through Caddy.
+	#   COOP            same-origin: no window this page opens can reach back
+	#                   into it, and none it was opened from. Nothing here
+	#                   uses window.open or an OAuth popup (checked), which is
+	#                   the one thing this would break.
+	#   HSTS preload    the token only CONSENTS to the browsers' preload
+	#                   list; nothing joins it until someone submits
+	#                   folkidle.cz at hstspreload.org. That submission is
+	#                   slow to undo and binds every subdomain to https -
+	#                   the owner's call, not a side effect of this file.
 	header {
-		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
 		X-Content-Type-Options "nosniff"
-		Content-Security-Policy "frame-ancestors 'none'"
+		Content-Security-Policy "frame-ancestors 'none'; script-src 'self'; object-src 'none'; base-uri 'self'"
+		Cross-Origin-Opener-Policy "same-origin"
 		Referrer-Policy "strict-origin-when-cross-origin"
 		Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
 		-Server
@@ -91,7 +109,7 @@ folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	# simply never appears on a response. Diagnosed by curl -I after a reload
 	# that reported success.
 	@immutable path /assets/* /sprites/*
-	@html path / /index.html
+	@html path / /index.html /boot.js
 
 	# Modul: AT THE SITE LEVEL, beside the security headers that demonstrably
 	# work - not inside the static `handle`. Placed there they were accepted,
