@@ -90,7 +90,7 @@ export interface ClientCommand {
   BreedingSelectionMask: number;
 }
 
-/** StateUpdatePacket - 863 bytes on the binary wire. */
+/** StateUpdatePacket - 865 bytes on the binary wire. */
 export interface StateUpdate {
   readonly type: typeof PacketType.StateUpdate;
   PlayerId: number;
@@ -335,6 +335,8 @@ export interface StateUpdate {
   EventCurrencyEarnedToday: number;
   SeasonalEventId: number;
   SeasonalEventPhase: number;
+  SeasonalBossTier: number;
+  SeasonalBossClearedMask: number;
 }
 
 /** RequestChatMessagePacket - 139 bytes on the binary wire. */
@@ -464,6 +466,7 @@ export const CommandType = {
   StartBossAscension: 79,
   DepositGreatWork: 80,
   BuyEventShopItem: 81,
+  StartSeasonalBoss: 82,
 } as const;
 
 export type CommandTypeName = keyof typeof CommandType;
@@ -472,7 +475,7 @@ export type CommandTypeName = keyof typeof CommandType;
 export const PACKET_BYTE_SIZE = {
   AuthHandshake: 530,
   ClientCommand: 341,
-  StateUpdate: 863,
+  StateUpdate: 865,
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 30,

@@ -149,6 +149,8 @@ namespace FolkIdle.Server.Engine
         public ushort ToolGatherSpeedPct;
         public ushort ToolGatherYieldPct;
         public ushort ToolRareFindPct;
+        /// <summary>The six tool fields above were filled (EquipmentSlotEngine.WithAccountToolsAsync); otherwise the tick leaves the payload's alone.</summary>
+        public bool ToolsResolved;
         // Modul: Affix System Unification. Was four loose ints, which could
         // only carry four of the GDD's twelve affixes - the other eight had
         // nowhere to go and silently contributed nothing.

@@ -199,6 +199,13 @@ namespace FolkIdle.Server.Engine
         public byte AscensionStep;
         public byte AscensionRegion;
         public System.Guid AscensionCharacterId;
+        // Modul: the seasonal boss (The Cailleach), armed like an Ascension step
+        // and disarmed with it (DisarmAscension clears both). ClearedMask is
+        // the current event's first-cleared tiers, bit tier-1, hydrated from
+        // seasonal_boss_clears at login.
+        public byte SeasonalBossTier;
+        public System.Guid SeasonalBossCharacterId;
+        public byte SeasonalBossClearedMask;
         /// <summary>0 nothing to report, 2 the kill missed the step's time limit. Drained into a command result by the tick.</summary>
         public byte AscensionPendingResult;
         public int Food1_ItemId;

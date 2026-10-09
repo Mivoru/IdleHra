@@ -1495,6 +1495,19 @@ export function buyEventShopItem(index: number, eventId: number): CommandOutcome
 }
 
 /**
+ * Fight one tier of the seasonal boss (The Cailleach). The server checks the
+ * event, that the tier's region boss has fallen and the tier below is cleared,
+ * deploys the main character and answers with a command result (70 started,
+ * 46 / 47 locked, 64 closed).
+ */
+export function startSeasonalBoss(tier: number, eventId: number): CommandOutcome {
+  if (!Number.isInteger(tier) || tier < 1) return refuse('Pick a tier.');
+  if (!Number.isInteger(eventId) || eventId < 1) return refuse('The event is over.');
+  connection.send({ Command: CommandType.StartSeasonalBoss, TargetId: tier, SecondaryId: eventId });
+  return OK;
+}
+
+/**
  * Spend attribute points earned by levelling.
  *
  * The server owns the balance: it re-checks the amount against its own copy and

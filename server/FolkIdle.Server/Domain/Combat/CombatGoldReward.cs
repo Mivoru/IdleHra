@@ -33,6 +33,8 @@ namespace FolkIdle.Server.Domain.Combat
             gold = (long)(gold * (1.0f + GuildBonusesCache.GetBuffTier(payload.GuildId, "Gold") * 0.02f));
             // Modul: inheritance. A permanent, season-crossing multiplier.
             gold = (long)(gold * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
+            // The character's pet (PetRegistry), on the active slot's totals.
+            gold = (long)(gold * (1.0f + payload.CachedAffixTotals.GoldTenthsPct / 1000f));
 
             if (payload.Skill_TrophyHunter > 0
                 && RaceUnlockRegistry.GetRegionForBossMonsterId(monster.Id) > 0)

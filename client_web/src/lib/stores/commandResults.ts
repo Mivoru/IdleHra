@@ -128,6 +128,10 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   64: 'The event shop is closed.',
   65: 'Not enough of the event currency yet.',
   66: 'You already own that - nothing was spent.',
+  67: 'A rare pet has found you! Give it to a character on the Character screen.',
+  68: 'Your pet has moved.',
+  69: 'The Cailleach falls back - your reward is in the mail.',
+  70: 'The Cailleach comes down from the mountain. Fight!',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;
@@ -183,6 +187,11 @@ export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
   // An event shop purchase landed, or was already owned and cost nothing.
   63,
   66,
+  // A rare pet, a placed pet, a seasonal boss tier cleared or started.
+  67,
+  68,
+  69,
+  70,
 ]);
 
 /**

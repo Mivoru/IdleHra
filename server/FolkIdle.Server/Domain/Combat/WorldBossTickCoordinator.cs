@@ -118,7 +118,9 @@ namespace FolkIdle.Server.Domain.Combat
 
             return (long)Math.Min(
                 uint.MaxValue,
-                (double)serverAttack * (1.0 + (giantslayerPct / 100.0)));
+                (double)serverAttack * (1.0 + (giantslayerPct / 100.0))
+                    // The striking character's pet (PetRegistry).
+                    * (1.0 + currentPayload.CachedAffixTotals.WorldBossDamageTenthsPct / 1000.0));
         }
 
         internal static void Apply(ref TickStatePayload payload, in WorldBossAttemptUpdateNotification worldBossAttemptUpdate)

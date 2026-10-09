@@ -19,11 +19,13 @@
     size?: 'sm' | 'md' | 'lg' | 'xl';
     /** Dimmed, for a codex entry never encountered. */
     unknown?: boolean;
+    /** A picture to draw instead of the monster's own (a seasonal boss wearing a region boss's stats). */
+    src?: string | null;
   }
 
-  const { monsterId, name, size = 'md', unknown = false }: Props = $props();
+  const { monsterId, name, size = 'md', unknown = false, src = null }: Props = $props();
 
-  const url = $derived(monsterIcon(monsterId));
+  const url = $derived(src ?? monsterIcon(monsterId));
 
   // The last monster of each five-strong region group.
   const isBoss = $derived(

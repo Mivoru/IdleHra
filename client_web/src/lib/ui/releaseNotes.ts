@@ -35,6 +35,24 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.11.0',
+    date: '2026-10-10',
+    sections: [
+      {
+        title: 'Samhain: pets and The Cailleach',
+        items: [
+          'Pets have arrived in the event shop. Each one gives the character it follows a bonus - give one to every character on the Character screen. Pets stay yours after the event.',
+          'Keep an eye out for a Witch: any kill or harvest during Samhain might bring her.',
+          'The Cailleach has come down from the mountains. Six winters await on the World Boss screen, each as hard as a region boss the first time you met it. Her first fall at each winter pays diamonds, gold and pumpkins - and the sixth, the Mini Vampire.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: ['Equipping gear no longer resets your tools until you sign in again.'],
+      },
+    ],
+  },
+  {
     version: '1.10.0',
     date: '2026-10-09',
     sections: [

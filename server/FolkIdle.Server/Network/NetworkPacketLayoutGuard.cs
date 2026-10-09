@@ -228,7 +228,12 @@ namespace FolkIdle.Server.Network
         // (uint), EventCurrencyEarnedToday (ushort), SeasonalEventId and
         // SeasonalEventPhase (a byte each). The balance changes on kills, so
         // it is stream state like Gold, not a REST poll.
-        public const int ExpectedStateUpdateSize = 863;
+        //
+        // Modul: the seasonal boss, 863 -> 865 (2026-10-10). SeasonalBossTier
+        // (the armed tier, so the combat screen can name The Cailleach) and
+        // SeasonalBossClearedMask (so the ladder unlocks the moment a tier
+        // falls), a byte each.
+        public const int ExpectedStateUpdateSize = 865;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

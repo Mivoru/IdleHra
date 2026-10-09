@@ -16,6 +16,7 @@
   import ChipGroup from '../lib/ui/ChipGroup.svelte';
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
+  import SeasonalBossPanel from '../lib/ui/SeasonalBossPanel.svelte';
 
   const event = createQuery(() => ({
     queryKey: seasonalEventKeys.all,
@@ -23,7 +24,7 @@
     refetchInterval: 60_000,
   }));
 
-  type Tab = 'shop' | 'story';
+  type Tab = 'shop' | 'boss' | 'story';
   let tab = $state<Tab>('shop');
 
   const live = $derived($connectionStatus.phase === 'live');
@@ -108,6 +109,7 @@
       label="Event"
       options={[
         { value: 'shop', label: 'Shop', testid: 'event-tab-shop' },
+        { value: 'boss', label: 'Boss', testid: 'event-tab-boss' },
         { value: 'story', label: 'Story', testid: 'event-tab-story' },
       ]}
       bind:value={tab}
@@ -117,10 +119,13 @@
       <ul class="shop" data-testid="event-shop">
         {#each ev.Shop as item (item.Id)}
           {@const why = blockedReason(item)}
-          <li class="item" class:owned={item.Owned} data-testid="event-shop-item" data-item={item.Id}>
+          <li class="item" class:owned={item.Owned} class:pet={item.Kind === EVENT_SHOP_KIND.Pet} data-testid="event-shop-item" data-item={item.Id}>
             <img src={spriteUrl(item.Art)} alt="" loading="lazy" decoding="async" />
             <span class="name">{item.Name}</span>
             <span class="dim tiny">{kindName(item.Kind)}</span>
+            {#if item.Bonuses.length > 0}
+              <span class="tiny bonus">{item.Bonuses.join(' · ')}</span>
+            {/if}
             {#if item.Owned}
               <span class="owned-label tiny" data-testid="event-shop-owned">Owned</span>
             {:else}
@@ -132,7 +137,12 @@
           </li>
         {/each}
       </ul>
-      <p class="dim tiny">Avatars go to your Wardrobe. Pets arrive later in the event.</p>
+      <p class="dim tiny">
+        Avatars go to your Wardrobe. A pet follows one character - give it one on the Character screen. Pets stay
+        yours after the event.
+      </p>
+    {:else if tab === 'boss'}
+      <SeasonalBossPanel />
     {:else}
       <article class="story">
         <img src={spriteUrl('Events/samhain/boss/cailleach.webp')} alt="The Cailleach" loading="lazy" decoding="async" />
@@ -227,6 +237,16 @@
     object-fit: cover;
     border-radius: 50%;
     background: var(--bg);
+  }
+
+  .item.pet img {
+    object-fit: contain;
+    border-radius: 0;
+    background: none;
+  }
+
+  .bonus {
+    color: var(--good);
   }
 
   .item.owned {

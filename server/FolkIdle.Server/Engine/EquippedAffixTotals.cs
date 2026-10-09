@@ -29,5 +29,18 @@ namespace FolkIdle.Server.Engine
         public int DodgeTenthsPct;
         public int BlockTenthsPct;
         public int LootLuckTenthsPct;
+
+        // Modul: SEASONAL EVENT PETS (2026-10-09). Four stats no affix rolls,
+        // carried here so a pet rides the same per-character path as gear:
+        // computed once in ComputeEquippedTotalsAsync, parked per slot, read
+        // by the ONE shared function each stat already has (XP:
+        // LiveKillXpMultiplierPct, gold: CombatGoldReward.PerKill, gathering:
+        // RequiredGatherTicks, world boss: ServerStrikeDamage) - so live and
+        // offline cannot drift. A pet's damage, crit damage and drop chance
+        // use the affix fields above.
+        public int XpTenthsPct;
+        public int GoldTenthsPct;
+        public int GatherSpeedTenthsPct;
+        public int WorldBossDamageTenthsPct;
     }
 }

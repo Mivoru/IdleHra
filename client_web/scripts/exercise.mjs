@@ -3428,6 +3428,8 @@ await go('The Delve');
     await chip.click();
     await page.getByTestId('event-screen').waitFor({ timeout: 10000 }).catch(() => {});
     const row = page.locator(`[data-testid="event-shop-item"][data-item="${target.Id}"]`);
+    // The screen is up before its shop query answers; wait for the row itself.
+    await row.waitFor({ timeout: 10000 }).catch(() => {});
     record('the event screen lists the shop entry', (await row.count()) === 1, target.Id);
 
     if (wasOwned) {
@@ -3450,6 +3452,83 @@ await go('The Delve');
       record('Buy spends the price and the entry is owned', after === start && nowOwned, `${granted} -> ${after}, owned ${nowOwned}`);
     }
   }
+}
+
+// --- seasonal event pets (2026-10-10) -----------------------------------------
+// The output side: a pet bought in the shop is owned, and placing it on a
+// character (Character > Gear) MOVES it there on the server. ROUND TRIP: an
+// unowned shop pet is bought with a dev grant of exactly its price; the pet is
+// placed and then sent back to rest, so the character's totals end as they began.
+{
+  await apiPost('/api/v1/dev/event', { EventId: 1 });
+  const ev = (await apiGet('/api/v1/event'))?.Event ?? null;
+  const petEntry = ev?.Shop?.find((i) => i.Kind === 2 && !i.Owned) ?? ev?.Shop?.find((i) => i.Kind === 2) ?? null;
+  record('the event shop sells pets with their bonuses', Boolean(petEntry) && petEntry.Bonuses.length > 0, petEntry ? `${petEntry.Name}: ${petEntry.Bonuses.join(', ')}` : 'no pet entry');
+
+  if (petEntry && !petEntry.Owned) {
+    await apiPost('/api/v1/dev/event', { Grant: petEntry.Price });
+    await page.waitForTimeout(1500);
+    await page.getByTestId('event-chip').first().click();
+    await page.getByTestId('event-screen').waitFor({ timeout: 10000 }).catch(() => {});
+    await page.waitForFunction(
+      (id) => !document.querySelector(`[data-testid="event-shop-item"][data-item="${id}"] [data-testid="event-shop-buy"]`)?.hasAttribute('disabled'),
+      petEntry.Id,
+      { timeout: 8000 },
+    ).catch(() => {});
+    await page.locator(`[data-testid="event-shop-item"][data-item="${petEntry.Id}"] [data-testid="event-shop-buy"]`).click().catch(() => {});
+    await page.waitForTimeout(2500);
+  }
+  const pets = await apiGet('/api/v1/pets');
+  const owned = pets?.Pets?.find((p) => p.Id === petEntry?.Id && p.Owned) ?? null;
+  record('a bought pet is owned', Boolean(owned), petEntry?.Id ?? 'none');
+
+  if (owned) {
+    await go('Character');
+    await page.waitForTimeout(1200);
+    const gearTab = page.locator('[data-character-tab="gear"]').first();
+    if ((await gearTab.count()) > 0) await gearTab.click().catch(() => {});
+    const characterId = await page.getByTestId('person-current').getAttribute('data-character-id').catch(() => null);
+    await page.getByTestId('pet-change').first().click().catch(() => {});
+    await page.locator(`[data-testid="pet-choice"][data-pet="${owned.Id}"]`).click().catch(() => {});
+    await page.waitForTimeout(1500);
+    const placed = (await apiGet('/api/v1/pets'))?.Pets?.find((p) => p.Id === owned.Id);
+    record('placing a pet moves it onto the character', Boolean(characterId) && placed?.CharacterId === characterId,
+      `${owned.Id} -> ${placed?.CharacterId ?? 'resting'} (character ${characterId})`);
+    const shown = await page.getByTestId('pet-current').getAttribute('data-pet').catch(() => null);
+    record('the Gear tab shows the placed pet', shown === owned.Id, String(shown));
+
+    // Round trip: back to rest.
+    await apiPost('/api/v1/pets/assign', { PetId: owned.Id, CharacterId: owned.CharacterId ?? null });
+    const back = (await apiGet('/api/v1/pets'))?.Pets?.find((p) => p.Id === owned.Id);
+    record('and the pet goes back where it was', (back?.CharacterId ?? null) === (owned.CharacterId ?? null), String(back?.CharacterId));
+  }
+}
+
+// --- The Cailleach (2026-10-10) ------------------------------------------------
+// The server lists six tiers; Fight on an open tier deploys the main character
+// against The Cailleach - the wire's SeasonalBossTier arms and the combat screen
+// names her. ROUND TRIP: the fight is stood down at once; nothing is cleared.
+{
+  const boss = await apiGet('/api/v1/seasonal-boss');
+  record('the server lists The Cailleach\'s six winters', (boss?.Tiers?.length ?? 0) === 6,
+    (boss?.Tiers ?? []).map((t) => `${t.Tier}:${t.BossName}${t.Cleared ? '*' : ''}`).join(' '));
+
+  await go('World Boss');
+  await page.getByTestId('seasonal-boss').waitFor({ timeout: 10000 }).catch(() => {});
+  record('the World Boss screen shows The Cailleach', (await page.getByTestId('seasonal-boss').count()) > 0);
+
+  const fight = page.locator('[data-testid="seasonal-boss-tier"][data-tier="1"] [data-testid="seasonal-boss-fight"], [data-testid="seasonal-boss-tier"][data-tier="1"] [data-testid="seasonal-boss-again"]').first();
+  if ((await fight.count()) > 0 && !(await fight.isDisabled())) {
+    await fight.click();
+    await page.getByTestId('fight-target').waitFor({ timeout: 15000 }).catch(() => {});
+    const target = await page.getByTestId('fight-target').innerText().catch(() => '');
+    record('Fight sends the character against The Cailleach', /Cailleach/.test(target), target);
+    await page.getByRole('button', { name: 'Stand down', exact: true }).click().catch(() => {});
+    await page.waitForTimeout(800);
+  } else {
+    record('Fight sends the character against The Cailleach', false, 'tier 1 had no enabled Fight button');
+  }
+  await apiPost('/api/v1/dev/event', { EventId: 0 });
 }
 
 // --- the quest line (owner, 2026-10-07) --------------------------------------

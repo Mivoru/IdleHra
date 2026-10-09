@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Threading.Tasks;
 using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace FolkIdle.Server.Network
@@ -34,6 +35,29 @@ namespace FolkIdle.Server.Network
             if (requestPath == "/api/v1/boss-ascension" && method == "GET")
             {
                 await HandleBossAscension(context);
+                return true;
+            }
+
+            // Seasonal event pets: what exists, what this account owns and who
+            // each one follows. Placing one is a POST under the stripe lock; a
+            // pet changes no payload balance, only a character's totals, which
+            // travel back the way an equip's do.
+            // The seasonal boss's tiers: who each one is, what its first clear
+            // pays and whether it is cleared. FIGHTING one is StartSeasonalBoss.
+            if (requestPath == "/api/v1/seasonal-boss" && method == "GET")
+            {
+                await HandleSeasonalBoss(context);
+                return true;
+            }
+
+            if (requestPath == "/api/v1/pets" && method == "GET")
+            {
+                await HandlePets(context);
+                return true;
+            }
+            if (requestPath == "/api/v1/pets/assign" && method == "POST")
+            {
+                await HandlePetAssign(context);
                 return true;
             }
 
@@ -302,6 +326,119 @@ namespace FolkIdle.Server.Network
             }
         }
 
+        private async Task HandleSeasonalBoss(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+                var (current, phase) = SeasonalEventRegistry.Current(DateTimeOffset.UtcNow);
+                if (current == null)
+                {
+                    await WriteJsonAsync(context, new { EventId = 0, Tiers = Array.Empty<object>() });
+                    return;
+                }
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                await WriteJsonAsync(context, new
+                {
+                    EventId = current.Id,
+                    Phase = (int)phase,
+                    Name = "The Cailleach",
+                    Tiers = await FolkIdle.Server.Domain.Combat.SeasonalBossEngine.ViewAsync(db, playerId, current.Id),
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Seasonal boss error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandlePets(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var characters = await db.CharacterRecords.AsNoTracking()
+                    .Where(c => c.PlayerId == playerId)
+                    .OrderBy(c => c.Name)
+                    .Select(c => new { c.Id, c.Name })
+                    .ToListAsync();
+                await WriteJsonAsync(context, new
+                {
+                    Pets = await PetEngine.ViewAsync(db, playerId),
+                    Characters = characters,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Pets error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>{"PetId": "pet_ghostie", "CharacterId": "guid" | null} - null rests the pet.</summary>
+        private async Task HandlePetAssign(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                string? petId = null;
+                Guid? characterId = null;
+                try
+                {
+                    using var parsed = JsonDocument.Parse(await ReadBodyAsync(context));
+                    if (parsed.RootElement.TryGetProperty("PetId", out var p) && p.ValueKind == JsonValueKind.String) petId = p.GetString();
+                    if (parsed.RootElement.TryGetProperty("CharacterId", out var c) && c.ValueKind == JsonValueKind.String
+                        && Guid.TryParse(c.GetString(), out var g)) characterId = g;
+                }
+                catch (JsonException) { }
+
+                if (PetRegistry.Find(petId) == null)
+                {
+                    context.Response.StatusCode = 400;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                var (result, updates) = await PetEngine.AssignAsync(db, playerId, petId!, characterId);
+                if (result == PetAssignResult.Ok && _playerSessionRegistry != null)
+                {
+                    foreach (var update in updates) _playerSessionRegistry.EquipmentSlotUpdateQueue.Enqueue(update);
+                }
+                await WriteJsonAsync(context, new
+                {
+                    Result = result.ToString(),
+                    Pets = await PetEngine.ViewAsync(db, playerId),
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Pet assign error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
         private async Task HandleSeasonalEvent(HttpListenerContext context)
         {
             try
@@ -345,6 +482,7 @@ namespace FolkIdle.Server.Network
                             item.Name,
                             item.Price,
                             item.Art,
+                            Bonuses = PetRegistry.Find(item.Id)?.Bonuses.Select(PetRegistry.Describe).ToArray() ?? Array.Empty<string>(),
                             Owned = owned.Contains(item.Id),
                         }),
                     },

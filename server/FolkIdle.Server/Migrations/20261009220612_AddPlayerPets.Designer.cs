@@ -3,6 +3,7 @@ using System;
 using FolkIdle.Server.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FolkIdle.Server.Migrations
 {
     [DbContext(typeof(FolkIdleDbContext))]
-    partial class FolkIdleDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261009220612_AddPlayerPets")]
+    partial class AddPlayerPets
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2543,25 +2546,6 @@ namespace FolkIdle.Server.Migrations
                     b.HasKey("PlayerId", "StepId");
 
                     b.ToTable("quest_line_claims");
-                });
-
-            modelBuilder.Entity("FolkIdle.Server.Models.SeasonalBossClear", b =>
-                {
-                    b.Property<long>("PlayerId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("EventId")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Tier")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("ClearedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("PlayerId", "EventId", "Tier");
-
-                    b.ToTable("seasonal_boss_clears");
                 });
 
             modelBuilder.Entity("FolkIdle.Server.Models.SeasonalEraRecord", b =>

@@ -333,7 +333,19 @@ namespace FolkIdle.Server.Network
         EventShopBought = 63,
         EventShopClosed = 64,
         EventShopInsufficient = 65,
-        EventShopAlreadyOwned = 66
+        EventShopAlreadyOwned = 66,
+
+        // A rare event pet was found alongside the currency (sent after it is
+        // saved), and 68 a pet was placed or rested.
+        EventPetFound = 67,
+        PetAssigned = 68,
+
+        // The seasonal boss: 69 a tier's first clear was saved and its reward
+        // mailed (sent by the worker); 70 a tier was armed. A locked tier
+        // answers AscensionBossNotDefeated (46) or AscensionStepLocked (47),
+        // and an event that is not live EventShopClosed (64).
+        SeasonalBossCleared = 69,
+        SeasonalBossStarted = 70
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -1006,6 +1018,10 @@ namespace FolkIdle.Server.Network
         public ushort EventCurrencyEarnedToday;
         public byte SeasonalEventId;
         public byte SeasonalEventPhase;
+        // The seasonal boss, 863 -> 865: the armed tier (0 none, runtime only)
+        // and the current event's first-cleared tiers (bit tier-1, hydrated).
+        public byte SeasonalBossTier;
+        public byte SeasonalBossClearedMask;
 
         // Modul: Production Release Hardening, Part 2. ClaimedMilestonesBitmask,
         // ActiveChroniclePassLevel, AccumulatedSeasonalXp,

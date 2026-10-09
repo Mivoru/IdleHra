@@ -128,3 +128,39 @@ pumpkins and round-trips a pet equip), not with smoke tests.
   preview (`GeneticSplicingEngine.PreviewLocus` already computes the range),
   a "recommended pair" button, and a short explainer of the two phases
   (Inn gets you to 20, only mutation goes past it).
+
+
+## Built - PR 2 + 3 (2026-10-10)
+
+**Pets** (`PetRegistry`, `PetEngine`, table `player_pets`):
+- Ghostie +5% XP, Pixie +5% gold, Skeleton Dog +5% gathering speed, Black
+  Cat +5% drop chance, Wolf Pup +5% crit damage - shop, 3,000 each
+  (owner confirmed). Witch +8% world boss damage and +8% drop chance - rare,
+  1 in 10,000 per pumpkin earned (a busy account finds her in about a week).
+  Mini Vampire +10% damage and +10% world boss damage - The Cailleach's
+  sixth winter, first clear (owner swapped it with the Wolf Pup, 2026-10-10).
+- A pet's bonuses fold into the character's `EquippedAffixTotals` in
+  `ComputeEquippedTotalsAsync`, so live, offline, the world boss and the
+  guild-war snapshot all read them through the one function each stat
+  already had. Four fields were added for stats no affix rolls (XP, gold,
+  gathering speed, world boss damage). `PowerCeilingTests` lists the pet lever.
+- Placing: `POST /api/v1/pets/assign`, Character > Gear. Both unique indexes
+  (one of each pet per account, one pet per character) are in the database.
+- Found on the way: the equip update's six TOOL fields had no writer, so any
+  equip zeroed tool tiers and tool affixes until the next login. Fixed in
+  `EquipmentSlotEngine.BuildNotificationAsync`, regression in `PetTests`.
+
+**The Cailleach** (`SeasonalBossRegistry`, `SeasonalBossEngine`, table
+`seasonal_boss_clears`, opcode `StartSeasonalBoss = 82`):
+- Tier N is region N's boss at its FIRST-CLEAR wall, even when beaten. Tier 6
+  is region 5's wall +20% attack and +50% health - MEASURED in
+  `SeasonalBossTests`: +50% attack beat even Transcendent/Legendary level-100
+  gear (boss attack is a cliff); at +20% region 5's wall gear dies in 22 s
+  and the best gear wins in ~33 min.
+- A tier opens after its region's boss and the tier below. First clear pays
+  diamonds 10/15/20/20/25/30 (=120), gold, 250-1,500 pumpkins, the titles
+  "Frost-Touched" (III) and "Breaker of the Long Winter" (VI), and the Mini
+  Vampire (VI) - by mail, in the transaction that records the clear. A repeat
+  win is an ordinary kill (5% pumpkin), so unlimited attempts are no farm.
+- Shown on the World Boss screen and the event screen's Boss tab; the combat
+  screen names her and shows her portrait while a tier is armed.
