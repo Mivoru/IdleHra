@@ -1,0 +1,16 @@
+# FolkIdle
+
+> FolkIdle is a free browser idle RPG rooted in Slavic folklore. Raise a family of fighters, send them through five regions of monsters and bosses, craft tools, fish, mine and build a village. The game keeps playing while you are away. It runs in any modern browser and as an Android app.
+
+The whole game is one web app at https://folkidle.cz/. A guest can start playing without an account; an account keeps the save across devices.
+
+## Pages
+
+- [Play FolkIdle](https://folkidle.cz/): the game itself, in the browser
+- [Android app](https://folkidle.cz/download/folkidle.apk): the same game as an installable APK
+- [Privacy policy](https://folkidle.cz/privacy.html): what the game stores and why
+- [Delete your account](https://folkidle.cz/delete-account.html): how to remove an account and its data
+
+## Optional
+
+- [Sitemap](https://folkidle.cz/sitemap.xml)

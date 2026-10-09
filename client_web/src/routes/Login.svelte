@@ -74,7 +74,16 @@
   let error = $state('');
   let showPassword = $state(false);
 
-  const scene = backgroundUrl('main_hub');
+  // Modul: A STRIP CUT FOR THIS BOX, not main_hub itself. The painting is
+  // the largest thing on the first screen a stranger sees, so it IS the page's
+  // LCP - and main_hub is 1920x1072, 446 KiB, for a box 300 px wide. On a
+  // throttled phone it finished 4 s after the form. login_valley.webp is the
+  // same crop .art used to take (center 60%), 800x317, 64 KiB, and index.html
+  // preloads it so the download starts with the bundle instead of after it.
+  // Re-cut it (tools/prepare_backgrounds.py, STRIPS) if the painting or the
+  // box's aspect-ratio changes - under a NEW name: /sprites/* is served
+  // immutable, and the preload in index.html names the file too.
+  const scene = backgroundUrl('login_valley');
 
   // Modul: ALWAYS THE SAME MESSAGE, whether or not that address has an
   // account. Anything else would rebuild the enumeration oracle that
@@ -130,6 +139,11 @@
   }
 </script>
 
+<!-- Modul: THE PAGE'S MAIN LANDMARK, and the 12vh above the panel. That gap
+     was the panel's own margin, which collapsed through #app and body - so
+     when the form mounted it pushed BODY 99 px down, measured as the page's
+     whole layout shift (CLS 0.12 on a phone). Padding does not collapse. -->
+<main class="page">
 <div class="shell">
   <h1>FolkIdle</h1>
 
@@ -259,6 +273,7 @@
     <a class="applink" href={APP_DOWNLOAD_PATH} download>Get the Android app</a>
   {/if}
 </div>
+</main>
 
 {#if promoOpen}
   <!-- Task 106: the shared Modal - scrim, safe-area insets, the inert app
@@ -288,9 +303,13 @@
 {/if}
 
 <style>
+  .page {
+    padding-block: 12vh;
+  }
+
   .shell {
     max-width: 22rem;
-    margin: 12vh auto;
+    margin: 0 auto;
     display: grid;
     gap: 0.65rem;
     padding: 1.5rem;
@@ -425,7 +444,7 @@
   }
 
   .art {
-    /* main_hub is 1920x1072; cropped to a strip so the buttons stay in the
+    /* login_valley is pre-cut to this aspect; the strip keeps the buttons in the
        first viewport on a phone. */
     aspect-ratio: 1920 / 760;
     margin: -0.25rem 0 0.1rem;

@@ -974,6 +974,10 @@
       </div>
     {/if}
 
+    <!-- Modul: the page's one main landmark, so a screen reader can jump past
+         the header to the screen. display: contents keeps it out of the
+         layout - every screen was styled as a direct child of this level. -->
+    <main class="screen-main">
     {#if screen === 'hub'}
       <Hub onNavigate={(next) => goTo(next)} />
     {:else if ActiveScreen}
@@ -986,6 +990,7 @@
     {:else}
       <p class="dim screen-loading">Loading...</p>
     {/if}
+    </main>
 
     <!-- Modul: A BANNER THAT DOES SOMETHING.
          The old one printed "Step 1 of 3" and a sentence, and its only button
@@ -1117,6 +1122,10 @@
 </QueryClientProvider>
 
 <style>
+  .screen-main {
+    display: contents;
+  }
+
   /* Task 95: the family's name, then the tab you are on, above the tabs. */
   .family {
     padding: 0.6rem 1rem 0;
