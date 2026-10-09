@@ -69,7 +69,7 @@
          parsed and mounted Login - measured on a throttled phone, the request
          started 5.2 s in. Same URL Login.svelte builds (sprites.ts, same
          origin on https), or the browser downloads it twice. -->
-    <link rel="preload" as="image" href="/sprites/Backgrounds/login_valley.webp" type="image/webp" fetchpriority="high" />
+    <link rel="preload" as="image" href="/sprites/Backgrounds/login_valley_q55.webp" type="image/webp" fetchpriority="high" />
     <!-- What a search result is titled with and what the brand search
          ("folkidle", "folk idle", "folkidle hra") is matched against. -->
     <script type="application/ld+json">
@@ -288,7 +288,7 @@
            its own width and never the landscape file. -->
       <!-- portrait-800 exists for the common phone: 412 CSS px at DPR 1.75
            needs 721 px, one past 720, and without it the browser took 1080.
-           AVIF first: half the bytes of the JPEG at no visible cost (q50,
+           AVIF first: a third of the bytes of the JPEG at no visible cost (q35,
            compared crop against crop), and on a phone this picture shares the
            first seconds of bandwidth with the bundle. The JPEGs stay as the
            fallback and as og:image - preview cards do not all read AVIF. -->

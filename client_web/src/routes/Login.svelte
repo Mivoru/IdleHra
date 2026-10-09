@@ -77,13 +77,13 @@
   // Modul: A STRIP CUT FOR THIS BOX, not main_hub itself. The painting is
   // the largest thing on the first screen a stranger sees, so it IS the page's
   // LCP - and main_hub is 1920x1072, 446 KiB, for a box 300 px wide. On a
-  // throttled phone it finished 4 s after the form. login_valley.webp is the
-  // same crop .art used to take (center 60%), 800x317, 64 KiB, and index.html
+  // throttled phone it finished 4 s after the form. login_valley_q55.webp is the
+  // same crop .art used to take (center 60%), 800x317, 46 KiB, and index.html
   // preloads it so the download starts with the bundle instead of after it.
   // Re-cut it (tools/prepare_backgrounds.py, STRIPS) if the painting or the
   // box's aspect-ratio changes - under a NEW name: /sprites/* is served
   // immutable, and the preload in index.html names the file too.
-  const scene = backgroundUrl('login_valley');
+  const scene = backgroundUrl('login_valley_q55');
 
   // Modul: ALWAYS THE SAME MESSAGE, whether or not that address has an
   // account. Anything else would rebuild the enumeration oracle that
