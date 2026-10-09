@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.9.0',
+    date: '2026-10-09',
+    sections: [
+      {
+        title: 'Fixes',
+        items: [
+          'The Book of Deeds checks the weapon and the armour set on the characters you actually play, not on someone resting in the village.',
+          'The closest goal on Home no longer points back into a chapter you have already sealed.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.8.0',
     date: '2026-10-09',
     headline: 'Titles you can see.',
