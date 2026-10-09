@@ -1528,6 +1528,14 @@ namespace FolkIdle.Server.Domain.Shared
             // belongs to another event or to a shop that has closed.
             Domain.Progression.SeasonalEventEarning.Normalise(ref payload, questLoadEpochSeconds);
 
+            // The seasonal boss's first-cleared tiers, for the event that is on.
+            {
+                var (seasonalEvent, _) = Domain.Progression.SeasonalEventRegistry.Current(questLoadEpochSeconds);
+                payload.SeasonalBossClearedMask = seasonalEvent == null
+                    ? (byte)0
+                    : await Domain.Combat.SeasonalBossEngine.LoadClearedMaskAsync(dbContext, playerId, seasonalEvent.Id);
+            }
+
             // Modul: halt reasons. The query above deliberately excludes
             // escrowed characters and any character lent out as an Academy
             // mentor, so a player can legitimately own characters and still

@@ -53,6 +53,19 @@ namespace FolkIdle.Server.Domain.Progression
             });
         }
 
+        /// <summary>Hands rare pets found this tick to PetEngine, off the tick.</summary>
+        internal static void DrainPetDrops(
+            PlayerSessionRegistry registry,
+            Action<string, long, Func<System.Threading.Tasks.Task>> safeDispatch,
+            Microsoft.EntityFrameworkCore.IDbContextFactory<FolkIdle.Server.Models.FolkIdleDbContext> contextFactory)
+        {
+            while (PetEngine.Drops.TryDequeue(out var note))
+            {
+                var captured = note;
+                safeDispatch("Pets.Drop", captured.PlayerId, () => PetEngine.SaveDropAsync(contextFactory, registry, captured));
+            }
+        }
+
         internal static void DrainRefunds(Dictionary<long, TickStatePayload> activePlayers)
         {
             while (EventShopEngine.Refunds.TryDequeue(out var refund))

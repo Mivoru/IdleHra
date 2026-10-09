@@ -65,7 +65,9 @@ namespace FolkIdle.Server.Domain.Progression
             Normalise(ref payload, nowEpochSeconds);
 
             double chance = (source == Source.Kill ? current.KillChance : current.GatherChance) * factor;
-            return Credit(ref payload, Draw(actions, chance, random));
+            int paid = Credit(ref payload, Draw(actions, chance, random));
+            RollRarePet(in payload, current.Id, paid, random);
+            return paid;
         }
 
         /// <summary>
@@ -78,6 +80,21 @@ namespace FolkIdle.Server.Domain.Progression
             if (phase != SeasonalEventPhase.Live || current == null) return 0;
             Normalise(ref payload, nowEpochSeconds);
             return Credit(ref payload, amount);
+        }
+
+        /// <summary>
+        /// Each unit of currency carries PetRegistry.RareDropPerCurrency of the
+        /// event's rare pet. A find is only queued here - saving it (and
+        /// ignoring one the account already has) is PetEngine's, off the tick.
+        /// </summary>
+        private static void RollRarePet(in TickStatePayload payload, int eventId, int currency, Random random)
+        {
+            if (currency <= 0 || payload.PlayerId <= 0) return;
+            var pet = PetRegistry.RareDropOf(eventId);
+            if (pet == null) return;
+            double none = Math.Pow(1.0 - PetRegistry.RareDropPerCurrency, currency);
+            if (random.NextDouble() >= 1.0 - none) return;
+            PetEngine.Drops.Enqueue(new PetDropNote(payload.PlayerId, pet.Id));
         }
 
         private static int Credit(ref TickStatePayload payload, int amount)

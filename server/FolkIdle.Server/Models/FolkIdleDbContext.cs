@@ -105,6 +105,12 @@ namespace FolkIdle.Server.Models
 
         // Task 54: owned chests, avatars and frames. See CosmeticItem.
         public DbSet<CosmeticItem> CosmeticItems { get; set; }
+
+        // Seasonal event pets - see PlayerPet.
+        public DbSet<PlayerPet> PlayerPets { get; set; }
+
+        // The seasonal boss's first clears - see SeasonalBossClear.
+        public DbSet<SeasonalBossClear> SeasonalBossClears { get; set; }
         public DbSet<CosmeticListing> CosmeticListings { get; set; }
 
         // Task 55: boss challenges met, once each. See BossChallengeCompletion.
@@ -303,6 +309,20 @@ namespace FolkIdle.Server.Models
 
             modelBuilder.Entity<CosmeticItem>()
                 .HasIndex(c => new { c.PlayerId, c.Kind, c.Rarity });
+
+            // Each pet once per account, and one pet per character - both by
+            // the database, so a double-tapped purchase or two racing assigns
+            // cannot break either rule.
+            modelBuilder.Entity<PlayerPet>()
+                .HasIndex(p => new { p.PlayerId, p.PetId })
+                .IsUnique();
+            modelBuilder.Entity<SeasonalBossClear>()
+                .HasKey(c => new { c.PlayerId, c.EventId, c.Tier });
+
+            modelBuilder.Entity<PlayerPet>()
+                .HasIndex(p => p.CharacterId)
+                .IsUnique()
+                .HasFilter("\"CharacterId\" IS NOT NULL");
 
             // One listing per item, enforced by the database rather than by
             // hoping two concurrent list requests serialise.

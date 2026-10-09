@@ -270,7 +270,15 @@ namespace FolkIdle.Server.Network
         // showing, so a page left open across an event rollover cannot buy
         // from the wrong shop. The server decides the price, the balance and
         // ownership; every answer is a command result (63-66).
-        BuyEventShopItem = 81
+        BuyEventShopItem = 81,
+
+        // Modul: StartSeasonalBoss (2026-10-10) fights one tier of the seasonal
+        // boss (The Cailleach). TargetId is the TIER (1-6), SecondaryId the
+        // event id the screen was showing. The server decides the rest: that
+        // the event is live, that the tier's region boss has been beaten and
+        // the tier below cleared, the boss and its strength. Deploys slot 1
+        // and arms the tier, like StartBossAscension; every answer is a result.
+        StartSeasonalBoss = 82
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

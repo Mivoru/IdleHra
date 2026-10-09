@@ -486,7 +486,7 @@ namespace FolkIdle.Server.Domain.Combat
             // Funnel step 3: only a committed equip counts. See FunnelRecorder.
             if (outcome.Committed) FunnelRecorder.Record(playerId, FunnelStep.FirstEquip);
 
-            PublishOutcome(playerId, outcome);
+            await PublishOutcomeAsync(db, playerId, outcome);
         }
 
         public async Task UnequipItemAsync(long playerId, int slotIndex, Guid characterId = default)
@@ -532,13 +532,13 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
 
-            PublishOutcome(playerId, outcome);
+            await PublishOutcomeAsync(db, playerId, outcome);
         }
 
         // The exactly-once half of both operations, kept out of the retriable
         // delegate so a retry cannot double-report a rejection or push the same
         // slot update to the tick thread twice.
-        private void PublishOutcome(long playerId, EquipAttemptOutcome outcome)
+        private async Task PublishOutcomeAsync(FolkIdleDbContext db, long playerId, EquipAttemptOutcome outcome)
         {
             if (outcome.ResultCode.HasValue)
             {
@@ -547,7 +547,19 @@ namespace FolkIdle.Server.Domain.Combat
 
             if (outcome.Committed)
             {
-                _playerRegistry?.EquipmentSlotUpdateQueue.Enqueue(outcome.Notification);
+                var update = outcome.Notification;
+                try
+                {
+                    db.ChangeTracker.Clear();
+                    update = await WithAccountToolsAsync(db, update);
+                }
+                catch (Exception ex)
+                {
+                    // Unresolved tools are left alone by the tick (ToolsResolved
+                    // false), so a failed read costs nothing but this line.
+                    Console.WriteLine($"Equip tool loadout read failed for player {playerId}: {ex.Message}");
+                }
+                _playerRegistry?.EquipmentSlotUpdateQueue.Enqueue(update);
             }
         }
 
@@ -621,7 +633,7 @@ namespace FolkIdle.Server.Domain.Combat
             return ResolveWeaponKind(baseItemId);
         }
 
-        private static async Task<EquipmentSlotUpdateNotification> BuildNotificationAsync(FolkIdleDbContext db, CharacterRecord character)
+        internal static async Task<EquipmentSlotUpdateNotification> BuildNotificationAsync(FolkIdleDbContext db, CharacterRecord character)
         {
             (EquippedAffixTotals totals, EquippedSetIds setIds) = await ComputeEquippedTotalsAsync(db, character);
 
@@ -643,6 +655,58 @@ namespace FolkIdle.Server.Domain.Combat
             };
         }
 
+        /// <summary>
+        /// Modul: THE TOOL FIELDS HAD NO WRITER (found 2026-10-10). The tick
+        /// copied all six onto the payload on every equip update and nothing
+        /// filled them, so equipping or removing ANY piece set every tool tier
+        /// and tool affix to zero until the next login. This fills them the way
+        /// login does - off the main character, the payload's tool fields being
+        /// account-wide - and marks the update ToolsResolved, which is what the
+        /// tick now asks before it copies them.
+        ///
+        /// CALLED AFTER THE EQUIP COMMITS, never inside it. The equip runs
+        /// Serializable, and this reads the PlayerRecords row the checkpoint
+        /// rewrites every few seconds: inside the transaction that was a read/
+        /// write conflict that aborted equips (exercise.mjs caught it - a weapon
+        /// taken off could not be put back on).
+        /// </summary>
+        internal static async Task<EquipmentSlotUpdateNotification> WithAccountToolsAsync(FolkIdleDbContext db, EquipmentSlotUpdateNotification update)
+        {
+            ToolLoadout tools = await ResolveAccountToolLoadoutAsync(db, update.PlayerId);
+            update.AxeToolTier = tools.AxeTier;
+            update.PickaxeToolTier = tools.PickaxeTier;
+            update.RodToolTier = tools.RodTier;
+            update.ToolGatherSpeedPct = tools.GatherSpeedPct;
+            update.ToolGatherYieldPct = tools.GatherYieldPct;
+            update.ToolRareFindPct = tools.RareFindPct;
+            update.ToolsResolved = true;
+            return update;
+        }
+
+        /// <summary>The main character's tool loadout - what login puts on the payload.</summary>
+        internal static async Task<ToolLoadout> ResolveAccountToolLoadoutAsync(FolkIdleDbContext db, long playerId)
+        {
+            var mainId = await db.PlayerRecords.AsNoTracking()
+                .Where(p => p.Id == playerId)
+                .Select(p => p.PlayerGuid)
+                .FirstOrDefaultAsync();
+            if (mainId == Guid.Empty) return ToolLoadout.Empty;
+
+            var main = await db.CharacterRecords.AsNoTracking().FirstOrDefaultAsync(c => c.Id == mainId);
+            if (main == null) return ToolLoadout.Empty;
+
+            var ids = new List<long>(3);
+            if (main.EquippedAxeId.HasValue) ids.Add(main.EquippedAxeId.Value);
+            if (main.EquippedPickaxeId.HasValue) ids.Add(main.EquippedPickaxeId.Value);
+            if (main.EquippedRodId.HasValue) ids.Add(main.EquippedRodId.Value);
+            if (ids.Count == 0) return ToolLoadout.Empty;
+
+            var rows = await db.EquipmentInstances.AsNoTracking()
+                .Where(e => ids.Contains(e.Id))
+                .ToDictionaryAsync(e => e.Id);
+            return ToolLoadoutResolver.Resolve(main, rows);
+        }
+
         // Shared with StateCheckpointManager.LoadPlayerState, which needs the
         // same combined totals at login time for EVERY character it hydrates:
         // the equipped ids are persisted but the derived stat totals are not, so
@@ -653,6 +717,24 @@ namespace FolkIdle.Server.Domain.Combat
         // round trips per character, times three characters, on every login was
         // not worth the marginally simpler code.
         public static async Task<(EquippedAffixTotals Totals, EquippedSetIds SetIds)> ComputeEquippedTotalsAsync(FolkIdleDbContext db, CharacterRecord character)
+        {
+            var (totals, setIds) = await ComputeGearTotalsAsync(db, character);
+
+            // Modul: the character's pet rides the same totals as its gear, so
+            // every path that already reads them - live, offline, the world
+            // boss, the guild-war snapshot - counts it without a second copy.
+            string? petId = await db.PlayerPets.AsNoTracking()
+                .Where(p => p.CharacterId == character.Id)
+                .Select(p => p.PetId)
+                .FirstOrDefaultAsync();
+            if (FolkIdle.Server.Domain.Progression.PetRegistry.Find(petId) is { } pet)
+            {
+                FolkIdle.Server.Domain.Progression.PetRegistry.AddTo(pet, ref totals);
+            }
+            return (totals, setIds);
+        }
+
+        private static async Task<(EquippedAffixTotals Totals, EquippedSetIds SetIds)> ComputeGearTotalsAsync(FolkIdleDbContext db, CharacterRecord character)
         {
             EquippedAffixTotals totals = default;
             EquippedSetIds setIds = default;

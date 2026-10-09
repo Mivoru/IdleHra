@@ -55,6 +55,10 @@ namespace FolkIdle.Server.Domain.Progression
                 // Granted by hand only (the admin mail), never earned in play.
                 new TitleDefinition(BetatesterSlug, "Betatester", 0, "#ff7ad9"),
                 new TitleDefinition(DevSlug, "DEV", 0, "#ff4d4d"),
+
+                // Samhain: The Cailleach's tiers 3 and 6, first clear, by mail.
+                new TitleDefinition(Combat.SeasonalBossRegistry.FrostTitleSlug, "Frost-Touched", 0, "#9fd8ff"),
+                new TitleDefinition(Combat.SeasonalBossRegistry.BreakerTitleSlug, "Breaker of the Long Winter", 0, "#f09a3e"),
             };
 
             // Task 87: one title per Boss Ascension step per boss - a rank the

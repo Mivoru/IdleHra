@@ -160,6 +160,13 @@ namespace FolkIdle.Server.Tests
             levers.Add(new Lever("traits: attack", 1.0 + bestTraits.AttackPct / 100.0,
                 $"every attack trait, capped at {TraitTotals.PositiveCap}"));
 
+            // A seasonal event pet. One per character (owner), so the
+            // strongest single pet's damage is the whole lever.
+            int petDamagePct = FolkIdle.Server.Domain.Progression.PetRegistry.All
+                .Max(p => p.Bonuses.Where(b => b.Stat == FolkIdle.Server.Domain.Progression.PetStat.Damage).Sum(b => b.Pct));
+            levers.Add(new Lever("pet: damage", 1.0 + petDamagePct / 100.0,
+                "the strongest single pet - one per character"));
+
             double product = 1.0;
             _o.WriteLine("lever                        multiplier   running   source");
             foreach (var lever in levers)

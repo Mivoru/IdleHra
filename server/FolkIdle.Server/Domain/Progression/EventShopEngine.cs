@@ -86,6 +86,15 @@ namespace FolkIdle.Server.Domain.Progression
                     });
                     break;
                 }
+                case EventShopKind.Pet:
+                {
+                    if (!await PetEngine.GrantAsync(db, playerId, item.Id, utcNow))
+                    {
+                        await tx.RollbackAsync();
+                        return CommandResultCode.EventShopAlreadyOwned;
+                    }
+                    break;
+                }
                 default:
                     await tx.RollbackAsync();
                     return CommandResultCode.GenericValidationFailure;
@@ -104,7 +113,11 @@ namespace FolkIdle.Server.Domain.Progression
                 .Where(c => c.PlayerId == playerId && wanted.Contains(c.DefinitionId))
                 .Select(c => c.DefinitionId)
                 .ToListAsync();
-            return new HashSet<string>(owned, StringComparer.Ordinal);
+            var pets = await db.PlayerPets
+                .Where(p => p.PlayerId == playerId && wanted.Contains(p.PetId))
+                .Select(p => p.PetId)
+                .ToListAsync();
+            return new HashSet<string>(owned.Concat(pets), StringComparer.Ordinal);
         }
     }
 }

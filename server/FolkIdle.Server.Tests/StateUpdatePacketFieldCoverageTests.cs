@@ -85,6 +85,7 @@ namespace FolkIdle.Server.Tests
         {
             // The live fight. A relogin starts a new one.
             ["CurrentMonsterId"] = "combat state, re-established by the tick",
+            ["SeasonalBossTier"] = "an armed seasonal boss attempt, ended by a relogin like any fight",
             ["CurrentMonsterHp"] = "combat state, re-established by the tick",
             ["LastHitWasCrit"] = "describes the last swing of this session",
             ["GatheringProgressTicks"] = "progress within the current node",

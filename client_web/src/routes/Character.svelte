@@ -57,6 +57,7 @@
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
   import { pickerRows } from '../lib/ui/equipPicker';
   import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
+  import PetPanel from '../lib/ui/PetPanel.svelte';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
   import AutomationRulesPanel from '../lib/ui/AutomationRulesPanel.svelte';
@@ -643,6 +644,8 @@
           {:else}
             <p class="dim tiny sets-none">No armour set yet - two pieces of one family start a set bonus.</p>
           {/if}
+
+          <PetPanel characterId={selected?.id ?? null} />
 
           {#if $unopenedChests > 0}
             <button class="tiny-btn chests" onclick={() => requestScreen('wardrobe')}>

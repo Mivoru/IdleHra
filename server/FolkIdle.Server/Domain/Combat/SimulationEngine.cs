@@ -901,6 +901,7 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.StartBossAscension] = BossAscensionTickCoordinator.HandleStartBossAscension,
                 [CommandType.DepositGreatWork] = GreatWorksTickCoordinator.HandleDepositGreatWork,
                 [CommandType.BuyEventShopItem] = EventShopTickCoordinator.HandleBuy,
+                [CommandType.StartSeasonalBoss] = SeasonalBossTickCoordinator.HandleStart,
                 [CommandType.RespecAttributes] = AttributeTickCoordinator.HandleRespecAttributes,
                 [CommandType.PurchaseSkillTreeLevel] = SkillTreeTickCoordinator.HandlePurchaseSkillTreeLevel,
                 [CommandType.RespecSkillTree] = SkillTreeTickCoordinator.HandleRespecSkillTree,
@@ -1085,12 +1086,17 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.EquippedBootsId = equipUpdate.EquippedBootsId;
                         currentPayload.EquippedAmuletId = equipUpdate.EquippedAmuletId;
                         currentPayload.EquippedRingId = equipUpdate.EquippedRingId;
-                        currentPayload.AxeToolTier = equipUpdate.AxeToolTier;
-                        currentPayload.PickaxeToolTier = equipUpdate.PickaxeToolTier;
-                        currentPayload.RodToolTier = equipUpdate.RodToolTier;
-                        currentPayload.ToolGatherSpeedPct = equipUpdate.ToolGatherSpeedPct;
-                        currentPayload.ToolGatherYieldPct = equipUpdate.ToolGatherYieldPct;
-                        currentPayload.ToolRareFindPct = equipUpdate.ToolRareFindPct;
+                        // Only an update that resolved the account's tools may
+                        // write them - see EquipmentSlotEngine.WithAccountToolsAsync.
+                        if (equipUpdate.ToolsResolved)
+                        {
+                            currentPayload.AxeToolTier = equipUpdate.AxeToolTier;
+                            currentPayload.PickaxeToolTier = equipUpdate.PickaxeToolTier;
+                            currentPayload.RodToolTier = equipUpdate.RodToolTier;
+                            currentPayload.ToolGatherSpeedPct = equipUpdate.ToolGatherSpeedPct;
+                            currentPayload.ToolGatherYieldPct = equipUpdate.ToolGatherYieldPct;
+                            currentPayload.ToolRareFindPct = equipUpdate.ToolRareFindPct;
+                        }
                         currentPayload.CachedAffixTotals = equipUpdate.AffixTotals;
                         currentPayload.CachedSetIds = equipUpdate.SetIds;
 
@@ -1310,6 +1316,8 @@ namespace FolkIdle.Server.Domain.Combat
                 // milliseconds between spend and save is not in the map and
                 // the refund is dropped - accepted, the window is one save.
                 EventShopTickCoordinator.DrainRefunds(_activePlayers);
+                EventShopTickCoordinator.DrainPetDrops(_playerRegistry, _safeDispatch, _contextFactory);
+                SeasonalBossTickCoordinator.DrainClears(_playerRegistry, _safeDispatch, _contextFactory);
 
                 VillageTickCoordinator.DrainRecruitmentUpdates(_playerRegistry, _activePlayers);
 
@@ -2205,11 +2213,10 @@ namespace FolkIdle.Server.Domain.Combat
                                 // come from one rule. The client used to
                                 // hand-copy this as `MaxHp * 5` and get First
                                 // Blood and endgame scaling wrong.
+                                // SpawnHpFor, so an armed Ascension step or seasonal
+                                // boss tier draws the health it really spawned with.
                                 CurrentMonsterMaxHp = currentPayload.CurrentMonsterId > 0
-                                    ? (int)BossFirstClearRules.MaxHpFor(
-                                        currentPayload.DefeatedRegionBossMask,
-                                        currentPayload.CurrentMonsterId,
-                                        currentPayload.Skill_FirstBlood)
+                                    ? (int)(SpawnHpFor(in currentPayload) / 1000L)
                                     : 0,
                                 PlayerMaxHp = (int)(currentPayload.CachedEffectiveMaxHp / 1000L),
                                 Quarantine_Active = currentPayload.Quarantine_Active ? (byte)1 : (byte)0,
@@ -2236,6 +2243,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 PremiumCurrencyBalance = (uint)currentPayload.PremiumCurrency,
                                 EventCurrency = (uint)Math.Max(0, currentPayload.EventCurrency),
                                 EventCurrencyEarnedToday = (ushort)Math.Clamp(currentPayload.EventCurrencyEarnedToday, 0, ushort.MaxValue),
+                                SeasonalBossTier = currentPayload.SeasonalBossTier,
+                                SeasonalBossClearedMask = currentPayload.SeasonalBossClearedMask,
                                 LegacyShardBalance = currentPayload.LegacyShardBalance,
                                 GlobalNodeRemainingHp = currentPayload.GlobalNodeRemainingHp <= 0L
                                     ? 0U
@@ -3927,6 +3936,8 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
             finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
             finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
+            // The character's pet (PetRegistry), on the active slot's totals.
+            finalXpMultiplier += payload.CachedAffixTotals.XpTenthsPct / 10;
             return finalXpMultiplier;
         }
 
@@ -4311,7 +4322,8 @@ namespace FolkIdle.Server.Domain.Combat
         /// <summary>A spawn's health, raised by an armed Ascension step's health modifier.</summary>
         private static long SpawnHpFor(in TickStatePayload payload)
         {
-            long hp = BossFirstClearRules.MaxHpFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
+            long hp = BossFirstClearRules.MaxHpFor(FightBossMask(in payload), payload.CurrentMonsterId, payload.Skill_FirstBlood) * 1000L;
+            if (TryGetSeasonalBoss(in payload, out var tier)) return BossAscensionRules.ScaleBossHp(hp, tier.Modifiers);
             return TryGetAscensionModifiers(in payload, out var m) ? BossAscensionRules.ScaleBossHp(hp, in m) : hp;
         }
 
@@ -4321,7 +4333,33 @@ namespace FolkIdle.Server.Domain.Combat
             payload.AscensionStep = 0;
             payload.AscensionRegion = 0;
             payload.AscensionCharacterId = System.Guid.Empty;
+            // The seasonal boss is armed the same way and ends the same way: a
+            // change of activity or a death.
+            payload.SeasonalBossTier = 0;
+            payload.SeasonalBossCharacterId = System.Guid.Empty;
         }
+
+        /// <summary>
+        /// The seasonal boss tier the register is fighting RIGHT NOW, or none -
+        /// the same three conditions as an Ascension step: armed, by the
+        /// character in the register, against that tier's boss.
+        /// </summary>
+        internal static bool TryGetSeasonalBoss(in TickStatePayload payload, out SeasonalBossTier tier)
+        {
+            tier = null!;
+            if (payload.SeasonalBossTier == 0) return false;
+            if (payload.Slot1_CharacterId != payload.SeasonalBossCharacterId) return false;
+            var def = SeasonalBossRegistry.Find(payload.SeasonalBossTier);
+            if (def == null || payload.CurrentMonsterId != SeasonalBossRegistry.BossMonsterIdFor(def.Tier)) return false;
+            tier = def;
+            return true;
+        }
+
+        /// <summary>The defeated mask the FIGHT reads: a seasonal tier puts its boss back at the wall.</summary>
+        private static byte FightBossMask(in TickStatePayload payload)
+            => TryGetSeasonalBoss(in payload, out var tier)
+                ? SeasonalBossRegistry.WallMaskFor(payload.DefeatedRegionBossMask, tier.Tier)
+                : payload.DefeatedRegionBossMask;
 
         private static void ArmThundererIfBoss(ref TickStatePayload payload)
         {
@@ -4991,8 +5029,12 @@ namespace FolkIdle.Server.Domain.Combat
                     //
                     // Task 87: an armed Ascension step raises the boss's attack
                     // BEFORE mitigation, as the step's calibration assumes.
-                    long monsterAttackPower = BossFirstClearRules.AttackPowerFor(payload.DefeatedRegionBossMask, payload.CurrentMonsterId);
-                    if (TryGetAscensionModifiers(in payload, out var ascensionMods))
+                    long monsterAttackPower = BossFirstClearRules.AttackPowerFor(FightBossMask(in payload), payload.CurrentMonsterId);
+                    if (TryGetSeasonalBoss(in payload, out var seasonalTier))
+                    {
+                        monsterAttackPower = BossAscensionRules.ScaleBossAttack(monsterAttackPower, seasonalTier.Modifiers);
+                    }
+                    else if (TryGetAscensionModifiers(in payload, out var ascensionMods))
                     {
                         monsterAttackPower = BossAscensionRules.ScaleBossAttack(monsterAttackPower, in ascensionMods);
                     }
@@ -5288,6 +5330,28 @@ namespace FolkIdle.Server.Domain.Combat
                     else
                     {
                         payload.AscensionPendingResult = 2;
+                    }
+                }
+
+                // The seasonal boss: a FIRST clear of a tier pays (the currency
+                // here, on the tick; diamonds, gold, a title and a pet off it, by
+                // SeasonalBossEngine, which announces the clear once saved). A
+                // repeat win is an ordinary kill - it already rolled the event
+                // currency above like any monster - and stays armed for the
+                // respawn, attempts being unlimited.
+                if (clearedBossRegion > 0 && TryGetSeasonalBoss(in payload, out var wonTier))
+                {
+                    if (!SeasonalBossRegistry.IsCleared(payload.SeasonalBossClearedMask, wonTier.Tier))
+                    {
+                        long nowSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                        var (seasonalEvent, _) = Domain.Progression.SeasonalEventRegistry.Current(nowSeconds);
+                        if (seasonalEvent != null)
+                        {
+                            payload.SeasonalBossClearedMask = SeasonalBossRegistry.WithCleared(payload.SeasonalBossClearedMask, wonTier.Tier);
+                            Domain.Progression.SeasonalEventEarning.Grant(ref payload, wonTier.Currency, nowSeconds);
+                            SeasonalBossEngine.Clears.Enqueue(new SeasonalBossClearNote(payload.PlayerId, seasonalEvent.Id, wonTier.Tier));
+                            DisarmAscension(ref payload);
+                        }
                     }
                 }
 
@@ -5683,7 +5747,9 @@ namespace FolkIdle.Server.Domain.Combat
             return GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct
                 + SkillTreeRegistry.GetBonusTenthsOfPercent(
                     SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
-                + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask)));
+                + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask))
+                // The character's pet (PetRegistry).
+                + payload.CachedAffixTotals.GatherSpeedTenthsPct / 10);
         }
 
         /// <summary>Mastery XP the profession still needs for its next level (at least 1).</summary>

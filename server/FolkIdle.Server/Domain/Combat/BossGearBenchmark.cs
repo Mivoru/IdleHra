@@ -173,6 +173,11 @@ namespace FolkIdle.Server.Domain.Combat
         /// BossAscensionRules, the very functions the tick calls, so the ladder
         /// is measured by the code that plays it and not by a second copy.
         /// </summary>
+        /// <summary>The boss at its first-clear wall, raised by modifiers - a seasonal boss tier.</summary>
+        public static BossFightProjection ProjectFirstClearWithModifiers(
+            int bossMonsterId, in ReferenceLoadout gear, in AscensionModifiers modifiers)
+            => Project(bossMonsterId, in gear, defeatedMask: 0, attackMultiplierOverride: 0.0, withFood: true, modifiers: modifiers);
+
         public static BossFightProjection ProjectAscension(
             int bossMonsterId, in ReferenceLoadout gear, in AscensionModifiers modifiers, double extraAttackMultiplier = 1.0)
             => Project(bossMonsterId, in gear, BossFirstClearRules.MarkDefeated(0, bossMonsterId),

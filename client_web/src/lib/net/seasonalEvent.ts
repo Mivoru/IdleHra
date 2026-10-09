@@ -21,6 +21,8 @@ export interface EventShopEntry {
   Price: number;
   /** Sprite path under /sprites/. */
   Art: string;
+  /** A pet's bonuses, worded by the server; empty for an avatar. */
+  Bonuses: string[];
   Owned: boolean;
 }
 

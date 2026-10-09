@@ -74,6 +74,7 @@ namespace FolkIdle.Server.Domain.Progression
         // that (owner to confirm): everything costs ~23,000, so a dedicated
         // account finishes in two weeks and a newcomer buys a few things.
         public const int SamhainAvatarPrice = 1000;
+        public const int SamhainPetPrice = 3000;
 
         private static readonly IReadOnlyList<EventShopItem> SamhainShop = new[]
         {
@@ -85,6 +86,11 @@ namespace FolkIdle.Server.Domain.Progression
             Avatar("skeleton", "Skeleton"),
             Avatar("vampire", "Vampire"),
             Avatar("werewolf", "Werewolf"),
+            Pet("pet_ghostie"),
+            Pet("pet_pixie"),
+            Pet("pet_skeleton_dog"),
+            Pet("pet_black_cat"),
+            Pet("pet_wolf_pup"),
         };
 
         public static readonly IReadOnlyList<SeasonalEventDefinition> All = new[]
@@ -104,6 +110,15 @@ namespace FolkIdle.Server.Domain.Progression
                 OfflineFactor: 1.0,
                 Shop: SamhainShop),
         };
+
+        // Name and art come from PetRegistry, the one place a pet is defined.
+        // PetRegistry reads only this class's CONSTANTS, so neither static
+        // initialiser waits on the other.
+        private static EventShopItem Pet(string petId)
+        {
+            var pet = PetRegistry.Find(petId) ?? throw new InvalidOperationException($"no pet {petId}");
+            return new EventShopItem(pet.Id, EventShopKind.Pet, pet.Name, SamhainPetPrice, pet.Art);
+        }
 
         private static EventShopItem Avatar(string slug, string name)
             => new("avatar_samhain_" + slug, EventShopKind.Avatar, name, SamhainAvatarPrice,

@@ -46,6 +46,7 @@
   import HitSpark from '../lib/ui/HitSpark.svelte';
   import Burst from '../lib/ui/Burst.svelte';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
+  import { spriteUrl } from '../lib/ui/spriteUrl';
   import SessionLoot from '../lib/ui/SessionLoot.svelte';
   import {
     combatLog,
@@ -261,6 +262,17 @@
     bars.monsterId > 0 ? (registry?.monsters.get(bars.monsterId) ?? null) : null,
   );
   const haltMessage = $derived(chosen ? (HALT_REASONS[chosen.halt] ?? '') : '');
+
+  // Modul: THE CAILLEACH WEARS A REGION BOSS'S STATS. An armed seasonal boss
+  // tier is slot 1 fighting that region's boss at its wall, so the fight is
+  // the region boss's - only the name and the face are hers. The server
+  // disarms the tier on any change of activity, so an armed tier on slot 1 IS
+  // this fight.
+  const seasonalTier = $derived(Number($playerState?.SeasonalBossTier ?? 0));
+  const cailleach = $derived(seasonalTier > 0 && chosen?.slot === 1 && activeMonster !== null);
+  const fightName = $derived(
+    cailleach ? `The Cailleach · winter ${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][seasonalTier]}` : (activeMonster?.Name ?? ''),
+  );
 
   // Modul: DEPLOYED IS NOT THE SAME AS FIGHTING, and conflating them made a
   // real fault look like a no-op button.
@@ -551,7 +563,12 @@
             {#key hitPulse}
               <span class="hit-shake">
                 <span class="struckwrap" class:struck class:dying>
-                  <MonsterPortrait monsterId={activeMonster.Id} name={activeMonster.Name} size="xl" />
+                  <MonsterPortrait
+                    monsterId={activeMonster.Id}
+                    name={fightName}
+                    size="xl"
+                    src={cailleach ? spriteUrl('Events/samhain/boss/cailleach.webp') : null}
+                  />
                   <!-- Modul: the mark the blow leaves, drawn over the portrait it
                        landed on. Shape depends on the weapon family, brightness on
                        whether it crit. -->
@@ -560,7 +577,7 @@
               </span>
             {/key}
             <div class="hpblock grow">
-              <span class="target">Fighting {activeMonster.Name}</span>
+              <span class="target" data-testid="fight-target">Fighting {fightName}</span>
               <Bar
                 value={shownMonsterHp}
                 max={activeMaxHp(activeMonster)}

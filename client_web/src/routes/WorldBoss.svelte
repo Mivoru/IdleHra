@@ -39,6 +39,7 @@
   import { worldBossResultSentence, worldBossResultTone } from '../lib/game/worldBossResults';
   import { tap } from '../lib/net/haptics';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
+  import SeasonalBossPanel from '../lib/ui/SeasonalBossPanel.svelte';
   import { backgroundUrl } from '../lib/ui/sprites';
   import { bossTimeLeft } from '../lib/game/worldBossTime';
   import { WORLD_BOSS_REWARDS } from '../lib/ui/wikiData';
@@ -519,6 +520,10 @@
   </div>
 
   <div class="col side-col">
+    <!-- The seasonal boss sits beside the world boss (owner, 2026-10-09); it
+         renders only while an event with a boss is on. -->
+    <SeasonalBossPanel compact />
+
     <section class="panel">
       <h3 class="first">Damage this week</h3>
       {#if board && board.Participants > 0}
