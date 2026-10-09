@@ -39,6 +39,18 @@ namespace FolkIdle.Server.Engine
             // fielded into slot 0; kept as the fallback for a row with no match.
             var main = characters.FirstOrDefault(c => c.Id == player.PlayerGuid) ?? characters.FirstOrDefault();
 
+            // Modul: THE FIELDED ROSTER, not the main character, answers the
+            // "wear" deeds. Reported by the owner 2026-10-09: "Wear a weapon"
+            // read 0 / 1 with a weapon on every fielded character. The
+            // PlayerGuid character had been moved to slot 14 - the village
+            // pool, nobody's gear - so the deed asked a person who is not
+            // playing. Any of the three playable slots counts; the main
+            // character stays as the fallback for an account with none fielded.
+            var fielded = characters
+                .Where(c => c.SlotIndex >= 0 && c.SlotIndex < CharacterSlotEngine.MaxCharacterSlots)
+                .ToList();
+            if (fielded.Count == 0 && main != null) fielded.Add(main);
+
             // Modul: EVERY LOG, not the legacy "wood" row. Gathering grants the
             // catalogue logs (birch_log, willow_log, ...) and never wrote "wood";
             // since 2026-09-30 live village production does not either, so a
@@ -119,7 +131,7 @@ namespace FolkIdle.Server.Engine
 
             return new DeedContext(
                 Level: player.CurrentLevel,
-                HasWeaponEquipped: main?.EquippedWeaponId is > 0,
+                HasWeaponEquipped: fielded.Any(c => c.EquippedWeaponId is > 0),
                 LarderStocked: larderStocked,
                 WoodStock: woodStock,
                 ItemsCrafted: player.TotalItemsCrafted,
@@ -132,7 +144,7 @@ namespace FolkIdle.Server.Engine
                 ForgeFusions: player.ForgeFusionsCompleted,
                 AffixRerolls: player.AffixRerollsPerformed,
                 HighestRarityOwned: highestRarity,
-                LargestActiveSetBonus: await LargestSetBonusAsync(db, playerId, main),
+                LargestActiveSetBonus: await LargestSetBonusAsync(db, playerId, fielded),
                 ForgeLevel: LevelOf(buildings.Select(b => (b.BuildingId, b.CurrentLevel)), VillageManagementEngine.ForgeBuildingId),
                 InnLevel: LevelOf(buildings.Select(b => (b.BuildingId, b.CurrentLevel)), VillageManagementEngine.InnBuildingId),
                 VillageBuildingLevelTotal: buildings.Sum(b => b.CurrentLevel),
@@ -172,25 +184,36 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
-        /// The biggest number of pieces of ONE set the main character is
+        /// The biggest number of pieces of ONE set any fielded character is
         /// wearing. Two, three and five are where the bonuses step, and two
-        /// separate deeds ask about it.
+        /// separate deeds ask about it. Counted per character - two pieces on
+        /// two different people are not a set.
         /// </summary>
-        private static async Task<int> LargestSetBonusAsync(FolkIdleDbContext db, long playerId, CharacterRecord? main)
+        private static async Task<int> LargestSetBonusAsync(
+            FolkIdleDbContext db, long playerId, System.Collections.Generic.IReadOnlyList<CharacterRecord> wearers)
         {
-            if (main == null) return 0;
+            int best = 0;
+            foreach (var wearer in wearers)
+            {
+                int count = await LargestSetOnOneAsync(db, playerId, wearer);
+                if (count > best) best = count;
+            }
+            return best;
+        }
 
+        private static async Task<int> LargestSetOnOneAsync(FolkIdleDbContext db, long playerId, CharacterRecord wearer)
+        {
             var equippedIds = new System.Collections.Generic.List<long>();
             void Add(long? id) { if (id is > 0) equippedIds.Add(id.Value); }
 
-            Add(main.EquippedWeaponId);
-            Add(main.EquippedHelmetId);
-            Add(main.EquippedChestId);
-            Add(main.EquippedGlovesId);
-            Add(main.EquippedLeggingsId);
-            Add(main.EquippedBootsId);
-            Add(main.EquippedAmuletId);
-            Add(main.EquippedRingId);
+            Add(wearer.EquippedWeaponId);
+            Add(wearer.EquippedHelmetId);
+            Add(wearer.EquippedChestId);
+            Add(wearer.EquippedGlovesId);
+            Add(wearer.EquippedLeggingsId);
+            Add(wearer.EquippedBootsId);
+            Add(wearer.EquippedAmuletId);
+            Add(wearer.EquippedRingId);
 
             if (equippedIds.Count == 0) return 0;
 

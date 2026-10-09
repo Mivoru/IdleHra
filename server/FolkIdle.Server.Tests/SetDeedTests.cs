@@ -87,5 +87,73 @@ namespace FolkIdle.Server.Tests
             var context = await DeedProgressSource.LoadAsync(read, playerId);
             Assert.Equal(65, context.WoodStock);
         }
+
+        /// <summary>
+        /// Modul: "Wear a weapon" read 0 / 1 for the owner (2026-10-09) with a
+        /// weapon on all three fielded characters, because the PlayerGuid
+        /// character had moved to slot 14 - the pool - and the deed asked only
+        /// it. The fielded roster answers now; the pool does not.
+        /// </summary>
+        [Fact]
+        public async Task WeaponAndSetDeeds_ReadTheFieldedRoster_NotAMainCharacterInThePool()
+        {
+            const long playerId = 950_052_003L;
+            var mainId = Guid.NewGuid();
+            const string hood = "eq_linen_hood_helmet_armor_slot_base";
+            const string shroud = "eq_linen_shroud_chest_armor_slot_base";
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var weapon = new EquipmentInstance { PlayerId = playerId, BaseItemId = "eq_test_weapon", QualityTier = 1, AffixPayload = "{}" };
+                var helmet = new EquipmentInstance { PlayerId = playerId, BaseItemId = hood, QualityTier = 1, AffixPayload = "{}" };
+                var chest = new EquipmentInstance { PlayerId = playerId, BaseItemId = shroud, QualityTier = 1, AffixPayload = "{}" };
+                db.EquipmentInstances.AddRange(weapon, helmet, chest);
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = mainId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+
+                db.CharacterRecords.AddRange(
+                    // The main character, undressed, in the pool.
+                    new CharacterRecord { Id = mainId, PlayerId = playerId, AgePhase = 1, SlotIndex = 14 },
+                    new CharacterRecord { Id = Guid.NewGuid(), PlayerId = playerId, AgePhase = 1, SlotIndex = 0, EquippedWeaponId = weapon.Id },
+                    new CharacterRecord
+                    {
+                        Id = Guid.NewGuid(), PlayerId = playerId, AgePhase = 1, SlotIndex = 2,
+                        EquippedHelmetId = helmet.Id, EquippedChestId = chest.Id,
+                    });
+                await db.SaveChangesAsync();
+            }
+
+            await using var read = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var context = await DeedProgressSource.LoadAsync(read, playerId);
+            Assert.True(context.HasWeaponEquipped);
+            Assert.Equal(2, context.LargestActiveSetBonus);
+        }
+
+        /// <summary>
+        /// A weapon worn only by someone in the pool is not a weapon worn.
+        /// </summary>
+        [Fact]
+        public async Task WeaponDeed_IgnoresAWeaponInThePool()
+        {
+            const long playerId = 950_052_004L;
+            var mainId = Guid.NewGuid();
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var weapon = new EquipmentInstance { PlayerId = playerId, BaseItemId = "eq_test_weapon", QualityTier = 1, AffixPayload = "{}" };
+                db.EquipmentInstances.Add(weapon);
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = mainId, AuthenticatorToken = Guid.NewGuid() });
+                await db.SaveChangesAsync();
+
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = mainId, PlayerId = playerId, AgePhase = 1, SlotIndex = 0 },
+                    new CharacterRecord { Id = Guid.NewGuid(), PlayerId = playerId, AgePhase = 1, SlotIndex = 7, EquippedWeaponId = weapon.Id });
+                await db.SaveChangesAsync();
+            }
+
+            await using var read = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var context = await DeedProgressSource.LoadAsync(read, playerId);
+            Assert.False(context.HasWeaponEquipped);
+        }
     }
 }
