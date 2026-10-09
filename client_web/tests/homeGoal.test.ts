@@ -30,6 +30,13 @@ describe('the home screen goal', () => {
     expect(got?.Id).toBe('here');
   });
 
+  it('ignores a sealed chapter whose state deed reads undone again', () => {
+    // Owner, 2026-10-09: chapter I sealed, "Wear a weapon" back at 0 / 1.
+    const sealedButIncomplete: DeedChapterEntry = { ...chapter(1, [deed('weapon', 0, 1)]), HasSeal: true };
+    const got = closestDeed([sealedButIncomplete, chapter(2, [deed('here', 1, 10)])]);
+    expect(got?.Id).toBe('here');
+  });
+
   it('breaks a tie in reading order', () => {
     const got = closestDeed([chapter(1, [deed('first', 5, 10)]), chapter(2, [deed('second', 1, 2)])]);
     expect(got?.Id).toBe('first');
