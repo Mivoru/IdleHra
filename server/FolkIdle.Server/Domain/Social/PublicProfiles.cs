@@ -19,9 +19,8 @@ namespace FolkIdle.Server.Domain.Social
     // fill, because level is an account field and CharacterRecord has none.
     // A profile is opened by tapping a name, so its cost is paid on the tap.
     //
-    // The shape below is the opposite: the main character (PlayerRecord
-    // .PlayerGuid, the same one /player/worn answers for) and at most
-    // MaxExtraCharacters others who actually wear something, eleven slots each,
+    // The shape below is the opposite: the three roster characters, eleven
+    // slots each,
     // and the statistics the server ALREADY tracks for its own reasons. Nothing
     // here is new tracking, and nothing private (gold, diamonds, treasury,
     // depot, email) is on it - those are the fields to keep off when this grows.
@@ -87,9 +86,9 @@ namespace FolkIdle.Server.Domain.Social
         public long LastLogoutTimestamp { get; set; }
         public bool IsOnline { get; set; }
         public ProfileGuild? Guild { get; set; }
-        /// <summary>The main character first, then up to MaxExtraCharacters who wear something.</summary>
+        /// <summary>The roster - slots 0 to MaxCharacterSlots-1 - in slot order.</summary>
         public List<ProfileCharacter> Characters { get; set; } = new();
-        /// <summary>How many more characters wear something but were left off.</summary>
+        /// <summary>How many villagers off the roster still wear something.</summary>
         public int MoreEquippedCharacters { get; set; }
         public ProfileStats Stats { get; set; } = new();
     }
@@ -135,9 +134,6 @@ namespace FolkIdle.Server.Domain.Social
 
     public static class PublicProfiles
     {
-        /// <summary>Characters shown besides the main one. A bred household is hundreds.</summary>
-        public const int MaxExtraCharacters = 4;
-
         /// <summary>The five canonical region bosses, as HandlePlayerStatistics counts them.</summary>
         private static readonly int[] CanonicalBossMonsterIds = { 95, 100, 105, 110, 115 };
 
@@ -199,16 +195,19 @@ namespace FolkIdle.Server.Domain.Social
                     .FirstOrDefaultAsync();
             }
 
-            // One query for every character worth showing: the main one, and
-            // anyone wearing at least one piece. Projected, so a 185-row
-            // household costs eleven nullable columns, not 185 entities.
+            // Modul: THE PROFILE IS THE ROSTER (2026-10-09). It used to show the
+            // account's founding character (PlayerRecord.PlayerGuid) always, plus
+            // anyone dressed - so after swapping the founder out of the three
+            // roster slots, the profile still led with a bare "Main" the player
+            // no longer plays (reported from the APK). Now it is exactly the
+            // three slots CharacterSlotEngine fights and works with, in slot
+            // order, dressed or not. Projected, so a 185-row household costs
+            // eleven nullable columns, not 185 entities.
             Guid mainGuid = player.PlayerGuid;
-            var dressed = await db.CharacterRecords.AsNoTracking()
-                .Where(c => c.PlayerId == targetId && (c.Id == mainGuid
-                    || c.EquippedWeaponId != null || c.EquippedHelmetId != null || c.EquippedChestId != null
-                    || c.EquippedGlovesId != null || c.EquippedLeggingsId != null || c.EquippedBootsId != null
-                    || c.EquippedAmuletId != null || c.EquippedRingId != null
-                    || c.EquippedAxeId != null || c.EquippedPickaxeId != null || c.EquippedRodId != null))
+            var shown = await db.CharacterRecords.AsNoTracking()
+                .Where(c => c.PlayerId == targetId
+                    && c.SlotIndex >= 0 && c.SlotIndex < CharacterSlotEngine.MaxCharacterSlots)
+                .OrderBy(c => c.SlotIndex)
                 .Select(c => new
                 {
                     c.Id, c.Name, c.SlotIndex, c.IsFemale, c.AgePhase, c.ActiveActivityId,
@@ -218,12 +217,14 @@ namespace FolkIdle.Server.Domain.Social
                 })
                 .ToListAsync();
 
-            var ordered = dressed
-                .OrderByDescending(c => c.Id == mainGuid)
-                .ThenBy(c => c.SlotIndex)
-                .ToList();
-            var shown = ordered.Take(1 + MaxExtraCharacters).ToList();
-            view.MoreEquippedCharacters = Math.Max(0, ordered.Count - shown.Count);
+            // Villagers off the roster who still hold gear: counted, not drawn.
+            view.MoreEquippedCharacters = await db.CharacterRecords.AsNoTracking()
+                .CountAsync(c => c.PlayerId == targetId
+                    && (c.SlotIndex < 0 || c.SlotIndex >= CharacterSlotEngine.MaxCharacterSlots)
+                    && (c.EquippedWeaponId != null || c.EquippedHelmetId != null || c.EquippedChestId != null
+                        || c.EquippedGlovesId != null || c.EquippedLeggingsId != null || c.EquippedBootsId != null
+                        || c.EquippedAmuletId != null || c.EquippedRingId != null
+                        || c.EquippedAxeId != null || c.EquippedPickaxeId != null || c.EquippedRodId != null));
 
             var slotsByCharacter = new List<(ProfileCharacter Character, Dictionary<long, int> Slots)>(shown.Count);
             var instanceIds = new HashSet<long>();
