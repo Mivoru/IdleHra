@@ -1758,3 +1758,63 @@ input[type='radio']:disabled {
   --diamond: var(--ug-diamond);
   color: var(--ug-text);
 }
+
+
+/* Modul: THE SEASONAL EVENT THEME (owner, 2026-10-09: "simple and performance
+   friendly"). `data-event` on <html> - set by eventTheme.ts from the wire, and
+   by boot.js from the last value this device saw - re-points a few tokens. No
+   animation, no images, no particles: a recolour costs one style recalc when
+   the attribute flips and nothing per frame after that. The rarity ramp is
+   left alone for the reason given at the top of this file.
+
+   Samhain: the brass turns to pumpkin and the deep surfaces take a little of
+   the Cailleach's winter-violet. --event-* are the tokens EventChip and the
+   event screen read; outside an event they are unset and those fall back. */
+:root[data-event='samhain'] {
+  --accent: #e8862a;
+  --brass: #8a4f2a;
+  --brass-lit: #f0a24a;
+  --border: #4a3046;
+  --bg: #0f0b12;
+  --bg-panel: #1b141d;
+  --bg-raised: #281d2a;
+  --event-accent: #f09a3e;
+  --event-chip-bg: rgba(240, 154, 62, 0.12);
+  --event-chip-bg-hover: rgba(240, 154, 62, 0.22);
+}
+
+:root[data-event='samhain'] #app > header {
+  background-image:
+    var(--beam), var(--grain), linear-gradient(180deg, #2a1a2c, #120a10) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(240, 154, 62, 0.16),
+    inset 0 -2px 0 rgba(240, 154, 62, 0.3),
+    0 2px 12px rgba(0, 0, 0, 0.55);
+}
+
+@media (prefers-color-scheme: light) {
+  /* The parchment header keeps its light beam - a dusk-violet one under the
+     light theme's dark nav ink made the group labels unreadable - and takes
+     only the pumpkin rule at its foot. */
+  :root[data-event='samhain'] #app > header {
+    background-image:
+      var(--beam), var(--grain), linear-gradient(180deg, #f1dcc0, #dcc09a) !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.55),
+      inset 0 -2px 0 rgba(184, 87, 26, 0.35),
+      0 2px 10px rgba(90, 68, 34, 0.18);
+  }
+
+  :root[data-event='samhain'] {
+    --accent: #b8571a;
+    --brass: #9a5a2a;
+    --brass-lit: #c86a22;
+    --border: #c2a08a;
+    --bg: #eadbc4;
+    --bg-panel: #f5ead8;
+    --bg-raised: #eddcc4;
+    --event-accent: #b8571a;
+    --event-chip-bg: rgba(184, 87, 26, 0.1);
+    --event-chip-bg-hover: rgba(184, 87, 26, 0.18);
+  }
+}

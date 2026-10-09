@@ -32,19 +32,21 @@ namespace FolkIdle.Server.Tests
         {
             Assert.Equal(CosmeticRegistry.All.Count, CosmeticRegistry.All.Select(d => d.Id).Distinct().Count());
 
-            int Avatars(int r) => CosmeticRegistry.All.Count(d => d.Kind == CosmeticKind.Avatar && d.Rarity == r);
+            // Bound avatars (a seasonal event's shop) are bought, not in a chest
+            // pool; SeasonalEventTests covers them.
+            int Avatars(int r) => CosmeticRegistry.All.Count(d => d.Kind == CosmeticKind.Avatar && d.Rarity == r && !d.Bound);
             // Bound frames (task 87's Ascension rewards) are earned, not in a chest pool.
             int Frames(int r) => CosmeticRegistry.All.Count(d => d.Kind == CosmeticKind.Frame && d.Rarity == r && !d.Bound);
 
             Assert.Equal(new[] { 8, 8, 6, 3 }, Enumerable.Range(1, 4).Select(Avatars));
             Assert.Equal(new[] { 4, 4, 4, 4 }, Enumerable.Range(1, 4).Select(Frames));
-            Assert.Equal(25, CosmeticRegistry.All.Count(d => d.Kind == CosmeticKind.Avatar));
+            Assert.Equal(25, CosmeticRegistry.All.Count(d => d.Kind == CosmeticKind.Avatar && !d.Bound));
 
             // Every avatar is a canonical monster's portrait - by name, which is
             // what the client maps to a picture.
             string monstersJson = File.ReadAllText(Path.Combine(ServerRoot(), "..", "GameData", "monsters.json"));
             var monsters = Regex.Matches(monstersJson, @"""Name""\s*:\s*""([^""]+)""").Select(m => m.Groups[1].Value).ToHashSet();
-            foreach (var avatar in CosmeticRegistry.All.Where(d => d.Kind == CosmeticKind.Avatar))
+            foreach (var avatar in CosmeticRegistry.All.Where(d => d.Kind == CosmeticKind.Avatar && !d.Bound))
             {
                 Assert.Contains(avatar.Art!, monsters);
             }

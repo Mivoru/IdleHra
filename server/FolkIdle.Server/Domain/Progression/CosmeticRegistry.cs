@@ -23,6 +23,8 @@ namespace FolkIdle.Server.Domain.Progression
         Ascension = 4,
         /// <summary>Task 84: a completed Great Work's frame.</summary>
         GreatWork = 5,
+        /// <summary>Bought in a seasonal event's shop.</summary>
+        Event = 6,
         Dev = 9,
     }
 
@@ -124,6 +126,14 @@ namespace FolkIdle.Server.Domain.Progression
                 list.Add(new CosmeticDefinition(
                     GreatWorksRegistry.FrameId(region), CosmeticKind.Frame, Legendary,
                     GreatWorksRegistry.FrameName(region), null, Bound: true));
+            }
+            // Seasonal event avatars: bought, not found, so bound like the
+            // Ascension frames - never in a chest, never on the market. Art is
+            // a sprite PATH (it contains a '/'), not a monster name.
+            foreach (var item in SeasonalEventRegistry.All.SelectMany(e => e.Shop))
+            {
+                if (item.Kind != EventShopKind.Avatar) continue;
+                list.Add(new CosmeticDefinition(item.Id, CosmeticKind.Avatar, Epic, item.Name, item.Art, Bound: true));
             }
             return list;
         }

@@ -2023,6 +2023,18 @@ namespace FolkIdle.Server.Migrations
                         .HasMaxLength(48)
                         .HasColumnType("character varying(48)");
 
+                    b.Property<int>("EventCurrency")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EventCurrencyDayKey")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EventCurrencyEarnedToday")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EventCurrencyEventId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ExternalProviderId")
                         .HasColumnType("text");
 

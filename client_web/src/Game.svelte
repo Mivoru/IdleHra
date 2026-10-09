@@ -11,6 +11,9 @@
   import AchievementToast from './lib/ui/AchievementToast.svelte';
   import MailBadge from './lib/ui/MailBadge.svelte';
   import EventBanner from './lib/ui/EventBanner.svelte';
+  import EventChip from './lib/ui/EventChip.svelte';
+  import { applyEventTheme } from './lib/ui/eventTheme';
+  import { eventThemeKey } from './lib/net/seasonalEvent';
   import Money from './lib/ui/Money.svelte';
   import ConnectionNotice from './lib/ui/ConnectionNotice.svelte';
   import {
@@ -195,9 +198,16 @@
   };
   const TAB_ONLY_KEYS = ['ancestors', 'inheritance', 'market', 'guildops', 'leaderboards'] as const;
 
+  // Modul: SCREENS REACHED THROUGH A HEADER CHIP, not a menu entry. The
+  // seasonal event's screen exists only while an event runs, and a menu
+  // entry that comes and goes would be a second calendar; the chip
+  // (EventChip.svelte) is shown from the wire's own SeasonalEventId.
+  const CHIP_ONLY_KEYS = ['event'] as const;
+
   type ScreenKey =
     | (typeof GROUPS)[number]['screens'][number]['key']
-    | (typeof TAB_ONLY_KEYS)[number];
+    | (typeof TAB_ONLY_KEYS)[number]
+    | (typeof CHIP_ONLY_KEYS)[number];
 
   /** The family owner a screen's tabs belong to - itself, unless it is a tab. */
   function menuKeyOf(key: string | null): string | null {
@@ -234,7 +244,8 @@
       PREF_LAST_SCREEN,
       (v): v is ScreenKey =>
         GROUPS.some((g) => g.screens.some((s) => s.key === v)) ||
-        (TAB_ONLY_KEYS as readonly string[]).includes(v),
+        (TAB_ONLY_KEYS as readonly string[]).includes(v) ||
+        (CHIP_ONLY_KEYS as readonly string[]).includes(v),
       'hub' as ScreenKey,
     ),
   );
@@ -262,6 +273,7 @@
   const ALL_SCREEN_KEYS = new Set<string>([
     ...GROUPS.flatMap((group) => group.screens.map((s) => s.key)),
     ...TAB_ONLY_KEYS,
+    ...CHIP_ONLY_KEYS,
   ]);
 
   // Modul: EVERY SCREEN BUT THE MAP IS LOADED ON FIRST VISIT.
@@ -312,6 +324,7 @@
     mailbox: () => import('./routes/Mailbox.svelte'),
     chest: () => import('./routes/Chest.svelte'),
     worldboss: () => import('./routes/WorldBoss.svelte'),
+    event: () => import('./routes/EventShop.svelte'),
     leaderboards: () => import('./routes/Leaderboards.svelte'),
     wiki: () => import('./routes/Wiki.svelte'),
     // The skill tree has its own screen now. It lived inside the character
@@ -708,6 +721,13 @@
 
   const snap = $derived($playerState);
 
+  // The seasonal event's theme follows the wire. Only a snapshot can say "no
+  // event", so a session that has not had one yet leaves boot.js's guess up.
+  const eventTheme = $derived(snap ? eventThemeKey(Number(snap.SeasonalEventId ?? 0)) : undefined);
+  $effect(() => {
+    if (eventTheme !== undefined) applyEventTheme(eventTheme);
+  });
+
   // Modul: the loading screen (index.html #boot) stays up until the first
   // snapshot, so a signed-in launch goes straight from the picture to a
   // populated Hub instead of through an empty one. See lib/ui/boot.ts.
@@ -862,6 +882,10 @@
              statistics snapshot calls the same number PremiumDiamonds. Two
              names for one balance, and only this one is live. -->
         <span class="wallet">
+          <!-- The seasonal event's currency, first in the purse while an event
+               runs: on a desktop it sits right after the event banner, on a
+               phone beside the gold under the name. It opens the event shop. -->
+          <EventChip onOpen={() => goTo('event')} active={screen === 'event'} />
           <Money amount={snap.Gold} icon />
           <!-- Modul: shown at zero too. It used to be hidden below one, which
                is precisely when a player goes looking for it - an empty purse
@@ -1285,6 +1309,23 @@
 
     .wallet {
       flex-shrink: 0;
+    }
+
+    /* Modul: THE EVENT CHIP NEEDS ITS ROOM. At 390px the row is name, purse
+       and menu, and a third currency pushed the menu button off the edge. While
+       the chip is up, the "gold"/"diamonds" words leave the screen but stay in
+       the accessible name - the coin and the gem still say which is which. */
+    .wallet:has(:global(.event-chip)) {
+      gap: 0.4rem;
+    }
+
+    .wallet:has(:global(.event-chip)) :global(.money .unit) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
     }
 
     /* Modul: 44px stated here. This is the single most-tapped control on a

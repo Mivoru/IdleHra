@@ -183,6 +183,12 @@ namespace FolkIdle.Server.Models
         public int ActiveDefensivePotionId { get; set; }
         public int DefensivePotionDurationMs { get; set; }
         public int PremiumDiamonds { get; set; }
+        // Modul: the seasonal event currency and its bookkeeping - see
+        // TickStatePayload.EventCurrency. Written only by the checkpoint.
+        public int EventCurrency { get; set; }
+        public int EventCurrencyEventId { get; set; }
+        public int EventCurrencyDayKey { get; set; }
+        public int EventCurrencyEarnedToday { get; set; }
         public bool Quarantine_Active { get; set; }
         public bool IsQuarantined { get; set; }
         public long LogicEpochCounter { get; set; }

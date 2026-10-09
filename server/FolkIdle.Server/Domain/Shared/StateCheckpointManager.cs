@@ -680,6 +680,10 @@ namespace FolkIdle.Server.Domain.Shared
                         player.ActiveFoodExpiresEpoch = state.FoodBuffDurationMs > 0 ? consumableFlushEpoch + state.FoodBuffDurationMs / 1000L : 0L;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
+                        player.EventCurrency = state.EventCurrency;
+                        player.EventCurrencyEventId = state.EventCurrencyEventId;
+                        player.EventCurrencyDayKey = state.EventCurrencyDayKey;
+                        player.EventCurrencyEarnedToday = state.EventCurrencyEarnedToday;
                         player.AvailableSkillPoints = state.AvailableSkillPoints;
                         player.UnspentAttributePoints = state.UnspentAttributePoints;
                         // Task 51: records only improve - max / fastest, never a copy.
@@ -1348,6 +1352,10 @@ namespace FolkIdle.Server.Domain.Shared
                 RestedHpPending = true,
                 CurrentGold = loadedGold,
                 PremiumCurrency = player.PremiumDiamonds,
+                EventCurrency = player.EventCurrency,
+                EventCurrencyEventId = player.EventCurrencyEventId,
+                EventCurrencyDayKey = player.EventCurrencyDayKey,
+                EventCurrencyEarnedToday = player.EventCurrencyEarnedToday,
                 GuildId = player.GuildId,
                 ActiveGuildWarId = activeGuildWarId,
                 ActiveCrossShardMatchId = activeCrossShardMatchId,
@@ -1515,6 +1523,10 @@ namespace FolkIdle.Server.Domain.Shared
             payload.InitializeObfuscation(GenerateSessionXorKey(playerId, player.LogicEpochCounter));
 
             QuestEngine.ApplyToPayload(ref payload, dailyQuests, QuestEngine.GetUtcDateKey(questLoadEpochSeconds));
+
+            // Last event's pumpkins are not this event's: zero a balance that
+            // belongs to another event or to a shop that has closed.
+            Domain.Progression.SeasonalEventEarning.Normalise(ref payload, questLoadEpochSeconds);
 
             // Modul: halt reasons. The query above deliberately excludes
             // escrowed characters and any character lent out as an Academy
@@ -1975,6 +1987,10 @@ namespace FolkIdle.Server.Domain.Shared
                         player.ActiveFoodExpiresEpoch = state.FoodBuffDurationMs > 0 ? consumableFlushEpoch + state.FoodBuffDurationMs / 1000L : 0L;
                         player.XpPenaltyExpiresEpoch = state.XpPenaltyExpiresEpoch;
                         player.PremiumDiamonds = state.PremiumCurrency;
+                        player.EventCurrency = state.EventCurrency;
+                        player.EventCurrencyEventId = state.EventCurrencyEventId;
+                        player.EventCurrencyDayKey = state.EventCurrencyDayKey;
+                        player.EventCurrencyEarnedToday = state.EventCurrencyEarnedToday;
                         await UpsertChroniclePassAsync(dbContext, state);
                         // Task 79: the shutdown flush counts the tick's income
                         // too. Written only past the epoch sieve above, which

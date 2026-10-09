@@ -99,7 +99,18 @@ namespace FolkIdle.Server.Engine
 
         public long CurrentGold;
         public int PremiumCurrency;
-        
+
+        // Modul: the seasonal event currency (pumpkins for Samhain). Owned by
+        // the live payload like PremiumCurrency: rolled on the tick, spent on
+        // the tick, written by the checkpoint. EventCurrencyEventId stamps
+        // WHICH event the balance belongs to, so a new event starts from zero
+        // instead of inheriting last year's pumpkins. The day pair is the
+        // daily earning cap - see SeasonalEventEarning.
+        public int EventCurrency;
+        public int EventCurrencyEventId;
+        public int EventCurrencyDayKey;
+        public int EventCurrencyEarnedToday;
+
         public long LastCommandTimestamp;
 
         // Gathering mastery

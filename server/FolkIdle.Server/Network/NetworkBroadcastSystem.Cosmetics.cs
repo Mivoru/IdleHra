@@ -37,6 +37,16 @@ namespace FolkIdle.Server.Network
                 return true;
             }
 
+            // The seasonal event: dates, phase and shop. Answers signed out too,
+            // because the login screen wears the event's theme; the Owned flags
+            // need a session. BUYING is the BuyEventShopItem command - the
+            // balance lives on the tick's payload.
+            if (requestPath == "/api/v1/event" && method == "GET")
+            {
+                await HandleSeasonalEvent(context);
+                return true;
+            }
+
             if (requestPath == "/api/v1/great-works" && method == "GET")
             {
                 await HandleGreatWorks(context);
@@ -284,6 +294,65 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Great works error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        private async Task HandleSeasonalEvent(HttpListenerContext context)
+        {
+            try
+            {
+                var (current, phase) = SeasonalEventRegistry.Current(DateTimeOffset.UtcNow);
+                if (current == null)
+                {
+                    await WriteJsonAsync(context, new { Event = (object?)null });
+                    return;
+                }
+
+                HashSet<string> owned = new(StringComparer.Ordinal);
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId > 0)
+                {
+                    using var scope = _serviceProvider.CreateScope();
+                    var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                    owned = await EventShopEngine.OwnedAsync(db, playerId, current.Shop.Select(i => i.Id));
+                }
+
+                await WriteJsonAsync(context, new
+                {
+                    Event = new
+                    {
+                        current.Id,
+                        current.Key,
+                        current.Name,
+                        current.CurrencyName,
+                        StartUtc = current.Start.ToUnixTimeSeconds(),
+                        EndUtc = current.End.ToUnixTimeSeconds(),
+                        ShopCloseUtc = current.ShopClose.ToUnixTimeSeconds(),
+                        Phase = (int)phase,
+                        current.KillChance,
+                        current.GatherChance,
+                        current.OfflineFactor,
+                        Shop = current.Shop.Select((item, index) => new
+                        {
+                            Index = index,
+                            item.Id,
+                            Kind = (int)item.Kind,
+                            item.Name,
+                            item.Price,
+                            item.Art,
+                            Owned = owned.Contains(item.Id),
+                        }),
+                    },
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Seasonal event error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally

@@ -121,6 +121,13 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   60: 'Deposited into the Great Work.',
   61: 'A stage of the Great Work is built! Its bonus is yours for good - it survives a rebirth.',
   62: 'That Great Work is already complete.',
+
+  // Modul: the seasonal event shop. 63 is good news, sent once the purchase is
+  // saved; 66 hands the price back.
+  63: 'Bought! Find it in your Wardrobe.',
+  64: 'The event shop is closed.',
+  65: 'Not enough of the event currency yet.',
+  66: 'You already own that - nothing was spent.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;
@@ -173,6 +180,9 @@ export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
   60,
   61,
   62,
+  // An event shop purchase landed, or was already owned and cost nothing.
+  63,
+  66,
 ]);
 
 /**

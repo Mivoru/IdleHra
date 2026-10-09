@@ -1482,6 +1482,19 @@ export function depositGreatWork(region: number, material: 0 | 1, quantity = 0):
 }
 
 /**
+ * Buy one entry of the seasonal event shop. `index` is the entry's `Index` in
+ * the GET /api/v1/event answer and `eventId` that answer's event - the server
+ * re-reads both, owns the price and the balance, and answers with a command
+ * result (63 bought, 64 closed, 65 short, 66 already owned).
+ */
+export function buyEventShopItem(index: number, eventId: number): CommandOutcome {
+  if (!Number.isInteger(index) || index < 0) return refuse('Pick something to buy.');
+  if (!Number.isInteger(eventId) || eventId < 1) return refuse('The event is over.');
+  connection.send({ Command: CommandType.BuyEventShopItem, TargetId: index, SecondaryId: eventId });
+  return OK;
+}
+
+/**
  * Spend attribute points earned by levelling.
  *
  * The server owns the balance: it re-checks the amount against its own copy and

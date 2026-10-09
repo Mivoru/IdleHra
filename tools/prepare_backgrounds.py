@@ -60,6 +60,11 @@ LOADING_QUALITY = 35
 LOADING = {
     'loadingscreenMobile.jpg': ('portrait', (720, 800, 1080)),
     'loadingscreenWeb.jpg': ('landscape', (1280, 1920)),
+    # Seasonal event art: boot.js swaps the AVIF sources to these while the
+    # device last saw that event live (see eventTheme.ts). No JPEG copies - a
+    # browser without AVIF keeps the ordinary picture.
+    'loadingscreenMobileHalloween.jpg': ('samhain-portrait', (720, 800, 1080)),
+    'loadingscreenWebHalloween.jpg': ('samhain-landscape', (1280, 1920)),
 }
 
 

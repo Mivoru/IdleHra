@@ -484,6 +484,16 @@ namespace FolkIdle.Server.Engine
             return committed ? materialsLostToFullWarehouse : 0L;
         }
 
+        private static void OfflineEventCurrency(ref TickStatePayload payload, Domain.Progression.SeasonalEventEarning.Source source, long actions)
+        {
+            if (actions <= 0) return;
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var (current, _) = Domain.Progression.SeasonalEventRegistry.Current(now);
+            if (current == null) return;
+            Domain.Progression.SeasonalEventEarning.Roll(
+                ref payload, source, (int)Math.Min(actions, int.MaxValue), now, Random.Shared, current.OfflineFactor);
+        }
+
         // Modul: THE LIVE HARVEST, IN EXPECTATION AND IN BULK (offline parity,
         // 2026-09-30). Every term is asked of the function the live tick
         // calls - SimulationEngine.RequiredGatherTicks for the speed,
@@ -538,6 +548,8 @@ namespace FolkIdle.Server.Engine
                 rewardActions += rewardStep;
                 remainingTicks -= step * requiredTicks;
             }
+
+            OfflineEventCurrency(ref payload, Domain.Progression.SeasonalEventEarning.Source.Gather, rewardActions);
 
             LootTableEntry[] lootTable = ContentRegistry.GetLootTable(node.ActivityId).ToArray();
             if (allowedActions <= 0 || lootTable.Length == 0)
@@ -957,6 +969,10 @@ namespace FolkIdle.Server.Engine
                 // kill of the same monster opens nothing new.
                 SimulationEngine.ApplyKillProgression(ref payload, monsterId);
             }
+
+            // Seasonal event currency for the kills made away, at the event's
+            // offline rate (the same as live, owner 2026-10-09).
+            OfflineEventCurrency(ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, totalKills);
 
             if (totalGold > 0)
             {

@@ -261,7 +261,16 @@ namespace FolkIdle.Server.Network
         // server decides everything else: the item, the stage's cost, the clamp
         // to what the stage still needs, and the bonus. See
         // GreatWorksTickCoordinator. Every refusal is a command result.
-        DepositGreatWork = 80
+        DepositGreatWork = 80,
+
+        // Modul: BuyEventShopItem (2026-10-09) buys one entry of the CURRENT
+        // seasonal event's shop. TargetId is the entry's position in the list
+        // GET /api/v1/event answers - the server's own list, read at runtime,
+        // never a client copy - and SecondaryId the event id the screen was
+        // showing, so a page left open across an event rollover cannot buy
+        // from the wrong shop. The server decides the price, the balance and
+        // ownership; every answer is a command result (63-66).
+        BuyEventShopItem = 81
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

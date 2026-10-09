@@ -171,9 +171,10 @@ namespace FolkIdle.Server.Tests
             {
                 Assert.DoesNotContain(CosmeticRegistry.ChestPool(rarity), d => d.Bound);
             }
-            // Ten Ascension frames, plus the five Great Works completion frames (task 84).
+            // Ten Ascension frames, plus the five Great Works completion frames
+            // (task 84). Bound AVATARS (a seasonal event's shop) are not frames.
             Assert.Equal(10, CosmeticRegistry.All.Count(d => d.Bound && d.Id.StartsWith("frame_ascent_")));
-            Assert.Equal(15, CosmeticRegistry.All.Count(d => d.Bound));
+            Assert.Equal(15, CosmeticRegistry.All.Count(d => d.Bound && d.Kind == CosmeticKind.Frame));
 
             // The Deep's titles are untouched by the ladder's.
             Assert.Empty(TitleRegistry.ForDeepFloor(0));

@@ -18,6 +18,24 @@
 (function () {
   var root = document.getElementById('boot');
   if (!root) return;
+  // Modul: THE SEASONAL EVENT'S LOOK BEFORE THE BUNDLE. eventTheme.ts writes
+  // the key the wire last reported; reading it here puts the same data-event
+  // on <html> and the event's loading art up from the first frame. Only AVIF
+  // sources are swapped (the event art has no JPEG copy), and only a known key
+  // - storage is not trusted to name a file. A first visit has no key and sees
+  // the ordinary art, which is also what PageSpeed measures.
+  try {
+    var eventKey = localStorage.getItem('folkidle.eventTheme');
+    if (eventKey === 'samhain') {
+      document.documentElement.setAttribute('data-event', eventKey);
+      var sources = root.querySelectorAll('source[type="image/avif"]');
+      for (var i = 0; i < sources.length; i++) {
+        sources[i].srcset = sources[i].srcset.replace(/\/loading\/(portrait|landscape)-/g, '/loading/' + eventKey + '-$1-');
+      }
+    }
+  } catch (e) {
+    // Blocked storage: the ordinary art.
+  }
   var fill = root.querySelector('.boot-fill');
   var rail = root.querySelector('.boot-rail');
   var bar = root.querySelector('.boot-bar');

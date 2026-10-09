@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.10.0',
+    date: '2026-10-09',
+    sections: [
+      {
+        title: 'Samhain',
+        items: [
+          'Samhain has begun. Every kill and every harvest can drop a pumpkin, while you play and while you are away.',
+          'Tap the pumpkin beside your gold to open the event shop. Eight Samhain avatars are on sale, and pets are coming later in the event.',
+          'The Cailleach stirs. Read her story on the event screen.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.9.0',
     date: '2026-10-09',
     sections: [
