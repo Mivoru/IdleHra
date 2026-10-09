@@ -19,6 +19,16 @@
   const BIG_HIT_RATIO = 1.6;
   const HUGE_HIT_RATIO = 2.5;
 
+  // Modul: A REMOUNT RESUMES, IT DOES NOT REPLAY. Leaving Combat unmounts this
+  // layer; coming back mounted every live number at once, and each started its
+  // animation from frame one - so hits that had landed at different moments
+  // rose together as one stack. A negative delay starts each where it already
+  // was. Read once per number, at mount: the each-block is keyed, so a number
+  // already on screen is not re-rendered when the next one arrives.
+  function age(atMs: number): number {
+    return Math.max(0, performance.timeOrigin + performance.now() - atMs);
+  }
+
   function magnitude(amount: number): 'normal' | 'big' | 'huge' {
     const median = $typicalHit;
     if (median === null || median <= 0) return 'normal';
@@ -36,7 +46,7 @@
       class="hit"
       class:crit={event.isCrit}
       data-size={magnitude(event.amount)}
-      style="left: {8 + event.offset * 78}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms"
+      style="left: {8 + event.offset * 78}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms; animation-delay: -{age(event.atMs)}ms"
     >
       -{formatNumber(event.amount)}
     </span>

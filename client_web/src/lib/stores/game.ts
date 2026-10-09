@@ -1109,7 +1109,14 @@ export function startSession(token: string): void {
         Number(packet.Amount),
         (Number(packet.Flags) & CombatEventFlag.Crit) !== 0,
         Number(get(playerState)?.EquippedWeaponKind ?? 0),
-        connection.serverNowMs(),
+        // Modul: THE CLOCK pump() PRUNES WITH, not serverNowMs(). The two
+        // disagree by the server offset AND by every second the phone slept,
+        // because performance.now() pauses in sleep on Android. Stamped by one
+        // and expired by the other, a number lived for minutes instead of a
+        // second: invisible on Combat (its animation had ended) but still in
+        // the DOM, so they piled up, and every return to Combat remounted the
+        // pile and replayed it as one stack of overlapping text and a stutter.
+        performance.timeOrigin + performance.now(),
       );
       if (hit === null) return;
 
