@@ -318,7 +318,7 @@ export class GameConnection {
 
       const outcome = interpretClose(event.code, event.reason ?? '');
       if (!outcome.reconnect) {
-        // Nothing to retry - App.svelte watches for this phase and hands the
+        // Nothing to retry - Game.svelte watches for this phase and hands the
         // player the login form instead of a spinner counting attempts.
         this.report(outcome.phase, outcome.detail);
         return;

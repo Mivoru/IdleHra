@@ -141,7 +141,7 @@ describe('when the panel appears at all', () => {
   });
 
   it('leaves a rejected token to the login form', () => {
-    // 'signedout' is the one failure a retry cannot fix. App.svelte turns it
+    // 'signedout' is the one failure a retry cannot fix. Game.svelte turns it
     // into the login screen, and a panel offering "try again" on top of that
     // would be offering an action that cannot work.
     expect(shouldShowConnectionPanel('signedout', 60_000)).toBe(false);

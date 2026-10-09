@@ -1064,7 +1064,7 @@ await go('Market');
 // reorganised on 2026-08-10 and this script was not updated with it, so every
 // run since then died here - which is how the one verification that proves
 // gameplay works went three weeks without being run. If a go() target ever
-// times out, check App.svelte's labels before suspecting the screen.
+// times out, check Game.svelte's labels before suspecting the screen.
 await go('Community');
 {
   const text = await page.evaluate(() => document.body.innerText);

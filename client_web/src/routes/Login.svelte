@@ -20,7 +20,7 @@
     promoSeen,
     shouldOfferApp,
   } from '../lib/net/appDownload';
-  import { backgroundUrl } from '../lib/ui/sprites';
+  import { backgroundUrl } from '../lib/ui/spriteUrl';
 
   // Modul: a misconfigured native build fails as a connection timeout, which
   // reads like the server being down. Said plainly here instead - this is the
