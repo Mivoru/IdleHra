@@ -41,9 +41,25 @@ BUTTONS = {
 # LCP of the first page a stranger loads; main_hub at 1920 wide is 446 KB for
 # a box ~300 CSS px wide, and finished 4 s after the form on a throttled phone.
 # (source, name, width, box aspect w/h, vertical focus 0..1 = the CSS
-# background-position y it replaces). Quality 78: a 300 px box hides it.
+# background-position y it replaces, WebP quality).
+# Quality 55: PageSpeed still flagged 23 KiB of compression on the q78 cut, and
+# the box is ~300 CSS px - crop against crop, q55 shows no difference there.
+# A new quality is a new file name: /sprites/* is served immutable.
 STRIPS = {
-    'main_bg.png': ('login_valley', 800, 1920 / 760, 0.60),
+    'main_bg.png': ('login_valley_q55', 800, 1920 / 760, 0.60, 55),
+}
+
+# Modul: THE LOADING SCREEN ART, client_web/public/loading/*.avif. On a phone
+# this picture shares the first seconds of bandwidth with the bundle and the
+# login painting (the real LCP), so every KiB of it delays the page a stranger
+# judges. Quality 35: half the bytes of q50, and crop against crop at 1:1 the
+# title lettering and faces read the same. The JPEGs beside them are the
+# fallback and og:image and are not written here.
+LOADING_DST = pathlib.Path('client_web/public/loading')
+LOADING_QUALITY = 35
+LOADING = {
+    'loadingscreenMobile.jpg': ('portrait', (720, 800, 1080)),
+    'loadingscreenWeb.jpg': ('landscape', (1280, 1920)),
 }
 
 
@@ -57,15 +73,30 @@ def strip(image: Image.Image, width: int, aspect: float, focus: float) -> Image.
 
 def write_strips() -> None:
     print('strips:')
-    for source, (name, width, aspect, focus) in STRIPS.items():
+    for source, (name, width, aspect, focus, quality) in STRIPS.items():
         path = SRC / source
         if not path.exists():
             print(f'  MISSING {source}')
             continue
         image = strip(Image.open(path).convert('RGB'), width, aspect, focus)
         out = DST / f'{name}.webp'
-        image.save(out, 'WEBP', quality=78, method=6)
+        image.save(out, 'WEBP', quality=quality, method=6)
         print(f'  {name:18s} {image.width}x{image.height}  {out.stat().st_size // 1024} KB')
+
+
+def write_loading() -> None:
+    print('loading art:')
+    for source, (name, widths) in LOADING.items():
+        path = SRC / source
+        if not path.exists():
+            print(f'  MISSING {source}')
+            continue
+        master = Image.open(path).convert('RGB')
+        for width in widths:
+            image = master.resize((width, round(master.height * width / master.width)), Image.LANCZOS)
+            out = LOADING_DST / f'{name}-{width}.avif'
+            image.save(out, 'AVIF', quality=LOADING_QUALITY, speed=0)
+            print(f'  {out.name:22s} {image.width}x{image.height}  {out.stat().st_size // 1024} KB')
 
 
 def write(image: Image.Image, name: str, width: int) -> None:
@@ -98,6 +129,7 @@ def main() -> None:
         write(image, name, width)
 
     write_strips()
+    write_loading()
 
 
 def crop_to_plate(image: Image.Image) -> Image.Image:
