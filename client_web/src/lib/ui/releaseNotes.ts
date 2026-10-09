@@ -35,6 +35,26 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.8.0',
+    date: '2026-10-09',
+    headline: 'Titles you can see.',
+    sections: [
+      {
+        title: 'Titles',
+        items: [
+          'The title you wear now shows next to your name in chat, on the leaderboards, in your guild and on your profile, each in its own colour.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'The chest cellar on a phone shows the tall painting instead of a squashed wide one.',
+          'Your profile shows the three characters in your roster, not a character you swapped out.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-10-08',
     headline: 'Opening a chest is an event now.',

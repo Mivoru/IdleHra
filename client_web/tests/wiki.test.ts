@@ -368,7 +368,7 @@ describe('the tables the wiki restates still match the server', () => {
     expect(DEEP_RECORD_DIAMONDS).toBe(num(delve, /DeepRecordDiamonds = (\d+);/, 'deep record diamonds'));
     expect(DELVE_WEEKLY_DIAMOND_CEILING).toBe(num(delve, /MaxDiamondsPerWeek = (\d+);/, 'weekly diamond ceiling'));
 
-    const floors = [...titles.matchAll(/new TitleDefinition\("[a-z0-9_]+", "[^"]+", (\d+)\)/g)]
+    const floors = [...titles.matchAll(/new TitleDefinition\("[a-z0-9_]+", "[^"]+", (\d+), "#[0-9a-f]{6}"\)/g)]
       .map((m) => Number(m[1]))
       .filter((f) => f > 0);
     expect([...DEEP_TITLE_FLOORS]).toEqual(floors);

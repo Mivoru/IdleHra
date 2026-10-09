@@ -1,6 +1,9 @@
 <script lang="ts">
   import { formatNumber } from '../lib/ui/format';
   import Money from '../lib/ui/Money.svelte';
+  import TitleChip from '../lib/ui/TitleChip.svelte';
+  import { forgetWorn } from '../lib/stores/worn';
+  import { connection } from '../lib/net/connection';
   // Modul: the mailbox. Absent from this client entirely until the 2026-08-02
   // protocol audit - which mattered more than a missing screen usually does,
   // because mail is how the server delivers things it could not put straight
@@ -36,7 +39,9 @@
     const outcome = commandInFlight.run(mailKey(entry.Id), () => claimMailItem(entry.Id));
     if (outcome === null) return;
     if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
-
+    // A gifted title is worn on claim; drop our own cached look once the
+    // claim has landed so the new chip shows without waiting out the cache.
+    if (entry.TitleAttachment) setTimeout(() => forgetWorn(connection.currentPlayerId), 1500);
   }
 
   function claimAll() {
@@ -123,11 +128,17 @@
                   <span class="qty">x{formatNumber(entry.Quantity)}</span>
                 {/if}
               {:else}
-                <span class="name">Gold delivery</span>
+                <span class="name">{entry.DiamondAttachment > 0 || entry.TitleAttachment ? 'Gift' : 'Gold delivery'}</span>
               {/if}
 
               {#if entry.GoldAttachment > 0}
                 <span class="gold"><Money amount={Number(entry.GoldAttachment)} signed /></span>
+              {/if}
+              {#if entry.DiamondAttachment > 0}
+                <span class="gold"><Money amount={Number(entry.DiamondAttachment)} kind="diamond" signed /></span>
+              {/if}
+              {#if entry.TitleAttachment}
+                <span class="tiny">Title <TitleChip name={entry.TitleAttachment} color={entry.TitleAttachmentColor} /></span>
               {/if}
             </div>
 

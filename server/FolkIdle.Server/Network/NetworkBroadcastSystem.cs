@@ -4957,6 +4957,10 @@ namespace FolkIdle.Server.Network
             public int QualityTier { get; set; }
             public int Quantity { get; set; }
             public long GoldAttachment { get; set; }
+            public int DiamondAttachment { get; set; }
+            /// <summary>The attached title's display name, resolved here - the client keeps no title list.</summary>
+            public string? TitleAttachment { get; set; }
+            public string? TitleAttachmentColor { get; set; }
             public bool HasEquipmentAttachment { get; set; }
             public string? SenderName { get; set; }
             public string? MessageText { get; set; }
@@ -4996,12 +5000,21 @@ namespace FolkIdle.Server.Network
                         QualityTier = m.QualityTier,
                         Quantity = m.Quantity,
                         GoldAttachment = m.GoldAttachment,
+                        DiamondAttachment = m.DiamondAttachment,
+                        TitleAttachment = m.TitleAttachment,
                         HasEquipmentAttachment = m.AttachedEquipmentId.HasValue,
                         SenderName = m.SenderName,
                         MessageText = m.MessageText,
                         ReceivedTimestamp = m.ReceivedTimestamp
                     })
                     .ToListAsync();
+
+                foreach (var entry in entries)
+                {
+                    var title = FolkIdle.Server.Domain.Progression.TitleRegistry.Find(entry.TitleAttachment);
+                    entry.TitleAttachment = title?.DisplayName;
+                    entry.TitleAttachmentColor = title?.Color;
+                }
 
                 await transaction.CommitAsync();
 
@@ -12863,62 +12876,79 @@ namespace FolkIdle.Server.Network
                 {
                     string body = await ReadBodyAsync(context);
                     var req = JsonSerializer.Deserialize<AdminMailRequest>(body);
-                    if (req != null)
+                    if (req == null
+                        || req.Diamonds < 0 || req.Gold < 0
+                        || (!string.IsNullOrEmpty(req.TitleSlug) && FolkIdle.Server.Domain.Progression.TitleRegistry.Find(req.TitleSlug) == null))
                     {
-                        var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                        
-                        if (!string.IsNullOrEmpty(req.TargetUsername))
-                        {
-                            var target = await db.PlayerRecords.FirstOrDefaultAsync(p => p.Username != null && p.Username.ToLower() == req.TargetUsername.ToLower());
-                            if (target != null)
-                            {
-                                var mail = new FolkIdle.Server.Models.MailboxInstance
-                                {
-                                    PlayerId = target.Id,
-                                    BaseItemId = req.BaseItemId ?? string.Empty,
-                                    QualityTier = req.QualityTier,
-                                    Quantity = req.Quantity,
-                                    GoldAttachment = req.Gold,
-                                    SenderName = req.SenderName,
-                                    MessageText = req.MessageText,
-                                    ReceivedTimestamp = now
-                                };
-                                db.MailboxInstances.Add(mail);
-                                await db.SaveChangesAsync();
-                            }
-                            else
-                            {
-                                context.Response.StatusCode = 404;
-                                return;
-                            }
-                        }
-                        else
-                        {
-                            // Send to all players
-                            var allPlayerIds = await db.PlayerRecords.Select(p => p.Id).ToListAsync();
-                            var mails = new System.Collections.Generic.List<FolkIdle.Server.Models.MailboxInstance>();
-                            foreach (var pId in allPlayerIds)
-                            {
-                                mails.Add(new FolkIdle.Server.Models.MailboxInstance
-                                {
-                                    PlayerId = pId,
-                                    BaseItemId = req.BaseItemId ?? string.Empty,
-                                    QualityTier = req.QualityTier,
-                                    Quantity = req.Quantity,
-                                    GoldAttachment = req.Gold,
-                                    SenderName = req.SenderName,
-                                    MessageText = req.MessageText,
-                                    ReceivedTimestamp = now
-                                });
-                            }
-                            db.MailboxInstances.AddRange(mails);
-                            await db.SaveChangesAsync();
-                        }
-
-                        context.Response.StatusCode = 200;
+                        context.Response.StatusCode = 400;
                         return;
                     }
-                    context.Response.StatusCode = 400;
+
+                    var now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+                    // Modul: SEVERAL NAMES, comma-separated (2026-10-09), so a
+                    // gift to three testers is one send - and an empty name is
+                    // still "everyone", which is why a mail carrying diamonds or
+                    // a title must NAME its recipients: a slip of the field must
+                    // not hand every guest on the server a title.
+                    var names = (req.TargetUsername ?? string.Empty)
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(n => n.ToLowerInvariant())
+                        .Distinct()
+                        .ToList();
+                    if (names.Count == 0 && (req.Diamonds > 0 || !string.IsNullOrEmpty(req.TitleSlug)))
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+
+                    var targets = names.Count == 0
+                        ? await db.PlayerRecords.Select(p => new { p.Id, p.Username, p.Email }).ToListAsync()
+                        : await db.PlayerRecords
+                            .Where(p => p.Username != null && names.Contains(p.Username.ToLower()))
+                            .Select(p => new { p.Id, p.Username, p.Email })
+                            .ToListAsync();
+                    if (names.Count > 0 && targets.Count != names.Count)
+                    {
+                        // A misspelt name sends nothing, rather than a gift to some.
+                        context.Response.StatusCode = 404;
+                        return;
+                    }
+
+                    db.MailboxInstances.AddRange(targets.Select(t => new FolkIdle.Server.Models.MailboxInstance
+                    {
+                        PlayerId = t.Id,
+                        BaseItemId = req.BaseItemId ?? string.Empty,
+                        QualityTier = req.QualityTier,
+                        Quantity = req.Quantity,
+                        GoldAttachment = req.Gold,
+                        DiamondAttachment = req.Diamonds,
+                        TitleAttachment = string.IsNullOrEmpty(req.TitleSlug) ? null : req.TitleSlug,
+                        SenderName = req.SenderName,
+                        MessageText = req.MessageText,
+                        ReceivedTimestamp = now
+                    }));
+                    await db.SaveChangesAsync();
+
+                    // Modul: the wrapper is CZECH on purpose (owner, 2026-10-09):
+                    // the testers are Czech and the owner writes the message in
+                    // Czech, so an English greeting around it read as mixed.
+                    // The same message by email, to the named recipients that
+                    // have an address. Never to "everyone": that is a newsletter,
+                    // and it needs consent this endpoint does not check.
+                    int emailed = 0;
+                    if (req.SendEmail && names.Count > 0 && !string.IsNullOrWhiteSpace(req.MessageText))
+                    {
+                        var sender = _serviceProvider.GetRequiredService<Engine.IEmailSender>();
+                        string subject = string.IsNullOrWhiteSpace(req.EmailSubject) ? "Zpráva z FolkIdle" : req.EmailSubject!;
+                        foreach (var t in targets.Where(t => !string.IsNullOrWhiteSpace(t.Email)))
+                        {
+                            string text = $"Ahoj {t.Username},\n\n{req.MessageText}\n\nOdměnu najdeš v ingame mailboxu.\n\nhttps://folkidle.duckdns.org";
+                            if (await sender.SendAsync(t.Email!, subject, text)) emailed++;
+                        }
+                    }
+
+                    await WriteJsonAsync(context, new { Mailed = targets.Count, Emailed = emailed });
                     return;
                 }
 
@@ -12942,8 +12972,12 @@ namespace FolkIdle.Server.Network
             public int QualityTier { get; set; }
             public int Quantity { get; set; }
             public long Gold { get; set; }
+            public int Diamonds { get; set; }
+            public string? TitleSlug { get; set; }
             public string? SenderName { get; set; }
             public string? MessageText { get; set; }
+            public bool SendEmail { get; set; }
+            public string? EmailSubject { get; set; }
         }
             private async Task HandleGuildDepot(HttpListenerContext context)
         {

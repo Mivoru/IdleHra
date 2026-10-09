@@ -65,7 +65,7 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task TheProfileShowsTheMainCharacterAndOnlyTheDressedOthers()
+        public async Task TheProfileShowsTheRosterInSlotOrder()
         {
             const long id = 986100001L;
             var main = await SeedPlayerAsync(id, "profile_main");
@@ -73,11 +73,15 @@ namespace FolkIdle.Server.Tests
             await WearAsync(id, main, "copper_ring", EquipmentSlotEngine.SlotRing);
             await WearAsync(id, main, "birch_fishing_rod_1", EquipmentSlotEngine.SlotRod);
 
-            // A household: one gatherer holding an axe, and many bare children.
+            // A household: a gatherer in roster slot 2, a bare fighter in slot 1,
+            // a dressed villager off the roster, and many bare children.
             var gatherer = Guid.NewGuid();
+            var benched = Guid.NewGuid();
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                db.CharacterRecords.Add(new CharacterRecord { Id = gatherer, PlayerId = id, Name = "Woody", SlotIndex = 3, AgePhase = 1, ActiveActivityId = 1001 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = gatherer, PlayerId = id, Name = "Woody", SlotIndex = 2, AgePhase = 1, ActiveActivityId = 1001 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = Guid.NewGuid(), PlayerId = id, Name = "Bare", SlotIndex = 1, AgePhase = 1 });
+                db.CharacterRecords.Add(new CharacterRecord { Id = benched, PlayerId = id, Name = "Benched", SlotIndex = 3, AgePhase = 1 });
                 for (int i = 0; i < 20; i++)
                 {
                     db.CharacterRecords.Add(new CharacterRecord { Id = Guid.NewGuid(), PlayerId = id, Name = $"Child{i}", SlotIndex = 10 + i, AgePhase = 0 });
@@ -88,6 +92,7 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
             await WearAsync(id, gatherer, "birch_axe_1", EquipmentSlotEngine.SlotAxe);
+            await WearAsync(id, benched, "birch_axe_1", EquipmentSlotEngine.SlotAxe);
 
             await using var read = await _fixture.DbContextFactory.CreateDbContextAsync();
             var view = await PublicProfiles.BuildProfileAsync(read, id, other => other == id);
@@ -98,19 +103,19 @@ namespace FolkIdle.Server.Tests
             Assert.True(view.IsOnline);
             Assert.Null(view.Guild);
 
-            // The main character first, then the one other who wears something;
-            // the twenty bare children are not on the profile at all.
-            Assert.Equal(2, view.Characters.Count);
+            // Exactly the three roster slots, bare or not; the dressed villager
+            // off the roster is only counted.
+            Assert.Equal(new[] { "Main", "Bare", "Woody" }, view.Characters.Select(c => c.Name).ToArray());
             Assert.True(view.Characters[0].IsMain);
             Assert.Equal("Fighting", view.Characters[0].Activity);
-            Assert.Equal("Woody", view.Characters[1].Name);
-            Assert.Equal("Woodcutting", view.Characters[1].Activity);
-            Assert.Equal(0, view.MoreEquippedCharacters);
+            Assert.Empty(view.Characters[1].Worn);
+            Assert.Equal("Woodcutting", view.Characters[2].Activity);
+            Assert.Equal(1, view.MoreEquippedCharacters);
 
             // Combat slots AND tool slots, in slot order.
             Assert.Equal(new[] { EquipmentSlotEngine.SlotWeapon, EquipmentSlotEngine.SlotRing, EquipmentSlotEngine.SlotRod },
                 view.Characters[0].Worn.Select(p => p.SlotIndex).ToArray());
-            Assert.Equal(EquipmentSlotEngine.SlotAxe, view.Characters[1].Worn.Single().SlotIndex);
+            Assert.Equal(EquipmentSlotEngine.SlotAxe, view.Characters[2].Worn.Single().SlotIndex);
 
             // Affixes parse, and the lock flag is not mistaken for one.
             var sword = view.Characters[0].Worn[0];
@@ -127,29 +132,29 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task ExtraDressedCharactersAreCappedAndCounted()
+        public async Task AFounderSwappedOffTheRosterIsNotShown()
         {
+            // The reported case: the account's first character moved out of the
+            // three slots must not keep leading the profile.
             const long id = 986100002L;
-            var main = await SeedPlayerAsync(id, "profile_many");
-            for (int i = 0; i < PublicProfiles.MaxExtraCharacters + 3; i++)
+            var founder = await SeedPlayerAsync(id, "profile_swapped");
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                var c = Guid.NewGuid();
-                await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+                var f = await db.CharacterRecords.SingleAsync(c => c.Id == founder);
+                f.SlotIndex = 7;
+                for (int i = 0; i < 3; i++)
                 {
-                    db.CharacterRecords.Add(new CharacterRecord { Id = c, PlayerId = id, Name = $"G{i}", SlotIndex = 1 + i, AgePhase = 1 });
-                    await db.SaveChangesAsync();
+                    db.CharacterRecords.Add(new CharacterRecord { Id = Guid.NewGuid(), PlayerId = id, Name = $"R{i}", SlotIndex = i, AgePhase = 1 });
                 }
-                await WearAsync(id, c, "birch_axe_1", EquipmentSlotEngine.SlotAxe);
+                await db.SaveChangesAsync();
             }
 
             await using var read = await _fixture.DbContextFactory.CreateDbContextAsync();
             var view = await PublicProfiles.BuildProfileAsync(read, id, _ => false);
 
-            // The main character is shown even when it wears nothing.
-            Assert.True(view!.Characters[0].IsMain);
-            Assert.Empty(view.Characters[0].Worn);
-            Assert.Equal(1 + PublicProfiles.MaxExtraCharacters, view.Characters.Count);
-            Assert.Equal(3, view.MoreEquippedCharacters);
+            Assert.Equal(new[] { "R0", "R1", "R2" }, view!.Characters.Select(c => c.Name).ToArray());
+            Assert.DoesNotContain(view.Characters, c => c.IsMain);
+            Assert.Equal(0, view.MoreEquippedCharacters);
         }
 
         [Fact]

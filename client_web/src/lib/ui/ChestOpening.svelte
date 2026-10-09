@@ -355,19 +355,6 @@
     animation: stage-in 220ms ease-out;
   }
 
-  @media (orientation: portrait) {
-    .chest-stage {
-      --art-ratio: 0.5581; /* 1536 x 2752 */
-      --floor: 73%;
-      /* Capped by the window: a portrait tablet crops the painting's sides
-         and blows it up, and the chest with it. */
-      --chest-h: min(68%, 64dvh);
-    }
-    .scene {
-      background-image: var(--portrait);
-    }
-  }
-
   .scene {
     position: absolute;
     left: 50%;
@@ -376,6 +363,23 @@
     height: max(100dvh, calc(100vw / var(--art-ratio)));
     transform: translate(-50%, -50%);
     background: var(--landscape) center / 100% 100% no-repeat;
+  }
+
+  /* Modul: this block MUST stay below the `.scene` rule. Same specificity,
+     so whichever comes later wins - and the `background` shorthand above
+     resets background-image. Placed first, phones got the LANDSCAPE painting
+     squeezed into the portrait box (2026-10-09, reported from the APK). */
+  @media (orientation: portrait) {
+    .chest-stage {
+      --art-ratio: 0.5581; /* 1080 x 1935 */
+      --floor: 73%;
+      /* Capped by the window: a portrait tablet crops the painting's sides
+         and blows it up, and the chest with it. */
+      --chest-h: min(68%, 64dvh);
+    }
+    .scene {
+      background-image: var(--portrait);
+    }
   }
 
   /* A soft dark rim, so the text at the top and the card at the bottom read

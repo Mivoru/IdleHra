@@ -33,8 +33,11 @@ namespace FolkIdle.Server.Domain.Progression
     public sealed record OpenedCosmetic(long Id, string DefinitionId, byte Kind, byte Rarity, string Name);
 
     /// <summary>What another player wears, for chat and lists. Race and sex
-    /// pick the default portrait when no avatar is worn.</summary>
-    public sealed record WornCosmetics(long PlayerId, string? AvatarId, string? FrameId, int RaceId, bool IsFemale);
+    /// pick the default portrait when no avatar is worn. The worn title rides
+    /// here too - it is shown on exactly the rows that show the portrait, so
+    /// one batched lookup serves both.</summary>
+    public sealed record WornCosmetics(long PlayerId, string? AvatarId, string? FrameId, int RaceId, bool IsFemale,
+        string? Title, string? TitleColor);
 
     /// <summary>
     /// Task 54: owning, opening and wearing cosmetics. See CosmeticRegistry for
@@ -234,7 +237,7 @@ namespace FolkIdle.Server.Domain.Progression
 
             var players = await db.PlayerRecords.AsNoTracking()
                 .Where(p => playerIds.Contains(p.Id))
-                .Select(p => new { p.Id, p.EquippedAvatarId, p.EquippedFrameId })
+                .Select(p => new { p.Id, p.EquippedAvatarId, p.EquippedFrameId, p.ActiveTitleSlug })
                 .ToListAsync();
 
             // The default portrait is the MAIN character's - SlotIndex 0, the
@@ -250,12 +253,15 @@ namespace FolkIdle.Server.Domain.Progression
             return players.Select(p =>
             {
                 mainByPlayer.TryGetValue(p.Id, out var main);
+                var title = TitleRegistry.Find(p.ActiveTitleSlug);
                 return new WornCosmetics(
                     p.Id,
                     CosmeticRegistry.Find(p.EquippedAvatarId)?.Id,
                     CosmeticRegistry.Find(p.EquippedFrameId)?.Id,
                     main == null ? 0 : (int)(main.Vector & 0xFF),
-                    main?.IsFemale ?? false);
+                    main?.IsFemale ?? false,
+                    title?.DisplayName,
+                    title?.Color);
             }).ToList();
         }
     }

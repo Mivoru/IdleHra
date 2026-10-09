@@ -18,6 +18,11 @@ namespace FolkIdle.Server.Models
         public bool IsClaimed { get; set; }
         public bool IsPending { get; set; }
         public long GoldAttachment { get; set; }
+        /// <summary>Premium diamonds credited on claim. Only the admin mail sends them.</summary>
+        public int DiamondAttachment { get; set; }
+        /// <summary>A TitleRegistry slug granted - and worn - on claim. Only the admin mail sends one.</summary>
+        [MaxLength(32)]
+        public string? TitleAttachment { get; set; }
         public long? AttachedEquipmentId { get; set; }
         public string? SenderName { get; set; }
         public string? MessageText { get; set; }

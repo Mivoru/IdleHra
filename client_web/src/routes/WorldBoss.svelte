@@ -2,6 +2,7 @@
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import { formatWhen, minuteClock } from '../lib/ui/when';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
+  import PlayerTitle from '../lib/ui/PlayerTitle.svelte';
   import { profileLink } from '../lib/ui/profileLink';
   // Modul: the world boss. A server-wide encounter that scales with how many
   // accounts are online and their combined race mastery, so its health bar is
@@ -538,7 +539,7 @@
           {#each board.Top.slice(0, 10) as row (row.PlayerId)}
             <li class:me={row.PlayerId === board.Me?.PlayerId}>
               <span class="rank">{row.Rank}</span>
-              <span class="who"><PlayerAvatar playerId={row.PlayerId} size="sm" /> <button class="name-link" use:profileLink={{ playerId: row.PlayerId, name: row.Name }}>{row.Name}</button>{#if row.Title}<span class="dim tiny"> · {row.Title}</span>{/if}</span>
+              <span class="who"><PlayerAvatar playerId={row.PlayerId} size="sm" /> <button class="name-link" use:profileLink={{ playerId: row.PlayerId, name: row.Name }}>{row.Name}</button><PlayerTitle playerId={row.PlayerId} /></span>
               <span class="dmg" title={numberTitle(row.Damage)}>{formatNumber(row.Damage)}</span>
             </li>
           {/each}

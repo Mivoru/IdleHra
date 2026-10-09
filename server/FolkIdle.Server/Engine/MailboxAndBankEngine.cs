@@ -166,6 +166,7 @@ namespace FolkIdle.Server.Engine
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
             using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+            int? diamondBalance = null;
             try
             {
                 var mailQuery = "SELECT * FROM \"MailboxInstances\" WHERE \"Id\" = {0} FOR UPDATE";
@@ -205,6 +206,28 @@ namespace FolkIdle.Server.Engine
                         await GoldLedger.RecordIncomeAsync(db, mail.PlayerId, GoldIncomeSource.Mail, mail.GoldAttachment);
                     }
 
+                    // Modul: diamonds and a title, sent only by the admin mail
+                    // (the 2026-10-09 betatester thank-you). The title is worn
+                    // at once: a gift nobody sees is no gift, and a level-1
+                    // tester cannot reach the Delve's title picker yet.
+                    if (mail.DiamondAttachment > 0 || !string.IsNullOrEmpty(mail.TitleAttachment))
+                    {
+                        var player = await db.PlayerRecords.SingleOrDefaultAsync(p => p.Id == mail.PlayerId);
+                        if (player != null)
+                        {
+                            if (mail.DiamondAttachment > 0)
+                            {
+                                player.PremiumDiamonds += mail.DiamondAttachment;
+                            }
+                            if (FolkIdle.Server.Domain.Progression.TitleRegistry.Find(mail.TitleAttachment) != null)
+                            {
+                                await FolkIdle.Server.Domain.Progression.TitleEngine.GrantAsync(db, mail.PlayerId, mail.TitleAttachment!, DateTime.UtcNow);
+                                player.ActiveTitleSlug = mail.TitleAttachment;
+                            }
+                            diamondBalance = mail.DiamondAttachment > 0 ? player.PremiumDiamonds : null;
+                        }
+                    }
+
                     // Modul: this path never told the live session anything -
                     // isSuccess is hardcoded true at this method's one call
                     // site, so a claim always lands here, and Mailbox.svelte's
@@ -221,6 +244,19 @@ namespace FolkIdle.Server.Engine
 
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
+
+                // Modul: the live payload owns PremiumCurrency and the checkpoint
+                // writes it back by plain assignment, so a DB-only credit would be
+                // overwritten by the next flush (the 2026-08-02 achievement bug).
+                // Hand the committed balance to the tick thread instead.
+                if (diamondBalance.HasValue)
+                {
+                    _playerRegistry.BillingSyncQueue.Enqueue(new BillingSyncNotification
+                    {
+                        PlayerId = mail.PlayerId,
+                        PremiumDiamondsBalance = diamondBalance.Value
+                    });
+                }
 
                 // Claiming mail can put an equipment instance in the backpack,
                 // so the live count has to learn about it.
