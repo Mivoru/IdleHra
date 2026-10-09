@@ -96,7 +96,7 @@ namespace FolkIdle.Server.Domain.Progression
                 CurrencyName: "Pumpkins",
                 // Owner, 2026-10-09: live as soon as it is deployed, so it can
                 // be tested on production; ends after Samhain itself (Nov 1).
-                Start: new DateTimeOffset(2026, 10, 10, 0, 0, 0, TimeSpan.Zero),
+                Start: new DateTimeOffset(2026, 10, 9, 0, 0, 0, TimeSpan.Zero),
                 End: new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero),
                 GraceDays: 3,
                 KillChance: 0.05,
