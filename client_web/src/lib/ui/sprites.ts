@@ -105,6 +105,9 @@ export function initialsFor(displayName: string): string {
  */
 export function avatarIcon(art: string | null | undefined): string | null {
   if (!art) return null;
+  // A seasonal event's avatar carries its sprite PATH (it has a slash; a
+  // monster's name never does) - CosmeticRegistry builds it from the shop.
+  if (art.includes('/')) return spriteUrl(art);
   const suffix = `/${art}.webp`;
   for (const path of Object.values(MONSTER_ICONS)) {
     if (path.endsWith(suffix)) return spriteUrl(path);

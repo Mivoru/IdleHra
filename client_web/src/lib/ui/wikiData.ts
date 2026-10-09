@@ -584,6 +584,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Login', label: 'Sign in', status: 'no-page-needed', note: 'Happens before the game; nothing about it is a rule a player can play around.' },
   { screen: 'Settings', label: 'Settings', status: 'no-page-needed', note: 'Volume, theme and account options. Every control says what it does on the screen.' },
   { screen: 'Wiki', label: 'Wiki', status: 'no-page-needed', note: 'This. A wiki page about the wiki would be a table of contents for the table of contents.' },
+  { screen: 'EventShop', label: 'Event', status: 'no-page-needed', note: 'Exists only while a seasonal event runs, and states its own rates, cap, prices and end date from the server - a wiki page would be a stale copy of a calendar.' },
 
   { screen: 'Combat', label: 'Combat', status: 'documented', tab: 'combat', note: 'Attributes, the damage model, auto-eat, death and halt reasons.' },
   { screen: 'Larder', label: 'Auto-Eat', status: 'documented', tab: 'combat', note: 'Auto-eat and what counts as food.' },

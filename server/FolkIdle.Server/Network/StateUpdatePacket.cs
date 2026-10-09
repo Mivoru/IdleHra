@@ -323,7 +323,17 @@ namespace FolkIdle.Server.Network
         // tasks 83 and 85, which number their codes independently.
         GreatWorkDeposited = 60,
         GreatWorkStageBuilt = 61,
-        GreatWorkComplete = 62
+        GreatWorkComplete = 62,
+
+        // Modul: THE SEASONAL EVENT SHOP (2026-10-09). 63 the item is yours
+        // (sent by the worker AFTER the row is saved), 64 the shop is closed,
+        // 65 not enough of the event currency, 66 you already own it - the
+        // currency is refunded. A failed save answers CheckpointFailed (44),
+        // also refunded.
+        EventShopBought = 63,
+        EventShopClosed = 64,
+        EventShopInsufficient = 65,
+        EventShopAlreadyOwned = 66
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]
@@ -986,6 +996,16 @@ namespace FolkIdle.Server.Network
         public int Slot3MonsterMaxHp;
         public ushort Slot3WorkProgressTicks;
         public ushort Slot3WorkRequiredTicks;
+
+        // Modul: the seasonal event, 855 -> 863 (2026-10-09). The currency
+        // balance moves on a kill at 10Hz, so it rides the stream like Gold;
+        // EarnedToday lets the chip say "312 / 400 today" without a poll.
+        // Id 0 = no event; Phase is SeasonalEventPhase (1 live, 2 shop-only
+        // grace). Id and Phase come from the calendar, not the row.
+        public uint EventCurrency;
+        public ushort EventCurrencyEarnedToday;
+        public byte SeasonalEventId;
+        public byte SeasonalEventPhase;
 
         // Modul: Production Release Hardening, Part 2. ClaimedMilestonesBitmask,
         // ActiveChroniclePassLevel, AccumulatedSeasonalXp,

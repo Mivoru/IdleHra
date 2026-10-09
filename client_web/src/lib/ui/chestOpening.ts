@@ -36,6 +36,20 @@ export const CHEST_IDLE_IMAGE = '/chest/idle.webp';
 export const CHEST_BACKGROUND = { landscape: '/chest/bg-pc.jpg', portrait: '/chest/bg-mobile.jpg' } as const;
 
 /**
+ * The chest stage's painting for the seasonal event that is on, if it has one
+ * (owner, 2026-10-09: the event's version replaces the ordinary one while the
+ * event runs). Keyed on the `data-event` attribute eventTheme.ts puts on
+ * <html> from the wire, so the server's calendar decides, not this file.
+ */
+const EVENT_CHEST_BACKGROUNDS: Record<string, { landscape: string; portrait: string }> = {
+  samhain: { landscape: '/chest/bg-pc-samhain.jpg', portrait: '/chest/bg-mobile-samhain.jpg' },
+};
+
+export function chestBackground(eventKey: string | undefined | null): { landscape: string; portrait: string } {
+  return (eventKey && EVENT_CHEST_BACKGROUNDS[eventKey]) || CHEST_BACKGROUND;
+}
+
+/**
  * Which encoding this browser should get. WebKit decodes VP9 in recent
  * versions but ignores its alpha plane - it would draw the black box - so a
  * WebKit browser that is not Chromium gets the MP4 even when it could play

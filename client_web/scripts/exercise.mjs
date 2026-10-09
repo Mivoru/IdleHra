@@ -3390,6 +3390,68 @@ await go('The Delve');
   }
 }
 
+// --- the seasonal event shop (Samhain, 2026-10-09) ----------------------------
+// The output side: the header chip shows the wire's balance, the shop lists the
+// server's entries, and Buy MOVES the balance and the Owned flag. Forced live
+// through the dev route so the step runs out of season too.
+// ROUND TRIP: the check grants itself exactly the price first. An unowned
+// avatar is bought (balance back where it was, the avatar owned); once the
+// fixture owns them all, buying one again must be REFUNDED (66) - balance up by
+// the grant, nothing else - so the step passes on every run without a reseed.
+{
+  await apiPost('/api/v1/dev/event', { EventId: 1 });
+  const ev = (await apiGet('/api/v1/event'))?.Event ?? null;
+  record(
+    'the server lists a live seasonal event with a shop',
+    Boolean(ev) && ev.Phase === 1 && ev.Shop.length > 0 && ev.Shop.every((i) => i.Price > 0 && i.Art),
+    ev ? `${ev.Name}: ${ev.Shop.length} entries, phase ${ev.Phase}` : 'no event',
+  );
+
+  if (ev) {
+    const chip = page.getByTestId('event-chip').first();
+    await chip.waitFor({ timeout: 8000 }).catch(() => {});
+    record('the header shows the event currency chip', (await chip.count()) > 0, `${await chip.count()} chip(s)`);
+
+    const target = ev.Shop.find((i) => !i.Owned) ?? ev.Shop[0];
+    const wasOwned = target.Owned;
+    const balanceOf = async () => Number((await chip.getAttribute('data-exact').catch(() => null)) ?? NaN);
+    const start = await balanceOf();
+    await apiPost('/api/v1/dev/event', { Grant: target.Price });
+    await page.waitForFunction(
+      (want) => Number(document.querySelector('[data-testid="event-chip"]')?.getAttribute('data-exact')) >= want,
+      start + target.Price,
+      { timeout: 8000 },
+    ).catch(() => {});
+    const granted = await balanceOf();
+    record('a dev grant reaches the live balance on the wire', granted === start + target.Price, `${start} -> ${granted}`);
+
+    await chip.click();
+    await page.getByTestId('event-screen').waitFor({ timeout: 10000 }).catch(() => {});
+    const row = page.locator(`[data-testid="event-shop-item"][data-item="${target.Id}"]`);
+    record('the event screen lists the shop entry', (await row.count()) === 1, target.Id);
+
+    if (wasOwned) {
+      // Owned: the screen offers no Buy; the command is sent the way a stale
+      // page would send it, and must cost nothing.
+      record('an owned entry offers no Buy', (await row.getByTestId('event-shop-buy').count()) === 0, target.Id);
+      await page.evaluate(([index, id]) => window.__folkidleBuyEventItem?.(index, id), [target.Index, ev.Id]).catch(() => {});
+      await page.waitForTimeout(2500);
+      const after = await balanceOf();
+      record('buying an owned entry is refunded', after === granted, `${granted} -> ${after}`);
+    } else {
+      await row.getByTestId('event-shop-buy').click();
+      await page.waitForFunction(
+        (id) => document.querySelector(`[data-testid="event-shop-item"][data-item="${id}"] [data-testid="event-shop-owned"]`) !== null,
+        target.Id,
+        { timeout: 10000 },
+      ).catch(() => {});
+      const after = await balanceOf();
+      const nowOwned = (await apiGet('/api/v1/event'))?.Event?.Shop?.find((i) => i.Id === target.Id)?.Owned === true;
+      record('Buy spends the price and the entry is owned', after === start && nowOwned, `${granted} -> ${after}, owned ${nowOwned}`);
+    }
+  }
+}
+
 // --- the quest line (owner, 2026-10-07) --------------------------------------
 // A friend played for weeks without learning fusion or affix reroll existed, so
 // ten acts are listed on Home, ticked only when the act HAPPENED, and paid once

@@ -11,6 +11,7 @@ import {
   tapWord,
   videoFlavour,
   CHEST_BACKGROUND,
+  chestBackground,
   CHEST_IDLE_IMAGE,
 } from '../src/lib/ui/chestOpening';
 
@@ -59,7 +60,13 @@ describe('chest opening', () => {
       CHEST_IDLE_IMAGE,
       CHEST_BACKGROUND.landscape,
       CHEST_BACKGROUND.portrait,
+      chestBackground('samhain').landscape,
+      chestBackground('samhain').portrait,
     ];
+    // The event's painting replaces the ordinary one, and only for a known event.
+    expect(chestBackground('samhain')).not.toEqual(CHEST_BACKGROUND);
+    expect(chestBackground(undefined)).toEqual(CHEST_BACKGROUND);
+    expect(chestBackground('nonsense')).toEqual(CHEST_BACKGROUND);
     for (const file of files) expect(existsSync(join(publicDir, file)), file).toBe(true);
   });
 

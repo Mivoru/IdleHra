@@ -65,6 +65,9 @@ export const SCREENS = [
   'Market · cosmetics',
   'Bloodline · Ancestors',
   'Bloodline · Inheritance',
+  // Before the More sheet: that one is measured OPEN and left open, so it
+  // must stay the last destination.
+  'Home · event shop',
   'Home · More sheet',
 ];
 
@@ -129,6 +132,20 @@ export const OVERLAYS = {
       await practice.click();
       await page.locator('[data-schedule][data-t0]').waitFor({ timeout: 10000 }).catch(() => {});
       await page.waitForTimeout(400);
+      return true;
+    },
+  },
+  // The seasonal event's screen has no menu entry - the header's currency chip
+  // opens it, and only while an event runs. Out of season the destination
+  // measures plain Home rather than failing.
+  'Home · event shop': {
+    screen: 'Home',
+    open: async (page) => {
+      const chip = page.getByTestId('event-chip').first();
+      if (!(await chip.isVisible().catch(() => false))) return false;
+      await chip.click();
+      await page.getByTestId('event-screen').waitFor({ timeout: 10000 }).catch(() => {});
+      await page.waitForTimeout(600);
       return true;
     },
   },

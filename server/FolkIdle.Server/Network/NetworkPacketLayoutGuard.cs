@@ -223,7 +223,12 @@ namespace FolkIdle.Server.Network
         // health, its maximum, the monster, its health and maximum, and the
         // job's progress - 22 bytes each. Fight and work as the PICKED
         // character needs the other two characters' bars on the stream.
-        public const int ExpectedStateUpdateSize = 855;
+        //
+        // Modul: the seasonal event, 855 -> 863 (2026-10-09). EventCurrency
+        // (uint), EventCurrencyEarnedToday (ushort), SeasonalEventId and
+        // SeasonalEventPhase (a byte each). The balance changes on kills, so
+        // it is stream state like Gold, not a REST poll.
+        public const int ExpectedStateUpdateSize = 863;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

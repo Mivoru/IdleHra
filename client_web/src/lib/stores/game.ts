@@ -630,6 +630,11 @@ if (import.meta.env.DEV) {
   // ancestor in slot 1, the tutorial's guided fence appears at once and covers
   // the Hall, so the undo cannot be a click - the same command the Field
   // buttons send (assignCharacterSlot), sent past the cover.
+  // The seasonal event shop's owned-entry check: an owned avatar has no Buy
+  // button, so the stale-page purchase the server must refund is sent past it.
+  (globalThis as Record<string, unknown>).__folkidleBuyEventItem = (index: number, eventId: number) => {
+    connection.send({ Command: CommandType.BuyEventShopItem, TargetId: index, SecondaryId: eventId });
+  };
   (globalThis as Record<string, unknown>).__folkidleAssignSlot = (characterId: string, slotIndex: number) => {
     connection.send({ Command: CommandType.AssignCharacterSlot, TargetGuid: characterId, RequestedSlotIndex: slotIndex });
   };

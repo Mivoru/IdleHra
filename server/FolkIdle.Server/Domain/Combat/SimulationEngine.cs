@@ -900,6 +900,7 @@ namespace FolkIdle.Server.Domain.Combat
                 [CommandType.SpendAttributePoint] = AttributeTickCoordinator.HandleSpendAttributePoint,
                 [CommandType.StartBossAscension] = BossAscensionTickCoordinator.HandleStartBossAscension,
                 [CommandType.DepositGreatWork] = GreatWorksTickCoordinator.HandleDepositGreatWork,
+                [CommandType.BuyEventShopItem] = EventShopTickCoordinator.HandleBuy,
                 [CommandType.RespecAttributes] = AttributeTickCoordinator.HandleRespecAttributes,
                 [CommandType.PurchaseSkillTreeLevel] = SkillTreeTickCoordinator.HandlePurchaseSkillTreeLevel,
                 [CommandType.RespecSkillTree] = SkillTreeTickCoordinator.HandleRespecSkillTree,
@@ -1304,6 +1305,11 @@ namespace FolkIdle.Server.Domain.Combat
                 VillageTickCoordinator.DrainInfrastructureUpdates(_playerRegistry, _activePlayers);
 
                 GreatWorksTickCoordinator.DrainUpdates(_activePlayers);
+                // A purchase whose save failed or found the item already owned
+                // gives its price back. A player who logged out in the
+                // milliseconds between spend and save is not in the map and
+                // the refund is dropped - accepted, the window is one save.
+                EventShopTickCoordinator.DrainRefunds(_activePlayers);
 
                 VillageTickCoordinator.DrainRecruitmentUpdates(_playerRegistry, _activePlayers);
 
@@ -2228,6 +2234,8 @@ namespace FolkIdle.Server.Domain.Combat
                                 VillagePopulation = currentPayload.VillagePopulation,
                                 LogicEpochCounter = (uint)(currentPayload.LogicEpochCounter & 0xFFFFFFFF),
                                 PremiumCurrencyBalance = (uint)currentPayload.PremiumCurrency,
+                                EventCurrency = (uint)Math.Max(0, currentPayload.EventCurrency),
+                                EventCurrencyEarnedToday = (ushort)Math.Clamp(currentPayload.EventCurrencyEarnedToday, 0, ushort.MaxValue),
                                 LegacyShardBalance = currentPayload.LegacyShardBalance,
                                 GlobalNodeRemainingHp = currentPayload.GlobalNodeRemainingHp <= 0L
                                     ? 0U
@@ -2484,6 +2492,7 @@ namespace FolkIdle.Server.Domain.Combat
                                     currentPayload.VodnikMasteryLevel, currentPayload.GreatWorksStagesPacked)
                             };
                             WriteParkedSlotBars(ref packet, in currentPayload);
+                            WriteSeasonalEvent(ref packet);
                             // Modul: this packet carries currentPayload's own
                             // private data (gold, stats, equipment, mana,
                             // skill cooldowns) - it must go to that player's
@@ -2626,6 +2635,14 @@ namespace FolkIdle.Server.Domain.Combat
         // Characters 2 and 3's bars onto the wire, from their parked state.
         // Called outside the slot loop, so the register holds slot 1 and the
         // parked copies are slots 2 and 3 in order.
+        // The calendar's view of the seasonal event, for the chip and the theme.
+        private static void WriteSeasonalEvent(ref StateUpdatePacket packet)
+        {
+            var (current, phase) = Domain.Progression.SeasonalEventRegistry.Current(DateTimeOffset.UtcNow);
+            packet.SeasonalEventId = (byte)(current?.Id ?? 0);
+            packet.SeasonalEventPhase = (byte)phase;
+        }
+
         private static void WriteParkedSlotBars(ref StateUpdatePacket packet, in TickStatePayload payload)
         {
             WriteSlotBars(in payload.Slot2Activity, in payload, out packet.Slot2PlayerHp, out packet.Slot2PlayerMaxHp,
@@ -5446,6 +5463,12 @@ namespace FolkIdle.Server.Domain.Combat
                     }
                 }
 
+                // Seasonal event currency: a chance per paid kill, under the
+                // daily cap. Bosses count like any kill - the cap is the bound.
+                Domain.Progression.SeasonalEventEarning.Roll(
+                    ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, paidKills,
+                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Random.Shared);
+
                 // Modul 03/10/11/12: equipment drop roll request. ProcessSubTick
                 // is static, so this enqueues onto CombatLootEngine's static
                 // queue (mirroring CodexEngine.KillEventQueue) rather than
@@ -5552,6 +5575,10 @@ namespace FolkIdle.Server.Domain.Combat
                 int masteryXpGain = gatheringNode.BaseMasteryXpReward;
                 ApplyBulkMasteryXp(ref payload, gatheringNode.ProfessionType, (long)masteryXpGain * paidHarvests);
                 AddSeasonalXp(ref payload, masteryXpGain);
+
+                Domain.Progression.SeasonalEventEarning.Roll(
+                    ref payload, Domain.Progression.SeasonalEventEarning.Source.Gather, paidHarvests,
+                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Random.Shared);
 
                 // Loot roll
                 var lootTable = ContentRegistry.GetLootTable(gatheringNode.ActivityId);

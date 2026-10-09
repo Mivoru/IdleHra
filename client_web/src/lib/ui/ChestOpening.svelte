@@ -23,7 +23,7 @@
   import Burst from './Burst.svelte';
   import { COSMETIC_KIND, rarityClass, type OpenedCosmetic } from '../net/cosmetics';
   import {
-    CHEST_BACKGROUND,
+    chestBackground,
     CHEST_IDLE_IMAGE,
     OPEN_MS,
     SHAKE_MS,
@@ -74,6 +74,8 @@
 
   let flavour = $state<'webm' | 'mp4' | 'none'>('none');
   let coarse = $state(true);
+  // Read once when the stage opens: the event theme does not change mid-chest.
+  const stageBackground = chestBackground(document.documentElement.dataset.event);
   const timers: ReturnType<typeof setTimeout>[] = [];
 
   onMount(() => {
@@ -196,8 +198,8 @@
 <div
   class="chest-stage"
   style:z-index={LAYER_Z.modal}
-  style:--landscape="url({CHEST_BACKGROUND.landscape})"
-  style:--portrait="url({CHEST_BACKGROUND.portrait})"
+  style:--landscape="url({stageBackground.landscape})"
+  style:--portrait="url({stageBackground.portrait})"
   bind:this={stage}
   use:portal
   data-testid="chest-opening"

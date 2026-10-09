@@ -12464,6 +12464,42 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // The seasonal event out of season: {"EventId": 1} forces it
+                // live, 0 returns to the calendar. {"Grant": n} adds n of the
+                // current event's currency to the caller's live balance,
+                // outside the daily cap - exercise.mjs buys with it.
+                if (requestPath == "/api/v1/dev/event" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await ReadBodyAsync(context);
+                    int? eventId = null;
+                    int grant = 0;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                        if (parsed.RootElement.TryGetProperty("EventId", out var ev) && ev.TryGetInt32(out int evv)) eventId = evv;
+                        if (parsed.RootElement.TryGetProperty("Grant", out var gr) && gr.TryGetInt32(out int grv)) grant = grv;
+                    }
+                    catch (JsonException) { }
+
+                    if (eventId.HasValue)
+                    {
+                        if (eventId.Value != 0 && FolkIdle.Server.Domain.Progression.SeasonalEventRegistry.Find(eventId.Value) == null)
+                        {
+                            context.Response.StatusCode = 400;
+                            return;
+                        }
+                        FolkIdle.Server.Domain.Progression.SeasonalEventRegistry.ForceLive = eventId.Value;
+                    }
+                    var (devEvent, devPhase) = FolkIdle.Server.Domain.Progression.SeasonalEventRegistry.Current(DateTimeOffset.UtcNow);
+                    if (grant > 0 && devEvent != null)
+                    {
+                        FolkIdle.Server.Domain.Progression.EventShopEngine.Refunds.Enqueue(
+                            new FolkIdle.Server.Domain.Progression.EventShopRefund(playerId, devEvent.Id, grant));
+                    }
+                    await WriteJsonAsync(context, new { EventId = devEvent?.Id ?? 0, Phase = (int)devPhase });
+                    return;
+                }
+
                 if (_worldBossEngine == null)
                 {
                     context.Response.StatusCode = 503;
