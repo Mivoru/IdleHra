@@ -46,7 +46,10 @@
          scheme the way the two theme-color metas above do. -->
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <!-- No 192px <link rel="icon">: Chrome downloaded that 88 KiB PNG on every
+         landing, sharing slow-4G bandwidth with the login painting (the LCP).
+         The manifest still names it for installs, and 48px is what a tab and
+         a search result use. -->
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />

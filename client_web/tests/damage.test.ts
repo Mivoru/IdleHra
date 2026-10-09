@@ -16,7 +16,7 @@
 // The server states each blow now. These tests cover what is left: the feed's
 // own bookkeeping, and the median that two things still read.
 import { describe, it, expect } from 'vitest';
-import { DamageFeed, DAMAGE_TEXT_LIFETIME_MS } from '../src/lib/stores/damage';
+import { DamageFeed, DAMAGE_TEXT_LIFETIME_MS, MAX_LIVE_DAMAGE_TEXTS } from '../src/lib/stores/damage';
 
 const MELEE = 0;
 const MAGIC = 2;
@@ -71,6 +71,22 @@ describe('the damage feed', () => {
     const kept = feed.prune(1000 + DAMAGE_TEXT_LIFETIME_MS + 1);
     expect(kept).toHaveLength(1);
     expect(kept[0].amount).toBe(200);
+  });
+
+  // Modul: stamped by the server clock and pruned by the local one, numbers
+  // outlived their animation by the offset plus every second the phone slept,
+  // piled up off Combat, and replayed as one stack on return.
+  it('drops a number stamped ahead of the pruning clock', () => {
+    const feed = new DamageFeed();
+    feed.push(100, false, MELEE, 50_000);
+    expect(feed.prune(1000)).toHaveLength(0);
+  });
+
+  it('never keeps more than the live cap, newest first to survive', () => {
+    const feed = new DamageFeed();
+    for (let i = 1; i <= MAX_LIVE_DAMAGE_TEXTS + 5; i++) feed.push(i, false, MELEE, 1000);
+    expect(feed.current).toHaveLength(MAX_LIVE_DAMAGE_TEXTS);
+    expect(feed.current.at(-1)!.amount).toBe(MAX_LIVE_DAMAGE_TEXTS + 5);
   });
 
   it('reset clears the numbers and the running median together', () => {

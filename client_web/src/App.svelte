@@ -359,7 +359,14 @@
       .finally(() => pendingLoads.delete(key));
   }
 
+  // Modul: ONLY BEHIND A SESSION. `screen` starts as 'hub' before anyone has
+  // signed in, so an unguarded effect fetched Hub and its fourteen chunks for
+  // a stranger looking at the login form - PageSpeed listed all of them in the
+  // landing page's critical chain, sharing slow-4G bandwidth with the login
+  // painting that is the LCP. The session effect below requests Hub the
+  // moment a token exists, so a sign-in loses nothing.
   $effect(() => {
+    if (!token) return;
     ensureScreenLoaded(screen);
   });
 

@@ -47,6 +47,13 @@ export interface DamageEvent {
 /** How long a number stays on screen. Matches the CSS animation duration. */
 export const DAMAGE_TEXT_LIFETIME_MS = 1100;
 
+/**
+ * The most numbers alive at once. A fast weapon lands a handful a second, so
+ * this is never reached in an honest fight; it bounds what a clock mistake or
+ * a burst of events after a stall can put in the DOM.
+ */
+export const MAX_LIVE_DAMAGE_TEXTS = 12;
+
 let sequence = 0;
 
 export class DamageFeed {
@@ -69,14 +76,20 @@ export class DamageFeed {
       isCrit,
       weaponKind,
     };
-    this.events = [...this.events, event];
+    this.events = [...this.events, event].slice(-MAX_LIVE_DAMAGE_TEXTS);
     this.record(amount);
     return event;
   }
 
   /** Drops expired events. Called from the render loop, not a timer per event. */
   prune(nowMs: number): DamageEvent[] {
-    const kept = this.events.filter((e) => nowMs - e.atMs < DAMAGE_TEXT_LIFETIME_MS);
+    // An event stamped in the future is as expired as an old one: it can only
+    // come from a clock that disagrees with this one, and kept it would live
+    // for as long as that disagreement lasts.
+    const kept = this.events.filter((e) => {
+      const age = nowMs - e.atMs;
+      return age >= 0 && age < DAMAGE_TEXT_LIFETIME_MS;
+    });
     if (kept.length !== this.events.length) this.events = kept;
     return this.events;
   }
