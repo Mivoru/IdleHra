@@ -100,6 +100,30 @@ folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 	header @immutable Cache-Control "public, max-age=31536000, immutable"
 	header @html Cache-Control "no-cache"
 
+	# Modul: THE LOADING SCREEN AND THE ICONS, cached for 30 days. They had no
+	# Cache-Control at all, so every visit re-asked for ~440 KB of loading art
+	# (PageSpeed, 2026-10-09). Not `immutable` like /assets/*: these names
+	# carry no content hash, so a cached copy CAN be wrong - change the art
+	# under a new file name (landscape-1920.avif -> landscape-1920b.avif)
+	# rather than in place, or returning players see the old picture for up
+	# to a month.
+	@longlived path /loading/* /icons/*
+	header @longlived Cache-Control "public, max-age=2592000"
+
+	# Modul: A MISSING FILE IS A 404, NOT THE GAME. The SPA fallback below
+	# answered every unknown path with index.html and 200, so /ai-catalog.json
+	# came back as HTML and PageSpeed reported "Malformed JSON", and a missing
+	# /sprites/... icon was served as a web page under an immutable cache
+	# header. The client routes by hash, never by path, so a path that ends in
+	# a file extension and is not on disk can only be a missing file.
+	# Site level for the same reason as @immutable above.
+	@missingFile {
+		path_regexp \.[A-Za-z0-9]+$
+		not file {
+			root /srv
+		}
+	}
+
 	@websocket {
 		header Connection *Upgrade*
 		header Upgrade websocket
@@ -188,6 +212,15 @@ folkidle.cz, www.folkidle.cz, folkidle.duckdns.org, 92-5-0-94.sslip.io {
 		reverse_proxy app:8080 {
 			request_buffers 1MB
 		}
+	}
+
+	# After @api, which owns /gamedata/*.json and the like - those are not
+	# files under /srv and must still reach the app.
+	# no-cache overrides @immutable: a sprite that is missing today may be
+	# deployed tomorrow, and a cached 404 must not outlive that.
+	handle @missingFile {
+		header Cache-Control "no-cache"
+		respond 404
 	}
 
 	# The client, and the artwork with it. /sprites lives in the static bundle

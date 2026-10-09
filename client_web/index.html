@@ -63,6 +63,13 @@
          ranking it earns four ways, and the engine picks which one to show.
          The canonical link tells it: show folkidle.cz. -->
     <link rel="canonical" href="https://folkidle.cz/" />
+    <!-- Modul: THE LOGIN PAINTING, REQUESTED WITH THE BUNDLE. It is the LCP of
+         the page a stranger lands on, and as a CSS background inside a Svelte
+         component nothing could ask for it until the bundle had downloaded,
+         parsed and mounted Login - measured on a throttled phone, the request
+         started 5.2 s in. Same URL Login.svelte builds (sprites.ts, same
+         origin on https), or the browser downloads it twice. -->
+    <link rel="preload" as="image" href="/sprites/Backgrounds/login_valley.webp" type="image/webp" />
     <!-- What a search result is titled with and what the brand search
          ("folkidle", "folk idle", "folkidle hra") is matched against. -->
     <script type="application/ld+json">
@@ -257,10 +264,25 @@
       <h1 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap">FolkIdle - a Slavic folklore idle RPG</h1>
       <!-- One image per orientation: a phone downloads the portrait art at
            its own width and never the landscape file. -->
+      <!-- AVIF first: half the bytes of the JPEG at no visible cost (q50,
+           compared crop against crop), and on a phone this picture shares the
+           first seconds of bandwidth with the bundle. The JPEGs stay as the
+           fallback and as og:image - preview cards do not all read AVIF. -->
       <picture>
         <source
           media="(orientation: portrait)"
+          type="image/avif"
+          srcset="/loading/portrait-720.avif 720w, /loading/portrait-1080.avif 1080w"
+          sizes="100vw"
+        />
+        <source
+          media="(orientation: portrait)"
           srcset="/loading/portrait-720.jpg 720w, /loading/portrait-1080.jpg 1080w"
+          sizes="100vw"
+        />
+        <source
+          type="image/avif"
+          srcset="/loading/landscape-1280.avif 1280w, /loading/landscape-1920.avif 1920w"
           sizes="100vw"
         />
         <img

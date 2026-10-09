@@ -36,6 +36,37 @@ BUTTONS = {
     'rectangular_button.png': ('button_wide', 768),
 }
 
+# Modul: STRIPS - a scene pre-cut to the one box that shows it, for a box small
+# enough that the full scene is mostly waste. The login form's painting is the
+# LCP of the first page a stranger loads; main_hub at 1920 wide is 446 KB for
+# a box ~300 CSS px wide, and finished 4 s after the form on a throttled phone.
+# (source, name, width, box aspect w/h, vertical focus 0..1 = the CSS
+# background-position y it replaces). Quality 78: a 300 px box hides it.
+STRIPS = {
+    'main_bg.png': ('login_valley', 800, 1920 / 760, 0.60),
+}
+
+
+def strip(image: Image.Image, width: int, aspect: float, focus: float) -> Image.Image:
+    """The crop `background-size: cover` would take, so the box can drop it."""
+    height = round(image.width / aspect)
+    top = round((image.height - height) * focus)
+    image = image.crop((0, top, image.width, top + height))
+    return image.resize((width, round(width / aspect)), Image.LANCZOS)
+
+
+def write_strips() -> None:
+    print('strips:')
+    for source, (name, width, aspect, focus) in STRIPS.items():
+        path = SRC / source
+        if not path.exists():
+            print(f'  MISSING {source}')
+            continue
+        image = strip(Image.open(path).convert('RGB'), width, aspect, focus)
+        out = DST / f'{name}.webp'
+        image.save(out, 'WEBP', quality=78, method=6)
+        print(f'  {name:18s} {image.width}x{image.height}  {out.stat().st_size // 1024} KB')
+
 
 def write(image: Image.Image, name: str, width: int) -> None:
     DST.mkdir(parents=True, exist_ok=True)
@@ -65,6 +96,8 @@ def main() -> None:
         image = Image.open(path).convert('RGBA')
         image = crop_to_plate(image)
         write(image, name, width)
+
+    write_strips()
 
 
 def crop_to_plate(image: Image.Image) -> Image.Image:

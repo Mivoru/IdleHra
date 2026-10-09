@@ -325,7 +325,8 @@
       {/if}
     </aside>
 
-    <main class="panel content" bind:this={page}>
+    <!-- article, not main: App.svelte holds the page's one <main>. -->
+    <article class="panel content" bind:this={page}>
       {#if !registry}
         <Skeleton rows={10} />
       {:else}
@@ -1636,7 +1637,7 @@
           {/if}
         </nav>
       {/if}
-    </main>
+    </article>
   </div>
 </div>
 
