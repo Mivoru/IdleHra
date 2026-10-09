@@ -279,6 +279,10 @@
   let devMailQty = $state(1);
   let devMailGold = $state(0);
   let devMailMsg = $state('');
+  let devMailDiamonds = $state(0);
+  let devMailTitle = $state('');
+  let devMailEmail = $state(false);
+  let devMailSubject = $state('');
   
   // --- season control (admin) -------------------------------------------------
   // Modul: the owner runs the season by hand (2026-09-28). Since task 88 the
@@ -339,21 +343,40 @@
   }
 
   async function doMail() {
-    await adminSendMail({
-      TargetUsername: devMailUsername || null,
-      BaseItemId: devMailItem || null,
-      QualityTier: 0,
-      Quantity: devMailQty,
-      Gold: devMailGold,
-      SenderName: 'Dev',
-      MessageText: devMailMsg || null
-    });
+    let result;
+    try {
+      result = await adminSendMail({
+        TargetUsername: devMailUsername || null,
+        BaseItemId: devMailItem || null,
+        QualityTier: 0,
+        Quantity: devMailQty,
+        Gold: devMailGold,
+        Diamonds: devMailDiamonds,
+        TitleSlug: devMailTitle.trim() || null,
+        SenderName: 'Dev',
+        MessageText: devMailMsg || null,
+        SendEmail: devMailEmail,
+        EmailSubject: devMailSubject || null
+      });
+    } catch {
+      // 400: diamonds/title with no named recipient, or an unknown title slug.
+      // 404: a name that matches no player - then NOTHING was sent.
+      pushLocalNotice('Mail refused - check the names and the title slug. Nothing was sent.', 'error');
+      return;
+    }
     devMailUsername = '';
     devMailItem = '';
     devMailQty = 1;
     devMailGold = 0;
     devMailMsg = '';
-    pushLocalNotice('Admin mail sent!', 'info');
+    devMailDiamonds = 0;
+    devMailTitle = '';
+    devMailEmail = false;
+    devMailSubject = '';
+    pushLocalNotice(
+      `Admin mail sent to ${result?.Mailed ?? '?'} player(s)` + (result?.Emailed ? `, ${result.Emailed} email(s).` : '.'),
+      'info'
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -902,13 +925,22 @@
 
         <div class="admin-card wide">
           <h3>Admin mailer</h3>
-          <p class="dim tiny">Leave the target username empty to send to ALL players.</p>
+          <p class="dim tiny">
+            Several names separated by commas. Leave it empty to send to ALL players (not allowed with diamonds or a
+            title). A misspelt name sends nothing.
+          </p>
           <div class="form-grid">
-            <input type="text" bind:value={devMailUsername} placeholder="Target username (empty = ALL)" />
+            <input type="text" bind:value={devMailUsername} placeholder="Usernames, comma-separated (empty = ALL)" />
             <ItemIdPicker bind:value={devMailItem} placeholder="Search item (name or base id)" />
             <input type="number" bind:value={devMailQty} placeholder="Quantity" />
             <input type="number" bind:value={devMailGold} placeholder="Gold amount" />
+            <input type="number" bind:value={devMailDiamonds} placeholder="Diamonds" />
+            <input type="text" bind:value={devMailTitle} placeholder="Title slug (betatester, dev)" />
             <input type="text" bind:value={devMailMsg} placeholder="Text message (optional)" class="span-all" />
+            <label class="span-all"><input type="checkbox" bind:checked={devMailEmail} /> Also send the message by email</label>
+            {#if devMailEmail}
+              <input type="text" bind:value={devMailSubject} placeholder="Email subject" class="span-all" />
+            {/if}
             <button onclick={doMail} class="span-all">Send mail</button>
           </div>
         </div>

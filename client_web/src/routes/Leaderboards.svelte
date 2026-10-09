@@ -1,6 +1,7 @@
 <script lang="ts">
   import { formatNumber } from '../lib/ui/format';
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
+  import PlayerTitle from '../lib/ui/PlayerTitle.svelte';
   import { createQuery } from '@tanstack/svelte-query';
   import {
     queryKeys,
@@ -68,7 +69,7 @@
               <button class="who who-btn" use:profileLink={{ playerId: row.PlayerId, name: row.Name }}>
                 <PlayerAvatar playerId={row.PlayerId} size="sm" />
                 {row.Name}
-                {#if row.Title}<span class="title tiny">{row.Title}</span>{/if}
+                <PlayerTitle playerId={row.PlayerId} />
               </button>
               <span class="xp">floor {row.Floor}</span>
             </li>
@@ -118,6 +119,7 @@
             >
               <PlayerAvatar playerId={row.PlayerId} size="sm" />
               {row.DisplayName}
+              <PlayerTitle playerId={row.PlayerId} />
             </button>
             <span class="lv dim tiny">lv {row.Level}</span>
             <!-- Modul: ONE cell for everything optional. The row used to put up
@@ -202,13 +204,6 @@
     font: inherit;
     font-weight: 600;
     cursor: pointer;
-  }
-
-  .title {
-    margin-left: 0.35rem;
-    font-style: italic;
-    color: var(--accent);
-    font-weight: 600;
   }
 
   .grid {

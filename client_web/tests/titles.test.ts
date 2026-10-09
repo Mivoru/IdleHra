@@ -27,7 +27,7 @@ function sourceFiles(dir: string): string[] {
 }
 
 const registry = readFileSync(registryPath, 'utf8');
-const titles = [...registry.matchAll(/new TitleDefinition\("([a-z0-9_]+)", "([^"]+)", (\d+)\)/g)].map((m) => ({
+const titles = [...registry.matchAll(/new TitleDefinition\("([a-z0-9_]+)", "([^"]+)", (\d+), "#[0-9a-f]{6}"\)/g)].map((m) => ({
   slug: m[1],
   name: m[2],
 }));

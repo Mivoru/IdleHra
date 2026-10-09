@@ -1,5 +1,6 @@
 <script lang="ts">
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
+  import PlayerTitle from '../lib/ui/PlayerTitle.svelte';
   // Modul: this is the chat PANEL. It renders full-page on its own route and
   // inside the floating dock (see ChatDock.svelte) - the dock is where the
   // collapse state and the unread marker live, so this file stays a plain
@@ -372,6 +373,7 @@
             >
               <PlayerAvatar playerId={message.senderPlayerId} size="sm" />
               <span class="who-name">{displayName(message.senderPlayerId)}</span>
+              <PlayerTitle playerId={message.senderPlayerId} />
             </button>
             <span class="text">{message.text}</span>
           </li>

@@ -11,6 +11,7 @@
   // click again"). tests/runesMode.test.ts guards that.
   import { createQuery } from '@tanstack/svelte-query';
   import PlayerAvatar from './PlayerAvatar.svelte';
+  import PlayerTitle from './PlayerTitle.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import Affixes from './Affixes.svelte';
   import DetailSheet from './DetailSheet.svelte';
@@ -136,8 +137,8 @@
         <h3 id={titleId}>
           {#if top.kind === 'guild'}<span class="dim kind">Guild</span>{/if}
           <span class="who" data-testid="profile-name">{shellName || (top.kind === 'player' ? 'Player' : 'Guild')}</span>
-          {#if top.kind === 'player' && profile.data?.ActiveTitle}
-            <span class="title-badge">{profile.data.ActiveTitle}</span>
+          {#if top.kind === 'player'}
+            <PlayerTitle playerId={top.playerId} />
           {/if}
         </h3>
         <button class="close-btn" aria-label="Close profile" onclick={closeProfiles}>&times;</button>
@@ -295,16 +296,6 @@
 {/if}
 
 <style>
-  /* A title (task 37) sits beside the name, in the name's own line. */
-  .title-badge {
-    display: inline-block;
-    margin-left: 0.4rem;
-    font-size: 0.75em;
-    font-style: italic;
-    color: var(--accent, #d9c48b);
-    font-weight: 600;
-  }
-
   .header {
     display: flex;
     align-items: center;

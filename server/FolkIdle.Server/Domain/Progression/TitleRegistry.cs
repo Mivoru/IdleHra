@@ -4,8 +4,11 @@ using System.Linq;
 
 namespace FolkIdle.Server.Domain.Progression
 {
-    /// <summary>One title: a stable slug, the name a player sees, and the Deep floor that earns it.</summary>
-    public sealed record TitleDefinition(string Slug, string DisplayName, int DeepFloor);
+    /// <summary>
+    /// One title: a stable slug, the name a player sees, the Deep floor that
+    /// earns it (0 = not a Deep title), and the colour it is drawn in.
+    /// </summary>
+    public sealed record TitleDefinition(string Slug, string DisplayName, int DeepFloor, string Color);
 
     /// <summary>
     /// Every title in the game, static in code.
@@ -25,18 +28,33 @@ namespace FolkIdle.Server.Domain.Progression
     /// </summary>
     public static class TitleRegistry
     {
+        // Modul: declared ABOVE All. Static initialisers run in text order,
+        // and Build() reads this - below All it was still null and the whole
+        // registry failed to initialise.
+        /// <summary>One hue per region boss, so "Wolfbane IV" and "Wyrmbane IV" read apart at a glance.</summary>
+        private static readonly string[] AscensionColorByRegion = { "#7ed957", "#ff9f43", "#5ad1ff", "#ff5e5e", "#ffd23f" };
+
         public static readonly IReadOnlyList<TitleDefinition> All = Build();
 
         private static IReadOnlyList<TitleDefinition> Build()
         {
+            // Modul: THE COLOUR IS THE SERVER'S, like the name (2026-10-09). A
+            // title is drawn as a chip in its own colour next to a player's name
+            // in chat, on the boards and in rosters; the client renders the hex
+            // it is sent and keeps no table of its own. The Deep cools from lamp
+            // light to the abyss as it goes down.
             var list = new List<TitleDefinition>
             {
-                new TitleDefinition("deep_10", "Lamplighter", 10),
-                new TitleDefinition("deep_15", "Deepwalker", 15),
-                new TitleDefinition("deep_20", "Of the Dark Water", 20),
-                new TitleDefinition("deep_30", "Lantern-Eater", 30),
-                new TitleDefinition("deep_40", "Where No Bell Rings", 40),
-                new TitleDefinition("deep_50", "The Bottomless", 50),
+                new TitleDefinition("deep_10", "Lamplighter", 10, "#f2c14e"),
+                new TitleDefinition("deep_15", "Deepwalker", 15, "#4fd1c5"),
+                new TitleDefinition("deep_20", "Of the Dark Water", 20, "#3ba7f0"),
+                new TitleDefinition("deep_30", "Lantern-Eater", 30, "#6c7cff"),
+                new TitleDefinition("deep_40", "Where No Bell Rings", 40, "#a66cff"),
+                new TitleDefinition("deep_50", "The Bottomless", 50, "#e05cff"),
+
+                // Granted by hand only (the admin mail), never earned in play.
+                new TitleDefinition(BetatesterSlug, "Betatester", 0, "#ff7ad9"),
+                new TitleDefinition(DevSlug, "DEV", 0, "#ff4d4d"),
             };
 
             // Task 87: one title per Boss Ascension step per boss - a rank the
@@ -49,11 +67,18 @@ namespace FolkIdle.Server.Domain.Progression
                 {
                     list.Add(new TitleDefinition(
                         Combat.BossAscensionRegistry.TitleSlug(region, step),
-                        Combat.BossAscensionRegistry.TitleName(region, step), 0));
+                        Combat.BossAscensionRegistry.TitleName(region, step), 0,
+                        AscensionColor(region)));
                 }
             }
             return list;
         }
+
+        public const string BetatesterSlug = "betatester";
+        public const string DevSlug = "dev";
+
+        private static string AscensionColor(int region)
+            => AscensionColorByRegion[Math.Clamp(region - Combat.BossAscensionRegistry.FirstRegion, 0, AscensionColorByRegion.Length - 1)];
 
         public static TitleDefinition? Find(string? slug)
             => slug == null ? null : All.FirstOrDefault(t => string.Equals(t.Slug, slug, StringComparison.Ordinal));

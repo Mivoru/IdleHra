@@ -77,6 +77,9 @@ export interface WornCosmetics {
   FrameId: string | null;
   RaceId: number;
   IsFemale: boolean;
+  /** The worn title's display name and colour, as TitleRegistry has them, or null. */
+  Title: string | null;
+  TitleColor: string | null;
 }
 
 export const cosmeticKeys = {

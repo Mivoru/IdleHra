@@ -1096,6 +1096,11 @@ export interface MailboxEntry {
   QualityTier: number;
   Quantity: number;
   GoldAttachment: number;
+  /** Diamonds credited on claim - only the admin mail sends them. */
+  DiamondAttachment: number;
+  /** The attached title's display name and colour (resolved by the server), worn on claim. */
+  TitleAttachment: string | null;
+  TitleAttachmentColor: string | null;
   HasEquipmentAttachment: boolean;
   SenderName: string | null;
   MessageText: string | null;
@@ -1860,12 +1865,24 @@ export interface AdminMailRequest {
   QualityTier: number;
   Quantity: number;
   Gold: number;
+  Diamonds: number;
+  /** A TitleRegistry slug, e.g. 'betatester' or 'dev'. Needs named recipients. */
+  TitleSlug: string | null;
   SenderName: string | null;
   MessageText: string | null;
+  /** Also email MessageText to named recipients that have an address. */
+  SendEmail: boolean;
+  EmailSubject: string | null;
 }
 
-export function adminSendMail(req: AdminMailRequest): Promise<null> {
-  return authedPost<null>('/api/v1/admin/mail', req);
+export interface AdminMailResult {
+  Mailed: number;
+  Emailed: number;
+}
+
+/** TargetUsername may list several names, comma-separated; empty = everyone. */
+export function adminSendMail(req: AdminMailRequest): Promise<AdminMailResult | null> {
+  return authedPost<AdminMailResult>('/api/v1/admin/mail', req);
 }
 
 export interface GuildDepotResponse {
