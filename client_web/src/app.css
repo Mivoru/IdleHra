@@ -352,7 +352,7 @@
   --tabbar-h: 0px;
   /* The height of an app header that stays pinned while the page scrolls, so
      a screen's own sticky strip (Combat's status, task 98) sits under it
-     instead of behind it. App.svelte measures the header and sets it (task 95,
+     instead of behind it. Game.svelte measures the header and sets it (task 95,
      when the header became sticky); 0 before sign-in. */
   --sticky-header-h: 0px;
 }
@@ -1009,9 +1009,10 @@ summary:focus-visible,
    heading ("taking one locks the other" on the Skill tree, "+4 skill points
    every season" in the Book of Deeds) blew up into the 1.15rem brass serif
    meant for the game's name. The top bar is the only <header> that is a
-   direct child of the mount point: App.svelte renders it first inside
-   QueryClientProvider, which renders no element of its own. The extra
-   specificity changes nothing for the bar itself - App.svelte's scoped rules
+   direct child of the mount point: Game.svelte renders it first inside
+   QueryClientProvider, and neither App.svelte nor the provider renders an
+   element of its own around it. The extra
+   specificity changes nothing for the bar itself - Game.svelte's scoped rules
    set none of these properties except through the shorthand the !important
    already beats. */
 #app > header {

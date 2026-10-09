@@ -176,7 +176,7 @@ let watchingTaps = false;
  * here mapping `world_boss_window_open` to a screen key - would be the server's
  * trigger table written down a second time, in another language, kept in step
  * by hand. That is precisely the shape `KNOWN_AFFIX_IDS` had when ten of its
- * twelve entries turned out to have drifted. App.svelte validates the key
+ * twelve entries turned out to have drifted. Game.svelte validates the key
  * against the nav it actually renders, so an unknown one is ignored rather than
  * navigating to a blank screen.
  *

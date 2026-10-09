@@ -4,7 +4,7 @@
 // The tables are generated (see scripts/generate-sprites.mjs); this file is
 // only the resolution rules, which are the part with judgement in them.
 
-import { SPRITE_BASE } from '../net/config';
+import { backgroundUrl, spriteUrl } from './spriteUrl';
 import {
   MONSTER_ICONS,
   ITEM_ICONS,
@@ -13,28 +13,10 @@ import {
   CURRENCY_ICONS,
 } from './sprites.generated';
 
-/**
- * The sprite filenames contain SPACES and AMPERSANDS, because they were
- * authored for a Unity import rather than for a URL - "Tools&Equipment/Melee
- * weapons/Doom Edge.png". Each path segment is encoded separately so the
- * slashes survive; `encodeURI` on the whole path would leave the ampersand
- * intact and `encodeURIComponent` would destroy the slashes.
- */
-function spriteUrl(relativePath: string): string {
-  const encoded = relativePath.split('/').map(encodeURIComponent).join('/');
-  return `${SPRITE_BASE}/sprites/${encoded}`;
-}
-
-/**
- * Backgrounds and UI plates, by file name.
- *
- * Not generated: these are a fixed handful authored for specific screens
- * rather than a table keyed on content ids, so a generated map would only
- * restate the file names. See tools/prepare_backgrounds.py.
- */
-export function backgroundUrl(name: string): string {
-  return spriteUrl(`Backgrounds/${name}.webp`);
-}
+// Modul: spriteUrl and backgroundUrl live in spriteUrl.ts so the login form
+// can name its painting without importing the generated tables above, which
+// are 16 KB of the landing page's bundle and none of its use.
+export { backgroundUrl };
 
 /** The five locations, in canon order, keyed the way locations.ts names them. */
 export function locationBackground(locationIndex: number): string | null {
