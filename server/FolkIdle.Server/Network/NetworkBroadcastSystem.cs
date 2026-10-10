@@ -12900,6 +12900,20 @@ namespace FolkIdle.Server.Network
                                 liftedAt, (object?)player?.Username ?? System.DBNull.Value, target.Id);
 
                             await db.SaveChangesAsync();
+
+                            // Modul: AND THE REDIS FRAME, 2026-10-10. The
+                            // session frame keeps its own is_quarantined, and
+                            // RedisWriteBehindEngine copies it back onto
+                            // PlayerRecords - so an unban that only touched the
+                            // row was undone by the next write-behind. Found
+                            // lifting player 8: the row read false, the frame
+                            // still read 1.
+                            var unbanRedis = _serviceProvider.GetService<IConnectionMultiplexer>();
+                            if (unbanRedis != null && unbanRedis.IsConnected)
+                            {
+                                await unbanRedis.GetDatabase().HashSetAsync(
+                                    RedisSessionCache.SessionStateKey(target.Id), "is_quarantined", 0);
+                            }
                             context.Response.StatusCode = 200;
                             return;
                         }

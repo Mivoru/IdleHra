@@ -66,6 +66,28 @@ namespace FolkIdle.Server.Engine
         public const long ChallengeResponseWindowMs = 15000L;
         public const int ConsecutiveChallengeMissLimit = 4;
 
+        // Modul: LOG-ONLY UNTIL THE CAUSE IS FOUND, 2026-10-10. A full run of
+        // challenge misses quarantined the owner's own account (player 8,
+        // reason 54, detail 4) for the THIRD time, 14 minutes after a deploy,
+        // while playing normally - and it is the only account the detector
+        // has ever flagged. Every penalty it has produced is a known false
+        // positive, so it records the run and the evidence instead of
+        // stopping the account. Turn this back on only once the "talking but
+        // not answering" shape is explained (suspects: two live connections
+        // for one player, or answers judged Stale after a reconnect).
+        public const bool ChallengeQuarantineEnforced = false;
+
+        /// <summary>
+        /// The log line a full miss run writes when enforcement is off. One
+        /// shape for both sites, so the two detail codes read side by side.
+        /// </summary>
+        public static void LogChallengeRun(long playerId, int detailCode, long msSinceLastClientCommand, long msSinceChallengeIssued, long epoch)
+        {
+            Console.WriteLine(
+                $"CHALLENGE RUN (log-only) player {playerId} (reason 54, detail {detailCode}): " +
+                $"last client command {msSinceLastClientCommand} ms ago, challenge issued {msSinceChallengeIssued} ms ago, epoch {epoch}.");
+        }
+
         private const double MacroCoefficientOfVariationThreshold = 0.05;
         private const int MinimumSampleCount = 20;
 

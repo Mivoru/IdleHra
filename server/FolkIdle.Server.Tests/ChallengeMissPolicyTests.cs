@@ -35,6 +35,17 @@ namespace FolkIdle.Server.Tests
         private static bool CountsAsAMiss(long msSinceLastClientCommand)
             => msSinceLastClientCommand <= AntiCheatTelemetryEngine.ChallengeResponseWindowMs;
 
+        /// <summary>
+        /// Every quarantine this rule has ever produced was a false positive on
+        /// the owner's own account, so a full miss run only logs until the
+        /// cause is found. Flipping this back on is a decision, not a cleanup.
+        /// </summary>
+        [Fact]
+        public void AMissRunOnlyLogsUntilTheFalsePositiveIsExplained()
+        {
+            Assert.False(AntiCheatTelemetryEngine.ChallengeQuarantineEnforced);
+        }
+
         [Fact]
         public void ABackgroundedTabIsNotPenalised()
         {
