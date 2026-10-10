@@ -54,6 +54,13 @@ Branch `claude/wiki-pets-stats`:
   0.1%, so an ordinary active account (Tomda: ~85 a day at the old rate, 1,500
   from winters I-III) reaches ~10,400 by 2026-11-02 = 2-3 pets + 2-3 avatars.
   The Witch moved to 1/10,000 per pumpkin so she stays ~1 in 2,000,000 per kill.
+  Later that night the owner moved her to **1/20,000 per pumpkin**: at
+  1/10,000 the owner's own pace made her ~93% certain over the event.
+  **Re-measure ~2026-10-11 22:40 UTC** on the real x5 rate. Baseline balances
+  at 2026-10-10 22:39 UTC (event currency, no spending since the reset):
+  Mivoru (8) 5,496, Tomda (107) 1,542, (pro)boss (108) 1,522. A balance grows
+  only by drops, Cailleach first clears (check `seasonal_boss_clears`) and
+  refunds, and shrinks by shop purchases - subtract those before dividing.
 - **Pets from ordinary monsters - BUILT (branch `claude/monster-pets`)**:
   any kill, live and offline, rolls 1 in 100,000 for a pet from a small
   permanent pool (not event-bound). Measured kills a day over the last week:

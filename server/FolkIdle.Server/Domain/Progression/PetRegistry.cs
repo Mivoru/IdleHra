@@ -97,8 +97,14 @@ namespace FolkIdle.Server.Domain.Progression
         /// 1/10,000 since the evening of 2026-10-10: pumpkins went up 5x, and
         /// the Witch is meant to stay exactly as rare PER KILL (about one in
         /// two million), so her per-pumpkin odds went down by the same 5x.
+        ///
+        /// 1/20,000 later the same night (owner): at 1/10,000 the owner's own
+        /// pace (~26,500 pumpkins over the event's last 22 days, estimated as
+        /// the old rate x5) made her ~93% certain - not rare. At 1/20,000 that
+        /// account is ~73% and an ordinary active one (~9,400) ~38%. To be
+        /// re-measured on the real x5 rate after a day.
         /// </summary>
-        public const double RareDropPerCurrency = 1.0 / 10_000.0;
+        public const double RareDropPerCurrency = 1.0 / 20_000.0;
 
         public static readonly IReadOnlyList<PetDefinition> All = new[]
         {
