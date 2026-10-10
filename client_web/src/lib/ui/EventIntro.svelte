@@ -14,6 +14,8 @@
   import { pendingNotes } from '../stores/version';
   import { offlineSummary, playerState } from '../stores/game';
   import { requestScreen } from '../stores/navigation';
+  import { onboardingDismissed } from '../stores/tutorial';
+  import { guidedStage } from '../stores/guided';
   import { fetchSeasonalEvent, seasonalEventKeys, EVENT_PHASE, EVENT_SHOP_KIND } from '../net/seasonalEvent';
   import { eventThemeKey } from '../net/seasonalEvent';
   import { formatExact } from './format';
@@ -38,7 +40,11 @@
 
   const wanted = $derived(
     key !== null && phase === EVENT_PHASE.Live && !dismissed && !seen(key)
-      && $pendingNotes.length === 0 && $playerState !== null && $offlineSummary === null,
+      && $pendingNotes.length === 0 && $playerState !== null && $offlineSummary === null
+      // A brand-new player's guided first minute comes first: the window would
+      // sit over its fence and its Skip button (found by the production smoke
+      // run, which plays a fresh guest). It shows once the guide is done.
+      && guidedStage($playerState, $onboardingDismissed) === null,
   );
 
   const event = createQuery(() => ({
