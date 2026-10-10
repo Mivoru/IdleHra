@@ -1687,9 +1687,22 @@ namespace FolkIdle.Server.Domain.Combat
                             if (++currentPayload.ConsecutiveChallengeMisses
                                 >= AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit)
                             {
-                                currentPayload.IsQuarantined = true;
-                                currentPayload.Quarantine_Active = true;
-                                _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 3);
+                                if (AntiCheatTelemetryEngine.ChallengeQuarantineEnforced)
+                                {
+                                    currentPayload.IsQuarantined = true;
+                                    currentPayload.Quarantine_Active = true;
+                                    _antiCheatTelemetryEngine?.RequestShadowBan(routingPlayerId, 54, 3);
+                                }
+                                else
+                                {
+                                    long nowMs = Environment.TickCount64;
+                                    AntiCheatTelemetryEngine.LogChallengeRun(
+                                        routingPlayerId, 3,
+                                        nowMs - currentPayload.LastClientCommandAtMs,
+                                        nowMs - currentPayload.ActiveChallengeIssuedAtMs,
+                                        currentPayload.LogicEpochCounter);
+                                    currentPayload.ConsecutiveChallengeMisses = 0;
+                                }
                             }
                         }
                         else
@@ -2022,9 +2035,22 @@ namespace FolkIdle.Server.Domain.Combat
                             else if (++currentPayload.ConsecutiveChallengeMisses
                                      >= AntiCheatTelemetryEngine.ConsecutiveChallengeMissLimit)
                             {
-                                currentPayload.IsQuarantined = true;
-                                currentPayload.Quarantine_Active = true;
-                                _antiCheatTelemetryEngine?.RequestShadowBan(currentPayload.PlayerId, 54, 4);
+                                if (AntiCheatTelemetryEngine.ChallengeQuarantineEnforced)
+                                {
+                                    currentPayload.IsQuarantined = true;
+                                    currentPayload.Quarantine_Active = true;
+                                    _antiCheatTelemetryEngine?.RequestShadowBan(currentPayload.PlayerId, 54, 4);
+                                }
+                                else
+                                {
+                                    long nowMs = Environment.TickCount64;
+                                    AntiCheatTelemetryEngine.LogChallengeRun(
+                                        currentPayload.PlayerId, 4,
+                                        nowMs - currentPayload.LastClientCommandAtMs,
+                                        nowMs - currentPayload.ActiveChallengeIssuedAtMs,
+                                        currentPayload.LogicEpochCounter);
+                                    currentPayload.ConsecutiveChallengeMisses = 0;
+                                }
                             }
                         }
 
