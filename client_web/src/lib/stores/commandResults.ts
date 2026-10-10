@@ -128,10 +128,11 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   64: 'The event shop is closed.',
   65: 'Not enough of the event currency yet.',
   66: 'You already own that - nothing was spent.',
-  67: 'A rare pet has found you! Give it to a character on the Character screen.',
+  67: 'A pet has found you! Give it to a character from the pet tile on the Character screen.',
   68: 'Your pet has moved.',
   69: 'The Cailleach falls back - your reward is in the mail.',
   70: 'The Cailleach comes down from the mountain. Fight!',
+  71: 'A pet you already have found you again - its diamonds are in your mail.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;
@@ -192,6 +193,8 @@ export const COMMAND_RESULT_OK_CODES: ReadonlySet<number> = new Set([
   68,
   69,
   70,
+  // A duplicate pet paid in diamonds.
+  71,
 ]);
 
 /**

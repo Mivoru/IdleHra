@@ -42,5 +42,12 @@ namespace FolkIdle.Server.Engine
         public int GoldTenthsPct;
         public int GatherSpeedTenthsPct;
         public int WorldBossDamageTenthsPct;
+
+        // Monster pets (2026-10-10): three more stats no affix rolls. Read by
+        // EffectiveMaxMilliHpFor (health), StatsCalculator (armour) and
+        // GatheringYieldFor (yield) - each the one function its stat has.
+        public int HpTenthsPct;
+        public int ArmourTenthsPct;
+        public int GatherYieldTenthsPct;
     }
 }

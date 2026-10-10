@@ -8,6 +8,8 @@
   import { createQuery } from '@tanstack/svelte-query';
   import { chancePct, EVENT_PHASE, EVENT_SHOP_KIND, fetchSeasonalEvent, oneIn, seasonalEventKeys } from '../net/seasonalEvent';
   import { fetchSeasonalBoss, seasonalBossKeys, ROMAN } from '../net/seasonalBoss';
+  import { fetchPets, petKeys, PET_SOURCE } from '../net/pets';
+  import { spriteUrl } from './spriteUrl';
   import { formatExact, formatNumber } from './format';
   import Skeleton from './Skeleton.svelte';
   import QueryError from './QueryError.svelte';
@@ -17,6 +19,8 @@
 
   const ev = $derived(event.data ?? null);
   const tiers = $derived(boss.data?.Tiers ?? []);
+  const pets = createQuery(() => ({ queryKey: petKeys.all, queryFn: fetchPets, staleTime: 60_000 }));
+  const monsterPets = $derived((pets.data?.Pets ?? []).filter((p) => p.Source === PET_SOURCE.Monster));
 
   function date(utcSeconds: number): string {
     return new Date(utcSeconds * 1000).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'UTC' });
@@ -92,7 +96,7 @@
         {#each tiers as t (t.Tier)}
           <tr>
             <td>{ROMAN[t.Tier] ?? t.Tier}</td>
-            <td class="dim">{t.BossName}{#if t.HpPct > 0 || t.AttackPct > 0} +{t.HpPct}% health, +{t.AttackPct}% attack{/if}</td>
+            <td class="dim">{t.BossName}{#if t.HpPct > 0 || t.AttackPct > 0}, +{t.HpPct}% health, +{t.AttackPct}% attack{/if}</td>
             <td class="num">{t.Diamonds}</td>
             <td class="num">{formatNumber(t.Gold)}</td>
             <td class="num">{formatExact(t.Currency)}</td>
@@ -109,9 +113,33 @@
   A pet follows one character and adds its bonus to that character's stats. Give it one from the pet tile, the
   twelfth tile of the Gear grid on the Character screen. Each character carries one pet, and each pet can be on one
   character at a time. You own each pet once per account. Pets are permanent: they outlive their event and every
-  rebirth. Today pets come from seasonal events - bought in the event shop, found as a rare drop, or won from the
-  seasonal boss.
+  rebirth. Some come from seasonal events - bought in the event shop, found as a rare drop, or won from the seasonal
+  boss. The rest are found on ordinary kills.
 </p>
+
+{#if pets.isError}
+  <QueryError query={pets} what="the pets" />
+{:else if pets.data && monsterPets.length > 0}
+  <p class="dim small" data-testid="wiki-monster-pets">
+    <strong>Pets from monsters.</strong> Every kill, of any monster, while you watch or while you are away, has a
+    {oneIn(pets.data.MonsterPetChancePerKill)} chance to bring one of these {monsterPets.length}, chosen at random. A pet you
+    already have pays {pets.data.DuplicateDiamonds} diamonds by mail instead.
+  </p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Pet</th><th>Bonus</th><th>Yours</th></tr></thead>
+      <tbody>
+        {#each monsterPets as pet (pet.Id)}
+          <tr>
+            <td><img class="pet" src={spriteUrl(pet.Art)} alt="" loading="lazy" decoding="async" /> {pet.Name}</td>
+            <td class="dim">{pet.Bonuses.join(', ')}</td>
+            <td class="dim">{pet.Owned ? 'Yes' : '-'}</td>
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
+{/if}
 
 <style>
   /* Scoped copies of the Wiki's own rules - a child component does not
@@ -192,6 +220,14 @@
 
   .dim {
     color: var(--text-dim);
+  }
+
+  img.pet {
+    width: 2rem;
+    height: 2rem;
+    object-fit: contain;
+    vertical-align: middle;
+    margin-right: 0.3rem;
   }
 
   .small {

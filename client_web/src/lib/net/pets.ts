@@ -8,7 +8,7 @@
 import { authedGet, authedPost } from './auth';
 
 /** PetSource on the server. */
-export const PET_SOURCE = { Shop: 1, RareDrop: 2, Boss: 3 } as const;
+export const PET_SOURCE = { Shop: 1, RareDrop: 2, Boss: 3, Monster: 4 } as const;
 
 export interface Pet {
   Id: string;
@@ -26,6 +26,10 @@ export interface Pet {
 export interface PetsView {
   Pets: Pet[];
   Characters: { Id: string; Name: string }[];
+  /** The monster pets' odds per kill (PetRegistry.MonsterPetPerKill). */
+  MonsterPetChancePerKill: number;
+  /** What a monster pet already owned pays instead, by mail. */
+  DuplicateDiamonds: number;
 }
 
 export const petKeys = { all: ['pets'] as const };
@@ -48,5 +52,6 @@ export async function assignPet(petId: string, characterId: string | null): Prom
 export function petSourceLine(pet: Pet): string {
   if (pet.Source === PET_SOURCE.RareDrop) return 'A rare find - any kill or harvest during the event may bring it.';
   if (pet.Source === PET_SOURCE.Boss) return 'Follows whoever first breaks The Cailleach’s sixth winter.';
+  if (pet.Source === PET_SOURCE.Monster) return 'Found on any kill, any time - rarely.';
   return 'Sold in the event shop.';
 }

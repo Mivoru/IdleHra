@@ -145,17 +145,53 @@ namespace FolkIdle.Server.Domain.Progression
         }
 
         /// <summary>
-        /// Saves rare pets found on the tick. Called from the tick's drain
-        /// through SafeDispatch, one task per note. A pet already owned is
-        /// silently kept as is - the drop simply found nothing new.
+        /// Saves pets found on the tick. Called from the tick's drain through
+        /// SafeDispatch, one task per note. An event pet already owned is kept
+        /// as is - the drop simply found nothing new. A MONSTER pet already
+        /// owned pays its duplicate diamonds by mail instead (owner,
+        /// 2026-10-10), because with a pool of ten a long-played account meets
+        /// mostly duplicates and "nothing" would make the roll feel dead.
         /// </summary>
         public static async Task SaveDropAsync(IDbContextFactory<FolkIdleDbContext> factory, PlayerSessionRegistry registry, PetDropNote note)
         {
             await using var db = await factory.CreateDbContextAsync();
-            if (await GrantAsync(db, note.PlayerId, note.PetId, DateTime.UtcNow))
+            var outcome = await SaveDropCoreAsync(db, note, DateTime.UtcNow);
+            if (outcome == DropOutcome.New)
             {
                 registry.EnqueueCommandResult(note.PlayerId, (byte)FolkIdle.Server.Network.CommandResultCode.EventPetFound);
             }
+            else if (outcome == DropOutcome.Duplicate)
+            {
+                registry.EnqueueCommandResult(note.PlayerId, (byte)FolkIdle.Server.Network.CommandResultCode.PetDuplicateDiamonds);
+            }
+        }
+
+        public enum DropOutcome { Nothing = 0, New = 1, Duplicate = 2 }
+
+        /// <summary>The save itself, without the session - what the tests call.</summary>
+        internal static async Task<DropOutcome> SaveDropCoreAsync(FolkIdleDbContext db, PetDropNote note, DateTime utcNow)
+        {
+            var pet = PetRegistry.Find(note.PetId);
+            if (pet == null) return DropOutcome.Nothing;
+            if (await GrantAsync(db, note.PlayerId, note.PetId, utcNow)) return DropOutcome.New;
+            if (pet.Source != PetSource.Monster) return DropOutcome.Nothing;
+
+            // Modul: DIAMONDS GO BY MAIL. The live payload owns the diamond
+            // balance and this runs off the tick, so writing PlayerRecords here
+            // would be overwritten by the next checkpoint - mail is how an
+            // off-tick worker pays a diamond safely (as the seasonal boss does).
+            db.MailboxInstances.Add(new MailboxInstance
+            {
+                PlayerId = note.PlayerId,
+                BaseItemId = string.Empty,
+                Quantity = 0,
+                DiamondAttachment = PetRegistry.DuplicateDiamonds,
+                SenderName = pet.Name,
+                MessageText = $"{pet.Name} found you again. You already have one, so here are {PetRegistry.DuplicateDiamonds} diamonds instead.",
+                ReceivedTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            });
+            await db.SaveChangesAsync();
+            return DropOutcome.Duplicate;
         }
     }
 }

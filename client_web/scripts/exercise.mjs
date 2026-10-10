@@ -3701,6 +3701,44 @@ await go('Character');
   }
 }
 
+// --- a monster pet found, then found again (2026-10-10) ----------------------
+// Modul: through the SAME queue a kill feeds (POST /api/v1/dev/pet-drop), so
+// this proves the save path a 1-in-100,000 kill would take: the first find is
+// owned, the second pays its duplicate diamonds by mail. Each run leaves one
+// such mail behind; nothing is spent.
+{
+  const view = await apiGet('/api/v1/pets').catch(() => null);
+  const pool = (view?.Pets ?? []).filter((p) => p.Source === 4);
+  record('ten monster pets are listed with their odds', pool.length === 10 && view?.MonsterPetChancePerKill > 0, `${pool.length} pets, 1 in ${Math.round(1 / (view?.MonsterPetChancePerKill || 1))}`);
+  const target = pool.find((p) => p.Id === 'pet_hugin') ?? pool[0];
+  if (target) {
+    const mailWith50 = async () =>
+      ((await apiGet('/api/v1/mailbox/list').catch(() => [])) ?? []).filter((m) => m.DiamondAttachment === view.DuplicateDiamonds).length;
+    const owned = async () => ((await apiGet('/api/v1/pets').catch(() => null))?.Pets ?? []).some((p) => p.Id === target.Id && p.Owned);
+    const waitFor = async (check) => {
+      for (let i = 0; i < 20; i++) {
+        if (await check()) return true;
+        await page.waitForTimeout(500);
+      }
+      return false;
+    };
+
+    if (!(await owned())) {
+      await apiPost('/api/v1/dev/pet-drop', { PetId: target.Id });
+      record('a found monster pet becomes yours', await waitFor(owned), target.Id);
+    } else {
+      record('a found monster pet becomes yours', true, `${target.Id} already owned from an earlier run`);
+    }
+    const before = await mailWith50();
+    await apiPost('/api/v1/dev/pet-drop', { PetId: target.Id });
+    record(
+      `a duplicate pays ${view.DuplicateDiamonds} diamonds by mail`,
+      await waitFor(async () => (await mailWith50()) > before),
+      `${before} -> ${await mailWith50()}`,
+    );
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character

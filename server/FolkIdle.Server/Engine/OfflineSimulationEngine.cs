@@ -985,6 +985,9 @@ namespace FolkIdle.Server.Engine
             // offline rate (the same as live, owner 2026-10-09).
             OfflineEventCurrency(ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, totalKills, elapsedSeconds);
 
+            // A monster pet, at the live odds per kill made away.
+            Domain.Progression.PetRegistry.RollMonsterPets(payload.PlayerId, totalKills, Random.Shared);
+
             if (totalGold > 0)
             {
                 payload.AddGold(totalGold);

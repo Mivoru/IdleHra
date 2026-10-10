@@ -12540,6 +12540,30 @@ namespace FolkIdle.Server.Network
                 // live, 0 returns to the calendar. {"Grant": n} adds n of the
                 // current event's currency to the caller's live balance,
                 // outside the daily cap - exercise.mjs buys with it.
+                // A monster pet "found" on demand, through the same queue a kill
+                // uses - so exercise.mjs can prove a find lands and a duplicate
+                // mails diamonds without waiting 100,000 kills.
+                if (requestPath == "/api/v1/dev/pet-drop" && context.Request.HttpMethod == "POST")
+                {
+                    string body = await ReadBodyAsync(context);
+                    string? petId = null;
+                    try
+                    {
+                        using var parsed = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                        if (parsed.RootElement.TryGetProperty("PetId", out var pid)) petId = pid.GetString();
+                    }
+                    catch (JsonException) { }
+                    if (FolkIdle.Server.Domain.Progression.PetRegistry.Find(petId) == null)
+                    {
+                        context.Response.StatusCode = 400;
+                        return;
+                    }
+                    FolkIdle.Server.Domain.Progression.PetEngine.Drops.Enqueue(
+                        new FolkIdle.Server.Domain.Progression.PetDropNote(playerId, petId!));
+                    await WriteJsonAsync(context, new { Queued = petId });
+                    return;
+                }
+
                 if (requestPath == "/api/v1/dev/event" && context.Request.HttpMethod == "POST")
                 {
                     string body = await ReadBodyAsync(context);
