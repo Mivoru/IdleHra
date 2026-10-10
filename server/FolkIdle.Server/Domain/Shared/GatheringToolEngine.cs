@@ -149,6 +149,27 @@ namespace FolkIdle.Server.Domain.Shared
             return (int)(MasterySpeedPctAtLevelOne * Math.Sqrt(masteryLevel));
         }
 
+        /// <summary>
+        /// The whole speed bonus, in percent: tool, mastery, village building
+        /// and the flat extras. ComputeRequiredTicks divides by it and the
+        /// character stat sheet prints it - one sum, so the number a player
+        /// reads is the number the tick uses.
+        /// </summary>
+        public static int TotalSpeedBonusPct(int masteryLevel, int toolTier, int villageProductionLevel, int toolAffixSpeedPct)
+        {
+            int total = GetToolSpeedBonusPct(toolTier);
+            total += GetMasterySpeedBonusPct(masteryLevel);
+            if (villageProductionLevel > 0)
+            {
+                total += villageProductionLevel * VillageYieldBonusPctPerLevel;
+            }
+            if (toolAffixSpeedPct > 0)
+            {
+                total += toolAffixSpeedPct;
+            }
+            return total;
+        }
+
         public static int ComputeRequiredTicks(int baseTickThreshold, int masteryLevel, int toolTier, int villageProductionLevel, int toolAffixSpeedPct)
         {
             int ticks = baseTickThreshold;
@@ -157,17 +178,7 @@ namespace FolkIdle.Server.Domain.Shared
                 return MinRequiredTicks;
             }
 
-            int totalSpeedBonusPct = GetToolSpeedBonusPct(toolTier);
-            totalSpeedBonusPct += GetMasterySpeedBonusPct(masteryLevel);
-            if (villageProductionLevel > 0)
-            {
-                totalSpeedBonusPct += villageProductionLevel * VillageYieldBonusPctPerLevel;
-            }
-            if (toolAffixSpeedPct > 0)
-            {
-                totalSpeedBonusPct += toolAffixSpeedPct;
-            }
-
+            int totalSpeedBonusPct = TotalSpeedBonusPct(masteryLevel, toolTier, villageProductionLevel, toolAffixSpeedPct);
             if (totalSpeedBonusPct > 0)
             {
                 ticks = ticks * 100 / (100 + totalSpeedBonusPct);

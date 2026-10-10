@@ -450,14 +450,34 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // Modul: THE RARE PET IS TOLD, NOT JUST ROLLED (owner, 2026-10-10:
+                // "nowhere do I see that a rare pet can drop"). The Witch dropped
+                // for a player while no screen named her, her chance or her
+                // bonuses. Her odds travel from PetRegistry here, so the shop
+                // and the Wiki print the number the roll uses.
+                var rarePet = PetRegistry.RareDropOf(current.Id);
+                var bossPet = PetRegistry.BossPetOf(current.Id);
+
                 HashSet<string> owned = new(StringComparer.Ordinal);
                 long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
                 if (playerId > 0)
                 {
                     using var scope = _serviceProvider.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                    owned = await EventShopEngine.OwnedAsync(db, playerId, current.Shop.Select(i => i.Id));
+                    var ids = current.Shop.Select(i => i.Id).ToList();
+                    if (rarePet != null) ids.Add(rarePet.Id);
+                    if (bossPet != null) ids.Add(bossPet.Id);
+                    owned = await EventShopEngine.OwnedAsync(db, playerId, ids);
                 }
+
+                object? DescribePet(PetDefinition? pet) => pet == null ? null : new
+                {
+                    pet.Id,
+                    pet.Name,
+                    pet.Art,
+                    Bonuses = pet.Bonuses.Select(PetRegistry.Describe).ToArray(),
+                    Owned = owned.Contains(pet.Id),
+                };
 
                 await WriteJsonAsync(context, new
                 {
@@ -474,7 +494,11 @@ namespace FolkIdle.Server.Network
                         current.KillChance,
                         current.GatherChance,
                         current.OfflineFactor,
-                        Shop = current.Shop.Select((item, index) => new
+                        RarePet = DescribePet(rarePet),
+                        RarePetChancePerCurrency = rarePet == null ? 0.0 : PetRegistry.RareDropPerCurrency,
+                        BossPet = DescribePet(bossPet),
+                        BossPetTier = bossPet == null ? 0 : FolkIdle.Server.Domain.Combat.SeasonalBossRegistry.Tiers.FirstOrDefault(t => t.PetId == bossPet.Id)?.Tier ?? 0,
+                        Shop =current.Shop.Select((item, index) => new
                         {
                             Index = index,
                             item.Id,

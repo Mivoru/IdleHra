@@ -584,7 +584,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Login', label: 'Sign in', status: 'no-page-needed', note: 'Happens before the game; nothing about it is a rule a player can play around.' },
   { screen: 'Settings', label: 'Settings', status: 'no-page-needed', note: 'Volume, theme and account options. Every control says what it does on the screen.' },
   { screen: 'Wiki', label: 'Wiki', status: 'no-page-needed', note: 'This. A wiki page about the wiki would be a table of contents for the table of contents.' },
-  { screen: 'EventShop', label: 'Event', status: 'no-page-needed', note: 'Exists only while a seasonal event runs, and states its own rates, cap, prices and end date from the server - a wiki page would be a stale copy of a calendar.' },
+  { screen: 'EventShop', label: 'Event', status: 'documented', tab: 'events', note: 'Seasonal events, their shop, the rare and boss pets and the seasonal boss - read live from the server, so the page cannot go stale.' },
 
   { screen: 'Combat', label: 'Combat', status: 'documented', tab: 'combat', note: 'Attributes, the damage model, auto-eat, death and halt reasons.' },
   { screen: 'Larder', label: 'Auto-Eat', status: 'documented', tab: 'combat', note: 'Auto-eat and what counts as food.' },
@@ -634,6 +634,7 @@ export interface WikiSearchEntry {
  */
 export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'basics', anchor: 'the-loop', title: 'The core loop', keywords: 'start beginning new player what to do first idle offline' },
+  { tab: 'basics', anchor: 'work', title: 'One character per kind of work', keywords: 'second third character slot same activity refused fighter woodcutter miner fisher crafter' },
   { tab: 'basics', anchor: 'offline', title: 'Offline progression', keywords: 'away logged out sleep twelve hours cap summary' },
   { tab: 'basics', anchor: 'halts', title: 'Why a character stopped', keywords: 'halt idle stuck nothing happening out of food died quarantine' },
   { tab: 'basics', anchor: 'currencies', title: 'Gold, diamonds and materials', keywords: 'currency premium money commodity' },
@@ -641,6 +642,8 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'combat', anchor: 'attributes', title: 'STR, DEX, CON and LCK', keywords: 'strength dexterity constitution luck stats attributes armour penetration accuracy' },
   { tab: 'combat', anchor: 'damage', title: 'How a hit is resolved', keywords: 'damage armour mitigation crit dodge block lifesteal' },
   { tab: 'combat', anchor: 'autoeat', title: 'Auto-eat and the larder', keywords: 'food fish heal threshold larder starve' },
+  { tab: 'combat', anchor: 'ascension', title: 'Boss Ascension', keywords: 'ascension ladder steps boss again harder title frame cosmetic swift clock' },
+  { tab: 'combat', anchor: 'orders', title: 'Orders', keywords: 'automation rules orders fish larder dry step down death auto fuse' },
   { tab: 'combat', anchor: 'slots', title: 'The eleven equipment slots', keywords: 'weapon helmet chest gloves leggings boots amulet ring axe pickaxe rod tools paper doll offhand shield' },
   { tab: 'combat', anchor: 'sets', title: 'Armour set bonuses', keywords: 'set family two three five pieces matching' },
 
@@ -671,6 +674,8 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'crafting', anchor: 'recipes', title: 'Every recipe', keywords: 'recipes materials tools smelting equipment cooking alchemy' },
 
   { tab: 'village', anchor: 'townhall', title: 'The Town Hall ceiling', keywords: 'town hall ceiling character slots gold per hour structural' },
+  { tab: 'village', anchor: 'commissions', title: 'Workshop commissions', keywords: 'workshop commission order gear piece affix floor rarity craft' },
+  { tab: 'village', anchor: 'greatworks', title: 'Great Works', keywords: 'monument great works stages yield offline cap frame ebon crown hall slot' },
   { tab: 'village', anchor: 'buildings', title: 'What each building does', keywords: 'forge inn breeding grounds lumberjack mine warehouse crafting workshop' },
   { tab: 'village', anchor: 'materials', title: 'Tier materials', keywords: 'logs ore copper iron sulfur silver darksteel malachite hematite obsidian cobalt astralite' },
   { tab: 'village', anchor: 'costs', title: 'Upgrade costs, level by level', keywords: 'cost gold materials price upgrade time duration' },
@@ -700,6 +705,9 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'economy', anchor: 'deep', title: 'The Deep', keywords: 'deep delve below floor eight stake toll lantern refill titles lamplighter deepest board weekly record' },
 
   { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'perun avatar shared hp attempts percentile token reward shield wheel spear seam parry auto-strike damage board' },
+  { tab: 'events', anchor: 'seasonal', title: 'Seasonal events', keywords: 'samhain halloween pumpkins event currency shop avatar festival' },
+  { tab: 'events', anchor: 'cailleach', title: 'The seasonal boss', keywords: 'cailleach samhain boss tiers winter first clear diamonds mini vampire' },
+  { tab: 'events', anchor: 'pets', title: 'Pets', keywords: 'pet witch ghostie pixie skeleton dog black cat wolf pup mini vampire bonus slot rare drop' },
   { tab: 'events', anchor: 'daily', title: 'The daily bonus', keywords: 'login streak seven days gold diamonds utc midnight' },
   { tab: 'events', anchor: 'achievements', title: 'Achievements', keywords: 'treasury forging logistics tiers diamonds claim' },
 

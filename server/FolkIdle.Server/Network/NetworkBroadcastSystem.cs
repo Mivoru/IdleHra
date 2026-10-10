@@ -1709,6 +1709,14 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // Every stat of one character and the cap it runs into; see
+            // CharacterStatSheet. Read-only, from the same live snapshot.
+            if (requestPath == "/api/v1/character/stats" && context.Request.HttpMethod == "GET")
+            {
+                await HandleCharacterStats(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/chest/settings")
             {
                 await HandleChestSettings(context);
@@ -4387,6 +4395,70 @@ namespace FolkIdle.Server.Network
 
             context.Response.Close();
         }
+        /// <summary>
+        /// GET /api/v1/character/stats?slot=N (0-based, default 0): the
+        /// character stat sheet, from the live payload with that slot swapped
+        /// into the register - the same snapshot the hunting advisor reads.
+        /// 409 NoSession without a running session.
+        /// </summary>
+        private async Task HandleCharacterStats(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                int slot = 0;
+                string? slotText = context.Request.QueryString["slot"];
+                if (slotText != null && (!int.TryParse(slotText, out slot) || slot < 0 || slot > 2))
+                {
+                    context.Response.StatusCode = 400;
+                    context.Response.Close();
+                    return;
+                }
+
+                if (_playerSessionRegistry == null)
+                {
+                    context.Response.StatusCode = 503;
+                    context.Response.Close();
+                    return;
+                }
+
+                var order = new Domain.Combat.PayloadSnapshotOrder { PlayerId = playerId };
+                _playerSessionRegistry.PayloadSnapshotQueue.Enqueue(order);
+                var finished = await Task.WhenAny(order.Completion.Task, Task.Delay(3000));
+                var snapshot = finished == order.Completion.Task ? order.Completion.Task.Result : null;
+                if (snapshot == null)
+                {
+                    context.Response.StatusCode = 409;
+                    context.Response.ContentType = "application/json";
+                    await JsonSerializer.SerializeAsync(context.Response.OutputStream, new { Reason = "NoSession" });
+                    context.Response.Close();
+                    return;
+                }
+
+                var payload = snapshot.Value.Payload;
+                Domain.Combat.SimulationEngine.SwapSlotIntoActiveRegister(ref payload, slot);
+                var body = Domain.Combat.CharacterStatSheet.Build(payload, slot);
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, body);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Character stats error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
         /// <summary>
         /// Reads (GET) or sets (POST) the auto-salvage floor.
         ///

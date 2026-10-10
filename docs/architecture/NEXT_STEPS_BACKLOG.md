@@ -19,6 +19,54 @@ do next.
 
 ---
 
+# 2026-10-10 (evening) - character stat sheet, event pet odds, Wiki catch-up
+
+Branch `claude/wiki-pets-stats`:
+- **Character -> Stats tab** (`CharacterStatsPanel.svelte`) reads
+  `GET /api/v1/character/stats?slot=N`, built by
+  `Domain/Combat/CharacterStatSheet.cs` from the live payload with the slot
+  swapped into the register (the hunting advisor's snapshot). Every number is
+  asked of the tick's own function and every cap is the tick's own clamp:
+  attack speed 60%, crit 100%, block 75%, monster hit chance 5-95% (so the
+  first ~5 dodge does nothing), crit protection 50%, lifesteal 1% of health
+  per hit, swing floor 0.2 s, harvest floor 2 ticks, codex yield 2.0x, Renown
+  below 15%. Two compositions were extracted so the sheet cannot drift:
+  `SimulationEngine.GatherSpeedTermsFor` (+ `GatheringToolEngine.TotalSpeedBonusPct`)
+  and `CombatGoldReward.FactorsFor`. `CharacterStatSheetTests` pins them.
+  Bench characters (not in slots 1-3) have no sheet - the Character screen
+  only lists fielded ones anyway.
+- **The Witch was rolled but never told.** `/api/v1/event` now carries
+  `RarePet` + `RarePetChancePerCurrency` and `BossPet` + `BossPetTier`; the
+  event shop has a "Pets you cannot buy" section with the odds as a ratio
+  (1 in 2,000 per pumpkin, about 1 in 2,000,000 per kill). The pet bonus
+  "drop chance" was LOOT LUCK (rarer, not more frequent drops) and now says so.
+- **Wiki**: new sections for seasonal events / the seasonal boss / pets (read
+  live from the two event endpoints, no copied numbers), Boss Ascension,
+  Orders, one character per kind of work, Workshop commissions and Great Works.
+- **Pumpkin audit, live, 2026-10-10 ~06:45-19:30 UTC (generation 3):** without
+  Cailleach first-clear grants, Mivoru 122, Tomda 42, (pro)boss 22. Codex kills
+  alone predicted ~10-17 for Mivoru; the rest is gathering (two of three slots
+  gather on every active account). `player_stat_samples.Harvests` - read off
+  the Logistics achievement row - stayed flat for Mivoru all day while two
+  characters gathered, so the insights' harvest rate looks wrong; not yet
+  traced. The pumpkin rate itself is not a bug.
+- **Pumpkins x5 again, not reset (owner, same evening):** kill 0.5%, harvest
+  0.1%, so an ordinary active account (Tomda: ~85 a day at the old rate, 1,500
+  from winters I-III) reaches ~10,400 by 2026-11-02 = 2-3 pets + 2-3 avatars.
+  The Witch moved to 1/10,000 per pumpkin so she stays ~1 in 2,000,000 per kill.
+- **DECIDED, NOT BUILT - pets from ordinary monsters** (waits on the owner's
+  art): any kill, live and offline, rolls 1 in 100,000 for a pet from a small
+  permanent pool (not event-bound). Measured kills a day over the last week:
+  Mivoru 14,200 (one pet per ~7 days), Tomda 10,900 (~9), (pro)boss 32,600
+  (~3). Each pet +8% to ONE stat (between a shop pet's +5% one and the Witch's
+  +8% two). A duplicate converts to **50 diamonds** - at 100 the fastest
+  account would take ~230 a week once it owned the pool, four times the
+  Delve's 60-a-week ceiling.
+ ~230/day on the most
+  active account is on the owner's target.
+
+---
+
 # 2026-10-08 (late) - chest opening stage, chest odds
 
 Branch `claude/chest-opening`:

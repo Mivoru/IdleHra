@@ -35,6 +35,33 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.15.0',
+    date: '2026-10-10',
+    sections: [
+      {
+        title: 'Your stats',
+        items: [
+          'The Character screen has a new Stats tab. It shows every stat of the character you picked - attack, crit, attack speed, lifesteal, block, dodge, health, armour, loot luck, gold and XP bonuses, and gathering speed and yield - with gear, pet, skills and bloodline included.',
+          'Where a stat has a limit, the tab shows it, and turns red when you have reached it. Attack speed stops at 60%, for example, so you know when to improve something else.',
+        ],
+      },
+      {
+        title: 'Samhain',
+        items: [
+          'Pumpkins drop five times as often as before. Pumpkins you already have are kept.',
+          'The event shop now lists the two pets you cannot buy: the Witch, who can come with any pumpkin you earn (1 in 10,000 per pumpkin), and the Mini Vampire, the reward for beating the sixth winter.',
+          'The bonus that said "drop chance" was always loot luck: it makes rarer drops likelier, not drops more frequent. It now says so.',
+        ],
+      },
+      {
+        title: 'Wiki',
+        items: [
+          'New pages on seasonal events, The Cailleach, pets, Boss Ascension, orders, Workshop commissions and the Great Works.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.14.0',
     date: '2026-10-10',
     sections: [

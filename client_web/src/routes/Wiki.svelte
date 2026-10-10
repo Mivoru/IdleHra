@@ -40,6 +40,7 @@
   import WikiRecipes from '../lib/ui/WikiRecipes.svelte';
   import WikiGuildBuffs from '../lib/ui/WikiGuildBuffs.svelte';
   import WikiScreenIndex from '../lib/ui/WikiScreenIndex.svelte';
+  import WikiSeasonalEvent from '../lib/ui/WikiSeasonalEvent.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import {
     SKILL_TREE_NODES,
@@ -162,7 +163,7 @@
       tabs: [
         { id: 'guilds', label: 'Guilds & social', sub: 'Buffs and channels' },
         { id: 'economy', label: 'Market & mail', sub: 'Trading and diamonds' },
-        { id: 'events', label: 'Events & rewards', sub: 'World boss, daily, deeds' },
+        { id: 'events', label: 'Events & rewards', sub: 'Seasonal events, pets, world boss' },
       ],
     },
     {
@@ -363,6 +364,15 @@
             <li><strong>Beat the boss.</strong> Each region's boss opens the next region — and the gear of that region, which you may not wear before it.</li>
           </ol>
 
+          <h3 id="work">One character per kind of work</h3>
+          <p class="dim small">
+            Up to three characters work at once, but never two at the same kind of
+            work: one fighter, one woodcutter, one miner, one fisher and one crafter
+            at most. Two fighters on two different monsters are refused just like
+            two on the same one, so a second and third character spread your
+            account across the world rather than doubling one loop.
+          </p>
+
           <h3 id="offline">Offline progression</h3>
           <p class="dim small">
             When you close the page your characters keep their assignment and the
@@ -497,6 +507,32 @@
             chest once: Rare for the first two regions, Epic for the next two, Legendary for
             Malakor. Every one was measured to be winnable with the gear the boss is tuned for.
           </p>
+
+          <h3 id="ascension">Boss Ascension</h3>
+          <p class="dim small">
+            Once a region boss is beaten it can be fought again on a ladder of
+            ten steps, from the boss's own panel on the Combat screen.
+            Every step makes the boss stronger in both health and attack, and the
+            even steps also put a clock on the kill - from twice the Swift
+            challenge's limit at step 2 down to 120% of it at step 10. Step 10 is
+            about as strong as the boss two regions further on. The first clear of
+            each step pays a title, and steps 5 and 10 also a frame. The ladder pays
+            <strong>only cosmetics</strong> - no gold, diamonds, gear or chests - so
+            climbing it is for the name, not for power.
+          </p>
+
+          <h3 id="orders">Orders</h3>
+          <p class="dim small">
+            Each character can carry up to three standing orders, set on the
+            Character screen under Work &amp; orders. The slots open at account
+            level 20, 40 and 60, and an order acts the same whether you are watching
+            or away:
+          </p>
+          <ul class="styled-list">
+            <li><strong>Fish when the larder runs dry</strong> - go to the fishing spot you chose instead of fighting on hungry.</li>
+            <li><strong>Step down after a death</strong> - respawn one monster down the ladder instead of standing idle.</li>
+            <li><strong>Fuse new drops</strong> - fuse the stacks new drops land in, up to the tier you choose.</li>
+          </ul>
 
           <h3 id="slots">The eleven equipment slots</h3>
           <p class="dim small">
@@ -997,6 +1033,30 @@
             level {SLOT2_TOWN_HALL} and level {SLOT3_TOWN_HALL} — not from your
             character level.
           </p>
+          <h3 id="commissions">Workshop commissions</h3>
+          <p class="dim small">
+            The Crafting Workshop can be commissioned to make one piece of gear at a
+            time: any of the drops of a region you have opened, with one affix you
+            choose. The Workshop's level sets the lowest rarity it can come out at -
+            Common at level 1 up to Epic at level 5 - always at least two tiers below
+            what that region's boss asks for, so a commission helps you gear up but
+            never opens a region for you. It takes 1 to 8 hours, longer for a better
+            floor, and costs that region's wood and ore - about what two characters
+            gathering there produce in the time.
+          </p>
+
+          <h3 id="greatworks">Great Works</h3>
+          <p class="dim small">
+            Five monuments, one per region, each built in five stages from that
+            region's common log and ore - tens of thousands of units for the first
+            stage, millions for the last; the Great Works screen on the Home map
+            prices each one. Every stage pays a small bonus that is permanent and
+            survives a rebirth - +1% gathering yield (regions 1, 3 and 5) or +15
+            minutes of offline time (regions 2, 4 and 5). Finishing a monument pays
+            its own frame, and finishing The Ebon Crown (region 5) also one more
+            Hall of Ancestors slot.
+          </p>
+
           <WikiVillage />
 
         <!-- ================================================== BREEDING -->
@@ -1495,6 +1555,8 @@
 
         <!-- ================================================== EVENTS -->
         {:else if activeTab === 'events'}
+          <WikiSeasonalEvent />
+
           <h3 id="worldboss">The world boss</h3>
           <p class="dim small">
             A server-wide encounter with a single shared health bar —

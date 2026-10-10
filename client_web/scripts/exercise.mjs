@@ -3665,6 +3665,42 @@ await go('The Delve');
   }
 }
 
+// --- the stat sheet and the event's unsold pets (2026-10-10) -----------------
+// Modul: the Stats tab prints the SERVER's numbers (CharacterStatSheet), so the
+// check is that the tab and /api/v1/character/stats agree on a number the
+// fight uses, and that a cap is shown where the tick clamps. The event shop's
+// rare pet line must print the odds the server rolls - it had none at all.
+await go('Character');
+{
+  await characterTab('stats');
+  const panel = page.getByTestId('character-stats');
+  await panel.locator('[data-stat="attack"]').waitFor({ timeout: 15000 }).catch(() => {});
+  const sheet = await apiGet('/api/v1/character/stats?slot=0').catch(() => null);
+  const attack = sheet?.Sections?.flatMap((s) => s.Rows).find((r) => r.Key === 'attack')?.Value ?? 0;
+  const shown = await panel.locator('[data-stat="attack"] .value').innerText().catch(() => '');
+  const rows = await panel.locator('.row').count();
+  // Under 1,000 the panel prints one decimal; the fixture's attack sits there.
+  const parsed = Number.parseFloat(shown.replace(/[^\d.]/g, ''));
+  record(
+    'the Stats tab shows the server sheet, attack included',
+    attack > 0 && rows >= 20 && (attack >= 1000 || Math.abs(parsed - attack) < 0.05),
+    `attack ${attack} vs "${shown.trim()}", ${rows} rows`,
+  );
+  const speedCap = await panel.locator('[data-stat="attack_speed"] [data-testid="stat-cap"]').innerText().catch(() => '');
+  record('attack speed names its 60% cap', /60/.test(speedCap), speedCap);
+
+  const ev = (await apiGet('/api/v1/event').catch(() => null))?.Event ?? null;
+  if (ev?.RarePet) {
+    await page.getByTestId('event-chip').first().click().catch(() => {});
+    const odds = page.getByTestId('event-rare-pet-odds');
+    await odds.waitFor({ timeout: 10000 }).catch(() => {});
+    const text = await odds.innerText().catch(() => '');
+    const want = Math.round(1 / ev.RarePetChancePerCurrency).toLocaleString('en-US');
+    record('the event shop tells the rare pet and its odds', text.includes(ev.RarePet.Name) && text.includes(want), text);
+    await go('Character');
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character

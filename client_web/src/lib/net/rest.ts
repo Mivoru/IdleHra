@@ -32,6 +32,7 @@ export const queryKeys = {
   monsterLoot: (monsterId: number) => ['monsters', 'loot', monsterId] as const,
   /** Task 78: the hunting advisor, per character slot. */
   combatProjection: (slot: number) => ['combat', 'projection', slot] as const,
+  characterStats: (slot: number) => ['character', 'stats', slot] as const,
   friends: ['social', 'friends'] as const,
   conversations: ['social', 'conversations'] as const,
   conversationHistory: (withPlayerId: number) =>
@@ -2330,6 +2331,37 @@ export interface CombatProjection {
 /** 409 when there is no live session to project from - the caller shows nothing. */
 export function fetchCombatProjection(slot = 0): Promise<CombatProjection> {
   return authedGet<CombatProjection>(`/api/v1/combat/projection?slot=${slot}`);
+}
+
+// ---------------------------------------------------------------------------
+// /api/v1/character/stats
+// ---------------------------------------------------------------------------
+
+/**
+ * One line of the character stat sheet (CharacterStatSheet on the server).
+ * Every value is asked of the function the live tick uses, and every cap is
+ * the clamp it applies - so the client formats and never computes.
+ */
+export interface StatSheetRow {
+  Key: string;
+  Label: string;
+  Value: number;
+  Unit: 'flat' | 'pct' | 'mult' | 'per_s' | 's';
+  /** Null when nothing bounds the stat. */
+  Cap: number | null;
+  /** True when more of the stat buys nothing. */
+  AtCap: boolean;
+  Note: string | null;
+}
+
+export interface StatSheet {
+  Slot: number;
+  Sections: { Title: string; Rows: StatSheetRow[] }[];
+}
+
+/** 409 when there is no live session to read from. */
+export function fetchCharacterStats(slot = 0): Promise<StatSheet> {
+  return authedGet<StatSheet>(`/api/v1/character/stats?slot=${slot}`);
 }
 
 // ---------------------------------------------------------------------------

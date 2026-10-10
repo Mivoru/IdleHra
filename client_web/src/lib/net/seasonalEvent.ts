@@ -35,6 +35,26 @@ export interface EventShopEntry {
   Owned: boolean;
 }
 
+/** A pet the event gives rather than sells - the rare drop or the boss's. */
+export interface EventPet {
+  Id: string;
+  Name: string;
+  /** Sprite path under /sprites/. */
+  Art: string;
+  /** Worded by the server (PetRegistry.Describe). */
+  Bonuses: string[];
+  Owned: boolean;
+}
+
+/**
+ * "1 in 2,000" for a chance of 0.0005. A one-in-a-million odds reads as "0%"
+ * in any percentage a person can parse, so rare odds are told as a ratio.
+ */
+export function oneIn(chance: number): string {
+  if (chance <= 0) return 'never';
+  return `1 in ${Math.round(1 / chance).toLocaleString('en-US')}`;
+}
+
 export interface SeasonalEvent {
   Id: number;
   Key: string;
@@ -47,6 +67,12 @@ export interface SeasonalEvent {
   KillChance: number;
   GatherChance: number;
   OfflineFactor: number;
+  /** The rare drop: each unit of currency also rolls RarePetChancePerCurrency for it. */
+  RarePet: EventPet | null;
+  RarePetChancePerCurrency: number;
+  /** The seasonal boss's pet, paid on the first clear of BossPetTier. */
+  BossPet: EventPet | null;
+  BossPetTier: number;
   Shop: EventShopEntry[];
 }
 

@@ -128,8 +128,18 @@ namespace FolkIdle.Server.Domain.Progression
                 // characters earned 1,187 in ~5 h at 2.5%/0.5% (~240/h, offline
                 // included), which is ~130k by the end. Cut 25x to ~10/h: about
                 // 5,500 from drops, plus 3,750 for The Cailleach's winters I-V.
-                KillChance: 0.001,
-                GatherChance: 0.0002,
+                //
+                // Owner, 2026-10-10 evening: raised 5x again, and NOT reset.
+                // The 25x cut was sized on the owner's own account, and it
+                // left an ordinary active player far short: Tomda earned 42
+                // in 12 h online (~85 a day) beside 1,500 from winters I-III,
+                // so about 3,300 by the end - one pet. The target is that such
+                // a player affords 2-3 pets and 2-3 avatars: 5x is ~8,900 from
+                // drops plus 1,500, ~10,400. The most active account
+                // (~230 a day at the old rate) now buys the whole shop; the
+                // owner accepted that over a daily cap.
+                KillChance: 0.005,
+                GatherChance: 0.001,
                 OfflineFactor: 1.0,
                 Shop: SamhainShop,
                 // Owner, 2026-10-10: everyone back to zero after the rates
