@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Threading.Tasks;
 using FolkIdle.Server.Domain.Combat;
+using FolkIdle.Server.Domain.Economy;
 using FolkIdle.Server.Domain.Progression;
 using FolkIdle.Server.Engine;
 using FolkIdle.Server.Models;
@@ -146,6 +147,90 @@ namespace FolkIdle.Server.Tests
             Assert.True(await PetEngine.OwnsAsync(db, playerId, six.PetId!));
 
             Assert.Equal(SeasonalBossRegistry.WithCleared(0, 6), await SeasonalBossEngine.LoadClearedMaskAsync(db, playerId, eventId));
+        }
+
+        // ---- one attempt, then back to work (2026-10-10) --------------------
+
+        /// <summary>Slot 1, strong, armed on tier 1 with the Cailleach one hit from death, having left <paramref name="returnTo"/>.</summary>
+        private static TickStatePayload ArmedOnTierOne(long returnTo)
+        {
+            int boss1 = RaceUnlockRegistry.GetRegionBossMonsterId(1);
+            var p = new TickStatePayload
+            {
+                PlayerId = 1,
+                CurrentLevel = 97,
+                SelectedLineageId = 1,
+                Slot1_CharacterId = Guid.NewGuid(),
+                ActiveActivityId = boss1,
+                CurrentMonsterId = boss1,
+                CurrentMonsterHp = 1,
+                DefeatedRegionBossMask = BossFirstClearRules.MarkDefeated(0, boss1),
+                // Already broken once, so the win is a repeat: no event clock in the test.
+                SeasonalBossClearedMask = SeasonalBossRegistry.WithCleared(0, 1),
+                InventorySpaceRemaining = int.MaxValue,
+                PlayerHp = 100_000_000,
+                TownHallLevel = 1,
+            };
+            RaceAttributeGrowth.ApplyLevelUpGrowth(ref p, activeRaceId: 1, levelsGained: 96);
+            p.CachedAffixTotals.FlatAttack = 50_000;
+            p.CachedAffixTotals.FlatDefense = 50_000;
+            p.SeasonalBossTier = 1;
+            p.SeasonalBossCharacterId = p.Slot1_CharacterId;
+            p.SeasonalBossReturnActivityId = returnTo;
+            return p;
+        }
+
+        private static void Tick(ref TickStatePayload p)
+        {
+            var queue = new System.Collections.Concurrent.ConcurrentQueue<GuildWarPointEvent>();
+            var contexts = new System.Collections.Concurrent.ConcurrentDictionary<long, LiveSessionContext>();
+            SimulationEngine.ProcessSubTick(ref p, 100, 100, queue, contexts);
+            while (queue.TryDequeue(out _)) { }
+            while (CodexEngine.KillEventQueue.TryDequeue(out _)) { }
+            while (CombatLootEngine.DropRequestQueue.TryDequeue(out _)) { }
+            while (CosmeticGrantEngine.Queue.TryDequeue(out _)) { }
+            while (CosmeticGrantEngine.BossKills.TryDequeue(out _)) { }
+            while (SeasonalBossEngine.Clears.TryDequeue(out _)) { }
+        }
+
+        [Fact]
+        public void A_win_ends_the_fight_and_sends_the_character_back_to_its_old_work()
+        {
+            const long oldWork = 92; // region 1's second monster
+            var p = ArmedOnTierOne(oldWork);
+            for (int i = 0; i < 200 && p.SeasonalBossTier != 0; i++) Tick(ref p);
+
+            Assert.Equal(0, p.SeasonalBossTier);
+            Assert.Equal(0L, p.SeasonalBossReturnActivityId);
+            Assert.Equal(oldWork, p.ActiveActivityId);
+            Assert.NotEqual(RaceUnlockRegistry.GetRegionBossMonsterId(1), p.CurrentMonsterId);
+        }
+
+        [Fact]
+        public void A_win_from_idle_leaves_the_character_idle_not_farming_the_yardstick_boss()
+        {
+            var p = ArmedOnTierOne(0);
+            for (int i = 0; i < 200 && p.SeasonalBossTier != 0; i++) Tick(ref p);
+
+            Assert.Equal(0, p.SeasonalBossTier);
+            Assert.Equal(0L, p.ActiveActivityId);
+            Assert.Equal(0, p.CurrentMonsterId);
+        }
+
+        [Fact]
+        public void A_death_ends_the_fight_and_sends_the_character_back_too()
+        {
+            const long oldWork = 92;
+            var p = ArmedOnTierOne(oldWork);
+            int boss1 = RaceUnlockRegistry.GetRegionBossMonsterId(1);
+            byte deathsBefore = p.LastDeathTick;
+
+            SimulationEngine.ApplyCombatDeath(ref p, boss1, 1000);
+
+            Assert.Equal((byte)(deathsBefore + 1), p.LastDeathTick);
+            Assert.Equal(boss1, p.LastDeathMonsterId);
+            Assert.Equal(0, p.SeasonalBossTier);
+            Assert.Equal(oldWork, p.ActiveActivityId);
         }
     }
 }

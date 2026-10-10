@@ -3525,9 +3525,12 @@ await go('The Delve');
 }
 
 // --- The Cailleach (2026-10-10) ------------------------------------------------
-// The server lists six tiers; Fight on an open tier deploys the main character
-// against The Cailleach - the wire's SeasonalBossTier arms and the combat screen
-// names her. ROUND TRIP: the fight is stood down at once; nothing is cleared.
+// The server lists six tiers; Fight on an open tier opens HER window over the
+// World Boss screen (it used to jump to Combat, which drew the Alpha Wolf), and
+// the fight ends IN that window - won or lost, both of which the server states.
+// The attempt is one fight: the server sends the character back to its old
+// work either way, so nothing is left armed. A first win of tier 1 pays the
+// fixture once; every later run is a repeat win, which pays nothing.
 {
   const boss = await apiGet('/api/v1/seasonal-boss');
   record('the server lists The Cailleach\'s six winters', (boss?.Tiers?.length ?? 0) === 6,
@@ -3540,13 +3543,28 @@ await go('The Delve');
   const fight = page.locator('[data-testid="seasonal-boss-tier"][data-tier="1"] [data-testid="seasonal-boss-fight"], [data-testid="seasonal-boss-tier"][data-tier="1"] [data-testid="seasonal-boss-again"]').first();
   if ((await fight.count()) > 0 && !(await fight.isDisabled())) {
     await fight.click();
-    await page.getByTestId('fight-target').waitFor({ timeout: 15000 }).catch(() => {});
-    const target = await page.getByTestId('fight-target').innerText().catch(() => '');
-    record('Fight sends the character against The Cailleach', /Cailleach/.test(target), target);
-    await page.getByRole('button', { name: 'Stand down', exact: true }).click().catch(() => {});
-    await page.waitForTimeout(800);
+    const win = page.getByTestId('seasonal-fight');
+    await win.waitFor({ timeout: 10000 }).catch(() => {});
+    record('Fight opens The Cailleach\'s own window', (await win.count()) > 0 && /Cailleach/.test(await win.innerText().catch(() => '')));
+    record('and the World Boss screen stays where it was', (await page.getByTestId('seasonal-boss').count()) > 0);
+
+    const ended = page.locator('[data-testid="seasonal-fight-won"], [data-testid="seasonal-fight-lost"]').first();
+    await ended.waitFor({ timeout: 90000 }).catch(() => {});
+    const outcome = (await page.getByTestId('seasonal-fight-won').count()) > 0 ? 'won'
+      : (await page.getByTestId('seasonal-fight-lost').count()) > 0 ? 'lost' : 'none';
+    record('the fight ends in the window, won or lost', outcome !== 'none', outcome);
+    record('a death to her shows no second death card', (await page.getByText('killed you').count()) === 0);
+    if (outcome === 'won') {
+      record('a win offers the next winter', (await page.getByTestId('seasonal-fight-next').count()) > 0);
+    } else if (outcome === 'lost') {
+      record('a loss offers another try', (await page.getByTestId('seasonal-fight-again').count()) > 0);
+    }
+    await page.getByTestId('seasonal-fight-close').click().catch(() => {});
+    await page.getByTestId('seasonal-fight-hide').click().catch(() => {});
+    await page.waitForTimeout(500);
+    record('Close shuts the window', (await win.count()) === 0);
   } else {
-    record('Fight sends the character against The Cailleach', false, 'tier 1 had no enabled Fight button');
+    record('Fight opens The Cailleach\'s own window', false, 'tier 1 had no enabled Fight button');
   }
   await apiPost('/api/v1/dev/event', { EventId: 0 });
 }

@@ -36,11 +36,19 @@ namespace FolkIdle.Server.Domain.Combat
             }
             if (code == CommandResultCode.Success)
             {
+                // Where slot 1 goes when the fight ends. A Fight pressed during
+                // a fight keeps the first answer, or the character would "return"
+                // to the Cailleach.
+                bool alreadyFighting = currentPayload.SeasonalBossTier != 0
+                    && currentPayload.SeasonalBossCharacterId == currentPayload.Slot1_CharacterId;
+                long returnTo = alreadyFighting ? currentPayload.SeasonalBossReturnActivityId : currentPayload.ActiveActivityId;
+
                 // The activity change FIRST: it disarms whatever was armed and
                 // resets the fight, so the boss spawns at the tier's strength.
                 SimulationEngine.ApplyActivityChangeToPayload(ref currentPayload, bossId);
                 currentPayload.SeasonalBossTier = (byte)tier;
                 currentPayload.SeasonalBossCharacterId = currentPayload.Slot1_CharacterId;
+                currentPayload.SeasonalBossReturnActivityId = returnTo;
                 code = CommandResultCode.SeasonalBossStarted;
             }
 

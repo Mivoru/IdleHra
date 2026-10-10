@@ -38,3 +38,21 @@ export function tierCleared(mask: number, tier: number): boolean {
 }
 
 export const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI'];
+
+/**
+ * Why a tier's Fight is off, in words, or null. One copy for the ladder and
+ * the fight window's "Next winter": the server's own order of checks
+ * (SeasonalBossRegistry.Validate) - the region boss, then the winter below.
+ */
+export function seasonalTierBlocked(
+  t: SeasonalBossTier,
+  tiers: readonly SeasonalBossTier[],
+  clearedMask: number,
+  bossMask: number,
+  live: boolean,
+): string | null {
+  if ((bossMask & (1 << (t.Region - 1))) === 0) return `Beat region ${t.Region}'s boss first.`;
+  if (t.Tier > 1 && !tierCleared(clearedMask, t.Tier - 1) && !tiers[t.Tier - 2]?.Cleared) return `Break winter ${ROMAN[t.Tier - 1]} first.`;
+  if (!live) return 'Waiting for the connection.';
+  return null;
+}

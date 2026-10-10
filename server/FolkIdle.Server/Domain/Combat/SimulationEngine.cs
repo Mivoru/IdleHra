@@ -3981,6 +3981,10 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         internal static void ApplyCombatDeath(ref TickStatePayload payload, int deathMonsterId, int effectiveMaxHp)
         {
+            // Read before the respawn clears CurrentMonsterId, which the check needs.
+            bool seasonalFight = TryGetSeasonalBoss(in payload, out _);
+            long seasonalReturn = payload.SeasonalBossReturnActivityId;
+
             payload.PlayerHp = effectiveMaxHp;
             payload.CurrentMonsterId = 0;
             payload.CurrentMonsterHp = 0;
@@ -4011,6 +4015,16 @@ namespace FolkIdle.Server.Domain.Combat
             // reach. The death above is still a death (counted, carded, the
             // Ascension disarmed); the rule only decides where the character
             // goes next instead of idle.
+            //
+            // A lost seasonal boss fight is the exception: it was one attempt
+            // from a window, so the character goes back to its old work rather
+            // than one step down from the Cailleach's yardstick boss. Still a
+            // death above - counted, and the client's fight window reads it.
+            if (seasonalFight)
+            {
+                ReturnFromSeasonalBoss(ref payload, seasonalReturn);
+                return;
+            }
             AutomationRules.TryStepDownAfterDeath(ref payload, deathMonsterId);
         }
 
@@ -4337,6 +4351,27 @@ namespace FolkIdle.Server.Domain.Combat
             // change of activity or a death.
             payload.SeasonalBossTier = 0;
             payload.SeasonalBossCharacterId = System.Guid.Empty;
+            payload.SeasonalBossReturnActivityId = 0;
+        }
+
+        /// <summary>
+        /// A seasonal boss fight is over (won or lost): slot 1 goes back to the
+        /// activity it left for it, or idles when that was nothing or that kind of
+        /// work has since been taken by another slot. Disarms either way.
+        /// </summary>
+        internal static void ReturnFromSeasonalBoss(ref TickStatePayload payload, long returnTo)
+        {
+            if (returnTo > 0 && !CharacterSlotEngine.IsKindOfWorkTakenByParkedSlot(in payload, returnTo))
+            {
+                ApplyActivityChangeToPayload(ref payload, returnTo);
+                return;
+            }
+            DisarmAscension(ref payload);
+            payload.ActiveActivityId = 0;
+            payload.CurrentMonsterId = 0;
+            payload.CurrentMonsterHp = 0;
+            payload.CombatTargetTickAccumulator = 0;
+            payload.IsDirty = true;
         }
 
         /// <summary>
@@ -5339,8 +5374,16 @@ namespace FolkIdle.Server.Domain.Combat
                 // repeat win is an ordinary kill - it already rolled the event
                 // currency above like any monster - and stays armed for the
                 // respawn, attempts being unlimited.
+                //
+                // Modul: EITHER WIN ENDS THE FIGHT (owner, 2026-10-10). A repeat
+                // win used to stay armed and farm her for ever, and a first clear
+                // left slot 1 farming the yardstick boss - "why am I fighting the
+                // Alpha Wolf". The fight is one attempt from a window now; the
+                // character goes back to its old work below, after the respawn.
+                long seasonalReturn = -1;
                 if (clearedBossRegion > 0 && TryGetSeasonalBoss(in payload, out var wonTier))
                 {
+                    seasonalReturn = payload.SeasonalBossReturnActivityId;
                     if (!SeasonalBossRegistry.IsCleared(payload.SeasonalBossClearedMask, wonTier.Tier))
                     {
                         long nowSeconds = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
@@ -5599,6 +5642,8 @@ namespace FolkIdle.Server.Domain.Combat
                 payload.CurrentMonsterHp = SpawnHpFor(in payload);
                 payload.CombatTargetTickAccumulator = 0;
                 payload.AteThisFight = false;
+
+                if (seasonalReturn >= 0) ReturnFromSeasonalBoss(ref payload, seasonalReturn);
             }
         }
 

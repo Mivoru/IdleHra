@@ -28,6 +28,7 @@ import {
 } from '../net/interpolation';
 import { DamageFeed, type DamageEvent } from './damage';
 import { pushCombatEvent, resetCombatLog, CombatEventKind, CombatEventFlag } from './combatLog';
+import { claimSeasonalDeath, noteSeasonalCombatEvent, noteSeasonalResults, resetSeasonalFightSession } from './seasonalFight';
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, shouldPlayErrorTone, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
 import type { QueryClient } from '@tanstack/svelte-query';
@@ -394,6 +395,7 @@ export function processCommandResults(
     // auto-reroll's "stop condition met" and a child's birth - both styled
     // as good news - beeped as failures; the Forge is silent by request.
     if (shouldPlayErrorTone(results.map((r) => r.code))) play('error');
+    noteSeasonalResults(results.map((r) => r.code), (code) => shouldPlayErrorTone([code]));
     client.invalidateQueries();
   }
   return results;
@@ -820,6 +822,7 @@ export function startSession(token: string): void {
   // A new session numbers its events from scratch, so a carried-over sequence
   // high-water mark would swallow every line until the server caught up to it.
   resetCombatLog();
+  resetSeasonalFightSession(samePlayer);
   lastCraftedCount = -1;
   lastLevel = 0;
   lastUnlockedRaceMask = -1;
@@ -996,8 +999,12 @@ export function startSession(token: string): void {
         const isFirstPacket = lastDeathTick === -1;
         lastDeathTick = packet.LastDeathTick;
 
+        // The Cailleach's window reports its own fight's death; the card
+        // would only stack a second "you died" over it.
         if (!isFirstPacket) {
-          deathSummary.set({ monsterId: Number(packet.LastDeathMonsterId) });
+          if (!claimSeasonalDeath(Number(packet.LastDeathMonsterId))) {
+            deathSummary.set({ monsterId: Number(packet.LastDeathMonsterId) });
+          }
           // The fighting character's own voice - a man's or a woman's clip,
           // looked up by who is in slot 1 (see deathSound.ts). Falls back to
           // the error tone: dying is the one moment that must not be silent.
@@ -1095,6 +1102,12 @@ export function startSession(token: string): void {
     // no number at all. See stores/damage.ts.
     onCombatEvent: (packet: ResponseCombatEvent) => {
       pushCombatEvent(packet);
+      noteSeasonalCombatEvent(
+        Number(packet.Sequence),
+        Number(packet.EventKind) === CombatEventKind.Kill,
+        Number(packet.MonsterId),
+        Number(packet.Amount),
+      );
 
       // Only the player's own blows float. A monster's hit moves the player's
       // health bar, which is its own feedback, and a screen that threw a number
