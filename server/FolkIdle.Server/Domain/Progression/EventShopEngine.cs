@@ -12,6 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace FolkIdle.Server.Domain.Progression
 {
     /// <summary>Currency handed back to the live payload after a purchase did not land.</summary>
+    /// <param name="EventId">The CurrencyStamp of the balance to refund into.</param>
     public readonly record struct EventShopRefund(long PlayerId, int EventId, int Amount);
 
     /// <summary>

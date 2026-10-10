@@ -91,6 +91,23 @@
   /* Modul: on a phone the chip is the event's NAME. Prefix and effect made it
      a two-line banner on a row of its own; the effect is a tap on the name
      (the Hint), and the colour still carries the flavour. */
+  /* A laptop-width header is full: with a seasonal event's "Event shop" chip
+     beside the purse, the effect line pushed Sign out onto a second row at
+     1366px. The name is a Hint that still says what the event does. */
+  @media (max-width: 90rem) {
+    .effect {
+      display: none;
+    }
+  }
+
+  /* ...and at 1280px the "Active Event:" prefix as well; the pill's colour and
+     the Hint still say what it is. */
+  @media (max-width: 85rem) {
+    .label {
+      display: none;
+    }
+  }
+
   @media (max-width: 40rem) {
     .event {
       order: 1;

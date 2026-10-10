@@ -885,7 +885,7 @@
           <!-- The seasonal event's currency, first in the purse while an event
                runs: on a desktop it sits right after the event banner, on a
                phone beside the gold under the name. It opens the event shop. -->
-          <EventChip onOpen={() => goTo('event')} active={screen === 'event'} />
+          <span class="wallet-event"><EventChip onOpen={() => goTo('event')} active={screen === 'event'} labelled /></span>
           <Money amount={snap.Gold} icon />
           <!-- Modul: shown at zero too. It used to be hidden below one, which
                is precisely when a player goes looking for it - an empty purse
@@ -916,6 +916,9 @@
         </svg>
       </button>
     </header>
+
+    <!-- A phone's event row (see .event-strip): empty, and hidden, out of season. -->
+    <div class="event-strip"><EventChip onOpen={() => goTo('event')} active={screen === 'event'} labelled sheet /></div>
 
     <!-- Modul: offline/reconnect UI. This was a one-line banner that printed
          "reconnecting (attempt 4)" and nothing else - proportionate to a
@@ -1127,6 +1130,11 @@
      --z-nav like the tab bar: above page content and the screens' own sticky
      strips (30), below the cards (60). Its height is published as
      --sticky-header-h (script), which those strips add to their own top. */
+  /* A phone only - a desktop's header has room for the chip itself. */
+  .event-strip {
+    display: none;
+  }
+
   header {
     position: sticky;
     top: var(--sa-top);
@@ -1311,21 +1319,27 @@
       flex-shrink: 0;
     }
 
-    /* Modul: THE EVENT CHIP NEEDS ITS ROOM. At 390px the row is name, purse
-       and menu, and a third currency pushed the menu button off the edge. While
-       the chip is up, the "gold"/"diamonds" words leave the screen but stay in
-       the accessible name - the coin and the gem still say which is which. */
-    .wallet:has(:global(.event-chip)) {
-      gap: 0.4rem;
+    /* Modul: THE EVENT CHIP HAS ITS OWN ROW ON A PHONE (owner, 2026-10-10).
+       At 390px the header row is name, purse and menu; a third currency first
+       pushed the menu off the edge, then - squeezed in by hiding the words -
+       left "118" with nothing saying it was diamonds. So the header keeps its
+       purse as it was and the event gets the strip under it. */
+    .wallet-event {
+      display: none;
     }
 
-    .wallet:has(:global(.event-chip)) :global(.money .unit) {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      overflow: hidden;
-      clip: rect(0 0 0 0);
-      white-space: nowrap;
+    .event-strip {
+      display: flex;
+      justify-content: center;
+      padding: 0.35rem 0.75rem 0;
+    }
+
+    .event-strip:empty {
+      display: none;
+    }
+
+    .event-strip :global(.event-chip) {
+      min-height: 44px;
     }
 
     /* Modul: 44px stated here. This is the single most-tapped control on a

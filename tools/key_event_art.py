@@ -77,14 +77,14 @@ SAMHAIN = {
     "Halloween/pets/skeleton dog.jpg": "samhain/pets/skeleton_dog.webp",
     "Halloween/pets/Witch.jpg": "samhain/pets/witch.webp",
     "Halloween/pets/wolf pup.jpg": "samhain/pets/wolf_pup.webp",
-    "Halloween/avatars/Banshee.jpg": "samhain/avatars/banshee.webp",
-    "Halloween/avatars/Dullahan.jpg": "samhain/avatars/dullahan.webp",
-    "Halloween/avatars/Jack-o'-lantern.jpg": "samhain/avatars/jack_o_lantern.webp",
-    "Halloween/avatars/Pooka.jpg": "samhain/avatars/pooka.webp",
-    "Halloween/avatars/pumpkin.jpg": "samhain/avatars/pumpkin.webp",
-    "Halloween/avatars/Skeleton.jpg": "samhain/avatars/skeleton.webp",
-    "Halloween/avatars/Vampire.jpg": "samhain/avatars/vampire.webp",
-    "Halloween/avatars/Warewolf.jpg": "samhain/avatars/werewolf.webp",
+    "Halloween/avatars/Banshee.jpg": "samhain/avatars_v2/banshee.webp",
+    "Halloween/avatars/Dullahan.jpg": "samhain/avatars_v2/dullahan.webp",
+    "Halloween/avatars/Jack-o'-lantern.jpg": "samhain/avatars_v2/jack_o_lantern.webp",
+    "Halloween/avatars/Pooka.jpg": "samhain/avatars_v2/pooka.webp",
+    "Halloween/avatars/pumpkin.jpg": "samhain/avatars_v2/pumpkin.webp",
+    "Halloween/avatars/Skeleton.jpg": "samhain/avatars_v2/skeleton.webp",
+    "Halloween/avatars/Vampire.jpg": "samhain/avatars_v2/vampire.webp",
+    "Halloween/avatars/Warewolf.jpg": "samhain/avatars_v2/werewolf.webp",
 }
 
 # Head crops for avatars: (centre x, centre y, side), each a fraction of the
@@ -92,14 +92,18 @@ SAMHAIN = {
 AVATAR_CROPS: dict[str, tuple[float, float, float]] = {
     "banshee": (0.5, 0.2, 0.4),
     "vampire": (0.5, 0.2, 0.4),
-    "skeleton": (0.48, 0.2, 0.4),
+    # Re-centred 2026-10-10 against the round shop portrait (owner: the
+    # pumpkins and the skeleton sat off-centre in the circle). Written to
+    # avatars_v2/ because /sprites/* is served immutable - a re-cut under the
+    # old name would never reach a browser that had the first one.
+    "skeleton": (0.53, 0.12, 0.34),
     # The rider is headless; the box takes his torso and the head he holds up.
     "dullahan": (0.6, 0.2, 0.45),
-    "jack_o_lantern": (0.45, 0.2, 0.42),
-    "pooka": (0.8, 0.28, 0.5),
+    "jack_o_lantern": (0.41, 0.16, 0.4),
+    "pooka": (0.85, 0.3, 0.46),
     # A face IS the pumpkin, low in the figure under its vine.
-    "pumpkin": (0.5, 0.58, 0.62),
-    "werewolf": (0.57, 0.25, 0.48),
+    "pumpkin": (0.47, 0.56, 0.7),
+    "werewolf": (0.64, 0.24, 0.46),
 }
 DEFAULT_AVATAR_CROP = (0.5, 0.2, 0.4)
 
@@ -186,8 +190,11 @@ def crop_avatar(rgba: np.ndarray, crop: tuple[float, float, float]) -> np.ndarra
 
 
 def main() -> int:
+    only = sys.argv[1] if len(sys.argv) > 1 else None
     written = 0
     for master_rel, out_rel in SAMHAIN.items():
+        if only and only not in out_rel:
+            continue
         master = MASTERS / master_rel
         if not master.is_file():
             print(f"missing master: {master_rel}", file=sys.stderr)
@@ -199,7 +206,7 @@ def main() -> int:
             rgba = remove_enclosed_white(rgba)
         rgba = unmultiply_white_fringe(rgba)
         rgba = trim(rgba)
-        if "/avatars/" in out_rel:
+        if "/avatars" in out_rel:
             rgba = crop_avatar(rgba, AVATAR_CROPS.get(Path(out_rel).stem, DEFAULT_AVATAR_CROP))
 
         destination = OUTPUT / out_rel

@@ -9,6 +9,7 @@
   import GuidedOverlay from './GuidedOverlay.svelte';
   import QuestSpotlight from './QuestSpotlight.svelte';
   import WhatsNew from './WhatsNew.svelte';
+  import EventIntro from './EventIntro.svelte';
   import OfflineSummary from './OfflineSummary.svelte';
   import LootReveal from './LootReveal.svelte';
   import VictoryCard from './VictoryCard.svelte';
@@ -36,6 +37,9 @@
      live in one component - see WhatsNew.svelte for why the second waits
      for the first. -->
 <WhatsNew />
+
+<!-- The seasonal event explains itself once, after What's new closes. -->
+<EventIntro />
 
 <OfflineSummary />
 <!-- Modul: the two moments the game never marked - a first boss

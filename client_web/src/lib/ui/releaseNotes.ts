@@ -35,6 +35,23 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.12.0',
+    date: '2026-10-10',
+    sections: [
+      {
+        title: 'Samhain',
+        items: [
+          'Samhain runs until the night of 1 November; the shop stays open three days after.',
+          'Pumpkins drop at half the rate of the first evening, and time away counts only from the start of the event. To keep it fair, everyone starts again from zero.',
+          'A Samhain window now explains the event once: what pumpkins buy, where the shop and pets are, and where to find The Cailleach.',
+          'The event shop is split into Avatars and Pets, and the avatars are framed on their faces.',
+          'On a phone, the pumpkins and the Event shop button have their own row under the header.',
+          "The Cailleach's six winters are numbered; the region boss each one matches is in its description.",
+        ],
+      },
+    ],
+  },
+  {
     version: '1.11.0',
     date: '2026-10-10',
     sections: [

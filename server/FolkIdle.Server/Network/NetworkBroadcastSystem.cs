@@ -12494,7 +12494,7 @@ namespace FolkIdle.Server.Network
                     if (grant > 0 && devEvent != null)
                     {
                         FolkIdle.Server.Domain.Progression.EventShopEngine.Refunds.Enqueue(
-                            new FolkIdle.Server.Domain.Progression.EventShopRefund(playerId, devEvent.Id, grant));
+                            new FolkIdle.Server.Domain.Progression.EventShopRefund(playerId, devEvent.CurrencyStamp, grant));
                     }
                     await WriteJsonAsync(context, new { EventId = devEvent?.Id ?? 0, Phase = (int)devPhase });
                     return;

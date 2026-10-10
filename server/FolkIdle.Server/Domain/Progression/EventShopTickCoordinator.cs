@@ -44,7 +44,7 @@ namespace FolkIdle.Server.Domain.Progression
                 return;
             }
 
-            int eventId = current.Id;
+            int eventId = current.CurrencyStamp;
             var factory = ctx.ContextFactory;
             var registry = ctx.PlayerRegistry;
             ctx.SafeDispatch("EventShop.Buy", pId, async () =>

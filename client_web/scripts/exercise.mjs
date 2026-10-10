@@ -242,8 +242,27 @@ async function dismissOfflineSummary(waitMs = 6000) {
   return dismissed;
 }
 
+// The seasonal event's one-time introduction comes after What's new. This
+// browser has never seen it, so while an event runs it MUST appear - and its
+// "Got it" must close it for good (it is not shown again after a reload).
+async function eventIntroStep() {
+  const ev = (await apiGet('/api/v1/event'))?.Event ?? null;
+  if (!ev || ev.Phase !== 1) return;
+  const close = page.getByTestId('event-intro-close');
+  const shown = await close.waitFor({ timeout: 6000 }).then(() => true).catch(() => false);
+  const text = shown ? await page.getByTestId('event-intro').innerText().catch(() => '') : '';
+  record('the event introduces itself once - shop, pets and The Cailleach',
+    shown && /Event shop/.test(text) && /Character/.test(text) && /World Boss/.test(text),
+    shown ? text.replace(/\s+/g, ' ').slice(0, 90) : 'no introduction');
+  if (shown) {
+    await close.click();
+    await page.waitForTimeout(400);
+  }
+}
+
 {
   const shown = await dismissOfflineSummary();
+  await eventIntroStep();
   const stillBlocked = await page.locator('.backdrop, .modal-scrim').count();
   record('offline summary can be dismissed', stillBlocked === 0, shown ? 'was shown' : 'not shown');
 }
@@ -5287,6 +5306,16 @@ await go('Ancestors');
 // this coverage existed before it did.
 {
   const context = await browser.newContext({ viewport: { width: 1500, height: 1000 } });
+  // The seasonal event's introduction is checked on the main run; here it
+  // would sit over the onboarding this step exists to walk, so it is marked
+  // seen (EventIntro.svelte's key) before the page loads.
+  await context.addInitScript(() => {
+    try {
+      localStorage.setItem('folkidle.eventIntro.samhain', '1');
+    } catch {
+      // storage blocked: the step will meet the window and report it
+    }
+  });
   const fresh = await context.newPage();
 
   // Console errors from the new account count too - a screen that throws for a
