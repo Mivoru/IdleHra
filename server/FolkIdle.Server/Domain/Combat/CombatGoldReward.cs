@@ -26,15 +26,12 @@ namespace FolkIdle.Server.Domain.Combat
         public static long PerKill(in TickStatePayload payload, in MonsterDefinition monster, float goldAcquisitionMultiplierPct)
         {
             long gold = EconomyDecisions.BaseCombatGold(monster.BaseGoldReward);
-            // Modul 13.4.3: Human's innate +5% Gold acquisition passive (and
-            // every other StatsCalculator gold source).
-            gold = (long)(gold * (1.0f + goldAcquisitionMultiplierPct / 100f));
-            gold = (long)(gold * (1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f));
-            gold = (long)(gold * (1.0f + GuildBonusesCache.GetBuffTier(payload.GuildId, "Gold") * 0.02f));
-            // Modul: inheritance. A permanent, season-crossing multiplier.
-            gold = (long)(gold * (1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f));
-            // The character's pet (PetRegistry), on the active slot's totals.
-            gold = (long)(gold * (1.0f + payload.CachedAffixTotals.GoldTenthsPct / 1000f));
+            var f = FactorsFor(in payload, goldAcquisitionMultiplierPct);
+            gold = (long)(gold * f.Acquisition);
+            gold = (long)(gold * f.Legacy);
+            gold = (long)(gold * f.Guild);
+            gold = (long)(gold * f.Inheritance);
+            gold = (long)(gold * f.Pet);
 
             if (payload.Skill_TrophyHunter > 0
                 && RaceUnlockRegistry.GetRegionForBossMonsterId(monster.Id) > 0)
@@ -45,5 +42,29 @@ namespace FolkIdle.Server.Domain.Combat
 
             return gold;
         }
+
+        /// <summary>The per-player multipliers a kill's gold passes through, in PerKill's order.</summary>
+        public readonly record struct GoldFactors(float Acquisition, float Legacy, float Guild, float Inheritance, float Pet)
+        {
+            /// <summary>All of them as one percentage bonus, untruncated - what the stat sheet prints.</summary>
+            public double TotalBonusPct => ((double)Acquisition * Legacy * Guild * Inheritance * Pet - 1.0) * 100.0;
+        }
+
+        /// <summary>
+        /// Every gold multiplier except Trophy Hunter, which applies to bosses
+        /// only. PerKill and CharacterStatSheet both read this, so the sheet's
+        /// gold bonus is the one a kill is paid at.
+        /// </summary>
+        public static GoldFactors FactorsFor(in TickStatePayload payload, float goldAcquisitionMultiplierPct)
+            => new(
+                // Modul 13.4.3: Human's innate +5% Gold acquisition passive (and
+                // every other StatsCalculator gold source).
+                1.0f + goldAcquisitionMultiplierPct / 100f,
+                1.0f + LegacyPerkResolver.GetGoldBonusPct(payload.CachedLegacyPerks) / 100f,
+                1.0f + GuildBonusesCache.GetBuffTier(payload.GuildId, "Gold") * 0.02f,
+                // Modul: inheritance. A permanent, season-crossing multiplier.
+                1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f,
+                // The character's pet (PetRegistry), on the active slot's totals.
+                1.0f + payload.CachedAffixTotals.GoldTenthsPct / 1000f);
     }
 }

@@ -62,6 +62,7 @@
   import { spriteUrl } from '../lib/ui/spriteUrl';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
+  import CharacterStatsPanel from '../lib/ui/CharacterStatsPanel.svelte';
   import AutomationRulesPanel from '../lib/ui/AutomationRulesPanel.svelte';
   import { ATTRIBUTES, equipRequirement } from '../lib/net/commands';
   import { locationName, nodeLocation } from '../lib/ui/locations';
@@ -313,7 +314,7 @@
   }
 
   // ---------------------------------------------------------------- tabs
-  type Tab = 'gear' | 'attributes' | 'work';
+  type Tab = 'gear' | 'attributes' | 'stats' | 'work';
   let tab = $state<Tab | null>(null);
 
   // Modul: THE DEFAULT IS DECIDED ONCE, at the first snapshot, and then left
@@ -489,6 +490,7 @@
       <button role="tab" aria-selected={shownTab === 'attributes'} class:on={shownTab === 'attributes'} data-character-tab="attributes" onclick={() => chooseTab('attributes')}>
         Attributes{#if attributePoints > 0}<span class="badge" aria-label="{attributePoints} unspent">{formatNumber(attributePoints)}</span>{/if}
       </button>
+      <button role="tab" aria-selected={shownTab === 'stats'} class:on={shownTab === 'stats'} data-character-tab="stats" onclick={() => chooseTab('stats')}>Stats</button>
       <button role="tab" aria-selected={shownTab === 'work'} class:on={shownTab === 'work'} data-character-tab="work" onclick={() => chooseTab('work')}>Work &amp; orders</button>
     </div>
 
@@ -696,6 +698,12 @@
           onnotice={(message) => pushLocalNotice(message, 'error')}
         />
       </section>
+    {:else if shownTab === 'stats'}
+      {#if selected}
+        <CharacterStatsPanel slot={Math.max(0, selected.slot - 1)} />
+      {:else}
+        <section class="panel"><p class="dim small">No character in this slot.</p></section>
+      {/if}
     {:else}
       <div class="workgrid">
         <section class="panel" data-testid="character-work">

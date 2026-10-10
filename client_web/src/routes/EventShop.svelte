@@ -9,7 +9,7 @@
   // which invalidates every query, so Owned flips by itself.
   import { createQuery } from '@tanstack/svelte-query';
   import { buyEventShopItem } from '../lib/net/commands';
-  import { chancePct, EVENT_PHASE, EVENT_SHOP_KIND, fetchSeasonalEvent, seasonalEventKeys, type EventShopEntry } from '../lib/net/seasonalEvent';
+  import { chancePct, EVENT_PHASE, EVENT_SHOP_KIND, fetchSeasonalEvent, oneIn, seasonalEventKeys, type EventShopEntry } from '../lib/net/seasonalEvent';
   import { connectionStatus, playerState, pushLocalNotice } from '../lib/stores/game';
   import { spriteUrl } from '../lib/ui/spriteUrl';
   import { formatExact } from '../lib/ui/format';
@@ -152,6 +152,40 @@
           </section>
         {/if}
       {/each}
+      <!-- Owner, 2026-10-10: "nowhere do I see that a rare pet can drop, what
+           its chance is or what it gives". Both odds are the server's numbers
+           (PetRegistry), told as a ratio - 1 in 2,000,000 per kill rounds to
+           "0%" in any percentage. -->
+      {#if ev.RarePet || ev.BossPet}
+        {@const unit = ev.CurrencyName.toLowerCase().replace(/s$/, '')}
+        <section class="shop-section" data-testid="event-found-pets">
+          <h3>Pets you cannot buy</h3>
+          <p class="dim tiny">Found or won, never sold. Each account can own each pet once.</p>
+          <ul class="shop">
+            {#if ev.RarePet}
+              <li class="item pet" class:owned={ev.RarePet.Owned} data-testid="event-rare-pet" data-item={ev.RarePet.Id}>
+                <img src={spriteUrl(ev.RarePet.Art)} alt="" loading="lazy" decoding="async" />
+                <span class="name">{ev.RarePet.Name} <span class="tag tiny">rare drop</span></span>
+                <span class="tiny bonus">{ev.RarePet.Bonuses.join(' · ')}</span>
+                <span class="tiny dim odds" data-testid="event-rare-pet-odds">
+                  Every {unit} you earn has a {oneIn(ev.RarePetChancePerCurrency)} chance to bring {ev.RarePet.Name}
+                  - about {oneIn(ev.RarePetChancePerCurrency * ev.KillChance)} per kill.
+                </span>
+                {#if ev.RarePet.Owned}<span class="owned-label tiny">Owned</span>{/if}
+              </li>
+            {/if}
+            {#if ev.BossPet}
+              <li class="item pet" class:owned={ev.BossPet.Owned} data-testid="event-boss-pet" data-item={ev.BossPet.Id}>
+                <img src={spriteUrl(ev.BossPet.Art)} alt="" loading="lazy" decoding="async" />
+                <span class="name">{ev.BossPet.Name} <span class="tag tiny">boss reward</span></span>
+                <span class="tiny bonus">{ev.BossPet.Bonuses.join(' · ')}</span>
+                <span class="tiny dim odds">Yours on the first clear of the boss's tier {ev.BossPetTier}.</span>
+                {#if ev.BossPet.Owned}<span class="owned-label tiny">Owned</span>{/if}
+              </li>
+            {/if}
+          </ul>
+        </section>
+      {/if}
     {:else if tab === 'boss'}
       <SeasonalBossPanel />
     {:else}
@@ -283,6 +317,15 @@
 
   .item button {
     min-width: 6rem;
+  }
+
+  .odds {
+    line-height: 1.35;
+  }
+
+  .tag {
+    font-weight: normal;
+    opacity: 0.75;
   }
 
   .owned-label {

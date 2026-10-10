@@ -3786,7 +3786,7 @@ namespace FolkIdle.Server.Domain.Combat
         //
         // Exact for any interval, unlike the modulo test it replaces, which
         // silently required the interval to divide a multiple of the tick.
-        private const int TickDurationMs = 100;
+        internal const int TickDurationMs = 100;
 
         /// <summary>
         /// How hard this character hits, in milli, before any per-swing roll.
@@ -5802,25 +5802,43 @@ namespace FolkIdle.Server.Domain.Combat
         /// </remarks>
         internal static int RequiredGatherTicks(ref TickStatePayload payload, in GatheringNodeDefinition gatheringNode)
         {
-            int masteryLevel = GetMasteryLevel(ref payload, gatheringNode.ProfessionType);
-            int villageProductionLevel = gatheringNode.ProfessionType switch
+            var terms = GatherSpeedTermsFor(ref payload, gatheringNode.ProfessionType);
+            return GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, terms.MasteryLevel, terms.ToolTier, terms.VillageLevel, terms.ExtraPct);
+        }
+
+        /// <summary>What a profession's gathering speed is built from.</summary>
+        internal readonly record struct GatherSpeedTerms(int MasteryLevel, int ToolTier, int VillageLevel, int ExtraPct)
+        {
+            public int TotalPct => GatheringToolEngine.TotalSpeedBonusPct(MasteryLevel, ToolTier, VillageLevel, ExtraPct);
+        }
+
+        /// <summary>
+        /// The speed terms for one profession on the active character. The
+        /// tick (RequiredGatherTicks) and the stat sheet both read this, so the
+        /// sheet cannot print a speed the tick does not use.
+        /// </summary>
+        internal static GatherSpeedTerms GatherSpeedTermsFor(ref TickStatePayload payload, int professionType)
+        {
+            int masteryLevel = GetMasteryLevel(ref payload, professionType);
+            int villageProductionLevel = professionType switch
             {
                 0 => payload.LumberjackLevel,
                 1 => payload.MineLevel,
                 _ => 0
             };
-            int toolTier = gatheringNode.ProfessionType switch
+            int toolTier = professionType switch
             {
                 0 => payload.AxeToolTier,
                 1 => payload.PickaxeToolTier,
                 _ => payload.RodToolTier
             };
-            return GatheringToolEngine.ComputeRequiredTicks(gatheringNode.BaseTickThreshold, masteryLevel, toolTier, villageProductionLevel, payload.ToolGatherSpeedPct
+            int extraPct = payload.ToolGatherSpeedPct
                 + SkillTreeRegistry.GetBonusTenthsOfPercent(
                     SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
                 + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask))
                 // The character's pet (PetRegistry).
-                + payload.CachedAffixTotals.GatherSpeedTenthsPct / 10);
+                + payload.CachedAffixTotals.GatherSpeedTenthsPct / 10;
+            return new GatherSpeedTerms(masteryLevel, toolTier, villageProductionLevel, extraPct);
         }
 
         /// <summary>Mastery XP the profession still needs for its next level (at least 1).</summary>

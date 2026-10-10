@@ -61,8 +61,12 @@ namespace FolkIdle.Server.Domain.Progression
         /// day, so at 1/2,000 the Witch comes in about a week or two and most
         /// busy accounts meet her before the event ends; a lone new character
         /// is a long shot, which is what rare means.
+        ///
+        /// 1/10,000 since the evening of 2026-10-10: pumpkins went up 5x, and
+        /// the Witch is meant to stay exactly as rare PER KILL (about one in
+        /// two million), so her per-pumpkin odds went down by the same 5x.
         /// </summary>
-        public const double RareDropPerCurrency = 1.0 / 2_000.0;
+        public const double RareDropPerCurrency = 1.0 / 10_000.0;
 
         public static readonly IReadOnlyList<PetDefinition> All = new[]
         {
@@ -124,7 +128,7 @@ namespace FolkIdle.Server.Domain.Progression
             PetStat.WorldBossDamage => $"+{bonus.Pct}% world boss damage",
             PetStat.CritDamage => $"+{bonus.Pct}% critical damage",
             PetStat.GatherSpeed => $"+{bonus.Pct}% gathering speed",
-            PetStat.DropChance => $"+{bonus.Pct}% drop chance",
+            PetStat.DropChance => $"+{bonus.Pct}% loot luck (rarer drops)",
             _ => string.Empty,
         };
     }
