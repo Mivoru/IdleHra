@@ -9,7 +9,7 @@
   // which invalidates every query, so Owned flips by itself.
   import { createQuery } from '@tanstack/svelte-query';
   import { buyEventShopItem } from '../lib/net/commands';
-  import { EVENT_PHASE, EVENT_SHOP_KIND, fetchSeasonalEvent, seasonalEventKeys, type EventShopEntry } from '../lib/net/seasonalEvent';
+  import { chancePct, EVENT_PHASE, EVENT_SHOP_KIND, fetchSeasonalEvent, seasonalEventKeys, type EventShopEntry } from '../lib/net/seasonalEvent';
   import { connectionStatus, playerState, pushLocalNotice } from '../lib/stores/game';
   import { spriteUrl } from '../lib/ui/spriteUrl';
   import { formatExact } from '../lib/ui/format';
@@ -49,9 +49,7 @@
     return `${hours} h ${minutes} min`;
   }
 
-  function pct(chance: number): string {
-    return `${Math.round(chance * 1000) / 10}%`;
-  }
+  const pct = chancePct;
 
   /** Why Buy is off, in words - never a silent grey. */
   function blockedReason(item: EventShopEntry): string | null {

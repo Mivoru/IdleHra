@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.13.0',
+    date: '2026-10-10',
+    sections: [
+      {
+        title: 'Samhain',
+        items: [
+          'Pets have their own slot on the Character screen: the twelfth tile in the Gear grid, beside the tools. Tap it to choose who follows your character.',
+          'Pumpkins are much rarer now - 0.1% a kill and 0.02% a harvest - so a busy house can afford a few pets and avatars over the whole event, not the whole shop.',
+          'Everyone starts again from zero pumpkins, so nobody keeps what the old rate paid.',
+          'The Witch now comes with about one pumpkin in 2,000.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.12.0',
     date: '2026-10-10',
     sections: [

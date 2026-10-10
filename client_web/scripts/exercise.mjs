@@ -3507,14 +3507,15 @@ await go('The Delve');
     const gearTab = page.locator('[data-character-tab="gear"]').first();
     if ((await gearTab.count()) > 0) await gearTab.click().catch(() => {});
     const characterId = await page.getByTestId('person-current').getAttribute('data-character-id').catch(() => null);
-    await page.getByTestId('pet-change').first().click().catch(() => {});
+    await page.getByTestId('pet-slot').first().click().catch(() => {});
     await page.locator(`[data-testid="pet-choice"][data-pet="${owned.Id}"]`).click().catch(() => {});
     await page.waitForTimeout(1500);
     const placed = (await apiGet('/api/v1/pets'))?.Pets?.find((p) => p.Id === owned.Id);
     record('placing a pet moves it onto the character', Boolean(characterId) && placed?.CharacterId === characterId,
       `${owned.Id} -> ${placed?.CharacterId ?? 'resting'} (character ${characterId})`);
     const shown = await page.getByTestId('pet-current').getAttribute('data-pet').catch(() => null);
-    record('the Gear tab shows the placed pet', shown === owned.Id, String(shown));
+    const tile = await page.getByTestId('pet-slot').getAttribute('data-pet').catch(() => null);
+    record('the Pet slot in the Gear grid shows the placed pet', shown === owned.Id && tile === owned.Id, `${shown} / tile ${tile}`);
 
     // Round trip: back to rest.
     await apiPost('/api/v1/pets/assign', { PetId: owned.Id, CharacterId: owned.CharacterId ?? null });

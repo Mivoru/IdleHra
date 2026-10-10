@@ -122,14 +122,22 @@ namespace FolkIdle.Server.Domain.Progression
                 // (Oct 31 / Nov 1) instead of Nov 7.
                 End: new DateTimeOffset(2026, 11, 2, 0, 0, 0, TimeSpan.Zero),
                 GraceDays: 3,
-                KillChance: 0.025,
-                GatherChance: 0.005,
+                // Owner, 2026-10-10 morning: an endgame account should afford
+                // only 2-3 pets and 2-3 avatars over the whole event (~8-12k
+                // pumpkins). Measured on production: the owner's three
+                // characters earned 1,187 in ~5 h at 2.5%/0.5% (~240/h, offline
+                // included), which is ~130k by the end. Cut 25x to ~10/h: about
+                // 5,500 from drops, plus 3,750 for The Cailleach's winters I-V.
+                KillChance: 0.001,
+                GatherChance: 0.0002,
                 OfflineFactor: 1.0,
                 Shop: SamhainShop,
                 // Owner, 2026-10-10: everyone back to zero after the rates
                 // were halved, so the first evening's double-rate pumpkins
                 // (and pre-event offline windfalls) give nobody a head start.
-                CurrencyGeneration: 2),
+                // Generation 3 (2026-10-10 morning): zeroed again with the
+                // 25x cut, so pumpkins earned at the old rate buy nothing.
+                CurrencyGeneration: 3),
         };
 
         // Name and art come from PetRegistry, the one place a pet is defined.

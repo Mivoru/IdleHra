@@ -56,13 +56,13 @@ namespace FolkIdle.Server.Domain.Progression
         /// Chance that one event-currency drop also brings the rare pet.
         /// Per currency unit rather than per action, because the currency
         /// rates already pay an hour of combat and an hour of gathering about
-        /// the same - so this inherits that fairness. At ~750 pumpkins a day
-        /// (a busy account, after the 2026-10-10 halving) the Witch comes in
-        /// about a week; at ~125 (a lone new character) it is a long shot,
-        /// which is what rare means. Doubled with the halving, so the Witch
-        /// stayed as rare in days as she was.
+        /// the same - so this inherits that fairness. Re-anchored with the
+        /// 25x pumpkin cut (2026-10-10 morning): a busy account earns ~240 a
+        /// day, so at 1/2,000 the Witch comes in about a week or two and most
+        /// busy accounts meet her before the event ends; a lone new character
+        /// is a long shot, which is what rare means.
         /// </summary>
-        public const double RareDropPerCurrency = 1.0 / 5_000.0;
+        public const double RareDropPerCurrency = 1.0 / 2_000.0;
 
         public static readonly IReadOnlyList<PetDefinition> All = new[]
         {
