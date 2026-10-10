@@ -57,7 +57,7 @@ namespace FolkIdle.Server.Tests
         {
             var rng = new Random(11);
             int hits = 0;
-            const int days = 400;
+            const int days = 4000; // ~4,000 hits at 0.1%: the 5% band is ~3 sigma
             for (int d = 0; d < days; d++)
             {
                 var payload = new TickStatePayload();

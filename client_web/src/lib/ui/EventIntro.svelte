@@ -17,7 +17,7 @@
   import { onboardingDismissed } from '../stores/tutorial';
   import { guidedStage } from '../stores/guided';
   import { fetchSeasonalEvent, seasonalEventKeys, EVENT_PHASE, EVENT_SHOP_KIND } from '../net/seasonalEvent';
-  import { eventThemeKey } from '../net/seasonalEvent';
+  import { chancePct, eventThemeKey } from '../net/seasonalEvent';
   import { formatExact } from './format';
   import { spriteUrl } from './spriteUrl';
   import Modal from './Modal.svelte';
@@ -75,7 +75,7 @@
     requestScreen('event');
   }
 
-  const pct = (chance: number) => `${Math.round(chance * 1000) / 10}%`;
+  const pct = chancePct;
 </script>
 
 {#if wanted && ev && !event.isError}

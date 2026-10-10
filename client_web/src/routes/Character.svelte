@@ -58,6 +58,8 @@
   import { pickerRows } from '../lib/ui/equipPicker';
   import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
   import PetPanel from '../lib/ui/PetPanel.svelte';
+  import { fetchPets, petKeys } from '../lib/net/pets';
+  import { spriteUrl } from '../lib/ui/spriteUrl';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import AttributePanel from '../lib/ui/AttributePanel.svelte';
   import AutomationRulesPanel from '../lib/ui/AutomationRulesPanel.svelte';
@@ -387,6 +389,18 @@
   // Which slot the picker is open on, or -1 for closed.
   let pickerSlot = $state(-1);
 
+  // Modul: THE PET IS A SLOT (owner, 2026-10-10: "I don't see any empty item
+  // slot for pet"). It used to be a line under the set bonuses, shown only once
+  // a pet was owned, so a player looking at the gear grid for where a pet goes
+  // found nothing. The twelfth tile fills the gap the three tools leave on the
+  // last row, empty or not, and opens PetPanel where the gear picker opens.
+  // A sentinel past the eleven equipment indices - never sent to the server.
+  const PET_PICKER = 100;
+  const pets = createQuery(() => ({ queryKey: petKeys.all, queryFn: fetchPets }));
+  const petOf = $derived(
+    selected ? (pets.data?.Pets.find((p) => p.Owned && p.CharacterId === selected.id) ?? null) : null,
+  );
+
   // Modul: ALL ELEVEN, in slot order - the eight combat slots, then the three
   // tools, which land on the grid's third row on their own. Every list in this
   // codebase that stopped at eight was a bug (root CLAUDE.md).
@@ -560,9 +574,30 @@
                 {/if}
               </button>
             {/each}
+            <button
+              class="gearslot"
+              class:filled={petOf !== null}
+              class:open={pickerSlot === PET_PICKER}
+              data-testid="pet-slot"
+              data-pet={petOf?.Id ?? ''}
+              aria-label={petOf ? `Pet: ${petOf.Name}` : 'Pet: empty'}
+              aria-expanded={pickerSlot === PET_PICKER}
+              onclick={() => (pickerSlot = pickerSlot === PET_PICKER ? -1 : PET_PICKER)}
+            >
+              <span class="slotname">Pet</span>
+              {#if petOf}
+                <img class="petart" src={spriteUrl(petOf.Art)} alt="" decoding="async" />
+                <span class="gearname">{petOf.Name}</span>
+              {:else}
+                <span class="empty" aria-hidden="true">+</span>
+                <span class="gearname dim">empty</span>
+              {/if}
+            </button>
           </div>
 
-          {#if pickerSlot >= 0}
+          {#if pickerSlot === PET_PICKER}
+            <PetPanel characterId={selected?.id ?? null} onClose={() => (pickerSlot = -1)} />
+          {:else if pickerSlot >= 0}
             {@const slot = EQUIPMENT_SLOTS.find((sl) => sl.index === pickerSlot)}
             {@const worn = wornBy(selected.slot, pickerSlot)}
             {@const candidates = candidatesBySlot.get(pickerSlot) ?? []}
@@ -644,8 +679,6 @@
           {:else}
             <p class="dim tiny sets-none">No armour set yet - two pieces of one family start a set bonus.</p>
           {/if}
-
-          <PetPanel characterId={selected?.id ?? null} />
 
           {#if $unopenedChests > 0}
             <button class="tiny-btn chests" onclick={() => requestScreen('wardrobe')}>
@@ -986,6 +1019,12 @@
     font-size: 0.68rem;
     color: var(--text-dim);
     line-height: 1.1;
+  }
+
+  .petart {
+    width: 2rem;
+    height: 2rem;
+    object-fit: contain;
   }
 
   .empty {

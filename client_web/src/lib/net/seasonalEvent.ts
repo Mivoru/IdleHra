@@ -7,6 +7,15 @@
 // beside it, so a page left open across a rollover cannot buy the wrong thing.
 import { authedGet } from './auth';
 
+/**
+ * A drop chance as a percentage, to two significant figures: 0.025 is "2.5%",
+ * 0.0002 is "0.02%". Rounding to a tenth of a percent - what both screens did -
+ * printed the 2026-10-10 rates as "0%".
+ */
+export function chancePct(chance: number): string {
+  return `${parseFloat((chance * 100).toPrecision(2))}%`;
+}
+
 /** SeasonalEventPhase on the server. */
 export const EVENT_PHASE = { None: 0, Live: 1, Grace: 2 } as const;
 

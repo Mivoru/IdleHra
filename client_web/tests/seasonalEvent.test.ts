@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { EVENT_THEME_STORAGE_KEY } from '../src/lib/ui/eventTheme';
-import { eventThemeKey } from '../src/lib/net/seasonalEvent';
+import { chancePct, eventThemeKey } from '../src/lib/net/seasonalEvent';
 
 // The seasonal event's theme is read in two places that cannot share an
 // import: eventTheme.ts (the bundle) writes the key, boot.js (a classic script
@@ -34,5 +34,15 @@ describe('seasonal event theme', () => {
   it('app.css themes the event', () => {
     const css = readFileSync(resolve(root, 'src', 'app.css'), 'utf8');
     expect(css).toContain(":root[data-event='samhain']");
+  });
+});
+
+describe('drop chance wording', () => {
+  // The 2026-10-10 rates (0.1% / 0.02%) printed as "0%" under the old
+  // tenth-of-a-percent rounding.
+  it('keeps small chances readable', () => {
+    expect(chancePct(0.025)).toBe('2.5%');
+    expect(chancePct(0.001)).toBe('0.1%');
+    expect(chancePct(0.0002)).toBe('0.02%');
   });
 });
