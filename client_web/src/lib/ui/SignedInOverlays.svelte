@@ -14,6 +14,7 @@
   import LootReveal from './LootReveal.svelte';
   import VictoryCard from './VictoryCard.svelte';
   import DeathCard from './DeathCard.svelte';
+  import SeasonalFightWindow from './SeasonalFightWindow.svelte';
   import ChatDock from './ChatDock.svelte';
   import PlayerProfileModal from './PlayerProfileModal.svelte';
 </script>
@@ -49,6 +50,8 @@
 <LootReveal />
 <VictoryCard />
 <DeathCard />
+<!-- The Cailleach's fight: opened from the World Boss screen, outlives a change of screen. -->
+<SeasonalFightWindow />
 <ChatDock />
 <!-- The one profile host: any name opens it through stores/profile.ts. -->
 <PlayerProfileModal />

@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.14.0',
+    date: '2026-10-10',
+    sections: [
+      {
+        title: 'The Cailleach',
+        items: [
+          'You now fight The Cailleach in her own window on the World Boss screen. Before, Fight sent you to the Combat screen, where you saw the region boss she borrows her strength from.',
+          'When you win, the window tells you what you got and offers the next winter. When you lose, you can try again.',
+          'Each fight is one attempt. When it ends, your character goes back to what it was doing before.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.13.0',
     date: '2026-10-10',
     sections: [

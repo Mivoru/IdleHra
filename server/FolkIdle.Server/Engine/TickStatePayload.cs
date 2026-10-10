@@ -206,6 +206,12 @@ namespace FolkIdle.Server.Engine
         public byte SeasonalBossTier;
         public System.Guid SeasonalBossCharacterId;
         public byte SeasonalBossClearedMask;
+        // Modul: ONE ATTEMPT, THEN BACK TO WORK (owner, 2026-10-10). The fight
+        // is a window on the World Boss screen, not a new job: a win or a death
+        // ends it and slot 1 goes back to what it was doing before Fight (0 =
+        // idle). Runtime-only like the armed tier - a relogin mid-fight finds
+        // nothing armed, and the character is wherever its row says.
+        public long SeasonalBossReturnActivityId;
         /// <summary>0 nothing to report, 2 the kill missed the step's time limit. Drained into a command result by the tick.</summary>
         public byte AscensionPendingResult;
         public int Food1_ItemId;

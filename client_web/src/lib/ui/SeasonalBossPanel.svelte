@@ -7,10 +7,10 @@
   // tiers and beaten region bosses come off the wire so the next tier unlocks
   // the moment one falls.
   import { createQuery } from '@tanstack/svelte-query';
-  import { startSeasonalBoss } from '../net/commands';
-  import { fetchSeasonalBoss, seasonalBossKeys, tierCleared, ROMAN, type SeasonalBossTier } from '../net/seasonalBoss';
-  import { connectionStatus, playerState, pushLocalNotice } from '../stores/game';
-  import { requestScreen } from '../stores/navigation';
+  import { fetchSeasonalBoss, seasonalBossKeys, seasonalTierBlocked, tierCleared, ROMAN, type SeasonalBossTier } from '../net/seasonalBoss';
+  import { connectionStatus, playerState } from '../stores/game';
+  import { seasonalFight, setSeasonalFightHidden } from '../stores/seasonalFight';
+  import { fightSeasonalTier } from './seasonalFightStart';
   import { formatExact, formatNumber } from './format';
   import { spriteUrl } from './spriteUrl';
   import QueryError from './QueryError.svelte';
@@ -38,20 +38,18 @@
 
   /** Why Fight is off, in words. */
   function blocked(t: SeasonalBossTier): string | null {
-    if ((bossMask & (1 << (t.Region - 1))) === 0) return `Beat region ${t.Region}'s boss first.`;
-    if (t.Tier > 1 && !tierCleared(clearedMask, t.Tier - 1) && !tiers[t.Tier - 2]?.Cleared) return `Break winter ${ROMAN[t.Tier - 1]} first.`;
-    if (!live) return 'Waiting for the connection.';
-    return null;
+    return seasonalTierBlocked(t, tiers, clearedMask, bossMask, live);
   }
 
+  // Modul: THE FIGHT STAYS HERE (owner, 2026-10-10). Fight used to jump to the
+  // Combat screen, which showed the region boss she borrows her strength from;
+  // it opens SeasonalFightWindow over this screen instead.
   function fight(t: SeasonalBossTier) {
-    const outcome = startSeasonalBoss(t.Tier, eventId);
-    if (!outcome.ok) {
-      pushLocalNotice(outcome.reason, 'error');
-      return;
-    }
-    requestScreen('combat');
+    fightSeasonalTier(t, eventId, clearedMask);
   }
+
+  /** A fight whose window was hidden while it runs on. */
+  const hiddenFight = $derived($seasonalFight?.hidden ? $seasonalFight : null);
 
   // Modul: SHE IS THE ONE YOU FIGHT (owner, 2026-10-10). A row named after a
   // region boss read as "fight the Alpha Wolf again"; the region boss is only
@@ -89,6 +87,12 @@
         {/if}
       </div>
     </div>
+
+    {#if hiddenFight}
+      <button type="button" class="primary" onclick={() => setSeasonalFightHidden(false)} data-testid="seasonal-boss-watch">
+        Watch the fight - winter {ROMAN[hiddenFight.tier]}
+      </button>
+    {/if}
 
     <ol class="tiers">
       {#each tiers as t (t.Tier)}
