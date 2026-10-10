@@ -38,9 +38,19 @@ namespace FolkIdle.Server.Domain.Progression
         double KillChance,
         double GatherChance,
         double OfflineFactor,
-        IReadOnlyList<EventShopItem> Shop)
+        IReadOnlyList<EventShopItem> Shop,
+        int CurrencyGeneration = 1)
     {
         public DateTimeOffset ShopClose => End.AddDays(GraceDays);
+
+        /// <summary>
+        /// What a balance is stamped with (PlayerRecords.EventCurrencyEventId):
+        /// the event AND its currency generation. Raising the generation zeroes
+        /// every balance of the event at its next normalise - live or at login -
+        /// which a SQL update cannot do, because the live payload owns the
+        /// balance and the next checkpoint would write the old figure back.
+        /// </summary>
+        public int CurrencyStamp => Id * 100 + CurrencyGeneration;
     }
 
     /// <summary>
@@ -67,10 +77,15 @@ namespace FolkIdle.Server.Domain.Progression
         // (mastery 326) at 3,000-12,000 - so a harvest pays a FIFTH of a kill's
         // chance, which gives an hour of either work roughly the same.
         //
+        // Owner, 2026-10-10: HALVED (kill 5% -> 2.5%, harvest 1% -> 0.5%)
+        // after the first evening - a fast gatherer at mastery 326 runs ~12,000
+        // harvests an hour on a region-1 node, and the owner's account passed
+        // 1,000 pumpkins within hours. The per-day figures below halve too.
+        //
         // Owner, 2026-10-09: offline pays the SAME as online, and there is NO
         // daily cap - a player who plays more earns more. What that means per
-        // day: a fighter and two gatherers running around the clock is about
-        // 1,500, a lone new character about 250. The shop is priced against
+        // day (after the halving): a fighter and two gatherers running around
+        // the clock is about 750, a lone new character about 125. The shop is priced against
         // that (owner to confirm): everything costs ~23,000, so a dedicated
         // account finishes in two weeks and a newcomer buys a few things.
         public const int SamhainAvatarPrice = 1000;
@@ -103,12 +118,18 @@ namespace FolkIdle.Server.Domain.Progression
                 // Owner, 2026-10-09: live as soon as it is deployed, so it can
                 // be tested on production; ends after Samhain itself (Nov 1).
                 Start: new DateTimeOffset(2026, 10, 9, 0, 0, 0, TimeSpan.Zero),
-                End: new DateTimeOffset(2026, 11, 7, 0, 0, 0, TimeSpan.Zero),
+                // Owner, 2026-10-10: shortened - ends the night after Samhain
+                // (Oct 31 / Nov 1) instead of Nov 7.
+                End: new DateTimeOffset(2026, 11, 2, 0, 0, 0, TimeSpan.Zero),
                 GraceDays: 3,
-                KillChance: 0.05,
-                GatherChance: 0.01,
+                KillChance: 0.025,
+                GatherChance: 0.005,
                 OfflineFactor: 1.0,
-                Shop: SamhainShop),
+                Shop: SamhainShop,
+                // Owner, 2026-10-10: everyone back to zero after the rates
+                // were halved, so the first evening's double-rate pumpkins
+                // (and pre-event offline windfalls) give nobody a head start.
+                CurrencyGeneration: 2),
         };
 
         // Name and art come from PetRegistry, the one place a pet is defined.
@@ -122,7 +143,7 @@ namespace FolkIdle.Server.Domain.Progression
 
         private static EventShopItem Avatar(string slug, string name)
             => new("avatar_samhain_" + slug, EventShopKind.Avatar, name, SamhainAvatarPrice,
-                   "Events/samhain/avatars/" + slug + ".webp");
+                   "Events/samhain/avatars_v2/" + slug + ".webp");
 
         /// <summary>Dev-only: the event to treat as live regardless of the date (0 = none).</summary>
         public static volatile int ForceLive;

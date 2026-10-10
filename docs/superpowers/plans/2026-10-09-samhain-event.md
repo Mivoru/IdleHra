@@ -6,8 +6,8 @@ owner; the rest are recommendations accepted with the plan.
 ## Window
 
 - Event goes live **as soon as PR 1 is deployed (owner)**, so it can be tested
-  on production, and ends **2026-11-07 00:00 UTC** (after Oct 31 and Samhain
-  itself, Nov 1).
+  on production, and ends **2026-11-02 00:00 UTC**, the night after Samhain
+  (owner, 2026-10-10 - shortened from Nov 7).
 - Shop grace: the shop stays open **3 days after the end**, then the currency
   is removed. **(owner)**
 - In-game name is **Samhain**, not Halloween. The lore is that The Cailleach
@@ -164,3 +164,16 @@ pumpkins and round-trips a pet equip), not with smoke tests.
   win is an ordinary kill (5% pumpkin), so unlimited attempts are no farm.
 - Shown on the World Boss screen and the event screen's Boss tab; the combat
   screen names her and shows her portrait while a tier is armed.
+
+## Polish (2026-10-10, owner feedback after the first evening)
+- Rates HALVED: kill 2.5%, harvest 0.5%; offline pays only the part of the
+  away window inside the event (a pre-event absence used to be paid in full).
+  The Witch's chance doubled to 1/5,000 per pumpkin to stay about a week.
+- Avatar crops re-centred for the round shop portrait; written to
+  avatars_v2/ because /sprites/* is immutable.
+- The Cailleach's rows are "Winter I..VI"; the region boss is only named in
+  the strength description.
+- "Event shop" label on the chip (desktop header); on a phone the chip moved
+  to its own strip under the header, so the gold/diamond words stay.
+- The shop is split into Avatars and Pets sections.
+- Event ends 2026-11-02 00:00 UTC.

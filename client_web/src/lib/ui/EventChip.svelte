@@ -12,9 +12,16 @@
   interface Props {
     onOpen: () => void;
     active?: boolean;
+    /**
+     * Owner, 2026-10-10: a bare count did not say it was a door. With a label
+     * the chip reads "Event shop" beside the count - always in the phone's
+     * More sheet (`sheet`), and in the header wherever the header has room.
+     */
+    labelled?: boolean;
+    sheet?: boolean;
   }
 
-  const { onOpen, active = false }: Props = $props();
+  const { onOpen, active = false, labelled = false, sheet = false }: Props = $props();
 
   /** Per event id: its currency's picture and name. Ids are SeasonalEventRegistry's. */
   const CURRENCY: Record<number, { art: string; name: string }> = {
@@ -35,12 +42,14 @@
     type="button"
     class="event-chip"
     class:active
+    class:sheet
     data-testid="event-chip"
     data-exact={balance}
     aria-label={label}
     title={label}
     onclick={onOpen}
   >
+    {#if labelled}<span class="label">Event shop</span>{/if}
     <img src={spriteUrl(currency.art)} alt="" decoding="async" />
     <span class="amount">{formatNumber(balance)}</span>
   </button>
@@ -66,6 +75,27 @@
   .event-chip:hover,
   .event-chip.active {
     background: var(--event-chip-bg-hover, var(--bg-raised));
+  }
+
+  .label {
+    font-weight: 600;
+    padding-right: 0.35em;
+    margin-right: 0.1em;
+    border-right: 1px solid var(--event-accent, var(--border));
+  }
+
+  .sheet {
+    width: 100%;
+    justify-content: center;
+    padding: 0.45rem 0.8rem;
+  }
+
+  /* The phone's header row has no room for the word; the More sheet's chip
+     carries it there. */
+  @media (max-width: 40rem) {
+    .event-chip:not(.sheet) .label {
+      display: none;
+    }
   }
 
   img {

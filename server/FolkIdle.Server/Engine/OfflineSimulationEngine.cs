@@ -484,14 +484,25 @@ namespace FolkIdle.Server.Engine
             return committed ? materialsLostToFullWarehouse : 0L;
         }
 
-        private static void OfflineEventCurrency(ref TickStatePayload payload, Domain.Progression.SeasonalEventEarning.Source source, long actions)
+        /// <summary>
+        /// The event currency for work done away. Only the part of the window
+        /// that fell INSIDE the event pays: an absence that began before the
+        /// event started used to be paid in full at the first login of the
+        /// event (the owner's own account took ~1,000 pumpkins that way within
+        /// the first hours, 2026-10-10).
+        /// </summary>
+        private static void OfflineEventCurrency(ref TickStatePayload payload, Domain.Progression.SeasonalEventEarning.Source source, long actions, long elapsedSeconds)
         {
-            if (actions <= 0) return;
+            if (actions <= 0 || elapsedSeconds <= 0) return;
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             var (current, _) = Domain.Progression.SeasonalEventRegistry.Current(now);
             if (current == null) return;
+            long windowStart = now - elapsedSeconds;
+            long inEvent = now - Math.Max(windowStart, current.Start.ToUnixTimeSeconds());
+            if (inEvent <= 0) return;
+            long paidActions = inEvent >= elapsedSeconds ? actions : (long)(actions * (double)inEvent / elapsedSeconds);
             Domain.Progression.SeasonalEventEarning.Roll(
-                ref payload, source, (int)Math.Min(actions, int.MaxValue), now, Random.Shared, current.OfflineFactor);
+                ref payload, source, (int)Math.Min(paidActions, int.MaxValue), now, Random.Shared, current.OfflineFactor);
         }
 
         // Modul: THE LIVE HARVEST, IN EXPECTATION AND IN BULK (offline parity,
@@ -549,7 +560,7 @@ namespace FolkIdle.Server.Engine
                 remainingTicks -= step * requiredTicks;
             }
 
-            OfflineEventCurrency(ref payload, Domain.Progression.SeasonalEventEarning.Source.Gather, rewardActions);
+            OfflineEventCurrency(ref payload, Domain.Progression.SeasonalEventEarning.Source.Gather, rewardActions, elapsedSeconds);
 
             LootTableEntry[] lootTable = ContentRegistry.GetLootTable(node.ActivityId).ToArray();
             if (allowedActions <= 0 || lootTable.Length == 0)
@@ -972,7 +983,7 @@ namespace FolkIdle.Server.Engine
 
             // Seasonal event currency for the kills made away, at the event's
             // offline rate (the same as live, owner 2026-10-09).
-            OfflineEventCurrency(ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, totalKills);
+            OfflineEventCurrency(ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, totalKills, elapsedSeconds);
 
             if (totalGold > 0)
             {

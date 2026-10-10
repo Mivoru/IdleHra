@@ -67,7 +67,14 @@
     if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
   }
 
-  const kindName = (kind: number) => (kind === EVENT_SHOP_KIND.Pet ? 'Pet' : 'Avatar');
+  const SHOP_SECTIONS = [
+    { kind: EVENT_SHOP_KIND.Avatar, title: 'Avatars', note: 'A face for your profile, chat and the boards. Worn from the Wardrobe.' },
+    {
+      kind: EVENT_SHOP_KIND.Pet,
+      title: 'Pets',
+      note: 'A pet follows one character and gives it its bonus - give it one on the Character screen. Pets stay yours after the event.',
+    },
+  ] as const;
 </script>
 
 <section class="panel event-screen" data-testid="event-screen">
@@ -116,31 +123,37 @@
     />
 
     {#if tab === 'shop'}
-      <ul class="shop" data-testid="event-shop">
-        {#each ev.Shop as item (item.Id)}
-          {@const why = blockedReason(item)}
-          <li class="item" class:owned={item.Owned} class:pet={item.Kind === EVENT_SHOP_KIND.Pet} data-testid="event-shop-item" data-item={item.Id}>
-            <img src={spriteUrl(item.Art)} alt="" loading="lazy" decoding="async" />
-            <span class="name">{item.Name}</span>
-            <span class="dim tiny">{kindName(item.Kind)}</span>
-            {#if item.Bonuses.length > 0}
-              <span class="tiny bonus">{item.Bonuses.join(' · ')}</span>
-            {/if}
-            {#if item.Owned}
-              <span class="owned-label tiny" data-testid="event-shop-owned">Owned</span>
-            {:else}
-              <button type="button" disabled={why !== null} onclick={() => buy(item)} data-testid="event-shop-buy">
-                {formatExact(item.Price)}
-              </button>
-              <DisabledReason text={why} />
-            {/if}
-          </li>
-        {/each}
-      </ul>
-      <p class="dim tiny">
-        Avatars go to your Wardrobe. A pet follows one character - give it one on the Character screen. Pets stay
-        yours after the event.
-      </p>
+      <!-- Owner, 2026-10-10: avatars and pets in two sections - one is a face,
+           the other a bonus, and a single grid mixed the two. -->
+      {#each SHOP_SECTIONS as section (section.kind)}
+        {@const items = ev.Shop.filter((i) => i.Kind === section.kind)}
+        {#if items.length > 0}
+          <section class="shop-section" data-testid="event-shop-section" data-kind={section.kind}>
+            <h3>{section.title}</h3>
+            <p class="dim tiny">{section.note}</p>
+            <ul class="shop" data-testid="event-shop">
+              {#each items as item (item.Id)}
+                {@const why = blockedReason(item)}
+                <li class="item" class:owned={item.Owned} class:pet={item.Kind === EVENT_SHOP_KIND.Pet} data-testid="event-shop-item" data-item={item.Id}>
+                  <img src={spriteUrl(item.Art)} alt="" loading="lazy" decoding="async" />
+                  <span class="name">{item.Name}</span>
+                  {#if item.Bonuses.length > 0}
+                    <span class="tiny bonus">{item.Bonuses.join(' · ')}</span>
+                  {/if}
+                  {#if item.Owned}
+                    <span class="owned-label tiny" data-testid="event-shop-owned">Owned</span>
+                  {:else}
+                    <button type="button" disabled={why !== null} onclick={() => buy(item)} data-testid="event-shop-buy">
+                      {formatExact(item.Price)}
+                    </button>
+                    <DisabledReason text={why} />
+                  {/if}
+                </li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
+      {/each}
     {:else if tab === 'boss'}
       <SeasonalBossPanel />
     {:else}
@@ -208,6 +221,19 @@
   }
 
   .earn {
+    margin: 0;
+  }
+
+  .shop-section {
+    display: grid;
+    gap: 0.4rem;
+  }
+
+  .shop-section h3 {
+    margin: 0.4rem 0 0;
+  }
+
+  .shop-section p {
     margin: 0;
   }
 

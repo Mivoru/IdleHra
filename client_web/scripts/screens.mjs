@@ -266,7 +266,28 @@ export async function signInAsGuest(page) {
     await page.getByRole('button', { name: 'Skip tutorial' }).first().click();
     await page.waitForSelector('[data-guided]', { state: 'detached', timeout: 5000 }).catch(() => {});
   }
+  await dismissEventIntro(page);
   return { guided };
+}
+
+/**
+ * Closes the seasonal event's one-time introduction (EventIntro.svelte), if it
+ * comes up. Every checker starts from an empty browser, so every checker meets
+ * it while an event runs, and its backdrop swallows the next click. Waits a
+ * moment because it opens only after What's new and the offline summary.
+ * Returns whether it was shown.
+ */
+export async function dismissEventIntro(page, waitMs = 2500) {
+  const intro = page.getByTestId('event-intro-close');
+  const shown = await intro
+    .waitFor({ timeout: waitMs })
+    .then(() => true)
+    .catch(() => false);
+  if (shown) {
+    await intro.click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
+  return shown;
 }
 
 /**
@@ -316,6 +337,7 @@ export async function signIn(page) {
     await notes.getByRole('button', { name: 'Close' }).first().click().catch(() => {});
     await page.waitForTimeout(300);
   }
+  await dismissEventIntro(page);
 }
 
 /**

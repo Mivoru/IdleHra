@@ -34,7 +34,7 @@ namespace FolkIdle.Server.Tests
             var payload = new TickStatePayload();
             var rng = new Random(7);
             int paid = SeasonalEventEarning.Roll(ref payload, SeasonalEventEarning.Source.Kill, 100_000, Live, rng);
-            Assert.InRange(paid, 4_500, 5_500);
+            Assert.InRange(paid, (int)(100_000 * Samhain.KillChance * 0.9), (int)(100_000 * Samhain.KillChance * 1.1));
             Assert.Equal(paid, payload.EventCurrency);
             Assert.Equal(paid, payload.EventCurrencyEarnedToday);
 
@@ -78,9 +78,9 @@ namespace FolkIdle.Server.Tests
             const int runs = 2000;
             for (int i = 0; i < runs; i++)
             {
-                total += SeasonalEventEarning.Draw(1000, 0.05 * 0.5, rng);
+                total += SeasonalEventEarning.Draw(1000, 0.025, rng);
             }
-            Assert.InRange(total / (double)runs, 24.5, 25.5);
+            Assert.InRange(total / (double)runs, 1000 * 0.025 - 0.5, 1000 * 0.025 + 0.5);
         }
 
         [Fact]
@@ -110,7 +110,14 @@ namespace FolkIdle.Server.Tests
             payload.EventCurrencyEventId = 42;
             SeasonalEventEarning.Normalise(ref payload, Live);
             Assert.Equal(0, payload.EventCurrency);
-            Assert.Equal(Samhain.Id, payload.EventCurrencyEventId);
+            Assert.Equal(Samhain.CurrencyStamp, payload.EventCurrencyEventId);
+
+            // A raised currency generation is a reset: the old generation's
+            // stamp is not this one's.
+            payload.EventCurrency = 500;
+            payload.EventCurrencyEventId = Samhain.Id * 100 + Samhain.CurrencyGeneration - 1;
+            SeasonalEventEarning.Normalise(ref payload, Live);
+            Assert.Equal(0, payload.EventCurrency);
         }
 
         [Fact]
@@ -118,9 +125,9 @@ namespace FolkIdle.Server.Tests
         {
             var payload = new TickStatePayload();
             SeasonalEventEarning.Grant(ref payload, 100, Live);
-            SeasonalEventEarning.Refund(ref payload, eventId: 42, amount: 50);
+            SeasonalEventEarning.Refund(ref payload, currencyStamp: 42, amount: 50);
             Assert.Equal(100, payload.EventCurrency);
-            SeasonalEventEarning.Refund(ref payload, Samhain.Id, 50);
+            SeasonalEventEarning.Refund(ref payload, Samhain.CurrencyStamp, 50);
             Assert.Equal(150, payload.EventCurrency);
         }
 

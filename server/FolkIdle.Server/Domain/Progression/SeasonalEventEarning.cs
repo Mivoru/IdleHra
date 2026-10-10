@@ -38,10 +38,10 @@ namespace FolkIdle.Server.Domain.Progression
                 payload.EventCurrencyEarnedToday = 0;
                 return;
             }
-            if (payload.EventCurrencyEventId != current.Id)
+            if (payload.EventCurrencyEventId != current.CurrencyStamp)
             {
                 payload.EventCurrency = 0;
-                payload.EventCurrencyEventId = current.Id;
+                payload.EventCurrencyEventId = current.CurrencyStamp;
                 payload.EventCurrencyEarnedToday = 0;
             }
             int today = DayKey(nowEpochSeconds);
@@ -140,11 +140,12 @@ namespace FolkIdle.Server.Domain.Progression
             return true;
         }
 
-        public static void Refund(ref TickStatePayload payload, int eventId, int amount)
+        /// <param name="currencyStamp">SeasonalEventDefinition.CurrencyStamp of the balance the price came from.</param>
+        public static void Refund(ref TickStatePayload payload, int currencyStamp, int amount)
         {
             // A refund for an event that has since rolled over is dropped: the
             // currency it would restore no longer exists.
-            if (amount <= 0 || payload.EventCurrencyEventId != eventId) return;
+            if (amount <= 0 || payload.EventCurrencyEventId != currencyStamp) return;
             payload.EventCurrency = (int)Math.Min(int.MaxValue, (long)payload.EventCurrency + amount);
             payload.IsDirty = true;
         }

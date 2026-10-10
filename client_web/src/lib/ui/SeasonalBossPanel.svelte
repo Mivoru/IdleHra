@@ -53,6 +53,16 @@
     requestScreen('combat');
   }
 
+  // Modul: SHE IS THE ONE YOU FIGHT (owner, 2026-10-10). A row named after a
+  // region boss read as "fight the Alpha Wolf again"; the region boss is only
+  // the yardstick for how hard this winter is, so it goes in the description.
+  function strength(t: SeasonalBossTier): string {
+    if (t.HpPct > 0 || t.AttackPct > 0) {
+      return `Harder than ${t.BossName} at full strength: +${t.HpPct}% health, +${t.AttackPct}% attack.`;
+    }
+    return `As strong as ${t.BossName}, region ${t.Region}'s boss, the first time you met it.`;
+  }
+
   function reward(t: SeasonalBossTier): string {
     const parts = [`${t.Diamonds} diamonds`, `${formatNumber(t.Gold)} gold`, `${formatExact(t.Currency)} pumpkins`];
     if (t.Title) parts.push(`the title “${t.Title}”`);
@@ -85,10 +95,10 @@
         {@const done = isCleared(t)}
         {@const why = done ? null : blocked(t)}
         <li class="tier" class:done class:armed={armed === t.Tier} data-testid="seasonal-boss-tier" data-tier={t.Tier}>
-          <span class="roman">{ROMAN[t.Tier]}</span>
           <div class="what">
-            <strong>{t.BossName}{t.HpPct > 0 || t.AttackPct > 0 ? ` +${t.HpPct}% health, +${t.AttackPct}% attack` : ''}</strong>
-            <span class="tiny dim">{done ? 'Broken.' : reward(t)}</span>
+            <strong class="winter">Winter {ROMAN[t.Tier]}</strong>
+            <span class="tiny dim">{strength(t)}</span>
+            <span class="tiny reward">{done ? 'Broken - her first fall here is paid.' : reward(t)}</span>
           </div>
           {#if done}
             <button type="button" class="tiny-btn" disabled={!live} onclick={() => fight(t)} data-testid="seasonal-boss-again">Again</button>
@@ -157,19 +167,20 @@
     border-color: var(--event-accent, var(--accent));
   }
 
-  .roman {
-    width: 2rem;
+  .winter {
     font-family: Georgia, serif;
-    font-size: 1.2rem;
-    text-align: center;
+    font-size: 1.05rem;
     color: var(--event-accent, var(--accent));
-    flex: none;
   }
 
   .what {
     display: grid;
     flex: 1;
     min-width: 0;
+  }
+
+  .reward {
+    color: var(--event-accent, var(--text-dim));
   }
 
   .go {
