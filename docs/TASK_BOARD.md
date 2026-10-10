@@ -86,6 +86,74 @@ numbers. Restore a production dump into a local database, set
 targets drift (owner clears ~A2-A3, maxed ~A5-A7, A10 about 2x maxed).
 Regions 1-4 still use "A10 = the boss two regions ahead".
 
+### 113. Re-measure pumpkins and tune the Witch (due 2026-10-11 ~22:40 UTC)
+
+Pumpkins went x5 (kill 0.5%, harvest 0.1%) and the Witch to 1 in 20,000 per
+pumpkin on 2026-10-10 (PRs #163, #165). Both were sized on the OLD rate x5,
+because the new one had run for 1.5 h. Baseline at 2026-10-10 22:39 UTC:
+Mivoru (8) 5,496, Tomda (107) 1,542, (pro)boss (108) 1,522. There is no
+earnings ledger: from each balance subtract Cailleach first clears since
+then (`seasonal_boss_clears`, 250-1,500 per tier) and add back shop spending.
+Then divide by the hours. Acceptance:
+- an ordinary active account (Tomda) still reaches 2-3 pets + 2-3 avatars
+  (~10,000 pumpkins incl. boss) by 2026-11-02;
+- the Witch's chance over the rest of the event, per account, is reported
+  to the owner (target was ~73% for the owner, ~38% for Tomda) and the
+  constant (`PetRegistry.RareDropPerCurrency`) moved if they ask.
+Details: `NEXT_STEPS_BACKLOG.md`, 2026-10-10 evening entry.
+
+### 114. Rebirth that is worth taking - needs the owner's decision
+
+The owner, 2026-10-10: rebirth does not pay - staying on the last region
+is better; it must be visible and worth it, but capped so a new player can
+still catch up, after which players build and farm the endgame. Today it
+pays only Renown, `floor(15 x (1 - 0.8^n))`% damage for rebirths at level
+50+ (`RebirthRules`). Proposal on the table, not approved:
+- a cap of about 10 rebirths;
+- each pays something that makes the next run FASTER (XP %, cheaper levels
+  1-50), so a rebirth is not a punishment and a newcomer catches up through
+  a fast start;
+- one point per rebirth in a small permanent rebirth tree (loot, gather,
+  crit... - the start of builds);
+- milestone unlocks (e.g. R3 a character slot, R5 a second pet slot, R10 a
+  title or frame) and a visible mark beside the name;
+- every rebirth bonus together capped around +20-25%.
+Measure before proposing numbers: how long the second run takes with the
+bonuses (simulation), and what it does to `PowerCeilingTests` and Malakor's
+Ascension (task 112). Also check that a bought high-level item on the
+market cannot be worn by a reborn level-1 character (level requirement).
+
+### 115. Breeding a new player can follow
+
+The owner, 2026-10-10: breeding is hard to get into, and how aptitudes climb
+(villagers arrive with at most 20, the cap is 50) is not explained. Today:
+villagers roll `2 + rand(0..Inn x 1.5)` capped at 20; a child takes each
+aptitude from one parent (weighted by value), then +1 at 25% + Grounds
+level, -1 at 10% (swapped when inbred), 5% epic +1 to all; Grounds 4/7/10
+lets 1/2/3 aptitudes take the better parent outright (`BreedingAptitudes`).
+Past 20 it climbs ~+0.2-0.3 a generation, so 20 -> 50 is 100+ generations.
+Proposed, not approved:
+- the screen states the child's range per aptitude in plain words;
+- a "suggest a partner" button and a "first child" quest step;
+- the first selectable aptitude from Grounds level 1, not 4;
+- no -1 mutation on a selected aptitude;
+- measure generations 20 -> 50 before and after (`BreedingClimbTests`).
+
+### 116. Insights harvest rate looks dead
+
+`player_stat_samples.Harvests` (read off the Logistics achievement row,
+`StatSampler`) stayed flat all of 2026-10-10 for the owner's account while
+two characters gathered, so Progress -> Insights probably shows 0 harvests
+an hour. Find where the Logistics counter stops (a maxed achievement?) and
+give the sampler a counter that always moves. Grep for the WRITER.
+
+### 117. exercise.mjs leaves a 50-diamond mail per run
+
+The monster-pet duplicate check (`/api/v1/dev/pet-drop`) mails the fixture
+50 diamonds every run and nothing claims it. Harmless, but the fixture's
+mailbox grows. Claim it in the same check (round-trip), or have
+`--seed-dev` clear the pet-duplicate mail.
+
 ### 46 follow-up. Confirm the compression ratio live
 
 `/metrics`: `folkidle_ws_deflate_output_bytes_total` over
