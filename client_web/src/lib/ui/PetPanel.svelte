@@ -5,8 +5,8 @@
   // moves it here - the row says so before the tap. Bonuses are the server's
   // words (PetRegistry). With no pet owned it says where pets come from.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import { assignPet, fetchPets, petKeys, type Pet } from '../net/pets';
-  import { EVENT_PHASE } from '../net/seasonalEvent';
+  import { assignPet, fetchPets, petKeys, PET_SOURCE, type Pet } from '../net/pets';
+  import { EVENT_PHASE, oneIn } from '../net/seasonalEvent';
   import { playerState, pushLocalNotice } from '../stores/game';
   import { requestScreen } from '../stores/navigation';
   import { spriteUrl } from './spriteUrl';
@@ -27,6 +27,7 @@
   const owned = $derived((pets.data?.Pets ?? []).filter((p) => p.Owned));
   const mine = $derived(characterId ? (owned.find((p) => p.CharacterId === characterId) ?? null) : null);
   const others = $derived(owned.filter((p) => p.Id !== mine?.Id));
+  const monsterCount = $derived((pets.data?.Pets ?? []).filter((p) => p.Source === PET_SOURCE.Monster).length);
   const nameOf = (id: string | null) => pets.data?.Characters.find((c) => c.Id === id)?.Name ?? 'someone';
   // The shop sells while the event runs and through its grace days.
   const shopOpen = $derived(Number($playerState?.SeasonalEventPhase ?? 0) !== EVENT_PHASE.None);
@@ -91,8 +92,9 @@
       </ul>
     {:else if owned.length === 0}
       <p class="dim tiny" data-testid="pet-none">
-        No pet yet. Pets come from seasonal events - each follows one character and gives it a bonus, and stays
-        yours after the event.
+        No pet yet. Any kill has a {oneIn(pets.data.MonsterPetChancePerKill)} chance to bring one of
+        {monsterCount} pets, and seasonal events sell and hide more. Each follows one character, gives it a bonus,
+        and stays yours for good.
       </p>
       {#if shopOpen}
         <button type="button" class="tiny-btn" onclick={() => requestScreen('event')} data-testid="pet-shop">

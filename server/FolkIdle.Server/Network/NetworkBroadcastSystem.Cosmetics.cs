@@ -377,6 +377,9 @@ namespace FolkIdle.Server.Network
                 {
                     Pets = await PetEngine.ViewAsync(db, playerId),
                     Characters = characters,
+                    // The monster pets' odds, from the constant the roll uses.
+                    MonsterPetChancePerKill = PetRegistry.MonsterPetPerKill,
+                    DuplicateDiamonds = PetRegistry.DuplicateDiamonds,
                 });
             }
             catch (Exception ex)

@@ -707,7 +707,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'perun avatar shared hp attempts percentile token reward shield wheel spear seam parry auto-strike damage board' },
   { tab: 'events', anchor: 'seasonal', title: 'Seasonal events', keywords: 'samhain halloween pumpkins event currency shop avatar festival' },
   { tab: 'events', anchor: 'cailleach', title: 'The seasonal boss', keywords: 'cailleach samhain boss tiers winter first clear diamonds mini vampire' },
-  { tab: 'events', anchor: 'pets', title: 'Pets', keywords: 'pet witch ghostie pixie skeleton dog black cat wolf pup mini vampire bonus slot rare drop' },
+  { tab: 'events', anchor: 'pets', title: 'Pets', keywords: 'pet witch ghostie pixie skeleton dog black cat wolf pup mini vampire bonus slot rare drop monster kill hugin nisse cait cu sidhe ignis kikimora backahast llamhigyn ogham dagda cauldron duplicate diamonds' },
   { tab: 'events', anchor: 'daily', title: 'The daily bonus', keywords: 'login streak seven days gold diamonds utc midnight' },
   { tab: 'events', anchor: 'achievements', title: 'Achievements', keywords: 'treasury forging logistics tiers diamonds claim' },
 

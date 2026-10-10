@@ -345,7 +345,11 @@ namespace FolkIdle.Server.Network
         // answers AscensionBossNotDefeated (46) or AscensionStepLocked (47),
         // and an event that is not live EventShopClosed (64).
         SeasonalBossCleared = 69,
-        SeasonalBossStarted = 70
+        SeasonalBossStarted = 70,
+
+        // A monster pet the account already owns found it again; its
+        // diamonds are in the mail (sent after the mail is saved).
+        PetDuplicateDiamonds = 71
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

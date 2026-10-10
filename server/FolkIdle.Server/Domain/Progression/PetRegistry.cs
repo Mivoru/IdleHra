@@ -15,6 +15,12 @@ namespace FolkIdle.Server.Domain.Progression
         CritDamage = 5,
         GatherSpeed = 6,
         DropChance = 7,
+        /// <summary>The whole health bar, layered like inheritance (monster pets, 2026-10-10).</summary>
+        MaxHp = 8,
+        /// <summary>Armour, after gear and milestones.</summary>
+        Armour = 9,
+        /// <summary>Extra harvest rolls, in the unit of every other yield bonus.</summary>
+        GatherYield = 10,
     }
 
     /// <summary>How a pet is acquired.</summary>
@@ -26,6 +32,8 @@ namespace FolkIdle.Server.Domain.Progression
         RareDrop = 2,
         /// <summary>The seasonal boss's top tier, first clear.</summary>
         Boss = 3,
+        /// <summary>Any kill of any monster, any time - no event (owner, 2026-10-10).</summary>
+        Monster = 4,
     }
 
     public sealed record PetBonus(PetStat Stat, int Pct);
@@ -51,6 +59,30 @@ namespace FolkIdle.Server.Domain.Progression
         public const int ShopPetPct = 5;
         public const int RarePetPct = 8;
         public const int BossPetPct = 10;
+
+        /// <summary>
+        /// A monster pet: +8% to ONE stat (owner, 2026-10-10) - better than a
+        /// shop pet's +5%, short of the Witch's +8% to two.
+        /// </summary>
+        public const int MonsterPetPct = 8;
+
+        /// <summary>
+        /// The chance one kill brings a monster pet (owner, 2026-10-10: "on
+        /// average one every 7-10 days"). Measured on production over the week
+        /// before: 14,200 kills a day on the owner's account (one per ~7 days),
+        /// 10,900 on an ordinary active one (~9), 32,600 on the fastest farmer
+        /// (~3). Per kill rather than per hour because the owner asked for it
+        /// on every kill; the fast farmer being luckier is the accepted cost.
+        /// </summary>
+        public const double MonsterPetPerKill = 1.0 / 100_000.0;
+
+        /// <summary>
+        /// Diamonds mailed for a monster pet the account already has (owner,
+        /// 2026-10-10). Not 100: once the fastest farmer owns the pool, a
+        /// duplicate every ~3 days at 100 would be ~230 a week - four times
+        /// the Delve's calibrated 60-a-week ceiling. At 50 it is ~115.
+        /// </summary>
+        public const int DuplicateDiamonds = 50;
 
         /// <summary>
         /// Chance that one event-currency drop also brings the rare pet.
@@ -83,7 +115,46 @@ namespace FolkIdle.Server.Domain.Progression
             new PetDefinition("pet_mini_vampire", "Mini Vampire", PetSource.Boss, SeasonalEventRegistry.SamhainId,
                 "Events/samhain/pets/mini_vampire.webp",
                 new[] { new PetBonus(PetStat.Damage, BossPetPct), new PetBonus(PetStat.WorldBossDamage, BossPetPct) }),
+
+            // Owner, 2026-10-10: ten monster pets, the stat each one carries
+            // agreed with the owner. Ids are stable strings - never positions.
+            Monster("hugin", "Hugin", PetStat.Xp),
+            Monster("nisse", "Nisse", PetStat.Gold),
+            Monster("cu_sidhe", "Cú Sídhe", PetStat.Damage),
+            Monster("cait_sidhe", "Cait Sídhe", PetStat.CritDamage),
+            Monster("ignis_fatuus", "Ignis Fatuus", PetStat.DropChance),
+            Monster("kikimora", "Kikimora", PetStat.GatherSpeed),
+            Monster("backahast", "Bäckahäst", PetStat.WorldBossDamage),
+            Monster("llamhigyn_y_dwr", "Llamhigyn y Dŵr", PetStat.MaxHp),
+            Monster("ogham_monolith", "Ogham Monolith", PetStat.Armour),
+            Monster("dagdas_cauldron", "Dagda's Cauldron", PetStat.GatherYield),
         };
+
+        private static PetDefinition Monster(string slug, string name, PetStat stat)
+            => new("pet_" + slug, name, PetSource.Monster, 0,
+                   "Pets/" + slug + ".webp", new[] { new PetBonus(stat, MonsterPetPct) });
+
+        /// <summary>The monster pets, in registry order - the pool a kill draws from.</summary>
+        public static readonly IReadOnlyList<PetDefinition> MonsterPool = All.Where(p => p.Source == PetSource.Monster).ToArray();
+
+        /// <summary>
+        /// Rolls <paramref name="kills"/> kills for a monster pet and queues
+        /// every find for PetEngine. Called by the live kill and the offline
+        /// window alike, so being away pays the same odds as watching. A
+        /// window of tens of thousands of kills draws by expectation
+        /// (SeasonalEventEarning.Draw), so the cost does not grow with it.
+        /// </summary>
+        public static int RollMonsterPets(long playerId, long kills, Random random)
+        {
+            if (playerId <= 0 || kills <= 0 || MonsterPool.Count == 0) return 0;
+            int found = SeasonalEventEarning.Draw((int)Math.Min(kills, int.MaxValue), MonsterPetPerKill, random);
+            for (int i = 0; i < found; i++)
+            {
+                var pet = MonsterPool[random.Next(MonsterPool.Count)];
+                PetEngine.Drops.Enqueue(new PetDropNote(playerId, pet.Id));
+            }
+            return found;
+        }
 
         private static PetDefinition Shop(string slug, string name, PetStat stat)
             => new("pet_" + slug, name, PetSource.Shop, SeasonalEventRegistry.SamhainId,
@@ -116,6 +187,9 @@ namespace FolkIdle.Server.Domain.Progression
                     case PetStat.CritDamage: totals.CritDamageTenthsPct += tenths; break;
                     case PetStat.GatherSpeed: totals.GatherSpeedTenthsPct += tenths; break;
                     case PetStat.DropChance: totals.LootLuckTenthsPct += tenths; break;
+                    case PetStat.MaxHp: totals.HpTenthsPct += tenths; break;
+                    case PetStat.Armour: totals.ArmourTenthsPct += tenths; break;
+                    case PetStat.GatherYield: totals.GatherYieldTenthsPct += tenths; break;
                 }
             }
         }
@@ -129,6 +203,9 @@ namespace FolkIdle.Server.Domain.Progression
             PetStat.CritDamage => $"+{bonus.Pct}% critical damage",
             PetStat.GatherSpeed => $"+{bonus.Pct}% gathering speed",
             PetStat.DropChance => $"+{bonus.Pct}% loot luck (rarer drops)",
+            PetStat.MaxHp => $"+{bonus.Pct}% health",
+            PetStat.Armour => $"+{bonus.Pct}% armour",
+            PetStat.GatherYield => $"+{bonus.Pct}% gathering yield",
             _ => string.Empty,
         };
     }

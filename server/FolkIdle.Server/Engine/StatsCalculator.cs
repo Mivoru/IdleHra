@@ -313,6 +313,13 @@ namespace FolkIdle.Server.Engine
             // fresh chances at this codebase's most expensive recurring defect.
             ApplyAttributeMilestones(ref stats, str, dex, con, lck);
 
+            // A monster pet's +armour, after gear and milestones for the same
+            // reason the percentage milestones come last.
+            if (equippedAffixTotals.ArmourTenthsPct > 0)
+            {
+                stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * (1f + equippedAffixTotals.ArmourTenthsPct / 1000f));
+            }
+
             // Modul: HERITABLE TRAITS, which replaced the Speed and Crit genes on
             // 2026-09-13. Points and percents on the same 0-100 scale as the
             // stats they join, in the same additive block as equipped gear and

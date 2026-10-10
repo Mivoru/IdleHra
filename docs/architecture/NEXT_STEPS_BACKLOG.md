@@ -54,14 +54,23 @@ Branch `claude/wiki-pets-stats`:
   0.1%, so an ordinary active account (Tomda: ~85 a day at the old rate, 1,500
   from winters I-III) reaches ~10,400 by 2026-11-02 = 2-3 pets + 2-3 avatars.
   The Witch moved to 1/10,000 per pumpkin so she stays ~1 in 2,000,000 per kill.
-- **DECIDED, NOT BUILT - pets from ordinary monsters** (waits on the owner's
-  art): any kill, live and offline, rolls 1 in 100,000 for a pet from a small
+- **Pets from ordinary monsters - BUILT (branch `claude/monster-pets`)**:
+  any kill, live and offline, rolls 1 in 100,000 for a pet from a small
   permanent pool (not event-bound). Measured kills a day over the last week:
   Mivoru 14,200 (one pet per ~7 days), Tomda 10,900 (~9), (pro)boss 32,600
   (~3). Each pet +8% to ONE stat (between a shop pet's +5% one and the Witch's
   +8% two). A duplicate converts to **50 diamonds** - at 100 the fastest
   account would take ~230 a week once it owned the pool, four times the
   Delve's 60-a-week ceiling.
+  Built as `PetSource.Monster` in `PetRegistry` (ten pets, `MonsterPool`,
+  `RollMonsterPets` called by the live kill and the offline window), art keyed
+  by `tools/key_event_art.py` into `SpritesWeb/Pets/` (masters stay the
+  owner's, uncommitted, in `client/Assets/Images/Sprites/pets`). Three new pet
+  stats: health (`EffectiveMaxMilliHpFor`), armour (`StatsCalculator`) and
+  gathering yield (`GatheringYieldFor`). A duplicate monster pet mails the
+  diamonds (`PetEngine.SaveDropCoreAsync`, result 71); an EVENT pet found twice
+  still pays nothing. `POST /api/v1/dev/pet-drop` feeds the same queue for
+  exercise.mjs. `MonsterPetTests` pins pool, odds, stats and the payout.
  ~230/day on the most
   active account is on the owner's target.
 

@@ -3840,6 +3840,9 @@ namespace FolkIdle.Server.Domain.Combat
             // the damage bonus is applied last - a flat addition would stop
             // mattering.
             effectiveMilliHp += effectiveMilliHp * InheritanceRegistry.GetBonusPct(payload.Inherit_MaxHp) / 100L;
+            // The character's pet (a monster pet's +health), on the whole pool
+            // like inheritance - a flat addition would stop mattering.
+            effectiveMilliHp += effectiveMilliHp * payload.CachedAffixTotals.HpTenthsPct / 1000L;
             // Modul: Fortitude, the Cruelty bough - more health, layered the
             // same additive-percent way inheritance is just above.
             effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
@@ -5602,6 +5605,9 @@ namespace FolkIdle.Server.Domain.Combat
                     ref payload, Domain.Progression.SeasonalEventEarning.Source.Kill, paidKills,
                     DateTimeOffset.UtcNow.ToUnixTimeSeconds(), Random.Shared);
 
+                // A monster pet: a chance on every kill, no event needed.
+                Domain.Progression.PetRegistry.RollMonsterPets(payload.PlayerId, paidKills, Random.Shared);
+
                 // Modul 03/10/11/12: equipment drop roll request. ProcessSubTick
                 // is static, so this enqueues onto CombatLootEngine's static
                 // queue (mirroring CodexEngine.KillEventQueue) rather than
@@ -5940,6 +5946,10 @@ namespace FolkIdle.Server.Domain.Combat
             // the live harvest and the offline projection both pay it, and it
             // survives a rebirth because the stages live in their own table.
             additionalYieldBonus += GreatWorksRegistry.YieldPct(payload.GreatWorksStagesPacked);
+
+            // The character's pet (a monster pet's +gathering yield), in the
+            // same whole percentage points, so live and offline both pay it.
+            additionalYieldBonus += payload.CachedAffixTotals.GatherYieldTenthsPct / 10;
 
             // Modul: LootLuckPct no longer multiplies the roll COUNT
             // (which previously inflated absolute yield of every

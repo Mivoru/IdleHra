@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.16.0',
+    date: '2026-10-10',
+    sections: [
+      {
+        title: 'Pets from monsters',
+        items: [
+          'Ten new pets can be found on any kill of any monster, any time of year - while you play and while you are away. The chance is small: 1 in 100,000 kills.',
+          'Each gives one character +8% to one thing: combat XP, gold, damage, crit damage, loot luck, gathering speed, world boss damage, health, armour or gathering yield.',
+          'If a pet you already have finds you again, you get 50 diamonds in your mail instead.',
+          'The Wiki lists them all under Events & rewards, with which ones you already have.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.15.0',
     date: '2026-10-10',
     sections: [

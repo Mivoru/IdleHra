@@ -89,6 +89,25 @@ SAMHAIN = {
 
 # Head crops for avatars: (centre x, centre y, side), each a fraction of the
 # cut-out's bounding box width (x) or height (y, side). Tuned by eye.
+# Owner, 2026-10-10: the monster pets - permanent, found on any kill, not an
+# event's. Their masters sit beside the other sprite masters rather than under
+# WithWhiteBackground, and they are written to SpritesWeb/Pets (not Events),
+# because they belong to no event. Keys are relative to client/Assets/Images.
+PETS_ROOT = REPO / "client" / "Assets" / "Images"
+PETS_OUTPUT = REPO / "client" / "Assets" / "Images" / "SpritesWeb" / "Pets"
+PETS = {
+    "Sprites/pets/Bäckahäst.jpg": "backahast.webp",
+    "Sprites/pets/Cait Sídhe.jpg": "cait_sidhe.webp",
+    "Sprites/pets/Cú Sídhe.jpg": "cu_sidhe.webp",
+    "Sprites/pets/Dagda's Cauldron.jpg": "dagdas_cauldron.webp",
+    "Sprites/pets/Hugin.jpg": "hugin.webp",
+    "Sprites/pets/Ignis Fatuus.jpg": "ignis_fatuus.webp",
+    "Sprites/pets/Kikimora.jpg": "kikimora.webp",
+    "Sprites/pets/Llamhigyn y Dŵr.jpg": "llamhigyn_y_dwr.webp",
+    "Sprites/pets/Nisse.jpg": "nisse.webp",
+    "Sprites/pets/Ogham Monolith.jpg": "ogham_monolith.webp",
+}
+
 AVATAR_CROPS: dict[str, tuple[float, float, float]] = {
     "banshee": (0.5, 0.2, 0.4),
     "vampire": (0.5, 0.2, 0.4),
@@ -192,10 +211,12 @@ def crop_avatar(rgba: np.ndarray, crop: tuple[float, float, float]) -> np.ndarra
 def main() -> int:
     only = sys.argv[1] if len(sys.argv) > 1 else None
     written = 0
-    for master_rel, out_rel in SAMHAIN.items():
+    jobs = [(MASTERS / m, OUTPUT, o) for m, o in SAMHAIN.items()]
+    jobs += [(PETS_ROOT / m, PETS_OUTPUT, o) for m, o in PETS.items()]
+    for master, output, out_rel in jobs:
         if only and only not in out_rel:
             continue
-        master = MASTERS / master_rel
+        master_rel = str(master.relative_to(REPO))
         if not master.is_file():
             print(f"missing master: {master_rel}", file=sys.stderr)
             return 1
@@ -209,14 +230,14 @@ def main() -> int:
         if "/avatars" in out_rel:
             rgba = crop_avatar(rgba, AVATAR_CROPS.get(Path(out_rel).stem, DEFAULT_AVATAR_CROP))
 
-        destination = OUTPUT / out_rel
+        destination = output / out_rel
         destination.parent.mkdir(parents=True, exist_ok=True)
         image = downscale(Image.fromarray(np.clip(rgba, 0, 255).astype(np.uint8), "RGBA"))
         image.save(destination, "WEBP", quality=WEBP_QUALITY, alpha_quality=WEBP_ALPHA_QUALITY, method=6)
         written += 1
         print(f"  {out_rel}  {image.width}x{image.height}  {destination.stat().st_size // 1024} KB")
 
-    print(f"{written} event images -> {OUTPUT.relative_to(REPO)}")
+    print(f"{written} images -> {OUTPUT.relative_to(REPO)}, {PETS_OUTPUT.relative_to(REPO)}")
     return 0
 
 
