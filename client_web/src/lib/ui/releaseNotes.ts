@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.21.0',
+    date: '2026-10-11',
+    sections: [
+      {
+        title: 'Fixed',
+        items: [
+          'Wear in the Chest now dresses the character you have picked, and says which one - it used to always dress your first character.',
+          'Take off in the Chest now takes the piece off whoever actually wears it.',
+          'A gear slot now also lists pieces your other characters wear, marked with who wears them, with Move here to hand it over.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.20.0',
     date: '2026-10-11',
     headline: 'Rebirth has its own screen.',
