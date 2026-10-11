@@ -404,6 +404,17 @@ export const SEASON_CARRIES: readonly string[] = [
   'Gathering masteries, the monster codex and your deeds.',
   'Renown - the permanent damage bonus a renowned rebirth raises.',
   'Your best season rank, and any paid respec grants.',
+  'Every pet, and the slot each one sits in.',
+  'Any gear you paid to keep: 5 million gold for the commonest piece up to 100 million for the rarest, paid from the gold the rebirth takes. It waits in your chest, unworn.',
+];
+
+/** Task 114 - RebirthRules. What each rebirth pays, up to ten rebirths. */
+export const REBIRTH_PAYS: readonly string[] = [
+  '+2 skill points for good, on top of what levels and Seals pay - 20 at the most.',
+  '+50% combat XP on every level below the best level you have ever reached.',
+  'At 5 rebirths, a second pet slot on every character.',
+  'At 10, the last rebirth, the title The Ever-Returning.',
+  'Renown, if the rebirth is taken halfway to level 100 or later.',
 ];
 
 export const SEASON_LOST: readonly string[] = [
@@ -687,6 +698,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'breeding', anchor: 'genepool', title: 'The Inn and the gene pool', keywords: 'newcomer arrival interval capacity feast elder marry' },
 
   { tab: 'longgame', anchor: 'season', title: 'What a rebirth resets', keywords: 'rebirth prestige rollover reset carries lost season end wipe renown' },
+  { tab: 'longgame', anchor: 'rebirth-pays', title: 'What a rebirth pays', keywords: 'rebirth skill points xp faster keep gear pet slot title cap ten' },
   { tab: 'longgame', anchor: 'deeds', title: 'The Book of Deeds and Seals', keywords: 'deeds chapters seals skill points permanent' },
   { tab: 'longgame', anchor: 'hall', title: 'The Hall of Ancestors and the cull', keywords: 'ancestors slots keep mark cull survive field roster' },
   { tab: 'longgame', anchor: 'inheritance', title: 'Inheritance', keywords: 'diamonds permanent damage health experience gold gathering luck 2% 20 levels' },

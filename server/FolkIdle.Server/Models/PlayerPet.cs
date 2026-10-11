@@ -27,6 +27,14 @@ namespace FolkIdle.Server.Models
 
         public Guid? CharacterId { get; set; }
 
+        /// <summary>
+        /// Which of the character's pet slots it sits in: 0, or 1 once the
+        /// account has RebirthRules.SecondPetSlotRebirths rebirths (task 114).
+        /// Meaningless while the pet rests. The unique index is
+        /// (CharacterId, Slot), so each slot still holds one pet.
+        /// </summary>
+        public byte Slot { get; set; }
+
         public DateTime AcquiredAtUtc { get; set; }
     }
 }

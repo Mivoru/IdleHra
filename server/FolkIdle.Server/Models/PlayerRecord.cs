@@ -499,6 +499,12 @@ namespace FolkIdle.Server.Models
         public int RebirthCount { get; set; }
         public int RenownedRebirths { get; set; }
 
+        // Task 114: the highest level any earlier life reached, raised by
+        // RebirthEngine just before the reset (same single writer). Below it,
+        // kills pay RebirthRules.ReLevelXpBonusPct more XP. 0 until the first
+        // rebirth, so an account that never rebirthed gets no bonus.
+        public int PeakLevel { get; set; }
+
         /// <summary>
         /// Which chapters of the Book of Deeds have been completed, one bit
         /// each. **Each Seal grants +2 permanent skill points every season,

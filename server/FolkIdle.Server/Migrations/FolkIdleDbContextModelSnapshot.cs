@@ -1834,9 +1834,12 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long>("PlayerId")
                         .HasColumnType("bigint");
 
+                    b.Property<byte>("Slot")
+                        .HasColumnType("smallint");
+
                     b.HasKey("Id");
 
-                    b.HasIndex("CharacterId")
+                    b.HasIndex("CharacterId", "Slot")
                         .IsUnique()
                         .HasFilter("\"CharacterId\" IS NOT NULL");
 
@@ -2167,6 +2170,9 @@ namespace FolkIdle.Server.Migrations
 
                     b.Property<string>("PasswordHash")
                         .HasColumnType("text");
+
+                    b.Property<int>("PeakLevel")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("PlayerGuid")
                         .HasColumnType("uuid");

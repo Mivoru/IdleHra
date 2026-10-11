@@ -340,9 +340,13 @@ namespace FolkIdle.Server.Engine
         internal static async Task ResetPlayersAsync(
             FolkIdleDbContext db,
             long? onlyPlayerId,
-            CancellationToken stoppingToken)
+            CancellationToken stoppingToken,
+            IReadOnlyCollection<long>? keepEquipmentIds = null)
         {
             bool one = onlyPlayerId.HasValue;
+            // Task 114: equipment a rebirth paid to keep (RebirthEngine priced
+            // and checked it). Only ever for one player; the roster keeps none.
+            long[] keepIds = one && keepEquipmentIds != null ? keepEquipmentIds.ToArray() : Array.Empty<long>();
             long only = onlyPlayerId ?? 0L;
 
             // " AND <column> = <player>" for a rebirth, "" for the roster. The
@@ -396,6 +400,9 @@ namespace FolkIdle.Server.Engine
                 "\"AvailableSkillPoints\" = {0} * (" +
                 "  (\"SealsEarnedMask\" & 1) + ((\"SealsEarnedMask\" >> 1) & 1) + ((\"SealsEarnedMask\" >> 2) & 1)" +
                 "+ ((\"SealsEarnedMask\" >> 3) & 1) + ((\"SealsEarnedMask\" >> 4) & 1))" +
+                // Task 114: and what the rebirths pay - RebirthRules.SkillPointsFor,
+                // written out as SQL so the roster stays one statement.
+                " + {5} * LEAST(\"RebirthCount\", {6})" +
                 Where("\"Id\""),
                 new object[]
                 {
@@ -404,6 +411,8 @@ namespace FolkIdle.Server.Engine
                     AttributeRegistry.StartingValue(AttributeRegistry.Finesse),
                     AttributeRegistry.StartingValue(AttributeRegistry.Vigour),
                     AttributeRegistry.StartingValue(AttributeRegistry.Fortune),
+                    RebirthRules.SkillPointsPerRebirth,
+                    RebirthRules.MaxRebirths,
                 },
                 stoppingToken);
 
@@ -466,7 +475,9 @@ namespace FolkIdle.Server.Engine
             // enforce real FK constraints on these tables) but protects
             // against a future FK addition silently breaking this reset.
             await db.Database.ExecuteSqlRawAsync(
-                one ? $"DELETE FROM \"EquipmentInstances\"{Where("\"PlayerId\"")}" : "TRUNCATE TABLE \"EquipmentInstances\" RESTART IDENTITY CASCADE",
+                one
+                    ? $"DELETE FROM \"EquipmentInstances\"{Where("\"PlayerId\"")}" + (keepIds.Length > 0 ? $" AND \"Id\" NOT IN ({string.Join(",", keepIds)})" : string.Empty)
+                    : "TRUNCATE TABLE \"EquipmentInstances\" RESTART IDENTITY CASCADE",
                 stoppingToken);
 
             // Modul: a Workshop commission in progress is equipment on its way

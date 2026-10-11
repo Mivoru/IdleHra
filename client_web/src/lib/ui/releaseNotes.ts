@@ -35,6 +35,24 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.18.0',
+    date: '2026-10-11',
+    headline: 'A rebirth is now worth taking.',
+    sections: [
+      {
+        title: 'Rebirth',
+        items: [
+          'Each rebirth gives +2 skill points for good, up to 20 in total.',
+          'After a rebirth, every level below your best ever earns 50% more combat XP, so you climb back faster.',
+          'Keep your best gear through a rebirth: tick it on the Rebirth panel and pay gold by rarity, from 5 million for the commonest piece to 100 million for the rarest.',
+          'Five rebirths open a second pet slot on every character.',
+          'You can be reborn ten times. The tenth gives the title The Ever-Returning.',
+          'Your pets always stay with you.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.17.0',
     date: '2026-10-11',
     sections: [

@@ -21,6 +21,8 @@ export interface Pet {
   Owned: boolean;
   /** The character it follows, or null while it rests. */
   CharacterId: string | null;
+  /** Which of that character's pet slots it sits in (0, or 1 after five rebirths). */
+  Slot: number;
 }
 
 export interface PetsView {
@@ -30,6 +32,10 @@ export interface PetsView {
   MonsterPetChancePerKill: number;
   /** What a monster pet already owned pays instead, by mail. */
   DuplicateDiamonds: number;
+  /** Task 114: whether this account's characters have a second pet slot. */
+  SecondSlotOpen: boolean;
+  /** The rebirths that open it (RebirthRules.SecondPetSlotRebirths). */
+  SecondSlotRebirths: number;
 }
 
 export const petKeys = { all: ['pets'] as const };
@@ -39,13 +45,13 @@ export function fetchPets(): Promise<PetsView> {
 }
 
 export interface PetAssignAnswer {
-  Result: 'Ok' | 'NotOwned' | 'NotYourCharacter' | 'Failed';
+  Result: 'Ok' | 'NotOwned' | 'NotYourCharacter' | 'Failed' | 'SlotLocked';
   Pets: Pet[];
 }
 
-/** Puts a pet on a character, or rests it when `characterId` is null. */
-export async function assignPet(petId: string, characterId: string | null): Promise<PetAssignAnswer | null> {
-  return authedPost<PetAssignAnswer>('/api/v1/pets/assign', { PetId: petId, CharacterId: characterId });
+/** Puts a pet in a character's slot, or rests it when `characterId` is null. */
+export async function assignPet(petId: string, characterId: string | null, slot = 0): Promise<PetAssignAnswer | null> {
+  return authedPost<PetAssignAnswer>('/api/v1/pets/assign', { PetId: petId, CharacterId: characterId, Slot: slot });
 }
 
 /** How a pet is found, for the screen. */

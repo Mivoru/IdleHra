@@ -319,8 +319,9 @@ namespace FolkIdle.Server.Models
             modelBuilder.Entity<SeasonalBossClear>()
                 .HasKey(c => new { c.PlayerId, c.EventId, c.Tier });
 
+            // Task 114: one pet per SLOT - a second slot opens at five rebirths.
             modelBuilder.Entity<PlayerPet>()
-                .HasIndex(p => p.CharacterId)
+                .HasIndex(p => new { p.CharacterId, p.Slot })
                 .IsUnique()
                 .HasFilter("\"CharacterId\" IS NOT NULL");
 

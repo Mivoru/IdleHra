@@ -380,6 +380,10 @@ namespace FolkIdle.Server.Network
                     // The monster pets' odds, from the constant the roll uses.
                     MonsterPetChancePerKill = PetRegistry.MonsterPetPerKill,
                     DuplicateDiamonds = PetRegistry.DuplicateDiamonds,
+                    // Task 114: the second pet slot and what opens it.
+                    SecondSlotOpen = await db.PlayerRecords.AsNoTracking()
+                        .Where(p => p.Id == playerId).Select(p => p.RebirthCount).FirstOrDefaultAsync() >= FolkIdle.Server.Engine.RebirthRules.SecondPetSlotRebirths,
+                    SecondSlotRebirths = FolkIdle.Server.Engine.RebirthRules.SecondPetSlotRebirths,
                 });
             }
             catch (Exception ex)
@@ -403,12 +407,14 @@ namespace FolkIdle.Server.Network
 
                 string? petId = null;
                 Guid? characterId = null;
+                int slot = 0;
                 try
                 {
                     using var parsed = JsonDocument.Parse(await ReadBodyAsync(context));
                     if (parsed.RootElement.TryGetProperty("PetId", out var p) && p.ValueKind == JsonValueKind.String) petId = p.GetString();
                     if (parsed.RootElement.TryGetProperty("CharacterId", out var c) && c.ValueKind == JsonValueKind.String
                         && Guid.TryParse(c.GetString(), out var g)) characterId = g;
+                    if (parsed.RootElement.TryGetProperty("Slot", out var s) && s.ValueKind == JsonValueKind.Number && s.TryGetInt32(out var si)) slot = si;
                 }
                 catch (JsonException) { }
 
@@ -420,7 +426,7 @@ namespace FolkIdle.Server.Network
 
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                var (result, updates) = await PetEngine.AssignAsync(db, playerId, petId!, characterId);
+                var (result, updates) = await PetEngine.AssignAsync(db, playerId, petId!, characterId, slot);
                 if (result == PetAssignResult.Ok && _playerSessionRegistry != null)
                 {
                     foreach (var update in updates) _playerSessionRegistry.EquipmentSlotUpdateQueue.Enqueue(update);

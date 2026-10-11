@@ -28,6 +28,9 @@ namespace FolkIdle.Server.Domain.Progression
     /// </summary>
     public static class TitleRegistry
     {
+        /// <summary>Worn by an account that has taken RebirthRules.MaxRebirths.</summary>
+        public const string RebirthTitleSlug = "rebirth_max";
+
         // Modul: declared ABOVE All. Static initialisers run in text order,
         // and Build() reads this - below All it was still null and the whole
         // registry failed to initialise.
@@ -59,6 +62,9 @@ namespace FolkIdle.Server.Domain.Progression
                 // Samhain: The Cailleach's tiers 3 and 6, first clear, by mail.
                 new TitleDefinition(Combat.SeasonalBossRegistry.FrostTitleSlug, "Frost-Touched", 0, "#9fd8ff"),
                 new TitleDefinition(Combat.SeasonalBossRegistry.BreakerTitleSlug, "Breaker of the Long Winter", 0, "#f09a3e"),
+
+                // Task 114: the tenth and last rebirth (RebirthEngine grants it).
+                new TitleDefinition(RebirthTitleSlug, "The Ever-Returning", 0, "#ffd700"),
             };
 
             // Task 87: one title per Boss Ascension step per boss - a rank the

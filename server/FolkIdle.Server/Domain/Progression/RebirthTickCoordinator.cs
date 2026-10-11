@@ -16,6 +16,8 @@ namespace FolkIdle.Server.Domain.Progression
     {
         public long PlayerId { get; init; }
         public int ExpectedRebirthCount { get; init; }
+        /// <summary>Equipment the player pays to keep (task 114) - see RebirthRules.KeepPrice.</summary>
+        public long[] KeepEquipmentIds { get; init; } = System.Array.Empty<long>();
         public RebirthEngine Engine { get; init; } = null!;
         public TaskCompletionSource<RebirthOutcome?> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -75,7 +77,7 @@ namespace FolkIdle.Server.Domain.Progression
                     RebirthOutcome outcome = new(RebirthResult.Failed, request.ExpectedRebirthCount, 0, 0, 0, false);
                     try
                     {
-                        outcome = await request.Engine.RebirthAsync(playerId, request.ExpectedRebirthCount);
+                        outcome = await request.Engine.RebirthAsync(playerId, request.ExpectedRebirthCount, request.KeepEquipmentIds);
 
                         // Reloaded whatever the outcome: even a refused rebirth
                         // has to un-suspend the player, and the drain of this

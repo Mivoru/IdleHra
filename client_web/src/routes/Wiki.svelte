@@ -81,6 +81,7 @@
     CULL_ORDER,
     SEASON_CARRIES,
     SEASON_LOST,
+    REBIRTH_PAYS,
     GUILD_TAX_MIN_PCT,
     GUILD_TAX_MAX_PCT,
     MARKET_FEE_BRACKETS,
@@ -1309,6 +1310,11 @@
               </ul>
             </div>
           </div>
+          <h3 id="rebirth-pays">What a rebirth pays</h3>
+          <p>You can be reborn up to ten times. Each rebirth pays:</p>
+          <ul class="styled-list">
+            {#each REBIRTH_PAYS as line (line)}<li>{line}</li>{/each}
+          </ul>
           <p class="dim tiny">
             The rollover sets every surviving ancestor back to Adult with its age
             reset, so the whole roster is breeding-age on day one and you can

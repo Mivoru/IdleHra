@@ -723,13 +723,17 @@ namespace FolkIdle.Server.Domain.Combat
             // Modul: the character's pet rides the same totals as its gear, so
             // every path that already reads them - live, offline, the world
             // boss, the guild-war snapshot - counts it without a second copy.
-            string? petId = await db.PlayerPets.AsNoTracking()
+            // Task 114: up to two pets (the second slot opens at five rebirths).
+            var petIds = await db.PlayerPets.AsNoTracking()
                 .Where(p => p.CharacterId == character.Id)
                 .Select(p => p.PetId)
-                .FirstOrDefaultAsync();
-            if (FolkIdle.Server.Domain.Progression.PetRegistry.Find(petId) is { } pet)
+                .ToListAsync();
+            foreach (var petId in petIds)
             {
-                FolkIdle.Server.Domain.Progression.PetRegistry.AddTo(pet, ref totals);
+                if (FolkIdle.Server.Domain.Progression.PetRegistry.Find(petId) is { } pet)
+                {
+                    FolkIdle.Server.Domain.Progression.PetRegistry.AddTo(pet, ref totals);
+                }
             }
             return (totals, setIds);
         }

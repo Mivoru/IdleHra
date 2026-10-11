@@ -25,23 +25,59 @@
   // confirm button stays disabled until REBIRTH is typed. The server refuses
   // a request without the word (ConfirmationRequired), so an old bundle
   // cannot skip it.
+  //
+  // Modul: A REBIRTH WORTH TAKING (task 114, owner 2026-10-11). The terms now
+  // say what a rebirth PAYS - skill points, faster re-levelling, the second
+  // pet slot, the cap - and let the player keep pieces of gear for a gold
+  // price by rarity. Every number is the preview's; the panel only adds up
+  // the prices it was sent, and the server prices and checks the keep again.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import {
     queryKeys,
     fetchRebirthPreview,
+    fetchInventory,
     requestRebirth,
     REBIRTH_CONFIRMATION_WORD,
     type RebirthOutcome,
   } from '../net/rest';
   import { invalidateOwnedItems } from '../net/queryClient';
+  import { prettifyBaseId } from '../net/content';
   import { pushLocalNotice } from '../stores/game';
   import { formatNumber } from './format';
+  import { rarityColor, rarityName } from './rarity';
 
   const client = useQueryClient();
   const preview = createQuery(() => ({ queryKey: queryKeys.rebirthPreview, queryFn: fetchRebirthPreview }));
   const p = $derived(preview.data);
 
   let confirming = $state(false);
+
+  // The keep list: the gear the player wears first, then the rarest of the
+  // rest. Loaded only once the terms are open - the inventory is big.
+  const KEEP_ROWS = 40;
+  const inventory = createQuery(() => ({
+    queryKey: queryKeys.inventory,
+    queryFn: fetchInventory,
+    enabled: confirming,
+  }));
+  const keepCandidates = $derived(
+    [...(inventory.data?.Equipment ?? [])]
+      .sort((a, b) => Number(b.IsEquipped) - Number(a.IsEquipped) || b.QualityTier - a.QualityTier)
+      .slice(0, KEEP_ROWS),
+  );
+  let keep = $state<number[]>([]);
+  function priceOf(tier: number): number {
+    const prices = p?.KeepPriceByTier ?? [];
+    if (prices.length === 0) return 0;
+    return prices[Math.max(0, Math.min(tier, prices.length - 1))];
+  }
+  const keepTotal = $derived(
+    keepCandidates.filter((e) => keep.includes(e.Id)).reduce((sum, e) => sum + priceOf(e.QualityTier), 0),
+  );
+  const keepAffordable = $derived(!p || keepTotal <= p.Gold);
+  function toggleKeep(id: number) {
+    keep = keep.includes(id) ? keep.filter((k) => k !== id) : [...keep, id];
+  }
   let typed = $state('');
   const wordTyped = $derived(typed.trim().toUpperCase() === REBIRTH_CONFIRMATION_WORD);
   let working = $state(false);
@@ -59,7 +95,7 @@
     if (!p || working || !wordTyped) return;
     working = true;
     try {
-      const outcome = await requestRebirth(p.RebirthCount, typed);
+      const outcome = await requestRebirth(p.RebirthCount, typed, keep);
       last = outcome;
       if (outcome.Result === 'Ok') {
         pushLocalNotice(
@@ -70,6 +106,12 @@
         );
       } else if (outcome.Result === 'ConfirmationRequired') {
         pushLocalNotice(`Type ${REBIRTH_CONFIRMATION_WORD} to confirm. Nothing was reset.`, 'error');
+      } else if (outcome.Result === 'Capped') {
+        pushLocalNotice(`You have taken all ${p.MaxRebirths} rebirths. Nothing was reset.`, 'error');
+      } else if (outcome.Result === 'NotEnoughGold') {
+        pushLocalNotice('Your gold does not cover the gear you chose to keep. Nothing was reset.', 'error');
+      } else if (outcome.Result === 'KeepNotOwned') {
+        pushLocalNotice('A piece you chose to keep is no longer yours. Nothing was reset.', 'error');
       } else if (outcome.Result === 'AlreadyReborn' || outcome.Result === 'InFlight') {
         pushLocalNotice('That rebirth has already happened - the page was out of date.', 'error');
       } else {
@@ -81,6 +123,7 @@
       working = false;
       confirming = false;
       typed = '';
+      keep = [];
       refreshAll();
     }
   }
@@ -109,13 +152,19 @@
       <span class="dim">Each step is smaller; it never reaches {p.DamageBonusPctCap}%.</span>
     </p>
 
-    {#if !confirming}
+    <p class="pays" data-testid="rebirth-pays">
+      <strong>Each rebirth pays:</strong> +{p.SkillPointsFromRebirthsAfter - p.SkillPointsFromRebirthsNow} skill points for good
+      (now {p.SkillPointsFromRebirthsNow}), and +{p.ReLevelXpBonusPct}% combat XP on every level below your best
+      (level {p.PeakLevelAfter} after this one). {p.SecondPetSlotRebirths} rebirths open a second pet slot on every character.
+      <span class="dim">{p.RebirthCount} of {p.MaxRebirths} taken.</span>
+    </p>
+
+    {#if p.Capped}
+      <p class="dim" data-testid="rebirth-capped">You have taken all {p.MaxRebirths} rebirths.</p>
+    {:else if !confirming}
       <button class="rebirth-open" data-guide="rebirth-start" disabled={working} onclick={() => (confirming = true)}>
         Rebirth&hellip;
       </button>
-      {#if p.RebirthCount > 0}
-        <p class="dim tiny">Reborn {p.RebirthCount} {p.RebirthCount === 1 ? 'time' : 'times'} so far.</p>
-      {/if}
     {:else}
       <div class="terms" data-testid="rebirth-terms">
         <p class="danger-note" data-testid="rebirth-warning">
@@ -147,9 +196,38 @@
           race and gathering masteries, the codex and your deeds.
         </p>
         <p>
-          <strong>You gain:</strong> {formatNumber(p.ShardsEarned)} shards{#if p.Renowned}, and Renown
-            {p.RenownedRebirths + 1} (+{p.DamageBonusPctAfter}% damage){/if}.
+          <strong>You gain:</strong> {formatNumber(p.ShardsEarned)} shards,
+          {p.SkillPointsFromRebirthsAfter} skill points from rebirths, +{p.ReLevelXpBonusPct}% XP up to level
+          {p.PeakLevelAfter}{#if p.Renowned}, and Renown {p.RenownedRebirths + 1} (+{p.DamageBonusPctAfter}% damage){/if}.
+          {#if p.RebirthCount + 1 === p.SecondPetSlotRebirths}The second pet slot opens on every character.{/if}
         </p>
+
+        <div class="keep" data-testid="rebirth-keep">
+          <p>
+            <strong>Keep gear (optional):</strong> each piece you tick stays in your chest, unworn, and costs
+            gold by rarity, paid from the gold this rebirth takes. Worn gear is listed first.
+          </p>
+          {#if inventory.isPending}
+            <p class="dim tiny">Reading your gear&hellip;</p>
+          {:else if keepCandidates.length === 0}
+            <p class="dim tiny">No gear to keep.</p>
+          {:else}
+            <div class="keep-list">
+              {#each keepCandidates as e (e.Id)}
+                <label class="keep-row">
+                  <input type="checkbox" checked={keep.includes(e.Id)} disabled={working} onchange={() => toggleKeep(e.Id)} />
+                  <span class="name" style="color: {rarityColor(e.QualityTier)}">{prettifyBaseId(e.BaseItemId)}</span>
+                  <span class="dim tiny">[{rarityName(e.QualityTier)}]{#if e.IsEquipped} &middot; worn{/if}</span>
+                  <span class="price">{formatNumber(priceOf(e.QualityTier))}</span>
+                </label>
+              {/each}
+            </div>
+          {/if}
+          <p class:warn={!keepAffordable} data-testid="rebirth-keep-total">
+            Keeping {keep.length} {keep.length === 1 ? 'piece' : 'pieces'}: {formatNumber(keepTotal)} of
+            {formatNumber(p.Gold)} gold.
+          </p>
+        </div>
         <label class="typeword">
           <span>Type <strong>{REBIRTH_CONFIRMATION_WORD}</strong> to confirm</span>
           <input
@@ -166,7 +244,7 @@
           <button class="rebirth-cancel" disabled={working} onclick={() => { confirming = false; typed = ''; }}>
             Cancel
           </button>
-          <button class="rebirth-confirm danger" disabled={working || !wordTyped} onclick={rebirth}>
+          <button class="rebirth-confirm danger" disabled={working || !wordTyped || !keepAffordable} onclick={rebirth}>
             {working ? 'Rebirthing…' : 'Yes, rebirth now'}
           </button>
         </div>
@@ -238,6 +316,43 @@
     border: 1px solid var(--danger);
     border-radius: var(--radius);
     color: var(--danger);
+  }
+
+  .keep {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .keep-list {
+    display: grid;
+    gap: 0.15rem;
+    max-height: 16rem;
+    overflow-y: auto;
+  }
+
+  .keep-row {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: 2.75rem;
+    font-size: 0.85rem;
+  }
+
+  .keep-row input {
+    flex-shrink: 0;
+    width: 1.4rem;
+    height: 1.4rem;
+  }
+
+  .keep-row .name {
+    flex: 1 1 auto;
+    min-width: 6rem;
+    overflow-wrap: anywhere;
+  }
+
+  .keep-row .price {
+    flex-shrink: 0;
+    margin-left: auto;
   }
 
   .typeword {
