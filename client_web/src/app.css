@@ -668,7 +668,7 @@ input {
      Text cells and containers are what need to shrink. A button is what a
      thumb aims at, and if a label ever makes one too wide to fit,
      check:clipping is the guard that says so. */
-  .panel *:not(img):not(svg):not(canvas):not(button):not([role='button']) {
+  .panel *:not(img):not(svg):not(canvas):not(button):not([role='button']):not(table) {
     min-width: 0 !important;
   }
 
@@ -676,6 +676,20 @@ input {
      narrow. */
   .panel {
     overflow-wrap: anywhere;
+  }
+
+  /* Modul: A TABLE IS EXEMPT FROM BOTH RULES ABOVE. `anywhere` counts every
+     letter as a break point when the table sizes its columns, so a column's
+     narrowest width became ONE CHARACTER and the auto layout used it: the Wiki
+     printed "Birch Log" down the page a letter per line, and the `!important`
+     zero also cancelled each table's own min-width (hence `:not(table)`
+     on that rule). Every table sits in a
+     horizontally scrolling box, so a table wider than the phone scrolls - which
+     is the honest answer for dense data. `break-word` still breaks a word
+     longer than its column, but no longer offers the letters as a width. */
+  .panel table,
+  .panel table * {
+    overflow-wrap: break-word;
   }
 }
 
