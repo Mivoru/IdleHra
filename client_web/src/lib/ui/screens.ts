@@ -21,6 +21,7 @@ export const SCREEN_KEYS = [
   'guildops',
   'village',
   'skills',
+  'rebirth',
   'progression',
   'codex',
   'breeding',

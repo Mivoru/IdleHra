@@ -179,6 +179,26 @@
     return bySlot;
   });
 
+  // Modul: A PIECE ANOTHER CHARACTER WEARS IS STILL YOURS (2026-10-11). A
+  // player crafted a rod, pressed Wear in the Chest - which dresses the FIRST
+  // character - and then could not find it in the third character's rod slot,
+  // because this picker hid everything worn by anyone. It was in the Chest and
+  // "not in the list". Those pieces are listed now, marked with who wears
+  // them, and Move here takes it off them and puts it on this character.
+  const wornElsewhereBySlot = $derived.by(() => {
+    const bySlot = new Map<number, InventoryEquipment[]>();
+    if (!selected) return bySlot;
+    for (const item of inventory.data?.Equipment ?? []) {
+      if (item.EquippedByCharacterSlot < 0 || item.EquippedByCharacterSlot === selected.slot - 1) continue;
+      const index = resolveSlotIndex(item.BaseItemId);
+      if (index < 0) continue;
+      const list = bySlot.get(index) ?? [];
+      list.push(item);
+      bySlot.set(index, list);
+    }
+    return bySlot;
+  });
+
   // SimulationEngine routes ChangeActivity by TargetGuid, and
   // CharacterSlotEngine unlocks slot 2 at Town Hall 3 and slot 3 at Town Hall 5.
   const townHall = $derived(snap?.TownHallLevel ?? 0);
@@ -427,6 +447,24 @@
     pickerSlot = -1;
   }
 
+  /**
+   * Takes a piece off the character who wears it and puts it on this one.
+   * Two commands, spaced past ValidateCommand's 100 ms rule: the server will
+   * not let one item be worn twice, so it must come off first.
+   */
+  function moveHere(item: InventoryEquipment) {
+    if (!selected) return;
+    const owner = people.find((c) => c.slot - 1 === item.EquippedByCharacterSlot);
+    if (!owner) return;
+    const target = selected.id;
+    connection.send({ Command: CommandType.UnequipItem, TargetId: item.EquippedInSlotIndex, TargetGuid: owner.id });
+    setTimeout(() => {
+      connection.send({ Command: CommandType.EquipItem, TargetId: item.Id, TargetGuid: target });
+      play('itemEquipped');
+    }, 400);
+    pickerSlot = -1;
+  }
+
   // Modul: UnequipItem's TargetId is a SLOT INDEX (0-10) - NOT an item
   // instance id, which is what EquipItem takes. Equip names the ITEM, unequip
   // names the SLOT, because a slot is what you are emptying.
@@ -608,6 +646,7 @@
             {@const slot = EQUIPMENT_SLOTS.find((sl) => sl.index === pickerSlot)}
             {@const worn = wornBy(selected.slot, pickerSlot)}
             {@const candidates = candidatesBySlot.get(pickerSlot) ?? []}
+            {@const elsewhere = wornElsewhereBySlot.get(pickerSlot) ?? []}
             {@const picked = pickerRows(candidates)}
             <div class="picker" data-testid="equip-picker" data-slot-index={pickerSlot}>
               <header>
@@ -623,8 +662,10 @@
                 <Affixes affixes={worn.Affixes} baseItemId={worn.BaseItemId} qualityTier={worn.QualityTier} />
               {/if}
 
-              {#if candidates.length === 0}
+              {#if candidates.length === 0 && elsewhere.length === 0}
                 <p class="dim tiny">Nothing in the chest fits this slot.</p>
+              {:else if candidates.length === 0}
+                <p class="dim tiny">Nothing free in the chest fits this slot - but another character wears one:</p>
               {:else}
                 <ul class="choices">
                   {#each picked.rows as { piece: candidate, count }, candidateIndex (candidate.Id)}
@@ -660,6 +701,22 @@
                     to filter them.
                   </p>
                 {/if}
+              {/if}
+              {#if elsewhere.length > 0}
+                <ul class="choices elsewhere" data-testid="equip-elsewhere">
+                  {#each elsewhere as piece (piece.Id)}
+                    {@const owner = people.find((c) => c.slot - 1 === piece.EquippedByCharacterSlot)}
+                    <li>
+                      <ItemIcon baseItemId={piece.BaseItemId} name={prettifyBaseId(piece.BaseItemId)} qualityTier={piece.QualityTier} size="sm" />
+                      <span class="cname">
+                        <span style="color: {rarityColor(piece.QualityTier)}">{prettifyBaseId(piece.BaseItemId)}</span>
+                        <span class="dim tiny">[{rarityName(piece.QualityTier)}]</span>
+                        <span class="dim tiny">worn by {owner ? personName(owner.id, owner.raceId) : 'another character'}</span>
+                      </span>
+                      <button class="tiny-btn" data-piece-id={piece.Id} disabled={!owner} onclick={() => moveHere(piece)}>Move here</button>
+                    </li>
+                  {/each}
+                </ul>
               {/if}
             </div>
           {/if}

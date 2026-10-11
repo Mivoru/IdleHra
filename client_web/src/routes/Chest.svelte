@@ -43,6 +43,8 @@
   import { play } from '../lib/ui/audio';
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import { requestScreen, setPendingFocusEquipment } from '../lib/stores/navigation';
+  import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
+  import { EMPTY_GUID } from '../lib/net/commands';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
   import { isNarrow, isWide } from '../lib/ui/media';
@@ -403,17 +405,32 @@
   // UnequipItem takes a SLOT INDEX, not an instance id - the same TargetId
   // field carrying two different meanings, which is why the two calls do not
   // share a helper.
+  // Modul: WEAR GOES TO THE CHARACTER YOU PICKED (2026-10-11). Wear sent no
+  // character, so it always dressed the first one: a player crafted a rod for
+  // their fisher (slot 3), pressed Wear here, and it went on the fighter -
+  // after which the fisher's rod slot did not list it at all. Wear now names
+  // the character chosen in the switcher (the one Combat and Gathering put to
+  // work), and Take off names whoever actually wears the piece.
+  function characterIdForSlot(slot: number): string {
+    const snap = $playerState;
+    if (!snap) return EMPTY_GUID;
+    const id = slot === 3 ? snap.Slot3_CharacterId : slot === 2 ? snap.Slot2_CharacterId : snap.Slot1_CharacterId;
+    return id && id !== EMPTY_GUID ? id : snap.Slot1_CharacterId;
+  }
+  /** The character Wear dresses: the picked one, or the first when that slot is empty. */
+  const wearSlot = $derived(characterIdForSlot($selectedCharacterSlot) === $playerState?.Slot1_CharacterId ? 1 : $selectedCharacterSlot);
+
   function equip(instanceId: number) {
-    connection.send({ Command: CommandType.EquipItem, TargetId: instanceId });
+    connection.send({ Command: CommandType.EquipItem, TargetId: instanceId, TargetGuid: characterIdForSlot($selectedCharacterSlot) });
     // On send, like every command: a refusal answers with the error tone.
     play('itemEquipped');
     setTimeout(refresh, 700);
   }
 
-  function unequip(baseItemId: string) {
+  function unequip(baseItemId: string, wornBySlot0 = 0) {
     const slotIndex = resolveSlotIndex(baseItemId);
     if (slotIndex < 0) return pushLocalNotice('That piece has no equipment slot.', 'error');
-    connection.send({ Command: CommandType.UnequipItem, TargetId: slotIndex });
+    connection.send({ Command: CommandType.UnequipItem, TargetId: slotIndex, TargetGuid: characterIdForSlot(wornBySlot0 + 1) });
     setTimeout(refresh, 700);
   }
 
@@ -709,7 +726,7 @@
           <button class="tiny-btn" onclick={() => undoSale(saleKey)}>Undo</button>
         {:else}
           {#if item.IsEquipped}
-            <button class="tiny-btn" onclick={() => unequip(item.BaseItemId)}>Unequip</button>
+            <button class="tiny-btn" onclick={() => unequip(item.BaseItemId, Math.max(0, item.EquippedByCharacterSlot))}>Unequip</button>
           {:else}
             <button class="tiny-btn" onclick={() => equip(item.Id)}>Equip</button>
           {/if}
@@ -765,9 +782,9 @@
         <button class="tiny-btn" onclick={() => undoSale(saleKey)}>Undo</button>
       {:else}
         {#if item.IsEquipped}
-          <button class="tiny-btn" onclick={() => unequip(item.BaseItemId)}>Take off</button>
+          <button class="tiny-btn" onclick={() => unequip(item.BaseItemId, Math.max(0, item.EquippedByCharacterSlot))}>Take off</button>
         {:else}
-          <button class="tiny-btn" onclick={() => equip(item.Id)}>Wear</button>
+          <button class="tiny-btn" onclick={() => equip(item.Id)}>Wear on character {wearSlot}</button>
         {/if}
         <button class="tiny-btn" disabled={!forgeIsOpen} onclick={() => openRerollInForge(item.Id)}>{rerollLabel}</button>
         <button class="tiny-btn" disabled={busy} onclick={() => toggleLock(item.Id, label)}>

@@ -3757,6 +3757,35 @@ await go('Character');
   }
 }
 
+// --- a piece another character wears is offered, marked (2026-10-11) -------
+// Modul: a player's crafted rod went onto the first character (the Chest's
+// Wear named nobody) and then was "not in the list" of the fisher's rod slot,
+// because the picker hid everything anyone wore. Read-only here: open the
+// SECOND person's weapon slot and look for the first person's weapon, marked
+// with who wears it and a Move here button. Nothing is pressed.
+await go('Character');
+{
+  await characterTab('gear');
+  const chips = page.locator('[data-testid="person-switcher"] .person');
+  if ((await chips.count()) >= 2) {
+    await chips.nth(1).click().catch(() => {});
+    await page.waitForTimeout(400);
+    await page.locator('.gearslot[data-slot-index="0"]').first().click().catch(() => {});
+    await page.waitForTimeout(500);
+    const rows = page.locator('[data-testid="equip-elsewhere"] li');
+    const text = (await rows.first().innerText().catch(() => '')).replace(/\s+/g, ' ');
+    record(
+      "a slot lists what the character's companions wear, with Move here",
+      (await rows.count()) > 0 && /worn by/.test(text) && (await rows.first().getByRole('button', { name: 'Move here' }).count()) === 1,
+      text.slice(0, 90) || 'no row',
+    );
+    await page.keyboard.press('Escape').catch(() => {});
+    await chips.first().click().catch(() => {});
+  } else {
+    record("a slot lists what the character's companions wear, with Move here", true, 'only one person on the fixture');
+  }
+}
+
 // --- the paper doll ----------------------------------------------------------
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character
