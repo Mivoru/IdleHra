@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import * as wiki from '../src/lib/ui/wikiData';
 import {
   aptitudeBonusPercent,
   APTITUDE_MAX,
@@ -967,3 +968,31 @@ describe('market price ceiling and Forge cap', () => {
     expect(Number(ceiling![1]) + cap * Number(ceiling![2])).toBe(MAX_FORGE_LEVEL);
   });
 });
+
+// Task 114: the Wiki's rebirth numbers against RebirthRules.cs.
+describe('the Wiki rebirth tables mirror RebirthRules', () => {
+  const rules = read(serverRoot, 'Engine', 'RebirthRules.cs');
+  const constant = (name: string) => {
+    const m = rules.match(new RegExp(`const (?:int|long) ${name} = ([0-9_]+)L?;`));
+    if (!m) throw new Error(`no ${name} in RebirthRules.cs`);
+    return Number(m[1].replace(/_/g, ''));
+  };
+
+  it('has the same cap, points, bonus, slot and Vault bounds', () => {
+    expect(wiki.REBIRTH_MAX).toBe(constant('MaxRebirths'));
+    expect(wiki.REBIRTH_SKILL_POINTS_EACH).toBe(constant('SkillPointsPerRebirth'));
+    expect(wiki.REBIRTH_XP_BONUS_PCT).toBe(constant('ReLevelXpBonusPct'));
+    expect(wiki.REBIRTH_SECOND_PET_SLOT_AT).toBe(constant('SecondPetSlotRebirths'));
+    expect(wiki.REBIRTH_VAULT_FLOOR).toBe(constant('KeepPriceFloor'));
+    expect(wiki.REBIRTH_VAULT_CEILING).toBe(constant('KeepPriceCeiling'));
+    expect(constant('TopQualityTier')).toBe(14);
+  });
+
+  it('lists one roadmap row per rebirth, with the avatars where the server grants them', () => {
+    expect(wiki.REBIRTH_ROADMAP.map((r) => r.rebirth)).toEqual(Array.from({ length: wiki.REBIRTH_MAX }, (_, i) => i + 1));
+    for (const [, n, name] of rules.matchAll(/new AvatarMilestone\((\d+), "[^"]+", "([^"]+)"/g)) {
+      expect(wiki.REBIRTH_ROADMAP.find((r) => r.rebirth === Number(n))?.rewards).toContain(name);
+    }
+  });
+});
+

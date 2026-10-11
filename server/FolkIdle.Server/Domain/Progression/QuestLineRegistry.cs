@@ -200,7 +200,7 @@ namespace FolkIdle.Server.Domain.Progression
 
             new(Rebirth, 12, "Take a Rebirth",
                 "A rebirth starts a new life at level 1 but keeps what is permanent. One taken from level 50 or above also adds Renown.",
-                "ancestors", new[] { "rebirth-start", "rebirth" }, $"Reach level {RebirthRules.RenownLevel}",
+                "rebirth", new[] { "rebirth-start", "rebirth" }, $"Reach level {RebirthRules.RenownLevel}",
                 f => f.Level >= RebirthRules.RenownLevel,
                 f => f.RebirthCount > 0),
         };

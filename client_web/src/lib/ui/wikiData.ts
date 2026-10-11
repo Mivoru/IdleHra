@@ -408,16 +408,52 @@ export const SEASON_CARRIES: readonly string[] = [
   'Any gear you paid to keep: 5 million gold for the commonest piece up to 100 million for the rarest, paid from the gold the rebirth takes. It waits in your chest, unworn.',
 ];
 
-/** Task 114 - RebirthRules. What each rebirth pays, up to ten rebirths. */
+/**
+ * Task 114 - RebirthRules. What a rebirth pays, the Vault's prices and the
+ * road to ten, written out for the Wiki. serverMirrors.test.ts holds each
+ * number against RebirthRules.cs, so the two cannot drift apart quietly.
+ */
+export const REBIRTH_MAX = 10;
+export const REBIRTH_SKILL_POINTS_EACH = 2;
+export const REBIRTH_XP_BONUS_PCT = 50;
+export const REBIRTH_SECOND_PET_SLOT_AT = 5;
+export const REBIRTH_VAULT_FLOOR = 5_000_000;
+export const REBIRTH_VAULT_CEILING = 100_000_000;
+
 export const REBIRTH_PAYS: readonly string[] = [
-  '+2 skill points for good, on top of what levels and Seals pay - 20 at the most.',
-  '+50% combat XP on every level below the best level you have ever reached.',
-  'At 5 rebirths, a second pet slot on every character.',
+  `+${REBIRTH_SKILL_POINTS_EACH} skill points for good every rebirth, on top of what levels and Seals pay - ${REBIRTH_MAX * REBIRTH_SKILL_POINTS_EACH} at the most.`,
+  `+${REBIRTH_XP_BONUS_PCT}% combat XP on every level below the best level you have ever reached, from your first rebirth on.`,
+  `At ${REBIRTH_SECOND_PET_SLOT_AT} rebirths, a second pet slot on every character.`,
   'Avatars at rebirths 3, 5, 7 and 10: Jarilo, Vesna, Étaín and Morana.',
   'At 10, the last rebirth: the Phoenix pet (+8% damage, health and XP), the title The Ever-Returning, and a gold badge and glowing name.',
   'Your rebirth count is shown as a badge beside your name.',
   'Renown, if the rebirth is taken halfway to level 100 or later.',
 ];
+
+/** The road to ten, as the Rebirth screen draws it (RebirthRoadmap on the server). */
+export const REBIRTH_ROADMAP: readonly { rebirth: number; rewards: string }[] = [
+  { rebirth: 1, rewards: '+2 skill points, and +50% XP below your best level from now on' },
+  { rebirth: 2, rewards: '+2 skill points (4 in all)' },
+  { rebirth: 3, rewards: '+2 skill points, the avatar Jarilo' },
+  { rebirth: 4, rewards: '+2 skill points (8 in all)' },
+  { rebirth: 5, rewards: '+2 skill points, a second pet slot on every character, the avatar Vesna' },
+  { rebirth: 6, rewards: '+2 skill points (12 in all)' },
+  { rebirth: 7, rewards: '+2 skill points, the avatar Étaín' },
+  { rebirth: 8, rewards: '+2 skill points (16 in all)' },
+  { rebirth: 9, rewards: '+2 skill points (18 in all)' },
+  { rebirth: 10, rewards: '+2 skill points (20 in all), the avatar Morana, the Phoenix pet, the title The Ever-Returning, a gold badge and glowing name' },
+];
+
+/**
+ * The Vault: gold to keep one piece of gear through a rebirth, by its rarity
+ * (quality tier 1 Normal .. 14 Transcendent). RebirthRules.KeepPrice, the same
+ * geometric curve, rounded to the million.
+ */
+export function rebirthVaultPrice(qualityTier: number): number {
+  const tier = Math.min(14, Math.max(1, qualityTier));
+  const price = REBIRTH_VAULT_FLOOR * Math.pow(REBIRTH_VAULT_CEILING / REBIRTH_VAULT_FLOOR, (tier - 1) / 13);
+  return Math.round(price / 1_000_000) * 1_000_000;
+}
 
 export const SEASON_LOST: readonly string[] = [
   'Every character’s level - everyone is reset to level 1 and to Adult.',
@@ -612,6 +648,7 @@ export const SCREEN_COVERAGE: readonly ScreenCoverage[] = [
   { screen: 'Village', label: 'Village', status: 'documented', tab: 'village', note: 'Every building, the Town Hall ceiling, the tier materials and the generated cost table.' },
   { screen: 'Breeding', label: 'Bloodline: Breeding', status: 'documented', tab: 'breeding', note: 'Aptitudes, genes, the two pairings and what a child inherits.' },
   { screen: 'Ancestors', label: 'Hall of Ancestors', status: 'documented', tab: 'longgame', note: 'The roster, the cap, fielding, and who survives the cull.' },
+  { screen: 'Rebirth', label: 'Rebirth', status: 'documented', tab: 'longgame', note: 'What each rebirth pays, the road to ten, the Vault and its prices.' },
   { screen: 'Inheritance', label: 'Inheritance', status: 'documented', tab: 'longgame', note: 'The six permanent bonuses diamonds buy, and their cost curve.' },
   { screen: 'Leaderboards', label: 'Leaderboards', status: 'documented', tab: 'longgame', note: 'Seasonal ranking and what a placement is worth.' },
   { screen: 'GuildOps', label: 'Guild', status: 'documented', tab: 'guilds', note: 'Roles, the depot, buff tiers and the guild tax.' },
@@ -701,6 +738,8 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
 
   { tab: 'longgame', anchor: 'season', title: 'What a rebirth resets', keywords: 'rebirth prestige rollover reset carries lost season end wipe renown' },
   { tab: 'longgame', anchor: 'rebirth-pays', title: 'What a rebirth pays', keywords: 'rebirth skill points xp faster keep gear pet slot title cap ten' },
+  { tab: 'longgame', anchor: 'rebirth-roadmap', title: 'The road to ten rebirths', keywords: 'rebirth roadmap milestones avatar phoenix jarilo vesna etain morana badge' },
+  { tab: 'longgame', anchor: 'rebirth-vault', title: 'The Vault: keeping gear through a rebirth', keywords: 'rebirth vault keep gear equipment price gold rarity save treasury' },
   { tab: 'longgame', anchor: 'deeds', title: 'The Book of Deeds and Seals', keywords: 'deeds chapters seals skill points permanent' },
   { tab: 'longgame', anchor: 'hall', title: 'The Hall of Ancestors and the cull', keywords: 'ancestors slots keep mark cull survive field roster' },
   { tab: 'longgame', anchor: 'inheritance', title: 'Inheritance', keywords: 'diamonds permanent damage health experience gold gathering luck 2% 20 levels' },

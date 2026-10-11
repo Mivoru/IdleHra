@@ -559,9 +559,11 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void TheRebirthRewardsHaveTheOwnersNumbers()
         {
-            Assert.Equal(5_000_000L, RebirthRules.KeepPrice(0));
-            Assert.Equal(100_000_000L, RebirthRules.KeepPrice(RebirthRules.TopQualityTier));
-            for (int t = 1; t <= RebirthRules.TopQualityTier; t++)
+            // Quality tiers 1 (Normal) to 14 (Transcendent).
+            Assert.Equal(5_000_000L, RebirthRules.KeepPrice(1));
+            Assert.Equal(100_000_000L, RebirthRules.KeepPrice(14));
+            Assert.Equal(14, RebirthRules.TopQualityTier);
+            for (int t = 2; t <= RebirthRules.TopQualityTier; t++)
             {
                 Assert.True(RebirthRules.KeepPrice(t) >= RebirthRules.KeepPrice(t - 1));
             }

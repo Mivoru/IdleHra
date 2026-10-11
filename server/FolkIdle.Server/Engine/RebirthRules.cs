@@ -95,14 +95,14 @@ namespace FolkIdle.Server.Engine
         /// <summary>Rebirths that open each character's second pet slot.</summary>
         public const int SecondPetSlotRebirths = 5;
 
-        /// <summary>The cheapest piece's price to carry through a rebirth (quality tier 0).</summary>
+        /// <summary>The cheapest piece's price to carry through a rebirth (quality tier 1, Normal).</summary>
         public const long KeepPriceFloor = 5_000_000L;
 
-        /// <summary>The dearest piece's price (quality tier 13, the top rarity).</summary>
+        /// <summary>The dearest piece's price (quality tier 14, Transcendent).</summary>
         public const long KeepPriceCeiling = 100_000_000L;
 
-        /// <summary>The highest quality tier an item can have.</summary>
-        public const int TopQualityTier = 13;
+        /// <summary>The highest quality tier an item can have (RarityTier.Transcendent).</summary>
+        public const int TopQualityTier = 14;
 
         public static bool IsCapped(int rebirthCount) => rebirthCount >= MaxRebirths;
 
@@ -139,9 +139,10 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public static long KeepPrice(int qualityTier)
         {
-            int tier = Math.Clamp(qualityTier, 0, TopQualityTier);
+            // Quality tiers run 1 (Normal) to 14 (Transcendent); 0 is no tier.
+            int tier = Math.Clamp(qualityTier, 1, TopQualityTier);
             double ratio = (double)KeepPriceCeiling / KeepPriceFloor;
-            double price = KeepPriceFloor * Math.Pow(ratio, (double)tier / TopQualityTier);
+            double price = KeepPriceFloor * Math.Pow(ratio, (double)(tier - 1) / (TopQualityTier - 1));
             return (long)Math.Round(price / 1_000_000.0) * 1_000_000L;
         }
     }

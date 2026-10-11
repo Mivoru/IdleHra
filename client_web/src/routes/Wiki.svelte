@@ -82,6 +82,9 @@
     SEASON_CARRIES,
     SEASON_LOST,
     REBIRTH_PAYS,
+    REBIRTH_ROADMAP,
+    REBIRTH_MAX,
+    rebirthVaultPrice,
     GUILD_TAX_MIN_PCT,
     GUILD_TAX_MAX_PCT,
     MARKET_FEE_BRACKETS,
@@ -1311,9 +1314,51 @@
             </div>
           </div>
           <h3 id="rebirth-pays">What a rebirth pays</h3>
-          <p>You can be reborn up to ten times. Each rebirth pays:</p>
+          <p>
+            A rebirth is open from the <strong>Rebirth</strong> screen in the Hero menu, at any level. You can be
+            reborn up to {REBIRTH_MAX} times, and every one pays something that lasts:
+          </p>
           <ul class="styled-list">
             {#each REBIRTH_PAYS as line (line)}<li>{line}</li>{/each}
+          </ul>
+
+          <h3 id="rebirth-roadmap">The road to ten</h3>
+          <div class="scroll">
+            <table>
+              <thead><tr><th>Rebirth</th><th>What it brings</th></tr></thead>
+              <tbody>
+                {#each REBIRTH_ROADMAP as row (row.rebirth)}
+                  <tr><td>{row.rebirth}</td><td>{row.rewards}</td></tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 id="rebirth-vault">The Vault: keeping gear</h3>
+          <p>
+            A rebirth takes your gear - except the pieces you put in the Vault on the Rebirth screen. Each piece
+            costs gold by its rarity, paid from the gold the rebirth would take anyway, so you need to hold that
+            much when you rebirth. Kept pieces wait in your chest, unworn. To wear one again your attributes must
+            meet it: region-2 gear and up asks for 20 points of its attribute per region tier, and a reborn
+            character starts at zero, so strong gear comes back as you level.
+          </p>
+          <div class="scroll">
+            <table>
+              <thead><tr><th>Rarity</th><th>Gold to keep one piece</th></tr></thead>
+              <tbody>
+                {#each Array.from({ length: 14 }, (_, i) => 14 - i) as tier (tier)}
+                  <tr><td style="color: {rarityColor(tier)}">{RARITY_TIER_NAMES[tier]}</td><td>{formatNumber(rebirthVaultPrice(tier))}</td></tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 id="rebirth-good-to-know">Good to know</h3>
+          <ul class="styled-list">
+            <li>A rebirth taken early still pays its skill points and milestones; only Renown asks that you are halfway to level 100.</li>
+            <li>The +50% XP counts against your best level ever, so climbing back is quick and the bonus ends where your old life ended.</li>
+            <li>Pets, avatars, frames, titles, diamonds, Inheritance, Seals and village buildings are never lost.</li>
+            <li>The rebirth asks you to type REBIRTH, and shows exactly what goes and stays before it happens.</li>
           </ul>
           <p class="dim tiny">
             The rollover sets every surviving ancestor back to Adult with its age

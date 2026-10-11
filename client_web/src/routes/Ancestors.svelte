@@ -33,7 +33,7 @@
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import TraitBadge from '../lib/ui/TraitBadge.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
-  import RebirthPanel from '../lib/ui/RebirthPanel.svelte';
+  import { requestScreen } from '../lib/stores/navigation';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
   import DetailSheet from '../lib/ui/DetailSheet.svelte';
@@ -263,10 +263,11 @@
         </p>
         <p class="dim tiny">
           <strong>What a rebirth takes:</strong> every level (all back to 1, all
-          adult), all gear, all gold and materials, the skill tree, placed
-          attribute points, and the whole village gene pool &mdash; newcomers and
-          elders alike. The next run's Inn deals a new hand. You choose when; the
-          Rebirth panel below shows the exact terms first.
+          adult), every piece of gear you do not put in the Vault, all gold and
+          materials, the skill tree, placed attribute points, and the whole
+          village gene pool &mdash; newcomers and elders alike. The next run's Inn
+          deals a new hand. Pets, avatars and titles always stay. You choose when;
+          the Rebirth screen shows what each rebirth pays and the exact terms first.
         </p>
         <p class="dim tiny">
           <strong>What the cull deletes:</strong> anybody past the
@@ -358,7 +359,15 @@
     {/if}
   </section>
 
-  <RebirthPanel />
+  <!-- Rebirth moved to its own screen (owner, 2026-10-11). -->
+  <section class="panel rebirth-link" data-testid="rebirth-link">
+    <h2>Rebirth</h2>
+    <p class="dim small">
+      Start again at level 1, stronger: skill points, faster levelling, avatars, a second pet slot and the
+      Phoenix along the road to ten rebirths - and the Vault keeps the gear you choose.
+    </p>
+    <button type="button" onclick={() => requestScreen('rebirth')}>Open Rebirth</button>
+  </section>
 </div>
 
 {#if sheetMember && data}

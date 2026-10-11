@@ -30,8 +30,9 @@
   .rebirth-badge {
     display: inline-grid;
     place-items: center;
-    flex-shrink: 0;
-    min-width: 1.35em;
+    /* width, not min-width: app.css's phone rule `.panel * { min-width: 0 !important }` flattens a min-width to a sliver. */
+    flex: 0 0 auto;
+    width: 1.6em;
     height: 1.35em;
     margin-left: 0.35em;
     padding: 0 0.2em;
