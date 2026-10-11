@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.17.0',
+    date: '2026-10-11',
+    sections: [
+      {
+        title: 'Fixed',
+        items: [
+          'The Logistics achievement now counts every harvest - from all your characters, and while you are away. It used to restart from zero each session, so nobody could reach its first tier. Harvests count from today.',
+          'Forge upgrades for the Forging achievement are now remembered between sessions.',
+          'Progress -> Insights now shows your real harvests per hour.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.16.0',
     date: '2026-10-10',
     sections: [
