@@ -1006,7 +1006,7 @@ namespace FolkIdle.Server.Engine
             payload.RationTicksSinceMeal = state.RationTicks;
             payload.Hungry = state.Hungry;
 
-            int effectiveMaxHp = (int)setup.MaxMilliHp;
+            int effectiveMaxHp = SimulationEngine.BarAsInt(setup.MaxMilliHp);
             if (state.DeathWardUsed)
             {
                 // The ward is spent - through the live tick's own interception.
