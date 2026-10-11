@@ -3740,8 +3740,7 @@ namespace FolkIdle.Server.Domain.Combat
                     int baselinePerTick = regenMaxHp / (BaselineOutOfCombatRegenSeconds * 10);
                     if (baselinePerTick < 1) baselinePerTick = 1;
 
-                    payload.PlayerHp += baselinePerTick + (int)(regenStats.OutOfCombatHpRegen * 100f);
-                    if (payload.PlayerHp > regenMaxHp) payload.PlayerHp = regenMaxHp;
+                    payload.PlayerHp = HealClamped(payload.PlayerHp, baselinePerTick + (long)(regenStats.OutOfCombatHpRegen * 100f), regenMaxHp);
                     payload.IsDirty = true;
                 }
             }
@@ -3826,6 +3825,12 @@ namespace FolkIdle.Server.Domain.Combat
         /// The combat health bar, in milli-HP. Moved out of RunCombatTick
         /// unchanged (task 78) so the hunting advisor reads the same bar.
         /// </summary>
+        /// <summary>A milli-HP bar in the int range PlayerHp lives in - clamped, never truncated.</summary>
+        internal static int BarAsInt(long milliHp) => (int)Math.Clamp(milliHp, 0L, int.MaxValue);
+
+        /// <summary>Current health plus a heal, in long, capped at the bar - an int sum can wrap negative.</summary>
+        internal static int HealClamped(int current, long heal, int max) => (int)Math.Min((long)max, (long)current + Math.Max(0L, heal));
+
         internal static long EffectiveMaxMilliHpFor(in TickStatePayload payload, in CombatStats combatStats)
         {
             var lineage = LineageOf(in payload);
@@ -4604,7 +4609,7 @@ namespace FolkIdle.Server.Domain.Combat
         {
             var combatStats = LiveCombatStats(in payload);
             payload.CachedEffectiveMaxHp = EffectiveMaxMilliHpFor(in payload, in combatStats);
-            payload.PlayerHp = (int)payload.CachedEffectiveMaxHp;
+            payload.PlayerHp = BarAsInt(payload.CachedEffectiveMaxHp);
             payload.RestedHpPending = true;
         }
 
@@ -4665,7 +4670,16 @@ namespace FolkIdle.Server.Domain.Combat
             // payload and must not hold a second copy of either.
             var combatStats = LiveCombatStats(in payload);
             long effectiveMilliHp = EffectiveMaxMilliHpFor(in payload, in combatStats);
-            int effectiveMaxHp = (int)effectiveMilliHp;
+            // Modul: AN INT BAR (2026-10-11). PlayerHp is int milli-HP, so the
+            // bar is clamped into int range here instead of truncated, and every
+            // heal below adds in long and caps at the bar (HealClamped). Auto-eat
+            // used to do `PlayerHp += heal` in int: a high-tier fish heals MORE
+            // than a full bar, so once a bar passed ~1.4 billion milli-HP the
+            // sum wrapped negative and EATING KILLED the character. Found
+            // calibrating Malakor on the owner's level-106 character, which sat
+            // just under that line - any health bonus (inheritance, a +8% pet)
+            // made it measurably WEAKER. HealthOverflowTests pins it.
+            int effectiveMaxHp = BarAsInt(effectiveMilliHp);
 
             // Modul: and the client is told what the bar's maximum IS. Every
             // term above this line feeds it, and all of it used to be discarded
@@ -4695,7 +4709,7 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 int regenPerTick = effectiveMaxHp / ConsumableEngine.FoodRegenDivisor;
                 if (regenPerTick < 1) regenPerTick = 1;
-                payload.PlayerHp += regenPerTick;
+                payload.PlayerHp = HealClamped(payload.PlayerHp, regenPerTick, effectiveMaxHp);
                 if (payload.PlayerHp > effectiveMaxHp) payload.PlayerHp = effectiveMaxHp;
             }
 
@@ -4960,8 +4974,7 @@ namespace FolkIdle.Server.Domain.Combat
                         long lifestealCeiling = effectiveMaxHp / 100; // 1% of the bar per hit
                         if (lifestealAmount > lifestealCeiling) lifestealAmount = lifestealCeiling;
 
-                        payload.PlayerHp += (int)lifestealAmount;
-                        if (payload.PlayerHp > effectiveMaxHp) payload.PlayerHp = effectiveMaxHp;
+                        payload.PlayerHp = HealClamped(payload.PlayerHp, lifestealAmount, effectiveMaxHp);
                         lifestealHealed = lifestealAmount;
                     }
 
@@ -5237,9 +5250,9 @@ namespace FolkIdle.Server.Domain.Combat
                 if (payload.Food2_Count > 0 && heal2 > highestHeal) { bestFoodIndex = 2; highestHeal = heal2; }
                 if (payload.Food3_Count > 0 && heal3 > highestHeal) { bestFoodIndex = 3; highestHeal = heal3; }
 
-                if (bestFoodIndex == 1) { payload.Food1_Count--; payload.PlayerHp += highestHeal; }
-                else if (bestFoodIndex == 2) { payload.Food2_Count--; payload.PlayerHp += highestHeal; }
-                else if (bestFoodIndex == 3) { payload.Food3_Count--; payload.PlayerHp += highestHeal; }
+                if (bestFoodIndex == 1) { payload.Food1_Count--; payload.PlayerHp = HealClamped(payload.PlayerHp, highestHeal, effectiveMaxHp); }
+                else if (bestFoodIndex == 2) { payload.Food2_Count--; payload.PlayerHp = HealClamped(payload.PlayerHp, highestHeal, effectiveMaxHp); }
+                else if (bestFoodIndex == 3) { payload.Food3_Count--; payload.PlayerHp = HealClamped(payload.PlayerHp, highestHeal, effectiveMaxHp); }
 
                 if (bestFoodIndex > 0)
                 {

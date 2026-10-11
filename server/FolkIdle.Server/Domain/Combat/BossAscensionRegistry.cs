@@ -159,8 +159,16 @@ namespace FolkIdle.Server.Domain.Combat
         // Steps 1-2 climb geometrically from 1 to A3. Re-run the harness after
         // any change to what makes a character strong; these numbers are only
         // as true as the last measurement.
-        internal const double MalakorHeadroomAtStepThree = 19.0;
-        internal const double MalakorStepGrowth = 1.2;
+        //
+        // Re-measured 2026-10-11 (task 112) on a production copy: the same
+        // character had grown to about x32 (pets, gear) and a corrected maxed
+        // profile to about x49 - the maxed one had read WEAKER than the real one
+        // until an int overflow in auto-eat was fixed (see SimulationEngine
+        // HealClamped). A3 = x32 again puts the owner back at about A3; x1.15 a
+        // step puts the maxed profile at A6 (x48.7) and A10 at about x85, some
+        // 1.75x the maxed power.
+        internal const double MalakorHeadroomAtStepThree = 32.0;
+        internal const double MalakorStepGrowth = 1.15;
         internal const double MalakorHpExponent = 0.68;
 
         /// <summary>Malakor's attack multiplier at an Ascension step (1 = unchanged at step 0).</summary>

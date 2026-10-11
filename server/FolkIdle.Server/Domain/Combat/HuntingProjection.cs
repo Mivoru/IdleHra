@@ -225,7 +225,7 @@ namespace FolkIdle.Server.Domain.Combat
                 long firstClearHp = BossFirstClearRules.MaxHpFor(mask, monsterId, copy.Skill_FirstBlood) * 1000L;
                 long farmHp = BossFirstClearRules.MaxHpFor(farmMask, monsterId, copy.Skill_FirstBlood) * 1000L;
                 bool thorns = stats.SetThornsReflectionActive;
-                int effectiveMaxHp = (int)maxMilliHp;
+                int effectiveMaxHp = SimulationEngine.BarAsInt(maxMilliHp);
 
                 // Thorns end fights between the player's swings, which a swing
                 // count cannot describe - those fights track health instead.
