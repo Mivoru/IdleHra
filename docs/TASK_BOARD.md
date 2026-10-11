@@ -139,20 +139,8 @@ Proposed, not approved:
 - no -1 mutation on a selected aptitude;
 - measure generations 20 -> 50 before and after (`BreedingClimbTests`).
 
-### 116. Insights harvest rate looks dead
-
-`player_stat_samples.Harvests` (read off the Logistics achievement row,
-`StatSampler`) stayed flat all of 2026-10-10 for the owner's account while
-two characters gathered, so Progress -> Insights probably shows 0 harvests
-an hour. Find where the Logistics counter stops (a maxed achievement?) and
-give the sampler a counter that always moves. Grep for the WRITER.
-
-### 117. exercise.mjs leaves a 50-diamond mail per run
-
-The monster-pet duplicate check (`/api/v1/dev/pet-drop`) mails the fixture
-50 diamonds every run and nothing claims it. Harmless, but the fixture's
-mailbox grows. Claim it in the same check (round-trip), or have
-`--seed-dev` clear the pet-duplicate mail.
+Tasks 116 and 117 are closed: see
+[`archive/TASK_BOARD_111-plus.md`](archive/TASK_BOARD_111-plus.md).
 
 ### 46 follow-up. Confirm the compression ratio live
 

@@ -3704,16 +3704,20 @@ await go('Character');
 // --- a monster pet found, then found again (2026-10-10) ----------------------
 // Modul: through the SAME queue a kill feeds (POST /api/v1/dev/pet-drop), so
 // this proves the save path a 1-in-100,000 kill would take: the first find is
-// owned, the second pays its duplicate diamonds by mail. Each run leaves one
-// such mail behind; nothing is spent.
+// owned, the second pays its duplicate diamonds by mail. The check then
+// claims that mail from the Mailbox screen (task 117), so a run leaves the
+// fixture's mailbox as it found it - and proves the gift can be collected.
 {
   const view = await apiGet('/api/v1/pets').catch(() => null);
   const pool = (view?.Pets ?? []).filter((p) => p.Source === 4);
   record('ten monster pets are listed with their odds', pool.length === 10 && view?.MonsterPetChancePerKill > 0, `${pool.length} pets, 1 in ${Math.round(1 / (view?.MonsterPetChancePerKill || 1))}`);
   const target = pool.find((p) => p.Id === 'pet_hugin') ?? pool[0];
   if (target) {
+    // The duplicate mail's own wording, so an admin gift of the same size is
+    // neither counted nor claimed (PetEngine.SaveDropCoreAsync).
+    const isPetMail = (m) => m.DiamondAttachment === view.DuplicateDiamonds && /found you again/.test(m.MessageText ?? '');
     const mailWith50 = async () =>
-      ((await apiGet('/api/v1/mailbox/list').catch(() => [])) ?? []).filter((m) => m.DiamondAttachment === view.DuplicateDiamonds).length;
+      ((await apiGet('/api/v1/mailbox/list').catch(() => [])) ?? []).filter(isPetMail).length;
     const owned = async () => ((await apiGet('/api/v1/pets').catch(() => null))?.Pets ?? []).some((p) => p.Id === target.Id && p.Owned);
     const waitFor = async (check) => {
       for (let i = 0; i < 20; i++) {
@@ -3735,6 +3739,20 @@ await go('Character');
       `a duplicate pays ${view.DuplicateDiamonds} diamonds by mail`,
       await waitFor(async () => (await mailWith50()) > before),
       `${before} -> ${await mailWith50()}`,
+    );
+
+    // Round trip: claim every pet-duplicate mail, earlier runs' included.
+    await go('Mail');
+    const petRows = page.locator('ul.mail li', { hasText: 'found you again' });
+    const waiting = await petRows.count();
+    for (let i = 0; i < waiting; i++) {
+      await petRows.first().getByRole('button', { name: 'Claim' }).click();
+      await page.waitForTimeout(400);
+    }
+    record(
+      'the duplicate diamonds can be claimed from the mailbox',
+      waiting > 0 && (await waitFor(async () => (await mailWith50()) === 0)),
+      `${waiting} claimed, ${await mailWith50()} left`,
     );
   }
 }

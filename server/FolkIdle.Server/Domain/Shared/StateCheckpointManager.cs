@@ -1181,6 +1181,18 @@ namespace FolkIdle.Server.Domain.Shared
                 .AsNoTracking()
                 .CountAsync(a => a.PlayerId == playerId && a.IsClaimed);
 
+            // Task 116: the two lifetime counters the checkpoint writes back to
+            // these rows. Unloaded, every session restarted them at zero.
+            var lifetimeProgress = await dbContext.PlayerLifetimeAchievements
+                .AsNoTracking()
+                .Where(a => a.PlayerId == playerId
+                    && (a.AchievementId == AchievementMilestones.ForgingAchievementId
+                        || a.AchievementId == AchievementMilestones.LogisticsAchievementId))
+                .Select(a => new { a.AchievementId, a.CurrentProgress })
+                .ToListAsync();
+            long loadedForgeUpgrades = lifetimeProgress.FirstOrDefault(a => a.AchievementId == AchievementMilestones.ForgingAchievementId)?.CurrentProgress ?? 0L;
+            long loadedHarvests = lifetimeProgress.FirstOrDefault(a => a.AchievementId == AchievementMilestones.LogisticsAchievementId)?.CurrentProgress ?? 0L;
+
             var chroniclePass = await dbContext.PlayerChroniclePasses
                 .AsNoTracking()
                 .FirstOrDefaultAsync(p => p.PlayerId == playerId);
@@ -1356,6 +1368,8 @@ namespace FolkIdle.Server.Domain.Shared
                 EventCurrencyEventId = player.EventCurrencyEventId,
                 EventCurrencyDayKey = player.EventCurrencyDayKey,
                 EventCurrencyEarnedToday = player.EventCurrencyEarnedToday,
+                ForgeUpgradeCount = (int)Math.Min(int.MaxValue, loadedForgeUpgrades),
+                LifetimeHarvests = loadedHarvests,
                 GuildId = player.GuildId,
                 ActiveGuildWarId = activeGuildWarId,
                 ActiveCrossShardMatchId = activeCrossShardMatchId,
@@ -1867,7 +1881,7 @@ namespace FolkIdle.Server.Domain.Shared
                 AchievementMilestones.EvaluateForgingTier(state.ForgeUpgradeCount, state.HighestForgeSynthesisTier), state.ForgeUpgradeCount);
 
             await EvaluateAndAwardTierAsync(dbContext, player, state.PlayerId, AchievementMilestones.LogisticsAchievementId,
-                AchievementMilestones.EvaluateLogisticsTier(state.HarvestLoopCount), state.HarvestLoopCount);
+                AchievementMilestones.EvaluateLogisticsTier(state.LifetimeHarvests), state.LifetimeHarvests);
         }
 
         private static async Task EvaluateAndAwardTierAsync(FolkIdleDbContext dbContext, PlayerRecord player, long playerId, int achievementId, int newTier, long currentProgress)
@@ -1902,7 +1916,10 @@ namespace FolkIdle.Server.Domain.Shared
                 }
             }
 
-            record.CurrentProgress = currentProgress;
+            // Modul: lifetime counters only climb. A payload loaded before this
+            // row last moved (a second session, a reload racing a flush) must
+            // not write an older, smaller count over it (task 116).
+            record.CurrentProgress = Math.Max(record.CurrentProgress, currentProgress);
         }
 
         public void FlushAllGracefully()

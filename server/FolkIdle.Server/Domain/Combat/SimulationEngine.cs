@@ -2479,7 +2479,7 @@ namespace FolkIdle.Server.Domain.Combat
                                     Engine.AchievementMilestones.EvaluateTreasuryTier(Engine.GoldLedger.KnownLifetimeSpent(currentPayload.PlayerId))
                                     + Engine.AchievementMilestones.EvaluateForgingTier(
                                         currentPayload.ForgeUpgradeCount, currentPayload.HighestForgeSynthesisTier)
-                                    + Engine.AchievementMilestones.EvaluateLogisticsTier(currentPayload.HarvestLoopCount)),
+                                    + Engine.AchievementMilestones.EvaluateLogisticsTier(currentPayload.LifetimeHarvests)),
                                 OfflineElapsedSeconds = currentPayload.OfflineElapsedSeconds,
                                 OfflineGoldEarned = currentPayload.OfflineGoldEarned,
                                 OfflineSlot1Gold = currentPayload.OfflineSlot1Gold,
@@ -5705,6 +5705,7 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 payload.GatheringProgressTicks = 0;
                 payload.HarvestLoopCount++;
+                payload.LifetimeHarvests++;
 
                 // Modul: Scholar pays per harvest (ScholarRate, owner decision
                 // 2026-09-30): this harvest pays for one more with the crown's
