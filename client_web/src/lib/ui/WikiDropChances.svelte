@@ -191,6 +191,7 @@
     font-weight: 600;
     font-size: 0.8rem;
     background: rgba(0,0,0,0.2);
+    white-space: nowrap;
   }
   .dim {
     color: var(--text-dim);
