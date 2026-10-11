@@ -2457,6 +2457,20 @@ export function saveAutomationRules(characterId: string, rules: AutomationRule[]
  * What a rebirth would do right now, as the SERVER computes it
  * (`RebirthEngine.PreviewAsync`). The client renders it; it decides nothing.
  */
+/** One reward on the rebirth roadmap. Kind: skill_points, xp, pet_slot, avatar, pet, title, badge. */
+export interface RebirthRoadmapReward {
+  Kind: string;
+  Name: string;
+  Detail: string;
+  /** A sprite path for an avatar or a pet. */
+  Art: string | null;
+}
+
+export interface RebirthRoadmapStep {
+  Rebirth: number;
+  Rewards: RebirthRoadmapReward[];
+}
+
 export interface RebirthPreview {
   RebirthCount: number;
   RenownedRebirths: number;
@@ -2482,6 +2496,8 @@ export interface RebirthPreview {
   SecondPetSlotRebirths: number;
   /** Gold to keep one piece, by quality tier 0..13 - the server's price. */
   KeepPriceByTier: number[];
+  /** What every rebirth 1..MaxRebirths pays - RebirthRoadmap.Build on the server. */
+  Roadmap: RebirthRoadmapStep[];
 
   // What goes.
   Gold: number;

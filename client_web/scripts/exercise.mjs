@@ -5343,10 +5343,9 @@ await go('Ancestors');
 // against the server's own preview, and CANCELS; the real rebirth is pressed on
 // the throwaway account below, which exists to be spent.
 {
-  // Modul: the panel lives in the Hall of Ancestors. This step once relied on
-  // the step before it having left the page there; the orders step (task 85)
-  // goes to Character, so it navigates for itself now.
-  await go('Ancestors');
+  // Modul: the panel has its own screen since 2026-10-11 (owner); the Hall
+  // of Ancestors only links to it. It navigates for itself.
+  await go('Rebirth');
   await dismissToasts();
   const panel = page.locator('[data-testid="rebirth-panel"]');
   await panel.waitFor({ timeout: 10000 }).catch(() => {});
@@ -5356,6 +5355,18 @@ await go('Ancestors');
     before !== null && typeof before.RebirthCount === 'number' && typeof before.ShardsEarned === 'number',
     before ? `rebirths ${before.RebirthCount}, level ${before.Level}, ${before.ShardsEarned} shards, renowned ${before.Renowned}` : 'no answer',
   );
+
+  // The road to ten (server-built roadmap) and the Vault, before any terms.
+  const steps = await page.locator('[data-testid^="rebirth-step-"]').count();
+  const next = await page.locator('[data-testid^="rebirth-step-"][data-state="next"]').getAttribute('data-testid').catch(() => null);
+  const portraits = await page.locator('[data-testid="rebirth-roadmap"] img').count();
+  record(
+    'the Rebirth screen draws the road to ten, the next step marked',
+    before !== null && steps === before.MaxRebirths && next === `rebirth-step-${before.RebirthCount + 1}` && portraits >= 5,
+    `${steps} steps, next ${next}, ${portraits} pictures`,
+  );
+  const vaultPrices = await page.locator('[data-testid="rebirth-vault-prices"] .price-chip').count();
+  record('the Vault lists its price for every rarity', vaultPrices === 14, `${vaultPrices} rarities`);
 
   const renown = await panel.locator('[data-testid="rebirth-renown"]').innerText().catch(() => '');
   record('the Rebirth panel shows Renown', /Renown \d+/.test(renown), renown.replace(/\s+/g, ' ').slice(0, 90));

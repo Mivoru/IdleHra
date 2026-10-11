@@ -45,6 +45,7 @@
   import { pushLocalNotice } from '../stores/game';
   import { formatNumber } from './format';
   import { rarityColor, rarityName } from './rarity';
+  import RebirthRoadmap from './RebirthRoadmap.svelte';
 
   const client = useQueryClient();
   const preview = createQuery(() => ({ queryKey: queryKeys.rebirthPreview, queryFn: fetchRebirthPreview }));
@@ -52,18 +53,28 @@
 
   let confirming = $state(false);
 
-  // The keep list: the gear the player wears first, then the rarest of the
-  // rest. Loaded only once the terms are open - the inventory is big.
-  const KEEP_ROWS = 40;
+  // THE VAULT (owner, 2026-10-11: "where is the save you can save your
+  // equipment from rebirth"). Its own section, open before the terms, so the
+  // choice is visible and made calmly rather than inside the confirmation.
+  // The gear the player wears first, then the rarest of the rest. Loaded only
+  // once the vault is opened - the inventory is big.
+  const KEEP_PAGE = 40;
+  let vaultOpen = $state(false);
+  let keepRows = $state(KEEP_PAGE);
   const inventory = createQuery(() => ({
     queryKey: queryKeys.inventory,
     queryFn: fetchInventory,
-    enabled: confirming,
+    enabled: vaultOpen || confirming,
   }));
-  const keepCandidates = $derived(
-    [...(inventory.data?.Equipment ?? [])]
-      .sort((a, b) => Number(b.IsEquipped) - Number(a.IsEquipped) || b.QualityTier - a.QualityTier)
-      .slice(0, KEEP_ROWS),
+  const sortedGear = $derived(
+    [...(inventory.data?.Equipment ?? [])].sort(
+      (a, b) => Number(b.IsEquipped) - Number(a.IsEquipped) || b.QualityTier - a.QualityTier,
+    ),
+  );
+  const keepCandidates = $derived(sortedGear.slice(0, keepRows));
+  /** Each rarity once, rarest first, for the price list. */
+  const priceRows = $derived(
+    (p?.KeepPriceByTier ?? []).map((price, tier) => ({ tier, price })).filter((r) => r.tier > 0).reverse(),
   );
   let keep = $state<number[]>([]);
   function priceOf(tier: number): number {
@@ -72,7 +83,7 @@
     return prices[Math.max(0, Math.min(tier, prices.length - 1))];
   }
   const keepTotal = $derived(
-    keepCandidates.filter((e) => keep.includes(e.Id)).reduce((sum, e) => sum + priceOf(e.QualityTier), 0),
+    sortedGear.filter((e) => keep.includes(e.Id)).reduce((sum, e) => sum + priceOf(e.QualityTier), 0),
   );
   const keepAffordable = $derived(!p || keepTotal <= p.Gold);
   function toggleKeep(id: number) {
@@ -130,18 +141,24 @@
 </script>
 
 <section class="panel rebirth" data-testid="rebirth-panel" data-guide="rebirth">
-  <h2>Rebirth</h2>
-  <p class="dim small">
-    End this run whenever you choose and start again at level 1 with the
-    bloodline, the Seals and everything diamonds bought. No date ends it for
-    you.
-  </p>
-
   {#if preview.isPending}
     <p class="dim tiny">Reading what a rebirth would do&hellip;</p>
   {:else if preview.isError || !p}
     <p class="warn">What a rebirth would do could not be loaded.</p>
   {:else}
+    <!-- Where you stand. -->
+    <div class="hero" data-testid="rebirth-hero">
+      <div class="count">
+        <span class="shield" class:max={p.Capped}>{p.RebirthCount}</span>
+        <span><strong>{p.RebirthCount} of {p.MaxRebirths}</strong> rebirths taken</span>
+      </div>
+      <div class="stats">
+        <span class="stat"><strong>{p.SkillPointsFromRebirthsNow}</strong> skill points from rebirths</span>
+        <span class="stat"><strong>+{p.DamageBonusPctNow}%</strong> damage (Renown {p.RenownedRebirths})</span>
+        <span class="stat"><strong>+{p.ReLevelXpBonusPct}%</strong> XP below your best level ({p.PeakLevelAfter} after the next rebirth)</span>
+      </div>
+    </div>
+
     <p class="renown" data-testid="rebirth-renown">
       <strong>Renown {p.RenownedRebirths}</strong> &middot; +{p.DamageBonusPctNow}% damage, for good.
       {#if p.Renowned}
@@ -160,6 +177,59 @@
       <span class="dim">{p.RebirthCount} of {p.MaxRebirths} taken.</span>
     </p>
 
+    <h3>The road to ten</h3>
+    <RebirthRoadmap steps={p.Roadmap} taken={p.RebirthCount} />
+
+    {#if !p.Capped}
+      <!-- The Vault. -->
+      <div class="vault" data-testid="rebirth-vault">
+        <h3>The Vault &mdash; gear that survives</h3>
+        <p class="dim small">
+          A rebirth takes every piece of gear, except what you put in the Vault. Each piece costs gold by
+          its rarity, paid from the gold the rebirth takes anyway, and waits in your chest, unworn, for the
+          new run. You can wear it again once your attributes meet it.
+        </p>
+        <div class="prices" data-testid="rebirth-vault-prices">
+          {#each priceRows as row (row.tier)}
+            <span class="price-chip" style:--rc={rarityColor(row.tier)}>
+              <span class="r">{rarityName(row.tier)}</span>
+              <span>{formatNumber(row.price)}</span>
+            </span>
+          {/each}
+        </div>
+        {#if !vaultOpen && !confirming}
+          <button class="vault-open" onclick={() => (vaultOpen = true)}>Choose gear to keep&hellip;</button>
+        {:else}
+          {#if inventory.isPending}
+            <p class="dim tiny">Reading your gear&hellip;</p>
+          {:else if keepCandidates.length === 0}
+            <p class="dim tiny">No gear to keep.</p>
+          {:else}
+            <div class="keep-list" data-testid="rebirth-keep">
+              {#each keepCandidates as e (e.Id)}
+                <label class="keep-row">
+                  <input type="checkbox" checked={keep.includes(e.Id)} disabled={working} onchange={() => toggleKeep(e.Id)} />
+                  <span class="name" style="color: {rarityColor(e.QualityTier)}">{prettifyBaseId(e.BaseItemId)}</span>
+                  <span class="dim tiny">[{rarityName(e.QualityTier)}]{#if e.IsEquipped} &middot; worn{/if}</span>
+                  <span class="price">{formatNumber(priceOf(e.QualityTier))}</span>
+                </label>
+              {/each}
+            </div>
+            {#if sortedGear.length > keepRows}
+              <button class="tiny-btn" onclick={() => (keepRows += KEEP_PAGE)}>
+                Show {Math.min(KEEP_PAGE, sortedGear.length - keepRows)} more of {sortedGear.length}
+              </button>
+            {/if}
+          {/if}
+        {/if}
+        <p class:warn={!keepAffordable} data-testid="rebirth-keep-total">
+          Keeping {keep.length} {keep.length === 1 ? 'piece' : 'pieces'}: {formatNumber(keepTotal)} of
+          {formatNumber(p.Gold)} gold.
+        </p>
+      </div>
+    {/if}
+
+    <h3>Rebirth now</h3>
     {#if p.Capped}
       <p class="dim" data-testid="rebirth-capped">You have taken all {p.MaxRebirths} rebirths.</p>
     {:else if !confirming}
@@ -173,62 +243,49 @@
           level 1 and loses the gear, gold and materials listed below, for good.
           Read it through before you confirm.
         </p>
-        <p>
-          <strong>You lose:</strong> level {p.Level} (back to 1), {formatNumber(p.Gold)} gold,
-          {p.MaterialStacks} material {p.MaterialStacks === 1 ? 'stack' : 'stacks'},
-          {p.EquipmentPieces} {p.EquipmentPieces === 1 ? 'piece' : 'pieces'} of gear{#if p.MarketListings > 0}
-            and {p.MarketListings} market {p.MarketListings === 1 ? 'listing' : 'listings'}{/if},
-          {p.SkillTreeLevels} skill tree {p.SkillTreeLevels === 1 ? 'level' : 'levels'},
-          {p.AttributePoints} attribute points, your potions, the chronicle pass and
-          the village gene pool ({p.VillageNewcomers} {p.VillageNewcomers === 1 ? 'newcomer' : 'newcomers'}).
-          Everybody goes idle.
-        </p>
+        <div class="columns">
+          <div class="col lose">
+            <strong>You lose</strong>
+            <p>
+              Level {p.Level} (back to 1), {formatNumber(p.Gold)} gold,
+              {p.MaterialStacks} material {p.MaterialStacks === 1 ? 'stack' : 'stacks'},
+              {Math.max(0, p.EquipmentPieces - keep.length)} {p.EquipmentPieces - keep.length === 1 ? 'piece' : 'pieces'} of gear{#if p.MarketListings > 0}
+                and {p.MarketListings} market {p.MarketListings === 1 ? 'listing' : 'listings'}{/if},
+              {p.SkillTreeLevels} skill tree {p.SkillTreeLevels === 1 ? 'level' : 'levels'},
+              {p.AttributePoints} attribute points, your potions, the chronicle pass and
+              the village gene pool ({p.VillageNewcomers} {p.VillageNewcomers === 1 ? 'newcomer' : 'newcomers'}).
+              Everybody goes idle.
+            </p>
+          </div>
+          <div class="col keep">
+            <strong>You keep</strong>
+            <p>
+              {p.HallMembersKept} ancestors and their aptitudes,
+              {p.Seals} {p.Seals === 1 ? 'Seal' : 'Seals'} ({p.SkillPointsFromSeals} skill points back at once),
+              {p.InheritanceLevels} Inheritance levels, {formatNumber(p.ShardBalance)} shards,
+              {formatNumber(p.Diamonds)} diamonds, {p.VillageBuildingLevels} village building levels,
+              every pet, avatar, frame and title, race and gathering masteries, the codex and your deeds{#if keep.length > 0},
+                and the {keep.length} {keep.length === 1 ? 'piece' : 'pieces'} in the Vault{/if}.
+            </p>
+          </div>
+          <div class="col gain">
+            <strong>You gain</strong>
+            <p>
+              {formatNumber(p.ShardsEarned)} shards,
+              {p.SkillPointsFromRebirthsAfter} skill points from rebirths, +{p.ReLevelXpBonusPct}% XP up to level
+              {p.PeakLevelAfter}{#if p.Renowned}, and Renown {p.RenownedRebirths + 1} (+{p.DamageBonusPctAfter}% damage){/if}.
+              {#each p.Roadmap.find((st) => st.Rebirth === p.RebirthCount + 1)?.Rewards.filter((r) => r.Kind !== 'skill_points' && r.Kind !== 'xp') ?? [] as r (r.Kind + r.Name)}
+                <span class="gain-item">{r.Name}{r.Kind === 'avatar' ? ' (avatar)' : ''}.</span>
+              {/each}
+            </p>
+          </div>
+        </div>
         {#if p.HallLetGo.length > 0}
           <p class="warn">
             <strong>The Hall lets go, permanently:</strong> {p.HallLetGo.join(', ')}.
-            Mark someone <em>Keep</em> above to change who.
+            Mark someone <em>Keep</em> in the Hall of Ancestors to change who.
           </p>
         {/if}
-        <p>
-          <strong>You keep:</strong> {p.HallMembersKept} ancestors and their aptitudes,
-          {p.Seals} {p.Seals === 1 ? 'Seal' : 'Seals'} ({p.SkillPointsFromSeals} skill points back at once),
-          {p.InheritanceLevels} Inheritance levels, {formatNumber(p.ShardBalance)} shards,
-          {formatNumber(p.Diamonds)} diamonds, {p.VillageBuildingLevels} village building levels,
-          race and gathering masteries, the codex and your deeds.
-        </p>
-        <p>
-          <strong>You gain:</strong> {formatNumber(p.ShardsEarned)} shards,
-          {p.SkillPointsFromRebirthsAfter} skill points from rebirths, +{p.ReLevelXpBonusPct}% XP up to level
-          {p.PeakLevelAfter}{#if p.Renowned}, and Renown {p.RenownedRebirths + 1} (+{p.DamageBonusPctAfter}% damage){/if}.
-          {#if p.RebirthCount + 1 === p.SecondPetSlotRebirths}The second pet slot opens on every character.{/if}
-        </p>
-
-        <div class="keep" data-testid="rebirth-keep">
-          <p>
-            <strong>Keep gear (optional):</strong> each piece you tick stays in your chest, unworn, and costs
-            gold by rarity, paid from the gold this rebirth takes. Worn gear is listed first.
-          </p>
-          {#if inventory.isPending}
-            <p class="dim tiny">Reading your gear&hellip;</p>
-          {:else if keepCandidates.length === 0}
-            <p class="dim tiny">No gear to keep.</p>
-          {:else}
-            <div class="keep-list">
-              {#each keepCandidates as e (e.Id)}
-                <label class="keep-row">
-                  <input type="checkbox" checked={keep.includes(e.Id)} disabled={working} onchange={() => toggleKeep(e.Id)} />
-                  <span class="name" style="color: {rarityColor(e.QualityTier)}">{prettifyBaseId(e.BaseItemId)}</span>
-                  <span class="dim tiny">[{rarityName(e.QualityTier)}]{#if e.IsEquipped} &middot; worn{/if}</span>
-                  <span class="price">{formatNumber(priceOf(e.QualityTier))}</span>
-                </label>
-              {/each}
-            </div>
-          {/if}
-          <p class:warn={!keepAffordable} data-testid="rebirth-keep-total">
-            Keeping {keep.length} {keep.length === 1 ? 'piece' : 'pieces'}: {formatNumber(keepTotal)} of
-            {formatNumber(p.Gold)} gold.
-          </p>
-        </div>
         <label class="typeword">
           <span>Type <strong>{REBIRTH_CONFIRMATION_WORD}</strong> to confirm</span>
           <input
@@ -266,9 +323,126 @@
     gap: 0.5rem;
   }
 
-  h2 {
+  h2,
+  h3 {
     margin: 0;
     font-size: 1.05rem;
+  }
+
+  h3 {
+    margin-top: 0.6rem;
+    font-size: 0.95rem;
+  }
+
+  .hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem 1.2rem;
+    padding: 0.7rem;
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+  }
+
+  .count {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .shield {
+    display: inline-grid;
+    place-items: center;
+    /* width, not min-width: app.css's phone rule `.panel * { min-width: 0 !important }` flattens a min-width to a sliver. */
+    flex: 0 0 auto;
+    width: 2.8rem;
+    height: 2.8rem;
+    padding-bottom: 0.4rem;
+    clip-path: polygon(0 0, 100% 0, 100% 62%, 50% 100%, 0 62%);
+    background: color-mix(in srgb, var(--accent) 40%, var(--bg));
+    font-size: 1.2rem;
+    font-weight: 800;
+  }
+
+  .shield.max {
+    background: linear-gradient(160deg, #fff4b0, #ffd700 45%, #b8860b);
+    color: #3a2a00;
+  }
+
+  .stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.9rem;
+    font-size: 0.85rem;
+  }
+
+  .vault {
+    display: grid;
+    gap: 0.45rem;
+    padding: 0.6rem;
+    border-radius: var(--radius);
+    border: 1px dashed color-mix(in srgb, var(--accent) 55%, var(--border));
+  }
+
+  .vault h3 {
+    margin-top: 0;
+  }
+
+  .prices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+  }
+
+  .price-chip {
+    display: inline-flex;
+    gap: 0.35rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 4px;
+    border: 1px solid var(--rc);
+    font-size: 0.75rem;
+  }
+
+  .price-chip .r {
+    color: var(--rc);
+    font-weight: 700;
+  }
+
+  .vault-open {
+    justify-self: start;
+    flex-shrink: 0;
+  }
+
+  .columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    gap: 0.5rem;
+  }
+
+  .col {
+    display: grid;
+    align-content: start;
+    gap: 0.25rem;
+    padding: 0.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  .col.lose strong {
+    color: var(--danger);
+  }
+
+  .col.keep strong {
+    color: var(--accent);
+  }
+
+  .col.gain strong {
+    color: #7ed957;
+  }
+
+  .gain-item {
+    font-weight: 700;
   }
 
   p {

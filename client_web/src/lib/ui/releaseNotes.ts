@@ -35,6 +35,23 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.20.0',
+    date: '2026-10-11',
+    headline: 'Rebirth has its own screen.',
+    sections: [
+      {
+        title: 'Rebirth',
+        items: [
+          'Rebirth is now its own screen in the Hero menu, no longer hidden at the bottom of the Hall of Ancestors.',
+          'The road to ten shows what every rebirth brings, with the avatars and the Phoenix pictured, and marks your next one.',
+          'The Vault: choose the gear you keep through a rebirth before you confirm, with the price for every rarity listed.',
+          'The terms now show what you lose, keep and gain side by side.',
+          'The Wiki explains every rule: the rewards, the road to ten and the Vault prices.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.19.0',
     date: '2026-10-11',
     sections: [

@@ -103,6 +103,9 @@
       screens: [
         { key: 'character', label: 'Character' },
         { key: 'skills', label: 'Skill Tree' },
+        // Owner, 2026-10-11: rebirth is a screen of its own, not a panel at
+        // the foot of the Hall of Ancestors - its rewards must be seen.
+        { key: 'rebirth', label: 'Rebirth' },
         // Task 54: cosmetic chests, avatars and frames.
         { key: 'wardrobe', label: 'Wardrobe' },
         { key: 'chest', label: 'Chest' },
@@ -317,6 +320,7 @@
     codex: () => import('./routes/Codex.svelte'),
     breeding: () => import('./routes/Breeding.svelte'),
     ancestors: () => import('./routes/Ancestors.svelte'),
+    rebirth: () => import('./routes/Rebirth.svelte'),
     inheritance: () => import('./routes/Inheritance.svelte'),
     delve: () => import('./routes/Delve.svelte'),
     store: () => import('./routes/Store.svelte'),

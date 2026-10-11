@@ -62,6 +62,8 @@ namespace FolkIdle.Server.Engine
         public int SecondPetSlotRebirths { get; set; }
         /// <summary>Gold to keep one piece, by quality tier 0..13 (RebirthRules.KeepPrice).</summary>
         public long[] KeepPriceByTier { get; set; } = Array.Empty<long>();
+        /// <summary>What every rebirth 1..MaxRebirths pays - Domain.Progression.RebirthRoadmap.</summary>
+        public IReadOnlyList<Domain.Progression.RebirthRoadmapStep> Roadmap { get; set; } = Array.Empty<Domain.Progression.RebirthRoadmapStep>();
 
         // What goes.
         public long Gold { get; set; }
@@ -331,6 +333,7 @@ namespace FolkIdle.Server.Engine
                 PeakLevelAfter = Math.Max(player.PeakLevel, level),
                 SecondPetSlotRebirths = RebirthRules.SecondPetSlotRebirths,
                 KeepPriceByTier = Enumerable.Range(0, RebirthRules.TopQualityTier + 1).Select(t => RebirthRules.KeepPrice(t)).ToArray(),
+                Roadmap = Domain.Progression.RebirthRoadmap.Build(),
 
                 Gold = gold,
                 MaterialStacks = commodities.Count(c => c.ItemId != "gold" && c.Quantity > 0),
