@@ -9,7 +9,7 @@ import {
   KNOWN_AFFIX_IDS,
   describeStopCondition,
 } from '../src/lib/ui/affixes';
-import { describeBossGearRequirement } from '../src/lib/ui/victories';
+import { bossGearProgress, describeBossGearRequirement } from '../src/lib/ui/victories';
 import { formatNumber } from '../src/lib/ui/format';
 
 // Modul: this file exists because the first version was wrong in production
@@ -264,3 +264,27 @@ describe('describeBossGearRequirement', () => {
     expect(describeBossGearRequirement(5).toLowerCase()).toContain('previous region');
   });
 });
+
+// 2026-10-11: boss 4 gates on Epic AFFIXES, and the wall line used to count
+// only quality - a Rare-affix set read "8 of 8" and still died in seconds.
+describe('bossGearProgress counts affix rarity too', () => {
+  const piece = (slot: number, tier: number, rarities: number[]) => ({
+    SlotIndex: slot, QualityTier: tier, BaseItemId: 'eq_r4', AffixRarities: rarities,
+  });
+
+  it('counts affixes at or above the boss rarity across the combat slots', () => {
+    const p = bossGearProgress(4, [piece(0, 10, [4, 3, 5]), piece(1, 9, [2, 4]), piece(8, 12, [5, 5])], () => 4);
+    expect(p.meets).toBe(1); // only slot 0 is tier 10+
+    expect(p.affixRarity).toBe(4);
+    expect(p.affixesMeet).toBe(3); // 4, 5 and 4 - the tool in slot 8 does not count
+    expect(p.affixesOf).toBe(5);
+  });
+
+  it('names the item rarity by its word and explains the affix scale', () => {
+    const text = describeBossGearRequirement(4);
+    expect(text).toMatch(/rarity 10 of 14/);
+    expect(text).toContain('Common up to Legendary');
+    expect(text).toContain('Forge');
+  });
+});
+

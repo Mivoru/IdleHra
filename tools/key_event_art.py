@@ -106,6 +106,22 @@ PETS = {
     "Sprites/pets/Llamhigyn y Dŵr.jpg": "llamhigyn_y_dwr.webp",
     "Sprites/pets/Nisse.jpg": "nisse.webp",
     "Sprites/pets/Ogham Monolith.jpg": "ogham_monolith.webp",
+    # Owner, 2026-10-11: the tenth rebirth's pet.
+    "Sprites/pets/Phoenix.jpg": "phoenix.webp",
+}
+
+# Owner, 2026-10-11: the rebirth avatars (R3 Jarilo, R5 Vesna, R7 Etain,
+# R10 Morana). Unlike every other master these are FULL PAINTED SCENES, not art
+# on white, so there is nothing to cut: the head is cropped straight from the
+# painting. Crops are (centre x, centre y, side) as fractions of the WHOLE
+# image width (x) or height (y, side), tuned by eye against the round portrait.
+REBIRTH_AVATARS_ROOT = MASTERS / "Avatars"
+REBIRTH_AVATARS_OUTPUT = REPO / "client" / "Assets" / "Images" / "SpritesWeb" / "Rebirth" / "avatars"
+REBIRTH_AVATARS: dict[str, tuple[str, tuple[float, float, float]]] = {
+    "Jarilo.jpg": ("jarilo.webp", (0.51, 0.225, 0.22)),
+    "Vesna.jpg": ("vesna.webp", (0.525, 0.235, 0.22)),
+    "Étaín.jpg": ("etain.webp", (0.51, 0.225, 0.22)),
+    "Morana.jpg": ("morana.webp", (0.50, 0.225, 0.22)),
 }
 
 AVATAR_CROPS: dict[str, tuple[float, float, float]] = {
@@ -237,7 +253,26 @@ def main() -> int:
         written += 1
         print(f"  {out_rel}  {image.width}x{image.height}  {destination.stat().st_size // 1024} KB")
 
-    print(f"{written} images -> {OUTPUT.relative_to(REPO)}, {PETS_OUTPUT.relative_to(REPO)}")
+    for master_name, (out_name, (cx, cy, side)) in REBIRTH_AVATARS.items():
+        if only and only not in out_name:
+            continue
+        master = REBIRTH_AVATARS_ROOT / master_name
+        if not master.is_file():
+            print(f"missing master: {master.relative_to(REPO)}", file=sys.stderr)
+            return 1
+        painting = Image.open(master).convert("RGB")
+        w, h = painting.size
+        size = int(side * h)
+        x0, y0 = int(cx * w - size / 2), int(cy * h - size / 2)
+        head = painting.crop((x0, y0, x0 + size, y0 + size)).convert("RGBA")
+        destination = REBIRTH_AVATARS_OUTPUT / out_name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        image = downscale(head)
+        image.save(destination, "WEBP", quality=WEBP_QUALITY, alpha_quality=WEBP_ALPHA_QUALITY, method=6)
+        written += 1
+        print(f"  Rebirth/avatars/{out_name}  {image.width}x{image.height}  {destination.stat().st_size // 1024} KB")
+
+    print(f"{written} images -> {OUTPUT.relative_to(REPO)}, {PETS_OUTPUT.relative_to(REPO)}, {REBIRTH_AVATARS_OUTPUT.relative_to(REPO)}")
     return 0
 
 

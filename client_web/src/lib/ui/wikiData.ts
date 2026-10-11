@@ -413,7 +413,9 @@ export const REBIRTH_PAYS: readonly string[] = [
   '+2 skill points for good, on top of what levels and Seals pay - 20 at the most.',
   '+50% combat XP on every level below the best level you have ever reached.',
   'At 5 rebirths, a second pet slot on every character.',
-  'At 10, the last rebirth, the title The Ever-Returning.',
+  'Avatars at rebirths 3, 5, 7 and 10: Jarilo, Vesna, Étaín and Morana.',
+  'At 10, the last rebirth: the Phoenix pet (+8% damage, health and XP), the title The Ever-Returning, and a gold badge and glowing name.',
+  'Your rebirth count is shown as a badge beside your name.',
   'Renown, if the rebirth is taken halfway to level 100 or later.',
 ];
 

@@ -106,6 +106,20 @@ namespace FolkIdle.Server.Engine
 
         public static bool IsCapped(int rebirthCount) => rebirthCount >= MaxRebirths;
 
+        public sealed record AvatarMilestone(int Rebirths, string AvatarId, string Name, string Art);
+
+        /// <summary>
+        /// The avatar each milestone rebirth grants (owner, 2026-10-11: the
+        /// climb has steps - 3, 5, 7 and the last, 10). Ids are stable strings.
+        /// </summary>
+        public static readonly System.Collections.Generic.IReadOnlyList<AvatarMilestone> AvatarMilestones = new[]
+        {
+            new AvatarMilestone(3, "avatar_rebirth_jarilo", "Jarilo", "Rebirth/avatars/jarilo.webp"),
+            new AvatarMilestone(5, "avatar_rebirth_vesna", "Vesna", "Rebirth/avatars/vesna.webp"),
+            new AvatarMilestone(7, "avatar_rebirth_etain", "Étaín", "Rebirth/avatars/etain.webp"),
+            new AvatarMilestone(10, "avatar_rebirth_morana", "Morana", "Rebirth/avatars/morana.webp"),
+        };
+
         /// <summary>The skill points this many rebirths pay, capped with the count.</summary>
         public static int SkillPointsFor(int rebirthCount) => Math.Clamp(rebirthCount, 0, MaxRebirths) * SkillPointsPerRebirth;
 

@@ -497,6 +497,10 @@ namespace FolkIdle.Server.Tests
             Assert.DoesNotContain(axe, left);
             var main = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == me.Main);
             Assert.NotEqual(sword, main.EquippedWeaponId ?? 0L); // back in the chest, not worn
+
+            // The badge beside the name reads the count from the batched worn lookup.
+            var worn = await CosmeticEngine.WornAsync(verify, new[] { me.PlayerId });
+            Assert.Equal(1, worn.Single().RebirthCount);
         }
 
         [Fact]
@@ -545,6 +549,9 @@ namespace FolkIdle.Server.Tests
 
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
             Assert.True(await verify.PlayerTitles.AnyAsync(t => t.PlayerId == me.PlayerId && t.TitleSlug == TitleRegistry.RebirthTitleSlug));
+            // The Phoenix and the tenth rebirth's avatar (owner, 2026-10-11).
+            Assert.True(await verify.PlayerPets.AnyAsync(p => p.PlayerId == me.PlayerId && p.PetId == PetRegistry.PhoenixId));
+            Assert.True(await verify.CosmeticItems.AnyAsync(c => c.PlayerId == me.PlayerId && c.DefinitionId == "avatar_rebirth_morana"));
             var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == me.PlayerId);
             Assert.Equal(2 * DeedRegistry.SkillPointsPerSeal + RebirthRules.SkillPointsFor(RebirthRules.MaxRebirths), player.AvailableSkillPoints);
         }
@@ -567,6 +574,26 @@ namespace FolkIdle.Server.Tests
             // The count caps the points.
             Assert.Equal(20, RebirthRules.SkillPointsFor(10));
             Assert.Equal(20, RebirthRules.SkillPointsFor(15));
+        }
+
+        [Fact]
+        public async Task TheThirdRebirthBringsItsAvatar_AndOnlyThatOne()
+        {
+            var me = await SeedAsync(950_114_006L, level: 55);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = 2 WHERE \"Id\" = {0}", me.PlayerId);
+            }
+
+            var outcome = await new RebirthEngine(_fixture.ServiceProvider).RebirthAsync(me.PlayerId, 2);
+
+            Assert.Equal(RebirthResult.Ok, outcome.Result);
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var avatars = await verify.CosmeticItems.AsNoTracking()
+                .Where(c => c.PlayerId == me.PlayerId && c.DefinitionId.StartsWith("avatar_rebirth_"))
+                .Select(c => c.DefinitionId).ToListAsync();
+            Assert.Equal(new[] { "avatar_rebirth_jarilo" }, avatars);
+            Assert.False(await verify.PlayerPets.AnyAsync(p => p.PlayerId == me.PlayerId && p.PetId == PetRegistry.PhoenixId));
         }
     }
 }

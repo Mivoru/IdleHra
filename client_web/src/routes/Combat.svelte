@@ -13,6 +13,7 @@
     FIRST_CLEAR_HP_MULTIPLIERS,
     FIRST_CLEAR_ATTACK_MULTIPLIERS,
   } from '../lib/ui/victories';
+  import { AFFIX_RARITY_NAMES } from '../lib/ui/affixes';
   import { rarityName } from '../lib/ui/rarity';
   import { xpToNextLevel } from '../lib/ui/levelCurve';
   import { queryKeys, fetchWorn, fetchCombatProjection, type HuntingEstimate } from '../lib/net/rest';
@@ -734,7 +735,9 @@
                 {describeBossGearRequirement(unlockedRegion)}
                 {#if wallProgress}
                   <strong>You wear {wallProgress.meets} of {wallProgress.of}</strong>
-                  at region {unlockedRegion} {rarityName(wallProgress.tier)} or better.
+                  at region {unlockedRegion} {rarityName(wallProgress.tier)} or better{#if wallProgress.affixRarity > 1 && wallProgress.affixesOf > 0},
+                    and <strong data-testid="region-wall-affixes">{wallProgress.affixesMeet} of {wallProgress.affixesOf} affixes</strong>
+                    are {AFFIX_RARITY_NAMES[wallProgress.affixRarity]} or better{/if}.
                 {/if}
               </p>
             {/if}

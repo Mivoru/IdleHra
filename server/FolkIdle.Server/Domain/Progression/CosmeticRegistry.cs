@@ -25,6 +25,8 @@ namespace FolkIdle.Server.Domain.Progression
         GreatWork = 5,
         /// <summary>Bought in a seasonal event's shop.</summary>
         Event = 6,
+        /// <summary>A rebirth milestone's avatar (owner, 2026-10-11).</summary>
+        Rebirth = 7,
         Dev = 9,
     }
 
@@ -134,6 +136,14 @@ namespace FolkIdle.Server.Domain.Progression
             {
                 if (item.Kind != EventShopKind.Avatar) continue;
                 list.Add(new CosmeticDefinition(item.Id, CosmeticKind.Avatar, Epic, item.Name, item.Art, Bound: true));
+            }
+            // The rebirth milestone avatars - bound like the event ones; the
+            // last rebirth's is Legendary. Art is a sprite path.
+            foreach (var milestone in Engine.RebirthRules.AvatarMilestones)
+            {
+                list.Add(new CosmeticDefinition(milestone.AvatarId, CosmeticKind.Avatar,
+                    milestone.Rebirths >= Engine.RebirthRules.MaxRebirths ? Legendary : Epic,
+                    milestone.Name, milestone.Art, Bound: true));
             }
             return list;
         }

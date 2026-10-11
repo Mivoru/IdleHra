@@ -80,6 +80,8 @@ export interface WornCosmetics {
   /** The worn title's display name and colour, as TitleRegistry has them, or null. */
   Title: string | null;
   TitleColor: string | null;
+  /** Rebirths taken - drawn as the badge beside the name (RebirthBadge). */
+  RebirthCount?: number;
 }
 
 export const cosmeticKeys = {

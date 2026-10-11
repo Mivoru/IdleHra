@@ -35,6 +35,28 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.19.0',
+    date: '2026-10-11',
+    sections: [
+      {
+        title: 'New',
+        items: [
+          'Your rebirth count now shows as a badge beside your name, in chat and on the boards. Take all ten rebirths and the badge turns gold and your name glows.',
+          'Rebirths 3, 5, 7 and 10 each bring a new avatar: Jarilo, Vesna, Étaín and Morana.',
+          'The tenth and last rebirth also brings the Phoenix, a pet with +8% damage, +8% health and +8% XP.',
+        ],
+      },
+      {
+        title: 'Clearer',
+        items: [
+          'A boss you have not beaten now names the gear rarity it asks for in words, and explains that affixes have their own rarity (Common up to Legendary).',
+          'The region wall on Combat now also counts how many of your affixes are rare enough for the next boss.',
+          'The "Reroll an affix" quest step now explains affix rarity, and that bosses 4 and 5 want Epic and Legendary affixes.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.18.0',
     date: '2026-10-11',
     headline: 'A rebirth is now worth taking.',

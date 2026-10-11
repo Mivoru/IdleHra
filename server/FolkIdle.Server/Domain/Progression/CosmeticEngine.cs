@@ -37,7 +37,7 @@ namespace FolkIdle.Server.Domain.Progression
     /// here too - it is shown on exactly the rows that show the portrait, so
     /// one batched lookup serves both.</summary>
     public sealed record WornCosmetics(long PlayerId, string? AvatarId, string? FrameId, int RaceId, bool IsFemale,
-        string? Title, string? TitleColor);
+        string? Title, string? TitleColor, int RebirthCount = 0);
 
     /// <summary>
     /// Task 54: owning, opening and wearing cosmetics. See CosmeticRegistry for
@@ -237,7 +237,7 @@ namespace FolkIdle.Server.Domain.Progression
 
             var players = await db.PlayerRecords.AsNoTracking()
                 .Where(p => playerIds.Contains(p.Id))
-                .Select(p => new { p.Id, p.EquippedAvatarId, p.EquippedFrameId, p.ActiveTitleSlug })
+                .Select(p => new { p.Id, p.EquippedAvatarId, p.EquippedFrameId, p.ActiveTitleSlug, p.RebirthCount })
                 .ToListAsync();
 
             // The default portrait is the MAIN character's - SlotIndex 0, the
@@ -261,7 +261,9 @@ namespace FolkIdle.Server.Domain.Progression
                     main == null ? 0 : (int)(main.Vector & 0xFF),
                     main?.IsFemale ?? false,
                     title?.DisplayName,
-                    title?.Color);
+                    title?.Color,
+                    // Task 114 follow-up (owner): the rebirth badge beside the name.
+                    p.RebirthCount);
             }).ToList();
         }
     }

@@ -1,3 +1,5 @@
+using System;
+using System.Text;
 ﻿using System.Text;
 using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Engine;
@@ -254,6 +256,71 @@ namespace FolkIdle.Server.Tests
             string kill = double.IsInfinity(p.SecondsToKillBoss) ? "never" : $"{p.SecondsToKillBoss,8:F0}";
             string die = double.IsInfinity(p.SecondsToPlayerDeath) ? "never" : $"{p.SecondsToPlayerDeath,7:F0}";
             return $"{ContentRegistry.GetMonsterName(bossId),-14} {tier,3}  {label,-22} {kill} {die}   {(p.PlayerWins ? "WIN" : "lose")}";
+        }
+        /// <summary>
+        /// 2026-10-11 measurement, not a rule: a player reported bosses 1-3
+        /// falling easily and boss 4 holding for a long time. Every boss
+        /// against every quality tier from four under its requirement up to
+        /// it, at three affix rarities - the shape of the whole ladder in one
+        /// table, at each region's reference level.
+        /// </summary>
+        [Fact]
+        public void TheWholeLadder_Report()
+        {
+            var table = new StringBuilder();
+            table.AppendLine("boss  req   tier  Uncommon            Rare                Epic");
+            for (int region = RaceUnlockRegistry.FirstRegion; region <= RaceUnlockRegistry.LastRegion; region++)
+            {
+                int bossId = BossOf(region);
+                int required = BossFirstClearRules.RequiredQualityTierFor(region);
+                for (int tier = Math.Max(1, required - 4); tier <= required + 1; tier++)
+                {
+                    var line = new StringBuilder($"{region,4}  T{required,-3} T{tier,-3} ");
+                    foreach (var rarity in new[] { AffixRarity.Uncommon, AffixRarity.Rare, AffixRarity.Epic })
+                    {
+                        var p = BossGearBenchmark.ProjectFirstClear(bossId, Gear(region, tier, rarity));
+                        string cell = p.PlayerWins
+                            ? $"WIN {p.SecondsToKillBoss,5:F0}s"
+                            : $"die {p.SecondsToPlayerDeath,5:F0}s";
+                        line.Append($" {cell,-18}");
+                    }
+                    table.AppendLine(line.ToString());
+                }
+            }
+            _output.WriteLine(table.ToString());
+        }
+        /// <summary>
+        /// 2026-10-11 calibration search, not a rule: for a candidate ladder
+        /// (region, quality, affix rarity), the attack multipliers at which the
+        /// target set wins and the set two tiers under it loses.
+        /// </summary>
+        [Fact]
+        public void CandidateLadderSearch_Report()
+        {
+            var candidates = new (int Region, int Tier, AffixRarity Rarity)[]
+            {
+                (1, 4, AffixRarity.Common), (2, 7, AffixRarity.Uncommon), (3, 8, AffixRarity.Rare),
+                (4, 10, AffixRarity.Rare), (5, 11, AffixRarity.Epic),
+            };
+            var table = new StringBuilder();
+            table.AppendLine("region target           now-mult  window (target wins, target-2 loses)");
+            foreach (var (region, tier, rarity) in candidates)
+            {
+                int bossId = BossOf(region);
+                double lo = double.NaN, hi = double.NaN;
+                for (double m = 0.5; m <= 12.0; m += 0.05)
+                {
+                    bool targetWins = BossGearBenchmark.ProjectFirstClearWithAttackMultiplier(bossId, Gear(region, tier, rarity), m).PlayerWins;
+                    bool belowLoses = !BossGearBenchmark.ProjectFirstClearWithAttackMultiplier(bossId, Gear(region, tier - 2, rarity), m).PlayerWins;
+                    if (targetWins && belowLoses)
+                    {
+                        if (double.IsNaN(lo)) lo = m;
+                        hi = m;
+                    }
+                }
+                table.AppendLine($"{region,6} T{tier} {rarity,-10}   {BossFirstClearRules.AttackMultiplierFor(region),6:F2}   {lo:F2} - {hi:F2}");
+            }
+            _output.WriteLine(table.ToString());
         }
     }
 }

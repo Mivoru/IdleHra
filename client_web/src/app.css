@@ -1818,3 +1818,11 @@ input[type='radio']:disabled {
     --event-chip-bg-hover: rgba(184, 87, 26, 0.18);
   }
 }
+
+/* Owner, 2026-10-11: a player who has taken every rebirth has a glowing name.
+   The name is whatever element sits right before the gold RebirthBadge
+   (PlayerTitle renders the badge first), so no screen has to opt in. */
+*:has(+ .rebirth-badge.max) {
+  color: #ffd700;
+  text-shadow: 0 0 6px #ffd70099;
+}
