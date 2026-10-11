@@ -143,17 +143,24 @@ export function bossRegionOf(monsterId: number): number {
  * explanation is indistinguishable from a bug - which is how the defect that
  * started this work got reported in the first place.
  */
+// 2026-10-11: a player stuck at boss 4 for days never learned that it asks
+// for Epic AFFIXES - "rarity 10" meant nothing to them, and nothing said the
+// affix rarity is a second, separate thing they could change. The sentence now
+// names the item rarity by its word first (with its place on the 14-step
+// scale), explains the affix scale in passing, and says where to change it.
 export function describeBossGearRequirement(region: number): string {
   const tier = BOSS_REQUIRED_QUALITY_TIER[region - 1] ?? BOSS_REQUIRED_QUALITY_TIER[0];
   const affixRarity = BOSS_REQUIRED_AFFIX_RARITY[region - 1] ?? BOSS_REQUIRED_AFFIX_RARITY[0];
 
   let text =
-    `Bring a full set of region-${region} gear at rarity ${tier} (${rarityName(tier)}) or better` +
-    ` - gear from the previous region will not survive it.`;
+    `Bring a full set of region-${region} gear of ${rarityName(tier)} rarity or better` +
+    ` (rarity ${tier} of 14) - gear from the previous region will not survive it.`;
 
   if (affixRarity > 1) {
-    text += ` Its affixes want to be ${AFFIX_RARITY_NAMES[affixRarity]}` +
-      `${affixRarity < 5 ? ' or better' : ''}, too.`;
+    text += ` Every affix also has its own rarity, from Common up to Legendary:` +
+      ` this boss wants its affixes ${AFFIX_RARITY_NAMES[affixRarity]}` +
+      `${affixRarity < 5 ? ' or better' : ''}. The Forge rerolls an affix for gold` +
+      ` or raises its rarity for diamonds.`;
   }
 
   return text;
@@ -173,18 +180,27 @@ export const BOSS_COMBAT_SLOTS = 8;
 
 export function bossGearProgress(
   region: number,
-  pieces: readonly { SlotIndex: number; QualityTier: number; BaseItemId: string }[],
+  pieces: readonly { SlotIndex: number; QualityTier: number; BaseItemId: string; AffixRarities?: number[] }[],
   regionTierOf: (baseItemId: string) => number,
-): { meets: number; of: number; tier: number } {
+): { meets: number; of: number; tier: number; affixRarity: number; affixesMeet: number; affixesOf: number } {
   const tier = BOSS_REQUIRED_QUALITY_TIER[region - 1] ?? BOSS_REQUIRED_QUALITY_TIER[0];
+  const affixRarity = BOSS_REQUIRED_AFFIX_RARITY[region - 1] ?? BOSS_REQUIRED_AFFIX_RARITY[0];
   const meeting = new Set<number>();
+  // 2026-10-11: and the affixes, which bosses 4 and 5 gate on - a set of the
+  // right rarity with Rare affixes read "8 of 8" and still lost in seconds.
+  let affixesMeet = 0;
+  let affixesOf = 0;
   for (const piece of pieces) {
     if (piece.SlotIndex < 0 || piece.SlotIndex >= BOSS_COMBAT_SLOTS) continue;
+    for (const r of piece.AffixRarities ?? []) {
+      affixesOf++;
+      if (r >= affixRarity) affixesMeet++;
+    }
     if (piece.QualityTier < tier) continue;
     if (regionTierOf(piece.BaseItemId) < region) continue;
     meeting.add(piece.SlotIndex);
   }
-  return { meets: meeting.size, of: BOSS_COMBAT_SLOTS, tier };
+  return { meets: meeting.size, of: BOSS_COMBAT_SLOTS, tier, affixRarity, affixesMeet, affixesOf };
 }
 
 /** The first-clear health multiplier for a boss's region, 1-based. */

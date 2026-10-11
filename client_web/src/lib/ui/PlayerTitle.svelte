@@ -3,6 +3,7 @@
   // their portrait (stores/worn.ts) - every row that shows a face can show the
   // title with no request of its own. Renders nothing when none is worn.
   import TitleChip from './TitleChip.svelte';
+  import RebirthBadge from './RebirthBadge.svelte';
   import { requestWorn, wornByPlayer } from '../stores/worn';
 
   interface Props {
@@ -18,6 +19,8 @@
   const worn = $derived($wornByPlayer.get(playerId)?.worn ?? null);
 </script>
 
+<!-- The badge first: app.css lights the name right before a max badge. -->
+<RebirthBadge count={worn?.RebirthCount ?? 0} />
 {#if worn?.Title}
   <TitleChip name={worn.Title} color={worn.TitleColor} />
 {/if}

@@ -16,7 +16,7 @@ describe('bossGearProgress', () => {
       { SlotIndex: 3, QualityTier: 14, BaseItemId: '1:gloves' }, // a region behind
       { SlotIndex: 8, QualityTier: 14, BaseItemId: '5:axe' }, // a tool
     ];
-    expect(bossGearProgress(2, pieces, regionOf)).toEqual({ meets: 2, of: 8, tier: need });
+    expect(bossGearProgress(2, pieces, regionOf)).toMatchObject({ meets: 2, of: 8, tier: need });
   });
 
   it('counts a slot once however it is listed', () => {

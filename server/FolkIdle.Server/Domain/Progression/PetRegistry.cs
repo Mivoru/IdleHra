@@ -34,6 +34,8 @@ namespace FolkIdle.Server.Domain.Progression
         Boss = 3,
         /// <summary>Any kill of any monster, any time - no event (owner, 2026-10-10).</summary>
         Monster = 4,
+        /// <summary>Granted by the last rebirth (owner, 2026-10-11).</summary>
+        Rebirth = 5,
     }
 
     public sealed record PetBonus(PetStat Stat, int Pct);
@@ -65,6 +67,14 @@ namespace FolkIdle.Server.Domain.Progression
         /// shop pet's +5%, short of the Witch's +8% to two.
         /// </summary>
         public const int MonsterPetPct = 8;
+
+        /// <summary>
+        /// The Phoenix: the tenth rebirth's pet, +8% to THREE stats (owner,
+        /// 2026-10-11) - the one pet better than the Witch, earned by taking
+        /// every rebirth there is. Damage, health and XP: fire, rebirth, growth.
+        /// </summary>
+        public const string PhoenixId = "pet_phoenix";
+        public const int PhoenixPct = 8;
 
         /// <summary>
         /// The chance one kill brings a monster pet (owner, 2026-10-10: "on
@@ -134,6 +144,9 @@ namespace FolkIdle.Server.Domain.Progression
             Monster("llamhigyn_y_dwr", "Llamhigyn y Dŵr", PetStat.MaxHp),
             Monster("ogham_monolith", "Ogham Monolith", PetStat.Armour),
             Monster("dagdas_cauldron", "Dagda's Cauldron", PetStat.GatherYield),
+
+            new PetDefinition(PhoenixId, "Phoenix", PetSource.Rebirth, 0, "Pets/phoenix.webp",
+                new[] { new PetBonus(PetStat.Damage, PhoenixPct), new PetBonus(PetStat.MaxHp, PhoenixPct), new PetBonus(PetStat.Xp, PhoenixPct) }),
         };
 
         private static PetDefinition Monster(string slug, string name, PetStat stat)

@@ -8340,6 +8340,10 @@ namespace FolkIdle.Server.Network
             public string BaseItemId { get; set; } = string.Empty;
             public int QualityTier { get; set; }
             public int SlotIndex { get; set; }
+            // 2026-10-11: each affix's rarity (1 Common .. 5 Legendary), so the
+            // boss wall can say how many of the worn affixes meet its rarity -
+            // bosses 4 and 5 gate on affix rarity, which no screen counted.
+            public List<int> AffixRarities { get; set; } = new();
         }
 
         // Modul: THE MAIN CHARACTER's gear, because that is who EquipItem with
@@ -8405,16 +8409,30 @@ namespace FolkIdle.Server.Network
                     var ids = slotByInstance.Keys.ToList();
                     var rows = await db.EquipmentInstances.AsNoTracking()
                         .Where(e => e.PlayerId == playerId && ids.Contains(e.Id))
-                        .Select(e => new { e.Id, e.BaseItemId, e.QualityTier })
+                        .Select(e => new { e.Id, e.BaseItemId, e.QualityTier, e.AffixPayload })
                         .ToListAsync();
                     foreach (var row in rows)
                     {
+                        var rarities = new List<int>(5);
+                        try
+                        {
+                            using var affixes = JsonDocument.Parse(string.IsNullOrWhiteSpace(row.AffixPayload) ? "{}" : row.AffixPayload);
+                            if (affixes.RootElement.ValueKind == JsonValueKind.Object)
+                            {
+                                foreach (var affix in affixes.RootElement.EnumerateObject())
+                                {
+                                    rarities.Add((int)AffixRegistry.ParseRarity(affix.Name));
+                                }
+                            }
+                        }
+                        catch (JsonException) { }
                         pieces.Add(new WornPieceResponse
                         {
                             InstanceId = row.Id,
                             BaseItemId = row.BaseItemId,
                             QualityTier = row.QualityTier,
-                            SlotIndex = slotByInstance[row.Id]
+                            SlotIndex = slotByInstance[row.Id],
+                            AffixRarities = rarities,
                         });
                     }
                 }

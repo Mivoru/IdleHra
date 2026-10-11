@@ -177,6 +177,8 @@ export interface WornPiece {
   QualityTier: number;
   /** 0-10: the eight combat slots, then Axe, Pickaxe, Rod. */
   SlotIndex: number;
+  /** Each affix's rarity, 1 Common .. 5 Legendary (the boss wall counts them). */
+  AffixRarities?: number[];
 }
 
 /**

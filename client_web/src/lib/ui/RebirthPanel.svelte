@@ -156,6 +156,7 @@
       <strong>Each rebirth pays:</strong> +{p.SkillPointsFromRebirthsAfter - p.SkillPointsFromRebirthsNow} skill points for good
       (now {p.SkillPointsFromRebirthsNow}), and +{p.ReLevelXpBonusPct}% combat XP on every level below your best
       (level {p.PeakLevelAfter} after this one). {p.SecondPetSlotRebirths} rebirths open a second pet slot on every character.
+      Rebirths 3, 5, 7 and 10 each bring an avatar, and the tenth the Phoenix pet.
       <span class="dim">{p.RebirthCount} of {p.MaxRebirths} taken.</span>
     </p>
 

@@ -226,10 +226,33 @@ namespace FolkIdle.Server.Engine
                         new object[] { renowned ? 1 : 0, RebirthRules.EpochFence, playerId },
                         cancellationToken);
 
-                    // Task 114: the last rebirth is worn as a title.
-                    if (RebirthRules.IsCapped(player.RebirthCount + 1))
+                    // Task 114: the last rebirth is worn as a title, and brings the
+                    // Phoenix (pets survive a rebirth, so it stays).
+                    int countAfter = player.RebirthCount + 1;
+                    if (RebirthRules.IsCapped(countAfter))
                     {
                         await Domain.Progression.TitleEngine.GrantAsync(db, playerId, Domain.Progression.TitleRegistry.RebirthTitleSlug, DateTime.UtcNow);
+                        await Domain.Progression.PetEngine.GrantAsync(db, playerId, Domain.Progression.PetRegistry.PhoenixId, DateTime.UtcNow);
+                    }
+                    // The milestone avatars (3, 5, 7, 10). Cosmetics survive the
+                    // reset; granted once, so a replay cannot add a second.
+                    foreach (var milestone in RebirthRules.AvatarMilestones)
+                    {
+                        if (milestone.Rebirths != countAfter) continue;
+                        bool owned = await db.CosmeticItems.AnyAsync(c => c.PlayerId == playerId && c.DefinitionId == milestone.AvatarId, cancellationToken);
+                        if (owned) continue;
+                        var def = Domain.Progression.CosmeticRegistry.Find(milestone.AvatarId);
+                        db.CosmeticItems.Add(new CosmeticItem
+                        {
+                            PlayerId = playerId,
+                            Kind = (byte)Domain.Progression.CosmeticKind.Avatar,
+                            DefinitionId = milestone.AvatarId,
+                            Rarity = (byte)(def?.Rarity ?? Domain.Progression.CosmeticRegistry.Epic),
+                            Source = (byte)Domain.Progression.CosmeticSource.Rebirth,
+                            AcquiredAtUtc = DateTime.UtcNow,
+                            IsListed = false,
+                        });
+                        await db.SaveChangesAsync(cancellationToken);
                     }
 
                     await transaction.CommitAsync(cancellationToken);
