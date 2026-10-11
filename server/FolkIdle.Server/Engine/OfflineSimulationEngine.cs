@@ -562,6 +562,10 @@ namespace FolkIdle.Server.Engine
 
             OfflineEventCurrency(ref payload, Domain.Progression.SeasonalEventEarning.Source.Gather, rewardActions, elapsedSeconds);
 
+            // Completed harvests, as RunGatheringTick counts them (not the
+            // Scholar's paid extras) - the Logistics achievement's counter.
+            payload.LifetimeHarvests += allowedActions;
+
             LootTableEntry[] lootTable = ContentRegistry.GetLootTable(node.ActivityId).ToArray();
             if (allowedActions <= 0 || lootTable.Length == 0)
             {

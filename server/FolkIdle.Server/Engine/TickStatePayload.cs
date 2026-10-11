@@ -752,6 +752,19 @@ namespace FolkIdle.Server.Engine
         public int HighestForgeSynthesisTier;
         public long HarvestLoopCount;
 
+        // Modul: THE LOGISTICS ACHIEVEMENT COULD NOT BE EARNED (task 116,
+        // 2026-10-11). It read HarvestLoopCount, which is per CHARACTER (it
+        // swaps with the slot register), so the checkpoint saw only slot 1's
+        // harvests - zero for an account whose first character fights - and
+        // nothing loaded it at login, so every session restarted at 0 and the
+        // checkpoint overwrote the row with that session's count. Production
+        // had 133 rows with a highest progress of 169 against a first tier of
+        // 10,000. This is the ACCOUNT's lifetime count: never swapped, hydrated
+        // from player_lifetime_achievements, raised by the live harvest and the
+        // offline projection alike. ForgeUpgradeCount above had the same
+        // missing load and is hydrated beside it.
+        public long LifetimeHarvests;
+
         // Modul 16/21: cached, pre-summed equipped-gear stat bonuses (weapon +
         // armor combined). Recomputed only by EquipmentSlotEngine on equip/
         // unequip (see EquipmentSlotUpdateQueue), read as plain O(1) field
