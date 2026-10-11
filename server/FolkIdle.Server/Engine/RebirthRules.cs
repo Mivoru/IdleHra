@@ -65,5 +65,70 @@ namespace FolkIdle.Server.Engine
             // raw value is below Max and the floor keeps it at Max - 1.
             return Math.Clamp((int)Math.Floor(pct + 1e-9), 0, MaxDamageBonusPct - 1);
         }
+
+        // ------------------------------------------------------------------
+        // Modul: A REBIRTH WORTH TAKING (task 114, owner 2026-10-11). Before
+        // this, a rebirth wiped level, gold, gear, tree and attributes for
+        // +3% damage, and no account had ever taken one. What it pays now is
+        // listed here and nowhere else.
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// Rebirths an account may take. Every reward below multiplies by this
+        /// count, so it is the ceiling that keeps a newcomer within reach.
+        /// </summary>
+        public const int MaxRebirths = 10;
+
+        /// <summary>
+        /// Skill points each rebirth adds to the tree, permanently, beside the
+        /// ones levels and Seals pay. The owner chose these over a separate
+        /// rebirth tree - the game has enough trees already.
+        /// </summary>
+        public const int SkillPointsPerRebirth = 2;
+
+        /// <summary>
+        /// Combat XP bonus on every level below the account's best-ever level
+        /// - a flat 50%, whatever the count (owner: faster, "not crazy").
+        /// </summary>
+        public const int ReLevelXpBonusPct = 50;
+
+        /// <summary>Rebirths that open each character's second pet slot.</summary>
+        public const int SecondPetSlotRebirths = 5;
+
+        /// <summary>The cheapest piece's price to carry through a rebirth (quality tier 0).</summary>
+        public const long KeepPriceFloor = 5_000_000L;
+
+        /// <summary>The dearest piece's price (quality tier 13, the top rarity).</summary>
+        public const long KeepPriceCeiling = 100_000_000L;
+
+        /// <summary>The highest quality tier an item can have.</summary>
+        public const int TopQualityTier = 13;
+
+        public static bool IsCapped(int rebirthCount) => rebirthCount >= MaxRebirths;
+
+        /// <summary>The skill points this many rebirths pay, capped with the count.</summary>
+        public static int SkillPointsFor(int rebirthCount) => Math.Clamp(rebirthCount, 0, MaxRebirths) * SkillPointsPerRebirth;
+
+        /// <summary>
+        /// The re-level XP bonus, in percent: paid only below a best level an
+        /// earlier life reached. An account that never rebirthed has no best
+        /// level stored (0), so it never qualifies.
+        /// </summary>
+        public static int ReLevelXpBonus(int currentLevel, int peakLevel)
+            => peakLevel > 0 && currentLevel < peakLevel ? ReLevelXpBonusPct : 0;
+
+        /// <summary>
+        /// Gold to keep one piece of equipment through a rebirth. Geometric in
+        /// rarity from 5M to 100M (owner: priced by rarity so an ordinary
+        /// player can keep a few good pieces, and a whole top set stays dear),
+        /// rounded to the million.
+        /// </summary>
+        public static long KeepPrice(int qualityTier)
+        {
+            int tier = Math.Clamp(qualityTier, 0, TopQualityTier);
+            double ratio = (double)KeepPriceCeiling / KeepPriceFloor;
+            double price = KeepPriceFloor * Math.Pow(ratio, (double)tier / TopQualityTier);
+            return (long)Math.Round(price / 1_000_000.0) * 1_000_000L;
+        }
     }
 }

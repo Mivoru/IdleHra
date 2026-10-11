@@ -102,7 +102,45 @@ Then divide by the hours. Acceptance:
   constant (`PetRegistry.RareDropPerCurrency`) moved if they ask.
 Details: `NEXT_STEPS_BACKLOG.md`, 2026-10-10 evening entry.
 
-### 114. Rebirth that is worth taking - needs the owner's decision
+### 114. Rebirth that is worth taking - BUILT 2026-10-11 (PR #168)
+
+**Built:** cap 10, +2 skill points a rebirth (in the reset's own SQL),
++50% XP below `PlayerRecords.PeakLevel` (in `LiveKillXpMultiplierPct`, so
+live, offline and the projection agree), keep-gear priced 5M-100M by
+quality tier, a second pet slot (`player_pets.Slot`) at 5, and the title
+The Ever-Returning at 10. **Not done, by finding:** `EquipmentLevelGate`
+stays unenforced. It was retired on purpose for the region gate, and
+`EquipmentAttributeGate` already stops a reborn level-1 from wearing
+region-2+ gear (20 points a region tier, from 0). The rebirth-count mark
+beside the name and the R10 frame are not built yet. Open owner question:
+the keep price is taken from gold the rebirth wipes anyway, so it bites
+only as gold held at that moment (and in the shards that gold would buy).
+Malakor's Ascension (task 112) is not re-measured for +20 skill points.
+
+**Owner decisions, 2026-10-11** (these replace the proposal below):
+- **Faster re-run:** a flat +50% XP on every level below the account's
+  best-ever level, whatever the rebirth count. To be measured before
+  shipping (back to 50 is about 72 h instead of 108 h on the pacing model).
+- **2 skill points per rebirth**, into the existing skill tree. There is NO
+  separate rebirth tree - there are enough trees already (skills,
+  attributes, inheritance). A skill tree polish comes later.
+- **Equipment can be kept** in the bank through a rebirth, for a gold price
+  per item that scales with rarity: about 5M for the lowest up to 100M for
+  the top tier, geometric between them. Paid from the gold the rebirth is
+  about to wipe. The level requirement (`EquipmentLevelGate`, defined but
+  NEVER enforced - a level-1 can wear region-5 gear today) must be enforced
+  on equip, so kept gear comes back as the character re-levels.
+- **Pets all stay.** None is erased by a rebirth.
+- **Milestones:** a second pet slot (R5 proposed), and a title and frame at
+  R10 with the rebirth count shown beside the name. **No extra character
+  slot** - it would let one account farm every kind of work at once and
+  never worry about food or materials.
+- Cap of 10 rebirths. More rebirth rewards are to be designed later.
+
+Gold income for the price, from `gold_income_daily` over the week before
+2026-10-11: Mivoru 270M a day, (pro)boss 28M, Tomda 22.5M.
+
+**Original statement and proposal:**
 
 The owner, 2026-10-10: rebirth does not pay - staying on the last region
 is better; it must be visible and worth it, but capped so a new player can

@@ -219,7 +219,9 @@ namespace FolkIdle.Server.Tests
                 (await SeededNamesAsync(me)).Except(hall.Select(c => c.Name)).OrderBy(n => n));
 
             // CARRIES.
-            Assert.Equal(2 * DeedRegistry.SkillPointsPerSeal, player.AvailableSkillPoints);
+            // Two Seals, plus what one rebirth pays (task 114).
+            Assert.Equal(2 * DeedRegistry.SkillPointsPerSeal + RebirthRules.SkillPointsPerRebirth, player.AvailableSkillPoints);
+            Assert.Equal(72, player.PeakLevel);
             Assert.Equal(0b101, player.SealsEarnedMask);
             Assert.Equal(4_321, player.PremiumDiamonds);
             Assert.Equal(9, LegacyPerkResolver.GetXpBonusPct(player.LegacyPerks));
@@ -459,6 +461,112 @@ namespace FolkIdle.Server.Tests
         public void ARebirthNeedsTheTypedWord(string? typed, bool accepted)
         {
             Assert.Equal(accepted, RebirthRules.IsConfirmed(typed));
+        }
+        // ------------------------------------------------------------------
+        // Task 114 (owner, 2026-10-11): a rebirth worth taking.
+        // ------------------------------------------------------------------
+
+        private async Task SetGoldAsync(long playerId, long gold)
+        {
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE \"CommodityRecords\" SET \"Quantity\" = {0} WHERE \"PlayerId\" = {1} AND \"ItemId\" = 'gold'", gold, playerId);
+        }
+
+        private async Task<(long SwordId, long AxeId)> GearAsync(Seeded s)
+        {
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var main = await db.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == s.Main);
+            return (main.EquippedWeaponId!.Value, main.EquippedAxeId!.Value);
+        }
+
+        [Fact]
+        public async Task AKeptPieceSurvivesUnworn_AndTheRestIsWiped()
+        {
+            var me = await SeedAsync(950_114_001L, level: 60);
+            var (sword, axe) = await GearAsync(me);
+            long price = RebirthRules.KeepPrice(3);
+            await SetGoldAsync(me.PlayerId, price + 1_000L);
+
+            var outcome = await new RebirthEngine(_fixture.ServiceProvider).RebirthAsync(me.PlayerId, 0, new[] { sword });
+
+            Assert.Equal(RebirthResult.Ok, outcome.Result);
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var left = await verify.EquipmentInstances.AsNoTracking().Where(e => e.PlayerId == me.PlayerId).Select(e => e.Id).ToListAsync();
+            Assert.Contains(sword, left);
+            Assert.DoesNotContain(axe, left);
+            var main = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == me.Main);
+            Assert.NotEqual(sword, main.EquippedWeaponId ?? 0L); // back in the chest, not worn
+        }
+
+        [Fact]
+        public async Task KeepingMoreThanTheGoldCoversIsRefused_AndNothingChanges()
+        {
+            var me = await SeedAsync(950_114_002L, level: 60);
+            var (sword, axe) = await GearAsync(me);
+            await SetGoldAsync(me.PlayerId, RebirthRules.KeepPrice(3)); // the sword alone, not the axe too
+
+            var outcome = await new RebirthEngine(_fixture.ServiceProvider).RebirthAsync(me.PlayerId, 0, new[] { sword, axe });
+
+            Assert.Equal(RebirthResult.NotEnoughGold, outcome.Result);
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == me.PlayerId);
+            Assert.Equal(60, player.CurrentLevel);
+            Assert.Equal(0, player.RebirthCount);
+        }
+
+        [Fact]
+        public async Task KeepingSomebodyElsesPieceIsRefused()
+        {
+            var me = await SeedAsync(950_114_003L, level: 60);
+            var other = await SeedAsync(950_114_004L, level: 60, hallMembers: 2);
+            var (theirSword, _) = await GearAsync(other);
+            await SetGoldAsync(me.PlayerId, 500_000_000L);
+
+            var outcome = await new RebirthEngine(_fixture.ServiceProvider).RebirthAsync(me.PlayerId, 0, new[] { theirSword });
+
+            Assert.Equal(RebirthResult.KeepNotOwned, outcome.Result);
+        }
+
+        [Fact]
+        public async Task TheTenthRebirthIsTheLast_AndIsWornAsATitle()
+        {
+            var me = await SeedAsync(950_114_005L, level: 55);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = {0} WHERE \"Id\" = {1}", RebirthRules.MaxRebirths - 1, me.PlayerId);
+            }
+            var engine = new RebirthEngine(_fixture.ServiceProvider);
+
+            var tenth = await engine.RebirthAsync(me.PlayerId, RebirthRules.MaxRebirths - 1);
+            Assert.Equal(RebirthResult.Ok, tenth.Result);
+            var eleventh = await engine.RebirthAsync(me.PlayerId, RebirthRules.MaxRebirths);
+            Assert.Equal(RebirthResult.Capped, eleventh.Result);
+
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            Assert.True(await verify.PlayerTitles.AnyAsync(t => t.PlayerId == me.PlayerId && t.TitleSlug == TitleRegistry.RebirthTitleSlug));
+            var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == me.PlayerId);
+            Assert.Equal(2 * DeedRegistry.SkillPointsPerSeal + RebirthRules.SkillPointsFor(RebirthRules.MaxRebirths), player.AvailableSkillPoints);
+        }
+
+        [Fact]
+        public void TheRebirthRewardsHaveTheOwnersNumbers()
+        {
+            Assert.Equal(5_000_000L, RebirthRules.KeepPrice(0));
+            Assert.Equal(100_000_000L, RebirthRules.KeepPrice(RebirthRules.TopQualityTier));
+            for (int t = 1; t <= RebirthRules.TopQualityTier; t++)
+            {
+                Assert.True(RebirthRules.KeepPrice(t) >= RebirthRules.KeepPrice(t - 1));
+            }
+
+            // +50% only below a level an earlier life reached, never before a rebirth.
+            Assert.Equal(0, RebirthRules.ReLevelXpBonus(currentLevel: 10, peakLevel: 0));
+            Assert.Equal(50, RebirthRules.ReLevelXpBonus(currentLevel: 10, peakLevel: 70));
+            Assert.Equal(0, RebirthRules.ReLevelXpBonus(currentLevel: 70, peakLevel: 70));
+
+            // The count caps the points.
+            Assert.Equal(20, RebirthRules.SkillPointsFor(10));
+            Assert.Equal(20, RebirthRules.SkillPointsFor(15));
         }
     }
 }

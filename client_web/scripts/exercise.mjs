@@ -5373,6 +5373,30 @@ await go('Ancestors');
       'step one does not rebirth - step two is its own button',
       (await panel.locator('button.rebirth-confirm').count()) === 1,
     );
+
+    // Task 114: what a rebirth pays, and gear kept for gold by rarity. A box
+    // is ticked to prove the price adds up, then unticked - Cancel follows.
+    const pays = await panel.locator('[data-testid="rebirth-pays"]').innerText().catch(() => '');
+    record(
+      'the Rebirth panel says what a rebirth pays',
+      /skill points/.test(pays) && /% combat XP/.test(pays) && new RegExp(`of ${before?.MaxRebirths} taken`).test(pays),
+      pays.replace(/\s+/g, ' ').slice(0, 120),
+    );
+    const keepRow = panel.locator('.keep-row').first();
+    await keepRow.waitFor({ timeout: 15000 }).catch(() => {});
+    const keepTotal = panel.locator('[data-testid="rebirth-keep-total"]');
+    const zeroText = await keepTotal.innerText().catch(() => '');
+    let tickedText = '';
+    if ((await keepRow.count()) > 0) {
+      await keepRow.locator('input[type="checkbox"]').check();
+      tickedText = await keepTotal.innerText().catch(() => '');
+      await keepRow.locator('input[type="checkbox"]').uncheck();
+    }
+    record(
+      'gear can be ticked to keep, and the price adds up',
+      /Keeping 0 pieces: 0 of/.test(zeroText) && /Keeping 1 piece: [1-9]/.test(tickedText),
+      `${zeroText} -> ${tickedText}`,
+    );
     // 2026-10-08: the confirm stays disabled until the word is typed, and the
     // warning says it cannot be undone. Typed, checked, then cleared - Cancel
     // below is what this check ends on, so nothing is reborn.
@@ -5987,6 +6011,21 @@ await go('Ancestors');
         && stillThere.json?.RebirthCount === count && stillThere.json?.Level === before.json?.Level,
       `HTTP ${unconfirmed.status} ${JSON.stringify(unconfirmed.json)}`,
     );
+    // Task 114: a new account cannot afford to keep its starter weapon (the
+    // cheapest piece is 5M), so asking is refused and resets nothing.
+    const inventory = await call('GET', '/api/v1/player/inventory');
+    const starter = inventory.json?.Equipment?.[0]?.Id;
+    const tooDear = starter
+      ? await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count, Confirm: 'REBIRTH', KeepEquipmentIds: [starter] })
+      : null;
+    const unchanged = await call('GET', '/api/v1/rebirth/preview');
+    record(
+      'keeping gear the gold cannot pay for is refused and resets nothing',
+      tooDear?.status === 409 && tooDear.json?.Result === 'NotEnoughGold'
+        && unchanged.json?.RebirthCount === count && unchanged.json?.Level === before.json?.Level,
+      tooDear ? `HTTP ${tooDear.status} ${JSON.stringify(tooDear.json)}` : 'no starter gear to ask for',
+    );
+
     const first = await call('POST', '/api/v1/rebirth', { ExpectedRebirthCount: count, Confirm: 'REBIRTH' });
     record(
       'a throwaway account is reborn, live',
@@ -6006,6 +6045,11 @@ await go('Ancestors');
       'after the rebirth the preview reads level 1 and one rebirth more',
       after.json?.Level === 1 && after.json?.RebirthCount === count + 1 && after.json?.Gold === 0,
       JSON.stringify({ Level: after.json?.Level, RebirthCount: after.json?.RebirthCount, Gold: after.json?.Gold }),
+    );
+    record(
+      'a rebirth pays its skill points',
+      after.json?.SkillPointsFromRebirthsNow === 2 * (count + 1),
+      `${after.json?.SkillPointsFromRebirthsNow} points from ${count + 1} rebirth(s)`,
     );
   }
 

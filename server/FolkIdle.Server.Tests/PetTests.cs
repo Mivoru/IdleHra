@@ -188,5 +188,32 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(CommandResultCode.EventShopAlreadyOwned, await EventShopEngine.BuyCoreAsync(db, playerId, item, DateTime.UtcNow));
             Assert.Contains(item.Id, await EventShopEngine.OwnedAsync(db, playerId, new[] { item.Id }));
         }
+        /// <summary>
+        /// Task 114 (owner, 2026-10-11): five rebirths open a character's
+        /// second pet slot, and both pets count.
+        /// </summary>
+        [Fact]
+        public async Task The_second_pet_slot_opens_at_five_rebirths_and_both_pets_count()
+        {
+            var (playerId, a, _) = await SeedAsync(985_114_001L);
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            await PetEngine.GrantAsync(db, playerId, "pet_ghostie", DateTime.UtcNow);
+            await PetEngine.GrantAsync(db, playerId, "pet_hugin", DateTime.UtcNow);
+            await PetEngine.AssignAsync(db, playerId, "pet_ghostie", a, slot: 0);
+
+            var (locked, _) = await PetEngine.AssignAsync(db, playerId, "pet_hugin", a, slot: 1);
+            Assert.Equal(PetAssignResult.SlotLocked, locked);
+
+            await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = {0} WHERE \"Id\" = {1}",
+                FolkIdle.Server.Engine.RebirthRules.SecondPetSlotRebirths, playerId);
+            var (ok, updates) = await PetEngine.AssignAsync(db, playerId, "pet_hugin", a, slot: 1);
+            Assert.Equal(PetAssignResult.Ok, ok);
+            // Ghostie +5% XP and Hugin +8% XP, both on the same character.
+            Assert.Equal(130, updates.Single(u => u.CharacterId == a).AffixTotals.XpTenthsPct);
+
+            db.ChangeTracker.Clear();
+            Assert.Equal(a, (await db.PlayerPets.SingleAsync(p => p.PlayerId == playerId && p.PetId == "pet_ghostie")).CharacterId);
+            Assert.Equal(1, (await db.PlayerPets.SingleAsync(p => p.PlayerId == playerId && p.PetId == "pet_hugin")).Slot);
+        }
     }
 }

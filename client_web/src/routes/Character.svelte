@@ -399,7 +399,12 @@
   const PET_PICKER = 100;
   const pets = createQuery(() => ({ queryKey: petKeys.all, queryFn: fetchPets }));
   const petOf = $derived(
-    selected ? (pets.data?.Pets.find((p) => p.Owned && p.CharacterId === selected.id) ?? null) : null,
+    selected
+      ? // Slot 1's pet on the tile; a character with only a slot-2 pet (task 114) still shows it.
+        ((pets.data?.Pets ?? [])
+          .filter((p) => p.Owned && p.CharacterId === selected.id)
+          .sort((a, b) => (a.Slot ?? 0) - (b.Slot ?? 0))[0] ?? null)
+      : null,
   );
 
   // Modul: ALL ELEVEN, in slot order - the eight combat slots, then the three

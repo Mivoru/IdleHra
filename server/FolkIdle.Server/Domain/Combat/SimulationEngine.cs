@@ -3967,6 +3967,10 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
             // The character's pet (PetRegistry), on the active slot's totals.
             finalXpMultiplier += payload.CachedAffixTotals.XpTenthsPct / 10;
+            // Task 114: a reborn account re-levels faster below its best level.
+            // Here, so the live kill, the offline window and the hunting
+            // projection all pay it from one place.
+            finalXpMultiplier += RebirthRules.ReLevelXpBonus(payload.CurrentLevel, payload.PeakLevel);
             return finalXpMultiplier;
         }
 

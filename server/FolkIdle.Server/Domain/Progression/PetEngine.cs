@@ -20,11 +20,13 @@ namespace FolkIdle.Server.Domain.Progression
         NotOwned = 1,
         NotYourCharacter = 2,
         Failed = 3,
+        /// <summary>The second slot needs RebirthRules.SecondPetSlotRebirths (task 114).</summary>
+        SlotLocked = 4,
     }
 
     public sealed record PetView(
         string Id, string Name, int Source, int EventId, string Art,
-        IReadOnlyList<string> Bonuses, bool Owned, Guid? CharacterId);
+        IReadOnlyList<string> Bonuses, bool Owned, Guid? CharacterId, int Slot);
 
     /// <summary>
     /// Owning and placing pets. Every write runs under the PlayerRecords row
@@ -64,7 +66,7 @@ namespace FolkIdle.Server.Domain.Progression
         /// totals changed).
         /// </summary>
         public static async Task<(PetAssignResult Result, List<EquipmentSlotUpdateNotification> Updates)> AssignAsync(
-            FolkIdleDbContext db, long playerId, string petId, Guid? characterId)
+            FolkIdleDbContext db, long playerId, string petId, Guid? characterId, int slot = 0)
         {
             var updates = new List<EquipmentSlotUpdateNotification>();
             await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
@@ -75,6 +77,19 @@ namespace FolkIdle.Server.Domain.Progression
             {
                 await tx.RollbackAsync();
                 return (PetAssignResult.NotOwned, updates);
+            }
+
+            // Task 114: slot 1 opens at five rebirths. Anything else is slot 0.
+            if (slot != 0 && slot != 1) slot = 0;
+            if (characterId.HasValue && slot == 1)
+            {
+                int rebirths = await db.PlayerRecords.AsNoTracking()
+                    .Where(p => p.Id == playerId).Select(p => p.RebirthCount).FirstOrDefaultAsync();
+                if (rebirths < RebirthRules.SecondPetSlotRebirths)
+                {
+                    await tx.RollbackAsync();
+                    return (PetAssignResult.SlotLocked, updates);
+                }
             }
 
             if (characterId.HasValue)
@@ -92,9 +107,10 @@ namespace FolkIdle.Server.Domain.Progression
             if (characterId.HasValue)
             {
                 touched.Add(characterId.Value);
-                // The character's previous pet goes back to rest, first - the
-                // one-pet-per-character index would refuse the move otherwise.
-                var previous = await db.PlayerPets.FirstOrDefaultAsync(p => p.CharacterId == characterId.Value && p.Id != pet.Id);
+                // The slot's previous pet goes back to rest, first - the
+                // one-pet-per-slot index would refuse the move otherwise.
+                byte target = (byte)slot;
+                var previous = await db.PlayerPets.FirstOrDefaultAsync(p => p.CharacterId == characterId.Value && p.Slot == target && p.Id != pet.Id);
                 if (previous != null)
                 {
                     previous.CharacterId = null;
@@ -103,6 +119,7 @@ namespace FolkIdle.Server.Domain.Progression
             }
 
             pet.CharacterId = characterId;
+            pet.Slot = characterId.HasValue ? (byte)slot : (byte)0;
             await db.SaveChangesAsync();
 
             foreach (var id in touched)
@@ -125,7 +142,10 @@ namespace FolkIdle.Server.Domain.Progression
         {
             var owned = await db.PlayerPets.AsNoTracking()
                 .Where(p => p.PlayerId == playerId)
-                .ToDictionaryAsync(p => p.PetId, p => p.CharacterId, StringComparer.Ordinal);
+                .ToDictionaryAsync(p => p.PetId, p => (Guid?)p.CharacterId, StringComparer.Ordinal);
+            var slots = await db.PlayerPets.AsNoTracking()
+                .Where(p => p.PlayerId == playerId)
+                .ToDictionaryAsync(p => p.PetId, p => (int)p.Slot, StringComparer.Ordinal);
             // A pet whose character is gone (a rebirth, an ancestor let go)
             // reads as resting: it follows nobody who can use it, and the next
             // placement overwrites the stale id.
@@ -141,7 +161,8 @@ namespace FolkIdle.Server.Domain.Progression
                 p.Id, p.Name, (int)p.Source, p.EventId, p.Art,
                 p.Bonuses.Select(PetRegistry.Describe).ToList(),
                 owned.ContainsKey(p.Id),
-                owned.TryGetValue(p.Id, out var at) ? at : null)).ToList();
+                owned.TryGetValue(p.Id, out var at) ? at : null,
+                slots.TryGetValue(p.Id, out var slot) ? slot : 0)).ToList();
         }
 
         /// <summary>

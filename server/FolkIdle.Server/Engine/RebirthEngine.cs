@@ -22,6 +22,12 @@ namespace FolkIdle.Server.Engine
         InFlight = 4,
         /// <summary>The request did not carry the typed confirmation word - see RebirthRules.ConfirmationWord.</summary>
         ConfirmationRequired = 5,
+        /// <summary>The account already has RebirthRules.MaxRebirths (task 114).</summary>
+        Capped = 6,
+        /// <summary>The gold held does not cover the equipment chosen to keep.</summary>
+        NotEnoughGold = 7,
+        /// <summary>A piece chosen to keep is not this account's (or is listed on the market).</summary>
+        KeepNotOwned = 8,
     }
 
     public readonly record struct RebirthOutcome(
@@ -44,6 +50,18 @@ namespace FolkIdle.Server.Engine
         public int DamageBonusPctAfter { get; set; }
         public int DamageBonusPctCap { get; set; }
         public int ShardsEarned { get; set; }
+
+        // Task 114: what a rebirth pays now, and its ceiling.
+        public int MaxRebirths { get; set; }
+        public bool Capped { get; set; }
+        public int SkillPointsFromRebirthsNow { get; set; }
+        public int SkillPointsFromRebirthsAfter { get; set; }
+        public int ReLevelXpBonusPct { get; set; }
+        /// <summary>The best level after this rebirth - below it, kills pay ReLevelXpBonusPct more XP.</summary>
+        public int PeakLevelAfter { get; set; }
+        public int SecondPetSlotRebirths { get; set; }
+        /// <summary>Gold to keep one piece, by quality tier 0..13 (RebirthRules.KeepPrice).</summary>
+        public long[] KeepPriceByTier { get; set; } = Array.Empty<long>();
 
         // What goes.
         public long Gold { get; set; }
@@ -96,7 +114,7 @@ namespace FolkIdle.Server.Engine
             _serviceProvider = serviceProvider;
         }
 
-        public async Task<RebirthOutcome> RebirthAsync(long playerId, int expectedRebirthCount, CancellationToken cancellationToken = default)
+        public async Task<RebirthOutcome> RebirthAsync(long playerId, int expectedRebirthCount, IReadOnlyCollection<long>? keepEquipmentIds = null, CancellationToken cancellationToken = default)
         {
             await PurgeRedisAsync(playerId);
 
@@ -135,11 +153,56 @@ namespace FolkIdle.Server.Engine
                             RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
                     }
 
+                    if (RebirthRules.IsCapped(player.RebirthCount))
+                    {
+                        await transaction.RollbackAsync(cancellationToken);
+                        return new RebirthOutcome(RebirthResult.Capped, player.RebirthCount, player.RenownedRebirths,
+                            RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
+                    }
+
+                    // Task 114: the equipment the player pays to keep. Priced
+                    // and checked BEFORE anything is written, and paid from the
+                    // gold row before the shards are counted - gold the reset
+                    // would wipe still buys shards, so keeping gear costs them.
+                    long[] keep = (keepEquipmentIds ?? Array.Empty<long>()).Distinct().ToArray();
+                    if (keep.Length > 0)
+                    {
+                        var kept = await db.EquipmentInstances.AsNoTracking()
+                            .Where(e => e.PlayerId == playerId && keep.Contains(e.Id))
+                            .Select(e => e.QualityTier)
+                            .ToListAsync(cancellationToken);
+                        if (kept.Count != keep.Length)
+                        {
+                            await transaction.RollbackAsync(cancellationToken);
+                            return new RebirthOutcome(RebirthResult.KeepNotOwned, player.RebirthCount, player.RenownedRebirths,
+                                RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
+                        }
+                        long price = kept.Sum(RebirthRules.KeepPrice);
+                        int paid = await db.Database.ExecuteSqlRawAsync(
+                            "UPDATE \"CommodityRecords\" SET \"Quantity\" = \"Quantity\" - {0} WHERE \"PlayerId\" = {1} AND \"ItemId\" = 'gold' AND \"Quantity\" >= {0}",
+                            new object[] { price, playerId }, cancellationToken);
+                        if (paid == 0)
+                        {
+                            await transaction.RollbackAsync(cancellationToken);
+                            return new RebirthOutcome(RebirthResult.NotEnoughGold, player.RebirthCount, player.RenownedRebirths,
+                                RebirthRules.DamageBonusPct(player.RenownedRebirths), 0, false);
+                        }
+                    }
+
                     int eraId = await EnsureActiveEraAsync(db, cancellationToken);
                     bool renowned = RebirthRules.IsRenowned(player.CurrentLevel);
 
                     int shards = await SeasonalRotationEngine.AwardLegacyShardsAsync(db, eraId, playerId, cancellationToken);
-                    await SeasonalRotationEngine.ResetPlayersAsync(db, playerId, cancellationToken);
+
+                    // Counted (and the best level raised) BEFORE the reset: the
+                    // reset hands back the skill points the count pays
+                    // (RebirthRules.SkillPointsFor), so it must see the new one.
+                    await db.Database.ExecuteSqlRawAsync(
+                        "UPDATE \"PlayerRecords\" SET \"RebirthCount\" = \"RebirthCount\" + 1, " +
+                        "\"PeakLevel\" = GREATEST(\"PeakLevel\", \"CurrentLevel\") WHERE \"Id\" = {0}",
+                        new object[] { playerId }, cancellationToken);
+
+                    await SeasonalRotationEngine.ResetPlayersAsync(db, playerId, cancellationToken, keep);
 
                     // Modul: A NEW RUN STARTS LIKE A NEW ACCOUNT. The reset
                     // takes every piece of gear and every fish, and a naked
@@ -157,11 +220,17 @@ namespace FolkIdle.Server.Engine
                     await db.SaveChangesAsync(cancellationToken);
 
                     await db.Database.ExecuteSqlRawAsync(
-                        "UPDATE \"PlayerRecords\" SET \"RebirthCount\" = \"RebirthCount\" + 1, " +
+                        "UPDATE \"PlayerRecords\" SET " +
                         "\"RenownedRebirths\" = \"RenownedRebirths\" + {0}, " +
                         "\"LogicEpochCounter\" = \"LogicEpochCounter\" + {1} WHERE \"Id\" = {2}",
                         new object[] { renowned ? 1 : 0, RebirthRules.EpochFence, playerId },
                         cancellationToken);
+
+                    // Task 114: the last rebirth is worn as a title.
+                    if (RebirthRules.IsCapped(player.RebirthCount + 1))
+                    {
+                        await Domain.Progression.TitleEngine.GrantAsync(db, playerId, Domain.Progression.TitleRegistry.RebirthTitleSlug, DateTime.UtcNow);
+                    }
 
                     await transaction.CommitAsync(cancellationToken);
 
@@ -230,6 +299,15 @@ namespace FolkIdle.Server.Engine
                 DamageBonusPctAfter = RebirthRules.DamageBonusPct(player.RenownedRebirths + (renowned ? 1 : 0)),
                 DamageBonusPctCap = RebirthRules.MaxDamageBonusPct,
                 ShardsEarned = shards,
+
+                MaxRebirths = RebirthRules.MaxRebirths,
+                Capped = RebirthRules.IsCapped(player.RebirthCount),
+                SkillPointsFromRebirthsNow = RebirthRules.SkillPointsFor(player.RebirthCount),
+                SkillPointsFromRebirthsAfter = RebirthRules.SkillPointsFor(player.RebirthCount + 1),
+                ReLevelXpBonusPct = RebirthRules.ReLevelXpBonusPct,
+                PeakLevelAfter = Math.Max(player.PeakLevel, level),
+                SecondPetSlotRebirths = RebirthRules.SecondPetSlotRebirths,
+                KeepPriceByTier = Enumerable.Range(0, RebirthRules.TopQualityTier + 1).Select(t => RebirthRules.KeepPrice(t)).ToArray(),
 
                 Gold = gold,
                 MaterialStacks = commodities.Count(c => c.ItemId != "gold" && c.Quantity > 0),

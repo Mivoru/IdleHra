@@ -4,6 +4,10 @@
   // character and each owned once, so choosing a pet that follows someone else
   // moves it here - the row says so before the tap. Bonuses are the server's
   // words (PetRegistry). With no pet owned it says where pets come from.
+  //
+  // Task 114: five rebirths open a SECOND slot on every character. The two
+  // slot buttons pick which slot the choices fill; the server refuses slot 2
+  // before then (SlotLocked), so the buttons only appear once it is open.
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
   import { assignPet, fetchPets, petKeys, PET_SOURCE, type Pet } from '../net/pets';
   import { EVENT_PHASE, oneIn } from '../net/seasonalEvent';
@@ -23,9 +27,14 @@
   const pets = createQuery(() => ({ queryKey: petKeys.all, queryFn: fetchPets }));
 
   let busy = $state(false);
+  let slot = $state(0);
 
   const owned = $derived((pets.data?.Pets ?? []).filter((p) => p.Owned));
-  const mine = $derived(characterId ? (owned.find((p) => p.CharacterId === characterId) ?? null) : null);
+  const secondOpen = $derived(pets.data?.SecondSlotOpen ?? false);
+  const activeSlot = $derived(secondOpen ? slot : 0);
+  const mine = $derived(
+    characterId ? (owned.find((p) => p.CharacterId === characterId && (p.Slot ?? 0) === activeSlot) ?? null) : null,
+  );
   const others = $derived(owned.filter((p) => p.Id !== mine?.Id));
   const monsterCount = $derived((pets.data?.Pets ?? []).filter((p) => p.Source === PET_SOURCE.Monster).length);
   const nameOf = (id: string | null) => pets.data?.Characters.find((c) => c.Id === id)?.Name ?? 'someone';
@@ -38,8 +47,10 @@
     try {
       const target = pet ?? mine;
       if (!target) return;
-      const answer = await assignPet(target.Id, pet ? characterId : null);
-      if (!answer || answer.Result !== 'Ok') {
+      const answer = await assignPet(target.Id, pet ? characterId : null, activeSlot);
+      if (answer?.Result === 'SlotLocked') {
+        pushLocalNotice(`The second pet slot opens after ${pets.data?.SecondSlotRebirths ?? 5} rebirths.`, 'error');
+      } else if (!answer || answer.Result !== 'Ok') {
         pushLocalNotice('That pet could not be placed. Try again in a moment.', 'error');
       }
       await client.invalidateQueries({ queryKey: petKeys.all });
@@ -60,6 +71,16 @@
   {#if pets.isError}
     <QueryError query={pets} what="your pets" />
   {:else if pets.data}
+    {#if secondOpen}
+      <div class="slots" data-testid="pet-slots">
+        <button type="button" class="tiny-btn" class:active={activeSlot === 0} onclick={() => (slot = 0)}>Slot 1</button>
+        <button type="button" class="tiny-btn" class:active={activeSlot === 1} onclick={() => (slot = 1)}>Slot 2</button>
+      </div>
+    {:else if owned.length > 0}
+      <p class="dim tiny" data-testid="pet-second-slot-hint">
+        A second pet slot opens after {pets.data.SecondSlotRebirths} rebirths.
+      </p>
+    {/if}
     {#if mine}
       <div class="current" data-testid="pet-current" data-pet={mine.Id}>
         <img src={spriteUrl(mine.Art)} alt="" decoding="async" />
@@ -82,7 +103,9 @@
               <span class="what">
                 <strong>{pet.Name}</strong>
                 <span class="tiny bonus">{pet.Bonuses.join(' · ')}</span>
-                {#if pet.CharacterId}
+                {#if pet.CharacterId === characterId}
+                  <span class="tiny dim">In this character's other slot - moves here</span>
+                {:else if pet.CharacterId}
                   <span class="tiny dim">Follows {nameOf(pet.CharacterId)} - moves here</span>
                 {/if}
               </span>
@@ -116,6 +139,20 @@
     border-radius: var(--radius-sm);
     border: 1px solid var(--border);
     background: var(--bg);
+  }
+
+  .slots {
+    display: flex;
+    gap: 0.4rem;
+  }
+
+  .slots button {
+    flex-shrink: 0;
+  }
+
+  .slots .active {
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   header {

@@ -2468,6 +2468,19 @@ export interface RebirthPreview {
   DamageBonusPctCap: number;
   ShardsEarned: number;
 
+  // Task 114: what a rebirth pays now, and its ceiling (RebirthRules).
+  MaxRebirths: number;
+  /** True once the account has taken MaxRebirths - the server refuses more. */
+  Capped: boolean;
+  SkillPointsFromRebirthsNow: number;
+  SkillPointsFromRebirthsAfter: number;
+  ReLevelXpBonusPct: number;
+  /** The best level after this rebirth: below it, kills pay ReLevelXpBonusPct more XP. */
+  PeakLevelAfter: number;
+  SecondPetSlotRebirths: number;
+  /** Gold to keep one piece, by quality tier 0..13 - the server's price. */
+  KeepPriceByTier: number[];
+
   // What goes.
   Gold: number;
   MaterialStacks: number;
@@ -2493,7 +2506,16 @@ export function fetchRebirthPreview(): Promise<RebirthPreview> {
   return authedGet<RebirthPreview>('/api/v1/rebirth/preview');
 }
 
-export type RebirthResultName = 'Ok' | 'AlreadyReborn' | 'InFlight' | 'NotFound' | 'Failed' | 'ConfirmationRequired';
+export type RebirthResultName =
+  | 'Ok'
+  | 'AlreadyReborn'
+  | 'InFlight'
+  | 'NotFound'
+  | 'Failed'
+  | 'ConfirmationRequired'
+  | 'Capped'
+  | 'NotEnoughGold'
+  | 'KeepNotOwned';
 
 export interface RebirthOutcome {
   Result: RebirthResultName;
@@ -2515,14 +2537,18 @@ export interface RebirthOutcome {
 /** The word the player types to rebirth - RebirthRules.ConfirmationWord on the server. */
 export const REBIRTH_CONFIRMATION_WORD = 'REBIRTH';
 
-export async function requestRebirth(expectedRebirthCount: number, confirm: string): Promise<RebirthOutcome> {
+export async function requestRebirth(
+  expectedRebirthCount: number,
+  confirm: string,
+  keepEquipmentIds: number[] = [],
+): Promise<RebirthOutcome> {
   const token = storedToken();
   if (!token) throw new AuthError('not signed in', 401);
 
   const response = await fetch(api('/api/v1/rebirth'), {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ExpectedRebirthCount: expectedRebirthCount, Confirm: confirm }),
+    body: JSON.stringify({ ExpectedRebirthCount: expectedRebirthCount, Confirm: confirm, KeepEquipmentIds: keepEquipmentIds }),
   });
   const text = await response.text();
   if (text) {

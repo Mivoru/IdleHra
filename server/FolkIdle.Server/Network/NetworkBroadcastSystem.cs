@@ -6529,6 +6529,8 @@ namespace FolkIdle.Server.Network
             public int ExpectedRebirthCount { get; set; } = -1;
             // What the player typed - RebirthRules.ConfirmationWord.
             public string? Confirm { get; set; }
+            // Task 114: equipment ids to carry through, each paid for by rarity.
+            public long[]? KeepEquipmentIds { get; set; }
         }
 
         /// <summary>
@@ -6585,6 +6587,7 @@ namespace FolkIdle.Server.Network
                 {
                     PlayerId = playerId,
                     ExpectedRebirthCount = body.ExpectedRebirthCount,
+                    KeepEquipmentIds = body.KeepEquipmentIds ?? Array.Empty<long>(),
                     Engine = engine,
                 };
                 _playerSessionRegistry.RebirthRequestQueue.Enqueue(request);
@@ -6607,7 +6610,7 @@ namespace FolkIdle.Server.Network
                 {
                     await _checkpointManager.WaitForPendingFlushesAsync(playerId);
                 }
-                outcome = await engine.RebirthAsync(playerId, body.ExpectedRebirthCount);
+                outcome = await engine.RebirthAsync(playerId, body.ExpectedRebirthCount, body.KeepEquipmentIds ?? Array.Empty<long>());
             }
 
             int status = outcome.Value.Result switch
@@ -6616,6 +6619,10 @@ namespace FolkIdle.Server.Network
                 RebirthResult.AlreadyReborn => 409,
                 RebirthResult.InFlight => 409,
                 RebirthResult.NotFound => 404,
+                // Task 114: refusals the panel explains, never a 500.
+                RebirthResult.Capped => 409,
+                RebirthResult.NotEnoughGold => 409,
+                RebirthResult.KeepNotOwned => 400,
                 _ => 500,
             };
             await WriteRebirthAsync(context, status, outcome.Value);

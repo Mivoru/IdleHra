@@ -438,6 +438,11 @@ namespace FolkIdle.Server.Engine
         // the old life's fight onto the reborn one. A reload replaces the
         // payload, which clears it.
         public int RenownedRebirths;
+
+        // Task 114: PlayerRecords.PeakLevel, the best level an earlier life
+        // reached - below it kills pay RebirthRules.ReLevelXpBonusPct more XP.
+        // Hydrated like RenownedRebirths; only RebirthEngine writes the column.
+        public int PeakLevel;
         public bool RebirthPending;
 
         // Modul: SKILL TREE. Five bytes, one per branch, same shape and same
