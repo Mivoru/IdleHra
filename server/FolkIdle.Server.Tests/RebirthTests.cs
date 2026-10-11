@@ -597,5 +597,28 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(new[] { "avatar_rebirth_jarilo" }, avatars);
             Assert.False(await verify.PlayerPets.AnyAsync(p => p.PlayerId == me.PlayerId && p.PetId == PetRegistry.PhoenixId));
         }
+
+        /// <summary>
+        /// Owner, 2026-10-11: "what happens to my pumpkins if I rebirth?" -
+        /// nothing. The event currency is not the run's; it must survive.
+        /// </summary>
+        [Fact]
+        public async Task ARebirthKeepsTheEventCurrency()
+        {
+            var me = await SeedAsync(950_114_007L, level: 60);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await db.Database.ExecuteSqlRawAsync(
+                    "UPDATE \"PlayerRecords\" SET \"EventCurrency\" = 6103, \"EventCurrencyEventId\" = 1 WHERE \"Id\" = {0}", me.PlayerId);
+            }
+
+            var outcome = await new RebirthEngine(_fixture.ServiceProvider).RebirthAsync(me.PlayerId, 0);
+
+            Assert.Equal(RebirthResult.Ok, outcome.Result);
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == me.PlayerId);
+            Assert.Equal(6103, player.EventCurrency);
+            Assert.Equal(1, player.EventCurrencyEventId);
+        }
     }
 }

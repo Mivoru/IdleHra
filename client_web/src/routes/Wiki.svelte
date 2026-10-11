@@ -62,7 +62,12 @@
     upMutationPercent,
     bestVillagerAptitudeFor,
     ATTRIBUTE_CURVES,
+    ATTRIBUTES,
+    ATTRIBUTE_MILESTONES,
+    EQUIP_REQUIREMENT_PER_REGION_TIER,
   } from '../lib/net/commands';
+  import WikiPets from '../lib/ui/WikiPets.svelte';
+  import { FIRST_CLEAR_HP_MULTIPLIERS, FIRST_CLEAR_ATTACK_MULTIPLIERS, BOSS_REQUIRED_QUALITY_TIER } from '../lib/ui/victories';
   import {
     REROLL_GOLD_BY_REGION,
     AFFIX_COUNT_BANDS,
@@ -159,7 +164,7 @@
         { id: 'village', label: 'The Village', sub: 'Buildings and costs' },
         // Task 95: the menu entry is Bloodline, so the page about it is too.
         { id: 'breeding', label: 'Bloodline', sub: 'Breeding and aptitudes' },
-        { id: 'longgame', label: 'The Long Game', sub: 'Seasons, Seals, the Hall' },
+        { id: 'longgame', label: 'The Long Game', sub: 'Rebirth, Seals, the Hall' },
       ],
     },
     {
@@ -404,17 +409,17 @@
               <dt>Gold</dt>
               <dd>
                 Falls out of every kill and every sale. It buys village upgrades,
-                fusions and affix rerolls. Most players end a season with far more
-                than they spent.
+                fusions, affix rerolls, the Delve's gate and the Vault that keeps gear
+                through a rebirth. A rebirth takes all of it.
               </dd>
             </div>
             <div>
               <dt>Diamonds</dt>
               <dd>
-                The premium currency. Earned from the day-7 login bonus and from
-                achievements, or bought. There are exactly three things worth
-                spending them on: Inheritance levels, Hall of Ancestors slots, and
-                upgrading a single affix's rarity.
+                The premium currency, and it survives every rebirth. Earned from the
+                Delve, the day-7 login bonus, achievements, the weekly leaderboard, a
+                rare 1-in-10,000 kill, and a monster pet you already own. Spent on two
+                things: Inheritance levels and Hall of Ancestors slots.
               </dd>
             </div>
             <div>
@@ -434,39 +439,68 @@
             starts: which monster, what you are wearing, and what is in the larder.
           </p>
 
-          <h3 id="attributes">STR, DEX, CON and LCK</h3>
+          <h3 id="attributes">Might, Finesse, Vigour and Fortune</h3>
           <p class="dim small">
-            Per point, from <code>StatsCalculator.Calculate</code>. Note what is
-            <em>not</em> here: nothing grants dodge, and block belongs to CON.
+            Every level pays 7 attribute points to place (Character screen, Attributes); everything starts at 0. Flat
+            effects grow by the point. Percentages grow with the <strong>square root</strong> of the value, so the first
+            points are worth the most. From <code>StatsCalculator.Calculate</code>; nothing grants dodge.
           </p>
           <div class="scroll">
             <table>
               <thead>
-                <tr><th>Attribute</th><th>Per point</th></tr>
+                <tr><th>Attribute</th><th>What it gives</th></tr>
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>STR</strong> Strength</td>
-                  <td>+2 melee damage, +1 armour penetration</td>
+                  <td><strong>Might</strong></td>
+                  <td>+2 attack power and +1 armour penetration a point</td>
                 </tr>
                 <tr>
-                  <td><strong>DEX</strong> Dexterity</td>
-                  <td>+2 ranged damage, +0.05% attack speed, +0.1% crit chance, +1 accuracy</td>
-                </tr>
-                <tr>
-                  <td><strong>CON</strong> Constitution</td>
-                  <td>+15 max health, +1 armour, +0.1 out-of-combat regen per second, +0.05% block strength</td>
-                </tr>
-                <tr>
-                  <td><strong>LCK</strong> Luck</td>
+                  <td><strong>Finesse</strong></td>
                   <td>
-                    Loot luck ({ATTRIBUTE_CURVES.lootLuckPerRootPoint} × √LCK %) and a chance to
-                    elevate a drop one rarity ({ATTRIBUTE_CURVES.rarityElevationPerRootPoint} × √LCK %)
+                    +1 accuracy a point; crit chance {ATTRIBUTE_CURVES.critChancePerRootPoint} × √value % and attack speed
+                    {ATTRIBUTE_CURVES.attackSpeedPerRootPoint} × √value %
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Vigour</strong></td>
+                  <td>
+                    +15 max health, +1 armour and +0.1 health regen a second a point; block strength
+                    {ATTRIBUTE_CURVES.blockStrengthPerRootPoint} × √value %
+                  </td>
+                </tr>
+                <tr>
+                  <td><strong>Fortune</strong></td>
+                  <td>
+                    Loot luck {ATTRIBUTE_CURVES.lootLuckPerRootPoint} × √value % and a chance to elevate a drop one rarity
+                    {ATTRIBUTE_CURVES.rarityElevationPerRootPoint} × √value %
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
+          <h4>Milestones</h4>
+          <p class="dim small">Reaching 25, 60, 120, 200 and 300 in one attribute adds a named bonus on top:</p>
+          <div class="scroll">
+            <table>
+              <thead><tr><th>Attribute</th><th class="num">At</th><th>Milestone</th><th>Adds</th></tr></thead>
+              <tbody>
+                {#each ATTRIBUTE_MILESTONES as m (m.attribute + ':' + m.threshold)}
+                  <tr>
+                    <td>{ATTRIBUTES.find((a) => a.id === m.attribute)?.label}</td>
+                    <td class="num">{m.threshold}</td>
+                    <td>{m.name}</td>
+                    <td class="dim">{m.effect}</td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+          <p class="dim tiny">
+            Gear from region 2 on asks for {EQUIP_REQUIREMENT_PER_REGION_TIER} points of one attribute per region tier
+            above the first: weapons Might, gloves and boots Finesse, armour Vigour, amulets and rings Fortune. Tools
+            ask for nothing.
+          </p>
           <p class="dim tiny">
             Completing a region - 1,000 kills of each ordinary monster and 100 of its
             boss, tracked in the Codex - adds another +1% loot luck on top, permanently.
@@ -476,7 +510,8 @@
           <ul class="styled-list">
             <li><strong>Armour is subtracted, not ignored.</strong> A monster's armour is taken off every hit before it lands, and it grows steeply across the five regions — which is why a weapon upgrade matters more than a level.</li>
             <li><strong>Lifesteal is capped at 1% of your maximum health per hit.</strong> Uncapped, a fast weapon with a lifesteal roll made a character unkillable; the cap keeps it sustain rather than immunity.</li>
-            <li><strong>Bosses roll loot twice</strong> and carry five times their listed health the first time you meet them.</li>
+            <li><strong>Bosses roll loot twice.</strong> Until you beat one the first time it is far stronger - from {FIRST_CLEAR_HP_MULTIPLIERS[0]}× health and {FIRST_CLEAR_ATTACK_MULTIPLIERS[0]}× damage in region 1 to {FIRST_CLEAR_HP_MULTIPLIERS[4]}× and {FIRST_CLEAR_ATTACK_MULTIPLIERS[4]}× in region 5 - and after that it is farmable at its listed stats.</li>
+            <li><strong>Each boss asks for gear of its own region</strong> at a rarity - {BOSS_REQUIRED_QUALITY_TIER.map((t) => RARITY_TIER_NAMES[t]).join(', ')} for regions 1 to 5 - and from region 3 on for affixes of a rarity too: Rare, then Epic, then Legendary. The Combat screen says what the next boss wants and how much of it you wear.</li>
           </ul>
 
           <h3 id="autoeat">Auto-eat and the larder</h3>
@@ -538,11 +573,13 @@
             <li><strong>Fuse new drops</strong> - fuse the stacks new drops land in, up to the tier you choose.</li>
           </ul>
 
-          <h3 id="slots">The eleven equipment slots</h3>
+          <h3 id="slots">The equipment slots, and the pet</h3>
           <p class="dim small">
-            Eight combat slots and three tool slots. The tools are equipment in
+            Eleven equipment slots: eight combat slots and three tool slots. The tools are equipment in
             exactly the same sense as a sword: they carry a rarity and roll their
-            own affixes, and each character wears its own.
+            own affixes, and each character wears its own. Beside them sits the
+            <strong>pet</strong> tile - one pet per character, two after five rebirths (see Pets below).
+            A slot's list also shows pieces your other characters wear, with Move here.
           </p>
           <div class="slot-grid">
             {#each EQUIPMENT_SLOTS as slot (slot.index)}
@@ -557,6 +594,9 @@
             always were — one of each per tier has been in the catalogue from the
             start.
           </p>
+
+          <h3 id="pets">Pets</h3>
+          <WikiPets />
 
           <h3 id="sets">Armour set bonuses</h3>
           <p class="dim small">
@@ -604,8 +644,9 @@
         <!-- ================================================== SKILLS -->
         {:else if activeTab === 'skills'}
           <p>
-            One skill point a level, plus {SKILL_POINTS_PER_SEAL} more every season
-            for each Seal you hold. The tree is three rings deep.
+            One skill point a level, plus {SKILL_POINTS_PER_SEAL} for each Seal you hold and 2 for every
+            rebirth taken - both given back after every rebirth. The tree is three rings deep.
+            Spend them on the Skill Tree screen.
           </p>
 
           <h3 id="rings">Roots, boughs and crowns</h3>
@@ -638,8 +679,8 @@
           </div>
           <p class="dim tiny">
             The two boughs under a root are <strong>exclusive</strong>: taking one
-            closes the other for the season. That is the only choice in the tree
-            you can permanently get wrong, and it is why the respec exists.
+            closes the other until you respec or rebirth. That is the one choice in the tree
+            you can get wrong, and it is why the respec exists.
           </p>
 
           <h3 id="nodes">Every node</h3>
@@ -669,7 +710,7 @@
             </div>
           {/each}
           <p class="dim tiny">
-            Spend the points on the <a href="#/progression">Progression screen</a>.
+            Spend the points on the Skill Tree screen (Hero menu).
           </p>
 
         <!-- ================================================== ITEMS -->
@@ -724,8 +765,10 @@
           <h3 id="cosmetics">Cosmetics: chests, avatars and frames</h3>
           <p>
             A <strong>cosmetic chest</strong> comes in four rarities - Common, Rare, Epic and
-            Legendary - and opens into an avatar or a frame of the same rarity, in the
-            <strong>Wardrobe</strong>. Your avatar and frame show next to your name in chat, on
+            Legendary - and opens into an avatar or a frame in the <strong>Wardrobe</strong>. A chest's
+            rarity sets the odds: it most often gives its own rarity, a rarer chest is always the better
+            bet, and a Legendary chest never gives a Common. Seasonal events, Boss Ascension, Great Works
+            and rebirths add avatars, frames and titles of their own, earned rather than found. Your avatar and frame show next to your name in chat, on
             the leaderboards, in your guild and on your profile. None of it makes you stronger.
           </p>
           <ul class="styled-list">
@@ -743,8 +786,7 @@
           <p>
             The Forge does two different things to an item you already own: it
             raises the item's rarity by consuming two others, and it rerolls the
-            affixes on it. They cost different currencies and answer different
-            problems.
+            affixes on it. Both cost gold, and they answer different problems.
           </p>
 
           <h3 id="fusion">Fusion</h3>
@@ -803,7 +845,8 @@
             Every affix rolls one of five rarities of its own, independently. The
             magnitude multiplier is 1.6 per step, so a Legendary roll is 6.55× a
             Common one — a Rare item whose two affixes both came up Legendary can
-            compete with a Godly item.
+            compete with a Godly item. <strong>The only way to raise an affix's rarity is to reroll it</strong>
+            for gold: a reroll rolls the affix's type, rarity and size fresh together.
           </p>
           <div class="scroll">
             <table>
@@ -812,7 +855,6 @@
                   <th>Affix rarity</th>
                   <th class="num">Chance on a fresh roll</th>
                   <th class="num">Magnitude</th>
-                  <th class="num">Diamonds to step up</th>
                 </tr>
               </thead>
               <tbody>
@@ -821,16 +863,14 @@
                     <td>{row.name}</td>
                     <td class="num">{(row.weightPerMille / 10).toFixed(1)}%</td>
                     <td class="num">{row.multiplier.toFixed(2)}×</td>
-                    <td class="num">{row.upgradeDiamonds > 0 ? row.upgradeDiamonds : '—'}</td>
                   </tr>
                 {/each}
               </tbody>
             </table>
           </div>
           <p class="dim tiny">
-            A five-affix item averages roughly one Legendary per thirteen items, so
-            rerolling — not the drop table — is the realistic path to a full
-            Legendary set.
+            A Legendary affix is 1 roll in 100, so a five-affix item carries one about once in
+            twenty items - rerolling, not the drop table, is the realistic path to a Legendary set.
           </p>
 
           <h3 id="affixpool">Which affixes roll where</h3>
@@ -857,10 +897,10 @@
           <p class="dim small">
             <strong>One number answers two questions.</strong> Beating a region's
             boss opens the next region <em>and</em> permits you to wear that
-            region's gear. There is no separate level requirement on equipment —
-            once a region is open, everything that drops there is wearable at every
-            rarity. The unlock is consecutive: killing a later boss out of order
-            does not skip the ones before it.
+            region's gear. There is no level requirement on equipment; what a piece
+            asks for is attribute points (see Combat - attributes): region-2 gear and
+            up wants {EQUIP_REQUIREMENT_PER_REGION_TIER} points of one attribute per region tier. The unlock is
+            consecutive: killing a later boss out of order does not skip the ones before it.
           </p>
           <p class="dim tiny">
             Gear above region 5 exists — it drops from the ninety non-canonical
@@ -1013,7 +1053,7 @@
           <ul class="styled-list">
             <li>Materials come out of your chest and the village stash together — you do not have to move anything first.</li>
             <li>A craft is an activity like any other: it occupies the character and runs on the tick, including while you are away.</li>
-            <li>You can queue up to <strong>ten at once</strong>.</li>
+            <li>A craft <strong>repeats</strong> until you stop it or the materials run out.</li>
             <li><strong>Crafted equipment always comes out Normal.</strong> A craft makes the base object; rarity is raised afterwards at the Forge. It still rolls one affix, because even Normal gets one.</li>
           </ul>
           <p class="dim tiny">
@@ -1066,8 +1106,8 @@
         <!-- ================================================== BREEDING -->
         {:else if activeTab === 'breeding'}
           <p>
-            Breeding is why a season ends rather than stops. Levels and gear are
-            wiped at the rollover; a bloodline is not. In the menu it is
+            Breeding is why a rebirth is a step rather than a loss. Levels and gear are
+            wiped by a rebirth; a bloodline is not. In the menu it is
             <strong>Bloodline</strong>, with three tabs: Breeding, Ancestors and
             Inheritance.
           </p>
@@ -1086,7 +1126,7 @@
                 <tr><td><strong>elder</strong></td><td>A newcomer who has married into your line. They never marry again.</td></tr>
                 <tr><td><strong>the gene pool</strong></td><td>Newcomers plus elders, as a resource. Not "the village" — that is the buildings.</td></tr>
                 <tr><td><strong>fielding</strong></td><td>Putting an ancestor into one of your three played character slots.</td></tr>
-                <tr><td><strong>the cull</strong></td><td>The end-of-season deletion down to the Hall's cap. Who survives it <em>carries</em>.</td></tr>
+                <tr><td><strong>the cull</strong></td><td>The deletion down to the Hall's cap when you rebirth. Who survives it <em>carries</em>.</td></tr>
                 <tr><td><strong>Inheritance</strong></td><td>Capitalised, this is the diamond shop of permanent account bonuses — and nothing else. What a child gets from its parents, it <em>inherits</em>.</td></tr>
               </tbody>
             </table>
@@ -1221,7 +1261,7 @@
             becomes the child's dominant. Speed and Crit feed attack speed and crit
             chance, Yield adds +4% gathering yield per point, and a pair whose Race
             dominants differ cannot breed at all. Genes are a slow curiosity;
-            aptitudes are the axis a season leaves standing.
+            aptitudes are the axis a rebirth leaves standing.
           </p>
 
           <h3 id="genepool">The Inn and the gene pool</h3>
@@ -1230,7 +1270,7 @@
             else. Their aptitudes roll <strong>2 + up to half again the Inn's
             level</strong>, capped at {APTITUDE_VILLAGE_CEILING}. That is the whole
             two-phase climb: 0 → {APTITUDE_VILLAGE_CEILING} is village-driven, and
-            above {APTITUDE_VILLAGE_CEILING} only drift and selection across seasons
+            above {APTITUDE_VILLAGE_CEILING} only drift and selection across generations
             can reach.
           </p>
           <div class="scroll">
@@ -1285,7 +1325,7 @@
             banked against a slot freeing up later, so a mediocre newcomer sitting
             in the last slot is costing you the arrival you would otherwise have
             had. Sending them on is a real move. A feast buys an arrival now for
-            2,500 × 1.6ⁿ gold, where n is how many you have thrown this season.
+            2,500 × 1.6ⁿ gold, where n is how many you have thrown since your last rebirth.
           </p>
 
         <!-- ================================================== LONG GAME -->
@@ -1293,9 +1333,9 @@
           <p>
             A rebirth ends your run and takes almost everything with it. What it
             leaves is the point of the whole system. You choose when: the Rebirth
-            panel on the Ancestors screen lists exactly what you keep and what you
-            lose - and who the Hall would let go - before you confirm. No date
-            ends a run for you any more.
+            screen (Hero menu) shows what each rebirth pays, lets you keep gear in the
+            Vault, and lists exactly what you keep and lose - and who the Hall would
+            let go - before you confirm. No date ends a run for you.
           </p>
 
           <h3 id="season">What a rebirth resets</h3>
@@ -1364,14 +1404,14 @@
             The rollover sets every surviving ancestor back to Adult with its age
             reset, so the whole roster is breeding-age on day one and you can
             start crossing immediately &mdash; the aptitudes they carry are
-            exactly what you spent the last season building.
+            exactly what you spent the last run building.
           </p>
 
           <h3 id="deeds">The Book of Deeds, and Seals</h3>
           <p class="dim small">
             Five chapters of six deeds. Finishing a chapter awards a
             <strong>Seal</strong>, and a Seal is worth
-            <strong>+{SKILL_POINTS_PER_SEAL} skill points every season, forever</strong>
+            <strong>+{SKILL_POINTS_PER_SEAL} skill points, given back after every rebirth</strong>
             — a second source of points, earned by exploring the game rather than by
             levelling. Five Seals is +{SKILL_POINTS_PER_SEAL * 5} against a base of
             about a hundred. There is no claim button: a Seal is awarded the moment
@@ -1406,7 +1446,7 @@
             characters age, so a newborn stays a Child forever until you field it.
           </p>
           <p class="dim small">
-            If you hold more than the cap when the season turns, the surplus is
+            If you hold more than the cap when you rebirth, the surplus is
             <strong>deleted</strong>. Who survives, in order:
           </p>
           <ol class="steps">
@@ -1414,7 +1454,7 @@
           </ol>
           <p class="dim tiny">
             Marking more than the cap is legal — the same ranking resolves it. The
-            Hall screen shows who would go if the season ended right now, faded.
+            Hall screen shows who would go if you rebirthed right now, faded.
           </p>
 
           <h3 id="inheritance">Inheritance</h3>
@@ -1457,20 +1497,19 @@
             </table>
           </div>
           <p class="dim tiny">
-            A full stat runs to roughly 25,000 diamonds. That is the sink the
+            A full stat runs to roughly 20,000 diamonds. That is the sink the
             premium currency exists for, and it is why the Hall slots — four of
             them for {formatNumber(HALL_SLOT_COSTS.reduce((a, b) => a + b, 0))} —
             are a real competing choice rather than an obvious one.
           </p>
 
-          <h3 id="leaderboard">Season rank</h3>
+          <h3 id="leaderboard">Leaderboard rank</h3>
           <p class="dim small">
             The leaderboard ranks by level, then by the hardest monster you ever put
-            down - so a rebirth drops you down it, by your own choice. Seasons no
-            longer end on a date: you end your own run from the Rebirth panel on the
-            Ancestors screen, and a <em>renowned</em> rebirth - one taken halfway to
+            down - so a rebirth drops you down it, by your own choice. You end your own
+            run from the Rebirth screen, and a <em>renowned</em> rebirth - one taken halfway to
             level 100 or later - is one of the six deeds in the last chapter (a
-            top-fifty season finish from before still counts).
+            top-fifty season finish from before rebirths existed still counts).
           </p>
 
         <!-- ================================================== GUILDS -->
@@ -1558,13 +1597,13 @@
 
           <h3 id="diamonds">Diamonds</h3>
           <p class="dim small">
-            Earned from the day-7 login bonus ({DAILY_LOGIN_DAY7_DIAMONDS} at a
-            time), from achievements, or bought. Three sinks, all permanent:
+            Earned from the Delve and the Deep (up to {DELVE_WEEKLY_DIAMOND_CEILING} a week), the day-7 login bonus
+            ({DAILY_LOGIN_DAY7_DIAMONDS} at a time), achievements, the weekly leaderboard, a rare 1-in-10,000 kill, and a
+            monster pet you already own. They survive every rebirth. Two sinks, both permanent:
           </p>
           <ul class="styled-list">
-            <li><strong>Inheritance levels</strong> — the six permanent percentage bonuses. Roughly 25,000 for a full stat.</li>
+            <li><strong>Inheritance levels</strong> — the six permanent percentage bonuses. Roughly 20,000 for a full stat.</li>
             <li><strong>Hall of Ancestors slots</strong> — four of them, {formatNumber(HALL_SLOT_COSTS.reduce((a, b) => a + b, 0))} in total, taking the roster from {HALL_BASE_SLOTS} to {HALL_MAX_SLOTS}.</li>
-            <li><strong>Affix rarity upgrades</strong> — one step, on one affix, from 5 diamonds at the bottom to 196 at the top.</li>
           </ul>
 
           <h3 id="delve">The Delve</h3>
@@ -1726,7 +1765,8 @@
           </div>
           <p class="dim tiny">
             Logistics is the only one that pays a permanent stat as well as
-            diamonds — up to +8% gathering speed, forever.
+            diamonds — +15% gathering speed in all, forever. It counts every completed harvest
+            on any of your characters, online or away.
           </p>
 
         <!-- ================================================== SCREENS -->

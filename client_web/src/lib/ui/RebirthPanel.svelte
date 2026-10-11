@@ -264,7 +264,8 @@
               {p.Seals} {p.Seals === 1 ? 'Seal' : 'Seals'} ({p.SkillPointsFromSeals} skill points back at once),
               {p.InheritanceLevels} Inheritance levels, {formatNumber(p.ShardBalance)} shards,
               {formatNumber(p.Diamonds)} diamonds, {p.VillageBuildingLevels} village building levels,
-              every pet, avatar, frame and title, race and gathering masteries, the codex and your deeds{#if keep.length > 0},
+              every pet, avatar, frame and title, your event currency (pumpkins) and event-shop buys,
+              race and gathering masteries, the codex and your deeds{#if keep.length > 0},
                 and the {keep.length} {keep.length === 1 ? 'piece' : 'pieces'} in the Vault{/if}.
             </p>
           </div>

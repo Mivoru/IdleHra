@@ -150,8 +150,8 @@ namespace FolkIdle.Server.Domain.Progression
                 // player stuck at boss 4 for days had rerolled without ever
                 // learning that the boss gates on Epic affixes.
                 "The Forge can reroll one affix on a piece you own for gold. The slot stays; what is in it changes. " +
-                "Every affix also has its own rarity - Common, Uncommon, Rare, Epic, Legendary - and a reroll can land a rarer one, " +
-                "or diamonds raise it a step. The bosses of regions 4 and 5 want Epic and Legendary affixes.",
+                "Every affix also has its own rarity - Common, Uncommon, Rare, Epic, Legendary - and rerolling is the way to land " +
+                "a rarer one. The bosses of regions 4 and 5 want Epic and Legendary affixes.",
                 "forge", new[] { "forge-reroll", "forge-reroll-item" }, $"Reach level {ForgeOpenLevel}",
                 ForgeOpen,
                 f => f.RerollsPerformed > 0 || f.GoldSpentOnReroll > 0),

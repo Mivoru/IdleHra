@@ -159,8 +159,8 @@ export function describeBossGearRequirement(region: number): string {
   if (affixRarity > 1) {
     text += ` Every affix also has its own rarity, from Common up to Legendary:` +
       ` this boss wants its affixes ${AFFIX_RARITY_NAMES[affixRarity]}` +
-      `${affixRarity < 5 ? ' or better' : ''}. The Forge rerolls an affix for gold` +
-      ` or raises its rarity for diamonds.`;
+      `${affixRarity < 5 ? ' or better' : ''}. Reroll an affix in the Forge, for gold, to roll a` +
+      ` rarer one.`;
   }
 
   return text;

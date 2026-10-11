@@ -2138,6 +2138,15 @@ await go('Chest');
 // minutes of fighting means the odds snapshot was never written.
 await go('Wiki');
 {
+  // 2026-10-11 (owner): the Wiki lists every pet, read live from PetRegistry.
+  const combatTab = page.locator('button.tab-btn', { hasText: /^Combat/ }).first();
+  await combatTab.click().catch(() => {});
+  const petCards = page.getByTestId('wiki-pet');
+  await petCards.first().waitFor({ timeout: 10000 }).catch(() => {});
+  const petCount = await petCards.count();
+  record('the wiki lists every pet with its bonus and source', petCount >= 10, `${petCount} pets`);
+}
+{
   await page.getByRole('button', { name: /Items & rarity/ }).first().click();
   const line = page.getByTestId('loot-odds-line');
   await line.waitFor({ timeout: 10000 }).catch(() => {});

@@ -403,7 +403,8 @@ export const SEASON_CARRIES: readonly string[] = [
   'Shards, and the Legacy perks they bought.',
   'Gathering masteries, the monster codex and your deeds.',
   'Renown - the permanent damage bonus a renowned rebirth raises.',
-  'Your best season rank, and any paid respec grants.',
+  'Your best leaderboard placement, and any paid respec grants.',
+  'Seasonal event currency (pumpkins) and everything bought in an event shop.',
   'Every pet, and the slot each one sits in.',
   'Any gear you paid to keep: 5 million gold for the commonest piece up to 100 million for the rarest, paid from the gold the rebirth takes. It waits in your chest, unworn.',
 ];
@@ -457,8 +458,8 @@ export function rebirthVaultPrice(qualityTier: number): number {
 
 export const SEASON_LOST: readonly string[] = [
   'Every character’s level - everyone is reset to level 1 and to Adult.',
-  'All gear, all gold and every other material.',
-  'The market and the chronicle pass.',
+  'All gear you did not put in the Vault, all gold and every other material.',
+  'Your market listings and the chronicle pass.',
   'Every point spent in the skill tree, and every attribute point.',
   'Every activity - all characters go idle.',
   'The entire gene pool - newcomers and elders alike, along with the arrival clock and the escalating feast price.',
@@ -599,7 +600,7 @@ export const ACHIEVEMENTS: readonly {
   },
   {
     name: 'Logistics',
-    metric: 'Material gathered',
+    metric: 'Harvests completed, on any character, online or away',
     thresholds: '10k / 100k / 1M / 10M',
     rewards: '10 / 50 / 200 / 800 diamonds, and +1 / +2 / +4 / +8% gathering speed permanently',
   },
@@ -743,7 +744,8 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'longgame', anchor: 'deeds', title: 'The Book of Deeds and Seals', keywords: 'deeds chapters seals skill points permanent' },
   { tab: 'longgame', anchor: 'hall', title: 'The Hall of Ancestors and the cull', keywords: 'ancestors slots keep mark cull survive field roster' },
   { tab: 'longgame', anchor: 'inheritance', title: 'Inheritance', keywords: 'diamonds permanent damage health experience gold gathering luck 2% 20 levels' },
-  { tab: 'longgame', anchor: 'leaderboard', title: 'Season rank', keywords: 'leaderboard rank top fifty placement' },
+  { tab: 'longgame', anchor: 'leaderboard', title: 'Leaderboard rank', keywords: 'leaderboard rank top fifty placement' },
+  { tab: 'combat', anchor: 'pets', title: 'Pets', keywords: 'pet pets monster pet phoenix witch slot second duplicate diamonds hugin nisse' },
 
   { tab: 'guilds', anchor: 'roles', title: 'Roles', keywords: 'leader officer member kick promote demote application' },
   { tab: 'guilds', anchor: 'depot', title: 'The depot and donations', keywords: 'donate depot contribution logs ore guild tier' },
