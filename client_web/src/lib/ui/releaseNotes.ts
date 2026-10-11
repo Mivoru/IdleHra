@@ -35,6 +35,30 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.22.0',
+    date: '2026-10-11',
+    headline: 'The Wiki, checked against the game.',
+    sections: [
+      {
+        title: 'Wiki',
+        items: [
+          'New: a Pets section - every pet, its bonus and where it comes from, the second pet slot after five rebirths, and the diamonds a duplicate pays.',
+          'Attributes now carry their real names (Might, Finesse, Vigour, Fortune), how each one grows, and every milestone.',
+          'Fixed: diamonds cannot upgrade an affix - a gold reroll is the only way to a rarer affix.',
+          'Fixed: boss strength before the first kill, the gear rarity each boss asks for, the cosmetic chest odds, crafting, Inheritance prices and the Logistics bonus (+15% in all).',
+          'Rebirth: what a rebirth takes now mentions the Vault, and your pumpkins and event-shop buys are listed as kept.',
+        ],
+      },
+      {
+        title: 'Fixed',
+        items: [
+          'The attribute panel counted placed points from the wrong starting values.',
+          'The boss hint and the reroll quest step no longer mention a diamond upgrade that does not exist.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.21.0',
     date: '2026-10-11',
     sections: [

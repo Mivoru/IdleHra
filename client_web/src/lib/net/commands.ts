@@ -1295,7 +1295,7 @@ export const ATTRIBUTES: readonly {
     tagline: 'Hits hard, and through armour.',
     effects: ['+2 attack power', '+1 armour penetration'],
     accent: '#d9694a',
-    start: 50,
+    start: 0,
   },
   {
     id: 1,
@@ -1304,7 +1304,7 @@ export const ATTRIBUTES: readonly {
     tagline: 'Hits often, and precisely.',
     effects: ['+1 accuracy', 'crit chance', 'attack speed'],
     accent: '#4aa3d9',
-    start: 50,
+    start: 0,
   },
   {
     id: 2,
@@ -1313,7 +1313,7 @@ export const ATTRIBUTES: readonly {
     tagline: 'Survives being hit.',
     effects: ['+15 max health', '+1 armour', 'block strength', 'health regen'],
     accent: '#5fbf6a',
-    start: 50,
+    start: 0,
   },
   {
     id: 3,
@@ -1322,7 +1322,7 @@ export const ATTRIBUTES: readonly {
     tagline: 'Takes more from the world.',
     effects: ['loot luck', 'rarity elevation'],
     accent: '#c9a227',
-    start: 25,
+    start: 0,
   },
 ];
 
