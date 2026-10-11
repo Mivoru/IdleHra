@@ -602,6 +602,17 @@ input {
     overflow-x: auto;
   }
 
+  /* Modul: a table that ALREADY sits in a `.scroll` box must not scroll
+     itself too. Once tables kept their own width (see `:not(table)` below)
+     every Wiki table overflowed both boxes and a phone drew two stacked
+     scrollbars, each moving a different layer. The wrapper scrolls; the table
+     stays a table. */
+  .scroll > table {
+    display: table;
+    max-width: none;
+    overflow-x: visible;
+  }
+
   /* Touch targets. 0.3rem of padding is a comfortable mouse target and a
      frustrating thumb one.
      Modul: 2rem was this file's first attempt and it is 32px - eight short of
