@@ -37,7 +37,9 @@
     fetchGuildView,
     type ProfilePiece,
     type ProfileCharacter,
+    type ProfilePet,
   } from '../net/rest';
+  import { spriteUrl } from './spriteUrl';
 
   const titleId = $props.id();
 
@@ -70,9 +72,11 @@
 
   // Selected piece for the stats sheet. Cleared whenever the entry changes.
   let piece = $state<ProfilePiece | null>(null);
+  let pet = $state<ProfilePet | null>(null);
   $effect(() => {
     void top;
     piece = null;
+    pet = null;
   });
 
   const ROLE_NAMES: Record<number, string> = { 0: 'Member', 1: 'Officer', 2: 'Leader' };
@@ -196,6 +200,26 @@
                       {/if}
                     </div>
                   {/each}
+                  <!-- Modul: THE PET IS A SLOT TOO (owner, 2026-10-12). Its bonus
+                       sits on the same totals as the gear's, so a profile without
+                       it showed a weaker character than the one fighting. The
+                       second slot is drawn only when it holds a pet. -->
+                  {#each [0, 1] as petSlot (petSlot)}
+                    {@const follower = char.Pets?.find((x) => x.Slot === petSlot)}
+                    {#if petSlot === 0 || follower}
+                      <div class="slot" data-pet-slot={petSlot} data-testid="profile-pet-slot">
+                        <span class="tiny dim">{petSlot === 0 ? 'Pet' : 'Pet 2'}</span>
+                        {#if follower}
+                          <button class="piece" aria-label={`${follower.Name}, show bonuses`} onclick={() => (pet = follower)} data-pet={follower.PetId}>
+                            <img class="pet-art" src={spriteUrl(follower.Art)} alt="" loading="lazy" decoding="async" />
+                            <span class="item-name">{follower.Name}</span>
+                          </button>
+                        {:else}
+                          <div class="empty-slot"></div>
+                        {/if}
+                      </div>
+                    {/if}
+                  {/each}
                 </div>
               </section>
             {/each}
@@ -293,6 +317,19 @@
       <Affixes affixes={piece.Affixes} baseItemId={piece.BaseItemId} qualityTier={piece.QualityTier} />
     </DetailSheet>
   {/if}
+
+  {#if pet}
+    <DetailSheet title={pet.Name} onClose={() => (pet = null)} testid="profile-pet-sheet">
+      <div class="piece-head">
+        <img class="pet-art lg" src={spriteUrl(pet.Art)} alt="" decoding="async" />
+      </div>
+      <ul class="pet-bonuses">
+        {#each pet.Bonuses as bonus (bonus)}
+          <li>{bonus}</li>
+        {/each}
+      </ul>
+    </DetailSheet>
+  {/if}
 {/if}
 
 <style>
@@ -384,6 +421,20 @@
     gap: 0.25rem;
     min-width: 0;
     text-align: center;
+  }
+  .pet-art {
+    width: 2.6rem;
+    height: 2.6rem;
+    object-fit: contain;
+  }
+  .pet-art.lg {
+    width: 5rem;
+    height: 5rem;
+  }
+  .pet-bonuses {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--good);
   }
   .piece {
     display: flex;

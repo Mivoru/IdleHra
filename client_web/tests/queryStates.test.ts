@@ -53,6 +53,9 @@ const ALLOWED: Record<string, string> = {
   // Overlays that enrich a moment (a loot card, a coach hint) and must not
   // interrupt it with an error. Not edited on the F4 branch.
   'lib/ui/LootReveal.svelte': 'overlay enrichment',
+  // The pet window opens only when the pets view answers; a failed read
+  // owes nothing yet, and the next result or sign-in asks again.
+  'lib/ui/PetFound.svelte': 'overlay, opens only on data',
   'lib/ui/OnboardingCoach.svelte': 'overlay hint',
   'lib/ui/ChatDock.svelte': 'overlay, unread count only',
   // Task 95: the online count on the chat entry is printed only once it has

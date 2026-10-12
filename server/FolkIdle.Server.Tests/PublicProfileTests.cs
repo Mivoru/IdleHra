@@ -93,6 +93,14 @@ namespace FolkIdle.Server.Tests
             }
             await WearAsync(id, gatherer, "birch_axe_1", EquipmentSlotEngine.SlotAxe);
             await WearAsync(id, benched, "birch_axe_1", EquipmentSlotEngine.SlotAxe);
+            // Pets are part of what a character wears (owner, 2026-10-12).
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerPets.Add(new PlayerPet { PlayerId = id, PetId = "pet_hugin", CharacterId = main, Slot = 0, AcquiredAtUtc = DateTime.UtcNow });
+                db.PlayerPets.Add(new PlayerPet { PlayerId = id, PetId = "pet_phoenix", CharacterId = main, Slot = 1, AcquiredAtUtc = DateTime.UtcNow });
+                db.PlayerPets.Add(new PlayerPet { PlayerId = id, PetId = "pet_nisse", CharacterId = benched, Slot = 0, AcquiredAtUtc = DateTime.UtcNow });
+                await db.SaveChangesAsync();
+            }
 
             await using var read = await _fixture.DbContextFactory.CreateDbContextAsync();
             var view = await PublicProfiles.BuildProfileAsync(read, id, other => other == id);
@@ -106,6 +114,10 @@ namespace FolkIdle.Server.Tests
             // Exactly the three roster slots, bare or not; the dressed villager
             // off the roster is only counted.
             Assert.Equal(new[] { "Main", "Bare", "Woody" }, view.Characters.Select(c => c.Name).ToArray());
+            Assert.Equal(new[] { "Hugin", "Phoenix" }, view.Characters[0].Pets.Select(p => p.Name).ToArray());
+            Assert.Equal(new[] { 0, 1 }, view.Characters[0].Pets.Select(p => p.Slot).ToArray());
+            Assert.NotEmpty(view.Characters[0].Pets[0].Bonuses);
+            Assert.Empty(view.Characters[1].Pets);
             Assert.True(view.Characters[0].IsMain);
             Assert.Equal("Fighting", view.Characters[0].Activity);
             Assert.Empty(view.Characters[1].Worn);

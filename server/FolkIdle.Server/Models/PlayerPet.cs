@@ -36,5 +36,21 @@ namespace FolkIdle.Server.Models
         public byte Slot { get; set; }
 
         public DateTime AcquiredAtUtc { get; set; }
+
+        /// <summary>
+        /// When the player was shown the "a pet found you" window for it, or
+        /// null while that window is still owed. Kept on the server rather than
+        /// the device so a pet found offline, or seen on the phone, is shown
+        /// exactly once on every client. A shop purchase is born announced -
+        /// the player chose it.
+        /// </summary>
+        public DateTime? AnnouncedAtUtc { get; set; }
+
+        /// <summary>
+        /// Monster-pet duplicates found since the player last closed the
+        /// window: each one paid PetRegistry.DuplicateDiamonds by mail, and the
+        /// window says how many. Reset with AnnouncedAtUtc.
+        /// </summary>
+        public int PendingDuplicates { get; set; }
     }
 }

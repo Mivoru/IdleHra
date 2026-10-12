@@ -12,6 +12,7 @@
   import EventIntro from './EventIntro.svelte';
   import OfflineSummary from './OfflineSummary.svelte';
   import LootReveal from './LootReveal.svelte';
+  import PetFound from './PetFound.svelte';
   import VictoryCard from './VictoryCard.svelte';
   import DeathCard from './DeathCard.svelte';
   import SeasonalFightWindow from './SeasonalFightWindow.svelte';
@@ -48,6 +49,9 @@
      player must not miss while looking at another screen. -->
 <!-- Task 50: a Legendary+ drop, shown over any screen for a moment. -->
 <LootReveal />
+<!-- A pet that found the player - any source but the shop. Before the
+     victory and death cards in DOM order, so either of those paints on top. -->
+<PetFound />
 <VictoryCard />
 <DeathCard />
 <!-- The Cailleach's fight: opened from the World Boss screen, outlives a change of screen. -->

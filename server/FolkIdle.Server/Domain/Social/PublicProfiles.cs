@@ -43,6 +43,18 @@ namespace FolkIdle.Server.Domain.Social
         /// <summary>"Fighting", "Woodcutting", "Mining", "Fishing", "Crafting" or "Idle".</summary>
         public string Activity { get; set; } = "Idle";
         public List<ProfilePiece> Worn { get; set; } = new();
+        /// <summary>The pets following this character, by slot (0, and 1 after five rebirths).</summary>
+        public List<ProfilePet> Pets { get; set; } = new();
+    }
+
+    /// <summary>A pet as a stranger sees it: what it is and what it gives - PetRegistry's words.</summary>
+    public sealed class ProfilePet
+    {
+        public int Slot { get; set; }
+        public string PetId { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string Art { get; set; } = string.Empty;
+        public List<string> Bonuses { get; set; } = new();
     }
 
     public sealed class ProfileGuild
@@ -282,6 +294,35 @@ namespace FolkIdle.Server.Domain.Social
                             BaseItemId = piece.BaseItemId,
                             QualityTier = piece.QualityTier,
                             Affixes = ParseAffixes(piece.AffixPayload),
+                        });
+                    }
+                }
+            }
+
+            // Modul: PETS ARE GEAR TOO (owner, 2026-10-12: "I see equipment but
+            // not the pet slot"). A pet's bonus sits on the same totals an
+            // equip's does, so a profile that drew the eleven slots and not the
+            // pet showed a weaker character than the one fighting.
+            if (shown.Count > 0)
+            {
+                var shownIds = shown.Select(c => c.Id).ToList();
+                var pets = await db.PlayerPets.AsNoTracking()
+                    .Where(p => p.PlayerId == targetId && p.CharacterId != null && shownIds.Contains(p.CharacterId.Value))
+                    .Select(p => new { p.CharacterId, p.PetId, p.Slot })
+                    .ToListAsync();
+                for (int i = 0; i < shown.Count; i++)
+                {
+                    foreach (var row in pets.Where(p => p.CharacterId == shown[i].Id).OrderBy(p => p.Slot))
+                    {
+                        var def = FolkIdle.Server.Domain.Progression.PetRegistry.Find(row.PetId);
+                        if (def == null) continue;
+                        view.Characters[i].Pets.Add(new ProfilePet
+                        {
+                            Slot = row.Slot,
+                            PetId = def.Id,
+                            Name = def.Name,
+                            Art = def.Art,
+                            Bonuses = def.Bonuses.Select(FolkIdle.Server.Domain.Progression.PetRegistry.Describe).ToList(),
                         });
                     }
                 }

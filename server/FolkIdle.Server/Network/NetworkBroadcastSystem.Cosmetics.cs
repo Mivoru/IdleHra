@@ -60,6 +60,11 @@ namespace FolkIdle.Server.Network
                 await HandlePetAssign(context);
                 return true;
             }
+            if (requestPath == "/api/v1/pets/seen" && method == "POST")
+            {
+                await HandlePetSeen(context);
+                return true;
+            }
 
             // The seasonal event: dates, phase and shop. Answers signed out too,
             // because the login screen wears the event's theme; the Owned flags
@@ -440,6 +445,52 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Pet assign error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
+        }
+
+        /// <summary>
+        /// {"PetId": "pet_hugin"} - the player closed the "a pet found you"
+        /// window. Answers the pets view, like an assign, so the client's
+        /// cache moves to the next owed window without a second request.
+        /// </summary>
+        private async Task HandlePetSeen(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                string? petId = null;
+                try
+                {
+                    using var parsed = JsonDocument.Parse(await ReadBodyAsync(context));
+                    if (parsed.RootElement.TryGetProperty("PetId", out var p) && p.ValueKind == JsonValueKind.String) petId = p.GetString();
+                }
+                catch (JsonException) { }
+
+                if (PetRegistry.Find(petId) == null)
+                {
+                    context.Response.StatusCode = 400;
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                bool owned = await PetEngine.MarkSeenAsync(db, playerId, petId!, DateTime.UtcNow);
+                await WriteJsonAsync(context, new
+                {
+                    Result = owned ? "Ok" : "NotOwned",
+                    Pets = await PetEngine.ViewAsync(db, playerId),
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Pet seen error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally

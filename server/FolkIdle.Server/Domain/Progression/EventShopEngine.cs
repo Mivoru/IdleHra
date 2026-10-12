@@ -89,7 +89,8 @@ namespace FolkIdle.Server.Domain.Progression
                 }
                 case EventShopKind.Pet:
                 {
-                    if (!await PetEngine.GrantAsync(db, playerId, item.Id, utcNow))
+                    // Bought, so no "a pet found you" window: the player chose it.
+                    if (!await PetEngine.GrantAsync(db, playerId, item.Id, utcNow, announce: false))
                     {
                         await tx.RollbackAsync();
                         return CommandResultCode.EventShopAlreadyOwned;

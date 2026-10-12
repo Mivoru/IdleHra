@@ -1823,8 +1823,14 @@ namespace FolkIdle.Server.Migrations
                     b.Property<DateTime>("AcquiredAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("AnnouncedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<Guid?>("CharacterId")
                         .HasColumnType("uuid");
+
+                    b.Property<int>("PendingDuplicates")
+                        .HasColumnType("integer");
 
                     b.Property<string>("PetId")
                         .IsRequired()

@@ -767,6 +767,16 @@ export interface ProfileCharacter {
   /** "Fighting", "Woodcutting", "Mining", "Fishing", "Crafting" or "Idle". */
   Activity: string;
   Worn: ProfilePiece[];
+  /** The pets following this character, by slot - PetRegistry's names and words. */
+  Pets: ProfilePet[];
+}
+
+export interface ProfilePet {
+  Slot: number;
+  PetId: string;
+  Name: string;
+  Art: string;
+  Bonuses: string[];
 }
 
 export interface ProfileStats {

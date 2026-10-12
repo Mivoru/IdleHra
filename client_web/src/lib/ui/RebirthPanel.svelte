@@ -41,6 +41,7 @@
     type RebirthOutcome,
   } from '../net/rest';
   import { invalidateOwnedItems } from '../net/queryClient';
+  import { petKeys } from '../net/pets';
   import { prettifyBaseId } from '../net/content';
   import { pushLocalNotice } from '../stores/game';
   import { formatNumber } from './format';
@@ -99,6 +100,8 @@
     client.invalidateQueries({ queryKey: queryKeys.ancestorsHall });
     client.invalidateQueries({ queryKey: queryKeys.breedingRoster });
     client.invalidateQueries({ queryKey: queryKeys.deeds });
+    // The tenth rebirth brings the Phoenix, and its window reads this key.
+    client.invalidateQueries({ queryKey: petKeys.all });
     invalidateOwnedItems(client);
   }
 
