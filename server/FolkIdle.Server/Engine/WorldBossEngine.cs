@@ -67,7 +67,10 @@ namespace FolkIdle.Server.Engine
 
         /// <summary>On the wire while nobody has landed on the weak point yet.</summary>
         public const byte WeakPlateHidden = 255;
-        private const long BaseHp = 50000000L;
+        // Modul: NO BASE HEALTH ANY MORE (owner, 2026-10-13). The boss was
+        // 50M x 1.5 x online accounts and could not fall. Its health is now 0 -
+        // hidden - until the reveal sets it from the registered players' own
+        // damage (WorldBossLedger.RevealIfDueAsync, WorldBossHpRules).
 
         /// <summary>The least one strike's BASE hit is worth, before any plate or skill multiplier.</summary>
         public const long MinStrikeDamage = 1000L;
@@ -77,10 +80,11 @@ namespace FolkIdle.Server.Engine
         private readonly IServiceProvider _serviceProvider;
         private readonly PlayerSessionRegistry _playerRegistry;
         private readonly IConnectionMultiplexer? _redis;
-        private long _bossMaxHp = BaseHp;
-        private long _bossCurrentHp = BaseHp;
-        private int _bossIsAlive = 1;
-        private int _rewardDispatchActive;
+        private long _bossMaxHp;
+        private long _bossCurrentHp;
+        private long _defeatedAtEpoch;
+        private int _hpRevealed;
+        private long _revealEpoch;
         private int _eventState;
         private long _eventEndEpoch;
 
@@ -112,7 +116,10 @@ namespace FolkIdle.Server.Engine
 
         public long BossMaxHp => Interlocked.Read(ref _bossMaxHp);
         public long BossCurrentHp => Interlocked.Read(ref _bossCurrentHp);
-        public bool IsAlive => Volatile.Read(ref _bossIsAlive) == 1 && BossCurrentHp > 0;
+        /// <summary>When the registered players brought it down this week, or 0.</summary>
+        public long DefeatedAtEpoch => Interlocked.Read(ref _defeatedAtEpoch);
+        public bool HpRevealed => Volatile.Read(ref _hpRevealed) == 1;
+        public long RevealEpoch => Interlocked.Read(ref _revealEpoch);
         public bool IsEventActive => Volatile.Read(ref _eventState) == 1;
         public byte EventState => (byte)Volatile.Read(ref _eventState);
         public long EventEndEpoch => Interlocked.Read(ref _eventEndEpoch);
@@ -155,8 +162,8 @@ namespace FolkIdle.Server.Engine
                 snapshot = new WorldBossSnapshot
                 {
                     BossInstanceId = ActiveBossInstanceId,
-                    MaxHp = BaseHp,
-                    CurrentHp = BaseHp,
+                    MaxHp = 0,
+                    CurrentHp = 0,
                     TotalDamageContributed = 0,
                     LastActiveTimestamp = now
                 };
@@ -172,10 +179,11 @@ namespace FolkIdle.Server.Engine
             return bossId == ActiveBossInstanceId;
         }
 
-        public bool IsBossDead()
-        {
-            return Volatile.Read(ref _bossIsAlive) == 0 || BossCurrentHp <= 0;
-        }
+        /// <summary>
+        /// True once the registered players have brought the boss down this week.
+        /// It no longer refuses a strike: strikes go on for milestones and rank.
+        /// </summary>
+        public bool IsBossDead() => DefeatedAtEpoch > 0;
 
         /// <summary>
         /// Queues one strike. `serverComputedDamage` is exactly that - taken
@@ -222,35 +230,24 @@ namespace FolkIdle.Server.Engine
             _ => FolkIdle.Server.Network.CommandResultCode.WorldBossStrikeFailed,
         };
 
-        public async Task ScaleActiveBossAsync(long[] onlinePlayerIds)
+        /// <summary>
+        /// LiveOps' once-a-minute pass over an active encounter: regrows the
+        /// armour at midnight, upgrades an encounter opened before Chernobog's
+        /// week existed, and reveals the health once registration is over.
+        /// </summary>
+        public async Task MaintainActiveBossAsync()
         {
             await _snapshotGate.WaitAsync();
-            try { await ScaleActiveBossCoreAsync(onlinePlayerIds); }
+            try { await MaintainActiveBossCoreAsync(); }
             finally { _snapshotGate.Release(); }
         }
 
-        private async Task ScaleActiveBossCoreAsync(long[] onlinePlayerIds)
+        private async Task MaintainActiveBossCoreAsync()
         {
             await EnsureSnapshotAsync();
 
-            int activeAccounts = onlinePlayerIds.Length;
-
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-
-            long totalMasterySum = activeAccounts > 0
-                ? await db.PlayerRaceMasteries
-                    .Where(m => onlinePlayerIds.Contains(m.PlayerId))
-                    .SumAsync(m => (long)m.MasteryLevel)
-                : 0L;
-
-            // GlobalMaxHp = BaseHp * (ActiveAccountsCount * 1.50) + (AccountMasteryScoresSum * 250.0)
-            long newMaxHp = (long)(BaseHp * (activeAccounts * 1.50) + (totalMasterySum * 250.0));
-            if (newMaxHp < BaseHp)
-            {
-                newMaxHp = BaseHp;
-            }
-
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
 
             try
@@ -259,44 +256,20 @@ namespace FolkIdle.Server.Engine
                     .FromSqlRaw("SELECT * FROM \"WorldBossSnapshots\" WHERE \"BossInstanceId\" = {0} FOR UPDATE", (long)ActiveBossInstanceId)
                     .SingleOrDefaultAsync();
 
-                if (snapshot == null)
+                if (snapshot == null || snapshot.EventState != 1)
                 {
                     await transaction.RollbackAsync();
-                    await EnsureSnapshotAsync();
+                    if (snapshot != null) RefreshLocalSnapshot(snapshot);
                     return;
                 }
 
-                if (snapshot.CurrentHp <= 0)
+                long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                bool changed = RegrowArmourIfNewDay(snapshot, now);
+                changed |= await WorldBossLedger.UpgradeLegacyEncounterAsync(db, snapshot);
+                changed |= await WorldBossLedger.RevealIfDueAsync(db, snapshot, now);
+                if (changed)
                 {
-                    RefreshLocalSnapshot(snapshot);
-                    await transaction.CommitAsync();
-                    return;
-                }
-
-                // The board everyone sees regrows within a minute of midnight;
-                // a strike regrows it exactly (see RegrowArmourIfNewDay).
-                if (RegrowArmourIfNewDay(snapshot, DateTimeOffset.UtcNow.ToUnixTimeSeconds()))
-                {
-                    await db.SaveChangesAsync();
-                }
-
-                if (snapshot.MaxHp != newMaxHp)
-                {
-                    long oldMax = snapshot.MaxHp <= 0 ? BaseHp : snapshot.MaxHp;
-                    long capacityDelta = newMaxHp - oldMax;
-                    long newCurrentHp = snapshot.CurrentHp + capacityDelta;
-                    if (newCurrentHp > newMaxHp)
-                    {
-                        newCurrentHp = newMaxHp;
-                    }
-                    if (newCurrentHp <= 0)
-                    {
-                        newCurrentHp = 1;
-                    }
-
-                    snapshot.MaxHp = newMaxHp;
-                    snapshot.CurrentHp = newCurrentHp;
-                    snapshot.LastActiveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    snapshot.LastActiveTimestamp = now;
                     await db.SaveChangesAsync();
                 }
 
@@ -306,155 +279,50 @@ namespace FolkIdle.Server.Engine
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                Console.WriteLine($"World boss scale update failed: {ex.Message}");
+                Console.WriteLine($"World boss maintenance failed: {ex.Message}");
             }
         }
 
-        public async Task ProcessDefeatedBossAsync()
+        /// <summary>
+        /// Dev tools only: ends registration now, so exercise.mjs and a developer
+        /// can reach the revealed half of the week on any day.
+        /// </summary>
+        public async Task RevealNowAsync()
         {
             await _snapshotGate.WaitAsync();
-            try { await ProcessDefeatedBossCoreAsync(); }
-            finally { _snapshotGate.Release(); }
-        }
-
-        private async Task ProcessDefeatedBossCoreAsync()
-        {
-            if (Interlocked.CompareExchange(ref _rewardDispatchActive, 1, 0) != 0)
-            {
-                return;
-            }
-
             try
             {
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
                 await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
-
                 var snapshot = await db.WorldBossSnapshots
                     .FromSqlRaw("SELECT * FROM \"WorldBossSnapshots\" WHERE \"BossInstanceId\" = {0} FOR UPDATE", (long)ActiveBossInstanceId)
                     .SingleOrDefaultAsync();
-
-                if (snapshot == null || snapshot.CurrentHp > 0)
+                if (snapshot == null || snapshot.EventState != 1 || snapshot.HpRevealed == 1)
                 {
                     await transaction.RollbackAsync();
                     return;
                 }
-
                 long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                await PayEncounterRewardsAsync(db, now);
-
-                snapshot.MaxHp = BaseHp;
-                snapshot.CurrentHp = BaseHp;
-                snapshot.TotalDamageContributed = 0;
-                snapshot.LastActiveTimestamp = now;
-                snapshot.EventState = 2; // Concluded: defeated. Dormant until the next scheduled window.
-
+                snapshot.RevealEpoch = now;
+                await WorldBossLedger.RevealIfDueAsync(db, snapshot, now);
                 await db.SaveChangesAsync();
-                await db.Database.ExecuteSqlRawAsync(
-                    "DELETE FROM \"player_world_boss_attempts\" WHERE \"BossInstanceId\" = {0}", (long)ActiveBossInstanceId);
                 await transaction.CommitAsync();
-
-                _playerDamageMap.Clear();
-                if (_redis?.IsConnected == true)
-                {
-                    await _redis.GetDatabase().KeyDeleteAsync(ContributionKey(ActiveBossInstanceId));
-                }
-
-                long[] onlinePlayerIds = _playerRegistry.GetOnlinePlayerIds();
-                for (int i = 0; i < onlinePlayerIds.Length; i++)
-                {
-                    _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
-                    {
-                        PlayerId = onlinePlayerIds[i],
-                        AttemptCount = 0
-                    });
-                }
-
                 RefreshLocalSnapshot(snapshot);
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"World boss reward distribution failed: {ex.Message}");
-            }
-            finally
-            {
-                Interlocked.Exchange(ref _rewardDispatchActive, 0);
-            }
+            finally { _snapshotGate.Release(); }
         }
 
-        // Modul: THE BOSS DOES NOT HAVE TO FALL (owner, 2026-09-26). Rewards
-        // used to be mailed only from ProcessDefeatedBossAsync, so a week the
-        // boss survived - every week, at today's population against 50M+ HP -
-        // paid nobody anything for seven days of strikes. Now the encounter pays
-        // when it ends either way, by each player's rank in damage dealt, from
-        // the same rows the damage board shows (WorldBossBoard). Called inside
-        // the caller's transaction, before the attempt rows are deleted.
-        internal static async Task<int> PayEncounterRewardsAsync(FolkIdleDbContext db, long now)
+        // Modul: THE BOSS DOES NOT HAVE TO FALL (owner, 2026-09-26), and since
+        // 2026-10-13 a fall does not end the week either. The encounter pays when
+        // it closes on Sunday: the top three by damage, and - if the registered
+        // players brought it down - the kill reward. Milestones are not here:
+        // they are paid by the strike that crosses them. Called inside the
+        // caller's transaction, with the snapshot row locked.
+        internal static async Task<WeekPayout> PayEncounterRewardsAsync(FolkIdleDbContext db, WorldBossSnapshot snapshot)
         {
-            var ranked = await WorldBossBoard.RankedAsync(db);
-            int participantCount = ranked.Count;
-            int paid = 0;
-            for (int i = 0; i < participantCount; i++)
-            {
-                long participantId = ranked[i].PlayerId;
-
-                var existingMail = await db.MailboxInstances
-                    .FromSqlRaw("SELECT * FROM \"MailboxInstances\" WHERE \"PlayerId\" = {0} FOR UPDATE", participantId)
-                    .ToListAsync();
-
-                if (existingMail.Count >= 50)
-                {
-                    // Modul: world boss reward visibility, 2026-08-01.
-                    //
-                    // A full mailbox silently destroyed the player's
-                    // ENTIRE world boss reward - tokens and gold - after
-                    // they had fought for it, with no log, no telemetry
-                    // and nothing the player could see. They simply
-                    // never received anything.
-                    //
-                    // Still skipped rather than force-inserted, because
-                    // the 50 cap is a real invariant and overflowing it
-                    // here would be a design decision this fix should
-                    // not smuggle in. But it is no longer invisible: see
-                    // NEXT_STEPS_BACKLOG for the open question of
-                    // whether earned, non-repeatable rewards should
-                    // bypass the cap or be held for later delivery.
-                    Console.WriteLine(
-                        $"World boss reward SKIPPED for player {participantId}: mailbox full ({existingMail.Count} items). Reward lost.");
-
-                    TelemetryStreamer.TryWrite(new TelemetryEvent
-                    {
-                        PlayerId = participantId,
-                        EventType = 3,
-                        Value1 = 19,
-                        Value2 = existingMail.Count,
-                        Timestamp = Environment.TickCount64
-                    });
-                    continue;
-                }
-
-                // Percentile bracket by rank among damage-dealing participants: Top 1% / Top 10% / Top 50% / Participation.
-                var (_, tokenQuantity, goldAttachment) = WorldBossBoard.BracketFor(i + 1, participantCount);
-
-                // Modul: the drop record (task 26) counts the reward
-                // HERE, where it is created as mail - the claim that
-                // later turns mail into a row is a move, not a creation.
-                await DropRecord.RecordOneAsync(db, participantId, DropSource.WorldBoss, 0,
-                    null, "perun_avatar_reward_token", 5, 5);
-                db.MailboxInstances.Add(new MailboxInstance
-                {
-                    PlayerId = participantId,
-                    BaseItemId = "perun_avatar_reward_token",
-                    QualityTier = 5,
-                    Quantity = tokenQuantity,
-                    IsClaimed = false,
-                    IsPending = false,
-                    GoldAttachment = goldAttachment,
-                    ReceivedTimestamp = now
-                });
-                paid++;
-            }
-            return paid;
+            await WorldBossLedger.RevealIfDueAsync(db, snapshot, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            return await WorldBossLedger.PayWeekAsync(db, snapshot, DateTime.UtcNow, Random.Shared);
         }
 
         // Modul: A WINDOW A DEVELOPER CAN OPEN ON ANY DAY (task 25).
@@ -496,7 +364,9 @@ namespace FolkIdle.Server.Engine
             long end = now + ClampManualWindowSeconds(durationSeconds);
             Interlocked.Exchange(ref _manualWindowEndEpoch, end);
             await EnsureSnapshotAsync();
-            await ActivateEventWindowAsync(end);
+            // Registration is the first two sevenths of a window, as Monday and
+            // Tuesday are of a week; POST /api/v1/dev/worldboss/reveal ends it early.
+            await ActivateEventWindowAsync(end, now + (end - now) * 2 / 7);
         }
 
         /// <summary>
@@ -511,14 +381,16 @@ namespace FolkIdle.Server.Engine
             await FinalizeEventAsFailedAsync(payRewards: false);
         }
 
-        public async Task ActivateEventWindowAsync(long eventEndEpoch)
+        /// <param name="revealEpoch">When registration ends. Default: five days before the window
+        /// closes - Wednesday 00:00 UTC for a calendar week, whose end is Sunday 23:59:59.</param>
+        public async Task ActivateEventWindowAsync(long eventEndEpoch, long? revealEpoch = null)
         {
             await _snapshotGate.WaitAsync();
-            try { await ActivateEventWindowCoreAsync(eventEndEpoch); }
+            try { await ActivateEventWindowCoreAsync(eventEndEpoch, revealEpoch ?? eventEndEpoch + 1 - 5 * 86_400L); }
             finally { _snapshotGate.Release(); }
         }
 
-        private async Task ActivateEventWindowCoreAsync(long eventEndEpoch)
+        private async Task ActivateEventWindowCoreAsync(long eventEndEpoch, long revealEpoch)
         {
             await EnsureSnapshotAsync();
 
@@ -538,11 +410,15 @@ namespace FolkIdle.Server.Engine
                     return;
                 }
 
-                snapshot.MaxHp = BaseHp;
-                snapshot.CurrentHp = BaseHp;
+                snapshot.MaxHp = 0;
+                snapshot.CurrentHp = 0;
                 snapshot.TotalDamageContributed = 0;
                 snapshot.EventState = 1; // Active
                 snapshot.EventEndEpoch = eventEndEpoch;
+                snapshot.RevealEpoch = Math.Min(revealEpoch, eventEndEpoch);
+                snapshot.HpRevealed = 0;
+                snapshot.HpFactor = 0;
+                snapshot.DefeatedAtEpoch = 0;
                 snapshot.LastActiveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
                 // Modul: a fresh set of armour, and a fresh secret.
@@ -624,16 +500,17 @@ namespace FolkIdle.Server.Engine
                 // it pays exactly once: a second close finds EventState 2 above
                 // and returns. The attempt rows are left for the board to show
                 // until the next encounter opens and deletes them.
-                int paid = payRewards
-                    ? await PayEncounterRewardsAsync(db, DateTimeOffset.UtcNow.ToUnixTimeSeconds())
-                    : 0;
+                var payout = payRewards
+                    ? await PayEncounterRewardsAsync(db, snapshot)
+                    : new WeekPayout(0, snapshot.DefeatedAtEpoch > 0, Array.Empty<string>());
 
-                snapshot.EventState = 2; // Concluded: failed, window expired without defeat.
+                snapshot.EventState = 2; // Concluded. Whether it fell is DefeatedAtEpoch.
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
                 RefreshLocalSnapshot(snapshot);
-                Console.WriteLine($"World boss event window closed without defeat. TotalDamageContributed={snapshot.TotalDamageContributed}, RemainingHp={snapshot.CurrentHp}, rewards mailed={paid}.");
+                foreach (var taunt in payout.Taunts) ChatEngine.EnqueueWorldSpeech(ChatEngine.ChernobogSpeakerId, taunt);
+                Console.WriteLine($"World boss encounter closed. Defeated={payout.Defeated}, TotalDamageContributed={snapshot.TotalDamageContributed}, RemainingHp={snapshot.CurrentHp}, rewards mailed={payout.Mailed}, taunts={payout.Taunts.Count}.");
             }
             catch (Exception ex)
             {
@@ -685,11 +562,13 @@ namespace FolkIdle.Server.Engine
                     return WorldBossAttackOutcome.NotActive;
                 }
 
-                if (snapshot.CurrentHp <= 0)
-                {
-                    await transaction.RollbackAsync();
-                    return WorldBossAttackOutcome.AlreadyDefeated;
-                }
+                // Modul: A FALLEN BOSS IS STILL STRUCK (owner, 2026-10-13). The
+                // week goes on after the kill for milestones and rank, so
+                // AlreadyDefeated is no longer produced - kept declared, codes are
+                // never reused. The reveal is caught up here too, so the first
+                // strike after Wednesday midnight never lands on a hidden boss.
+                await WorldBossLedger.UpgradeLegacyEncounterAsync(db, snapshot);
+                await WorldBossLedger.RevealIfDueAsync(db, snapshot, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
                 var attempt = await db.PlayerWorldBossAttempts
                     .FromSqlRaw("SELECT * FROM \"player_world_boss_attempts\" WHERE \"PlayerId\" = {0} AND \"BossInstanceId\" = {1} FOR UPDATE", playerId, (long)bossId)
@@ -761,17 +640,11 @@ namespace FolkIdle.Server.Engine
                 }
 
                 long scaledDamage = (long)Math.Min(uint.MaxValue, serverComputedDamage * plateMultiplier);
-                long appliedDamage = ComputeAppliedDamage(snapshot.CurrentHp, (uint)scaledDamage);
-                snapshot.CurrentHp -= appliedDamage;
-                if (snapshot.CurrentHp < 0)
-                {
-                    snapshot.CurrentHp = 0;
-                }
-                snapshot.TotalDamageContributed += appliedDamage;
+                long appliedDamage = StrikeCredit(scaledDamage);
                 snapshot.LastActiveTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
                 attempt.AttemptCount++;
-                attempt.TotalInflictedDamage += appliedDamage;
+                var book = await WorldBossLedger.RecordStrikeAsync(db, snapshot, attempt, appliedDamage, null, await LevelOfAsync(db, playerId), DateTime.UtcNow);
                 // Modul: the quest line's "strike the world boss" step. The
                 // attempt rows are DELETED when the boss dies, so they cannot be
                 // the evidence; the act is latched here, in the strike's own
@@ -789,7 +662,7 @@ namespace FolkIdle.Server.Engine
                 // for an attempt already in the database, and skipped the
                 // notification that spends the pip. The notification goes
                 // FIRST and nothing after the commit may turn Landed into Failed.
-                AfterStrikeCommitted(playerId, appliedDamage, updatedAttemptCount, snapshot);
+                AfterStrikeCommitted(playerId, appliedDamage, updatedAttemptCount, snapshot, book);
                 await MirrorContributionAsync(playerId, appliedDamage);
                 return WorldBossAttackOutcome.Landed;
             }
@@ -813,7 +686,9 @@ namespace FolkIdle.Server.Engine
         {
             Interlocked.Exchange(ref _bossMaxHp, snapshot.MaxHp);
             Interlocked.Exchange(ref _bossCurrentHp, snapshot.CurrentHp);
-            Volatile.Write(ref _bossIsAlive, snapshot.CurrentHp > 0 ? 1 : 0);
+            Interlocked.Exchange(ref _defeatedAtEpoch, snapshot.DefeatedAtEpoch);
+            Volatile.Write(ref _hpRevealed, snapshot.HpRevealed);
+            Interlocked.Exchange(ref _revealEpoch, snapshot.RevealEpoch);
             Volatile.Write(ref _eventState, snapshot.EventState);
             Interlocked.Exchange(ref _eventEndEpoch, snapshot.EventEndEpoch);
             Volatile.Write(ref _brokenPlateMask, snapshot.BrokenPlateMask);
@@ -932,11 +807,9 @@ namespace FolkIdle.Server.Engine
                     return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.NotActive);
                 }
 
-                if (snapshot.CurrentHp <= 0)
-                {
-                    await transaction.RollbackAsync();
-                    return WorldBossStrikeOutcome.Refusal(WorldBossStrikeResult.AlreadyDefeated);
-                }
+                // A fallen boss is still struck - see the same note in ExecuteAttackCoreAsync.
+                await WorldBossLedger.UpgradeLegacyEncounterAsync(db, snapshot);
+                await WorldBossLedger.RevealIfDueAsync(db, snapshot, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
 
                 var attempt = await db.PlayerWorldBossAttempts
                     .FromSqlRaw("SELECT * FROM \"player_world_boss_attempts\" WHERE \"PlayerId\" = {0} AND \"BossInstanceId\" = {1} FOR UPDATE", playerId, (long)ActiveBossInstanceId)
@@ -991,14 +864,14 @@ namespace FolkIdle.Server.Engine
                 // first keeps "an account that has never fought still
                 // contributes" and lets every multiplier count on top of it.
                 double raw = Math.Max(MinStrikeDamage, attackDamage) * price.Played;
-                long appliedDamage = ComputeAppliedDamage(snapshot.CurrentHp, (uint)Math.Min(uint.MaxValue, raw));
-                snapshot.CurrentHp -= appliedDamage;
-                if (snapshot.CurrentHp < 0) snapshot.CurrentHp = 0;
-                snapshot.TotalDamageContributed += appliedDamage;
+                long appliedDamage = StrikeCredit((long)Math.Min(uint.MaxValue, raw));
                 snapshot.LastActiveTimestamp = nowEpoch;
 
                 attempt.AttemptCount++;
-                attempt.TotalInflictedDamage += appliedDamage;
+                // The skill score of a strike the player PLAYED - an auto-strike
+                // is not a choice to play badly, so the detector never sees it.
+                double? skill = order.IsPlayed ? WorldBossStrikeRules.Score(order.Landings) : null;
+                var book = await WorldBossLedger.RecordStrikeAsync(db, snapshot, attempt, appliedDamage, skill, await LevelOfAsync(db, playerId), DateTime.UtcNow);
                 // Modul: the quest line's "strike the world boss" step. The
                 // attempt rows are DELETED when the boss dies, so they cannot be
                 // the evidence; the act is latched here, in the strike's own
@@ -1009,7 +882,7 @@ namespace FolkIdle.Server.Engine
                 await db.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                AfterStrikeCommitted(playerId, appliedDamage, updatedAttemptCount, snapshot);
+                AfterStrikeCommitted(playerId, appliedDamage, updatedAttemptCount, snapshot, book);
                 await MirrorContributionAsync(playerId, appliedDamage);
 
                 return new WorldBossStrikeOutcome(
@@ -1046,8 +919,13 @@ namespace FolkIdle.Server.Engine
         /// notification that spends the pip goes first, and nothing here may
         /// turn Landed into Failed. Shared by opcode 32 and the wheel.
         /// </summary>
-        private void AfterStrikeCommitted(long playerId, long appliedDamage, byte updatedAttemptCount, WorldBossSnapshot snapshot)
+        private void AfterStrikeCommitted(long playerId, long appliedDamage, byte updatedAttemptCount, WorldBossSnapshot snapshot, StrikeBook book)
         {
+            if (book.DefeatedNow)
+            {
+                ChatEngine.EnqueueSystemAnnouncement(
+                    $"{WorldBossIdentity.Name} has been driven back into Svarog's chest! Everyone who registered this week shares the reward on Sunday.");
+            }
             _playerRegistry.WorldBossAttemptUpdateQueue.Enqueue(new WorldBossAttemptUpdateNotification
             {
                 PlayerId = playerId,
@@ -1072,14 +950,23 @@ namespace FolkIdle.Server.Engine
             }
         }
 
-        private static long ComputeAppliedDamage(long currentHp, uint clientPredictedDamage)
+        /// <summary>
+        /// What one strike credits the player: floored at MinStrikeDamage and
+        /// clamped at the old 100M ceiling. NOT capped by the boss's health any
+        /// more - the health is hidden for two days, and a strike's worth to the
+        /// player's milestones does not depend on how much of the boss is left
+        /// (WorldBossLedger caps what reaches the health itself).
+        /// </summary>
+        internal static long StrikeCredit(long raw) => Math.Clamp(raw, MinStrikeDamage, (long)MaxClientPredictedDamage);
+
+        /// <summary>The account level registration is judged on. The row lags by up to a checkpoint, which is fine for a floor of 10.</summary>
+        private static async Task<int> LevelOfAsync(FolkIdleDbContext db, long playerId)
         {
-            Span<long> damageScratch = stackalloc long[4];
-            damageScratch[0] = clientPredictedDamage;
-            damageScratch[1] = damageScratch[0] > MaxClientPredictedDamage ? MaxClientPredictedDamage : damageScratch[0];
-            damageScratch[2] = damageScratch[1] < 1000L ? 1000L : damageScratch[1];
-            damageScratch[3] = damageScratch[2] > currentHp ? currentHp : damageScratch[2];
-            return damageScratch[3];
+            var level = await db.PlayerRecords.AsNoTracking()
+                .Where(p => p.Id == playerId)
+                .Select(p => (int?)p.CurrentLevel)
+                .SingleOrDefaultAsync();
+            return level ?? 0;
         }
     }
 }

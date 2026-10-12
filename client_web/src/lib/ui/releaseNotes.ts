@@ -35,6 +35,30 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.24.0',
+    date: '2026-10-13',
+    headline: 'Chernobog breaks out of his chest every Monday.',
+    sections: [
+      {
+        title: 'World Boss',
+        items: [
+          'The world boss is Chernobog, the black god Svarog sealed in a forged chest. Below a quarter of his health he becomes the Black Serpent.',
+          'Monday and Tuesday are registration: his health is hidden, and striking him (level 10 or higher) signs you up for the week.',
+          'On Wednesday his health is revealed, sized to how hard the registered players hit him - so he can really be brought down. Fight on until Sunday either way.',
+          'Weekly damage milestones pay the moment you reach them: gold measured in hours of your own income, up to 60 diamonds a week, the Svarog, Black Serpent and Chernobog avatars, two titles - and at a million damage the Black Serpent pet, +12% damage and +12% critical damage.',
+          'If he falls, everyone registered gets two hours of their income and a Legendary chest on Sunday. The week’s top three wear Svarog’s Hammer, Dazhbog’s Light and Simargl’s Wing until the next Sunday.',
+          'Holding back on Monday to keep him weak is noticed - and Chernobog will say so in World chat.',
+        ],
+      },
+      {
+        title: 'Daily bonus',
+        items: [
+          'The daily login gold now doubles in your second week and triples from your third, and stays there.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.23.0',
     date: '2026-10-12',
     headline: 'A pet that finds you now says so.',

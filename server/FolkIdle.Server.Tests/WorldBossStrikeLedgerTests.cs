@@ -248,6 +248,8 @@ namespace FolkIdle.Server.Tests
             Assert.True(WorldBossStrikeRules.IsEnraged(12_500_000, 50_000_000));
             Assert.False(WorldBossStrikeRules.IsEnraged(12_500_001, 50_000_000));
             Assert.False(WorldBossStrikeRules.IsEnraged(0, 0));
+            // A fallen boss is struck calmly: the enraged wheel is for a boss still standing.
+            Assert.False(WorldBossStrikeRules.IsEnraged(0, 100));
         }
     }
 }

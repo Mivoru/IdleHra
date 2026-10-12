@@ -138,6 +138,23 @@ namespace FolkIdle.Server.Domain.Social
             SystemAnnouncementQueue.Enqueue(text);
         }
 
+        // Modul: A NON-PLAYER WHO SPEAKS IN WORLD CHAT (owner, 2026-10-13).
+        // Chernobog taunts a sandbagger in the World channel, not in News: it is
+        // meant to read as the boss talking, among the players. A negative
+        // sender id is never a player (ids start at 1, 0 is the system and -1
+        // the client's own "Dev" line), so the client names it from its own
+        // short table of speakers. Same bounded, drop-under-flood queue as the
+        // announcements above.
+        public const long ChernobogSpeakerId = -2;
+        public static readonly ConcurrentQueue<(long SpeakerId, string Text)> WorldSpeechQueue = new();
+
+        public static void EnqueueWorldSpeech(long speakerId, string text)
+        {
+            if (speakerId >= 0 || string.IsNullOrWhiteSpace(text)) return;
+            if (WorldSpeechQueue.Count >= MaxQueuedAnnouncements) return;
+            WorldSpeechQueue.Enqueue((speakerId, text));
+        }
+
         // Modul: the network layer (NetworkBroadcastSystem) owns the
         // WebSocket connections ChatEngine never touches directly - this
         // event is how the dispatch worker below hands a queued item back
@@ -182,6 +199,18 @@ namespace FolkIdle.Server.Domain.Social
                     _ = ChatHistory.RecordAsync(_serviceProvider, AnnouncementChannelType, 0, 0L, announcement, announcedAtEpochMs);
 
                     OutboundDispatchQueue.Enqueue(new ChatDispatchItem(announcementPacket, DispatchModeGlobal, guildId: 0, targetPlayerId: 0));
+                }
+
+                while (WorldSpeechQueue.TryDequeue(out var speech))
+                {
+                    long spokenAtEpochMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                    ResponseChatMessagePacket speechPacket = BuildResponsePacket(
+                        senderPlayerId: speech.SpeakerId,
+                        timestampEpochMs: spokenAtEpochMs,
+                        messageText: speech.Text,
+                        channelType: GlobalChannelType);
+                    _ = ChatHistory.RecordAsync(_serviceProvider, GlobalChannelType, 0, speech.SpeakerId, speech.Text, spokenAtEpochMs);
+                    OutboundDispatchQueue.Enqueue(new ChatDispatchItem(speechPacket, DispatchModeGlobal, guildId: 0, targetPlayerId: 0));
                 }
 
                 if (OutboundDispatchQueue.TryDequeue(out ChatDispatchItem item))

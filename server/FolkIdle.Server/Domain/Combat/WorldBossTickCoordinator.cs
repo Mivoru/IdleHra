@@ -164,7 +164,9 @@ namespace FolkIdle.Server.Domain.Combat
             // the player their session.
             var stateRefusal = ClientCommandValidator.WorldBossStateRefusal(
                 ref currentPayload,
-                ctx.WorldBossEngine.IsBossDead(),
+                // A fallen boss is still struck (owner, 2026-10-13): the week
+                // goes on for milestones and rank, so "dead" never refuses.
+                bossIsDead: false,
                 ctx.WorldBossEngine.IsEventActive);
             if (stateRefusal.HasValue)
             {

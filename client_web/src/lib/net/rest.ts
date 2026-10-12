@@ -2275,21 +2275,66 @@ export interface WorldBossBoardRow {
   Name: string;
   Damage: number;
   Title: string | null;
+  /** Registered this week: their damage counts against the boss and earns the kill reward. */
+  Registered: boolean;
 }
 
-/** The encounter's damage board: who dealt what, and the server's total. */
+/** One weekly milestone, priced by the server for the asking player (WorldBossBoard). */
+export interface WorldBossMilestoneView {
+  Damage: number;
+  /** Gold it pays THIS player - minutes of their own income, never under the floor. */
+  Gold: number;
+  Diamonds: number;
+  AvatarName: string | null;
+  AvatarArt: string | null;
+  Title: string | null;
+  PetName: string | null;
+  PetArt: string | null;
+  /** Paid this week. */
+  Reached: boolean;
+  /** Its avatar, title or pet is already the player's: crossing it again pays only gold and diamonds. */
+  CosmeticOwned: boolean;
+}
+
+export interface WorldBossPlaceView {
+  Place: number;
+  Title: string;
+  TitleColor: string | null;
+  GoldHours: number;
+  /** Who wears it now (last week's holder), or null. */
+  Holder: string | null;
+}
+
+/**
+ * The encounter's board: who dealt what, the phase of Chernobog's week, and
+ * every reward priced for the asking player. The screen keeps no table of
+ * its own - the milestones, places and kill reward all come from here.
+ */
 export interface WorldBossBoardView {
   TotalDamage: number;
+  /** 0 while the health is hidden (registration) or when nobody registered. */
   BossMaxHp: number;
   BossCurrentHp: number;
   Participants: number;
   Top: WorldBossBoardRow[];
   Me: WorldBossBoardRow | null;
-  MyBracket: string | null;
   /** WorldBossIdentity: the boss's name, from monsters.json (task 105). */
   BossName: string;
-  /** The monsters.json id the boss is - its portrait, when it has art. */
   BossMonsterId: number;
+  /** Sprite paths: the boss, and the Black Serpent form below a quarter of its health. */
+  BossArt: string;
+  EnragedArt: string;
+  Phase: 'Registration' | 'Revealed' | 'Closed';
+  RevealEpoch: number;
+  EventEndEpoch: number;
+  RegisteredCount: number;
+  Defeated: boolean;
+  DefeatedAtEpoch: number;
+  RegistrationLevel: number;
+  Milestones: WorldBossMilestoneView[];
+  Places: WorldBossPlaceView[];
+  KillGold: number;
+  KillGoldHours: number;
 }
 
 export function fetchBossBoard(): Promise<WorldBossBoardView | null> {

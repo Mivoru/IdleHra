@@ -593,34 +593,25 @@ namespace FolkIdle.Server.Tests
             Assert.Equal((byte)CommandResultCode.Success, notif.ResultCode);
         }
 
+        // Modul: THE HEALTH NO LONGER SCALES WITH WHO IS ONLINE (2026-10-13).
+        // This test used to pin "50M x 1.5 x online + mastery x 250"; the health
+        // is now hidden during registration and set at the reveal from the
+        // registered players' own damage (WorldBossRevealTests). What is left to
+        // pin here is the attempt cap, and that a strike is credited exactly.
         [Fact]
-        public async Task Test_WorldBoss_AttemptLimitingAndScaling()
+        public async Task Test_WorldBoss_AttemptLimiting()
         {
             var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
-            long[] onlinePlayerIds = { DbSeeder.PlayerLowId, DbSeeder.PlayerMidId, DbSeeder.PlayerHighId };
 
-            // Attacks are gated behind an active event window; activate one before scaling/attacking.
+            // Attacks are gated behind an active event window.
             await worldBossEngine.ActivateEventWindowAsync(DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
             Assert.True(worldBossEngine.IsEventActive);
-
-            await worldBossEngine.ScaleActiveBossAsync(onlinePlayerIds);
-
-            long expectedMasterySum = 5 + 15 + 30;
-            long expectedMaxHp = (long)(SeedBossMaxHp * (onlinePlayerIds.Length * 1.50) + (expectedMasterySum * 250.0));
-            Assert.Equal(expectedMaxHp, worldBossEngine.BossMaxHp);
+            Assert.Equal(0, worldBossEngine.BossMaxHp);
 
             const uint attackDamage = 5000;
-            long hpBeforeAttacks = worldBossEngine.BossCurrentHp;
 
-            // Modul: STRIKE A PLATE THAT IS NOT THE WEAK ONE, deliberately.
-            //
-            // This test is about the attempt cap and the health scaling, and it
-            // asserts damage lands exactly as sent. Since 2026-09-05 the weak
-            // plate takes triple, and which plate that is is re-seeded randomly
-            // on every ActivateEventWindowAsync - so a hardcoded plate 0 would
-            // pass four runs in five and fail the fifth, which is worse than
-            // failing every time. Reading the seed and stepping past it keeps
-            // this test about what it is about.
+            // A plate that is NOT the weak one, so the strike is credited exactly
+            // as sent (the weak plate is re-seeded randomly every activation).
             byte armouredPlate;
             await using (var seedDb = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
@@ -630,20 +621,16 @@ namespace FolkIdle.Server.Tests
             }
 
             // Modul: ONE STRIKE A DAY since 2026-09-25 (was three per encounter).
-            long hpBeforeThisAttack = worldBossEngine.BossCurrentHp;
-            await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage, armouredPlate);
-            Assert.Equal(hpBeforeThisAttack - attackDamage, worldBossEngine.BossCurrentHp);
-            Assert.Equal(hpBeforeAttacks - attackDamage, worldBossEngine.BossCurrentHp);
-
-            long hpBeforeSecondAttack = worldBossEngine.BossCurrentHp;
-            await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage, armouredPlate);
-
-            Assert.Equal(hpBeforeSecondAttack, worldBossEngine.BossCurrentHp);
+            Assert.Equal(WorldBossAttackOutcome.Landed,
+                await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage, armouredPlate));
+            Assert.Equal(WorldBossAttackOutcome.NoAttemptsLeft,
+                await worldBossEngine.ExecuteAttackAsync(DbSeeder.PlayerLowId, WorldBossEngine.ActiveBossInstanceId, attackDamage, armouredPlate));
 
             await using var verifyDb = await _fixture.DbContextFactory.CreateDbContextAsync();
             var attempt = await verifyDb.PlayerWorldBossAttempts.AsNoTracking()
                 .SingleAsync(a => a.PlayerId == DbSeeder.PlayerLowId && a.BossInstanceId == WorldBossEngine.ActiveBossInstanceId);
             Assert.Equal(WorldBossEngine.MaxAttemptsPerDay, attempt.AttemptCount);
+            Assert.Equal(attackDamage, attempt.TotalInflictedDamage);
         }
 
         // Modul: THE SESSION CAP IS GONE, and this test used to pin it (a strike
@@ -657,7 +644,7 @@ namespace FolkIdle.Server.Tests
 
             var worldBossEngine = new WorldBossEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
             await worldBossEngine.ActivateEventWindowAsync(DateTimeOffset.UtcNow.AddDays(7).ToUnixTimeSeconds());
-            await worldBossEngine.ScaleActiveBossAsync(new[] { DbSeeder.PlayerLowId });
+            await worldBossEngine.MaintainActiveBossAsync();
 
             long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())

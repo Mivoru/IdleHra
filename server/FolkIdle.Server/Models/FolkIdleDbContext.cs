@@ -54,6 +54,7 @@ namespace FolkIdle.Server.Models
         public DbSet<DailyQuestRecord> DailyQuestRecords { get; set; }
         public DbSet<WorldBossSnapshot> WorldBossSnapshots { get; set; }
         public DbSet<PlayerWorldBossAttempt> PlayerWorldBossAttempts { get; set; }
+        public DbSet<WorldBossProfile> WorldBossProfiles { get; set; }
         public DbSet<LiveOpsEventRotation> LiveOpsEventRotations { get; set; }
         public DbSet<PlayerDeviceRegistration> PlayerDeviceRegistrations { get; set; }
         public DbSet<PlayerRefreshToken> PlayerRefreshTokens { get; set; }

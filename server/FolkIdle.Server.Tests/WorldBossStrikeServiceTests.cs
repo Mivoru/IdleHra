@@ -149,9 +149,8 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(WorldBossStrikeResult.NotActive, service.IssueChallengeAsync(Player, false).Result.Result);
             board.IsEventActive = true;
 
-            board.Dead = true;
-            Assert.Equal(WorldBossStrikeResult.AlreadyDefeated, service.IssueChallengeAsync(Player, false).Result.Result);
-            board.Dead = false;
+            // A fallen boss is still fought for milestones and rank (owner,
+            // 2026-10-13): "dead" is no longer a refusal, so it is not tested as one.
 
             board.EventEndEpoch = _nowMs / 1000 + 30; // less than countdown + play + margin
             Assert.Equal(WorldBossStrikeResult.TooLateInWindow, service.IssueChallengeAsync(Player, false).Result.Result);

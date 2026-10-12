@@ -2337,6 +2337,49 @@ await go('World Boss');
           grey && /today's strike/i.test(reason),
           `grey ${grey}: "${reason.trim()}"`,
         );
+
+        // Modul: CHERNOBOG'S WEEK (2026-10-13). The window opens in registration
+        // with the health hidden; the fixture (level 40) is registered by the
+        // strike above; the dev reveal sizes the health from that strike, and
+        // the screen has to follow. Each step asserts the world changed, not
+        // that a label exists.
+        const boardNow = await apiGet('/api/v1/worldboss/board');
+        const attemptRow = await apiGet('/api/v1/dev/worldboss/attempt');
+        record(
+          'the strike registers the fixture for the week',
+          boardNow?.Me?.Registered === true && attemptRow?.IsRegistered === true,
+          `board ${boardNow?.Me?.Registered}, row ${attemptRow?.IsRegistered}, phase ${boardNow?.Phase}`,
+        );
+        record(
+          'the registration hides the health, and the screen says so',
+          boardNow?.Phase === 'Registration' && boardNow?.BossMaxHp === 0 &&
+            (await page.locator('[data-testid="boss-phase"][data-phase="Registration"]').count()) > 0,
+          `phase ${boardNow?.Phase}, max ${boardNow?.BossMaxHp}`,
+        );
+        const firstMilestone = boardNow?.Milestones?.[0];
+        record(
+          'the first milestone is reached exactly when the damage crosses it',
+          firstMilestone && firstMilestone.Reached === (Number(boardNow.Me?.Damage ?? 0) >= firstMilestone.Damage),
+          `damage ${boardNow?.Me?.Damage}, milestone ${firstMilestone?.Damage} reached ${firstMilestone?.Reached}`,
+        );
+
+        const revealStatus = await apiPostStatus('/api/v1/dev/worldboss/reveal', {});
+        const revealed = await apiGet('/api/v1/worldboss/board');
+        record(
+          'the reveal sizes the health from the registered damage',
+          revealStatus === 200 && revealed?.Phase === 'Revealed' && revealed.BossMaxHp > 0 &&
+            revealed.BossCurrentHp === revealed.BossMaxHp - Number(attemptRow?.TotalInflictedDamage ?? 0),
+          `status ${revealStatus}, phase ${revealed?.Phase}, hp ${revealed?.BossCurrentHp}/${revealed?.BossMaxHp}, dealt ${attemptRow?.TotalInflictedDamage}`,
+        );
+        const barShown = await page
+          .waitForFunction(
+            () => Number(document.querySelector('.bar.hp')?.getAttribute('aria-valuemax') ?? 0) > 0,
+            null,
+            { timeout: 70000 },
+          )
+          .then(() => true)
+          .catch(() => false);
+        record('the screen shows the revealed health bar', barShown);
       }
     }
   }

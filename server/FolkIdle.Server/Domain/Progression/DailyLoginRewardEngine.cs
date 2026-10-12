@@ -79,6 +79,21 @@ namespace FolkIdle.Server.Domain.Progression
             return GoldRewardMatrices[ResolveActiveMatrixIndex(todayDateKey)][streakDay - 1];
         }
 
+        // Modul: THE REWARD GROWS FOR THREE WEEKS, THEN HOLDS (owner, 2026-10-13).
+        // The login reward is mostly for beginners, so the first week stays as it
+        // was; the second pays double and the third and every week after it
+        // triple. A "week" is a completed seven-day cycle over the account's
+        // whole life (PlayerRecord.LoginCyclesCompleted), so a broken streak does
+        // not send a returning player back to week one. Only the gold grows -
+        // the day-7 diamonds stay at 100.
+        internal const int MaxWeekMultiplier = 3;
+
+        /// <summary>1 in the first week, 2 in the second, 3 from the third on.</summary>
+        internal static int WeekMultiplier(int cyclesCompleted) => Math.Clamp(cyclesCompleted + 1, 1, MaxWeekMultiplier);
+
+        internal static long GetGoldReward(long todayDateKey, int streakDay, int cyclesCompleted)
+            => GetGoldReward(todayDateKey, streakDay) * WeekMultiplier(cyclesCompleted);
+
         public readonly struct LoginRewardResult
         {
             public readonly bool Granted;
@@ -151,8 +166,10 @@ namespace FolkIdle.Server.Domain.Progression
                     player.LastLoginTimestamp = nowEpoch;
                     player.LoginStreakDays = newStreakDay;
 
-                    long goldReward = GetGoldReward(todayDateKey, newStreakDay);
+                    long goldReward = GetGoldReward(todayDateKey, newStreakDay, player.LoginCyclesCompleted);
                     int diamondReward = newStreakDay == 7 ? PremiumDiamondsOnDay7Completion : 0;
+                    // Day 7 completes a cycle; the next one is paid at the next week's rate.
+                    if (newStreakDay == 7) player.LoginCyclesCompleted++;
 
                     // Modul: an upsert inside this transaction (CommodityLedger).
                     await CommodityLedger.AddAsync(context, player.Id, "gold", goldReward);

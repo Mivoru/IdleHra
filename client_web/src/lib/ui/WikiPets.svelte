@@ -16,6 +16,7 @@
     { title: 'Monster pets - found on any kill', sources: [PET_SOURCE.Monster] },
     { title: 'Event pets - from a seasonal event', sources: [PET_SOURCE.Shop, PET_SOURCE.RareDrop, PET_SOURCE.Boss] },
     { title: 'The rebirth pet', sources: [PET_SOURCE.Rebirth] },
+    { title: 'The world boss pet', sources: [PET_SOURCE.WorldBoss] },
   ];
 
   const groups = $derived(

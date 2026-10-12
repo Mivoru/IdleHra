@@ -124,6 +124,23 @@ REBIRTH_AVATARS: dict[str, tuple[str, tuple[float, float, float]]] = {
     "Morana.jpg": ("morana.webp", (0.50, 0.225, 0.22)),
 }
 
+# Owner, 2026-10-13: Chernobog, the world boss. The boss and the Black Serpent
+# are art on white (cut out like the event art); the Serpent is also the top
+# milestone's pet. The three milestone avatars are painted scenes like the
+# rebirth ones, so their heads are cropped straight from the painting - crops
+# are (centre x, centre y, side) as fractions of the WHOLE image width (x) or
+# height (y, side), tuned by eye. Keys are relative to WithWhiteBackground.
+WORLD_BOSS_OUTPUT = REPO / "client" / "Assets" / "Images" / "SpritesWeb" / "WorldBoss"
+WORLD_BOSS_CUTOUTS = {
+    "Others/Chernobog.jpg": [WORLD_BOSS_OUTPUT / "chernobog.webp"],
+    "Others/Black Serpent.jpg": [WORLD_BOSS_OUTPUT / "black_serpent.webp", PETS_OUTPUT / "black_serpent.webp"],
+}
+WORLD_BOSS_AVATARS: dict[str, tuple[str, tuple[float, float, float]]] = {
+    "Others/SvarogAV.jpg": ("svarog.webp", (0.52, 0.19, 0.22)),
+    "Others/BlackSerpentAV.jpg": ("black_serpent.webp", (0.47, 0.19, 0.32)),
+    "Others/ChernobogAV.jpg": ("chernobog.webp", (0.507, 0.28, 0.36)),
+}
+
 AVATAR_CROPS: dict[str, tuple[float, float, float]] = {
     "banshee": (0.5, 0.2, 0.4),
     "vampire": (0.5, 0.2, 0.4),
@@ -253,10 +270,26 @@ def main() -> int:
         written += 1
         print(f"  {out_rel}  {image.width}x{image.height}  {destination.stat().st_size // 1024} KB")
 
-    for master_name, (out_name, (cx, cy, side)) in REBIRTH_AVATARS.items():
+    for master_name, destinations in WORLD_BOSS_CUTOUTS.items():
+        if only and not any(only in str(d) for d in destinations):
+            continue
+        master = MASTERS / master_name
+        if not master.is_file():
+            print(f"missing master: {master.relative_to(REPO)}", file=sys.stderr)
+            return 1
+        rgba = unmultiply_white_fringe(remove_enclosed_white(cut_out(np.array(Image.open(master).convert("RGB")))))
+        image = downscale(Image.fromarray(np.clip(trim(rgba), 0, 255).astype(np.uint8), "RGBA"))
+        for destination in destinations:
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            image.save(destination, "WEBP", quality=WEBP_QUALITY, alpha_quality=WEBP_ALPHA_QUALITY, method=6)
+            written += 1
+            print(f"  {destination.relative_to(REPO)}  {image.width}x{image.height}  {destination.stat().st_size // 1024} KB")
+
+    avatar_jobs = [(REBIRTH_AVATARS_ROOT / m, REBIRTH_AVATARS_OUTPUT, o, c) for m, (o, c) in REBIRTH_AVATARS.items()]
+    avatar_jobs += [(MASTERS / m, WORLD_BOSS_OUTPUT / "avatars", o, c) for m, (o, c) in WORLD_BOSS_AVATARS.items()]
+    for master, output_dir, out_name, (cx, cy, side) in avatar_jobs:
         if only and only not in out_name:
             continue
-        master = REBIRTH_AVATARS_ROOT / master_name
         if not master.is_file():
             print(f"missing master: {master.relative_to(REPO)}", file=sys.stderr)
             return 1
@@ -265,12 +298,12 @@ def main() -> int:
         size = int(side * h)
         x0, y0 = int(cx * w - size / 2), int(cy * h - size / 2)
         head = painting.crop((x0, y0, x0 + size, y0 + size)).convert("RGBA")
-        destination = REBIRTH_AVATARS_OUTPUT / out_name
+        destination = output_dir / out_name
         destination.parent.mkdir(parents=True, exist_ok=True)
         image = downscale(head)
         image.save(destination, "WEBP", quality=WEBP_QUALITY, alpha_quality=WEBP_ALPHA_QUALITY, method=6)
         written += 1
-        print(f"  Rebirth/avatars/{out_name}  {image.width}x{image.height}  {destination.stat().st_size // 1024} KB")
+        print(f"  {destination.relative_to(REPO)}  {image.width}x{image.height}  {destination.stat().st_size // 1024} KB")
 
     print(f"{written} images -> {OUTPUT.relative_to(REPO)}, {PETS_OUTPUT.relative_to(REPO)}, {REBIRTH_AVATARS_OUTPUT.relative_to(REPO)}")
     return 0

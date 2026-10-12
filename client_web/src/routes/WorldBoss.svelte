@@ -4,10 +4,13 @@
   import PlayerAvatar from '../lib/ui/PlayerAvatar.svelte';
   import PlayerTitle from '../lib/ui/PlayerTitle.svelte';
   import { profileLink } from '../lib/ui/profileLink';
-  // Modul: the world boss. A server-wide encounter that scales with how many
-  // accounts are online and their combined race mastery, so its health bar is
-  // shared by everyone - the one place in this game where a player's progress
-  // is visible to strangers in real time.
+  // Modul: the world boss - Chernobog since 2026-10-13. One encounter a week,
+  // shared by the whole server. Monday and Tuesday are registration with the
+  // health hidden; on Wednesday it is revealed, sized to what the registered
+  // players dealt (WorldBossHpRules), and only their damage moves it. Weekly
+  // milestones pay the moment they are crossed; Sunday pays the top three and,
+  // if he fell, everyone registered. Every number on this screen is read from
+  // /api/v1/worldboss/board - it keeps no reward table of its own.
   //
   // Missing from the web client entirely until the 2026-08-02 audit. Its rules
   // used to be enforced by SILENT ROLLBACK; since task 25 the server answers
@@ -38,11 +41,11 @@
   } from '../lib/net/rest';
   import { worldBossResultSentence, worldBossResultTone } from '../lib/game/worldBossResults';
   import { tap } from '../lib/net/haptics';
-  import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
+  import { spriteUrl } from '../lib/ui/spriteUrl';
+  import { avatarIcon } from '../lib/ui/sprites';
   import SeasonalBossPanel from '../lib/ui/SeasonalBossPanel.svelte';
   import { backgroundUrl } from '../lib/ui/sprites';
   import { bossTimeLeft } from '../lib/game/worldBossTime';
-  import { WORLD_BOSS_REWARDS } from '../lib/ui/wikiData';
 
   // Modul: THE SHIELD WHEEL (task 36). The server says which mode it runs
   // (FOLKIDLE_BOSS_MINIGAME); with it off, GET /challenge answers Disabled and
@@ -146,6 +149,10 @@
   const strikesSpent = $derived(snap?.WorldBossAttemptCount ?? 0);
   $effect(() => {
     void strikesSpent;
+    // Also when the health appears or moves (the Wednesday reveal, a kill, the
+    // window opening): the phase lives on the board, not on the wire.
+    void snap?.WorldBossMaxHp;
+    void snap?.WorldBossEventState;
     fetchBossBoard()
       .then((view) => (board = view))
       .catch(() => {});
@@ -300,7 +307,6 @@
     if (eventState !== BossEventState.Active) {
       return `The boss is not here right now. ${returnsLabel}`;
     }
-    if (currentHp <= 0) return `The boss has been defeated. ${returnsLabel}`;
     if (attemptsLeft === 0) {
       return `You have used today's strike. ${refillLabel}`;
     }
@@ -312,8 +318,34 @@
   // monsters.json), on the board answer. Until that answer lands the heading
   // says what it always said, rather than a name this file made up.
   const bossName = $derived(board?.BossName ?? 'World Boss');
-  const bossMonsterId = $derived(board?.BossMonsterId ?? 0);
   const banner = backgroundUrl('yggdrasil');
+
+  // Modul: CHERNOBOG'S WEEK, as the board reports it. The wire's health is 0
+  // during registration (hidden, not dead), so the phase - not the number -
+  // decides what the health area says.
+  const phase = $derived(board?.Phase ?? 'Closed');
+  const registering = $derived(phase === 'Registration');
+  const defeated = $derived(board?.Defeated ?? false);
+  const revealLabel = $derived(board && board.RevealEpoch > 0 ? formatWhen(new Date(board.RevealEpoch * 1000), $minuteClock) : '');
+  // Below a quarter of his health he is the Black Serpent - the same line the
+  // server uses for the enraged shield wheel (WorldBossStrikeRules.IsEnraged).
+  const enraged = $derived(phase === 'Revealed' && maxHp > 0 && currentHp > 0 && currentHp * 4 <= maxHp);
+  const heroArt = $derived(board ? spriteUrl(enraged ? board.EnragedArt : board.BossArt) : '');
+  const heroName = $derived(enraged ? 'the Black Serpent' : bossName);
+  const registered = $derived(board?.Me?.Registered ?? false);
+
+  // The next milestone the player has not reached this week, for the progress bar.
+  const myDamage = $derived(board?.Me?.Damage ?? 0);
+  const nextMilestone = $derived(board?.Milestones.find((m) => !m.Reached) ?? null);
+  const prevMilestoneDamage = $derived.by(() => {
+    if (!board) return 0;
+    const reached = board.Milestones.filter((m) => m.Reached);
+    return reached.length ? reached[reached.length - 1].Damage : 0;
+  });
+  const milestonePct = $derived(
+    nextMilestone ? Math.max(0, Math.min(1, (myDamage - prevMilestoneDamage) / (nextMilestone.Damage - prevMilestoneDamage))) : 1,
+  );
+  const goldHoursLabel = (hours: number) => (hours === 1 ? '1 hour' : `${hours} hours`);
 
   // Modul: THE RULES ARE A DISCLOSURE, OPEN UNTIL THE FIRST STRIKE (task 105).
   // An 8-line armour rule and two more paragraphs pushed the strike to about
@@ -365,7 +397,9 @@
   <div class="col main-col">
     <section class="panel hero-panel" class:live={eventState === BossEventState.Active}>
       <header class="hero" style="--banner: url('{banner}')">
-        <MonsterPortrait monsterId={bossMonsterId} name={bossName} size="md" />
+        {#if heroArt}
+          <img class="boss-art" class:enraged src={heroArt} alt={heroName} decoding="async" data-testid="boss-art" />
+        {/if}
         <div class="hero-text">
           <p class="eyebrow">
             <span>World Boss</span>
@@ -374,11 +408,26 @@
               <span class="time">{remainingLabel}</span>
             {/if}
           </p>
-          <h2 data-testid="boss-name">{bossName}</h2>
+          <h2 data-testid="boss-name">{bossName}{#if enraged}<span class="form"> - the Black Serpent</span>{/if}</h2>
         </div>
       </header>
 
-      {#if eventState === BossEventState.Active}
+      {#if eventState === BossEventState.Active && registering}
+        <p class="phase-note small" data-testid="boss-phase" data-phase="Registration">
+          <strong>Registration.</strong> His health is hidden until {revealLabel}. Strike before then
+          (level {board?.RegistrationLevel ?? 10}+) to register: your damage counts against him, and you share
+          the reward if he falls. {board?.RegisteredCount ?? 0} registered so far.
+        </p>
+      {:else if eventState === BossEventState.Active && defeated}
+        <p class="phase-note small fallen" data-testid="boss-phase" data-phase="Defeated">
+          <strong>Driven back into Svarog's chest!</strong> Everyone who registered shares the reward on
+          Sunday. Keep striking for your milestones and your place until then.
+        </p>
+      {:else if eventState === BossEventState.Active && maxHp === 0}
+        <p class="phase-note small" data-testid="boss-phase" data-phase="Unopposed">
+          Nobody registered this week, so he cannot fall - but your milestones and your place still pay.
+        </p>
+      {:else if eventState === BossEventState.Active}
         <!-- The numbers sit ABOVE the bar, on the panel: a label inside the
              fill was dark text on dark orange (audit J2). -->
         <div class="hp-row">
@@ -386,12 +435,24 @@
           <span class="dim">{(hpPct * 100).toFixed(1)}%</span>
         </div>
         <div class="bar hp" role="progressbar" aria-label="{bossName} health" aria-valuenow={currentHp} aria-valuemin="0" aria-valuemax={maxHp}>
-          <div class="bar-fill boss" style="width: {hpPct * 100}%"></div>
+          <div class="bar-fill boss" class:serpent={enraged} style="width: {hpPct * 100}%"></div>
         </div>
       {:else if eventState === BossEventState.Concluded}
         <p class="dim small">This encounter is over. {returnsLabel}</p>
       {:else}
         <p class="dim small">No encounter is running. {returnsLabel}</p>
+      {/if}
+
+      {#if eventState === BossEventState.Active && board}
+        <p class="dim tiny register-note" data-testid="boss-registered" data-registered={registered}>
+          {#if registered}
+            You are registered this week.
+          {:else if registering}
+            You are not registered yet - today's strike will register you.
+          {:else}
+            You did not register this week: your damage counts for your milestones and your place, not for the kill.
+          {/if}
+        </p>
       {/if}
 
       <div class="strike-head">
@@ -524,6 +585,59 @@
          renders only while an event with a boss is on. -->
     <SeasonalBossPanel compact />
 
+    {#if board}
+      <section class="panel" data-testid="boss-milestones">
+        <h3 class="first">Your milestones this week</h3>
+        <p class="small together">
+          <strong title={numberTitle(myDamage)}>{formatNumber(myDamage)}</strong> damage
+          {#if nextMilestone}- next at {formatNumber(nextMilestone.Damage)}{:else}- every milestone reached{/if}
+        </p>
+        <div class="bar ms" role="progressbar" aria-label="Progress to the next milestone" aria-valuenow={Math.round(milestonePct * 100)} aria-valuemin="0" aria-valuemax="100">
+          <div class="bar-fill ms-fill" style="width: {milestonePct * 100}%"></div>
+        </div>
+        <ul class="milestones">
+          {#each board.Milestones as m (m.Damage)}
+            <li class:reached={m.Reached} data-reached={m.Reached}>
+              <span class="ms-damage" title={numberTitle(m.Damage)}>{formatNumber(m.Damage)}</span>
+              <span class="ms-reward">
+                {#if m.Gold > 0}<span title={numberTitle(m.Gold)}>{formatNumber(m.Gold)} gold</span>{/if}
+                {#if m.Diamonds > 0}<span>{m.Diamonds} diamonds</span>{/if}
+                {#if m.AvatarArt}
+                  <span class="ms-cosmetic"><img src={avatarIcon(m.AvatarArt)} alt="" decoding="async" />{m.AvatarName} avatar</span>
+                {/if}
+                {#if m.Title}<span class="ms-cosmetic">title "{m.Title}"</span>{/if}
+                {#if m.PetArt}
+                  <span class="ms-cosmetic"><img src={spriteUrl(m.PetArt)} alt="" decoding="async" />{m.PetName} pet</span>
+                {/if}
+                {#if m.CosmeticOwned}<span class="dim">(yours already)</span>{/if}
+              </span>
+              <span class="ms-state" aria-label={m.Reached ? 'reached' : 'not yet'}>{m.Reached ? '✓' : ''}</span>
+            </li>
+          {/each}
+        </ul>
+        <p class="dim tiny">Paid into your mailbox the moment you cross it. Gold is time of your own income.</p>
+      </section>
+
+      <section class="panel" data-testid="boss-sunday">
+        <h3 class="first">On Sunday</h3>
+        <p class="small together">
+          {#if defeated}He fell:{:else}If he falls,{/if} everyone registered gets
+          <strong title={numberTitle(board.KillGold)}>{formatNumber(board.KillGold)} gold</strong>
+          ({goldHoursLabel(board.KillGoldHours)} of your income) and a <strong>Legendary chest</strong>.
+        </p>
+        <ol class="places">
+          {#each board.Places as place (place.Place)}
+            <li>
+              <span class="rank">{place.Place}.</span>
+              <span class="title-chip" style={place.TitleColor ? `--chip: ${place.TitleColor}` : ''}>{place.Title}</span>
+              <span class="dim tiny">{goldHoursLabel(place.GoldHours)} of income{#if place.Holder} - worn by {place.Holder}{/if}</span>
+            </li>
+          {/each}
+        </ol>
+        <p class="dim tiny">The week's top three by damage wear these titles until the next Sunday.</p>
+      </section>
+    {/if}
+
     <section class="panel">
       <h3 class="first">Damage this week</h3>
       {#if board && board.Participants > 0}
@@ -534,8 +648,7 @@
         </p>
         {#if board.Me}
           <p class="small" data-testid="boss-me">
-            You are <strong>#{board.Me.Rank}</strong> with {formatNumber(board.Me.Damage)} damage -
-            {board.MyBracket} right now.
+            You are <strong>#{board.Me.Rank}</strong> with {formatNumber(board.Me.Damage)} damage.
           </p>
         {:else}
           <p class="dim tiny">You have not struck this boss yet.</p>
@@ -569,8 +682,16 @@
       {#if rulesOpen}
         <div class="rules-body">
           <p class="dim tiny">
-            One health bar shared by every player on the server. It scales with how many accounts are
-            online and their combined race mastery, so it moves even when you are not attacking.
+            Svarog sealed Chernobog in a forged chest, but the bargain left darkness half the world - so
+            every Monday he breaks the lock and walks among men, and the forge needs mortals to drive him
+            back before Sunday.
+          </p>
+          <p class="dim tiny">
+            <strong>Monday and Tuesday are registration</strong>: his health is hidden, and a strike at level
+            {board?.RegistrationLevel ?? 10}+ registers you. <strong>On Wednesday it is revealed</strong>, sized
+            to what the registered players dealt each day, times a hidden number. Only a registered player's
+            damage moves it; anyone can still strike for milestones and a place. Below a quarter of his health
+            he becomes the Black Serpent.
           </p>
           <p class="dim tiny">
             One strike a day, every day. {attemptsLeft > 0 ? `It refills ${refillAt}.` : refillLabel}
@@ -596,20 +717,10 @@
             </p>
           {/if}
           <p class="dim tiny">
-            The boss does not have to fall. When the week ends, everybody who dealt damage is paid into
-            the mailbox by their place on the board:
+            Holding back is noticed: a registered player who has shown the skill before, throws Monday and
+            Tuesday away to keep him small, then plays well from Wednesday, gets a quarter of the kill gold,
+            no chest - and a word from Chernobog in World chat.
           </p>
-          <table class="tiers">
-            <tbody>
-              {#each WORLD_BOSS_REWARDS as tier (tier.bracket)}
-                <tr>
-                  <th scope="row">{tier.bracket}</th>
-                  <td>{tier.tokens} {tier.tokens === 1 ? 'token' : 'tokens'}</td>
-                  <td>{formatNumber(tier.gold)} gold</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
         </div>
       {/if}
     </section>
@@ -669,7 +780,7 @@
     padding: 0.9rem 1rem;
     min-height: 5.5rem;
     border-radius: var(--radius) var(--radius) 0 0;
-    /* The painted world tree - Perun sits at its crown - under a dark
+    /* The painted world tree - Svarog's forge sits at its crown - under a dark
        scrim, and the text on it is the underground palette's light ink: the
        banner is a painting, dark in both themes, so the theme's own --text
        (brown ink on parchment) would vanish on it. */
@@ -687,6 +798,121 @@
 
   .hero-text {
     min-width: 0;
+  }
+
+  .boss-art {
+    width: 5.5rem;
+    height: 5.5rem;
+    object-fit: contain;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 0.4rem rgba(120, 180, 255, 0.35));
+  }
+
+  .boss-art.enraged {
+    filter: drop-shadow(0 0 0.5rem rgba(255, 90, 60, 0.5));
+  }
+
+  .form {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--ug-text-dim, var(--ug-text));
+  }
+
+  .phase-note {
+    margin: 0.2rem 0 0;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+  }
+
+  .phase-note.fallen {
+    border-color: var(--good);
+  }
+
+  .register-note {
+    margin: 0.5rem 0 0;
+  }
+
+  .bar-fill.boss.serpent {
+    background: linear-gradient(90deg, #2c3e50, #5d6d7e);
+  }
+
+  .bar.ms {
+    height: 0.5rem;
+    margin: 0.3rem 0 0.4rem;
+  }
+
+  .ms-fill {
+    background: var(--good);
+  }
+
+  .milestones,
+  .places {
+    list-style: none;
+    margin: 0.3rem 0;
+    padding: 0;
+    display: grid;
+    gap: 0.25rem;
+    font-size: 0.78rem;
+  }
+
+  .milestones li {
+    display: grid;
+    grid-template-columns: 4.5rem minmax(0, 1fr) 1.2rem;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.2rem 0.3rem;
+    border-radius: 4px;
+  }
+
+  .milestones li.reached {
+    background: var(--tint-selected);
+  }
+
+  .ms-damage {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ms-reward {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.2rem 0.5rem;
+    min-width: 0;
+  }
+
+  .ms-cosmetic {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .ms-cosmetic img {
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .ms-state {
+    color: var(--good);
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .places li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.4rem;
+  }
+
+  .title-chip {
+    border: 1px solid var(--chip, var(--border));
+    color: var(--chip, var(--text));
+    border-radius: 999px;
+    padding: 0 0.5rem;
+    font-weight: 600;
   }
 
   .eyebrow {

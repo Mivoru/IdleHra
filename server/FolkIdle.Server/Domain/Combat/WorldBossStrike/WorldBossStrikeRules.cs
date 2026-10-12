@@ -110,8 +110,12 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
         /// below a quarter of the boss's health, decided once at issue and
         /// written into the schedule (spec 3.4). Exactly 25% is enraged.
         /// </summary>
+        /// <remarks>
+        /// Not at 0 (2026-10-13): a fallen Chernobog is still struck until
+        /// Sunday, and the Black Serpent is the shape of a boss still fighting.
+        /// </remarks>
         public static bool IsEnraged(long currentHp, long maxHp) =>
-            maxHp > 0 && currentHp * 4 <= maxHp;
+            maxHp > 0 && currentHp > 0 && currentHp * 4 <= maxHp;
 
         public static double ValueOf(SpearClass spearClass) => spearClass switch
         {

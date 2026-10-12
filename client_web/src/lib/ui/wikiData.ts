@@ -531,10 +531,17 @@ export const DEEP_MAX_LANTERNS = 8;
 export const DEEP_TITLE_FLOORS: readonly number[] = [10, 15, 20, 30, 40, 50];
 
 /** WorldBossEngine. WORLD_BOSS_ATTEMPTS is strikes per UTC day (WorldBossCalendar.StrikesPerDay) since 2026-09-25. */
-export const WORLD_BOSS_HP = 50_000_000;
 export const WORLD_BOSS_ATTEMPTS = 1;
+
+// Modul: CHERNOBOG'S WEEK (owner, 2026-10-13). There is no starting health
+// any more: Monday and Tuesday are registration, and at Wednesday 00:00 UTC
+// the health is revealed as each registered player's average daily damage
+// times a hidden N in this range (WorldBossHpRules). Pinned by wiki.test.ts.
+export const WORLD_BOSS_HP_FACTOR_MIN = 5.5;
+export const WORLD_BOSS_HP_FACTOR_MAX = 7.0;
+/** LeaderboardTierRegistry.MinimumRankedLevel - the level a strike must come from to register. */
+export const WORLD_BOSS_REGISTRATION_LEVEL = 10;
 export const WORLD_BOSS_DAMAGE_FLOOR = 1000;
-export const WORLD_BOSS_MAILBOX_LIMIT = 50;
 
 // Modul: WORLD_BOSS_DAMAGE_CEILING is gone, and its absence is the point.
 //
@@ -551,18 +558,31 @@ export const WORLD_BOSS_PLATES = 5;
 /** WorldBossEngine.WeakPlateDamageMultiplier. */
 export const WORLD_BOSS_WEAK_MULTIPLIER = 3;
 
-/** The percentile brackets WorldBossBoard.BracketFor pays into the mailbox (pinned by wiki.test.ts). */
-export const WORLD_BOSS_REWARDS: readonly { bracket: string; tokens: number; gold: number }[] = [
-  { bracket: 'Top 1%', tokens: 10, gold: 250_000 },
-  { bracket: 'Top 10%', tokens: 6, gold: 100_000 },
-  { bracket: 'Top 50%', tokens: 3, gold: 50_000 },
-  { bracket: 'Everyone else who landed a hit', tokens: 1, gold: 10_000 },
+/**
+ * WorldBossRewards.Milestones - the weekly damage milestones, paid the moment
+ * they are crossed (pinned by wiki.test.ts). Gold is MINUTES of the player's
+ * own hourly income (GoldRewardScale), so it is shown as time, not a number.
+ */
+export const WORLD_BOSS_MILESTONES: readonly { damage: number; goldMinutes: number; diamonds: number; reward: string }[] = [
+  { damage: 10_000, goldMinutes: 15, diamonds: 5, reward: '' },
+  { damage: 25_000, goldMinutes: 30, diamonds: 10, reward: '' },
+  { damage: 60_000, goldMinutes: 60, diamonds: 15, reward: 'Svarog avatar' },
+  { damage: 150_000, goldMinutes: 120, diamonds: 15, reward: 'Black Serpent avatar, title "Serpent Bane"' },
+  { damage: 400_000, goldMinutes: 180, diamonds: 15, reward: 'Chernobog avatar, title "Chainer of the Dark"' },
+  { damage: 1_000_000, goldMinutes: 0, diamonds: 0, reward: 'the Black Serpent pet (+12% damage, +12% critical damage)' },
 ];
+/** WorldBossRewards.PlaceGoldHours / KillGoldHours / SandbaggerKillSharePct, and GoldRewardScale.FloorGold. */
+export const WORLD_BOSS_PLACE_GOLD_HOURS: readonly number[] = [3, 2, 1];
+export const WORLD_BOSS_KILL_GOLD_HOURS = 2;
+export const WORLD_BOSS_SANDBAG_SHARE_PCT = 25;
+export const SCALED_GOLD_FLOOR = 20_000;
 
 /**
  * DailyLoginRewardEngine.GoldRewardMatrices - three weekly rotations, chosen by
  * the UTC week number, so everybody on the server is on the same one.
  */
+/** DailyLoginRewardEngine.MaxWeekMultiplier: week 1 pays the table, week 2 twice it, week 3 on three times. */
+export const DAILY_LOGIN_MAX_WEEK_MULTIPLIER = 3;
 export const DAILY_LOGIN_MATRICES: readonly (readonly number[])[] = [
   [500, 1000, 1500, 2500, 4000, 6000, 10000],
   [4000, 3000, 2500, 2500, 3500, 4000, 6000],
@@ -759,7 +779,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
   { tab: 'economy', anchor: 'delve', title: 'The Delve', keywords: 'gold sink minigame doors floors lantern charges bank push diamonds ceiling fortune embers' },
   { tab: 'economy', anchor: 'deep', title: 'The Deep', keywords: 'deep delve below floor eight stake toll lantern refill titles lamplighter deepest board weekly record' },
 
-  { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'perun avatar shared hp attempts percentile token reward shield wheel spear seam parry auto-strike damage board' },
+  { tab: 'events', anchor: 'worldboss', title: 'The world boss', keywords: 'chernobog svarog black serpent registration reveal milestone avatar title pet kill reward sandbag shield wheel spear seam parry auto-strike damage board' },
   { tab: 'events', anchor: 'seasonal', title: 'Seasonal events', keywords: 'samhain halloween pumpkins event currency shop avatar festival' },
   { tab: 'events', anchor: 'cailleach', title: 'The seasonal boss', keywords: 'cailleach samhain boss tiers winter first clear diamonds mini vampire' },
   { tab: 'events', anchor: 'pets', title: 'Pets', keywords: 'pet witch ghostie pixie skeleton dog black cat wolf pup mini vampire bonus slot rare drop monster kill hugin nisse cait cu sidhe ignis kikimora backahast llamhigyn ogham dagda cauldron duplicate diamonds' },

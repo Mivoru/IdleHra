@@ -15,6 +15,7 @@
   import QueryError from '../lib/ui/QueryError.svelte';
   import { openProfile } from '../lib/stores/profile';
   import { profileLink } from '../lib/ui/profileLink';
+  import { spriteUrl } from '../lib/ui/spriteUrl';
   import {
     queryKeys,
     fetchPlayerNames,
@@ -39,6 +40,13 @@
   // 0/1/2, as this screen originally did, drops every one of them on the floor
   // with nothing anywhere saying so.
   const ANNOUNCEMENT = 3;
+
+  // Modul: A BOSS THAT SPEAKS IN WORLD CHAT (owner, 2026-10-13). Chernobog
+  // mocks a sandbagger in the World channel under ChatEngine.ChernobogSpeakerId,
+  // a negative id no player can have. He is drawn with his own portrait and no
+  // profile menu - there is no profile to open.
+  const CHERNOBOG_SPEAKER_ID = -2;
+  const chernobogPortrait = spriteUrl('WorldBoss/avatars/chernobog.webp');
 
   const CHANNELS = [
     { id: GLOBAL, label: 'World' },
@@ -230,6 +238,8 @@
 
   function displayName(playerId: number): string {
     if (playerId === -1) return 'Dev';
+    // ChatEngine.ChernobogSpeakerId: the world boss taunting a sandbagger.
+    if (playerId === CHERNOBOG_SPEAKER_ID) return 'Chernobog';
     if (playerId === 0) return 'World';
     if (playerId === connection.currentPlayerId) return 'You';
     return nameById.get(playerId) ?? `Player #${playerId}`;
@@ -362,6 +372,15 @@
             <span class="time dim">{timeOf(message.atMs)}</span>
             <span class="text announcement">{message.text}</span>
           </li>
+        {:else if message.senderPlayerId === CHERNOBOG_SPEAKER_ID}
+          <li class="msg boss-speech" data-testid="chernobog-line">
+            <span class="time dim">{timeOf(message.atMs)}</span>
+            <span class="who boss-who">
+              <img class="boss-face" src={chernobogPortrait} alt="" decoding="async" />
+              <span class="who-name">Chernobog</span>
+            </span>
+            <span class="text">{message.text}</span>
+          </li>
         {:else}
           <li class="msg">
             <span class="time dim">{timeOf(message.atMs)}</span>
@@ -459,6 +478,22 @@
 
 
 <style>
+  /* Chernobog's lines: a cold blue name beside his portrait, no menu. */
+  .boss-who {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: #7fb3d5;
+    font-weight: 700;
+  }
+  .boss-face {
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
   /* Task 54: the face sits inside the name cell, so the grid keeps its columns.
      18px rather than the 28px 'sm' face: at 28 the avatar alone set every row's
      height, taller than the line of text beside it. */

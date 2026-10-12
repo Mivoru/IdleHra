@@ -283,6 +283,7 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
             WeakPlate = challenge.WeakPlate,
             Multiplier = WorldBossStrikeRules.Floor,
             LandedAs = landedAs,
+            IsPlayed = true,
         };
 
         // --- eligibility ------------------------------------------------------
@@ -303,7 +304,6 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
             var board = _board;
             if (board == null) return WorldBossStrikeResult.Disabled;
             if (!board.IsEventActive) return WorldBossStrikeResult.NotActive;
-            if (board.IsBossDead()) return WorldBossStrikeResult.AlreadyDefeated;
             if (forChallenge)
             {
                 long needMs = WorldBossStrikeRules.CountdownMs + WorldBossStrikeRules.MaxPlayMs + ChallengeEndMarginMs;
@@ -633,6 +633,7 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
                         Multiplier = scored.Multiplier,
                         LandedAs = WorldBossStrikeResult.Landed,
                         SpearsLost = scored.SpearsLost,
+                        IsPlayed = true,
                     };
                 }
             }

@@ -36,6 +36,8 @@ namespace FolkIdle.Server.Domain.Progression
         Monster = 4,
         /// <summary>Granted by the last rebirth (owner, 2026-10-11).</summary>
         Rebirth = 5,
+        /// <summary>The world boss's top weekly damage milestone, once per account (owner, 2026-10-13).</summary>
+        WorldBoss = 6,
     }
 
     public sealed record PetBonus(PetStat Stat, int Pct);
@@ -75,6 +77,17 @@ namespace FolkIdle.Server.Domain.Progression
         /// </summary>
         public const string PhoenixId = "pet_phoenix";
         public const int PhoenixPct = 8;
+
+        /// <summary>
+        /// The Black Serpent: Chernobog's other shape, the top prize of the world
+        /// boss's weekly damage milestones (owner, 2026-10-13). +12% to TWO
+        /// stats - the same 24% in total as the Phoenix, but the largest single
+        /// bonuses in the game, so it reads as different rather than as more.
+        /// Damage and critical damage; NOT world boss damage, because a pet
+        /// that raises the damage that earns it would compound.
+        /// </summary>
+        public const string BlackSerpentId = "pet_black_serpent";
+        public const int BlackSerpentPct = 12;
 
         /// <summary>
         /// The chance one kill brings a monster pet (owner, 2026-10-10: "on
@@ -147,6 +160,9 @@ namespace FolkIdle.Server.Domain.Progression
 
             new PetDefinition(PhoenixId, "Phoenix", PetSource.Rebirth, 0, "Pets/phoenix.webp",
                 new[] { new PetBonus(PetStat.Damage, PhoenixPct), new PetBonus(PetStat.MaxHp, PhoenixPct), new PetBonus(PetStat.Xp, PhoenixPct) }),
+
+            new PetDefinition(BlackSerpentId, "Black Serpent", PetSource.WorldBoss, 0, "Pets/black_serpent.webp",
+                new[] { new PetBonus(PetStat.Damage, BlackSerpentPct), new PetBonus(PetStat.CritDamage, BlackSerpentPct) }),
         };
 
         private static PetDefinition Monster(string slug, string name, PetStat stat)
