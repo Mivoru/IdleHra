@@ -218,6 +218,19 @@ record('sign in with the dev fixture', true);
 // then its full-screen backdrop swallows every click that follows, which
 // surfaces thirty seconds later as an unrelated button "not receiving pointer
 // events". Polled for a few seconds instead of sampled once.
+// Modul: THE PET WINDOW IS OWED ACROSS SESSIONS (2026-10-12). A pet the
+// fixture found - a real 1-in-100,000 kill, or a crash between this script's
+// own drop and its close - opens at sign-in and its scrim swallows clicks.
+// Closing it is what a player does; the dedicated step below asserts it.
+async function closePetWindows() {
+  for (let i = 0; i < 5; i++) {
+    const close = page.getByTestId('pet-found-close');
+    if ((await close.count()) === 0) return;
+    await close.first().click().catch(() => {});
+    await page.waitForTimeout(500);
+  }
+}
+
 async function dismissOfflineSummary(waitMs = 6000) {
   const deadline = Date.now() + waitMs;
   let dismissed = false;
@@ -239,6 +252,7 @@ async function dismissOfflineSummary(waitMs = 6000) {
     await notes.getByRole('button', { name: 'Close' }).first().click().catch(() => {});
     await page.waitForTimeout(300);
   }
+  await closePetWindows();
   return dismissed;
 }
 
@@ -1858,6 +1872,9 @@ await go('Guild');
       slots === 11 && characters >= 1 && characters <= 5,
       `${slots} slots, ${characters} characters`,
     );
+    // Owner, 2026-10-12: the pet is part of what a character wears.
+    const petSlots = await page.locator('[data-testid="profile-character"]').first().locator('[data-testid="profile-pet-slot"]').count();
+    record('the profile shows a pet slot', petSlots >= 1, `${petSlots} pet slots`);
 
     // A worn piece shows its stats on a tap.
     const worn = page.locator('[data-testid="player-profile"] button.piece').first();
@@ -3749,6 +3766,22 @@ await go('Character');
       await waitFor(async () => (await mailWith50()) > before),
       `${before} -> ${await mailWith50()}`,
     );
+
+    // Owner, 2026-10-12: a found pet opens a window naming it - a duplicate
+    // too, saying what it paid. Closing it tells the server, so it does not
+    // come back after a reload (and the next run starts clean).
+    const petWindow = page.getByTestId('pet-found');
+    const windowShown = await petWindow.first().waitFor({ timeout: 10000 }).then(() => true).catch(() => false);
+    const shownPet = windowShown ? await page.locator('.pet-found').first().getAttribute('data-pet') : null;
+    const shownDuplicate = windowShown ? await page.locator('.pet-found').first().getAttribute('data-duplicate') : null;
+    record(
+      'a found pet opens a window naming it',
+      windowShown && shownPet === target.Id && shownDuplicate === 'true',
+      windowShown ? `${shownPet}, duplicate=${shownDuplicate}` : 'no window',
+    );
+    await closePetWindows();
+    const owedAfter = ((await apiGet('/api/v1/pets').catch(() => null))?.Pets ?? []).filter((p) => p.Unseen || p.PendingDuplicates > 0);
+    record('closing the pet window marks it seen', owedAfter.length === 0, owedAfter.map((p) => p.Id).join(', ') || 'none owed');
 
     // Round trip: claim every pet-duplicate mail, earlier runs' included.
     await go('Mail');

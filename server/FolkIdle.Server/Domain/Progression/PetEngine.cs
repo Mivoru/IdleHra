@@ -24,9 +24,12 @@ namespace FolkIdle.Server.Domain.Progression
         SlotLocked = 4,
     }
 
+    /// <param name="Unseen">Owned, and the "a pet found you" window is still owed.</param>
+    /// <param name="PendingDuplicates">Duplicates found since the window was last closed.</param>
     public sealed record PetView(
         string Id, string Name, int Source, int EventId, string Art,
-        IReadOnlyList<string> Bonuses, bool Owned, Guid? CharacterId, int Slot);
+        IReadOnlyList<string> Bonuses, bool Owned, Guid? CharacterId, int Slot,
+        bool Unseen, int PendingDuplicates);
 
     /// <summary>
     /// Owning and placing pets. Every write runs under the PlayerRecords row
@@ -44,15 +47,34 @@ namespace FolkIdle.Server.Domain.Progression
     {
         public static readonly ConcurrentQueue<PetDropNote> Drops = new();
 
-        /// <summary>Gives a pet unless the account already has it. True if it was new.</summary>
-        public static async Task<bool> GrantAsync(FolkIdleDbContext db, long playerId, string petId, DateTime utcNow)
+        /// <summary>
+        /// Gives a pet unless the account already has it. True if it was new.
+        /// <paramref name="announce"/> false stores it as already shown - a
+        /// shop purchase, which the player chose and needs no window for.
+        /// </summary>
+        public static async Task<bool> GrantAsync(FolkIdleDbContext db, long playerId, string petId, DateTime utcNow, bool announce = true)
         {
             if (PetRegistry.Find(petId) == null) return false;
+            var at = DateTime.SpecifyKind(utcNow, DateTimeKind.Utc);
             int inserted = await db.Database.ExecuteSqlRawAsync(
-                "INSERT INTO player_pets (\"PlayerId\", \"PetId\", \"CharacterId\", \"AcquiredAtUtc\") " +
-                "VALUES ({0}, {1}, NULL, {2}) ON CONFLICT (\"PlayerId\", \"PetId\") DO NOTHING",
-                playerId, petId, DateTime.SpecifyKind(utcNow, DateTimeKind.Utc));
+                "INSERT INTO player_pets (\"PlayerId\", \"PetId\", \"CharacterId\", \"AcquiredAtUtc\", \"AnnouncedAtUtc\", \"PendingDuplicates\") " +
+                "VALUES ({0}, {1}, NULL, {2}, CASE WHEN {3} THEN NULL ELSE {2} END, 0) ON CONFLICT (\"PlayerId\", \"PetId\") DO NOTHING",
+                playerId, petId, at, announce);
             return inserted > 0;
+        }
+
+        /// <summary>
+        /// The player closed the "a pet found you" window for <paramref name="petId"/>:
+        /// it is announced, and its pending duplicates are counted as told.
+        /// False if the account does not own it.
+        /// </summary>
+        public static async Task<bool> MarkSeenAsync(FolkIdleDbContext db, long playerId, string petId, DateTime utcNow)
+        {
+            int updated = await db.Database.ExecuteSqlRawAsync(
+                "UPDATE player_pets SET \"AnnouncedAtUtc\" = COALESCE(\"AnnouncedAtUtc\", {2}), \"PendingDuplicates\" = 0 " +
+                "WHERE \"PlayerId\" = {0} AND \"PetId\" = {1}",
+                playerId, petId, DateTime.SpecifyKind(utcNow, DateTimeKind.Utc));
+            return updated > 0;
         }
 
         public static async Task<bool> OwnsAsync(FolkIdleDbContext db, long playerId, string petId)
@@ -140,12 +162,13 @@ namespace FolkIdle.Server.Domain.Progression
         /// <summary>Every pet there is, with what this account owns and where each one is.</summary>
         public static async Task<List<PetView>> ViewAsync(FolkIdleDbContext db, long playerId)
         {
-            var owned = await db.PlayerPets.AsNoTracking()
+            var rows = await db.PlayerPets.AsNoTracking()
                 .Where(p => p.PlayerId == playerId)
-                .ToDictionaryAsync(p => p.PetId, p => (Guid?)p.CharacterId, StringComparer.Ordinal);
-            var slots = await db.PlayerPets.AsNoTracking()
-                .Where(p => p.PlayerId == playerId)
-                .ToDictionaryAsync(p => p.PetId, p => (int)p.Slot, StringComparer.Ordinal);
+                .Select(p => new { p.PetId, p.CharacterId, p.Slot, p.AnnouncedAtUtc, p.PendingDuplicates })
+                .ToListAsync();
+            var owned = rows.ToDictionary(p => p.PetId, p => p.CharacterId, StringComparer.Ordinal);
+            var slots = rows.ToDictionary(p => p.PetId, p => (int)p.Slot, StringComparer.Ordinal);
+            var told = rows.ToDictionary(p => p.PetId, p => (Unseen: p.AnnouncedAtUtc == null, p.PendingDuplicates), StringComparer.Ordinal);
             // A pet whose character is gone (a rebirth, an ancestor let go)
             // reads as resting: it follows nobody who can use it, and the next
             // placement overwrites the stale id.
@@ -162,7 +185,9 @@ namespace FolkIdle.Server.Domain.Progression
                 p.Bonuses.Select(PetRegistry.Describe).ToList(),
                 owned.ContainsKey(p.Id),
                 owned.TryGetValue(p.Id, out var at) ? at : null,
-                slots.TryGetValue(p.Id, out var slot) ? slot : 0)).ToList();
+                slots.TryGetValue(p.Id, out var slot) ? slot : 0,
+                told.TryGetValue(p.Id, out var t) && t.Unseen,
+                told.TryGetValue(p.Id, out var d) ? d.PendingDuplicates : 0)).ToList();
         }
 
         /// <summary>
@@ -196,6 +221,13 @@ namespace FolkIdle.Server.Domain.Progression
             if (pet == null) return DropOutcome.Nothing;
             if (await GrantAsync(db, note.PlayerId, note.PetId, utcNow)) return DropOutcome.New;
             if (pet.Source != PetSource.Monster) return DropOutcome.Nothing;
+
+            // Owner, 2026-10-12: a duplicate opens the pet window too, saying
+            // what it paid. Counted rather than flagged, so two duplicates
+            // before the player looks are told as two.
+            await db.Database.ExecuteSqlRawAsync(
+                "UPDATE player_pets SET \"PendingDuplicates\" = \"PendingDuplicates\" + 1 WHERE \"PlayerId\" = {0} AND \"PetId\" = {1}",
+                note.PlayerId, note.PetId);
 
             // Modul: DIAMONDS GO BY MAIL. The live payload owns the diamond
             // balance and this runs off the tick, so writing PlayerRecords here

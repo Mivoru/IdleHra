@@ -35,6 +35,22 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.23.0',
+    date: '2026-10-12',
+    headline: 'A pet that finds you now says so.',
+    sections: [
+      {
+        title: 'Pets',
+        items: [
+          'New: when a pet finds you - from a kill, the Witch, The Cailleach or the last rebirth - a window shows it, what it gives and how it is found, with a button to put it on a character straight away.',
+          'A pet found while you were away is shown the next time you come back, once, on whichever device you use.',
+          'A monster pet you already have says so too, and how many diamonds it left in your mail.',
+          'Player profiles now show each character’s pets next to their gear.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.22.0',
     date: '2026-10-11',
     headline: 'The Wiki, checked against the game.',

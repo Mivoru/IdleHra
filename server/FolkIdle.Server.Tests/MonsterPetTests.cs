@@ -116,5 +116,53 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(PetEngine.DropOutcome.Nothing, await PetEngine.SaveDropCoreAsync(db, new PetDropNote(playerId, "pet_witch"), DateTime.UtcNow));
             Assert.Equal(1, await db.MailboxInstances.CountAsync(m => m.PlayerId == playerId));
         }
+
+        /// <summary>
+        /// The "a pet found you" window (owner, 2026-10-12): a found pet is
+        /// owed a window until the player closes it, a duplicate re-opens it
+        /// with a count, a shop purchase never owes one, and closing it is
+        /// account-wide - so the phone and the PC show it once between them.
+        /// </summary>
+        [Fact]
+        public async Task A_found_pet_is_announced_once_and_a_bought_one_never()
+        {
+            const long playerId = 986_000_003L;
+            await using (var seed = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                seed.PlayerRecords.Add(new PlayerRecord
+                {
+                    Id = playerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid(), Username = $"mpet{playerId}",
+                });
+                await seed.SaveChangesAsync();
+            }
+
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            PetView Hugin(System.Collections.Generic.List<PetView> v) => v.Single(p => p.Id == "pet_hugin");
+
+            await PetEngine.SaveDropCoreAsync(db, new PetDropNote(playerId, "pet_hugin"), DateTime.UtcNow);
+            var view = await PetEngine.ViewAsync(db, playerId);
+            Assert.True(Hugin(view).Unseen);
+            Assert.Equal(0, Hugin(view).PendingDuplicates);
+
+            Assert.True(await PetEngine.MarkSeenAsync(db, playerId, "pet_hugin", DateTime.UtcNow));
+            Assert.False(Hugin(await PetEngine.ViewAsync(db, playerId)).Unseen);
+
+            // Two duplicates before the player looks are told as two.
+            await PetEngine.SaveDropCoreAsync(db, new PetDropNote(playerId, "pet_hugin"), DateTime.UtcNow);
+            await PetEngine.SaveDropCoreAsync(db, new PetDropNote(playerId, "pet_hugin"), DateTime.UtcNow);
+            view = await PetEngine.ViewAsync(db, playerId);
+            Assert.False(Hugin(view).Unseen);
+            Assert.Equal(2, Hugin(view).PendingDuplicates);
+            await PetEngine.MarkSeenAsync(db, playerId, "pet_hugin", DateTime.UtcNow);
+            Assert.Equal(0, Hugin(await PetEngine.ViewAsync(db, playerId)).PendingDuplicates);
+
+            // Bought, so born announced.
+            Assert.True(await PetEngine.GrantAsync(db, playerId, "pet_ghostie", DateTime.UtcNow, announce: false));
+            Assert.False((await PetEngine.ViewAsync(db, playerId)).Single(p => p.Id == "pet_ghostie").Unseen);
+
+            // A pet not owned is not marked, and owes nothing.
+            Assert.False(await PetEngine.MarkSeenAsync(db, playerId, "pet_nisse", DateTime.UtcNow));
+            Assert.False((await PetEngine.ViewAsync(db, playerId)).Single(p => p.Id == "pet_nisse").Unseen);
+        }
     }
 }

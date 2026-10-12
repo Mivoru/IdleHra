@@ -23,6 +23,10 @@ export interface Pet {
   CharacterId: string | null;
   /** Which of that character's pet slots it sits in (0, or 1 after five rebirths). */
   Slot: number;
+  /** Owned, and the "a pet found you" window is still owed (PlayerPet.AnnouncedAtUtc). */
+  Unseen: boolean;
+  /** Duplicates found since the window was last closed - each paid diamonds by mail. */
+  PendingDuplicates: number;
 }
 
 export interface PetsView {
@@ -52,6 +56,14 @@ export interface PetAssignAnswer {
 /** Puts a pet in a character's slot, or rests it when `characterId` is null. */
 export async function assignPet(petId: string, characterId: string | null, slot = 0): Promise<PetAssignAnswer | null> {
   return authedPost<PetAssignAnswer>('/api/v1/pets/assign', { PetId: petId, CharacterId: characterId, Slot: slot });
+}
+
+/**
+ * The player closed the "a pet found you" window. Answers the pets view, so
+ * the cache can move straight on to the next owed window.
+ */
+export async function markPetSeen(petId: string): Promise<PetAssignAnswer | null> {
+  return authedPost<PetAssignAnswer>('/api/v1/pets/seen', { PetId: petId });
 }
 
 /** How a pet is found, for the screen. */
