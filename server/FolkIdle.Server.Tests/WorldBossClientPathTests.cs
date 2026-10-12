@@ -127,13 +127,12 @@ namespace FolkIdle.Server.Tests
             => await E2ETestHarness.WaitForConditionAsync(condition, timeoutMs);
 
         [Fact]
-        public async Task TheBrowsersStrike_LandsARow_MovesTheHp_AndKeepsTheSession()
+        public async Task TheBrowsersStrike_LandsARow_CreditsTheDamage_AndKeepsTheSession()
         {
             const long playerId = 970_025_001L;
             var (engine, boss) = CreateEngine();
             await ClearAttemptsAsync(playerId);
             await boss.OpenManualWindowAsync(900);
-            long hpBefore = (await SnapshotAsync()).CurrentHp;
 
             try
             {
@@ -143,7 +142,9 @@ namespace FolkIdle.Server.Tests
 
                 Assert.True(await WaitAsync(() => AttemptAsync(playerId).GetAwaiter().GetResult() is { AttemptCount: 1 }),
                     "The browser's strike never produced an attempt row.");
-                Assert.True((await SnapshotAsync()).CurrentHp < hpBefore, "The strike wrote a row but the boss did not lose health.");
+                // The health is hidden during registration (2026-10-13), so the
+                // proof the blow landed is the damage credited on the row.
+                Assert.True((await AttemptAsync(playerId))!.TotalInflictedDamage > 0, "The strike wrote a row but credited no damage.");
                 Assert.True(await WaitAsync(() => engine.GetActivePlayerWorldBossAttemptCount(playerId) == 1),
                     "The attempt never reached the player's packet.");
                 Assert.True(engine.IsActivePlayerPresent(playerId), "A legal strike ended the session.");
@@ -197,7 +198,6 @@ namespace FolkIdle.Server.Tests
             await ClearAttemptsAsync(playerId);
             await ClearAttemptsAsync(absentPlayerId);
             await boss.OpenManualWindowAsync(900);
-            long hpBefore = (await SnapshotAsync()).CurrentHp;
 
             try
             {
@@ -219,7 +219,7 @@ namespace FolkIdle.Server.Tests
                 // no Giantslayer. 1.5 x 3.0 = 4.5.
                 Assert.Equal(FolkIdle.Server.Domain.Combat.WorldBossStrike.WorldBossStrikeResult.Landed, outcome.Result);
                 Assert.Equal(22_500, outcome.Damage);
-                Assert.Equal(hpBefore - 22_500, (await SnapshotAsync()).CurrentHp);
+                Assert.Equal(22_500, (await AttemptAsync(playerId))!.TotalInflictedDamage);
                 Assert.True(await WaitAsync(() => engine.GetActivePlayerWorldBossAttemptCount(playerId) == 1),
                     "The wheel strike never reached the player's packet.");
 
@@ -310,8 +310,11 @@ namespace FolkIdle.Server.Tests
             }
         }
 
+        // Modul: A FALLEN BOSS IS STILL STRUCK (owner, 2026-10-13). This test
+        // pinned "AlreadyDefeated, no disconnect"; the week now goes on after the
+        // kill for milestones and rank, so a strike on a fallen boss lands.
         [Fact]
-        public async Task AStrikeOnADeadBoss_SaysSo_AndDoesNotDisconnect()
+        public async Task AStrikeOnAFallenBoss_Lands_AndDoesNotDisconnect()
         {
             const long playerId = 970_025_004L;
             var (engine, boss) = CreateEngine();
@@ -321,7 +324,8 @@ namespace FolkIdle.Server.Tests
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 await db.Database.ExecuteSqlRawAsync(
-                    "UPDATE \"WorldBossSnapshots\" SET \"CurrentHp\" = 0 WHERE \"BossInstanceId\" = {0}", (long)WorldBossEngine.ActiveBossInstanceId);
+                    "UPDATE \"WorldBossSnapshots\" SET \"CurrentHp\" = 0, \"HpRevealed\" = 1, \"DefeatedAtEpoch\" = {0} WHERE \"BossInstanceId\" = {1}",
+                    DateTimeOffset.UtcNow.ToUnixTimeSeconds(), (long)WorldBossEngine.ActiveBossInstanceId);
             }
             await boss.EnsureSnapshotAsync();
             Assert.True(boss.IsBossDead());
@@ -332,8 +336,9 @@ namespace FolkIdle.Server.Tests
                 engine.InjectVirtualPlayer(Striker(playerId));
                 engine.InjectBenchmarkCommand(playerId, BrowserStrike(plate: 0));
 
-                Assert.True(await WaitAsync(() => HasResult(engine, playerId, CommandResultCode.WorldBossAlreadyDefeated)),
-                    "A strike on a dead boss was not answered with WorldBossAlreadyDefeated.");
+                Assert.True(await WaitAsync(() => AttemptAsync(playerId).GetAwaiter().GetResult() is { AttemptCount: 1 }),
+                    "A strike on a fallen boss was not recorded.");
+                Assert.False(HasResult(engine, playerId, CommandResultCode.WorldBossAlreadyDefeated));
                 Assert.True(engine.IsActivePlayerPresent(playerId));
             }
             finally

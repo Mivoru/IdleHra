@@ -66,10 +66,18 @@ namespace FolkIdle.Server.Models
         /// <summary>A moderator using the admin tools. Deliberate, and attributable.</summary>
         public const int Admin = 1;
 
+        /// <summary>
+        /// The world boss's sandbagging detector (spec 2026-10-13, section 4): a
+        /// cut kill reward and one line in World chat, nothing else. Recorded so
+        /// a false positive can be found and made good.
+        /// </summary>
+        public const int WorldBossSandbag = 2;
+
         public static string Describe(int source) => source switch
         {
             AntiCheat => "anti-cheat",
             Admin => "moderator",
+            WorldBossSandbag => "world boss sandbagging",
             _ => "unknown"
         };
     }

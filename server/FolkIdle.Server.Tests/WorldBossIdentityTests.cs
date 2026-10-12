@@ -19,9 +19,10 @@ namespace FolkIdle.Server.Tests
         public void TheBossIsNamedFromItsMonsterRow()
         {
             Assert.Equal(ContentRegistry.GetMonsterName(WorldBossIdentity.MonsterId), WorldBossIdentity.Name);
-            // The payout mails perun_avatar_reward_token: the row must be Perun's,
-            // or the name and the reward describe two different bosses.
-            Assert.Contains("Perun", WorldBossIdentity.Name);
+            // Owner, 2026-10-13: the world boss is Chernobog. The rewards, titles
+            // and lore all name him, so the content row must too.
+            Assert.Equal("Chernobog", WorldBossIdentity.Name);
+            Assert.Equal(WorldBossIdentity.FallbackName, WorldBossIdentity.Name);
         }
 
         [Fact]

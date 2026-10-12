@@ -142,15 +142,13 @@ namespace FolkIdle.Server.Engine
                 }
             }
 
+            // Modul: A KILL NO LONGER ENDS THE WEEK (owner, 2026-10-13). This
+            // used to pay out and reset the encounter the minute the boss fell;
+            // now the fight goes on until Sunday for milestones and rank, and
+            // the kill reward is paid with everything else when the window closes.
             if (_worldBossEngine.IsEventActive)
             {
-                long[] onlinePlayerIds = _playerRegistry.GetOnlinePlayerIds();
-                await _worldBossEngine.ScaleActiveBossAsync(onlinePlayerIds);
-
-                if (_worldBossEngine.IsBossDead())
-                {
-                    await _worldBossEngine.ProcessDefeatedBossAsync();
-                }
+                await _worldBossEngine.MaintainActiveBossAsync();
             }
         }
 

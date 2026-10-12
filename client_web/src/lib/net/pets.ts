@@ -8,7 +8,7 @@
 import { authedGet, authedPost } from './auth';
 
 /** PetSource on the server. */
-export const PET_SOURCE = { Shop: 1, RareDrop: 2, Boss: 3, Monster: 4, Rebirth: 5 } as const;
+export const PET_SOURCE = { Shop: 1, RareDrop: 2, Boss: 3, Monster: 4, Rebirth: 5, WorldBoss: 6 } as const;
 
 export interface Pet {
   Id: string;
@@ -72,5 +72,6 @@ export function petSourceLine(pet: Pet): string {
   if (pet.Source === PET_SOURCE.Boss) return 'Follows whoever first breaks The Cailleach’s sixth winter.';
   if (pet.Source === PET_SOURCE.Monster) return 'Found on any kill, any time - rarely.';
   if (pet.Source === PET_SOURCE.Rebirth) return 'Follows whoever takes the tenth and last rebirth.';
+  if (pet.Source === PET_SOURCE.WorldBoss) return 'Follows whoever deals Chernobog a million damage in one week.';
   return 'Sold in the event shop.';
 }

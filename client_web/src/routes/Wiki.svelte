@@ -93,7 +93,15 @@
     GUILD_TAX_MIN_PCT,
     GUILD_TAX_MAX_PCT,
     MARKET_FEE_BRACKETS,
-    WORLD_BOSS_HP,
+    WORLD_BOSS_HP_FACTOR_MIN,
+    WORLD_BOSS_HP_FACTOR_MAX,
+    WORLD_BOSS_REGISTRATION_LEVEL,
+    WORLD_BOSS_MILESTONES,
+    WORLD_BOSS_PLACE_GOLD_HOURS,
+    WORLD_BOSS_KILL_GOLD_HOURS,
+    WORLD_BOSS_SANDBAG_SHARE_PCT,
+    SCALED_GOLD_FLOOR,
+    DAILY_LOGIN_MAX_WEEK_MULTIPLIER,
     WORLD_BOSS_ATTEMPTS,
     DEEP_STAKE_PCT,
     DEEP_RECORD_DIAMONDS,
@@ -105,8 +113,6 @@
     WORLD_BOSS_DAMAGE_FLOOR,
     WORLD_BOSS_PLATES,
     WORLD_BOSS_WEAK_MULTIPLIER,
-    WORLD_BOSS_MAILBOX_LIMIT,
-    WORLD_BOSS_REWARDS,
     DAILY_LOGIN_MATRICES,
     DAILY_LOGIN_DAY7_DIAMONDS,
     ACHIEVEMENTS,
@@ -1590,9 +1596,8 @@
             administrator sends. Items sit unclaimed until you claim them.
           </p>
           <p class="dim tiny">
-            <strong>Keep it under {WORLD_BOSS_MAILBOX_LIMIT} items.</strong> A world
-            boss reward is skipped outright for anybody whose mailbox is at that
-            limit when the week's encounter ends — it is not queued, it is lost.
+            World boss rewards always arrive, however full the mailbox is. They used
+            to be skipped for a full mailbox; since Chernobog they are not.
           </p>
 
           <h3 id="diamonds">Diamonds</h3>
@@ -1647,58 +1652,95 @@
         {:else if activeTab === 'events'}
           <WikiSeasonalEvent />
 
-          <h3 id="worldboss">The world boss</h3>
+          <h3 id="worldboss">The world boss: Chernobog</h3>
           <p class="dim small">
-            A server-wide encounter with a single shared health bar —
-            {formatNumber(WORLD_BOSS_HP)} to start — that everybody online chips
-            at together. It is the one place your progress is visible to strangers
-            in real time.
+            Svarog sealed the black god Chernobog in a forged chest, but the bargain
+            left darkness half the world - so every Monday he breaks the lock and
+            walks among men again, and Svarog's forge needs mortals to drive him back
+            before Sunday. One boss, one week, and the whole server fights it together.
           </p>
           <ul class="styled-list">
-            <li><strong>A new boss every Monday</strong> (00:00 UTC), and it stays until Sunday night or until it falls. If it falls early, the next one comes on Monday.</li>
-            <li><strong>{WORLD_BOSS_ATTEMPTS} strike a day</strong>, every day, refilled at midnight UTC — about seven a week, and each one is a choice.</li>
+            <li><strong>A new week every Monday</strong> (00:00 UTC) until Sunday night. <strong>{WORLD_BOSS_ATTEMPTS} strike a day</strong>, refilled at midnight UTC.</li>
             <li>
-              <strong>You strike with the shield wheel.</strong> The boss's {WORLD_BOSS_PLATES} armour
-              plates spin as a ring; you have five spears, and a spear that lands on the seam in the
-              middle of a plate is the best hit. Two or three times the wheel stops and the boss
-              winds up a blow: press the side it comes from, and your next spear is a guaranteed
-              seam on the plate you pick. A skilled run is worth up to 2x.
+              <strong>Monday and Tuesday are registration.</strong> His health is hidden. Strike on
+              either day at level {WORLD_BOSS_REGISTRATION_LEVEL} or above and you are registered: your
+              damage counts against him, and you share the reward if he falls.
             </li>
             <li>
-              <strong>One plate is soft, and it is a different one every strike</strong> - chosen
-              among the plates still standing. A hit on it does {WORLD_BOSS_WEAK_MULTIPLIER}x damage
-              and glows for you alone. A hit on any other plate <strong>breaks</strong> it for
-              everyone, so every broken plate makes the soft one easier to find for whoever strikes
-              next. The armour grows back at midnight UTC.
+              <strong>On Wednesday his health is revealed.</strong> It is every registered player's
+              average daily damage from those two days, added up, times a hidden number between
+              {WORLD_BOSS_HP_FACTOR_MIN} and {WORLD_BOSS_HP_FACTOR_MAX} - less what registration already
+              dealt. So he is sized to the people fighting him, and he falls only if they keep
+              striking.
             </li>
             <li>
-              Not quick with your thumbs? <strong>Auto-strike</strong> hits the plate you choose at the
-              base multiplier, and a played strike is never worth less than auto-striking the best plate
-              it hit. Practice is free and deals no damage.
+              <strong>Strike from Wednesday without registering</strong> and your damage is yours alone:
+              it counts for your milestones and your place, never against his health or for the kill
+              reward.
             </li>
-            <li>Your hit is your character's real attack power, floored at {formatNumber(WORLD_BOSS_DAMAGE_FLOOR)} before any multiplier - an account that has never fought still contributes something.</li>
-            <li>A strike eats nothing: an empty larder does not stop you swinging.</li>
             <li>
-              <strong>The boss does not have to fall.</strong> When the week ends - or sooner, if it
-              dies - everybody who dealt damage is paid into the mailbox by their place on the
-              damage board, which the World Boss screen shows along with what the whole server dealt
-              together.
+              <strong>Below a quarter of his health he becomes the Black Serpent</strong> - and the shield
+              wheel spins faster.
             </li>
+            <li>
+              <strong>You strike with the shield wheel.</strong> The {WORLD_BOSS_PLATES} armour plates spin
+              as a ring; you have five spears, and a spear on the seam in the middle of a plate is the best
+              hit. When the wheel stops and he winds up a blow, press the side it comes from and your next
+              spear is a guaranteed seam on the plate you pick. A skilled run is worth up to 2x.
+            </li>
+            <li>
+              <strong>One plate is soft, a different one every strike</strong> - chosen among the plates
+              still standing. A hit on it does {WORLD_BOSS_WEAK_MULTIPLIER}x and glows for you alone; a hit
+              anywhere else <strong>breaks</strong> that plate for everyone. The armour grows back at midnight UTC.
+            </li>
+            <li>
+              Not quick with your thumbs? <strong>Quick strike</strong> hits the plate you choose at the base
+              multiplier. Practice is free and deals no damage.
+            </li>
+            <li>Your hit is your character's real attack power, floored at {formatNumber(WORLD_BOSS_DAMAGE_FLOOR)} before any multiplier.</li>
+            <li><strong>He stays after he falls.</strong> Keep striking for your milestones and your place until Sunday.</li>
           </ul>
+
+          <h3 id="worldboss-rewards">Chernobog's rewards</h3>
+          <p class="dim small">
+            Gold is paid as <strong>time of your own income</strong>: "an hour" is what you earned in an
+            average hour over the last week (combat, salvage, the Town Hall and chest sales), never less than
+            {formatNumber(SCALED_GOLD_FLOOR)} gold. Avatars, titles and the pet are yours once; gold and
+            diamonds come again every week you cross the line.
+          </p>
           <div class="scroll">
             <table>
-              <thead><tr><th>Bracket</th><th class="num">Tokens</th><th class="num">Gold</th></tr></thead>
+              <thead><tr><th class="num">Damage this week</th><th class="num">Gold</th><th class="num">Diamonds</th><th>Once ever</th></tr></thead>
               <tbody>
-                {#each WORLD_BOSS_REWARDS as row (row.bracket)}
+                {#each WORLD_BOSS_MILESTONES as row (row.damage)}
                   <tr>
-                    <td>{row.bracket}</td>
-                    <td class="num">{row.tokens}</td>
-                    <td class="num" title={numberTitle(row.gold)}>{formatNumber(row.gold)}</td>
+                    <td class="num" title={numberTitle(row.damage)}>{formatNumber(row.damage)}</td>
+                    <td class="num">{row.goldMinutes === 0 ? '-' : row.goldMinutes < 60 ? `${row.goldMinutes} min` : `${row.goldMinutes / 60} h`}</td>
+                    <td class="num">{row.diamonds || '-'}</td>
+                    <td>{row.reward || '-'}</td>
                   </tr>
                 {/each}
               </tbody>
             </table>
           </div>
+          <ul class="styled-list">
+            <li>Milestones are paid <strong>the moment you cross them</strong>, into the mailbox.</li>
+            <li>
+              <strong>If he falls</strong>, every registered player gets {WORLD_BOSS_KILL_GOLD_HOURS} hours of
+              income and a <strong>Legendary chest</strong> on Sunday.
+            </li>
+            <li>
+              <strong>The week's top three</strong> by damage get {WORLD_BOSS_PLACE_GOLD_HOURS.join(', ')} hours of
+              income and a title to wear until next Sunday: Svarog's Hammer, Dazhbog's Light and
+              Simargl's Wing.
+            </li>
+            <li>
+              <strong>Holding back is noticed.</strong> A registered player who has shown the skill in an earlier
+              week, throws every spear away on Monday and Tuesday to keep his health low, and then plays well from
+              Wednesday gets {WORLD_BOSS_SANDBAG_SHARE_PCT}% of the kill gold, no chest - and a word from
+              Chernobog in World chat. Quick strikes never count against you, and a player still learning is never flagged.
+            </li>
+          </ul>
 
           <h3 id="daily">The daily bonus</h3>
           <p class="dim small">
@@ -1715,7 +1757,9 @@
           </p>
           <p class="dim small">
             Three gold schedules rotate weekly, so the week decides which of these
-            you are on:
+            you are on. Your <strong>first</strong> seven-day cycle pays the table, your second pays it
+            twice, and every cycle from the third on pays it {DAILY_LOGIN_MAX_WEEK_MULTIPLIER} times. Cycles
+            count over the account's whole life, so a missed day never sends you back to the first.
           </p>
           <div class="scroll">
             <table>

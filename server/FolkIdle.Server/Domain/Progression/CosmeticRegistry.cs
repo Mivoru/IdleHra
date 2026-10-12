@@ -27,6 +27,8 @@ namespace FolkIdle.Server.Domain.Progression
         Event = 6,
         /// <summary>A rebirth milestone's avatar (owner, 2026-10-11).</summary>
         Rebirth = 7,
+        /// <summary>A world boss damage milestone's avatar, or the kill's chest (owner, 2026-10-13).</summary>
+        WorldBoss = 8,
         Dev = 9,
     }
 
@@ -144,6 +146,11 @@ namespace FolkIdle.Server.Domain.Progression
                 list.Add(new CosmeticDefinition(milestone.AvatarId, CosmeticKind.Avatar,
                     milestone.Rebirths >= Engine.RebirthRules.MaxRebirths ? Legendary : Epic,
                     milestone.Name, milestone.Art, Bound: true));
+            }
+            // Chernobog's milestone avatars (owner, 2026-10-13) - bound, Legendary.
+            foreach (var avatar in Combat.WorldBossStrike.WorldBossRewards.Avatars)
+            {
+                list.Add(new CosmeticDefinition(avatar.Id, CosmeticKind.Avatar, Legendary, avatar.Name, avatar.Art, Bound: true));
             }
             return list;
         }

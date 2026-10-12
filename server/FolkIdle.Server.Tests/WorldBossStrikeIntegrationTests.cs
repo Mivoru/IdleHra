@@ -75,7 +75,6 @@ namespace FolkIdle.Server.Tests
         public async Task AWheelStrikeDealsATimesThePlayedMultiplier()
         {
             var engine = await FreshWheelEncounterAsync();
-            long hp = engine.BossCurrentHp;
 
             // Two seams on this attempt's weak plate and M at the cap: 2.0 x 3.0.
             var outcome = await engine.ExecuteStrikeAsync(Order(P1, weak: 2, m: 2.0, Seam(0, 2), Seam(1, 2)), A);
@@ -83,7 +82,9 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(WorldBossStrikeResult.Landed, outcome.Result);
             Assert.Equal(6.0, outcome.Played, 6);
             Assert.Equal(A * 6, outcome.Damage);
-            Assert.Equal(hp - A * 6, (await SnapshotAsync()).CurrentHp);
+            // Credited to the player whatever the boss's health; what reaches the
+            // health is WorldBossRevealTests' business.
+            Assert.Equal(A * 6, (await AttemptAsync(P1))!.TotalInflictedDamage);
             Assert.Equal(1, (await AttemptAsync(P1))!.AttemptCount);
             Assert.All(outcome.Landings!, l => Assert.True(l.WeakHit));
         }
@@ -190,8 +191,8 @@ namespace FolkIdle.Server.Tests
             await SetArmourAsync(0b00111, dayKey: today - 1);
             var before = await SnapshotAsync();
 
-            // LiveOps' once-a-minute rescale holds the row lock too: it regrows the board.
-            await engine.ScaleActiveBossAsync(Array.Empty<long>());
+            // LiveOps' once-a-minute maintenance holds the row lock too: it regrows the board.
+            await engine.MaintainActiveBossAsync();
 
             var after = await SnapshotAsync();
             Assert.Equal(0, after.BrokenPlateMask);
@@ -215,7 +216,7 @@ namespace FolkIdle.Server.Tests
             long today = WorldBossCalendar.DayKey(DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             await SetArmourAsync(0b00101, dayKey: today - 3);
 
-            await engine.ScaleActiveBossAsync(Array.Empty<long>());
+            await engine.MaintainActiveBossAsync();
             Assert.Equal(0b00101, (await SnapshotAsync()).BrokenPlateMask);
 
             Assert.Equal(WorldBossStrikeResult.Failed, (await engine.ExecuteStrikeAsync(Order(P3, 0, 1.0), A)).Result);

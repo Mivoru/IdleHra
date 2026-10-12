@@ -98,15 +98,13 @@ namespace FolkIdle.Server.Tests
 
             const uint damage = 4_000;
 
-            long before = engine.BossCurrentHp;
+            // Read from each striker's own row: the boss's health is hidden
+            // during registration (2026-10-13), the credit is not.
             await engine.ExecuteAttackAsync(TestPlayerId, WorldBossEngine.ActiveBossInstanceId, damage, armoured);
-            long afterArmoured = engine.BossCurrentHp;
-
             await engine.ExecuteAttackAsync(SecondPlayerId, WorldBossEngine.ActiveBossInstanceId, damage, armour.Weak);
-            long afterWeak = engine.BossCurrentHp;
 
-            long armouredHit = before - afterArmoured;
-            long weakHit = afterArmoured - afterWeak;
+            long armouredHit = await CreditedAsync(TestPlayerId);
+            long weakHit = await CreditedAsync(SecondPlayerId);
 
             _output.WriteLine($"armoured plate: {armouredHit}, weak plate: {weakHit}");
 
@@ -262,7 +260,6 @@ namespace FolkIdle.Server.Tests
             var engine = await FreshEncounterAsync();
             var armour = await ReadArmourAsync();
             byte armoured = (byte)((armour.Weak + 1) % WorldBossEngine.PlateCount);
-            long before = engine.BossCurrentHp;
 
             var strikes = Enumerable.Range(0, 8)
                 .Select(i => engine.ExecuteAttackAsync(970_000_200L + i, WorldBossEngine.ActiveBossInstanceId, 2_000, armoured))
@@ -270,7 +267,18 @@ namespace FolkIdle.Server.Tests
             var outcomes = await Task.WhenAll(strikes);
 
             Assert.All(outcomes, o => Assert.Equal(WorldBossAttackOutcome.Landed, o));
-            Assert.Equal(before - 8 * 2_000, engine.BossCurrentHp);
+            long total = 0;
+            for (int i = 0; i < 8; i++) total += await CreditedAsync(970_000_200L + i);
+            Assert.Equal(8 * 2_000, total);
+        }
+
+        private async Task<long> CreditedAsync(long playerId)
+        {
+            await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
+            return await db.PlayerWorldBossAttempts.AsNoTracking()
+                .Where(a => a.PlayerId == playerId && a.BossInstanceId == WorldBossEngine.ActiveBossInstanceId)
+                .Select(a => a.TotalInflictedDamage)
+                .SingleAsync();
         }
 
         [Fact]

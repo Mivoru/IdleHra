@@ -65,6 +65,14 @@ namespace FolkIdle.Server.Domain.Progression
 
                 // Task 114: the tenth and last rebirth (RebirthEngine grants it).
                 new TitleDefinition(RebirthTitleSlug, "The Ever-Returning", 0, "#ffd700"),
+
+                // Chernobog (owner, 2026-10-13): two milestone titles, kept for
+                // good, and last week's top three, which move every Sunday.
+                new TitleDefinition(Combat.WorldBossStrike.WorldBossRewards.SerpentBaneSlug, "Serpent Bane", 0, "#7fb3d5"),
+                new TitleDefinition(Combat.WorldBossStrike.WorldBossRewards.ChainerSlug, "Chainer of the Dark", 0, "#4a6fa5"),
+                new TitleDefinition(Combat.WorldBossStrike.WorldBossRewards.FirstPlaceSlug, "Svarog's Hammer", 0, "#ff8c1a"),
+                new TitleDefinition(Combat.WorldBossStrike.WorldBossRewards.SecondPlaceSlug, "Dazhbog's Light", 0, "#ffd24d"),
+                new TitleDefinition(Combat.WorldBossStrike.WorldBossRewards.ThirdPlaceSlug, "Simargl's Wing", 0, "#e8743b"),
             };
 
             // Task 87: one title per Boss Ascension step per boss - a rank the

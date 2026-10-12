@@ -413,8 +413,8 @@
     "BaseXpReward": 28540000,
     "AttackIntervalMs": 2000,
     "LootTableId": 30,
-    "Name": "Perun's Celestial Avatar",
-    "EnemyId": "peruns_celestial_avatar",
+    "Name": "Chernobog",
+    "EnemyId": "chernobog",
     "RegionTier": 5,
     "Armor": 2059,
     "DodgeRating": 18

@@ -9484,7 +9484,7 @@ namespace FolkIdle.Server.Network
                 var player = await db.PlayerRecords
                     .AsNoTracking()
                     .Where(p => p.Id == playerId)
-                    .Select(p => new { p.LastLoginTimestamp, p.LoginStreakDays })
+                    .Select(p => new { p.LastLoginTimestamp, p.LoginStreakDays, p.LoginCyclesCompleted })
                     .SingleOrDefaultAsync();
 
                 await transaction.CommitAsync();
@@ -9504,7 +9504,10 @@ namespace FolkIdle.Server.Network
                 long[] schedule = new long[7];
                 for (int day = 1; day <= 7; day++)
                 {
-                    schedule[day - 1] = DailyLoginRewardEngine.GetGoldReward(todayDateKey, day);
+                    // The rate of the cycle in progress. A preview read after day 7 was
+                    // credited already shows next week's rate, which is the cycle the
+                    // remaining days belong to.
+                    schedule[day - 1] = DailyLoginRewardEngine.GetGoldReward(todayDateKey, day, player.LoginCyclesCompleted);
                 }
 
                 var response = new LoginBonusStateResponse
@@ -12647,6 +12650,15 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // Ends registration now (spec 2026-10-13): the revealed half of
+                // the week is otherwise reachable only on a Wednesday.
+                if (requestPath == "/api/v1/dev/worldboss/reveal" && context.Request.HttpMethod == "POST")
+                {
+                    await _worldBossEngine.RevealNowAsync();
+                    await WriteDevWorldBossStateAsync(context, playerId);
+                    return;
+                }
+
                 if (requestPath == "/api/v1/dev/worldboss/attempt" && context.Request.HttpMethod == "GET")
                 {
                     await WriteDevWorldBossStateAsync(context, playerId);
@@ -12687,6 +12699,11 @@ namespace FolkIdle.Server.Network
                 EventEndEpoch = snapshot?.EventEndEpoch ?? 0,
                 AttemptCount = attempt?.AttemptCount ?? 0,
                 TotalInflictedDamage = attempt?.TotalInflictedDamage ?? 0,
+                HpRevealed = snapshot?.HpRevealed ?? 0,
+                RevealEpoch = snapshot?.RevealEpoch ?? 0,
+                DefeatedAtEpoch = snapshot?.DefeatedAtEpoch ?? 0,
+                IsRegistered = attempt?.IsRegistered ?? false,
+                MilestonesPaid = attempt?.MilestonesPaid ?? 0,
             });
         }
 

@@ -177,6 +177,12 @@ namespace FolkIdle.Server.Models
         // moment a day is skipped, since a fresh streak still counts today.
         public long LastLoginTimestamp { get; set; }
         public int LoginStreakDays { get; set; }
+
+        // Modul: THE LOGIN REWARD GROWS FOR THREE WEEKS (owner, 2026-10-13).
+        // Every completed seven-day cycle, over the account's whole life - a
+        // broken streak does not send it back to week one. See
+        // DailyLoginRewardEngine.WeekMultiplier.
+        public int LoginCyclesCompleted { get; set; }
         public long GuildId { get; set; }
         public int ActiveOffensivePotionId { get; set; }
         public int OffensivePotionDurationMs { get; set; }

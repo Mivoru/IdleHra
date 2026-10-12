@@ -19,6 +19,47 @@ do next.
 
 ---
 
+# 2026-10-13 - Chernobog: the world boss gets a name, a week and rewards
+
+Branch `claude/chernobog-world-boss`. Spec (owner decisions, all of them):
+`docs/superpowers/specs/2026-10-13-chernobog-world-boss-design.md`.
+
+- **Monster id 30 is Chernobog** (was "Perun's Celestial Avatar"). Art is cut
+  by `tools/key_event_art.py` into `SpritesWeb/WorldBoss/` (boss, Black
+  Serpent form, three milestone avatars) and `SpritesWeb/Pets/black_serpent.webp`.
+- **The week**: Monday/Tuesday registration with the health HIDDEN (0 on the
+  wire, `Phase` on the board says why); a strike at level >= 10 registers.
+  Wednesday 00:00 UTC (`RevealEpoch`, dev: `POST /api/v1/dev/worldboss/reveal`)
+  sets health = sum of each registered player's average daily damage x a hidden
+  N in [5.5, 7.0] (`WorldBossHpRules`), less what registration dealt. Only a
+  registered player's damage moves it after that. **A kill no longer ends the
+  week** - `ProcessDefeatedBossAsync` and the online-population scaling are
+  gone; `MaintainActiveBossAsync` is LiveOps' minute pass. A fallen boss is
+  still struck (AlreadyDefeated is declared and unproduced).
+- **Rewards** (`WorldBossRewards`, bookkeeping in `WorldBossLedger`): six weekly
+  milestones paid by mail the moment they are crossed (gold = minutes of the
+  player's own income via `GoldRewardScale`, diamonds summing to exactly the
+  Delve's 60, avatars/titles/pet once per account); Sunday pays the top three a
+  title that moves weekly plus 3/2/1 h of income, and - if he fell - 2 h of
+  income + a Legendary cosmetic chest to everyone registered.
+- **Sandbagging**: judged on the shield-wheel skill score, not damage, and only
+  for a player with an earlier skilled week (`world_boss_profiles`). Penalty is
+  25% of the kill gold, no chest, an `account_penalties` row (source 2) and a
+  random taunt from Chernobog in World chat (`ChatEngine.EnqueueWorldSpeech`,
+  sender id -2, which the client draws as Chernobog).
+- **Daily login** gold is x1 / x2 / x3 by completed seven-day cycle over the
+  account's life (`PlayerRecord.LoginCyclesCompleted`).
+- The dead `perun_avatar_reward_token` mail and the percentile brackets are gone.
+  World boss mail no longer skips a full mailbox.
+- Migration `AddChernobogWorldBoss` is additive. The deploy week is upgraded in
+  place (`WorldBossLedger.UpgradeLegacyEncounterAsync`): whoever already struck
+  is registered, the 75M health is hidden until Wednesday.
+- **To re-measure after the first full week:** the upper milestone thresholds
+  (150k / 400k / 1M are estimates from two live strikes) and N's range, from the
+  production attempt rows before Monday deletes them.
+
+---
+
 # 2026-10-10 (evening) - character stat sheet, event pet odds, Wiki catch-up
 
 Branch `claude/wiki-pets-stats`:

@@ -350,13 +350,12 @@ export function attackWorldBoss(options: {
   bossCurrentHp: number;
   attemptCount: number;
 }): CommandOutcome {
-  const { plateIndex, eventState, bossCurrentHp, attemptCount } = options;
+  // bossCurrentHp is not a refusal any more: a fallen boss is still struck for
+  // milestones and rank until Sunday (owner, 2026-10-13).
+  const { plateIndex, eventState, attemptCount } = options;
 
   if (eventState !== BossEventState.Active) {
     return refuse('No world boss is active right now.');
-  }
-  if (bossCurrentHp <= 0) {
-    return refuse('The boss is already dead.');
   }
   if (attemptCount >= MAX_BOSS_ATTEMPTS) {
     return refuse(`You have used today's strike. It comes back ${formatWhen(nextStrikeRefill(new Date()))}.`);

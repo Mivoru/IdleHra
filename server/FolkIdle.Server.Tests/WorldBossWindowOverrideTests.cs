@@ -103,8 +103,12 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(WorldBossCalendar.WeekEndEpoch(DormantDay), boss.EventEndEpoch);
         }
 
+        // Modul: A FALL NO LONGER ENDS THE WEEK (owner, 2026-10-13). This test
+        // pinned "defeated on Thursday, dormant until Monday"; now the encounter
+        // stays open after the kill so players keep striking for milestones and
+        // rank, and it closes - and pays the kill reward - on Sunday like any week.
         [Fact]
-        public async Task ADefeatedBossStaysDefeatedUntilMonday_ThenANewOneArrives()
+        public async Task AFallenBossStaysOpenUntilTheWeekEnds_ThenANewOneArrives()
         {
             var clock = DormantDay; // a Thursday
             var boss = new WorldBossEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
@@ -116,27 +120,25 @@ namespace FolkIdle.Server.Tests
             Assert.True(boss.IsEventActive);
             long thisWeekEnd = WorldBossCalendar.WeekEndEpoch(clock);
 
-            // Defeat it on Thursday: the snapshot keeps this week's end.
+            // Brought down on Thursday.
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
                 await db.Database.ExecuteSqlRawAsync(
-                    "UPDATE \"WorldBossSnapshots\" SET \"CurrentHp\" = 0 WHERE \"BossInstanceId\" = {0}", (long)WorldBossEngine.ActiveBossInstanceId);
+                    "UPDATE \"WorldBossSnapshots\" SET \"CurrentHp\" = 0, \"HpRevealed\" = 1, \"DefeatedAtEpoch\" = {0} WHERE \"BossInstanceId\" = {1}",
+                    clock.ToUnixTimeSeconds(), (long)WorldBossEngine.ActiveBossInstanceId);
             }
             await boss.EnsureSnapshotAsync();
-            await liveOps.EvaluateWorldBossEventWindowAsync(); // pays out and concludes
-            Assert.False(boss.IsEventActive);
-            Assert.Equal(thisWeekEnd, boss.EventEndEpoch);
-
-            // Saturday: still this week, so it stays down.
-            clock = DormantDay.AddDays(2);
-            await liveOps.EvaluateWorldBossEventWindowAsync();
-            Assert.False(boss.IsEventActive);
-
-            // Monday 00:00:30 UTC: next week, a new boss.
-            clock = WorldBossCalendar.WeekStart(DormantDay).AddDays(7).AddSeconds(30);
             await liveOps.EvaluateWorldBossEventWindowAsync();
             Assert.True(boss.IsEventActive);
-            Assert.Equal(WorldBossCalendar.WeekEndEpoch(clock), boss.EventEndEpoch);
+            Assert.True(boss.IsBossDead());
+            Assert.Equal(thisWeekEnd, boss.EventEndEpoch);
+
+            // Monday 00:00:30 UTC: the week closed, a new boss arrives, alive.
+            clock = WorldBossCalendar.WeekStart(DormantDay).AddDays(7).AddSeconds(30);
+            await liveOps.EvaluateWorldBossEventWindowAsync();
+            await liveOps.EvaluateWorldBossEventWindowAsync();
+            Assert.True(boss.IsEventActive);
+            Assert.False(boss.IsBossDead());
             Assert.Equal(thisWeekEnd + 7 * 86_400, boss.EventEndEpoch);
         }
 

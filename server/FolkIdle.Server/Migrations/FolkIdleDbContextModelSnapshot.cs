@@ -2150,6 +2150,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long>("LogicEpochCounter")
                         .HasColumnType("bigint");
 
+                    b.Property<int>("LoginCyclesCompleted")
+                        .HasColumnType("integer");
+
                     b.Property<int>("LoginStreakDays")
                         .HasColumnType("integer");
 
@@ -2463,6 +2466,30 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long>("AttemptDateKey")
                         .HasColumnType("bigint");
 
+                    b.Property<bool>("IsRegistered")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("LaterPlayed")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("LaterSkillSum")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("MilestonesPaid")
+                        .HasColumnType("integer");
+
+                    b.Property<long>("RegistrationDamage")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("RegistrationPlayed")
+                        .HasColumnType("integer");
+
+                    b.Property<double>("RegistrationSkillSum")
+                        .HasColumnType("double precision");
+
+                    b.Property<int>("RegistrationStrikes")
+                        .HasColumnType("integer");
+
                     b.Property<long>("SessionStartEpoch")
                         .HasColumnType("bigint");
 
@@ -2757,6 +2784,19 @@ namespace FolkIdle.Server.Migrations
                     b.ToTable("VillageStashInstances");
                 });
 
+            modelBuilder.Entity("FolkIdle.Server.Models.WorldBossProfile", b =>
+                {
+                    b.Property<long>("PlayerId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime?>("ProvenSkillAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("PlayerId");
+
+                    b.ToTable("world_boss_profiles");
+                });
+
             modelBuilder.Entity("FolkIdle.Server.Models.WorldBossSnapshot", b =>
                 {
                     b.Property<long>("BossInstanceId")
@@ -2774,16 +2814,28 @@ namespace FolkIdle.Server.Migrations
                     b.Property<long>("CurrentHp")
                         .HasColumnType("bigint");
 
+                    b.Property<long>("DefeatedAtEpoch")
+                        .HasColumnType("bigint");
+
                     b.Property<long>("EventEndEpoch")
                         .HasColumnType("bigint");
 
                     b.Property<byte>("EventState")
                         .HasColumnType("smallint");
 
+                    b.Property<double>("HpFactor")
+                        .HasColumnType("double precision");
+
+                    b.Property<byte>("HpRevealed")
+                        .HasColumnType("smallint");
+
                     b.Property<long>("LastActiveTimestamp")
                         .HasColumnType("bigint");
 
                     b.Property<long>("MaxHp")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("RevealEpoch")
                         .HasColumnType("bigint");
 
                     b.Property<long>("TotalDamageContributed")

@@ -19,9 +19,16 @@ import {
   masterySpeedPct,
   VILLAGE_SPEED_PCT_PER_LEVEL,
   DAILY_LOGIN_DAY7_DIAMONDS,
-  WORLD_BOSS_HP,
+  WORLD_BOSS_HP_FACTOR_MIN,
+  WORLD_BOSS_HP_FACTOR_MAX,
+  WORLD_BOSS_REGISTRATION_LEVEL,
+  WORLD_BOSS_MILESTONES,
+  WORLD_BOSS_KILL_GOLD_HOURS,
+  WORLD_BOSS_SANDBAG_SHARE_PCT,
+  WORLD_BOSS_PLACE_GOLD_HOURS,
+  SCALED_GOLD_FLOOR,
+  DAILY_LOGIN_MAX_WEEK_MULTIPLIER,
   WORLD_BOSS_ATTEMPTS,
-  WORLD_BOSS_REWARDS,
   DEEP_STAKE_PCT,
   DEEP_RECORD_DIAMONDS,
   DELVE_WEEKLY_DIAMOND_CEILING,
@@ -334,18 +341,34 @@ describe('the tables the wiki restates still match the server', () => {
     const boss = read(serverRoot, 'Engine', 'WorldBossEngine.cs');
     const daily = read(serverRoot, 'Domain', 'Progression', 'DailyLoginRewardEngine.cs');
 
-    expect(WORLD_BOSS_HP).toBe(num(boss, /BaseHp = (\d+)L/, 'boss hp'));
+    const hpRules = read(serverRoot, 'Domain', 'Combat', 'WorldBossStrike', 'WorldBossHpRules.cs');
+    expect(WORLD_BOSS_HP_FACTOR_MIN).toBe(Number(hpRules.match(/MinFactor = ([\d.]+);/)![1]));
+    expect(WORLD_BOSS_HP_FACTOR_MAX).toBe(Number(hpRules.match(/MaxFactor = ([\d.]+);/)![1]));
+    expect(WORLD_BOSS_REGISTRATION_LEVEL).toBe(
+      num(read(serverRoot, 'Engine', 'LeaderboardTierRegistry.cs'), /MinimumRankedLevel = (\d+)/, 'ranked level'),
+    );
+    expect(boss).not.toMatch(/BaseHp = \d+L/);
     expect(WORLD_BOSS_ATTEMPTS).toBe(
       num(read(serverRoot, 'Engine', 'WorldBossCalendar.cs'), /StrikesPerDay = (\d+)/, 'boss strikes per day'),
     );
-    // The reward table is the payout's own brackets, in the same order.
-    const brackets = [
-      ...read(serverRoot, 'Domain', 'Combat', 'WorldBossStrike', 'WorldBossBoard.cs').matchAll(
-        /return \("([^"]+)", (\d+), ([\d_]+)L\)/g,
-      ),
-    ].map((m) => ({ tokens: Number(m[2]), gold: Number(m[3].replace(/_/g, '')) }));
-    expect(brackets.length).toBe(4);
-    expect(WORLD_BOSS_REWARDS.map((r) => ({ tokens: r.tokens, gold: r.gold }))).toEqual(brackets);
+    // The milestone table is the server's own, in the same order.
+    const rewards = read(serverRoot, 'Domain', 'Combat', 'WorldBossStrike', 'WorldBossRewards.cs');
+    const milestones = [...rewards.matchAll(/new WorldBossMilestone\(\d+, ([\d_]+), (\d+), (\d+),/g)].map((m) => ({
+      damage: Number(m[1].replace(/_/g, '')),
+      goldMinutes: Number(m[2]),
+      diamonds: Number(m[3]),
+    }));
+    expect(milestones.length).toBe(6);
+    expect(WORLD_BOSS_MILESTONES.map((r) => ({ damage: r.damage, goldMinutes: r.goldMinutes, diamonds: r.diamonds }))).toEqual(milestones);
+    expect(WORLD_BOSS_KILL_GOLD_HOURS).toBe(num(rewards, /KillGoldHours = (\d+)/, 'kill gold hours'));
+    expect(WORLD_BOSS_SANDBAG_SHARE_PCT).toBe(num(rewards, /SandbaggerKillSharePct = (\d+)/, 'sandbag share'));
+    expect([...WORLD_BOSS_PLACE_GOLD_HOURS]).toEqual(
+      rewards.match(/PlaceGoldHours = new\[\] \{ ([\d, ]+) \}/)![1].split(',').map((x) => Number(x.trim())),
+    );
+    expect(SCALED_GOLD_FLOOR).toBe(
+      Number(read(serverRoot, 'Engine', 'GoldRewardScale.cs').match(/FloorGold = ([\d_]+);/)![1].replace(/_/g, '')),
+    );
+    expect(DAILY_LOGIN_MAX_WEEK_MULTIPLIER).toBe(num(daily, /MaxWeekMultiplier = (\d+)/, 'login week multiplier'));
     expect(DAILY_LOGIN_DAY7_DIAMONDS).toBe(
       num(daily, /PremiumDiamondsOnDay7Completion = (\d+)/, 'day 7 diamonds'),
     );

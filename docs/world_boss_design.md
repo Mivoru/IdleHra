@@ -1,5 +1,10 @@
 # World boss: making the fight a fight
 
+> **Superseded in part, 2026-10-13.** The boss is Chernobog now, its health is
+> no longer scaled to who is online, and the rewards are entirely new. See
+> `docs/superpowers/specs/2026-10-13-chernobog-world-boss-design.md`. The
+> armour and shield-wheel design below still stands.
+
 Written 2026-09-05, before any code, because the task's own risk line says the
 danger here is scope and genre fit rather than difficulty. Task 10 in
 `docs/TASK_BOARD.md`.

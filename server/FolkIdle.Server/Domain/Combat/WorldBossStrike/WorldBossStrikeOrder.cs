@@ -39,6 +39,13 @@ namespace FolkIdle.Server.Domain.Combat.WorldBossStrike
 
         public int SpearsLost { get; init; }
 
+        /// <summary>
+        /// True for a strike that came from a shield-wheel challenge - played,
+        /// abandoned or refused - and false for an auto-strike. Only a played
+        /// strike's skill score feeds the sandbagging detector (WorldBossHpRules).
+        /// </summary>
+        public bool IsPlayed { get; init; }
+
         public TaskCompletionSource<WorldBossStrikeOutcome> Completion { get; } =
             new(TaskCreationOptions.RunContinuationsAsynchronously);
 

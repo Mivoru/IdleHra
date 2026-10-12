@@ -55,5 +55,29 @@ namespace FolkIdle.Server.Models
         // once-a-minute rescale. Persisted because LiveOps' own midnight edge
         // does not fire across a restart.
         public long ArmourDayKey { get; set; }
+
+        // Modul: CHERNOBOG'S WEEK (owner, 2026-10-13; spec
+        // docs/superpowers/specs/2026-10-13-chernobog-world-boss-design.md).
+        // Monday and Tuesday are registration: MaxHp and CurrentHp stay 0 (the
+        // health is hidden) while registered damage piles up in
+        // TotalDamageContributed. At RevealEpoch the health is set from what the
+        // registered players dealt - see WorldBossHpRules - and from then on
+        // only a registered player's damage moves it.
+
+        /// <summary>When the hidden health is revealed. Wednesday 00:00 UTC for a calendar week.</summary>
+        public long RevealEpoch { get; set; }
+
+        /// <summary>1 once the health has been revealed this encounter.</summary>
+        public byte HpRevealed { get; set; }
+
+        /// <summary>The week's hidden N, drawn once at the reveal and kept so a restart cannot redraw it.</summary>
+        public double HpFactor { get; set; }
+
+        /// <summary>
+        /// When the registered players brought the boss down, or 0. A fallen boss
+        /// is NOT the end of the week: strikes go on for milestones and rank, and
+        /// the kill reward is paid with everything else on Sunday.
+        /// </summary>
+        public long DefeatedAtEpoch { get; set; }
     }
 }
