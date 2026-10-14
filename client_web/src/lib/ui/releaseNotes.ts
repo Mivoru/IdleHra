@@ -35,6 +35,31 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.25.0',
+    date: '2026-10-14',
+    headline: 'Your bloodline is now the long road - twenty rebirths of it.',
+    sections: [
+      {
+        title: 'Rebirth',
+        items: [
+          'You can now be reborn twenty times. The first ten still pay skill points, Renown, the avatars and the Phoenix.',
+          'Every rebirth raises your bloodline ceiling - the highest an aptitude can be bred: 20 before your first rebirth, 35 at the tenth, 50 at the twentieth.',
+          'The Rebirth screen shows who of your line will carry into the next run.',
+          'There are no more seasons. A run ends only when you choose to be reborn.',
+        ],
+      },
+      {
+        title: 'Breeding',
+        items: [
+          'The Breeding screen is redrawn: pick a hero and a partner and the child is drawn on one bar per aptitude, with one line saying where it beats your hero.',
+          'Marry, Raise, Carry: the three steps from a wedding to an heir are shown at the top, with what is waiting at each.',
+          'A newborn is announced with its aptitudes and a button to the Hall of Ancestors, where children still to be fielded are marked.',
+          'Breeding now appears in your quests just before your first rebirth, at level 40.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.24.0',
     date: '2026-10-13',
     headline: 'Chernobog breaks out of his chest every Monday.',
