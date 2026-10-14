@@ -319,7 +319,7 @@
       <p class="dim tiny">
         The <strong>Inn</strong> is what feeds the gene pool below: arrivals,
         capacity and how high a newcomer's aptitudes can roll all come off its
-        level. Buildings survive the season; the people in the village do not.
+        level. Buildings survive a rebirth; the people in the village do not.
       </p>
     </section>
 

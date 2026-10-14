@@ -8,6 +8,8 @@
   // partners - so the explanation belongs where the choice is made, attached to
   // the actual numbers of the actual pair.
   //
+  // 2026-10-14: the aptitude bands moved to ChildForecast, which draws them;
+  // this keeps the traits, the rules (behind a toggle) and what happens next.
   // Every aptitude figure below is either sent by the preview endpoint or
   // computed from two numbers it already sent - see ui/breeding.ts, which
   // mirrors the server's own constants the same way net/commands.ts already
@@ -25,8 +27,7 @@
   // (never "locus", and there is only one gene left - Race), COPY (never
   // "allele"), TRAIT (never "gene" or "stat"), NEWCOMER then ELDER.
   import type { BreedingPreview, TraitDefinition } from '../net/rest';
-  import { APTITUDE_MAX, aptitudeBonusPercent } from '../net/commands';
-  import { breedingCostFor, driftOdds, epicChancePercent, inheritChancePercent } from './breeding';
+  import { breedingCostFor, driftOdds, epicChancePercent } from './breeding';
   import { oddsSourceLabel } from './traits';
   import TraitBadge from './TraitBadge.svelte';
 
@@ -51,62 +52,28 @@
   const drift = $derived(driftOdds(inbred));
   const epic = $derived(epicChancePercent(inbred));
 
-  const firstParent = $derived(mode === 'village' ? 'you' : 'the father');
-  const secondParent = $derived(mode === 'village' ? 'them' : 'the mother');
-
-  /** What the top of a band would be worth, so the bloodline panel's percentage
-   *  and this screen's raw points are the same currency. */
-  function worth(points: number): string {
-    return `+${aptitudeBonusPercent(Math.min(points, APTITUDE_MAX)).toFixed(1)}%`;
-  }
+  let rulesOpen = $state(false);
 </script>
 
-<!-- The heading is load-bearing beyond the layout: exercise.mjs asserts on it,
-     because a preview that renders without quoting what a child would inherit
-     is the exact failure this screen shipped with once. -->
-<h3>What the child would inherit</h3>
-
-<ul class="apts">
-  {#each preview.Aptitudes as apt (apt.AptitudeName)}
-    {@const heroOdds = inheritChancePercent(apt.ParentHero, apt.ParentPartner)}
-    {@const favoured = apt.ParentHero === apt.ParentPartner
-      ? null
-      : apt.ParentHero > apt.ParentPartner
-        ? firstParent
-        : secondParent}
-    <li>
-      <div class="head">
-        <span class="name">{apt.AptitudeName}</span>
-        <span
-          class="band"
-          class:up={apt.PredictedMax > Math.max(apt.ParentHero, apt.ParentPartner)}
-        >
-          {apt.PredictedMin}&ndash;{apt.PredictedMax}
-        </span>
-      </div>
-      <p class="why dim tiny">
-        {firstParent}
-        {apt.ParentHero} &middot; {secondParent}
-        {apt.ParentPartner} &mdash;
-        {#if favoured === null}
-          a coin flip, both are {apt.ParentHero}
-        {:else}
-          {heroOdds}% to copy {firstParent === 'you' ? 'yours' : `${firstParent}'s`},
-          {100 - heroOdds}% {secondParent === 'them' ? 'theirs' : `${secondParent}'s`},
-          so it leans to {favoured}
-        {/if}
-        &middot; the top of that band is worth {worth(apt.PredictedMax)}
-      </p>
-    </li>
-  {/each}
-</ul>
-
 <!-- WHY the band is the band. Each of these is a real roll the server makes in
-     this order, and the epic one is deliberately outside the quoted range. -->
-<div class="rules">
+     this order, and the epic one is deliberately outside the quoted range.
+     Behind a toggle since 2026-10-14: ChildForecast answers the question first,
+     and the mechanics are for whoever wants them. {#if}, never <details>. -->
+<button
+  type="button"
+  class="rules-toggle"
+  aria-expanded={rulesOpen}
+  data-testid="breeding-rules-toggle"
+  onclick={() => (rulesOpen = !rulesOpen)}
+>
+  {rulesOpen ? 'Hide' : 'How'} inheritance works{#if inbred} &middot; <span class="risk">related pair</span>{/if}
+</button>
+{#if rulesOpen}
+  <div class="rules">
   <p class="dim tiny">
-    Each aptitude is <strong>copied whole from one parent</strong>, weighted as
-    above. Then it drifts: <strong>{drift.up}% +1</strong>,
+    Each aptitude is <strong>copied whole from one parent</strong>, weighted by
+    how strong each is in it - a 12 against a 4 is 75% the 12 - unless you
+    ticked it on the Grounds, which takes the better parent outright. Then it drifts: <strong>{drift.up}% +1</strong>,
     <strong>{drift.down}% &minus;1</strong>, {drift.same}% unchanged &mdash;
     which is the only reason a band reaches one past the better parent.
   </p>
@@ -128,6 +95,12 @@
     Two similar parents just reproduce what you already have.
   </p>
 </div>
+{/if}
+{#if inbred && !rulesOpen}
+  <p class="warn-line tiny">
+    These two are related: the drift is inverted and the epic roll falls to {epic}%.
+  </p>
+{/if}
 
 <h3>Traits the child can inherit</h3>
 {#if preview.TraitOdds.length === 0}
@@ -231,15 +204,25 @@
     font-weight: 700;
   }
 
-  /* The only outcome that moves a bloodline: a number neither parent had. */
-  .band.up {
-    color: var(--brass-lit, inherit);
-  }
 
   .why {
     margin: 0;
     line-height: 1.35;
     overflow-wrap: anywhere;
+  }
+
+  .rules-toggle {
+    margin: 0.6rem 0 0.4rem;
+    min-height: 44px;
+    width: 100%;
+    text-align: left;
+    font-size: 0.8rem;
+    background: transparent;
+    border: 1px dashed var(--border);
+  }
+
+  .risk {
+    color: var(--danger);
   }
 
   .rules {

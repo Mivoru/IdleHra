@@ -29,9 +29,9 @@ namespace FolkIdle.Server.Engine
         public const int Fortune = 3;
 
         /// <summary>
-        /// The absolute ceiling. Reaching it in even one aptitude is meant to
-        /// take on the order of ten seasons of deliberate selection - a cap
-        /// should be an asymptote almost nobody touches, not a checklist.
+        /// The absolute ceiling. Reachable only at the last rebirth - see
+        /// CeilingFor - so it is the long goal of the whole bloodline, not a
+        /// checklist item.
         /// </summary>
         public const int MaxValue = 50;
 
@@ -52,6 +52,44 @@ namespace FolkIdle.Server.Engine
         /// each season worth doing.
         /// </summary>
         public const int VillagerCeiling = 20;
+
+        // --- the bloodline ceiling ---------------------------------------------
+
+        /// <summary>
+        /// The highest value breeding can produce for an account that has taken
+        /// this many rebirths: the village ceiling at none, rising to MaxValue
+        /// at RebirthRules.MaxRebirths.
+        ///
+        /// Modul: THE REBIRTH IS THE CLOCK, NOT THE PLAYTIME (owner 2026-10-14:
+        /// "50 should take about twenty rebirths"). A generation costs an hour
+        /// of rest and an hour of growing up, and nothing limits how many a run
+        /// can hold, so tuning the drift alone made the climb a function of
+        /// hours played - measured at 77-119 generations from 25 to 50, which a
+        /// dedicated player could do in a single long run. The ceiling makes
+        /// each rebirth the thing that opens the next few points, and the drift
+        /// (+0.21-0.33 a generation) only decides how quickly a run fills them.
+        ///
+        /// Derived from the three constants rather than written as 1.5, so the
+        /// two ends cannot drift apart from the numbers they name.
+        /// </summary>
+        public static int CeilingFor(int rebirthCount)
+        {
+            int rebirths = Math.Clamp(rebirthCount, 0, RebirthRules.MaxRebirths);
+            int span = MaxValue - VillagerCeiling;
+            return VillagerCeiling + span * rebirths / RebirthRules.MaxRebirths;
+        }
+
+        /// <summary>
+        /// What a child may reach in one aptitude: the account's ceiling, or the
+        /// better parent's value if a parent is already above it.
+        ///
+        /// Modul: GRANDFATHERED, NEVER TAKEN AWAY. Lines bred before the ceiling
+        /// existed can sit above it. A child may still inherit that number - a
+        /// rule that lowered a bloodline would punish the players who invested
+        /// most - it just cannot climb past it until the ceiling catches up.
+        /// </summary>
+        public static int ChildLimit(int father, int mother, int ceiling)
+            => Math.Clamp(Math.Max(ceiling, Math.Max(father, mother)), 0, MaxValue);
 
         public static string NameOf(int aptitude) => aptitude switch
         {
@@ -210,7 +248,8 @@ namespace FolkIdle.Server.Engine
             bool isEpic,
             int selectionMask,
             int groundsLevel,
-            Random rng)
+            Random rng,
+            int ceiling = MaxValue)
         {
             if (father is null || father.Length < Count) throw new ArgumentException("father vector", nameof(father));
             if (mother is null || mother.Length < Count) throw new ArgumentException("mother vector", nameof(mother));
@@ -237,7 +276,8 @@ namespace FolkIdle.Server.Engine
                     : InheritOne(father[i], mother[i], rng);
 
                 child[i] = Mutate(inherited, isInbred, rng, groundsLevel);
-                if (isEpic) child[i] = Math.Min(MaxValue, child[i] + EpicBonus);
+                if (isEpic) child[i] = child[i] + EpicBonus;
+                child[i] = Math.Min(child[i], ChildLimit(father[i], mother[i], ceiling));
             }
             return child;
         }
@@ -337,13 +377,13 @@ namespace FolkIdle.Server.Engine
         /// time and widening every band by one to describe it would make the
         /// common case a lie.
         /// </summary>
-        public static void PreviewOne(int parentA, int parentB, out int min, out int max)
+        public static void PreviewOne(int parentA, int parentB, out int min, out int max, int ceiling = MaxValue)
         {
             parentA = Math.Clamp(parentA, 0, MaxValue);
             parentB = Math.Clamp(parentB, 0, MaxValue);
 
             min = Math.Clamp(Math.Min(parentA, parentB) - 1, 0, MaxValue);
-            max = Math.Clamp(Math.Max(parentA, parentB) + 1, 0, MaxValue);
+            max = Math.Min(Math.Max(parentA, parentB) + 1, ChildLimit(parentA, parentB, ceiling));
         }
 
         // --- relatedness -------------------------------------------------------

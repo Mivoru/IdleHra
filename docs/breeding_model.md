@@ -5,6 +5,13 @@ One page. Everything here is derived from the server code, not from
 experience and the code is what is written down here. The disagreements are
 listed at the bottom under [Where the spec and the code disagree](#where-the-spec-and-the-code-disagree).
 
+> **2026-10-14: there are no seasons.** A run ends when its player chooses to
+> be reborn (`RebirthEngine`), and the admin's global "END SEASON" was removed
+> with the placement rewards. Everything this page used to say about "the
+> season" happens at a **rebirth**, for one player. Twenty rebirths in all; the
+> **bloodline ceiling** (§3) rises with each one. There is no level gate on
+> breeding - only an adult parent.
+
 Source of truth for each claim: `BreedingAptitudes.cs`, `BreedingEngine.cs`,
 `GeneticSplicingEngine.cs`, `VillagerArrivalRules.cs`, `VillageArrivalEngine.cs`,
 `HallOfAncestorsRules.cs`, `HallOfAncestorsEngine.cs`, `SeasonalRotationEngine.cs`,
@@ -26,7 +33,7 @@ nothing else.
 | One half of a gene | **copy** — the *dominant* copy and the *recessive* copy | allele |
 | One of up to three permanent, named modifiers a character carries (see [Traits](#traits) below) | **trait** | gene, stat |
 | A person on the Hall of Ancestors roster | **ancestor** | lineage member |
-| The end-of-season deletion down to the Hall's cap | **the cull**; who survives it **carries** | reset, wipe |
+| The deletion down to the Hall's cap at a rebirth | **the cull**; who survives it **carries** | reset, wipe |
 | Somebody who arrives at the Inn and has not married | **newcomer** | resident, villager slot |
 | A newcomer who has married into your line | **elder** | spent villager |
 | Newcomers plus elders, as a resource | **the gene pool** | the village (that is the buildings) |
@@ -102,10 +109,29 @@ For each aptitude **independently**:
 2. **A drift roll**: 25% `+1`, 10% `−1`, 65% unchanged. Inverted if the pair is
    inbred.
 3. **If an epic mutation fired**, `+1` on top of every one of the four.
-4. Clamped to `0 … 50`.
+4. Capped at the account's **bloodline ceiling**, or at the better parent's
+   value if that is already higher (a line bred above the ceiling keeps what
+   it has; it just cannot climb further until the ceiling catches up).
 
 So the reachable band, before the epic roll, is exactly
-`min(a,b) − 1` to `max(a,b) + 1`. That is the band the preview quotes.
+`min(a,b) − 1` to `min(max(a,b) + 1, limit)`. That is the band the preview
+quotes, and `AtCeiling` says when the ceiling, not the parents, set the top.
+
+### The bloodline ceiling
+
+`BreedingAptitudes.CeilingFor(rebirths) = 20 + 30 × rebirths / 20` (integer
+division): **20** before the first rebirth - exactly what the village can
+supply - then 21, 23, 24, 26 … **35** at the tenth and **50** at the
+twentieth (`RebirthRules.MaxRebirths`). Owner, 2026-10-14: an aptitude of 50
+should take about twenty rebirths.
+
+Why a ceiling and not slower drift: a generation costs an hour of rest and an
+hour of growing up, and nothing limits how many a run can hold. Measured
+(`BreedingClimbTests`), 25 → 50 takes 77-119 generations - a single long run
+could do it, so tuning the drift alone made the climb a function of hours
+played. The ceiling makes each rebirth open the next one or two points; the
+drift (+0.21 to +0.33 a generation past 20) decides how fast a run fills them,
+about five to seven generations per rebirth. `BloodlineCeilingTests` pins it.
 
 **The consequence that is the whole design:** each aptitude independently
 favours whichever parent is better at it. Cross a fighter `(12,4,4,4)` with a
@@ -170,7 +196,7 @@ chance of `20% + 3% per Inn level`, capped at **50%**. Of that roll, **15%**
 is a flaw; otherwise it is common/rare, or — only once the Inn is **level 6**
 or higher — common/rare/legendary.
 
-Traits are the axis a season leaves standing alongside the aptitudes: unlike
+Traits are the axis a rebirth leaves standing alongside the aptitudes: unlike
 the old genes, every one of them is a number the combat and gathering engines
 demonstrably read, and the Breeding, Ancestors, Village and Wiki screens all
 show them by name.
@@ -185,7 +211,8 @@ show them by name.
 **A child does not grow up on its own.** Only characters in the three played
 slots age, so a newborn stays a Child until you **field** it from the Hall of
 Ancestors. Once fielded it needs roughly **one hour of ticked play** to become
-an Adult, and then level 50 before it can breed in turn. How many slots you have
+an Adult, which is all it needs before it can breed in turn (there is no
+level gate - `BreedingGateRules`). How many slots you have
 is set by the Town Hall: slot 2 at Town Hall 3, slot 3 at Town Hall 5.
 
 ### Cooldown
@@ -207,7 +234,8 @@ is the two-phase climb the whole system is tuned around:
 - **0 → 20 is village-driven.** Build the Inn, better people arrive, marry good
   blood in.
 - **20 → 50 the village cannot reach.** Past 20 it is drift and selection across
-  generations only — the veteran axis, measured in seasons.
+  generations only — the veteran axis, and only as far as the bloodline
+  ceiling your rebirths have opened.
 
 The **Inn** is the single lever and it drives both halves:
 
@@ -231,16 +259,17 @@ mixed-race pair and a newcomer of a race you own no character of is a portrait
 and nothing else.
 
 A **feast** buys an arrival immediately for `2,500 × 1.6^n` gold, where `n` is
-how many feasts you have already thrown this season. Roughly
+how many feasts you have already thrown this run. Roughly
 2,500 / 4,000 / 6,400 / 10,240 …
 
-A season begins with **two newcomers**, rolled at Inn level 1.
+A run begins with **two newcomers**, rolled at Inn level 1.
 
-## 5. What survives a season, and what is lost
+## 5. What survives a rebirth, and what is lost
 
-The rollover is the reason breeding exists. It runs server-side with everyone
-disconnected, so nothing prompts you: everything below is decided in advance by
-what you built and what you marked.
+The rebirth is the reason breeding exists. The player takes it from the Rebirth
+screen, after a typed confirmation that lists who the Hall lets go and who the
+next run starts with; everything below is decided by what you built and what
+you marked.
 
 **Carries:**
 
@@ -249,7 +278,7 @@ what you built and what you marked.
 - Village **buildings** (including the Inn and the Breeding Grounds).
 - Race masteries, unlocked races, diamonds, purchased **Inheritance** levels,
   purchased Hall slots, Seals and the permanent skill points they pay, your best
-  season rank, and any paid respec grants.
+  leaderboard placement, and any paid respec grants.
 
 **Is lost:**
 
@@ -257,19 +286,18 @@ what you built and what you marked.
 - All **gear**, all **gold**, every other material, the market, the chronicle
   pass, and every point spent in the skill tree.
 - **The entire gene pool.** Newcomers *and* elders are deleted, along with the
-  arrival clock and the escalating feast price. This season's Inn decides this
-  season's blood; next season starts from two fresh newcomers again.
+  arrival clock and the escalating feast price. This run's Inn decides this
+  run's blood; the next run starts from two fresh newcomers again.
 
-One quiet detail worth knowing: the rollover sets every surviving ancestor to
-**Level 1 and Adult**. So the whole roster is breeding-age on day one — and
-nobody can actually breed until somebody is back at level 50.
+One quiet detail worth knowing: the reset sets every surviving ancestor to
+**Level 1 and Adult**. So the whole roster is breeding-age on day one.
 
 ### The cull
 
 The Hall holds **10** ancestors, **+1 per diamond slot bought**, hard cap
 **14**. Slots cost 250 diamonds, doubling: 250 / 500 / 1,000 / 2,000.
 
-If you own more than the cap when the season turns, the surplus is **deleted** —
+If you own more than the cap at a rebirth, the surplus is **deleted** —
 the character and its lineage row both. The order of survival is:
 
 1. **Your main character, always.** Their id *is* the account's id; culling them
@@ -279,22 +307,28 @@ the character and its lineage row both. The order of survival is:
    generation**, then a stable tiebreak.
 
 Marking more than the cap is legal — the same ranking resolves it. The Hall of
-Ancestors screen shows who would go if the season ended right now, faded.
+Ancestors screen shows who would go if you were reborn right now, under "Lost at rebirth".
 
 ## 6. The loop this is all for
 
-1. Start the season with your best child. Level 1, like everyone, but carrying
+The Breeding screen draws this as three steps - **Marry, Raise, Carry**
+(`BloodlinePath.svelte`) - and the quest line asks for it second to last, just
+before the first rebirth (`QuestLineRegistry.BloodlineNearLevel`, level 40).
+
+1. Start the run with your best child. Level 1, like everyone, but carrying
    the bloodline.
-2. Play, level, gear up. Rebuild the village — **this** season's Inn decides
+2. Play, level, gear up. Rebuild the village — **this** run's Inn decides
    what blood you can marry in.
-3. Late in the season, at level 50, breed. Marry newcomers in for numbers your
-   line does not have; cross your own to combine two specialists.
-4. Mark who carries. The season ends, gear and levels go, the bloodline stays.
+3. Before you are reborn, breed. Marry newcomers in for numbers your line does
+   not have; cross your own to combine two specialists. Field the child and
+   give it an hour to grow up.
+4. Mark who carries, and be reborn: gear and levels go, the bloodline stays,
+   and the ceiling rises.
 5. Field your best child and start again a little stronger.
 
 An aptitude point is worth `1.5%` up to 20, `0.7%` from 21 to 35, and `0.3%`
 from 36 to 50 — `+30%` / `+40.5%` / `+45%` cumulative. Deliberately diminishing,
-so a veteran's advantage is visible but never decisive on a shared seasonal
+so a veteran's advantage is visible but never decisive on a shared
 leaderboard.
 
 ---
@@ -352,7 +386,9 @@ UI one:
    like one requirement and is two, one of which is satisfied by playing and the
    other only by fielding the character into a Town-Hall-gated slot and leaving
    the game running for an hour. Every sentence about breeding a child has to
-   carry an asterisk about how it becomes a parent.
+   carry an asterisk about how it becomes a parent. *(2026-10-14: the level
+   half is gone, and the fielding half is now said where it bites - the
+   Breeding screen's "born" banner and the Hall's "Field to raise" tag.)*
 3. **"Inheritance" names two unrelated systems** — what a child inherits, and
    the diamond shop of permanent account bonuses. Section 0 resolves it by
    reserving the noun for the shop, but that is a papering-over: the two will

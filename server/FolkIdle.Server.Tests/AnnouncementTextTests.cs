@@ -50,7 +50,6 @@ namespace FolkIdle.Server.Tests
                 AnnouncementText.Drop(LongestName, RarityTier.GetName(RarityTier.Transcendent), longestItem),
                 AnnouncementText.BossClear(LongestName, longestMonster, worldFirst: true),
                 AnnouncementText.BossClear(LongestName, longestMonster, worldFirst: false),
-                AnnouncementText.SeasonPlacement(9999, 3, LongestName),
             };
 
             foreach (string line in lines)

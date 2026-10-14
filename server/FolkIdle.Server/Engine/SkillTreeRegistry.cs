@@ -226,7 +226,7 @@ namespace FolkIdle.Server.Engine
             "Every blow against a world boss lands harder.",
             "More of your hits are critical ones.",
             "Your critical hits take a larger bite.",
-            "Levels arrive sooner, which is the slowest part of a season.",
+            "Levels arrive sooner, which is the slowest part of a run.",
 
             "Materials drop in bigger stacks. Crafting eats stacks.",
             "A drop has a chance to come out one rarity higher than it rolled.",

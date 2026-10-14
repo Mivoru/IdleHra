@@ -1,8 +1,7 @@
 <script lang="ts">
   // The rebirth badge beside a name (owner, 2026-10-11): a small shield with
-  // the count. At the cap (RebirthRules.MaxRebirths, sent by the rebirth
-  // preview as MaxRebirths - mirrored here only as the threshold for the gold
-  // look) it turns gold and glows, and so does the name right before it:
+  // the count. At the tenth rebirth (RebirthRules.RewardedRebirths - the last
+  // that pays a reward, and the roadmap's "gold badge") it turns gold and glows, and so does the name right before it:
   // app.css lights `*:has(+ .rebirth-badge.max)`, so no screen that shows a
   // name has to know about it.
   interface Props {
@@ -11,16 +10,16 @@
 
   let { count }: Props = $props();
 
-  /** RebirthRules.MaxRebirths - only decides the gold look; the server enforces the cap. */
-  const MAX_REBIRTHS = 10;
-  const max = $derived(count >= MAX_REBIRTHS);
+  /** RebirthRules.RewardedRebirths - only decides the gold look; the server enforces everything. */
+  const GOLD_AT_REBIRTHS = 10;
+  const max = $derived(count >= GOLD_AT_REBIRTHS);
 </script>
 
 {#if count > 0}
   <span
     class="rebirth-badge"
     class:max
-    title={max ? `Reborn ${count} times - every rebirth taken` : `Reborn ${count} ${count === 1 ? 'time' : 'times'}`}
+    title={max ? `Reborn ${count} times` : `Reborn ${count} ${count === 1 ? 'time' : 'times'}`}
     aria-label={`Reborn ${count} ${count === 1 ? 'time' : 'times'}`}
     data-testid="rebirth-badge">{count}</span
   >

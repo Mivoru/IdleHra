@@ -65,6 +65,16 @@ export const guildOpen = (s: StateUpdate, facts: UnlockFacts): boolean =>
 
 export const breedingGroundsBuilt = (s: StateUpdate): boolean => Number(s.BreedingLevel) >= 1;
 
+/**
+ * QuestLineRegistry.BloodlineNearLevel - ten levels before Renown, when a child
+ * bred now is one the next run can start with (owner 2026-10-14: breeding
+ * works as soon as the Grounds stand, but is SURFACED near the first rebirth).
+ * serverMirrors.test.ts holds the two together.
+ */
+export const BLOODLINE_NEAR_LEVEL = 40;
+
+export const bloodlineNear = (s: StateUpdate): boolean => Number(s.CurrentLevel) >= BLOODLINE_NEAR_LEVEL;
+
 export const characterIsAgeing = (s: StateUpdate): boolean =>
   Math.max(Number(s.Slot1_AgePhase), Number(s.Slot2_AgePhase), Number(s.Slot3_AgePhase)) >=
   AGE_PHASE_VETERAN;
@@ -112,7 +122,10 @@ export const UNLOCK_RULES: readonly UnlockRule[] = [
     // the three becoming useful opens all three tabs.
     screens: ['breeding', 'ancestors', 'inheritance'],
     requirement: 'Breeding Grounds',
-    open: (s) => breedingGroundsBuilt(s) || characterIsAgeing(s) || canBuyInheritance(s),
+    // Open as soon as the Grounds stand (owner: available, as before), and at
+    // the bloodline level even without them, so the screen can say what to
+    // build. The NEW card waits for the level - see tutorialDiscoveries.
+    open: (s) => breedingGroundsBuilt(s) || bloodlineNear(s) || characterIsAgeing(s) || canBuyInheritance(s),
     discoveries: ['breeding', 'first_child', 'ancestors', 'inheritance'],
   },
 ];

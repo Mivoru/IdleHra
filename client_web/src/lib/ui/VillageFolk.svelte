@@ -221,7 +221,7 @@
           <p class="dim tiny">
             Marry one in on the Breeding screen: any grown adult of the same race
             and the opposite sex &mdash; there is no level requirement. Everybody
-            marries <strong>once</strong>. None of them survives the season, so
+            marries <strong>once</strong>. None of them survives a rebirth, so
             blood you do not marry in is blood you lose.
           </p>
         </div>
@@ -268,7 +268,7 @@
             {data.RecruitBlockedReason}
           {:else}
             Attracts somebody today instead of in {hours(data.IntervalSeconds)}. Each
-            feast this season costs more than the last.
+            feast this run costs more than the last.
           {/if}
         </p>
       </div>

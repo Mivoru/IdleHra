@@ -6928,6 +6928,13 @@ namespace FolkIdle.Server.Network
             public int ParentPartner { get; set; }
             public int PredictedMin { get; set; }
             public int PredictedMax { get; set; }
+            // The band when this aptitude is SELECTED on the Breeding Grounds:
+            // the better parent is taken outright, so only the mutation moves
+            // it. Sent rather than derived so the screen can show what a tick
+            // buys without a client copy of the rule.
+            public int SelectedMin { get; set; }
+            // True when the bloodline ceiling, not the parents, set PredictedMax.
+            public bool AtCeiling { get; set; }
         }
 
         private sealed class TraitOddsResponse
@@ -6949,21 +6956,34 @@ namespace FolkIdle.Server.Network
             public System.Collections.Generic.List<TraitOddsResponse> TraitOdds { get; set; } = new();
             public int MutationChancePct { get; set; }
             public int FlawChancePct { get; set; }
+            // BreedingAptitudes.CeilingFor this account's rebirths, and what the
+            // next rebirth would raise it to (equal at the last one).
+            public int BloodlineCeiling { get; set; }
+            public int NextBloodlineCeiling { get; set; }
         }
 
-        private static void AddAptitudePreviews(
-            System.Collections.Generic.List<AptitudePreviewResponse> into, int[] hero, int[] partner)
+        private static async Task AddAptitudePreviewsAsync(
+            FolkIdleDbContext db, long playerId, BreedingPreviewResponse response, int[] hero, int[] partner)
         {
+            int rebirths = await db.PlayerRecords.AsNoTracking()
+                .Where(p => p.Id == playerId).Select(p => p.RebirthCount).FirstOrDefaultAsync();
+            int ceiling = Engine.BreedingAptitudes.CeilingFor(rebirths);
+            response.BloodlineCeiling = ceiling;
+            response.NextBloodlineCeiling = Engine.BreedingAptitudes.CeilingFor(rebirths + 1);
+
             for (int i = 0; i < Engine.BreedingAptitudes.Count; i++)
             {
-                Engine.BreedingAptitudes.PreviewOne(hero[i], partner[i], out int min, out int max);
-                into.Add(new AptitudePreviewResponse
+                Engine.BreedingAptitudes.PreviewOne(hero[i], partner[i], out int min, out int max, ceiling);
+                int better = Math.Max(hero[i], partner[i]);
+                response.Aptitudes.Add(new AptitudePreviewResponse
                 {
                     AptitudeName = Engine.BreedingAptitudes.NameOf(i),
                     ParentHero = hero[i],
                     ParentPartner = partner[i],
                     PredictedMin = min,
                     PredictedMax = max,
+                    SelectedMin = Math.Min(Math.Max(0, better - 1), max),
+                    AtCeiling = max < Math.Min(better + 1, Engine.BreedingAptitudes.MaxValue),
                 });
             }
         }
@@ -7072,7 +7092,7 @@ namespace FolkIdle.Server.Network
                 response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
 
                 AddLocusPreview(response.Loci, "Race", pVec.LocusRace, mVec.LocusRace, maxGen);
-                AddAptitudePreviews(response.Aptitudes, pLineage.AptitudeVector(), mLineage.AptitudeVector());
+                await AddAptitudePreviewsAsync(db, playerId, response, pLineage.AptitudeVector(), mLineage.AptitudeVector());
                 AddTraitPreviews(response, pLineage.TraitMask, mLineage.TraitMask, await BreedingGroundsLevelAsync(db, playerId));
 
                 context.Response.StatusCode = 200;
@@ -7163,7 +7183,7 @@ namespace FolkIdle.Server.Network
                 response.HasSufficientGold = goldRecord != null && goldRecord.Quantity >= response.BreedingCostGold;
 
                 AddLocusPreview(response.Loci, "Race", heroVec.LocusRace, villagerVec.LocusRace, maxGen);
-                AddAptitudePreviews(response.Aptitudes, heroLineage.AptitudeVector(), newcomer.AptitudeVector());
+                await AddAptitudePreviewsAsync(db, playerId, response, heroLineage.AptitudeVector(), newcomer.AptitudeVector());
                 AddTraitPreviews(response, heroLineage.TraitMask, newcomer.TraitMask, await BreedingGroundsLevelAsync(db, playerId));
 
                 context.Response.StatusCode = 200;
@@ -12746,104 +12766,11 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
-                // Modul: SEASON CONTROL (2026-09-28). The owner runs the
-                // season by hand: pause the rollover, move the end, or end it
-                // now. See SeasonalEraRecord.IsRolloverPaused.
-                if (requestPath == "/api/v1/admin/season" && context.Request.HttpMethod == "GET")
-                {
-                    var era = await db.SeasonalEraRecords.AsNoTracking()
-                        .Where(e => e.IsActive)
-                        .OrderBy(e => e.EndTimestamp)
-                        .FirstOrDefaultAsync();
-                    string json = JsonSerializer.Serialize(new
-                    {
-                        EraId = era?.EraId ?? 0,
-                        EndTimestamp = era?.EndTimestamp ?? 0L,
-                        Paused = era?.IsRolloverPaused ?? false,
-                        EndRequested = FolkIdle.Server.Engine.SeasonalRotationEngine.EndNowPending,
-                        // Task 88: the date is kept and shown, and no longer
-                        // ends anything - players end their own runs.
-                        CalendarEndsSeason = false,
-                    });
-                    var bytes = System.Text.Encoding.UTF8.GetBytes(json);
-                    context.Response.StatusCode = 200;
-                    context.Response.ContentType = "application/json";
-                    await context.Response.OutputStream.WriteAsync(bytes, 0, bytes.Length);
-                    return;
-                }
-
-                if (requestPath == "/api/v1/admin/season" && context.Request.HttpMethod == "POST")
-                {
-                    string body = await ReadBodyAsync(context);
-                    using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
-                    string action = doc.RootElement.TryGetProperty("action", out var a) ? a.GetString() ?? string.Empty : string.Empty;
-
-                    var era = await db.SeasonalEraRecords
-                        .Where(e => e.IsActive)
-                        .OrderBy(e => e.EndTimestamp)
-                        .FirstOrDefaultAsync();
-                    if (era == null)
-                    {
-                        context.Response.StatusCode = 409;
-                        return;
-                    }
-
-                    long nowEpoch = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                    switch (action)
-                    {
-                        case "pause":
-                            era.IsRolloverPaused = true;
-                            break;
-                        case "resume":
-                            // Resuming a season whose end has already passed
-                            // would roll it over within five minutes, which is
-                            // "end now" by accident. Refused; move the end first.
-                            if (era.EndTimestamp <= nowEpoch)
-                            {
-                                context.Response.StatusCode = 409;
-                                return;
-                            }
-                            era.IsRolloverPaused = false;
-                            break;
-                        case "setEnd":
-                            long end = doc.RootElement.TryGetProperty("endTimestamp", out var e) && e.TryGetInt64(out long v) ? v : 0L;
-                            // At least an hour ahead: an end in the past on an
-                            // unpaused season is an immediate wipe.
-                            if (end < nowEpoch + 3600)
-                            {
-                                context.Response.StatusCode = 400;
-                                return;
-                            }
-                            era.EndTimestamp = end;
-                            break;
-                        default:
-                            context.Response.StatusCode = 400;
-                            return;
-                    }
-
-                    await db.SaveChangesAsync();
-                    Console.WriteLine($"[season] admin {requesterId}: {action} -> era {era.EraId} end {era.EndTimestamp} paused {era.IsRolloverPaused}");
-                    context.Response.StatusCode = 200;
-                    return;
-                }
-
-                if (requestPath == "/api/v1/admin/season/end-now" && context.Request.HttpMethod == "POST")
-                {
-                    string body = await ReadBodyAsync(context);
-                    using var doc = JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
-                    string phrase = doc.RootElement.TryGetProperty("confirm", out var c) ? c.GetString() ?? string.Empty : string.Empty;
-                    // Every player's level, gear and gold go. A typed phrase,
-                    // like account deletion, so a stray tap cannot do it.
-                    if (phrase != "END SEASON")
-                    {
-                        context.Response.StatusCode = 400;
-                        return;
-                    }
-                    Console.WriteLine($"[season] admin {requesterId}: END NOW requested");
-                    FolkIdle.Server.Engine.SeasonalRotationEngine.RequestEndNow();
-                    context.Response.StatusCode = 202;
-                    return;
-                }
+                // Modul: SEASON CONTROL WAS HERE (2026-09-28 to 2026-10-14):
+                // pause, move the end, and a typed "END SEASON" that rolled
+                // every account over at once. Seasons are gone - a run ends
+                // with its own player's rebirth - so the endpoints went with
+                // them and the server has no way left to wipe the roster.
 
                 if (requestPath == "/api/v1/admin/profanity" && context.Request.HttpMethod == "POST")
                 {

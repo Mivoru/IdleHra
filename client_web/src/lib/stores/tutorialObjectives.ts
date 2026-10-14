@@ -93,7 +93,7 @@ const OBJECTIVES: readonly ObjectiveRule[] = [
     due: (s) => Number(s.AvailableSkillPoints) >= 1,
     body:
       'The skill tree is separate from attributes and is spent on permanent bonuses. Ring 2 ' +
-      'forks: taking one side locks the other for the season, so it is worth reading before ' +
+      'forks: taking one side locks the other until you respec or are reborn, so it is worth reading before ' +
       'you buy.',
   },
   {

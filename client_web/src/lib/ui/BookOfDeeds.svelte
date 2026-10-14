@@ -73,7 +73,7 @@
     for (const chapter of chapters) {
       if ((mask & (1 << (chapter.Index - 1))) === 0) continue;
       pushLocalNotice(
-        `Seal earned - ${chapter.Title}. +${data?.SkillPointsPerSeal ?? 2} skill points, every season from now on.`,
+        `Seal earned - ${chapter.Title}. +${data?.SkillPointsPerSeal ?? 2} skill points, for good.`,
         'info',
       );
     }
@@ -121,10 +121,10 @@
       <p class="dim small">
         {#if data && data.SealCount > 0}
           {data.SealCount} {data.SealCount === 1 ? 'Seal' : 'Seals'} &middot;
-          <strong>+{data.SkillPointsFromSeals} skill points every season</strong>
+          <strong>+{data.SkillPointsFromSeals} skill points, back after every rebirth</strong>
         {:else}
           Each chapter you finish is a Seal, and every Seal is
-          +{data?.SkillPointsPerSeal ?? 2} skill points a season, forever.
+          +{data?.SkillPointsPerSeal ?? 2} skill points for good - a rebirth gives them back.
         {/if}
       </p>
     </div>

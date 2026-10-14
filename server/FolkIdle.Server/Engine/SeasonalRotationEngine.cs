@@ -24,29 +24,18 @@ namespace FolkIdle.Server.Engine
         private readonly IServiceProvider _serviceProvider;
         private CancellationTokenSource _cts = new();
 
-        // Modul: THE ADMIN'S "END THE SEASON NOW" (2026-09-28). The request
-        // cannot run the rollover itself: the rollover disconnects every
-        // client, the caller included, and takes as long as the roster does.
-        // So it sets this and wakes the loop, and the rollover runs on the
-        // cron's own path - the one the tests already cover. Static because
-        // the HTTP layer has no reference to this instance; tests that set it
-        // must clear it (CLAUDE.md, "the queues are STATIC").
-        private static int _endNowRequested;
+        // Modul: NO SEASONS (owner 2026-10-14). The calendar stopped ending
+        // them on 2026-09-30 (task 88) and the admin's typed "END SEASON" was
+        // the last way to roll every account over at once; it is gone, with
+        // the placement rewards only a global rollover paid. A run ends when
+        // its player chooses - RebirthEngine - and this engine is now the
+        // shared reset that rebirth calls, plus the loop that keeps one era
+        // record alive because the shard ledgers are keyed on it.
+        //
+        // EVERY RESET HERE TAKES ONE PLAYER. There is no code path left that
+        // can wipe the whole roster, and the TRUNCATE branches that did so
+        // were removed rather than left unreachable.
         private static readonly SemaphoreSlim Wake = new(0, 1);
-
-        /// <summary>Ends the active season at the next loop pass, paused or not.</summary>
-        public static void RequestEndNow()
-        {
-            Interlocked.Exchange(ref _endNowRequested, 1);
-            if (Wake.CurrentCount == 0)
-            {
-                try { Wake.Release(); } catch (SemaphoreFullException) { }
-            }
-        }
-
-        internal static bool EndNowPending => Volatile.Read(ref _endNowRequested) == 1;
-
-        internal static void ClearEndNowForTests() => Interlocked.Exchange(ref _endNowRequested, 0);
 
         public SeasonalRotationEngine(IServiceProvider serviceProvider)
         {
@@ -84,131 +73,28 @@ namespace FolkIdle.Server.Engine
         internal async Task ExecuteEraCheckAsync(CancellationToken stoppingToken)
         {
             long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            bool forced = Interlocked.Exchange(ref _endNowRequested, 0) == 1;
-            int closedEraId = 0;
 
-            using (var scope = _serviceProvider.CreateScope())
-            {
-                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
-                await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, stoppingToken);
-
-                var activeEra = await db.SeasonalEraRecords
-                    .FromSqlRaw("SELECT * FROM \"SeasonalEraRecords\" WHERE \"IsActive\" = TRUE ORDER BY \"EndTimestamp\" LIMIT 1 FOR UPDATE")
-                    .FirstOrDefaultAsync(stoppingToken);
-
-                if (activeEra == null)
-                {
-                    // An era still has to exist: the shard ledgers are keyed
-                    // on it, rebirth included. Created paused, since a date no
-                    // longer ends one (below).
-                    db.SeasonalEraRecords.Add(new SeasonalEraRecord
-                    {
-                        EndTimestamp = now + EraDurationSeconds,
-                        IsActive = true,
-                        IsRolloverPaused = true
-                    });
-                    await db.SaveChangesAsync(stoppingToken);
-                    await transaction.CommitAsync(stoppingToken);
-                    return;
-                }
-
-                // Modul: THE CALENDAR NO LONGER ENDS A SEASON (task 88, owner
-                // decision 2026-09-30). A player ends their own run with a
-                // rebirth (RebirthEngine), whenever they choose; the date on
-                // the era is kept for the admin panel and ignored here, paused
-                // or not. The only global rollover left is the admin's typed
-                // "END SEASON" - an explicit act by the owner, not a clock.
-                // SeasonControlTests pins both halves.
-                if (!forced)
-                {
-                    await transaction.CommitAsync(stoppingToken);
-                    return;
-                }
-
-                activeEra.IsActive = false;
-                closedEraId = activeEra.EraId;
-                db.SeasonalEraRecords.Add(new SeasonalEraRecord
-                {
-                    EndTimestamp = now + EraDurationSeconds,
-                    IsActive = true,
-                    // A paused season that the admin ends by hand starts a
-                    // paused one - pausing is a standing decision, not a
-                    // one-season exception.
-                    IsRolloverPaused = activeEra.IsRolloverPaused
-                });
-
-                await db.SaveChangesAsync(stoppingToken);
-                await transaction.CommitAsync(stoppingToken);
-            }
-
-            if (closedEraId <= 0)
-            {
-                return;
-            }
-
-            GlobalEngineState.IsEraTransitionActive = true;
-            
-            var networkSystem = _serviceProvider.GetService<FolkIdle.Server.Network.NetworkBroadcastSystem>();
-            if (networkSystem != null)
-            {
-                await networkSystem.DisconnectAllClientsGracefullyAsync();
-            }
-            try
-            {
-                await ExecutePlayerRolloversAsync(closedEraId, stoppingToken);
-            }
-            finally
-            {
-                GlobalEngineState.IsEraTransitionActive = false;
-            }
-        }
-
-        // Test-only observability (via InternalsVisibleTo) so
-        // FolkIdle.Server.Tests can directly exercise the era-close
-        // rollover without waiting on the real 90-day EraDurationSeconds
-        // clock or the 5-minute cron poll.
-        internal async Task ExecutePlayerRolloversAsync(int closedEraId, CancellationToken stoppingToken)
-        {
             using var scope = _serviceProvider.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
             await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, stoppingToken);
 
-            try
+            bool any = await db.SeasonalEraRecords
+                .FromSqlRaw("SELECT * FROM \"SeasonalEraRecords\" WHERE \"IsActive\" = TRUE ORDER BY \"EndTimestamp\" LIMIT 1 FOR UPDATE")
+                .AnyAsync(stoppingToken);
+
+            if (!any)
             {
-                await AwardLegacyShardsAsync(db, closedEraId, onlyPlayerId: null, stoppingToken);
-
-                // Modul: AND WHAT THE SEASON'S PLACING WAS WORTH.
-                //
-                // Everything above pays out for what a player ACCUMULATED -
-                // gold, levels, gear. This pays for where they FINISHED, which
-                // is a different thing and the only reason a leaderboard is
-                // worth looking at twice.
-                //
-                // Ranked by the same rule the live board uses, and for the
-                // same reason: a season that ends on a different ordering than
-                // the one players watched all season is a broken promise.
-                // Level first, then the hardest monster they ever put down,
-                // then how many times.
-                //
-                // One query, not one per player: this runs inside the era
-                // transition with every client disconnected, but a per-player
-                // round trip over the whole roster is how a five-minute
-                // maintenance window becomes an hour.
-                //
-                // GLOBAL ONLY. A rebirth (task 88) is one player leaving a
-                // roster that is not ending, so there is nothing to place in.
-                await AwardPlacementRewardsAsync(db, closedEraId, stoppingToken);
-
-                await ResetPlayersAsync(db, onlyPlayerId: null, stoppingToken);
-
-                await transaction.CommitAsync(stoppingToken);
+                // An era still has to exist: the shard ledgers are keyed on
+                // it, rebirth included. Its date ends nothing.
+                db.SeasonalEraRecords.Add(new SeasonalEraRecord
+                {
+                    EndTimestamp = now + EraDurationSeconds,
+                    IsActive = true,
+                    IsRolloverPaused = true
+                });
+                await db.SaveChangesAsync(stoppingToken);
             }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync(stoppingToken);
-                Console.WriteLine($"SEASONAL RESET FAILURE - EraId {closedEraId}: {ex}");
-                throw;
-            }
+            await transaction.CommitAsync(stoppingToken);
         }
 
         /// <summary>
@@ -226,7 +112,7 @@ namespace FolkIdle.Server.Engine
         internal static async Task<int> AwardLegacyShardsAsync(
             FolkIdleDbContext db,
             int eraId,
-            long? onlyPlayerId,
+            long onlyPlayerId,
             CancellationToken stoppingToken)
         {
             int paidToOnlyPlayer = 0;
@@ -238,12 +124,7 @@ namespace FolkIdle.Server.Engine
             // live box every term was 1 and the season's whole level
             // component was a COUNT OF CHARACTERS. A level-88 account and a
             // fresh one with the same roster size earned identical shards.
-            var playerQuery = db.PlayerRecords.AsNoTracking();
-            if (onlyPlayerId.HasValue)
-            {
-                long only = onlyPlayerId.Value;
-                playerQuery = playerQuery.Where(p => p.Id == only);
-            }
+            var playerQuery = db.PlayerRecords.AsNoTracking().Where(p => p.Id == onlyPlayerId);
 
             var players = await playerQuery
                 .OrderBy(p => p.Id)
@@ -291,7 +172,7 @@ namespace FolkIdle.Server.Engine
 
                     long totalGold = Math.Max(0L, goldDict.GetValueOrDefault(playerId, 0L));
                     int shardsEarned = CalculateLegacyShards(totalGold, levelSquareSum, inventoryScore);
-                    if (onlyPlayerId.HasValue && playerId == onlyPlayerId.Value)
+                    if (playerId == onlyPlayerId)
                     {
                         paidToOnlyPlayer = shardsEarned;
                     }
@@ -324,35 +205,31 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
-        /// The reset half of a rollover: everything a season takes back, for
-        /// every player or only <paramref name="onlyPlayerId"/> (a rebirth).
-        /// The caller owns the transaction.
+        /// The reset a rebirth performs, for one player. The caller owns the
+        /// transaction.
         /// </summary>
         /// <remarks>
-        /// Modul: TRUNCATE for the whole roster, DELETE ... WHERE for one
-        /// player. The statements are otherwise the same list in the same
-        /// order, and that is the point - see AwardLegacyShardsAsync. A
-        /// per-player DELETE does not RESTART IDENTITY, so the recycled-id
-        /// hazard the equip-pointer comment below describes cannot arise from
-        /// a rebirth; the pointers are still cleared first, because a pointer
-        /// at a deleted row is wrong whether or not the id is ever reused.
+        /// Modul: ONE PLAYER, ALWAYS. This used to TRUNCATE the whole roster
+        /// for a season and DELETE ... WHERE for a rebirth, one list of
+        /// statements with a branch in each. Seasons are gone (2026-10-14),
+        /// so the roster branch was deleted rather than left reachable. The
+        /// equip pointers are still cleared first, because a pointer at a
+        /// deleted row is wrong whether or not the id is ever reused.
         /// </remarks>
         internal static async Task ResetPlayersAsync(
             FolkIdleDbContext db,
-            long? onlyPlayerId,
+            long onlyPlayerId,
             CancellationToken stoppingToken,
             IReadOnlyCollection<long>? keepEquipmentIds = null)
         {
-            bool one = onlyPlayerId.HasValue;
             // Task 114: equipment a rebirth paid to keep (RebirthEngine priced
-            // and checked it). Only ever for one player; the roster keeps none.
-            long[] keepIds = one && keepEquipmentIds != null ? keepEquipmentIds.ToArray() : Array.Empty<long>();
-            long only = onlyPlayerId ?? 0L;
+            // and checked it).
+            long[] keepIds = keepEquipmentIds != null ? keepEquipmentIds.ToArray() : Array.Empty<long>();
+            long only = onlyPlayerId;
 
-            // " AND <column> = <player>" for a rebirth, "" for the roster. The
-            // id is a long, never a string, so inlining it cannot inject.
-            string And(string column) => one ? $" AND {column} = {only}" : string.Empty;
-            string Where(string column) => one ? $" WHERE {column} = {only}" : string.Empty;
+            // The id is a long, never a string, so inlining it cannot inject.
+            string And(string column) => $" AND {column} = {only}";
+            string Where(string column) => $" WHERE {column} = {only}";
 
             // Bulk Updates & Truncations within the same transaction
             // Modul: Play Mode audit fix. EquippedWeaponId/ArmorId/
@@ -412,7 +289,7 @@ namespace FolkIdle.Server.Engine
                     AttributeRegistry.StartingValue(AttributeRegistry.Vigour),
                     AttributeRegistry.StartingValue(AttributeRegistry.Fortune),
                     RebirthRules.SkillPointsPerRebirth,
-                    RebirthRules.MaxRebirths,
+                    RebirthRules.RewardedRebirths,
                 },
                 stoppingToken);
 
@@ -430,12 +307,8 @@ namespace FolkIdle.Server.Engine
             // 215-point tree is bought and the choice is gone permanently -
             // and with ring 2 exclusive, the fork they did not take is
             // locked forever rather than for a season.
-            //
-            // TRUNCATE rather than DELETE for the same reason as the tables
-            // above: it deallocates pages directly instead of writing a
-            // tombstone per row.
             await db.Database.ExecuteSqlRawAsync(
-                one ? $"DELETE FROM \"player_skill_tree\"{Where("\"PlayerId\"")}" : "TRUNCATE TABLE \"player_skill_tree\" RESTART IDENTITY",
+                $"DELETE FROM \"player_skill_tree\"{Where("\"PlayerId\"")}",
                 stoppingToken);
 
             // Modul: the free respec comes back with the season, and
@@ -465,19 +338,9 @@ namespace FolkIdle.Server.Engine
             await db.Database.ExecuteSqlRawAsync("UPDATE \"CommodityRecords\" SET \"Quantity\" = 0 WHERE \"ItemId\" = 'gold'" + And("\"PlayerId\""), stoppingToken);
             await db.Database.ExecuteSqlRawAsync("DELETE FROM \"CommodityRecords\" WHERE \"ItemId\" <> 'gold'" + And("\"PlayerId\""), stoppingToken);
 
-            // Modul 41: unconditional full-table wipes use TRUNCATE ...
-            // RESTART IDENTITY CASCADE rather than DELETE FROM. Unlike
-            // DELETE, TRUNCATE deallocates pages directly and produces a
-            // small, fixed WAL footprint regardless of row count, avoiding
-            // WAL bloat and the long-held-lock/gateway-timeout risk of
-            // per-row tombstones on large tables at season-reset scale.
-            // CASCADE is a no-op safety net here (this schema does not
-            // enforce real FK constraints on these tables) but protects
-            // against a future FK addition silently breaking this reset.
+            // Everything but what the rebirth paid to keep.
             await db.Database.ExecuteSqlRawAsync(
-                one
-                    ? $"DELETE FROM \"EquipmentInstances\"{Where("\"PlayerId\"")}" + (keepIds.Length > 0 ? $" AND \"Id\" NOT IN ({string.Join(",", keepIds)})" : string.Empty)
-                    : "TRUNCATE TABLE \"EquipmentInstances\" RESTART IDENTITY CASCADE",
+                $"DELETE FROM \"EquipmentInstances\"{Where("\"PlayerId\"")}" + (keepIds.Length > 0 ? $" AND \"Id\" NOT IN ({string.Join(",", keepIds)})" : string.Empty),
                 stoppingToken);
 
             // Modul: a Workshop commission in progress is equipment on its way
@@ -488,18 +351,15 @@ namespace FolkIdle.Server.Engine
 
             await db.Database.ExecuteSqlRawAsync("DELETE FROM \"MarketOrderRecords\" o USING \"MarketEquipmentInstances\" e WHERE o.\"EquipmentInstanceId\" = e.\"Id\" AND e.\"IsLockedInEscrow\" = FALSE AND o.\"Status\" = 0 AND o.\"OrderType\" = 'SELL'" + And("e.\"PlayerId\""), stoppingToken);
             await db.Database.ExecuteSqlRawAsync("UPDATE \"MarketOrderRecords\" o SET \"EquipmentInstanceId\" = NULL FROM \"MarketEquipmentInstances\" e WHERE o.\"EquipmentInstanceId\" = e.\"Id\" AND e.\"IsLockedInEscrow\" = FALSE" + And("e.\"PlayerId\""), stoppingToken);
-            // Modul 41: this TRUNCATE must run after the two statements
-            // above, which still need to query MarketEquipmentInstances -
-            // truncating it earlier would leave those queries with nothing
-            // to match against.
+            // Modul 41: this DELETE must run after the two statements above,
+            // which still need to query MarketEquipmentInstances - deleting
+            // first would leave those queries with nothing to match against.
             //
             // A rebirth deletes only the player's UNESCROWED listings: an
             // escrowed piece is half of somebody else's trade in flight, and
             // pulling it out from under them is not this player's reset to make.
             await db.Database.ExecuteSqlRawAsync(
-                one
-                    ? $"DELETE FROM \"MarketEquipmentInstances\" WHERE \"IsLockedInEscrow\" = FALSE{And("\"PlayerId\"")}"
-                    : "TRUNCATE TABLE \"MarketEquipmentInstances\" RESTART IDENTITY CASCADE",
+                $"DELETE FROM \"MarketEquipmentInstances\" WHERE \"IsLockedInEscrow\" = FALSE{And("\"PlayerId\"")}",
                 stoppingToken);
             // A season returns every character to a fresh adult.
             //
@@ -561,7 +421,7 @@ namespace FolkIdle.Server.Engine
             // last season must not still be escalated on day one of this
             // one.
             await db.Database.ExecuteSqlRawAsync(
-                one ? $"DELETE FROM \"village_newcomers\"{Where("\"PlayerId\"")}" : "TRUNCATE TABLE \"village_newcomers\" RESTART IDENTITY",
+                $"DELETE FROM \"village_newcomers\"{Where("\"PlayerId\"")}",
                 stoppingToken);
             await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"LastVillagerArrivalEpoch\" = 0, \"VillagerRecruitmentsThisSeason\" = 0" + Where("\"Id\""), stoppingToken);
 
@@ -589,115 +449,6 @@ namespace FolkIdle.Server.Engine
             // player_race_unlocks was never in this method and stays out:
             // a race you have earned is yours.
             await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerChroniclePasses\" SET \"PassLevel\" = 0, \"AccumulatedXp\" = 0, \"ClaimedMilestonesBitmask\" = 0" + Where("\"PlayerId\""), stoppingToken);
-        }
-
-        /// <summary>
-        /// Ranks the whole roster the way the live leaderboard does and pays
-        /// the placement table into PremiumDiamonds.
-        ///
-        /// Diamonds rather than gold or shards - see SeasonPlacementRewards
-        /// for why. In short: gold is wiped at the rollover and shards have no
-        /// shop, so neither can be a prize.
-        /// </summary>
-        internal static async Task AwardPlacementRewardsAsync(
-            FolkIdleDbContext db,
-            int closedEraId,
-            CancellationToken stoppingToken)
-        {
-            // The same ordering as LeaderboardCronEngine, expressed against
-            // the same tables. Quarantined accounts are excluded there and are
-            // excluded here: a season they were not simulating is not a season
-            // they placed in.
-            var standings = await db.Database
-                .SqlQueryRaw<PlacementRow>(@"
-                    SELECT p.""Id"" AS ""PlayerId""
-                    FROM ""PlayerRecords"" p
-                    LEFT JOIN LATERAL (
-                        SELECT c.""MonsterId"", c.""KillCount""
-                        FROM ""monster_codex_entries"" c
-                        WHERE c.""PlayerId"" = p.""Id"" AND c.""KillCount"" >= 1
-                        ORDER BY c.""MonsterId"" DESC
-                        LIMIT 1
-                    ) m ON TRUE
-                    WHERE NOT p.""IsQuarantined"" AND NOT p.""Quarantine_Active""
-                    ORDER BY p.""CurrentLevel"" DESC,
-                             COALESCE(m.""MonsterId"", 0) DESC,
-                             COALESCE(m.""KillCount"", 0) DESC")
-                .ToListAsync(stoppingToken);
-
-            if (standings.Count == 0)
-            {
-                return;
-            }
-
-            // Modul: the Book of Deeds asks "did you ever finish a season in
-            // the top fifty", and the roster is already ranked right here. A
-            // separate pass over the leaderboard later would be a second
-            // ordering that could disagree with the one that paid the prizes.
-            //
-            // BEST (lowest) rank ever, never overwritten by a worse season: it
-            // is a record of a thing that happened, and a bad season does not
-            // un-happen a good one. 0 means "never placed".
-            var placedInTopFifty = new List<long>();
-            for (int i = 0; i < standings.Count && i < 50; i++)
-            {
-                placedInTopFifty.Add(standings[i].PlayerId);
-            }
-
-            for (int i = 0; i < placedInTopFifty.Count; i++)
-            {
-                // The params overload would read the CancellationToken as a
-                // third SQL parameter - EF answers that with "no store type
-                // mapping for CancellationToken", which reads like a schema
-                // problem and is an argument-list one. Pass the values as an
-                // explicit array.
-                await db.Database.ExecuteSqlRawAsync(
-                    @"UPDATE ""PlayerRecords""
-                      SET ""BestSeasonRank"" = {0}
-                      WHERE ""Id"" = {1} AND (""BestSeasonRank"" = 0 OR ""BestSeasonRank"" > {0})",
-                    new object[] { i + 1, placedInTopFifty[i] },
-                    stoppingToken);
-            }
-
-            // Grouped by reward so the whole roster costs a handful of
-            // statements rather than one per player.
-            var byReward = new Dictionary<int, List<long>>();
-            for (int i = 0; i < standings.Count; i++)
-            {
-                int diamonds = SeasonPlacementRewards.DiamondsForRank(i + 1);
-                if (diamonds <= 0) continue;
-
-                if (!byReward.TryGetValue(diamonds, out var bucket))
-                {
-                    bucket = new List<long>();
-                    byReward[diamonds] = bucket;
-                }
-                bucket.Add(standings[i].PlayerId);
-            }
-
-            foreach (var (diamonds, playerIds) in byReward)
-            {
-                await db.Database.ExecuteSqlRawAsync(
-                    @"UPDATE ""PlayerRecords"" SET ""PremiumDiamonds"" = ""PremiumDiamonds"" + {0}
-                      WHERE ""Id"" = ANY({1})",
-                    new object[] { diamonds, playerIds.ToArray() },
-                    stoppingToken);
-            }
-
-            // The top of the board is worth saying out loud - it is the one
-            // moment in a season where a name means something to everyone else.
-            for (int i = 0; i < standings.Count && i < 3; i++)
-            {
-                string who = await PlayerNameResolver.GetAsync(standings[i].PlayerId);
-                Domain.Social.ChatEngine.EnqueueSystemAnnouncement(
-                    AnnouncementText.SeasonPlacement(closedEraId, i + 1, who));
-            }
-        }
-
-        /// <summary>One player's final standing, straight off the query.</summary>
-        public sealed class PlacementRow
-        {
-            public long PlayerId { get; set; }
         }
 
         public static int CalculateLegacyShards(long totalGold, long characterLevelSquareSum, long inventoryScore)

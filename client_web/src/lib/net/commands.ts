@@ -1108,7 +1108,7 @@ export const SKILL_TREE_NODES: readonly {
   { id: 1, ring: 'root', root: 1, name: 'Giantslayer', blurb: 'Every blow against a world boss lands harder.', perLevel: 2.0, unit: 'pct' },
   { id: 2, ring: 'root', root: 2, name: 'Precision', blurb: 'More of your hits are critical ones.', perLevel: 0.4, unit: 'points' },
   { id: 3, ring: 'root', root: 3, name: 'Cruelty', blurb: 'Your critical hits take a larger bite.', perLevel: 3.0, unit: 'pct' },
-  { id: 4, ring: 'root', root: 4, name: 'Insight', blurb: 'Levels arrive sooner, which is the slowest part of a season.', perLevel: 0.4, unit: 'pct' },
+  { id: 4, ring: 'root', root: 4, name: 'Insight', blurb: 'Levels arrive sooner, which is the slowest part of a run.', perLevel: 0.4, unit: 'pct' },
 
   // boughs, two per root - only ONE of each pair may ever be levelled
   { id: 5, ring: 'bough', root: 0, name: 'Plenty', blurb: 'Materials drop in bigger stacks. Crafting eats stacks.', perLevel: 1.5, unit: 'pct' },
@@ -1240,7 +1240,7 @@ export function skillNodeBlockedReason(
 export function respecBlockedReason(freeRespecUsed: boolean, paidGrants: number): string | null {
   if (!freeRespecUsed) return null;
   if (paidGrants > 0) return null;
-  return 'You have used this season’s free respec.';
+  return 'You have used this run’s free respec - a rebirth brings it back.';
 }
 
 export function respecSkillTree(freeRespecUsed: boolean, paidGrants: number): CommandOutcome {
@@ -1639,7 +1639,7 @@ export function aptitudeBonusPercent(points: number): number {
 export const INHERITANCE_STATS: readonly { id: number; name: string; blurb: string }[] = [
   { id: 0, name: 'Damage',          blurb: 'Every hit lands harder, in every region.' },
   { id: 1, name: 'Max health',      blurb: 'A deeper pool before auto-eat has to reach for food.' },
-  { id: 2, name: 'Experience',      blurb: 'Levels arrive sooner, which is the slowest part of a season.' },
+  { id: 2, name: 'Experience',      blurb: 'Levels arrive sooner, which is the slowest part of a run.' },
   { id: 3, name: 'Gold',            blurb: 'More from every kill, online and away.' },
   { id: 4, name: 'Gathering yield', blurb: 'More material from the same swing.' },
   { id: 5, name: 'Loot luck',       blurb: 'Better rarity on what drops.' },

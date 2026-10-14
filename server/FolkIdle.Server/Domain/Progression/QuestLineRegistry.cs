@@ -120,6 +120,17 @@ namespace FolkIdle.Server.Domain.Progression
         public const int MarketOpenLevel = 10;
         public const int WorldBossOpenLevel = 10;
 
+        /// <summary>
+        /// Modul: BREEDING IS SURFACED WHEN THE FIRST REBIRTH IS NEAR (owner
+        /// 2026-10-14). It works from the moment the Breeding Grounds stand,
+        /// but asking a level-15 player to plan a bloodline is asking them to
+        /// learn the endgame before the game. Ten levels before Renown is when
+        /// a child bred now is one the next run can start with. The client's
+        /// menu rule mirrors it (unlocks.ts BLOODLINE_NEAR_LEVEL, pinned by
+        /// serverMirrors.test.ts).
+        /// </summary>
+        public const int BloodlineNearLevel = RebirthRules.RenownLevel - 10;
+
         private static bool ForgeOpen(QuestFacts f) => f.Level >= ForgeOpenLevel || f.ForgeLevel >= 1;
 
         /// <summary>The first thing Inheritance sells - its cheapest level, in diamonds.</summary>
@@ -168,35 +179,39 @@ namespace FolkIdle.Server.Domain.Progression
                 f => f.Level >= MarketOpenLevel && f.InGuild,
                 f => f.HasOpenOrSoldListing),
 
-            new(Breed, 7, "Start a breeding",
-                "Two villagers can have a child who inherits from both. It costs gold, and the Breeding Grounds must be built first.",
-                "breeding", new[] { "breeding-start" }, "Build the Breeding Grounds in the Village",
-                f => f.BreedingGroundsLevel >= 1,
-                f => f.GoldSpentOnBreeding > 0),
-
-            new(Inheritance, 8, "Buy an inheritance level",
+            new(Inheritance, 7, "Buy an inheritance level",
                 "Inheritance is permanent: diamonds buy a bonus that survives every rebirth. Diamonds come from the Delve.",
                 "inheritance", new[] { "inheritance-buy" }, "Hold enough diamonds for the cheapest level",
                 f => f.Diamonds >= CheapestInheritanceLevel,
                 f => f.InheritanceLevelsBought > 0),
 
-            new(Delve, 9, "Enter the Delve",
+            new(Delve, 8, "Enter the Delve",
                 "The Delve turns gold into diamonds, if your nerve holds. Pay the entry fee, then pick a door on each floor.",
                 "delve", new[] { "delve-start" }, "Hold one entry fee in gold",
                 f => f.Gold >= DelveRegistry.EntryFeeForRegion(f.HighestUnlockedRegion),
                 f => f.GoldSpentOnDelve > 0 || f.DelveDeepestFloor > 0),
 
-            new(WorldBoss, 10, "Strike the world boss",
+            new(WorldBoss, 9, "Strike the world boss",
                 "One strike a day on the shared boss. Everybody's damage is added up, and the board pays out weekly by damage.",
                 "worldboss", new[] { "worldboss-strike" }, $"Reach level {WorldBossOpenLevel}",
                 f => f.Level >= WorldBossOpenLevel,
                 f => f.HasWorldBossAttemptRow),
 
-            new(Ascension, 11, "Clear a boss Ascension step",
+            new(Ascension, 10, "Clear a boss Ascension step",
                 "Every region boss can be fought again, stronger, at ten steps. Each first clear pays a title. Cosmetics only.",
                 "combat", new[] { "ascension-start", "ascension" }, "Defeat the first region's boss",
                 f => f.HighestUnlockedRegion >= 2,
                 f => f.HighestAscensionStep >= 1),
+
+            // Second to last on purpose: the child is what the rebirth after it
+            // carries. Open again after a rebirth (the level is 1 by then).
+            new(Breed, 11, "Breed an heir",
+                "A rebirth takes your level and gear - your bloodline is what stays. Marry a villager on the Breeding screen: " +
+                "the child inherits the four aptitudes, a bonus to damage, gathering, health and luck that grows over the rebirths. " +
+                "Field the child from the Hall of Ancestors to raise it, and mark it Keep so it carries.",
+                "breeding", new[] { "breeding-start" }, $"Reach level {BloodlineNearLevel} with the Breeding Grounds built",
+                f => f.BreedingGroundsLevel >= 1 && (f.Level >= BloodlineNearLevel || f.RebirthCount > 0),
+                f => f.GoldSpentOnBreeding > 0),
 
             new(Rebirth, 12, "Take a Rebirth",
                 "A rebirth starts a new life at level 1 but keeps what is permanent. One taken from level 50 or above also adds Renown.",

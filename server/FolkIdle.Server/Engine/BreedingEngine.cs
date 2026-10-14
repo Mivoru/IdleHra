@@ -60,6 +60,20 @@ namespace FolkIdle.Server.Engine
             BreedingCooldownEndEpoch = character.BreedingCooldownEndEpoch,
         };
 
+        /// <summary>
+        /// The account's bloodline ceiling, from its rebirth count. Shared by
+        /// both pairings and both preview endpoints, so the band a preview
+        /// quotes and the child the engine makes obey the same number.
+        /// </summary>
+        internal static async Task<int> BloodlineCeilingAsync(FolkIdleDbContext db, long playerId)
+        {
+            int rebirths = await db.PlayerRecords.AsNoTracking()
+                .Where(p => p.Id == playerId)
+                .Select(p => p.RebirthCount)
+                .FirstOrDefaultAsync();
+            return BreedingAptitudes.CeilingFor(rebirths);
+        }
+
         public async Task ExecuteBreedingAsync(long playerId, Guid paternalId, Guid maternalId, int selectionMask = 0)
         {
             using var scope = _serviceProvider.CreateScope();
@@ -181,6 +195,11 @@ namespace FolkIdle.Server.Engine
                 // mutated. Crossing two specialists therefore produces a child
                 // good at both, which is what makes marrying difference rather
                 // than similarity the strategy - see BreedingAptitudes.
+                // Modul: THE BLOODLINE CEILING - what this account's rebirths
+                // have opened (BreedingAptitudes.CeilingFor). Read here, in the
+                // same transaction, never sent by the client.
+                int ceiling = await BloodlineCeilingAsync(dbContext, playerId);
+
                 int[] childAptitudes = BreedingAptitudes.Breed(
                     pLineage.AptitudeVector(),
                     mLineage.AptitudeVector(),
@@ -188,7 +207,8 @@ namespace FolkIdle.Server.Engine
                     isEpicMutation,
                     selectionMask,
                     breedingLevel,
-                    Random.Shared);
+                    Random.Shared,
+                    ceiling);
 
                 // Modul: TRAITS, from the same pairing and the same dice - see
                 // BreedingTraits. A related pair risks a visible flaw here, which
@@ -411,9 +431,14 @@ namespace FolkIdle.Server.Engine
                     ? GeneticSplicingEngine.Breed(heroGenome, villagerGenome, maxGen)
                     : GeneticSplicingEngine.Breed(villagerGenome, heroGenome, maxGen);
 
+                // Modul: THE BLOODLINE CEILING - what this account's rebirths
+                // have opened (BreedingAptitudes.CeilingFor). Read here, in the
+                // same transaction, never sent by the client.
+                int ceiling = await BloodlineCeilingAsync(dbContext, playerId);
+
                 int[] childAptitudes = heroIsFather
-                    ? BreedingAptitudes.Breed(heroAptitudes, villagerAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared)
-                    : BreedingAptitudes.Breed(villagerAptitudes, heroAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared);
+                    ? BreedingAptitudes.Breed(heroAptitudes, villagerAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling)
+                    : BreedingAptitudes.Breed(villagerAptitudes, heroAptitudes, isInbred, isEpicMutation, selectionMask, breedingLevel, Random.Shared, ceiling);
 
                 long childTraits = heroIsFather
                     ? BreedingTraits.Inherit(heroLineage.TraitMask, newcomer.TraitMask, isInbred, isEpicMutation, breedingLevel, Random.Shared)
