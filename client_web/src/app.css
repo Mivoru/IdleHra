@@ -1468,6 +1468,16 @@ h3:not(.place):not([style*='background-image'])::before {
   }
 }
 
+/* Modul: THE SCREEN CROSS-FADE (Game.svelte swapScreen). The browser's own
+   default is already a fade of the root snapshot; this only shortens it to
+   MOTION.screen in motion.ts, because a screen change is an answer to a tap
+   and 250ms of it is long enough to feel like waiting. Reduced motion never
+   gets here - swapScreen does not start a transition for it. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 160ms;
+}
+
 /* --- touch targets ------------------------------------------------------- */
 
 /* Modul: MEASURED, NOT ASSUMED - 221 CONTROLS FAILED.

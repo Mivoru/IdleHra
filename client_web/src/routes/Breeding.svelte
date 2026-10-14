@@ -455,7 +455,7 @@
       {/if}
 
       {#if bornChild}
-        <div class="born" data-testid="born-banner" role="status" transition:fly={{ y: 12, duration: motionMs(MOTION.enter) }}>
+        <div class="born folk-sweep folk-glow" data-testid="born-banner" role="status" transition:fly={{ y: 12, duration: motionMs(MOTION.enter) }}>
           <div>
             <strong>{bornChild.Name || 'A child'} is born</strong>
             <span class="dim tiny">

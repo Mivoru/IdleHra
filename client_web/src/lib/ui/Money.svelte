@@ -1,6 +1,7 @@
 <script lang="ts">
   import { currencyIcon } from './sprites';
   import { formatNumber, formatExact, isCompacted } from './format';
+  import { countUp } from './countUp.svelte';
   // Modul: one way to render a currency amount.
   //
   // Gold and diamonds appear on nine screens and were formatted nine different
@@ -31,13 +32,28 @@
      * store listing - rather than one column among many.
      */
     icon?: boolean;
+    /**
+     * Count the digits to a new value instead of jumping (countUp.svelte.ts).
+     * For a balance the player watches change - the header wallet - not for
+     * a price, which is a fact and should simply be there.
+     */
+    animate?: boolean;
   }
 
-  const { amount, kind = 'gold', available, signed = false, icon = false }: Props = $props();
+  const { amount, kind = 'gold', available, signed = false, icon = false, animate = false }: Props = $props();
 
   const iconUrl = $derived(icon ? currencyIcon(kind) : null);
 
   const value = $derived(Number(amount));
+
+  // Modul: only the DIGITS travel. `value` stays the truth for everything
+  // else on this element - affordability, `data-exact`, the title - so a
+  // check reading the attribute mid-count reads the real balance.
+  const counter = countUp(
+    () => (animate ? value : 0),
+    (a, b) => formatNumber(Math.round(a)) === formatNumber(Math.round(b)),
+  );
+  const shown = $derived(animate ? Math.round(counter.current) : value);
 
   // Modul: THE UNIT SPELLS ITSELF OUT ONCE THE NUMBER IS COMPACTED.
   //
@@ -83,9 +99,9 @@
   const compacted = $derived(isCompacted(value));
 
   const formatted = $derived.by(() => {
-    const abs = formatNumber(Math.abs(value));
+    const abs = formatNumber(Math.abs(shown));
     if (!signed) return abs;
-    return value < 0 ? `-${abs}` : `+${abs}`;
+    return shown < 0 ? `-${abs}` : `+${abs}`;
   });
 
   const exactText = $derived.by(() => {
