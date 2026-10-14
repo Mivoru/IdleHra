@@ -11,6 +11,12 @@ is done, move its section to the archive (or a new archive file) rather than
 leaving it here marked DONE - a board that is mostly finished work is how
 the old one reached 420 KB and three contradictory START HERE blocks.
 
+## State on 2026-10-14
+
+- **Production** runs `main` through PR #181 (1.0.1228, client 1.27.0):
+  design waves 1 and 2 (task 118), on top of the bloodline ceiling (#179)
+  and Chernobog (#178). The 2026-10-07 state below is kept for its history.
+
 ## State on 2026-10-07
 
 - **Production** runs `main` through PR #139 (1.0.1120): the balance pass
@@ -119,6 +125,43 @@ Still open, proposed and not approved:
 
 Tasks 113, 114, 116 and 117 are closed: see
 [`archive/TASK_BOARD_111-plus.md`](archive/TASK_BOARD_111-plus.md).
+
+### 118. Design waves - "less static" (waves 1 and 2 DONE, wave 3 open)
+
+Agreed with the owner 2026-10-14: three waves, one PR each, each measured
+with `check:perf` and the geometry checks. Write-up of what shipped:
+`docs/architecture/NEXT_STEPS_BACKLOG.md`, 2026-10-14.
+
+- **Wave 1 - motion. DONE, PR #180.** Screen cross-fade, the wallet counts
+  up, a birth catches light.
+- **Wave 2 - hierarchy. DONE, PR #181.** Combat's best pick and yield-first
+  rows; global `.dim/.tiny/.small` with a higher reading floor.
+- **Wave 3 - seasonal events as a token layer. OPEN, next.** The mechanism
+  already exists: `eventTheme.ts` sets `data-event` on `<html>` from the
+  wire's `SeasonalEventId`, and `app.css` re-points tokens under
+  `:root[data-event='samhain']` (boot.js repeats it before the bundle
+  loads). So the work is content, not plumbing:
+  - read the samhain block and list every token it touches; make that list
+    the contract every event block must fill (accent, glow, header, page
+    background, loading art);
+  - add blocks for the winter, spring and summer events, with art from the
+    owner (backgrounds and loading screens; the Halloween set in
+    `client/Assets/Images/WithWhiteBackground/` shows what one needs);
+  - a test that every event key the server can send has a complete block;
+  - acceptance: switching `data-event` by hand recolours the whole game, and
+    `check:clipping`, `check:touch` and `check:perf` stay green under each.
+  Which events exist and when they run is server content - ask the owner
+  before inventing dates.
+
+### 119. `check:safearea` - triage the existing findings
+
+Measured 2026-10-14: findings on 48 of 60 screen/orientation pairs on
+`main`, almost all "bottom ... (pinned)" - content under the gesture bar at
+rest (Combat's Fight column, Gathering totals, World Boss, the Delve). It
+was not caused by the design waves (47 on that branch). Decide per finding
+whether it is real (pinned by scrolling and looking, as `client_web`'s
+rules say) or the checker's own, fix the real ones, and make the check a
+ratchet so the count cannot grow unnoticed.
 
 ### 46 follow-up. Confirm the compression ratio live
 

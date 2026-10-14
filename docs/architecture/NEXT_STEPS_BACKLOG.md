@@ -19,6 +19,47 @@ do next.
 
 ---
 
+# 2026-10-14 - Design waves 1 and 2: motion and hierarchy
+
+The owner asked for a game that feels "less static". Three waves were agreed,
+each its own PR, each measured with `check:perf` and the geometry checks.
+Two are live; the third is on the task board (118).
+
+- **Wave 1 - PR #180, 1.0.1226 / client 1.26.0.**
+  - Screens cross-fade through the View Transitions API (`Game.svelte`
+    `swapScreen`, used by navigation and both back paths). 160ms, opacity
+    only - a slide was rejected because moving panels once broke exercise.
+    Skipped without the API, under reduced motion and in a hidden tab, and
+    every transition promise is caught: a skipped transition rejects, and an
+    unhandled rejection is a pageerror that exercise treats as a defect.
+  - The header gold and diamonds count to a new value (`countUp.svelte.ts`,
+    `Money animate`). Only the digits travel; `data-exact`, the title and
+    affordability stay on the real value, which exercise reads.
+  - Durations live in `motion.ts` (`MOTION.count`, `MOTION.screen`).
+- **Wave 2 - PR #181, 1.0.1228 / client 1.27.0.**
+  - Combat recommends one fight: `bestPick()` in `huntingEstimate.ts` - the
+    most XP an hour among open monsters farmed WITHOUT food. Its Fight is the
+    only filled one while a pick exists; the idle strip offers it
+    (`data-testid="combat-best"`). Monster rows lead with XP/h and gold/h.
+  - `.dim`, `.tiny` and `.small` are global utilities in `app.css`. They had
+    been written 83 times across 52 components, so the reading floor could
+    not be raised in one place. `.tiny` is `--fs-note` (0.78rem, was 0.72);
+    `--fs-xs`/`--fs-sm` are untouched so no button widened. **A local copy
+    of one of these rules overrides the global floor - do not add one back
+    unless the difference is deliberate.**
+- Village, Chest and Character already had their hierarchy work (task 103
+  and earlier); only the Attributes note moved under its heading.
+- Gotcha met on the way: exercise's two shield wheel strike checks can fail
+  on blind-run schedule luck (blind M 1.83 > the 1.6 ceiling). Re-seed and
+  rerun before blaming code; it passed on the rerun.
+- Found and not fixed: `check:safearea` reports findings on 48 of 60
+  screen/orientation pairs on `main` itself (task 119).
+
+The bloodline ceiling work that shipped earlier the same day (PR #179,
+1.0.1224 / 1.25.0) is written up under task 115 on the board.
+
+---
+
 # 2026-10-13 - Chernobog: the world boss gets a name, a week and rewards
 
 Branch `claude/chernobog-world-boss`. Spec (owner decisions, all of them):
