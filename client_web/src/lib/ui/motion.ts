@@ -19,4 +19,8 @@ export function motionMs(ms: number): number {
 export const MOTION = {
   quick: 160,
   enter: 240,
+  /** A currency figure counting to its new value (countUp.svelte.ts). */
+  count: 450,
+  /** The cross-fade between two screens (Game.svelte, app.css). */
+  screen: 160,
 } as const;

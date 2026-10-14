@@ -35,6 +35,22 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.26.0',
+    date: '2026-10-14',
+    headline: 'The game moves a little more like it is alive.',
+    sections: [
+      {
+        title: 'Feel',
+        items: [
+          'Screens now fade into each other instead of snapping.',
+          'Your gold and diamonds count up to their new value, so you can see what a kill or a sale was worth.',
+          'A newborn child is announced with the same light as a rare drop.',
+          'If your device is set to reduce motion, all of this stays off.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.25.0',
     date: '2026-10-14',
     headline: 'Your bloodline is now the long road - twenty rebirths of it.',

@@ -49,6 +49,7 @@
   import { coachTargetScreen, screenLocks } from './lib/stores/tutorial';
   import { bootStage, bootStep, bootDone } from './lib/ui/boot';
   import { tick, untrack, type Component } from 'svelte';
+  import { motionMs, MOTION } from './lib/ui/motion';
 
   // Modul: THE SIGNED-IN GAME, LOADED AFTER SIGN-IN. Everything a session
   // needs - the header, the screens, the socket and the stores behind it -
@@ -494,8 +495,53 @@
     scrollPositions.set(screen, window.scrollY);
     screenHistory.push(screen);
     if (screenHistory.length > MAX_SCREEN_HISTORY) screenHistory.shift();
-    screen = next;
-    void scrollAfterRender(0);
+    swapScreen(next, 0);
+  }
+
+  // Modul: SCREENS CROSS-FADE, THEY DO NOT SLIDE (2026-10-14).
+  //
+  // A change of screen replaced the whole page in one frame, and on a phone
+  // that reads as a flash rather than as going somewhere. The View
+  // Transitions API snapshots the old page, lets the new one render, and
+  // fades between the two pictures - no element of either screen moves, so
+  // nothing exercise.mjs or the geometry checks measure is ever mid-flight.
+  // A slide was rejected on purpose: a sliding panel once left controls
+  // under the pointer of the screen that was leaving.
+  //
+  // Skipped, falling back to the instant swap it replaced, when the browser
+  // has no API (older WebViews), when the player asked for reduced motion,
+  // and when the tab is hidden - a hidden document SKIPS a transition by
+  // rejecting its promises, and every one of them is caught below because an
+  // unhandled rejection is a pageerror, which exercise.mjs treats as a defect.
+  // A second navigation inside the 160ms skips the first rather than queueing.
+  let screenTransition: ViewTransition | null = null;
+
+  function swapScreen(next: ScreenKey, y: number): void {
+    const crossfade =
+      typeof document.startViewTransition === 'function' &&
+      motionMs(MOTION.screen) > 0 &&
+      document.visibilityState === 'visible';
+    if (!crossfade) {
+      screen = next;
+      void scrollAfterRender(y);
+      return;
+    }
+    screenTransition?.skipTransition();
+    const transition = document.startViewTransition(async () => {
+      screen = next;
+      await tick();
+      window.scrollTo(0, y);
+    });
+    screenTransition = transition;
+    const settle = () => {
+      if (screenTransition === transition) screenTransition = null;
+    };
+    transition.ready.catch(() => {});
+    transition.updateCallbackDone.catch(() => {});
+    transition.finished.then(settle, settle);
+    // The rAF follow-up in scrollAfterRender is still owed: a revisited
+    // screen's cached queries can grow its height after the snapshot.
+    void transition.updateCallbackDone.then(() => scrollAfterRender(y), () => {});
   }
   const activeFamily = $derived(TAB_FAMILIES[menuKeyOf(screen) ?? ''] ?? null);
   const activeTabs = $derived(activeFamily?.tabs ?? null);
@@ -629,13 +675,11 @@
         break;
       case 'previous-screen': {
         const previous = screenHistory.pop() ?? 'hub';
-        screen = previous;
-        void scrollAfterRender(scrollPositions.get(previous) ?? 0);
+        swapScreen(previous, scrollPositions.get(previous) ?? 0);
         break;
       }
       case 'root-screen':
-        screen = 'hub';
-        void scrollAfterRender(0);
+        swapScreen('hub', 0);
         break;
       case 'confirm-exit':
         exitPromptOpen.set(true);
@@ -890,11 +934,11 @@
                runs: on a desktop it sits right after the event banner, on a
                phone beside the gold under the name. It opens the event shop. -->
           <span class="wallet-event"><EventChip onOpen={() => goTo('event')} active={screen === 'event'} labelled /></span>
-          <Money amount={snap.Gold} icon />
+          <Money amount={snap.Gold} icon animate />
           <!-- Modul: shown at zero too. It used to be hidden below one, which
                is precisely when a player goes looking for it - an empty purse
                that renders as nothing reads as a missing feature. -->
-          <Money amount={snap.PremiumCurrencyBalance} kind="diamond" icon />
+          <Money amount={snap.PremiumCurrencyBalance} kind="diamond" icon animate />
         </span>
       {/if}
 
