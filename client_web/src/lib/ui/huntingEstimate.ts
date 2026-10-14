@@ -35,3 +35,23 @@ export function estimateLine(e: HuntingEstimate): string {
   if (!e.CanDamage) return 'Estimate: you cannot hurt it yet';
   return `Estimate: ${killTimeText(e)} a kill · ${formatNumber(e.XpPerHour)} XP/h · ${formatGold(e.GoldPerHour)}/h · ${safety(e).text}`;
 }
+
+/**
+ * The one monster the Combat screen recommends: the most XP an hour among the
+ * open monsters this character farms WITHOUT food. Null when none qualifies.
+ *
+ * Modul: ONE MAIN ACTION PER SCREEN (design wave 2, 2026-10-14). Fifteen
+ * filled Fight buttons are fifteen equal answers to "what should I do", and
+ * the server already sends the numbers that answer it. Food-dependent fights
+ * are left out on purpose - "best" has to mean "go and leave it running",
+ * and a fight that empties the larder is not that. Ties keep the earlier
+ * (easier) monster, so the pick does not flicker between two equal rows.
+ */
+export function bestPick(estimates: Iterable<HuntingEstimate>, open: (monsterId: number) => boolean): number | null {
+  let best: HuntingEstimate | null = null;
+  for (const e of estimates) {
+    if (!e.CanDamage || !e.SurvivesWithoutFood || !open(e.MonsterId)) continue;
+    if (best === null || e.XpPerHour > best.XpPerHour) best = e;
+  }
+  return best?.MonsterId ?? null;
+}

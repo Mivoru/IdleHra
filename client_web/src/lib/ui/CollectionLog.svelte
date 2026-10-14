@@ -152,14 +152,8 @@
     text-shadow: 0 0 2px var(--bg-panel), 0 0 2px var(--bg-panel);
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.85rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
   .warn-line {
     color: var(--warn);

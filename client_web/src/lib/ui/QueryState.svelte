@@ -67,7 +67,4 @@
 {/if}
 
 <style>
-  .dim {
-    color: var(--text-dim);
-  }
 </style>

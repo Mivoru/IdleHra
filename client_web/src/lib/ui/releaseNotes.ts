@@ -35,6 +35,28 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.27.0',
+    date: '2026-10-14',
+    headline: 'Easier to read at a glance.',
+    sections: [
+      {
+        title: 'Combat',
+        items: [
+          'The monster list marks its best pick: the most XP an hour among the monsters you can farm without food. Its Fight button is the filled one.',
+          'When you are not fighting, the top of the screen offers that fight in one tap.',
+          'Each monster now leads with what it pays - XP and gold an hour - and keeps its health and kill time quieter beside it.',
+        ],
+      },
+      {
+        title: 'Everywhere',
+        items: [
+          'The small grey explanations across the game are a little larger and more readable.',
+          'The Attributes tab starts with its heading instead of a footnote.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.26.0',
     date: '2026-10-14',
     headline: 'The game moves a little more like it is alive.',

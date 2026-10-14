@@ -983,15 +983,9 @@
     background: linear-gradient(90deg, var(--rarity-11), var(--rarity-10));
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.8rem;
     margin: 0.6rem 0 0;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
 
   .strike-head {

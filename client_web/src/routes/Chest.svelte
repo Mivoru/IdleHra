@@ -1209,9 +1209,6 @@
     color: var(--text-dim);
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .tiny {
     font-size: 0.72rem;
   }

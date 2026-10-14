@@ -223,9 +223,6 @@
     margin: 0;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .tiny {
     font-size: 0.72rem;
   }

@@ -171,14 +171,6 @@
     font-size: 0.8rem;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
-  }
-
   /* A phone: the three steps stack, each a single row with its button. */
   @media (max-width: 40rem) {
     ol {

@@ -104,14 +104,6 @@
     font-size: 0.8rem;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
-  }
-
   .small {
     font-size: 0.88rem;
   }

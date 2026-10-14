@@ -215,15 +215,9 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.8rem;
     margin: 0 0 0.4rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
   .err {
     color: var(--danger);

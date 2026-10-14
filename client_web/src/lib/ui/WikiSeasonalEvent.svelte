@@ -218,19 +218,11 @@
     white-space: nowrap;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
   img.pet {
     width: 2rem;
     height: 2rem;
     object-fit: contain;
     vertical-align: middle;
     margin-right: 0.3rem;
-  }
-
-  .small {
-    font-size: 0.85rem;
   }
 </style>

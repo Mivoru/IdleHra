@@ -177,12 +177,4 @@
     font-size: 0.85rem;
     line-height: 1.25;
   }
-
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
-  }
 </style>

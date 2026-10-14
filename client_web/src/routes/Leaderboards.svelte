@@ -219,14 +219,6 @@
     font-size: 1.05rem;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
-  }
-
   .board {
     list-style: none;
     margin: 0;

@@ -306,14 +306,6 @@
     line-height: 1.4;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .range,
     .mark {

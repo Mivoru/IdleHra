@@ -17,7 +17,7 @@
   import { rarityName } from '../lib/ui/rarity';
   import { xpToNextLevel } from '../lib/ui/levelCurve';
   import { queryKeys, fetchWorn, fetchCombatProjection, type HuntingEstimate } from '../lib/net/rest';
-  import { estimateLine, killTimeText, safety } from '../lib/ui/huntingEstimate';
+  import { bestPick, estimateLine, killTimeText, safety } from '../lib/ui/huntingEstimate';
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import Money from '../lib/ui/Money.svelte';
   import { readPref, writePref, PREF_LAST_MONSTER } from '../lib/net/prefs';
@@ -407,6 +407,20 @@
     return null;
   });
 
+  // Modul: THE RECOMMENDED FIGHT (design wave 2) - the open monster with the
+  // most XP an hour that this character farms without food (bestPick). It is
+  // the one Fight button drawn filled, and the idle strip offers it when there
+  // is no last fight to go back to.
+  const bestMonster = $derived.by((): MonsterDefinition | null => {
+    if (!registry) return null;
+    const open = new Map<number, MonsterDefinition>();
+    registry.regions.forEach((region, index) => {
+      if (index + 1 <= unlockedRegion) for (const m of region) open.set(m.Id, m);
+    });
+    const id = bestPick(estimates.values(), (monsterId) => open.has(monsterId));
+    return id === null ? null : (open.get(id) ?? null);
+  });
+
   // Task 72: what the next region's boss asks for, against what the main
   // character wears. Read from /player/worn (at most eleven rows), refreshed
   // while the screen is open so wearing a piece moves the count.
@@ -621,6 +635,11 @@
               <button class="continue" data-testid="combat-continue" onclick={() => fight(lastMonster)}>
                 Continue: {lastMonster.Name}
               </button>
+            {:else if bestMonster}
+              <span class="dim">Not fighting.</span>
+              <button class="continue primary" data-testid="combat-best" onclick={() => fight(bestMonster)}>
+                Fight {bestMonster.Name}
+              </button>
             {:else}
               <span class="dim">Not fighting - pick a monster below.</span>
             {/if}
@@ -748,7 +767,8 @@
                 {@const est = regionNo <= unlockedRegion ? estimates.get(monster.Id) : undefined}
                 {@const verdict = est ? (est.CanDamage ? safety(est) : { tone: 'danger', text: 'cannot hurt it' }) : null}
                 {@const open = selectedMonsterId === monster.Id}
-                <li class:selected={open}>
+                {@const best = bestMonster?.Id === monster.Id}
+                <li class:selected={open} class:best class:quiet-fight={bestMonster !== null && !best}>
                   <!-- Modul: TWO LINES, AND THE FIGHT BUTTON IS THE BIG THING.
                        One flex-wrapped line left the verdict ("you would die")
                        as an orphaned last token, and Fight was styled like the
@@ -768,18 +788,28 @@
                         {#if bossRegion > 0}<span class="chip boss">Boss</span>{/if}
                         {#if firstClear}<span class="chip firstclear">first clear</span>{/if}
                         {#if verdict}<span class="chip verdict {verdict.tone}">{verdict.text}</span>{/if}
+                        {#if best}<span class="chip bestpick" data-testid="combat-best-chip">best XP/h</span>{/if}
                       </span>
-                      <span class="line2 dim">
-                        <span class:firstclear-num={firstClear}>{formatNumber(shownMaxHp(monster))} HP</span>
-                        · {formatNumber(monster.BaseXpReward)} XP
+                      <!-- Modul: WHAT IT PAYS IS THE LOUD HALF (design wave 2).
+                           The row was one grey line of eight figures, and the
+                           two that answer "should I fight this" - XP and gold an
+                           hour - weighed the same as its health. They are a line
+                           of their own at body weight now; what it takes (health,
+                           XP a kill, time a kill) stays quiet beside them. -->
+                      <span class="line2">
                         {#if est && est.CanDamage}
-                          <span class="estimate" data-testid="hunting-estimate" title={estimateLine(est)}>
-                            · {killTimeText(est)} a kill · {formatNumber(est.XpPerHour)} XP/h ·
-                            <Money amount={est.GoldPerHour} />/h
+                          <span class="estimate yield" data-testid="hunting-estimate" title={estimateLine(est)}>
+                            {formatNumber(est.XpPerHour)} XP/h · <Money amount={est.GoldPerHour} />/h
                           </span>
-                        {:else if est}
-                          <span class="estimate" data-testid="hunting-estimate" title={estimateLine(est)}>
-                            · you cannot hurt it yet
+                        {/if}
+                        <span class="dim">
+                          <span class:firstclear-num={firstClear}>{formatNumber(shownMaxHp(monster))} HP</span>
+                          · {formatNumber(monster.BaseXpReward)} XP{#if est && est.CanDamage}
+                            · {killTimeText(est)} a kill{/if}
+                        </span>
+                        {#if est && !est.CanDamage}
+                          <span class="estimate dim" data-testid="hunting-estimate" title={estimateLine(est)}>
+                            you cannot hurt it yet
                           </span>
                         {/if}
                       </span>
@@ -1210,14 +1240,6 @@
     color: var(--text-dim);
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .small {
-    font-size: 0.85rem;
-  }
-
   .tiny {
     font-size: 0.75rem;
   }
@@ -1368,8 +1390,40 @@
   }
 
   .line2 {
-    font-size: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 0.6rem;
+    font-size: var(--fs-note);
     overflow-wrap: anywhere;
+  }
+
+  .yield {
+    font-size: var(--fs-base);
+    font-weight: 600;
+    color: var(--text);
+  }
+
+  .chip.bestpick {
+    color: var(--on-accent);
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .monsters li.best .row {
+    border-color: var(--accent);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  /* Modul: ONE FILLED FIGHT. While a recommendation exists every other Fight
+     is outlined in the accent - still plainly a button, and still the thing
+     to press on its own row (the reason it was filled in the first place),
+     but no longer fifteen equal answers. With no recommendation they all
+     stay filled, as before. */
+  .monsters li.quiet-fight .fight:not(:disabled) {
+    background: transparent;
+    background-image: none;
+    color: var(--accent);
   }
 
   @media (min-width: 64rem) {

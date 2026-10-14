@@ -193,9 +193,6 @@
     background: rgba(0,0,0,0.2);
     white-space: nowrap;
   }
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.85rem;
   }

@@ -437,9 +437,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .tiny {
     font-size: 0.72rem;
   }
