@@ -71,7 +71,7 @@ export function petSourceLine(pet: Pet): string {
   if (pet.Source === PET_SOURCE.RareDrop) return 'A rare find - any kill or harvest during the event may bring it.';
   if (pet.Source === PET_SOURCE.Boss) return 'Follows whoever first breaks The Cailleach’s sixth winter.';
   if (pet.Source === PET_SOURCE.Monster) return 'Found on any kill, any time - rarely.';
-  if (pet.Source === PET_SOURCE.Rebirth) return 'Follows whoever takes the tenth and last rebirth.';
+  if (pet.Source === PET_SOURCE.Rebirth) return 'Follows whoever takes the tenth rebirth.';
   if (pet.Source === PET_SOURCE.WorldBoss) return 'Follows whoever deals Chernobog a million damage in one week.';
   return 'Sold in the event shop.';
 }

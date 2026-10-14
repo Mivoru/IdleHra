@@ -34,7 +34,7 @@
   import { enablePushNotifications, pushUnavailableReason } from '../lib/net/push';
   import { hapticsEnabled } from '../lib/net/haptics';
   import { enableLocalNotifications, localNotifyUnavailableReason } from '../lib/net/localNotify';
-  import { submitSupportTicket, scrubTrace, fetchAdminStatus, fetchAdminSeason, adminEndSeasonNow, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent } from '../lib/net/rest';
+  import { submitSupportTicket, scrubTrace, fetchAdminStatus, adminToggleProfanity, adminAnnounce, adminBan, adminUnban, adminSendMail, fetchEmailConsent, setEmailConsent } from '../lib/net/rest';
   import { createQuery } from '@tanstack/svelte-query';
   import { runningBundleVersion } from '../lib/net/liveUpdate';
   import ItemIdPicker from '../lib/ui/ItemIdPicker.svelte';
@@ -284,37 +284,6 @@
   let devMailEmail = $state(false);
   let devMailSubject = $state('');
   
-  // --- season control (admin) -------------------------------------------------
-  // Modul: the owner runs the season by hand (2026-09-28). Since task 88 the
-  // date ends nothing - players rebirth on demand - so all that is left here is
-  // ending it now for everybody. Ending takes a typed phrase,
-  // exactly like deleting an account, because it takes every player's level,
-  // gear and gold.
-  const seasonQuery = createQuery(() => ({
-    queryKey: ['adminSeason'],
-    queryFn: fetchAdminSeason,
-    enabled: isAdmin,
-    retry: false,
-  }));
-  const season = $derived(seasonQuery.data ?? null);
-  let seasonEndPhrase = $state('');
-  const SEASON_END_PHRASE = 'END SEASON';
-
-  function formatSeasonEnd(epoch: number): string {
-    return new Date(epoch * 1000).toLocaleString();
-  }
-
-  async function endSeasonNow() {
-    if (seasonEndPhrase.trim() !== SEASON_END_PHRASE) return;
-    try {
-      await adminEndSeasonNow(SEASON_END_PHRASE);
-      seasonEndPhrase = '';
-      pushLocalNotice('Season ending - every player is disconnected while the rollover runs.', 'info');
-    } catch {
-      pushLocalNotice('The server refused to end the season.', 'error');
-    }
-  }
-
   async function toggleProfanity() {
     devProfanity = !devProfanity;
     await adminToggleProfanity(devProfanity);
@@ -865,40 +834,9 @@
           </div>
         {/if}
 
-        <div class="admin-card wide">
-          <h3>Season</h3>
-          {#if season}
-            <!-- Modul: task 88. A date no longer ends a season - each
-                 player ends their own run with a rebirth (Ancestors screen)
-                 - so pause, resume and "move end" were retired with it:
-                 they steered a clock nothing reads any more. -->
-            <p class="small">
-              Season {season.EraId} &middot; the calendar no longer ends it; players rebirth on
-              demand.
-              <span class="dim"> (date on record: {formatSeasonEnd(season.EndTimestamp)})</span>
-            </p>
-            {#if season.EndRequested}
-              <p class="warn small">An end is queued; the rollover runs within seconds.</p>
-            {/if}
-            <p class="dim tiny">
-              Ending the season now rebirths EVERY player at once - level, gear, gold and skill
-              tree - and pays the season's placement diamonds. Villages, ancestors, diamonds and
-              Seals carry. Type
-              {SEASON_END_PHRASE} to enable it.
-            </p>
-            <div class="flex-row">
-              <input type="text" bind:value={seasonEndPhrase} placeholder={SEASON_END_PHRASE} aria-label="Confirmation phrase" />
-              <button
-                class="destructive"
-                disabled={seasonEndPhrase.trim() !== SEASON_END_PHRASE}
-                onclick={endSeasonNow}
-              >End season now</button>
-            </div>
-          {:else}
-            <p class="dim small">Loading the season...</p>
-          {/if}
-        </div>
-
+        <!-- Modul: the Season card (pause, move the end, END SEASON) was
+             removed 2026-10-14 with seasons themselves: a run ends with its
+             own player's rebirth and nothing can roll the roster over. -->
         <div class="admin-card">
           <h3>Global profanity filter</h3>
           <button onclick={toggleProfanity} class:active={devProfanity}>

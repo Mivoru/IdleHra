@@ -309,7 +309,7 @@
       <h2>Skill tree</h2>
       <p class="dim small">
         Roots are cheap and you want some of each. Each root forks into two, and
-        <strong>taking one locks the other</strong> for the season. A crown sits
+        <strong>taking one locks the other</strong> until a respec or a rebirth. A crown sits
         above whichever fork you chose.
       </p>
     </div>
@@ -486,7 +486,7 @@
         class="respec"
         disabled={respecBlocked !== null}
         title={respecBlocked ??
-          (freeUsed ? `${grants} paid respec left` : 'Your free respec this season')}
+          (freeUsed ? `${grants} paid respec left` : 'Your free respec for this run')}
         onclick={() => (confirmingRespec = true)}
       >
         <!-- {' '} on purpose: Svelte drops the space before an {#if}, which
@@ -538,7 +538,7 @@
                 </strong>
                 <p class="dim tiny">{bough.blurb}</p>
                 {#if bough.level > 0}<span class="worth">{bough.label}</span>{/if}
-                {#if bough.lockedOut}<span class="dim tiny locked-note">Foreclosed this season</span>{/if}
+                {#if bough.lockedOut}<span class="dim tiny locked-note">Locked this run</span>{/if}
                 <DisabledReason text={bough.lockedOut || bough.level >= bough.max ? null : bough.blocked} />
               </div>
               <button

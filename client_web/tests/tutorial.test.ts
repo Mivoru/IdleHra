@@ -180,7 +180,8 @@ const TRIGGERS: readonly {
     { id: 'forge', fields: { ForgeLevel: 1 } },
     { id: 'town_hall', fields: { InnLevel: 2 } },
     { id: 'guild', fields: {}, hasGuild: true },
-    { id: 'breeding', fields: { BreedingLevel: 1 } },
+    // Owner 2026-10-14: the Grounds AND a rebirth in sight - the level also opens the market and forge.
+    { id: 'breeding', fields: { BreedingLevel: 1, CurrentLevel: 40 }, also: ['market', 'forge'] },
     { id: 'first_child', fields: { ActiveChildMaturationMs: 1 } },
     { id: 'world_boss', fields: { WorldBossEventState: 1 } },
     { id: 'deeds', fields: { AchievementTierTotal: 1 } },

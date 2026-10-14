@@ -28,7 +28,7 @@ namespace FolkIdle.Server.Domain.Progression
     /// </summary>
     public static class TitleRegistry
     {
-        /// <summary>Worn by an account that has taken RebirthRules.MaxRebirths.</summary>
+        /// <summary>Worn by an account that has taken RebirthRules.RewardedRebirths.</summary>
         public const string RebirthTitleSlug = "rebirth_max";
 
         // Modul: declared ABOVE All. Static initialisers run in text order,

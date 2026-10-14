@@ -30,6 +30,7 @@ import {
   delveOpen,
   marketOpen,
   breedingGroundsBuilt,
+  bloodlineNear,
   characterIsAgeing,
   canBuyInheritance,
   DELVE_FIRST_ENTRY_GOLD,
@@ -282,12 +283,15 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     id: 'breeding',
     system: 'Breeding',
     screen: 'breeding',
-    title: 'The Breeding Grounds are built',
-    reached: breedingGroundsBuilt,
+    title: 'Breed an heir before you are reborn',
+    // Owner 2026-10-14: surfaced when the first rebirth is near, not the
+    // moment the Grounds are built - planning a bloodline at level 15 is
+    // learning the endgame before the game.
+    reached: (s) => breedingGroundsBuilt(s) && bloodlineNear(s),
     body:
-      'Pair two of your characters, or one of them with a villager, and the child inherits ' +
-      'their aptitudes. Rarer races come out of exactly this - breeding is the only way to ' +
-      'get one.',
+      'A rebirth takes your level and gear; your bloodline stays. Marry a villager and the ' +
+      'child inherits four aptitudes - bonuses that grow with every rebirth. Raise it in the ' +
+      'Hall of Ancestors and mark it Keep, and the next run starts stronger.',
   },
   {
     id: 'first_child',
@@ -320,9 +324,9 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     title: 'The Book of Deeds is running',
     reached: (s) => Number(s.AchievementTierTotal) >= 1,
     body:
-      'It tracks what you have done across every season you ever play. Finishing a chapter ' +
-      'earns a Seal, and each Seal is +2 skill points every season from then on - permanently, ' +
-      'through every reset.',
+      'It tracks what you have done across every run you ever play. Finishing a chapter ' +
+      'earns a Seal, and each Seal is +2 skill points for good - they come back after every ' +
+      'rebirth.',
   },
   {
     id: 'ancestors',
@@ -334,9 +338,9 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     // which is when the rollover cull stops being abstract.
     reached: characterIsAgeing,
     body:
-      'Levels, gear, gold and the village all reset at the end of a season. The Hall of ' +
-      'Ancestors is the short list of people who carry through it, and anyone you have not ' +
-      'marked is culled at the rollover.',
+      'A rebirth resets levels, gear, gold and the village folk. The Hall of Ancestors is the ' +
+      'short list of people who carry through it - mark the ones you want, or the strongest ' +
+      'blood is kept and the rest are let go.',
   },
   {
     id: 'inheritance',
@@ -348,8 +352,8 @@ const DISCOVERIES: readonly DiscoveryRule[] = [
     // account with no materials - became an instruction nobody could follow.
     reached: canBuyInheritance,
     body:
-      'Inheritance bonuses are bought with diamonds and are the one thing a season reset ' +
-      'leaves completely untouched. Everything else you own is temporary.',
+      'Inheritance bonuses are bought with diamonds and a rebirth leaves them completely ' +
+      'untouched.',
   },
 ];
 

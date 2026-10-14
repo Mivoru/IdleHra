@@ -30,8 +30,8 @@ namespace FolkIdle.Server.Tests
             {
                 QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell,
                 QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Market,
-                QuestLineRegistry.Breed, QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
-                QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Rebirth,
+                QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
+                QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Breed, QuestLineRegistry.Rebirth,
             }, ids);
             Assert.Equal(Enumerable.Range(1, 12), QuestLineRegistry.Steps.Select(s => s.Order).OrderBy(o => o));
             Assert.Equal(ids.Length, ids.Distinct().Count());
@@ -75,8 +75,12 @@ namespace FolkIdle.Server.Tests
             Assert.False(Unlocked(QuestLineRegistry.Market, new QuestFacts { Level = 10 }));
             Assert.True(Unlocked(QuestLineRegistry.Market, new QuestFacts { Level = 10, InGuild = true }));
 
+            // Grounds AND a rebirth in sight (owner 2026-10-14) - either alone is not enough.
             Assert.False(Unlocked(QuestLineRegistry.Breed, new QuestFacts { Level = 40 }));
-            Assert.True(Unlocked(QuestLineRegistry.Breed, new QuestFacts { BreedingGroundsLevel = 1 }));
+            Assert.False(Unlocked(QuestLineRegistry.Breed, new QuestFacts { BreedingGroundsLevel = 1, Level = 20 }));
+            Assert.True(Unlocked(QuestLineRegistry.Breed, new QuestFacts { BreedingGroundsLevel = 1, Level = QuestLineRegistry.BloodlineNearLevel }));
+            // After a rebirth the level is 1 again, and the step must stay open.
+            Assert.True(Unlocked(QuestLineRegistry.Breed, new QuestFacts { BreedingGroundsLevel = 1, Level = 1, RebirthCount = 1 }));
 
             long cheapest = QuestLineRegistry.CheapestInheritanceLevel;
             Assert.False(Unlocked(QuestLineRegistry.Inheritance, new QuestFacts { Diamonds = (int)cheapest - 1 }));
@@ -290,8 +294,8 @@ namespace FolkIdle.Server.Tests
             {
                 QuestLineRegistry.ClearChest, QuestLineRegistry.AutoSell,
                 QuestLineRegistry.Fuse, QuestLineRegistry.Reroll, QuestLineRegistry.Village, QuestLineRegistry.Market,
-                QuestLineRegistry.Breed, QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
-                QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Rebirth,
+                QuestLineRegistry.Inheritance, QuestLineRegistry.Delve,
+                QuestLineRegistry.WorldBoss, QuestLineRegistry.Ascension, QuestLineRegistry.Breed, QuestLineRegistry.Rebirth,
             })
             {
                 Assert.Equal("done", StateOf(view, step));

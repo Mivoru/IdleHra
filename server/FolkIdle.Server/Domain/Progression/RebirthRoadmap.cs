@@ -5,7 +5,7 @@ using FolkIdle.Server.Engine;
 namespace FolkIdle.Server.Domain.Progression
 {
     /// <summary>One reward on the rebirth roadmap.</summary>
-    /// <param name="Kind">skill_points, xp, pet_slot, avatar, pet, title, badge.</param>
+    /// <param name="Kind">bloodline, skill_points, xp, pet_slot, avatar, pet, title, badge.</param>
     /// <param name="Art">A sprite path for an avatar or a pet, else null.</param>
     public sealed record RebirthRoadmapReward(string Kind, string Name, string Detail, string? Art);
 
@@ -28,11 +28,20 @@ namespace FolkIdle.Server.Domain.Progression
             var steps = new List<RebirthRoadmapStep>(RebirthRules.MaxRebirths);
             for (int n = 1; n <= RebirthRules.MaxRebirths; n++)
             {
+                // Every rebirth raises the bloodline ceiling - the one reward
+                // that runs all the way to MaxRebirths (owner 2026-10-14).
                 var rewards = new List<RebirthRoadmapReward>
                 {
-                    new("skill_points", $"+{RebirthRules.SkillPointsPerRebirth} skill points",
-                        $"{RebirthRules.SkillPointsFor(n)} in all, for good", null),
+                    new("bloodline", $"Bloodline ceiling {BreedingAptitudes.CeilingFor(n)}",
+                        n == RebirthRules.MaxRebirths
+                            ? "the highest an aptitude can go"
+                            : $"children can be bred up to {BreedingAptitudes.CeilingFor(n)} in an aptitude", null),
                 };
+                if (n <= RebirthRules.RewardedRebirths)
+                {
+                    rewards.Add(new("skill_points", $"+{RebirthRules.SkillPointsPerRebirth} skill points",
+                        $"{RebirthRules.SkillPointsFor(n)} in all, for good", null));
+                }
                 if (n == 1)
                 {
                     rewards.Add(new("xp", $"+{RebirthRules.ReLevelXpBonusPct}% combat XP",
@@ -46,7 +55,7 @@ namespace FolkIdle.Server.Domain.Progression
                 {
                     rewards.Add(new("avatar", avatar.Name, "avatar", avatar.Art));
                 }
-                if (n == RebirthRules.MaxRebirths)
+                if (n == RebirthRules.RewardedRebirths)
                 {
                     if (phoenix != null)
                     {

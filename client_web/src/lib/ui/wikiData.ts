@@ -411,10 +411,21 @@ export const SEASON_CARRIES: readonly string[] = [
 
 /**
  * Task 114 - RebirthRules. What a rebirth pays, the Vault's prices and the
- * road to ten, written out for the Wiki. serverMirrors.test.ts holds each
+ * road to twenty, written out for the Wiki. serverMirrors.test.ts holds each
  * number against RebirthRules.cs, so the two cannot drift apart quietly.
  */
-export const REBIRTH_MAX = 10;
+export const REBIRTH_MAX = 20;
+/** RebirthRules.RewardedRebirths: the points, Renown and milestones stop here. */
+export const REBIRTH_REWARDED = 10;
+/** BreedingAptitudes.VillagerCeiling and MaxValue: the bloodline ceiling's two ends. */
+export const BLOODLINE_CEILING_START = 20;
+export const BLOODLINE_CEILING_END = 50;
+
+/** BreedingAptitudes.CeilingFor - the highest an aptitude can be bred after this many rebirths. */
+export function bloodlineCeilingFor(rebirths: number): number {
+  const n = Math.min(REBIRTH_MAX, Math.max(0, rebirths));
+  return BLOODLINE_CEILING_START + Math.floor(((BLOODLINE_CEILING_END - BLOODLINE_CEILING_START) * n) / REBIRTH_MAX);
+}
 export const REBIRTH_SKILL_POINTS_EACH = 2;
 export const REBIRTH_XP_BONUS_PCT = 50;
 export const REBIRTH_SECOND_PET_SLOT_AT = 5;
@@ -422,27 +433,39 @@ export const REBIRTH_VAULT_FLOOR = 5_000_000;
 export const REBIRTH_VAULT_CEILING = 100_000_000;
 
 export const REBIRTH_PAYS: readonly string[] = [
-  `+${REBIRTH_SKILL_POINTS_EACH} skill points for good every rebirth, on top of what levels and Seals pay - ${REBIRTH_MAX * REBIRTH_SKILL_POINTS_EACH} at the most.`,
+  `Every rebirth raises the bloodline ceiling - the highest an aptitude can be bred - from ${BLOODLINE_CEILING_START} to ${BLOODLINE_CEILING_END} at rebirth ${REBIRTH_MAX}.`,
+  `+${REBIRTH_SKILL_POINTS_EACH} skill points for good on each of the first ${REBIRTH_REWARDED} rebirths, on top of what levels and Seals pay - ${REBIRTH_REWARDED * REBIRTH_SKILL_POINTS_EACH} at the most.`,
   `+${REBIRTH_XP_BONUS_PCT}% combat XP on every level below the best level you have ever reached, from your first rebirth on.`,
   `At ${REBIRTH_SECOND_PET_SLOT_AT} rebirths, a second pet slot on every character.`,
   'Avatars at rebirths 3, 5, 7 and 10: Jarilo, Vesna, Étaín and Morana.',
-  'At 10, the last rebirth: the Phoenix pet (+8% damage, health and XP), the title The Ever-Returning, and a gold badge and glowing name.',
+  'At 10: the Phoenix pet (+8% damage, health and XP), the title The Ever-Returning, and a gold badge and glowing name.',
+  `Rebirths ${REBIRTH_REWARDED + 1} to ${REBIRTH_MAX} pay the bloodline ceiling and nothing else - the long road for the bloodline.`,
   'Your rebirth count is shown as a badge beside your name.',
-  'Renown, if the rebirth is taken halfway to level 100 or later.',
+  `Renown, if the rebirth is taken halfway to level 100 or later - counted for the first ${REBIRTH_REWARDED} rebirths.`,
 ];
 
-/** The road to ten, as the Rebirth screen draws it (RebirthRoadmap on the server). */
+/** The road to twenty, as the Rebirth screen draws it (RebirthRoadmap on the server). */
 export const REBIRTH_ROADMAP: readonly { rebirth: number; rewards: string }[] = [
-  { rebirth: 1, rewards: '+2 skill points, and +50% XP below your best level from now on' },
-  { rebirth: 2, rewards: '+2 skill points (4 in all)' },
-  { rebirth: 3, rewards: '+2 skill points, the avatar Jarilo' },
-  { rebirth: 4, rewards: '+2 skill points (8 in all)' },
-  { rebirth: 5, rewards: '+2 skill points, a second pet slot on every character, the avatar Vesna' },
-  { rebirth: 6, rewards: '+2 skill points (12 in all)' },
-  { rebirth: 7, rewards: '+2 skill points, the avatar Étaín' },
-  { rebirth: 8, rewards: '+2 skill points (16 in all)' },
-  { rebirth: 9, rewards: '+2 skill points (18 in all)' },
-  { rebirth: 10, rewards: '+2 skill points (20 in all), the avatar Morana, the Phoenix pet, the title The Ever-Returning, a gold badge and glowing name' },
+  { rebirth: 1, rewards: '+2 skill points, and +50% XP below your best level from now on; bloodline ceiling 21' },
+  { rebirth: 2, rewards: '+2 skill points (4 in all); bloodline ceiling 23' },
+  { rebirth: 3, rewards: '+2 skill points, the avatar Jarilo; bloodline ceiling 24' },
+  { rebirth: 4, rewards: '+2 skill points (8 in all); bloodline ceiling 26' },
+  { rebirth: 5, rewards: '+2 skill points, a second pet slot on every character, the avatar Vesna; bloodline ceiling 27' },
+  { rebirth: 6, rewards: '+2 skill points (12 in all); bloodline ceiling 29' },
+  { rebirth: 7, rewards: '+2 skill points, the avatar Étaín; bloodline ceiling 30' },
+  { rebirth: 8, rewards: '+2 skill points (16 in all); bloodline ceiling 32' },
+  { rebirth: 9, rewards: '+2 skill points (18 in all); bloodline ceiling 33' },
+  { rebirth: 10, rewards: '+2 skill points (20 in all), the avatar Morana, the Phoenix pet, the title The Ever-Returning, a gold badge and glowing name; bloodline ceiling 35' },
+  { rebirth: 11, rewards: 'bloodline ceiling 36' },
+  { rebirth: 12, rewards: 'bloodline ceiling 38' },
+  { rebirth: 13, rewards: 'bloodline ceiling 39' },
+  { rebirth: 14, rewards: 'bloodline ceiling 41' },
+  { rebirth: 15, rewards: 'bloodline ceiling 42' },
+  { rebirth: 16, rewards: 'bloodline ceiling 44' },
+  { rebirth: 17, rewards: 'bloodline ceiling 45' },
+  { rebirth: 18, rewards: 'bloodline ceiling 47' },
+  { rebirth: 19, rewards: 'bloodline ceiling 48' },
+  { rebirth: 20, rewards: 'bloodline ceiling 50 - the highest an aptitude can go' },
 ];
 
 /**

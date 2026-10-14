@@ -1381,7 +1381,7 @@ export function fetchTraits(): Promise<TraitDefinition[]> {
 /**
  * A member of the Hall of Ancestors: everybody the account owns, and what they
  * carry. The breeding roster answers "who can I pair"; this answers "who
- * carries into next season, and where do they stand".
+ * carries through the next rebirth, and where do they stand".
  */
 export interface HallMember {
   CharacterId: string;
@@ -1399,13 +1399,13 @@ export interface HallMember {
   IsInbred: boolean;
   TraitMask: number;
 
-  /** Marked by the player to carry through the rollover. */
+  /** Marked by the player to carry through a rebirth. */
   IsKept: boolean;
 
   /**
-   * Whether the cull would keep them if the season ended NOW. A cap that only
-   * reveals what it did after a rollover has already deleted somebody is not a
-   * decision, it is a surprise.
+   * Whether the cull would keep them if the player were reborn NOW. A cap that
+   * only reveals what it did after a rebirth has already deleted somebody is
+   * not a decision, it is a surprise.
    */
   WouldCarry: boolean;
 
@@ -1617,6 +1617,10 @@ export interface AptitudePreview {
   ParentPartner: number;
   PredictedMin: number;
   PredictedMax: number;
+  /** The band's low end when this aptitude is selected on the Grounds (the better parent is taken outright). */
+  SelectedMin: number;
+  /** True when the account's bloodline ceiling, not the parents, set PredictedMax. */
+  AtCeiling: boolean;
 }
 
 export interface TraitOddsEntry {
@@ -1636,6 +1640,10 @@ export interface BreedingPreview {
   TraitOdds: TraitOddsEntry[];
   MutationChancePct: number;
   FlawChancePct: number;
+  /** BreedingAptitudes.CeilingFor this account's rebirths: no child is bred above it. */
+  BloodlineCeiling: number;
+  /** What the next rebirth raises it to (equal at the last one). */
+  NextBloodlineCeiling: number;
 }
 
 export function fetchBreedingPreview(paternalId: string, maternalId: string): Promise<BreedingPreview> {
@@ -1834,31 +1842,6 @@ export function adminToggleProfanity(enabled: boolean): Promise<null> {
   return authedPost<null>('/api/v1/admin/profanity', { enabled });
 }
 
-/** The active season as the admin sees it (SeasonalEraRecord). */
-export interface AdminSeason {
-  EraId: number;
-  /** Epoch seconds. */
-  EndTimestamp: number;
-  Paused: boolean;
-  /** An "end now" is queued and the rollover has not run yet. */
-  EndRequested: boolean;
-}
-
-export function fetchAdminSeason(): Promise<AdminSeason> {
-  return authedGet<AdminSeason>('/api/v1/admin/season');
-}
-
-export function adminSeasonAction(
-  action: 'pause' | 'resume' | 'setEnd',
-  endTimestamp?: number,
-): Promise<null> {
-  return authedPost<null>('/api/v1/admin/season', { action, endTimestamp });
-}
-
-/** Ends the season for every player. The server wants the phrase typed exactly. */
-export function adminEndSeasonNow(confirm: string): Promise<null> {
-  return authedPost<null>('/api/v1/admin/season/end-now', { confirm });
-}
 
 export function adminAnnounce(text: string): Promise<null> {
   return authedPost<null>('/api/v1/admin/announce', { text });
@@ -2543,6 +2526,11 @@ export interface RebirthPreview {
   MaxRebirths: number;
   /** True once the account has taken MaxRebirths - the server refuses more. */
   Capped: boolean;
+  /** The last rebirth that pays more than the bloodline ceiling (10 of 20). */
+  RewardedRebirths: number;
+  /** The highest value breeding can reach now, and after the next rebirth. */
+  BloodlineCeilingNow: number;
+  BloodlineCeilingAfter: number;
   SkillPointsFromRebirthsNow: number;
   SkillPointsFromRebirthsAfter: number;
   ReLevelXpBonusPct: number;

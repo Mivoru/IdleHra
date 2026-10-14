@@ -54,6 +54,11 @@ namespace FolkIdle.Server.Engine
         // Task 114: what a rebirth pays now, and its ceiling.
         public int MaxRebirths { get; set; }
         public bool Capped { get; set; }
+        /// <summary>The last rebirth that pays more than the bloodline ceiling (RebirthRules.RewardedRebirths).</summary>
+        public int RewardedRebirths { get; set; }
+        /// <summary>BreedingAptitudes.CeilingFor the count now, and after this rebirth.</summary>
+        public int BloodlineCeilingNow { get; set; }
+        public int BloodlineCeilingAfter { get; set; }
         public int SkillPointsFromRebirthsNow { get; set; }
         public int SkillPointsFromRebirthsAfter { get; set; }
         public int ReLevelXpBonusPct { get; set; }
@@ -228,10 +233,11 @@ namespace FolkIdle.Server.Engine
                         new object[] { renowned ? 1 : 0, RebirthRules.EpochFence, playerId },
                         cancellationToken);
 
-                    // Task 114: the last rebirth is worn as a title, and brings the
-                    // Phoenix (pets survive a rebirth, so it stays).
+                    // Task 114: the last REWARDED rebirth (the tenth, not the
+                    // twentieth) is worn as a title, and brings the Phoenix
+                    // (pets survive a rebirth, so it stays).
                     int countAfter = player.RebirthCount + 1;
-                    if (RebirthRules.IsCapped(countAfter))
+                    if (RebirthRules.IsFinalRewardedRebirth(countAfter))
                     {
                         await Domain.Progression.TitleEngine.GrantAsync(db, playerId, Domain.Progression.TitleRegistry.RebirthTitleSlug, DateTime.UtcNow);
                         await Domain.Progression.PetEngine.GrantAsync(db, playerId, Domain.Progression.PetRegistry.PhoenixId, DateTime.UtcNow);
@@ -327,6 +333,9 @@ namespace FolkIdle.Server.Engine
 
                 MaxRebirths = RebirthRules.MaxRebirths,
                 Capped = RebirthRules.IsCapped(player.RebirthCount),
+                RewardedRebirths = RebirthRules.RewardedRebirths,
+                BloodlineCeilingNow = BreedingAptitudes.CeilingFor(player.RebirthCount),
+                BloodlineCeilingAfter = BreedingAptitudes.CeilingFor(player.RebirthCount + 1),
                 SkillPointsFromRebirthsNow = RebirthRules.SkillPointsFor(player.RebirthCount),
                 SkillPointsFromRebirthsAfter = RebirthRules.SkillPointsFor(player.RebirthCount + 1),
                 ReLevelXpBonusPct = RebirthRules.ReLevelXpBonusPct,

@@ -27,9 +27,5 @@ namespace FolkIdle.Server.Domain.Social
         /// </summary>
         public static string BossClear(string who, string bossName, bool worldFirst)
             => worldFirst ? $"WORLD FIRST: {who} beat {bossName}" : $"{who} beat {bossName}";
-
-        /// <summary>"Season 4: #1 Mivoru". The band name only restated the rank.</summary>
-        public static string SeasonPlacement(int eraId, int rank, string who)
-            => $"Season {eraId}: #{rank} {who}";
     }
 }

@@ -95,12 +95,27 @@ aptitude from one parent (weighted by value), then +1 at 25% + Grounds
 level, -1 at 10% (swapped when inbred), 5% epic +1 to all; Grounds 4/7/10
 lets 1/2/3 aptitudes take the better parent outright (`BreedingAptitudes`).
 Past 20 it climbs ~+0.2-0.3 a generation, so 20 -> 50 is 100+ generations.
-Proposed, not approved:
-- the screen states the child's range per aptitude in plain words;
-- a "suggest a partner" button and a "first child" quest step;
+**Done 2026-10-14** (owner decisions the same day):
+- seasons removed outright - no calendar, no admin "END SEASON", no placement
+  rewards; every reset is one player's rebirth;
+- 20 rebirths; skill points, Renown, avatars, title and Phoenix stop at 10
+  (`RebirthRules.RewardedRebirths`), rebirths 11-20 pay only the ceiling;
+- the **bloodline ceiling** `20 + 30 x rebirths / 20` caps what breeding can
+  produce (`BreedingAptitudes.CeilingFor`), so 50 takes twenty rebirths rather
+  than however many hours a run holds (measured: 77-119 generations 25 -> 50);
+- breeding is surfaced near the first rebirth (quest step and NEW card at
+  level 40), but works as soon as the Grounds stand;
+- the Breeding screen redrawn: Marry/Raise/Carry path, the child drawn on one
+  track per aptitude with a verdict, price and button under it, rules behind a
+  toggle, a "born" banner that sends you to the Hall; the Hall tags benched
+  children "Field to raise"; the Rebirth screen lists who carries;
+- `RebirthTests.ABredChildMarkedKeepSurvivesARebirthUnchanged` covers the chain.
+
+Still open, proposed and not approved:
+- a "suggest a partner" button (server-ranked, never a client copy);
 - the first selectable aptitude from Grounds level 1, not 4;
-- no -1 mutation on a selected aptitude;
-- measure generations 20 -> 50 before and after (`BreedingClimbTests`).
+- no -1 mutation on a selected aptitude - measure with `BreedingClimbTests`
+  first, since the ceiling now bounds the climb anyway.
 
 Tasks 113, 114, 116 and 117 are closed: see
 [`archive/TASK_BOARD_111-plus.md`](archive/TASK_BOARD_111-plus.md).

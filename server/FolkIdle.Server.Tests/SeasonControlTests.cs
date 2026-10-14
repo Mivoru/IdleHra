@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using FolkIdle.Server.Engine;
@@ -11,19 +13,19 @@ using Xunit;
 
 namespace FolkIdle.Server.Tests
 {
-    // Modul: THE OWNER DECIDES WHEN A SEASON ENDS (2026-09-28).
+    // Modul: THERE ARE NO SEASONS (owner 2026-10-14).
     //
-    // A season must survive its own end date, paused OR NOT - since task 88 the
-    // calendar ends nobody's run - and the admin's "end now" must still roll
-    // over even a paused one, and hand the pause on to the season it starts.
-    //
-    // Own container, not the shared fixture: the rollover wipes EVERY player's
-    // gold and gear (see Test_SeasonalRotation_ClearsEquippedItemIds...), which
-    // would corrupt other tests' data in the shared collection.
+    // The calendar stopped ending a season on 2026-09-30 (task 88), and the
+    // admin's typed "END SEASON" - the last way to roll every account over at
+    // once - was removed with the placement rewards only it paid. A run ends
+    // with its own player's rebirth. What is left of the era is one record the
+    // shard ledgers are keyed on, and these tests pin both halves: the loop
+    // keeps exactly one era alive and never ends it, and no code path can
+    // reset more than one player.
     public class SeasonControlTests
     {
         [Fact]
-        public async Task TheCalendarNeverEndsASeason_EndNowStillDoes()
+        public async Task AnOverdueEraIsNeverEnded_AndAMissingOneIsCreated()
         {
             await using var container = new PostgreSqlBuilder("postgres:16")
                 .WithDatabase("folkidle_test_season_control")
@@ -40,72 +42,59 @@ namespace FolkIdle.Server.Tests
             await using (var db = await factory.CreateDbContextAsync())
             {
                 await db.Database.MigrateAsync();
-                db.SeasonalEraRecords.Add(new SeasonalEraRecord
-                {
-                    // Already over - an unpaused season would roll over now.
-                    EndTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 60,
-                    IsActive = true,
-                    IsRolloverPaused = true,
-                });
-                await db.SaveChangesAsync();
             }
 
             var engine = new SeasonalRotationEngine(provider);
-            SeasonalRotationEngine.ClearEndNowForTests();
-            try
-            {
-                // 1. Paused: the end date passes and nothing happens.
-                await engine.ExecuteEraCheckAsync(CancellationToken.None);
-                await using (var db = await factory.CreateDbContextAsync())
-                {
-                    var eras = await db.SeasonalEraRecords.AsNoTracking().ToListAsync();
-                    Assert.Single(eras);
-                    Assert.True(eras[0].IsActive);
-                }
 
-                // 2. Resumed, and still overdue: NOTHING happens either (task
-                //    88, owner decision 2026-09-30). The calendar no longer ends
-                //    a season - a player ends their own run with a rebirth - so
-                //    an unpaused era past its date must survive too. This is
-                //    the half that protects the live era, due 2026-11-02.
-                await using (var db = await factory.CreateDbContextAsync())
-                {
-                    var era = await db.SeasonalEraRecords.SingleAsync(e => e.IsActive);
-                    era.IsRolloverPaused = false;
-                    await db.SaveChangesAsync();
-                }
-                await engine.ExecuteEraCheckAsync(CancellationToken.None);
-                int secondEraId;
-                await using (var db = await factory.CreateDbContextAsync())
-                {
-                    var active = await db.SeasonalEraRecords.AsNoTracking().SingleAsync(e => e.IsActive);
-                    Assert.Equal(1, await db.SeasonalEraRecords.CountAsync());
-                    Assert.True(active.EndTimestamp < DateTimeOffset.UtcNow.ToUnixTimeSeconds(), "the era is overdue and still standing");
-                    secondEraId = active.EraId;
-                }
-
-                // 3. Paused again - and the admin ends it now, by hand.
-                await using (var db = await factory.CreateDbContextAsync())
-                {
-                    var era = await db.SeasonalEraRecords.SingleAsync(e => e.IsActive);
-                    era.IsRolloverPaused = true;
-                    await db.SaveChangesAsync();
-                }
-                SeasonalRotationEngine.RequestEndNow();
-                Assert.True(SeasonalRotationEngine.EndNowPending);
-                await engine.ExecuteEraCheckAsync(CancellationToken.None);
-                Assert.False(SeasonalRotationEngine.EndNowPending);
-                await using (var db = await factory.CreateDbContextAsync())
-                {
-                    var active = await db.SeasonalEraRecords.AsNoTracking().SingleAsync(e => e.IsActive);
-                    Assert.NotEqual(secondEraId, active.EraId);
-                    Assert.True(active.IsRolloverPaused, "a hand-ended paused season must start a paused one");
-                }
-            }
-            finally
+            // 1. No era: one is created, so a rebirth has a ledger to pay into.
+            await engine.ExecuteEraCheckAsync(CancellationToken.None);
+            int eraId;
+            await using (var db = await factory.CreateDbContextAsync())
             {
-                SeasonalRotationEngine.ClearEndNowForTests();
+                var era = await db.SeasonalEraRecords.AsNoTracking().SingleAsync();
+                Assert.True(era.IsActive);
+                eraId = era.EraId;
             }
+
+            // 2. Overdue and unpaused - the state that used to wipe every
+            //    account - and nothing happens.
+            await using (var db = await factory.CreateDbContextAsync())
+            {
+                var era = await db.SeasonalEraRecords.SingleAsync();
+                era.EndTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 60;
+                era.IsRolloverPaused = false;
+                await db.SaveChangesAsync();
+            }
+            await engine.ExecuteEraCheckAsync(CancellationToken.None);
+            await using (var db = await factory.CreateDbContextAsync())
+            {
+                var era = await db.SeasonalEraRecords.AsNoTracking().SingleAsync();
+                Assert.Equal(eraId, era.EraId);
+                Assert.True(era.IsActive, "an overdue era must stand - nothing ends one any more");
+            }
+        }
+
+        [Fact]
+        public void NoCodePathCanResetTheWholeRoster()
+        {
+            string engine = File.ReadAllText(Path.Combine(ServerRoot(), "Engine", "SeasonalRotationEngine.cs"));
+            Assert.DoesNotContain("TRUNCATE TABLE", engine);
+            Assert.Matches(new Regex(@"ResetPlayersAsync\(\s*FolkIdleDbContext db,\s*long onlyPlayerId"), engine);
+            Assert.Matches(new Regex(@"AwardLegacyShardsAsync\(\s*FolkIdleDbContext db,\s*int eraId,\s*long onlyPlayerId"), engine);
+
+            string network = File.ReadAllText(Path.Combine(ServerRoot(), "Network", "NetworkBroadcastSystem.cs"));
+            Assert.DoesNotContain("\"/api/v1/admin/season", network);
+        }
+
+        private static string ServerRoot()
+        {
+            var dir = new DirectoryInfo(AppContext.BaseDirectory);
+            while (dir != null && !Directory.Exists(Path.Combine(dir.FullName, "server", "FolkIdle.Server", "Engine")))
+            {
+                dir = dir.Parent;
+            }
+            Assert.True(dir != null, "could not locate server/FolkIdle.Server from the test binary");
+            return Path.Combine(dir!.FullName, "server", "FolkIdle.Server");
         }
     }
 }

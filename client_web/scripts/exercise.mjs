@@ -3654,7 +3654,7 @@ await go('The Delve');
     "the server lists the quest line: twelve steps, in the owner's order, each with a screen and a target",
     steps.length === 12
       && steps.every((st, i) => st.Order === i + 1 && st.Screen && st.GuideTargets.length > 0 && st.Title)
-      && steps.map((st) => st.Id).join(',') === 'clear_chest,auto_sell,fuse,reroll,village,market,breed,inheritance,delve,world_boss,ascension,rebirth',
+      && steps.map((st) => st.Id).join(',') === 'clear_chest,auto_sell,fuse,reroll,village,market,inheritance,delve,world_boss,ascension,breed,rebirth',
     steps.map((st) => `${st.Id}:${st.State}`).join(' '),
   );
   record(
@@ -4483,7 +4483,7 @@ await go('Inheritance');
   // only place the carry-over rule is stated, and a season that quietly wiped
   // one of these would still render this sentence.
   record(
-    'inheritance states what a season does not touch',
+    'inheritance states what a rebirth does not touch',
     /does not touch these, your village, or the race\s+mastery/i.test(text) ||
       /does not touch/i.test(text),
   );
@@ -4897,6 +4897,22 @@ await go('Breeding');
     );
     record('the preview no longer lists genes', !/And its genes/i.test(traitsText));
 
+    // 2026-10-14: the answer before the rules. The forecast must say in one
+    // line where the child beats the hero, draw a track per aptitude, and the
+    // bloodline ceiling the server sent must be on screen - a forecast that
+    // renders without the ceiling is quoting a band the engine will not honour.
+    const verdict = (await page.getByTestId('child-verdict').innerText().catch(() => '')).trim();
+    record('the forecast states a verdict against the hero', /better than|can beat|no better than/i.test(verdict), verdict);
+    const tracks = await page.locator('[data-testid="child-forecast"] .track').count();
+    record('the forecast draws one track per aptitude', tracks === 4, `${tracks} tracks`);
+    const rebirthNow = await apiGet('/api/v1/rebirth/preview');
+    const chip = (await page.getByTestId('bloodline-ceiling').innerText().catch(() => '')).trim();
+    record(
+      'the bloodline path shows the server ceiling',
+      rebirthNow !== null && chip.includes(String(rebirthNow.BloodlineCeilingNow)),
+      `${chip} (server ${rebirthNow?.BloodlineCeilingNow})`,
+    );
+
     // Modul: THE HEADING RENDERING IS NOT THE CLAIM. Task 13's own capture of
     // this screen showed TraitOdds: [] - the assertion above passed on the
     // heading and "Neither parent carries a trait." alone, and the
@@ -4989,6 +5005,17 @@ await go('Breeding');
       // would not prove it - a dismissal does that too.
       const after = (await readOptions(heroPicker)).length;
       record('marrying the village produces a child', after > before, `${before} -> ${after} characters`);
+
+      // The banner names the child from the Hall's own diff and sends the
+      // player to the step everything hangs on: field it.
+      const banner = page.getByTestId('born-banner');
+      await banner.waitFor({ timeout: 8000 }).catch(() => {});
+      const bannerText = (await banner.innerText().catch(() => '')).trim();
+      record(
+        'a birth announces the child and points at the Hall',
+        after <= before || (/is born/i.test(bannerText) && /Hall of Ancestors/.test(bannerText)),
+        bannerText.split(/\r?\n/)[0] || 'no banner',
+      );
 
       // Modul: WHAT THE CHILD ACTUALLY GOT, read from the roster endpoint
       // rather than guessed from the parents' odds - inheritance is rolled
@@ -5470,12 +5497,12 @@ await go('Ancestors');
     before ? `rebirths ${before.RebirthCount}, level ${before.Level}, ${before.ShardsEarned} shards, renowned ${before.Renowned}` : 'no answer',
   );
 
-  // The road to ten (server-built roadmap) and the Vault, before any terms.
+  // The road to twenty (server-built roadmap) and the Vault, before any terms.
   const steps = await page.locator('[data-testid^="rebirth-step-"]').count();
   const next = await page.locator('[data-testid^="rebirth-step-"][data-state="next"]').getAttribute('data-testid').catch(() => null);
   const portraits = await page.locator('[data-testid="rebirth-roadmap"] img').count();
   record(
-    'the Rebirth screen draws the road to ten, the next step marked',
+    'the Rebirth screen draws the whole road, the next step marked',
     before !== null && steps === before.MaxRebirths && next === `rebirth-step-${before.RebirthCount + 1}` && portraits >= 5,
     `${steps} steps, next ${next}, ${portraits} pictures`,
   );

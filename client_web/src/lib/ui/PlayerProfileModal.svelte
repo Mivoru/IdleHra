@@ -243,7 +243,7 @@
                 <dt>Deepest Delve floor</dt><dd>{p.Stats.DelveDeepestFloor}</dd>
                 <dt>Rebirths</dt><dd>{p.Stats.RebirthCount}</dd>
                 <dt>Seals (Book of Deeds)</dt><dd>{p.Stats.SealsEarned}</dd>
-                {#if p.Stats.BestSeasonRank > 0}<dt>Best season rank</dt><dd>#{p.Stats.BestSeasonRank}</dd>{/if}
+                {#if p.Stats.BestSeasonRank > 0}<dt>Best final rank</dt><dd>#{p.Stats.BestSeasonRank}</dd>{/if}
                 <dt>Items crafted</dt><dd>{formatNumber(p.Stats.TotalItemsCrafted)}</dd>
                 <dt>Deaths</dt><dd>{formatNumber(p.Stats.TotalDeaths)}</dd>
                 <dt>Mastery (wood / ore / fish)</dt>

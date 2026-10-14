@@ -3171,7 +3171,7 @@ namespace FolkIdle.Server.Tests
         // leaking that stranger's stats/set bonus as the old player's own
         // equipped gear.
         //
-        // ExecutePlayerRolloversAsync also performs genuinely global,
+        // (Historical: ExecutePlayerRolloversAsync, removed 2026-10-14) performed genuinely global,
         // unconditional writes elsewhere (TRUNCATE BankEquipmentInstances, a
         // blanket gold/commodity wipe across every row in the table) -
         // running the real method against the shared "Postgres collection"
@@ -3245,8 +3245,7 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
 
-            var seasonalEngine = new SeasonalRotationEngine(serviceProvider);
-            await seasonalEngine.ExecutePlayerRolloversAsync(closedEraId, CancellationToken.None);
+            await ResetOnePlayerAsync(dbContextFactory, closedEraId, testPlayerId);
 
             await using (var verifyDb = await dbContextFactory.CreateDbContextAsync())
             {
@@ -3265,17 +3264,30 @@ namespace FolkIdle.Server.Tests
                 Assert.Equal(0, await verifyDb.EquipmentInstances.CountAsync());
             }
 
-            // Confirm the identity-restart collision precondition is real -
-            // a brand new item for an unrelated player lands on the exact
-            // id the wiped weapon used to have.
+            // The reset is per player now (seasons are gone, 2026-10-14), a
+            // DELETE rather than a TRUNCATE ... RESTART IDENTITY - so the id
+            // space is NOT recycled and a stranger's new item cannot land on
+            // the id the wiped weapon had. The pointers are cleared anyway.
             await using (var db2 = await dbContextFactory.CreateDbContextAsync())
             {
                 db2.PlayerRecords.Add(new PlayerRecord { Id = otherPlayerId, PlayerGuid = Guid.NewGuid(), AuthenticatorToken = Guid.NewGuid() });
                 var newWeapon = new EquipmentInstance { PlayerId = otherPlayerId, BaseItemId = "someone_elses_sword", QualityTier = 5, AffixPayload = "{\"1\": 9999}" };
                 db2.EquipmentInstances.Add(newWeapon);
                 await db2.SaveChangesAsync();
-                Assert.Equal(originalWeaponId, newWeapon.Id);
+                Assert.NotEqual(originalWeaponId, newWeapon.Id);
             }
+        }
+
+        // The reset a rebirth runs, outside RebirthEngine's own transaction:
+        // the shard payout then the wipe, for ONE player - the only kind of
+        // reset left since seasons were removed.
+        private static async Task ResetOnePlayerAsync(IDbContextFactory<FolkIdleDbContext> factory, int eraId, long playerId)
+        {
+            await using var db = await factory.CreateDbContextAsync();
+            await using var transaction = await db.Database.BeginTransactionAsync();
+            await SeasonalRotationEngine.AwardLegacyShardsAsync(db, eraId, playerId, CancellationToken.None);
+            await SeasonalRotationEngine.ResetPlayersAsync(db, playerId, CancellationToken.None);
+            await transaction.CommitAsync();
         }
 
         // Modul: WHAT A SEASON LEAVES BEHIND.
@@ -3384,8 +3396,7 @@ namespace FolkIdle.Server.Tests
                 await db.SaveChangesAsync();
             }
 
-            var seasonalEngine = new SeasonalRotationEngine(serviceProvider);
-            await seasonalEngine.ExecutePlayerRolloversAsync(closedEraId, CancellationToken.None);
+            await ResetOnePlayerAsync(dbContextFactory, closedEraId, playerId);
 
             await using (var verify = await dbContextFactory.CreateDbContextAsync())
             {

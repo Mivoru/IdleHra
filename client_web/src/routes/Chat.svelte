@@ -404,7 +404,7 @@
       <p class="dim empty">
         Nothing in this channel yet.
         {#if active === GUILD}Guild messages only arrive if you are in a guild.{/if}
-        {#if active === ANNOUNCEMENT}Rare drops, Legendary rerolls, boss clears and season results show up here.{/if}
+        {#if active === ANNOUNCEMENT}Rare drops, Legendary rerolls, boss clears and world boss results show up here.{/if}
       </p>
     {/if}
     {/if}

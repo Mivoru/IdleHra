@@ -101,7 +101,7 @@ namespace FolkIdle.Server.Engine
         {
             if (!freeRespecUsed) return null;
             if (paidGrants > 0) return null;
-            return "You have used this season's free respec.";
+            return "You have used this run's free respec - a rebirth brings it back.";
         }
 
         /// <summary>

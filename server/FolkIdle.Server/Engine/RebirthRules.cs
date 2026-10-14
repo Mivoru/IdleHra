@@ -60,6 +60,9 @@ namespace FolkIdle.Server.Engine
         public static int DamageBonusPct(int renownedRebirths)
         {
             if (renownedRebirths <= 0) return 0;
+            // Counted only up to RewardedRebirths: rebirths 11-20 raise the
+            // bloodline ceiling and nothing else.
+            renownedRebirths = Math.Min(renownedRebirths, RewardedRebirths);
             double pct = MaxDamageBonusPct * (1.0 - Math.Pow(Retain, renownedRebirths));
             // Floored, so the ceiling is a strict one: at any finite count the
             // raw value is below Max and the floor keeps it at Max - 1.
@@ -74,10 +77,24 @@ namespace FolkIdle.Server.Engine
         // ------------------------------------------------------------------
 
         /// <summary>
-        /// Rebirths an account may take. Every reward below multiplies by this
-        /// count, so it is the ceiling that keeps a newcomer within reach.
+        /// Rebirths an account may take. Past RewardedRebirths a rebirth pays
+        /// nothing but a higher bloodline ceiling (BreedingAptitudes.CeilingFor).
         /// </summary>
-        public const int MaxRebirths = 10;
+        /// <remarks>
+        /// Modul: TWENTY, BUT THE POWER STOPS AT TEN (owner 2026-10-14). The
+        /// bloodline is the long game and takes twenty rebirths to max; the
+        /// damage bonus, the skill points, the avatars and the Phoenix all
+        /// stop at ten, because every one of them multiplies by the count and
+        /// ten is the ceiling that keeps a newcomer within reach of a veteran.
+        /// </remarks>
+        public const int MaxRebirths = 20;
+
+        /// <summary>
+        /// The last rebirth that pays anything besides the bloodline ceiling:
+        /// skill points, Renown's damage bonus, the milestone avatars, the title
+        /// and the Phoenix.
+        /// </summary>
+        public const int RewardedRebirths = 10;
 
         /// <summary>
         /// Skill points each rebirth adds to the tree, permanently, beside the
@@ -121,7 +138,10 @@ namespace FolkIdle.Server.Engine
         };
 
         /// <summary>The skill points this many rebirths pay, capped with the count.</summary>
-        public static int SkillPointsFor(int rebirthCount) => Math.Clamp(rebirthCount, 0, MaxRebirths) * SkillPointsPerRebirth;
+        public static int SkillPointsFor(int rebirthCount) => Math.Clamp(rebirthCount, 0, RewardedRebirths) * SkillPointsPerRebirth;
+
+        /// <summary>Whether this rebirth is the one that brings the title and the Phoenix.</summary>
+        public static bool IsFinalRewardedRebirth(int rebirthCountAfter) => rebirthCountAfter == RewardedRebirths;
 
         /// <summary>
         /// The re-level XP bonus, in percent: paid only below a best level an

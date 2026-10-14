@@ -3,7 +3,7 @@
   // panel at the foot of the Hall of Ancestors, below the roster, so a player
   // had to scroll past their whole bloodline to learn what a rebirth pays -
   // and the Hall's own text still said a rebirth took "all gear" after the
-  // Vault existed. Here it is the page: where you stand, the road to ten, the
+  // Vault existed. Here it is the page: where you stand, the road to twenty, the
   // Vault, and the terms. Every number is the server's (RebirthPanel).
   import RebirthPanel from '../lib/ui/RebirthPanel.svelte';
   import { requestScreen } from '../lib/stores/navigation';
@@ -13,10 +13,10 @@
   <section class="panel intro">
     <h2>Rebirth</h2>
     <p class="dim small">
-      End this run whenever you choose and start again at level 1 - stronger. Every rebirth pays something
-      that lasts: skill points, faster levelling, and at the milestones avatars, a second pet slot and the
-      Phoenix. You may be reborn ten times, so a newcomer can always catch up. Who your bloodline keeps is
-      decided in the Hall of Ancestors; every rule is in the Wiki.
+      End this run whenever you choose and start again at level 1 - stronger. Every rebirth raises your
+      <strong>bloodline ceiling</strong>, the highest an aptitude can be bred. The first ten also pay skill
+      points, faster levelling and, at the milestones, avatars, a second pet slot and the Phoenix. Twenty in all;
+      who your bloodline keeps is decided in the Hall of Ancestors, and every rule is in the Wiki.
     </p>
     <div class="links">
       <button type="button" onclick={() => requestScreen('ancestors')}>Hall of Ancestors</button>

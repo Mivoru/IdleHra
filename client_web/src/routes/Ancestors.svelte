@@ -126,7 +126,7 @@
     if (m.IsKept && !m.WouldCarry) {
       return `Marked to keep, but more are marked than there are slots (${claimed} for ${data?.Cap ?? 0}). The stronger marks carry; this one is lost at rebirth unless you buy a slot or unmark somebody.`;
     }
-    if (m.IsKept) return 'Marked to keep - carries into the next season.';
+    if (m.IsKept) return 'Marked to keep - carries through your next rebirth.';
     if (m.WouldCarry) return 'Carries on the strength of their blood. Unmarked, so a stronger child can still push them out.';
     return 'Lost at rebirth. Mark them to keep, and they outrank everybody unmarked.';
   }
@@ -145,6 +145,10 @@
         <span class="tags">
           <span class="gen">{generationTag(m)}</span>
           <span class="badge {badge.kind}">{badge.text}</span>
+          <!-- 2026-10-14: a benched child never grows up (only played slots
+               age), and the row did not say so - the step the whole loop
+               hangs on was a paragraph in the header. -->
+          {#if m.AgePhase === 0 && m.PlayableSlot < 0}<span class="badge raise" data-testid="hall-raise">Field to raise</span>{/if}
         </span>
       </span>
       <!-- Modul: labelled once, by the column header above the list, and per
@@ -317,7 +321,7 @@
         onclick={() => (carriedOpen = !carriedOpen)}
       >
         <span class="caret" aria-hidden="true">{carriedOpen ? '▾' : '▸'}</span>
-        Carried into next season ({sections.carried.length}/{data.Cap})
+        Carried through a rebirth ({sections.carried.length}/{data.Cap})
       </button>
       {#if carriedOpen}
         {@render columns()}
@@ -648,6 +652,12 @@
   .badge.first {
     border-color: var(--brass);
     color: var(--brass-lit);
+  }
+
+  /* A child on the bench: the next thing to do, not a warning. */
+  .badge.raise {
+    border-color: var(--good);
+    color: var(--good);
   }
 
   /* The one state that must never read as safe. Words AND colour. */

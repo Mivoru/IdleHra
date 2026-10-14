@@ -19,7 +19,11 @@ namespace FolkIdle.Server.Tests
         {
             var steps = RebirthRoadmap.Build();
             Assert.Equal(Enumerable.Range(1, RebirthRules.MaxRebirths), steps.Select(s => s.Rebirth));
-            Assert.All(steps, s => Assert.Contains(s.Rewards, r => r.Kind == "skill_points"));
+            // Skill points through the tenth; the bloodline ceiling on every one.
+            Assert.All(steps.Where(s => s.Rebirth <= RebirthRules.RewardedRebirths), s => Assert.Contains(s.Rewards, r => r.Kind == "skill_points"));
+            Assert.All(steps.Where(s => s.Rebirth > RebirthRules.RewardedRebirths), s => Assert.DoesNotContain(s.Rewards, r => r.Kind == "skill_points"));
+            Assert.All(steps, s => Assert.Contains(s.Rewards, r => r.Kind == "bloodline" && r.Name.EndsWith(" " + BreedingAptitudes.CeilingFor(s.Rebirth))));
+            Assert.Contains(steps[^1].Rewards, r => r.Kind == "bloodline" && r.Name.EndsWith(" " + BreedingAptitudes.MaxValue));
         }
 
         [Fact]
@@ -31,7 +35,7 @@ namespace FolkIdle.Server.Tests
                 Assert.Contains(steps[avatar.Rebirths].Rewards, r => r.Kind == "avatar" && r.Art == avatar.Art);
             }
             Assert.Contains(steps[RebirthRules.SecondPetSlotRebirths].Rewards, r => r.Kind == "pet_slot");
-            var last = steps[RebirthRules.MaxRebirths].Rewards;
+            var last = steps[RebirthRules.RewardedRebirths].Rewards;
             Assert.Contains(last, r => r.Kind == "pet" && r.Name == "Phoenix");
             Assert.Contains(last, r => r.Kind == "title");
             Assert.Contains(last, r => r.Kind == "badge");

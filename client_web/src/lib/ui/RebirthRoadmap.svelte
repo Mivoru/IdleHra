@@ -1,5 +1,5 @@
 <script lang="ts">
-  // The ten rebirths and what each one pays (owner, 2026-10-11: "a roadmap
+  // The twenty rebirths and what each one pays (owner, 2026-10-11: "a roadmap
   // what a player gets each rebirth, with nice design"). Every step is the
   // SERVER's (RebirthRoadmap.Build, sent on the preview) - the same rules the
   // rebirth grants from - so this draws and decides nothing.
@@ -23,6 +23,7 @@
   }
 
   const ICONS: Record<string, string> = {
+    bloodline: '⚘',
     skill_points: '✦',
     xp: '⇧',
     pet_slot: '⧉',
@@ -34,7 +35,7 @@
 <div class="roadmap" data-testid="rebirth-roadmap">
   {#each steps as step (step.Rebirth)}
     {@const state = stateOf(step.Rebirth)}
-    {@const big = step.Rewards.some((r) => r.Kind !== 'skill_points')}
+    {@const big = step.Rewards.some((r) => r.Kind !== 'skill_points' && r.Kind !== 'bloodline')}
     <div class="step {state}" class:big class:final={step.Rebirth === steps.length} data-testid="rebirth-step-{step.Rebirth}" data-state={state}>
       <div class="head">
         <span class="shield" class:max={step.Rebirth === steps.length}>{step.Rebirth}</span>

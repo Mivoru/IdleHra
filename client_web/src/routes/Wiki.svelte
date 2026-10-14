@@ -87,6 +87,7 @@
     SEASON_CARRIES,
     SEASON_LOST,
     REBIRTH_PAYS,
+    bloodlineCeilingFor,
     REBIRTH_ROADMAP,
     REBIRTH_MAX,
     rebirthVaultPrice,
@@ -1194,7 +1195,11 @@
             </li>
             <li><strong>A drift roll</strong>: {upMutationPercent(0)}% +1 and 10% −1 with no Breeding Grounds bonus, rising to {upMutationPercent(12)}% +1 at a maxed Grounds.</li>
             <li><strong>An epic mutation</strong>, 5% of the time, adds +1 to all four and marks the child.</li>
-            <li>Clamped to 0…{APTITUDE_MAX}.</li>
+            <li>
+              Capped at your <strong>bloodline ceiling</strong>: {bloodlineCeilingFor(0)} before your first
+              rebirth, rising with every rebirth to {APTITUDE_MAX} at the {REBIRTH_MAX}th. A parent already above
+              the ceiling still passes on what it has; the child just cannot climb past it.
+            </li>
           </ol>
 
           <h4>Breeding for something — what the Grounds buys</h4>
@@ -1277,7 +1282,8 @@
             level</strong>, capped at {APTITUDE_VILLAGE_CEILING}. That is the whole
             two-phase climb: 0 → {APTITUDE_VILLAGE_CEILING} is village-driven, and
             above {APTITUDE_VILLAGE_CEILING} only drift and selection across generations
-            can reach.
+            can reach - and only as far as your rebirths have raised the ceiling, so the
+            road from {APTITUDE_VILLAGE_CEILING} to {APTITUDE_MAX} is the {REBIRTH_MAX} rebirths.
           </p>
           <div class="scroll">
             <table>
@@ -1368,7 +1374,7 @@
             {#each REBIRTH_PAYS as line (line)}<li>{line}</li>{/each}
           </ul>
 
-          <h3 id="rebirth-roadmap">The road to ten</h3>
+          <h3 id="rebirth-roadmap">The road to twenty</h3>
           <div class="scroll">
             <table>
               <thead><tr><th>Rebirth</th><th>What it brings</th></tr></thead>

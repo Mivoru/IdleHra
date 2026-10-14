@@ -14,7 +14,7 @@ import {
   BOSS_REQUIRED_QUALITY_TIER,
 } from '../src/lib/ui/victories';
 import { TIER_STYLES } from '../src/lib/ui/leaderboardTiers';
-import { GUILD_JOIN_MIN_LEVEL } from '../src/lib/ui/unlocks';
+import { GUILD_JOIN_MIN_LEVEL, BLOODLINE_NEAR_LEVEL } from '../src/lib/ui/unlocks';
 import { FOOD_HEAL_PCT_PER_TIER } from '../src/lib/net/content';
 import { LEVEL_CURVE_BASE, LEVEL_CURVE_GROWTH, LEVEL_CURVE_OPENING_LOG, LEVEL_CURVE_OPENING_TAU, xpToNextLevel } from '../src/lib/ui/levelCurve';
 import { nextBossMonday, nextStrikeRefill } from '../src/lib/net/commands';
@@ -980,12 +980,33 @@ describe('the Wiki rebirth tables mirror RebirthRules', () => {
 
   it('has the same cap, points, bonus, slot and Vault bounds', () => {
     expect(wiki.REBIRTH_MAX).toBe(constant('MaxRebirths'));
+    expect(wiki.REBIRTH_REWARDED).toBe(constant('RewardedRebirths'));
     expect(wiki.REBIRTH_SKILL_POINTS_EACH).toBe(constant('SkillPointsPerRebirth'));
     expect(wiki.REBIRTH_XP_BONUS_PCT).toBe(constant('ReLevelXpBonusPct'));
     expect(wiki.REBIRTH_SECOND_PET_SLOT_AT).toBe(constant('SecondPetSlotRebirths'));
     expect(wiki.REBIRTH_VAULT_FLOOR).toBe(constant('KeepPriceFloor'));
     expect(wiki.REBIRTH_VAULT_CEILING).toBe(constant('KeepPriceCeiling'));
     expect(constant('TopQualityTier')).toBe(14);
+  });
+
+  // 2026-10-14: the bloodline ceiling, BreedingAptitudes.CeilingFor, rebirth by rebirth.
+  it('draws the bloodline ceiling from the same three constants as the server', () => {
+    const aptitudes = read(serverRoot, 'Engine', 'BreedingAptitudes.cs');
+    const apt = (name: string) => Number(aptitudes.match(new RegExp(`const int ${name} = (\\d+);`))![1]);
+    expect(wiki.BLOODLINE_CEILING_START).toBe(apt('VillagerCeiling'));
+    expect(wiki.BLOODLINE_CEILING_END).toBe(apt('MaxValue'));
+    expect(aptitudes).toMatch(/return VillagerCeiling \+ span \* rebirths \/ RebirthRules\.MaxRebirths;/);
+    expect(wiki.bloodlineCeilingFor(0)).toBe(apt('VillagerCeiling'));
+    expect(wiki.bloodlineCeilingFor(wiki.REBIRTH_MAX)).toBe(apt('MaxValue'));
+    for (const row of wiki.REBIRTH_ROADMAP) {
+      expect(row.rewards).toContain(`bloodline ceiling ${wiki.bloodlineCeilingFor(row.rebirth)}`);
+    }
+  });
+
+  it('surfaces the bloodline at the quest line level', () => {
+    const quests = read(serverRoot, 'Domain', 'Progression', 'QuestLineRegistry.cs');
+    const offset = Number(quests.match(/BloodlineNearLevel = RebirthRules\.RenownLevel - (\d+);/)![1]);
+    expect(BLOODLINE_NEAR_LEVEL).toBe(constant('RenownLevel') - offset);
   });
 
   it('lists one roadmap row per rebirth, with the avatars where the server grants them', () => {

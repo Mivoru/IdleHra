@@ -144,7 +144,7 @@ namespace FolkIdle.Server.Domain.Progression
             foreach (var milestone in Engine.RebirthRules.AvatarMilestones)
             {
                 list.Add(new CosmeticDefinition(milestone.AvatarId, CosmeticKind.Avatar,
-                    milestone.Rebirths >= Engine.RebirthRules.MaxRebirths ? Legendary : Epic,
+                    milestone.Rebirths >= Engine.RebirthRules.RewardedRebirths ? Legendary : Epic,
                     milestone.Name, milestone.Art, Bound: true));
             }
             // Chernobog's milestone avatars (owner, 2026-10-13) - bound, Legendary.

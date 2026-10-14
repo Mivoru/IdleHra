@@ -1,7 +1,10 @@
 <script lang="ts">
   import Money from '../lib/ui/Money.svelte';
   import { createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import { fly } from 'svelte/transition';
+  import { motionMs, MOTION } from '../lib/ui/motion';
   import { playerState, pushLocalNotice } from '../lib/stores/game';
+  import { requestScreen } from '../lib/stores/navigation';
   import {
     queryKeys,
     fetchBreedingRoster,
@@ -9,6 +12,8 @@
     fetchVillagerBreedingPreview,
     fetchVillageNewcomers,
     fetchTraits,
+    fetchAncestorsHall,
+    fetchRebirthPreview,
   } from '../lib/net/rest';
   import {
     executeBreeding,
@@ -23,6 +28,8 @@
   } from '../lib/net/commands';
   import { connection } from '../lib/net/connection';
   import AptitudePanel from '../lib/ui/AptitudePanel.svelte';
+  import BloodlinePath from '../lib/ui/BloodlinePath.svelte';
+  import ChildForecast from '../lib/ui/ChildForecast.svelte';
   import ChildPreview from '../lib/ui/ChildPreview.svelte';
   import PersonPicker from '../lib/ui/PersonPicker.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
@@ -46,6 +53,11 @@
   const traitCatalogue = createQuery(() => ({ queryKey: queryKeys.traits, queryFn: fetchTraits, staleTime: Infinity }));
   const catalogue = $derived(traitCatalogue.data ?? []);
 
+  // The loop around this screen (BloodlinePath): who is growing and who
+  // carries come from the Hall, the bloodline ceiling from the rebirth preview.
+  const hall = createQuery(() => ({ queryKey: queryKeys.ancestorsHall, queryFn: fetchAncestorsHall }));
+  const rebirth = createQuery(() => ({ queryKey: queryKeys.rebirthPreview, queryFn: fetchRebirthPreview }));
+
   const snap = $derived($playerState);
   const breedingLevel = $derived(snap?.BreedingLevel ?? 0);
 
@@ -61,8 +73,12 @@
   // counted down every second, which on Android's WebView closes the open
   // dialog or drops the choice - see PersonPicker.svelte and breedingPicker.ts.
   //
-  // The Chronicle pass used to sit at the bottom of this screen. It has nothing
-  // to do with breeding and moved to Progress.
+  // Modul: THE ANSWER BEFORE THE RULES (2026-10-14). The owner found the
+  // screen hard to follow: the preview opened with a paragraph of odds per
+  // aptitude and the button sat about two screens down on a phone. The order
+  // is now the decision's own order - the pair, what you breed for, the child
+  // drawn on one track per aptitude with a one-line verdict (ChildForecast),
+  // then the price and the button - and the mechanics are behind a toggle.
 
   // --- who is breeding ------------------------------------------------------
 
@@ -114,6 +130,11 @@
       people: sortForPicker(candidates.map((c) => partnerCharacterPerson(hero, c, nowSeconds, catalogue))),
     },
   ]);
+
+  const heroName = $derived(heroGroups[0].people.find((p) => p.key === 'c:' + heroId)?.name ?? 'your hero');
+  const partnerName = $derived(
+    partnerGroups.flatMap((g) => g.people).find((p) => p.key === partnerKey)?.name ?? 'the partner',
+  );
 
   /**
    * Choosing a hero also re-checks the partner. The old screen kept a partner
@@ -230,12 +251,27 @@
     }
   }
 
+  // Modul: WHAT HAPPENED, AND WHAT NEXT. A birth used to clear the partner and
+  // say nothing on this screen, so the one step everything else hangs on -
+  // field the child - was small print under the button. The Hall is read
+  // before the Breed press and again after; whoever is new is the child. That
+  // keeps the banner true when the server refuses (no new member, no banner)
+  // and names the actual child rather than a guess.
+  let hallBefore = $state<Set<string> | null>(null);
+  const bornChild = $derived(
+    hallBefore === null ? undefined : (hall.data?.Members ?? []).find((m) => !hallBefore!.has(m.CharacterId)),
+  );
+
   function breed() {
+    hallBefore = new Set((hall.data?.Members ?? []).map((m) => m.CharacterId));
     const outcome = partnerIsVillager
       ? executeVillagerBreeding(heroId, partnerVillagerId, breedingLevel, effectiveMask)
       : executeBreeding(paternalId, maternalId, breedingLevel, effectiveMask);
 
-    if (!outcome.ok) return pushLocalNotice(outcome.reason, 'error');
+    if (!outcome.ok) {
+      hallBefore = null;
+      return pushLocalNotice(outcome.reason, 'error');
+    }
 
     // A villager marries once, so the choice is spent the moment this lands;
     // a partner from your own line is now resting. Either way the old choice
@@ -257,162 +293,207 @@
   );
 </script>
 
-<div class="grid">
-  <!-- Modul: what the bloodline is worth, first. It is the reason
-       breeding exists, and it was invisible until now. -->
-  <AptitudePanel />
+<div class="breeding-screen">
+  <BloodlinePath
+    hall={hall.data}
+    newcomers={newcomers.length}
+    ceilingNow={rebirth.data?.BloodlineCeilingNow ?? null}
+    ceilingAfter={rebirth.data?.BloodlineCeilingAfter ?? null}
+    capped={rebirth.data?.Capped ?? false}
+  />
 
-  <section class="panel">
-    <h2>Breeding lab</h2>
+  <div class="grid">
+    <section class="panel lab">
+      <h2>Breeding lab</h2>
 
-    <!-- Modul: WHERE THIS SITS. Breeding interlocks with four other systems and
-         none of them were named here. Task 109 cut five blocks of rules prose
-         around the lab to one line per control; the full rules are the Wiki's
-         Bloodline page. -->
-    <p class="interlocks dim tiny">
-      What you breed into the <strong>Hall of Ancestors</strong> is what
-      survives the season; levels, gear, gold and the village do not.
-    </p>
-
-    {#if breedingLevel === 0}
-      <p class="warn">
-        You have no <strong>Breeding Grounds</strong>. Build it in your village
-        and any grown adult can marry &mdash; there is no level requirement.
+      <!-- Modul: WHERE THIS SITS. Task 109 cut five blocks of rules prose
+           around the lab to one line per control; the full rules are the
+           Wiki's Bloodline page, and BloodlinePath above carries the loop. -->
+      <p class="interlocks dim tiny">
+        What you breed into the <strong>Hall of Ancestors</strong> is what
+        survives a rebirth; levels, gear, gold and the village folk do not.
       </p>
-    {/if}
 
-    <!-- Modul: the pickers below say "You have no characters" and "Nobody to
-         choose from" when their lists are empty - which a failed request also
-         produces. Name the failure above them instead. -->
-    {#if roster.isError && roster.data === undefined}
-      <QueryError query={roster} what="your characters" />
-    {/if}
-    {#if village.isError && village.data === undefined}
-      <QueryError query={village} what="your village" />
-    {/if}
+      {#if breedingLevel === 0}
+        <p class="warn">
+          You have no <strong>Breeding Grounds</strong>. Build it in your village
+          and any grown adult can marry &mdash; there is no level requirement.
+          <button type="button" class="inline-go" onclick={() => requestScreen('village')}>Village</button>
+        </p>
+      {/if}
 
-    <PersonPicker
-      testId="hero-picker"
-      label="Your hero"
-      placeholder="Choose a hero..."
-      groups={heroGroups}
-      selectedKey={heroId ? 'c:' + heroId : ''}
-      onSelect={selectHero}
-      emptyText="You have no characters with a bloodline yet."
-    />
+      <!-- Modul: the pickers below say "You have no characters" and "Nobody to
+           choose from" when their lists are empty - which a failed request also
+           produces. Name the failure above them instead. -->
+      {#if roster.isError && roster.data === undefined}
+        <QueryError query={roster} what="your characters" />
+      {/if}
+      {#if village.isError && village.data === undefined}
+        <QueryError query={village} what="your village" />
+      {/if}
 
-    <PersonPicker
-      testId="partner-picker"
-      label="Partner"
-      placeholder={heroId ? 'Choose a partner...' : 'Choose your hero first'}
-      groups={partnerGroups}
-      selectedKey={partnerKey}
-      onSelect={(key) => (partnerKey = key)}
-      disabled={heroId === ''}
-      emptyText="Nobody to choose from here."
-    />
+      <!-- The pair, side by side where there is room: the decision is one
+           hero against one partner, and it reads as a pair. -->
+      <div class="pair">
+        <PersonPicker
+          testId="hero-picker"
+          label="Your hero"
+          placeholder="Choose a hero..."
+          groups={heroGroups}
+          selectedKey={heroId ? 'c:' + heroId : ''}
+          onSelect={selectHero}
+          emptyText="You have no characters with a bloodline yet."
+        />
+        <span class="times" aria-hidden="true">&times;</span>
+        <PersonPicker
+          testId="partner-picker"
+          label="Partner"
+          placeholder={heroId ? 'Choose a partner...' : 'Choose your hero first'}
+          groups={partnerGroups}
+          selectedKey={partnerKey}
+          onSelect={(key) => (partnerKey = key)}
+          disabled={heroId === ''}
+          emptyText="Nobody to choose from here."
+        />
+      </div>
 
-    <!-- Modul: WHICH LIST TO PICK FROM, stated rather than implied. One line
-         now: the village raises a line, your own refines it. The Inn figure is
-         bestVillagerAptitudeFor, pinned to the server by serverMirrors.test.ts. -->
-    <p class="dim tiny">
-      A <strong>village</strong> newcomer raises a bloodline (Inn level {innLevel}:
-      up to <strong>{bestVillagerAptitudeFor(innLevel)}</strong>, never past
-      {APTITUDE_VILLAGE_CEILING}); <strong>your own</strong> line refines it.
-    </p>
-
-    {#if newcomers.length === 0 && village.data}
+      <!-- Modul: WHICH LIST TO PICK FROM, stated rather than implied. The Inn
+           figure is bestVillagerAptitudeFor, pinned to the server by
+           serverMirrors.test.ts. -->
       <p class="dim tiny">
-        Nobody has settled in your village yet. Somebody turns up every
-        {Math.round(village.data.IntervalSeconds / 3600)}h while there is room.
+        A <strong>village</strong> newcomer raises a bloodline (Inn level {innLevel}:
+        up to <strong>{bestVillagerAptitudeFor(innLevel)}</strong>, never past
+        {APTITUDE_VILLAGE_CEILING}); <strong>your own</strong> line refines it.
       </p>
-    {/if}
 
-    <!-- Modul: BREED FOR SOMETHING - what the Breeding Grounds buys. -->
-    <fieldset class="selection">
-      <legend>Breed for</legend>
-
-      {#if selectableCount === 0}
+      {#if newcomers.length === 0 && village.data}
         <p class="dim tiny">
-          Breeding Grounds level {SELECTION_UNLOCK_LEVELS[0]} lets you choose an
-          aptitude that always keeps the better parent's value.
+          Nobody has settled in your village yet. Somebody turns up every
+          {Math.round(village.data.IntervalSeconds / 3600)}h while there is room.
         </p>
-      {:else}
-        <!-- "Choose up to 1" sat on checkboxes. One choice is a radio choice;
-             toggleSelection already replaces the old pick at capacity 1, and a
-             second tap on the chosen one clears it. -->
-        <p class="dim tiny">
-          {selectableCount === 1 ? 'Choose one' : `Choose up to ${selectableCount}`}: it keeps the
-          better parent's value; the rest roll. Every aptitude has a
-          {upMutationPercent(breedingLevel)}% chance of +1.
-        </p>
+      {/if}
 
-        <div class="apt-choices">
-          {#each APTITUDES as aptitude, index (aptitude.field)}
-            {@const on = (effectiveMask & (1 << index)) !== 0}
-            <label class="apt-choice" class:on>
-              <input
-                type={selectableCount === 1 ? 'radio' : 'checkbox'}
-                name="breed-for"
-                checked={on}
-                onclick={() => toggleAptitude(index)}
-              />
-              <span>
-                <strong>{aptitude.name}</strong>
-                <span class="dim tiny">{aptitude.blurb}</span>
-              </span>
-            </label>
-          {/each}
+      <!-- Modul: BREED FOR SOMETHING - what the Breeding Grounds buys. -->
+      <fieldset class="selection">
+        <legend>Breed for</legend>
+
+        {#if selectableCount === 0}
+          <p class="dim tiny">
+            Breeding Grounds level {SELECTION_UNLOCK_LEVELS[0]} lets you choose an
+            aptitude that always keeps the better parent's value.
+          </p>
+        {:else}
+          <!-- One choice is a radio choice; toggleSelection already replaces
+               the old pick at capacity 1, and a second tap clears it. -->
+          <p class="dim tiny">
+            {selectableCount === 1 ? 'Choose one' : `Choose up to ${selectableCount}`}: it keeps the
+            better parent's value; the rest roll. Every aptitude has a
+            {upMutationPercent(breedingLevel)}% chance of +1.
+          </p>
+
+          <div class="apt-choices">
+            {#each APTITUDES as aptitude, index (aptitude.field)}
+              {@const on = (effectiveMask & (1 << index)) !== 0}
+              <label class="apt-choice" class:on>
+                <input
+                  type={selectableCount === 1 ? 'radio' : 'checkbox'}
+                  name="breed-for"
+                  checked={on}
+                  onclick={() => toggleAptitude(index)}
+                />
+                <span>
+                  <strong>{aptitude.name}</strong>
+                  <span class="dim tiny">{aptitude.blurb}</span>
+                </span>
+              </label>
+            {/each}
+          </div>
+
+          {#if nextSelectionLevel !== null}
+            <p class="dim tiny">
+              Breeding Grounds level {nextSelectionLevel} buys another choice.
+            </p>
+          {/if}
+        {/if}
+      </fieldset>
+
+      {#if preview}
+        {@const p = preview}
+        <ChildForecast preview={p} selectionMask={effectiveMask} {heroName} {partnerName} />
+
+        <!-- The price, the cost that matters most, and the button: together
+             and straight under the forecast, so on a phone the action follows
+             the answer instead of the rules. -->
+        <div class="act">
+          {#if !p.IsEligible}
+            <p class="warn">{p.IneligibleReason ? refusal(p.IneligibleReason) : 'These two cannot pair.'}</p>
+          {:else}
+            <p class="cost" class:short={!p.HasSufficientGold}>
+              Costs <Money amount={p.BreedingCostGold} />
+              {#if !p.HasSufficientGold}&middot; not enough gold{/if}
+              {#if p.IsInbredRisk}&middot; <span class="risk">related pair</span>{/if}
+            </p>
+          {/if}
+          {#if partnerIsVillager}
+            <p class="spent-note" data-testid="partner-spent-note">
+              This villager is <strong>spent for ever</strong> once married.
+            </p>
+          {/if}
+          <button class="breed" data-guide="breeding-start" onclick={breed} disabled={!canBreed}>Breed</button>
         </div>
 
-        {#if nextSelectionLevel !== null}
-          <p class="dim tiny">
-            Breeding Grounds level {nextSelectionLevel} buys another choice.
+        <ChildPreview preview={p} mode={partnerIsVillager ? 'village' : 'roster'} {generation} {catalogue} />
+      {:else}
+        {#if partnerKey !== '' && (partnerIsVillager ? villagePreview : rosterPreview).isError}
+          <QueryError query={partnerIsVillager ? villagePreview : rosterPreview} what="the child preview" />
+        {:else if heroId === '' || partnerKey === ''}
+          <p class="empty-forecast dim tiny" data-testid="forecast-empty">
+            Choose a hero and a partner, and the child's four aptitudes are drawn here before you pay anything.
           </p>
         {/if}
-      {/if}
-    </fieldset>
-
-    {#if preview}
-      {@const p = preview}
-      {#if !p.IsEligible}
-        <p class="warn">{p.IneligibleReason ? refusal(p.IneligibleReason) : 'These two cannot pair.'}</p>
-      {:else}
-        <p class="cost" class:short={!p.HasSufficientGold}>
-          Costs <Money amount={p.BreedingCostGold} />
-          {#if !p.HasSufficientGold}&middot; not enough gold{/if}
-          {#if p.IsInbredRisk}&middot; <span class="risk">related pair</span>{/if}
-        </p>
+        <button class="breed" data-guide="breeding-start" onclick={breed} disabled={!canBreed}>Breed</button>
       {/if}
 
-      <ChildPreview preview={p} mode={partnerIsVillager ? 'village' : 'roster'} {generation} {catalogue} />
-    {:else if partnerKey !== '' && (partnerIsVillager ? villagePreview : rosterPreview).isError}
-      <QueryError query={partnerIsVillager ? villagePreview : rosterPreview} what="the child preview" />
-    {/if}
+      {#if bornChild}
+        <div class="born" data-testid="born-banner" role="status" transition:fly={{ y: 12, duration: motionMs(MOTION.enter) }}>
+          <div>
+            <strong>{bornChild.Name || 'A child'} is born</strong>
+            <span class="dim tiny">
+              Strength {bornChild.AptitudeStrength} &middot; Skill {bornChild.AptitudeSkill} &middot;
+              Endurance {bornChild.AptitudeEndurance} &middot; Fortune {bornChild.AptitudeFortune}{#if bornChild.IsEpicMutation}
+                &middot; <span class="epic">epic</span>{/if}
+            </span>
+            <span class="dim tiny">Field them in the Hall of Ancestors - about an hour of play and they are grown.</span>
+          </div>
+          <button type="button" onclick={() => requestScreen('ancestors')}>Hall of Ancestors</button>
+        </div>
+      {/if}
+    </section>
 
-    <!-- Modul: WHAT HAPPENS NEXT, which the screen never said - and the cost
-         that matters most sits beside the button that pays it. -->
-    {#if partnerIsVillager}
-      <p class="spent-note" data-testid="partner-spent-note">
-        This villager is <strong>spent for ever</strong> once married.
-      </p>
-    {/if}
-    <button class="breed" data-guide="breeding-start" onclick={breed} disabled={!canBreed}>Breed</button>
-
-    <p class="dim tiny">
-      The child joins the <strong>Hall of Ancestors</strong>; field it and it is
-      an adult in an hour.
-    </p>
-  </section>
+    <!-- What the bloodline is worth now. Beside the lab on a wide screen,
+         under it on a phone - the lab is what you came here to do. -->
+    <AptitudePanel />
+  </div>
 </div>
 
 <style>
-  .grid {
+  .breeding-screen {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(21rem, 1fr));
     gap: 1rem;
     padding: 1rem;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    gap: 1rem;
     align-items: start;
+  }
+
+  @media (max-width: 56rem) {
+    .grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   h2 {
@@ -437,9 +518,51 @@
     margin: 0 0 0.7rem;
   }
 
+  .inline-go {
+    margin-left: 0.4rem;
+    min-height: 44px;
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: end;
+    gap: 0.5rem;
+  }
+
+  .times {
+    padding-bottom: 0.7rem;
+    font-size: 1.2rem;
+    color: var(--brass-lit, var(--text-dim));
+  }
+
+  @media (max-width: 40rem) {
+    .pair {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .times {
+      display: none;
+    }
+  }
+
+  .act {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0.8rem 0 0.4rem;
+    padding: 0.6rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-raised);
+  }
+
+  .act .warn {
+    margin: 0;
+  }
+
   .cost {
     font-size: 0.85rem;
-    margin: 0 0 0.5rem;
+    margin: 0;
   }
 
   .cost.short {
@@ -451,7 +574,7 @@
   }
 
   .spent-note {
-    margin: 0.6rem 0 0;
+    margin: 0;
     font-size: 0.8rem;
     color: var(--warn, var(--danger));
   }
@@ -459,7 +582,48 @@
   .breed {
     width: 100%;
     min-height: 44px;
-    margin-top: 0.6rem;
+    margin-top: 0.2rem;
+  }
+
+  .empty-forecast {
+    margin: 0.8rem 0 0.6rem;
+    padding: 0.9rem;
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    text-align: center;
+  }
+
+  .born {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin-top: 0.8rem;
+    padding: 0.7rem 0.8rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--brass-lit, var(--accent));
+    background: color-mix(in srgb, var(--brass-lit, #d8b45a) 12%, var(--bg-panel));
+    box-shadow: 0 0 14px var(--glow-soft, transparent);
+  }
+
+  .born > div {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .born .tiny {
+    margin: 0;
+  }
+
+  .born button {
+    min-height: 44px;
+    flex-shrink: 0;
+  }
+
+  .epic {
+    color: var(--brass-lit, var(--accent));
   }
 
   .selection {
@@ -479,6 +643,7 @@
 
   .apt-choices {
     display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
     gap: 0.3rem;
     margin-top: 0.4rem;
   }
@@ -496,10 +661,14 @@
     border-radius: var(--radius);
     cursor: pointer;
     font-size: 0.8rem;
+    transition:
+      border-color 160ms ease,
+      background-color 160ms ease;
   }
 
   .apt-choice.on {
-    border-color: var(--brass, var(--border));
+    border-color: var(--brass-lit, var(--border));
+    background: color-mix(in srgb, var(--brass, #8a6a34) 16%, transparent);
   }
 
   .apt-choice input {
@@ -525,5 +694,11 @@
     background: var(--bg);
     border-radius: var(--radius);
     line-height: 1.4;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .apt-choice {
+      transition: none;
+    }
   }
 </style>

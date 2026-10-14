@@ -36,6 +36,7 @@
     queryKeys,
     fetchRebirthPreview,
     fetchInventory,
+    fetchAncestorsHall,
     requestRebirth,
     REBIRTH_CONFIRMATION_WORD,
     type RebirthOutcome,
@@ -51,6 +52,19 @@
   const client = useQueryClient();
   const preview = createQuery(() => ({ queryKey: queryKeys.rebirthPreview, queryFn: fetchRebirthPreview }));
   const p = $derived(preview.data);
+
+  // Modul: WHO THE NEXT RUN STARTS WITH (2026-10-14). The terms listed who the
+  // Hall lets go, by name, and never who stays - so the one reason to breed
+  // before a rebirth was invisible on the screen that takes it. The split is
+  // the server's WouldCarry; this only sorts the carriers by their blood.
+  const hall = createQuery(() => ({ queryKey: queryKeys.ancestorsHall, queryFn: fetchAncestorsHall }));
+  const carriers = $derived(
+    (hall.data?.Members ?? [])
+      .filter((m) => m.WouldCarry)
+      .map((m) => ({ ...m, total: m.AptitudeStrength + m.AptitudeSkill + m.AptitudeEndurance + m.AptitudeFortune }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 4),
+  );
 
   let confirming = $state(false);
 
@@ -156,6 +170,7 @@
         <span><strong>{p.RebirthCount} of {p.MaxRebirths}</strong> rebirths taken</span>
       </div>
       <div class="stats">
+        <span class="stat"><strong>{p.BloodlineCeilingNow}</strong> bloodline ceiling{#if !p.Capped} ({p.BloodlineCeilingAfter} after the next){/if}</span>
         <span class="stat"><strong>{p.SkillPointsFromRebirthsNow}</strong> skill points from rebirths</span>
         <span class="stat"><strong>+{p.DamageBonusPctNow}%</strong> damage (Renown {p.RenownedRebirths})</span>
         <span class="stat"><strong>+{p.ReLevelXpBonusPct}%</strong> XP below your best level ({p.PeakLevelAfter} after the next rebirth)</span>
@@ -173,14 +188,40 @@
     </p>
 
     <p class="pays" data-testid="rebirth-pays">
-      <strong>Each rebirth pays:</strong> +{p.SkillPointsFromRebirthsAfter - p.SkillPointsFromRebirthsNow} skill points for good
-      (now {p.SkillPointsFromRebirthsNow}), and +{p.ReLevelXpBonusPct}% combat XP on every level below your best
+      <strong>Every rebirth</strong> raises the bloodline ceiling - the highest an aptitude can be bred - from
+      {p.BloodlineCeilingNow} to {p.BloodlineCeilingAfter}.
+      <strong>The first {p.RewardedRebirths}</strong> also pay +2 skill points for good
+      (now {p.SkillPointsFromRebirthsNow}) and Renown. Every rebirth gives +{p.ReLevelXpBonusPct}% combat XP on every level below your best
       (level {p.PeakLevelAfter} after this one). {p.SecondPetSlotRebirths} rebirths open a second pet slot on every character.
       Rebirths 3, 5, 7 and 10 each bring an avatar, and the tenth the Phoenix pet.
       <span class="dim">{p.RebirthCount} of {p.MaxRebirths} taken.</span>
     </p>
 
-    <h3>The road to ten</h3>
+    {#if carriers.length > 0}
+      <h3>Your line after the rebirth</h3>
+      <ul class="carriers" data-testid="rebirth-carriers">
+        {#each carriers as m (m.CharacterId)}
+          <li>
+            <span class="who">
+              <strong>{m.Name || 'Unnamed'}</strong>
+              <span class="dim tiny">gen {m.GenerationIndex}{#if m.IsKept} &middot; kept{/if}{#if m.IsEpicMutation} &middot; epic{/if}</span>
+            </span>
+            <span class="apts" aria-label="Strength, Skill, Endurance, Fortune">
+              <span title="Strength">STR {m.AptitudeStrength}</span>
+              <span title="Skill">SKL {m.AptitudeSkill}</span>
+              <span title="Endurance">END {m.AptitudeEndurance}</span>
+              <span title="Fortune">FOR {m.AptitudeFortune}</span>
+            </span>
+          </li>
+        {/each}
+      </ul>
+      <p class="dim tiny">
+        The strongest who carry, of {p.HallMembersKept}. Breed before you are reborn and the child can be among them -
+        the next rebirth also lifts the bloodline ceiling to {p.BloodlineCeilingAfter}.
+      </p>
+    {/if}
+
+    <h3>The road to {p.MaxRebirths}</h3>
     <RebirthRoadmap steps={p.Roadmap} taken={p.RebirthCount} />
 
     {#if !p.Capped}
@@ -276,9 +317,10 @@
             <strong>You gain</strong>
             <p>
               {formatNumber(p.ShardsEarned)} shards,
+              a bloodline ceiling of {p.BloodlineCeilingAfter},
               {p.SkillPointsFromRebirthsAfter} skill points from rebirths, +{p.ReLevelXpBonusPct}% XP up to level
               {p.PeakLevelAfter}{#if p.Renowned}, and Renown {p.RenownedRebirths + 1} (+{p.DamageBonusPctAfter}% damage){/if}.
-              {#each p.Roadmap.find((st) => st.Rebirth === p.RebirthCount + 1)?.Rewards.filter((r) => r.Kind !== 'skill_points' && r.Kind !== 'xp') ?? [] as r (r.Kind + r.Name)}
+              {#each p.Roadmap.find((st) => st.Rebirth === p.RebirthCount + 1)?.Rewards.filter((r) => r.Kind !== 'skill_points' && r.Kind !== 'xp' && r.Kind !== 'bloodline') ?? [] as r (r.Kind + r.Name)}
                 <span class="gain-item">{r.Name}{r.Kind === 'avatar' ? ' (avatar)' : ''}.</span>
               {/each}
             </p>
@@ -543,5 +585,38 @@
   .typeword input {
     max-width: 14rem;
     text-transform: uppercase;
+  }
+
+  .carriers {
+    list-style: none;
+    margin: 0 0 0.4rem;
+    padding: 0;
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .carriers li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.3rem 0.8rem;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+  }
+
+  .carriers .who {
+    display: grid;
+    min-width: 0;
+  }
+
+  .carriers .apts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.6rem;
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
   }
 </style>

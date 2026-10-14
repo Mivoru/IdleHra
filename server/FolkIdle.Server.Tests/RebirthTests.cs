@@ -533,27 +533,96 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public async Task TheTenthRebirthIsTheLast_AndIsWornAsATitle()
+        public async Task TheTenthRebirthBringsTheTitle_AndTheTwentiethIsTheLast()
         {
             var me = await SeedAsync(950_114_005L, level: 55);
             await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
             {
-                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = {0} WHERE \"Id\" = {1}", RebirthRules.MaxRebirths - 1, me.PlayerId);
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = {0} WHERE \"Id\" = {1}", RebirthRules.RewardedRebirths - 1, me.PlayerId);
             }
             var engine = new RebirthEngine(_fixture.ServiceProvider);
 
-            var tenth = await engine.RebirthAsync(me.PlayerId, RebirthRules.MaxRebirths - 1);
+            var tenth = await engine.RebirthAsync(me.PlayerId, RebirthRules.RewardedRebirths - 1);
             Assert.Equal(RebirthResult.Ok, tenth.Result);
-            var eleventh = await engine.RebirthAsync(me.PlayerId, RebirthRules.MaxRebirths);
-            Assert.Equal(RebirthResult.Capped, eleventh.Result);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.True(await verify.PlayerTitles.AnyAsync(t => t.PlayerId == me.PlayerId && t.TitleSlug == TitleRegistry.RebirthTitleSlug));
+                // The Phoenix and the tenth rebirth's avatar (owner, 2026-10-11).
+                Assert.True(await verify.PlayerPets.AnyAsync(p => p.PlayerId == me.PlayerId && p.PetId == PetRegistry.PhoenixId));
+                Assert.True(await verify.CosmeticItems.AnyAsync(c => c.PlayerId == me.PlayerId && c.DefinitionId == "avatar_rebirth_morana"));
+            }
+
+            // Rebirths 11-20 are allowed and pay only the bloodline ceiling
+            // (owner 2026-10-14): the skill points stay at the tenth's.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                await db.Database.ExecuteSqlRawAsync("UPDATE \"PlayerRecords\" SET \"RebirthCount\" = {0} WHERE \"Id\" = {1}", RebirthRules.MaxRebirths - 1, me.PlayerId);
+            }
+            var twentieth = await engine.RebirthAsync(me.PlayerId, RebirthRules.MaxRebirths - 1);
+            Assert.Equal(RebirthResult.Ok, twentieth.Result);
+            var past = await engine.RebirthAsync(me.PlayerId, RebirthRules.MaxRebirths);
+            Assert.Equal(RebirthResult.Capped, past.Result);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == me.PlayerId);
+                Assert.Equal(2 * DeedRegistry.SkillPointsPerSeal + RebirthRules.SkillPointsFor(RebirthRules.RewardedRebirths), player.AvailableSkillPoints);
+                // Granted once: the twentieth did not bring a second Phoenix.
+                Assert.Equal(1, await verify.PlayerPets.CountAsync(p => p.PlayerId == me.PlayerId && p.PetId == PetRegistry.PhoenixId));
+            }
+        }
+
+        /// <summary>
+        /// THE WHOLE BLOODLINE LOOP, end to end (2026-10-14): a child is bred
+        /// from a villager, marked Keep, the account is reborn - and the same
+        /// child is still there with the same aptitudes, traits and epic mark.
+        /// Every link of this was tested on its own and the chain never was;
+        /// exercise.mjs cannot drive it, because the fixture is never reborn.
+        /// </summary>
+        [Fact]
+        public async Task ABredChildMarkedKeepSurvivesARebirthUnchanged()
+        {
+            var me = await SeedAsync(950_114_010L, level: 55);
+            long villagerId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var genome = new GeneticVector(0);
+                genome.LocusRace = new Locus { Dominant = RaceIds.Human, Recessive = RaceIds.Human };
+                await db.Database.ExecuteSqlRawAsync(
+                    "UPDATE character_lineage_registry SET \"GeneticVector\" = {0} WHERE \"CharacterId\" = {1}", genome.RawValue, me.Main);
+                db.VillageInfrastructures.Add(new VillageInfrastructure { PlayerId = me.PlayerId, BuildingId = VillageManagementEngine.BreedingGroundsBuildingId, CurrentLevel = 1 });
+                await db.SaveChangesAsync();
+                villagerId = await db.VillageNewcomers.Where(v => v.PlayerId == me.PlayerId).Select(v => v.Id).SingleAsync();
+            }
+
+            await new BreedingEngine(_fixture.ServiceProvider, new PlayerSessionRegistry())
+                .ExecuteHeroVillagerBreedingAsync(me.PlayerId, me.Main, villagerId);
+
+            CharacterLineageRegistry born;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                born = await db.CharacterLineages.AsNoTracking().SingleAsync(l => l.ParentPaternalId == me.Main);
+            }
+
+            // Twelve in the Hall and a cap of ten: unmarked, a newborn can be
+            // culled. The mark is the player's answer, and it must save it.
+            await new HallOfAncestorsEngine(_fixture.ServiceProvider).SetKeptAsync(me.PlayerId, born.CharacterId, true);
+
+            var outcome = await new RebirthEngine(_fixture.ServiceProvider).RebirthAsync(me.PlayerId, 0);
+            Assert.Equal(RebirthResult.Ok, outcome.Result);
 
             await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
-            Assert.True(await verify.PlayerTitles.AnyAsync(t => t.PlayerId == me.PlayerId && t.TitleSlug == TitleRegistry.RebirthTitleSlug));
-            // The Phoenix and the tenth rebirth's avatar (owner, 2026-10-11).
-            Assert.True(await verify.PlayerPets.AnyAsync(p => p.PlayerId == me.PlayerId && p.PetId == PetRegistry.PhoenixId));
-            Assert.True(await verify.CosmeticItems.AnyAsync(c => c.PlayerId == me.PlayerId && c.DefinitionId == "avatar_rebirth_morana"));
-            var player = await verify.PlayerRecords.AsNoTracking().SingleAsync(p => p.Id == me.PlayerId);
-            Assert.Equal(2 * DeedRegistry.SkillPointsPerSeal + RebirthRules.SkillPointsFor(RebirthRules.MaxRebirths), player.AvailableSkillPoints);
+            var after = await verify.CharacterLineages.AsNoTracking().SingleOrDefaultAsync(l => l.CharacterId == born.CharacterId);
+            Assert.NotNull(after);
+            Assert.Equal(born.AptitudeVector(), after!.AptitudeVector());
+            Assert.Equal(born.TraitMask, after.TraitMask);
+            Assert.Equal(born.IsEpicMutation, after.IsEpicMutation);
+            Assert.Equal(born.GenerationIndex, after.GenerationIndex);
+            Assert.True(after.IsKeptAtRollover);
+            Assert.True(await verify.CharacterRecords.AnyAsync(c => c.Id == born.CharacterId && c.PlayerId == me.PlayerId));
+            // And the villager it came from is gone with the rest of the village.
+            Assert.False(await verify.VillageNewcomers.AnyAsync(v => v.Id == villagerId));
         }
 
         [Fact]
@@ -573,9 +642,15 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(50, RebirthRules.ReLevelXpBonus(currentLevel: 10, peakLevel: 70));
             Assert.Equal(0, RebirthRules.ReLevelXpBonus(currentLevel: 70, peakLevel: 70));
 
-            // The count caps the points.
+            // Twenty rebirths, but the points, Renown and the milestones stop
+            // at ten (owner 2026-10-14).
+            Assert.Equal(20, RebirthRules.MaxRebirths);
+            Assert.Equal(10, RebirthRules.RewardedRebirths);
             Assert.Equal(20, RebirthRules.SkillPointsFor(10));
             Assert.Equal(20, RebirthRules.SkillPointsFor(15));
+            Assert.Equal(20, RebirthRules.SkillPointsFor(20));
+            Assert.Equal(RebirthRules.DamageBonusPct(10), RebirthRules.DamageBonusPct(20));
+            Assert.All(RebirthRules.AvatarMilestones, m => Assert.True(m.Rebirths <= RebirthRules.RewardedRebirths));
         }
 
         [Fact]

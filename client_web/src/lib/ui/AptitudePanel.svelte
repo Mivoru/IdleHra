@@ -43,7 +43,7 @@
          deletes the rest. An aptitude survives on an ancestor or not at all. -->
     <p class="dim small">
       The four <strong>aptitudes</strong> your line has bred into itself, on the
-      character you are playing. Levels and gear do not survive the season;
+      character you are playing. Levels and gear do not survive a rebirth;
       these do, on whichever ancestors carry through the Hall's cull.
     </p>
   </header>

@@ -76,9 +76,9 @@
     </header>
 
     <p class="dim small">
-      These are permanent. A season resets your level, your gear, your gold and
+      These are permanent. A rebirth resets your level, your gear, your gold and
       your materials - it does not touch these, your village, or the race
-      mastery you have earned. What you buy here is what makes the next season
+      mastery you have earned. What you buy here is what makes the next run
       faster than this one.
     </p>
 
