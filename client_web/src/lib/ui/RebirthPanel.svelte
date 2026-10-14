@@ -519,14 +519,8 @@
     justify-self: start;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.85rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
   .warn {
     color: var(--warn);

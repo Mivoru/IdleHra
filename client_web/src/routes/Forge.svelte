@@ -1188,15 +1188,9 @@
     font-size: 1.05rem;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.8rem;
     margin: 0 0 0.7rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
   .hint {
     margin: -0.3rem 0 0.6rem;
@@ -1283,5 +1277,4 @@
     margin: 0 0 0.4rem;
     font-size: 0.95rem;
   }
-
 </style>

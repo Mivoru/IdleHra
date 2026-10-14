@@ -169,14 +169,6 @@
     line-height: 1.45;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
-  }
-
   /* Modul: the corner prompt. Lifted clear of the chat handle the same way the
      onboarding coach is - see OnboardingCoach.svelte, which learned it from a
      store screenshot where the handle sat on the end of every sentence. */

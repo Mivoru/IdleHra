@@ -269,12 +269,4 @@
   .warn {
     color: var(--warn);
   }
-
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
-  }
 </style>

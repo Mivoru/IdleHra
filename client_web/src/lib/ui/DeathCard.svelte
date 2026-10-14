@@ -182,10 +182,6 @@
     margin-top: 0.5rem;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
   .small {
     font-size: 0.82rem;
     margin: 0;

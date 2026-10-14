@@ -2321,13 +2321,7 @@
     opacity: 0.7;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.85rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
 </style>

@@ -138,7 +138,12 @@
   <header>
     <div>
       <h3>Attributes</h3>
-      <p class="dim tiny">Every level pays 7 points. {formatNumber(totalPlaced)} placed so far.</p>
+      <!-- Design wave 2: the whole-house rule sat ABOVE this heading as a line
+           of its own, so the first thing on the tab was a footnote. -->
+      <p class="dim tiny">
+        Shared by your whole house - every character fights with them. Every level pays 7 points;
+        {formatNumber(totalPlaced)} placed so far.
+      </p>
     </div>
     <div class="pool" class:ready={unspent > 0}>
       <strong title={numberTitle(unspent)}>{formatNumber(unspent)}</strong>

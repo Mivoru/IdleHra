@@ -133,6 +133,10 @@
   --fs-badge: 0.68rem;
   --fs-xs: 0.72rem;
   --fs-sm: 0.8rem;
+  /* Secondary TEXT (the .tiny / .small utilities below), kept apart from
+     --fs-xs/--fs-sm so raising the reading floor never widens a button. */
+  --fs-note: 0.78rem;
+  --fs-aside: 0.85rem;
   --fs-base: 0.875rem;
   --fs-md: 1.05rem;
   --fs-lg: 1.3rem;
@@ -807,6 +811,31 @@ body::before {
   background-repeat: repeat, repeat, no-repeat, no-repeat;
 }
 
+
+/* --- secondary text ------------------------------------------------------ */
+
+/* Modul: ONE DEFINITION OF "QUIET TEXT" (design wave 2, 2026-10-14).
+   `.dim`, `.tiny` and `.small` are used on ~1,100 elements and were defined
+   in 52 components' own <style> blocks - the same three rules written 83
+   times, so the reading floor of the whole game could not be raised without
+   touching every screen, and a component that forgot its copy rendered its
+   "dim" text at full strength. They live here now; a component keeps a local
+   rule only where it means something different on purpose.
+
+   The floor itself went up: .tiny was 0.72rem (11.5px), the size most of the
+   game's explanations were set in, and on a phone that is text people skip.
+   0.78rem is still clearly secondary beside the 14px body. */
+.dim {
+  color: var(--text-dim);
+}
+
+.tiny {
+  font-size: var(--fs-note);
+}
+
+.small {
+  font-size: var(--fs-aside);
+}
 
 /* --- headings ------------------------------------------------------------ */
 

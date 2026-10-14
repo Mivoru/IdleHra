@@ -204,7 +204,6 @@
     font-weight: 700;
   }
 
-
   .why {
     margin: 0;
     line-height: 1.35;
@@ -242,14 +241,6 @@
 
   .arrival + .arrival {
     margin-top: 0.35rem;
-  }
-
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
   }
 
   .warn-line {

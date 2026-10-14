@@ -386,14 +386,6 @@
     color: var(--text);
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .fill {
       transition: none;

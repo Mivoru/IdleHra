@@ -304,10 +304,6 @@
     margin: 0 0 0.25rem;
   }
 
-  .small {
-    font-size: 0.85rem;
-  }
-
   .notice {
     margin: 0;
     color: var(--warn);

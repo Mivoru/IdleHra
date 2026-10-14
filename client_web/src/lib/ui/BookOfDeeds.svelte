@@ -435,7 +435,6 @@
     overflow: hidden;
   }
 
-
   .meter span {
     display: block;
     height: 100%;
@@ -492,14 +491,8 @@
     min-height: 44px;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.85rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
 
   .warn-line {

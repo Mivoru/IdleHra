@@ -277,10 +277,6 @@
     display: grid;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
-
   .small {
     font-size: 0.85rem;
     margin: 0;

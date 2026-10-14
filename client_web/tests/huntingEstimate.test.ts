@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { HuntingEstimate } from '../src/lib/net/rest';
-import { estimateLine, killTimeText, safety } from '../src/lib/ui/huntingEstimate';
+import { bestPick, estimateLine, killTimeText, safety } from '../src/lib/ui/huntingEstimate';
 
 const base: HuntingEstimate = {
   MonsterId: 91,
@@ -35,5 +35,19 @@ describe('huntingEstimate', () => {
   it('reads "Estimate" - it is a projection, not a promise', () => {
     expect(estimateLine(base).startsWith('Estimate: ')).toBe(true);
     expect(estimateLine({ ...base, CanDamage: false })).toBe('Estimate: you cannot hurt it yet');
+  });
+
+  it('recommends the most XP an hour among open monsters farmed without food', () => {
+    const rows: HuntingEstimate[] = [
+      { ...base, MonsterId: 91, XpPerHour: 100 },
+      { ...base, MonsterId: 92, XpPerHour: 300 },
+      { ...base, MonsterId: 93, XpPerHour: 900, SurvivesWithoutFood: false },
+      { ...base, MonsterId: 94, XpPerHour: 800, CanDamage: false },
+      { ...base, MonsterId: 96, XpPerHour: 700 },
+    ];
+    expect(bestPick(rows, (id) => id < 95)).toBe(92);
+    expect(bestPick(rows, () => true)).toBe(96);
+    expect(bestPick([{ ...base, MonsterId: 91 }, { ...base, MonsterId: 92 }], () => true)).toBe(91);
+    expect(bestPick(rows, () => false)).toBeNull();
   });
 });

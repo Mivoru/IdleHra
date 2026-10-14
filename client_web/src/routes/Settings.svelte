@@ -938,15 +938,9 @@
     font-size: 0.9rem;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.8rem;
     margin: 0 0 0.7rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
 
   .error {

@@ -194,15 +194,9 @@
     padding: 0.05rem 0.5rem;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.8rem;
     margin: 0 0 0.7rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
 
   .warn {

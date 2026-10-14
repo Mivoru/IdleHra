@@ -138,9 +138,6 @@
   .dmg { color: #f87171; }
   .def { color: #60a5fa; }
   .gold { color: #fbbf24; }
-  .dim {
-    color: var(--text-dim);
-  }
   .tiny {
     font-size: 0.72rem;
   }

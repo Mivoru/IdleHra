@@ -1133,9 +1133,6 @@
     color: var(--text-dim);
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.8rem;
     margin: 0 0 0.7rem;

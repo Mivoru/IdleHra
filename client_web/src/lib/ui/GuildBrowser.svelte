@@ -145,9 +145,6 @@
     margin: 0 0 0.6rem;
     font-size: 1.05rem;
   }
-  .dim {
-    color: var(--text-dim);
-  }
   .tiny {
     font-size: 0.72rem;
     margin: 0 0 0.6rem;

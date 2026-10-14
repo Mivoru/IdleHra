@@ -148,12 +148,4 @@
     grid-column: 1 / -1;
     line-height: 1.35;
   }
-
-  .dim {
-    color: var(--text-dim);
-  }
-
-  .tiny {
-    font-size: 0.72rem;
-  }
 </style>

@@ -269,7 +269,6 @@
     white-space: nowrap;
   }
 
-
   .week li.collected {
     opacity: 0.55;
   }
@@ -310,21 +309,10 @@
     color: var(--text-dim);
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.8rem;
     margin: 0 0 0.7rem;
   }
-  .tiny {
-    font-size: 0.72rem;
-  }
-
-
-
-
-
 
   /* Modul: the week WRAPS. Seven fixed columns cannot be narrower than their
      content ("10 000g" plus a state word), so in a panel sized by the page's
@@ -430,5 +418,4 @@
     font-variant-numeric: tabular-nums;
     font-size: 0.9rem;
   }
-
 </style>

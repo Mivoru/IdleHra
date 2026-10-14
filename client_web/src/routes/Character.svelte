@@ -753,7 +753,6 @@
       </section>
     {:else if shownTab === 'attributes'}
       <section class="panel" data-testid="character-attributes">
-        <p class="dim tiny shared">Attributes belong to your whole house - every character fights with them.</p>
         <AttributePanel
           values={{ STR: attributeValue('STR'), DEX: attributeValue('DEX'), CON: attributeValue('CON'), LCK: attributeValue('LCK') }}
           unspent={attributePoints}
@@ -1221,11 +1220,6 @@
     margin-top: 0.6rem;
   }
 
-  /* ------------------------------------------------------------ attributes */
-  .shared {
-    margin: 0 0 -0.4rem;
-  }
-
   /* ---------------------------------------------------------------- work */
   /* Modul: THE WORK TAB MADE THE PAGE "ZOOM OUT" on a phone (owner,
      2026-10-02). Gear and Attributes hold the page at the device width; this
@@ -1306,15 +1300,9 @@
     color: var(--text-dim);
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.82rem;
     margin: 0;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
   .pad {
     padding: 1rem;

@@ -349,13 +349,7 @@
     margin: 0.6rem 0;
   }
 
-  .dim {
-    color: var(--text-dim);
-  }
   .small {
     font-size: 0.85rem;
-  }
-  .tiny {
-    font-size: 0.72rem;
   }
 </style>
