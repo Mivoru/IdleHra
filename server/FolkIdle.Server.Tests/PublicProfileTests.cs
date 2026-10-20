@@ -165,7 +165,8 @@ namespace FolkIdle.Server.Tests
             var view = await PublicProfiles.BuildProfileAsync(read, id, _ => false);
 
             Assert.Equal(new[] { "R0", "R1", "R2" }, view!.Characters.Select(c => c.Name).ToArray());
-            Assert.DoesNotContain(view.Characters, c => c.IsMain);
+            // Since 2026-10-20 "Main" is whoever stands in slot 1, not the founder.
+            Assert.Equal(new[] { "R0" }, view.Characters.Where(c => c.IsMain).Select(c => c.Name).ToArray());
             Assert.Equal(0, view.MoreEquippedCharacters);
         }
 

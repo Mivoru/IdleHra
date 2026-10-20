@@ -215,7 +215,6 @@ namespace FolkIdle.Server.Domain.Social
             // three slots CharacterSlotEngine fights and works with, in slot
             // order, dressed or not. Projected, so a 185-row household costs
             // eleven nullable columns, not 185 entities.
-            Guid mainGuid = player.PlayerGuid;
             var shown = await db.CharacterRecords.AsNoTracking()
                 .Where(c => c.PlayerId == targetId
                     && c.SlotIndex >= 0 && c.SlotIndex < CharacterSlotEngine.MaxCharacterSlots)
@@ -265,7 +264,9 @@ namespace FolkIdle.Server.Domain.Social
                 {
                     Name = c.Name,
                     SlotIndex = c.SlotIndex,
-                    IsMain = c.Id == mainGuid,
+                    // Slot 1 is the one who plays first - not the founder,
+                    // who may stand in any slot (2026-10-20).
+                    IsMain = c.SlotIndex == 0,
                     IsFemale = c.IsFemale,
                     AgePhase = c.AgePhase,
                     Activity = ActivityName(c.ActiveActivityId),

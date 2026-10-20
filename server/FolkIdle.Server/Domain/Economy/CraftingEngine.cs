@@ -402,12 +402,24 @@ namespace FolkIdle.Server.Domain.Economy
                 .Select(n => n.Level)
                 .FirstOrDefaultAsync();
 
-        // The race a craft is judged by: the account's MAIN character
-        // (PlayerGuid), whichever slot holds the job - which is what the live
-        // job has always read.
+        // The race a craft is judged by: the fielded character doing the
+        // crafting (one per kind of work, so at most one), else slot 1's.
+        //
+        // Modul: NOT THE FOUNDER (2026-10-20). This read PlayerGuid's
+        // character "whichever slot holds the job", and on every active
+        // account the founder had been benched - so a Kobold crafting in slot
+        // 2 got no Kobold passive and a benched Kobold founder gave it to a
+        // Human crafter. Same "main = who is playing" rule as
+        // EquipmentSlotEngine.FieldedCharacterIdAsync.
         private static async Task<byte> ReadCrafterRaceAsync(FolkIdleDbContext context, PlayerRecord player)
         {
-            var charRecord = await context.CharacterRecords.FirstOrDefaultAsync(c => c.PlayerId == player.Id && c.Id == player.PlayerGuid);
+            var fielded = await context.CharacterRecords.AsNoTracking()
+                .Where(c => c.PlayerId == player.Id && !c.IsLockedInEscrow
+                    && c.SlotIndex >= 0 && c.SlotIndex < Domain.Combat.CharacterSlotEngine.MaxCharacterSlots)
+                .OrderBy(c => c.SlotIndex).ThenBy(c => c.Id)
+                .ToListAsync();
+            var charRecord = fielded.FirstOrDefault(c => Engine.ActivityIdBands.IsCraftingActivity(c.ActiveActivityId))
+                ?? fielded.FirstOrDefault();
             long geneticVector = 0;
             if (charRecord != null)
             {
