@@ -243,9 +243,22 @@ namespace FolkIdle.Server.Engine
                     }
                 }
 
+                // Pets follow the slot like the gear (they are a stat bonus on
+                // the slot's register), and one on the bench goes to rest.
+                var pets = await db.PlayerPets
+                    .Where(p => p.PlayerId == playerId && p.CharacterId != null
+                        && (p.CharacterId == incoming.Id || (displaced != null && p.CharacterId == displaced.Id)))
+                    .ToListAsync();
+                foreach (var pet in pets)
+                {
+                    Guid? to = displaced == null ? pet.CharacterId
+                        : pet.CharacterId == incoming.Id ? displaced.Id : incoming.Id;
+                    var holder = to == incoming.Id ? incoming : displaced;
+                    pet.CharacterId = holder != null && holder.SlotIndex < CharacterSlotEngine.MaxCharacterSlots ? to : null;
+                }
+
                 if (displaced != null)
                 {
-
                     // The bench is not a place to be doing anything. A benched
                     // character keeping its activity would leave the occupancy
                     // mutex holding a job nobody is working - and the next

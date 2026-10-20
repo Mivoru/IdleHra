@@ -87,9 +87,10 @@ namespace FolkIdle.Server.Engine
         /// The order, and every part of it is load-bearing:
         ///
         /// 1. **The main character, always.** Their id IS the account's
-        ///    PlayerGuid - EquipmentSlotEngine resolves an empty character id to
-        ///    that row and StateCheckpointManager hydrates it as slot 1 - so
-        ///    culling them does not lose a character, it breaks the account.
+        ///    PlayerGuid, the account id auth, refresh tokens and the profile
+        ///    key on - so culling them does not lose a character, it breaks the
+        ///    account. (Since 2026-10-20 "main" for gameplay - the empty-id
+        ///    equip, starter tools, the crafter - is whoever stands in slot 1.)
         ///    They occupy a slot like anyone else; they simply cannot be the one
         ///    let go.
         /// 2. **Whoever the player MARKED.** This is the decision the cap exists

@@ -33,10 +33,10 @@ namespace FolkIdle.Server.Engine
                 .OrderBy(c => c.SlotIndex)
                 .ToListAsync();
 
-            // Modul: THE MAIN CHARACTER is the one whose Id is PlayerGuid - the
-            // character EquipItem with no target dresses and the login hydrates
-            // into slot 1. "Lowest SlotIndex" agrees only until an ancestor is
-            // fielded into slot 0; kept as the fallback for a row with no match.
+            // Modul: the founder (PlayerGuid), kept only as the fallback below
+            // for an account with nobody fielded. Since 2026-10-20 the
+            // character an untargeted EquipItem dresses is slot 1's, not this
+            // one (EquipmentSlotEngine.FieldedCharacterIdAsync).
             var main = characters.FirstOrDefault(c => c.Id == player.PlayerGuid) ?? characters.FirstOrDefault();
 
             // Modul: THE FIELDED ROSTER, not the main character, answers the

@@ -84,6 +84,34 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public async Task PetsFollowTheSlotToo_AndABenchedOneRests()
+        {
+            const long playerId = 970_201_004L;
+            Guid founder = Guid.NewGuid();
+            Guid child = Guid.NewGuid();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                db.PlayerRecords.Add(new PlayerRecord { Id = playerId, PlayerGuid = founder, AuthenticatorToken = Guid.NewGuid() });
+                db.CharacterRecords.AddRange(
+                    new CharacterRecord { Id = founder, PlayerId = playerId, AgePhase = 1, SlotIndex = 0 },
+                    new CharacterRecord { Id = child, PlayerId = playerId, AgePhase = 1, SlotIndex = 7 });
+                db.PlayerPets.AddRange(
+                    new PlayerPet { PlayerId = playerId, PetId = "test_pet_a", CharacterId = founder, AcquiredAtUtc = DateTime.UtcNow },
+                    new PlayerPet { PlayerId = playerId, PetId = "test_pet_b", CharacterId = child, AcquiredAtUtc = DateTime.UtcNow });
+                await db.SaveChangesAsync();
+            }
+
+            await new HallOfAncestorsEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry).AssignSlotAsync(playerId, child, 0);
+
+            await using var verify = await _fixture.DbContextFactory.CreateDbContextAsync();
+            var pets = await verify.PlayerPets.AsNoTracking().Where(p => p.PlayerId == playerId).ToDictionaryAsync(p => p.PetId);
+            // Slot 1's pet now follows whoever stands in slot 1...
+            Assert.Equal(child, pets["test_pet_a"].CharacterId);
+            // ...and the one that came off the bench with the child rests.
+            Assert.Null(pets["test_pet_b"].CharacterId);
+        }
+
+        [Fact]
         public async Task TheLoginSweepFreesWhatABenchedCharacterStillWears()
         {
             const long playerId = 970_201_002L;
