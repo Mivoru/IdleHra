@@ -201,15 +201,38 @@ namespace FolkIdle.Server.Engine
 
                     int shards = await SeasonalRotationEngine.AwardLegacyShardsAsync(db, eraId, playerId, cancellationToken);
 
-                    // Counted (and the best level raised) BEFORE the reset: the
-                    // reset hands back the skill points the count pays
-                    // (RebirthRules.SkillPointsFor), so it must see the new one.
+                    // Counted (and the last life's level recorded) BEFORE the
+                    // reset: the reset hands back the skill points the count
+                    // pays (RebirthRules.SkillPointsFor), so it must see the new one.
+                    //
+                    // Modul: THE LIFE JUST ENDED, NOT THE BEST ONE (2026-10-20).
+                    // This was GREATEST(PeakLevel, CurrentLevel), so one life at
+                    // 112 paid +50% XP up to 112 in every later life - and a
+                    // player could rebirth at 50 again and again, each a
+                    // Renowned rebirth, climbing with the bonus every time. Now
+                    // the bonus window is exactly what this life reached: rebirth
+                    // at 50 and the next life's bonus ends at 50.
                     await db.Database.ExecuteSqlRawAsync(
                         "UPDATE \"PlayerRecords\" SET \"RebirthCount\" = \"RebirthCount\" + 1, " +
-                        "\"PeakLevel\" = GREATEST(\"PeakLevel\", \"CurrentLevel\") WHERE \"Id\" = {0}",
+                        "\"PeakLevel\" = \"CurrentLevel\" WHERE \"Id\" = {0}",
                         new object[] { playerId }, cancellationToken);
 
                     await SeasonalRotationEngine.ResetPlayersAsync(db, playerId, cancellationToken, keep);
+
+                    // The Vault lock: each kept piece waits for this life to
+                    // reach its region again (EquipmentInstance.VaultLockRegion).
+                    // ResetPlayersAsync put LifeHighestRegion back to 0.
+                    if (keep.Length > 0)
+                    {
+                        var keptPieces = await db.EquipmentInstances
+                            .Where(e => e.PlayerId == playerId && keep.Contains(e.Id))
+                            .ToListAsync(cancellationToken);
+                        foreach (var piece in keptPieces)
+                        {
+                            piece.VaultLockRegion = Math.Max(1, ContentRegistry.GetRegionTierForBaseId(piece.BaseItemId));
+                        }
+                        await db.SaveChangesAsync(cancellationToken);
+                    }
 
                     // Modul: A NEW RUN STARTS LIKE A NEW ACCOUNT. The reset
                     // takes every piece of gear and every fish, and a naked
@@ -222,7 +245,10 @@ namespace FolkIdle.Server.Engine
                     // so a rebirth is not a way to farm them.
                     var starterTools = StarterEquipmentGrant.Seed(db, playerId);
                     await db.SaveChangesAsync(cancellationToken);
-                    await StarterEquipmentGrant.EquipOnAsync(db, player.PlayerGuid, starterTools);
+                    // On whoever the cull left in slot 1 - the tools belong to
+                    // the slot, and the founder need not be standing in it.
+                    Guid slotOne = await Domain.Combat.EquipmentSlotEngine.FieldedCharacterIdAsync(db, playerId, 0);
+                    await StarterEquipmentGrant.EquipOnAsync(db, slotOne == Guid.Empty ? player.PlayerGuid : slotOne, starterTools);
                     await StarterEquipmentGrant.SeedStarterFoodAsync(db, playerId);
                     await db.SaveChangesAsync(cancellationToken);
 
@@ -339,7 +365,7 @@ namespace FolkIdle.Server.Engine
                 SkillPointsFromRebirthsNow = RebirthRules.SkillPointsFor(player.RebirthCount),
                 SkillPointsFromRebirthsAfter = RebirthRules.SkillPointsFor(player.RebirthCount + 1),
                 ReLevelXpBonusPct = RebirthRules.ReLevelXpBonusPct,
-                PeakLevelAfter = Math.Max(player.PeakLevel, level),
+                PeakLevelAfter = level,
                 SecondPetSlotRebirths = RebirthRules.SecondPetSlotRebirths,
                 KeepPriceByTier = Enumerable.Range(0, RebirthRules.TopQualityTier + 1).Select(t => RebirthRules.KeepPrice(t)).ToArray(),
                 Roadmap = Domain.Progression.RebirthRoadmap.Build(),

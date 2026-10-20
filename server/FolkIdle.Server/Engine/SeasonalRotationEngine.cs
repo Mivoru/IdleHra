@@ -274,6 +274,13 @@ namespace FolkIdle.Server.Engine
             await db.Database.ExecuteSqlRawAsync(
                 "UPDATE \"PlayerRecords\" SET \"CurrentLevel\" = 1, \"CurrentXp\" = 0, \"ActiveOffensivePotionId\" = 0, \"OffensivePotionDurationMs\" = 0, \"ActiveDefensivePotionId\" = 0, \"DefensivePotionDurationMs\" = 0, \"FreeRespecUsed\" = FALSE, " +
                 "\"BaseStrength\" = {1}, \"BaseDexterity\" = {2}, \"BaseConstitution\" = {3}, \"BaseLuck\" = {4}, \"UnspentAttributePoints\" = 0, " +
+                // Modul: THE LARDER GOES WITH THE CHEST (2026-10-20). The chest's
+                // fish were deleted below and the three larder slots - fish
+                // already moved out of the chest - were never touched, so the
+                // owner's first rebirth carried 588 + 9999 + 9999 rations into
+                // a level-1 life. A new run starts with the starter food only.
+                "\"LifeHighestRegion\" = 0, " +
+                "\"LarderSlot1ItemId\" = 0, \"LarderSlot1Count\" = 0, \"LarderSlot2ItemId\" = 0, \"LarderSlot2Count\" = 0, \"LarderSlot3ItemId\" = 0, \"LarderSlot3Count\" = 0, " +
                 "\"AvailableSkillPoints\" = {0} * (" +
                 "  (\"SealsEarnedMask\" & 1) + ((\"SealsEarnedMask\" >> 1) & 1) + ((\"SealsEarnedMask\" >> 2) & 1)" +
                 "+ ((\"SealsEarnedMask\" >> 3) & 1) + ((\"SealsEarnedMask\" >> 4) & 1))" +

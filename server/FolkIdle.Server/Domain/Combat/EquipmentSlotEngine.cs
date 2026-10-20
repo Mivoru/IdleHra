@@ -234,50 +234,82 @@ namespace FolkIdle.Server.Domain.Combat
             var characters = await db.CharacterRecords.Where(c => c.PlayerId == playerId).ToListAsync();
             if (characters.Count == 0) return 0;
 
+            // Modul: ALL ELEVEN SLOTS (2026-10-20). This walked the eight combat
+            // slots only, so a worn tool whose row was gone kept its pointer -
+            // the truncation CLAUDE.md warns about, in the sweep that exists to
+            // heal exactly this.
             var referenced = new HashSet<long>();
             foreach (var character in characters)
             {
-                void Note(long? id) { if (id.HasValue) referenced.Add(id.Value); }
-                Note(character.EquippedWeaponId);
-                Note(character.EquippedHelmetId);
-                Note(character.EquippedChestId);
-                Note(character.EquippedGlovesId);
-                Note(character.EquippedLeggingsId);
-                Note(character.EquippedBootsId);
-                Note(character.EquippedAmuletId);
-                Note(character.EquippedRingId);
+                for (int slot = 0; slot < SlotCount; slot++)
+                {
+                    long? id = ReadSlot(character, slot);
+                    if (id.HasValue) referenced.Add(id.Value);
+                }
             }
 
-            if (referenced.Count == 0) return 0;
-
-            var alive = (await db.EquipmentInstances
-                .AsNoTracking()
-                .Where(e => referenced.Contains(e.Id))
-                .Select(e => e.Id)
-                .ToListAsync()).ToHashSet();
-
             int cleared = 0;
+            if (referenced.Count > 0)
+            {
+                var alive = (await db.EquipmentInstances
+                    .AsNoTracking()
+                    .Where(e => referenced.Contains(e.Id))
+                    .Select(e => e.Id)
+                    .ToListAsync()).ToHashSet();
+
+                foreach (var character in characters)
+                {
+                    for (int slot = 0; slot < SlotCount; slot++)
+                    {
+                        long? id = ReadSlot(character, slot);
+                        if (!id.HasValue || alive.Contains(id.Value)) continue;
+                        WriteSlot(character, slot, null);
+                        cleared++;
+                    }
+                }
+            }
+
+            // Modul: A BENCHED CHARACTER WEARS NOTHING (2026-10-20). Gear
+            // belongs to the three playable slots, not to whoever once stood in
+            // them - HallOfAncestorsEngine.AssignSlotAsync hands it to the
+            // character who takes the slot. Before that, a character benched
+            // kept everything it wore, and the Character screen listed it as
+            // "worn by another character" with Move disabled, because the
+            // wearer was nobody it could show. Measured live: ten benched
+            // characters across three accounts held full tool sets and armour.
+            // This heals those rows; the swap keeps new ones from appearing.
             foreach (var character in characters)
             {
-                long? Keep(long? id)
-                {
-                    if (!id.HasValue || alive.Contains(id.Value)) return id;
-                    cleared++;
-                    return null;
-                }
-
-                character.EquippedWeaponId = Keep(character.EquippedWeaponId);
-                character.EquippedHelmetId = Keep(character.EquippedHelmetId);
-                character.EquippedChestId = Keep(character.EquippedChestId);
-                character.EquippedGlovesId = Keep(character.EquippedGlovesId);
-                character.EquippedLeggingsId = Keep(character.EquippedLeggingsId);
-                character.EquippedBootsId = Keep(character.EquippedBootsId);
-                character.EquippedAmuletId = Keep(character.EquippedAmuletId);
-                character.EquippedRingId = Keep(character.EquippedRingId);
+                if (character.SlotIndex < CharacterSlotEngine.MaxCharacterSlots) continue;
+                cleared += StripAllSlots(character);
             }
 
             if (cleared > 0) await db.SaveChangesAsync();
             return cleared;
+        }
+
+        /// <summary>Empties all eleven slots; returns how many held something.</summary>
+        internal static int StripAllSlots(CharacterRecord character)
+        {
+            int stripped = 0;
+            for (int slot = 0; slot < SlotCount; slot++)
+            {
+                if (!ReadSlot(character, slot).HasValue) continue;
+                WriteSlot(character, slot, null);
+                stripped++;
+            }
+            return stripped;
+        }
+
+        /// <summary>Exchanges all eleven slots between two characters.</summary>
+        internal static void SwapAllSlots(CharacterRecord first, CharacterRecord second)
+        {
+            for (int slot = 0; slot < SlotCount; slot++)
+            {
+                long? held = ReadSlot(first, slot);
+                WriteSlot(first, slot, ReadSlot(second, slot));
+                WriteSlot(second, slot, held);
+            }
         }
 
         public static async Task<bool> IsAnyEquippedAnywhereAsync(FolkIdleDbContext db, long playerId, long firstItemId, long secondItemId, long thirdItemId)
@@ -292,7 +324,13 @@ namespace FolkIdle.Server.Domain.Combat
                     (c.EquippedLeggingsId != null && (c.EquippedLeggingsId == firstItemId || c.EquippedLeggingsId == secondItemId || c.EquippedLeggingsId == thirdItemId)) ||
                     (c.EquippedBootsId != null && (c.EquippedBootsId == firstItemId || c.EquippedBootsId == secondItemId || c.EquippedBootsId == thirdItemId)) ||
                     (c.EquippedAmuletId != null && (c.EquippedAmuletId == firstItemId || c.EquippedAmuletId == secondItemId || c.EquippedAmuletId == thirdItemId)) ||
-                    (c.EquippedRingId != null && (c.EquippedRingId == firstItemId || c.EquippedRingId == secondItemId || c.EquippedRingId == thirdItemId))));
+                    (c.EquippedRingId != null && (c.EquippedRingId == firstItemId || c.EquippedRingId == secondItemId || c.EquippedRingId == thirdItemId)) ||
+                    // Modul: the three tool slots, missing here like in every
+                    // list that stopped at EquippedRingId - a worn tool could be
+                    // fed to the forge from under the character wearing it.
+                    (c.EquippedAxeId != null && (c.EquippedAxeId == firstItemId || c.EquippedAxeId == secondItemId || c.EquippedAxeId == thirdItemId)) ||
+                    (c.EquippedPickaxeId != null && (c.EquippedPickaxeId == firstItemId || c.EquippedPickaxeId == secondItemId || c.EquippedPickaxeId == thirdItemId)) ||
+                    (c.EquippedRodId != null && (c.EquippedRodId == firstItemId || c.EquippedRodId == secondItemId || c.EquippedRodId == thirdItemId))));
         }
 
         // Modul: per-character equipment. characterId names WHICH of the
@@ -372,12 +410,28 @@ namespace FolkIdle.Server.Domain.Combat
             var strategy = db.Database.CreateExecutionStrategy();
 
             EquipAttemptOutcome outcome;
+            int attempts = 0;
+            var clock = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 outcome = await strategy.ExecuteAsync(async () =>
                 {
+                    attempts++;
                     db.ChangeTracker.Clear();
-                    using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                    // Modul: READ COMMITTED + THE ROSTER LOCKED, NOT SERIALIZABLE
+                    // (2026-10-20). "Equipping is so slow and laggy I had to
+                    // restart." Serializable made every read below a conflict
+                    // with a row the game rewrites constantly - the codex boss
+                    // kills (CodexEngine, every kill batch) and PlayerRecords
+                    // (the checkpoint) - so an equip during a fight failed at
+                    // commit and the execution strategy retried it, silently,
+                    // with random back-off up to 8 s a time, six times. What
+                    // Serializable actually protected is "one piece, one
+                    // wearer", and locking every character row of the account
+                    // protects that directly: a second equip waits for this one
+                    // instead of racing it. SlowEquipLog says when it is slow.
+                    using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+                    await LockRosterAsync(db, playerId);
 
                     var item = await db.EquipmentInstances
                         .FromSqlInterpolated($"SELECT * FROM \"EquipmentInstances\" WHERE \"Id\" = {itemInstanceId} FOR UPDATE")
@@ -464,6 +518,24 @@ namespace FolkIdle.Server.Domain.Combat
                             (byte)FolkIdle.Server.Network.CommandResultCode.AttributeRequirementNotMet);
                     }
 
+                    // Modul: THE VAULT LOCK (2026-10-20). A piece kept through
+                    // a rebirth waits until this life has killed in its region
+                    // - see EquipmentInstance.VaultLockRegion. Read here, after
+                    // the other gates, and cleared on the equip that passes it.
+                    if (item.VaultLockRegion > 0)
+                    {
+                        int lifeRegion = await db.PlayerRecords.AsNoTracking()
+                            .Where(p => p.Id == playerId)
+                            .Select(p => p.LifeHighestRegion)
+                            .SingleOrDefaultAsync();
+                        if (lifeRegion < item.VaultLockRegion)
+                        {
+                            await transaction.RollbackAsync();
+                            return EquipAttemptOutcome.Rejected((byte)FolkIdle.Server.Network.CommandResultCode.VaultLocked);
+                        }
+                        item.VaultLockRegion = 0;
+                    }
+
                     WriteSlot(character, slotIndex, item.Id);
 
                     await db.SaveChangesAsync();
@@ -483,6 +555,8 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
 
+            SlowEquipLog("Equip", playerId, attempts, clock);
+
             // Funnel step 3: only a committed equip counts. See FunnelRecorder.
             if (outcome.Committed) FunnelRecorder.Record(playerId, FunnelStep.FirstEquip);
 
@@ -495,12 +569,17 @@ namespace FolkIdle.Server.Domain.Combat
             var strategy = db.Database.CreateExecutionStrategy();
 
             EquipAttemptOutcome outcome;
+            int attempts = 0;
+            var clock = System.Diagnostics.Stopwatch.StartNew();
             try
             {
                 outcome = await strategy.ExecuteAsync(async () =>
                 {
+                    attempts++;
                     db.ChangeTracker.Clear();
-                    using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
+                    // Same isolation as EquipItemAsync, and why.
+                    using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.ReadCommitted);
+                    await LockRosterAsync(db, playerId);
 
                     if (slotIndex < 0 || slotIndex >= SlotCount)
                     {
@@ -532,7 +611,28 @@ namespace FolkIdle.Server.Domain.Combat
                 return;
             }
 
+            SlowEquipLog("Unequip", playerId, attempts, clock);
+
             await PublishOutcomeAsync(db, playerId, outcome);
+        }
+
+        /// <summary>
+        /// Locks every character row of the account, in a fixed order, for the
+        /// rest of the transaction - the per-account serialisation an equip
+        /// needs ("one piece, one wearer" is a question about all of them).
+        /// </summary>
+        private static async Task LockRosterAsync(FolkIdleDbContext db, long playerId)
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT 1 FROM \"characters\" WHERE \"PlayerId\" = {playerId} ORDER BY \"Id\" FOR UPDATE");
+        }
+
+        // A grep-able line when an equip took long enough to feel, with how many
+        // attempts the execution strategy needed - retries are otherwise silent.
+        private static void SlowEquipLog(string what, long playerId, int attempts, System.Diagnostics.Stopwatch clock)
+        {
+            if (clock.ElapsedMilliseconds < 750 && attempts <= 1) return;
+            Console.WriteLine($"[equip-slow] {what} for player {playerId}: {clock.ElapsedMilliseconds} ms, {attempts} attempt(s)");
         }
 
         // The exactly-once half of both operations, kept out of the retriable
@@ -551,7 +651,7 @@ namespace FolkIdle.Server.Domain.Combat
                 try
                 {
                     db.ChangeTracker.Clear();
-                    update = await WithAccountToolsAsync(db, update);
+                    update = await WithCharacterToolsAsync(db, update);
                 }
                 catch (Exception ex)
                 {
@@ -566,20 +666,37 @@ namespace FolkIdle.Server.Domain.Combat
         // Locks the target character's row. Guid.Empty resolves to the main
         // character, which is the one whose Id equals PlayerRecords.PlayerGuid -
         // the same character StateCheckpointManager hydrates into slot 1.
+        /// <summary>
+        /// The character LoadPlayerState fields at <paramref name="rank"/> (0 =
+        /// slot 1): non-escrowed, ordered by SlotIndex then Id. Guid.Empty when
+        /// there is none.
+        /// </summary>
+        internal static async Task<Guid> FieldedCharacterIdAsync(FolkIdleDbContext db, long playerId, int rank)
+        {
+            return await db.CharacterRecords.AsNoTracking()
+                .Where(c => c.PlayerId == playerId && !c.IsLockedInEscrow)
+                .OrderBy(c => c.SlotIndex).ThenBy(c => c.Id)
+                .Skip(rank)
+                .Select(c => c.Id)
+                .FirstOrDefaultAsync();
+        }
+
         private static async Task<CharacterRecord?> ResolveCharacterForUpdateAsync(FolkIdleDbContext db, long playerId, Guid characterId)
         {
             if (characterId == Guid.Empty)
             {
-                var mainCharacterId = await db.PlayerRecords.AsNoTracking()
-                    .Where(p => p.Id == playerId)
-                    .Select(p => p.PlayerGuid)
-                    .FirstOrDefaultAsync();
-
-                if (mainCharacterId == Guid.Empty)
+                // Modul: "THE MAIN CHARACTER" IS WHOEVER STANDS IN SLOT 1
+                // (2026-10-20). This was PlayerGuid - the founder - so the
+                // loot list's Wear (wearOnMain, which sends no character)
+                // dressed a founder who on every active account had been
+                // benched: the piece vanished onto someone the Character
+                // screen cannot show. Same order as LoadPlayerState fields
+                // slot 1 by, and /player/worn falls back to the same one.
+                characterId = await FieldedCharacterIdAsync(db, playerId, 0);
+                if (characterId == Guid.Empty)
                 {
                     return null;
                 }
-                characterId = mainCharacterId;
             }
 
             var characters = await db.CharacterRecords
@@ -659,20 +776,28 @@ namespace FolkIdle.Server.Domain.Combat
         /// Modul: THE TOOL FIELDS HAD NO WRITER (found 2026-10-10). The tick
         /// copied all six onto the payload on every equip update and nothing
         /// filled them, so equipping or removing ANY piece set every tool tier
-        /// and tool affix to zero until the next login. This fills them the way
-        /// login does - off the main character, the payload's tool fields being
-        /// account-wide - and marks the update ToolsResolved, which is what the
-        /// tick now asks before it copies them.
+        /// and tool affix to zero until the next login. This fills them and
+        /// marks the update ToolsResolved, which is what the tick asks before
+        /// it copies them.
+        ///
+        /// Modul: THE CHARACTER'S OWN TOOLS, NOT THE FOUNDER'S (2026-10-20).
+        /// This read the tools off PlayerGuid's character while login read them
+        /// off slot 1 - two answers to one question - and on every active
+        /// account the founder had been benched, so one equip swapped the
+        /// gatherer's axe for a benched character's until the next login. The
+        /// tools now belong to the character in the update, and the tick lands
+        /// them on that character's own register (CharacterActivityState).
         ///
         /// CALLED AFTER THE EQUIP COMMITS, never inside it. The equip runs
-        /// Serializable, and this reads the PlayerRecords row the checkpoint
-        /// rewrites every few seconds: inside the transaction that was a read/
-        /// write conflict that aborted equips (exercise.mjs caught it - a weapon
-        /// taken off could not be put back on).
+        /// Serializable, and a read here inside the transaction was a read/
+        /// write conflict that aborted equips (exercise.mjs caught it - a
+        /// weapon taken off could not be put back on).
         /// </summary>
-        internal static async Task<EquipmentSlotUpdateNotification> WithAccountToolsAsync(FolkIdleDbContext db, EquipmentSlotUpdateNotification update)
+        internal static async Task<EquipmentSlotUpdateNotification> WithCharacterToolsAsync(FolkIdleDbContext db, EquipmentSlotUpdateNotification update)
         {
-            ToolLoadout tools = await ResolveAccountToolLoadoutAsync(db, update.PlayerId);
+            var character = await db.CharacterRecords.AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == update.CharacterId && c.PlayerId == update.PlayerId);
+            ToolLoadout tools = character == null ? ToolLoadout.Empty : await ResolveToolLoadoutAsync(db, character);
             update.AxeToolTier = tools.AxeTier;
             update.PickaxeToolTier = tools.PickaxeTier;
             update.RodToolTier = tools.RodTier;
@@ -683,28 +808,19 @@ namespace FolkIdle.Server.Domain.Combat
             return update;
         }
 
-        /// <summary>The main character's tool loadout - what login puts on the payload.</summary>
-        internal static async Task<ToolLoadout> ResolveAccountToolLoadoutAsync(FolkIdleDbContext db, long playerId)
+        /// <summary>One character's tool loadout - login's and the equip update's single answer.</summary>
+        internal static async Task<ToolLoadout> ResolveToolLoadoutAsync(FolkIdleDbContext db, CharacterRecord character)
         {
-            var mainId = await db.PlayerRecords.AsNoTracking()
-                .Where(p => p.Id == playerId)
-                .Select(p => p.PlayerGuid)
-                .FirstOrDefaultAsync();
-            if (mainId == Guid.Empty) return ToolLoadout.Empty;
-
-            var main = await db.CharacterRecords.AsNoTracking().FirstOrDefaultAsync(c => c.Id == mainId);
-            if (main == null) return ToolLoadout.Empty;
-
             var ids = new List<long>(3);
-            if (main.EquippedAxeId.HasValue) ids.Add(main.EquippedAxeId.Value);
-            if (main.EquippedPickaxeId.HasValue) ids.Add(main.EquippedPickaxeId.Value);
-            if (main.EquippedRodId.HasValue) ids.Add(main.EquippedRodId.Value);
+            if (character.EquippedAxeId.HasValue) ids.Add(character.EquippedAxeId.Value);
+            if (character.EquippedPickaxeId.HasValue) ids.Add(character.EquippedPickaxeId.Value);
+            if (character.EquippedRodId.HasValue) ids.Add(character.EquippedRodId.Value);
             if (ids.Count == 0) return ToolLoadout.Empty;
 
             var rows = await db.EquipmentInstances.AsNoTracking()
                 .Where(e => ids.Contains(e.Id))
                 .ToDictionaryAsync(e => e.Id);
-            return ToolLoadoutResolver.Resolve(main, rows);
+            return ToolLoadoutResolver.Resolve(character, rows);
         }
 
         // Shared with StateCheckpointManager.LoadPlayerState, which needs the

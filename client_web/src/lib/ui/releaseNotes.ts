@@ -35,6 +35,38 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.28.0',
+    date: '2026-10-20',
+    headline: 'Gear stays with its slot, and a fairer rebirth.',
+    sections: [
+      {
+        title: 'Gear and tools',
+        items: [
+          'Gear belongs to the slot now. When you put a new person into a slot, they take over the armour and tools that were worn there.',
+          'Someone sent to rest in the village wears nothing - their gear goes back to the chest. Axes, pickaxes and rods that were stuck on a resting character are back in your chest.',
+          'Every character gathers with their own tools. A woodcutter in slot 2 uses the axe they wear, not the first character’s.',
+          'Putting gear on and taking it off is much quicker while you fight.',
+          'Gear from region 2 onwards asks for 25 points of its attribute per region (it was 20) - 100 for region 5.',
+        ],
+      },
+      {
+        title: 'Rebirth',
+        items: [
+          'The larder empties with a rebirth, like the chest. A new life starts with the starter fish only.',
+          'The +50% XP bonus now lasts up to the level your last life reached, not your best ever.',
+          'Gear kept in the Vault waits until the new life has killed a monster in the region it comes from.',
+        ],
+      },
+      {
+        title: 'Chest',
+        items: [
+          'A very full chest offers to clear itself: choose regions and a rarity - for example regions 1 to 3, Epic or lower - and see how many pieces that sells and how much faster the game loads. You can make it sell those automatically from then on.',
+          'The Chest sweep never takes locked or Vault pieces.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.27.0',
     date: '2026-10-14',
     headline: 'Easier to read at a glance.',

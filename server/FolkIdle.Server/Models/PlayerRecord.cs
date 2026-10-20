@@ -505,11 +505,20 @@ namespace FolkIdle.Server.Models
         public int RebirthCount { get; set; }
         public int RenownedRebirths { get; set; }
 
-        // Task 114: the highest level any earlier life reached, raised by
+        // Task 114: the level the PREVIOUS life ended at, written by
         // RebirthEngine just before the reset (same single writer). Below it,
         // kills pay RebirthRules.ReLevelXpBonusPct more XP. 0 until the first
-        // rebirth, so an account that never rebirthed gets no bonus.
+        // rebirth, so an account that never rebirthed gets no bonus. Named
+        // Peak because it was the best-ever level until 2026-10-20, when the
+        // owner found that let rebirths be farmed - see RebirthEngine.
         public int PeakLevel { get; set; }
+
+        // The highest region THIS LIFE has killed a monster in. Raised by
+        // CodexEngine after its batch commits (GREATEST, so out-of-order
+        // batches cannot lower it), reset to 0 by the rebirth. Read only by the
+        // Vault lock - see EquipmentInstance.VaultLockRegion. Not on the
+        // payload: the checkpoint never writes it, so it cannot write it back.
+        public int LifeHighestRegion { get; set; }
 
         /// <summary>
         /// Which chapters of the Book of Deeds have been completed, one bit

@@ -619,6 +619,9 @@ namespace FolkIdle.Server.Migrations
                     b.Property<int>("SetId")
                         .HasColumnType("integer");
 
+                    b.Property<int>("VaultLockRegion")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("BaseItemId");
@@ -2142,6 +2145,9 @@ namespace FolkIdle.Server.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<int>("LevelChestsGranted")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LifeHighestRegion")
                         .HasColumnType("integer");
 
                     b.Property<long>("LifetimeGoldSpent")

@@ -83,6 +83,20 @@ namespace FolkIdle.Server.Engine
         public EquippedAffixTotals CachedAffixTotals;
         public EquippedSetIds CachedSetIds;
 
+        // Modul: THIS CHARACTER'S OWN TOOLS (owner, 2026-10-20: "the bonuses
+        // from equipment should be connected to the slot they are on"). The
+        // six tool fields were account-wide and read off ONE character - at
+        // login the slot-1 character, after any equip the founder, who on
+        // every active account had long since been benched - so a woodcutter
+        // in slot 2 cut with somebody else's axe, or with none. They travel
+        // with the register now, like the armour above.
+        public byte AxeToolTier;
+        public byte PickaxeToolTier;
+        public byte RodToolTier;
+        public ushort ToolGatherSpeedPct;
+        public ushort ToolGatherYieldPct;
+        public ushort ToolRareFindPct;
+
         // Identity. Kept alongside the activity state rather than left behind
         // in the payload's Slot1_*/Slot2_*/Slot3_* fields, because combat stats
         // are derived from the ACTIVE character's race, age phase and genetic

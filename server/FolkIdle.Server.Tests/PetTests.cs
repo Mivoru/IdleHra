@@ -152,7 +152,7 @@ namespace FolkIdle.Server.Tests
         /// travels the same way - zeroed the tool tiers until the next login.
         /// </summary>
         [Fact]
-        public async Task An_equip_update_carries_the_accounts_real_tools()
+        public async Task An_equip_update_carries_the_characters_own_tools()
         {
             var (playerId, a, b) = await SeedAsync(985_000_003L);
             await using (var seed = await _fixture.DbContextFactory.CreateDbContextAsync())
@@ -170,12 +170,20 @@ namespace FolkIdle.Server.Tests
             }
 
             await using var db = await _fixture.DbContextFactory.CreateDbContextAsync();
-            // An update for the SECOND character still carries the account's tools.
-            var other = await db.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == b);
-            var update = await EquipmentSlotEngine.WithAccountToolsAsync(db, await EquipmentSlotEngine.BuildNotificationAsync(db, other));
+            // The wearer's update carries the rod it wears.
+            var wearer = await db.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == a);
+            var update = await EquipmentSlotEngine.WithCharacterToolsAsync(db, await EquipmentSlotEngine.BuildNotificationAsync(db, wearer));
             Assert.True(update.ToolsResolved);
             Assert.Equal(1, update.RodToolTier);
             Assert.Equal(25, update.ToolRareFindPct);
+
+            // Since 2026-10-20 tools are each character's own: an update for
+            // the SECOND character resolves its (empty) tools rather than
+            // borrowing the first one's rod.
+            var other = await db.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == b);
+            var otherUpdate = await EquipmentSlotEngine.WithCharacterToolsAsync(db, await EquipmentSlotEngine.BuildNotificationAsync(db, other));
+            Assert.True(otherUpdate.ToolsResolved);
+            Assert.Equal(0, otherUpdate.RodToolTier);
         }
 
         [Fact]

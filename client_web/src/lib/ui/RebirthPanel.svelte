@@ -173,7 +173,7 @@
         <span class="stat"><strong>{p.BloodlineCeilingNow}</strong> bloodline ceiling{#if !p.Capped} ({p.BloodlineCeilingAfter} after the next){/if}</span>
         <span class="stat"><strong>{p.SkillPointsFromRebirthsNow}</strong> skill points from rebirths</span>
         <span class="stat"><strong>+{p.DamageBonusPctNow}%</strong> damage (Renown {p.RenownedRebirths})</span>
-        <span class="stat"><strong>+{p.ReLevelXpBonusPct}%</strong> XP below your best level ({p.PeakLevelAfter} after the next rebirth)</span>
+        <span class="stat"><strong>+{p.ReLevelXpBonusPct}%</strong> XP below the level your last life reached ({p.PeakLevelAfter} after the next rebirth)</span>
       </div>
     </div>
 
@@ -191,7 +191,7 @@
       <strong>Every rebirth</strong> raises the bloodline ceiling - the highest an aptitude can be bred - from
       {p.BloodlineCeilingNow} to {p.BloodlineCeilingAfter}.
       <strong>The first {p.RewardedRebirths}</strong> also pay +2 skill points for good
-      (now {p.SkillPointsFromRebirthsNow}) and Renown. Every rebirth gives +{p.ReLevelXpBonusPct}% combat XP on every level below your best
+      (now {p.SkillPointsFromRebirthsNow}) and Renown. Every rebirth gives +{p.ReLevelXpBonusPct}% combat XP on every level below the one this life reached
       (level {p.PeakLevelAfter} after this one). {p.SecondPetSlotRebirths} rebirths open a second pet slot on every character.
       Rebirths 3, 5, 7 and 10 each bring an avatar, and the tenth the Phoenix pet.
       <span class="dim">{p.RebirthCount} of {p.MaxRebirths} taken.</span>
@@ -231,7 +231,8 @@
         <p class="dim small">
           A rebirth takes every piece of gear, except what you put in the Vault. Each piece costs gold by
           its rarity, paid from the gold the rebirth takes anyway, and waits in your chest, unworn, for the
-          new run. You can wear it again once your attributes meet it.
+          new run. You can wear it again once your attributes meet it <strong>and</strong> the new life has
+          killed a monster in the region the piece comes from.
         </p>
         <div class="prices" data-testid="rebirth-vault-prices">
           {#each priceRows as row (row.tier)}

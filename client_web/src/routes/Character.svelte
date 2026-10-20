@@ -140,6 +140,14 @@
   // read the wire's equipped ids, which are the ACTIVE character's only - so a
   // sword on character 2 was offered to character 1 as free, and the server
   // refused it with nothing visible happening.
+  // Modul: the Vault lock (2026-10-20). A piece kept through a rebirth cannot
+  // be worn until this life has killed in its region; the server refuses it
+  // (VaultLocked, 72), so the picker says why before the press.
+  const lifeRegion = $derived(inventory.data?.LifeHighestRegion ?? 0);
+  function vaultLocked(item: InventoryEquipment): boolean {
+    return (item.VaultLockRegion ?? 0) > lifeRegion;
+  }
+
   const equippedIds = $derived(
     new Set(
       (inventory.data?.Equipment ?? [])
@@ -684,11 +692,15 @@
                         {#if req}
                           <span class="req" class:unmet={!req.met}>needs {req.minimum} {req.label}</span>
                         {/if}
+                        {#if vaultLocked(candidate)}
+                          <span class="req unmet" data-testid="vault-locked">Vault lock: reach region {candidate.VaultLockRegion} this life</span>
+                        {/if}
                       </span>
                       <button
                         class="tiny-btn"
                         data-guide={candidateIndex === 0 ? 'wear-first' : undefined}
                         data-piece-id={candidate.Id}
+                        disabled={vaultLocked(candidate)}
                         onclick={() => equipInstance(candidate.Id)}
                       >Wear</button>
                     </li>

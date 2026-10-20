@@ -259,6 +259,57 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(23L, neighbourFounder.ActiveActivityId);
         }
 
+        // Modul: the owner's first rebirth (2026-10-20) carried 588 + 9999 +
+        // 9999 rations out of the larder into a level-1 life, and the +50% XP
+        // window was the best level ever reached, so rebirthing at 50 again
+        // and again kept a 112 window open. Both are about what a NEW life
+        // starts with.
+        [Fact]
+        public async Task ARebirthEmptiesTheLarder_AndTheXpWindowIsTheLifeJustEnded()
+        {
+            var me = await SeedAsync(950_088_051L, level: 72, hallMembers: 2);
+            await ActiveEraAsync();
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var p = await db.PlayerRecords.SingleAsync(x => x.Id == me.PlayerId);
+                p.LarderSlot1ItemId = 3; p.LarderSlot1Count = 588;
+                p.LarderSlot2ItemId = 4; p.LarderSlot2Count = 9999;
+                p.LarderSlot3ItemId = 5; p.LarderSlot3Count = 9999;
+                await db.SaveChangesAsync();
+            }
+
+            var engine = new RebirthEngine(_fixture.ServiceProvider);
+            Assert.Equal(RebirthResult.Ok, (await engine.RebirthAsync(me.PlayerId, 0)).Result);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var p = await verify.PlayerRecords.AsNoTracking().SingleAsync(x => x.Id == me.PlayerId);
+                Assert.Equal(0, p.LarderSlot1Count + p.LarderSlot2Count + p.LarderSlot3Count);
+                Assert.Equal(0, p.LarderSlot1ItemId + p.LarderSlot2ItemId + p.LarderSlot3ItemId);
+                Assert.Equal(72, p.PeakLevel);
+            }
+
+            // A shorter second life: the window shrinks to it rather than
+            // staying at the best one.
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var p = await db.PlayerRecords.SingleAsync(x => x.Id == me.PlayerId);
+                p.CurrentLevel = 50;
+                await db.SaveChangesAsync();
+            }
+            var preview = await engine.PreviewAsync(me.PlayerId);
+            Assert.Equal(50, preview!.PeakLevelAfter);
+            Assert.Equal(RebirthResult.Ok, (await engine.RebirthAsync(me.PlayerId, 1)).Result);
+
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var p = await verify.PlayerRecords.AsNoTracking().SingleAsync(x => x.Id == me.PlayerId);
+                Assert.Equal(50, p.PeakLevel);
+                Assert.Equal(RebirthRules.ReLevelXpBonusPct, RebirthRules.ReLevelXpBonus(49, p.PeakLevel));
+                Assert.Equal(0, RebirthRules.ReLevelXpBonus(60, p.PeakLevel));
+            }
+        }
+
         private async Task<List<string>> SeededNamesAsync(Seeded s)
         {
             var names = new List<string> { "Founder", "Keeper" };
@@ -501,6 +552,65 @@ namespace FolkIdle.Server.Tests
             // The badge beside the name reads the count from the batched worn lookup.
             var worn = await CosmeticEngine.WornAsync(verify, new[] { me.PlayerId });
             Assert.Equal(1, worn.Single().RebirthCount);
+        }
+
+        // Modul: THE VAULT LOCK (owner, 2026-10-20). The owner kept a region-5
+        // set through their first rebirth and beat Malakor again within hours.
+        // A kept piece now waits until the new life has killed in its region.
+        [Fact]
+        public async Task AKeptPieceIsVaultLockedUntilThisLifeReachesItsRegion()
+        {
+            var me = await SeedAsync(950_114_009L, level: 90, hallMembers: 2);
+            string regionFive = ContentRegistry.ItemDefinitions.ToArray()
+                .Where(i => i.RegionTier == 5)
+                .Select(i => ContentRegistry.GetItemBaseId(i.Id))
+                .First(id => Domain.Combat.EquipmentSlotEngine.ResolveSlotIndex(id) == Domain.Combat.EquipmentSlotEngine.SlotHelmet);
+            long pieceId;
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var piece = new EquipmentInstance { PlayerId = me.PlayerId, BaseItemId = regionFive, QualityTier = 9, AffixPayload = "{}" };
+                db.EquipmentInstances.Add(piece);
+                for (int region = RaceUnlockRegistry.FirstRegion; region <= RaceUnlockRegistry.LastRegion; region++)
+                {
+                    db.MonsterCodexEntries.Add(new MonsterCodexEntry { PlayerId = me.PlayerId, MonsterId = RaceUnlockRegistry.GetRegionBossMonsterId(region), KillCount = 1 });
+                }
+                var p = await db.PlayerRecords.SingleAsync(x => x.Id == me.PlayerId);
+                p.LifeHighestRegion = 5;
+                await db.SaveChangesAsync();
+                pieceId = piece.Id;
+            }
+            await SetGoldAsync(me.PlayerId, RebirthRules.KeepPrice(9) + 1_000L);
+
+            Assert.Equal(RebirthResult.Ok, (await new RebirthEngine(_fixture.ServiceProvider).RebirthAsync(me.PlayerId, 0, new[] { pieceId })).Result);
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                Assert.Equal(5, (await db.EquipmentInstances.AsNoTracking().SingleAsync(e => e.Id == pieceId)).VaultLockRegion);
+                var p = await db.PlayerRecords.SingleAsync(x => x.Id == me.PlayerId);
+                Assert.Equal(0, p.LifeHighestRegion);
+                // The attributes are met, so only the lock can refuse it.
+                p.BaseStrength = p.BaseDexterity = p.BaseConstitution = p.BaseLuck = 500;
+                await db.SaveChangesAsync();
+            }
+
+            var slots = new Domain.Combat.EquipmentSlotEngine(_fixture.ServiceProvider, _fixture.PlayerRegistry);
+            await slots.EquipItemAsync(me.PlayerId, pieceId);
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var main = await db.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == me.Main);
+                Assert.NotEqual(pieceId, main.EquippedHelmetId ?? 0L);
+                var p = await db.PlayerRecords.SingleAsync(x => x.Id == me.PlayerId);
+                p.LifeHighestRegion = 5;
+                await db.SaveChangesAsync();
+            }
+
+            await slots.EquipItemAsync(me.PlayerId, pieceId);
+            await using (var verify = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                var main = await verify.CharacterRecords.AsNoTracking().SingleAsync(c => c.Id == me.Main);
+                Assert.Equal(pieceId, main.EquippedHelmetId);
+                Assert.Equal(0, (await verify.EquipmentInstances.AsNoTracking().SingleAsync(e => e.Id == pieceId)).VaultLockRegion);
+            }
         }
 
         [Fact]

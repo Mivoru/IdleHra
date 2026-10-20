@@ -494,6 +494,28 @@ namespace FolkIdle.Server.Engine
                 await dbContext.SaveChangesAsync(stoppingToken);
                 await transaction.CommitAsync(stoppingToken);
 
+                // The Vault lock's marker: the highest region this life has
+                // killed in (PlayerRecord.LifeHighestRegion). After the commit
+                // and outside the batch's transaction, so it can never abort a
+                // codex batch; guarded so it only writes when it RAISES, which
+                // happens at most five times a life.
+                foreach (var reached in killsToProcess
+                    .GroupBy(k => k.PlayerId)
+                    .Select(g => (PlayerId: g.Key, Region: g.Max(k => ContentRegistry.GetMonsterRegionTier(k.MonsterId)))))
+                {
+                    if (reached.Region <= 0) continue;
+                    try
+                    {
+                        await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                            $"UPDATE \"PlayerRecords\" SET \"LifeHighestRegion\" = {reached.Region} WHERE \"Id\" = {reached.PlayerId} AND \"LifeHighestRegion\" < {reached.Region}",
+                            stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Codex: life region update failed for player {reached.PlayerId}: {ex.Message}");
+                    }
+                }
+
                 foreach (long leveledUpPlayerId in codexLeveledUpPlayerIds)
                 {
                     await RecalculateAndSyncMultipliersAsync(leveledUpPlayerId, dbContext, _playerRegistry);
