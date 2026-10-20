@@ -1395,7 +1395,7 @@ export function diminishedPercent(perRootPoint: number, value: number): number {
  * way, but a refusal that arrives with no way to see it coming is the failure
  * this codebase keeps finding at the bottom of "the button does nothing".
  */
-export const EQUIP_REQUIREMENT_PER_REGION_TIER = 20;
+export const EQUIP_REQUIREMENT_PER_REGION_TIER = 25;
 
 /** Slot index -> attribute id, matching EquipmentAttributeGate.AttributeForSlot. */
 const REQUIREMENT_BY_SLOT_INDEX: Record<number, number> = {
@@ -1426,7 +1426,7 @@ export function equipRequirement(
 
 /**
  * Wear one equipment instance on the MAIN character (no TargetGuid - the
- * server resolves Guid.Empty to the character whose Id is PlayerGuid). The loot
+ * server resolves Guid.Empty to the character standing in slot 1). The loot
  * list and the reveal card both compare against /player/worn, which is that
  * same character, so the comparison and the press agree about who is dressed.
  */

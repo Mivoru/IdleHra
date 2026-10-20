@@ -287,6 +287,23 @@ export async function dismissEventIntro(page, waitMs = 2500) {
     await intro.click().catch(() => {});
     await page.waitForTimeout(300);
   }
+  await dismissBigChestPrompt(page);
+  return shown;
+}
+
+/**
+ * The big-chest prompt (BigChestPrompt.svelte) opens after the event intro on
+ * any account holding thousands of pieces - the dev fixture does - and its
+ * scrim swallows the next click like the intro's. "Keep everything" closes it
+ * without selling anything. Returns whether it was shown.
+ */
+export async function dismissBigChestPrompt(page, waitMs = 2500) {
+  const keep = page.getByTestId('big-chest-close');
+  const shown = await keep.waitFor({ timeout: waitMs }).then(() => true).catch(() => false);
+  if (shown) {
+    await keep.click().catch(() => {});
+    await page.waitForTimeout(300);
+  }
   return shown;
 }
 

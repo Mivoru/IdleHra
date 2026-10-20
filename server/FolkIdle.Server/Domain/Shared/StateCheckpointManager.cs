@@ -1022,22 +1022,12 @@ namespace FolkIdle.Server.Domain.Shared
             // answer carries the item's rolled affixes with it.
             ToolLoadout toolLoadout = ToolLoadout.Empty;
             {
+                // Slot 1's own tools; slots 2 and 3 get theirs in
+                // HydrateSlotEquipmentAsync (CharacterActivityState).
                 var mainCharacter = characters.Count > 0 ? characters[0] : null;
                 if (mainCharacter != null)
                 {
-                    var toolInstanceIds = new List<long>(3);
-                    if (mainCharacter.EquippedAxeId.HasValue) toolInstanceIds.Add(mainCharacter.EquippedAxeId.Value);
-                    if (mainCharacter.EquippedPickaxeId.HasValue) toolInstanceIds.Add(mainCharacter.EquippedPickaxeId.Value);
-                    if (mainCharacter.EquippedRodId.HasValue) toolInstanceIds.Add(mainCharacter.EquippedRodId.Value);
-
-                    if (toolInstanceIds.Count > 0)
-                    {
-                        var toolRows = await dbContext.EquipmentInstances
-                            .AsNoTracking()
-                            .Where(e => toolInstanceIds.Contains(e.Id))
-                            .ToDictionaryAsync(e => e.Id);
-                        toolLoadout = ToolLoadoutResolver.Resolve(mainCharacter, toolRows);
-                    }
+                    toolLoadout = await EquipmentSlotEngine.ResolveToolLoadoutAsync(dbContext, mainCharacter);
                 }
             }
 
@@ -1716,6 +1706,15 @@ namespace FolkIdle.Server.Domain.Shared
 
             slot.CachedAffixTotals = totals;
             slot.CachedSetIds = setIds;
+
+            // This character's own tools, parked with its gear.
+            ToolLoadout tools = await EquipmentSlotEngine.ResolveToolLoadoutAsync(dbContext, character);
+            slot.AxeToolTier = tools.AxeTier;
+            slot.PickaxeToolTier = tools.PickaxeTier;
+            slot.RodToolTier = tools.RodTier;
+            slot.ToolGatherSpeedPct = tools.GatherSpeedPct;
+            slot.ToolGatherYieldPct = tools.GatherYieldPct;
+            slot.ToolRareFindPct = tools.RareFindPct;
 
             return slot;
         }

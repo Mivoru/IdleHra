@@ -30,5 +30,14 @@ namespace FolkIdle.Server.Models
         // crafted gear). Non-zero values match SetBonusEngine's known set
         // catalog (e.g. 1 = Chiming Steel, 10 = Eternal Dreadnought).
         public int SetId { get; set; }
+
+        // Modul: THE VAULT LOCK (owner, 2026-10-20). A piece kept through a
+        // rebirth (RebirthEngine's keep list) carries the region it came from
+        // here, and cannot be worn until this life has killed something in
+        // that region (PlayerRecord.LifeHighestRegion). The owner kept a
+        // region-5 set, rebirthed, and beat Malakor again within hours. 0 = no
+        // lock, which is every piece that did not come through the Vault; the
+        // first equip that passes the lock clears it.
+        public int VaultLockRegion { get; set; }
     }
 }

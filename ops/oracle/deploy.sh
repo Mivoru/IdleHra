@@ -29,6 +29,12 @@ echo "deploy: stamping over-the-air bundle $V"
 
 docker compose up -d --build
 
+# Modul: every --build leaves its layers in the build cache, and nothing ever
+# removed them: on 2026-10-20 the 45 GB disk was 78% full, 28 GB of it build
+# cache. Keep the last three days' (a quick redeploy stays fast) and drop the
+# rest. Images are left alone - the previous one is the rollback.
+docker builder prune -af --filter until=72h >/dev/null 2>&1 || true
+
 # Modul: prove the stamp landed rather than trusting .env. The app container
 # needs a moment to migrate and listen, so poll the manifest for up to ~3 min.
 for _ in $(seq 1 36); do

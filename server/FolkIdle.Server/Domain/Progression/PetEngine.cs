@@ -154,7 +154,7 @@ namespace FolkIdle.Server.Domain.Progression
             // The account's tools, read after the commit like an equip's.
             for (int i = 0; i < updates.Count; i++)
             {
-                updates[i] = await EquipmentSlotEngine.WithAccountToolsAsync(db, updates[i]);
+                updates[i] = await EquipmentSlotEngine.WithCharacterToolsAsync(db, updates[i]);
             }
             return (PetAssignResult.Ok, updates);
         }

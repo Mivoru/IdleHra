@@ -60,10 +60,12 @@ namespace FolkIdle.Server.Tests
                 Assert.True(spare >= 0,
                     $"region {region} demands {fullSet} points of a character who holds {held} - that is a wall, not a requirement.");
 
-                // Modul: TOO LOW IS NOTHING. At least a third of what a player
+                // Modul: TOO LOW IS NOTHING. At least a quarter of what a player
                 // holds has to remain free, or the "choice" is a formality with
-                // one legal answer.
-                Assert.True(spare >= held / 3,
+                // one legal answer. A third until 2026-10-20, when the owner
+                // raised the gate to 25 a tier (region 5 = 100): a full set is
+                // now ~71% of what a player holds on arrival, at every region.
+                Assert.True(spare >= held / 4,
                     $"region {region} leaves only {spare} of {held} points free - there is no choice left to make.");
             }
         }

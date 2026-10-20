@@ -133,6 +133,7 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   69: 'The Cailleach falls back - your reward is in the mail.',
   70: 'The Cailleach comes down from the mountain. Fight!',
   71: 'A pet you already have found you again - its diamonds are in your mail.',
+  72: 'That piece is still in the Vault lock - kill something in its region in this life first.',
 };
 
 export const COMMAND_RESULT_GUILD_WARS_LOCKED = 37;

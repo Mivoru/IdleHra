@@ -10,6 +10,7 @@
   import QuestSpotlight from './QuestSpotlight.svelte';
   import WhatsNew from './WhatsNew.svelte';
   import EventIntro from './EventIntro.svelte';
+  import BigChestPrompt from './BigChestPrompt.svelte';
   import OfflineSummary from './OfflineSummary.svelte';
   import LootReveal from './LootReveal.svelte';
   import PetFound from './PetFound.svelte';
@@ -42,6 +43,9 @@
 
 <!-- The seasonal event explains itself once, after What's new closes. -->
 <EventIntro />
+
+<!-- A chest big enough to slow the game offers to clear part of itself. -->
+<BigChestPrompt />
 
 <OfflineSummary />
 <!-- Modul: the two moments the game never marked - a first boss

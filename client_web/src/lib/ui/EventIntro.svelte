@@ -22,19 +22,11 @@
   import { spriteUrl } from './spriteUrl';
   import Modal from './Modal.svelte';
 
-  const STORAGE_PREFIX = 'folkidle.eventIntro.';
+  import { eventIntroSeen as seen, markEventIntroSeen } from './eventIntroSeen';
 
   const eventId = $derived(Number($playerState?.SeasonalEventId ?? 0));
   const phase = $derived(Number($playerState?.SeasonalEventPhase ?? 0));
   const key = $derived(eventThemeKey(eventId));
-
-  function seen(k: string): boolean {
-    try {
-      return localStorage.getItem(STORAGE_PREFIX + k) === '1';
-    } catch {
-      return false;
-    }
-  }
 
   let dismissed = $state(false);
 
@@ -61,13 +53,7 @@
 
   function close() {
     dismissed = true;
-    if (key) {
-      try {
-        localStorage.setItem(STORAGE_PREFIX + key, '1');
-      } catch {
-        // Storage blocked: it will show again next session, nothing worse.
-      }
-    }
+    if (key) markEventIntroSeen(key);
   }
 
   function openShop() {

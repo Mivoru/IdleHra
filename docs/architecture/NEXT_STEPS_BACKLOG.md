@@ -19,6 +19,56 @@ do next.
 
 ---
 
+# 2026-10-20 - Gear on the slot, a fairer rebirth, the big-chest prompt
+
+A health check after a quiet week, a friend's report ("a new character took
+the axe, pickaxe and rod from everywhere - it says someone has them, nobody
+does"), and the owner's first rebirth (level 112, Vault kept a region-5 set,
+Malakor down again within hours). Client 1.28.0.
+
+- **Gear belongs to the three SLOTS.** `HallOfAncestorsEngine.AssignSlotAsync`
+  swaps all eleven equip pointers with the slot swap
+  (`EquipmentSlotEngine.SwapAllSlots`), and anyone on the bench wears nothing
+  (`StripAllSlots`). Before it, a benched character kept its gear, and the
+  Character screen listed it "worn by another character" with Move disabled.
+  Measured live: ten benched characters on three accounts held tools and armour.
+  `ClearDanglingEquipReferencesAsync` (login) now heals that, and walks all
+  eleven slots - it walked eight.
+- **"Main character" = whoever stands in slot 1, not PlayerGuid.** On all three
+  active accounts the founder was benched (SlotIndex 3, 12, 27). Login read
+  tools off slot 1, the equip update off the founder: two answers.
+  `FieldedCharacterIdAsync(db, playerId, 0)` is the one answer for an
+  empty-Guid equip, `/player/worn`'s fallback and the rebirth's starter tools.
+  Other PlayerGuid-as-main readers (profiles, pets, cosmetics) were NOT audited.
+- **Tools are per character.** Six tool fields joined `CharacterActivityState`
+  and swap with the register; login hydrates slots 2/3; `WithCharacterToolsAsync`
+  replaced `WithAccountToolsAsync`.
+- **Equip/unequip run READ COMMITTED with the account's character rows locked**
+  (`LockRosterAsync`), not Serializable. Serializable made the codex and
+  PlayerRecords reads conflict with the tick's constant writes, and the
+  execution strategy retried silently with up to 8 s back-off. The cause of the
+  owner's "too slow and laggy" is NOT proven: `[equip-slow]` lines in the app
+  log now say when an equip takes 750 ms+ or more than one attempt. Grep it
+  after a week.
+- **Rebirth:** the larder empties; `PeakLevel` is now the level the life just
+  ended at (was GREATEST - rebirthing at 50 kept a 112 window open); kept pieces
+  carry `EquipmentInstance.VaultLockRegion` and wait until this life has killed
+  in that region (`PlayerRecord.LifeHighestRegion`, raised by CodexEngine after
+  its commit, reset by the rebirth). Result code 72 `VaultLocked`.
+- **Attribute gate 20 -> 25 a region** (region 5 = 100). A full set is now ~71%
+  of the points held on arrival; `EquipmentAttributeGateTests`' floor went from
+  a third free to a quarter.
+- **Big-chest prompt** (`BigChestPrompt.svelte`): at 3,000+ pieces, regions x
+  rarity, the count and the MB, optional auto-sell via the region rules. Reads
+  `GET /api/v1/chest/summary` (a GROUP BY; the rows never ship). Bulk sell
+  takes `regions` and never takes Vault-locked pieces. Opens only after the
+  event intro (`eventIntroSeen.ts`). Player 108 held **243,096** pieces; the
+  Forge/inventory downloads for it were failing mid-transfer.
+- **Disk:** the box was 78% full, 28 GB of it Docker build cache. Pruned to
+  20%; `deploy.sh` now prunes build cache older than 72 h on every deploy.
+- Still open: why player 108 receives tier 0-4 drops past an auto-salvage floor
+  of 5 (some loot path skips auto-salvage - ids up to 341345 on 2026-10-20).
+
 # 2026-10-14 - Design waves 1 and 2: motion and hierarchy
 
 The owner asked for a game that feels "less static". Three waves were agreed,

@@ -349,7 +349,11 @@ namespace FolkIdle.Server.Network
 
         // A monster pet the account already owns found it again; its
         // diamonds are in the mail (sent after the mail is saved).
-        PetDuplicateDiamonds = 71
+        PetDuplicateDiamonds = 71,
+
+        // An equip of a piece kept through a rebirth before this life has
+        // reached its region again (EquipmentInstance.VaultLockRegion).
+        VaultLocked = 72
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

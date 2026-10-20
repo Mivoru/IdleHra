@@ -110,6 +110,8 @@ export interface InventoryEquipment {
    *  four of the seven pieces, so a fully equipped character rendered three
    *  filled slots and four empty ones. */
   EquippedInSlotIndex: number;
+  /** Kept through a rebirth: the region this life must kill in before it can be worn. 0/absent = no lock. */
+  VaultLockRegion?: number;
   Affixes: AffixMap;
   IsAffixLocked: boolean;
   /** What the chest pays for it - VillageChestEngine.ValueEquipment, the
@@ -165,6 +167,8 @@ export interface InventorySnapshot {
   Equipment: InventoryEquipment[];
   Stacks: InventoryStack[];
   RosterCombatStats: RosterCombatStats[];
+  /** The highest region this life has killed in - what VaultLockRegion is held against. */
+  LifeHighestRegion?: number;
 }
 
 export function fetchInventory(): Promise<InventorySnapshot> {
@@ -260,11 +264,25 @@ export interface ChestBulkResult {
 export function bulkClearChest(
   maxQualityTier: number,
   sell: boolean,
+  /** Only these regions' gear (1-5); omitted = every region. */
+  regions?: number[],
 ): Promise<ChestBulkResult | null> {
   return authedPost<ChestBulkResult>(
     sell ? '/api/v1/chest/bulk-sell' : '/api/v1/chest/bulk-discard',
-    { maxQualityTier },
+    regions && regions.length > 0 ? { maxQualityTier, regions } : { maxQualityTier },
   );
+}
+
+/** Sweepable pieces by region and rarity - the big-inventory prompt's numbers, without the rows. */
+export interface ChestSummary {
+  Total: number;
+  Sweepable: { Region: number; QualityTier: number; Count: number }[];
+  ApproxInventoryBytes: number;
+  MaxSweepableQualityTier: number;
+}
+
+export function fetchChestSummary(): Promise<ChestSummary> {
+  return authedGet<ChestSummary>('/api/v1/chest/summary');
 }
 
 export interface ChestSettings {

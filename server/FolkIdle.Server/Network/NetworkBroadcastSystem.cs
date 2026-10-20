@@ -1717,6 +1717,14 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // The big-inventory prompt's numbers: sweepable pieces by region
+            // and rarity, without shipping the rows themselves.
+            if (requestPath == "/api/v1/chest/summary" && context.Request.HttpMethod == "GET")
+            {
+                await HandleChestSummary(context);
+                return;
+            }
+
             if (requestPath == "/api/v1/chest/settings")
             {
                 await HandleChestSettings(context);
@@ -2592,6 +2600,10 @@ namespace FolkIdle.Server.Network
             // empty ones. The row already knows; it just was not being asked.
             public int EquippedInSlotIndex { get; set; } = -1;
 
+            // The Vault lock: the region this life must reach before the piece
+            // can be worn, 0 when none (EquipmentInstance.VaultLockRegion).
+            public int VaultLockRegion { get; set; }
+
             // Modul: Affix System Unification. Without these the Inventory
             // screen could name an item and its rarity but say nothing about
             // what it actually does, which is the entire point of a rarity
@@ -2678,6 +2690,8 @@ namespace FolkIdle.Server.Network
             public System.Collections.Generic.List<InventoryEquipmentResponse> Equipment { get; set; } = new();
             public System.Collections.Generic.List<InventoryStackResponse> Stacks { get; set; } = new();
             public System.Collections.Generic.List<RosterCombatStatsResponse> RosterCombatStats { get; set; } = new();
+            // The highest region this life has killed in - what VaultLockRegion is held against.
+            public int LifeHighestRegion { get; set; }
         }
 
         // Modul: Crafting Tree screen. CurrentStock is the UNIFIED
@@ -3649,6 +3663,88 @@ namespace FolkIdle.Server.Network
             public string Reason { get; set; } = string.Empty;
         }
 
+        private sealed class ChestSummaryResponse
+        {
+            public int Total { get; set; }
+            /// <summary>Unworn, unlocked, not in the Vault lock - what a sweep could take.</summary>
+            public System.Collections.Generic.List<ChestSummaryRow> Sweepable { get; set; } = new();
+            /// <summary>Roughly what the full inventory download weighs, in bytes.</summary>
+            public long ApproxInventoryBytes { get; set; }
+            public int MaxSweepableQualityTier { get; set; }
+        }
+
+        private sealed class ChestSummaryRow
+        {
+            public int Region { get; set; }
+            public int QualityTier { get; set; }
+            public int Count { get; set; }
+        }
+
+        // Modul: THE PROMPT MUST NOT COST WHAT IT WARNS ABOUT (2026-10-20). One
+        // live account held 243,096 pieces, and the inventory download for it
+        // was tens of megabytes that phones abandoned half way ("Unable to write
+        // data to the transport connection"). Counting needs one GROUP BY over
+        // two columns; the rows never leave the database.
+        private async Task HandleChestSummary(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0)
+                {
+                    context.Response.StatusCode = 401;
+                    context.Response.Close();
+                    return;
+                }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+                var worn = await VillageChestEngine.LoadWornEquipmentIdsAsync(db, playerId);
+                long[] wornIds = worn.Count == 0 ? new long[] { 0L } : worn.ToArray();
+
+                int total = await db.EquipmentInstances.AsNoTracking().CountAsync(e => e.PlayerId == playerId);
+                var groups = await db.EquipmentInstances.AsNoTracking()
+                    .Where(e => e.PlayerId == playerId && !e.IsAffixLocked && e.VaultLockRegion == 0 && !wornIds.Contains(e.Id))
+                    .GroupBy(e => new { e.BaseItemId, e.QualityTier })
+                    .Select(g => new { g.Key.BaseItemId, g.Key.QualityTier, Count = g.Count() })
+                    .ToListAsync();
+
+                var rows = new System.Collections.Generic.Dictionary<(int, int), int>();
+                foreach (var g in groups)
+                {
+                    var key = (ContentRegistry.GetRegionTierForBaseId(g.BaseItemId), g.QualityTier);
+                    rows[key] = rows.GetValueOrDefault(key) + g.Count;
+                }
+
+                var response = new ChestSummaryResponse
+                {
+                    Total = total,
+                    ApproxInventoryBytes = (long)total * ApproxInventoryBytesPerPiece,
+                    MaxSweepableQualityTier = VillageChestEngine.MaxSweepableQualityTier,
+                };
+                foreach (var ((region, tier), count) in rows.OrderBy(r => r.Key.Item1).ThenBy(r => r.Key.Item2))
+                {
+                    response.Sweepable.Add(new ChestSummaryRow { Region = region, QualityTier = tier, Count = count });
+                }
+
+                context.Response.StatusCode = 200;
+                context.Response.ContentType = "application/json";
+                await JsonSerializer.SerializeAsync(context.Response.OutputStream, response);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Chest summary error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+
+            context.Response.Close();
+        }
+
+        // Measured: 3.2 MB for 17,836 pieces (2026-09-03), about 180 bytes a
+        // row of /api/v1/player/inventory JSON, affixes included.
+        private const long ApproxInventoryBytesPerPiece = 180;
+
         private sealed class ChestBulkActionResponse
         {
             public bool Success { get; set; }
@@ -3938,8 +4034,21 @@ namespace FolkIdle.Server.Network
                 using var scope = _serviceProvider.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
 
+                // Optional: which regions' gear (1-5). Absent = all of them.
+                var regions = new System.Collections.Generic.List<int>();
+                if (payload.TryGetProperty("regions", out var regionsElement) && regionsElement.ValueKind == JsonValueKind.Array)
+                {
+                    foreach (var r in regionsElement.EnumerateArray())
+                    {
+                        if (r.ValueKind == JsonValueKind.Number && r.TryGetInt32(out int region) && region >= 1 && region <= 5 && !regions.Contains(region))
+                        {
+                            regions.Add(region);
+                        }
+                    }
+                }
+
                 var outcome = await VillageChestEngine.RemoveEquipmentUpToTierAsync(
-                    db, playerId, maxQualityTier, sell);
+                    db, playerId, maxQualityTier, sell, regions);
 
                 // Modul: THE GOLD HAS TO REACH THE LIVE SESSION, and it must
                 // not be banked twice on the way.
@@ -8241,7 +8350,8 @@ namespace FolkIdle.Server.Network
                     // is no cap any more, so 0 is the agreed "unbounded"
                     // sentinel and the client suppresses the line entirely.
                     MaxStackQuantity = 0L,
-                    RosterCombatStats = rosterCombatStats
+                    RosterCombatStats = rosterCombatStats,
+                    LifeHighestRegion = player?.LifeHighestRegion ?? 0
                 };
 
                 for (int i = 0; i < equipment.Count; i++)
@@ -8279,6 +8389,7 @@ namespace FolkIdle.Server.Network
                         // Modul: roster loadouts. -1 when carried rather than worn.
                         EquippedByCharacterSlot = wornItemSlotIndices.TryGetValue(item.Id, out int wearerSlotIndex) ? wearerSlotIndex : -1,
                         EquippedInSlotIndex = wornItemEquipSlots.TryGetValue(item.Id, out int wornEquipSlot) ? wornEquipSlot : -1,
+                        VaultLockRegion = item.VaultLockRegion,
                         Affixes = affixes,
                         IsAffixLocked = item.IsAffixLocked || payloadLockFlag
                     });
@@ -8393,10 +8504,10 @@ namespace FolkIdle.Server.Network
                 // slot told the player "+1000 DEF, boots slot is empty" while
                 // the fighter wore Transcendent boots. Must be this player's
                 // own character; anything else falls back to the main one.
-                var mainGuid = await db.PlayerRecords.AsNoTracking()
-                    .Where(p => p.Id == playerId)
-                    .Select(p => p.PlayerGuid)
-                    .FirstOrDefaultAsync();
+                // The fallback is slot 1's character, the one an empty-Guid
+                // equip dresses (EquipmentSlotEngine.FieldedCharacterIdAsync) -
+                // not PlayerGuid's founder, who may be resting on the bench.
+                var mainGuid = await EquipmentSlotEngine.FieldedCharacterIdAsync(db, playerId, 0);
                 if (Guid.TryParse(context.Request.QueryString["characterId"], out var askedFor) && askedFor != Guid.Empty)
                 {
                     mainGuid = askedFor;

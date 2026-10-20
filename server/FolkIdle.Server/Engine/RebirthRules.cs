@@ -104,8 +104,8 @@ namespace FolkIdle.Server.Engine
         public const int SkillPointsPerRebirth = 2;
 
         /// <summary>
-        /// Combat XP bonus on every level below the account's best-ever level
-        /// - a flat 50%, whatever the count (owner: faster, "not crazy").
+        /// Combat XP bonus on every level below the level the previous life
+        /// ended at - a flat 50%, whatever the count (owner: faster, "not crazy").
         /// </summary>
         public const int ReLevelXpBonusPct = 50;
 
@@ -144,8 +144,8 @@ namespace FolkIdle.Server.Engine
         public static bool IsFinalRewardedRebirth(int rebirthCountAfter) => rebirthCountAfter == RewardedRebirths;
 
         /// <summary>
-        /// The re-level XP bonus, in percent: paid only below a best level an
-        /// earlier life reached. An account that never rebirthed has no best
+        /// The re-level XP bonus, in percent: paid only below the level the
+        /// previous life ended at. An account that never rebirthed has no best
         /// level stored (0), so it never qualifies.
         /// </summary>
         public static int ReLevelXpBonus(int currentLevel, int peakLevel)

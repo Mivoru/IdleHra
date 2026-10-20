@@ -57,13 +57,14 @@ namespace FolkIdle.Server.Domain.Combat
         /// weapon the game hands them, which is the closed entrance this project
         /// has already shipped once.
         ///
-        /// From region 2 it rises 20 a tier. Region 2 is reached at about level
-        /// 21 with 140 points in hand, so a full set costs 80 of them and leaves
-        /// 60 free - and that ratio holds across the whole game: at every region
-        /// a full set is roughly 57% of what a player holds, and the remaining
-        /// 43% is the choice. EquipmentAttributeGateTests prints the table.
+        /// From region 2 it rises 25 a tier (20 until 2026-10-20). The owner's
+        /// first rebirth wore region-5 gear from the Vault after a few hours of
+        /// levelling; 25 a tier puts region 5 at 100 in each attribute, so a
+        /// kept full set waits for a deeper re-climb. EquipmentAttributeGateTests
+        /// prints the table and asserts a full set stays affordable on arrival
+        /// with at least a third of the points still free.
         /// </summary>
-        public const int RequirementPerRegionTier = 20;
+        public const int RequirementPerRegionTier = 25;
 
         public static int RequirementFor(int regionTier)
         {

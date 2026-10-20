@@ -223,6 +223,29 @@ namespace FolkIdle.Server.Engine
                 {
                     displaced.SlotIndex = vacated;
 
+                    // Modul: THE GEAR STAYS ON THE SLOT (owner, 2026-10-20). A
+                    // swap exchanges what the two wear as well as where they
+                    // stand, so slot 1's armour and tools are still slot 1's
+                    // after a new face takes it. Before this the gear left with
+                    // the character - onto the bench, where nothing could reach
+                    // it (see EquipmentSlotEngine.ClearDanglingEquipReferencesAsync).
+                    Domain.Combat.EquipmentSlotEngine.SwapAllSlots(incoming, displaced);
+                }
+
+                // Whoever is on the bench now wears nothing: the pieces go back
+                // to the chest. Covers the displaced one taking the incoming
+                // character's old bench gear, and a move into an empty slot.
+                foreach (var benched in new[] { incoming, displaced })
+                {
+                    if (benched != null && benched.SlotIndex >= CharacterSlotEngine.MaxCharacterSlots)
+                    {
+                        Domain.Combat.EquipmentSlotEngine.StripAllSlots(benched);
+                    }
+                }
+
+                if (displaced != null)
+                {
+
                     // The bench is not a place to be doing anything. A benched
                     // character keeping its activity would leave the occupancy
                     // mutex holding a job nobody is working - and the next

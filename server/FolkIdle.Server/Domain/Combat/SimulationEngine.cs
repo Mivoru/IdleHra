@@ -1087,7 +1087,7 @@ namespace FolkIdle.Server.Domain.Combat
                         currentPayload.EquippedAmuletId = equipUpdate.EquippedAmuletId;
                         currentPayload.EquippedRingId = equipUpdate.EquippedRingId;
                         // Only an update that resolved the account's tools may
-                        // write them - see EquipmentSlotEngine.WithAccountToolsAsync.
+                        // write them - see EquipmentSlotEngine.WithCharacterToolsAsync.
                         if (equipUpdate.ToolsResolved)
                         {
                             currentPayload.AxeToolTier = equipUpdate.AxeToolTier;
@@ -4176,6 +4176,13 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.EquippedLeggingsAffixLocked, ref parked.EquippedLeggingsAffixLocked);
             Swap(ref payload.CachedAffixTotals, ref parked.CachedAffixTotals);
             Swap(ref payload.CachedSetIds, ref parked.CachedSetIds);
+            // The character's own tools (CharacterActivityState).
+            Swap(ref payload.AxeToolTier, ref parked.AxeToolTier);
+            Swap(ref payload.PickaxeToolTier, ref parked.PickaxeToolTier);
+            Swap(ref payload.RodToolTier, ref parked.RodToolTier);
+            Swap(ref payload.ToolGatherSpeedPct, ref parked.ToolGatherSpeedPct);
+            Swap(ref payload.ToolGatherYieldPct, ref parked.ToolGatherYieldPct);
+            Swap(ref payload.ToolRareFindPct, ref parked.ToolRareFindPct);
 
             // Identity travels with the activity: combat stats are derived from
             // the active character's race, age phase and genetic loci, so a

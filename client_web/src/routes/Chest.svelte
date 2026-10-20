@@ -292,7 +292,8 @@
   // so the number in the button is the number that disappears. Excludes worn
   // pieces for the same reason the server does.
   const sweepCount = $derived(
-    equipment.filter((e) => e.QualityTier <= sweepTier && !e.IsEquipped).length,
+    // Locked and Vault-locked pieces are spared by the server too.
+    equipment.filter((e) => e.QualityTier <= sweepTier && !e.IsEquipped && !e.IsAffixLocked && !((e.VaultLockRegion ?? 0) > 0)).length,
   );
 
   async function sweep(sell: boolean) {

@@ -406,7 +406,7 @@ export const SEASON_CARRIES: readonly string[] = [
   'Your best leaderboard placement, and any paid respec grants.',
   'Seasonal event currency (pumpkins) and everything bought in an event shop.',
   'Every pet, and the slot each one sits in.',
-  'Any gear you paid to keep: 5 million gold for the commonest piece up to 100 million for the rarest, paid from the gold the rebirth takes. It waits in your chest, unworn.',
+  'Any gear you paid to keep: 5 million gold for the commonest piece up to 100 million for the rarest, paid from the gold the rebirth takes. It waits in your chest, unworn, and can be worn again once the new life has killed a monster in its region.',
 ];
 
 /**
@@ -435,7 +435,7 @@ export const REBIRTH_VAULT_CEILING = 100_000_000;
 export const REBIRTH_PAYS: readonly string[] = [
   `Every rebirth raises the bloodline ceiling - the highest an aptitude can be bred - from ${BLOODLINE_CEILING_START} to ${BLOODLINE_CEILING_END} at rebirth ${REBIRTH_MAX}.`,
   `+${REBIRTH_SKILL_POINTS_EACH} skill points for good on each of the first ${REBIRTH_REWARDED} rebirths, on top of what levels and Seals pay - ${REBIRTH_REWARDED * REBIRTH_SKILL_POINTS_EACH} at the most.`,
-  `+${REBIRTH_XP_BONUS_PCT}% combat XP on every level below the best level you have ever reached, from your first rebirth on.`,
+  `+${REBIRTH_XP_BONUS_PCT}% combat XP on every level below the level your previous life reached, from your first rebirth on.`,
   `At ${REBIRTH_SECOND_PET_SLOT_AT} rebirths, a second pet slot on every character.`,
   'Avatars at rebirths 3, 5, 7 and 10: Jarilo, Vesna, Étaín and Morana.',
   'At 10: the Phoenix pet (+8% damage, health and XP), the title The Ever-Returning, and a gold badge and glowing name.',
@@ -446,7 +446,7 @@ export const REBIRTH_PAYS: readonly string[] = [
 
 /** The road to twenty, as the Rebirth screen draws it (RebirthRoadmap on the server). */
 export const REBIRTH_ROADMAP: readonly { rebirth: number; rewards: string }[] = [
-  { rebirth: 1, rewards: '+2 skill points, and +50% XP below your best level from now on; bloodline ceiling 21' },
+  { rebirth: 1, rewards: '+2 skill points, and +50% XP below the level your last life reached; bloodline ceiling 21' },
   { rebirth: 2, rewards: '+2 skill points (4 in all); bloodline ceiling 23' },
   { rebirth: 3, rewards: '+2 skill points, the avatar Jarilo; bloodline ceiling 24' },
   { rebirth: 4, rewards: '+2 skill points (8 in all); bloodline ceiling 26' },

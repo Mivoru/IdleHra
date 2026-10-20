@@ -426,14 +426,30 @@ namespace FolkIdle.Server.Engine
         /// ids it just read: inside one Serializable transaction the two see
         /// the same rows, and an id list of seventeen thousand parameters is a
         /// statement no driver should be asked to plan.
+        ///
+        /// Modul: AND BY REGION (owner, 2026-10-20). The big-inventory prompt
+        /// combines the rarity ceiling with a set of regions - "regions 1 to 3,
+        /// Epic or lower" - so a player can clear old regions' gear and keep the
+        /// current one's for the Vault. <paramref name="regions"/> null or empty
+        /// means every region, as before. Regions live on the catalogue, not on
+        /// the row, so they become the set of BaseItemIds those regions drop.
+        /// A piece under the Vault lock is never swept: it cost millions to keep.
         /// </summary>
         public static async Task<BulkRemovalOutcome> RemoveEquipmentUpToTierAsync(
-            FolkIdleDbContext db, long playerId, int maxQualityTier, bool sell)
+            FolkIdleDbContext db, long playerId, int maxQualityTier, bool sell,
+            System.Collections.Generic.IReadOnlyCollection<int>? regions = null)
         {
             if (maxQualityTier < 1 || maxQualityTier > MaxSweepableQualityTier)
             {
                 return new BulkRemovalOutcome();
             }
+
+            bool byRegion = regions != null && regions.Count > 0;
+            string[] regionBaseIds = byRegion
+                ? System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Select(
+                    System.Linq.Enumerable.Where(ContentRegistry.ItemDefinitions.ToArray(), d => regions!.Contains(d.RegionTier)),
+                    d => ContentRegistry.GetItemBaseId(d.Id)))
+                : System.Array.Empty<string>();
 
             await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
             try
@@ -455,6 +471,7 @@ namespace FolkIdle.Server.Engine
                     .AsNoTracking()
                     .CountAsync(e => e.PlayerId == playerId
                         && e.QualityTier <= maxQualityTier
+                        && (!byRegion || regionBaseIds.Contains(e.BaseItemId))
                         && wornIds.Contains(e.Id));
 
                 // Modul: AND A LOCKED PIECE SURVIVES THE SWEEP.
@@ -475,6 +492,8 @@ namespace FolkIdle.Server.Engine
                     .Where(e => e.PlayerId == playerId
                         && e.QualityTier <= maxQualityTier
                         && !e.IsAffixLocked
+                        && e.VaultLockRegion == 0
+                        && (!byRegion || regionBaseIds.Contains(e.BaseItemId))
                         && !wornIds.Contains(e.Id))
                     .Select(e => new { e.BaseItemId, e.QualityTier })
                     .ToListAsync();
@@ -504,6 +523,8 @@ namespace FolkIdle.Server.Engine
                     .Where(e => e.PlayerId == playerId
                         && e.QualityTier <= maxQualityTier
                         && !e.IsAffixLocked
+                        && e.VaultLockRegion == 0
+                        && (!byRegion || regionBaseIds.Contains(e.BaseItemId))
                         && !wornIds.Contains(e.Id))
                     .ExecuteDeleteAsync();
 

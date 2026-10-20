@@ -439,8 +439,8 @@ namespace FolkIdle.Server.Engine
         // payload, which clears it.
         public int RenownedRebirths;
 
-        // Task 114: PlayerRecords.PeakLevel, the best level an earlier life
-        // reached - below it kills pay RebirthRules.ReLevelXpBonusPct more XP.
+        // Task 114: PlayerRecords.PeakLevel, the level the previous life ended
+        // at - below it kills pay RebirthRules.ReLevelXpBonusPct more XP.
         // Hydrated like RenownedRebirths; only RebirthEngine writes the column.
         public int PeakLevel;
         public bool RebirthPending;

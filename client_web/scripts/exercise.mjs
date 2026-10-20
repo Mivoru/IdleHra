@@ -274,9 +274,31 @@ async function eventIntroStep() {
   }
 }
 
+// The big-chest prompt: the fixture holds thousands of pieces, so it MUST
+// offer to clear some, count what the chosen regions x rarity would take, and
+// close on "Keep everything" without selling (the fixture's chest is the
+// later steps' stock).
+async function bigChestPromptStep() {
+  const summary = await apiGet('/api/v1/chest/summary');
+  if (!summary || summary.Total < 3000) return;
+  const keep = page.getByTestId('big-chest-close');
+  const shown = await keep.waitFor({ timeout: 6000 }).then(() => true).catch(() => false);
+  const effect = shown ? await page.getByTestId('big-chest-effect').innerText().catch(() => '') : '';
+  record('a very full chest offers to clear regions x rarity, with the count and the MB',
+    shown && /sells \d/.test(effect) && /MB/.test(effect),
+    shown ? effect.replace(/\s+/g, ' ').slice(0, 90) : `not shown (${summary.Total} pieces)`);
+  if (shown) {
+    await keep.click();
+    await page.waitForTimeout(400);
+    const after = await apiGet('/api/v1/chest/summary');
+    record('"Keep everything" sells nothing', after?.Total === summary.Total, `${summary.Total} -> ${after?.Total}`);
+  }
+}
+
 {
   const shown = await dismissOfflineSummary();
   await eventIntroStep();
+  await bigChestPromptStep();
   const stillBlocked = await page.locator('.backdrop, .modal-scrim').count();
   record('offline summary can be dismissed', stillBlocked === 0, shown ? 'was shown' : 'not shown');
 }
