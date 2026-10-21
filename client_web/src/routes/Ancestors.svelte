@@ -287,8 +287,9 @@
              forever until it is fielded. -->
         <p class="dim tiny">
           <strong>Fielding</strong> (tap a row) is also how a bred child grows up:
-          only the played slots age, so a child on the bench stays a child. Give a
-          fielded one about an hour of play to reach Adult and it can be a parent
+          only a played slot that is working ages, so a child on the bench or idle
+          in a slot stays a child. Give a fielded one an hour of work (offline
+          counts) to reach Adult and it can be a parent
           itself &mdash; that is the only gate. How many slots you may use is set
           by the Town Hall.
         </p>

@@ -640,12 +640,13 @@
 
           <h3 id="ageing">Ageing</h3>
           <p class="dim small">
-            A character in one of your played slots ages as it ticks:
-            {AGE_PHASES.join(' → ')}. Roughly an hour of ticked play makes a Child
-            an Adult. <strong>A character not in a played slot does not age at
-            all</strong>, which is the single most surprising rule in the game —
-            a newborn stays a Child forever until you field it from the Hall of
-            Ancestors.
+            A character in one of your played slots ages while that slot is
+            working — fighting, gathering or crafting — online and offline alike:
+            {AGE_PHASES.join(' → ')}. An hour of work makes a Child an Adult.
+            <strong>A character that is idle, or not in a played slot, does not
+            age at all</strong>, which is the single most surprising rule in the
+            game — a newborn stays a Child until you field it from the Hall of
+            Ancestors and give it a job.
           </p>
 
         <!-- ================================================== SKILLS -->
@@ -1142,7 +1143,7 @@
           <h3 id="requirements">What you need</h3>
           <ul class="styled-list">
             <li>A <strong>Breeding Grounds</strong> at level 1 or better. That is the unlock.</li>
-            <li>A hero who is an <strong>Adult</strong> — a child matures an hour after you field it.</li>
+            <li>A hero who is an <strong>Adult</strong> — a child matures after an hour of work in a slot, online or offline.</li>
             <li>One of each sex, and both of the <strong>same race</strong>.</li>
             <li><strong>500 gold × (highest parent generation + 1)</strong>. A founder costs 500; a generation-3 parent costs 2,000.</li>
             <li>No breeding cooldown, and not locked in a market trade.</li>
