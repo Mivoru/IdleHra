@@ -134,7 +134,7 @@
   <strong>A child</strong>, one of the two sexes at random, generation
   {generation === null ? '+1' : generation + 1}, at the end of your roster.
   It does not grow up on the bench: <strong>field it</strong> in the Hall of
-  Ancestors and give it about an hour of play to reach Adult, which is all it
+  Ancestors and give it an hour of work there, offline counts too, to reach Adult, which is all it
   needs before it can be a parent itself.
 </p>
 <p class="dim tiny arrival">

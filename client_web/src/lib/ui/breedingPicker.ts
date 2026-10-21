@@ -55,7 +55,7 @@ function restingReason(cooldownEndEpoch: number, nowSeconds: number): string | n
 
 /** Why a character cannot be the hero of a pairing, or null. */
 export function heroBlockedReason(candidate: BreedingCandidate, nowSeconds: number): string | null {
-  if (candidate.AgePhase < 1) return 'still a child - field it in the Hall to grow up';
+  if (candidate.AgePhase < 1) return 'still a child - field it and give it work to grow up';
   return restingReason(candidate.BreedingCooldownEndEpoch, nowSeconds);
 }
 

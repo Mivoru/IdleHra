@@ -74,7 +74,7 @@ export const COMMAND_RESULT_MESSAGES: Record<number, string> = {
   // rollbacks and not one command result between them, so every refusal left
   // the button enabled and the screen blank.
   26: 'Build the Breeding Grounds in your village first.',
-  27: 'A parent has to be a grown adult. A child matures an hour after you field it.',
+  27: 'A parent has to be a grown adult. A child matures after an hour of work in a slot.',
   28: 'That character is still resting after its last child.',
   29: 'That character is locked in a trade.',
   30: 'A pair needs one of each - two men or two women cannot breed.',

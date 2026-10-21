@@ -3542,9 +3542,16 @@ namespace FolkIdle.Server.Domain.Combat
             payload.IsDirty = true;
         }
 
-        private static bool ProcessAgeSlot(ref System.Guid characterId, ref long ageTicks, ref int agePhase)
+        // Modul: A SLOT AGES ON ITS OWN WORK, NOT ON THE ACCOUNT'S (owner
+        // decision 2026-10-21). This used to age all three slots whenever ANY
+        // slot was working, so a child parked idle in slot 3 grew up on slot
+        // 1's fight - and offline only slot 1 aged at all, so the same child
+        // stayed a child for every hour the player was away. Now a character
+        // ages exactly while its own slot has an activity, online and offline
+        // alike (OfflineSimulationEngine applies the same rule per slot).
+        private static bool ProcessAgeSlot(ref System.Guid characterId, ref long ageTicks, ref int agePhase, bool slotIsWorking)
         {
-            if (characterId == System.Guid.Empty) return false;
+            if (characterId == System.Guid.Empty || !slotIsWorking) return false;
             
             ageTicks++;
             // Modul: the thresholds live in AgePhaseCurve now. They used to be
@@ -3676,9 +3683,15 @@ namespace FolkIdle.Server.Domain.Combat
             payload.IsDirty = true;
 
             bool stateFlashed = false;
-            stateFlashed |= ProcessAgeSlot(ref payload.Slot1_CharacterId, ref payload.Slot1_AgeTicks, ref payload.Slot1_AgePhase);
-            stateFlashed |= ProcessAgeSlot(ref payload.Slot2_CharacterId, ref payload.Slot2_AgeTicks, ref payload.Slot2_AgePhase);
-            stateFlashed |= ProcessAgeSlot(ref payload.Slot3_CharacterId, ref payload.Slot3_AgeTicks, ref payload.Slot3_AgePhase);
+            // Runs before ProcessAllSlotSubTicks swaps any register, so
+            // ActiveActivityId is slot 1's own and Slot2/3Activity are theirs.
+            int unlockedSlots = CharacterSlotEngine.GetUnlockedSlotCount(payload.TownHallLevel);
+            stateFlashed |= ProcessAgeSlot(ref payload.Slot1_CharacterId, ref payload.Slot1_AgeTicks, ref payload.Slot1_AgePhase,
+                payload.ActiveActivityId > 0);
+            stateFlashed |= ProcessAgeSlot(ref payload.Slot2_CharacterId, ref payload.Slot2_AgeTicks, ref payload.Slot2_AgePhase,
+                unlockedSlots > 1 && payload.Slot2Activity.ActiveActivityId > 0);
+            stateFlashed |= ProcessAgeSlot(ref payload.Slot3_CharacterId, ref payload.Slot3_AgeTicks, ref payload.Slot3_AgePhase,
+                unlockedSlots > 2 && payload.Slot3Activity.ActiveActivityId > 0);
             if (stateFlashed)
             {
                 payload.IsDirty = true; // Flashes state to client implicitly via network loop

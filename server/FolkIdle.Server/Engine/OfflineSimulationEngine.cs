@@ -155,21 +155,36 @@ namespace FolkIdle.Server.Engine
             // Everything below runs on the honest elapsedSeconds.
             long earningSeconds = elapsedSeconds;
 
-            // Modul: active (Slot1) character aging for the offline period, at
-            // the live tick's 10-AgeTicks-per-real-second rate (the tick adds 1
-            // on every 10 Hz pass). Gated on ActiveActivityId > 0, matching
-            // ProcessSubTick's own early-return when no activity was active.
-            // Computed as O(1) math rather than a per-tick loop since aging is
-            // a pure threshold check on accumulated ticks.
+            // Modul: character aging for the offline period, at the live tick's
+            // 10-AgeTicks-per-real-second rate (the tick adds 1 on every 10 Hz
+            // pass). Computed as O(1) math rather than a per-tick loop since
+            // aging is a pure threshold check on accumulated ticks.
+            //
+            // EVERY SLOT, each gated on its OWN activity - the same rule as
+            // SimulationEngine.ProcessAgeSlot (owner decision 2026-10-21). This
+            // used to age slot 1 only, so a child working in slot 2 or 3 grew
+            // up online and stood still for every hour the player was away.
             //
             // The thresholds themselves used to be repeated here as literals,
             // under a comment claiming they mirrored ProcessAgeSlot's exactly.
             // They are AgePhaseCurve's now, so the claim is structural instead
             // of aspirational.
+            int agingUnlockedSlots = CharacterSlotEngine.GetUnlockedSlotCount(payload.TownHallLevel);
+            long offlineAgeTicks = elapsedSeconds * 10L;
             if (payload.ActiveActivityId > 0 && payload.Slot1_CharacterId != Guid.Empty)
             {
-                payload.Slot1_AgeTicks += elapsedSeconds * 10L;
+                payload.Slot1_AgeTicks += offlineAgeTicks;
                 payload.Slot1_AgePhase = AgePhaseCurve.PhaseFor(payload.Slot1_AgeTicks);
+            }
+            if (agingUnlockedSlots > 1 && payload.Slot2Activity.ActiveActivityId > 0 && payload.Slot2_CharacterId != Guid.Empty)
+            {
+                payload.Slot2_AgeTicks += offlineAgeTicks;
+                payload.Slot2_AgePhase = AgePhaseCurve.PhaseFor(payload.Slot2_AgeTicks);
+            }
+            if (agingUnlockedSlots > 2 && payload.Slot3Activity.ActiveActivityId > 0 && payload.Slot3_CharacterId != Guid.Empty)
+            {
+                payload.Slot3_AgeTicks += offlineAgeTicks;
+                payload.Slot3_AgePhase = AgePhaseCurve.PhaseFor(payload.Slot3_AgeTicks);
             }
 
             payload.OfflineMaterialsLostToFullWarehouse = await GrantVillagePassiveProductionAsync(db, payload.PlayerId, payload.LumberjackLevel, payload.MineLevel, payload.WarehouseLevel, payload.TownHallLevel, earningSeconds, ScholarRate.BonusPermille(payload.Skill_Scholar));

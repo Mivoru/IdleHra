@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.28.1',
+    date: '2026-10-21',
+    headline: 'Children grow up while they work, even when you are away.',
+    sections: [
+      {
+        title: 'Families',
+        items: [
+          'A character ages only while their own slot is working - fighting, gathering or crafting. Someone standing idle in a slot no longer grows older because another slot is busy.',
+          'Characters in slots 2 and 3 now age while you are offline too, not only the first slot. A child given a job grows up in an hour, online or offline.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.28.0',
     date: '2026-10-20',
     headline: 'Gear stays with its slot, and a fairer rebirth.',

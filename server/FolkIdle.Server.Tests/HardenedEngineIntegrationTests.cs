@@ -11462,6 +11462,70 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(singleSlot.TicksSinceLastFlush, threeSlots.TicksSinceLastFlush);
         }
 
+        // Modul: a slot ages on its OWN work (owner decision 2026-10-21). All
+        // three slots used to age whenever any one of them worked, so an idle
+        // child grew up on someone else's fight - and offline only slot 1 aged,
+        // so a working child in slot 2 or 3 stood still while the player was
+        // away. Online and offline must agree, slot by slot.
+        private static TickStatePayload AgePerSlotPayload(long playerId)
+        {
+            var payload = new TickStatePayload
+            {
+                PlayerId = playerId,
+                InventorySpaceRemaining = 20,
+                InventoryCapacity = 20,
+                CurrentLevel = 10,
+                STR = 50, DEX = 50, CON = 50, LCK = 25,
+                TownHallLevel = CharacterSlotEngine.Slot3TownHallRequirement,
+                ActiveActivityId = 1001L,
+                PlayerHp = 100000
+            };
+            // Slot 2: an IDLE child. Slot 3: a WORKING child.
+            payload.Slot1_CharacterId = Guid.NewGuid();
+            payload.Slot1_AgeTicks = AgePhaseCurve.ChildEndTicks;
+            payload.Slot1_AgePhase = AgePhaseCurve.Adult;
+            payload.Slot2_CharacterId = Guid.NewGuid();
+            payload.Slot2_AgePhase = AgePhaseCurve.Child;
+            payload.Slot3_CharacterId = Guid.NewGuid();
+            payload.Slot3_AgePhase = AgePhaseCurve.Child;
+            payload.Slot3Activity.ActiveActivityId = 2001L;
+            payload.Slot3Activity.PlayerHp = 100000;
+            return payload;
+        }
+
+        [Fact]
+        public void Test_Aging_LiveTickAgesOnlyTheSlotsThatAreWorking()
+        {
+            const int ticks = 20;
+            var payload = AgePerSlotPayload(970004410L);
+
+            RunSlotTicks(ref payload, ticks);
+
+            Assert.Equal(AgePhaseCurve.ChildEndTicks + ticks, payload.Slot1_AgeTicks);
+            Assert.Equal(0L, payload.Slot2_AgeTicks);
+            Assert.Equal((long)ticks, payload.Slot3_AgeTicks);
+        }
+
+        [Fact]
+        public async Task Test_Aging_OfflineCatchUpAgesEveryWorkingSlotNotJustSlotOne()
+        {
+            const long elapsedOfflineSeconds = 3600L; // one hour: a child's whole childhood
+            long now = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            var payload = AgePerSlotPayload(970004411L);
+            payload.LastLogoutTimestamp = now - elapsedOfflineSeconds;
+
+            await using (var db = await _fixture.DbContextFactory.CreateDbContextAsync())
+            {
+                payload = await OfflineSimulationEngine.ExtrapolateOfflineProgressAsync(db, payload, now);
+            }
+
+            Assert.Equal(AgePhaseCurve.ChildEndTicks + elapsedOfflineSeconds * 10L, payload.Slot1_AgeTicks);
+            Assert.Equal(0L, payload.Slot2_AgeTicks);
+            Assert.Equal(AgePhaseCurve.Child, payload.Slot2_AgePhase);
+            Assert.Equal(elapsedOfflineSeconds * 10L, payload.Slot3_AgeTicks);
+            Assert.Equal(AgePhaseCurve.Adult, payload.Slot3_AgePhase);
+        }
+
         // Reflection is used deliberately: ProcessAllSlotSubTicks is private
         // static, and driving it directly is the only way to assert on the tick
         // arithmetic without standing up a socket, a database session and a

@@ -233,7 +233,7 @@
   function refusal(code: string): string {
     switch (code) {
       case 'parent_not_adult':
-        return 'A parent has to be a grown adult. A child matures an hour after you field it.';
+        return 'A parent has to be a grown adult. A child matures after an hour of work in a slot.';
       case 'parent_locked_in_escrow':
         return 'That character is locked in a trade.';
       case 'parent_on_cooldown':

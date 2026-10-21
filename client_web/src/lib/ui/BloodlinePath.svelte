@@ -54,7 +54,7 @@
           {:else if growing.length > 0}
             {growing.length} growing up in play
           {:else}
-            Field a child; it is grown in an hour
+            Field a child and give it work; it is grown in an hour
           {/if}
         </span>
       </div>
