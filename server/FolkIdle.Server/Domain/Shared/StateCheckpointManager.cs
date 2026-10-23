@@ -552,6 +552,42 @@ namespace FolkIdle.Server.Domain.Shared
                       LIMIT 1 OFFSET {rank})");
         }
 
+        // Modul: A CHILD NEVER GREW UP BECAUSE AGE WAS NEVER CHECKPOINTED
+        // (2026-10-23). The tick ages a working slot on the payload, but the
+        // only writer of characters.AgeTicks was FlushBatch - the SHUTDOWN
+        // flush, which runs once per deploy. FlushState never wrote it, and
+        // every login and every mid-session ReloadState (market, crafting,
+        // a slot change) rebuilds the payload from that row. So a child fielded
+        // for an hour lost its hour at the next reload or relogin and only kept
+        // whatever happened to be on the payload when a deploy stopped the
+        // server: live, children sat at 2515 or 4859 ticks of the 36000 they
+        // need, on accounts that had been working them for days.
+        //
+        // Written by id, not through PersistFieldedActivityAsync's rank guard:
+        // age belongs to the character, whichever slot it is in now, so a stale
+        // payload naming a benched character still describes that character's
+        // age correctly. FORWARD ONLY, because a stale snapshot is older than
+        // the row by definition and must never take time back off it.
+        private static async Task PersistFieldedAgesAsync(FolkIdleDbContext dbContext, TickStatePayload state)
+        {
+            await PersistFieldedAgeAsync(dbContext, state.PlayerId, state.Slot1_CharacterId, state.Slot1_AgeTicks, state.Slot1_AgePhase);
+            await PersistFieldedAgeAsync(dbContext, state.PlayerId, state.Slot2_CharacterId, state.Slot2_AgeTicks, state.Slot2_AgePhase);
+            await PersistFieldedAgeAsync(dbContext, state.PlayerId, state.Slot3_CharacterId, state.Slot3_AgeTicks, state.Slot3_AgePhase);
+        }
+
+        private static async Task PersistFieldedAgeAsync(FolkIdleDbContext dbContext, long playerId, System.Guid characterId, long ageTicks, int agePhase)
+        {
+            if (characterId == System.Guid.Empty)
+            {
+                return;
+            }
+
+            await dbContext.Database.ExecuteSqlInterpolatedAsync($@"
+                UPDATE ""characters"" SET ""AgeTicks"" = {ageTicks}, ""AgePhase"" = {agePhase}
+                WHERE ""Id"" = {characterId} AND ""PlayerId"" = {playerId}
+                  AND ""AgeTicks"" < {ageTicks}");
+        }
+
         public async Task<bool> FlushState(TickStatePayload state)
         {
             var retryingOptions = _serviceProvider.GetRequiredService<RetryingDbContextOptions>();
@@ -721,6 +757,7 @@ namespace FolkIdle.Server.Domain.Shared
                         await UpsertLifetimeAchievementsAsync(dbContext, player, state);
                         await QuestEngine.UpsertDailyQuestProgressAsync(dbContext, state);
                         await PersistFieldedActivitiesAsync(dbContext, state);
+                        await PersistFieldedAgesAsync(dbContext, state);
                     }
                     else
                     {
