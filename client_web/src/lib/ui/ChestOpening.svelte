@@ -126,7 +126,34 @@
   const shakeSrc = $derived(chestClip('shake')[flavour === 'mp4' ? 'mp4' : 'webm']);
   // Mounted as soon as the result is known, so it buffers during the last
   // shake and starts with no gap when that shake ends.
-  const openSrc = $derived(opened ? chestClip(opened.Rarity as 1 | 2 | 3 | 4)[flavour === 'mp4' ? 'mp4' : 'webm'] : null);
+  function clipFor(rarity: number): string {
+    return chestClip(rarity as 1 | 2 | 3 | 4)[flavour === 'mp4' ? 'mp4' : 'webm'];
+  }
+  // The burst that PLAYS is always the first piece's; Next never reloads it.
+  const openSrc = $derived(results.length > 0 ? clipFor(results[0].Rarity) : null);
+
+  // Modul: NEXT MUST NOT RELOAD A VIDEO (owner, 2026-10-28: a grey video
+  // icon flashed on every Next). Swapping the one clip's src made the browser
+  // drop the frame and fetch again. Instead each rarity in the batch gets its
+  // own clip, preloaded as soon as its result arrives and parked on its last
+  // frame; Next only changes which one is visible. Until a clip has finished
+  // seeking, the last one shown stays up, so there is never an empty frame.
+  const heldRarities = $derived([...new Set(results.map((r) => r.Rarity))]);
+  let heldReady = $state<number[]>([]);
+  let shownHeld = $state(0);
+  $effect(() => {
+    const want = opened?.Rarity ?? 0;
+    if (holdingEnd && want > 0 && heldReady.includes(want)) shownHeld = want;
+  });
+
+  function parkOnLastFrame(event: Event): void {
+    const video = event.currentTarget as HTMLVideoElement;
+    if (Number.isFinite(video.duration)) video.currentTime = Math.max(0, video.duration - 0.05);
+  }
+
+  function markHeld(rarity: number): void {
+    if (!heldReady.includes(rarity)) heldReady = [...heldReady, rarity];
+  }
   const word = $derived(tapWord(coarse));
   const chestName = $derived(rarityNames[chestRarity] ?? 'Common');
   const resultClass = $derived(opened ? rarityClass(opened.Rarity) : '');
@@ -190,14 +217,6 @@
     play('lootRare', 1 + ((results[cursor]?.Rarity ?? 1) - 1) * 0.08);
   }
 
-  // The clip's src follows the piece on show; once it has loaded, jump to its
-  // last frame rather than playing the burst again.
-  function holdLastFrame(): void {
-    if (!holdingEnd || !openEl || !Number.isFinite(openEl.duration)) return;
-    openEl.pause();
-    openEl.currentTime = Math.max(0, openEl.duration - 0.05);
-  }
-
   function onShakeEnded(): void {
     if (chest.phase !== 'final-shake' || finalShakeDone) return;
     finalShakeDone = true;
@@ -234,6 +253,8 @@
     results = [];
     cursor = 0;
     holdingEnd = false;
+    heldReady = [];
+    shownHeld = 0;
     finalShakeDone = false;
     openClipPlaying = false;
     wornIds = [];
@@ -331,17 +352,31 @@
           <video
             class="clip open"
             class:blend={flavour === 'mp4'}
-            class:showing={openClipPlaying}
+            class:showing={openClipPlaying && shownHeld === 0}
             bind:this={openEl}
             src={openSrc}
             preload="auto"
             muted
             playsinline
             onplaying={() => (openClipPlaying = true)}
-            onloadedmetadata={holdLastFrame}
             onended={reveal}
             onerror={reveal}
           ></video>
+        {/if}
+        {#if size > 1}
+          {#each heldRarities as rarity (rarity)}
+            <video
+              class="clip open"
+              class:blend={flavour === 'mp4'}
+              class:showing={holdingEnd && shownHeld === rarity}
+              src={clipFor(rarity)}
+              preload="auto"
+              muted
+              playsinline
+              onloadedmetadata={parkOnLastFrame}
+              onseeked={() => markHeld(rarity)}
+            ></video>
+          {/each}
         {/if}
       {/if}
     </div>
@@ -393,10 +428,10 @@
           {:else if remaining > 0 && size > 1}
             <!-- Owner, 2026-10-28: a batch ends on another batch, not on one. -->
             <button onclick={() => again(Math.min(5, remaining))} data-testid="chest-again-batch">
-              Open another {Math.min(5, remaining)} ({remaining})
+              Open {Math.min(5, remaining)} more ({remaining})
             </button>
           {:else if remaining > 0}
-            <button onclick={() => again(1)} data-testid="chest-again">Open another ({remaining})</button>
+            <button onclick={() => again(1)} data-testid="chest-again">Another ({remaining})</button>
           {/if}
           <button onclick={onClose}>Close</button>
         </div>
@@ -668,8 +703,8 @@
     width: min(26rem, calc(100vw - 32px));
     display: grid;
     justify-items: center;
-    gap: 6px;
-    padding: 18px 16px 16px;
+    gap: 5px;
+    padding: 14px 12px 12px;
     border: 2px solid var(--c, #8a7a60);
     border-radius: 16px;
     background: linear-gradient(to bottom, color-mix(in srgb, var(--c, #8a7a60) 30%, #1a140e), #120e0a 70%);
@@ -715,18 +750,26 @@
     color: rgba(255, 255, 255, 0.75);
   }
 
+  /* Owner, 2026-10-28: one row, not a stack - the buttons wrapped to two
+     lines and made the card tall. Narrower padding and a smaller label so
+     Wear, Next / Open 5 more and Close sit side by side on a 360px phone;
+     44px stays the height (the touch floor). */
   .actions {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     justify-content: center;
-    gap: 8px;
-    margin-top: 8px;
+    gap: 6px;
+    margin-top: 6px;
+    max-width: 100%;
   }
 
   .actions button {
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
     min-height: 44px;
-    padding: 0 16px;
+    padding: 0 11px;
+    font-size: 0.85rem;
+    white-space: nowrap;
     border-radius: 10px;
     border: 1px solid rgb(255 255 255 / 0.25);
     background: rgb(255 255 255 / 0.08);
