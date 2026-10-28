@@ -43,6 +43,7 @@ export const RELEASE_NOTES: readonly Release[] = [
         items: [
           'Opening five chests: Next now switches the glowing chest behind the card instantly, with no flicker.',
           'The chest buttons sit side by side in one row, so the card is smaller.',
+          'In the Wardrobe, Open and Open ×5 sit side by side.',
           'The rare drop card is easier to read - no more glow behind the item name; the card itself wears the rarity colour.',
         ],
       },
