@@ -4846,6 +4846,10 @@ namespace FolkIdle.Server.Domain.Combat
                     // one. Cleared on every swing rather than only set, or a
                     // single crit would paint every later hit yellow.
                     payload.LastHitWasCrit = 0;
+                    // Modul: told apart on the feed (FlagDoubleStrike) so the
+                    // client can say DOUBLE CRIT. A local, not a payload field:
+                    // nothing outside this swing's own event needs it.
+                    bool doubleStrikeLanded = false;
 
                     if (Random.Shared.NextDouble() <= (treeCritChance / 100.0f))
                     {
@@ -4866,6 +4870,7 @@ namespace FolkIdle.Server.Domain.Combat
                                        SkillTreeRegistry.CrownDoubleStrike, payload.Skill_DoubleStrike) / 100.0f))
                         {
                             critMult *= 2f;
+                            doubleStrikeLanded = true;
                         }
                     }
 
@@ -5023,6 +5028,7 @@ namespace FolkIdle.Server.Domain.Combat
                         (int)((netDamage + burnDamageDealt) / 1000L),
                         (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
                         (byte)((payload.LastHitWasCrit == 1 ? Network.ResponseCombatEventPacket.FlagCrit : 0)
+                             | (doubleStrikeLanded ? Network.ResponseCombatEventPacket.FlagDoubleStrike : 0)
                              | (burnDamageDealt > 0 ? Network.ResponseCombatEventPacket.FlagBurn : 0)));
 
                     // Separate line, because it is health arriving rather than

@@ -59,6 +59,11 @@ namespace FolkIdle.Server.Network
         public const byte FlagBurn = 1 << 2;
         /// <summary>Damage reflected back by Eternal Dreadnought thorns.</summary>
         public const byte FlagThorns = 1 << 3;
+        /// <summary>
+        /// The Precision crown's Double Strike doubled this crit. Only ever set
+        /// together with FlagCrit.
+        /// </summary>
+        public const byte FlagDoubleStrike = 1 << 4;
 
         public long PlayerId;
 

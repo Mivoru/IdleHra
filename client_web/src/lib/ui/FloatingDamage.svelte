@@ -45,67 +45,119 @@
     <span
       class="hit"
       class:crit={event.isCrit}
+      class:double={event.isDoubleCrit}
       data-size={magnitude(event.amount)}
-      style="left: {8 + event.offset * 78}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms; animation-delay: -{age(event.atMs)}ms"
+      style="left: {14 + event.offset * 62}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms; animation-delay: -{age(event.atMs)}ms"
     >
-      -{formatNumber(event.amount)}
+      <span class="num">-{formatNumber(event.amount)}</span>
+      {#if event.isDoubleCrit}
+        <span class="tag">DOUBLE CRIT!!</span>
+      {:else if event.isCrit}
+        <span class="tag">CRIT!</span>
+      {/if}
     </span>
   {/each}
 </div>
 
 <style>
+  /* Modul: THE NUMBERS LIVE OVER THE SCENE (owner, 2026-10-28). They rose in a
+     2.25rem strip above a thumbnail; the fight is a full-width scene now, so
+     the layer is the scene's own box and a number rises from the monster's
+     middle. Pinned by the parent (.floatwrap), never in flow. */
   .layer {
-    position: relative;
-    height: 2.25rem;
+    position: absolute;
+    inset: 0;
     overflow: hidden;
     pointer-events: none;
   }
 
+  /* Modul: A BLACK OUTLINE, THEN THE GLOW. Over a painted background a plain
+     coloured number vanished into whatever the scene was behind it. The
+     stroke is painted UNDER the fill (paint-order) so it outlines the glyph
+     without eating into it, and the glow sits outside both. */
   .hit {
     position: absolute;
-    bottom: 0;
-    font-weight: 700;
+    top: 46%;
+    translate: -50% 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-weight: 900;
+    font-size: 1.45rem;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
-    color: var(--danger);
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
-    animation: float-up var(--life) ease-out forwards;
+    color: #ff4a3a;
+    -webkit-text-stroke: 4px #000;
+    paint-order: stroke fill;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+    animation: float-up var(--life) cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
     white-space: nowrap;
   }
 
-  /* Yellow, and a little louder. The hue is the whole signal here - a player
-     glancing at the bar should be able to tell a crit landed without reading
-     the number. */
+  .tag {
+    margin-top: 0.1rem;
+    font-size: 0.62em;
+    letter-spacing: 0.06em;
+    -webkit-text-stroke: 3px #000;
+  }
+
+  /* Yellow, louder and glowing. The hue is the whole signal here - a player
+     glancing at the scene should be able to tell a crit landed without
+     reading the number. */
   .hit.crit {
+    font-size: 1.85rem;
     color: #ffd65c;
     text-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.9),
-      0 0 10px rgba(255, 214, 92, 0.75);
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 12px rgba(255, 200, 60, 0.9);
+  }
+
+  /* Double Strike: hotter still, orange-white with a wider glow. */
+  .hit.double {
+    font-size: 2.15rem;
+    color: #fff0b0;
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(255, 150, 40, 1),
+      0 0 22px rgba(255, 90, 20, 0.85);
+  }
+
+  .hit.double .tag {
+    color: #ff9a3c;
   }
 
   /* Size carries the difference as well as hue, so the distinction survives
-     for someone who cannot separate orange from red. */
-  .hit[data-size='big'] {
+     for someone who cannot separate orange from red. It scales a non-crit
+     only: a crit is already the loudest thing on screen. */
+  .hit:not(.crit)[data-size='big'] {
     color: var(--rarity-11);
-    font-size: 1.15em;
+    font-size: 1.65rem;
   }
 
-  .hit[data-size='huge'] {
+  .hit:not(.crit)[data-size='huge'] {
     color: var(--gold);
-    font-size: 1.35em;
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85), 0 0 10px currentColor;
+    font-size: 1.85rem;
   }
 
+  /* A pop, a long readable hold, then a rise and fade. */
   @keyframes float-up {
-    from {
-      transform: translateY(0.4rem) scale(0.85);
+    0% {
+      transform: translateY(0.6rem) scale(0.6);
       opacity: 0;
     }
-    18% {
-      transform: translateY(0) scale(1.12);
+    10% {
+      transform: translateY(0) scale(1.18);
       opacity: 1;
     }
-    to {
-      transform: translateY(-1.6rem) scale(1);
+    18% {
+      transform: translateY(-0.2rem) scale(1);
+      opacity: 1;
+    }
+    70% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(-3.2rem) scale(0.95);
       opacity: 0;
     }
   }
@@ -115,9 +167,6 @@
     .hit {
       animation: none;
       opacity: 0.9;
-    }
-    .hit[data-size='huge'] {
-      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
     }
   }
 </style>

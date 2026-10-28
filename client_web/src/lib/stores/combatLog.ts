@@ -46,6 +46,7 @@ export const CombatEventFlag = {
   Blocked: 2,
   Burn: 4,
   Thorns: 8,
+  DoubleStrike: 16,
 } as const;
 
 export interface CombatLogLine {

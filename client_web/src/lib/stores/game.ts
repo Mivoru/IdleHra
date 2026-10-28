@@ -482,6 +482,7 @@ export interface HitSpark {
   id: number;
   weaponKind: number;
   isCrit: boolean;
+  isDoubleCrit: boolean;
 }
 
 export const hitSparks = writable<HitSpark | null>(null);
@@ -1135,6 +1136,7 @@ export function startSession(token: string): void {
         // the DOM, so they piled up, and every return to Combat remounted the
         // pile and replayed it as one stack of overlapping text and a stutter.
         performance.timeOrigin + performance.now(),
+        (Number(packet.Flags) & CombatEventFlag.DoubleStrike) !== 0,
       );
       if (hit === null) return;
 
@@ -1148,7 +1150,7 @@ export function startSession(token: string): void {
       // happens every 1.5 seconds for hours had no feedback at all. The clip
       // is chosen by weapon family, so a wand does not sound like a sword.
       playHit(hit.weaponKind, hit.isCrit);
-      hitSparks.set({ id: hit.id, weaponKind: hit.weaponKind, isCrit: hit.isCrit });
+      hitSparks.set({ id: hit.id, weaponKind: hit.weaponKind, isCrit: hit.isCrit, isDoubleCrit: hit.isDoubleCrit });
     },
 
     onLootDrop: (packet: ResponseLootDrop) => acceptLootDrop(packet),
