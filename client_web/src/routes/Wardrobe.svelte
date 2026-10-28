@@ -55,6 +55,8 @@
   // The chest being opened on the full-screen stage (ChestOpening.svelte),
   // or 0. The stage sends the open itself, on the third tap.
   let openingRarity = $state(0);
+  /** How many the stage opens in one go: 1, or up to 5 from "Open ×5". */
+  let openingBatch = $state(1);
 
   const ownedIds = $derived(new Set((view?.Owned ?? []).filter((o) => !o.IsListed && o.Kind !== COSMETIC_KIND.Chest).map((o) => o.DefinitionId)));
   const copies = $derived.by(() => {
@@ -85,9 +87,10 @@
     message = next.Result && next.Result !== 'Ok' ? COSMETIC_RESULT_SENTENCES[next.Result] : '';
   }
 
-  function open(rarity: number): void {
+  function open(rarity: number, batch = 1): void {
     if (busy) return;
     message = '';
+    openingBatch = batch;
     openingRarity = rarity;
   }
 
@@ -193,6 +196,11 @@
             <span class="chest-odds" data-testid="chest-odds-{rarity}">{oddsLine(catalogue.ChestContentPermille[rarity], rarityNames)}</span>
           {/if}
           <button disabled={busy || count === 0} onclick={() => open(rarity)} data-testid="open-chest-{rarity}">Open</button>
+          {#if count >= 2}
+            <button class="open-five" disabled={busy} onclick={() => open(rarity, Math.min(5, count))} data-testid="open-five-{rarity}">
+              Open ×{Math.min(5, count)}
+            </button>
+          {/if}
         </div>
       {/each}
     </div>
@@ -209,6 +217,7 @@
         raceId={selfWorn?.RaceId ?? 0}
         female={selfWorn?.IsFemale ?? false}
         open={sendOpen}
+        batch={openingBatch}
         onWear={(o) => wear(o.Kind, o.DefinitionId)}
         onClose={() => (openingRarity = 0)}
       />

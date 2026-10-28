@@ -51,11 +51,17 @@
     female: boolean;
     /** Sends the open; null when the server refused (the parent says why). */
     open: () => Promise<OpenedCosmetic | null>;
+    /**
+     * How many chests this stage opens (owner, 2026-10-28: "open five").
+     * The first goes through the whole tap-and-burst; the rest are opened
+     * behind it, one request each, and stepped through with Next.
+     */
+    batch?: number;
     onWear: (opened: OpenedCosmetic) => void;
     onClose: () => void;
   }
 
-  let { chestRarity, remaining, rarityNames, odds, equippedAvatarId, equippedFrameId, raceId, female, open, onWear, onClose }: Props = $props();
+  let { chestRarity, remaining, rarityNames, odds, equippedAvatarId, equippedFrameId, raceId, female, open, batch = 1, onWear, onClose }: Props = $props();
 
   let stage = $state<HTMLElement | null>(null);
   let inner = $state<HTMLElement | null>(null);
@@ -63,10 +69,26 @@
   let openEl = $state<HTMLVideoElement | null>(null);
 
   let chest = $state<ChestOpeningState>(initialChestState());
-  let opened = $state<OpenedCosmetic | null>(null);
+  // Modul: A BATCH IS A LIST OF RESULTS AND A CURSOR. `opened` stays the one
+  // piece on show, so the reveal, Wear and the burst need no second code
+  // path; Next moves the cursor. The server opens one chest per request and
+  // counts them itself, so a batch is simply N requests in a row - stopping
+  // at the first refusal, which leaves the rest unopened and unspent.
+  let results = $state<OpenedCosmetic[]>([]);
+  let cursor = $state(0);
+  let batchDone = $state(true);
+  // The stage's own size, so "Open another 5" can start a new batch without
+  // the parent remounting it.
+  // svelte-ignore state_referenced_locally
+  let size = $state(batch);
+  let wornIds = $state<string[]>([]);
+  const opened = $derived<OpenedCosmetic | null>(results[cursor] ?? null);
+  // Next has moved the stage off the first piece: the open clip is held on
+  // its last frame (the chest lit in this piece's rarity) instead of playing.
+  let holdingEnd = $state(false);
   let finalShakeDone = $state(false);
   let openClipPlaying = $state(false);
-  let worn = $state(false);
+  const worn = $derived(opened !== null && wornIds.includes(opened.DefinitionId + ':' + cursor));
   let failed = $state('');
   // Restarts the CSS shake on the still (no-video path) for every tap.
   let cssShake = $state(0);
@@ -136,14 +158,44 @@
             chest = { ...chest, phase: 'failed' };
             return;
           }
-          opened = result;
+          results = [result];
+          cursor = 0;
           maybeBurst();
+          if (size > 1) openTheRest(size - 1);
         })
         .catch(() => {
           failed = 'The server did not answer. Nothing was used up - try again.';
           chest = { ...chest, phase: 'failed' };
         });
     }
+  }
+
+  async function openTheRest(count: number): Promise<void> {
+    batchDone = false;
+    try {
+      for (let i = 0; i < count; i++) {
+        const next = await open().catch(() => null);
+        if (!next) break;
+        results = [...results, next];
+      }
+    } finally {
+      batchDone = true;
+    }
+  }
+
+  function showNext(): void {
+    if (cursor >= results.length - 1) return;
+    cursor++;
+    holdingEnd = true;
+    play('lootRare', 1 + ((results[cursor]?.Rarity ?? 1) - 1) * 0.08);
+  }
+
+  // The clip's src follows the piece on show; once it has loaded, jump to its
+  // last frame rather than playing the burst again.
+  function holdLastFrame(): void {
+    if (!holdingEnd || !openEl || !Number.isFinite(openEl.duration)) return;
+    openEl.pause();
+    openEl.currentTime = Math.max(0, openEl.duration - 0.05);
   }
 
   function onShakeEnded(): void {
@@ -174,14 +226,17 @@
     play('lootRare', 1 + (opened.Rarity - 1) * 0.08);
   }
 
-  function again(): void {
+  function again(next = 1): void {
+    size = next;
     timers.forEach(clearTimeout);
     timers.length = 0;
     chest = initialChestState();
-    opened = null;
+    results = [];
+    cursor = 0;
+    holdingEnd = false;
     finalShakeDone = false;
     openClipPlaying = false;
-    worn = false;
+    wornIds = [];
     failed = '';
     flash = false;
     if (shakeEl) shakeEl.currentTime = 0;
@@ -190,7 +245,7 @@
   function wear(): void {
     if (!opened || worn) return;
     onWear(opened);
-    worn = true;
+    wornIds = [...wornIds, opened.DefinitionId + ':' + cursor];
   }
 </script>
 
@@ -283,6 +338,7 @@
             muted
             playsinline
             onplaying={() => (openClipPlaying = true)}
+            onloadedmetadata={holdLastFrame}
             onended={reveal}
             onerror={reveal}
           ></video>
@@ -322,10 +378,25 @@
           {rarityNames[opened.Rarity]} {opened.Kind === COSMETIC_KIND.Avatar ? 'avatar' : 'frame'}
           &middot; from a {chestName} chest
         </span>
+        {#if size > 1}
+          <span class="batch-count" data-testid="chest-batch-count">{cursor + 1} of {batchDone ? results.length : size}</span>
+        {/if}
         <div class="actions">
           <button class="primary" disabled={worn} onclick={wear} data-testid="chest-wear">{worn ? 'Worn' : 'Wear it'}</button>
-          {#if remaining > 0}
-            <button onclick={again} data-testid="chest-again">Open another ({remaining})</button>
+          {#if size > 1 && (cursor < results.length - 1 || !batchDone)}
+            <button
+              class="next"
+              disabled={cursor >= results.length - 1}
+              onclick={showNext}
+              data-testid="chest-next"
+            >{cursor >= results.length - 1 ? 'Opening...' : 'Next'}</button>
+          {:else if remaining > 0 && size > 1}
+            <!-- Owner, 2026-10-28: a batch ends on another batch, not on one. -->
+            <button onclick={() => again(Math.min(5, remaining))} data-testid="chest-again-batch">
+              Open another {Math.min(5, remaining)} ({remaining})
+            </button>
+          {:else if remaining > 0}
+            <button onclick={() => again(1)} data-testid="chest-again">Open another ({remaining})</button>
           {/if}
           <button onclick={onClose}>Close</button>
         </div>
@@ -636,6 +707,12 @@
   .kind {
     font-size: 0.8rem;
     color: rgb(243 236 224 / 0.75);
+  }
+
+  .batch-count {
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.75);
   }
 
   .actions {

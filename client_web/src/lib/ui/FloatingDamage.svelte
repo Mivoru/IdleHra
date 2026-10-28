@@ -47,7 +47,7 @@
       class:crit={event.isCrit}
       class:double={event.isDoubleCrit}
       data-size={magnitude(event.amount)}
-      style="left: {14 + event.offset * 62}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms; animation-delay: -{age(event.atMs)}ms"
+      style="--x: {10 + event.offset * 80}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms; animation-delay: -{age(event.atMs)}ms"
     >
       <span class="num">-{formatNumber(event.amount)}</span>
       {#if event.isDoubleCrit}
@@ -75,15 +75,22 @@
      coloured number vanished into whatever the scene was behind it. The
      stroke is painted UNDER the fill (paint-order) so it outlines the glyph
      without eating into it, and the glow sits outside both. */
+  /* Modul: NEVER PAST THE EDGE (owner, 2026-10-28). The number is centred on
+     a random --x, and a centred box wider than the distance to the edge was
+     cut off - "DOUBLE CRIT!!" most of all. The centre is clamped to half the
+     widest thing it can carry (--half, set per kind below) from each side,
+     plus the 18% the pop scales it by - measured on a 360px phone. */
   .hit {
+    --half: 2.6rem;
     position: absolute;
     top: 46%;
+    left: clamp(var(--half), var(--x), calc(100% - var(--half)));
     translate: -50% 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     font-weight: 900;
-    font-size: 1.45rem;
+    font-size: 1.3rem;
     line-height: 1;
     font-variant-numeric: tabular-nums;
     color: #ff4a3a;
@@ -105,7 +112,8 @@
      glancing at the scene should be able to tell a crit landed without
      reading the number. */
   .hit.crit {
-    font-size: 1.85rem;
+    --half: 3.4rem;
+    font-size: 1.6rem;
     color: #ffd65c;
     text-shadow:
       0 2px 4px rgba(0, 0, 0, 0.8),
@@ -114,7 +122,8 @@
 
   /* Double Strike: hotter still, orange-white with a wider glow. */
   .hit.double {
-    font-size: 2.15rem;
+    --half: 5.6rem;
+    font-size: 1.8rem;
     color: #fff0b0;
     text-shadow:
       0 2px 4px rgba(0, 0, 0, 0.8),
@@ -131,12 +140,13 @@
      only: a crit is already the loudest thing on screen. */
   .hit:not(.crit)[data-size='big'] {
     color: var(--rarity-11);
-    font-size: 1.65rem;
+    font-size: 1.45rem;
   }
 
   .hit:not(.crit)[data-size='huge'] {
+    --half: 3rem;
     color: var(--gold);
-    font-size: 1.85rem;
+    font-size: 1.6rem;
   }
 
   /* A pop, a long readable hold, then a rise and fade. */
