@@ -1,6 +1,7 @@
 <script lang="ts">
   import { QueryClientProvider } from '@tanstack/svelte-query';
   import ChatButton from './lib/ui/ChatButton.svelte';
+  import ChatBubble from './lib/ui/ChatBubble.svelte';
   import { screenRequest, signOutRequest, publishCurrentScreen } from './lib/stores/navigation';
   import TabBar from './lib/ui/TabBar.svelte';
   import { hotkeyTab, MAIN_TABS } from './lib/ui/tabs';
@@ -1083,6 +1084,9 @@
       </div>
       </Modal>
     {/if}
+
+    <!-- Phone only; the header's Chat button serves a desktop. -->
+    <ChatBubble covered={navOpen} />
 
     <TabBar
       current={screen}
