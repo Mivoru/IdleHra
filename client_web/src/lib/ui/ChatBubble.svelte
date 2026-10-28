@@ -31,6 +31,7 @@
 {#if !open && !covered}
   <button
     class="chat-bubble"
+    class:unread-waiting={unread > 0}
     data-testid="chat-bubble"
     aria-label={`Show chat${unread > 0 ? `, ${unread} unread` : ''}`}
     onclick={() => setChatOpen(true)}
@@ -71,6 +72,16 @@
       box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.25),
         0 3px 10px rgba(0, 0, 0, 0.45);
+      /* Owner, 2026-10-28: too loud at full strength. Half-faded at rest, it
+         comes up fully when there is something unread or a finger on it. */
+      opacity: 0.55;
+      transition: opacity 150ms ease;
+    }
+
+    .chat-bubble.unread-waiting,
+    .chat-bubble:active,
+    .chat-bubble:focus-visible {
+      opacity: 1;
     }
 
     :global(html.typing) .chat-bubble {

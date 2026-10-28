@@ -537,12 +537,12 @@
     </section>
 
     <div class="tabs" role="tablist" aria-label="Character">
-      <button role="tab" aria-selected={shownTab === 'gear'} class:on={shownTab === 'gear'} data-character-tab="gear" onclick={() => chooseTab('gear')}>Gear</button>
-      <button role="tab" aria-selected={shownTab === 'attributes'} class:on={shownTab === 'attributes'} data-character-tab="attributes" onclick={() => chooseTab('attributes')}>
+      <button role="tab" aria-selected={shownTab === 'gear'} class:on={shownTab === 'gear'} data-character-tab="gear" style="--tab: #d8b45a" onclick={() => chooseTab('gear')}>Gear</button>
+      <button role="tab" aria-selected={shownTab === 'attributes'} class:on={shownTab === 'attributes'} data-character-tab="attributes" style="--tab: var(--sec-hero)" onclick={() => chooseTab('attributes')}>
         Attributes{#if attributePoints > 0}<span class="badge" aria-label="{attributePoints} unspent">{formatNumber(attributePoints)}</span>{/if}
       </button>
-      <button role="tab" aria-selected={shownTab === 'stats'} class:on={shownTab === 'stats'} data-character-tab="stats" onclick={() => chooseTab('stats')}>Stats</button>
-      <button role="tab" aria-selected={shownTab === 'work'} class:on={shownTab === 'work'} data-character-tab="work" onclick={() => chooseTab('work')}>Work &amp; orders</button>
+      <button role="tab" aria-selected={shownTab === 'stats'} class:on={shownTab === 'stats'} data-character-tab="stats" style="--tab: var(--sec-make)" onclick={() => chooseTab('stats')}>Stats</button>
+      <button role="tab" aria-selected={shownTab === 'work'} class:on={shownTab === 'work'} data-character-tab="work" style="--tab: var(--sec-gather)" onclick={() => chooseTab('work')}>Work &amp; orders</button>
     </div>
 
     {#if shownTab === 'gear'}
@@ -1000,9 +1000,13 @@
   }
 
   /* ---------------------------------------------------------------- tabs */
+  /* Modul: FOUR TABS, FOUR COLOURS, ONE ROW (owner, 2026-10-28: "the tabs
+     do not stand apart"). Four buttons in three columns left Work & orders
+     alone on a second row. Each tab now carries its own colour as a bar along
+     its top; the open one fills with it. */
   .tabs {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -1024,8 +1028,12 @@
     background: transparent;
     color: inherit;
     font: inherit;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
+    line-height: 1.15;
+    text-align: center;
     cursor: pointer;
+    box-shadow: inset 0 3px 0 color-mix(in srgb, var(--tab) 70%, transparent);
+    background-image: linear-gradient(180deg, color-mix(in srgb, var(--tab) 10%, transparent), transparent 70%);
   }
 
   .tabs button:first-child {
@@ -1033,9 +1041,17 @@
   }
 
   .tabs button.on {
-    background: var(--accent);
-    color: var(--on-accent);
+    background-color: color-mix(in srgb, var(--tab) 45%, var(--bg-panel));
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--tab) 75%, #fff) 0%,
+      var(--tab) 40%,
+      color-mix(in srgb, var(--tab) 55%, #000) 100%
+    );
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
     font-weight: 700;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
   }
 
   .badge {
@@ -1050,8 +1066,9 @@
   }
 
   .tabs button.on .badge {
-    background: var(--on-accent);
-    color: var(--accent);
+    background: #fff;
+    color: #1d1408;
+    text-shadow: none;
   }
 
   /* ---------------------------------------------------------------- gear */

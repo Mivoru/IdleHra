@@ -38,7 +38,15 @@ export function estimateLine(e: HuntingEstimate): string {
 
 /**
  * The one monster the Combat screen recommends: the most XP an hour among the
- * open monsters this character farms WITHOUT food. Null when none qualifies.
+ * open monsters this character farms WITHOUT food - or, when `hasFood` (the
+ * larder holds something), among those it farms with food too. Null when none
+ * qualifies.
+ *
+ * Modul: FOOD COUNTS WHEN THERE IS FOOD (owner, 2026-10-28). A stocked larder
+ * is what the larder is for, and leaving food fights out recommended Frost
+ * Titan at 100M XP/h over Malakor at 131M for a player with a full one. An
+ * empty larder keeps the old rule, so "best" still never sends a player into
+ * a fight they cannot hold.
  *
  * Modul: ONE MAIN ACTION PER SCREEN (design wave 2, 2026-10-14). Fifteen
  * filled Fight buttons are fifteen equal answers to "what should I do", and
@@ -47,10 +55,15 @@ export function estimateLine(e: HuntingEstimate): string {
  * and a fight that empties the larder is not that. Ties keep the earlier
  * (easier) monster, so the pick does not flicker between two equal rows.
  */
-export function bestPick(estimates: Iterable<HuntingEstimate>, open: (monsterId: number) => boolean): number | null {
+export function bestPick(
+  estimates: Iterable<HuntingEstimate>,
+  open: (monsterId: number) => boolean,
+  hasFood = false,
+): number | null {
   let best: HuntingEstimate | null = null;
   for (const e of estimates) {
-    if (!e.CanDamage || !e.SurvivesWithoutFood || !open(e.MonsterId)) continue;
+    const holds = e.SurvivesWithoutFood || (hasFood && e.SurvivesWithFood);
+    if (!e.CanDamage || !holds || !open(e.MonsterId)) continue;
     if (best === null || e.XpPerHour > best.XpPerHour) best = e;
   }
   return best?.MonsterId ?? null;

@@ -50,4 +50,14 @@ describe('huntingEstimate', () => {
     expect(bestPick([{ ...base, MonsterId: 91 }, { ...base, MonsterId: 92 }], () => true)).toBe(91);
     expect(bestPick(rows, () => false)).toBeNull();
   });
+
+  it('counts a food fight as best only while the larder holds food', () => {
+    const rows: HuntingEstimate[] = [
+      { ...base, MonsterId: 91, XpPerHour: 100 },
+      { ...base, MonsterId: 92, XpPerHour: 900, SurvivesWithoutFood: false, SurvivesWithFood: true },
+      { ...base, MonsterId: 93, XpPerHour: 950, SurvivesWithoutFood: false, SurvivesWithFood: false },
+    ];
+    expect(bestPick(rows, () => true, false)).toBe(91);
+    expect(bestPick(rows, () => true, true)).toBe(92);
+  });
 });

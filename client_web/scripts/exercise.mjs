@@ -63,6 +63,16 @@ const go = async (label) => {
     { timeout: 15000 },
   ).catch(() => {});
   await page.waitForTimeout(600);
+  // Modul: Combat's regions fold (2026-10-28) and remember what was open, so
+  // the steps below that index all twenty-five Fight buttons unfold them first
+  // - the way a player would, with the screen's own Open all.
+  if (label === 'Combat') {
+    const all = page.getByTestId('regions-all');
+    if ((await all.count()) > 0 && /Open all/.test(await all.innerText())) {
+      await all.click();
+      await page.waitForTimeout(300);
+    }
+  }
 };
 
 // Modul: TASK 97 - Character is a person switcher plus three tabs (Gear,

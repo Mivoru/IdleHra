@@ -35,6 +35,30 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.31.0',
+    date: '2026-10-28',
+    headline: 'Tidier combat list, more colour everywhere.',
+    sections: [
+      {
+        title: 'Combat',
+        items: [
+          'Each region in the monster list folds open and shut. Open as many as you like - the game remembers which.',
+          'Every Fight button is the same size now, and the XP bar and your level are easier to read.',
+          'Best XP/h now counts fights that need food, as long as your larder has some.',
+        ],
+      },
+      {
+        title: 'Look',
+        items: [
+          'The More menu, the Character tabs and each gathering trade have their own colours.',
+          'Items in the chest show their rarity colour along the edge and around the picture.',
+          'Every person in the village gets the same size card; tap a name to see what their traits do.',
+          'The chat button is quieter until a message arrives.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.30.0',
     date: '2026-10-28',
     headline: 'Every part of the game has its own colour.',

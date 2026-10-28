@@ -160,6 +160,16 @@
     },
   ] as const;
 
+  // Modul: each More-sheet group in its section's colour (sections.ts, owner
+  // 2026-10-28): the sheet was twenty identical grey tiles under four grey
+  // words. Game stays brass.
+  const GROUP_COLOUR: Record<string, string> = {
+    Play: 'var(--sec-combat)',
+    Hero: 'var(--sec-hero)',
+    Make: 'var(--sec-make)',
+    Community: 'var(--sec-community)',
+  };
+
   /** The group whose sheet section carries the chat entry (task 95). */
   const CHAT_GROUP = 'Community';
 
@@ -1068,7 +1078,7 @@
         {#each GROUPS as group}
           {@const items = group.screens.filter((s) => !MENU_HIDDEN.has(s.key) && !TAB_BAR_KEYS.has(s.key))}
           {#if items.length > 0 || group.name === CHAT_GROUP}
-            <section class="sheet-group" aria-label={group.name}>
+            <section class="sheet-group" aria-label={group.name} style="--grp: {GROUP_COLOUR[group.name] ?? 'var(--brass-lit)'}">
               <h2 class="group-name">{group.name}</h2>
               <div class="sheet-grid">
                 {#each items as item (item.key)}
@@ -1461,6 +1471,20 @@
       gap: 0.4rem;
     }
 
+    .sheet-group .group-name {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      color: var(--grp);
+    }
+
+    .sheet-group .group-name::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, color-mix(in srgb, var(--grp) 60%, transparent), transparent);
+    }
+
     .sheet-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1478,15 +1502,22 @@
       padding: 0.45rem 0.7rem;
       text-align: left;
       justify-content: flex-start;
-      background: var(--bg-raised);
-      border: 1px solid var(--border);
+      background-color: var(--bg-raised);
+      background-image: linear-gradient(
+        135deg,
+        color-mix(in srgb, var(--grp) 22%, transparent),
+        color-mix(in srgb, var(--grp) 4%, transparent) 70%
+      );
+      border: 1px solid color-mix(in srgb, var(--grp) 40%, var(--border));
+      border-left: 3px solid var(--grp);
       color: var(--text);
     }
 
     .more-sheet button.tile.active {
-      border-color: var(--accent);
-      color: var(--accent);
+      border-color: var(--grp);
+      color: var(--text);
       font-weight: 700;
+      box-shadow: 0 0 0 1px var(--grp), 0 0 10px color-mix(in srgb, var(--grp) 35%, transparent);
     }
 
     .more-sheet button.tile.coachmark {

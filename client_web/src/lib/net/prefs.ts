@@ -15,6 +15,8 @@ export const PREF_CHEST_MIN_RARITY = 'folkidle.chest.minRarity';
 export const PREF_WIKI_TAB = 'folkidle.wiki.tab';
 /** Task 72: the monster the main character last fought, for "Continue". */
 export const PREF_LAST_MONSTER = 'folkidle.combat.lastMonster';
+/** Which Combat regions are unfolded, as a comma-separated list of numbers. */
+export const PREF_OPEN_REGIONS = 'folkidle.combat.openRegions';
 
 export function readPref(key: string): string | null {
   try {
