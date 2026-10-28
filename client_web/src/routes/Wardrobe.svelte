@@ -195,12 +195,15 @@
           {#if catalogue?.ChestContentPermille?.[rarity]}
             <span class="chest-odds" data-testid="chest-odds-{rarity}">{oddsLine(catalogue.ChestContentPermille[rarity], rarityNames)}</span>
           {/if}
-          <button disabled={busy || count === 0} onclick={() => open(rarity)} data-testid="open-chest-{rarity}">Open</button>
-          {#if count >= 2}
-            <button class="open-five" disabled={busy} onclick={() => open(rarity, Math.min(5, count))} data-testid="open-five-{rarity}">
-              Open ×{Math.min(5, count)}
-            </button>
-          {/if}
+          <!-- Owner, 2026-10-28: Open and Open ×N side by side, smaller. -->
+          <span class="open-row">
+            <button disabled={busy || count === 0} onclick={() => open(rarity)} data-testid="open-chest-{rarity}">Open</button>
+            {#if count >= 2}
+              <button class="open-five" disabled={busy} onclick={() => open(rarity, Math.min(5, count))} data-testid="open-five-{rarity}">
+                ×{Math.min(5, count)}
+              </button>
+            {/if}
+          </span>
         </div>
       {/each}
     </div>
@@ -352,6 +355,18 @@
     grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
     gap: 0.5rem;
     margin-top: 0.5rem;
+  }
+
+  .open-row {
+    display: flex;
+    gap: 0.3rem;
+    justify-content: center;
+  }
+
+  .open-row button {
+    padding: 0 0.6rem;
+    font-size: 0.82rem;
+    min-width: 0;
   }
 
   .chest {
