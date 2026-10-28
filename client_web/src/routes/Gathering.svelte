@@ -628,21 +628,22 @@
     letter-spacing: 0.01em;
   }
 
+  /* The icon draws its own border; the trade's colour goes onto it rather
+     than around it, so there is one frame, not two. */
   .iconframe {
-    flex: none;
-    display: inline-grid;
-    place-items: center;
-    padding: 0.15rem;
-    border: 1px solid color-mix(in srgb, var(--prof) 70%, transparent);
-    border-radius: var(--radius-sm);
-    background: radial-gradient(circle, color-mix(in srgb, var(--prof) 30%, transparent), transparent 75%);
+    display: contents;
+  }
+
+  .iconframe :global(.icon) {
+    border-color: color-mix(in srgb, var(--prof) 75%, transparent);
+    background: radial-gradient(circle, color-mix(in srgb, var(--prof) 30%, var(--bg)), var(--bg) 80%);
     box-shadow: 0 0 6px color-mix(in srgb, var(--prof) 30%, transparent);
   }
 
-  li.locked .iconframe {
+  li.locked .iconframe :global(.icon) {
     border-color: var(--border);
     box-shadow: none;
-    background: none;
+    background: var(--bg);
   }
 
   .trade > h2 {

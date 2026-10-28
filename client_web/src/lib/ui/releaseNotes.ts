@@ -35,6 +35,22 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.31.1',
+    date: '2026-10-28',
+    sections: [
+      {
+        title: 'Polish',
+        items: [
+          'Each monster is one card with its Fight button inside it. XP an hour is shown in blue, gold an hour in gold.',
+          'The village explains what STR, SKL, END and FOR pass on to a child.',
+          'Chest items no longer have a double frame around their picture.',
+          'The Character screen no longer shifts when you open Work & orders.',
+          'The Event shop button sits under the game title on a phone, and is slimmer.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.31.0',
     date: '2026-10-28',
     headline: 'Tidier combat list, more colour everywhere.',

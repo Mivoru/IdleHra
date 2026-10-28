@@ -116,20 +116,16 @@
     );
   }
 
+  /* ItemIcon already draws its rarity border, so the row adds no frame of
+     its own (a second one read as a double outline) - only the glow and a
+     warm centre, on the icon itself. */
   .iconframe {
-    flex: none;
-    display: inline-grid;
-    place-items: center;
-    padding: 0.1rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--bg);
+    display: contents;
   }
 
-  .tiered .iconframe {
-    border-color: color-mix(in srgb, var(--rar) 70%, transparent);
+  .tiered .iconframe :global(.icon) {
     background: radial-gradient(circle, color-mix(in srgb, var(--rar) 28%, var(--bg)), var(--bg) 80%);
-    box-shadow: 0 0 6px color-mix(in srgb, var(--rar) 30%, transparent);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--rar) 40%, transparent);
   }
 
   .item-row.selectable {
