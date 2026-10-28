@@ -1,12 +1,14 @@
 import { mount } from 'svelte';
 import './app.css';
 import App from './App.svelte';
+import { applyAppearance } from './lib/ui/appearance';
 import { confirmBundleBooted } from './lib/net/liveUpdate';
 import { bootStep } from './lib/ui/boot';
 
 // The bundle has downloaded and parsed - the longest wait on a phone is over.
 bootStep(35, 'Preparing the world…', 45);
 
+applyAppearance();
 const app = mount(App, { target: document.getElementById('app')! });
 
 // Modul: AFTER the mount, and that ordering is the whole safety net.

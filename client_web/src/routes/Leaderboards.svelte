@@ -324,12 +324,12 @@
     text-shadow: var(--tier-shadow);
   }
 
-  @media (prefers-color-scheme: light) {
-    .tiered {
-      color: var(--tier-color-light);
-      text-shadow: none;
-    }
+  /* Light scheme: [data-scheme] on <html>, set by appearance.ts and boot.js. */
+  :global(:where(:root[data-scheme='light'])) .tiered {
+    color: var(--tier-color-light);
+    text-shadow: none;
   }
+
 
   .warn {
     color: var(--danger);

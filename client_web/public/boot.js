@@ -16,6 +16,22 @@
 // toward the next step's percentage and never reaches it. It never goes
 // backwards and never shows 100 until the app says it is done.
 (function () {
+  // Modul: THE SCHEME BEFORE ANYTHING PAINTS (owner, 2026-10-28). app.css
+  // reads only `data-scheme` on <html>, never the media query, so it must be
+  // set here or the first frame is always dark. Mirrors appearance.ts: a
+  // stored 'dark'/'light' wins, anything else follows the system.
+  var schemeChoice = null;
+  var seasonalOff = false;
+  try {
+    schemeChoice = localStorage.getItem('folkidle.scheme');
+    seasonalOff = localStorage.getItem('folkidle.seasonalLook') === 'off';
+  } catch (e) {
+    // Blocked storage: follow the system, show the season.
+  }
+  var light = schemeChoice === 'light' || (schemeChoice !== 'dark'
+    && !!window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+  document.documentElement.setAttribute('data-scheme', light ? 'light' : 'dark');
+
   var root = document.getElementById('boot');
   if (!root) return;
   // Modul: THE SEASONAL EVENT'S LOOK BEFORE THE BUNDLE. eventTheme.ts writes
@@ -26,7 +42,9 @@
   // the ordinary art, which is also what PageSpeed measures.
   try {
     var eventKey = localStorage.getItem('folkidle.eventTheme');
-    if (eventKey === 'samhain') {
+    // The player can turn the season's look off (appearance.ts); the art
+    // and the colours both stay ordinary then.
+    if (eventKey === 'samhain' && !seasonalOff) {
       document.documentElement.setAttribute('data-event', eventKey);
       var sources = root.querySelectorAll('source[type="image/avif"]');
       for (var i = 0; i < sources.length; i++) {

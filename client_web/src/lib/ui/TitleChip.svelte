@@ -39,11 +39,10 @@
     text-shadow: 0 0 6px color-mix(in srgb, var(--tc) 35%, transparent);
   }
 
-  @media (prefers-color-scheme: light) {
-    .title-chip {
-      --ink: color-mix(in srgb, var(--tc) 55%, #000);
-      background: color-mix(in srgb, var(--tc) 22%, transparent);
-      text-shadow: none;
-    }
+  /* Light scheme: [data-scheme] on <html>, set by appearance.ts and boot.js. */
+  :global(:where(:root[data-scheme='light'])) .title-chip {
+    --ink: color-mix(in srgb, var(--tc) 55%, #000);
+    background: color-mix(in srgb, var(--tc) 22%, transparent);
+    text-shadow: none;
   }
 </style>

@@ -39,6 +39,7 @@
   import { runningBundleVersion } from '../lib/net/liveUpdate';
   import ItemIdPicker from '../lib/ui/ItemIdPicker.svelte';
   import SettingsFold from '../lib/ui/SettingsFold.svelte';
+  import { schemeChoice, seasonalLook, setSchemeChoice, setSeasonalLook } from '../lib/ui/appearance';
   import ConfirmButton from '../lib/ui/ConfirmButton.svelte';
   import DisabledReason from '../lib/ui/DisabledReason.svelte';
 
@@ -52,7 +53,7 @@
   //
   // Every key is present from the start, because `bind:open` onto an
   // undefined property of a prop with a fallback throws at runtime.
-  const PANEL_KEYS = ['language', 'sound', 'notify', 'gameplay', 'access', 'tutorial', 'support', 'dev'] as const;
+  const PANEL_KEYS = ['appearance', 'language', 'sound', 'notify', 'gameplay', 'access', 'tutorial', 'support', 'dev'] as const;
   type PanelKey = (typeof PANEL_KEYS)[number];
   const OPEN_PANELS_KEY = 'folkidle.settings.openPanels';
 
@@ -76,6 +77,8 @@
       // Storage refused; the panels still work for this visit.
     }
   });
+
+  const SCHEME_LABELS = { system: 'Follow device', dark: 'Dark', light: 'Light' } as const;
 
   const currentLanguageName = $derived(LANGUAGES.find((l) => l.code === $language)?.name ?? '');
 
@@ -436,6 +439,47 @@
       <button class="signout" onclick={requestSignOut}>Sign out</button>
     </div>
   </section>
+
+  <!-- Modul: APPEARANCE (owner, 2026-10-28). Both choices live on this device
+       (appearance.ts); the event itself, its shop and its currency do not
+       change - only the colours. -->
+  <SettingsFold
+    id="appearance"
+    title="Appearance"
+    summary={SCHEME_LABELS[$schemeChoice] + ($seasonalLook === 'off' ? ' · no event look' : '')}
+    bind:open={panels.appearance}
+  >
+    <h3>Colours</h3>
+    <div class="choices" role="radiogroup" aria-label="Colour scheme" data-testid="settings-scheme">
+      {#each Object.entries(SCHEME_LABELS) as [value, label] (value)}
+        <label class="check">
+          <input
+            type="radio"
+            name="scheme"
+            {value}
+            checked={$schemeChoice === value}
+            onchange={() => setSchemeChoice(value as keyof typeof SCHEME_LABELS)}
+          />
+          {label}
+        </label>
+      {/each}
+    </div>
+
+    <h3>Seasonal events</h3>
+    <label class="check">
+      <input
+        type="checkbox"
+        data-testid="settings-seasonal-look"
+        checked={$seasonalLook === 'auto'}
+        onchange={(e) => setSeasonalLook(e.currentTarget.checked ? 'auto' : 'off')}
+      />
+      Dress the game for a running event (Samhain's pumpkin colours)
+    </label>
+    <p class="dim small">
+      Off keeps the ordinary colours during an event. The event shop and its
+      currency stay either way.
+    </p>
+  </SettingsFold>
 
   <SettingsFold id="language" title="Language" summary={currentLanguageName} bind:open={panels.language}>
     <p class="dim small">
@@ -968,6 +1012,7 @@
     gap: 0.5rem;
   }
 
+  .choices,
   .music-mode {
     display: grid;
     gap: 0.15rem;
