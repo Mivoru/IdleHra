@@ -1332,11 +1332,11 @@
   /* Modul: medal colours tuned for charred oak vanish on parchment - #c0c0c0
      on #f6edd8 is about 1.6:1. Same hues, darker, for the light theme (which
      app.css selects with prefers-color-scheme; there is no data-theme). */
-  @media (prefers-color-scheme: light) {
-    .gold-text   { color: #85650a; }
-    .silver-text { color: #5b6672; }
-    .bronze-text { color: #8a4b18; }
-  }
+  /* Light scheme: [data-scheme] on <html>, set by appearance.ts and boot.js. */
+  :global(:where(:root[data-scheme='light'])) .gold-text   { color: #85650a; }
+  :global(:where(:root[data-scheme='light'])) .silver-text { color: #5b6672; }
+  :global(:where(:root[data-scheme='light'])) .bronze-text { color: #8a4b18; }
+
 
   .members {
     list-style: none;

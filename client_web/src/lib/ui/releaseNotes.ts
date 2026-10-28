@@ -35,6 +35,35 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.29.0',
+    date: '2026-10-28',
+    headline: 'Fights fill the screen, and you choose your colours.',
+    sections: [
+      {
+        title: 'Combat',
+        items: [
+          'The monster you fight now stands large in front of its own region’s landscape, and only the monster flinches when you hit it.',
+          'Damage numbers stay up longer and have a dark outline, so they read over the scenery. Critical hits say CRIT!, and a Double Strike says DOUBLE CRIT!!',
+          'Sword blows leave a red slash, and a critical hit crosses it with a second one. Arrows fly in and strike, and the magic burst is smaller.',
+        ],
+      },
+      {
+        title: 'Settings',
+        items: [
+          'New Appearance section: pick dark or light colours, or follow your device.',
+          'You can turn off an event’s colours (like Samhain’s pumpkin orange) and keep the ordinary look. The event shop stays.',
+        ],
+      },
+      {
+        title: 'Fixes',
+        items: [
+          'Skill tree names on a phone no longer break in the middle of a word.',
+          'The Event shop button on a phone is no longer stretched across the whole screen.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.28.1',
     date: '2026-10-21',
     headline: 'Children grow up while they work, even when you are away.',
