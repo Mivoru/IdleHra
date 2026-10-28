@@ -1376,10 +1376,14 @@
       display: none;
     }
 
+    /* Modul: A PILL, NOT A BAR (owner, 2026-10-28). The chip used the More
+       sheet's full-width shape here too, so it spanned the phone edge to edge
+       and its bottom edge sat flush on the screen's first panel. It keeps its
+       own width now, centred, with the same gap below it as above. */
     .event-strip {
       display: flex;
       justify-content: center;
-      padding: 0.35rem 0.75rem 0;
+      padding: 0.5rem 0.75rem;
     }
 
     .event-strip:empty {
@@ -1388,6 +1392,8 @@
 
     .event-strip :global(.event-chip) {
       min-height: 44px;
+      width: auto;
+      min-width: 12rem;
     }
 
     /* Modul: 44px stated here. This is the single most-tapped control on a

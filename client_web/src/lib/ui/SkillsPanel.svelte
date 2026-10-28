@@ -194,7 +194,11 @@
   // label. The image still starts at x=0 and is not scaled or cropped - the
   // drawing simply gains margin either side. 34 matches PAD_TOP, and the
   // widest label ("PRECISION") needs about 30 beyond its anchor.
-  const PAD_X = 34;
+  //
+  // 46, not 34, since labels stopped breaking inside a word (2026-10-28):
+  // "FORTUNE" now stays whole, and on a 390px phone it was 7px wider than the
+  // 34-unit margin left it. Twelve more units is about 8px there.
+  const PAD_X = 46;
 
   // Where the trunk divides in the painting. Every connector starts here.
   const ORIGIN_X = VIEW_W / 2;
@@ -900,6 +904,13 @@
     letter-spacing: 0.04em;
     text-transform: uppercase;
     pointer-events: none;
+    /* Modul: WRAP BETWEEN WORDS, NEVER INSIDE ONE (owner, 2026-10-28). The
+       panel sets `overflow-wrap: anywhere` for long numbers, and a label pinned
+       near the picture's edge inherited it: a phone printed FORTU / NE and
+       INSIGH / T. A name never breaks now, so "FORTUNE 10" folds its level
+       onto a second line instead. */
+    overflow-wrap: normal;
+    word-break: keep-all;
     /* The backdrop behind these is painted foliage, not a flat panel, so a
        dim grey label landed on whatever colour that branch happened to be.
        Brightened and given a dark halo so it reads over leaf, bark or gap. */
