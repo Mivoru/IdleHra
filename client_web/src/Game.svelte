@@ -13,6 +13,7 @@
   import EventBanner from './lib/ui/EventBanner.svelte';
   import EventChip from './lib/ui/EventChip.svelte';
   import { applyEventTheme } from './lib/ui/eventTheme';
+  import { applySection } from './lib/ui/sections';
   import { eventThemeKey } from './lib/net/seasonalEvent';
   import Money from './lib/ui/Money.svelte';
   import ConnectionNotice from './lib/ui/ConnectionNotice.svelte';
@@ -774,6 +775,11 @@
   const eventTheme = $derived(snap ? eventThemeKey(Number(snap.SeasonalEventId ?? 0)) : undefined);
   $effect(() => {
     if (eventTheme !== undefined) applyEventTheme(eventTheme);
+  });
+
+  // The section colour follows the screen on show (sections.ts).
+  $effect(() => {
+    applySection(screen);
   });
 
   // Modul: the loading screen (index.html #boot) stays up until the first

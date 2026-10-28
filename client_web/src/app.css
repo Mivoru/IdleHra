@@ -1890,3 +1890,115 @@ input[type='radio']:disabled {
   color: #ffd700;
   text-shadow: 0 0 6px #ffd70099;
 }
+
+/* Modul: SECTION COLOURS (owner, 2026-10-28: "more colour, so the eye tells
+   the buttons and windows apart"). Kept in the folklore palette - ember,
+   moss, heather, river, verdigris - rather than screen-saturated, so the
+   wood-and-brass identity stays and only the sections separate.
+
+   `data-section` on <html> comes from sections.ts. Three tokens follow it:
+     --section       the lit colour: panel edge, title rule, active states
+     --section-deep  the shadowed one: the bottom of a primary button's gradient
+     --section-ink   text on a filled primary button
+   The --sec-* are the raw five, for things that show every section at once
+   (the phone's tab bar colours each tab by where it leads). */
+:root {
+  --sec-combat: #e0574a;
+  --sec-combat-deep: #8a2219;
+  --sec-gather: #7cb854;
+  --sec-gather-deep: #2f5e1c;
+  --sec-hero: #a77de6;
+  --sec-hero-deep: #4c2c86;
+  --sec-make: #5b9de6;
+  --sec-make-deep: #1f4c86;
+  --sec-community: #3fbfa6;
+  --sec-community-deep: #135c50;
+
+  --section: var(--brass-lit);
+  --section-deep: var(--brass);
+  --section-ink: #1d1408;
+}
+
+/* On parchment the lit colours are too pale to read as a line or as text, so
+   the light scheme darkens each one; the deep ones already hold. */
+:root:where([data-scheme='light']) {
+  --sec-combat: #c23a2c;
+  --sec-gather: #4f8a2a;
+  --sec-hero: #7a4fc4;
+  --sec-make: #2f6fbf;
+  --sec-community: #1e8f7a;
+}
+
+:root[data-section='combat'] { --section: var(--sec-combat); --section-deep: var(--sec-combat-deep); --section-ink: #fff4ef; }
+:root[data-section='gather'] { --section: var(--sec-gather); --section-deep: var(--sec-gather-deep); --section-ink: #f4ffe9; }
+:root[data-section='hero'] { --section: var(--sec-hero); --section-deep: var(--sec-hero-deep); --section-ink: #f8f1ff; }
+:root[data-section='make'] { --section: var(--sec-make); --section-deep: var(--sec-make-deep); --section-ink: #eef6ff; }
+:root[data-section='community'] { --section: var(--sec-community); --section-deep: var(--sec-community-deep); --section-ink: #ecfffb; }
+
+/* A panel says which part of the game it belongs to along its top edge, and
+   the light of that colour falls a little way into it. The tint is one more
+   background layer after the corners (see the .panel layers above), so it
+   sits under the brackets and over the panel's own colour. */
+.panel {
+  border-top: 2px solid color-mix(in srgb, var(--section) 80%, transparent) !important;
+  background-image:
+    var(--corner-tl), var(--corner-tr), var(--corner-bl), var(--corner-br),
+    var(--grain), var(--weave),
+    linear-gradient(180deg, color-mix(in srgb, var(--section) 13%, transparent), transparent 6rem) !important;
+  background-repeat:
+    no-repeat, no-repeat, no-repeat, no-repeat, repeat, repeat, no-repeat !important;
+  background-position:
+    4px 4px, right 4px top 4px, left 4px bottom 4px, right 4px bottom 4px, 0 0, 0 0, 0 0 !important;
+}
+
+.panel.panel--sunken {
+  border-top-width: 1px !important;
+  border-top-color: var(--border) !important;
+}
+
+.panel > h2 {
+  border-image: linear-gradient(
+      90deg,
+      transparent,
+      var(--section-deep) 18%,
+      var(--section) 50%,
+      var(--section-deep) 82%,
+      transparent
+    )
+    1;
+}
+
+/* The one filled button on a card is filled with its section, lit at the top
+   and falling to the deep shade - the gradient the brass one only hinted at. */
+button.primary:not(:disabled),
+button.primary:disabled {
+  background-color: var(--section-deep);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--section) 92%, #fff) 0%,
+    var(--section) 45%,
+    var(--section-deep) 100%
+  );
+  border-color: color-mix(in srgb, var(--section) 70%, #fff);
+  color: var(--section-ink);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 2px 6px color-mix(in srgb, var(--section) 35%, transparent);
+}
+
+/* Home and the Game screens keep brass, whose ink is dark. */
+:root:not([data-section]) button.primary,
+:root[data-section='home'] button.primary {
+  text-shadow: none;
+}
+
+button.active,
+nav button.active {
+  border-color: var(--section);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--section) 26%, transparent),
+    color-mix(in srgb, var(--section) 8%, transparent)
+  );
+}
