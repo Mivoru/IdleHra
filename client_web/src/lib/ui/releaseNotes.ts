@@ -35,6 +35,26 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.30.0',
+    date: '2026-10-28',
+    headline: 'Every part of the game has its own colour.',
+    sections: [
+      {
+        title: 'Look',
+        items: [
+          'Combat is red, Gathering green, your heroes purple, the village and workshops blue, and the community teal - on the panels, the main buttons and the bar at the bottom of a phone.',
+          'Main buttons have a richer, coloured gradient, so the action you came for stands out.',
+        ],
+      },
+      {
+        title: 'Chat',
+        items: [
+          'On a phone, chat is one tap away again: a round chat button in the bottom-left corner, with a count of unread messages.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.29.0',
     date: '2026-10-28',
     headline: 'Fights fill the screen, and you choose your colours.',
