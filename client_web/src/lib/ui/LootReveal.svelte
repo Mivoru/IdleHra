@@ -90,7 +90,11 @@
         <p class="kicker" style="color: {rarityColor(drop.qualityTier)}">
           {rarityName(drop.qualityTier)} drop{#if drop.record}<span class="record">New record</span>{/if}
         </p>
-        <p class="name rarity-glow rarity-glow-live" style="color: {rarityColor(drop.qualityTier)}">{itemName(registry, drop.itemId)}</p>
+        <!-- Modul: NO HALO BEHIND THE NAME (owner, 2026-10-28). The pulsing
+             gold halo sat right under the letters and made a rare name hard
+             to read. The rarity is carried by the card instead - its edge,
+             its wash and the burst - and the name gets a dark rim. -->
+        <p class="name" style="color: {rarityColor(drop.qualityTier)}">{itemName(registry, drop.itemId)}</p>
         {#if cmp}
           <p class="cmp" class:up={isUpgrade(cmp)}>
             {comparisonLine(cmp)}{#if req && !req.met}<span class="unmet"> · {req.text}</span>{/if}
@@ -122,8 +126,14 @@
     align-items: center;
     gap: 0.7rem;
     padding: 0.7rem 0.8rem;
-    background: var(--bg-panel);
-    border: 1px solid var(--tint);
+    background-color: var(--bg-panel);
+    background-image: linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--tint) 24%, transparent),
+      color-mix(in srgb, var(--tint) 4%, transparent) 65%
+    );
+    border: 1px solid color-mix(in srgb, var(--tint) 70%, transparent);
+    border-left: 4px solid var(--tint);
     border-radius: var(--radius);
     box-shadow: 0 0 18px -4px var(--tint), 0 8px 24px rgba(0, 0, 0, 0.35);
     animation: reveal-in 220ms ease-out;
@@ -173,14 +183,25 @@
     margin: 0;
   }
 
+  /* On parchment the light scheme's darker rarity inks read on their own; a
+     dark rim there only muddies them. */
+  :global(:root[data-scheme='light']) .name {
+    text-shadow: none;
+  }
+
   .kicker {
+    font-weight: 700;
     font-size: 0.68rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
   }
 
   .name {
-    font-weight: 600;
+    font-weight: 800;
+    font-size: 1.02rem;
+    text-shadow:
+      0 0 2px rgba(0, 0, 0, 0.9),
+      0 1px 2px rgba(0, 0, 0, 0.8);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

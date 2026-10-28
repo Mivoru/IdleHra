@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.32.1',
+    date: '2026-10-28',
+    sections: [
+      {
+        title: 'Polish',
+        items: [
+          'Opening five chests: Next now switches the glowing chest behind the card instantly, with no flicker.',
+          'The chest buttons sit side by side in one row, so the card is smaller.',
+          'The rare drop card is easier to read - no more glow behind the item name; the card itself wears the rarity colour.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.32.0',
     date: '2026-10-28',
     headline: 'Open five chests at once.',
