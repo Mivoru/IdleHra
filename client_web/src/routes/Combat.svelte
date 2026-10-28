@@ -22,7 +22,7 @@
   import { bestPick, estimateLine, killTimeText, safety } from '../lib/ui/huntingEstimate';
   import { formatNumber, numberTitle } from '../lib/ui/format';
   import Money from '../lib/ui/Money.svelte';
-  import { readPref, writePref, PREF_LAST_MONSTER } from '../lib/net/prefs';
+  import { readPref, writePref, PREF_LAST_MONSTER, PREF_OPEN_REGIONS } from '../lib/net/prefs';
   import { assignCharacterActivity, EMPTY_GUID } from '../lib/net/commands';
   import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
   import { workersOf, describeJob, kindTakenBy, kindTakenMessage, slotBars, type Worker } from '../lib/ui/workers';
@@ -429,9 +429,46 @@
     registry.regions.forEach((region, index) => {
       if (index + 1 <= unlockedRegion) for (const m of region) open.set(m.Id, m);
     });
-    const id = bestPick(estimates.values(), (monsterId) => open.has(monsterId));
+    const id = bestPick(estimates.values(), (monsterId) => open.has(monsterId), !larderEmpty);
     return id === null ? null : (open.get(id) ?? null);
   });
+
+  // Modul: FIVE FOLDING REGIONS, NOT ONE LONG LIST (owner, 2026-10-28). Every
+  // region's five monsters were one scroll, so reaching region 5 meant
+  // scrolling past twenty rows every time. Each region folds; any number can
+  // be open, and which are open is remembered on this device. A player who has
+  // never chosen sees the region they are fighting in (or the best pick's, or
+  // the newest one open) - never a closed list with nothing to press.
+  function regionOfMonster(monsterId: number): number {
+    const offset = monsterId - FIRST_CANONICAL_MONSTER_ID;
+    return offset < 0 ? 0 : Math.floor(offset / MONSTERS_PER_REGION) + 1;
+  }
+
+  const storedRegions = readPref(PREF_OPEN_REGIONS);
+  let openRegions = $state<number[] | null>(
+    storedRegions === null ? null : storedRegions.split(',').map(Number).filter((n) => n > 0),
+  );
+  const defaultRegion = $derived(
+    (activeMonster && regionOfMonster(activeMonster.Id)) ||
+      (bestMonster && regionOfMonster(bestMonster.Id)) ||
+      unlockedRegion,
+  );
+  const shownRegions = $derived(openRegions ?? [defaultRegion]);
+
+  function setOpenRegions(next: number[]) {
+    openRegions = next;
+    writePref(PREF_OPEN_REGIONS, next.join(','));
+  }
+
+  function toggleRegion(regionNo: number) {
+    setOpenRegions(
+      shownRegions.includes(regionNo) ? shownRegions.filter((r) => r !== regionNo) : [...shownRegions, regionNo],
+    );
+  }
+
+  const allRegionsOpen = $derived(
+    Array.from({ length: lastListedRegion }, (_, i) => i + 1).every((r) => shownRegions.includes(r)),
+  );
 
   // Task 72: what the next region's boss asks for, against what the main
   // character wears. Read from /player/worn (at most eleven rows), refreshed
@@ -725,7 +762,17 @@
     </section>
 
     <section class="panel monsterpanel">
-      <h2>Monsters</h2>
+      <div class="monsterhead">
+        <h2>Monsters</h2>
+        <button
+          class="btn-sm ghost"
+          data-testid="regions-all"
+          onclick={() =>
+            setOpenRegions(allRegionsOpen ? [] : Array.from({ length: lastListedRegion }, (_, i) => i + 1))}
+        >
+          {allRegionsOpen ? 'Close all' : 'Open all'}
+        </button>
+      </div>
       {#if larderEmpty}
         <div class="larder-warning" role="note">
           <p>Your larder is empty. Without food a fight is usually lost.</p>
@@ -742,18 +789,36 @@
                  existed and nothing referenced it; a list of five identical
                  headings is a much weaker sense of place than the thing the
                  painting is of. -->
+            {@const regionOpen = shownRegions.includes(regionNo)}
+            {@const holdsBest = bestMonster !== null && regionOfMonster(bestMonster.Id) === regionNo}
+            {@const holdsFight = activeMonster !== null && regionOfMonster(activeMonster.Id) === regionNo}
             <div
               class="place"
+              class:folded={!regionOpen}
               style={locationBackground(regionNo)
                 ? `background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.78)), url('${locationBackground(regionNo)}')`
                 : ''}
             >
-              <h3>
-                {locationName(regionNo)}
-                {#if regionNo > unlockedRegion}
-                  <span class="locked-tag">Locked — defeat the {locationName(index)} boss</span>
+              <button
+                class="place-toggle"
+                aria-expanded={regionOpen}
+                data-testid="region-toggle-{regionNo}"
+                onclick={() => toggleRegion(regionNo)}
+              >
+                <span class="chev" aria-hidden="true">{regionOpen ? '▾' : '▸'}</span>
+                <h3>
+                  {locationName(regionNo)}
+                  {#if regionNo > unlockedRegion}
+                    <span class="locked-tag">Locked — defeat the {locationName(index)} boss</span>
+                  {/if}
+                </h3>
+                {#if !regionOpen}
+                  <span class="place-tags">
+                    {#if holdsFight}<span class="chip fighting-tag">fighting</span>{/if}
+                    {#if holdsBest}<span class="chip bestpick">best XP/h</span>{/if}
+                  </span>
                 {/if}
-              </h3>
+              </button>
               <button
                 class="info"
                 aria-expanded={rulesOpen === regionNo}
@@ -762,6 +827,7 @@
                 onclick={() => (rulesOpen = rulesOpen === regionNo ? 0 : regionNo)}>i</button
               >
             </div>
+            {#if regionOpen}
             {#if rulesOpen === regionNo}
               <!-- Modul: THE RULES OF THIS SCREEN, on request. A new player
                    meets a list of monsters, some locked, some lethal, and these
@@ -931,6 +997,7 @@
                 {#if challengeRow}<BossChallenges row={challengeRow} />{/if}
                 {#if ascensionRow}<BossAscension boss={ascensionRow} />{/if}
               {/if}
+            {/if}
             {/if}
           {/if}
         {/each}
@@ -1102,6 +1169,52 @@
     margin: 0.9rem 0 0.4rem;
   }
 
+  .place-toggle {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 2.75rem;
+    padding: 0.2rem 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    text-align: left;
+    color: #f4ead8;
+  }
+
+  .place-toggle .chev {
+    flex: none;
+    width: 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  .place-tags {
+    margin-left: auto;
+    display: inline-flex;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .chip.fighting-tag {
+    background: color-mix(in srgb, var(--sec-combat) 30%, transparent);
+    border-color: var(--sec-combat);
+    color: #fff;
+  }
+
+  .place.folded {
+    margin-bottom: 0;
+  }
+
+  .monsterhead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
   .place h3 {
     margin: 0;
     color: #f4ead8;
@@ -1192,16 +1305,35 @@
     min-width: 0;
   }
 
+  /* The XP bar is the slow reward of every fight, so it is the strip's
+     loudest meter: taller, its label larger. */
+  .levelrow .xp :global(.bar) {
+    height: 1.6rem;
+  }
+
+  .levelrow .xp :global(.bar-label) {
+    font-size: 0.82rem;
+  }
+
+  /* The level as a badge in the section's colour, not loose text. */
   .levelcell {
     flex: none;
     display: inline-flex;
     align-items: baseline;
     gap: 0.25rem;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    padding: 0.15rem 0.6rem;
+    border: 1px solid var(--section);
+    border-radius: 999px;
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--section) 30%, transparent),
+      color-mix(in srgb, var(--section) 8%, transparent)
+    );
   }
 
   .levelcell strong {
-    font-size: 1.05rem;
+    font-size: 1.15rem;
   }
 
   .idle {
@@ -1303,6 +1435,7 @@
     display: block;
     font-size: 0.75rem;
     font-weight: 400;
+    text-transform: none;
     letter-spacing: 0.02em;
     opacity: 0.9;
   }
@@ -1310,7 +1443,7 @@
   .monsters li {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: stretch;
+    align-items: center;
     gap: 0.35rem;
   }
 
@@ -1320,12 +1453,21 @@
 
   /* Modul: FIGHT IS THE ACTION, SO IT LOOKS LIKE ONE. It was styled like the
      card beside it, and the card was the bigger target. */
+  /* Owner, 2026-10-28: one height for every Fight, whatever the row beside it
+     says - it stretched to each row's height and read as oversized. 2.75rem
+     is the 44px touch floor. */
   .fight {
     flex-shrink: 0;
     min-width: 4.5rem;
-    background: var(--accent);
-    border-color: var(--accent);
-    color: var(--on-accent);
+    height: 2.75rem;
+    padding-block: 0;
+    align-self: center;
+    /* In Combat's ember, lit at the top (sections.ts / app.css). */
+    background-color: var(--sec-combat-deep);
+    background-image: linear-gradient(180deg, color-mix(in srgb, var(--sec-combat) 88%, #fff), var(--sec-combat) 45%, var(--sec-combat-deep));
+    border-color: color-mix(in srgb, var(--sec-combat) 70%, #fff);
+    color: #fff4ef;
+    text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
     font-weight: 700;
   }
 
@@ -1434,14 +1576,14 @@
   }
 
   .chip.bestpick {
-    color: var(--on-accent);
-    background: var(--accent);
-    border-color: var(--accent);
+    color: #1d1408;
+    background: linear-gradient(180deg, #ffe08a, #d4a12c);
+    border-color: #d4a12c;
   }
 
   .monsters li.best .row {
-    border-color: var(--accent);
-    box-shadow: inset 3px 0 0 var(--accent);
+    border-color: #d4a12c;
+    box-shadow: inset 3px 0 0 #d4a12c;
   }
 
   /* Modul: ONE FILLED FIGHT. While a recommendation exists every other Fight
@@ -1452,7 +1594,9 @@
   .monsters li.quiet-fight .fight:not(:disabled) {
     background: transparent;
     background-image: none;
-    color: var(--accent);
+    border-color: color-mix(in srgb, var(--sec-combat) 75%, transparent);
+    color: var(--sec-combat);
+    text-shadow: none;
   }
 
   @media (min-width: 64rem) {

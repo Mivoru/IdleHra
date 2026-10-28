@@ -1233,8 +1233,15 @@
   }
 
   .filters button.active {
-    border-color: var(--accent);
-    color: var(--accent);
+    border-color: var(--section);
+    color: var(--text);
+    font-weight: 700;
+    background-image: linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--section) 32%, transparent),
+      color-mix(in srgb, var(--section) 10%, transparent)
+    );
+    box-shadow: 0 0 8px color-mix(in srgb, var(--section) 30%, transparent);
   }
 
   .filters .count {

@@ -523,13 +523,7 @@
 
   /* The one upgrade that can actually be made, filled. Everything else is an
      outline at most. */
-  .upgrade.primary {
-    background-color: var(--brass);
-    background-image: none;
-    border-color: var(--brass-lit);
-    color: var(--bg);
-    font-weight: 700;
-  }
+  /* The fill itself is app.css's button.primary, in the village's colour. */
 
   .what {
     display: block;

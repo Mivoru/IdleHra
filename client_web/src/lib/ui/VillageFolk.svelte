@@ -56,6 +56,17 @@
   const placesUsed = $derived(data?.Residents ?? 0);
 
   let showAll = $state(false);
+  /** Whose trait descriptions are unfolded (tap the name block). */
+  let traitsOpen = $state<number | null>(null);
+
+  // Owner, 2026-10-28: an aptitude's colour says how good it is at a glance -
+  // the Inn rolls up to 20, so 15+ reads gold and under 5 reads dim.
+  function aptTone(value: number): string {
+    if (value >= 15) return 'hi';
+    if (value >= 10) return 'mid';
+    if (value < 5) return 'lo';
+    return '';
+  }
   let showElders = $state(false);
   let showRules = $state(false);
   let openAnyway = $state(false);
@@ -99,24 +110,44 @@
 </script>
 
 {#snippet person(p: VillageNewcomer)}
+  {@const traits = p.TraitMask > 0 && traitCatalogue.data ? traitsOf(p.TraitMask, traitCatalogue.data) : []}
   <li class:elder={p.IsElder}>
+    <div class="prow">
     <RaceIcon raceId={p.RaceId} />
     <!-- Modul: a person, with a name. This read "Human / woman" - the one
          screen that asks you to marry somebody did not say who. -->
-    <div class="who">
-      <strong>{p.Name || raceName(p.RaceId)}</strong>
+    <!-- Modul: ONE HEIGHT FOR EVERY PERSON (owner, 2026-10-28). A trait was
+         a tappable chip, and on a phone the 44px touch floor made each one a
+         tall oval - so a person with traits stood twice the height of one
+         without. The chips are labels on ONE line now, and the whole name
+         block is the tap target that unfolds what they do. -->
+    {#snippet whoBody()}
+      <strong class="pname">{p.Name || raceName(p.RaceId)}</strong>
       <span class="dim tiny">
         {raceName(p.RaceId)} {p.IsFemale ? 'woman' : 'man'}{#if p.IsElder} · has married in{/if}
       </span>
-      {#if p.TraitMask > 0 && traitCatalogue.data}
+      {#if traits.length > 0}
         <span class="traits">
-          {#each traitsOf(p.TraitMask, traitCatalogue.data) as trait (trait.Id)}<TraitBadge {trait} />{/each}
+          {#each traits as trait (trait.Id)}<TraitBadge {trait} interactive={false} />{/each}
         </span>
       {/if}
-    </div>
+    {/snippet}
+    {#if traits.length > 0}
+      <button
+        type="button"
+        class="who who-btn"
+        aria-expanded={traitsOpen === p.Id}
+        title="What their traits do"
+        onclick={() => (traitsOpen = traitsOpen === p.Id ? null : p.Id)}
+      >
+        {@render whoBody()}
+      </button>
+    {:else}
+      <div class="who">{@render whoBody()}</div>
+    {/if}
     <span class="apts">
       {#each APTITUDES as apt (apt.short)}
-        <span aria-label="{apt.name} {apt.of(p)}">{apt.of(p)}</span>
+        <span class="apt {aptTone(apt.of(p))}" aria-label="{apt.name} {apt.of(p)}">{apt.of(p)}</span>
       {/each}
     </span>
     <!-- An elder married into the line. They are a record of the blood that
@@ -136,6 +167,14 @@
         />
       {/if}
     </span>
+    </div>
+    {#if traitsOpen === p.Id && traits.length > 0}
+      <ul class="trait-notes">
+        {#each traits as trait (trait.Id)}
+          <li><TraitBadge {trait} interactive={false} /> <span class="dim tiny">{trait.Description}</span></li>
+        {/each}
+      </ul>
+    {/if}
   </li>
 {/snippet}
 
@@ -399,14 +438,68 @@
     list-style: none;
   }
 
+  /* A card: the same height whoever it is, the village's river colour down
+     its left edge, and a faint lift so the rows read as people rather than
+     table lines. */
   li {
+    display: grid;
+    align-content: center;
+    min-height: 5.75rem;
+    padding: 0.4rem 0.55rem;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--sec-make);
+    border-radius: var(--radius);
+    min-width: 0;
+    background-color: var(--bg-raised);
+    background-image: linear-gradient(
+      100deg,
+      color-mix(in srgb, var(--sec-make) 12%, transparent),
+      transparent 55%
+    );
+  }
+
+  .prow {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.35rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
     min-width: 0;
+  }
+
+  .pname {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .who-btn {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0;
+    border: none;
+    background: none;
+    box-shadow: none;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  .trait-notes {
+    display: grid;
+    gap: 0.25rem;
+    margin: 0.1rem 0 0;
+    padding: 0.35rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .trait-notes li {
+    display: block;
+    min-height: 0;
+    padding: 0;
+    border: none;
+    background: none;
   }
 
   li.elder {
@@ -421,11 +514,20 @@
     flex: 1 1 auto;
   }
 
+  /* Small enough that two lines of them still fit the card's fixed height
+     (min-height on li), so a person with traits is no taller than one
+     without. What they do is one tap away. */
   .traits {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.2rem;
+    gap: 0.15rem 0.2rem;
     margin-top: 0.15rem;
+  }
+
+  .traits :global(.trait) {
+    font-size: 0.62rem;
+    padding: 0 0.35rem;
+    line-height: 1.35;
   }
 
   .apts {
@@ -441,7 +543,22 @@
     text-align: center;
     border-radius: 3px;
     background: var(--bg);
+    color: var(--text);
+  }
+
+  .apt.hi {
+    color: #1d1408;
+    background: linear-gradient(180deg, #ffe08a, #d4a12c);
+    font-weight: 700;
+  }
+
+  .apt.mid {
     color: var(--brass-lit);
+    font-weight: 700;
+  }
+
+  .apt.lo {
+    color: var(--text-dim);
   }
 
   /* The column key, laid out like a row so each letter sits over its number:

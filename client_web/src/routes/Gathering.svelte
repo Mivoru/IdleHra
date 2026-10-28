@@ -63,6 +63,17 @@
 
   let showWhy = $state(false);
 
+  // Modul: EACH TRADE HAS ITS OWN COLOUR (owner, 2026-10-28: the glowing
+  // Gather buttons drowned out what is actually being gathered). Wood is
+  // moss, ore is copper, fish is river, herbs are meadow - on the mastery bar,
+  // the frame round each item's picture and the row's wash.
+  const PROFESSION_COLOUR: Record<string, string> = {
+    Woodcutting: '#8fbf5c',
+    Mining: '#d08a4a',
+    Fishing: '#4fb3dc',
+    Herbalism: '#b7d65a',
+  };
+
   const byProfession = $derived.by(() => {
     const nodes = registry?.gatheringNodes ?? [];
     return PROFESSIONS.map((profession) => ({
@@ -277,7 +288,7 @@
           <Bar
             value={bars.progressTicks}
             max={bars.requiredTicks}
-            color="var(--accent)"
+            color="var(--sec-gather)"
           />
         </div>
       {/if}
@@ -290,7 +301,7 @@
   <div class="professions">
     {#each byProfession as profession}
       {@const track = masteryFor(profession.id)}
-      <section class="panel">
+      <section class="panel trade" style="--prof: {PROFESSION_COLOUR[profession.name] ?? 'var(--sec-gather)'}">
         <h2>{profession.name}</h2>
         {#if track}
           <!-- Modul: data-mastery + data-exact are what exercise.mjs reads -
@@ -306,7 +317,7 @@
                 <span class="bonus tiny">+{Math.min(monolithFor(profession.id), MONOLITH_CAP_PCT)}% yield</span>
               {/if}
             </span>
-            <Bar value={track.xp} max={masteryXpForLevel(track.level)} color="var(--brass-lit)" />
+            <Bar value={track.xp} max={masteryXpForLevel(track.level)} color="var(--prof)" />
           </div>
         {/if}
 
@@ -317,7 +328,7 @@
             {@const working = activeActivity === node.ActivityId}
             <li class:current={working} class:locked>
               <span class="what">
-                {#if yieldId}<ItemIcon baseItemId={yieldId} name={prettifyBaseId(yieldId)} size="sm" />{/if}
+                {#if yieldId}<span class="iconframe"><ItemIcon baseItemId={yieldId} name={prettifyBaseId(yieldId)} size="sm" /></span>{/if}
                 <span class="whattext">
                   <span class="yield">{yieldId ? prettifyBaseId(yieldId) : profession.name}</span>
                   <span class="place dim tiny">{locationName(nodeLocation(node.ActivityId))}</span>
@@ -520,8 +531,15 @@
     gap: 0.5rem;
     align-items: center;
     font-size: 0.82rem;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.25rem;
+    /* A card per node, washed in its trade's colour from the left. */
+    padding: 0.35rem 0.45rem;
+    border: 1px solid color-mix(in srgb, var(--prof) 25%, var(--border));
+    border-radius: var(--radius);
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--prof) 14%, transparent),
+      transparent 60%
+    );
   }
 
   .nodes li > * {
@@ -602,8 +620,33 @@
     line-height: 1.2;
   }
 
+  /* What you get is the headline of the row. */
   .yield {
-    font-weight: 600;
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+
+  .iconframe {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    padding: 0.15rem;
+    border: 1px solid color-mix(in srgb, var(--prof) 70%, transparent);
+    border-radius: var(--radius-sm);
+    background: radial-gradient(circle, color-mix(in srgb, var(--prof) 30%, transparent), transparent 75%);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--prof) 30%, transparent);
+  }
+
+  li.locked .iconframe {
+    border-color: var(--border);
+    box-shadow: none;
+    background: none;
+  }
+
+  .trade > h2 {
+    color: color-mix(in srgb, var(--prof) 55%, var(--text));
   }
 
   .rate {
@@ -612,8 +655,9 @@
   }
 
   .nodes li.current {
-    outline: 1px solid var(--good);
-    border-radius: var(--radius-xs);
+    outline: 1px solid var(--prof);
+    border-color: var(--prof);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--prof) 35%, transparent);
   }
 
   .whytoggle {

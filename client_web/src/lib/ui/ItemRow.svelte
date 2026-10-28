@@ -60,8 +60,15 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-<div class="item-row" class:selected class:selectable={!!onSelect} onclick={onSelect}>
-  <ItemIcon {baseItemId} {name} {qualityTier} size="sm" />
+<div
+  class="item-row"
+  class:selected
+  class:selectable={!!onSelect}
+  class:tiered={qualityTier > 0}
+  style={qualityTier > 0 ? `--rar: ${rarityColor(qualityTier)}` : undefined}
+  onclick={onSelect}
+>
+  <span class="iconframe"><ItemIcon {baseItemId} {name} {qualityTier} size="sm" /></span>
   <span class="label">
     <span
       class="name"
@@ -95,6 +102,36 @@
     font-size: 0.85rem;
   }
 
+  /* Modul: A PIECE WEARS ITS RARITY (owner, 2026-10-28: the Chest looked
+     like a spreadsheet). The tier colour runs down the left edge, washes a
+     little way into the row and frames the picture - the same three signals
+     a loot game uses, so a Relic stands out of a list of Commons before the
+     name is read. The name keeps its own colour as before. */
+  .item-row.tiered {
+    border-left: 3px solid var(--rar);
+    background-image: linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--rar) 16%, transparent),
+      transparent 55%
+    );
+  }
+
+  .iconframe {
+    flex: none;
+    display: inline-grid;
+    place-items: center;
+    padding: 0.1rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg);
+  }
+
+  .tiered .iconframe {
+    border-color: color-mix(in srgb, var(--rar) 70%, transparent);
+    background: radial-gradient(circle, color-mix(in srgb, var(--rar) 28%, var(--bg)), var(--bg) 80%);
+    box-shadow: 0 0 6px color-mix(in srgb, var(--rar) 30%, transparent);
+  }
+
   .item-row.selectable {
     cursor: pointer;
   }
@@ -113,6 +150,10 @@
     flex-direction: column;
     gap: 0.1rem;
     line-height: 1.25;
+  }
+
+  .name {
+    font-weight: 600;
   }
 
   .name,
