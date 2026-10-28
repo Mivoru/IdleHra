@@ -54,6 +54,15 @@
 
   const TABS = MAIN_TABS;
 
+  // Modul: each tab wears the colour of the section it opens (sections.ts,
+  // owner 2026-10-28), so the bar reads as four places rather than five grey
+  // icons. Home and More stay brass.
+  const TAB_COLOUR: Record<string, string> = {
+    combat: 'var(--sec-combat)',
+    gathering: 'var(--sec-gather)',
+    character: 'var(--sec-hero)',
+  };
+
   // Task 95: the sheet's own wants - skill points to spend - dot the More tab;
   // unclaimed mail rides on it as a count (MailBadge below).
   const moreAlert = $derived(snap ? Number(snap.AvailableSkillPoints) > 0 : false);
@@ -75,6 +84,7 @@
       aria-expanded={tab.key === MORE_TAB ? moreOpen : undefined}
       aria-haspopup={tab.key === MORE_TAB ? 'dialog' : undefined}
       data-tab={tab.key}
+      style={`--tab: ${TAB_COLOUR[tab.key] ?? 'var(--accent)'}`}
       onclick={() => (tab.key === MORE_TAB ? onMore() : onNavigate(tab.key))}
     >
       <span class="icon" aria-hidden="true">
@@ -154,8 +164,18 @@
   /* The indicator is a bar along the top edge rather than a filled pill, so
      the active tab reads at a glance without the bar looking like five
      buttons of which one is pressed. */
+  .tab .icon {
+    color: color-mix(in srgb, var(--tab) 70%, var(--text-dim));
+  }
+
   .tab.active {
     color: var(--text);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--tab) 18%, transparent), transparent 85%);
+  }
+
+  .tab.active .icon {
+    color: var(--tab);
+    filter: drop-shadow(0 0 5px color-mix(in srgb, var(--tab) 55%, transparent));
   }
 
   /* Modul: the press, which .tab's flat transparent look had taken away
@@ -173,7 +193,7 @@
     right: 22%;
     height: 3px;
     border-radius: 0 0 3px 3px;
-    background: var(--accent);
+    background: var(--tab);
   }
 
   .icon {
