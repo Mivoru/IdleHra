@@ -40,12 +40,17 @@ export interface DamageEvent {
    */
   isCrit: boolean;
 
+  /** The Precision crown's Double Strike doubled this crit (server flag). */
+  isDoubleCrit: boolean;
+
   /** 0 melee, 1 ranged, 2 magic - which effect to draw. */
   weaponKind: number;
 }
 
 /** How long a number stays on screen. Matches the CSS animation duration. */
-export const DAMAGE_TEXT_LIFETIME_MS = 1100;
+// Modul: 1900, not 1100 (owner, 2026-10-28): a number was gone before the eye
+// got to it, and a crit's label under it needs a beat longer to be read.
+export const DAMAGE_TEXT_LIFETIME_MS = 1900;
 
 /**
  * The most numbers alive at once. A fast weapon lands a handful a second, so
@@ -65,7 +70,7 @@ export class DamageFeed {
    * `amount` is whole hit points and already final - post-armour, post-crit,
    * burn folded in. Nothing here recomputes or second-guesses it.
    */
-  push(amount: number, isCrit: boolean, weaponKind: number, atMs: number): DamageEvent | null {
+  push(amount: number, isCrit: boolean, weaponKind: number, atMs: number, isDoubleCrit = false): DamageEvent | null {
     if (!Number.isFinite(amount) || amount <= 0) return null;
 
     const event: DamageEvent = {
@@ -74,6 +79,7 @@ export class DamageFeed {
       offset: Math.random(),
       atMs,
       isCrit,
+      isDoubleCrit: isCrit && isDoubleCrit,
       weaponKind,
     };
     this.events = [...this.events, event].slice(-MAX_LIVE_DAMAGE_TEXTS);

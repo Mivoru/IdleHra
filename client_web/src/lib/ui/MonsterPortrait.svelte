@@ -16,7 +16,7 @@
   interface Props {
     monsterId: number;
     name: string;
-    size?: 'sm' | 'md' | 'lg' | 'xl';
+    size?: 'sm' | 'md' | 'lg' | 'xl' | 'scene';
     /** Dimmed, for a codex entry never encountered. */
     unknown?: boolean;
     /** A picture to draw instead of the monster's own (a seasonal boss wearing a region boss's stats). */
@@ -81,6 +81,24 @@
   .portrait[data-size='xl'] {
     width: clamp(8.5rem, 22vw, 12rem);
     height: clamp(8.5rem, 22vw, 12rem);
+  }
+
+  /* Modul: THE FIGHT SCENE'S MONSTER (owner, 2026-10-28). No frame and no
+     backdrop - it stands in the region's painting rather than in a box - and a
+     soft dark shadow under it so a light sprite does not float on a light
+     scene. Sized off the viewport so it is most of a phone's width. */
+  .portrait[data-size='scene'] {
+    width: min(72vw, 17rem);
+    height: min(72vw, 17rem);
+    border: none;
+    background: none;
+    overflow: visible;
+    filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.65));
+  }
+
+  .portrait.boss[data-size='scene'] {
+    border: none;
+    filter: drop-shadow(0 10px 12px rgba(0, 0, 0, 0.65)) drop-shadow(0 0 14px rgba(224, 85, 63, 0.55));
   }
 
   /* Colour AND a heavier border, plus "(boss)" in the tooltip - three signals

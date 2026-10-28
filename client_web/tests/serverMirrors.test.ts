@@ -637,6 +637,7 @@ describe('the numbers the client mirrors still match the server', () => {
       ['Blocked', 'FlagBlocked', 1],
       ['Burn', 'FlagBurn', 2],
       ['Thorns', 'FlagThorns', 3],
+      ['DoubleStrike', 'FlagDoubleStrike', 4],
     ];
     for (const [clientName, serverName, shift] of flags) {
       expect(num(store, new RegExp(`${clientName}: (\\d+)`), `client ${clientName}`)).toBe(

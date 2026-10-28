@@ -12,6 +12,8 @@
     bossGearProgress,
     FIRST_CLEAR_HP_MULTIPLIERS,
     FIRST_CLEAR_ATTACK_MULTIPLIERS,
+    FIRST_CANONICAL_MONSTER_ID,
+    MONSTERS_PER_REGION,
   } from '../lib/ui/victories';
   import { AFFIX_RARITY_NAMES } from '../lib/ui/affixes';
   import { rarityName } from '../lib/ui/rarity';
@@ -271,6 +273,16 @@
   // this fight.
   const seasonalTier = $derived(Number($playerState?.SeasonalBossTier ?? 0));
   const cailleach = $derived(seasonalTier > 0 && chosen?.slot === 1 && activeMonster !== null);
+
+  // Modul: the painted region behind the monster. Regions are five monsters
+  // each from FIRST_CANONICAL_MONSTER_ID (victories.ts); the seasonal boss is
+  // fought on its own art, so it gets no region painting.
+  const sceneBackground = $derived.by(() => {
+    if (!activeMonster || cailleach) return null;
+    const offset = activeMonster.Id - FIRST_CANONICAL_MONSTER_ID;
+    if (offset < 0) return null;
+    return locationBackground(Math.floor(offset / MONSTERS_PER_REGION) + 1);
+  });
   const fightName = $derived(
     cailleach ? `The Cailleach · winter ${['', 'I', 'II', 'III', 'IV', 'V', 'VI'][seasonalTier]}` : (activeMonster?.Name ?? ''),
   );
@@ -567,41 +579,7 @@
         </div>
 
         {#if activeMonster}
-          <div class="fighting">
-            <!-- Over the fight row rather than above it: in flow, the numbers'
-                 own 2.25rem would make a pinned strip that much taller on a
-                 phone, for a layer that is empty most of the time. -->
-            <span class="floatwrap"><FloatingDamage /></span>
-            <!-- Keyed on the pulse counter so the animation restarts on every
-                 hit; without the key Svelte reuses the node and the animation
-                 only ever plays once. -->
-            {#key hitPulse}
-              <span class="hit-shake">
-                <span class="struckwrap" class:struck class:dying>
-                  <MonsterPortrait
-                    monsterId={activeMonster.Id}
-                    name={fightName}
-                    size="xl"
-                    src={cailleach ? spriteUrl('Events/samhain/boss/cailleach.webp') : null}
-                  />
-                  <!-- Modul: the mark the blow leaves, drawn over the portrait it
-                       landed on. Shape depends on the weapon family, brightness on
-                       whether it crit. -->
-                  <HitSpark />
-                </span>
-              </span>
-            {/key}
-            <div class="hpblock grow">
-              <span class="target" data-testid="fight-target">Fighting {fightName}</span>
-              <Bar
-                value={shownMonsterHp}
-                max={activeMaxHp(activeMonster)}
-                color="var(--danger)"
-                label={`${formatNumber(Math.round(shownMonsterHp))} / ${formatNumber(activeMaxHp(activeMonster))}`}
-              />
-            </div>
-            <button class="standdown" onclick={stop}>Stand down</button>
-          </div>
+          <!-- The fight itself is the scene below the strip (owner, 2026-10-28). -->
         {:else if stalled}
           <!-- Deployed, but the simulation is not running. Saying "not in
                combat" here is what made the Fight button look broken. -->
@@ -649,6 +627,59 @@
         <p class="dim">Waiting for the first state snapshot...</p>
       {/if}
     </section>
+
+    <!-- Modul: THE FIGHT IS A SCENE, NOT A ROW (owner, 2026-10-28). The
+         monster was a thumbnail beside its health bar inside the pinned strip;
+         it is the width of the screen now, standing in front of its own
+         region's painting, with the numbers and the blade marks over it.
+         It sits OUTSIDE the sticky strip on purpose: pinned at this size it
+         would cover the monster list it is chosen from.
+         Only the monster shakes when hit - the scene, the bar and the button
+         stay still, which is what makes the blow read as landing ON it. -->
+    {#if snap && activeMonster}
+      <div
+        class="scene fighting"
+        class:boss-scene={cailleach}
+        style={sceneBackground ? `--scene-bg: url('${sceneBackground}')` : ''}
+      >
+        <div class="scene-head">
+          <span class="target" data-testid="fight-target">Fighting {fightName}</span>
+        </div>
+        <div class="stage">
+          <!-- Keyed on the pulse counter so the animation restarts on every
+               hit; without the key Svelte reuses the node and the animation
+               only ever plays once. -->
+          {#key hitPulse}
+            <span class="monster-hit">
+              <span class="struckwrap" class:struck class:dying>
+                <MonsterPortrait
+                  monsterId={activeMonster.Id}
+                  name={fightName}
+                  size="scene"
+                  src={cailleach ? spriteUrl('Events/samhain/boss/cailleach.webp') : null}
+                />
+              </span>
+            </span>
+          {/key}
+          <!-- The mark the blow leaves, drawn over the monster it landed on.
+               Shape by weapon family; a crit crosses it, a Double Strike
+               flashes. Outside the shake, so the mark stays where it hit. -->
+          <HitSpark />
+          <span class="floatwrap"><FloatingDamage /></span>
+        </div>
+        <div class="scene-foot">
+          <div class="hpblock grow">
+            <Bar
+              value={shownMonsterHp}
+              max={activeMaxHp(activeMonster)}
+              color="var(--danger)"
+              label={`${formatNumber(Math.round(shownMonsterHp))} / ${formatNumber(activeMaxHp(activeMonster))}`}
+            />
+          </div>
+          <button class="standdown" onclick={stop}>Stand down</button>
+        </div>
+      </div>
+    {/if}
 
     {#if snap && haltMessage}
       <p class="halt">{haltMessage}</p>
@@ -1190,9 +1221,7 @@
 
   .floatwrap {
     position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 55%;
+    inset: 0;
     pointer-events: none;
     z-index: 1;
   }
@@ -1452,32 +1481,100 @@
      390px row left the health bar about 60px wide. Stacking the bar over the
      button keeps both in the column the portrait leaves, so nothing wraps and
      the strip grows only to the portrait's own height. */
-  .fighting {
+  /* Modul: THE SCENE. The region's painting fills the box (cover, anchored
+     low so the ground the monster stands on stays in frame), darkened toward
+     the top and bottom so the name and the health bar read over any art. The
+     monster is sized off the scene's width, so a phone gets a monster that is
+     most of the screen rather than a thumbnail. */
+  .scene {
     position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, rgba(0, 0, 0, 0) 22%, rgba(0, 0, 0, 0) 62%, rgba(0, 0, 0, 0.8) 100%),
+      var(--scene-bg, radial-gradient(ellipse at 50% 70%, #3a2c1e, #120e0a)) center 70% / cover no-repeat,
+      #1a140f;
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.55);
+    min-height: clamp(17rem, 78vw, 22rem);
+  }
+
+  .scene.boss-scene {
+    border-color: var(--rarity-10);
+  }
+
+  .scene-head {
+    padding: 0.5rem 0.75rem 0;
+    text-align: center;
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+    z-index: 2;
+  }
+
+  .stage {
+    position: relative;
+    flex: 1;
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    align-content: center;
+    place-items: end center;
+    min-height: 0;
+  }
+
+  .scene-foot {
+    position: relative;
+    z-index: 2;
+    display: flex;
     align-items: center;
-    gap: 0.4rem 0.6rem;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem 0.65rem;
   }
 
-  .fighting > :global(.hit-shake) {
-    grid-row: 1 / 3;
-    grid-column: 1;
+  .scene-foot .standdown {
+    flex: none;
   }
 
-  .fighting > .hpblock {
-    grid-column: 2;
-    grid-row: 1;
-    align-self: end;
+  /* Over a dark scene the bar's own dim label was dark text on dark red. */
+  .scene-foot :global(.bar) {
+    height: 1.35rem;
+    border-color: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.55);
   }
 
-  .fighting > .standdown {
-    grid-column: 2;
-    grid-row: 2;
-    justify-self: start;
-    align-self: start;
+  .scene-foot :global(.bar-label) {
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+  }
+
+  /* Only the monster moves. A heavier shake than the strip's old 2px one,
+     because the sprite is three times the size and 2px on it is invisible. */
+  .monster-hit {
+    display: inline-block;
+    animation: monster-hit 200ms ease-out;
+  }
+
+  @keyframes monster-hit {
+    0%,
+    100% {
+      transform: none;
+    }
+    20% {
+      transform: translate(-6px, 1px) rotate(-1.5deg);
+    }
+    45% {
+      transform: translate(5px, -1px) rotate(1deg);
+    }
+    70% {
+      transform: translate(-3px, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .monster-hit {
+      animation: none;
+    }
   }
 
   .grow {
