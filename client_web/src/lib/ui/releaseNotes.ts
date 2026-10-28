@@ -35,6 +35,28 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.32.0',
+    date: '2026-10-28',
+    headline: 'Open five chests at once.',
+    sections: [
+      {
+        title: 'Wardrobe',
+        items: [
+          'New Open ×5 button: shake the first chest open, then press Next to see each of the five pieces. The chest behind glows in the colour of the piece on show.',
+          'When the five are done, Open another 5 starts the next batch.',
+        ],
+      },
+      {
+        title: 'Combat',
+        items: [
+          'The monster picture sits above its Fight button, bigger, and the text has the full width.',
+          'A struck monster recoils more gently.',
+          'Damage numbers are a little smaller and always stay fully on screen.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.31.1',
     date: '2026-10-28',
     sections: [

@@ -878,7 +878,6 @@
                     aria-label="{monster.Name}: show drops"
                     onclick={() => toggleMonster(monster)}
                   >
-                    <MonsterPortrait monsterId={monster.Id} name={monster.Name} size="sm" />
                     <span class="rowtext">
                       <span class="line1">
                         <span class="name">{monster.Name}</span>
@@ -913,13 +912,20 @@
                       </span>
                     </span>
                   </button>
-                  <button
-                    class="fight"
-                    disabled={$connectionStatus.phase !== 'live' || regionNo > unlockedRegion}
-                    onclick={() => fight(monster)}
-                  >
-                    Fight
-                  </button>
+                  <!-- Modul: THE PICTURE STANDS OVER ITS FIGHT BUTTON (owner,
+                       2026-10-28). Squeezed in front of the text it was a
+                       thumbnail and took the text's room; the right-hand
+                       column had empty height above Fight. -->
+                  <div class="fightcol">
+                    <MonsterPortrait monsterId={monster.Id} name={monster.Name} size="md" />
+                    <button
+                      class="fight"
+                      disabled={$connectionStatus.phase !== 'live' || regionNo > unlockedRegion}
+                      onclick={() => fight(monster)}
+                    >
+                      Fight
+                    </button>
+                  </div>
                   {#if open}
                     <!-- Modul: THE DROP TABLE OPENS WHERE THE TAP WAS. It used
                          to render in its own panel ABOVE the monster list, so on
@@ -1106,17 +1112,9 @@
 
   @keyframes folk-struck {
     0% {
-      transform: translateX(0);
-      filter: brightness(2.1) saturate(0.4);
-    }
-    35% {
-      transform: translateX(-3px) rotate(-1.5deg);
-    }
-    70% {
-      transform: translateX(2px) rotate(1deg);
+      filter: brightness(1.55) saturate(0.75);
     }
     100% {
-      transform: none;
       filter: none;
     }
   }
@@ -1472,8 +1470,7 @@
     min-width: 4.5rem;
     height: 2.75rem;
     padding-block: 0;
-    align-self: end;
-    margin: 0.4rem 0.45rem;
+    width: 100%;
     /* In Combat's ember, lit at the top (sections.ts / app.css). */
     background-color: var(--sec-combat-deep);
     background-image: linear-gradient(180deg, color-mix(in srgb, var(--sec-combat) 88%, #fff), var(--sec-combat) 45%, var(--sec-combat-deep));
@@ -1544,10 +1541,22 @@
     border-right: 1px solid color-mix(in srgb, var(--text-dim) 16%, transparent);
   }
 
-  /* The portrait keeps its size; `.panel *`'s min-width: 0 would otherwise
-     let flex squeeze it. */
-  .row > :global(:first-child) {
+  .fightcol {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    padding: 0.4rem 0.45rem;
+  }
+
+  .fightcol > :global(.portrait) {
     flex: none;
+    width: 4rem;
+    height: 4rem;
+    border: none;
+    background: radial-gradient(circle, color-mix(in srgb, var(--sec-combat) 18%, transparent), transparent 70%);
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
   }
 
   .rowtext {
@@ -1734,24 +1743,26 @@
 
   /* Only the monster moves. A heavier shake than the strip's old 2px one,
      because the sprite is three times the size and 2px on it is invisible. */
+  /* Owner, 2026-10-28: the shake was too sharp. A softer recoil now - one
+     small push away from the blow and an eased settle, no rotation - so it
+     reads as being struck rather than as the sprite glitching. */
   .monster-hit {
     display: inline-block;
-    animation: monster-hit 200ms ease-out;
+    animation: monster-hit 320ms cubic-bezier(0.25, 0.8, 0.35, 1);
   }
 
   @keyframes monster-hit {
-    0%,
-    100% {
+    0% {
       transform: none;
     }
-    20% {
-      transform: translate(-6px, 1px) rotate(-1.5deg);
+    25% {
+      transform: translate(-3px, 1px) scale(0.985);
     }
-    45% {
-      transform: translate(5px, -1px) rotate(1deg);
+    60% {
+      transform: translate(1.5px, 0) scale(1);
     }
-    70% {
-      transform: translate(-3px, 0);
+    100% {
+      transform: none;
     }
   }
 
