@@ -862,6 +862,24 @@
     align-content: start;
   }
 
+  /* Modul: THE SAME EDGES ON EVERY TAB (owner, 2026-10-28: "Work & orders
+     shrinks everything"). On a phone app.css pads whatever holds a .panel
+     directly (`:has(> .panel)`). Gear, Attributes and Stats put their panel
+     straight in .page, so .page got that padding; Work & orders wraps its two
+     panels in .workgrid, so .page kept 1rem AND .workgrid added its own - the
+     whole tab, tabs included, jumped 6px inwards and 9px down. Stated here
+     for both, so it no longer depends on what the open tab contains. */
+  @media (max-width: 40rem) {
+    .page {
+      padding: 0.6rem !important;
+      gap: 0.6rem !important;
+    }
+
+    .workgrid {
+      padding: 0 !important;
+    }
+  }
+
   /* ------------------------------------------------------------ switcher */
   /* Modul: --sa-top, not 0: a sticky offset is measured from the scrollport
      edge, which on an edge-to-edge phone is under the status bar (the same

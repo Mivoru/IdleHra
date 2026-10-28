@@ -1400,10 +1400,14 @@
        sheet's full-width shape here too, so it spanned the phone edge to edge
        and its bottom edge sat flush on the screen's first panel. It keeps its
        own width now, centred, with the same gap below it as above. */
+    /* Owner, 2026-10-28: under the FolkIdle title, not centred, and a slimmer
+       outline. The BUTTON keeps the 44px touch floor (check:touch measures
+       it); only the drawn pill inside it is slimmer - a ::before inset from
+       the top and bottom carries the border and the fill. */
     .event-strip {
       display: flex;
-      justify-content: center;
-      padding: 0.5rem 0.75rem;
+      justify-content: flex-start;
+      padding: 0.2rem 1rem;
     }
 
     .event-strip:empty {
@@ -1411,9 +1415,24 @@
     }
 
     .event-strip :global(.event-chip) {
+      position: relative;
+      isolation: isolate;
       min-height: 44px;
       width: auto;
-      min-width: 12rem;
+      min-width: 0;
+      padding: 0 0.85rem;
+      border-color: transparent;
+      background: transparent;
+    }
+
+    .event-strip :global(.event-chip::before) {
+      content: '';
+      position: absolute;
+      inset: 0.4rem 0;
+      z-index: -1;
+      border: 1px solid var(--event-accent, var(--border));
+      border-radius: 999px;
+      background: var(--event-chip-bg, transparent);
     }
 
     /* Modul: 44px stated here. This is the single most-tapped control on a

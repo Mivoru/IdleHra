@@ -184,7 +184,7 @@
   <div class="cols" aria-hidden="true">
     <span class="cols-who"></span>
     <span class="apts">
-      {#each APTITUDES as apt (apt.short)}<span title={apt.name}>{apt.short[0]}</span>{/each}
+      {#each APTITUDES as apt (apt.short)}<span title={apt.name}>{apt.short}</span>{/each}
     </span>
     <span class="act"></span>
   </div>
@@ -269,6 +269,14 @@
       {#if unmarried.length === 0}
         <p class="dim small">Nobody is waiting to marry in.</p>
       {:else}
+        <!-- Owner, 2026-10-28: the four letters said nothing about what they
+             do. What each one passes on to a child, said once above the list. -->
+        <p class="aptlegend" data-testid="aptitude-legend">
+          <span><b>STR</b> harder blows</span>
+          <span><b>SKL</b> faster gathering &amp; crafting</span>
+          <span><b>END</b> more health</span>
+          <span><b>FOR</b> better drops</span>
+        </p>
         {@render columns()}
         <ul data-testid="gene-pool-list">
           {#each shown as p (p.Id)}{@render person(p)}{/each}
@@ -465,6 +473,12 @@
     min-width: 0;
   }
 
+  .who .tiny {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
   .pname {
     overflow: hidden;
     text-overflow: ellipsis;
@@ -539,7 +553,7 @@
   }
 
   .apts > span {
-    width: 1.5rem;
+    width: 1.75rem;
     text-align: center;
     border-radius: 3px;
     background: var(--bg);
@@ -571,9 +585,24 @@
     gap: 0.5rem;
     padding: 0 calc(0.5rem + 1px);
     margin-bottom: -0.2rem;
-    font-size: 0.66rem;
-    letter-spacing: 0.05em;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: color-mix(in srgb, var(--sec-make) 60%, var(--text));
+  }
+
+  .aptlegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem 0.7rem;
+    margin: 0;
+    font-size: 0.72rem;
     color: var(--text-dim);
+  }
+
+  .aptlegend b {
+    color: color-mix(in srgb, var(--sec-make) 60%, var(--text));
+    letter-spacing: 0.04em;
   }
 
   .cols-who {
@@ -586,7 +615,7 @@
 
   .act {
     flex: none;
-    width: 6rem;
+    width: 5.25rem;
     display: flex;
     justify-content: flex-end;
   }

@@ -896,7 +896,8 @@
                       <span class="line2">
                         {#if est && est.CanDamage}
                           <span class="estimate yield" data-testid="hunting-estimate" title={estimateLine(est)}>
-                            {formatNumber(est.XpPerHour)} XP/h · <Money amount={est.GoldPerHour} />/h
+                            <span class="xph">{formatNumber(est.XpPerHour)} <span class="per">XP/h</span></span>
+                            · <span class="goldph"><Money amount={est.GoldPerHour} /><span class="per">/h</span></span>
                           </span>
                         {/if}
                         <span class="dim">
@@ -1440,14 +1441,24 @@
     opacity: 0.9;
   }
 
+  /* Modul: ONE FRAME PER MONSTER, FIGHT INSIDE IT (owner, 2026-10-28). The
+     card used to be the left button alone with Fight floating beside it,
+     centred on the row's height - which read as two objects. The li is the
+     card now; the info button inside it is transparent, a hairline divides it
+     from Fight, and Fight sits at the bottom of its own column. */
   .monsters li {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
+    align-items: stretch;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background-color: var(--bg-raised);
+    background-image: linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(0, 0, 0, 0.12));
+    overflow: hidden;
     gap: 0.35rem;
   }
 
-  .monsters li.selected .row {
+  .monsters li.selected {
     border-color: var(--accent);
   }
 
@@ -1461,7 +1472,8 @@
     min-width: 4.5rem;
     height: 2.75rem;
     padding-block: 0;
-    align-self: center;
+    align-self: end;
+    margin: 0.4rem 0.45rem;
     /* In Combat's ember, lit at the top (sections.ts / app.css). */
     background-color: var(--sec-combat-deep);
     background-image: linear-gradient(180deg, color-mix(in srgb, var(--sec-combat) 88%, #fff), var(--sec-combat) 45%, var(--sec-combat-deep));
@@ -1480,7 +1492,7 @@
 
   .detail {
     grid-column: 1 / -1;
-    margin: 0 0 0.4rem;
+    margin: 0 0.45rem 0.45rem;
     padding: 0.45rem 0.6rem;
     border-left: 2px solid var(--accent);
     background: var(--bg-sunken);
@@ -1525,6 +1537,11 @@
     font-size: 0.85rem;
     min-width: 0;
     padding: 0.35rem 0.55rem;
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    border-right: 1px solid color-mix(in srgb, var(--text-dim) 16%, transparent);
   }
 
   /* The portrait keeps its size; `.panel *`'s min-width: 0 would otherwise
@@ -1575,13 +1592,36 @@
     color: var(--text);
   }
 
+  /* Modul: WHAT A MONSTER PAYS, EACH IN ITS OWN COLOUR (owner, 2026-10-28).
+     XP is a cool spirit-blue - it sits apart from gold and from the ember of
+     the Fight button - and the "/h" after each figure wears its figure's
+     colour at the same size as gold's "g", instead of a white tail. */
+  .xph {
+    color: #7cc6f2;
+  }
+
+  .goldph {
+    display: inline-flex;
+    align-items: center;
+    color: var(--gold);
+  }
+
+  .per {
+    font-size: 0.85em;
+    opacity: 0.85;
+  }
+
+  :global(:where(:root[data-scheme='light'])) .xph {
+    color: #1f6fa6;
+  }
+
   .chip.bestpick {
     color: #1d1408;
     background: linear-gradient(180deg, #ffe08a, #d4a12c);
     border-color: #d4a12c;
   }
 
-  .monsters li.best .row {
+  .monsters li.best {
     border-color: #d4a12c;
     box-shadow: inset 3px 0 0 #d4a12c;
   }
