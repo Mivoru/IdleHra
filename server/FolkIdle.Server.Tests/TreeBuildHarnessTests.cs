@@ -195,6 +195,114 @@ namespace FolkIdle.Server.Tests
             _out.WriteLine(table.ToString());
         }
 
+        // ---- the War half (rework slice 2.2) -----------------------------------
+
+        internal static Score MeasureWar(TickStatePayload payload, byte[] ranks, int monsterId)
+        {
+            payload.SkillTreeVersion = 1;
+            for (int id = 0; id < SkillRankBuffer.Length; id++) payload.SkillRanks[id] = ranks[id];
+            var setup = HuntingProjection.FightSetup.For(in payload, monsterId, timedEffects: false);
+            if (!setup.CanDamage) return new Score(0, 0, false);
+            double dps = setup.Swing.Mean * 1000.0 / setup.PlayerIntervalMs;
+            double survived = setup.FarmMonsterSwing > 0 ? setup.MaxMilliHp / setup.FarmMonsterSwing : double.PositiveInfinity;
+            return new Score(dps, survived, true);
+        }
+
+        /// <summary>The same greedy yardstick as BestCombatBuild, on the War table.</summary>
+        internal static (byte[] Ranks, Score Estimate) BestWarBuild(int region, int budget, Func<Score, double> objective)
+        {
+            var payload = Reference(region);
+            int monster = Target(region);
+            var ranks = new byte[SkillRankBuffer.Length];
+            var best = MeasureWar(payload, ranks, monster);
+            int left = budget;
+
+            while (left > 0)
+            {
+                byte[]? pick = null;
+                Score pickScore = best;
+                int pickCost = 0;
+                double pickValue = 0;
+                foreach (var node in WarTreeRegistry.All())
+                {
+                    var target = (byte[])ranks.Clone();
+                    if (target[node.Id] >= node.MaxLevel) continue;
+                    target[node.Id]++;
+                    if (WarTreeRegistry.PlanReason(ranks, target, left, out int cost) != null || cost <= 0) continue;
+                    var score = MeasureWar(payload, target, monster);
+                    if (!score.CanDamage) continue;
+                    double value = (objective(score) - objective(best)) / objective(best) / cost;
+                    if (value > pickValue) { pick = target; pickScore = score; pickCost = cost; pickValue = value; }
+                }
+                if (pick == null) break;
+                ranks = pick;
+                best = pickScore;
+                left -= pickCost;
+            }
+            return (ranks, best);
+        }
+
+        private static string DescribeWar(byte[] ranks)
+        {
+            var parts = new List<string>();
+            foreach (var node in WarTreeRegistry.All())
+                if (ranks[node.Id] > 0) parts.Add($"{node.Name} {ranks[node.Id]}");
+            return parts.Count == 0 ? "-" : string.Join(", ", parts);
+        }
+
+        /// <summary>
+        /// The War half's STAT nodes only (slice 2.2: its mechanics are pending
+        /// and cannot be bought), beside today's tree at the same budgets.
+        /// </summary>
+        [Fact]
+        public void War_half_stat_nodes_against_today()
+        {
+            if (!Enabled) return;
+            var table = new StringBuilder();
+            table.AppendLine("War half, stat nodes only (mechanics pending), greedy on DPS; then greedy on DPS x swings survived. Same character and target as the baseline.");
+            table.AppendLine("region | budget | today DPS+ | War DPS+ (spent) | War balanced: DPS+ / survival+ | DPS build");
+            foreach (int region in new[] { 1, 2, 3, 4, 5 })
+            {
+                int level = BossGearBenchmark.ReferenceLevelForRegion(region);
+                var bare = Measure(Reference(region), new byte[SkillTreeRegistry.NodeCount], Target(region));
+                foreach (int budget in region == 5 ? new[] { level - 1, 129 } : new[] { level - 1 })
+                {
+                    var (_, today) = BestCombatBuild(region, budget);
+                    var (ranks, war) = BestWarBuild(region, budget, sc => sc.Dps);
+                    var (_, balanced) = BestWarBuild(region, budget, sc => sc.Dps * sc.SwingsSurvived);
+                    int spent = 0;
+                    foreach (var node in WarTreeRegistry.All()) spent += ranks[node.Id] * node.CostPerRank;
+                    table.AppendLine(FormattableString.Invariant(
+                        $"{region} | {budget} | {today.Dps / bare.Dps - 1:+0.0%} | {war.Dps / bare.Dps - 1:+0.0%} ({spent}) | {balanced.Dps / bare.Dps - 1:+0.0%} / {balanced.SwingsSurvived / bare.SwingsSurvived - 1:+0.0%} | {DescribeWar(ranks)}"));
+                }
+            }
+            _out.WriteLine(table.ToString());
+        }
+
+        /// <summary>ALWAYS ON: today's players are untouched - War ranks on a version-0 payload do nothing.</summary>
+        [Fact]
+        public void War_ranks_do_nothing_on_todays_tree()
+        {
+            var payload = Reference(3);
+            var bare = Measure(payload, new byte[SkillTreeRegistry.NodeCount], Target(3));
+            payload.SkillRanks[WarTreeRegistry.Edge] = 5;
+            payload.SkillRanks[WarTreeRegistry.KeenEye] = 5;
+            payload.SkillRanks[WarTreeRegistry.Vitality] = 5;
+            var still = Measure(payload, new byte[SkillTreeRegistry.NodeCount], Target(3));
+            Assert.Equal(bare.Dps, still.Dps, 6);
+            Assert.Equal(bare.SwingsSurvived, still.SwingsSurvived, 6);
+
+            var war = MeasureWar(Reference(3), WithRanks((WarTreeRegistry.Edge, 5), (WarTreeRegistry.Vitality, 5)), Target(3));
+            Assert.True(war.Dps > bare.Dps && war.SwingsSurvived > bare.SwingsSurvived);
+        }
+
+        private static byte[] WithRanks(params (int Id, byte Rank)[] set)
+        {
+            var r = new byte[SkillRankBuffer.Length];
+            foreach (var (id, rank) in set) r[id] = rank;
+            return r;
+        }
+
         /// <summary>ALWAYS ON: the harness itself works and the tree is worth something.</summary>
         [Fact]
         public void The_tree_makes_a_region_one_character_kill_faster()

@@ -474,6 +474,11 @@ namespace FolkIdle.Server.Engine
         // with a rebirth; points come from levels the rebirth takes back.
         public SkillRankBuffer SkillRanks;
 
+        // Modul: which tree the ranks above mean: 0 today's (ids 0-19), 1 the
+        // rework's War half (ids 20-54, WarTreeRegistry). Only the harness sets
+        // 1 until slice 2.5 switches every player at once.
+        public byte SkillTreeVersion;
+
         // Today's twenty nodes by name, kept so the readers written against
         // them still read the same byte. SimulationEngine.SetSkillTreeLevel
         // writes SkillRanks by id.

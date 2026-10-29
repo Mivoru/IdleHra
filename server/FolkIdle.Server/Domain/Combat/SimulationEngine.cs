@@ -3818,6 +3818,16 @@ namespace FolkIdle.Server.Domain.Combat
             int activeAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
             CombatStats stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, ActiveRaceId(in payload), payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
             stats.FlatPhysicalArmor = SkillTreeRegistry.ApplyFortitudeArmour(stats.FlatPhysicalArmor, payload.Skill_Fortitude);
+
+            // Modul: the War half's stat nodes (rework slice 2.2). Resolve answers
+            // all zeros unless the payload runs the War tree, so a player on
+            // today's tree fights with exactly the numbers above.
+            var war = WarTreeRegistry.Resolve(in payload);
+            if (war.ArmourTenthsPct > 0 && stats.FlatPhysicalArmor > 0)
+                stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor + (long)stats.FlatPhysicalArmor * war.ArmourTenthsPct / 1000L);
+            stats.DodgeChancePct += war.DodgeTenths / 10f;
+            stats.BlockStrengthPct += war.BlockTenths / 10f;
+            stats.AccuracyRating += war.AccuracyTenths / 10;
             return stats;
         }
 
@@ -3852,6 +3862,8 @@ namespace FolkIdle.Server.Domain.Combat
             // same additive-percent way inheritance is just above.
             effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
                 SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
+            // The War half's Vitality, in the same additive-percent layer.
+            effectiveMilliHp += effectiveMilliHp * (long)WarTreeRegistry.Resolve(in payload).MaxHpTenthsPct / 1000L;
 
             // Modul: the bloodline's health - Endurance, then health traits -
             // layered the same additive-percent way as inheritance and the tree
@@ -3869,6 +3881,11 @@ namespace FolkIdle.Server.Domain.Combat
                     SkillTreeRegistry.BoughRelentless, payload.Skill_Relentless) / 100f;
                 playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - faster)));
             }
+            int warFaster = WarTreeRegistry.Resolve(in payload).AttackIntervalTenthsPct;
+            if (warFaster > 0)
+            {
+                playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - warFaster / 1000f)));
+            }
             return playerAttackSpeedMs;
         }
 
@@ -3876,7 +3893,8 @@ namespace FolkIdle.Server.Domain.Combat
         internal static float LiveCritChancePct(in TickStatePayload payload, in CombatStats combatStats)
             => Math.Clamp(
                 combatStats.CritChancePct
-                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance),
+                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance)
+                    + WarTreeRegistry.Resolve(in payload).CritChanceTenths / 10f,
                 0f,
                 MaxCritChancePct);
 
@@ -3884,7 +3902,8 @@ namespace FolkIdle.Server.Domain.Combat
         internal static float LiveCritMultiplier(in TickStatePayload payload, in CombatStats combatStats)
             => StatsCalculator.ComputeCritMultiplier(combatStats)
                 + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, payload.Skill_CritDamage) / 100f)
-                + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughGuile, payload.Skill_Guile) / 100f);
+                + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughGuile, payload.Skill_Guile) / 100f)
+                + (WarTreeRegistry.Resolve(in payload).CritDamageTenthsPct / 1000f);
 
         // Modul: THE MONSTER'S SWING, ONE DEFINITION FOR EVERY PATH THAT PRICES IT.
         //
@@ -4021,6 +4040,11 @@ namespace FolkIdle.Server.Domain.Combat
             // on the pre-armour figure. Shared with the offline projection, which
             // used to skip Strength entirely: see BloodlineBonuses.
             effective = BloodlineBonuses.ApplyAttack(effective, payload.Aptitude_Strength, TraitTotals.From(payload.TraitMask));
+
+            // The War half's Edge and Heavy Hand: their own multiplier, so they
+            // do not dilute into the inheritance/guild/Renown group above.
+            int warDamage = WarTreeRegistry.Resolve(in payload).DamageTenthsPct;
+            if (warDamage > 0) effective += effective * warDamage / 1000L;
 
             return effective;
         }

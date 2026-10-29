@@ -349,6 +349,24 @@ The owner wants balance backed by measurement. Nothing in sections 4 and
    +30% while spreading it over the whole budget, so a level-100 player's
    last 70 points still buy a choice.
 
+   **War half, stat nodes only (slice 2.2, 2026-10-29).** The mechanics are
+   still pending, so this is only part of the half:
+
+   | Region | Today's best | War, stat nodes only |
+   |---|---|---|
+   | 1 | +8.6% | **+21.4%** (19 points) |
+   | 2 | +18.5% | +23.0% (21 points) |
+   | 3-5 | +26.0-30.1% | +23.7-24.8% (21 points) |
+
+   Two findings for slice 2.4:
+   - Row 0 is too strong. Edge, Keen Eye and Cruel Edge at 1 point a rank
+     buy two and a half times today's region-1 bonus, which would soften
+     the region-1 wall. The fix is lower per-rank values on the first row,
+     or a 1/1/2/2/2 cost per rank.
+   - The greedy run stops at 21 points. Every column's row-1 gate passes
+     through a pending mechanic node, so nothing past row 0 can be bought
+     yet. This is expected until slice 2.3.
+
    The walls do not include the tree. `BossGearBenchmark` assumes only First
    Blood at its maximum, so the War half must either keep a node that
    softens the first-clear HP penalty, or `BossFirstClearRules.MaxHpFor`
