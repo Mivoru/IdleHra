@@ -24,6 +24,15 @@ namespace FolkIdle.Server.Tests
     public class OfflineCombatParityTests
     {
         private const int LiveHours = 6;
+
+        // Modul: A ROW THAT DIES IS ONE SHORT LIFE PER "HOUR", SO IT GETS MORE
+        // OF THEM (TASK_BOARD 120, 2026-10-29). Six samples of a twenty-second
+        // life is six draws of crits and dodges, and the 10% allowance on
+        // seconds alive is two swings - so "hungry" rows failed about one run in
+        // six on a working build (3 of 20 on main, measured), each time a
+        // different row. More lives, not a wider tolerance: a death is cheap to
+        // simulate, and the allowance still means what it said.
+        private const int DyingRowLives = 48;
         private const long Hour = 3600;
 
         private readonly ITestOutputHelper _output;
@@ -96,10 +105,14 @@ namespace FolkIdle.Server.Tests
             var guildWar = new ConcurrentQueue<GuildWarPointEvent>();
             var sessions = new ConcurrentDictionary<long, LiveSessionContext>();
             double kills = 0, xp = 0, gold = 0, food = 0, alive = 0, deaths = 0;
+            int runs = LiveHours;
             try
             {
-                for (int run = 0; run < LiveHours; run++)
+                for (int run = 0; ; run++)
                 {
+                    // Every one of the first six died: this is a dying row.
+                    if (run == LiveHours && deaths >= LiveHours) runs = DyingRowLives;
+                    if (run >= runs) break;
                     var payload = start;
                     int ticks = 0;
                     for (; ticks < HuntingProjection.HorizonTicks; ticks++)
@@ -131,7 +144,7 @@ namespace FolkIdle.Server.Tests
                 while (CombatLootEngine.DropRequestQueue.TryDequeue(out _)) { }
                 while (CodexEngine.KillEventQueue.TryDequeue(out _)) { }
             }
-            return new HourResult(kills / LiveHours, xp / LiveHours, gold / LiveHours, food / LiveHours, alive / LiveHours, deaths / LiveHours);
+            return new HourResult(kills / runs, xp / runs, gold / runs, food / runs, alive / runs, deaths / runs);
         }
 
         internal static HourResult RunOffline(TickStatePayload payload)

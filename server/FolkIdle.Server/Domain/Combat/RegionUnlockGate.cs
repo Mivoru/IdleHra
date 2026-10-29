@@ -9,7 +9,8 @@ namespace FolkIdle.Server.Domain.Combat
     // Modul: region progression. Beating a region's boss opens the next region,
     // and opening a region is the same act as being allowed to wear its gear.
     //
-    // REPLACES THE LEVEL GATE for equipment. EquipmentLevelGate derived a
+    // REPLACES THE LEVEL GATE for equipment. EquipmentLevelGate (deleted
+    // 2026-10-29, TASK_BOARD 123 - nothing called it any more) derived a
     // required level from RegionTier AND QualityTier, which meant a region-1
     // Epic shield asked for level 12 - the item dropped in the only region a
     // new character could reach, and then refused to be worn there. Rarity no

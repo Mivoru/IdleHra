@@ -129,10 +129,12 @@ namespace FolkIdle.Server.Network
         // an active guild membership as its trade license.
         NoGuildLicense = 12,
 
-        // Modul: Advanced Economy Refactoring, Part 2.3. Returned when a
-        // player's CurrentLevel is below an item's derived RequiredLevel -
-        // blocks both market purchase and equipping of over-leveled gear
-        // (see EquipmentLevelGate).
+        // Modul: Advanced Economy Refactoring, Part 2.3. Was returned when a
+        // player's level was below an item's derived RequiredLevel; that gate
+        // (EquipmentLevelGate) is gone - RegionUnlockGate replaced it. Still
+        // returned today for a character slot the Town Hall has not unlocked
+        // (SimulationEngine's slot-activation path). The value stays 13: it is
+        // a wire code.
         LevelTooLow = 13,
 
         // Modul: Architecture Overhaul, Part 2. Returned by

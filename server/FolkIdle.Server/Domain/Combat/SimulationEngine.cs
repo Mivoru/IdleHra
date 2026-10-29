@@ -1094,8 +1094,12 @@ namespace FolkIdle.Server.Domain.Combat
                             currentPayload.PickaxeToolTier = equipUpdate.PickaxeToolTier;
                             currentPayload.RodToolTier = equipUpdate.RodToolTier;
                             currentPayload.ToolGatherSpeedPct = equipUpdate.ToolGatherSpeedPct;
-                            currentPayload.ToolGatherYieldPct = equipUpdate.ToolGatherYieldPct;
-                            currentPayload.ToolRareFindPct = equipUpdate.ToolRareFindPct;
+                            currentPayload.ToolAxeYieldPct = equipUpdate.ToolAxeYieldPct;
+                            currentPayload.ToolPickaxeYieldPct = equipUpdate.ToolPickaxeYieldPct;
+                            currentPayload.ToolRodYieldPct = equipUpdate.ToolRodYieldPct;
+                            currentPayload.ToolAxeRareFindPct = equipUpdate.ToolAxeRareFindPct;
+                            currentPayload.ToolPickaxeRareFindPct = equipUpdate.ToolPickaxeRareFindPct;
+                            currentPayload.ToolRodRareFindPct = equipUpdate.ToolRodRareFindPct;
                         }
                         currentPayload.CachedAffixTotals = equipUpdate.AffixTotals;
                         currentPayload.CachedSetIds = equipUpdate.SetIds;
@@ -2388,8 +2392,10 @@ namespace FolkIdle.Server.Domain.Combat
                                 PickaxeToolTier = currentPayload.PickaxeToolTier,
                                 RodToolTier = currentPayload.RodToolTier,
                                 ToolGatherSpeedPct = currentPayload.ToolGatherSpeedPct,
-                                ToolGatherYieldPct = currentPayload.ToolGatherYieldPct,
-                                ToolRareFindPct = currentPayload.ToolRareFindPct,
+                                // The wire keeps the three tools' sums - no client
+                                // reads them, and the per-tool split is the tick's.
+                                ToolGatherYieldPct = ToolLoadoutResolver.ClampSum(currentPayload.ToolAxeYieldPct, currentPayload.ToolPickaxeYieldPct, currentPayload.ToolRodYieldPct),
+                                ToolRareFindPct = ToolLoadoutResolver.ClampSum(currentPayload.ToolAxeRareFindPct, currentPayload.ToolPickaxeRareFindPct, currentPayload.ToolRodRareFindPct),
                                 CachedInnMaturationBonus = currentPayload.CachedInnMaturationBonus,
                                 CachedMentorCount = currentPayload.CachedMentorCount,
                                 ActiveChildMaturationMs = currentPayload.ActiveChildMaturationMs,
@@ -3932,7 +3938,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         /// <summary>A monster crit's multiplier, less Vodnik's CritMitigationPct, floored at 1.0.</summary>
         internal static float MonsterCritMultiplier(in CombatStats combatStats)
-            => Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
+            => Math.Max(1.0f, RaceBonusRegistry.MonsterCritMultiplier - (combatStats.CritMitigationPct / 100f));
 
         /// <summary>The share of a post-armour hit the player's block takes off, capped at 75%.</summary>
         internal static float PlayerBlockFraction(in CombatStats combatStats)
@@ -4207,8 +4213,12 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.PickaxeToolTier, ref parked.PickaxeToolTier);
             Swap(ref payload.RodToolTier, ref parked.RodToolTier);
             Swap(ref payload.ToolGatherSpeedPct, ref parked.ToolGatherSpeedPct);
-            Swap(ref payload.ToolGatherYieldPct, ref parked.ToolGatherYieldPct);
-            Swap(ref payload.ToolRareFindPct, ref parked.ToolRareFindPct);
+            Swap(ref payload.ToolAxeYieldPct, ref parked.ToolAxeYieldPct);
+            Swap(ref payload.ToolPickaxeYieldPct, ref parked.ToolPickaxeYieldPct);
+            Swap(ref payload.ToolRodYieldPct, ref parked.ToolRodYieldPct);
+            Swap(ref payload.ToolAxeRareFindPct, ref parked.ToolAxeRareFindPct);
+            Swap(ref payload.ToolPickaxeRareFindPct, ref parked.ToolPickaxeRareFindPct);
+            Swap(ref payload.ToolRodRareFindPct, ref parked.ToolRodRareFindPct);
 
             // Identity travels with the activity: combat stats are derived from
             // the active character's race, age phase and genetic loci, so a
@@ -6017,6 +6027,14 @@ namespace FolkIdle.Server.Domain.Combat
             // (CodexEngine.MaxYieldMultiplier), never this sum.
             additionalYieldBonus += InheritanceRegistry.GetBonusPct(payload.Inherit_GatheringYield);
 
+            // Modul: the worn tools' gather_yield_pct, which ToolLoadoutResolver
+            // summed, the checkpoint stored and the packet shipped - and no
+            // simulation code read (found 2026-10-29). Affix magnitudes are
+            // tenths of a percent (the tooltip divides by ten, and so does the
+            // pet's GatherYieldTenthsPct just above), so /10 is the number the
+            // player was shown.
+            additionalYieldBonus += ToolYieldPctFor(in payload, gatheringNode.ProfessionType) / 10;
+
             // Modul: LootLuckPct no longer multiplies the roll COUNT
             // (which previously inflated absolute yield of every
             // table entry, common trash and rare drops alike, in
@@ -6030,9 +6048,32 @@ namespace FolkIdle.Server.Domain.Combat
             return new GatheringYield
             {
                 MultiplierPct = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier),
-                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct),
+                // Modul: gather_rare_find_pct rides the one rare-favouring
+                // lever gathering already has - LootLuckPct's flat weight bonus,
+                // which lifts low-weight (rare) entries far more than common
+                // ones - in the same tenths-of-a-percent units. Before
+                // 2026-10-29 the affix was summed, stored and read by nothing.
+                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct + ToolRareFindPctFor(in payload, gatheringNode.ProfessionType) / 10f),
             };
         }
+
+        /// <summary>The worn tool's yield affix for a profession: axe woodcutting, pickaxe mining, rod fishing.</summary>
+        internal static int ToolYieldPctFor(in TickStatePayload payload, int professionType) => professionType switch
+        {
+            0 => payload.ToolAxeYieldPct,
+            1 => payload.ToolPickaxeYieldPct,
+            2 => payload.ToolRodYieldPct,
+            _ => 0,
+        };
+
+        /// <summary>The worn tool's rare-find affix for a profession, as ToolYieldPctFor.</summary>
+        internal static int ToolRareFindPctFor(in TickStatePayload payload, int professionType) => professionType switch
+        {
+            0 => payload.ToolAxeRareFindPct,
+            1 => payload.ToolPickaxeRareFindPct,
+            2 => payload.ToolRodRareFindPct,
+            _ => 0,
+        };
 
         /// <summary>The quantity one winning gathering roll grants: its authored range, or one.</summary>
         internal static int RollGatherQuantity(Random rng, in LootTableEntry entry)

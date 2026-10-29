@@ -84,10 +84,10 @@ namespace FolkIdle.Server.Engine
         // Modul: Architecture Overhaul, Part 4. Equipment set bonuses -
         // see SetBonusEngine.
         //
-        // Modul: set bonuses made real. Four of these are now consumed by the
-        // live combat tick: FireDamageMultiplierPct and BurnApplicationActive
-        // in the outgoing damage step, ThornsReflectionActive in the incoming
-        // one, and CooldownReductionActive at the skill-cast site.
+        // Modul: set bonuses made real. FireDamageMultiplierPct and
+        // BurnApplicationActive are consumed in the outgoing damage step and
+        // ThornsReflectionActive in the incoming one. (A fourth,
+        // CooldownReductionActive, served active skills; both are gone.)
         //
         // Modul: set effect rework. The fifth was SetCcImmunityActive, which
         // could never do anything - this game has no player-facing crowd
@@ -96,10 +96,9 @@ namespace FolkIdle.Server.Engine
         // all five 4-piece effects do something.
         public float SetFireDamageMultiplierPct { get; set; }
         public bool SetThornsReflectionActive { get; set; }
-        // Modul: cleanup. SetCooldownReductionActive was removed from here.
-        // The cooldown reduction is applied at the skill-cast site, which is a
-        // command handler with no CombatStats in scope - it reads the flag
-        // straight off SetBonusEngine.Evaluate(payload.CachedSetIds) instead.
+        // Modul: cleanup. SetCooldownReductionActive was removed from here,
+        // and on 2026-10-29 from SetBonusEngine too: the skill-cast site that
+        // read it went with the active skills.
         // Mirroring it onto CombatStats as well left a property with no
         // consumer, which invites a second, divergent code path.
         public bool SetBurnApplicationActive { get; set; }
@@ -195,16 +194,28 @@ namespace FolkIdle.Server.Engine
             // fired for Kobold's - see RaceMasteryResolver for the milestone table.
             if (activeRaceId == RaceIds.Vila)
             {
-                if (vilaMastery >= 10)
+                if (vilaMastery >= RaceBonusRegistry.VilaSpeedLevel)
                 {
-                    stats.AttackSpeedPct += 0.15f; // Nullify armor agility penalty
+                    // Modul: +15 attack speed POINTS. Written as 0.15 when
+                    // CombatDamageModel still read attack speed as a fraction
+                    // (see its "read as a fraction" comment); after that fix
+                    // the line was worth 0.15 points, about nothing. 15 is the
+                    // author's intent, restored 2026-10-29 with the owner's
+                    // go-ahead (RaceUnitMeasurementTests prints its effect).
+                    stats.AttackSpeedPct += RaceBonusRegistry.VilaSpeedPoints;
                 }
                 stats.CritChancePct += RaceMasteryResolver.GetVilaCritBonusPct(vilaMastery);
             }
 
             if (activeRaceId == RaceIds.Draugr)
             {
-                stats.LifestealPct += RaceMasteryResolver.GetDraugrLifestealBonusPct(draugrMastery) / 100f;
+                // Modul: LifestealPct is already in percent points, so the
+                // resolver's 10 / 12 is added as-is. The old "/ 100f" made the
+                // mastery 0.10% / 0.12% - a hundredth of what it says. Measured
+                // before restoring it (RaceUnitMeasurementTests): the 1%-of-bar
+                // per-hit cap almost never binds, because the health pool
+                // outgrows damage, so even 12% is modest sustain at depth.
+                stats.LifestealPct += RaceMasteryResolver.GetDraugrLifestealBonusPct(draugrMastery);
             }
 
             if (activeOffensivePotionId > 0 && activeOffensivePotionId <= ContentRegistry.ItemDefinitions.Length)
@@ -240,21 +251,25 @@ namespace FolkIdle.Server.Engine
             {
                 case RaceIds.Human:
                     // Jack-of-all-trades: no combat penalty, +5% Gold acquisition.
-                    stats.GoldAcquisitionMultiplierPct += 5f;
+                    stats.GoldAcquisitionMultiplierPct += RaceBonusRegistry.HumanGoldPct;
                     break;
                 case RaceIds.Vila:
                     // Agility master: +20% Flat Ranged Damage, +10% Dodge Chance
                     // (absolute), -30% Base Armor (multiplicative).
-                    stats.FlatRangedDamage = (int)(stats.FlatRangedDamage * 1.2f);
-                    stats.DodgeChancePct += 10f;
-                    stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * 0.7f);
+                    stats.FlatRangedDamage = (int)(stats.FlatRangedDamage * RaceBonusRegistry.VilaRangedDamageFactor);
+                    stats.DodgeChancePct += RaceBonusRegistry.VilaDodgePoints;
+                    stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * RaceBonusRegistry.VilaBaseArmourFactor);
                     break;
                 case RaceIds.Draugr:
                     // Undead juggernaut: +25% Max HP, +15% Base Armor, -15%
                     // Attack Speed (absolute).
-                    stats.MaxHp = (int)(stats.MaxHp * 1.25f);
-                    stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * 1.15f);
-                    stats.AttackSpeedPct -= 0.15f;
+                    stats.MaxHp = (int)(stats.MaxHp * RaceBonusRegistry.DraugrBaseMaxHpFactor);
+                    stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * RaceBonusRegistry.DraugrBaseArmourFactor);
+                    // Modul: -15 points, the same fraction-era unit fix as
+                    // Vila's mastery line above. AttackIntervalMs clamps the
+                    // reduction at zero, so this can cancel DEX speed but never
+                    // makes a Draugr slower than the base interval.
+                    stats.AttackSpeedPct += RaceBonusRegistry.DraugrAttackSpeedPoints;
                     break;
                 case RaceIds.Kobold:
                     // Subterranean miner: +30% Mining Ore duplication chance.
@@ -263,7 +278,7 @@ namespace FolkIdle.Server.Engine
                     // tracking anywhere in this codebase; InventorySpaceRemaining
                     // is a single flat counter with no ore/non-ore distinction to
                     // lock down, and building one is out of scope for this pass.
-                    stats.MiningOreDuplicationBonusPct += 30f;
+                    stats.MiningOreDuplicationBonusPct += RaceBonusRegistry.KoboldMiningYieldPoints;
                     break;
                 case RaceIds.Moosleute:
                     // Nature warden: +20% Woodcutting harvest yield. No dedicated
@@ -271,18 +286,18 @@ namespace FolkIdle.Server.Engine
                     // existing Moosleute-double-harvest-mastery-bonus precedent in
                     // SimulationEngine's gathering block, which applies to
                     // Woodcutting for the same reason.
-                    stats.WoodcuttingYieldBonusPct += 20f;
+                    stats.WoodcuttingYieldBonusPct += RaceBonusRegistry.MoosleuteHarvestYieldPoints;
                     break;
                 case RaceIds.Vodnik:
-                    // River guardian: +15% Health Regen efficiency, +10%
-                    // Critical Strike mitigation (absolute). CritMitigationPct is
-                    // computed here but not yet consumed anywhere - monsters
-                    // currently deal fixed, non-crit damage (no incoming-crit
-                    // roll exists in the combat tick to mitigate against),
-                    // matching the existing "cached but not yet consumed"
-                    // precedent (e.g. LocusYield before this task).
-                    stats.OutOfCombatHpRegen *= 1.15f;
-                    stats.CritMitigationPct += 10f;
+                    // River guardian: +15% Health Regen efficiency, +10
+                    // Critical Strike mitigation (absolute points).
+                    // CritMitigationPct takes that many hundredths off a
+                    // monster crit's x1.5 (SimulationEngine.MonsterCritMultiplier,
+                    // and BossGearBenchmark for the boss walls). An older note
+                    // here said it was "not yet consumed anywhere"; monsters
+                    // have rolled crits since, and this is what reads them.
+                    stats.OutOfCombatHpRegen *= RaceBonusRegistry.VodnikRegenFactor;
+                    stats.CritMitigationPct += RaceBonusRegistry.VodnikCritMitigationPoints;
                     break;
             }
 
@@ -350,8 +365,6 @@ namespace FolkIdle.Server.Engine
             Span<int> setIdSpan = stackalloc int[EquippedSetIds.SlotCount];
             equippedSetIds.CopyTo(setIdSpan);
             SetBonusEngine.SetBonusResult setBonus = SetBonusEngine.Evaluate(setIdSpan);
-            stats.FlatMeleeDamage += setBonus.FlatAttackPowerBonus;
-            stats.FlatRangedDamage += setBonus.FlatAttackPowerBonus;
             if (setBonus.TotalArmorMultiplierPct > 0f)
             {
                 stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * (1f + setBonus.TotalArmorMultiplierPct / 100f));

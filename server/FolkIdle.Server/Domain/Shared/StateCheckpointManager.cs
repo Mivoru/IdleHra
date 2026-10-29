@@ -1412,8 +1412,12 @@ namespace FolkIdle.Server.Domain.Shared
                 PickaxeToolTier = toolLoadout.PickaxeTier,
                 RodToolTier = toolLoadout.RodTier,
                 ToolGatherSpeedPct = toolLoadout.GatherSpeedPct,
-                ToolGatherYieldPct = toolLoadout.GatherYieldPct,
-                ToolRareFindPct = toolLoadout.RareFindPct,
+                ToolAxeYieldPct = toolLoadout.AxeYieldPct,
+                ToolPickaxeYieldPct = toolLoadout.PickaxeYieldPct,
+                ToolRodYieldPct = toolLoadout.RodYieldPct,
+                ToolAxeRareFindPct = toolLoadout.AxeRareFindPct,
+                ToolPickaxeRareFindPct = toolLoadout.PickaxeRareFindPct,
+                ToolRodRareFindPct = toolLoadout.RodRareFindPct,
                 HighestLocationReached = highestLocationReached,
                 HighestUnlockedRegion = highestUnlockedRegion,
                 DefeatedRegionBossMask = defeatedRegionBossMask,
@@ -1750,8 +1754,12 @@ namespace FolkIdle.Server.Domain.Shared
             slot.PickaxeToolTier = tools.PickaxeTier;
             slot.RodToolTier = tools.RodTier;
             slot.ToolGatherSpeedPct = tools.GatherSpeedPct;
-            slot.ToolGatherYieldPct = tools.GatherYieldPct;
-            slot.ToolRareFindPct = tools.RareFindPct;
+            slot.ToolAxeYieldPct = tools.AxeYieldPct;
+            slot.ToolPickaxeYieldPct = tools.PickaxeYieldPct;
+            slot.ToolRodYieldPct = tools.RodYieldPct;
+            slot.ToolAxeRareFindPct = tools.AxeRareFindPct;
+            slot.ToolPickaxeRareFindPct = tools.PickaxeRareFindPct;
+            slot.ToolRodRareFindPct = tools.RodRareFindPct;
 
             return slot;
         }

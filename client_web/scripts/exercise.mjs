@@ -9,12 +9,68 @@
 // nothing and every "does forge fusion work" question answers itself with
 // "there is nothing to fuse".
 import { chromium } from 'playwright';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { navButton } from './screens.mjs';
 
 const results = [];
 function record(name, ok, detail) {
   results.push({ name, ok, detail });
   console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` - ${detail}` : ''}`);
+}
+
+// Modul: EXERCISE_ONLY=<sections> (TASK_BOARD 120, 2026-10-29). A full run
+// is ~10 minutes; iterating on one feature needs one section. A section is
+// everything between two top-level go() calls, named after its screen in
+// lower case with dashes (combat, forge, the-delve, world-boss, breeding,
+// ...), plus new-player for the throwaway-account onboarding block. The
+// sign-in above and the console / artwork / audio checks at the end always
+// run. A full run before a deploy is still the gate; this is for the loop.
+const EXERCISE_ONLY = (process.env.EXERCISE_ONLY ?? '')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+const want = (section) => EXERCISE_ONLY.length === 0 || EXERCISE_ONLY.includes(section);
+// A section runs from its go() to the next TOP-LEVEL go(), so it can hold
+// nested steps on other screens (the-delve also covers the Wardrobe, the
+// cosmetics market, boss challenges and the quest line). EXERCISE_ONLY=list
+// prints the sections and the checks each one holds, and exits.
+if (EXERCISE_ONLY.includes('list')) {
+  const { readFileSync } = await import('node:fs');
+  const source = readFileSync(new URL(import.meta.url), 'utf8');
+  let current = '(always)';
+  const counts = new Map();
+  for (const line of source.split(/\r?\n/)) {
+    const section = /^if \(want\('([^']+)'\)\) \{/.exec(line);
+    if (section) current = section[1];
+    if (/^\s*record\(/.test(line)) counts.set(current, (counts.get(current) ?? 0) + 1);
+  }
+  for (const [name, n] of counts) console.log(`${name.padEnd(14)} ${n} record() calls`);
+  process.exit(0);
+}
+if (EXERCISE_ONLY.length > 0) console.log(`only  ${EXERCISE_ONLY.join(', ')}`);
+
+// Modul: RE-SEED THE FIXTURE FIRST (TASK_BOARD 120, 2026-10-29).
+//
+// Three checks were red on working builds because of the state the fixture
+// arrived in, not the code: a spent pool ("a mature account is told what to do
+// next"), and a day away whose offline payout landed in the middle of the
+// Delve's "the gold went down" check. --seed-dev is idempotent and, since the
+// same task, stamps the fixture as just logged out - so every run starts from
+// the same place. Local only: the seed writes a known password, the server
+// refuses it without FOLKIDLE_ALLOW_DEV_SEED, and production has no fixture.
+// It runs the server build already on disk (--no-build); run-dev.ps1 makes one.
+// EXERCISE_SKIP_SEED=1 opts out.
+if (/^https?:\/\/(localhost|127\.0\.0\.1)[:/]/.test(process.env.FOLKIDLE_E2E_BASE ?? 'http://localhost:5173/') && process.env.EXERCISE_SKIP_SEED !== '1') {
+  const project = fileURLToPath(new URL('../../server/FolkIdle.Server/FolkIdle.Server.csproj', import.meta.url));
+  const seed = spawnSync('dotnet', ['run', '--no-build', '--project', project, '--seed-dev'], {
+    env: { ...process.env, FOLKIDLE_ALLOW_DEV_SEED: '1' },
+    encoding: 'utf8',
+    timeout: 120000,
+    shell: process.platform === 'win32',
+  });
+  const ready = /Dev fixture ready/.test(seed.stdout ?? '');
+  console.log(ready ? 'seed  dev fixture re-seeded' : `seed  WARNING: re-seed failed (${seed.status}) - fixture-state checks may be stale`);
 }
 
 const browser = await chromium.launch();
@@ -327,6 +383,32 @@ async function bigChestPromptStep() {
 // Naming a monster does not survive either: region unlocks decide which rows
 // are enabled, and the fixture's progress is not fixed. "The last enabled one"
 // is the same statement in a form that keeps holding.
+
+// Shared between sections - hoisted so a skipped section cannot leave a
+// later one reading an undefined name.
+const marketHistoryUrls = [];
+const profileOpen = () => page.locator('[data-testid="player-profile"]');
+const guildOpen = () => page.locator('[data-testid="guild-view"]');
+const closeAllProfiles = async () => {
+  await page.locator('.modal .close-btn').first().click().catch(() => {});
+  await page.waitForTimeout(300);
+};
+const bossWindow = (open) =>
+  apiPostStatus('/api/v1/dev/worldboss/window', open ? { open: true, durationSeconds: 900 } : { open: false });
+const bossStateIs = (label, timeout) =>
+  page
+    .waitForFunction(
+      (want) => (document.querySelector('.state')?.textContent ?? '').trim() === want,
+      label,
+      { timeout },
+    )
+    .then(() => true)
+    .catch(() => false);
+let bredChildName = null;
+let bredChildHadTrait = null;
+let bredChildId = null;
+
+if (want('combat')) {
 await go('Combat');
 // The monster list is content-driven and arrives after the screen does, so
 // `go`'s "no Loading..." check can return while the list is still empty. Wait
@@ -416,8 +498,10 @@ await page.waitForTimeout(4000);
   // waited thirty seconds for an element that had never existed - reported as
   // a timeout crash rather than as a failed check.
   const monsterBar = page.locator('.fighting .bar-fill').first();
+  // Modul: 20 samples, not 10 (TASK_BOARD 120): a fight that happened to sit
+  // between snapshots for ~2 s read as "2 distinct widths" on a working build.
   const widths = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < 20; i++) {
     widths.push(
       await monsterBar.evaluate((el) => el.style.width).catch(() => 'gone'),
     );
@@ -532,20 +616,42 @@ await page.waitForTimeout(4000);
   // instance that dropped (ResponseLootDropPacket.InstanceId); pressing Wear
   // must change what /player/worn reports. Then the fixture gets its own piece
   // back - a check that spends fixture state passes once and fails forever.
+  //
+  // Modul: AND IT FALLS BACK TO A FIGHT WHOSE DROPS THE FIXTURE CAN WEAR
+  // (TASK_BOARD 120). The fight above is the strongest unlocked region, and
+  // its drops are often gated (Wear disabled: an attribute requirement the
+  // level-40 fixture does not meet), so "no wearable drop in 90 s" came down
+  // to RNG on a working build. After 20 s with nothing wearable the step
+  // switches to region 1's first monster - quick kills, gear anyone can wear -
+  // and switches back to the original target afterwards, so later steps fight
+  // what they always fought.
   {
-    const deadline = Date.now() + 90000;
-    let target = null;
-    while (Date.now() < deadline) {
-      target = await page.evaluate(() => {
+    const findWearable = () =>
+      page.evaluate(() => {
         const button = [...document.querySelectorAll('[data-loot-wear]')].find((b) => !b.disabled);
         return button ? Number(button.getAttribute('data-loot-wear')) : null;
       });
+    let target = null;
+    let switchedToRegionOne = false;
+    const started = Date.now();
+    const deadline = started + 150000;
+    while (Date.now() < deadline) {
+      target = await findWearable();
       if (target) break;
+      if (!switchedToRegionOne && Date.now() - started > 20000) {
+        await fightButtons.nth(0).click().catch(() => {});
+        switchedToRegionOne = true;
+      }
       await page.waitForTimeout(1500);
     }
+    const waited = Math.round((Date.now() - started) / 1000);
 
     if (!target) {
-      record('a drop can be worn from the loot list', false, 'no wearable equipment drop arrived in 90 s');
+      record(
+        'a drop can be worn from the loot list',
+        false,
+        `no wearable equipment drop arrived in ${waited} s${switchedToRegionOne ? ', region 1 included' : ''}`,
+      );
     } else {
       const line = await page.evaluate(
         (id) => document.querySelector(`[data-loot-wear="${id}"]`)?.closest('li')?.querySelector('.cmp')?.textContent.trim() ?? null,
@@ -593,6 +699,11 @@ await page.waitForTimeout(4000);
         }
         record('an empty slot is emptied again after the loot-row Wear', cleared, `slot ${worn.SlotIndex}`);
       }
+    }
+    // Back to the fight every later step was written against.
+    if (switchedToRegionOne) {
+      await fightTarget.click().catch(() => {});
+      await page.waitForTimeout(1500);
     }
   }
 
@@ -645,6 +756,8 @@ await page.waitForTimeout(4000);
 // "Not in combat" offers the last monster; pressing it must put the character
 // back in a fight. Round trip: if the fixture was fighting, it is fighting again
 // afterwards; if it was idle, it is stood down again.
+}
+if (want('combat')) {
 await go('Combat');
 {
   const stopButton = page.getByRole('button', { name: 'Stand down', exact: true });
@@ -701,6 +814,8 @@ await go('Combat');
 // of characters could fight at once. Now the pick is shared and the server
 // allows one character per kind of work. Round trip: the original fighter is
 // fighting its original monster again at the end; the other person ends idle.
+}
+if (want('combat')) {
 await go('Combat');
 {
   const picker = page.getByTestId('worker-picker').first();
@@ -779,6 +894,8 @@ await go('Combat');
 }
 
 // --- forge: fusion and reroll ------------------------------------------------
+}
+if (want('forge')) {
 await go('Forge');
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -929,10 +1046,11 @@ await go('Forge');
 // Every price-history request the market makes, for the cancel round-trip
 // below: the history query is cached for a minute, so the piece it picks may
 // not ask again - the earlier request for the same piece names it instead.
-const marketHistoryUrls = [];
 page.on('request', (r) => {
   if (r.url().includes('/api/v1/market/history')) marketHistoryUrls.push(r.url());
 });
+}
+if (want('market')) {
 await go('Market');
 {
   const before = await page.evaluate(() => document.body.innerText);
@@ -1130,6 +1248,8 @@ await go('Market');
 // run since then died here - which is how the one verification that proves
 // gameplay works went three weeks without being run. If a go() target ever
 // times out, check Game.svelte's labels before suspecting the screen.
+}
+if (want('community')) {
 await go('Community');
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -1214,6 +1334,8 @@ await page.waitForTimeout(600);
 // valley is the menu now: five places, each a plate on its own landmark.
 // The suite has walked through several screens by now, so it has to come back
 // to the map before asking what is on it.
+}
+if (want('home')) {
 await go('Home');
 {
   const plates = await page.locator('.place').count();
@@ -1239,6 +1361,8 @@ await go('Home');
 // banner about a minute in. Both were real. Every XP router read
 // `professionType == 0 ? Woodcutting : Mining`, and the loot census had started
 // measuring an UNLIMITED chest against a 20 slot ceiling.
+}
+if (want('gathering')) {
 await go('Gathering');
 {
   // Parsed by walking lines rather than by building a RegExp from a template
@@ -1367,6 +1491,8 @@ await go('Gathering');
 // carries - so a player could fish all day, watch the catch land in the chest,
 // and be told by the larder that they had no food. Cooking is not in the
 // design list; a fish IS the meal.
+}
+if (want('auto-eat')) {
 await go('Auto-Eat');
 // Task 59/60: the fixture is level 40 with every building, so nothing in its
 // menu may be greyed - a greyed entry here is a rule nobody can reach.
@@ -1409,6 +1535,8 @@ await go('Auto-Eat');
 // ROUND-TRIPS the fixture: the dev route finishes the order at once AND gives
 // its price back, and the collected piece is binned - so the stock and the
 // chest end where they started and this passes on every run, not once.
+}
+if (want('crafting')) {
 await go('Crafting');
 // Task 101: commissions are a tab of the Crafting screen now.
 const openCommissions = () => page.getByTestId('crafting-tab-commissions').click().catch(() => {});
@@ -1525,6 +1653,8 @@ await openCommissions();
 // Crafting used to be instant and needed no character: every recipe carried a
 // CraftingTimeMs that nothing read. It is now an activity in its own band, so
 // the proof is that a character ends up REPORTING it as their job.
+}
+if (want('crafting')) {
 await go('Crafting');
 // Modul: the commission step above leaves Crafting on its Commissions tab, and
 // navigating to the screen it is already on does not remount it - so without
@@ -1618,6 +1748,8 @@ await page.getByRole('tab', { name: 'Recipes' }).click().catch(() => {});
 }
 
 // --- guild -------------------------------------------------------------------
+}
+if (want('guild')) {
 await go('Guild');
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -1788,6 +1920,8 @@ await go('Guild');
 //   - a leader with others: the successor would lead for good;
 //   - an application-only guild: rejoining files an application.
 // GuildLeaveTests commits all of those on the server, HTTP route included.
+}
+if (want('guild')) {
 await go('Guild');
 {
   const stats = await apiGet('/api/v1/player/statistics');
@@ -1877,12 +2011,8 @@ await go('Guild');
 // clicks the real names rather than calling the route: a button that renders
 // and opens nothing is exactly what smoke:screens would pass. Spends nothing;
 // everything it opens it closes.
-const profileOpen = () => page.locator('[data-testid="player-profile"]');
-const guildOpen = () => page.locator('[data-testid="guild-view"]');
-const closeAllProfiles = async () => {
-  await page.locator('.modal .close-btn').first().click().catch(() => {});
-  await page.waitForTimeout(300);
-};
+}
+if (want('guild')) {
 await go('Guild');
 {
   const stats = await apiGet('/api/v1/player/statistics');
@@ -2108,6 +2238,8 @@ await page.waitForTimeout(600);
 // What it protects against is the sweep, which clears a whole rarity band in
 // one call. Its ceiling of Epic was the only way to say "not that one", and a
 // ceiling cannot express "keep THIS Epic sword".
+}
+if (want('chest')) {
 await go('Chest');
 {
   // Task 81: the lock moved into the row's "More" menu, and its state is a
@@ -2185,6 +2317,8 @@ await go('Chest');
 // rolled with, so it can only read "Your odds" once a kill from the combat step
 // above has reached that worker. A line stuck on "after your next kill" after
 // minutes of fighting means the odds snapshot was never written.
+}
+if (want('wiki')) {
 await go('Wiki');
 {
   // 2026-10-11 (owner): the Wiki lists every pet, read live from PetRegistry.
@@ -2194,6 +2328,20 @@ await go('Wiki');
   await petCards.first().waitFor({ timeout: 10000 }).catch(() => {});
   const petCount = await petCards.count();
   record('the wiki lists every pet with its bonus and source', petCount >= 10, `${petCount} pets`);
+}
+{
+  // 2026-10-29 (owner): no screen said what a race did. The Wiki reads every
+  // race's bonuses from the server (RaceBonusRegistry via /api/v1/races).
+  await page.getByRole('button', { name: /Map & regions/ }).first().click().catch(() => {});
+  const raceCards = page.getByTestId('wiki-race');
+  await raceCards.first().waitFor({ timeout: 10000 }).catch(() => {});
+  const raceCount = await raceCards.count();
+  const draugrText = raceCount > 0 ? ((await raceCards.nth(2).textContent()) ?? '') : '';
+  record(
+    'the wiki says what all six races do, mastery included',
+    raceCount === 6 && /lifesteal/i.test(draugrText),
+    `${raceCount} races${draugrText ? ` - ${draugrText.replace(/\s+/g, ' ').slice(0, 80)}` : ''}`,
+  );
 }
 {
   await page.getByRole('button', { name: /Items & rarity/ }).first().click();
@@ -2225,18 +2373,9 @@ await go('Wiki');
 // strikes, asserts the world changed, and closes it again. Opening a window
 // deletes every attempt row, so each run starts with three fresh attempts and
 // the round trip leaves the fixture as the calendar would.
-const bossWindow = (open) =>
-  apiPostStatus('/api/v1/dev/worldboss/window', open ? { open: true, durationSeconds: 900 } : { open: false });
-const bossStateIs = (label, timeout) =>
-  page
-    .waitForFunction(
-      (want) => (document.querySelector('.state')?.textContent ?? '').trim() === want,
-      label,
-      { timeout },
-    )
-    .then(() => true)
-    .catch(() => false);
 
+}
+if (want('world-boss')) {
 await go('World Boss');
 {
   const openStatus = await bossWindow(true);
@@ -2820,6 +2959,8 @@ async function playPractice(aimed, card = 'practice-card', multiplier = 'practic
 // the SERVER's own view of the run, read back through /api/v1/delve, not on
 // what the page happens to be drawing - and the last one is read after a
 // reload, because a run that lives only in the tab is not a run.
+}
+if (want('the-delve')) {
 await go('The Delve');
 {
   const before = await apiGet('/api/v1/delve');
@@ -3557,8 +3698,14 @@ await go('The Delve');
       // page would send it, and must cost nothing.
       record('an owned entry offers no Buy', (await row.getByTestId('event-shop-buy').count()) === 0, target.Id);
       await page.evaluate(([index, id]) => window.__folkidleBuyEventItem?.(index, id), [target.Index, ev.Id]).catch(() => {});
-      await page.waitForTimeout(2500);
-      const after = await balanceOf();
+      // Modul: POLL, DON'T SLEEP (TASK_BOARD 120). The refund is a second
+      // state frame after the charge; a fixed 2.5 s caught the charge and not
+      // the refund on one run in five.
+      let after = await balanceOf();
+      for (let i = 0; i < 20 && after !== granted; i++) {
+        await page.waitForTimeout(500);
+        after = await balanceOf();
+      }
       record('buying an owned entry is refunded', after === granted, `${granted} -> ${after}`);
     } else {
       await row.getByTestId('event-shop-buy').click();
@@ -3771,6 +3918,8 @@ await go('The Delve');
 // check is that the tab and /api/v1/character/stats agree on a number the
 // fight uses, and that a cap is shown where the tick clamps. The event shop's
 // rare pet line must print the odds the server rolls - it had none at all.
+}
+if (want('character')) {
 await go('Character');
 {
   await characterTab('stats');
@@ -3880,6 +4029,8 @@ await go('Character');
 // because the picker hid everything anyone wore. Read-only here: open the
 // SECOND person's weapon slot and look for the first person's weapon, marked
 // with who wears it and a Move here button. Nothing is pressed.
+}
+if (want('character')) {
 await go('Character');
 {
   await characterTab('gear');
@@ -3907,6 +4058,8 @@ await go('Character');
 // Equipment used to be a LIST of seven rows, each with its own dropdown and
 // Equip button, in the same panel that handed out jobs. Dressing a character
 // and telling them what to do are different acts and looked identical.
+}
+if (want('character')) {
 await go('Character');
 {
   // The slots a person cannot stand in are listed on the Work tab (task 97).
@@ -4173,6 +4326,8 @@ await go('Character');
 }
 
 // --- inventory / equip -------------------------------------------------------
+}
+if (want('chest')) {
 await go('Chest');
 {
   // Modul: EQUIP OR UNEQUIP. This looked only for "Equip" and called its
@@ -4502,6 +4657,8 @@ await go('Chest');
 // The fixture carries 5,000 diamonds and the first level costs 40, so the
 // purchase is affordable by construction - if the button is disabled here, that
 // is the finding, not a reason to skip.
+}
+if (want('inheritance')) {
 await go('Inheritance');
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -4576,6 +4733,8 @@ await go('Inheritance');
 // to reach any of it. A full village STOPS the arrival clock, so before this
 // existed a bad roll occupied its slot for the rest of the season and the gold
 // sink the top of the economy lacks was unreachable.
+}
+if (want('village')) {
 await go('Village');
 {
   // Modul: BUILDINGS FIRST, AND A CAPPED ROW IS TEXT (task 103). Read-only: an
@@ -4721,9 +4880,8 @@ await go('Village');
 // section further down (a separate block) can read which child was born and
 // whether the server actually rolled it a trait - server truth, not a guess
 // from the DOM alone.
-let bredChildName = null;
-let bredChildHadTrait = null;
-let bredChildId = null;
+}
+if (want('breeding')) {
 await go('Breeding');
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -4741,9 +4899,16 @@ await go('Breeding');
   const listOf = (picker) =>
     page.locator(`[role="listbox"][data-picker="${picker === heroPicker ? 'hero-picker' : 'partner-picker'}"]`);
 
+  // A disabled trigger (nobody eligible) used to throw a 30 s TimeoutError
+  // that ended the whole run; now it is a recorded failure and the run goes on.
   async function openPicker(picker) {
     if ((await listOf(picker).count()) === 0) {
-      await picker.locator('.trigger').click();
+      const trigger = picker.locator('.trigger');
+      if (await trigger.isDisabled().catch(() => true)) {
+        record('a breeding picker can be opened', false, 'its trigger is disabled - nobody eligible (spent fixture? re-seed)');
+        return;
+      }
+      await trigger.click();
       await page.waitForTimeout(150);
     }
   }
@@ -5088,6 +5253,8 @@ await go('Breeding');
 // from GetNextTierTarget for most ids and drew "0 / MAX"; a deed without a
 // number does not exist to the player, which is why the counter is what gets
 // asserted rather than the list.
+}
+if (want('progress')) {
 await go('Progress');
 {
   // Modul: TASK 51 - personal records. The fixture has fought by now, so its
@@ -5176,6 +5343,8 @@ await go('Progress');
 // happening. The cards under it must name every working character's job and
 // offer the nearest deed - and its Go must actually leave the map, because a
 // card whose button renders but goes nowhere is this project's oldest bug.
+}
+if (want('home')) {
 await go('Home');
 {
   await page.waitForFunction(() => /Right now/.test(document.body.innerText), null, { timeout: 10000 }).catch(() => {});
@@ -5199,6 +5368,8 @@ await go('Home');
 // creation, so a child bred past the third slot was permanently unplayable -
 // which makes "begin the next season with your best child", the loop the whole
 // long game is built on, impossible to perform.
+}
+if (want('ancestors')) {
 await go('Ancestors');
 {
   const text = await page.evaluate(() => document.body.innerText);
@@ -5612,6 +5783,8 @@ await go('Ancestors');
   }
 }
 
+}
+if (want('new-player')) {
 // --- onboarding, on an account that has never played -------------------------
 //
 // Modul: A BRAND-NEW ACCOUNT, in its own browser context, and this is the only
@@ -6241,6 +6414,7 @@ await go('Ancestors');
 }
 
 // --- icons actually loaded ---------------------------------------------------
+}
 {
   const broken = await page.evaluate(() =>
     [...document.querySelectorAll('img')].filter((i) => i.complete && i.naturalWidth === 0).length,

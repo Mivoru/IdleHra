@@ -402,8 +402,13 @@ namespace FolkIdle.Server.Engine
         // tool's job is to multiply a rate and a weighted table - a flat bonus
         // would mean nothing against either.
         public ushort ToolGatherSpeedPct;
-        public ushort ToolGatherYieldPct;
-        public ushort ToolRareFindPct;
+        // Per tool, so each pays only its own profession (2026-10-29).
+        public ushort ToolAxeYieldPct;
+        public ushort ToolPickaxeYieldPct;
+        public ushort ToolRodYieldPct;
+        public ushort ToolAxeRareFindPct;
+        public ushort ToolPickaxeRareFindPct;
+        public ushort ToolRodRareFindPct;
         public int CachedMaxPopulationCapacity;
         public int CachedInnMaturationBonus;
 
