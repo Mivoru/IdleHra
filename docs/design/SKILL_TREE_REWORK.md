@@ -330,6 +330,30 @@ The owner wants balance backed by measurement. Nothing in sections 4 and
    `WallWindowScanTests` and `ProgressionRateTests`) records today's best
    build at 30 / 60 / 100 / 129 points: time to kill each region boss,
    survival against the band-top monster, and gold, loot and XP per hour.
+   **Measured 2026-10-29** (`TreeBuildHarnessTests`, greedy search on
+   expected damage per second, Human at each band top, Rare gear and Rare
+   affixes, the region's third ordinary monster):
+
+   | Region (level) | Budget | Points the best build can use | DPS from the tree |
+   |---|---|---|---|
+   | 1 (20) | 19 | 19 | +8.6% |
+   | 2 (40) | 39-41 | 38-40 | +18.5-19.1% |
+   | 3 (60) | 59-63 | 58 | +26.0% |
+   | 4 (80) | 79-85 | 58 | +28.6% |
+   | 5 (100) | 99-129 | 58 | +30.1% |
+
+   The best build is Precision 10, Cruelty 10, Relentless 8 and Double
+   Strike. **Today's tree runs out of combat power at 58 points.** Past
+   that, every point buys economy or nothing, because Guile sits on the
+   far side of Relentless's fork. The War half has to keep the ceiling near
+   +30% while spreading it over the whole budget, so a level-100 player's
+   last 70 points still buy a choice.
+
+   The walls do not include the tree. `BossGearBenchmark` assumes only First
+   Blood at its maximum, so the War half must either keep a node that
+   softens the first-clear HP penalty, or `BossFirstClearRules.MaxHpFor`
+   loses that relief, and the walls are re-solved together with the change.
+
 2. **Targets.** The best War build must stay within ±5% of the baseline
    time to kill at every band. Otherwise the boss walls move, and region 2's
    window is only 1.855-1.882 wide. Each column's keystone build should be
@@ -430,6 +454,18 @@ Rejected:
 | 3 | Affixes: damage family, new ids appended, pools, Refine | `StatAuditTests`, `serverMirrors.test.ts`, reroll `exercise` |
 | 4 | Hearth half, craft points, Masterwork | gathering economy measured before and after |
 | 5 | Affix families, signature affixes (optional) | - |
+
+Phase 1 shipped as #216 (client 1.38.0). Phase 2 is cut into slices that
+each ship on their own, behind the old tree, until 2.5 switches it:
+
+| Slice | Content | Proof |
+|---|---|---|
+| 2.0 | The baseline harness (section 8) | the table in section 8 |
+| 2.1 | A generic node table: id, half, column, tier, kind, ranks, cost, fork, bridge, effect kind and per-rank values. `PlanReason` generalised to tier gates and bridges. Ranks live in one array on the payload instead of one field per node, and leave `StateUpdatePacket` for a push on change. | today's 20 nodes expressed in the table, all phase 1 tests and `exercise` unchanged |
+| 2.2 | The War half's stat nodes as effect kinds read by `LiveCombatStats` and `HuntingProjection` | the harness measures the War half next to today's tree |
+| 2.3 | The mechanics, one per PR: Crushing Blow, Echo, Frenzy, Riposte, Ruin, Perfect Sequence, Living Fortress, Codex Scholar, the bridges. Each comes with its live roll, its expectation, a parity test, a combat-feed flag, its callout and its sound. | parity test per mechanic; the harness after each |
+| 2.4 | The numbers tuned until the targets in section 8 hold | harness table within ±5% per band |
+| 2.5 | The switch: a migration refunds every old node and grants a free respec; the client draws the War grid | `exercise` on a fresh account and the fixture |
 
 Phase 1 is worth doing even if the rest changes. It removes the client
 mirror and the per-snapshot node bytes, and it gives the owner the new
