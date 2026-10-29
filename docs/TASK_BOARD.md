@@ -13,10 +13,14 @@ the old one reached 420 KB and three contradictory START HERE blocks.
 
 ## State on 2026-10-29
 
-- **Production** runs `main` through PR #199 (**1.0.1269, client 1.34.0**),
-  verified after the deploy: `deploy.sh` saw the manifest answer 1.0.1269 and
-  its zip serve 200, `/healthz` answers 200, `smoke:screens` against
-  production rendered 30/30 screens clean, and `/api/v1/races` answers.
+- **Production** runs `main` through PR #202 (**1.0.1276, client 1.35.0**),
+  verified after the deploy: `deploy.sh` saw the manifest answer 1.0.1276 and
+  its zip serve 200, `/healthz` answers 200, and `smoke:screens` against
+  production rendered 30/30 screens clean. #199 before it (1.0.1269) was
+  verified the same way, plus `/api/v1/races` answering.
+  - #202 (1.0.1276): the tool affixes `gather_yield_pct` and
+    `gather_rare_find_pct` pay, each only for its own profession (axe
+    woodcutting, pickaxe mining, rod fishing).
   - #197 (1.0.1263): inheritance Gathering yield pays, the Fortitude bough gives
     armour, and the weapon damage affixes are labelled "Damage". It also commits
     `docs/architecture/STATS_REFERENCE.md`, whose §16 is the defect list the
@@ -30,15 +34,14 @@ the old one reached 420 KB and three contradictory START HERE blocks.
     request**. The image push, migrations and deploy stay push-to-main only.
     The stale-build hook now blocks only on a server running from the same
     checkout.
-- **Open PRs, CI green, each waiting for the owner as a separate release:**
+- **Open, CI green, waiting for the owner as a separate release:**
   - **#200** dodge curve + boss recalibration. Region 2 1.85 -> 1.87, region 3
     3.08 -> 3.17, seasonal tier 6 AttackPct 20 -> 35, with always-on margin
     tests. After it ships, check the region-2 and region-3 first clears and
     seasonal tier 6 in production.
-  - **#202** tool `gather_yield_pct` / `gather_rare_find_pct` wired, each paying
-    only its own profession.
-  - Neither carries release notes yet. Add them at deploy time, so the two
-    branches do not fight over `package.json`.
+  - It carries no release notes yet. Add them at deploy time.
+  - Also open: #206 (task 123) and #207 (task 122), both cleanup with no
+    behaviour change.
 
 ## State on 2026-10-14
 
