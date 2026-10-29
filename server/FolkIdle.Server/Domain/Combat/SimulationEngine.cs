@@ -4920,6 +4920,15 @@ namespace FolkIdle.Server.Domain.Combat
                     // CombatDamageModel stopped, and the two disagreed by nearly
                     // a factor of two: every projection in the game said a kill
                     // took half as long as it did.
+                    // Modul: the War half's Crushing Blow and First Strike (rework
+                    // slice 2.3), both on the post-armour hit. One roll here;
+                    // HuntingProjection takes the same terms as an expectation, and
+                    // WarMechanicParityTests holds the two together.
+                    var warHit = WarTreeRegistry.Resolve(in payload);
+                    bool crushed = warHit.CrushingChanceTenths > 0 && Random.Shared.NextDouble() < warHit.CrushingChance;
+                    // "First" is a monster still at full health: no field to
+                    // remember, and the projection can price exactly that.
+                    bool firstStrike = warHit.FirstStrikeTenthsPct > 0 && payload.CurrentMonsterHp >= SpawnHpFor(in payload);
                     int defenderArmor = activeMonster.Armor;
                     // Modul: and the player's armour PENETRATION, which this
                     // call never passed and nothing else applied - so Might's
@@ -4930,6 +4939,8 @@ namespace FolkIdle.Server.Domain.Combat
                         defenderArmor,
                         CombatDamageModel.MonsterArmourHalvingConstant(activeMonster.RegionTier),
                         combatStats.FlatArmorPenetration);
+                    if (crushed) netDamage *= WarEffects.CrushingMultiplier;
+                    if (firstStrike) netDamage += (int)((long)netDamage * warHit.FirstStrikeTenthsPct / 1000L);
                     netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
 
                     // Modul: set bonuses made real. The Chiming Steel 4-piece
@@ -5045,7 +5056,8 @@ namespace FolkIdle.Server.Domain.Combat
                         (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
                         (byte)((payload.LastHitWasCrit == 1 ? Network.ResponseCombatEventPacket.FlagCrit : 0)
                              | (doubleStrikeLanded ? Network.ResponseCombatEventPacket.FlagDoubleStrike : 0)
-                             | (burnDamageDealt > 0 ? Network.ResponseCombatEventPacket.FlagBurn : 0)));
+                             | (burnDamageDealt > 0 ? Network.ResponseCombatEventPacket.FlagBurn : 0)),
+                        crushed ? Network.SkillProc.CrushingBlow : Network.SkillProc.None);
 
                     // Separate line, because it is health arriving rather than
                     // damage leaving - folding it into the hit above would make

@@ -2,6 +2,7 @@
   import { formatNumber } from './format';
   import { damageEvents, typicalHit } from '../stores/game';
   import { DAMAGE_TEXT_LIFETIME_MS } from '../stores/damage';
+  import { calloutFor } from './skillProcs';
 
   // Modul: CRITS ARE YELLOW, ordinary hits are red.
   //
@@ -46,11 +47,14 @@
       class="hit"
       class:crit={event.isCrit}
       class:double={event.isDoubleCrit}
+      data-proc={calloutFor(event.proc)?.tone ?? null}
       data-size={magnitude(event.amount)}
       style="--x: {10 + event.offset * 80}%; --life: {DAMAGE_TEXT_LIFETIME_MS}ms; animation-delay: -{age(event.atMs)}ms"
     >
       <span class="num">-{formatNumber(event.amount)}</span>
-      {#if event.isDoubleCrit}
+      {#if calloutFor(event.proc)}
+        <span class="tag skill">{calloutFor(event.proc)?.label}</span>
+      {:else if event.isDoubleCrit}
         <span class="tag">DOUBLE CRIT!!</span>
       {:else if event.isCrit}
         <span class="tag">CRIT!</span>
@@ -133,6 +137,34 @@
 
   .hit.double .tag {
     color: #ff9a3c;
+  }
+
+  /* A skill's callout (skillProcs.ts): its own colour and a heavier pop, so a
+     Crushing Blow reads as a different event from a crit at a glance. */
+  .hit[data-proc='crush'] {
+    --half: 4.2rem;
+    font-size: 1.75rem;
+    color: #ffd2c4;
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.85),
+      0 0 10px rgba(226, 103, 74, 1),
+      0 0 20px rgba(180, 40, 20, 0.85);
+    animation-name: float-up, crush-shake;
+    animation-duration: var(--life), 260ms;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1), linear;
+  }
+
+  .hit[data-proc='crush'] .tag.skill {
+    color: #e2674a;
+    font-size: 0.7em;
+  }
+
+  @keyframes crush-shake {
+    0%, 100% { translate: 0 0; }
+    20% { translate: -3px 1px; }
+    40% { translate: 3px -1px; }
+    60% { translate: -2px 0; }
+    80% { translate: 2px 1px; }
   }
 
   /* Size carries the difference as well as hue, so the distinction survives

@@ -56,7 +56,8 @@ namespace FolkIdle.Server.Domain.Combat
             byte eventKind,
             int amount,
             int monsterHpAfter,
-            byte flags = 0)
+            byte flags = 0,
+            byte proc = 0)
         {
             if (_pending.Count >= MaxPending)
             {
@@ -73,6 +74,7 @@ namespace FolkIdle.Server.Domain.Combat
                 Sequence = unchecked((uint)Interlocked.Increment(ref _sequence)),
                 EventKind = eventKind,
                 Flags = flags,
+                Proc = proc,
             });
         }
 

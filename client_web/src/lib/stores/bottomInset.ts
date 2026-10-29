@@ -26,6 +26,10 @@ function apply() {
   }
 
   document.body.style.paddingBottom = largest > 0 ? `${largest}px` : '';
+  // Modul: and as a variable, for what STICKS to the bottom rather than flows:
+  // body padding moves the end of the page, not a sticky element, so the Skill
+  // Tree's draft bar sat under the coach on a phone (owner, 2026-10-29).
+  document.documentElement.style.setProperty('--floating-bottom', `${largest}px`);
 }
 
 /**

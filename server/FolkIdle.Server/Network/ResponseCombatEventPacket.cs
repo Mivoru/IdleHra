@@ -109,5 +109,23 @@ namespace FolkIdle.Server.Network
 
         public byte EventKind;
         public byte Flags;
+
+        /// <summary>
+        /// Which skill fired on this event, one of SkillProc, 0 for none.
+        /// </summary>
+        /// <remarks>
+        /// Modul: a number, not more Flags bits. Flags had three bits left and
+        /// the War half brings eight mechanics with callouts of their own
+        /// (docs/design/SKILL_TREE_ART.md section 2), so the client reads a
+        /// skill's id and draws its own label, colour and sound.
+        /// </remarks>
+        public byte Proc;
+    }
+
+    /// <summary>The skill named by ResponseCombatEventPacket.Proc.</summary>
+    public static class SkillProc
+    {
+        public const byte None = 0;
+        public const byte CrushingBlow = 1;
     }
 }

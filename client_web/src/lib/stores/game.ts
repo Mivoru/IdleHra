@@ -32,7 +32,8 @@ import { claimSeasonalDeath, noteSeasonalCombatEvent, noteSeasonalResults, reset
 import { CommandResultFeed, COMMAND_RESULT_SUCCESS, shouldPlayErrorTone, type CommandResultEntry } from './commandResults';
 import { queryClient } from '../net/queryClient';
 import type { QueryClient } from '@tanstack/svelte-query';
-import { play, playHit, playWithFallback } from '../ui/audio';
+import { play, playHit, playSkill, playWithFallback } from '../ui/audio';
+import { calloutFor } from '../ui/skillProcs';
 import { playDeathFor } from '../ui/deathSound';
 import { fetchAchievements, fetchRecords, fetchChatHistory, type AchievementEntry } from '../net/rest';
 import { mergeChatHistory, alreadyLogged, type ChatEntry } from './chatHistory';
@@ -1137,6 +1138,7 @@ export function startSession(token: string): void {
         // pile and replayed it as one stack of overlapping text and a stutter.
         performance.timeOrigin + performance.now(),
         (Number(packet.Flags) & CombatEventFlag.DoubleStrike) !== 0,
+        Number(packet.Proc ?? 0),
       );
       if (hit === null) return;
 
@@ -1150,6 +1152,9 @@ export function startSession(token: string): void {
       // happens every 1.5 seconds for hours had no feedback at all. The clip
       // is chosen by weapon family, so a wand does not sound like a sword.
       playHit(hit.weaponKind, hit.isCrit, hit.isDoubleCrit);
+      // A skill that fired has its own voice on top of the hit (skillProcs.ts).
+      const callout = calloutFor(hit.proc);
+      if (callout) playSkill(callout.clip);
       hitSparks.set({ id: hit.id, weaponKind: hit.weaponKind, isCrit: hit.isCrit, isDoubleCrit: hit.isDoubleCrit });
     },
 

@@ -229,10 +229,17 @@ namespace FolkIdle.Server.Domain.Combat
 
                 // Thorns end fights between the player's swings, which a swing
                 // count cannot describe - those fights track health instead.
-                SwingsToKill? firstClearKill = thorns ? null : SwingsToKill.For(in swing, firstClearHp);
+                // First Strike: the first CONNECTING hit of each fight lands
+                // harder. Priced as the health it takes off before the count
+                // starts - the mean of a connecting swing, times the bonus.
+                int firstStrike = WarTreeRegistry.Resolve(in copy).FirstStrikeTenthsPct;
+                double pHit = CombatDamageModel.HitChance(in stats, in monster);
+                long opening = firstStrike > 0 && pHit > 0 ? (long)(swing.Mean / pHit * firstStrike / 1000.0) : 0L;
+
+                SwingsToKill? firstClearKill = thorns ? null : SwingsToKill.For(in swing, Math.Max(1L, firstClearHp - opening));
                 SwingsToKill? farmKill = thorns ? null
                     : farmHp == firstClearHp ? firstClearKill
-                    : SwingsToKill.For(in swing, farmHp);
+                    : SwingsToKill.For(in swing, Math.Max(1L, farmHp - opening));
 
                 return new FightSetup
                 {
@@ -700,6 +707,9 @@ namespace FolkIdle.Server.Domain.Combat
                 int raw = (int)(rawMilliAttack * critMult);
                 int net = (int)CombatDamageModel.Mitigate(
                     raw, monster.Armor, CombatDamageModel.MonsterArmourHalvingConstant(monster.RegionTier), stats.FlatArmorPenetration);
+                // Crushing Blow, as the live swing rolls it: a share of hits doubled.
+                double crushing = WarTreeRegistry.Resolve(in payload).CrushingChance;
+                if (crushing > 0) net = (int)(net * (1 + crushing * (WarEffects.CrushingMultiplier - 1)));
                 net = (int)(net * payload.CachedCodexDamageMultiplier);
                 if (stats.SetFireDamageMultiplierPct > 0f)
                 {
