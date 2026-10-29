@@ -111,6 +111,14 @@ describe('affixLabel', () => {
     expect(affixLabel('flat_hp')).toBe('Hp');
     expect(affixLabel('armor_pen_flat')).toBe('Armor Pen');
   });
+
+  // The server sums all three into one damage bonus; a "Magic Dmg" label on a
+  // sword promised a damage type combat does not have.
+  it('names the three weapon damage ids for what they do', () => {
+    expect(affixLabel('melee_dmg_pct')).toBe('Damage');
+    expect(affixLabel('range_dmg_pct')).toBe('Damage');
+    expect(affixLabel('magic_dmg_pct')).toBe('Damage');
+  });
 });
 
 describe('toDisplayAffixes', () => {

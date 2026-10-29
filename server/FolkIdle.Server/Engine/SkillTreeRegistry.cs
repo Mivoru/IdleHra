@@ -272,6 +272,24 @@ namespace FolkIdle.Server.Engine
             => GetBonusTenthsOfPercent(nodeId, level) / 10f;
 
         /// <summary>
+        /// Armour after the Fortitude bough: the same +2%/level its health
+        /// half pays, on the finished armour figure.
+        /// </summary>
+        /// <remarks>
+        /// Modul: the card has always said "More health and more armour", and
+        /// until 2026-10-29 only the health half existed
+        /// (SimulationEngine.EffectiveMaxMilliHpFor). The armour half lives
+        /// here so the tick (LiveCombatStats) and the roster's per-character
+        /// figure apply one rule rather than two copies of it.
+        /// </remarks>
+        public static int ApplyFortitudeArmour(int armour, int fortitudeLevel)
+        {
+            int tenths = GetBonusTenthsOfPercent(BoughFortitude, fortitudeLevel);
+            if (tenths <= 0 || armour <= 0) return armour;
+            return (int)(armour + (long)armour * tenths / 1000L);
+        }
+
+        /// <summary>
         /// What the NEXT level costs, in skill points, or 0 if the node is
         /// already at its cap.
         ///
