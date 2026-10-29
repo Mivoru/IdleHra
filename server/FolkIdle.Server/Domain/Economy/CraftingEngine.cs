@@ -109,7 +109,8 @@ namespace FolkIdle.Server.Domain.Economy
         //
         // This is a property of the ITEM, not a gate on the player, which is
         // why the region-unlock rework left it alone. It used to be phrased as
-        // EquipmentLevelGate.DeriveRequiredLevel(regionTier, 0) < 20 - which
+        // EquipmentLevelGate.DeriveRequiredLevel(regionTier, 0) < 20 (a class
+        // since deleted) - which
         // was only ever (regionTier - 1) * 10 < 20 with the quality term zeroed
         // out, i.e. an arithmetic trick for "first two regions" wearing the
         // costume of a level check. Same bands, same numbers, said directly:
