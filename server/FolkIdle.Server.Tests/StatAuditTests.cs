@@ -150,7 +150,7 @@ namespace FolkIdle.Server.Tests
         private static readonly Dictionary<string, string> KnownDefects = new()
         {
             ["trait:nimble"] = "+4 dodge sits inside the 5.26-point dodge dead zone - PR #200 removes the zone",
-            ["trait:clumsy_hands"] = "-6% gathering speed is dropped: GatheringToolEngine.TotalSpeedBonusPct adds the extra term only when > 0 - found by this audit 2026-10-29, owner decision (a flaw that starts to bite is a balance change)",
+            ["trait:clumsy_hands"] = "-6% gathering speed is dropped by TWO guards in GatheringToolEngine: TotalSpeedBonusPct adds the extra term only when > 0, and ComputeRequiredTicks applies the total only when > 0 - TASK_BOARD 127, owner decision (a flaw that starts to bite is a balance change)",
         };
 
         private void AssertMovesOrIsListed(string key, Dictionary<string, double> before, Dictionary<string, double> after, List<string> failures)
