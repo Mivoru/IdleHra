@@ -40,24 +40,24 @@ namespace FolkIdle.Server.Domain.Combat
 
         public struct SetBonusResult
         {
-            public int FlatAttackPowerBonus;
+            // Modul: no FlatAttackPowerBonus (removed 2026-10-29, TASK_BOARD
+            // 122). The offensive 2-piece's flat +10 attack was replaced by
+            // scaled fire damage in 56894e46 ("quality, not collection",
+            // 2026-08-08); the field outlived it, assigned by nothing, and
+            // StatsCalculator kept adding its 0 to both damage figures.
             public float TotalArmorMultiplierPct;
             public float FireDamageMultiplierPct;
 
-            // Modul: 4-piece mechanics are cached here but not yet consumed
-            // by the live combat tick (no thorns-reflect-damage, burn-DoT,
-            // or cooldown-reduction application loop exists yet) - matching
-            // this codebase's own established "computed here but not yet
-            // consumed anywhere" precedent (see StatsCalculator's
-            // CritMitigationPct doc comment).
+            // Modul: the 4-piece flags. All of them are consumed: thorns in
+            // the incoming-damage step (SimulationEngine.ThornsReflectionFraction,
+            // and HuntingProjection's fight model), burn in the outgoing one,
+            // the damage cap below in the incoming one. An older note here
+            // said none of them was consumed yet.
             public bool ThornsReflectionActive;
 
-            // Modul: never set any more. It reduced ACTIVE SKILL cooldowns,
-            // and active skills were removed from the game - there is nothing
-            // left for it to shorten. Kept only because StatsCalculator
-            // mirrors this struct field for field; it is dead and should go
-            // when that mirror does.
-            public bool CooldownReductionActive;
+            // Modul: no CooldownReductionActive (removed 2026-10-29, TASK_BOARD
+            // 122). It shortened ACTIVE SKILL cooldowns, active skills were
+            // removed from the game, and nothing had set or read it since.
             public bool BurnApplicationActive;
             // Modul: set effect rework. Was CcImmunityActive, which could never
             // do anything: this game models no player-facing crowd control at
