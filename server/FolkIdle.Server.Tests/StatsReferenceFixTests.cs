@@ -128,6 +128,49 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(SimulationEngine.LiveCombatStats(in tree).FlatPhysicalArmor, armourRow.Value);
         }
 
+        private static TickStatePayload OfRace(byte raceId, int mastery)
+        {
+            var payload = Character();
+            payload.Slot1_CharacterId = Guid.NewGuid();
+            payload.Slot1_AgePhase = 1;
+            payload.Slot1_GeneticVector = raceId;
+            if (raceId == RaceIds.Vila) payload.VilaMasteryLevel = mastery;
+            if (raceId == RaceIds.Draugr) payload.DraugrMasteryLevel = mastery;
+            return payload;
+        }
+
+        [Theory]
+        [InlineData(10, 10f)]
+        [InlineData(50, 12f)]
+        public void Draugr_mastery_lifesteal_is_the_percent_it_says(int mastery, float expectedPct)
+        {
+            var novice = OfRace(RaceIds.Draugr, 0);
+            var master = OfRace(RaceIds.Draugr, mastery);
+
+            float gained = SimulationEngine.LiveCombatStats(in master).LifestealPct - SimulationEngine.LiveCombatStats(in novice).LifestealPct;
+
+            Assert.Equal(expectedPct, gained, 3);
+        }
+
+        [Fact]
+        public void Vila_mastery_and_the_Draugr_penalty_move_the_swing_by_fifteen_points()
+        {
+            var vilaNovice = OfRace(RaceIds.Vila, 0);
+            var vilaMaster = OfRace(RaceIds.Vila, 10);
+            Assert.Equal(15f, SimulationEngine.LiveCombatStats(in vilaMaster).AttackSpeedPct - SimulationEngine.LiveCombatStats(in vilaNovice).AttackSpeedPct, 3);
+
+            // A swing measurably shorter: 15 points of a 1500 ms base is 225 ms.
+            var noviceStats = SimulationEngine.LiveCombatStats(in vilaNovice);
+            var masterStats = SimulationEngine.LiveCombatStats(in vilaMaster);
+            Assert.True(SimulationEngine.LiveAttackIntervalMs(in vilaNovice, in noviceStats) - SimulationEngine.LiveAttackIntervalMs(in vilaMaster, in masterStats) >= 200);
+
+            var human = OfRace(RaceIds.Human, 0);
+            var draugr = OfRace(RaceIds.Draugr, 0);
+            float humanSpeed = SimulationEngine.LiveCombatStats(in human).AttackSpeedPct;
+            float draugrSpeed = SimulationEngine.LiveCombatStats(in draugr).AttackSpeedPct;
+            Assert.True(humanSpeed - draugrSpeed > 10f, $"human {humanSpeed} vs draugr {draugrSpeed}");
+        }
+
         [Theory]
         [InlineData(0, 1000, 1000)]
         [InlineData(1, 1000, 1020)]

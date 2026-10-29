@@ -65,15 +65,15 @@ namespace FolkIdle.Server.Tests
         public void Draugr_mastery_lifesteal_candidates()
         {
             var table = new StringBuilder();
-            table.AppendLine("Draugr mastery 50 (current code adds 0.12 points). Heal per second as % of max HP; cap = 1% of max HP per hit.");
+            table.AppendLine("Draugr mastery 50 (the code adds 12 points since 2026-10-29; 0.12 before). Heal per second as % of max HP; cap = 1% of max HP per hit.");
             table.AppendLine("region | max HP | mean hit | cap/hit | variant | lifesteal% | raw heal/hit | healed/hit | hits at cap | heal %HP/s | monster %HP/swing");
 
-            var variants = new (string Name, float AddedPct)[] { ("current", 0.12f), ("3.5% (proposal)", 3.5f), ("12% (x100)", 12f) };
+            var variants = new (string Name, float AddedPct)[] { ("before fix", 0.12f), ("3.5% (alternative)", 3.5f), ("12% (current)", 12f) };
             for (int region = 1; region <= 5; region++)
             {
                 var payload = Reference(region, RaceIds.Draugr, 50);
                 var computed = SimulationEngine.LiveCombatStats(in payload);
-                float otherSources = computed.LifestealPct - 0.12f;
+                float otherSources = computed.LifestealPct - RaceMasteryResolver.GetDraugrLifestealBonusPct(50);
                 long maxHp = SimulationEngine.EffectiveMaxMilliHpFor(in payload, in computed);
                 long cap = maxHp / 100;
                 var monster = ContentRegistry.Monsters[MonsterFor(region) - 1];
@@ -107,7 +107,7 @@ namespace FolkIdle.Server.Tests
         public void Race_attack_speed_candidates()
         {
             var table = new StringBuilder();
-            table.AppendLine("Vila (mastery 10, +speed) and Draugr (-speed). Seconds per kill of the region's third monster.");
+            table.AppendLine("Vila (mastery 10, +speed) and Draugr (-speed): 15 points since 2026-10-29, 0.15 before. Seconds per kill of the region's third monster.");
             table.AppendLine("region | race | variant | attack speed % | interval ms | DPS | s/kill");
 
             var cases = new (string Race, byte Id, int Mastery, float Current, float Candidate)[]
@@ -125,7 +125,7 @@ namespace FolkIdle.Server.Tests
                     long raw = RawAttack(ref payload, in computed);
                     long monsterHp = ContentRegistry.GetScaledMonsterMaxHp(monster.Id) * 1000L;
 
-                    foreach (var (name, delta) in new[] { ("current", 0f), ("x100", c.Candidate - c.Current) })
+                    foreach (var (name, delta) in new[] { ("before fix", c.Current - c.Candidate), ("current", 0f) })
                     {
                         var stats = computed;
                         stats.AttackSpeedPct += delta;

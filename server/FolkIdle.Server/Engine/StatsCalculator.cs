@@ -194,14 +194,26 @@ namespace FolkIdle.Server.Engine
             {
                 if (vilaMastery >= 10)
                 {
-                    stats.AttackSpeedPct += 0.15f; // Nullify armor agility penalty
+                    // Modul: +15 attack speed POINTS. Written as 0.15 when
+                    // CombatDamageModel still read attack speed as a fraction
+                    // (see its "read as a fraction" comment); after that fix
+                    // the line was worth 0.15 points, about nothing. 15 is the
+                    // author's intent, restored 2026-10-29 with the owner's
+                    // go-ahead (RaceUnitMeasurementTests prints its effect).
+                    stats.AttackSpeedPct += 15f;
                 }
                 stats.CritChancePct += RaceMasteryResolver.GetVilaCritBonusPct(vilaMastery);
             }
 
             if (activeRaceId == RaceIds.Draugr)
             {
-                stats.LifestealPct += RaceMasteryResolver.GetDraugrLifestealBonusPct(draugrMastery) / 100f;
+                // Modul: LifestealPct is already in percent points, so the
+                // resolver's 10 / 12 is added as-is. The old "/ 100f" made the
+                // mastery 0.10% / 0.12% - a hundredth of what it says. Measured
+                // before restoring it (RaceUnitMeasurementTests): the 1%-of-bar
+                // per-hit cap almost never binds, because the health pool
+                // outgrows damage, so even 12% is modest sustain at depth.
+                stats.LifestealPct += RaceMasteryResolver.GetDraugrLifestealBonusPct(draugrMastery);
             }
 
             if (activeOffensivePotionId > 0 && activeOffensivePotionId <= ContentRegistry.ItemDefinitions.Length)
@@ -247,7 +259,11 @@ namespace FolkIdle.Server.Engine
                     // Attack Speed (absolute).
                     stats.MaxHp = (int)(stats.MaxHp * 1.25f);
                     stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * 1.15f);
-                    stats.AttackSpeedPct -= 0.15f;
+                    // Modul: -15 points, the same fraction-era unit fix as
+                    // Vila's mastery line above. AttackIntervalMs clamps the
+                    // reduction at zero, so this can cancel DEX speed but never
+                    // makes a Draugr slower than the base interval.
+                    stats.AttackSpeedPct -= 15f;
                     break;
                 case RaceIds.Kobold:
                     // Subterranean miner: +30% Mining Ore duplication chance.
