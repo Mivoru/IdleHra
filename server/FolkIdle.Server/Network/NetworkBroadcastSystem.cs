@@ -2398,6 +2398,13 @@ namespace FolkIdle.Server.Network
                 return;
             }
 
+            // The skill tree screen's definition, draft preview and commit -
+            // see NetworkBroadcastSystem.SkillTree.cs.
+            if (await TryHandleSkillTreeAsync(context, requestPath))
+            {
+                return;
+            }
+
             // The quest line (owner, 2026-10-07) - see NetworkBroadcastSystem.QuestLine.cs.
             if (await TryHandleQuestLineAsync(context, requestPath))
             {
