@@ -318,7 +318,9 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         private static double ExpectedBossMilliDamagePerSwing(in CombatStats stats, in MonsterDefinition boss, long bossAttackPower)
         {
-            float hitChance = Math.Clamp(100f / (100f + stats.DodgeChancePct), 0.05f, 0.95f);
+            // The tick's own curve, not a copy of it - a copy is what would have
+            // kept the old dead zone here after the tick lost it.
+            float hitChance = SimulationEngine.MonsterHitChance(in stats);
 
             float critChance = 0.05f + (boss.RegionTier * 0.005f);
             float critMultiplier = Math.Max(1.0f, 1.5f - (stats.CritMitigationPct / 100f));

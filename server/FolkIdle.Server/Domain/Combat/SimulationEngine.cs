@@ -3915,8 +3915,22 @@ namespace FolkIdle.Server.Domain.Combat
         // are the tick's own steps, moved out unchanged.
 
         /// <summary>Step 1: the monster's chance to connect. Monsters carry no accuracy; the player's dodge is the only term.</summary>
+        /// <remarks>
+        /// Modul: THE FIRST 5.26 POINTS OF DODGE USED TO DO NOTHING. This was
+        /// `clamp(100 / (100 + dodge), 5%, 95%)`: with no dodge the raw value is
+        /// 100%, the clamp pulls it to 95%, and it stays pinned there until
+        /// dodge reaches 5.26 - so a potion, a single affix roll (0.5-2.1) and
+        /// most of Nimble (+4) changed nothing, and a Fairy's +10 was worth
+        /// about 4.7. Measured in RaceUnitMeasurementTests, 2026-10-29. The
+        /// curve is now shifted down by the 5% the ceiling used to take, so
+        /// zero dodge still means 95% and every point after it counts (owner,
+        /// 2026-10-29). BossGearBenchmark calls this too - one curve.
+        /// </remarks>
         internal static float MonsterHitChance(in CombatStats combatStats)
-            => Math.Clamp(100f / (100f + combatStats.DodgeChancePct), 0.05f, 0.95f);
+            => Math.Clamp(100f / (100f + Math.Max(0f, combatStats.DodgeChancePct)) - MonsterHitCeilingGap, 0.05f, 0.95f);
+
+        /// <summary>What zero dodge leaves a monster short of a certain hit: 95% at zero.</summary>
+        internal const float MonsterHitCeilingGap = 0.05f;
 
         /// <summary>Step 2: 5% base + 0.5% per region tier.</summary>
         internal static float MonsterCritChance(int monsterRegionTier)

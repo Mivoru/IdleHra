@@ -142,10 +142,35 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void Wall_gear_dodge_before_and_after_the_curve_change()
+        {
+            var table = new StringBuilder();
+            table.AppendLine("Each region's boss-wall gear (BossFirstClearRules) and the best gear: dodge points, monster hit chance on the old curve (no -5%) and the current one.");
+            table.AppendLine("region | gear | dodge | old hit | current hit | damage taken vs old");
+            for (int region = 1; region <= 5; region++)
+            {
+                foreach (var (name, quality, rarity) in new[]
+                {
+                    ("wall", BossFirstClearRules.RequiredQualityTierFor(region), BossFirstClearRules.RequiredAffixRarityFor(region)),
+                    ("best", RarityTier.Transcendent, AffixRarity.Legendary),
+                })
+                {
+                    var totals = BossGearBenchmark.BuildEquippedTotals(new ReferenceLoadout(BossGearBenchmark.ReferenceLevelForRegion(region), region, quality, rarity));
+                    var stats = StatsCalculator.Calculate(0, 0, 0, 0, equippedAffixTotals: totals);
+                    float oldHit = Math.Clamp(100f / (100f + stats.DodgeChancePct), 0.05f, 0.95f);
+                    float newHit = SimulationEngine.MonsterHitChance(in stats);
+                    table.AppendLine(FormattableString.Invariant(
+                        $"{region} | {name} | {stats.DodgeChancePct:0.#} | {oldHit:P1} | {newHit:P1} | {newHit / oldHit - 1:+0.0%;-0.0%;0%}"));
+                }
+            }
+            _out.WriteLine(table.ToString());
+        }
+
+        [Fact]
         public void Defensive_potion_dodge_candidates()
         {
             var table = new StringBuilder();
-            table.AppendLine("Defensive potion of tier T adds T x 0.01 dodge points today; candidate T x 1. Monster hit chance and expected damage per monster swing.");
+            table.AppendLine("Defensive potion of tier T: T x 0.01 dodge before 2026-10-29, T x 1 since (and the hit curve lost its 5.26-point dead zone). Monster hit chance and expected damage per monster swing.");
             table.AppendLine("tier | variant | dodge pts added | monster hit chance | damage/swing vs no potion dodge");
 
             var payload = Reference(3, RaceIds.Human, 0);
@@ -155,7 +180,7 @@ namespace FolkIdle.Server.Tests
             double baseline = SimulationEngine.ExpectedMonsterMilliDamagePerSwing(in computed, monsterId, 0, maxHp);
             for (int tier = 1; tier <= 5; tier++)
             {
-                foreach (var (name, perTier) in new[] { ("current", 0.01f), ("x100", 1f) })
+                foreach (var (name, perTier) in new[] { ("old potion", 0.01f), ("current", StatsCalculator.DefensivePotionDodgePerTier) })
                 {
                     var stats = computed;
                     stats.DodgeChancePct += tier * perTier;

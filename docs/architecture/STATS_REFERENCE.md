@@ -502,7 +502,9 @@ Owners: `Engine/CombatDamageModel.cs`, `Domain/Combat/SimulationEngine.cs`.
 
 **The monster's swing**
 
-- **Hit chance:** `100 / (100 + your dodge)`, clamped 5-95%.
+- **Hit chance:** `100 / (100 + your dodge) − 5%`, clamped 5-95% (since
+  2026-10-29; before that there was no −5%, so the 95% clamp swallowed the first
+  5.26 points of dodge).
 - **Crit chance:** 5% + 0.5% per region. **Crit multiplier:** 1.5 minus crit
   mitigation%, minimum 1.0.
 - **Your armour:** `K = 40 × 3^(region−1)`. Region 1 is 40, region 5 is 3,240.
@@ -765,7 +767,8 @@ character.
 ### 13.3 Potions
 
 - **Offensive**, item region tier T: +10T melee damage, +5T armour pen.
-- **Defensive**, item region tier T: +100T HP, +5T armour, +0.01T dodge.
+- **Defensive**, item region tier T: +100T HP, +5T armour, +T dodge (was
+  +0.01T until 2026-10-29).
 - **Food buff:** regenerates `maxHP / FoodRegenDivisor` per tick in combat.
 
 ### 13.4 Guild and legacy
@@ -860,7 +863,8 @@ a new item of this kind is caught in CI rather than by reading code.
 4. **Unit leftovers in race effects.** Vila mastery "+0.15 attack speed"
    ("nullify armour agility penalty") and Draugr "−0.15 attack speed" add 0.15
    *percentage points*, so they have almost no effect. The defensive potion's
-   dodge is `tier × 0.01` points, at most 0.05. Vila's +20% `FlatRangedDamage`
+   dodge is `tier × 0.01` points, at most 0.05 (**FIXED 2026-10-29**: one point
+   a tier, and the hit curve no longer ignores the first 5.26 points). Vila's +20% `FlatRangedDamage`
    applies to a stat combat never reads (only the guild-war aggregate sums it).
    The ±0.15 lines date from when `CombatDamageModel` read attack speed as a
    FRACTION (see its "read as a fraction" comment), so 15% was the author's
