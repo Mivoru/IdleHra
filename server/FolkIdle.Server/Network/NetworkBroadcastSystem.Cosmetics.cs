@@ -95,6 +95,11 @@ namespace FolkIdle.Server.Network
                 return false;
             }
 
+            // Public content: what each race does, built from the constants
+            // the simulation reads (RaceBonusRegistry). The Wiki and the race
+            // mastery panel show it.
+            if (requestPath == "/api/v1/races" && method == "GET") { await HandleRaceDescriptions(context); return true; }
+
             if (!requestPath.StartsWith("/api/v1/cosmetics", StringComparison.Ordinal)) return false;
 
             if (requestPath == "/api/v1/cosmetics/catalogue" && method == "GET") { await HandleCosmeticsCatalogue(context); return true; }
@@ -110,6 +115,23 @@ namespace FolkIdle.Server.Network
             context.Response.StatusCode = 200;
             context.Response.ContentType = "application/json";
             await JsonSerializer.SerializeAsync(context.Response.OutputStream, value);
+        }
+
+        private static async Task HandleRaceDescriptions(HttpListenerContext context)
+        {
+            try
+            {
+                await WriteJsonAsync(context, FolkIdle.Server.Engine.RaceBonusRegistry.Describe());
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Race descriptions error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally
+            {
+                context.Response.Close();
+            }
         }
 
         private async Task HandleCosmeticsCatalogue(HttpListenerContext context)

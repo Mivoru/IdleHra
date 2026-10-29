@@ -25,6 +25,7 @@
   import Money from '../lib/ui/Money.svelte';
   import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import { RACE_NAMES, ALL_RACE_IDS, isRaceUnlocked } from '../lib/ui/races';
+  import { loadRaceDescriptions, masteryScope, raceKeys, type RaceDescription } from '../lib/net/races';
   import Skeleton from '../lib/ui/Skeleton.svelte';
   import QueryError from '../lib/ui/QueryError.svelte';
   import BookOfDeeds from '../lib/ui/BookOfDeeds.svelte';
@@ -61,6 +62,11 @@
 
   const loginBonus = createQuery(() => ({ queryKey: queryKeys.loginBonus, queryFn: fetchLoginBonus }));
   const raceMastery = createQuery(() => ({ queryKey: queryKeys.raceMastery, queryFn: fetchRaceMastery }));
+  // What each race's mastery pays, written by the server (RaceBonusRegistry):
+  // the bar alone said how far a race had come and never what it was FOR.
+  const raceDescriptions = createQuery(() => ({ queryKey: raceKeys.descriptions, queryFn: loadRaceDescriptions, staleTime: Infinity }));
+  const describedRace = (raceId: number): RaceDescription | undefined =>
+    raceDescriptions.data?.find((r) => r.RaceId === raceId);
   const statistics = createQuery(() => ({ queryKey: queryKeys.statistics, queryFn: fetchStatistics }));
   // Task 51. The hit and boss times read the live stream (hydrated at login),
   // the best drop and the Deep read the durable row.
@@ -220,6 +226,7 @@
       <p class="dim tiny">No race mastery yet.</p>
     {:else}
       {#each raceMastery.data ?? [] as race (race.RaceId)}
+        {@const described = describedRace(race.RaceId)}
         <div class="mastery">
           <span class="dim tiny">{RACE_NAMES[race.RaceId] ?? `Race ${race.RaceId}`} &middot; level {race.Level}</span>
           <Bar
@@ -228,6 +235,18 @@
             color="var(--rarity-6)"
             label={`${formatNumber(race.Experience)} / ${formatNumber(race.NextLevelExperience)}`}
           />
+          {#if described}
+            <ul class="mastery-lines" data-testid="race-mastery-lines">
+              {#each described.Mastery as line (line.Level)}
+                <li class:reached={race.Level >= line.Level}>
+                  <span class="lvl">Lv {line.Level}</span>
+                  {line.Text}
+                  {#if race.Level >= line.Level}<span class="tiny">&#10003;</span>{/if}
+                </li>
+              {/each}
+            </ul>
+            <span class="dim tiny">{masteryScope(described)} Every race's own bonuses are in the Wiki.</span>
+          {/if}
         </div>
       {/each}
     {/if}
@@ -352,6 +371,21 @@
     display: grid;
     gap: 0.15rem;
     margin-bottom: 0.45rem;
+  }
+
+  .mastery-lines {
+    margin: 0.15rem 0 0;
+    padding-left: 1.1rem;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  .mastery-lines li.reached {
+    color: inherit;
+  }
+
+  .mastery-lines .lvl {
+    font-weight: 600;
   }
 
   .races {
