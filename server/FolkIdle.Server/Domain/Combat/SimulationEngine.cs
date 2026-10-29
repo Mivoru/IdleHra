@@ -3952,6 +3952,18 @@ namespace FolkIdle.Server.Domain.Combat
                 Network.SkillProc.Riposte);
         }
 
+        /// <summary>
+        /// The codex damage multiplier a swing lands with: the cached account
+        /// figure, its bonus part raised by the War half's Codex Scholar. The
+        /// live hit, Riposte and the projection all multiply by this.
+        /// </summary>
+        internal static float LiveCodexDamageMultiplier(in TickStatePayload payload)
+        {
+            float codex = payload.CachedCodexDamageMultiplier;
+            int scholar = WarTreeRegistry.Resolve(in payload).CodexBonusTenthsPct;
+            return scholar > 0 && codex > 1f ? 1f + (codex - 1f) * (1f + scholar / 1000f) : codex;
+        }
+
         /// <summary>Whether the payload holds Golden Fleece on either tree.</summary>
         internal static bool HasGoldenFleece(in TickStatePayload payload)
             => payload.Skill_GoldenFleece > 0 || WarTreeRegistry.Resolve(in payload).GoldenFleece;
@@ -3978,7 +3990,7 @@ namespace FolkIdle.Server.Domain.Combat
             if (share <= 0) return 0L;
             long raw = rawMilliAttack * share / 1000L;
             long net = CombatDamageModel.Mitigate(raw, monster.Armor, CombatDamageModel.MonsterArmourHalvingConstant(monster.RegionTier), stats.FlatArmorPenetration);
-            return (long)(net * payload.CachedCodexDamageMultiplier);
+            return (long)(net * LiveCodexDamageMultiplier(in payload));
         }
 
         /// <summary>
@@ -4106,6 +4118,8 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
             finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
+            // The War half's Quick Study, in the same additive layer.
+            finalXpMultiplier += WarTreeRegistry.Resolve(in payload).XpTenthsPct / 10;
             finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
             // The character's pet (PetRegistry), on the active slot's totals.
             finalXpMultiplier += payload.CachedAffixTotals.XpTenthsPct / 10;
@@ -5073,7 +5087,7 @@ namespace FolkIdle.Server.Domain.Combat
                     // never rolled again.
                     bool echoed = payload.LastHitWasCrit == 1 && warHit.EchoTenths > 0 && Random.Shared.NextDouble() < warHit.EchoChance;
                     if (echoed) netDamage += (int)(netDamage * WarEffects.EchoShare);
-                    netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
+                    netDamage = (int)(netDamage * LiveCodexDamageMultiplier(in payload));
 
                     // Modul: set bonuses made real. The Chiming Steel 4-piece
                     // grants FireDamageMultiplierPct, which reached CombatStats

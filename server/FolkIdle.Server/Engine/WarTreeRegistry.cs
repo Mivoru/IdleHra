@@ -49,6 +49,10 @@ namespace FolkIdle.Server.Engine
         PerfectSequence,
         LivingFortress,
         GoldenFleece,
+        /// <summary>Gold from region bosses, in tenths of a percent.</summary>
+        TrophyGoldPct,
+        /// <summary>Raises the codex damage bonus by a share of itself, in tenths of a percent.</summary>
+        CodexBonusPct,
     }
 
     /// <summary>
@@ -122,11 +126,15 @@ namespace FolkIdle.Server.Engine
             // ---- Fortune: farms richer, and grows stronger slowly --------------
             Add(Scavenger, "Scavenger", "scavenger", ColumnFortune, 0, 0, "Minor", 5, 1, WarEffect.LootLuckPct, 15, "+{0}% loot luck");
             Add(GoldenTouch, "Golden Touch", "golden_touch", ColumnFortune, 0, 1, "Minor", 5, 1, WarEffect.GoldPct, 30, "+{0}% gold from kills");
-            Add(TrophyHunter, "Trophy Hunter", "trophy_hunter", ColumnFortune, 1, -1, "Notable", 3, 2, WarEffect.Mechanic, 0, "Bosses pay more gold and always drop a material");
+            Add(TrophyHunter, "Trophy Hunter", "trophy_hunter", ColumnFortune, 1, -1, "Notable", 3, 2, WarEffect.TrophyGoldPct, 0, "+{0}% gold from region bosses", ranks: new[] { 70, 140, 200 });
             Add(Plenty, "Plenty", "plenty", ColumnFortune, 2, 0, "Fork", 5, 1, WarEffect.MaterialStackPct, 25, "+{0}% material stack size", fork: Rarity);
             Add(Rarity, "Rarity", "rarity", ColumnFortune, 2, 1, "Fork", 5, 1, WarEffect.RarityElevationPct, 15, "+{0}% chance a drop rolls one rarity higher", fork: Plenty);
             Add(QuickStudy, "Quick Study", "quick_study", ColumnFortune, 3, 0, "Minor", 5, 1, WarEffect.XpPct, 10, "+{0}% XP");
-            Add(CodexScholar, "Codex Scholar", "codex_scholar", ColumnFortune, 3, 1, "Notable", 3, 2, WarEffect.Mechanic, 0, "Kills count extra toward codex levels");
+            // Modul: THE CODEX BONUS, NOT THE KILL COUNT. "Kills count extra" would
+            // have inflated KillCount, which deeds and achievements read as the
+            // truth. Raising what the codex already pays keeps "knowledge pays"
+            // and every count honest.
+            Add(CodexScholar, "Codex Scholar", "codex_scholar", ColumnFortune, 3, 1, "Notable", 3, 2, WarEffect.CodexBonusPct, 0, "Your codex damage bonus is {0}% larger", ranks: new[] { 150, 300, 500 });
             Add(GoldenFleece, "Golden Fleece", "golden_fleece", ColumnFortune, 4, -1, "Keystone", 1, 5, WarEffect.GoldenFleece, 1, "Every 100th kill drops an item two tiers up");
 
             // ---- Might: hits hard, breaks armour, kills bosses ----------------
@@ -192,6 +200,8 @@ namespace FolkIdle.Server.Engine
             WarEffect.DoubleStrikeChance, WarEffect.EchoChance, WarEffect.FrenzyOfCrit,
             WarEffect.BloodthirstPct, WarEffect.RipostePct, WarEffect.LastStand,
             WarEffect.ThundererPct, WarEffect.Ruin, WarEffect.PerfectSequence, WarEffect.LivingFortress, WarEffect.GoldenFleece,
+            WarEffect.LootLuckPct, WarEffect.GoldPct, WarEffect.MaterialStackPct, WarEffect.RarityElevationPct, WarEffect.XpPct,
+            WarEffect.TrophyGoldPct, WarEffect.CodexBonusPct,
         };
 
         public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);
@@ -307,6 +317,13 @@ namespace FolkIdle.Server.Engine
                     case WarEffect.PerfectSequence: e.PerfectSequence = true; break;
                     case WarEffect.LivingFortress: e.LivingFortress = true; break;
                     case WarEffect.GoldenFleece: e.GoldenFleece = true; break;
+                    case WarEffect.LootLuckPct: e.LootLuckTenthsPct += v; break;
+                    case WarEffect.GoldPct: e.GoldTenthsPct += v; break;
+                    case WarEffect.MaterialStackPct: e.MaterialStackTenthsPct += v; break;
+                    case WarEffect.RarityElevationPct: e.RarityElevationTenthsPct += v; break;
+                    case WarEffect.XpPct: e.XpTenthsPct += v; break;
+                    case WarEffect.TrophyGoldPct: e.TrophyGoldTenthsPct += v; break;
+                    case WarEffect.CodexBonusPct: e.CodexBonusTenthsPct += v; break;
                     case WarEffect.CrushingChance: e.CrushingChanceTenths += v; break;
                 }
             }
@@ -370,6 +387,13 @@ namespace FolkIdle.Server.Engine
         public bool PerfectSequence;
         public bool LivingFortress;
         public bool GoldenFleece;
+        public int LootLuckTenthsPct;
+        public int GoldTenthsPct;
+        public int MaterialStackTenthsPct;
+        public int RarityElevationTenthsPct;
+        public int XpTenthsPct;
+        public int TrophyGoldTenthsPct;
+        public int CodexBonusTenthsPct;
 
         public const int RuinEvery = 8;
         public const float RuinMultiplier = 2.5f;

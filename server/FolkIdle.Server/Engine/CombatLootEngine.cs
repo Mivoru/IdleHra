@@ -396,11 +396,14 @@ namespace FolkIdle.Server.Engine
             {
                 Stats = combatStats.LootLuckPct,
                 Inheritance = InheritanceRegistry.GetBonusPct(payload.Inherit_LootLuck),
-                FortuneRoot = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity),
+                // Today's Fortune root, or the War half's Scavenger.
+                FortuneRoot = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchLootRarity, payload.Skill_LootRarity)
+                    + WarTreeRegistry.Resolve(in payload).LootLuckTenthsPct / 10f,
                 GuildDropRate = GuildBonusesCache.GetBuffTier(payload.GuildId, "DropRate") * 2.0f,
                 FortuneAptitude = BreedingAptitudes.BonusPercentFor(payload.Aptitude_Fortune),
                 StatsElevation = combatStats.RarityElevationPct,
-                RarityBough = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity),
+                RarityBough = SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughRarity, payload.Skill_Rarity)
+                    + WarTreeRegistry.Resolve(in payload).RarityElevationTenthsPct / 10f,
             };
         }
     }
@@ -555,7 +558,8 @@ namespace FolkIdle.Server.Engine
                 // Plenty changes HOW MUCH of a material falls, which is a
                 // different question from what falls, and has its own field.
                 MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(
-                    SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty),
+                    SkillTreeRegistry.BoughPlenty, payload.Skill_Plenty)
+                    + WarTreeRegistry.Resolve(in payload).MaterialStackTenthsPct / 10f,
 
                 // The LCK curve, traits and the Rarity bough - see
                 // LootLuckBreakdown.RarityBough for why the bough is here and

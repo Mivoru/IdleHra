@@ -33,21 +33,26 @@ namespace FolkIdle.Server.Domain.Combat
             gold = (long)(gold * f.Inheritance);
             gold = (long)(gold * f.Pet);
 
-            if (payload.Skill_TrophyHunter > 0
-                && RaceUnlockRegistry.GetRegionForBossMonsterId(monster.Id) > 0)
+            gold = (long)(gold * f.Tree);
+
+            // Trophy Hunter, on either tree: region bosses only.
+            if (RaceUnlockRegistry.GetRegionForBossMonsterId(monster.Id) > 0)
             {
-                gold = (long)(gold * (1.0f + SkillTreeRegistry.GetBonusPercent(
-                    SkillTreeRegistry.BoughTrophyHunter, payload.Skill_TrophyHunter) / 100f));
+                float today = payload.Skill_TrophyHunter > 0
+                    ? SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughTrophyHunter, payload.Skill_TrophyHunter) / 100f
+                    : 0f;
+                float war = WarTreeRegistry.Resolve(in payload).TrophyGoldTenthsPct / 1000f;
+                if (today > 0f || war > 0f) gold = (long)(gold * (1.0f + Math.Max(today, war)));
             }
 
             return gold;
         }
 
         /// <summary>The per-player multipliers a kill's gold passes through, in PerKill's order.</summary>
-        public readonly record struct GoldFactors(float Acquisition, float Legacy, float Guild, float Inheritance, float Pet)
+        public readonly record struct GoldFactors(float Acquisition, float Legacy, float Guild, float Inheritance, float Pet, float Tree = 1f)
         {
             /// <summary>All of them as one percentage bonus, untruncated - what the stat sheet prints.</summary>
-            public double TotalBonusPct => ((double)Acquisition * Legacy * Guild * Inheritance * Pet - 1.0) * 100.0;
+            public double TotalBonusPct => ((double)Acquisition * Legacy * Guild * Inheritance * Pet * Tree - 1.0) * 100.0;
         }
 
         /// <summary>
@@ -65,6 +70,8 @@ namespace FolkIdle.Server.Domain.Combat
                 // Modul: inheritance. A permanent, season-crossing multiplier.
                 1.0f + InheritanceRegistry.GetBonusPct(payload.Inherit_GoldGain) / 100f,
                 // The character's pet (PetRegistry), on the active slot's totals.
-                1.0f + payload.CachedAffixTotals.GoldTenthsPct / 1000f);
+                1.0f + payload.CachedAffixTotals.GoldTenthsPct / 1000f,
+                // The War half's Golden Touch.
+                1.0f + WarTreeRegistry.Resolve(in payload).GoldTenthsPct / 1000f);
     }
 }
