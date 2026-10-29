@@ -379,7 +379,7 @@ Percentage centre (identical in every region):
 | lifesteal | 0.5% | 0.8% | 1.1% | 1.4% | 1.7% |
 | dodge | 0.5 | 0.9 | 1.3 | 1.7 | 2.1 |
 | block | 1.0% | 1.8% | 2.6% | 3.4% | 4.2% |
-| gather speed | 1.5% | 2.5% | 3.5% | 4.5% | 5.5% |
+| gather speed | 15% | 25% | 35% | 45% | 55% (whole percent - see below) |
 | gather yield | 2.5% | 4.3% | 6.1% | 7.9% | 9.7% |
 | gather rare find | 3.0% | 5.2% | 7.4% | 9.6% | 11.8% |
 
@@ -874,12 +874,21 @@ Each item was checked by grepping for readers of the field. Status as of
     2026-10-29:** yield adds `ToolGatherYieldPct / 10` points to the yield pool,
     rare find adds `ToolRareFindPct / 10` to the luck that sets
     `LuckWeightBonus` (the rare-favouring weight), live and offline.
-    **Still open, owner's call:** `gather_speed_pct` is added to the speed bonus
-    as WHOLE percent (`GatheringToolEngine.TotalSpeedBonusPct`), while the
-    tooltip and every other affix read the magnitude as tenths - a Legendary
-    roll shows +5.5% and pays +55% (issue #203). Yield and rare find are per
-    tool since 2026-10-29 (axe woodcutting, pickaxe mining, rod fishing);
-    speed is still one sum across all three tools, which goes with #203.
+    **Speed FIXED 2026-10-29** (task 121, issue #203; owner chose to fix the
+    tooltip, not the engine): `gather_speed_pct` is applied as WHOLE percent
+    and the tooltip now shows it so (a roll of 55 reads "+55%"). Speed, yield
+    and rare find are all per tool now: axe woodcutting, pickaxe mining, rod
+    fishing.
+
+    **Gathering speed since the same change:**
+    `ticks = base x 100 / (100 + core) x 100 / (100 + extras)`, floored at 2.
+    *Core* = tool tier + mastery + village building, summed. *Extras* = the
+    worn tool's speed affix + the Harvest bough + the Skill aptitude + traits
+    + the pet, summed and then MULTIPLIED on top, never below -50. Before, the
+    extras were added to the core, so a +5% trait was worth +0.7% in the middle
+    game; now it is +5% at every stage (`GatherSpeedCompositionTests` prints
+    old against new). Negatives apply, so the Clumsy Hands flaw finally costs
+    its 6% (item 12).
 11. **The weapon damage affixes are one stat with three names.**
     `melee_dmg_pct`, `range_dmg_pct` and `magic_dmg_pct` all add to the same
     damage bonus. The client now labels all three "Damage" (2026-10-29); the

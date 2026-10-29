@@ -1093,7 +1093,9 @@ namespace FolkIdle.Server.Domain.Combat
                             currentPayload.AxeToolTier = equipUpdate.AxeToolTier;
                             currentPayload.PickaxeToolTier = equipUpdate.PickaxeToolTier;
                             currentPayload.RodToolTier = equipUpdate.RodToolTier;
-                            currentPayload.ToolGatherSpeedPct = equipUpdate.ToolGatherSpeedPct;
+                            currentPayload.ToolAxeSpeedPct = equipUpdate.ToolAxeSpeedPct;
+                            currentPayload.ToolPickaxeSpeedPct = equipUpdate.ToolPickaxeSpeedPct;
+                            currentPayload.ToolRodSpeedPct = equipUpdate.ToolRodSpeedPct;
                             currentPayload.ToolAxeYieldPct = equipUpdate.ToolAxeYieldPct;
                             currentPayload.ToolPickaxeYieldPct = equipUpdate.ToolPickaxeYieldPct;
                             currentPayload.ToolRodYieldPct = equipUpdate.ToolRodYieldPct;
@@ -2391,7 +2393,7 @@ namespace FolkIdle.Server.Domain.Combat
                                 AxeToolTier = currentPayload.AxeToolTier,
                                 PickaxeToolTier = currentPayload.PickaxeToolTier,
                                 RodToolTier = currentPayload.RodToolTier,
-                                ToolGatherSpeedPct = currentPayload.ToolGatherSpeedPct,
+                                ToolGatherSpeedPct = ToolLoadoutResolver.ClampSum(currentPayload.ToolAxeSpeedPct, currentPayload.ToolPickaxeSpeedPct, currentPayload.ToolRodSpeedPct),
                                 // The wire keeps the three tools' sums - no client
                                 // reads them, and the per-tool split is the tick's.
                                 ToolGatherYieldPct = ToolLoadoutResolver.ClampSum(currentPayload.ToolAxeYieldPct, currentPayload.ToolPickaxeYieldPct, currentPayload.ToolRodYieldPct),
@@ -4198,7 +4200,9 @@ namespace FolkIdle.Server.Domain.Combat
             Swap(ref payload.AxeToolTier, ref parked.AxeToolTier);
             Swap(ref payload.PickaxeToolTier, ref parked.PickaxeToolTier);
             Swap(ref payload.RodToolTier, ref parked.RodToolTier);
-            Swap(ref payload.ToolGatherSpeedPct, ref parked.ToolGatherSpeedPct);
+            Swap(ref payload.ToolAxeSpeedPct, ref parked.ToolAxeSpeedPct);
+            Swap(ref payload.ToolPickaxeSpeedPct, ref parked.ToolPickaxeSpeedPct);
+            Swap(ref payload.ToolRodSpeedPct, ref parked.ToolRodSpeedPct);
             Swap(ref payload.ToolAxeYieldPct, ref parked.ToolAxeYieldPct);
             Swap(ref payload.ToolPickaxeYieldPct, ref parked.ToolPickaxeYieldPct);
             Swap(ref payload.ToolRodYieldPct, ref parked.ToolRodYieldPct);
@@ -5891,7 +5895,7 @@ namespace FolkIdle.Server.Domain.Combat
                 1 => payload.PickaxeToolTier,
                 _ => payload.RodToolTier
             };
-            int extraPct = payload.ToolGatherSpeedPct
+            int extraPct = ToolSpeedPctFor(in payload, professionType)
                 + SkillTreeRegistry.GetBonusTenthsOfPercent(
                     SkillTreeRegistry.BoughHarvest, payload.Skill_Harvest) / 10
                 + BloodlineBonuses.GatherSpeedBonusPct(payload.Aptitude_Skill, TraitTotals.From(payload.TraitMask))
@@ -6042,6 +6046,15 @@ namespace FolkIdle.Server.Domain.Combat
                 LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct + ToolRareFindPctFor(in payload, gatheringNode.ProfessionType) / 10f),
             };
         }
+
+        /// <summary>The worn tool's speed affix for a profession, in WHOLE percent (the tooltip shows it so since TASK_BOARD 121).</summary>
+        internal static int ToolSpeedPctFor(in TickStatePayload payload, int professionType) => professionType switch
+        {
+            0 => payload.ToolAxeSpeedPct,
+            1 => payload.ToolPickaxeSpeedPct,
+            2 => payload.ToolRodSpeedPct,
+            _ => 0,
+        };
 
         /// <summary>The worn tool's yield affix for a profession: axe woodcutting, pickaxe mining, rod fishing.</summary>
         internal static int ToolYieldPctFor(in TickStatePayload payload, int professionType) => professionType switch

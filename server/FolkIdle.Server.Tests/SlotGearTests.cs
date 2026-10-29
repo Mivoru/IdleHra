@@ -179,13 +179,13 @@ namespace FolkIdle.Server.Tests
             // The tool tiers were one account-wide set on the payload, so the
             // woodcutter in slot 2 cut with slot 1's axe. They ride the
             // register now, like the armour.
-            var payload = new TickStatePayload { AxeToolTier = 2, ToolGatherSpeedPct = 5 };
+            var payload = new TickStatePayload { AxeToolTier = 2, ToolAxeSpeedPct = 5 };
             payload.Slot2Activity.AxeToolTier = 9;
-            payload.Slot2Activity.ToolGatherSpeedPct = 40;
+            payload.Slot2Activity.ToolAxeSpeedPct = 40;
 
             SimulationEngine.SwapSlotIntoActiveRegister(ref payload, 1);
             Assert.Equal(9, payload.AxeToolTier);
-            Assert.Equal(40, payload.ToolGatherSpeedPct);
+            Assert.Equal(40, payload.ToolAxeSpeedPct);
             Assert.Equal(9, SimulationEngine.GatherSpeedTermsFor(ref payload, 0).ToolTier);
 
             SimulationEngine.SwapSlotIntoActiveRegister(ref payload, 1);

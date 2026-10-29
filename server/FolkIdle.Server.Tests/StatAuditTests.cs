@@ -150,7 +150,6 @@ namespace FolkIdle.Server.Tests
         private static readonly Dictionary<string, string> KnownDefects = new()
         {
             ["trait:nimble"] = "+4 dodge sits inside the 5.26-point dodge dead zone - PR #200 removes the zone",
-            ["trait:clumsy_hands"] = "-6% gathering speed is dropped by TWO guards in GatheringToolEngine: TotalSpeedBonusPct adds the extra term only when > 0, and ComputeRequiredTicks applies the total only when > 0 - TASK_BOARD 127, owner decision (a flaw that starts to bite is a balance change)",
         };
 
         private void AssertMovesOrIsListed(string key, Dictionary<string, double> before, Dictionary<string, double> after, List<string> failures)
@@ -274,7 +273,8 @@ namespace FolkIdle.Server.Tests
         {
             switch (id)
             {
-                case ToolLoadoutResolver.GatherSpeedAffix: p.ToolGatherSpeedPct = (ushort)magnitude; return p;
+                case ToolLoadoutResolver.GatherSpeedAffix:
+                    p.ToolAxeSpeedPct = p.ToolPickaxeSpeedPct = p.ToolRodSpeedPct = (ushort)magnitude; return p;
                 case ToolLoadoutResolver.GatherYieldAffix:
                     p.ToolAxeYieldPct = p.ToolPickaxeYieldPct = p.ToolRodYieldPct = (ushort)magnitude; return p;
                 case ToolLoadoutResolver.RareFindAffix:
@@ -301,14 +301,6 @@ namespace FolkIdle.Server.Tests
             ("gather_yield_pct", "yield_0", 1.0),
         };
 
-        // Known unit defects with their issue. A row here is EXPECTED to fail
-        // the unit rule; the test fails when it starts passing, so the fix
-        // also has to delete the row.
-        private static readonly Dictionary<string, string> KnownUnitDefects = new()
-        {
-            ["gather_speed_pct"] = "#203 - added to the speed bonus as whole percent, tooltip shows tenths",
-        };
-
         [Theory]
         [InlineData(0)]
         [InlineData(1)]
@@ -326,17 +318,18 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
-        public void Known_unit_defects_are_still_defects()
+        public void The_tool_speed_affix_pays_the_whole_percent_its_tooltip_now_prints()
         {
-            // gather_speed_pct: magnitude 50 is "+5.0%" in the tooltip. If the
-            // tick paid 5%, the bonus fed to RequiredGatherTicks would be 5;
-            // today it is 50. When #203 lands, this flips - delete the row.
+            // gather_speed_pct is the one affix shown as WHOLE percent
+            // (affixes.ts, TASK_BOARD 121 / issue #203): magnitude 50 reads
+            // "+50%". The tick multiplies the speed by 1 + 50/100.
             var p = WithAffix(Baseline(), "gather_speed_pct", 50);
-            var terms = SimulationEngine.GatherSpeedTermsFor(ref p, 0);
             var bare = Baseline();
-            var bareTerms = SimulationEngine.GatherSpeedTermsFor(ref bare, 0);
-            Assert.True(KnownUnitDefects.ContainsKey("gather_speed_pct"));
-            Assert.Equal(50, terms.ExtraPct - bareTerms.ExtraPct);
+            Assert.Equal(50, SimulationEngine.GatherSpeedTermsFor(ref p, 0).ExtraPct - SimulationEngine.GatherSpeedTermsFor(ref bare, 0).ExtraPct);
+            var node = NodeOf(0);
+            int bareTicks = SimulationEngine.RequiredGatherTicks(ref bare, in node);
+            int tooledTicks = SimulationEngine.RequiredGatherTicks(ref p, in node);
+            Assert.InRange(tooledTicks, bareTicks * 100 / 150 - 1, bareTicks * 100 / 150 + 1);
         }
 
         // ------------------------------------------------------------------

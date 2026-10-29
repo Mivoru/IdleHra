@@ -101,6 +101,9 @@ describe('unit selection', () => {
     // where the browser is, and pinning one makes this test fail on a Czech
     // machine for no reason.
     expect(formatAffixValue('flat_hp', 1250)).toBe(`+${formatNumber(1250)}`);
+    // The tool speed affix is applied in whole percent, so it is shown so.
+    expect(formatAffixValue('gather_speed_pct', 55)).toBe('+55%');
+    expect(formatAffixValue('gather_yield_pct', 55)).toBe('+5.5%');
     expect(formatAffixValue('armor_pen_flat', 3)).toBe('+3');
   });
 });

@@ -26,28 +26,33 @@ namespace FolkIdle.Server.Domain.Combat
         public readonly byte AxeTier;
         public readonly byte PickaxeTier;
         public readonly byte RodTier;
-        public readonly ushort GatherSpeedPct;
-        // Modul: yield and rare find are kept PER TOOL (2026-10-29). Summed,
-        // an axe's yield affix paid on every mining and fishing harvest too.
-        // Each pays only its own profession now - see ToolYieldPctFor /
-        // ToolRareFindPctFor in SimulationEngine. Speed is still one sum; its
-        // unit question is issue #203 and its scope goes with it.
+        // Modul: speed, yield and rare find are all kept PER TOOL. Summed, an
+        // axe's affix paid on every mining and fishing harvest too. Each pays
+        // only its own profession: see ToolSpeedPctFor / ToolYieldPctFor /
+        // ToolRareFindPctFor in SimulationEngine. Yield and rare find went per
+        // tool in #202; speed followed with TASK_BOARD 121 (issue #203).
+        public readonly ushort AxeSpeedPct, PickaxeSpeedPct, RodSpeedPct;
         public readonly ushort AxeYieldPct, PickaxeYieldPct, RodYieldPct;
         public readonly ushort AxeRareFindPct, PickaxeRareFindPct, RodRareFindPct;
 
+        /// <summary>The three tools' speed together - what the packet still carries (no client reads it).</summary>
+        public ushort GatherSpeedPct => ToolLoadoutResolver.ClampSum(AxeSpeedPct, PickaxeSpeedPct, RodSpeedPct);
         /// <summary>The three tools' yield together - what the packet still carries.</summary>
         public ushort GatherYieldPct => ToolLoadoutResolver.ClampSum(AxeYieldPct, PickaxeYieldPct, RodYieldPct);
         /// <summary>The three tools' rare find together - what the packet still carries.</summary>
         public ushort RareFindPct => ToolLoadoutResolver.ClampSum(AxeRareFindPct, PickaxeRareFindPct, RodRareFindPct);
 
-        public ToolLoadout(byte axeTier, byte pickaxeTier, byte rodTier, ushort gatherSpeedPct,
+        public ToolLoadout(byte axeTier, byte pickaxeTier, byte rodTier,
+            ushort axeSpeedPct, ushort pickaxeSpeedPct, ushort rodSpeedPct,
             ushort axeYieldPct, ushort pickaxeYieldPct, ushort rodYieldPct,
             ushort axeRareFindPct, ushort pickaxeRareFindPct, ushort rodRareFindPct)
         {
             AxeTier = axeTier;
             PickaxeTier = pickaxeTier;
             RodTier = rodTier;
-            GatherSpeedPct = gatherSpeedPct;
+            AxeSpeedPct = axeSpeedPct;
+            PickaxeSpeedPct = pickaxeSpeedPct;
+            RodSpeedPct = rodSpeedPct;
             AxeYieldPct = axeYieldPct;
             PickaxeYieldPct = pickaxeYieldPct;
             RodYieldPct = rodYieldPct;
@@ -56,7 +61,7 @@ namespace FolkIdle.Server.Domain.Combat
             RodRareFindPct = rodRareFindPct;
         }
 
-        public static readonly ToolLoadout Empty = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+        public static readonly ToolLoadout Empty = new(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
     public static class ToolLoadoutResolver
@@ -80,11 +85,11 @@ namespace FolkIdle.Server.Domain.Combat
             }
 
             byte axeTier = 0, pickaxeTier = 0, rodTier = 0;
-            int speed = 0;
+            int axeSpeed = 0, pickaxeSpeed = 0, rodSpeed = 0;
             int axeYield = 0, pickaxeYield = 0, rodYield = 0;
             int axeRare = 0, pickaxeRare = 0, rodRare = 0;
 
-            void Take(long? instanceId, ref byte tier, ref int yield, ref int rareFind)
+            void Take(long? instanceId, ref byte tier, ref int speed, ref int yield, ref int rareFind)
             {
                 if (!instanceId.HasValue) return;
                 if (!byInstanceId.TryGetValue(instanceId.Value, out var instance)) return;
@@ -93,12 +98,13 @@ namespace FolkIdle.Server.Domain.Combat
                 AccumulateAffixes(instance.AffixPayload, ref speed, ref yield, ref rareFind);
             }
 
-            Take(character.EquippedAxeId, ref axeTier, ref axeYield, ref axeRare);
-            Take(character.EquippedPickaxeId, ref pickaxeTier, ref pickaxeYield, ref pickaxeRare);
-            Take(character.EquippedRodId, ref rodTier, ref rodYield, ref rodRare);
+            Take(character.EquippedAxeId, ref axeTier, ref axeSpeed, ref axeYield, ref axeRare);
+            Take(character.EquippedPickaxeId, ref pickaxeTier, ref pickaxeSpeed, ref pickaxeYield, ref pickaxeRare);
+            Take(character.EquippedRodId, ref rodTier, ref rodSpeed, ref rodYield, ref rodRare);
 
             return new ToolLoadout(
-                axeTier, pickaxeTier, rodTier, ClampToUShort(speed),
+                axeTier, pickaxeTier, rodTier,
+                ClampToUShort(axeSpeed), ClampToUShort(pickaxeSpeed), ClampToUShort(rodSpeed),
                 ClampToUShort(axeYield), ClampToUShort(pickaxeYield), ClampToUShort(rodYield),
                 ClampToUShort(axeRare), ClampToUShort(pickaxeRare), ClampToUShort(rodRare));
         }
