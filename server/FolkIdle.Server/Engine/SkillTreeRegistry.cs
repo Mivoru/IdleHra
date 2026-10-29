@@ -234,7 +234,9 @@ namespace FolkIdle.Server.Engine
             "Materials drop in bigger stacks. Crafting eats stacks.",
             "A drop has a chance to come out one rarity higher than it rolled.",
             "A boss you have never beaten is less monstrous the first time.",
-            "Bosses pay more gold, and always leave a material behind.",
+            // Modul: "and always leave a material behind" was never true - no
+            // code granted one (found 2026-10-29). The card says what the node does.
+            "Bosses pay more gold.",
             "Critical hits bite deeper still.",
             "You swing faster. Everything else scales off how often you hit.",
             "A share of the damage you deal comes back as health - food you never had to cook.",
@@ -529,7 +531,7 @@ namespace FolkIdle.Server.Engine
                 BoughPlenty => $"+{n}% material stack size",
                 BoughRarity => $"+{n}% chance a drop rolls one rarity higher",
                 BoughFirstBlood => $"-{n}% of a first-clear boss's extra health",
-                BoughTrophyHunter => $"+{n}% boss gold, and bosses always drop a material",
+                BoughTrophyHunter => $"+{n}% boss gold",
                 BoughGuile => $"+{n}% crit damage",
                 BoughRelentless => $"-{n}% attack interval",
                 BoughBloodthirst => $"{n}% of damage dealt heals you",

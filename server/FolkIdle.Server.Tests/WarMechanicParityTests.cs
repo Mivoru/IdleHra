@@ -128,6 +128,53 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(5.0f, WarTreeRegistry.Resolve(in payload).ThundererTenthsPct / 1000f);
         }
 
+        /// <summary>Golden Touch and Quick Study pay the same gold and XP away as watched, and more than without.</summary>
+        [Fact]
+        public void Fortune_gold_and_xp_pay_away_as_watched()
+        {
+            int r3 = RegularOf(3);
+            var with = War(3, r3, (WarTreeRegistry.GoldenTouch, 5), (WarTreeRegistry.QuickStudy, 5));
+            var without = War(3, r3);
+            var live = OfflineCombatParityTests.RunLive(with);
+            var offline = OfflineCombatParityTests.RunOffline(with);
+            var liveWithout = OfflineCombatParityTests.RunLive(without);
+            _output.WriteLine($"fortune r3 gold {offline.Gold:F0}/{live.Gold:F0} (without {liveWithout.Gold:F0}), xp {offline.Xp:F0}/{live.Xp:F0} (without {liveWithout.Xp:F0})");
+
+            Assert.True(live.Gold > liveWithout.Gold * 1.10 && live.Xp > liveWithout.Xp * 1.03);
+            Assert.True(Math.Abs(offline.Gold - live.Gold) <= live.Gold * 0.05, $"gold: offline {offline.Gold:F0}, live {live.Gold:F0}");
+            Assert.True(Math.Abs(offline.Xp - live.Xp) <= live.Xp * 0.05, $"xp: offline {offline.Xp:F0}, live {live.Xp:F0}");
+        }
+
+        /// <summary>Codex Scholar raises a real codex bonus, live and away alike.</summary>
+        [Fact]
+        public void Codex_scholar_raises_the_codex_bonus_away_as_watched()
+        {
+            int r3 = RegularOf(3);
+            var with = War(3, r3, (WarTreeRegistry.CodexScholar, 3));
+            var without = War(3, r3);
+            with.CachedCodexDamageMultiplier = 2f;
+            without.CachedCodexDamageMultiplier = 2f;
+            var live = OfflineCombatParityTests.RunLive(with);
+            var offline = OfflineCombatParityTests.RunOffline(with);
+            var liveWithout = OfflineCombatParityTests.RunLive(without);
+            _output.WriteLine($"codex scholar r3 kills {offline.Kills:F0}/{live.Kills:F0} (without {liveWithout.Kills:F0})");
+
+            Assert.Equal(2.5f, FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCodexDamageMultiplier(in with), 3);
+            Assert.True(live.Kills > liveWithout.Kills * 1.01);
+            Assert.True(Math.Abs(offline.Kills - live.Kills) <= Math.Max(live.Kills * 0.05, 1.0), $"kills: offline {offline.Kills:F1}, live {live.Kills:F1}");
+        }
+
+        /// <summary>Scavenger, Rarity and Plenty feed the same loot sums today's Fortune nodes do.</summary>
+        [Fact]
+        public void Fortune_loot_nodes_reach_the_drop_request()
+        {
+            var payload = War(3, RegularOf(3), (WarTreeRegistry.Scavenger, 5), (WarTreeRegistry.Rarity, 5));
+            var stats = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in payload);
+            var odds = LootLuckBreakdown.From(in payload, in stats);
+            Assert.Equal(7.5f, odds.FortuneRoot, 3);
+            Assert.Equal(7.5f, odds.RarityBough, 3);
+        }
+
         /// <summary>Last Stand on the War half arms the same rule today's crown does.</summary>
         [Fact]
         public void War_last_stand_is_the_same_last_stand()
