@@ -235,6 +235,15 @@ is reached sooner too. The harness has to measure how much sooner.
 
 ### 4.3 Bridges (War)
 
+> **Superseded on 2026-10-30.** None of the three below can be built as
+> written: armour is nearly irrelevant to a geared hit, state between swings
+> cannot be priced offline, and per-monster codex levels are not on the
+> payload. The owner approved these replacements (handoff section 4):
+> - Piercing Crit: +6 / 12 / 20% crit damage.
+> - Counterstroke: crit chance +10 / 20 / 33% of dodge + block points.
+> - Know Your Prey: +3 / 6 / 10% damage and gold against monsters of your
+>   highest unlocked region.
+
 | Between | Bridge | Effect |
 |---|---|---|
 | Fortune - Might | Know Your Prey | +3 / 6 / 10% damage against monsters whose codex level is 10 or more |
@@ -527,6 +536,10 @@ Rejected:
 | 3 | Affixes: damage family, new ids appended, pools, Refine | `StatAuditTests`, `serverMirrors.test.ts`, reroll `exercise` |
 | 4 | Hearth half, craft points, Masterwork | gathering economy measured before and after |
 | 5 | Affix families, signature affixes (optional) | - |
+
+**Status, 2026-10-30:** phase 1 and slices 2.0-2.3e are live (1.0.1344).
+The War half is off for players. Next come the bridges, then 2.4 and 2.5.
+See `SKILL_TREE_HANDOFF.md`.
 
 Phase 1 shipped as #216 (client 1.38.0). Phase 2 is cut into slices that
 each ship on their own, behind the old tree, until 2.5 switches it:
