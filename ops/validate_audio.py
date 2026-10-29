@@ -42,12 +42,13 @@ MINIMUM_PLAUSIBLE_BYTES = 1024
 
 LFS_POINTER_PREFIX = b"version https://git-lfs.github.com/spec/"
 
-# Every clip the client can ask for and that must exist. combat_hit_crit.wav
-# is NOT here on purpose: it has never been authored and audio.ts falls back
-# for it by design. The rest of the once-optional clips arrived 2026-09-27.
+# Every clip the client can ask for and that must exist. The once-optional
+# clips arrived 2026-09-27; combat_hit_crit.wav and the skill tree's skill_* and
+# ui_rune_* clips were generated 2026-10-29 (docs/design/SKILL_TREE_ART.md).
 REQUIRED_CLIPS = [
     "achievement_unlock.wav",
     "combat_boss_first_clear.wav",
+    "combat_hit_crit.wav",
     "combat_hit_magic.wav",
     "combat_hit_melee.wav",
     "combat_hit_ranged.wav",
@@ -66,6 +67,19 @@ REQUIRED_CLIPS = [
     "ui_button_click.wav",
     "ui_window_close.wav",
     "ui_window_open.wav",
+    "skill_crush.wav",
+    "skill_double.wav",
+    "skill_echo.wav",
+    "skill_fleece.wav",
+    "skill_last_stand.wav",
+    "skill_perfect.wav",
+    "skill_riposte.wav",
+    "skill_ruin.wav",
+    "skill_thunder.wav",
+    "ui_rune_add.wav",
+    "ui_rune_confirm.wav",
+    "ui_rune_locked.wav",
+    "ui_rune_select.wav",
 ]
 
 

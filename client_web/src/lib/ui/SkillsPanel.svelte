@@ -20,6 +20,7 @@
   import { backgroundUrl } from './sprites';
   import DisabledReason from './DisabledReason.svelte';
   import { respecSkillTree, respecBlockedReason } from '../net/commands';
+  import { play } from './audio';
   import {
     fetchSkillTreeDefinition,
     previewSkillTree,
@@ -167,6 +168,12 @@
     }
     tip = null;
     selected = selected === id ? null : id;
+    // Its own voice rather than the app-wide button click (data-no-click-sound
+    // on the grove): a rune taps like wood, and a shut one knocks dull.
+    if (selected !== null && def) {
+      const st = statusOf(def.Nodes[id]);
+      play(st === 'locked' || st === 'closed' ? 'runeLocked' : 'runeSelect');
+    }
   }
 
   function onEnter(e: PointerEvent, id: number) {
@@ -189,6 +196,7 @@
     const step = many ? room : 1;
     if (step <= 0) return;
     extra = extra.map((v, i) => (i === node.Id ? v + step : v));
+    play('runeAdd', many ? 0.9 : 1);
   }
 
   function remove(node: SkillTreeNodeDef) {
@@ -210,6 +218,7 @@
       if (res.Reason) {
         pushLocalNotice(res.Reason, 'error');
       } else {
+        play('runeConfirm');
         pushLocalNotice(`Learned - ${res.Spent} point${res.Spent === 1 ? '' : 's'} spent.`, 'info');
         discard();
       }
@@ -298,7 +307,7 @@
   {:else if !def}
     <p class="dim small">Reading the runes…</p>
   {:else}
-    <div class="grove" role="list" aria-label="Skill tree limbs">
+    <div class="grove" role="list" aria-label="Skill tree limbs" data-no-click-sound>
       {#each rows as row, i (row.col.Id)}
         <div class="limb" role="listitem" style={`--hue: ${LIMB_HUE[i % LIMB_HUE.length]}`}>
           <span class="limb-name">{row.col.Name}</span>
@@ -365,8 +374,8 @@
         {/if}
         <div class="sheet-actions">
           <button disabled={(extra[n.Id] ?? 0) <= 0} onclick={() => remove(n)} aria-label="Remove one drafted level">−1</button>
-          <button class="primary" disabled={why !== null} onclick={() => add(n)} data-testid="skill-add">+1</button>
-          <button disabled={why !== null} onclick={() => add(n, true)}>Max</button>
+          <button class="primary" disabled={why !== null} onclick={() => add(n)} data-testid="skill-add" data-no-click-sound>+1</button>
+          <button disabled={why !== null} onclick={() => add(n, true)} data-no-click-sound>Max</button>
         </div>
         <DisabledReason text={st === 'maxed' || st === 'closed' ? null : why} />
       </div>
@@ -395,6 +404,7 @@
             class="primary"
             disabled={committing || previewing || !preview || preview.Reason !== null}
             onclick={confirm}
+            data-no-click-sound
             data-testid="skill-confirm"
           >Confirm{preview && preview.Reason === null ? ` (${preview.Cost} pt)` : ''}</button>
         </div>
