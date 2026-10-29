@@ -67,6 +67,9 @@ namespace FolkIdle.Server.Engine
         // safe by every caller.
         public float BlockStrengthPct { get; set; }
 
+        /// <summary>Points added to the 75% block cap - Living Fortress (War half) raises it to 85.</summary>
+        public float BlockCapBonusPct { get; set; }
+
         // Modul 13.4.3: innate racial baseline passives.
         public float GoldAcquisitionMultiplierPct { get; set; }
         public float MiningOreDuplicationBonusPct { get; set; }

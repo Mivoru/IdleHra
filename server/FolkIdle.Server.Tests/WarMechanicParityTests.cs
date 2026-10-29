@@ -51,6 +51,8 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "double strike r3", 3, r3, new[] { WarTreeRegistry.DoubleStrike }, new byte[] { 3 } };
             // Riposte answers the block's share of each connecting swing.
             yield return new object[] { "riposte + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Riposte }, new byte[] { 5, 3 } };
+            yield return new object[] { "ruin r3", 3, r3, new[] { WarTreeRegistry.Ruin }, new byte[] { 1 } };
+            yield return new object[] { "perfect sequence r3", 3, r3, new[] { WarTreeRegistry.PerfectSequence }, new byte[] { 1 } };
             yield return new object[] { "bossbreaker on r2 boss", 4, RaceUnlockRegistry.GetRegionBossMonsterId(2), new[] { WarTreeRegistry.Bossbreaker }, new byte[] { 5 } };
         }
 
@@ -92,6 +94,38 @@ namespace FolkIdle.Server.Tests
 
             Assert.True(live.Food < liveWithout.Food, $"the live tick does not heal with it ({live.Food:F0} fish vs {liveWithout.Food:F0} without)");
             Assert.True(Math.Abs(offline.Food - live.Food) <= Math.Max(live.Food * 0.05, 3.0), $"food: offline {offline.Food:F1}, live {live.Food:F1}");
+        }
+
+        /// <summary>
+        /// Living Fortress trades every crit for block: the same hour kills
+        /// fewer and eats fewer fish, and away agrees with watched on both.
+        /// </summary>
+        [Fact]
+        public void Living_fortress_trades_crits_for_block_away_as_watched()
+        {
+            int r4 = RegularOf(4);
+            var with = War(4, r4, (WarTreeRegistry.LivingFortress, 1));
+            var without = War(4, r4);
+            var live = OfflineCombatParityTests.RunLive(with);
+            var offline = OfflineCombatParityTests.RunOffline(with);
+            var liveWithout = OfflineCombatParityTests.RunLive(without);
+            _output.WriteLine($"living fortress r4 kills {offline.Kills:F0}/{live.Kills:F0} (without {liveWithout.Kills:F0}), food {offline.Food:F0}/{live.Food:F0} (without {liveWithout.Food:F0})");
+
+            Assert.True(live.Kills < liveWithout.Kills, "no crits should mean fewer kills");
+            Assert.True(live.Food < liveWithout.Food, "more block should mean fewer fish");
+            Assert.True(Math.Abs(offline.Kills - live.Kills) <= Math.Max(live.Kills * 0.05, 1.0), $"kills: offline {offline.Kills:F1}, live {live.Kills:F1}");
+            Assert.True(Math.Abs(offline.Food - live.Food) <= Math.Max(live.Food * 0.05, 3.0), $"food: offline {offline.Food:F1}, live {live.Food:F1}");
+        }
+
+        [Fact]
+        public void War_thunderer_and_golden_fleece_arm_the_same_rules()
+        {
+            var payload = War(3, RegularOf(3));
+            Assert.False(FolkIdle.Server.Domain.Combat.SimulationEngine.HasGoldenFleece(in payload));
+            payload.SkillRanks[WarTreeRegistry.GoldenFleece] = 1;
+            payload.SkillRanks[WarTreeRegistry.Thunderer] = 3;
+            Assert.True(FolkIdle.Server.Domain.Combat.SimulationEngine.HasGoldenFleece(in payload));
+            Assert.Equal(5.0f, WarTreeRegistry.Resolve(in payload).ThundererTenthsPct / 1000f);
         }
 
         /// <summary>Last Stand on the War half arms the same rule today's crown does.</summary>
