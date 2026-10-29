@@ -2196,6 +2196,20 @@ await go('Wiki');
   record('the wiki lists every pet with its bonus and source', petCount >= 10, `${petCount} pets`);
 }
 {
+  // 2026-10-29 (owner): no screen said what a race did. The Wiki reads every
+  // race's bonuses from the server (RaceBonusRegistry via /api/v1/races).
+  await page.getByRole('button', { name: /Map & regions/ }).first().click().catch(() => {});
+  const raceCards = page.getByTestId('wiki-race');
+  await raceCards.first().waitFor({ timeout: 10000 }).catch(() => {});
+  const raceCount = await raceCards.count();
+  const draugrText = raceCount > 0 ? ((await raceCards.nth(2).textContent()) ?? '') : '';
+  record(
+    'the wiki says what all six races do, mastery included',
+    raceCount === 6 && /lifesteal/i.test(draugrText),
+    `${raceCount} races${draugrText ? ` - ${draugrText.replace(/\s+/g, ' ').slice(0, 80)}` : ''}`,
+  );
+}
+{
   await page.getByRole('button', { name: /Items & rarity/ }).first().click();
   const line = page.getByTestId('loot-odds-line');
   await line.waitFor({ timeout: 10000 }).catch(() => {});

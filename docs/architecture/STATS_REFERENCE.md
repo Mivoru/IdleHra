@@ -737,18 +737,27 @@ The **slot 1** character's race is active.
 |---|---|
 | Human | +5% gold |
 | Vila | +10 dodge, −30% base armour (also +20% "ranged damage", which nothing reads) |
-| Draugr | +25% base max HP, +15% base armour, −0.15 attack speed |
+| Draugr | +25% base max HP, +15% base armour, −15 attack speed (clamped: never slower than the 1500 ms base) |
 | Kobold | +30% ore duplication |
 | Moosleute | +20% woodcutting yield |
 | Vodnik | +15% HP regen, +10% crit mitigation |
 
+All race numbers live in `Engine/RaceBonusRegistry.cs`; `StatsCalculator` and
+`RaceMasteryResolver` read them, and `Describe()` builds the player-facing text
+from the same constants (`GET /api/v1/races`, shown in the Wiki and the
+Progression race-mastery panel).
+
 ### 13.2 Race mastery milestones
+
+Vila and Draugr mastery pay only while a character of that race is active.
+The other four are read off the account's mastery level and pay every
+character.
 
 | Race | Level 10 | Level 25 | Level 50 |
 |---|---|---|---|
 | Human | +12% XP | +5 vault slots | +15% XP |
-| Vila | +0.15 attack speed | — | +8 crit chance |
-| Draugr | lifesteal "10" | — | lifesteal "12" (see 16) |
+| Vila | +15 attack speed | — | +8 crit chance |
+| Draugr | 10% lifesteal | — | 12% lifesteal |
 | Kobold | +20% ore duplication | — | — |
 | Moosleute | +16% double harvest | — | — |
 | Vodnik | — | offline cap 18 h | — |
@@ -807,7 +816,7 @@ Every stat number on the Character screen comes from the server's own
 ## 16. Defects found while writing this
 
 Each item was checked by grepping for readers of the field. Status as of
-2026-10-29: 1 and 2 FIXED; the rest open.
+2026-10-29: 1, 2, 3 and the attack-speed half of 4 FIXED; the rest open.
 
 1. **Inheritance "Gathering yield" does nothing.** `Inherit_GatheringYield` is
    bought with diamonds, persisted and broadcast. No gathering or yield
@@ -826,7 +835,9 @@ Each item was checked by grepping for readers of the field. Status as of
    `GetDraugrLifestealBonusPct` returns 10 / 12 (percent). `StatsCalculator`
    divides by 100 before adding it to `LifestealPct`, which is already in
    percent. The result is 0.10% / 0.12% instead of 10% / 12%. The 1%-of-max-HP
-   per-hit lifesteal cap limits the effect either way.
+   per-hit lifesteal cap limits the effect either way. **FIXED 2026-10-29**
+   (owner chose 10 / 12 from the `RaceUnitMeasurementTests` table: the cap
+   almost never binds).
 4. **Unit leftovers in race effects.** Vila mastery "+0.15 attack speed"
    ("nullify armour agility penalty") and Draugr "−0.15 attack speed" add 0.15
    *percentage points*, so they have almost no effect. The defensive potion's
@@ -834,7 +845,10 @@ Each item was checked by grepping for readers of the field. Status as of
    applies to a stat combat never reads (only the guild-war aggregate sums it).
    The ±0.15 lines date from when `CombatDamageModel` read attack speed as a
    FRACTION (see its "read as a fraction" comment), so 15% was the author's
-   intent. What it should be now is a balance call, not a unit fix.
+   intent. **Attack speed FIXED 2026-10-29** to ±15 (owner's choice). The
+   potion dodge and Vila's ranged damage remain open; the dodge question is
+   bigger than the potion, because `MonsterHitChance` clamps at 95% and so
+   ignores the first 5.26 points of ANY dodge.
 5. **Dead set-bonus fields.** `SetBonusResult.FlatAttackPowerBonus` and
    `CooldownReductionActive` are never assigned, so they are always 0 / false.
    `StatsCalculator` still adds the flat attack bonus.

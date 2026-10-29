@@ -13,36 +13,36 @@ namespace FolkIdle.Server.Engine
     {
         public static int GetHumanXpBonusPct(int humanMasteryLevel)
         {
-            if (humanMasteryLevel >= 50) return 15;
-            if (humanMasteryLevel >= 10) return 12;
+            if (humanMasteryLevel >= RaceBonusRegistry.HumanXpSecondLevel) return RaceBonusRegistry.HumanXpSecondPct;
+            if (humanMasteryLevel >= RaceBonusRegistry.HumanXpFirstLevel) return RaceBonusRegistry.HumanXpFirstPct;
             return 0;
         }
 
         public static int GetHumanVaultBonusSlots(int humanMasteryLevel)
         {
-            return humanMasteryLevel >= 25 ? 5 : 0;
+            return humanMasteryLevel >= RaceBonusRegistry.HumanVaultLevel ? RaceBonusRegistry.HumanVaultSlots : 0;
         }
 
         public static float GetVilaCritBonusPct(int vilaMasteryLevel)
         {
-            return vilaMasteryLevel >= 50 ? 8f : 0f;
+            return vilaMasteryLevel >= RaceBonusRegistry.VilaCritLevel ? RaceBonusRegistry.VilaCritPoints : 0f;
         }
 
         public static float GetDraugrLifestealBonusPct(int draugrMasteryLevel)
         {
-            if (draugrMasteryLevel >= 50) return 12f;
-            if (draugrMasteryLevel >= 10) return 10f;
+            if (draugrMasteryLevel >= RaceBonusRegistry.DraugrLifestealSecondLevel) return RaceBonusRegistry.DraugrLifestealSecondPct;
+            if (draugrMasteryLevel >= RaceBonusRegistry.DraugrLifestealFirstLevel) return RaceBonusRegistry.DraugrLifestealFirstPct;
             return 0f;
         }
 
         public static float GetKoboldOreDuplicationBonusPct(int koboldMasteryLevel)
         {
-            return koboldMasteryLevel >= 10 ? 20f : 0f;
+            return koboldMasteryLevel >= RaceBonusRegistry.KoboldMiningLevel ? RaceBonusRegistry.KoboldMiningPoints : 0f;
         }
 
         public static float GetMoosleuteDoubleHarvestBonusPct(int moosleuteMasteryLevel)
         {
-            return moosleuteMasteryLevel >= 10 ? 16f : 0f;
+            return moosleuteMasteryLevel >= RaceBonusRegistry.MoosleuteHarvestLevel ? RaceBonusRegistry.MoosleuteHarvestPoints : 0f;
         }
 
         // The brief's example value (10 hours) is below the current 12-hour
@@ -52,8 +52,7 @@ namespace FolkIdle.Server.Engine
         // timeout" intent instead.
         public static long GetVodnikExtendedOfflineSeconds(int vodnikMasteryLevel, long baseOfflineSeconds)
         {
-            const long ExtendedOfflineSeconds = 18L * 3600L;
-            return vodnikMasteryLevel >= 25 ? System.Math.Max(baseOfflineSeconds, ExtendedOfflineSeconds) : baseOfflineSeconds;
+            return vodnikMasteryLevel >= RaceBonusRegistry.VodnikOfflineLevel ? System.Math.Max(baseOfflineSeconds, RaceBonusRegistry.VodnikOfflineSeconds) : baseOfflineSeconds;
         }
     }
 }

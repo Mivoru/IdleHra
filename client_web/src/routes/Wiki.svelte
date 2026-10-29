@@ -29,7 +29,7 @@
   import { loadContent, type ContentRegistry, getArmourFamily } from '../lib/net/content';
   import { locationName, nodeLocation, LOCATION_NAMES } from '../lib/ui/locations';
   import { professionName, EQUIPMENT_SLOTS, HALT_REASONS, AGE_PHASES } from '../lib/ui/slots';
-  import { RACE_NAMES, ALL_RACE_IDS } from '../lib/ui/races';
+  import { RACE_NAMES } from '../lib/ui/races';
   import { RARITY_TIER_NAMES, rarityColor, MAX_QUALITY_TIER } from '../lib/ui/rarity';
   import MonsterPortrait from '../lib/ui/MonsterPortrait.svelte';
   import Skeleton from '../lib/ui/Skeleton.svelte';
@@ -41,7 +41,6 @@
   import WikiGuildBuffs from '../lib/ui/WikiGuildBuffs.svelte';
   import WikiScreenIndex from '../lib/ui/WikiScreenIndex.svelte';
   import WikiSeasonalEvent from '../lib/ui/WikiSeasonalEvent.svelte';
-  import RaceIcon from '../lib/ui/RaceIcon.svelte';
   import {
     SKILL_TREE_NODES,
     SKILL_TREE_ROOT_MAX,
@@ -67,6 +66,7 @@
     EQUIP_REQUIREMENT_PER_REGION_TIER,
   } from '../lib/net/commands';
   import WikiPets from '../lib/ui/WikiPets.svelte';
+  import WikiRaces from '../lib/ui/WikiRaces.svelte';
   import { FIRST_CLEAR_HP_MULTIPLIERS, FIRST_CLEAR_ATTACK_MULTIPLIERS, BOSS_REQUIRED_QUALITY_TIER } from '../lib/ui/victories';
   import {
     REROLL_GOLD_BY_REGION,
@@ -916,15 +916,8 @@
             before it can be worn.
           </p>
 
-          <h3 id="races">Races, and which boss unlocks them</h3>
-          <div class="badge-list">
-            {#each ALL_RACE_IDS as raceId (raceId)}
-              <span class="fam-badge icon">
-                <RaceIcon {raceId} size="sm" />
-                {RACE_NAMES[raceId]}
-              </span>
-            {/each}
-          </div>
+          <h3 id="races">Races: what each one does, and which boss unlocks it</h3>
+          <WikiRaces />
           <div class="scroll">
             <table>
               <thead><tr><th>Region</th><th>Boss</th><th>Unlocks</th></tr></thead>
