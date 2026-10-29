@@ -254,9 +254,8 @@ namespace FolkIdle.Server.Engine
                     stats.GoldAcquisitionMultiplierPct += RaceBonusRegistry.HumanGoldPct;
                     break;
                 case RaceIds.Vila:
-                    // Agility master: +20% Flat Ranged Damage, +10% Dodge Chance
-                    // (absolute), -30% Base Armor (multiplicative).
-                    stats.FlatRangedDamage = (int)(stats.FlatRangedDamage * RaceBonusRegistry.VilaRangedDamageFactor);
+                    // Agility master: +15 dodge (absolute), -30% base armour
+                    // (multiplicative). See RaceBonusRegistry for the numbers.
                     stats.DodgeChancePct += RaceBonusRegistry.VilaDodgePoints;
                     stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * RaceBonusRegistry.VilaBaseArmourFactor);
                     break;

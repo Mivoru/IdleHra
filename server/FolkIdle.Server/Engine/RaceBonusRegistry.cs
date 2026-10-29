@@ -21,12 +21,17 @@ namespace FolkIdle.Server.Engine
         // --- innate, always on for a character of the race ------------------
         public const float HumanGoldPct = 5f;
 
-        public const float VilaDodgePoints = 10f;
+        // Modul: +15 dodge, was +10 and a "+20% ranged damage" (TASK_BOARD 124,
+        // owner 2026-10-29). The ranged bonus multiplied FlatRangedDamage, a
+        // stat combat stopped reading in the 2026-09-06 attribute rework, so it
+        // did nothing. Replaced by +5 dodge rather than by damage: a Fairy is
+        // already the fastest killer in region 5 (-23% seconds per kill against
+        // a Human, measured) and the most fragile in region 1 (+36% damage
+        // taken per swing), so damage would widen the gap where it leads and
+        // dodge narrows it where it trails. Dodge counts from the first point
+        // since #200.
+        public const float VilaDodgePoints = 15f;
         public const float VilaBaseArmourFactor = 0.7f;
-        // Vila's "+20% ranged damage" is NOT listed: FlatRangedDamage is a
-        // stat combat never reads (STATS_REFERENCE.md §16). Describing it would
-        // be promising the player something the fight does not do.
-        public const float VilaRangedDamageFactor = 1.2f;
 
         public const float DraugrBaseMaxHpFactor = 1.25f;
         public const float DraugrBaseArmourFactor = 1.15f;
