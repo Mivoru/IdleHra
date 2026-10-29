@@ -165,7 +165,10 @@ namespace FolkIdle.Server.Engine
             return levels[a] > 0 ? a : b;
         }
 
-        public static int MaxLevelOf(int nodeId) => RingOf(nodeId) switch
+        public static int MaxLevelOf(int nodeId) => IsValidNode(nodeId) ? Nodes[nodeId].MaxLevel : 0;
+
+        /// <summary>The ring a node's cap comes from - the table is built from this.</summary>
+        private static int RingMaxLevel(int nodeId) => RingOf(nodeId) switch
         {
             Ring.Root => RootMaxLevel,
             Ring.Bough => BoughMaxLevel,
@@ -301,15 +304,17 @@ namespace FolkIdle.Server.Engine
         public static int GetUpgradeCost(int nodeId, int currentLevel)
         {
             if (!IsValidNode(nodeId) || currentLevel < 0) return 0;
-            if (currentLevel >= MaxLevelOf(nodeId)) return 0;
-
-            return RingOf(nodeId) switch
-            {
-                Ring.Root => (currentLevel / 5) + 1,
-                Ring.Bough => BoughCostPerLevel,
-                _ => CrownCost,
-            };
+            int[] costs = Nodes[nodeId].Costs;
+            return currentLevel < costs.Length ? costs[currentLevel] : 0;
         }
+
+        /// <summary>The ring cost curve the table is built from.</summary>
+        private static int RingCost(int nodeId, int currentLevel) => RingOf(nodeId) switch
+        {
+            Ring.Root => (currentLevel / 5) + 1,
+            Ring.Bough => BoughCostPerLevel,
+            _ => CrownCost,
+        };
 
         /// <summary>
         /// The old single-argument form, which only ever meant a root. Kept so
@@ -353,32 +358,28 @@ namespace FolkIdle.Server.Engine
             if (levels.Length < NodeCount) return "Skill tree not loaded.";
             if (IsEffectPending(nodeId)) return "Not in the game yet - coming soon.";
 
+            SkillNodeDef node = Nodes[nodeId];
             int level = levels[nodeId];
-            if (level >= MaxLevelOf(nodeId)) return "Already at its limit.";
+            if (level >= node.MaxLevel) return "Already at its limit.";
 
-            Ring ring = RingOf(nodeId);
-            int rootId = RootOf(nodeId);
-
-            if (ring == Ring.Bough)
+            foreach (var need in node.Requires)
             {
-                if (levels[rootId] < BoughRequiresRootLevel)
-                {
-                    return $"Needs {GetName(rootId)} at {BoughRequiresRootLevel}.";
-                }
-
-                int sibling = SiblingBoughOf(nodeId);
-                if (levels[sibling] > 0)
-                {
-                    return $"{GetName(sibling)} was taken instead. One branch per fork.";
-                }
+                int best = 0;
+                foreach (int id in need.AnyOf) best = Math.Max(best, (int)levels[id]);
+                if (best < need.Level) return need.Text;
             }
-            else if (ring == Ring.Crown)
+
+            if (node.Fork >= 0 && levels[node.Fork] > 0)
             {
-                var (a, b) = BoughsOfRoot(rootId);
-                int taken = Math.Max(levels[a], levels[b]);
-                if (taken < CrownRequiresBoughLevel)
+                return $"{GetName(node.Fork)} was taken instead. One branch per fork.";
+            }
+
+            if (node.ColumnPointsGate > 0)
+            {
+                int have = PointsInColumn(levels, node.Column);
+                if (have < node.ColumnPointsGate)
                 {
-                    return $"Needs a branch of {GetName(rootId)} at {CrownRequiresBoughLevel}.";
+                    return $"Needs {node.ColumnPointsGate} points spent in this column; {have} so far.";
                 }
             }
 
@@ -390,6 +391,90 @@ namespace FolkIdle.Server.Engine
 
             return null;
         }
+
+        /// <summary>
+        /// Points spent in one column. A bridge counts toward both of the
+        /// columns it joins (SKILL_TREE_REWORK.md 3.2), which is the reason to
+        /// take one.
+        /// </summary>
+        public static int PointsInColumn(byte[] levels, int column)
+        {
+            int total = 0;
+            for (int id = 0; id < NodeCount; id++)
+            {
+                SkillNodeDef node = Nodes[id];
+                if (node.Column != column && node.BridgeColumn != column) continue;
+                for (int l = 0; l < levels[id] && l < node.Costs.Length; l++) total += node.Costs[l];
+            }
+            return total;
+        }
+
+        // ---- the node table -------------------------------------------------
+        //
+        // Modul: ONE RECORD PER NODE, and every rule reads it: the cap, the
+        // price of each level, the fork, the prerequisites, the column gate,
+        // the icon and the screen position. It replaces rules spread across
+        // RingOf switches, so the rework's War half (slice 2.2) is new rows in
+        // a table rather than new arms in five switches. Today's twenty nodes
+        // are built FROM the ring rules, so nothing about them changed.
+        //
+        // Declared AFTER Names and the per-level table it reads, because static
+        // fields initialise in textual order.
+
+        public static SkillNodeDef[] Nodes => _nodes ??= BuildTodayTree();
+        private static SkillNodeDef[]? _nodes;
+
+        private static SkillNodeDef[] BuildTodayTree()
+        {
+            var nodes = new SkillNodeDef[NodeCount];
+            for (int id = 0; id < NodeCount; id++)
+            {
+                Ring ring = RingOf(id);
+                int root = RootOf(id);
+                int max = RingMaxLevel(id);
+                var costs = new int[max];
+                for (int l = 0; l < max; l++) costs[l] = RingCost(id, l);
+
+                NodeRequirement[] requires = ring switch
+                {
+                    Ring.Bough => new[] { new NodeRequirement(new[] { root }, BoughRequiresRootLevel, $"Needs {Names[root]} at {BoughRequiresRootLevel}.") },
+                    Ring.Crown => new[] { new NodeRequirement(new[] { BoughsOfRoot(root).A, BoughsOfRoot(root).B }, CrownRequiresBoughLevel, $"Needs a branch of {Names[root]} at {CrownRequiresBoughLevel}.") },
+                    _ => Array.Empty<NodeRequirement>(),
+                };
+
+                var (column, row, lane) = LayoutOf(id);
+                nodes[id] = new SkillNodeDef
+                {
+                    Id = id,
+                    Kind = ring.ToString(),
+                    Column = column,
+                    Row = row,
+                    Lane = lane,
+                    MaxLevel = max,
+                    Costs = costs,
+                    Fork = SiblingBoughOf(id),
+                    Requires = requires,
+                    Icon = TodayIcons[id],
+                };
+            }
+            return nodes;
+        }
+
+        /// <summary>
+        /// The icon slug of each of today's nodes, in id order. The client
+        /// looks it up in its generated SKILL_ICONS and draws the rune glyph
+        /// while no art exists (docs/design/SKILL_TREE_ART.md).
+        /// </summary>
+        private static readonly string[] TodayIcons =
+        {
+            "scavenger", "crushing_blow", "keen_eye", "cruel_edge", "quick_study",
+            "plenty", "rarity", "breach", "trophy_hunter", "edge",
+            "relentless", "bloodthirst", "ironhide", "craft", "harvest",
+            "golden_fleece", "thunderer", "double_strike", "last_stand", "scholar",
+        };
+
+        /// <summary>One emblem per column (limb), or null where none is drawn yet.</summary>
+        public static readonly string?[] ColumnIcons = { "col_fortune", "col_might", "col_precision", "col_guard", null };
 
         /// <summary>
         /// Nodes whose EFFECT is not wired up yet.
@@ -482,8 +567,8 @@ namespace FolkIdle.Server.Engine
         /// exactly what the commit will accept.
         ///
         /// It replays the purchase one level at a time through BlockedReason,
-        /// roots first, then boughs, then crowns. Every gate points at a lower
-        /// ring, so that order meets each prerequisite before it is asked about,
+        /// row by row up the tree. Every gate points at a lower row, so that
+        /// order meets each prerequisite before it is asked about,
         /// and no second statement of the rules exists to drift from the first.
         ///
         /// Lowering a node is refused: points come back only through the
@@ -505,11 +590,15 @@ namespace FolkIdle.Server.Engine
 
             var levels = (byte[])current.Clone();
             int points = availablePoints;
-            foreach (Ring ring in new[] { Ring.Root, Ring.Bough, Ring.Crown })
+            // Row order: every prerequisite and column gate points at a lower
+            // row, so climbing row by row meets each one before it is asked.
+            int maxRow = 0;
+            foreach (var n in Nodes) maxRow = Math.Max(maxRow, n.Row);
+            for (int row = 0; row <= maxRow; row++)
             {
                 for (int id = 0; id < NodeCount; id++)
                 {
-                    if (RingOf(id) != ring) continue;
+                    if (Nodes[id].Row != row) continue;
                     while (levels[id] < target[id])
                     {
                         string? reason = BlockedReason(id, levels, points);
@@ -524,5 +613,33 @@ namespace FolkIdle.Server.Engine
 
             return null;
         }
+    }
+
+    /// <summary>
+    /// A prerequisite: one of these nodes at this level or above. "Any of" is
+    /// how a crown names whichever side of its fork was taken.
+    /// </summary>
+    public readonly record struct NodeRequirement(int[] AnyOf, int Level, string Text);
+
+    /// <summary>One node of the skill tree; see SkillTreeRegistry.Nodes.</summary>
+    public sealed class SkillNodeDef
+    {
+        public int Id { get; init; }
+        /// <summary>"Root", "Bough", "Crown" today; the War half adds its own kinds.</summary>
+        public string Kind { get; init; } = "Root";
+        public int Column { get; init; }
+        /// <summary>The second column a bridge belongs to, or -1.</summary>
+        public int BridgeColumn { get; init; } = -1;
+        public int Row { get; init; }
+        public int Lane { get; init; } = -1;
+        public int MaxLevel { get; init; }
+        /// <summary>Costs[l] is the price of going from level l to l + 1.</summary>
+        public int[] Costs { get; init; } = Array.Empty<int>();
+        /// <summary>The other side of this node's fork, or -1.</summary>
+        public int Fork { get; init; } = -1;
+        public NodeRequirement[] Requires { get; init; } = Array.Empty<NodeRequirement>();
+        /// <summary>Points the column must hold before this node opens; 0 for none.</summary>
+        public int ColumnPointsGate { get; init; }
+        public string Icon { get; init; } = string.Empty;
     }
 }

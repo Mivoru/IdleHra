@@ -35,52 +35,34 @@ namespace FolkIdle.Server.Network
             return false;
         }
 
-        /// <summary>
-        /// The icon slug of each node, in id order. The client looks the slug
-        /// up in its generated SKILL_ICONS table and draws the rune glyph when
-        /// no art exists yet; docs/design/SKILL_TREE_ART.md lists what each
-        /// slug should show.
-        /// </summary>
-        private static readonly string[] SkillNodeIcons =
-        {
-            "scavenger", "crushing_blow", "keen_eye", "cruel_edge", "quick_study",
-            "plenty", "rarity", "breach", "trophy_hunter", "edge",
-            "relentless", "bloodthirst", "ironhide", "craft", "harvest",
-            "golden_fleece", "thunderer", "double_strike", "last_stand", "scholar",
-        };
-
-        internal static int SkillNodeIconCount => SkillNodeIcons.Length;
-
-        /// <summary>One emblem per limb, or null where none is drawn yet.</summary>
-        private static readonly string?[] SkillColumnIcons = { "col_fortune", "col_might", "col_precision", "col_guard", null };
-
         /// <summary>The tree's shape and text. Public: it is the same for everyone.</summary>
         internal static object DescribeSkillTree()
         {
             var nodes = Enumerable.Range(0, SkillTreeRegistry.NodeCount).Select(id =>
             {
-                var (column, row, lane) = SkillTreeRegistry.LayoutOf(id);
-                int max = SkillTreeRegistry.MaxLevelOf(id);
+                var node = SkillTreeRegistry.Nodes[id];
                 return new
                 {
                     Id = id,
                     Name = SkillTreeRegistry.GetName(id),
-                    Icon = SkillNodeIcons[id],
+                    Icon = node.Icon,
                     Blurb = SkillTreeRegistry.GetBlurb(id),
-                    Kind = SkillTreeRegistry.RingOf(id).ToString(),
-                    Column = column,
-                    Row = row,
-                    Lane = lane,
-                    MaxLevel = max,
-                    Fork = SkillTreeRegistry.SiblingBoughOf(id),
-                    Costs = Enumerable.Range(0, max).Select(l => SkillTreeRegistry.GetUpgradeCost(id, l)).ToArray(),
-                    Effects = Enumerable.Range(1, max).Select(l => SkillTreeRegistry.EffectText(id, l)).ToArray(),
+                    Kind = node.Kind,
+                    Column = node.Column,
+                    BridgeColumn = node.BridgeColumn,
+                    Row = node.Row,
+                    Lane = node.Lane,
+                    MaxLevel = node.MaxLevel,
+                    Fork = node.Fork,
+                    ColumnPointsGate = node.ColumnPointsGate,
+                    Costs = node.Costs,
+                    Effects = Enumerable.Range(1, node.MaxLevel).Select(l => SkillTreeRegistry.EffectText(id, l)).ToArray(),
                     Pending = SkillTreeRegistry.IsEffectPending(id),
                 };
             }).ToArray();
 
             var columns = Enumerable.Range(0, SkillTreeRegistry.RootCount)
-                .Select(id => new { Id = id, Name = SkillTreeRegistry.GetName(id), Icon = SkillColumnIcons[id] })
+                .Select(id => new { Id = id, Name = SkillTreeRegistry.GetName(id), Icon = SkillTreeRegistry.ColumnIcons[id] })
                 .ToArray();
 
             return new { Columns = columns, Nodes = nodes };

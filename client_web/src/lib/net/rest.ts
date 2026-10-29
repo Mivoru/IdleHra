@@ -2439,7 +2439,11 @@ export interface SkillTreeNodeDef {
   Blurb: string;
   Kind: 'Root' | 'Bough' | 'Crown';
   Column: number;
+  /** The second column a bridge joins, or -1. */
+  BridgeColumn: number;
   Row: number;
+  /** Points the column must hold before this node opens; 0 for none. */
+  ColumnPointsGate: number;
   /** 0/1 for the two sides of a fork, -1 for the centre. */
   Lane: number;
   MaxLevel: number;

@@ -4496,30 +4496,15 @@ namespace FolkIdle.Server.Domain.Combat
         // same assembly, same tick-thread-only call graph.
         internal static void SetSkillTreeLevel(ref TickStatePayload payload, int branchId, byte level)
         {
-            switch (branchId)
-            {
-                case SkillTreeRegistry.BranchLootRarity: payload.Skill_LootRarity = level; break;
-                case SkillTreeRegistry.BranchWorldBossDamage: payload.Skill_WorldBossDamage = level; break;
-                case SkillTreeRegistry.BranchCritChance: payload.Skill_CritChance = level; break;
-                case SkillTreeRegistry.BranchCritDamage: payload.Skill_CritDamage = level; break;
-                case SkillTreeRegistry.BranchXpGain: payload.Skill_XpGain = level; break;
-                case SkillTreeRegistry.BoughPlenty: payload.Skill_Plenty = level; break;
-                case SkillTreeRegistry.BoughRarity: payload.Skill_Rarity = level; break;
-                case SkillTreeRegistry.BoughFirstBlood: payload.Skill_FirstBlood = level; break;
-                case SkillTreeRegistry.BoughTrophyHunter: payload.Skill_TrophyHunter = level; break;
-                case SkillTreeRegistry.BoughGuile: payload.Skill_Guile = level; break;
-                case SkillTreeRegistry.BoughRelentless: payload.Skill_Relentless = level; break;
-                case SkillTreeRegistry.BoughBloodthirst: payload.Skill_Bloodthirst = level; break;
-                case SkillTreeRegistry.BoughFortitude: payload.Skill_Fortitude = level; break;
-                case SkillTreeRegistry.BoughCraft: payload.Skill_Craft = level; break;
-                case SkillTreeRegistry.BoughHarvest: payload.Skill_Harvest = level; break;
-                case SkillTreeRegistry.CrownGoldenFleece: payload.Skill_GoldenFleece = level; break;
-                case SkillTreeRegistry.CrownThunderer: payload.Skill_Thunderer = level; break;
-                case SkillTreeRegistry.CrownDoubleStrike: payload.Skill_DoubleStrike = level; break;
-                case SkillTreeRegistry.CrownLastStand: payload.Skill_LastStand = level; break;
-                case SkillTreeRegistry.CrownScholar: payload.Skill_Scholar = level; break;
-            }
+            // Modul: by id into the rank buffer, not a switch over named
+            // fields. The switch had to grow by a case for every node and
+            // silently dropped an id it did not list - the shape of the
+            // "written, never read" defects this codebase keeps finding.
+            if ((uint)branchId < (uint)SkillRankBuffer.Length) payload.SkillRanks[branchId] = level;
         }
+
+        internal static byte GetSkillTreeLevel(in TickStatePayload payload, int nodeId)
+            => (uint)nodeId < (uint)SkillRankBuffer.Length ? payload.SkillRanks[nodeId] : (byte)0;
 
         // Modul: widened from private to internal so InheritanceTickCoordinator
         // (Domain.Progression) can call this. No behaviour change.
