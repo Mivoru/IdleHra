@@ -8241,6 +8241,10 @@ namespace FolkIdle.Server.Network
                     else if (raceMasteries[i].RaceId == RaceIds.Vila) vilaMastery = raceMasteries[i].MasteryLevel;
                     else if (raceMasteries[i].RaceId == RaceIds.Draugr) draugrMastery = raceMasteries[i].MasteryLevel;
                 }
+                // Modul: the skill tree is account-wide too, and the Fortitude
+                // bough raises armour - read once so the roster's per-character
+                // armour matches what LiveCombatStats fights with.
+                byte rosterFortitude = (await SkillTreeEngine.LoadLevelsAsync(db, playerId))[SkillTreeRegistry.BoughFortitude];
                 var completedRegionIds = await db.PlayerRegionCompletions
                     .AsNoTracking()
                     .Where(r => r.PlayerId == playerId)
@@ -8309,6 +8313,7 @@ namespace FolkIdle.Server.Network
                     {
                         (CombatStats stats, EquippedSetIds wornSets) = await EquipmentSlotEngine.ComputeCharacterCombatStatsWithSetsAsync(
                             db, player, rosterCharacter, humanMastery, vilaMastery, draugrMastery, completedAreaFlags);
+                        stats.FlatPhysicalArmor = SkillTreeRegistry.ApplyFortitudeArmour(stats.FlatPhysicalArmor, rosterFortitude);
 
                         var activeSets = new System.Collections.Generic.List<ActiveSetResponse>();
                         foreach (var set in SetBonusEngine.DescribeActive(wornSets))

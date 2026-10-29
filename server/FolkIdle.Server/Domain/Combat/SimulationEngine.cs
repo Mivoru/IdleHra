@@ -2177,27 +2177,17 @@ namespace FolkIdle.Server.Domain.Combat
 
                             long packetSerializationStartTimestamp = Stopwatch.GetTimestamp();
 
-                            // Modul: Combat System Overhaul - recomputed here
-                            // with the exact same StatsCalculator.Calculate
-                            // call and parameter sourcing ProcessTick's own
-                            // combat resolution uses (see the identical call
-                            // near the monster-attack block), so the
-                            // Accuracy/Armor/BlockStrength values broadcast
-                            // to the client can never drift from what
-                            // actually governed that tick's combat rolls.
-                            // TickStatePayload does not cache CombatStats
-                            // across the tick/broadcast boundary - this
-                            // mirrors the existing "recompute per site from
-                            // raw fields" pattern already used at every
-                            // other StatsCalculator.Calculate call site.
-                            int broadcastActiveAgePhase = 1;
-                            int broadcastActiveRaceId = 0;
-                            if (currentPayload.Slot1_CharacterId != System.Guid.Empty)
-                            {
-                                broadcastActiveAgePhase = currentPayload.Slot1_AgePhase;
-                                broadcastActiveRaceId = (int)(currentPayload.Slot1_GeneticVector & 0xFF);
-                            }
-                            var broadcastCombatStats = StatsCalculator.Calculate(currentPayload.STR, currentPayload.DEX, currentPayload.CON, currentPayload.LCK, currentPayload.ActiveOffensivePotionId, currentPayload.ActiveDefensivePotionId, broadcastActiveAgePhase, currentPayload.CompletedAreaFlags, broadcastActiveRaceId, currentPayload.HumanMasteryLevel, currentPayload.VilaMasteryLevel, currentPayload.DraugrMasteryLevel, currentPayload.CachedAffixTotals, currentPayload.IsEpicMutation, TraitTotals.From(currentPayload.TraitMask), currentPayload.CachedSetIds);
+                            // Modul: Combat System Overhaul - the
+                            // Accuracy/Armor/BlockStrength values broadcast to
+                            // the client must never drift from what governed
+                            // that tick's combat rolls. TickStatePayload does
+                            // not cache CombatStats across the tick/broadcast
+                            // boundary, so it is recomputed here - through
+                            // LiveCombatStats itself since 2026-10-29. This
+                            // used to be a hand-copied Calculate call, and a
+                            // copy is exactly what would have shown the
+                            // Fortitude armour the tick fights with as absent.
+                            var broadcastCombatStats = LiveCombatStats(in currentPayload);
 
                             // Modul: onboarding signal - true only while the
                             // account's first character exists but has never
@@ -3828,10 +3818,19 @@ namespace FolkIdle.Server.Domain.Combat
         /// The combat stats the live tick fights with. ONE derivation, shared by
         /// RunCombatTick and the hunting advisor (HuntingProjection).
         /// </summary>
+        /// <remarks>
+        /// Modul: the Fortitude bough's armour is applied here, not inside
+        /// StatsCalculator, because the skill tree lives on the payload and
+        /// Calculate does not take it - the same reason its health half sits in
+        /// EffectiveMaxMilliHpFor. The broadcast reads this function too, so
+        /// the armour the client shows is the armour the tick mitigates with.
+        /// </remarks>
         internal static CombatStats LiveCombatStats(in TickStatePayload payload)
         {
             int activeAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
-            return StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, ActiveRaceId(in payload), payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
+            CombatStats stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, ActiveRaceId(in payload), payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
+            stats.FlatPhysicalArmor = SkillTreeRegistry.ApplyFortitudeArmour(stats.FlatPhysicalArmor, payload.Skill_Fortitude);
+            return stats;
         }
 
         /// <summary>
@@ -5994,6 +5993,15 @@ namespace FolkIdle.Server.Domain.Combat
             // The character's pet (a monster pet's +gathering yield), in the
             // same whole percentage points, so live and offline both pay it.
             additionalYieldBonus += payload.CachedAffixTotals.GatherYieldTenthsPct / 10;
+
+            // Modul: the inheritance "Gathering yield" stat, +2 points of
+            // extra harvest rolls per level. Until 2026-10-29 it was bought
+            // with diamonds, stored, loaded and shown - and read by nothing,
+            // so a full stat (~19.8k diamonds) paid zero. Added to the same
+            // pool as every other yield bonus, BEFORE the codex multiplier:
+            // the codex's 2x cap bounds only the codex's own factor
+            // (CodexEngine.MaxYieldMultiplier), never this sum.
+            additionalYieldBonus += InheritanceRegistry.GetBonusPct(payload.Inherit_GatheringYield);
 
             // Modul: LootLuckPct no longer multiplies the roll COUNT
             // (which previously inflated absolute yield of every

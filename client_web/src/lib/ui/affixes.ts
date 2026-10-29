@@ -128,7 +128,25 @@ export function formatAffixValue(affixId: string, magnitude: number): string {
   return `+${formatNumber(magnitude)}`;
 }
 
+/**
+ * Ids whose mechanical label would describe something the server does not do.
+ *
+ * Modul: melee_dmg_pct, range_dmg_pct and magic_dmg_pct all land in ONE
+ * damage bonus (EquipmentSlotEngine.ComputeEquippedTotalsAsync) - combat has a
+ * single damage figure and no damage types. "+8% Magic Dmg" on a sword raised
+ * the sword's ordinary hit, so the label was the lie, not the number. Only the
+ * label changes: the ids stay, because KNOWN_AFFIX_IDS above crosses the wire
+ * as a position and every stored item row names its affixes by id.
+ */
+const AFFIX_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
+  melee_dmg_pct: 'Damage',
+  range_dmg_pct: 'Damage',
+  magic_dmg_pct: 'Damage',
+};
+
 export function affixLabel(affixId: string): string {
+  const override = AFFIX_LABEL_OVERRIDES[affixId];
+  if (override) return override;
   return affixId
     .replace(/_pct$/, '')
     .replace(/^flat_/, '')
