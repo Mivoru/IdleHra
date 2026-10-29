@@ -111,6 +111,16 @@ namespace FolkIdle.Server.Models
             player.PasswordHash = PasswordHasher.Hash(Password);
             player.CurrentLevel = PlayerLevel;
 
+            // Modul: AND IT HAS NOT BEEN AWAY (TASK_BOARD 120, 2026-10-29).
+            //
+            // Offline catch-up pays for (now - LastLogoutTimestamp), up to the
+            // cap. A fixture left for a day came back with a 707,733-gold
+            // CombatAway payout that landed in the middle of exercise.mjs's
+            // Delve step, whose check is "the gold went DOWN" - a working
+            // build reported red. Re-seeding means "start from a known state",
+            // and a known state includes not being owed twelve hours.
+            player.LastLogoutTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
             // Modul: AND THE ATTRIBUTES THAT LEVEL IMPLIES.
             //
             // Setting CurrentLevel leaves STR/DEX/CON/LCK at zero, because in
@@ -515,6 +525,14 @@ namespace FolkIdle.Server.Models
                     character.AgeTicks = AgePhaseCurve.ChildEndTicks;
                 }
                 character.IsFemale = character.SlotIndex != 0;
+                // Modul: AND OFF ITS BREEDING COOLDOWN (TASK_BOARD 120). Every
+                // exercise.mjs run breeds once, so four runs inside the
+                // cooldown left no hero the picker would offer and the fifth
+                // run died on a disabled button. Waiting the cooldown out is
+                // a state a real account reaches; re-seeding means reaching
+                // it now.
+                character.BreedingCooldownEndEpoch = 0;
+                character.IsBreedingActive = false;
                 // A fixture seeded before names existed has empty ones, and an
                 // empty name is exactly the unreadable roster this replaced.
                 if (string.IsNullOrWhiteSpace(character.Name))
