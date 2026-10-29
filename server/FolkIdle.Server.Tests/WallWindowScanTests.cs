@@ -67,6 +67,50 @@ namespace FolkIdle.Server.Tests
             return true;
         }
 
+        /// <summary>
+        /// ALWAYS ON. The shipped multipliers must hold with room on both sides,
+        /// not on the one float that happens to round right: each region's value
+        /// and the values a step either side of it (0.5%; region 2's whole
+        /// window is under 1.5% wide, so it gets 0.25%). A future change that
+        /// pushes a wall to the edge of its window fails here before it fails
+        /// a player.
+        /// </summary>
+        [Theory]
+        [InlineData(1, 0.005)]
+        [InlineData(2, 0.0025)]
+        [InlineData(3, 0.005)]
+        [InlineData(4, 0.005)]
+        [InlineData(5, 0.005)]
+        public void Each_shipped_multiplier_holds_with_a_margin(int region, double margin)
+        {
+            double shipped = BossFirstClearRules.AttackMultiplierFor(region);
+            foreach (double attack in new[] { shipped * (1 - margin), shipped, shipped * (1 + margin) })
+            {
+                Assert.True(WallHolds(region, attack),
+                    FormattableString.Invariant($"region {region}: the wall breaks at {attack:0.####} (shipped {shipped}, margin {margin:P2})"));
+            }
+        }
+
+        /// <summary>ALWAYS ON. Tier 6 at its shipped AttackPct and 5 points either side.</summary>
+        [Fact]
+        public void Seasonal_tier_six_holds_with_a_margin()
+        {
+            int boss5 = RaceUnlockRegistry.GetRegionBossMonsterId(5);
+            var wallGear = new ReferenceLoadout(BossGearBenchmark.ReferenceLevelForRegion(5), 5,
+                BossFirstClearRules.RequiredQualityTierFor(5), BossFirstClearRules.RequiredAffixRarityFor(5));
+            var bestGear = new ReferenceLoadout(100, 5, RarityTier.Transcendent, AffixRarity.Legendary);
+            var six = SeasonalBossRegistry.Find(6)!.Modifiers;
+            foreach (int attackPct in new[] { six.AttackPct - 5, six.AttackPct, six.AttackPct + 5 })
+            {
+                var mods = six with { AttackPct = attackPct };
+                Assert.False(BossGearBenchmark.ProjectFirstClearWithModifiers(boss5, in wallGear, in mods).PlayerWins,
+                    $"tier 6 at AttackPct {attackPct}: region 5's wall gear wins");
+                var best = BossGearBenchmark.ProjectFirstClearWithModifiers(boss5, in bestGear, in mods);
+                Assert.True(best.PlayerWins && best.SecondsToKillBoss < 3600,
+                    $"tier 6 at AttackPct {attackPct}: the best gear does not win inside an hour");
+            }
+        }
+
         [Fact]
         public void First_clear_attack_windows()
         {
