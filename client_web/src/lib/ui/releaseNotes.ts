@@ -35,6 +35,22 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.34.0',
+    date: '2026-10-29',
+    headline: 'Races now say what they do - and two of them finally do it.',
+    sections: [
+      {
+        title: 'Races',
+        items: [
+          'The Wiki has a card for every race: its own bonuses and what each race mastery level adds. The race mastery panel in Progression lists the milestones and ticks the ones you have reached.',
+          'Draugr mastery lifesteal now heals what it says: 10% at level 10 and 12% at level 50 (at most 1% of your health per hit). It used to heal a hundredth of that.',
+          'Fairy mastery 10 now gives +15% attack speed, as intended - it was worth almost nothing before.',
+          'Draugr now have -15% attack speed, as the race was designed - the price of their extra health and armour. It never makes them slower than the base swing.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.33.0',
     date: '2026-10-29',
     headline: 'Two bonuses that did nothing now work.',

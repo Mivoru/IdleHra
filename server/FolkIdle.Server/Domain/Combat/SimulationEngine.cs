@@ -3924,7 +3924,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         /// <summary>A monster crit's multiplier, less Vodnik's CritMitigationPct, floored at 1.0.</summary>
         internal static float MonsterCritMultiplier(in CombatStats combatStats)
-            => Math.Max(1.0f, 1.5f - (combatStats.CritMitigationPct / 100f));
+            => Math.Max(1.0f, RaceBonusRegistry.MonsterCritMultiplier - (combatStats.CritMitigationPct / 100f));
 
         /// <summary>The share of a post-armour hit the player's block takes off, capped at 75%.</summary>
         internal static float PlayerBlockFraction(in CombatStats combatStats)

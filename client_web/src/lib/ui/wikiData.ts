@@ -756,7 +756,7 @@ export const WIKI_SEARCH_INDEX: readonly WikiSearchEntry[] = [
 
   { tab: 'map', anchor: 'regions', title: 'The five regions', keywords: 'sunlit plains whispering woods scorched wasteland frozen peaks shadow citadel' },
   { tab: 'map', anchor: 'unlock', title: 'Unlocking a region', keywords: 'boss gate progression wear gear region tier equip refused' },
-  { tab: 'map', anchor: 'races', title: 'Races and which boss unlocks them', keywords: 'human vila draugr kobold vodnik moosleute race mastery' },
+  { tab: 'map', anchor: 'races', title: 'Races: bonuses, mastery and which boss unlocks them', keywords: 'human fairy vila draugr leshy kobold vodyanoy vodnik bies moosleute race mastery bonus passive lifesteal attack speed dodge gold mining yield offline' },
   { tab: 'map', anchor: 'monsters', title: 'Every monster and its drops', keywords: 'monster drops loot table hp armour dodge codex' },
 
   { tab: 'gathering', anchor: 'professions', title: 'The gathering professions', keywords: 'woodcutting mining fishing herbalism node activity' },
