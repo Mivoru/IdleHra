@@ -3909,6 +3909,60 @@ namespace FolkIdle.Server.Domain.Combat
             return Math.Clamp(Math.Max(today, war), 0.0, 1.0);
         }
 
+        /// <summary>Bloodthirst in tenths of a percent of damage dealt: today's bough or the War notable.</summary>
+        internal static long BloodthirstTenths(in TickStatePayload payload)
+        {
+            long today = payload.Skill_Bloodthirst > 0
+                ? SkillTreeRegistry.GetBonusTenthsOfPercent(SkillTreeRegistry.BoughBloodthirst, payload.Skill_Bloodthirst)
+                : 0L;
+            return Math.Max(today, WarTreeRegistry.Resolve(in payload).BloodthirstTenths);
+        }
+
+        /// <summary>
+        /// A Riposte landing: damage off the monster's bar, logged as the
+        /// player's hit with its Proc. A kill it causes is resolved where a
+        /// thorns kill is, at the end of the tick.
+        /// </summary>
+        private static void Riposte(ref TickStatePayload payload, in CombatStats stats, in MonsterDefinition monster)
+        {
+            long dealt = RiposteMilliDamage(in payload, in stats, in monster, payload.CachedEffectiveMilliAttack);
+            if (dealt <= 0) return;
+            payload.CurrentMonsterHp -= dealt;
+            CombatEventFeed.Publish(
+                payload.PlayerId,
+                payload.CurrentMonsterId,
+                Network.ResponseCombatEventPacket.KindPlayerHit,
+                (int)Math.Min(int.MaxValue, dealt / 1000),
+                (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L),
+                0,
+                Network.SkillProc.Riposte);
+        }
+
+        /// <summary>Whether the payload holds Last Stand on either tree.</summary>
+        internal static bool HasLastStand(in TickStatePayload payload)
+            => payload.Skill_LastStand > 0 || WarTreeRegistry.Resolve(in payload).LastStand;
+
+        /// <summary>
+        /// Riposte's chance per MONSTER swing: a dodge, or a connecting swing
+        /// the block takes a share of - block is a fraction off a hit, not a
+        /// roll, so that fraction is the chance of an answer.
+        /// </summary>
+        internal static double RiposteChance(in CombatStats stats)
+        {
+            double hit = MonsterHitChance(in stats);
+            return (1.0 - hit) + (hit * PlayerBlockFraction(in stats));
+        }
+
+        /// <summary>One Riposte's damage to the monster, in milli-HP: a share of the weapon blow through armour and the codex.</summary>
+        internal static long RiposteMilliDamage(in TickStatePayload payload, in CombatStats stats, in MonsterDefinition monster, long rawMilliAttack)
+        {
+            int share = WarTreeRegistry.Resolve(in payload).RiposteTenthsPct;
+            if (share <= 0) return 0L;
+            long raw = rawMilliAttack * share / 1000L;
+            long net = CombatDamageModel.Mitigate(raw, monster.Armor, CombatDamageModel.MonsterArmourHalvingConstant(monster.RegionTier), stats.FlatArmorPenetration);
+            return (long)(net * payload.CachedCodexDamageMultiplier);
+        }
+
         /// <summary>Crit chance in percent, with the Precision branch, clamped.</summary>
         internal static float LiveCritChancePct(in TickStatePayload payload, in CombatStats combatStats)
             => Math.Clamp(
@@ -4781,7 +4835,7 @@ namespace FolkIdle.Server.Domain.Combat
                 // a reset to full - so the crown has to buy something narrower:
                 // surviving AT one health, which is a real state a player can
                 // then heal out of.
-                if (payload.Skill_LastStand > 0 && payload.LastStandCooldownRemaining <= 0)
+                if (HasLastStand(in payload) && payload.LastStandCooldownRemaining <= 0)
                 {
                     payload.PlayerHp = 1;
                     payload.LastStandCooldownRemaining = LastStandCooldownTicks;
@@ -4994,11 +5048,10 @@ namespace FolkIdle.Server.Domain.Combat
                     // capped at the health pool because overhealing into a
                     // bar the client scales against observedMaxPlayerHp would
                     // draw a health bar longer than the bar.
-                    if (payload.Skill_Bloodthirst > 0 && netDamage > 0)
+                    if (BloodthirstTenths(in payload) > 0 && netDamage > 0)
                     {
                         long healed = (long)netDamage
-                            * SkillTreeRegistry.GetBonusTenthsOfPercent(
-                                SkillTreeRegistry.BoughBloodthirst, payload.Skill_Bloodthirst) / 1000L;
+                            * BloodthirstTenths(in payload) / 1000L;
                         if (healed > 0)
                         {
                             payload.PlayerHp = (int)Math.Min(
@@ -5231,6 +5284,11 @@ namespace FolkIdle.Server.Domain.Combat
                     // Only reflects while a monster is actually alive, so the
                     // final blow cannot reflect into an already-dead target and
                     // drive CurrentMonsterHp further negative.
+                    // Riposte (War half): the block's share of a connecting swing
+                    // answers back. RiposteChance prices exactly this roll.
+                    if (payload.CurrentMonsterHp > 0 && Random.Shared.NextDouble() < blockStrengthFraction)
+                        Riposte(ref payload, in combatStats, in activeMonster);
+
                     long thornsReflected = 0;
                     if (combatStats.SetThornsReflectionActive && payload.CurrentMonsterHp > 0)
                     {
@@ -5282,6 +5340,9 @@ namespace FolkIdle.Server.Domain.Combat
                         Network.ResponseCombatEventPacket.KindMonsterMiss,
                         0,
                         (int)(Math.Max(0L, payload.CurrentMonsterHp) / 1000L));
+
+                    // Riposte: every dodged swing answers back.
+                    if (payload.CurrentMonsterHp > 0) Riposte(ref payload, in combatStats, in activeMonster);
                 }
             }
 

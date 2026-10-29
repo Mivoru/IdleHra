@@ -176,6 +176,30 @@
     font-size: 0.66em;
   }
 
+  /* Riposte: verdigris, the Guard column's colour, swept in sideways - the
+     answer comes from the player's side, not from above. */
+  .hit[data-proc='riposte'] {
+    --half: 3.6rem;
+    font-size: 1.5rem;
+    color: #d9ffe8;
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(95, 194, 138, 1);
+    animation-name: float-up, riposte-sweep;
+    animation-duration: var(--life), 220ms;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1), ease-out;
+  }
+
+  .hit[data-proc='riposte'] .tag.skill {
+    color: #5fc28a;
+    font-size: 0.66em;
+  }
+
+  @keyframes riposte-sweep {
+    from { translate: -18px 0; }
+    to { translate: 0 0; }
+  }
+
   @keyframes crush-shake {
     0%, 100% { translate: 0 0; }
     20% { translate: -3px 1px; }

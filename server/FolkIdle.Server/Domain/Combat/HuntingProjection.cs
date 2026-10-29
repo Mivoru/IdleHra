@@ -698,10 +698,31 @@ namespace FolkIdle.Server.Domain.Combat
                 crit *= echo;
                 dbl *= echo;
 
-                long bloodthirst = payload.Skill_Bloodthirst > 0
-                    ? (long)SkillTreeRegistry.GetBonusTenthsOfPercent(SkillTreeRegistry.BoughBloodthirst, payload.Skill_Bloodthirst)
-                    : 0L;
+                long bloodthirst = SimulationEngine.BloodthirstTenths(in payload);
                 double burnFactor = stats.SetBurnApplicationActive ? 1.0 + SimulationEngine.BurnDamageFraction : 1.0;
+
+                // Riposte, as the expected answer per PLAYER swing: monster
+                // swings in one player interval, times the chance each answers,
+                // times one answer. It is spread over the swing's outcomes by
+                // scaling them (SwingsToKill reads the outcomes, not the mean),
+                // and the same factor goes into burnFactor so the heals - which
+                // a Riposte does not pay - stay on the hit alone.
+                long riposte = SimulationEngine.RiposteMilliDamage(in payload, in stats, in monster, rawMilliAttack);
+                if (riposte > 0)
+                {
+                    int monsterMs = monster.AttackIntervalMs > 0 ? monster.AttackIntervalMs : 2000;
+                    double perSwing = SimulationEngine.LiveAttackIntervalMs(in payload, in stats) / (double)monsterMs
+                        * SimulationEngine.RiposteChance(in stats) * riposte;
+                    double mean = (pHit * (1 - pCrit) * normal) + (pHit * pCrit * (1 - pDouble) * crit) + (pHit * pCrit * pDouble * dbl);
+                    if (mean > 0)
+                    {
+                        double k = 1.0 + perSwing / mean;
+                        normal *= k;
+                        crit *= k;
+                        dbl *= k;
+                        burnFactor *= k;
+                    }
+                }
                 return new PlayerSwing(pHit, pCrit, pDouble, normal, crit, dbl, stats.LifestealPct, bloodthirst, burnFactor);
             }
 
