@@ -15,7 +15,7 @@
   // dominant defect class of this codebase.
   //
   // The old panel's painted Yggdrasil stays, as the backdrop.
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { playerState, pushLocalNotice } from '../stores/game';
   import { backgroundUrl, skillIcon } from './sprites';
   import DisabledReason from './DisabledReason.svelte';
@@ -168,13 +168,50 @@
     if (held) tip = null;
   }
 
-  function onClick(id: number) {
+  let dockEl = $state<HTMLDivElement | null>(null);
+  let dockHeight = $state(0);
+
+  /** The element that actually scrolls this panel: an inner region, or the page. */
+  function scrollerOf(el: HTMLElement): HTMLElement {
+    for (let p = el.parentElement; p; p = p.parentElement) {
+      const y = getComputedStyle(p).overflowY;
+      if ((y === 'auto' || y === 'scroll') && p.scrollHeight > p.clientHeight) return p;
+    }
+    return (document.scrollingElement as HTMLElement) ?? document.documentElement;
+  }
+
+  // Modul: THE TAPPED LIMB STAYS ABOVE THE DOCK (owner, 2026-10-29: "the
+  // panel must not reach into the last branch"). The detail sheet and the
+  // draft bar stick to the bottom of the view, so tapping a rune in the lowest
+  // limbs opened them on top of that very limb. After the sheet renders, the
+  // view scrolls just far enough that the whole limb sits clear of the dock.
+  let clearOf: HTMLElement | null = null;
+
+  async function keepClear(button: HTMLElement) {
+    clearOf = button;
+    await tick();
+    const limb = button.closest('.limb') as HTMLElement | null;
+    if (!limb || !dockEl) return;
+    const overlap = limb.getBoundingClientRect().bottom - dockEl.getBoundingClientRect().top + 12;
+    if (overlap > 0) scrollerOf(limb).scrollBy({ top: overlap, behavior: 'smooth' });
+  }
+
+  // The dock grows when the draft bar arrives under the sheet, which can
+  // cover the limb again - so the same check runs whenever its height moves.
+  $effect(() => {
+    void dockHeight;
+    if (clearOf && selected !== null) void keepClear(clearOf);
+  });
+
+  function onClick(id: number, e?: MouseEvent) {
     if (held) {
       held = false;
       return;
     }
     tip = null;
     selected = selected === id ? null : id;
+    if (selected !== null && e?.currentTarget) void keepClear(e.currentTarget as HTMLElement);
+    if (selected === null) clearOf = null;
     // Its own voice rather than the app-wide button click (data-no-click-sound
     // on the grove): a rune taps like wood, and a shut one knocks dull.
     if (selected !== null && def) {
@@ -338,7 +375,7 @@
                 onpointerleave={() => { onUp(); if (tip?.id === node.Id) tip = null; }}
                 onpointerenter={(e) => onEnter(e, node.Id)}
                 oncontextmenu={(e) => e.preventDefault()}
-                onclick={() => onClick(node.Id)}
+                onclick={(e) => onClick(node.Id, e)}
               >
                 {#if art}
                   <img class="art" src={art} alt="" draggable="false" loading="lazy" />
@@ -367,7 +404,7 @@
       {/each}
     </div>
 
-    <div class="dock">
+    <div class="dock" bind:this={dockEl} bind:clientHeight={dockHeight}>
     {#if selectedNode}
       {@const n = selectedNode}
       {@const st = statusOf(n)}
@@ -454,6 +491,13 @@
     </div>
   {/if}
 
+  <!-- Room to scroll the last limb above the dock: the dock sticks to the
+       bottom of the view, so without this the lowest limbs could never be
+       brought clear of it. -->
+  {#if selectedNode || draftCount > 0}
+    <div class="dock-room" style={`height: ${dockHeight}px`} aria-hidden="true"></div>
+  {/if}
+
   {#if tip && def}
     {@const t = def.Nodes[tip.id]}
     <div class="tip" role="tooltip" style={`left: ${tip.x}px; top: ${tip.y}px`}>
@@ -479,14 +523,26 @@
   }
   /* The painted Yggdrasil, kept from the old panel as atmosphere - darkened so
      the runes on top of it always win the contrast. */
+  /* Modul: A FIXED-HEIGHT LAYER, NOT `cover` OVER THE WHOLE PANEL (owner,
+     2026-10-29: "the tree moves a little every time I tap a skill"). Sized to
+     the panel, the painting re-scaled whenever the detail sheet or the draft
+     bar changed the panel's height. Pinned to the top at its own height, it
+     never moves; below it the panel is the painting's own dark. */
+  .panel {
+    background: #0b0d12;
+  }
   .panel::before {
     content: '';
     position: absolute;
-    inset: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 46rem;
     z-index: -1;
+    pointer-events: none;
     background:
-      linear-gradient(180deg, rgb(8 10 14 / 0.72), rgb(8 10 14 / 0.9)),
-      var(--art) center 30% / cover no-repeat;
+      linear-gradient(180deg, rgb(8 10 14 / 0.72), rgb(8 10 14 / 0.86) 70%, #0b0d12),
+      var(--art) center top / cover no-repeat;
   }
 
   .head { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
@@ -624,16 +680,36 @@
   /* Modul: THE DETAIL AND THE DRAFT RIDE THE BOTTOM OF THE VIEW. On a phone the
      tree is taller than the screen, so a detail drawn after it opened below the
      fold of the rune that was tapped and looked like nothing happened. */
+  /* Phones: FIXED to the view, not sticky. Sticky is relative to whichever
+     element scrolls, and inside the game's own scroll region it let the dock
+     drift under the onboarding coach. Fixed is relative to the screen, which
+     is what "above the nav and the coach" means; .dock-room keeps the last
+     limb reachable above it. */
   .dock {
-    position: sticky;
-    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    max-height: 60vh;
+    overflow-y: auto;
+    /* Clear of the bottom nav and of whatever floats over the page (the
+       onboarding coach, the update prompt - stores/bottomInset.ts). */
+    bottom: max(calc(4.5rem + env(safe-area-inset-bottom, 0px)), var(--floating-bottom, 0px));
     z-index: 5;
     display: grid;
     gap: 0.5rem;
     margin-top: 0.8rem;
   }
   @media (min-width: 60rem) {
-    .dock { bottom: 0.5rem; }
+    .dock {
+      position: sticky;
+      left: auto;
+      right: auto;
+      max-height: none;
+      overflow: visible;
+      bottom: max(0.5rem, var(--floating-bottom, 0px));
+    }
+    /* Wide screens hold the whole tree above the dock already. */
+    .dock-room { display: none; }
   }
 
   .sheet {
@@ -691,10 +767,42 @@
   /* The app's global .dim is a dark ink for parchment; on this panel it has to
      be a light one. */
   .panel .dim { color: #c9c0ad; opacity: 1; }
-  .panel .sheet button:not(.primary):not(.x),
-  .panel .draft-actions button:not(.primary),
-  .panel .respec-row button,
-  .panel .sheet .x { color: #2a2218; }
+
+  /* Modul: THE PANEL'S BUTTONS ARE ITS OWN, not the theme's. The panel is dark
+     in either Appearance scheme, and the theme's buttons are not: forcing a
+     dark ink made them readable on the light scheme and blank on the dark one
+     (owner, 2026-10-29: "the buttons at the bottom have no labels"). So they
+     carry their own surface and ink, in both schemes alike. */
+  .panel .sheet button,
+  .panel .draft-actions button,
+  .panel .respec-row button {
+    color: #f3ecdc;
+    background: rgb(255 255 255 / 0.08);
+    border: 1px solid rgb(255 255 255 / 0.28);
+    border-radius: 8px;
+    font-weight: 600;
+  }
+  .panel .sheet button:hover:not(:disabled),
+  .panel .draft-actions button:hover:not(:disabled),
+  .panel .respec-row button:hover:not(:disabled) {
+    background: rgb(255 255 255 / 0.16);
+  }
+  .panel .sheet button.primary,
+  .panel .draft-actions button.primary {
+    color: #fff;
+    background: #6d45c4;
+    border-color: #9a78ea;
+  }
+  .panel .sheet button.primary:hover:not(:disabled),
+  .panel .draft-actions button.primary:hover:not(:disabled) {
+    background: #7d55d6;
+  }
+  .panel .sheet button:disabled,
+  .panel .draft-actions button:disabled,
+  .panel .respec-row button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
 
   /* Wide screens: five limbs standing side by side, root at the foot and crown
      at the top, so the screen reads as the tree it is named after. */
