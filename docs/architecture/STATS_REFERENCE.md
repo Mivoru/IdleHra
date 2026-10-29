@@ -276,8 +276,8 @@ monsters. Tools are crafted and never dropped.
   previous region's boss. Rarity does not matter. Buying from the market
   checks the same gate.
 - **Attribute gate:** section 2.4.
-- `EquipmentLevelGate` (`(region−1)×10 + quality×2`) still exists but no equip
-  path calls it. The region gate replaced it.
+- The old level gate (`EquipmentLevelGate`, `(region−1)×10 + quality×2`) was
+  deleted on 2026-10-29; the region gate replaced it long before.
 
 ### 3.7 Crafting and Workshop
 
@@ -861,7 +861,8 @@ Each item was checked by grepping for readers of the field. Status as of
    rolls (up to ~20% block at Legendary rarity, within the 75% block cap).
 9. **Stale comments.** The `CritMitigationPct` comment in `StatsCalculator` says
    "not yet consumed". `MonsterCritMultiplier` now consumes it.
-   `EquipmentLevelGate` is dead code.
+   `EquipmentLevelGate` is dead code. **FIXED 2026-10-29** (task 123): the
+   comment tells the truth and the class is deleted.
 10. **Tool gathering-yield and rare-find affixes do nothing.** Found
     2026-10-29. `ToolLoadoutResolver` sums `gather_yield_pct` and
     `gather_rare_find_pct` into `ToolGatherYieldPct` / `ToolRareFindPct`, which

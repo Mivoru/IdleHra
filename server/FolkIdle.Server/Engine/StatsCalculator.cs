@@ -283,13 +283,13 @@ namespace FolkIdle.Server.Engine
                     stats.WoodcuttingYieldBonusPct += RaceBonusRegistry.MoosleuteHarvestYieldPoints;
                     break;
                 case RaceIds.Vodnik:
-                    // River guardian: +15% Health Regen efficiency, +10%
-                    // Critical Strike mitigation (absolute). CritMitigationPct is
-                    // computed here but not yet consumed anywhere - monsters
-                    // currently deal fixed, non-crit damage (no incoming-crit
-                    // roll exists in the combat tick to mitigate against),
-                    // matching the existing "cached but not yet consumed"
-                    // precedent (e.g. LocusYield before this task).
+                    // River guardian: +15% Health Regen efficiency, +10
+                    // Critical Strike mitigation (absolute points).
+                    // CritMitigationPct takes that many hundredths off a
+                    // monster crit's x1.5 (SimulationEngine.MonsterCritMultiplier,
+                    // and BossGearBenchmark for the boss walls). An older note
+                    // here said it was "not yet consumed anywhere"; monsters
+                    // have rolled crits since, and this is what reads them.
                     stats.OutOfCombatHpRegen *= RaceBonusRegistry.VodnikRegenFactor;
                     stats.CritMitigationPct += RaceBonusRegistry.VodnikCritMitigationPoints;
                     break;
