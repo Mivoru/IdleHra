@@ -127,5 +127,6 @@ namespace FolkIdle.Server.Network
     {
         public const byte None = 0;
         public const byte CrushingBlow = 1;
+        public const byte Echo = 2;
     }
 }

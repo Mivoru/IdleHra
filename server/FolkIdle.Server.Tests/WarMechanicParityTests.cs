@@ -44,6 +44,12 @@ namespace FolkIdle.Server.Tests
             // the hit, so no damage mechanic can move it (measured 3,122 kills
             // with First Strike and 3,123 without).
             yield return new object[] { "crushing + first strike r5", 5, r5, new[] { WarTreeRegistry.CrushingBlow, WarTreeRegistry.FirstStrike }, new byte[] { 3, 5 } };
+            yield return new object[] { "executioner r3", 3, r3, new[] { WarTreeRegistry.Executioner }, new byte[] { 5 } };
+            // Region 4 gear on region 2's boss: a boss fight the character wins.
+            yield return new object[] { "echo r3", 3, r3, new[] { WarTreeRegistry.Echo }, new byte[] { 5 } };
+            yield return new object[] { "frenzy r3", 3, r3, new[] { WarTreeRegistry.Frenzy }, new byte[] { 5 } };
+            yield return new object[] { "double strike r3", 3, r3, new[] { WarTreeRegistry.DoubleStrike }, new byte[] { 3 } };
+            yield return new object[] { "bossbreaker on r2 boss", 4, RaceUnlockRegistry.GetRegionBossMonsterId(2), new[] { WarTreeRegistry.Bossbreaker }, new byte[] { 5 } };
         }
 
         [Theory]
