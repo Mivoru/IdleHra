@@ -328,6 +328,7 @@ const itemIcons = {};
 const raceIcons = {};
 const toolIcons = { axe: [], pickaxe: [], rod: [] };
 const misc = {};
+const skillIcons = {};
 
 const monsterByName = new Map(monsters.map((m) => [m.Name, m.Id]));
 const problems = [];
@@ -335,6 +336,13 @@ const unmatched = [];
 
 for (const file of files) {
   const name = basename(file, '.webp');
+
+  // --- skill tree icons: keyed by their own file name, which is the slug
+  // the server's tree definition names (docs/design/SKILL_TREE_ART.md) -----
+  if (file.startsWith('SkillIcons/')) {
+    skillIcons[name] = file;
+    continue;
+  }
 
   // --- monsters: exact Name match, which covers all 25 canonical ones ------
   if (file.includes('/Monsters/')) {
@@ -498,6 +506,9 @@ lines.push(`export const ITEM_ICONS: Readonly<Record<string, string>> = ${JSON.s
 lines.push(`export const RACE_ICONS: Readonly<Record<number, { male?: string; female?: string }>> = ${JSON.stringify(raceIcons, null, 2)};\n`);
 lines.push(`/** Indexed by tool tier; a tier past the end clamps to the last entry. */`);
 lines.push(`export const TOOL_ICONS: Readonly<Record<'axe' | 'pickaxe' | 'rod', readonly string[]>> = ${JSON.stringify(toolIcons, null, 2)};\n`);
+lines.push(`/** Skill tree icons by slug; the tree definition names the slug. */`);
+lines.push(`export const SKILL_ICONS: Readonly<Record<string, string>> = ${JSON.stringify(skillIcons, null, 2)};
+`);
 lines.push(`export const CURRENCY_ICONS: Readonly<{ gold?: string; diamond?: string }> = ${JSON.stringify(misc, null, 2)};\n`);
 
 // ---------------------------------------------------------------------------

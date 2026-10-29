@@ -2423,6 +2423,83 @@ export function fetchCharacterStats(slot = 0): Promise<StatSheet> {
 }
 
 // ---------------------------------------------------------------------------
+// /api/v1/skilltree
+// ---------------------------------------------------------------------------
+
+/**
+ * The tree as the SERVER defines it (SkillTreeRegistry via
+ * NetworkBroadcastSystem.SkillTree.cs): shape, costs and the text of every
+ * level. The screen draws this and holds no rule of its own.
+ */
+export interface SkillTreeNodeDef {
+  Id: number;
+  Name: string;
+  /** Slug into SKILL_ICONS; the rune glyph stands in while no art exists. */
+  Icon: string;
+  Blurb: string;
+  Kind: 'Root' | 'Bough' | 'Crown';
+  Column: number;
+  Row: number;
+  /** 0/1 for the two sides of a fork, -1 for the centre. */
+  Lane: number;
+  MaxLevel: number;
+  /** The other side of the fork, or -1. */
+  Fork: number;
+  /** Costs[l] is the price of going from level l to l + 1. */
+  Costs: number[];
+  /** Effects[l - 1] is what the node does at level l. */
+  Effects: string[];
+  Pending: boolean;
+}
+
+export interface SkillTreeDefinition {
+  Columns: { Id: number; Name: string; Icon: string | null }[];
+  Nodes: SkillTreeNodeDef[];
+}
+
+export interface SkillTreePreview {
+  /** Null when the draft is legal. */
+  Reason: string | null;
+  Cost: number;
+  PointsLeft: number;
+  /** On top of the draft (or of the current tree, if the draft is illegal). */
+  Nodes: { Id: number; Blocked: string | null; NextCost: number }[];
+  Before: StatSheet | null;
+  After: StatSheet | null;
+}
+
+export interface SkillTreeCommitResult {
+  Reason: string | null;
+  Levels: number[];
+  AvailableSkillPoints: number;
+  Spent: number;
+}
+
+let skillTreeDefinition: Promise<SkillTreeDefinition> | null = null;
+
+/** Fetched once per page load: the definition is the same for everyone. */
+export function fetchSkillTreeDefinition(): Promise<SkillTreeDefinition> {
+  skillTreeDefinition ??= authedGet<SkillTreeDefinition>('/api/v1/skilltree').catch((e) => {
+    skillTreeDefinition = null;
+    throw e;
+  });
+  return skillTreeDefinition;
+}
+
+export async function previewSkillTree(levels: number[], slot = 0): Promise<SkillTreePreview> {
+  const res = await authedPost<SkillTreePreview>('/api/v1/skilltree/preview', { Levels: levels, Slot: slot });
+  if (!res) throw new AuthError('POST /api/v1/skilltree/preview answered nothing', 500);
+  return res;
+}
+
+/** Buys the whole draft or nothing; a refusal still answers 200 with its Reason. */
+export async function commitSkillTree(levels: number[]): Promise<SkillTreeCommitResult> {
+  const res = await authedPost<SkillTreeCommitResult>('/api/v1/skilltree/commit', { Levels: levels });
+  if (!res) throw new AuthError('POST /api/v1/skilltree/commit answered nothing', 500);
+  return res;
+}
+
+// ---------------------------------------------------------------------------
 // /api/v1/player/gold-ledger (task 79)
 // ---------------------------------------------------------------------------
 

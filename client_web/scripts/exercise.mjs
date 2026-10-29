@@ -3963,6 +3963,64 @@ await go('Character');
   }
 }
 
+// --- the skill tree's draft mode (rework phase 1, 2026-10-29) ----------------
+// Modul: SPENDS NOTHING, on purpose: a bought level can only come back through
+// the run's one free respec, so a step that committed would pass once and fail
+// forever. It drafts a level on screen and proves the preview is the SERVER's
+// answer (a cost and a moved stat), then sends an illegal draft (every node
+// at zero but one crown - it lowers what the fixture owns and skips the crown's
+// gate) to the commit and proves it is refused whole.
+{
+  await go('Skill Tree');
+  await page.getByTestId('skill-node-0').waitFor({ timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(1200);
+  // Precision's root first: crit chance is on the stat sheet, so its preview
+  // must show a moved number. A crown such as Golden Fleece moves none.
+  let drafted = -1;
+  for (const id of [2, 3, 0, 1, 4]) {
+    if (drafted >= 0) break;
+    const node = page.getByTestId(`skill-node-${id}`);
+    const cls = (await node.getAttribute('class').catch(() => '')) ?? '';
+    if (!/\b(open|owned)\b/.test(cls)) continue;
+    await node.click();
+    const add = page.getByTestId('skill-add');
+    // The detail's buttons wait for the server's preview of the current tree.
+    let ready = false;
+    for (let t = 0; t < 20 && !ready; t++) {
+      ready = await add.isEnabled({ timeout: 500 }).catch(() => false);
+      if (!ready) await page.waitForTimeout(300);
+    }
+    if (!ready) continue;
+    await add.click();
+    drafted = id;
+  }
+  if (drafted < 0) await page.screenshot({ path: 'skilltree-fail.png', fullPage: true }).catch(() => {});
+  const bar = page.getByTestId('skill-draftbar');
+  await bar.waitFor({ timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(1500);
+  const barText = await bar.innerText().catch(() => '');
+  record(
+    'a drafted skill level is priced and previewed by the server',
+    drafted >= 0 && /costs \d+/.test(barText) && /→/.test(barText),
+    drafted < 0
+      ? `no open node on the fixture (${await page.locator('[data-testid^="skill-node-"]').count()} nodes, #2 "${await page.getByTestId('skill-node-2').getAttribute('class').catch(() => 'absent')}", detail "${(await page.getByTestId('skill-detail').innerText().catch(() => 'none')).replace(/\s+/g, ' ')}")`
+      : barText.replace(/\s+/g, ' '),
+  );
+  await bar.getByRole('button', { name: 'Discard' }).click().catch(() => {});
+
+  const tree = await apiGet('/api/v1/skilltree').catch(() => null);
+  const crown = tree?.Nodes?.find((n) => n.Kind === 'Crown' && n.Column === 4);
+  if (crown) {
+    const illegal = new Array(20).fill(0);
+    illegal[crown.Id] = 1;
+    const res = await apiPost('/api/v1/skilltree/commit', { Levels: illegal }).catch(() => null);
+    record('an illegal draft is refused whole, with a reason', typeof res?.Reason === 'string' && res.Spent === 0, res?.Reason ?? 'no answer');
+  } else {
+    record('an illegal draft is refused whole, with a reason', false, 'the definition did not answer');
+  }
+  await go('Character');
+}
+
 // --- a monster pet found, then found again (2026-10-10) ----------------------
 // Modul: through the SAME queue a kill feeds (POST /api/v1/dev/pet-drop), so
 // this proves the save path a 1-in-100,000 kill would take: the first find is

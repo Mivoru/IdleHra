@@ -420,5 +420,109 @@ namespace FolkIdle.Server.Engine
 
         public static bool CanPurchase(int nodeId, byte[] levels, int availablePoints)
             => BlockedReason(nodeId, levels, availablePoints) == null;
+
+        /// <summary>What one level of a node does, in words, at the given level.</summary>
+        /// <remarks>
+        /// Modul: THE CLIENT DRAWS THESE, it does not compose them. The tree used
+        /// to be mirrored by hand in client_web's commands.ts (names, caps,
+        /// costs, the per-level numbers), which is the two-copies-of-one-truth
+        /// shape this codebase keeps paying for. GET /api/v1/skilltree serves
+        /// this text so the screen holds no rule of its own.
+        /// </remarks>
+        public static string EffectText(int nodeId, int level)
+        {
+            if (!IsValidNode(nodeId)) return string.Empty;
+            float pct = GetBonusPercent(nodeId, Math.Max(level, 1));
+            string n = pct.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+            return nodeId switch
+            {
+                BranchLootRarity => $"+{n}% loot luck",
+                BranchWorldBossDamage => $"+{n}% world boss damage",
+                BranchCritChance => $"+{n} crit chance",
+                BranchCritDamage => $"+{n}% crit damage",
+                BranchXpGain => $"+{n}% XP",
+                BoughPlenty => $"+{n}% material stack size",
+                BoughRarity => $"+{n}% chance a drop rolls one rarity higher",
+                BoughFirstBlood => $"-{n}% of a first-clear boss's extra health",
+                BoughTrophyHunter => $"+{n}% boss gold, and bosses always drop a material",
+                BoughGuile => $"+{n}% crit damage",
+                BoughRelentless => $"-{n}% attack interval",
+                BoughBloodthirst => $"{n}% of damage dealt heals you",
+                BoughFortitude => $"+{n}% max health and armour",
+                BoughCraft => $"{n}% chance a craft keeps its materials",
+                BoughHarvest => $"+{n}% gathering speed",
+                CrownGoldenFleece => "Every 100th kill drops an item two tiers up",
+                CrownThunderer => "Opens a boss fight with a blow at 500% weapon damage",
+                CrownDoubleStrike => "25% chance a critical hit lands twice",
+                CrownLastStand => "Once an hour, a killing blow leaves you at 1 health",
+                CrownScholar => "+25% offline rate",
+                _ => string.Empty,
+            };
+        }
+
+        /// <summary>
+        /// Where a node sits on the screen's grid: column = limb, row = ring,
+        /// lane 0/1 for the two boughs of a fork and -1 for the centre.
+        /// </summary>
+        public static (int Column, int Row, int Lane) LayoutOf(int nodeId) => RingOf(nodeId) switch
+        {
+            Ring.Root => (nodeId, 0, -1),
+            Ring.Bough => (RootOf(nodeId), 1, (nodeId - FirstBoughId) % 2),
+            _ => (RootOf(nodeId), 2, -1),
+        };
+
+        /// <summary>
+        /// Whether a whole target tree can be bought from the current one, and
+        /// at what price.
+        /// </summary>
+        /// <remarks>
+        /// Modul: ONE CHECK FOR THE DRAFT AND THE COMMIT. The screen lets a
+        /// player stack up changes before confirming them, and both the preview
+        /// and the purchase run this - so what the preview calls legal is
+        /// exactly what the commit will accept.
+        ///
+        /// It replays the purchase one level at a time through BlockedReason,
+        /// roots first, then boughs, then crowns. Every gate points at a lower
+        /// ring, so that order meets each prerequisite before it is asked about,
+        /// and no second statement of the rules exists to drift from the first.
+        ///
+        /// Lowering a node is refused: points come back only through the
+        /// all-or-nothing respec, whose reasons SkillTreeEngine.RespecAsync
+        /// gives.
+        /// </remarks>
+        public static string? PlanReason(byte[] current, byte[] target, int availablePoints, out int cost)
+        {
+            cost = 0;
+            if (current.Length < NodeCount || target.Length < NodeCount) return "Skill tree not loaded.";
+
+            for (int id = 0; id < NodeCount; id++)
+            {
+                if (target[id] < current[id])
+                {
+                    return $"{GetName(id)} cannot go down. Use a respec to take points back.";
+                }
+            }
+
+            var levels = (byte[])current.Clone();
+            int points = availablePoints;
+            foreach (Ring ring in new[] { Ring.Root, Ring.Bough, Ring.Crown })
+            {
+                for (int id = 0; id < NodeCount; id++)
+                {
+                    if (RingOf(id) != ring) continue;
+                    while (levels[id] < target[id])
+                    {
+                        string? reason = BlockedReason(id, levels, points);
+                        if (reason != null) return $"{GetName(id)}: {reason}";
+                        int step = GetUpgradeCost(id, levels[id]);
+                        points -= step;
+                        cost += step;
+                        levels[id]++;
+                    }
+                }
+            }
+
+            return null;
+        }
     }
 }

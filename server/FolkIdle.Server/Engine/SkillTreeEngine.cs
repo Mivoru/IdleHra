@@ -204,6 +204,100 @@ namespace FolkIdle.Server.Engine
         }
 
         /// <summary>
+        /// Buys a whole drafted tree at once: every level in it, or none.
+        /// </summary>
+        /// <remarks>
+        /// Modul: the screen's draft mode. A player stacks up changes and
+        /// confirms them together, so a misclick never spends a point. The
+        /// check is SkillTreeRegistry.PlanReason, the same one the preview
+        /// runs, under the same row locks as PurchaseLevelAsync - a draft judged
+        /// legal against a stale balance is judged again here.
+        ///
+        /// Result.Reason is null on success, or says why nothing was bought.
+        /// </remarks>
+        public async Task<SkillTreeCommitResult> CommitAsync(long playerId, byte[] target)
+        {
+            var result = new SkillTreeCommitResult { Reason = "Skill tree not loaded." };
+            if (target.Length != SkillTreeRegistry.NodeCount) return result;
+
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+
+            var strategy = db.Database.CreateExecutionStrategy();
+            await strategy.ExecuteAsync(async () =>
+            {
+                db.ChangeTracker.Clear();
+                await using var transaction = await db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+                try
+                {
+                    var player = await db.PlayerRecords
+                        .FromSqlRaw("SELECT * FROM \"PlayerRecords\" WHERE \"Id\" = {0} FOR UPDATE", playerId)
+                        .SingleOrDefaultAsync();
+                    if (player == null)
+                    {
+                        await transaction.RollbackAsync();
+                        result = new SkillTreeCommitResult { Reason = "No such player." };
+                        return;
+                    }
+
+                    var rows = await db.PlayerSkillTreeNodes
+                        .FromSqlRaw("SELECT * FROM \"player_skill_tree\" WHERE \"PlayerId\" = {0} FOR UPDATE", playerId)
+                        .ToListAsync();
+
+                    var current = new byte[SkillTreeRegistry.NodeCount];
+                    foreach (var row in rows)
+                    {
+                        if (!SkillTreeRegistry.IsValidNode(row.BranchId)) continue;
+                        current[row.BranchId] = (byte)Math.Clamp(row.Level, 0, SkillTreeRegistry.MaxLevelOf(row.BranchId));
+                    }
+
+                    string? reason = SkillTreeRegistry.PlanReason(current, target, player.AvailableSkillPoints, out int cost);
+                    if (reason != null)
+                    {
+                        await transaction.RollbackAsync();
+                        result = new SkillTreeCommitResult { Reason = reason, Levels = Array.ConvertAll(current, b => (int)b), AvailableSkillPoints = player.AvailableSkillPoints };
+                        return;
+                    }
+
+                    for (int id = 0; id < SkillTreeRegistry.NodeCount; id++)
+                    {
+                        if (target[id] == current[id]) continue;
+                        var row = rows.FirstOrDefault(r => r.BranchId == id);
+                        if (row == null) db.PlayerSkillTreeNodes.Add(new PlayerSkillTreeNode { PlayerId = playerId, BranchId = id, Level = target[id] });
+                        else row.Level = target[id];
+                    }
+                    player.AvailableSkillPoints -= cost;
+
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+
+                    for (int id = 0; id < SkillTreeRegistry.NodeCount; id++)
+                    {
+                        if (target[id] == current[id]) continue;
+                        _playerRegistry?.SkillTreeSyncQueue.Enqueue(new SkillTreeSyncNotification
+                        {
+                            PlayerId = playerId,
+                            BranchId = id,
+                            NewLevel = target[id],
+                            RemainingSkillPoints = player.AvailableSkillPoints,
+                            FreeRespecUsed = (byte)(player.FreeRespecUsed ? 1 : 0),
+                            PaidRespecGrants = (byte)Math.Clamp(player.PaidRespecGrants, 0, 255),
+                        });
+                    }
+
+                    result = new SkillTreeCommitResult { Levels = Array.ConvertAll(target, b => (int)b), AvailableSkillPoints = player.AvailableSkillPoints, Spent = cost };
+                }
+                catch
+                {
+                    await transaction.RollbackAsync();
+                    throw;
+                }
+            });
+
+            return result;
+        }
+
+        /// <summary>
         /// Buys one level of one branch.
         ///
         /// THE POINTS AND THE LEVEL MOVE IN ONE TRANSACTION, under a row lock
@@ -306,6 +400,16 @@ namespace FolkIdle.Server.Engine
                 }
             });
         }
+    }
+
+    /// <summary>What a drafted commit did: Reason is null when it bought everything.</summary>
+    public sealed class SkillTreeCommitResult
+    {
+        public string? Reason { get; set; }
+        // int[], not byte[]: System.Text.Json writes a byte[] as base64.
+        public int[] Levels { get; set; } = Array.Empty<int>();
+        public int AvailableSkillPoints { get; set; }
+        public int Spent { get; set; }
     }
 
     /// <summary>

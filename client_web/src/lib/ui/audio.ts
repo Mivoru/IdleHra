@@ -51,6 +51,25 @@ export const CLIPS = {
   // The burst of light when a cosmetic chest opens (owner, 2026-10-08). The
   // shake's crunch is the clip's own track; this plays with the light.
   chestShine: 'chest_open_shine.wav',
+
+  // Modul: the skill tree's sounds, generated with ElevenLabs Sound Effects
+  // (2026-10-29; prompts in docs/design/SKILL_TREE_ART.md). The skill* clips
+  // are the combat callouts' voices. Only skillDouble has a mechanic to fire
+  // it today (FlagDoubleStrike); the rest wait for rework phase 2's flags,
+  // and a clip nothing plays costs nothing.
+  skillCrush: 'skill_crush.wav',
+  skillRuin: 'skill_ruin.wav',
+  skillThunder: 'skill_thunder.wav',
+  skillEcho: 'skill_echo.wav',
+  skillDouble: 'skill_double.wav',
+  skillPerfect: 'skill_perfect.wav',
+  skillRiposte: 'skill_riposte.wav',
+  skillLastStand: 'skill_last_stand.wav',
+  skillFleece: 'skill_fleece.wav',
+  runeSelect: 'ui_rune_select.wav',
+  runeAdd: 'ui_rune_add.wav',
+  runeConfirm: 'ui_rune_confirm.wav',
+  runeLocked: 'ui_rune_locked.wav',
 } as const;
 
 export type ClipName = keyof typeof CLIPS;
@@ -138,7 +157,10 @@ pageActive.subscribe((active) => {
 // never queued - play() starts a clip immediately or not at all - so returning
 // to Combat hears new blows only, not a replayed backlog. Music, UI sounds and
 // the death / boss-clear stingers are deliberately not in the set.
-const COMBAT_CLIPS: ReadonlySet<ClipName> = new Set<ClipName>(['playerMiss', 'hitMelee', 'hitRanged', 'hitMagic', 'hitCrit']);
+const COMBAT_CLIPS: ReadonlySet<ClipName> = new Set<ClipName>([
+  'playerMiss', 'hitMelee', 'hitRanged', 'hitMagic', 'hitCrit',
+  'skillCrush', 'skillRuin', 'skillThunder', 'skillEcho', 'skillDouble', 'skillPerfect', 'skillRiposte',
+]);
 
 function blockedByScreen(name: ClipName): boolean {
   return COMBAT_CLIPS.has(name) && get(currentScreen) !== 'combat';
@@ -202,16 +224,30 @@ async function loadClip(file: string): Promise<AudioBuffer | null> {
 /**
  * The hit sound for a weapon family.
  *
- * A FALLBACK RATHER THAN A GAP. combat_hit_crit.wav is not in the repository
- * yet - it needs authoring, which is not something code can do - and a missing
- * clip resolves to silence in loadClip. A silent crit would be a worse combat
+ * A FALLBACK RATHER THAN A GAP. combat_hit_crit.wav exists since 2026-10-29
+ * (ElevenLabs); before that it did not, and a missing clip resolves to
+ * silence in loadClip. A silent crit would be a worse combat
  * feel than an ordinary hit, so a crit plays the weapon's own clip until the
  * crit file exists.
  */
-export function playHit(weaponKind: number, isCrit: boolean): void {
+export function playHit(weaponKind: number, isCrit: boolean, isDoubleCrit = false): void {
   const weapon: ClipName = weaponKind === 1 ? 'hitRanged' : weaponKind === 2 ? 'hitMagic' : 'hitMelee';
   if (isCrit) playWithFallback('hitCrit', weapon);
   else play(weapon);
+  if (isDoubleCrit) playSkill('skillDouble');
+}
+
+let lastSkillAt = 0;
+
+/**
+ * A skill's callout sound, at most one per 250 ms: a fast weapon procs often,
+ * and the callout is a beat on top of the hit, not a second rhythm.
+ */
+export function playSkill(name: ClipName): void {
+  const now = performance.now();
+  if (now - lastSkillAt < 250) return;
+  lastSkillAt = now;
+  play(name);
 }
 
 /**

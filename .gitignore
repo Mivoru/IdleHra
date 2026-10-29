@@ -72,3 +72,7 @@ __pycache__/
 
 # The published APK (ops/oracle/publish-apk.ps1) - a build output, not source.
 ops/oracle/downloads/
+
+# Skill icon masters (2-3 MB each); only the 256px WebP beside them ships.
+client/Assets/Images/SpritesWeb/SkillIcons/*.jpg
+client/Assets/Images/SpritesWeb/SkillIcons/*.png

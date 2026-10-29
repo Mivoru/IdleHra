@@ -1,42 +1,40 @@
 <script lang="ts">
-  // Modul: THE SKILL TREE, in three rings.
+  // Modul: THE SKILL TREE SCREEN, phase 1 of docs/design/SKILL_TREE_REWORK.md.
   //
-  // It used to be five flat branches of twenty levels, and that looked like a
-  // choice without being one: every branch was a pure bonus and the cost curve
-  // was nearly flat, so the best play was always "pour into the strongest, then
-  // the next". An ORDERING, not an identity. Two players ended a season the
-  // same shape.
+  // Square nodes, no button on any of them. Tap a node to open its detail;
+  // hold it (or hover with a mouse) for a quick tooltip. Every change is a
+  // DRAFT until "Confirm" sends the whole thing in one request, so a misclick
+  // never spends a point - the old panel had a Learn button per card and
+  // every press was final.
   //
-  // Now each root forks into two boughs and ONLY ONE MAY BE TAKEN, with a crown
-  // above whichever fork was chosen. The locked side stays drawn, greyed, with
-  // its name still readable - a fork whose other half is invisible is a fork
-  // nobody can plan against, and the plan is the point.
+  // THIS FILE HOLDS NO RULE. The shape, prices and text come from
+  // GET /api/v1/skilltree; which nodes a draft opens, what it costs and what
+  // it does to the stats come from POST /api/v1/skilltree/preview, which runs
+  // the same check the commit runs. A client that judged gates or stats itself
+  // would be a second copy of the tree and a second damage model - the
+  // dominant defect class of this codebase.
   //
-  // What a node is worth is stated on its card, because a passive bonus the
-  // player cannot see is indistinguishable from one that does not work - a
-  // mistake this project has made more than once.
+  // The old panel's painted Yggdrasil stays, as the backdrop.
+  import { onDestroy } from 'svelte';
   import { playerState, pushLocalNotice } from '../stores/game';
-  import { backgroundUrl } from './sprites';
+  import { backgroundUrl, skillIcon } from './sprites';
   import DisabledReason from './DisabledReason.svelte';
+  import { respecSkillTree, respecBlockedReason } from '../net/commands';
+  import { play } from './audio';
   import {
-    SKILL_TREE_NODES,
-    SKILL_TREE_ROOT_MAX,
-    skillNodeMaxLevel,
-    skillTreeUpgradeCost,
-    skillNodeBlockedReason,
-    purchaseSkillTreeLevel,
-    respecSkillTree,
-    respecBlockedReason,
-    siblingBoughOf,
-    boughsOfRoot,
-    crownOfRoot,
-  } from '../net/commands';
+    fetchSkillTreeDefinition,
+    previewSkillTree,
+    commitSkillTree,
+    type SkillTreeDefinition,
+    type SkillTreeNodeDef,
+    type SkillTreePreview,
+    type StatSheetRow,
+  } from '../net/rest';
 
   const snap = $derived($playerState);
   const points = $derived(snap?.AvailableSkillPoints ?? 0);
 
-  // The wire carries one byte per node, indexed by the same ids the server's
-  // SkillTreeRegistry uses, so the two cannot drift on ordering.
+  // The wire still carries one byte per node in SkillTreeRegistry id order.
   const levels = $derived.by((): number[] => {
     const s = snap;
     if (!s) return new Array(20).fill(0);
@@ -52,941 +50,671 @@
     ].map((v) => Number(v) || 0);
   });
 
-  type NodeRow = (typeof SKILL_TREE_NODES)[number] & {
-    level: number;
-    max: number;
-    cost: number;
-    blocked: string | null;
-    /** Foreclosed for the season: the other side of the fork was taken. */
-    lockedOut: boolean;
-    label: string;
-  };
+  let def = $state<SkillTreeDefinition | null>(null);
+  let loadError = $state<string | null>(null);
+  fetchSkillTreeDefinition()
+    .then((d) => (def = d))
+    .catch(() => (loadError = 'The skill tree could not be loaded. Try again in a moment.'));
 
-  function rowFor(node: (typeof SKILL_TREE_NODES)[number]): NodeRow {
-    const level = levels[node.id] ?? 0;
-    const max = skillNodeMaxLevel(node.id);
-    const sibling = siblingBoughOf(node.id);
-    const lockedOut = sibling >= 0 && (levels[sibling] ?? 0) > 0 && level === 0;
+  // Modul: THE DRAFT IS STORED AS ADDITIONS, not as a whole tree. Levels keep
+  // arriving on the snapshot while the panel is open (a respec, or the commit
+  // itself), and a draft kept as absolute levels would silently revert them.
+  let extra = $state<number[]>(new Array(20).fill(0));
+  const draft = $derived(levels.map((l, i) => l + (extra[i] ?? 0)));
+  const draftCount = $derived(extra.reduce((a, b) => a + b, 0));
 
-    const total = level * node.perLevel;
-    const label =
-      node.unit === 'special'
-        ? level > 0
-          ? 'Taken'
-          : ''
-        : node.unit === 'points'
-          ? // Task 109: "+0.4 pts" sat next to "+3.0%" and read as a third
-            // currency. 'points' means PERCENTAGE POINTS added to a chance -
-            // Precision, the only node in that unit, adds them to crit chance.
-            `+${total.toFixed(1)}% crit chance`
-          : `+${total.toFixed(1)}%`;
+  let preview = $state<SkillTreePreview | null>(null);
+  let previewing = $state(false);
+  let previewTimer: ReturnType<typeof setTimeout> | null = null;
+  let previewSeq = 0;
 
-    return {
-      ...node,
-      level,
-      max,
-      cost: skillTreeUpgradeCost(node.id, level),
-      blocked: skillNodeBlockedReason(node.id, levels, points),
-      lockedOut,
-      label,
-    };
-  }
+  // Modul: KEYED ON THE CONTENT. `levels` is a fresh array on every snapshot
+  // (about once a second), so an effect on `draft` itself re-asked the server
+  // every second and Confirm flickered disabled while each answer was out.
+  const draftKey = $derived(draft.join(','));
 
-  /** One limb: its root, both boughs, and the crown above them. */
-  const limbs = $derived(
-    SKILL_TREE_NODES.filter((n) => n.ring === 'root').map((root) => {
-      const [a, b] = boughsOfRoot(root.id);
-      return {
-        root: rowFor(root),
-        boughs: [rowFor(SKILL_TREE_NODES[a]), rowFor(SKILL_TREE_NODES[b])],
-        crown: rowFor(SKILL_TREE_NODES[crownOfRoot(root.id)]),
-      };
-    }),
-  );
-
-  const spent = $derived.by(() => {
-    let total = 0;
-    for (const node of SKILL_TREE_NODES) {
-      for (let l = 0; l < (levels[node.id] ?? 0); l++) total += skillTreeUpgradeCost(node.id, l);
-    }
-    return total;
+  $effect(() => {
+    const target = draftKey.split(',').map(Number);
+    if (!def) return;
+    if (previewTimer) clearTimeout(previewTimer);
+    previewTimer = setTimeout(async () => {
+      const seq = ++previewSeq;
+      previewing = true;
+      try {
+        const res = await previewSkillTree(target);
+        if (seq === previewSeq) preview = res;
+      } catch {
+        if (seq === previewSeq) preview = null;
+      } finally {
+        if (seq === previewSeq) previewing = false;
+      }
+    }, 220);
   });
 
-  // Modul: the way back. Ring 2 locks a fork for a NINETY-DAY season, so a
-  // misclick without a respec is three months of regret. Limited rather than
-  // free, or the exclusivity that is the whole choice would be gone.
+  onDestroy(() => {
+    if (previewTimer) clearTimeout(previewTimer);
+    if (holdTimer) clearTimeout(holdTimer);
+  });
+
+  const nodeState = $derived.by(() => {
+    const out = new Map<number, { blocked: string | null; nextCost: number }>();
+    for (const n of preview?.Nodes ?? []) out.set(n.Id, { blocked: n.Blocked, nextCost: n.NextCost });
+    return out;
+  });
+
+  type Status = 'locked' | 'open' | 'owned' | 'draft' | 'maxed' | 'closed';
+
+  function statusOf(node: SkillTreeNodeDef): Status {
+    const have = draft[node.Id] ?? 0;
+    if (node.Fork >= 0 && (draft[node.Fork] ?? 0) > 0 && have === 0) return 'closed';
+    if (have >= node.MaxLevel) return 'maxed';
+    if ((extra[node.Id] ?? 0) > 0) return 'draft';
+    if (have > 0) return 'owned';
+    const st = nodeState.get(node.Id);
+    if (st && st.blocked === null) return 'open';
+    return 'locked';
+  }
+
+  /** One limb per row: root, the two sides of its fork, its crown. */
+  const rows = $derived.by(() => {
+    if (!def) return [];
+    return def.Columns.map((col) => {
+      const of = def!.Nodes.filter((n) => n.Column === col.Id);
+      return {
+        col,
+        root: of.find((n) => n.Kind === 'Root')!,
+        boughs: of.filter((n) => n.Kind === 'Bough').sort((a, b) => a.Lane - b.Lane),
+        crown: of.find((n) => n.Kind === 'Crown')!,
+      };
+    });
+  });
+
+  const LIMB_HUE = ['#e8c15a', '#e2674a', '#57c7e3', '#d94a6a', '#a98cf0'];
+  const RUNE = ['ᚠ', 'ᛏ', 'ᛉ', 'ᚦ', 'ᚨ'];
+
+  // ---- selection, hold and hover --------------------------------------------
+
+  let selected = $state<number | null>(null);
+  let tip = $state<{ id: number; x: number; y: number } | null>(null);
+  let holdTimer: ReturnType<typeof setTimeout> | null = null;
+  let held = false;
+
+  const selectedNode = $derived(def && selected !== null ? def.Nodes[selected] : null);
+
+  // Modul: 350 ms is long enough that a scroll or a tap never trips it and
+  // short enough that a player who means it does not wonder whether it works.
+  // A hold only SHOWS text; tapping opens the same text and more, so nothing
+  // is reachable by long-press alone.
+  function onDown(e: PointerEvent, id: number) {
+    held = false;
+    if (e.pointerType === 'mouse') return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    holdTimer = setTimeout(() => {
+      held = true;
+      tip = { id, x: rect.left + rect.width / 2, y: rect.top };
+    }, 350);
+  }
+
+  function onUp() {
+    if (holdTimer) clearTimeout(holdTimer);
+    holdTimer = null;
+    if (held) tip = null;
+  }
+
+  function onClick(id: number) {
+    if (held) {
+      held = false;
+      return;
+    }
+    tip = null;
+    selected = selected === id ? null : id;
+    // Its own voice rather than the app-wide button click (data-no-click-sound
+    // on the grove): a rune taps like wood, and a shut one knocks dull.
+    if (selected !== null && def) {
+      const st = statusOf(def.Nodes[id]);
+      play(st === 'locked' || st === 'closed' ? 'runeLocked' : 'runeSelect');
+    }
+  }
+
+  function onEnter(e: PointerEvent, id: number) {
+    if (e.pointerType !== 'mouse') return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    tip = { id, x: rect.left + rect.width / 2, y: rect.top };
+  }
+
+  // ---- draft editing ----------------------------------------------------------
+
+  function canAdd(node: SkillTreeNodeDef): string | null {
+    const st = nodeState.get(node.Id);
+    if (!st) return previewing ? 'Checking…' : 'Not loaded yet.';
+    return st.blocked;
+  }
+
+  function add(node: SkillTreeNodeDef, many = false) {
+    if (canAdd(node) !== null) return;
+    const room = node.MaxLevel - (draft[node.Id] ?? 0);
+    const step = many ? room : 1;
+    if (step <= 0) return;
+    extra = extra.map((v, i) => (i === node.Id ? v + step : v));
+    play('runeAdd', many ? 0.9 : 1);
+  }
+
+  function remove(node: SkillTreeNodeDef) {
+    if ((extra[node.Id] ?? 0) <= 0) return;
+    extra = extra.map((v, i) => (i === node.Id ? v - 1 : v));
+  }
+
+  function discard() {
+    extra = new Array(20).fill(0);
+  }
+
+  let committing = $state(false);
+
+  async function confirm() {
+    if (draftCount === 0 || committing) return;
+    committing = true;
+    try {
+      const res = await commitSkillTree(draft);
+      if (res.Reason) {
+        pushLocalNotice(res.Reason, 'error');
+      } else {
+        play('runeConfirm');
+        pushLocalNotice(`Learned - ${res.Spent} point${res.Spent === 1 ? '' : 's'} spent.`, 'info');
+        discard();
+      }
+    } catch {
+      pushLocalNotice('The server did not answer. Nothing was spent.', 'error');
+    } finally {
+      committing = false;
+    }
+  }
+
+  // ---- respec (unchanged rules, see SkillTreeEngine.RespecAsync) ------------
+
   const freeUsed = $derived(Number(snap?.FreeRespecUsed ?? 0) > 0);
   const grants = $derived(Number(snap?.PaidRespecGrants ?? 0));
   const respecBlocked = $derived(respecBlockedReason(freeUsed, grants));
+  const spentTotal = $derived(levels.reduce((a, b) => a + b, 0));
   let confirmingRespec = $state(false);
 
   function doRespec() {
     const outcome = respecSkillTree(freeUsed, grants);
     if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
     confirmingRespec = false;
+    discard();
   }
 
-  /** Task 109: a cost button says what it does - and a full node says so,
-   * rather than showing a bare dash on a dead button. */
-  function costLabel(row: NodeRow): string {
-    if (row.level >= row.max) return 'Maxed';
-    if (row.lockedOut) return 'Locked';
-    return `Learn · ${row.cost} pt`;
+  // ---- the stat preview ----------------------------------------------------
+
+  /** Rows whose value the draft moves, from the server's two sheets. */
+  const changes = $derived.by(() => {
+    const before = preview?.Before;
+    const after = preview?.After;
+    if (!before || !after || draftCount === 0) return [];
+    const old = new Map<string, StatSheetRow>();
+    for (const s of before.Sections) for (const r of s.Rows) old.set(r.Key, r);
+    const out: { label: string; from: string; to: string; up: boolean }[] = [];
+    for (const s of after.Sections) {
+      for (const r of s.Rows) {
+        const o = old.get(r.Key);
+        if (!o || Math.abs(o.Value - r.Value) < 1e-6) continue;
+        out.push({ label: r.Label, from: fmt(o), to: fmt(r), up: r.Value > o.Value });
+      }
+    }
+    return out;
+  });
+
+  function fmt(r: StatSheetRow): string {
+    const v = r.Value;
+    switch (r.Unit) {
+      case 'pct': return `${v.toFixed(1)}%`;
+      case 'mult': return `×${v.toFixed(2)}`;
+      case 's': return `${v.toFixed(2)} s`;
+      case 'per_s': return `${v.toFixed(1)}/s`;
+      default: return Math.round(v).toLocaleString();
+    }
   }
 
-  function buy(nodeId: number) {
-    const outcome = purchaseSkillTreeLevel(nodeId, levels, points);
-    if (!outcome.ok) pushLocalNotice(outcome.reason, 'error');
+  function effectNow(node: SkillTreeNodeDef): string {
+    const l = draft[node.Id] ?? 0;
+    return l > 0 ? node.Effects[l - 1] : '—';
   }
 
-  // ---- the drawing ---------------------------------------------------------
-  //
-  // Modul: THE PAINTING IS THE TREE. THIS IS THE CIRCUITRY ON TOP OF IT.
-  //
-  // This used to draw its own trunk, its own roots and five bare limbs in
-  // brass, laid over the artwork - which owns a magnificent trunk and a root
-  // system of its own. Two trees in the same place, and the drawn one won on
-  // z-order: a fat gold smear up the middle, sticks at angles that belonged to
-  // no branch in the picture, and a curve on the lower left that read as a
-  // banana. It looked like stick figures over a painting because that is what
-  // it was.
-  //
-  // The trunk and the roots are GONE - the art supplies both, better. What is
-  // left is only what carries data: a joint per limb, two buds per fork, a
-  // crown, and glowing connectors between them. They are positioned on the
-  // crotches of the five great branch spreads in the painting rather than on a
-  // geometric fan, so the lines look like they belong to the tree underneath.
-  //
-  // The artwork is an <image> INSIDE this svg rather than a CSS background on
-  // the wrapper, which is what guarantees the two cannot drift: one coordinate
-  // system, one aspect ratio, no way for a node to land off a branch because a
-  // container resized.
-  const ART_W = 1600;
-  const ART_H = 873;
-  const VIEW_W = 460;
-  const VIEW_H = Math.round((VIEW_W * ART_H) / ART_W); // 251 - the art's own aspect
-
-  // Modul: the canopy reaches the top of the illustration, so the centre
-  // limb's label and crown had nowhere to go that was not on top of its own
-  // buds. The viewBox is extended UPWARD by this much and the image still
-  // starts at y=0 - the art is not scaled or cropped, it simply gains sky
-  // above it. Without this the only way to place that one label was to treat
-  // it differently from the other four, which is the thing being fixed.
-  const PAD_TOP = 34;
-
-  // Modul: THE SAME PROBLEM SIDEWAYS, and it shipped because the checker that
-  // would have caught it excludes SVG.
-  //
-  // The outer limbs place their labels at `forkX + outX * 52` with a matching
-  // text-anchor, so the leftmost one reads LEFTWARD from a fork that is
-  // already near x=0. The viewBox started at exactly 0, so "Fortune" ran off
-  // the left edge and was clipped by the viewport itself - measured at
-  // left=-6px on a 390px phone, with the word unreadable.
-  //
-  // Why nothing caught it: clipping-check.mjs skips SVG on purpose, because
-  // an SVG element reports clientWidth in its own coordinate system and that
-  // produced nonsense like "91px overflowing a 29px box". The exclusion was
-  // right about clientWidth and too broad about SVG - a VIEWPORT-relative
-  // measurement is perfectly valid on an SVG node. The checker is fixed
-  // alongside this; see scripts/clipping-check.mjs.
-  //
-  // Same remedy as PAD_TOP: widen the viewBox rather than special-case one
-  // label. The image still starts at x=0 and is not scaled or cropped - the
-  // drawing simply gains margin either side. 34 matches PAD_TOP, and the
-  // widest label ("PRECISION") needs about 30 beyond its anchor.
-  //
-  // 46, not 34, since labels stopped breaking inside a word (2026-10-28):
-  // "FORTUNE" now stays whole, and on a 390px phone it was 7px wider than the
-  // 34-unit margin left it. Twelve more units is about 8px there.
-  const PAD_X = 46;
-
-  // Where the trunk divides in the painting. Every connector starts here.
-  const ORIGIN_X = VIEW_W / 2;
-  const ORIGIN_Y = 196;
-
-  /**
-   * One anchor per limb, placed on the painting's own branch structure:
-   * far-left spread, upper-left, the crown of the canopy, upper-right,
-   * far-right. `out` is the direction that spread grows, which is what the
-   * buds and the label follow.
-   */
-  const LIMB_ANCHORS = [
-    { x: 78, y: 138, outX: -0.94, outY: -0.34, anchor: 'end' },
-    { x: 152, y: 74, outX: -0.66, outY: -0.75, anchor: 'end' },
-    { x: 230, y: 38, outX: 0, outY: -1, anchor: 'middle' },
-    { x: 308, y: 74, outX: 0.66, outY: -0.75, anchor: 'start' },
-    { x: 382, y: 138, outX: 0.94, outY: -0.34, anchor: 'start' },
-  ] as const;
-
-  let hovered = $state<number | null>(null);
-
-  const drawn = $derived(
-    limbs.map((limb, i) => {
-      const a = LIMB_ANCHORS[i % LIMB_ANCHORS.length];
-
-      // A limb still reaches its anchor while untaken, just short of it: the
-      // SHAPE must not change as points go in, or a player cannot see what
-      // they are choosing between before they choose.
-      const growth = 0.82 + 0.18 * (limb.root.level / SKILL_TREE_ROOT_MAX);
-      const jointX = ORIGIN_X + (a.x - ORIGIN_X) * growth;
-      const jointY = ORIGIN_Y + (a.y - ORIGIN_Y) * growth;
-
-      // Modul: A BRANCH LEAVES THE TRUNK UPWARD AND FLATTENS OUT. It does not
-      // bulge sideways.
-      //
-      // This was one quadratic with a bow set at a fixed FRACTION of the run,
-      // perpendicular to it - so every connector was the identical arc at a
-      // different scale, and the two long horizontal ones, having the longest
-      // run, bowed hardest. They came out as swoops that belonged to no branch
-      // in the painting.
-      //
-      // A cubic with two tangents instead. The first control point pushes
-      // straight UP out of the trunk, which is how a limb actually leaves it;
-      // the second pulls back along that spread's own outward direction, so
-      // the curve ARRIVES running the way the painted branch runs. The shape
-      // then falls out of each limb's own geometry rather than being imposed:
-      // the centre limb, whose spread is straight up, comes out very nearly
-      // straight, while the far left and right rise and then level off.
-      //
-      // Both offsets are CAPPED rather than proportional. That is the whole
-      // fix for "the longer ones are too curly" - past the cap a longer run
-      // adds length, not bend.
-      const runX = jointX - ORIGIN_X;
-      const runY = jointY - ORIGIN_Y;
-      const reachLen = Math.hypot(runX, runY);
-      const rise = Math.min(reachLen * 0.5, 58);
-      const settle = Math.min(reachLen * 0.42, 52);
-
-      const c1x = ORIGIN_X + runX * 0.16;
-      const c1y = ORIGIN_Y - rise;
-      const c2x = jointX - a.outX * settle;
-      const c2y = jointY - a.outY * settle;
-
-      const twigs = limb.boughs.map((bough, side) => {
-        const spread = side === 0 ? -0.62 : 0.62;
-        const cos = Math.cos(spread);
-        const sin = Math.sin(spread);
-        const dx = a.outX * cos - a.outY * sin;
-        const dy = a.outX * sin + a.outY * cos;
-        const reach = 24 + 12 * (bough.level / bough.max);
-        return { bough, tipX: jointX + dx * reach, tipY: jointY + dy * reach };
-      });
-
-      const taken = twigs.find((t) => t.bough.level > 0) ?? twigs[0];
-
-      return {
-        id: limb.root.id,
-        name: limb.root.name,
-        level: limb.root.level,
-        limbPath: `M ${ORIGIN_X} ${ORIGIN_Y} C ${c1x} ${c1y} ${c2x} ${c2y} ${jointX} ${jointY}`,
-        width: 1.4 + 2.2 * (limb.root.level / SKILL_TREE_ROOT_MAX),
-        forkX: jointX,
-        forkY: jointY,
-        twigs,
-        crown: limb.crown,
-        crownX: taken.tipX + a.outX * 13,
-        crownY: taken.tipY + a.outY * 13,
-        // Modul: PAST THE BUDS, not among them.
-        //
-        // A bud reaches at most 36 from the joint and is 6.5 across, and the
-        // crown sits 13 beyond the taken one - so anything closer than about
-        // 50 lands on a node. The offset used to be 30, which was inside that
-        // for every limb and merely LOOKED fine on four of them, because their
-        // spreads run diagonally and the label drifted sideways off the buds.
-        // The centre limb's spread is straight up, which is also exactly where
-        // its two buds go, so PRECISION sat on its own fork.
-        //
-        // One rule, one number, all five: out * 52 clears the whole fork
-        // whichever way it points. The headroom above the canopy exists for
-        // this - see PAD_TOP.
-        labelDx: a.outX * 52,
-        labelDy: a.outY * 52 + 4,
-        labelAnchor: a.anchor,
-      };
-    }),
-  );
+  function effectNext(node: SkillTreeNodeDef): string | null {
+    const l = draft[node.Id] ?? 0;
+    return l < node.MaxLevel ? node.Effects[l] : null;
+  }
 </script>
 
-<section class="panel skills">
+<section class="panel skills" style={`--art: url(${backgroundUrl('yggdrasil')})`}>
   <header class="head">
     <div>
       <h2>Skill tree</h2>
       <p class="dim small">
-        Roots are cheap and you want some of each. Each root forks into two, and
-        <strong>taking one locks the other</strong> until a respec or a rebirth. A crown sits
-        above whichever fork you chose.
+        Tap a rune to see what it does, hold it for a quick look. Roots are cheap; each root
+        <strong>forks into two and only one can be taken</strong>; a crown waits above the fork you
+        chose. Nothing is spent until you confirm.
       </p>
     </div>
-    <span class="points">{points} <span class="dim tiny">to spend</span></span>
+    <span class="points" data-testid="skills-points">
+      {preview && draftCount > 0 && preview.Reason === null ? preview.PointsLeft : points}
+      <span class="dim tiny">to spend</span>
+    </span>
   </header>
 
-  <div class="treewrap">
-  <svg
-    class="tree"
-    viewBox={`${-PAD_X} ${-PAD_TOP} ${VIEW_W + PAD_X * 2} ${VIEW_H + PAD_TOP}`}
-    role="img"
-    aria-label="Your skill tree: five limbs, each forking into two branches with a crown above"
-  >
-    <defs>
-      <!-- One soft bloom, reused by every lit element. Cheap: a single blur
-           merged under the source, not a filter per node. -->
-      <!-- Modul: userSpaceOnUse IS LOAD-BEARING, not a tidy-up.
-           A filter region defaults to objectBoundingBox units, and the centre
-           limb's connector is a PERFECTLY VERTICAL LINE - a bounding box of
-           zero width. 220% of zero is zero, so the filter region collapsed and
-           the lit stroke was never painted at all. What survived was its dark
-           casing, which carries no filter: the middle branch rendered as a
-           shadow while the other four glowed, and it looked like the fifth one
-           had been built differently on purpose.
-
-           Pinned to the viewBox in user space instead, where no element's own
-           geometry can shrink it away. -->
-      <filter
-        id="skillglow"
-        filterUnits="userSpaceOnUse"
-        x="-40"
-        y="-40"
-        width={VIEW_W + 80}
-        height={VIEW_H + 80}
-      >
-        <feGaussianBlur stdDeviation="2.2" result="b" />
-        <feMerge>
-          <feMergeNode in="b" />
-          <feMergeNode in="b" />
-          <feMergeNode in="SourceGraphic" />
-        </feMerge>
-      </filter>
-    </defs>
-
-    <image
-      href={backgroundUrl('yggdrasil')}
-      x="0"
-      y="0"
-      width={VIEW_W}
-      height={VIEW_H}
-      preserveAspectRatio="xMidYMid meet"
-      class="art"
-    />
-
-    {#each drawn as limb (limb.id)}
-      <!-- Modul: EVERY CONNECTOR NEEDS A DARK CASING UNDER IT.
-           The centre limb runs straight up the PAINTED TRUNK - the one part of
-           this illustration that is bright, warm and busy, which is also the
-           colour of the glow. It vanished completely: the node at the top of
-           it lit, and nothing appeared to connect it to anything.
-
-           A pale line is only visible over what is darker than it, and this
-           background is a painting, so no single stroke colour can be safe
-           everywhere. Casing first, bright stroke on top - the same answer the
-           labels and the unlit node halos already use. -->
-      <path d={limb.limbPath} class="casing" style={`stroke-width: ${limb.width + 3}`} />
-      <path
-        d={limb.limbPath}
-        class="limb"
-        class:lit={limb.level > 0}
-        class:hot={hovered === limb.id}
-        style={`stroke-width: ${limb.width}`}
-      />
-
-      {#each limb.twigs as twig (twig.bough.id)}
-        <path
-          d={`M ${limb.forkX} ${limb.forkY} L ${twig.tipX} ${twig.tipY}`}
-          class="casing"
-          class:dead={twig.bough.lockedOut}
-          style="stroke-width: 4"
-        />
-        <path
-          d={`M ${limb.forkX} ${limb.forkY} L ${twig.tipX} ${twig.tipY}`}
-          class="twig"
-          class:lit={twig.bough.level > 0}
-          class:dead={twig.bough.lockedOut}
-        />
-        <!-- Modul: A BUD IS A JOINT, not a dot. Halo, ring, core - three
-             circles, because a single filled circle at this size reads as a
-             speck of dust on the painting rather than as something you can
-             spend a point on. -->
-        <g
-          class="node bud"
-          class:lit={twig.bough.level > 0}
-          class:dead={twig.bough.lockedOut}
-          transform={`translate(${twig.tipX} ${twig.tipY})`}
-        >
-          <circle class="halo" r={twig.bough.level > 0 ? 6.5 : 4.5} />
-          <circle class="ring" r={twig.bough.level > 0 ? 3.6 : 2.8} />
-          <circle class="core" r={twig.bough.level > 0 ? 1.7 : 1.1} />
-        </g>
-      {/each}
-
-      <!-- The limb's own joint, where the fork happens. Larger than a bud:
-           it is the thing the two buds hang off. -->
-      <g
-        class="node joint"
-        class:lit={limb.level > 0}
-        class:hot={hovered === limb.id}
-        transform={`translate(${limb.forkX} ${limb.forkY})`}
-      >
-        <circle class="halo" r={limb.level > 0 ? 8.5 : 6} />
-        <circle class="ring" r={limb.level > 0 ? 4.8 : 3.8} />
-        <circle class="core" r={limb.level > 0 ? 2.2 : 1.5} />
-      </g>
-
-      {#if limb.crown.level > 0}
-        <g class="node crown lit" transform={`translate(${limb.crownX} ${limb.crownY})`}>
-          <circle class="halo" r="7.5" />
-          <circle class="ring" r="4.2" />
-          <circle class="core" r="2" />
-        </g>
-      {/if}
-
-    {/each}
-  </svg>
-  <!-- Modul: TASK 109 - THE LIMB LABELS ARE HTML OVER THE PICTURE, NOT SVG
-       TEXT IN IT. SVG text scales with the viewBox, so 11 user units came out
-       at about 6px on a phone; any size big enough there ran FORTUNE off the
-       left edge again (the lesson PAD_X records). HTML text keeps a CSS size
-       of its own (11px floor, growing with the container), and each label is
-       pinned by the edge it grows AWAY from with a max-width up to the
-       picture's border - so a long label wraps instead of leaving the screen. -->
-  {#each drawn as limb (limb.id)}
-    {@const px = ((limb.forkX + limb.labelDx + PAD_X) / (VIEW_W + PAD_X * 2)) * 100}
-    {@const py = ((limb.forkY + limb.labelDy + PAD_TOP) / (VIEW_H + PAD_TOP)) * 100}
-    <span
-      class="limb-label anchor-{limb.labelAnchor}"
-      class:lit={limb.level > 0}
-      style={limb.labelAnchor === 'end'
-        ? `right: ${100 - px}%; top: ${py}%; max-width: ${px}%`
-        : limb.labelAnchor === 'start'
-          ? `left: ${px}%; top: ${py}%; max-width: ${100 - px}%`
-          : `left: ${px}%; top: ${py}%`}
-    >
-      {limb.name}{#if limb.level > 0}{' '}{limb.level}{/if}
-    </span>
-  {/each}
-  </div>
-
-  {#if spent === 0 && points === 0}
-    <!-- Task 109: nothing learned and nothing to spend - a live Respec here
-         was the only thing on the screen that looked pressable, and it would
-         have refunded nothing. ProgressionEngine grants one point per level;
-         DeedRegistry.SkillPointsPerSeal adds two per sealed chapter. -->
-    <p class="dim small earn" data-testid="skills-earn">
-      You earn a skill point every level, and two more for each chapter you seal
-      in the Book of Deeds.
-    </p>
+  {#if loadError}
+    <p class="error">{loadError}</p>
+  {:else if !def}
+    <p class="dim small">Reading the runes…</p>
   {:else}
-  <div class="respec-row">
-    <p class="dim tiny spent">{spent} points invested</p>
-
-    {#if confirmingRespec}
-      <!-- Confirmed, because a respec undoes a season of decisions and the
-           free one does not come back until the rollover. -->
-      <span class="confirm">
-        <span class="dim tiny">Refund every point and unlock both forks again?</span>
-        <button onclick={doRespec}>Yes, respec</button>
-        <button onclick={() => (confirmingRespec = false)}>Cancel</button>
-      </span>
-    {:else}
-      <button
-        class="respec"
-        disabled={respecBlocked !== null}
-        title={respecBlocked ??
-          (freeUsed ? `${grants} paid respec left` : 'Your free respec for this run')}
-        onclick={() => (confirmingRespec = true)}
-      >
-        <!-- {' '} on purpose: Svelte drops the space before an {#if}, which
-             is how this read "Respec(free)". -->
-        Respec{' '}{#if !freeUsed}(free){:else}({grants} left){/if}
-      </button>
-      <DisabledReason text={respecBlocked} />
-    {/if}
-  </div>
-  {/if}
-
-  {#if points > 0}
-    <p class="to-spend" data-testid="skills-to-spend"><strong>{points}</strong> to spend - pick a root below.</p>
-  {/if}
-
-  <div class="limbs">
-    {#each limbs as limb (limb.root.id)}
-      <div
-        class="limb-card"
-        onmouseenter={() => (hovered = limb.root.id)}
-        onmouseleave={() => (hovered = null)}
-        role="group"
-      >
-        <!-- The root -->
-        <div class="node root" class:capped={limb.root.level >= limb.root.max}>
-          <div class="node-text">
-            <strong>{limb.root.name} <span class="lvl">{limb.root.level}/{limb.root.max}</span></strong>
-            <p class="dim small">{limb.root.blurb}</p>
-            {#if limb.root.label}<span class="worth">{limb.root.label}</span>{/if}
-            <DisabledReason text={limb.root.level >= limb.root.max ? null : limb.root.blocked} />
-          </div>
-          <button
-            disabled={limb.root.blocked !== null}
-            title={limb.root.blocked ?? ''}
-            onclick={() => buy(limb.root.id)}
-          >
-            {costLabel(limb.root)}
-          </button>
-        </div>
-
-        <!-- The fork: two boughs, one of which will be locked out -->
-        <div class="fork">
-          {#each limb.boughs as bough (bough.id)}
-            <div class="node bough" class:taken={bough.level > 0} class:locked={bough.lockedOut}>
-              <div class="node-text">
-                <strong>
-                  {bough.name}
-                  <span class="lvl">{bough.level}/{bough.max}</span>
-                </strong>
-                <p class="dim tiny">{bough.blurb}</p>
-                {#if bough.level > 0}<span class="worth">{bough.label}</span>{/if}
-                {#if bough.lockedOut}<span class="dim tiny locked-note">Locked this run</span>{/if}
-                <DisabledReason text={bough.lockedOut || bough.level >= bough.max ? null : bough.blocked} />
-              </div>
+    <div class="grove" role="list" aria-label="Skill tree limbs" data-no-click-sound>
+      {#each rows as row, i (row.col.Id)}
+        <div class="limb" role="listitem" style={`--hue: ${LIMB_HUE[i % LIMB_HUE.length]}`}>
+          <span class="limb-name">
+            {#if skillIcon(row.col.Icon)}<img class="emblem" src={skillIcon(row.col.Icon)} alt="" draggable="false" />{/if}
+            {row.col.Name}
+          </span>
+          <div class="path">
+            {#snippet rune(node: SkillTreeNodeDef, size: 'big' | 'small')}
+              {@const st = statusOf(node)}
+              {@const art = skillIcon(node.Icon)}
               <button
-                disabled={bough.blocked !== null}
-                title={bough.blocked ?? ''}
-                onclick={() => buy(bough.id)}
+                class="rune {st} {size} kind-{node.Kind.toLowerCase()}"
+                class:selected={selected === node.Id}
+                aria-label={`${node.Name}, ${draft[node.Id] ?? 0} of ${node.MaxLevel}`}
+                aria-pressed={selected === node.Id}
+                data-testid={`skill-node-${node.Id}`}
+                onpointerdown={(e) => onDown(e, node.Id)}
+                onpointerup={onUp}
+                onpointercancel={onUp}
+                onpointerleave={() => { onUp(); if (tip?.id === node.Id) tip = null; }}
+                onpointerenter={(e) => onEnter(e, node.Id)}
+                oncontextmenu={(e) => e.preventDefault()}
+                onclick={() => onClick(node.Id)}
               >
-                {costLabel(bough)}
+                {#if art}
+                  <img class="art" src={art} alt="" draggable="false" loading="lazy" />
+                {:else}
+                  <span class="glyph" aria-hidden="true">{node.Kind === 'Crown' ? '✦' : RUNE[i % RUNE.length]}</span>
+                {/if}
+                <span class="badge">{draft[node.Id] ?? 0}/{node.MaxLevel}</span>
+                {#if st === 'locked'}<span class="pad" aria-hidden="true">🔒</span>{/if}
               </button>
-            </div>
-          {/each}
-        </div>
+            {/snippet}
 
-        <!-- The crown -->
-        <div class="node crown" class:taken={limb.crown.level > 0}>
-          <div class="node-text">
-            <strong>
-              <!-- Modul: the crown mark, drawn. It sits next to a name and was
-                   a ♦ - a glyph whose weight and size vary by font family, on
-                   a panel already carrying its own art direction. -->
-              <svg class="crownmark" viewBox="0 0 12 12" aria-hidden="true">
-                <path d="M6 1 L11 6 L6 11 L1 6 Z" fill="currentColor" />
-              </svg>
-              {limb.crown.name}
-            </strong>
-            <p class="dim tiny">{limb.crown.blurb}</p>
-            <DisabledReason text={limb.crown.level > 0 ? null : limb.crown.blocked} />
+            {@render rune(row.root, 'big')}
+            <span class="wire" class:lit={(draft[row.root.Id] ?? 0) >= 5}></span>
+            <div class="fork">
+              {#each row.boughs as b (b.Id)}
+                <div class="fork-cell">
+                  {@render rune(b, 'small')}
+                  <span class="cap tiny">{b.Name}</span>
+                </div>
+              {/each}
+            </div>
+            <span class="wire" class:lit={(draft[row.crown.Id] ?? 0) > 0}></span>
+            {@render rune(row.crown, 'big')}
           </div>
+        </div>
+      {/each}
+    </div>
+
+    <div class="dock">
+    {#if selectedNode}
+      {@const n = selectedNode}
+      {@const st = statusOf(n)}
+      {@const why = canAdd(n)}
+      <div class="sheet" role="dialog" aria-label={n.Name} data-testid="skill-detail">
+        <div class="sheet-head">
+          <strong>{n.Name}</strong>
+          <span class="dim tiny">{n.Kind === 'Root' ? 'Root' : n.Kind === 'Bough' ? 'Branch (one per fork)' : 'Crown'} · {draft[n.Id] ?? 0}/{n.MaxLevel}</span>
+          <button class="x" aria-label="Close" onclick={() => (selected = null)}>✕</button>
+        </div>
+        <p class="dim small">{n.Blurb}</p>
+        <dl>
+          <dt>Now</dt><dd>{effectNow(n)}</dd>
+          {#if effectNext(n)}
+            <dt>Next</dt><dd>{effectNext(n)} <span class="dim tiny">· {nodeState.get(n.Id)?.nextCost ?? n.Costs[draft[n.Id] ?? 0]} pt</span></dd>
+          {/if}
+        </dl>
+        {#if st === 'closed'}
+          <p class="dim tiny">The other side of this fork was taken. A respec opens it again.</p>
+        {/if}
+        <div class="sheet-actions">
+          <button disabled={(extra[n.Id] ?? 0) <= 0} onclick={() => remove(n)} aria-label="Remove one drafted level">−1</button>
+          <button class="primary" disabled={why !== null} onclick={() => add(n)} data-testid="skill-add" data-no-click-sound>+1</button>
+          <button disabled={why !== null} onclick={() => add(n, true)} data-no-click-sound>Max</button>
+        </div>
+        <DisabledReason text={st === 'maxed' || st === 'closed' ? null : why} />
+      </div>
+    {/if}
+
+    {#if draftCount > 0}
+      <div class="draftbar" data-testid="skill-draftbar">
+        <div class="draft-sum">
+          <strong>{draftCount} level{draftCount === 1 ? '' : 's'} drafted</strong>
+          {#if preview?.Reason}
+            <span class="bad tiny">{preview.Reason}</span>
+          {:else if preview}
+            <span class="dim tiny">costs {preview.Cost} · {preview.PointsLeft} left</span>
+          {/if}
+        </div>
+        {#if changes.length > 0}
+          <ul class="changes" data-testid="skill-preview">
+            {#each changes as c (c.label)}
+              <li><span>{c.label}</span> <span class="dim">{c.from}</span> → <span class:up={c.up} class:down={!c.up}>{c.to}</span></li>
+            {/each}
+          </ul>
+        {/if}
+        <div class="draft-actions">
+          <button onclick={discard}>Discard</button>
           <button
-            disabled={limb.crown.blocked !== null}
-            title={limb.crown.blocked ?? ''}
-            onclick={() => buy(limb.crown.id)}
-          >
-            {limb.crown.level > 0 ? 'Taken' : `Take · ${limb.crown.cost} pt`}
-          </button>
+            class="primary"
+            disabled={committing || previewing || !preview || preview.Reason !== null}
+            onclick={confirm}
+            data-no-click-sound
+            data-testid="skill-confirm"
+          >Confirm{preview && preview.Reason === null ? ` (${preview.Cost} pt)` : ''}</button>
         </div>
       </div>
-    {/each}
-  </div>
+    {/if}
+    </div>
+
+    <div class="respec-row">
+      {#if spentTotal === 0 && points === 0}
+        <p class="dim small" data-testid="skills-earn">
+          You earn a skill point every level, and two more for each chapter you seal in the Book of
+          Deeds.
+        </p>
+      {:else if confirmingRespec}
+        <span class="confirm">
+          <span class="dim tiny">Refund every point and unlock both forks again?</span>
+          <button onclick={doRespec}>Yes, respec</button>
+          <button onclick={() => (confirmingRespec = false)}>Cancel</button>
+        </span>
+      {:else if spentTotal > 0}
+        <button
+          class="respec"
+          disabled={respecBlocked !== null}
+          title={respecBlocked ?? (freeUsed ? `${grants} paid respec left` : 'Your free respec for this run')}
+          onclick={() => (confirmingRespec = true)}
+        >
+          Respec{' '}{#if !freeUsed}(free){:else}({grants} left){/if}
+        </button>
+        <DisabledReason text={respecBlocked} />
+      {/if}
+    </div>
+  {/if}
+
+  {#if tip && def}
+    {@const t = def.Nodes[tip.id]}
+    <div class="tip" role="tooltip" style={`left: ${tip.x}px; top: ${tip.y}px`}>
+      <strong>{t.Name}</strong>
+      <span class="tiny">{effectNow(t)}{#if effectNext(t)} → {effectNext(t)}{/if}</span>
+      {#if nodeState.get(t.Id)?.blocked && statusOf(t) === 'locked'}
+        <span class="tiny bad">{nodeState.get(t.Id)?.blocked}</span>
+      {/if}
+    </div>
+  {/if}
 </section>
 
 <style>
-  /* Task 109: on a desktop the cards ran the full width of the window, a
-     blurb one long line and its button a screen away. */
-  .skills {
-    max-width: 60rem;
-    margin-inline: auto;
+  .panel {
+    position: relative;
+    /* Modul: an explicit ink. The page theme is parchment with dark text, and
+       inherited dark text on this darkened painting read as nothing at all. */
+    color: #ece6d8;
+    border-radius: 8px;
+    padding: 1rem 1.15rem 1.25rem;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  /* The painted Yggdrasil, kept from the old panel as atmosphere - darkened so
+     the runes on top of it always win the contrast. */
+  .panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      linear-gradient(180deg, rgb(8 10 14 / 0.72), rgb(8 10 14 / 0.9)),
+      var(--art) center 30% / cover no-repeat;
   }
 
-  .respec-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-  }
-
-  .respec-row .spent {
-    margin: 0;
-  }
-
-  .confirm {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.4rem;
-  }
-
-  .respec {
-    padding: 0.2rem 0.55rem;
-    font-size: 0.78rem;
-  }
-
-  .head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.6rem;
-  }
-
-  .head h2 {
-    margin: 0 0 0.15rem;
-  }
-
-  .head p {
-    margin: 0;
-    max-width: 42ch;
-  }
-
+  .head { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
+  .head h2 { margin: 0 0 0.2rem; color: #f6efe0; }
   .points {
-    flex: none;
-    padding: 0.2rem 0.55rem;
-    border: 1px solid var(--brass);
-    border-radius: var(--radius);
-    color: var(--brass-lit);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .spent {
-    text-align: center;
-    margin: 0 0 0.5rem;
-  }
-
-  /* A CONNECTOR, NOT A BRANCH. The painting supplies the branches; these are
-     the lines of force between the nodes, so they are thin, bright and lit
-     from within rather than bark-coloured and thick. */
-  .twig {
-    fill: none;
-    stroke: rgba(226, 232, 240, 0.5);
-    stroke-width: 1.3;
-    stroke-linecap: round;
-  }
-
-  .twig.lit {
-    stroke: var(--glow-warm);
-    stroke-width: 1.8;
-    filter: url(#skillglow);
-  }
-
-  /* Foreclosed, not absent: still drawn so the fork stays legible. */
-  .twig.dead {
-    stroke: rgba(226, 232, 240, 0.2);
-    opacity: 0.45;
-    stroke-dasharray: 2.5 3.5;
-  }
-
-
-  .limbs {
-    display: grid;
-    gap: 0.6rem;
-  }
-
-  .limb-card {
-    display: grid;
-    gap: 0.3rem;
-    padding: 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    min-width: 0;
-  }
-
-  .node {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.4rem 0.5rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    min-width: 0;
-  }
-
-  .node-text {
-    display: grid;
-    gap: 0.1rem;
-    min-width: 0;
-  }
-
-  .node-text p {
-    margin: 0;
-  }
-
-  .node button {
-    flex: none;
     margin-left: auto;
-    padding: 0.22rem 0.5rem;
-    font-size: 0.78rem;
-    white-space: nowrap;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #f3d27a;
+    text-shadow: 0 0 10px rgb(243 210 122 / 0.45);
   }
 
-  .lvl {
-    color: var(--text-dim);
-    font-weight: 400;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .worth {
-    color: var(--brass-lit);
-    font-size: 0.78rem;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .fork {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.3rem;
-  }
-
-  .node.taken {
-    border-color: var(--brass);
-    background: rgba(216, 180, 90, 0.08);
-  }
-
-  .node.locked {
-    opacity: 0.45;
-  }
-
-  .locked-note {
-    font-style: italic;
-  }
-
-  .node.crown {
-    border-style: dashed;
-  }
-
-  .node.crown.taken {
-    border-style: solid;
-  }
-
-  /* A fork side by side is unreadable under about 26rem - the two cards each
-     get half of an already narrow column and the blurbs turn into one word a
-     line. */
-  @media (max-width: 40rem) {
-    .fork {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  /* Modul: THE ART IS A BACKDROP, THE TREE IS STILL THE SVG.
-     The obvious reading of "replace the tree with this picture" would delete
-     the diagram - but the limbs, twigs and buds are not decoration: they light
-     as points go in, dim when a fork locks the other out, and carry the
-     labels. A painting cannot do any of that. So Yggdrasil goes BEHIND, and
-     the working tree draws on top of it.
-
-     Held back hard (low opacity, blurred a touch) because the drawn limbs have
-     to stay the thing the eye follows. */
-  /* Modul: this sat at 30rem and then 34rem, which on a desktop panel left the
-     illustration a stamp in the middle of a very wide empty box. It is the
-     centrepiece of the screen and the thing the player aims at, so it gets the
-     room. Still capped rather than full-bleed: past this the labels drift so
-     far from the trunk that the fan stops reading as one tree. */
-  .treewrap {
-    /* The limb labels size against this box (cqw), not the window. */
-    container-type: inline-size;
-    position: relative;
-    width: 100%;
-
-    max-width: 52rem;
-    margin: 0.2rem auto 0.6rem;
-  }
-
-  .tree {
-    display: block;
-    position: relative;
-    width: 100%;
-    overflow: visible;
-  }
-
-  /* Modul: the art carries this panel now, so it is shown nearly as painted -
-     it used to sit at 0.4 opacity behind a blur, which made an expensive
-     illustration look like a smudge. Held back only enough that white text
-     and lit nodes still win. */
-  .art {
-    opacity: 0.92;
-  }
-
-  /* Drawn under every connector so a pale line has something to be pale
-     against, whatever the painting is doing underneath it. */
-  .casing {
-    fill: none;
-    stroke: rgba(6, 10, 14, 0.72);
-    stroke-linecap: round;
-  }
-
-  .casing.dead {
-    opacity: 0.45;
-  }
+  .grove { display: grid; gap: 0.6rem; margin-top: 0.75rem; }
 
   .limb {
-    fill: none;
-    stroke: rgba(226, 232, 240, 0.5);
-    stroke-linecap: round;
-    transition: stroke 140ms ease;
+    display: grid;
+    grid-template-columns: 6.2rem 1fr;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 10px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--hue) 14%, transparent), transparent 70%);
+    border: 1px solid color-mix(in srgb, var(--hue) 28%, transparent);
   }
-
-  .limb.lit {
-    stroke: var(--glow-warm);
-    filter: url(#skillglow);
-  }
-
-  .limb.hot {
-    stroke: var(--glow-hot);
-    filter: url(#skillglow);
-  }
-
-  /* --- joints ---------------------------------------------------------------
-     Three concentric circles per node: a halo that bleeds light onto the
-     foliage, a ring that gives it an edge against a busy background, and a
-     core. Unlit ones are cool and quiet; lit ones burn. */
-  /* Modul: an UNLIT node needs contrast, not light. Over painted foliage a
-     faint white circle vanishes into whatever leaf it landed on, so the halo
-     of an unspent node is DARK - it clears a patch of background for the ring
-     to sit against. Spending a point flips that same circle to a glow. */
-  .node .halo {
-    fill: rgba(8, 12, 16, 0.6);
-    stroke: none;
-  }
-
-  .node .ring {
-    fill: rgba(12, 16, 20, 0.7);
-    stroke: rgba(226, 232, 240, 0.72);
-    stroke-width: 1.1;
-  }
-
-  .node .core {
-    fill: rgba(226, 232, 240, 0.8);
-    stroke: none;
-  }
-
-  .node.lit .halo {
-    fill: var(--glow-soft);
-    filter: url(#skillglow);
-  }
-
-  .node.lit .ring {
-    fill: rgba(24, 16, 4, 0.6);
-    stroke: var(--glow-warm);
-    stroke-width: 1.4;
-  }
-
-  .node.lit .core {
-    fill: #fff6d8;
-    filter: url(#skillglow);
-  }
-
-  .node.hot .ring {
-    stroke: var(--glow-hot);
-  }
-
-  .node.dead {
-    opacity: 0.35;
-  }
-
-  /* The crown is the top of a chosen fork - the one node that should look
-     like an achievement rather than a purchase. */
-  .node.crown .ring {
-    stroke: #bfe9ff;
-    stroke-width: 1.6;
-  }
-
-  .node.crown .core {
-    fill: #eaf8ff;
-  }
-
-  .node.crown .halo {
-    fill: rgba(120, 200, 255, 0.3);
-  }
-
-  .limb-label {
-    position: absolute;
-    /* The label's baseline sat at the anchor point in the SVG; lifting the
-       box by its own height puts it back there. */
-    translate: 0 -85%;
-    color: var(--text);
-    font-size: clamp(0.6875rem, 2cqw, 1rem);
-    font-weight: 600;
-    line-height: 1.15;
-    letter-spacing: 0.04em;
+  .limb-name {
+    display: flex;
+    align-items: center;
+    min-height: 1.9rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
+    font-size: 0.8rem;
+    color: var(--hue);
+  }
+  .path { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+  .fork { display: flex; flex-direction: column; gap: 0.3rem; }
+  .fork-cell { display: flex; align-items: center; gap: 0.35rem; min-width: 0; }
+  .cap { opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 6.5rem; }
+
+  .wire {
+    flex: 0 1 1.4rem;
+    min-width: 0.6rem;
+    height: 3px;
+    border-radius: 2px;
+    background: rgb(255 255 255 / 0.14);
+  }
+  .wire.lit {
+    background: var(--hue);
+    box-shadow: 0 0 8px var(--hue);
+  }
+
+  /* ---- a rune ---- */
+  .rune {
+    position: relative;
+    overflow: visible;
+    flex: none;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border-radius: 10px;
+    border: 2px solid rgb(255 255 255 / 0.18);
+    background: radial-gradient(circle at 50% 35%, rgb(255 255 255 / 0.08), rgb(0 0 0 / 0.55));
+    color: rgb(255 255 255 / 0.55);
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-touch-callout: none;
+    user-select: none;
+    transition: transform 0.12s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .rune.big { width: 3.6rem; height: 3.6rem; }
+  .rune.small { width: 3rem; height: 3rem; }
+  .rune.kind-crown { border-radius: 50%; }
+  .rune:active { transform: scale(0.94); }
+  .glyph { font-size: 1.5rem; line-height: 1; }
+  /* Painted icons fill the tile; the border, badge and glow stay the client's
+     so every state reads the same with or without art. */
+  .art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
     pointer-events: none;
-    /* Modul: WRAP BETWEEN WORDS, NEVER INSIDE ONE (owner, 2026-10-28). The
-       panel sets `overflow-wrap: anywhere` for long numbers, and a label pinned
-       near the picture's edge inherited it: a phone printed FORTU / NE and
-       INSIGH / T. A name never breaks now, so "FORTUNE 10" folds its level
-       onto a second line instead. */
-    overflow-wrap: normal;
-    word-break: keep-all;
-    /* The backdrop behind these is painted foliage, not a flat panel, so a
-       dim grey label landed on whatever colour that branch happened to be.
-       Brightened and given a dark halo so it reads over leaf, bark or gap. */
-    text-shadow:
-      0 0 3px rgba(0, 0, 0, 0.95),
-      0 0 2px rgba(0, 0, 0, 0.95),
-      0 1px 1px rgba(0, 0, 0, 0.9);
+  }
+  .rune.locked .art { filter: grayscale(0.85) brightness(0.6); }
+  .rune.closed .art { filter: grayscale(1) brightness(0.45); }
+  .rune.open .art { filter: saturate(0.75) brightness(0.85); }
+  .rune .badge, .rune .pad { z-index: 1; }
+  .emblem {
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+    margin-right: 0.35rem;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--hue) 60%, transparent);
+  }
+  .rune.small .glyph { font-size: 1.2rem; }
+  .badge {
+    position: absolute;
+    right: -0.35rem;
+    bottom: -0.35rem;
+    min-width: 1.6rem;
+    padding: 0 0.25rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.15rem;
+    background: #11141a;
+    border: 1px solid rgb(255 255 255 / 0.25);
+    color: #fff;
+  }
+  .pad { position: absolute; top: -0.4rem; left: -0.4rem; font-size: 0.7rem; }
+
+  .rune.open { border-color: #e7b84f; color: #f3d27a; box-shadow: 0 0 0 1px rgb(231 184 79 / 0.3); }
+  .rune.owned { border-color: var(--hue); color: #fff; box-shadow: 0 0 10px color-mix(in srgb, var(--hue) 55%, transparent); }
+  .rune.draft { border-style: dashed; border-color: #ffe27a; color: #ffe27a; animation: draft 1.6s ease-in-out infinite; }
+  .rune.maxed {
+    border-color: var(--hue);
+    color: #fff;
+    background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--hue) 45%, transparent), rgb(0 0 0 / 0.5));
+    box-shadow: 0 0 16px var(--hue), inset 0 0 10px color-mix(in srgb, var(--hue) 50%, transparent);
+  }
+  .rune.closed { opacity: 0.38; }
+  .rune.closed .glyph { text-decoration: line-through; }
+  .rune.locked { opacity: 0.72; }
+  .rune.selected { outline: 2px solid #fff; outline-offset: 2px; }
+
+  @keyframes draft {
+    50% { box-shadow: 0 0 14px rgb(255 226 122 / 0.6); }
   }
 
-  .limb-label.anchor-end {
-    text-align: right;
+  /* ---- detail sheet ---- */
+  /* Modul: THE DETAIL AND THE DRAFT RIDE THE BOTTOM OF THE VIEW. On a phone the
+     tree is taller than the screen, so a detail drawn after it opened below the
+     fold of the rune that was tapped and looked like nothing happened. */
+  .dock {
+    position: sticky;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+    display: grid;
+    gap: 0.5rem;
+    margin-top: 0.8rem;
+  }
+  @media (min-width: 60rem) {
+    .dock { bottom: 0.5rem; }
   }
 
-  .limb-label.anchor-middle {
-    translate: -50% -85%;
-    white-space: nowrap;
-    text-align: center;
+  .sheet {
+    padding: 0.75rem 0.85rem;
+    border-radius: 10px;
+    background: rgb(12 14 20 / 0.92);
+    border: 1px solid rgb(255 255 255 / 0.16);
+  }
+  .sheet-head { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .sheet-head .x { margin-left: auto; min-width: 2.75rem; min-height: 2.75rem; }
+  .sheet p { margin: 0.3rem 0 0.4rem; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 0.15rem 0.6rem; margin: 0.2rem 0 0.5rem; }
+  dt { opacity: 0.7; font-size: 0.85rem; }
+  dd { margin: 0; font-size: 0.9rem; }
+  .sheet-actions, .draft-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .sheet-actions button, .draft-actions button { min-height: 2.75rem; min-width: 3.5rem; }
+  .primary { font-weight: 700; }
+
+  /* ---- draft bar ---- */
+  .draftbar {
+    padding: 0.7rem 0.85rem;
+    border-radius: 10px;
+    background: rgb(30 26 12 / 0.95);
+    border: 1px dashed #ffe27a;
+    display: grid;
+    gap: 0.5rem;
+  }
+  .draft-sum { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: baseline; }
+  .changes { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; font-size: 0.85rem; }
+  .up { color: #7fe08a; font-weight: 700; }
+  .down { color: #ff8a7a; font-weight: 700; }
+  .bad { color: #ff8a7a; }
+  .error { color: #ff8a7a; }
+
+  .respec-row { display: flex; gap: 0.6rem; flex-wrap: wrap; align-items: center; margin-top: 0.8rem; }
+  .confirm { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+
+  .tip {
+    position: fixed;
+    z-index: 50;
+    transform: translate(-50%, calc(-100% - 8px));
+    max-width: min(16rem, calc(100vw - 2rem));
+    display: grid;
+    gap: 0.15rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    background: #0d1016;
+    border: 1px solid rgb(255 255 255 / 0.22);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.5);
+    pointer-events: none;
   }
 
-  .limb-label.lit {
-    color: #ffeec2;
+  .small { font-size: 0.9rem; max-width: 46rem; }
+  .tiny { font-size: 0.8rem; }
+  /* The app's global .dim is a dark ink for parchment; on this panel it has to
+     be a light one. */
+  .panel .dim { color: #c9c0ad; opacity: 1; }
+  .panel .sheet button:not(.primary):not(.x),
+  .panel .draft-actions button:not(.primary),
+  .panel .respec-row button,
+  .panel .sheet .x { color: #2a2218; }
+
+  /* Wide screens: five limbs standing side by side, root at the foot and crown
+     at the top, so the screen reads as the tree it is named after. */
+  @media (min-width: 60rem) {
+    .grove { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; }
+    .limb {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      background: linear-gradient(0deg, color-mix(in srgb, var(--hue) 16%, transparent), transparent 80%);
+    }
+    .limb-name { order: 2; }
+    .path { flex-direction: column-reverse; gap: 0.5rem; }
+    .fork { flex-direction: row; gap: 0.9rem; }
+    .fork-cell { flex-direction: column; }
+    .cap { max-width: 5.5rem; text-align: center; }
+    .wire { flex: none; width: 3px; height: 1.4rem; min-width: 0; }
+    .rune.big { width: 4.2rem; height: 4.2rem; }
+    .rune.small { width: 3.4rem; height: 3.4rem; }
   }
 
-  .earn {
-    text-align: center;
-    margin: 0 auto 0.6rem;
-  }
-
-  .to-spend {
-    margin: 0 0 0.5rem;
-    color: var(--brass-lit);
+  @media (max-width: 26rem) {
+    .limb { grid-template-columns: 1fr; }
+    .rune.big { width: 3.2rem; height: 3.2rem; }
+    .rune.small { width: 2.75rem; height: 2.75rem; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .limb,
-    .node .ring,
-    .node .core {
-      transition: none;
-    }
-  }
-
-  .panel {
-    border-radius: 8px;
-    padding: 1rem 1.15rem 1.25rem;
-  }
-
-  header {
-    display: flex;
-    align-items: baseline;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-bottom: 0.4rem;
-  }
-  header .dim { margin-left: auto; }
-
-  .small { font-size: 0.9rem; max-width: 46rem; }
-  .tiny  { font-size: 0.8rem; }
-  .dim   { opacity: 0.75; }
-
-
-
-  /* A maxed branch stays fully legible - it is an achievement, not a disabled
-     control, and dimming it would read as "broken". */
-
-  .head {
-    display: flex;
-    align-items: baseline;
-    gap: 0.6rem;
-  }
-
-
-
-
-  .crownmark {
-    width: 0.7em;
-    height: 0.7em;
-    margin-right: 0.25em;
+    .rune { transition: none; }
+    .rune.draft { animation: none; }
   }
 </style>

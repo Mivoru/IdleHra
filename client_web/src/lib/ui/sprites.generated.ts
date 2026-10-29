@@ -264,6 +264,52 @@ export const TOOL_ICONS: Readonly<Record<'axe' | 'pickaxe' | 'rod', readonly str
   ]
 };
 
+/** Skill tree icons by slug; the tree definition names the slug. */
+export const SKILL_ICONS: Readonly<Record<string, string>> = {
+  "bloodthirst": "SkillIcons/bloodthirst.webp",
+  "bossbreaker": "SkillIcons/bossbreaker.webp",
+  "breach": "SkillIcons/breach.webp",
+  "codex_scholar": "SkillIcons/codex_scholar.webp",
+  "col_fortune": "SkillIcons/col_fortune.webp",
+  "col_guard": "SkillIcons/col_guard.webp",
+  "col_might": "SkillIcons/col_might.webp",
+  "col_precision": "SkillIcons/col_precision.webp",
+  "counterstroke": "SkillIcons/counterstroke.webp",
+  "craft": "SkillIcons/craft.webp",
+  "cruel_edge": "SkillIcons/cruel_edge.webp",
+  "crushing_blow": "SkillIcons/crushing_blow.webp",
+  "double_strike": "SkillIcons/double_strike.webp",
+  "echo": "SkillIcons/echo.webp",
+  "edge": "SkillIcons/edge.webp",
+  "evasion": "SkillIcons/evasion.webp",
+  "executioner": "SkillIcons/executioner.webp",
+  "frenzy": "SkillIcons/frenzy.webp",
+  "golden_fleece": "SkillIcons/golden_fleece.webp",
+  "golden_touch": "SkillIcons/golden_touch.webp",
+  "harvest": "SkillIcons/harvest.webp",
+  "heavy_hand": "SkillIcons/heavy_hand.webp",
+  "ironhide": "SkillIcons/ironhide.webp",
+  "keen_eye": "SkillIcons/keen_eye.webp",
+  "know_your_prey": "SkillIcons/know_your_prey.webp",
+  "last_stand": "SkillIcons/last_stand.webp",
+  "living_fortress": "SkillIcons/living_fortress.webp",
+  "perfect_sequence": "SkillIcons/perfect_sequence.webp",
+  "piercing_crit": "SkillIcons/piercing_crit.webp",
+  "plenty": "SkillIcons/plenty.webp",
+  "quick_study": "SkillIcons/quick_study.webp",
+  "rarity": "SkillIcons/rarity.webp",
+  "relentless": "SkillIcons/relentless.webp",
+  "riposte": "SkillIcons/riposte.webp",
+  "ruin": "SkillIcons/ruin.webp",
+  "scavenger": "SkillIcons/scavenger.webp",
+  "scholar": "SkillIcons/scholar.webp",
+  "shield_wall": "SkillIcons/shield_wall.webp",
+  "steady_hand": "SkillIcons/steady_hand.webp",
+  "thunderer": "SkillIcons/thunderer.webp",
+  "trophy_hunter": "SkillIcons/trophy_hunter.webp",
+  "vitality": "SkillIcons/vitality.webp"
+};
+
 export const CURRENCY_ICONS: Readonly<{ gold?: string; diamond?: string }> = {
   "diamond": "Others/Gem.webp",
   "gold": "Others/Gold.webp"

@@ -11,6 +11,7 @@ import {
   RACE_ICONS,
   TOOL_ICONS,
   CURRENCY_ICONS,
+  SKILL_ICONS,
 } from './sprites.generated';
 
 // Modul: spriteUrl and backgroundUrl live in spriteUrl.ts so the login form
@@ -113,4 +114,10 @@ export function avatarIcon(art: string | null | undefined): string | null {
     if (path.endsWith(suffix)) return spriteUrl(path);
   }
   return null;
+}
+
+/** A skill tree icon by the slug the server's tree definition gives, or null. */
+export function skillIcon(slug: string | null | undefined): string | null {
+  const path = slug ? SKILL_ICONS[slug] : undefined;
+  return path ? spriteUrl(path) : null;
 }

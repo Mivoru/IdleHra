@@ -26,6 +26,9 @@ browser's own 404. Dropping a file in starts playing it with no code change.
 The miss is remembered per session, so an absent clip is fetched once rather
 than on every swing.
 
+The **2026-10-29** clips were generated with the ElevenLabs Sound Effects API
+and converted the same way; the prompts are in `docs/design/SKILL_TREE_ART.md`.
+
 **What is still MISSING, and how to make it:** see
 `docs/AUDIO_REQUIREMENTS.md` - every clip the code already calls and does not
 get, the ones worth adding, the music the game has none of, and a sound-design
@@ -58,6 +61,11 @@ loud for what is rare (the first-clear fanfare at -4).
 | `loot_rare_dropped.wav` | A drop at quality tier 10 or above (see `rarity.ts`, `shouldGlow`) |
 | `item_sold.wav` | A chest sale to the vendor - **2026-09-27** |
 | `item_equipped.wav` | An equip sent from the Chest or the Character screen - **2026-09-27** |
+| `combat_hit_crit.wav` | A critical hit, on top of the weapon's own hit - **2026-10-29** |
+| `skill_double.wav` | A Double Strike crit (`FlagDoubleStrike`), at most one skill sound per 250 ms - **2026-10-29** |
+| `skill_crush.wav`, `skill_ruin.wav`, `skill_thunder.wav`, `skill_echo.wav`, `skill_perfect.wav`, `skill_riposte.wav`, `skill_last_stand.wav`, `skill_fleece.wav` | Nothing yet: the skill tree rework's phase 2 callouts (`docs/design/SKILL_TREE_ART.md`) - **2026-10-29** |
+| `ui_rune_select.wav`, `ui_rune_locked.wav` | A rune tapped on the Skill Tree; a locked or closed one knocks - **2026-10-29** |
+| `ui_rune_add.wav`, `ui_rune_confirm.wav` | A level drafted; the draft confirmed - **2026-10-29** |
 | `delve_door_open.wav` | A Delve door chosen - **2026-09-27** |
 | `crafting_completed.wav` | A craft finished |
 | `level_up.wav` | The account level rose - **2026-09-27** |
