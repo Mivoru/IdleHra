@@ -107,6 +107,9 @@ namespace FolkIdle.Server.Engine
 
     public static class StatsCalculator
     {
+        /// <summary>Dodge points a defensive potion adds per item region tier.</summary>
+        public const float DefensivePotionDodgePerTier = 1f;
+
         public static CombatStats Calculate(int str, int dex, int con, int lck, int activeOffensivePotionId = 0, int activeDefensivePotionId = 0, int activeAgePhase = 1, int completedAreaFlags = 0, int activeRaceId = 0, int humanMastery = 0, int vilaMastery = 0, int draugrMastery = 0, EquippedAffixTotals equippedAffixTotals = default, bool isEpicMutation = false, TraitTotals traits = default, EquippedSetIds equippedSetIds = default)
         {
             var stats = new CombatStats();
@@ -230,7 +233,11 @@ namespace FolkIdle.Server.Engine
                 int tier = defDef.RegionTier;
                 stats.MaxHp += tier * 100;
                 stats.FlatPhysicalArmor += tier * 5;
-                stats.DodgeChancePct += tier * 0.01f;
+                // Modul: one dodge POINT a tier. It was `tier * 0.01`, at most
+                // 0.05 - a fraction written into a points stat - and inside the
+                // old 5.26-point dead zone besides, so the potion's dodge had
+                // never done anything (owner, 2026-10-29).
+                stats.DodgeChancePct += tier * DefensivePotionDodgePerTier;
             }
 
             // Modul 13.4.3: innate, always-on racial baseline passives - distinct

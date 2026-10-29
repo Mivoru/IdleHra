@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.36.0',
+    date: '2026-10-29',
+    headline: 'Every point of dodge counts now.',
+    sections: [
+      {
+        title: 'Combat',
+        items: [
+          'Dodge works from the first point. Before, the first five points of dodge did nothing at all - small dodge bonuses on gear, the Nimble trait and the defensive potion were wasted.',
+          'The defensive potion now gives 1 dodge per tier (it gave a hundredth of that).',
+          'To keep the boss walls fair with the stronger dodge, the region 2 and region 3 bosses hit a little harder on their first clear, and the sixth tier of the seasonal boss hits harder.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.35.0',
     date: '2026-10-29',
     headline: 'Tool bonuses for gathering now work.',

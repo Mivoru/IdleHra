@@ -146,7 +146,7 @@ namespace FolkIdle.Server.Domain.Combat
             defence.Rows.Add(new StatSheetRow
             {
                 Key = "dodge", Label = "Dodge", Value = Math.Round(stats.DodgeChancePct, 1),
-                Note = Invariant($"Monsters land {monsterHit:0.#}% of their swings on you: 100 / (100 + dodge), between 5% and 95% - so the first 5 points change nothing."),
+                Note = Invariant($"Monsters land {monsterHit:0.#}% of their swings on you: 100 / (100 + dodge), minus 5%, between 5% and 95%. Every point counts."),
                 AtCap = monsterHit <= 5f,
             });
             defence.Rows.Add(new StatSheetRow

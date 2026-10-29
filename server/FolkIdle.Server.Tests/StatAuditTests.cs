@@ -149,7 +149,6 @@ namespace FolkIdle.Server.Tests
         // lost track of the last batch.
         private static readonly Dictionary<string, string> KnownDefects = new()
         {
-            ["trait:nimble"] = "+4 dodge sits inside the 5.26-point dodge dead zone - PR #200 removes the zone",
         };
 
         private void AssertMovesOrIsListed(string key, Dictionary<string, double> before, Dictionary<string, double> after, List<string> failures)
