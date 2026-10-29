@@ -19,6 +19,38 @@ do next.
 
 ---
 
+# 2026-10-30 - Skill tree rework, phases 1 to 2.3e
+
+**Read `docs/design/SKILL_TREE_HANDOFF.md` first.** It holds the state, the
+code map, the approved bridge redesigns and the plan for slices 2.4 and 2.5.
+The design and every measurement are in `docs/design/SKILL_TREE_REWORK.md`;
+icons, callouts and sounds are in `docs/design/SKILL_TREE_ART.md`.
+Production is 1.0.1344 / client 1.38.2.
+
+- **Players see the new tree screen** on today's 20 nodes. It has draft
+  mode, a server stat preview, painted icons and rune sounds (#216).
+  Node levels left the snapshot for `GET /api/v1/skilltree/state` (#217).
+- **The War half is built but switched off.** `WarTreeRegistry` has 35
+  nodes, and every mechanic except the three bridges is wired live and
+  offline, each held by `WarMechanicParityTests`. It applies only when
+  `SkillTreeVersion == 1`, and only tests set it. Slice 2.5 switches it on.
+- **Measured findings that changed the design:**
+  - Monster armour lets 94-99% of a geared hit through, so armour-ignoring
+    nodes are dead.
+  - The larder at region 4 is mostly rations, so healing nodes buy almost
+    nothing.
+  - Today's best combat build gives +8.6% / +18.5% / +26% / +28.6% / +30.1%
+    DPS in regions 1-5 and saturates at 58 points.
+- **Found and fixed on the way:**
+  - A screen chunk that never answered left "Loading..." up forever (#222:
+    an 8 s stall message plus idle prefetch).
+  - Today's Trophy Hunter promised a material drop that no code ever gave
+    (#223, text fixed).
+- **Next:** the three bridges (redesigns approved, handoff section 4), then
+  2.4 tuning, then the 2.5 switch.
+
+---
+
 # 2026-10-20 - Gear on the slot, a fairer rebirth, the big-chest prompt
 
 A health check after a quiet week, a friend's report ("a new character took
