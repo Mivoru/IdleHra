@@ -859,8 +859,9 @@ Each item was checked by grepping for readers of the field. Status as of
     **Still open, owner's call:** `gather_speed_pct` is added to the speed bonus
     as WHOLE percent (`GatheringToolEngine.TotalSpeedBonusPct`), while the
     tooltip and every other affix read the magnitude as tenths - a Legendary
-    roll shows +5.5% and pays +55%. And all three tools' affixes are summed into
-    one figure, so an axe's yield affix also helps mining.
+    roll shows +5.5% and pays +55% (issue #203). Yield and rare find are per
+    tool since 2026-10-29 (axe woodcutting, pickaxe mining, rod fishing);
+    speed is still one sum across all three tools, which goes with #203.
 11. **The weapon damage affixes are one stat with three names.**
     `melee_dmg_pct`, `range_dmg_pct` and `magic_dmg_pct` all add to the same
     damage bonus. The client now labels all three "Damage" (2026-10-29); the

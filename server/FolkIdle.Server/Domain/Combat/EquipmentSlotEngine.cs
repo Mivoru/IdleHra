@@ -802,8 +802,12 @@ namespace FolkIdle.Server.Domain.Combat
             update.PickaxeToolTier = tools.PickaxeTier;
             update.RodToolTier = tools.RodTier;
             update.ToolGatherSpeedPct = tools.GatherSpeedPct;
-            update.ToolGatherYieldPct = tools.GatherYieldPct;
-            update.ToolRareFindPct = tools.RareFindPct;
+            update.ToolAxeYieldPct = tools.AxeYieldPct;
+            update.ToolPickaxeYieldPct = tools.PickaxeYieldPct;
+            update.ToolRodYieldPct = tools.RodYieldPct;
+            update.ToolAxeRareFindPct = tools.AxeRareFindPct;
+            update.ToolPickaxeRareFindPct = tools.PickaxeRareFindPct;
+            update.ToolRodRareFindPct = tools.RodRareFindPct;
             update.ToolsResolved = true;
             return update;
         }

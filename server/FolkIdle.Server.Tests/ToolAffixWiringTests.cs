@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using FolkIdle.Server.Domain.Combat;
 using FolkIdle.Server.Engine;
+using FolkIdle.Server.Models;
 using Xunit;
 
 namespace FolkIdle.Server.Tests
@@ -30,7 +31,7 @@ namespace FolkIdle.Server.Tests
         {
             var bare = Character();
             var tooled = bare;
-            tooled.ToolGatherYieldPct = 97; // a Legendary roll's centre: "+9.7%"
+            tooled.ToolAxeYieldPct = 97; // a Legendary roll's centre: "+9.7%" (node is woodcutting)
             var node = FirstNode(0);
 
             var bareYield = SimulationEngine.GatheringYieldFor(ref bare, in node, 100);
@@ -44,7 +45,7 @@ namespace FolkIdle.Server.Tests
         {
             var bare = Character();
             var tooled = bare;
-            tooled.ToolRareFindPct = 1180; // ten Legendary rolls' worth, so the weight moves visibly
+            tooled.ToolRodRareFindPct = 1180; // ten Legendary rolls' worth, so the weight moves visibly (node is fishing)
             var node = FirstNode(2);
 
             var bareYield = SimulationEngine.GatheringYieldFor(ref bare, in node, 100);
@@ -56,13 +57,56 @@ namespace FolkIdle.Server.Tests
         }
 
         [Fact]
+        public void A_tools_affixes_pay_only_its_own_profession()
+        {
+            // An axe's yield and rare find used to be summed with the pickaxe's
+            // and the rod's, so they paid on every harvest of every profession.
+            var axeOnly = Character();
+            axeOnly.ToolAxeYieldPct = 400;
+            axeOnly.ToolAxeRareFindPct = 1180;
+            var bare = Character();
+
+            var woodcutting = FirstNode(0);
+            var mining = FirstNode(1);
+            var fishing = FirstNode(2);
+
+            Assert.True(SimulationEngine.GatheringYieldFor(ref axeOnly, in woodcutting, 100).MultiplierPct
+                > SimulationEngine.GatheringYieldFor(ref bare, in woodcutting, 100).MultiplierPct);
+
+            foreach (var other in new[] { mining, fishing })
+            {
+                var node = other;
+                var withAxe = SimulationEngine.GatheringYieldFor(ref axeOnly, in node, 100);
+                var without = SimulationEngine.GatheringYieldFor(ref bare, in node, 100);
+                Assert.Equal(without.MultiplierPct, withAxe.MultiplierPct);
+                Assert.Equal(without.LuckWeightBonus, withAxe.LuckWeightBonus);
+            }
+        }
+
+        [Fact]
+        public void The_resolver_keeps_each_tools_affixes_apart_and_the_wire_sum_whole()
+        {
+            var axe = new EquipmentInstance { Id = 1, BaseItemId = "voidbark_axe_tool", QualityTier = 13, AffixPayload = "{\"gather_yield_pct@5\":45}" };
+            var rod = new EquipmentInstance { Id = 2, BaseItemId = "birch_fishing_rod_tool", QualityTier = 1, AffixPayload = "{\"gather_yield_pct@2\":20,\"gather_rare_find_pct@3\":25}" };
+            var character = new FolkIdle.Server.Models.CharacterRecord { EquippedAxeId = 1, EquippedRodId = 2 };
+            var loadout = ToolLoadoutResolver.Resolve(character, new System.Collections.Generic.Dictionary<long, FolkIdle.Server.Models.EquipmentInstance> { { 1, axe }, { 2, rod } });
+
+            Assert.Equal(45, loadout.AxeYieldPct);
+            Assert.Equal(0, loadout.PickaxeYieldPct);
+            Assert.Equal(20, loadout.RodYieldPct);
+            Assert.Equal(25, loadout.RodRareFindPct);
+            Assert.Equal(65, loadout.GatherYieldPct);
+            Assert.Equal(25, loadout.RareFindPct);
+        }
+
+        [Fact]
         public void The_tool_yield_affix_pays_offline_too()
         {
             var node = FirstNode(0);
             var bare = Character();
             bare.ActiveActivityId = node.ActivityId;
             var tooled = bare;
-            tooled.ToolGatherYieldPct = 400; // +40 points, so the offline draw moves clearly
+            tooled.ToolAxeYieldPct = 400; // +40 points, so the offline draw moves clearly
 
             var bareProjection = OfflineSimulationEngine.CalculateGatheringProjection(ref bare, node, 8 * 3600, new Random(5));
             var tooledProjection = OfflineSimulationEngine.CalculateGatheringProjection(ref tooled, node, 8 * 3600, new Random(5));
