@@ -81,7 +81,20 @@ namespace FolkIdle.Server.Domain.Combat
         // post-clear (farmable) boss is 1.5x tougher. The HP multipliers stay: the
         // fight is binary on the larder, and the window is flat across HP
         // multipliers from 0.6x to 1x of these (measured at 4 settings per region).
-        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.85f, 3.08f, 5.13f, 7.15f };
+        //
+        // Modul: 2026-10-29, the dodge curve lost its dead zone (every dodge
+        // point now counts; SimulationEngine.MonsterHitChance), which takes up
+        // to 5.3% off what reference gear is hit for - enough to tip two walls,
+        // because these fights are binary on sustain. Re-solved with
+        // WallWindowScanTests (FOLKIDLE_WALL_SCAN=1), 0.25% steps:
+        //
+        //   region   1            2            3            4            5
+        //   window   2.112-2.828  1.855-1.882  3.134-3.211  4.553-6.118  6.256-8.777
+        //
+        // Regions 2 and 3 moved to their windows' centres (1.85 -> 1.87,
+        // 3.08 -> 3.17); 1, 4 and 5 were still inside theirs and stay. Region
+        // 2's window is under 1.5% wide - the narrowest wall in the game.
+        private static readonly float[] _attackMultiplierByRegion = { 2.47f, 1.87f, 3.17f, 5.13f, 7.15f };
 
         // The gear each boss is calibrated to need: all eight combat slots of
         // the boss's OWN RegionTier, at this QualityTier, with affixes of at

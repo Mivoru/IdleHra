@@ -54,7 +54,11 @@ namespace FolkIdle.Server.Domain.Combat
             new SeasonalBossTier(3, 3, Wall, 20, 200_000, 750, FrostTitleSlug, null),
             new SeasonalBossTier(4, 4, Wall, 20, 500_000, 1000, null, null),
             new SeasonalBossTier(5, 5, Wall, 25, 1_000_000, 1250, null, null),
-            new SeasonalBossTier(6, 5, new AscensionModifiers(AttackPct: 20, BossHpPct: 50, TimeLimitPctOfSwift: 0),
+            // Modul: AttackPct 20 -> 35, 2026-10-29. With the dodge curve's dead
+            // zone gone, region 5's wall gear stopped dying to tier 6 at 20
+            // (WallWindowScanTests: the rule "wall gear loses, best gear wins
+            // inside an hour" holds for 25-50); 35 is the middle of that.
+            new SeasonalBossTier(6, 5, new AscensionModifiers(AttackPct: 35, BossHpPct: 50, TimeLimitPctOfSwift: 0),
                 30, 2_000_000, 1500, BreakerTitleSlug, "pet_mini_vampire"),
         };
 
