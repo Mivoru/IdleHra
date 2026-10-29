@@ -851,7 +851,10 @@ Each item was checked by grepping for readers of the field. Status as of
    ignores the first 5.26 points of ANY dodge.
 5. **Dead set-bonus fields.** `SetBonusResult.FlatAttackPowerBonus` and
    `CooldownReductionActive` are never assigned, so they are always 0 / false.
-   `StatsCalculator` still adds the flat attack bonus.
+   `StatsCalculator` still adds the flat attack bonus. **FIXED 2026-10-29**
+   (task 122): both removed. The flat +10 was replaced on purpose by scaled
+   fire damage in 56894e46 ("quality, not collection"); cooldown reduction
+   served active skills, which are gone. Neither was persisted or on the wire.
 6. **Tank lineage is unreachable.** Every account is Warrior, and no command
    changes `SelectedLineageId`.
 7. **Percentage affixes do not scale with region.** A region-1 Legendary crit

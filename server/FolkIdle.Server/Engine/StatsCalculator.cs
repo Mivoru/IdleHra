@@ -84,10 +84,10 @@ namespace FolkIdle.Server.Engine
         // Modul: Architecture Overhaul, Part 4. Equipment set bonuses -
         // see SetBonusEngine.
         //
-        // Modul: set bonuses made real. Four of these are now consumed by the
-        // live combat tick: FireDamageMultiplierPct and BurnApplicationActive
-        // in the outgoing damage step, ThornsReflectionActive in the incoming
-        // one, and CooldownReductionActive at the skill-cast site.
+        // Modul: set bonuses made real. FireDamageMultiplierPct and
+        // BurnApplicationActive are consumed in the outgoing damage step and
+        // ThornsReflectionActive in the incoming one. (A fourth,
+        // CooldownReductionActive, served active skills; both are gone.)
         //
         // Modul: set effect rework. The fifth was SetCcImmunityActive, which
         // could never do anything - this game has no player-facing crowd
@@ -96,10 +96,9 @@ namespace FolkIdle.Server.Engine
         // all five 4-piece effects do something.
         public float SetFireDamageMultiplierPct { get; set; }
         public bool SetThornsReflectionActive { get; set; }
-        // Modul: cleanup. SetCooldownReductionActive was removed from here.
-        // The cooldown reduction is applied at the skill-cast site, which is a
-        // command handler with no CombatStats in scope - it reads the flag
-        // straight off SetBonusEngine.Evaluate(payload.CachedSetIds) instead.
+        // Modul: cleanup. SetCooldownReductionActive was removed from here,
+        // and on 2026-10-29 from SetBonusEngine too: the skill-cast site that
+        // read it went with the active skills.
         // Mirroring it onto CombatStats as well left a property with no
         // consumer, which invites a second, divergent code path.
         public bool SetBurnApplicationActive { get; set; }
@@ -359,8 +358,6 @@ namespace FolkIdle.Server.Engine
             Span<int> setIdSpan = stackalloc int[EquippedSetIds.SlotCount];
             equippedSetIds.CopyTo(setIdSpan);
             SetBonusEngine.SetBonusResult setBonus = SetBonusEngine.Evaluate(setIdSpan);
-            stats.FlatMeleeDamage += setBonus.FlatAttackPowerBonus;
-            stats.FlatRangedDamage += setBonus.FlatAttackPowerBonus;
             if (setBonus.TotalArmorMultiplierPct > 0f)
             {
                 stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor * (1f + setBonus.TotalArmorMultiplierPct / 100f));
