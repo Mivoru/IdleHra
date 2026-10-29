@@ -175,7 +175,7 @@ namespace FolkIdle.Server.Tests
             var update = await EquipmentSlotEngine.WithCharacterToolsAsync(db, await EquipmentSlotEngine.BuildNotificationAsync(db, wearer));
             Assert.True(update.ToolsResolved);
             Assert.Equal(1, update.RodToolTier);
-            Assert.Equal(25, update.ToolRareFindPct);
+            Assert.Equal(25, update.ToolRodRareFindPct);
 
             // Since 2026-10-20 tools are each character's own: an update for
             // the SECOND character resolves its (empty) tools rather than

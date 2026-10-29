@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.35.0',
+    date: '2026-10-29',
+    headline: 'Tool bonuses for gathering now work.',
+    sections: [
+      {
+        title: 'Gathering',
+        items: [
+          'The gathering yield bonus on tools now gives what it says: more harvest rolls, online and while you are away. It used to do nothing.',
+          'The rare find bonus on tools now makes rare materials more likely. It used to do nothing.',
+          'Each tool helps only its own work: an axe for woodcutting, a pickaxe for mining, a rod for fishing.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.34.0',
     date: '2026-10-29',
     headline: 'Races now say what they do - and two of them finally do it.',
