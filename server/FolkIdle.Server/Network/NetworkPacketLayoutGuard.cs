@@ -233,7 +233,10 @@ namespace FolkIdle.Server.Network
         // (the armed tier, so the combat screen can name The Cailleach) and
         // SeasonalBossClearedMask (so the ladder unlocks the moment a tier
         // falls), a byte each.
-        public const int ExpectedStateUpdateSize = 865;
+        // Modul: the skill tree's node levels left the stream, 865 -> 845
+        // (2026-10-29, rework slice 2.1b): twenty bytes, now
+        // GET /api/v1/skilltree/state.
+        public const int ExpectedStateUpdateSize = 845;
         public const int ExpectedAuthHandshakeSize = 530;
 
         // Modul: Full-Stack Social Layer, Part 3. 131 -> 139: Whisper

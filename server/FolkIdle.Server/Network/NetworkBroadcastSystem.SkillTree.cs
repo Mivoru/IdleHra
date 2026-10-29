@@ -30,6 +30,7 @@ namespace FolkIdle.Server.Network
             string method = context.Request.HttpMethod;
 
             if (requestPath == "/api/v1/skilltree" && method == "GET") { await HandleSkillTreeDefinition(context); return true; }
+            if (requestPath == "/api/v1/skilltree/state" && method == "GET") { await HandleSkillTreeState(context); return true; }
             if (requestPath == "/api/v1/skilltree/preview" && method == "POST") { await HandleSkillTreePreview(context); return true; }
             if (requestPath == "/api/v1/skilltree/commit" && method == "POST") { await HandleSkillTreeCommit(context); return true; }
             return false;
@@ -74,6 +75,40 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Skill tree definition error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally { context.Response.Close(); }
+        }
+
+        /// <summary>
+        /// GET: the player's ranks, points and respec state - what rode every
+        /// snapshot as twenty bytes until slice 2.1b. Read from the database,
+        /// which every purchase and respec commits before the tick hears of it.
+        /// </summary>
+        private async Task HandleSkillTreeState(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                byte[] levels = await SkillTreeEngine.LoadLevelsAsync(db, playerId);
+                var player = await db.PlayerRecords.FindAsync(playerId);
+                if (player == null) { context.Response.StatusCode = 404; return; }
+
+                await WriteJsonAsync(context, new
+                {
+                    Levels = Array.ConvertAll(levels, b => (int)b),
+                    player.AvailableSkillPoints,
+                    player.FreeRespecUsed,
+                    player.PaidRespecGrants,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Skill tree state error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally { context.Response.Close(); }

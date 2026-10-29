@@ -2490,6 +2490,18 @@ export function fetchSkillTreeDefinition(): Promise<SkillTreeDefinition> {
   return skillTreeDefinition;
 }
 
+/** The player's ranks and respec state - off the snapshot since rework slice 2.1b. */
+export interface SkillTreeState {
+  Levels: number[];
+  AvailableSkillPoints: number;
+  FreeRespecUsed: boolean;
+  PaidRespecGrants: number;
+}
+
+export function fetchSkillTreeState(): Promise<SkillTreeState> {
+  return authedGet<SkillTreeState>('/api/v1/skilltree/state');
+}
+
 export async function previewSkillTree(levels: number[], slot = 0): Promise<SkillTreePreview> {
   const res = await authedPost<SkillTreePreview>('/api/v1/skilltree/preview', { Levels: levels, Slot: slot });
   if (!res) throw new AuthError('POST /api/v1/skilltree/preview answered nothing', 500);

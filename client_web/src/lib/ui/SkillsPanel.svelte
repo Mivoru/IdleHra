@@ -25,6 +25,7 @@
     fetchSkillTreeDefinition,
     previewSkillTree,
     commitSkillTree,
+    fetchSkillTreeState,
     type SkillTreeDefinition,
     type SkillTreeNodeDef,
     type SkillTreePreview,
@@ -34,20 +35,26 @@
   const snap = $derived($playerState);
   const points = $derived(snap?.AvailableSkillPoints ?? 0);
 
-  // The wire still carries one byte per node in SkillTreeRegistry id order.
-  const levels = $derived.by((): number[] => {
-    const s = snap;
-    if (!s) return new Array(20).fill(0);
-    return [
-      s.SkillTree_LootRarity, s.SkillTree_WorldBossDamage, s.SkillTree_CritChance,
-      s.SkillTree_CritDamage, s.SkillTree_XpGain,
-      s.SkillTree_Plenty, s.SkillTree_Rarity, s.SkillTree_FirstBlood,
-      s.SkillTree_TrophyHunter, s.SkillTree_Guile, s.SkillTree_Relentless,
-      s.SkillTree_Bloodthirst, s.SkillTree_Fortitude, s.SkillTree_Craft,
-      s.SkillTree_Harvest,
-      s.SkillTree_GoldenFleece, s.SkillTree_Thunderer, s.SkillTree_DoubleStrike,
-      s.SkillTree_LastStand, s.SkillTree_Scholar,
-    ].map((v) => Number(v) || 0);
+  // Modul: THE RANKS COME FROM GET /api/v1/skilltree/state, not the snapshot
+  // (rework slice 2.1b took twenty bytes off every frame). They are asked
+  // again whenever the points or the respec bytes on the snapshot move - a
+  // purchase, a commit and a respec all move at least one - and a commit's own
+  // answer carries the new levels at once.
+  let levels = $state<number[]>(new Array(20).fill(0));
+  let stateSeq = 0;
+  async function loadState() {
+    const seq = ++stateSeq;
+    try {
+      const st = await fetchSkillTreeState();
+      if (seq === stateSeq) levels = st.Levels;
+    } catch {
+      // The tree keeps its last known ranks; the next change asks again.
+    }
+  }
+  const stamp = $derived(`${points}|${snap?.FreeRespecUsed ?? 0}|${snap?.PaidRespecGrants ?? 0}`);
+  $effect(() => {
+    void stamp;
+    void loadState();
   });
 
   let def = $state<SkillTreeDefinition | null>(null);
@@ -219,6 +226,7 @@
         pushLocalNotice(res.Reason, 'error');
       } else {
         play('runeConfirm');
+        levels = res.Levels;
         pushLocalNotice(`Learned - ${res.Spent} point${res.Spent === 1 ? '' : 's'} spent.`, 'info');
         discard();
       }
