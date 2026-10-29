@@ -94,8 +94,13 @@ namespace FolkIdle.Server.Engine
         public byte PickaxeToolTier;
         public byte RodToolTier;
         public ushort ToolGatherSpeedPct;
-        public ushort ToolGatherYieldPct;
-        public ushort ToolRareFindPct;
+        // Per tool, so each pays only its own profession (2026-10-29).
+        public ushort ToolAxeYieldPct;
+        public ushort ToolPickaxeYieldPct;
+        public ushort ToolRodYieldPct;
+        public ushort ToolAxeRareFindPct;
+        public ushort ToolPickaxeRareFindPct;
+        public ushort ToolRodRareFindPct;
 
         // Identity. Kept alongside the activity state rather than left behind
         // in the payload's Slot1_*/Slot2_*/Slot3_* fields, because combat stats

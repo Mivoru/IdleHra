@@ -147,8 +147,13 @@ namespace FolkIdle.Server.Engine
         public byte PickaxeToolTier;
         public byte RodToolTier;
         public ushort ToolGatherSpeedPct;
-        public ushort ToolGatherYieldPct;
-        public ushort ToolRareFindPct;
+        // Per tool, so each pays only its own profession (2026-10-29).
+        public ushort ToolAxeYieldPct;
+        public ushort ToolPickaxeYieldPct;
+        public ushort ToolRodYieldPct;
+        public ushort ToolAxeRareFindPct;
+        public ushort ToolPickaxeRareFindPct;
+        public ushort ToolRodRareFindPct;
         /// <summary>The six tool fields above were filled (EquipmentSlotEngine.WithCharacterToolsAsync); otherwise the tick leaves the payload's alone.</summary>
         public bool ToolsResolved;
         // Modul: Affix System Unification. Was four loose ints, which could
