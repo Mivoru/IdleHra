@@ -35,6 +35,28 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.38.0',
+    date: '2026-10-29',
+    headline: 'A new Skill Tree screen: plan your build first, then confirm it.',
+    sections: [
+      {
+        title: 'Skill Tree',
+        items: [
+          'Skills are now runes. Tap one to see what it does now and at its next level, and why it is locked if it is. Hold it, or point at it with a mouse, for a quick look.',
+          'Nothing is spent when you tap. Add levels to as many runes as you like, see exactly how your stats change, then press Confirm. Discard throws the plan away, so a misclick never costs a point.',
+          'On a wide screen the five limbs stand side by side like a tree, roots at the bottom and crowns on top.',
+          'The runes have their own sounds now.',
+        ],
+      },
+      {
+        title: 'Combat',
+        items: [
+          'Critical hits have their own heavier sound, and a Double Strike has one too.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.37.0',
     date: '2026-10-29',
     headline: 'Gathering bonuses count in full, and the Fairy gets the dodge she was missing.',
