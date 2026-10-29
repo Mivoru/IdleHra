@@ -5,10 +5,10 @@ from older docs. Every number below is a constant or a formula in the code, and
 each section names the file that owns it. If this document and the code
 disagree, the code wins. Re-check the file before you tune anything.
 
-Section 16 lists the defects found while writing this. Four of them were stats
-that a screen promises and the simulation never applied. Items 1 and 2 were
-fixed on 2026-10-29 (PR "stats: pay inheritance gathering yield and Fortitude
-armour"); section 16 marks each item's status.
+Section 16 lists the defects found while writing this and while fixing them.
+By the end of 2026-10-29 every item is fixed and live, kept on purpose, or
+parked by the owner - its status table says which, and where. The sections
+above describe the code as of production 1.0.1310 (client 1.37.0).
 
 ---
 
@@ -826,16 +826,16 @@ end of 2026-10-29:
 |---|---|---|
 | 1, 2 | FIXED, live | #197 |
 | 3 | FIXED, live | #199 |
-| 4 | attack speed FIXED, live (#199); dodge + potion in PR #200; Fairy's ranged damage open | TASK_BOARD 124 |
+| 4 | FIXED, live: attack speed (#199), dodge curve + potion (#200), Fairy's ranged bonus became +5 dodge (#212) | - |
 | 5 | FIXED | #207 |
-| 6 | open, design | TASK_BOARD 125 |
+| 6 | RESOLVED, live: Tank removed | #212 |
 | 7 | kept on purpose | - |
-| 8 | open, design | TASK_BOARD 125 |
+| 8 | kept on purpose for now (owner: ring stays block-only) | TASK_BOARD 125 |
 | 9 | FIXED | #206 |
-| 10 | yield and rare find FIXED, live (#202); speed open | issue #203, TASK_BOARD 121 |
+| 10 | FIXED, live: yield + rare find (#202), speed tooltip + per-tool scope (#211) | issue #203 closed |
 | 11 | labels FIXED, live | #197 |
-| 12 | open, balance | TASK_BOARD 127 |
-| 13 | open, design | TASK_BOARD 125 |
+| 12 | FIXED, live: the flaw applies | #211 |
+| 13 | parked with Guild Wars (owner) | TASK_BOARD, "Parked by the owner" |
 
 `StatAuditTests` (task 126, #208) now fails the suite when a stat has no
 consumer or a percentage affix pays a different number than its tooltip, so
@@ -872,9 +872,10 @@ a new item of this kind is caught in CI rather than by reading code.
    The ±0.15 lines date from when `CombatDamageModel` read attack speed as a
    FRACTION (see its "read as a fraction" comment), so 15% was the author's
    intent. **Attack speed FIXED 2026-10-29** to ±15 (owner's choice). The
-   potion dodge and Vila's ranged damage remain open; the dodge question is
-   bigger than the potion, because `MonsterHitChance` clamps at 95% and so
-   ignores the first 5.26 points of ANY dodge.
+   dodge question turned out bigger than the potion: `MonsterHitChance`
+   clamped at 95% and so ignored the first 5.26 points of ANY dodge. **FIXED
+   2026-10-29** (#200): the curve lost its dead zone, the potion gives a point
+   a tier, and the boss walls were re-solved for it.
 5. **Dead set-bonus fields.** `SetBonusResult.FlatAttackPowerBonus` and
    `CooldownReductionActive` are never assigned, so they are always 0 / false.
    `StatsCalculator` still adds the flat attack bonus. **FIXED 2026-10-29**
@@ -923,8 +924,10 @@ a new item of this kind is caught in CI rather than by reading code.
 12. **The Clumsy Hands flaw does nothing.** Found by the stat audit on
     2026-10-29. Its -6% gathering speed is dropped by two `> 0` guards in
     `GatheringToolEngine` (`TotalSpeedBonusPct` and `ComputeRequiredTicks`).
-    The other flaws apply. TASK_BOARD 127.
+    The other flaws apply. TASK_BOARD 127. **FIXED 2026-10-29** (#211): both
+    guards are gone; gathering extras multiply and may be negative (floor -50).
 13. **Legacy perks can be neither bought nor earned.** No client screen calls
     `purchaseLegacyUnlock`, and legacy shards are credited only by
     `GuildWarEngine` - Guild Wars are parked. Production, 2026-10-29: 0 of 26
     accounts hold a perk; one account holds shards (37,628). TASK_BOARD 125.
+    **PARKED 2026-10-29** by the owner, with Guild Wars.
