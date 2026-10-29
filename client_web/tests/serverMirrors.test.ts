@@ -7,6 +7,7 @@ import {
 } from '../src/lib/net/commands';
 import { MAX_MARKET_PRICE, MAX_FORGE_LEVEL } from '../src/lib/net/commands';
 import { KNOWN_AFFIX_IDS } from '../src/lib/ui/affixes';
+import { SKILL_PROC, SKILL_CALLOUTS } from '../src/lib/ui/skillProcs';
 import { LANGUAGES } from '../src/lib/ui/i18n';
 import {
   FIRST_CLEAR_HP_MULTIPLIERS,
@@ -997,5 +998,18 @@ describe('the Wiki rebirth tables mirror RebirthRules', () => {
       expect(wiki.REBIRTH_ROADMAP.find((r) => r.rebirth === Number(n))?.rewards).toContain(name);
     }
   });
-});
 
+  // 2026-10-29: the skill callouts. Proc crosses the wire as a number, so the
+  // client's names for those numbers are compared with the server's.
+  it('names every skill proc the server can send, by the same number', () => {
+    const packet = read(serverRoot, 'Network', 'ResponseCombatEventPacket.cs');
+    const block = packet.slice(packet.indexOf('public static class SkillProc'));
+    const server = Object.fromEntries(
+      [...block.matchAll(/public const byte (\w+) = (\d+);/g)].map(([, name, n]) => [name, Number(n)]),
+    );
+    expect(server).toEqual(SKILL_PROC);
+    for (const [name, id] of Object.entries(SKILL_PROC)) {
+      if (id !== 0) expect(SKILL_CALLOUTS[id], `${name} has no callout`).toBeDefined();
+    }
+  });
+});

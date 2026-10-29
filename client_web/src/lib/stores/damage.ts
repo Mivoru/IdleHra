@@ -45,6 +45,9 @@ export interface DamageEvent {
 
   /** 0 melee, 1 ranged, 2 magic - which effect to draw. */
   weaponKind: number;
+
+  /** The skill that fired on this hit (ui/skillProcs.ts SKILL_PROC), 0 for none. */
+  proc: number;
 }
 
 /** How long a number stays on screen. Matches the CSS animation duration. */
@@ -70,7 +73,7 @@ export class DamageFeed {
    * `amount` is whole hit points and already final - post-armour, post-crit,
    * burn folded in. Nothing here recomputes or second-guesses it.
    */
-  push(amount: number, isCrit: boolean, weaponKind: number, atMs: number, isDoubleCrit = false): DamageEvent | null {
+  push(amount: number, isCrit: boolean, weaponKind: number, atMs: number, isDoubleCrit = false, proc = 0): DamageEvent | null {
     if (!Number.isFinite(amount) || amount <= 0) return null;
 
     const event: DamageEvent = {
@@ -81,6 +84,7 @@ export class DamageFeed {
       isCrit,
       isDoubleCrit: isCrit && isDoubleCrit,
       weaponKind,
+      proc,
     };
     this.events = [...this.events, event].slice(-MAX_LIVE_DAMAGE_TEXTS);
     this.record(amount);

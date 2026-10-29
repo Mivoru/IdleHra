@@ -260,7 +260,9 @@ namespace FolkIdle.Server.Network
         // Without Sequence it would be 22 and collide exactly with the loot
         // drop above as it was before task 49, which the binary receive loops - demultiplexing on length
         // alone - could not tell apart. The check below is what caught that.
-        public const int ExpectedResponseCombatEventSize = 26;
+        // Modul: 26 -> 27 (2026-10-29): Proc, the skill that fired (rework
+        // slice 2.3). 27 collides with no other packet.
+        public const int ExpectedResponseCombatEventSize = 27;
 
         public static void Validate()
         {

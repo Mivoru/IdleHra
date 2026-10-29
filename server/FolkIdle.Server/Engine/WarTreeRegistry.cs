@@ -24,6 +24,10 @@ namespace FolkIdle.Server.Engine
         RarityElevationPct,
         BossDamagePct,
         MonsterArmourCutPct,
+        /// <summary>Chance per hit, in tenths of a percent, that the hit lands for double.</summary>
+        CrushingChance,
+        /// <summary>Extra damage, in tenths of a percent, on a hit against a monster at full health.</summary>
+        FirstStrikePct,
     }
 
     /// <summary>
@@ -68,7 +72,7 @@ namespace FolkIdle.Server.Engine
 
         // Node ids, in table order.
         public const int Scavenger = 20, GoldenTouch = 21, TrophyHunter = 22, Plenty = 23, Rarity = 24, QuickStudy = 25, CodexScholar = 26, GoldenFleece = 27;
-        public const int Edge = 28, Breach = 29, CrushingBlow = 30, Executioner = 31, Bossbreaker = 32, HeavyHand = 33, Thunderer = 34, Ruin = 35;
+        public const int Edge = 28, FirstStrike = 29, CrushingBlow = 30, Executioner = 31, Bossbreaker = 32, HeavyHand = 33, Thunderer = 34, Ruin = 35;
         public const int KeenEye = 36, CruelEdge = 37, Relentless = 38, Echo = 39, Frenzy = 40, SteadyHand = 41, DoubleStrike = 42, PerfectSequence = 43;
         public const int Vitality = 44, Ironhide = 45, Bloodthirst = 46, Evasion = 47, ShieldWall = 48, Riposte = 49, LastStand = 50, LivingFortress = 51;
         public const int KnowYourPrey = 52, PiercingCrit = 53, Counterstroke = 54;
@@ -86,12 +90,12 @@ namespace FolkIdle.Server.Engine
         private static WarNodeDef?[] Build()
         {
             var t = new WarNodeDef?[SkillRankBuffer.Length];
-            void Add(int id, string name, string icon, int column, int row, int lane, string kind, int max, int cost, WarEffect effect, int perRank, string text, int fork = -1, int bridge = -1)
+            void Add(int id, string name, string icon, int column, int row, int lane, string kind, int max, int cost, WarEffect effect, int perRank, string text, int fork = -1, int bridge = -1, int[]? ranks = null)
                 => t[id] = new WarNodeDef
                 {
                     Id = id, Name = name, Icon = icon, Column = column, Row = row, Lane = lane, Kind = kind,
                     MaxLevel = max, CostPerRank = cost, Effect = effect, PerRankTenths = perRank, EffectText = text,
-                    Fork = fork, BridgeColumn = bridge,
+                    Fork = fork, BridgeColumn = bridge, RankValues = ranks,
                 };
 
             // ---- Fortune: farms richer, and grows stronger slowly --------------
@@ -106,8 +110,14 @@ namespace FolkIdle.Server.Engine
 
             // ---- Might: hits hard, breaks armour, kills bosses ----------------
             Add(Edge, "Edge", "edge", ColumnMight, 0, 0, "Minor", 5, 1, WarEffect.DamagePct, 15, "+{0}% damage");
-            Add(Breach, "Breach", "breach", ColumnMight, 0, 1, "Minor", 5, 1, WarEffect.MonsterArmourCutPct, 40, "Monster armour -{0}%");
-            Add(CrushingBlow, "Crushing Blow", "crushing_blow", ColumnMight, 1, -1, "Notable", 3, 2, WarEffect.Mechanic, 0, "A chance that a hit ignores monster armour");
+            // Modul: NOT ARMOUR (owner, 2026-10-29). Breach cut monster armour and
+            // Crushing Blow ignored it, and measured, armour lets 94-99% of a
+            // Rare-geared hit through (penetration affixes cancel it), so both
+            // were worth 0.4-1.6% DPS together. Crushing Blow doubles a hit
+            // instead; First Strike rewards the opening hit, which pays in
+            // short farming fights and barely moves a long boss wall.
+            Add(FirstStrike, "First Strike", "breach", ColumnMight, 0, 1, "Minor", 5, 1, WarEffect.FirstStrikePct, 250, "+{0}% damage on the first hit against each monster");
+            Add(CrushingBlow, "Crushing Blow", "crushing_blow", ColumnMight, 1, -1, "Notable", 3, 2, WarEffect.CrushingChance, 0, "{0}% chance a hit lands for double damage", ranks: new[] { 30, 60, 100 });
             Add(Executioner, "Executioner", "executioner", ColumnMight, 2, 0, "Fork", 5, 1, WarEffect.Mechanic, 0, "More damage against monsters below 35% health", fork: Bossbreaker);
             Add(Bossbreaker, "Bossbreaker", "bossbreaker", ColumnMight, 2, 1, "Fork", 5, 1, WarEffect.BossDamagePct, 40, "+{0}% damage against bosses", fork: Executioner);
             Add(HeavyHand, "Heavy Hand", "heavy_hand", ColumnMight, 3, 0, "Minor", 5, 1, WarEffect.DamagePct, 15, "+{0}% damage");
@@ -151,6 +161,7 @@ namespace FolkIdle.Server.Engine
         {
             WarEffect.DamagePct, WarEffect.CritChancePoints, WarEffect.CritDamagePct, WarEffect.AttackIntervalPct,
             WarEffect.MaxHpPct, WarEffect.ArmourPct, WarEffect.DodgePoints, WarEffect.BlockPoints, WarEffect.AccuracyPoints,
+            WarEffect.FirstStrikePct, WarEffect.CrushingChance,
         };
 
         public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);
@@ -240,7 +251,7 @@ namespace FolkIdle.Server.Engine
             {
                 int rank = Math.Min((int)payload.SkillRanks[n.Id], n.MaxLevel);
                 if (rank <= 0 || n.Effect == WarEffect.Mechanic) continue;
-                int v = rank * n.PerRankTenths;
+                int v = n.ValueAt(rank);
                 switch (n.Effect)
                 {
                     case WarEffect.DamagePct: e.DamageTenthsPct += v; break;
@@ -252,6 +263,8 @@ namespace FolkIdle.Server.Engine
                     case WarEffect.DodgePoints: e.DodgeTenths += v; break;
                     case WarEffect.BlockPoints: e.BlockTenths += v; break;
                     case WarEffect.AccuracyPoints: e.AccuracyTenths += v; break;
+                    case WarEffect.FirstStrikePct: e.FirstStrikeTenthsPct += v; break;
+                    case WarEffect.CrushingChance: e.CrushingChanceTenths += v; break;
                 }
             }
             return e;
@@ -280,6 +293,11 @@ namespace FolkIdle.Server.Engine
         public int PerRankTenths { get; init; }
         /// <summary>The effect at a level; {0} is the total for a stat node.</summary>
         public string EffectText { get; init; } = string.Empty;
+        /// <summary>The value at each rank when it is not linear (Crushing Blow's 3 / 6 / 10%); null for rank x PerRankTenths.</summary>
+        public int[]? RankValues { get; init; }
+
+        public int ValueAt(int rank)
+            => rank <= 0 ? 0 : RankValues is { } list ? list[Math.Min(rank, list.Length) - 1] : rank * PerRankTenths;
     }
 
     /// <summary>A payload's War stat effects, summed, in tenths (15 = 1.5).</summary>
@@ -294,5 +312,13 @@ namespace FolkIdle.Server.Engine
         public int DodgeTenths;
         public int BlockTenths;
         public int AccuracyTenths;
+        public int FirstStrikeTenthsPct;
+        public int CrushingChanceTenths;
+
+        /// <summary>Crushing Blow doubles a hit: the multiplier it rolls.</summary>
+        public const int CrushingMultiplier = 2;
+
+        /// <summary>Crushing Blow's chance as a probability, 0-1.</summary>
+        public readonly double CrushingChance => Math.Clamp(CrushingChanceTenths / 1000.0, 0.0, 1.0);
     }
 }

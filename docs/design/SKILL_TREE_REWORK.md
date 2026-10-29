@@ -367,6 +367,32 @@ The owner wants balance backed by measurement. Nothing in sections 4 and
      through a pending mechanic node, so nothing past row 0 can be bought
      yet. This is expected until slice 2.3.
 
+   **Slice 2.3a (2026-10-29): Crushing Blow and First Strike.** Measured
+   first, armour ignore was dead weight. Monster armour lets 94-99% of a
+   Rare-geared hit through, because penetration affixes cancel it, so
+   Breach plus an armour-ignoring Crushing Blow were worth 0.4-1.6% DPS.
+   The owner chose the redesign:
+   - Crushing Blow: a 3 / 6 / 10% chance that a hit lands for double.
+   - First Strike, in Breach's place: +25% per rank on the first hit
+     against a monster at full health.
+
+   The parity rows, one hour live against the offline projection, agree
+   within 1-2 kills:
+
+   | Row | Kills with the mechanic | Kills without |
+   |---|---|---|
+   | Crushing r3 | +8% | 178 |
+   | First Strike r3 | +8% | 177 |
+   | Both r5 | +15% | 97 |
+
+   With Crushing Blow buyable, the War half reaches **+27.7% at region 1 and
+   +37.3% at the end on 27 points**, already above today's +30.1%. Slice
+   2.4 has to bring it down.
+
+   The harness's DPS metric cannot see First Strike, because First Strike
+   shortens a kill without raising the mean swing. Slice 2.4 adds a
+   seconds-per-kill objective, measured from the projection's kill model.
+
    The walls do not include the tree. `BossGearBenchmark` assumes only First
    Blood at its maximum, so the War half must either keep a node that
    softens the first-clear HP penalty, or `BossFirstClearRules.MaxHpFor`

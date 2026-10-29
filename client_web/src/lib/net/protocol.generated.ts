@@ -350,7 +350,7 @@ export interface ResponseLootDrop {
   InstanceId: number;
 }
 
-/** ResponseCombatEventPacket - 26 bytes on the binary wire. */
+/** ResponseCombatEventPacket - 27 bytes on the binary wire. */
 export interface ResponseCombatEvent {
   readonly type: typeof PacketType.ResponseCombatEvent;
   PlayerId: number;
@@ -360,6 +360,7 @@ export interface ResponseCombatEvent {
   Sequence: number;
   EventKind: number;
   Flags: number;
+  Proc: number;
 }
 
 /** Fields a client fills in; everything omitted defaults to zero server-side. */
@@ -459,7 +460,7 @@ export const PACKET_BYTE_SIZE = {
   RequestChatMessage: 139,
   ResponseChatMessage: 147,
   ResponseLootDrop: 30,
-  ResponseCombatEvent: 26,
+  ResponseCombatEvent: 27,
 } as const;
 
 /** Server-computed challenge answers. See tests/antiCheat.test.ts. */
