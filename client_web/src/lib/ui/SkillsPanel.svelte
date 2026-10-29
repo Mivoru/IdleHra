@@ -17,7 +17,7 @@
   // The old panel's painted Yggdrasil stays, as the backdrop.
   import { onDestroy } from 'svelte';
   import { playerState, pushLocalNotice } from '../stores/game';
-  import { backgroundUrl } from './sprites';
+  import { backgroundUrl, skillIcon } from './sprites';
   import DisabledReason from './DisabledReason.svelte';
   import { respecSkillTree, respecBlockedReason } from '../net/commands';
   import { play } from './audio';
@@ -310,10 +310,14 @@
     <div class="grove" role="list" aria-label="Skill tree limbs" data-no-click-sound>
       {#each rows as row, i (row.col.Id)}
         <div class="limb" role="listitem" style={`--hue: ${LIMB_HUE[i % LIMB_HUE.length]}`}>
-          <span class="limb-name">{row.col.Name}</span>
+          <span class="limb-name">
+            {#if skillIcon(row.col.Icon)}<img class="emblem" src={skillIcon(row.col.Icon)} alt="" draggable="false" />{/if}
+            {row.col.Name}
+          </span>
           <div class="path">
             {#snippet rune(node: SkillTreeNodeDef, size: 'big' | 'small')}
               {@const st = statusOf(node)}
+              {@const art = skillIcon(node.Icon)}
               <button
                 class="rune {st} {size} kind-{node.Kind.toLowerCase()}"
                 class:selected={selected === node.Id}
@@ -328,7 +332,11 @@
                 oncontextmenu={(e) => e.preventDefault()}
                 onclick={() => onClick(node.Id)}
               >
-                <span class="glyph" aria-hidden="true">{node.Kind === 'Crown' ? '✦' : RUNE[i % RUNE.length]}</span>
+                {#if art}
+                  <img class="art" src={art} alt="" draggable="false" loading="lazy" />
+                {:else}
+                  <span class="glyph" aria-hidden="true">{node.Kind === 'Crown' ? '✦' : RUNE[i % RUNE.length]}</span>
+                {/if}
                 <span class="badge">{draft[node.Id] ?? 0}/{node.MaxLevel}</span>
                 {#if st === 'locked'}<span class="pad" aria-hidden="true">🔒</span>{/if}
               </button>
@@ -496,6 +504,9 @@
     border: 1px solid color-mix(in srgb, var(--hue) 28%, transparent);
   }
   .limb-name {
+    display: flex;
+    align-items: center;
+    min-height: 1.9rem;
     font-weight: 700;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -522,6 +533,7 @@
   /* ---- a rune ---- */
   .rune {
     position: relative;
+    overflow: visible;
     flex: none;
     display: grid;
     place-items: center;
@@ -541,6 +553,30 @@
   .rune.kind-crown { border-radius: 50%; }
   .rune:active { transform: scale(0.94); }
   .glyph { font-size: 1.5rem; line-height: 1; }
+  /* Painted icons fill the tile; the border, badge and glow stay the client's
+     so every state reads the same with or without art. */
+  .art {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    pointer-events: none;
+  }
+  .rune.locked .art { filter: grayscale(0.85) brightness(0.6); }
+  .rune.closed .art { filter: grayscale(1) brightness(0.45); }
+  .rune.open .art { filter: saturate(0.75) brightness(0.85); }
+  .rune .badge, .rune .pad { z-index: 1; }
+  .emblem {
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    object-fit: cover;
+    vertical-align: middle;
+    margin-right: 0.35rem;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--hue) 60%, transparent);
+  }
   .rune.small .glyph { font-size: 1.2rem; }
   .badge {
     position: absolute;

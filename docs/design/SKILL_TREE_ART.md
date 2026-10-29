@@ -18,11 +18,28 @@ CSS/SVG effects), and the sounds (ElevenLabs Sound Effects).
   and a dark tile keeps the glow states readable.
 - **One subject, centred, filling about 70%** of the square. It has to be
   readable at 48 px on a phone.
-- Delivery: drop the PNGs into
-  `client/Assets/Images/SpritesWeb/SkillIcons/<slug>.png` (for example
-  `crushing_blow.png`). The sprite pipeline (`npm run generate:sprites`)
-  converts them to WebP, and the panel shows the icon instead of the rune
-  glyph. Until a file exists, the glyph stays.
+- Delivery: drop the masters (PNG or JPG, any size) into
+  `client/Assets/Images/SpritesWeb/SkillIcons/<slug>.jpg`. They are
+  converted to 256 × 256 WebP beside them (`ffmpeg -vf scale=256:256 -c:v
+  libwebp -quality 86`, about 10-17 kB each). Then
+  `node scripts/generate-sprites.mjs` adds them to `SKILL_ICONS`. The masters
+  are git-ignored (2-3 MB each); only the WebP ships.
+- The server's tree definition names each node's slug
+  (`SkillNodeIcons` in `NetworkBroadcastSystem.SkillTree.cs`), and the panel
+  draws the rune glyph for any slug without a file yet.
+- Today's tree uses these slugs: Fortune `scavenger`, Giantslayer
+  `crushing_blow`, Precision `keen_eye`, Cruelty `cruel_edge`, Insight
+  `quick_study`, Plenty `plenty`, Rarity `rarity`, First Blood `breach`,
+  Trophy Hunter `trophy_hunter`, Guile `edge`, Relentless `relentless`,
+  Bloodthirst `bloodthirst`, Fortitude `ironhide`, Craft `craft`, Harvest
+  `harvest`, and the crowns `golden_fleece`, `thunderer`, `double_strike`,
+  `last_stand`, `scholar`. Limb emblems: Fortune `col_fortune`, Giantslayer
+  `col_might`, Precision `col_precision`, Cruelty `col_guard`, Insight
+  (none yet).
+- Three slugs exist only for today's tree. Craft (`craft`): "a carved
+  workbench with a glowing chisel and wood shavings". Harvest (`harvest`):
+  "a woven sheaf of wheat bound with a red thread, a sickle beside it".
+  Scholar (`scholar`): "an oil lamp beside an open book of runes at night".
 
 ### Prompt template (paste into Gemini, one icon per request)
 

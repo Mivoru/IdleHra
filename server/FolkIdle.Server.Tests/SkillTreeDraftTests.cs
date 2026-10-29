@@ -83,6 +83,7 @@ namespace FolkIdle.Server.Tests
             }
 
             Assert.NotNull(NetworkBroadcastSystem.DescribeSkillTree());
+            Assert.Equal(SkillTreeRegistry.NodeCount, NetworkBroadcastSystem.SkillNodeIconCount);
         }
     }
 }

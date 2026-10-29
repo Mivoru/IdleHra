@@ -2434,6 +2434,8 @@ export function fetchCharacterStats(slot = 0): Promise<StatSheet> {
 export interface SkillTreeNodeDef {
   Id: number;
   Name: string;
+  /** Slug into SKILL_ICONS; the rune glyph stands in while no art exists. */
+  Icon: string;
   Blurb: string;
   Kind: 'Root' | 'Bough' | 'Crown';
   Column: number;
@@ -2451,7 +2453,7 @@ export interface SkillTreeNodeDef {
 }
 
 export interface SkillTreeDefinition {
-  Columns: { Id: number; Name: string }[];
+  Columns: { Id: number; Name: string; Icon: string | null }[];
   Nodes: SkillTreeNodeDef[];
 }
 

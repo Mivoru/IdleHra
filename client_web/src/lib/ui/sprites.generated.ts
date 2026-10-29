@@ -264,6 +264,17 @@ export const TOOL_ICONS: Readonly<Record<'axe' | 'pickaxe' | 'rod', readonly str
   ]
 };
 
+/** Skill tree icons by slug; the tree definition names the slug. */
+export const SKILL_ICONS: Readonly<Record<string, string>> = {
+  "breach": "SkillIcons/breach.webp",
+  "col_fortune": "SkillIcons/col_fortune.webp",
+  "col_guard": "SkillIcons/col_guard.webp",
+  "col_might": "SkillIcons/col_might.webp",
+  "col_precision": "SkillIcons/col_precision.webp",
+  "crushing_blow": "SkillIcons/crushing_blow.webp",
+  "edge": "SkillIcons/edge.webp"
+};
+
 export const CURRENCY_ICONS: Readonly<{ gold?: string; diamond?: string }> = {
   "diamond": "Others/Gem.webp",
   "gold": "Others/Gold.webp"

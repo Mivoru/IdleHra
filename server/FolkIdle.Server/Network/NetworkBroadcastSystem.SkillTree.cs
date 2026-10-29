@@ -35,6 +35,25 @@ namespace FolkIdle.Server.Network
             return false;
         }
 
+        /// <summary>
+        /// The icon slug of each node, in id order. The client looks the slug
+        /// up in its generated SKILL_ICONS table and draws the rune glyph when
+        /// no art exists yet; docs/design/SKILL_TREE_ART.md lists what each
+        /// slug should show.
+        /// </summary>
+        private static readonly string[] SkillNodeIcons =
+        {
+            "scavenger", "crushing_blow", "keen_eye", "cruel_edge", "quick_study",
+            "plenty", "rarity", "breach", "trophy_hunter", "edge",
+            "relentless", "bloodthirst", "ironhide", "craft", "harvest",
+            "golden_fleece", "thunderer", "double_strike", "last_stand", "scholar",
+        };
+
+        internal static int SkillNodeIconCount => SkillNodeIcons.Length;
+
+        /// <summary>One emblem per limb, or null where none is drawn yet.</summary>
+        private static readonly string?[] SkillColumnIcons = { "col_fortune", "col_might", "col_precision", "col_guard", null };
+
         /// <summary>The tree's shape and text. Public: it is the same for everyone.</summary>
         internal static object DescribeSkillTree()
         {
@@ -46,6 +65,7 @@ namespace FolkIdle.Server.Network
                 {
                     Id = id,
                     Name = SkillTreeRegistry.GetName(id),
+                    Icon = SkillNodeIcons[id],
                     Blurb = SkillTreeRegistry.GetBlurb(id),
                     Kind = SkillTreeRegistry.RingOf(id).ToString(),
                     Column = column,
@@ -60,7 +80,7 @@ namespace FolkIdle.Server.Network
             }).ToArray();
 
             var columns = Enumerable.Range(0, SkillTreeRegistry.RootCount)
-                .Select(id => new { Id = id, Name = SkillTreeRegistry.GetName(id) })
+                .Select(id => new { Id = id, Name = SkillTreeRegistry.GetName(id), Icon = SkillColumnIcons[id] })
                 .ToArray();
 
             return new { Columns = columns, Nodes = nodes };
