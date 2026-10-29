@@ -354,19 +354,67 @@
   let failedScreen = $state<LazyScreen | null>(null);
   const pendingLoads = new Set<LazyScreen>();
 
+  // Modul: A LOAD THAT NEVER ANSWERS (2026-10-29). Production showed a screen
+  // stuck on "Loading..." past fifteen seconds about once per deploy: the
+  // chunk request neither arrived nor failed, so neither branch below ran,
+  // and pendingLoads then blocked every retry for as long as the tab lived.
+  // The cause was not pinned down (Caddy logged nothing and the box sat idle).
+  // Whatever stalls the request, the player is told after STALL_MS and handed
+  // the reload; if the chunk turns up late after all, the screen still draws.
+  const STALL_MS = 8000;
+  let stalledScreen = $state<LazyScreen | null>(null);
+
   function ensureScreenLoaded(key: LazyScreen): void {
     if (loadedScreens[key] || pendingLoads.has(key)) return;
     pendingLoads.add(key);
+    const stall = setTimeout(() => {
+      if (!loadedScreens[key]) stalledScreen = key;
+    }, STALL_MS);
     SCREEN_LOADERS[key]()
       .then((mod) => {
         loadedScreens[key] = mod.default;
         if (failedScreen === key) failedScreen = null;
+        if (stalledScreen === key) stalledScreen = null;
       })
       .catch((err) => {
         console.warn(`screen ${key} failed to load`, err);
         failedScreen = key;
       })
-      .finally(() => pendingLoads.delete(key));
+      .finally(() => {
+        clearTimeout(stall);
+        pendingLoads.delete(key);
+      });
+  }
+
+  // Modul: EVERY SCREEN'S CHUNK, FETCHED AHEAD (2026-10-29). Splitting the
+  // screens kept the landing page small (PageSpeed 100), and it also made
+  // every first visit to a screen wait on the network - which is when the
+  // stall above can bite. Once signed in and idle, the rest are fetched one at
+  // a time, so they never compete with what the player is doing, and a
+  // navigation draws from memory.
+  let prefetchStarted = false;
+  function prefetchScreens(): void {
+    if (prefetchStarted) return;
+    prefetchStarted = true;
+    const queue = (Object.keys(SCREEN_LOADERS) as LazyScreen[]).filter((k) => !loadedScreens[k]);
+    const idle = (fn: () => void) =>
+      'requestIdleCallback' in window
+        ? (window as unknown as { requestIdleCallback: (f: () => void, o?: { timeout: number }) => void }).requestIdleCallback(fn, { timeout: 3000 })
+        : setTimeout(fn, 400);
+    const next = () => {
+      const key = queue.shift();
+      if (!key) return;
+      if (loadedScreens[key] || pendingLoads.has(key)) return idle(next);
+      SCREEN_LOADERS[key]()
+        .then((mod) => {
+          loadedScreens[key] ??= mod.default;
+        })
+        .catch(() => {
+          // A missed prefetch costs nothing: the real visit loads it again.
+        })
+        .finally(() => idle(next));
+    };
+    idle(next);
   }
 
   $effect(() => {
@@ -386,6 +434,8 @@
   $effect(() => {
     if (!token) return;
     ensureScreenLoaded('hub');
+    // After the first paint has had its turn, not during it.
+    setTimeout(prefetchScreens, 4000);
     if (overlaysRequested) return;
     overlaysRequested = true;
     import('./lib/ui/SignedInOverlays.svelte')
@@ -1043,6 +1093,11 @@
     {:else if failedScreen === screen}
       <section class="panel screen-load-failed">
         <p>This screen could not be loaded - the game has probably been updated since this tab opened.</p>
+        <button onclick={() => location.reload()}>Reload</button>
+      </section>
+    {:else if stalledScreen === screen}
+      <section class="panel screen-load-failed" data-testid="screen-load-stalled">
+        <p>This screen is taking longer than usual to load. It may still arrive - or reload to fetch it again.</p>
         <button onclick={() => location.reload()}>Reload</button>
       </section>
     {:else}

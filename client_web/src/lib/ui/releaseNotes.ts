@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.38.2',
+    date: '2026-10-29',
+    sections: [
+      {
+        title: 'Screens',
+        items: [
+          'Screens open faster: once you are signed in, the game quietly fetches every screen in the background, so moving between them rarely waits.',
+          'A screen that is slow to arrive now tells you so after a few seconds and offers a Reload, instead of sitting on "Loading..." forever.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.38.1',
     date: '2026-10-29',
     sections: [
