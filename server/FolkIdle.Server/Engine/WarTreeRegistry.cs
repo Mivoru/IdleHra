@@ -42,6 +42,13 @@ namespace FolkIdle.Server.Engine
         RipostePct,
         /// <summary>Once an hour a killing blow leaves 1 health; the rank is the flag.</summary>
         LastStand,
+        /// <summary>Opening blow on a boss, in tenths of a percent of weapon damage.</summary>
+        ThundererPct,
+        /// <summary>Keystones: the rank is the flag.</summary>
+        Ruin,
+        PerfectSequence,
+        LivingFortress,
+        GoldenFleece,
     }
 
     /// <summary>
@@ -120,7 +127,7 @@ namespace FolkIdle.Server.Engine
             Add(Rarity, "Rarity", "rarity", ColumnFortune, 2, 1, "Fork", 5, 1, WarEffect.RarityElevationPct, 15, "+{0}% chance a drop rolls one rarity higher", fork: Plenty);
             Add(QuickStudy, "Quick Study", "quick_study", ColumnFortune, 3, 0, "Minor", 5, 1, WarEffect.XpPct, 10, "+{0}% XP");
             Add(CodexScholar, "Codex Scholar", "codex_scholar", ColumnFortune, 3, 1, "Notable", 3, 2, WarEffect.Mechanic, 0, "Kills count extra toward codex levels");
-            Add(GoldenFleece, "Golden Fleece", "golden_fleece", ColumnFortune, 4, -1, "Keystone", 1, 5, WarEffect.Mechanic, 0, "Every 100th kill drops an item two tiers up");
+            Add(GoldenFleece, "Golden Fleece", "golden_fleece", ColumnFortune, 4, -1, "Keystone", 1, 5, WarEffect.GoldenFleece, 1, "Every 100th kill drops an item two tiers up");
 
             // ---- Might: hits hard, breaks armour, kills bosses ----------------
             Add(Edge, "Edge", "edge", ColumnMight, 0, 0, "Minor", 5, 1, WarEffect.DamagePct, 15, "+{0}% damage");
@@ -135,8 +142,8 @@ namespace FolkIdle.Server.Engine
             Add(Executioner, "Executioner", "executioner", ColumnMight, 2, 0, "Fork", 5, 1, WarEffect.ExecutePct, 40, "+{0}% damage against monsters below 35% health", fork: Bossbreaker);
             Add(Bossbreaker, "Bossbreaker", "bossbreaker", ColumnMight, 2, 1, "Fork", 5, 1, WarEffect.BossDamagePct, 40, "+{0}% damage against region and world bosses", fork: Executioner);
             Add(HeavyHand, "Heavy Hand", "heavy_hand", ColumnMight, 3, 0, "Minor", 5, 1, WarEffect.DamagePct, 15, "+{0}% damage");
-            Add(Thunderer, "Thunderer", "thunderer", ColumnMight, 3, 1, "Notable", 3, 2, WarEffect.Mechanic, 0, "Opens a boss fight with a heavy blow");
-            Add(Ruin, "Ruin", "ruin", ColumnMight, 4, -1, "Keystone", 1, 5, WarEffect.Mechanic, 0, "Every 8th hit lands far harder; attack speed counts half");
+            Add(Thunderer, "Thunderer", "thunderer", ColumnMight, 3, 1, "Notable", 3, 2, WarEffect.ThundererPct, 0, "Opens a boss fight with a blow at {0}% weapon damage", ranks: new[] { 1500, 3000, 5000 });
+            Add(Ruin, "Ruin", "ruin", ColumnMight, 4, -1, "Keystone", 1, 5, WarEffect.Ruin, 1, "Every 8th hit lands for x2.5; attack speed counts half");
 
             // ---- Precision: crits, tempo, repeated hits ------------------------
             Add(KeenEye, "Keen Eye", "keen_eye", ColumnPrecision, 0, 0, "Minor", 5, 1, WarEffect.CritChancePoints, 5, "+{0} crit chance");
@@ -152,7 +159,7 @@ namespace FolkIdle.Server.Engine
             Add(Frenzy, "Frenzy", "frenzy", ColumnPrecision, 2, 1, "Fork", 5, 1, WarEffect.FrenzyOfCrit, 60, "Attack interval -{0}% of your crit chance", fork: Echo);
             Add(SteadyHand, "Steady Hand", "steady_hand", ColumnPrecision, 3, 0, "Minor", 5, 1, WarEffect.AccuracyPoints, 50, "+{0} accuracy");
             Add(DoubleStrike, "Double Strike", "double_strike", ColumnPrecision, 3, 1, "Notable", 3, 2, WarEffect.DoubleStrikeChance, 0, "{0}% chance a critical hit lands twice", ranks: new[] { 80, 160, 250 });
-            Add(PerfectSequence, "Perfect Sequence", "perfect_sequence", ColumnPrecision, 4, -1, "Keystone", 1, 5, WarEffect.Mechanic, 0, "Every 6th swing is a guaranteed heavy crit");
+            Add(PerfectSequence, "Perfect Sequence", "perfect_sequence", ColumnPrecision, 4, -1, "Keystone", 1, 5, WarEffect.PerfectSequence, 1, "Every 6th swing that lands is a crit with +50% crit damage; other crit chance stops at 50%");
 
             // ---- Guard: survives, and turns defence into damage ----------------
             Add(Vitality, "Vitality", "vitality", ColumnGuard, 0, 0, "Minor", 5, 1, WarEffect.MaxHpPct, 25, "+{0}% max health");
@@ -162,7 +169,7 @@ namespace FolkIdle.Server.Engine
             Add(ShieldWall, "Shield Wall", "shield_wall", ColumnGuard, 2, 1, "Fork", 5, 1, WarEffect.BlockPoints, 20, "+{0} block", fork: Evasion);
             Add(Riposte, "Riposte", "riposte", ColumnGuard, 3, 0, "Notable", 3, 2, WarEffect.RipostePct, 0, "A dodged or blocked blow answers at {0}% weapon damage", ranks: new[] { 250, 500, 750 });
             Add(LastStand, "Last Stand", "last_stand", ColumnGuard, 3, 1, "Notable", 1, 3, WarEffect.LastStand, 1, "Once an hour, a killing blow leaves you at 1 health");
-            Add(LivingFortress, "Living Fortress", "living_fortress", ColumnGuard, 4, -1, "Keystone", 1, 5, WarEffect.Mechanic, 0, "Crit chance becomes block and the block cap rises; you never crit");
+            Add(LivingFortress, "Living Fortress", "living_fortress", ColumnGuard, 4, -1, "Keystone", 1, 5, WarEffect.LivingFortress, 1, "Crit chance becomes block and the block cap rises to 85%; you never crit");
 
             // ---- Bridges: 10 points in both columns they join ------------------
             Add(KnowYourPrey, "Know Your Prey", "know_your_prey", ColumnFortune, 2, 2, "Bridge", 3, 2, WarEffect.Mechanic, 0, "More damage against monsters you know well", bridge: ColumnMight);
@@ -184,6 +191,7 @@ namespace FolkIdle.Server.Engine
             WarEffect.FirstStrikePct, WarEffect.CrushingChance, WarEffect.BossDamagePct, WarEffect.ExecutePct,
             WarEffect.DoubleStrikeChance, WarEffect.EchoChance, WarEffect.FrenzyOfCrit,
             WarEffect.BloodthirstPct, WarEffect.RipostePct, WarEffect.LastStand,
+            WarEffect.ThundererPct, WarEffect.Ruin, WarEffect.PerfectSequence, WarEffect.LivingFortress, WarEffect.GoldenFleece,
         };
 
         public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);
@@ -294,6 +302,11 @@ namespace FolkIdle.Server.Engine
                     case WarEffect.BloodthirstPct: e.BloodthirstTenths += v; break;
                     case WarEffect.RipostePct: e.RiposteTenthsPct += v; break;
                     case WarEffect.LastStand: e.LastStand = true; break;
+                    case WarEffect.ThundererPct: e.ThundererTenthsPct += v; break;
+                    case WarEffect.Ruin: e.Ruin = true; break;
+                    case WarEffect.PerfectSequence: e.PerfectSequence = true; break;
+                    case WarEffect.LivingFortress: e.LivingFortress = true; break;
+                    case WarEffect.GoldenFleece: e.GoldenFleece = true; break;
                     case WarEffect.CrushingChance: e.CrushingChanceTenths += v; break;
                 }
             }
@@ -352,6 +365,18 @@ namespace FolkIdle.Server.Engine
         public int BloodthirstTenths;
         public int RiposteTenthsPct;
         public bool LastStand;
+        public int ThundererTenthsPct;
+        public bool Ruin;
+        public bool PerfectSequence;
+        public bool LivingFortress;
+        public bool GoldenFleece;
+
+        public const int RuinEvery = 8;
+        public const float RuinMultiplier = 2.5f;
+        public const int PerfectEvery = 6;
+        public const float PerfectCritBonus = 0.5f;
+        public const float PerfectOtherCritCapPct = 50f;
+        public const float LivingFortressBlockCapBonusPct = 10f;
 
         /// <summary>Echo repeats a crit at this share of its damage, and never echoes an echo.</summary>
         public const double EchoShare = 0.5;

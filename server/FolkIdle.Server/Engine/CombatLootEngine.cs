@@ -545,7 +545,7 @@ namespace FolkIdle.Server.Engine
                     payload.AutoSalvageRegionTiers,
                     ContentRegistry.GetMonsterRegionTier(monsterId)),
                 Source = source,
-                HasGoldenFleece = payload.Skill_GoldenFleece > 0,
+                HasGoldenFleece = FolkIdle.Server.Domain.Combat.SimulationEngine.HasGoldenFleece(in payload),
                 AutoFuseToTier = AutomationRules.AutoFuseTierFor(in payload),
 
                 // Everything that shifts WHAT falls, summed into one figure -

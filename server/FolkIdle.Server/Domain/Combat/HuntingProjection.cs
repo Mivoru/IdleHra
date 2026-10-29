@@ -693,6 +693,31 @@ namespace FolkIdle.Server.Domain.Combat
                 double normal = Landed(in payload, in stats, in monster, rawMilliAttack, 1.0f);
                 double crit = Landed(in payload, in stats, in monster, rawMilliAttack, critMult);
                 double dbl = Landed(in payload, in stats, in monster, rawMilliAttack, critMult * 2f);
+
+                // Perfect Sequence: one swing in six crits if it lands, at +50%
+                // crit damage. The crit outcome becomes the weighted mix of an
+                // ordinary crit and a perfect one, at the combined chance.
+                var keys = WarTreeRegistry.Resolve(in payload);
+                if (keys.PerfectSequence && !keys.LivingFortress)
+                {
+                    double sixth = 1.0 / WarEffects.PerfectEvery;
+                    double combined = (1 - sixth) * pCrit + sixth;
+                    double share = combined > 0 ? sixth / combined : 0;
+                    double perfectCrit = Landed(in payload, in stats, in monster, rawMilliAttack, critMult + WarEffects.PerfectCritBonus);
+                    double perfectDbl = Landed(in payload, in stats, in monster, rawMilliAttack, (critMult + WarEffects.PerfectCritBonus) * 2f);
+                    crit = (1 - share) * crit + share * perfectCrit;
+                    dbl = (1 - share) * dbl + share * perfectDbl;
+                    pCrit = combined;
+                }
+
+                // Ruin: one connecting hit in eight lands x2.5.
+                if (keys.Ruin)
+                {
+                    double ruin = 1.0 + (WarEffects.RuinMultiplier - 1.0) / WarEffects.RuinEvery;
+                    normal *= ruin;
+                    crit *= ruin;
+                    dbl *= ruin;
+                }
                 // Echo, as an expectation on every crit, doubled ones included.
                 double echo = 1.0 + WarTreeRegistry.Resolve(in payload).EchoChance * WarEffects.EchoShare;
                 crit *= echo;

@@ -796,7 +796,7 @@ namespace FolkIdle.Server.Engine
             long fleeceProcs = fleeceCounter / Domain.Combat.SimulationEngine.GoldenFleeceKillInterval;
             payload.KillsSinceFleece = (int)(fleeceCounter % Domain.Combat.SimulationEngine.GoldenFleeceKillInterval);
 
-            long fleeceKills = payload.Skill_GoldenFleece > 0 ? fleeceProcs : 0L;
+            long fleeceKills = SimulationEngine.HasGoldenFleece(in payload) ? fleeceProcs : 0L;
             long plainKills = killsToRoll - fleeceKills;
 
             CombatLootDropRequest plainRequest = CombatLootDropRequest.Build(

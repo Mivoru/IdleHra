@@ -3828,6 +3828,12 @@ namespace FolkIdle.Server.Domain.Combat
             stats.DodgeChancePct += war.DodgeTenths / 10f;
             stats.BlockStrengthPct += war.BlockTenths / 10f;
             stats.AccuracyRating += war.AccuracyTenths / 10;
+            // Living Fortress: the crit chance becomes block, and the cap rises.
+            if (war.LivingFortress)
+            {
+                stats.BlockStrengthPct += CritChanceBeforeKeystones(in payload, in stats);
+                stats.BlockCapBonusPct += WarEffects.LivingFortressBlockCapBonusPct;
+            }
             return stats;
         }
 
@@ -3871,6 +3877,9 @@ namespace FolkIdle.Server.Domain.Combat
             return BloodlineBonuses.ApplyMaxHp(effectiveMilliHp, payload.Aptitude_Endurance, TraitTotals.From(payload.TraitMask));
         }
 
+        /// <summary>The swing interval with no attack speed at all (CombatDamageModel.AttackIntervalMs).</summary>
+        internal const int BaseAttackIntervalMs = 1500;
+
         /// <summary>The live swing interval: the stat, then Relentless.</summary>
         internal static int LiveAttackIntervalMs(in TickStatePayload payload, in CombatStats combatStats)
         {
@@ -3891,6 +3900,11 @@ namespace FolkIdle.Server.Domain.Combat
             {
                 float cut = LiveCritChancePct(in payload, in combatStats) / 100f * (warSpeed.FrenzyTenths / 1000f);
                 playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - Math.Clamp(cut, 0f, 0.9f))));
+            }
+            // Ruin's price: every source of attack speed counts at half.
+            if (warSpeed.Ruin && playerAttackSpeedMs < BaseAttackIntervalMs)
+            {
+                playerAttackSpeedMs = BaseAttackIntervalMs - (BaseAttackIntervalMs - playerAttackSpeedMs) / 2;
             }
             return playerAttackSpeedMs;
         }
@@ -3938,6 +3952,10 @@ namespace FolkIdle.Server.Domain.Combat
                 Network.SkillProc.Riposte);
         }
 
+        /// <summary>Whether the payload holds Golden Fleece on either tree.</summary>
+        internal static bool HasGoldenFleece(in TickStatePayload payload)
+            => payload.Skill_GoldenFleece > 0 || WarTreeRegistry.Resolve(in payload).GoldenFleece;
+
         /// <summary>Whether the payload holds Last Stand on either tree.</summary>
         internal static bool HasLastStand(in TickStatePayload payload)
             => payload.Skill_LastStand > 0 || WarTreeRegistry.Resolve(in payload).LastStand;
@@ -3963,8 +3981,20 @@ namespace FolkIdle.Server.Domain.Combat
             return (long)(net * payload.CachedCodexDamageMultiplier);
         }
 
-        /// <summary>Crit chance in percent, with the Precision branch, clamped.</summary>
+        /// <summary>
+        /// Crit chance in percent, with the Precision branch, clamped - and the
+        /// War keystones: Perfect Sequence caps the chance at 50 (its 6th swing
+        /// crits on its own), Living Fortress takes it to 0 (it became block).
+        /// </summary>
         internal static float LiveCritChancePct(in TickStatePayload payload, in CombatStats combatStats)
+        {
+            var war = WarTreeRegistry.Resolve(in payload);
+            if (war.LivingFortress) return 0f;
+            float chance = CritChanceBeforeKeystones(in payload, in combatStats);
+            return war.PerfectSequence ? Math.Min(chance, WarEffects.PerfectOtherCritCapPct) : chance;
+        }
+
+        private static float CritChanceBeforeKeystones(in TickStatePayload payload, in CombatStats combatStats)
             => Math.Clamp(
                 combatStats.CritChancePct
                     + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance)
@@ -4017,7 +4047,7 @@ namespace FolkIdle.Server.Domain.Combat
 
         /// <summary>The share of a post-armour hit the player's block takes off, capped at 75%.</summary>
         internal static float PlayerBlockFraction(in CombatStats combatStats)
-            => Math.Clamp(combatStats.BlockStrengthPct / 100f, 0f, 0.75f);
+            => Math.Clamp(combatStats.BlockStrengthPct / 100f, 0f, 0.75f + combatStats.BlockCapBonusPct / 100f);
 
         /// <summary>
         /// Steps 3-5 of a CONNECTING monster swing: armour, then block, then the
@@ -4561,11 +4591,14 @@ namespace FolkIdle.Server.Domain.Combat
 
         private static void ArmThundererIfBoss(ref TickStatePayload payload)
         {
-            if (payload.Skill_Thunderer <= 0) return;
+            float today = payload.Skill_Thunderer > 0
+                ? SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.CrownThunderer, payload.Skill_Thunderer) / 100f
+                : 0f;
+            float war = WarTreeRegistry.Resolve(in payload).ThundererTenthsPct / 1000f;
+            if (today <= 0f && war <= 0f) return;
             if (RaceUnlockRegistry.GetRegionForBossMonsterId(payload.CurrentMonsterId) <= 0) return;
 
-            payload.PendingSkillDamageMultiplier = SkillTreeRegistry.GetBonusPercent(
-                SkillTreeRegistry.CrownThunderer, payload.Skill_Thunderer) / 100f;
+            payload.PendingSkillDamageMultiplier = Math.Max(today, war);
         }
 
         // Modul: widened from private to internal so the Progression-domain
@@ -4904,6 +4937,12 @@ namespace FolkIdle.Server.Domain.Combat
                 float defenderDodge = 100f + activeMonster.DodgeRating;
                 float hitChance = Math.Clamp(attackerAccuracy / defenderDodge, 0.05f, 0.95f);
 
+                var warSwing = WarTreeRegistry.Resolve(in payload);
+                if (warSwing.PerfectSequence) payload.WarSwingCount++;
+                // The 6th swing is Perfect Sequence's; it crits if it lands.
+                bool perfect = warSwing.PerfectSequence && !warSwing.LivingFortress
+                    && payload.WarSwingCount % WarEffects.PerfectEvery == 0;
+
                 if (Random.Shared.NextDouble() <= hitChance)
                 {
                     // Step 2 (Crit Check)
@@ -4941,12 +4980,13 @@ namespace FolkIdle.Server.Domain.Combat
                     // nothing outside this swing's own event needs it.
                     bool doubleStrikeLanded = false;
 
-                    if (Random.Shared.NextDouble() <= (treeCritChance / 100.0f))
+                    if (perfect || Random.Shared.NextDouble() <= (treeCritChance / 100.0f))
                     {
                         payload.LastHitWasCrit = 1;
                         // Modul: Guile, the Precision bough, stacks with Cruelty
                         // rather than replacing it - see LiveCritMultiplier.
                         critMult = LiveCritMultiplier(in payload, in combatStats);
+                        if (perfect) critMult += WarEffects.PerfectCritBonus;
 
                         // Modul: Double Strike, the Precision crown. Expressed
                         // as extra multiplier rather than a second swing,
@@ -5012,6 +5052,14 @@ namespace FolkIdle.Server.Domain.Combat
                         CombatDamageModel.MonsterArmourHalvingConstant(activeMonster.RegionTier),
                         combatStats.FlatArmorPenetration);
                     if (crushed) netDamage *= WarEffects.CrushingMultiplier;
+                    // Ruin: every 8th connecting hit, counted across fights.
+                    bool ruined = false;
+                    if (warHit.Ruin)
+                    {
+                        payload.WarHitCount++;
+                        ruined = payload.WarHitCount % WarEffects.RuinEvery == 0;
+                        if (ruined) netDamage = (int)(netDamage * WarEffects.RuinMultiplier);
+                    }
                     if (firstStrike) netDamage += (int)((long)netDamage * warHit.FirstStrikeTenthsPct / 1000L);
                     // Bossbreaker against a region boss; Executioner below 35% of
                     // the bar, judged on the health before this hit lands.
@@ -5140,7 +5188,11 @@ namespace FolkIdle.Server.Domain.Combat
                         (byte)((payload.LastHitWasCrit == 1 ? Network.ResponseCombatEventPacket.FlagCrit : 0)
                              | (doubleStrikeLanded ? Network.ResponseCombatEventPacket.FlagDoubleStrike : 0)
                              | (burnDamageDealt > 0 ? Network.ResponseCombatEventPacket.FlagBurn : 0)),
-                        crushed ? Network.SkillProc.CrushingBlow : echoed ? Network.SkillProc.Echo : Network.SkillProc.None);
+                        ruined ? Network.SkillProc.Ruin
+                        : perfect && payload.LastHitWasCrit == 1 ? Network.SkillProc.PerfectSequence
+                        : crushed ? Network.SkillProc.CrushingBlow
+                        : echoed ? Network.SkillProc.Echo
+                        : Network.SkillProc.None);
 
                     // Separate line, because it is health arriving rather than
                     // damage leaving - folding it into the hit above would make
@@ -5670,7 +5722,7 @@ namespace FolkIdle.Server.Domain.Combat
                     payload.KillsSinceFleece -= GoldenFleeceKillInterval;
                     fleeceProcs++;
                 }
-                int fleeceKills = payload.Skill_GoldenFleece > 0 ? Math.Min(fleeceProcs, paidKills) : 0;
+                int fleeceKills = HasGoldenFleece(in payload) ? Math.Min(fleeceProcs, paidKills) : 0;
                 int plainKills = paidKills - fleeceKills;
 
                 // Modul: the one gold formula, shared with the offline

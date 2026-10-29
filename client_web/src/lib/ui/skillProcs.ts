@@ -11,6 +11,8 @@ export const SKILL_PROC = {
   CrushingBlow: 1,
   Echo: 2,
   Riposte: 3,
+  Ruin: 4,
+  PerfectSequence: 5,
 } as const;
 
 export interface SkillCallout {
@@ -25,6 +27,8 @@ export const SKILL_CALLOUTS: Readonly<Record<number, SkillCallout>> = {
   [SKILL_PROC.CrushingBlow]: { label: 'CRUSH!', tone: 'crush', clip: 'skillCrush' },
   [SKILL_PROC.Echo]: { label: 'ECHO', tone: 'echo', clip: 'skillEcho' },
   [SKILL_PROC.Riposte]: { label: 'RIPOSTE', tone: 'riposte', clip: 'skillRiposte' },
+  [SKILL_PROC.Ruin]: { label: 'RUIN', tone: 'ruin', clip: 'skillRuin' },
+  [SKILL_PROC.PerfectSequence]: { label: 'PERFECT', tone: 'perfect', clip: 'skillPerfect' },
 };
 
 export function calloutFor(proc: number): SkillCallout | null {

@@ -393,6 +393,35 @@ The owner wants balance backed by measurement. Nothing in sections 4 and
    shortens a kill without raising the mean swing. Slice 2.4 adds a
    seconds-per-kill objective, measured from the projection's kill model.
 
+   **Slices 2.3b-2.3d (2026-10-29).** Every War mechanic except the Fortune
+   nodes and the bridges is wired. Each one has a parity row, an hour of the
+   real tick against the offline projection, and agrees within 0-2 kills.
+   Kills per hour with the mechanic, against 177 without it (region 3,
+   geared):
+
+   | Mechanic | Kills | Note |
+   |---|---|---|
+   | Crushing Blow 3 | 194 | +10% |
+   | First Strike 5 | 192 | +8% |
+   | Executioner 5 | 187 | +6% |
+   | Double Strike 3 | 189 | +7% |
+   | Echo 5 | 187 | +6% |
+   | Frenzy 5 | 189 | +7%; a conversion of crit chance into interval, not a timer |
+   | Riposte 3 + Shield Wall 5 | 198 | +12%; fires on a dodge or on the block share of a hit |
+   | Ruin | 185 | +5%; the attack-speed halving eats most of it |
+   | Perfect Sequence | 202 | +14% |
+   | Bossbreaker 5, region 2 boss farm | 212 | +19%, **softens the walls directly** |
+   | Living Fortress, region 4 | 113 vs 131 | **-14% kills for -2% fish** |
+   | Bloodthirst 3, region 4 | 550 vs 554 fish | the larder is mostly rations |
+
+   Findings for slice 2.4:
+   - Living Fortress and Bloodthirst buy almost nothing, because sustain
+     goes to rations, not healing. Either they need bigger numbers, or
+     Guard needs a different payoff, such as fewer rations.
+   - Ruin's price swallows its gain. A smaller price fixes it, for example
+     attack speed counting at 75% instead of 50%.
+   - Bossbreaker has to be weighed against the walls.
+
    The walls do not include the tree. `BossGearBenchmark` assumes only First
    Blood at its maximum, so the War half must either keep a node that
    softens the first-clear HP penalty, or `BossFirstClearRules.MaxHpFor`

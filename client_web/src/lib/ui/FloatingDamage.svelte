@@ -195,6 +195,57 @@
     font-size: 0.66em;
   }
 
+  /* Ruin: the heaviest blow in the game - dark red, big, with a shockwave
+     ring behind the number. */
+  .hit[data-proc='ruin'] {
+    --half: 5rem;
+    font-size: 2.1rem;
+    color: #ffe1d6;
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.9),
+      0 0 12px rgba(160, 20, 10, 1),
+      0 0 26px rgba(226, 103, 74, 0.9);
+    animation-name: float-up, crush-shake;
+    animation-duration: var(--life), 320ms;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1), linear;
+  }
+
+  .hit[data-proc='ruin']::before {
+    content: '';
+    position: absolute;
+    inset: -0.6rem -1rem;
+    border: 2px solid rgba(226, 103, 74, 0.8);
+    border-radius: 50%;
+    animation: ruin-ring 420ms ease-out forwards;
+    pointer-events: none;
+  }
+
+  .hit[data-proc='ruin'] .tag.skill {
+    color: #b8321f;
+    font-size: 0.6em;
+  }
+
+  @keyframes ruin-ring {
+    from { transform: scale(0.4); opacity: 1; }
+    to { transform: scale(1.6); opacity: 0; }
+  }
+
+  /* Perfect Sequence: white with a gold rim - the crit the rhythm promised. */
+  .hit[data-proc='perfect'] {
+    --half: 4.4rem;
+    font-size: 1.8rem;
+    color: #ffffff;
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.85),
+      0 0 3px rgba(232, 193, 90, 1),
+      0 0 18px rgba(232, 193, 90, 0.9);
+  }
+
+  .hit[data-proc='perfect'] .tag.skill {
+    color: #e8c15a;
+    font-size: 0.64em;
+  }
+
   @keyframes riposte-sweep {
     from { translate: -18px 0; }
     to { translate: 0 0; }
@@ -250,6 +301,9 @@
     .hit {
       animation: none;
       opacity: 0.9;
+    }
+    .hit[data-proc='ruin']::before {
+      display: none;
     }
   }
 </style>
