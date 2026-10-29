@@ -232,6 +232,10 @@ deliberately left spent, still passes.
 
 ### 121. `gather_speed_pct` units and scope - MEASURE FIRST, balance (issue #203)
 
+**DECIDED 2026-10-29, built in PR #211, not deployed:** fix the tooltip (whole
+percent), per-tool scope, and - the owner's follow-up - the extras multiply
+the core instead of adding to it.
+
 **Current state.**
 - Affix magnitudes are tenths of a percent, and every other affix and the
   tooltip read them that way.
@@ -259,6 +263,8 @@ reuse).
 rolled magnitude M pays exactly what the tooltip prints for M.
 
 ### 122. Dead set-bonus fields - BUG or DESIGN, verify first
+
+**DONE 2026-10-29, merged as #207** (both removed; no behaviour change).
 
 **Current state** (grepped 2026-10-29):
 - `SetBonusEngine.SetBonusResult.FlatAttackPowerBonus` and
@@ -289,6 +295,8 @@ that the set pays the bonus, and that a mixed set does not.
 
 ### 123. Stale code - CLEANUP, no behaviour change
 
+**DONE 2026-10-29, merged as #206.**
+
 **Current state.**
 - `StatsCalculator`'s Vodnik block still says `CritMitigationPct` is "computed
   here but not yet consumed anywhere". `SimulationEngine.MonsterCritMultiplier`
@@ -307,6 +315,8 @@ too). The full server suite is green. The diff touches no logic.
 **Tests.** None new. This is a deletion and a comment.
 
 ### 124. Fairy's dead "+20% ranged damage" - DESIGN
+
+**DECIDED 2026-10-29 (option b, +5 dodge), built in PR #212, not deployed.**
 
 **Current state.**
 - The Vila (Fairy) innate multiplies `FlatRangedDamage` by 1.2
@@ -338,6 +348,10 @@ same thing.
 
 ### 125. Design decisions with numbers - DESIGN
 
+**DECIDED 2026-10-29:** Tank removed (PR #212, not deployed); ring keeps
+block only for now; Legacy perks parked with Guild Wars (see "Parked by the
+owner").
+
 Prepare options, not changes. Each option comes with its measured effect.
 
 - **Tank lineage.** `ProgressionEngine.Lineages` defines Tank (+8% base health
@@ -368,6 +382,8 @@ decides, and only the chosen option becomes a separate build task.
 
 ### 126. Automatic stat audit - TOOLING, prevents a repeat of 2026-10-29
 
+**DONE 2026-10-29, merged as #208.**
+
 **Why.** Nearly every defect found on 2026-10-29 was one shape: a value that
 is bought, rolled, stored or shown, and that the simulation never reads, or
 reads in the wrong unit. Examples: inheritance Gathering yield, the Fortitude
@@ -395,6 +411,8 @@ consumer, or with a unit that disagrees with how it is shown.
 whatever 122-124 have not closed yet, through its allow-list.
 
 ### 127. The Clumsy Hands flaw does nothing - BUG, BALANCE DECISION
+
+**DECIDED 2026-10-29 (option a, the flaw applies), built in PR #211, not deployed.**
 
 **Current state.** Found by the stat audit (#208, task 126).
 - The flaw trait Clumsy Hands promises "-6% gathering speed". Two guards
@@ -464,3 +482,9 @@ tolerance.
   handlers; do not delete them.
 - **62.** Social features that need about 30 active players a week.
 - **Long Game L5 (Stripe)** - blocked on the owner's payment account.
+- **Legacy perks (XP, Gold, "Combat speed")** - parked with Guild Wars
+  (owner, 2026-10-29, task 125). They can be neither bought (no client screen
+  calls `purchaseLegacyUnlock`) nor earned (only `GuildWarEngine` credits
+  legacy shards). Production: 0 of 26 accounts hold a perk. Revisit when
+  Guild Wars return; the damage perk then needs an honest name, since
+  "Combat speed" multiplies damage.

@@ -174,9 +174,9 @@ namespace FolkIdle.Server.Engine
         /// now ASSERTS on it, which is the thing that was missing when this
         /// reached 104%.
         ///
-        /// The lineage percentage still layers on top and still differentiates
-        /// Tank from Warrior - but a Warrior, whose HpScalePerLevelPct is 0, now
-        /// has a health curve at all for the first time.
+        /// The lineage percentage still layers on top (HpScalePerLevelPct), but
+        /// no lineage sets it since Tank was removed - a Warrior, whose
+        /// HpScalePerLevelPct is 0, has this curve and nothing else.
         /// </summary>
         public const double HpCurveGrowthPerLevel = 1.092;
 
@@ -196,11 +196,21 @@ namespace FolkIdle.Server.Engine
         }
 
         // Static read-only span of available lineages
+        //
+        // Modul: NO TANK (TASK_BOARD 125, owner 2026-10-29). Id 2 was "Tank",
+        // +8% base health per level, and nothing could ever select it - every
+        // account is written as Warrior. Measured before removing it: a Tank
+        // killed only 5-14% slower than a Warrior while carrying 9x the health
+        // at level 100 and taking 89% less per monster swing, which would have
+        // knocked down every boss wall (they are survival walls). Production
+        // had no Tank. Id 2 is left unused rather than renumbered, so a future
+        // class does not inherit a stale meaning; SimulationEngine.LineageOf
+        // and GuildWarSnapshotEngine already fall back to 0 for an id past the
+        // end.
         public static readonly LineageDefinition[] Lineages = new LineageDefinition[]
         {
             new LineageDefinition { Id = 0, DamageScalePerLevelPct = 0, HpScalePerLevelPct = 0 }, // Fallback / No Lineage
             new LineageDefinition { Id = 1, DamageScalePerLevelPct = 5, HpScalePerLevelPct = 0 }, // Warrior
-            new LineageDefinition { Id = 2, DamageScalePerLevelPct = 0, HpScalePerLevelPct = 8 }, // Tank
         };
 
         public static void ProcessMonsterDeath(ref TickStatePayload payload, int baseExpReward, int xpMultiplier, int activeGlobalEventId, int activeRaceId = 0)

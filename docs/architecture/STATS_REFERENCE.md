@@ -100,12 +100,13 @@ inheritance XP (+2%/level), Insight root (+0.4%/level), guild Exp buff (+2% per
 tier), pets XP, rebirth re-level bonus (+50% below the peak level). A mentorship
 termination penalty is −20%.
 
-### 1.3 Lineage (Warrior / Tank)
+### 1.3 Lineage (Warrior)
 
-`ProgressionEngine.Lineages` defines Warrior (+5% base damage per level) and
-Tank (+8% base HP per level). Registration sets every account to Warrior
-(`AuthenticationEngine`), and no command changes it. So Tank exists only in the
-table.
+`ProgressionEngine.Lineages` defines Warrior (+5% base damage per level).
+Registration sets every account to Warrior (`AuthenticationEngine`). Tank
+(+8% base HP per level) was removed on 2026-10-29 (task 125): nothing could
+select it, and measured it carried 9x the health at level 100 for 5-14% slower
+kills, which would have broken every boss wall. Id 2 is left unused.
 
 ---
 
@@ -738,7 +739,7 @@ The **slot 1** character's race is active.
 | Race | Innate effect |
 |---|---|
 | Human | +5% gold |
-| Vila | +10 dodge, −30% base armour (also +20% "ranged damage", which nothing reads) |
+| Vila | +15 dodge, −30% base armour (the dead "+20% ranged damage" became +5 dodge on 2026-10-29, task 124) |
 | Draugr | +25% base max HP, +15% base armour, −15 attack speed (clamped: never slower than the 1500 ms base) |
 | Kobold | +30% ore duplication |
 | Moosleute | +20% woodcutting yield |
@@ -818,8 +819,27 @@ Every stat number on the Character screen comes from the server's own
 
 ## 16. Defects found while writing this
 
-Each item was checked by grepping for readers of the field. Status as of
-2026-10-29: 1, 2, 3 and the attack-speed half of 4 FIXED; the rest open.
+Each item was checked by grepping for readers of the field. Status at the
+end of 2026-10-29:
+
+| # | Status | Where |
+|---|---|---|
+| 1, 2 | FIXED, live | #197 |
+| 3 | FIXED, live | #199 |
+| 4 | attack speed FIXED, live (#199); dodge + potion in PR #200; Fairy's ranged damage open | TASK_BOARD 124 |
+| 5 | FIXED | #207 |
+| 6 | open, design | TASK_BOARD 125 |
+| 7 | kept on purpose | - |
+| 8 | open, design | TASK_BOARD 125 |
+| 9 | FIXED | #206 |
+| 10 | yield and rare find FIXED, live (#202); speed open | issue #203, TASK_BOARD 121 |
+| 11 | labels FIXED, live | #197 |
+| 12 | open, balance | TASK_BOARD 127 |
+| 13 | open, design | TASK_BOARD 125 |
+
+`StatAuditTests` (task 126, #208) now fails the suite when a stat has no
+consumer or a percentage affix pays a different number than its tooltip, so
+a new item of this kind is caught in CI rather than by reading code.
 
 1. **Inheritance "Gathering yield" does nothing.** `Inherit_GatheringYield` is
    bought with diamonds, persisted and broadcast. No gathering or yield
@@ -847,6 +867,8 @@ Each item was checked by grepping for readers of the field. Status as of
    dodge is `tier × 0.01` points, at most 0.05 (**FIXED 2026-10-29**: one point
    a tier, and the hit curve no longer ignores the first 5.26 points). Vila's +20% `FlatRangedDamage`
    applies to a stat combat never reads (only the guild-war aggregate sums it).
+   **Fairy's ranged bonus RESOLVED 2026-10-29** (task 124): replaced by +5
+   dodge.
    The ±0.15 lines date from when `CombatDamageModel` read attack speed as a
    FRACTION (see its "read as a fraction" comment), so 15% was the author's
    intent. **Attack speed FIXED 2026-10-29** to ±15 (owner's choice). The
@@ -860,7 +882,8 @@ Each item was checked by grepping for readers of the field. Status as of
    fire damage in 56894e46 ("quality, not collection"); cooldown reduction
    served active skills, which are gone. Neither was persisted or on the wire.
 6. **Tank lineage is unreachable.** Every account is Warrior, and no command
-   changes `SelectedLineageId`.
+   changes `SelectedLineageId`. **RESOLVED 2026-10-29** (task 125): Tank
+   removed from the table.
 7. **Percentage affixes do not scale with region.** A region-1 Legendary crit
    affix equals a region-5 one. Only flat HP and armour scale with region. This
    may be intended, but it is not documented anywhere else.
@@ -897,3 +920,11 @@ Each item was checked by grepping for readers of the field. Status as of
     `melee_dmg_pct`, `range_dmg_pct` and `magic_dmg_pct` all add to the same
     damage bonus. The client now labels all three "Damage" (2026-10-29); the
     ids stay, because their order crosses the wire.
+12. **The Clumsy Hands flaw does nothing.** Found by the stat audit on
+    2026-10-29. Its -6% gathering speed is dropped by two `> 0` guards in
+    `GatheringToolEngine` (`TotalSpeedBonusPct` and `ComputeRequiredTicks`).
+    The other flaws apply. TASK_BOARD 127.
+13. **Legacy perks can be neither bought nor earned.** No client screen calls
+    `purchaseLegacyUnlock`, and legacy shards are credited only by
+    `GuildWarEngine` - Guild Wars are parked. Production, 2026-10-29: 0 of 26
+    accounts hold a perk; one account holds shards (37,628). TASK_BOARD 125.
