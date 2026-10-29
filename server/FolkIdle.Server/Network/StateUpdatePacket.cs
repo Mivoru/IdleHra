@@ -801,32 +801,13 @@ namespace FolkIdle.Server.Network
         /// being dealt automatically.
         /// </summary>
         public int UnspentAttributePoints;
-        public byte SkillTree_LootRarity;
-        public byte SkillTree_WorldBossDamage;
-        public byte SkillTree_CritChance;
-        public byte SkillTree_CritDamage;
-        public byte SkillTree_XpGain;
-
-        // Modul: rings two and three, ten boughs then five crowns, in
-        // SkillTreeRegistry id order (5-19). The client draws locks and
-        // prerequisites from these, so it needs all of them and not just the
-        // ones the player took - a fork whose untaken side is invisible is a
-        // fork nobody can plan against.
-        public byte SkillTree_Plenty;
-        public byte SkillTree_Rarity;
-        public byte SkillTree_FirstBlood;
-        public byte SkillTree_TrophyHunter;
-        public byte SkillTree_Guile;
-        public byte SkillTree_Relentless;
-        public byte SkillTree_Bloodthirst;
-        public byte SkillTree_Fortitude;
-        public byte SkillTree_Craft;
-        public byte SkillTree_Harvest;
-        public byte SkillTree_GoldenFleece;
-        public byte SkillTree_Thunderer;
-        public byte SkillTree_DoubleStrike;
-        public byte SkillTree_LastStand;
-        public byte SkillTree_Scholar;
+        // Modul: THE NODE LEVELS LEFT THE STREAM (skill tree rework slice 2.1b).
+        // Twenty bytes rode every snapshot, about once a second, for a screen
+        // opened a few times a session - and every new node would have been a
+        // packet change and a protocol regeneration. The Skill Tree screen reads
+        // GET /api/v1/skilltree/state instead, and asks again when
+        // AvailableSkillPoints or the respec bytes below move, which every
+        // purchase and every respec does.
 
         // Modul: respec availability. The panel has to know before the click
         // whether the button will work, because refusing after the fact is

@@ -30,57 +30,40 @@ namespace FolkIdle.Server.Network
             string method = context.Request.HttpMethod;
 
             if (requestPath == "/api/v1/skilltree" && method == "GET") { await HandleSkillTreeDefinition(context); return true; }
+            if (requestPath == "/api/v1/skilltree/state" && method == "GET") { await HandleSkillTreeState(context); return true; }
             if (requestPath == "/api/v1/skilltree/preview" && method == "POST") { await HandleSkillTreePreview(context); return true; }
             if (requestPath == "/api/v1/skilltree/commit" && method == "POST") { await HandleSkillTreeCommit(context); return true; }
             return false;
         }
-
-        /// <summary>
-        /// The icon slug of each node, in id order. The client looks the slug
-        /// up in its generated SKILL_ICONS table and draws the rune glyph when
-        /// no art exists yet; docs/design/SKILL_TREE_ART.md lists what each
-        /// slug should show.
-        /// </summary>
-        private static readonly string[] SkillNodeIcons =
-        {
-            "scavenger", "crushing_blow", "keen_eye", "cruel_edge", "quick_study",
-            "plenty", "rarity", "breach", "trophy_hunter", "edge",
-            "relentless", "bloodthirst", "ironhide", "craft", "harvest",
-            "golden_fleece", "thunderer", "double_strike", "last_stand", "scholar",
-        };
-
-        internal static int SkillNodeIconCount => SkillNodeIcons.Length;
-
-        /// <summary>One emblem per limb, or null where none is drawn yet.</summary>
-        private static readonly string?[] SkillColumnIcons = { "col_fortune", "col_might", "col_precision", "col_guard", null };
 
         /// <summary>The tree's shape and text. Public: it is the same for everyone.</summary>
         internal static object DescribeSkillTree()
         {
             var nodes = Enumerable.Range(0, SkillTreeRegistry.NodeCount).Select(id =>
             {
-                var (column, row, lane) = SkillTreeRegistry.LayoutOf(id);
-                int max = SkillTreeRegistry.MaxLevelOf(id);
+                var node = SkillTreeRegistry.Nodes[id];
                 return new
                 {
                     Id = id,
                     Name = SkillTreeRegistry.GetName(id),
-                    Icon = SkillNodeIcons[id],
+                    Icon = node.Icon,
                     Blurb = SkillTreeRegistry.GetBlurb(id),
-                    Kind = SkillTreeRegistry.RingOf(id).ToString(),
-                    Column = column,
-                    Row = row,
-                    Lane = lane,
-                    MaxLevel = max,
-                    Fork = SkillTreeRegistry.SiblingBoughOf(id),
-                    Costs = Enumerable.Range(0, max).Select(l => SkillTreeRegistry.GetUpgradeCost(id, l)).ToArray(),
-                    Effects = Enumerable.Range(1, max).Select(l => SkillTreeRegistry.EffectText(id, l)).ToArray(),
+                    Kind = node.Kind,
+                    Column = node.Column,
+                    BridgeColumn = node.BridgeColumn,
+                    Row = node.Row,
+                    Lane = node.Lane,
+                    MaxLevel = node.MaxLevel,
+                    Fork = node.Fork,
+                    ColumnPointsGate = node.ColumnPointsGate,
+                    Costs = node.Costs,
+                    Effects = Enumerable.Range(1, node.MaxLevel).Select(l => SkillTreeRegistry.EffectText(id, l)).ToArray(),
                     Pending = SkillTreeRegistry.IsEffectPending(id),
                 };
             }).ToArray();
 
             var columns = Enumerable.Range(0, SkillTreeRegistry.RootCount)
-                .Select(id => new { Id = id, Name = SkillTreeRegistry.GetName(id), Icon = SkillColumnIcons[id] })
+                .Select(id => new { Id = id, Name = SkillTreeRegistry.GetName(id), Icon = SkillTreeRegistry.ColumnIcons[id] })
                 .ToArray();
 
             return new { Columns = columns, Nodes = nodes };
@@ -92,6 +75,40 @@ namespace FolkIdle.Server.Network
             catch (Exception ex)
             {
                 Console.WriteLine($"Skill tree definition error: {ex}");
+                context.Response.StatusCode = 500;
+            }
+            finally { context.Response.Close(); }
+        }
+
+        /// <summary>
+        /// GET: the player's ranks, points and respec state - what rode every
+        /// snapshot as twenty bytes until slice 2.1b. Read from the database,
+        /// which every purchase and respec commits before the tick hears of it.
+        /// </summary>
+        private async Task HandleSkillTreeState(HttpListenerContext context)
+        {
+            try
+            {
+                long playerId = await TryResolveAuthenticatedPlayerAsync(context.Request);
+                if (playerId <= 0) { context.Response.StatusCode = 401; return; }
+
+                using var scope = _serviceProvider.CreateScope();
+                var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+                byte[] levels = await SkillTreeEngine.LoadLevelsAsync(db, playerId);
+                var player = await db.PlayerRecords.FindAsync(playerId);
+                if (player == null) { context.Response.StatusCode = 404; return; }
+
+                await WriteJsonAsync(context, new
+                {
+                    Levels = Array.ConvertAll(levels, b => (int)b),
+                    player.AvailableSkillPoints,
+                    player.FreeRespecUsed,
+                    player.PaidRespecGrants,
+                });
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Skill tree state error: {ex}");
                 context.Response.StatusCode = 500;
             }
             finally { context.Response.Close(); }

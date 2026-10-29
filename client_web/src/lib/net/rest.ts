@@ -2439,7 +2439,11 @@ export interface SkillTreeNodeDef {
   Blurb: string;
   Kind: 'Root' | 'Bough' | 'Crown';
   Column: number;
+  /** The second column a bridge joins, or -1. */
+  BridgeColumn: number;
   Row: number;
+  /** Points the column must hold before this node opens; 0 for none. */
+  ColumnPointsGate: number;
   /** 0/1 for the two sides of a fork, -1 for the centre. */
   Lane: number;
   MaxLevel: number;
@@ -2484,6 +2488,18 @@ export function fetchSkillTreeDefinition(): Promise<SkillTreeDefinition> {
     throw e;
   });
   return skillTreeDefinition;
+}
+
+/** The player's ranks and respec state - off the snapshot since rework slice 2.1b. */
+export interface SkillTreeState {
+  Levels: number[];
+  AvailableSkillPoints: number;
+  FreeRespecUsed: boolean;
+  PaidRespecGrants: number;
+}
+
+export function fetchSkillTreeState(): Promise<SkillTreeState> {
+  return authedGet<SkillTreeState>('/api/v1/skilltree/state');
 }
 
 export async function previewSkillTree(levels: number[], slot = 0): Promise<SkillTreePreview> {

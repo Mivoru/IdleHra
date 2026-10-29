@@ -83,7 +83,45 @@ namespace FolkIdle.Server.Tests
             }
 
             Assert.NotNull(NetworkBroadcastSystem.DescribeSkillTree());
-            Assert.Equal(SkillTreeRegistry.NodeCount, NetworkBroadcastSystem.SkillNodeIconCount);
+            Assert.All(SkillTreeRegistry.Nodes, n => Assert.False(string.IsNullOrEmpty(n.Icon)));
+        }
+
+        /// <summary>
+        /// The table reproduces the ring rules it replaced, cost for cost and
+        /// reason for reason, so slice 2.1 changes no player-visible rule.
+        /// </summary>
+        [Fact]
+        public void The_node_table_keeps_todays_costs_caps_and_reasons()
+        {
+            for (int id = 0; id < SkillTreeRegistry.NodeCount; id++)
+            {
+                var ring = SkillTreeRegistry.RingOf(id);
+                int max = ring == SkillTreeRegistry.Ring.Root ? 10 : ring == SkillTreeRegistry.Ring.Bough ? 8 : 1;
+                Assert.Equal(max, SkillTreeRegistry.MaxLevelOf(id));
+                for (int l = 0; l < max; l++)
+                {
+                    int want = ring == SkillTreeRegistry.Ring.Root ? (l / 5) + 1 : ring == SkillTreeRegistry.Ring.Bough ? 2 : 12;
+                    Assert.Equal(want, SkillTreeRegistry.GetUpgradeCost(id, l));
+                }
+            }
+
+            var levels = new byte[SkillTreeRegistry.NodeCount];
+            Assert.Equal("Needs Precision at 5.", SkillTreeRegistry.BlockedReason(SkillTreeRegistry.BoughGuile, levels, 99));
+            levels[SkillTreeRegistry.BranchCritChance] = 5;
+            levels[SkillTreeRegistry.BoughRelentless] = 1;
+            Assert.Equal("Relentless was taken instead. One branch per fork.", SkillTreeRegistry.BlockedReason(SkillTreeRegistry.BoughGuile, levels, 99));
+            Assert.Equal("Needs a branch of Precision at 5.", SkillTreeRegistry.BlockedReason(SkillTreeRegistry.CrownDoubleStrike, levels, 99));
+            Assert.Equal(5 + 2, SkillTreeRegistry.PointsInColumn(levels, 2));
+        }
+
+        [Fact]
+        public void A_payload_copy_does_not_share_its_ranks_with_the_original()
+        {
+            var live = new TickStatePayload();
+            var copy = live;
+            FolkIdle.Server.Domain.Combat.SimulationEngine.SetSkillTreeLevel(ref copy, SkillTreeRegistry.CrownDoubleStrike, 1);
+            Assert.Equal(0, live.Skill_DoubleStrike);
+            Assert.Equal(1, copy.Skill_DoubleStrike);
         }
     }
 }

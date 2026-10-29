@@ -13,6 +13,14 @@ namespace FolkIdle.Server.Engine
         public uint ResultTick;
     }
 
+    /// <summary>The skill tree's ranks by node id; see TickStatePayload.SkillRanks.</summary>
+    [System.Runtime.CompilerServices.InlineArray(SkillRankBuffer.Length)]
+    public struct SkillRankBuffer
+    {
+        public const int Length = 64;
+        private byte _first;
+    }
+
     public struct TickStatePayload
     {
         public TickStatePayload()
@@ -452,42 +460,48 @@ namespace FolkIdle.Server.Engine
         public int PeakLevel;
         public bool RebirthPending;
 
-        // Modul: SKILL TREE. Five bytes, one per branch, same shape and same
-        // reasons as the inheritance bytes above: the cap is 20, and this
-        // struct is blitted onto the wire so an array is not an option.
+        // Modul: THE SKILL TREE'S RANKS, ONE BYTE PER NODE, indexed by node id.
         //
-        // These reset with the season. Skill points come from account levels
-        // and the season takes those back, so a tree that survived would be
-        // paid for twice.
-        public byte Skill_LootRarity;
-        public byte Skill_WorldBossDamage;
-        public byte Skill_CritChance;
-        public byte Skill_CritDamage;
-        public byte Skill_XpGain;
+        // An InlineArray, not a byte[]: this struct is blitted (the
+        // MemoryMarshal state dump in SimulationEngine) and COPIED by value
+        // everywhere - the stat preview and the hunting advisor each take a
+        // copy and change it. A byte[] would be one array shared by every copy,
+        // so a preview would have written its draft into the live player. An
+        // inline buffer copies with the struct.
+        //
+        // 64 slots: today's tree uses 0-19, and the rework's War half takes its
+        // own range (docs/design/SKILL_TREE_REWORK.md, slice 2.1). Ranks reset
+        // with a rebirth; points come from levels the rebirth takes back.
+        public SkillRankBuffer SkillRanks;
 
-        // Modul: RINGS TWO AND THREE. Ten boughs and five crowns, one byte
-        // each, in SkillTreeRegistry id order (5-19) so the ids index this
-        // block directly.
-        //
-        // Fifteen named fields rather than an array for the same reason the
-        // five above are: this struct is blitted, and C# has no blittable
-        // array short of an unsafe fixed buffer. It is repetitive and it is
-        // the cheap half - the registry entry and the EFFECT are the work.
-        public byte Skill_Plenty;
-        public byte Skill_Rarity;
-        public byte Skill_FirstBlood;
-        public byte Skill_TrophyHunter;
-        public byte Skill_Guile;
-        public byte Skill_Relentless;
-        public byte Skill_Bloodthirst;
-        public byte Skill_Fortitude;
-        public byte Skill_Craft;
-        public byte Skill_Harvest;
-        public byte Skill_GoldenFleece;
-        public byte Skill_Thunderer;
-        public byte Skill_DoubleStrike;
-        public byte Skill_LastStand;
-        public byte Skill_Scholar;
+        // Modul: which tree the ranks above mean: 0 today's (ids 0-19), 1 the
+        // rework's War half (ids 20-54, WarTreeRegistry). Only the harness sets
+        // 1 until slice 2.5 switches every player at once.
+        public byte SkillTreeVersion;
+
+        // Today's twenty nodes by name, kept so the readers written against
+        // them still read the same byte. SimulationEngine.SetSkillTreeLevel
+        // writes SkillRanks by id.
+        public byte Skill_LootRarity { readonly get => SkillRanks[0]; set => SkillRanks[0] = value; }
+        public byte Skill_WorldBossDamage { readonly get => SkillRanks[1]; set => SkillRanks[1] = value; }
+        public byte Skill_CritChance { readonly get => SkillRanks[2]; set => SkillRanks[2] = value; }
+        public byte Skill_CritDamage { readonly get => SkillRanks[3]; set => SkillRanks[3] = value; }
+        public byte Skill_XpGain { readonly get => SkillRanks[4]; set => SkillRanks[4] = value; }
+        public byte Skill_Plenty { readonly get => SkillRanks[5]; set => SkillRanks[5] = value; }
+        public byte Skill_Rarity { readonly get => SkillRanks[6]; set => SkillRanks[6] = value; }
+        public byte Skill_FirstBlood { readonly get => SkillRanks[7]; set => SkillRanks[7] = value; }
+        public byte Skill_TrophyHunter { readonly get => SkillRanks[8]; set => SkillRanks[8] = value; }
+        public byte Skill_Guile { readonly get => SkillRanks[9]; set => SkillRanks[9] = value; }
+        public byte Skill_Relentless { readonly get => SkillRanks[10]; set => SkillRanks[10] = value; }
+        public byte Skill_Bloodthirst { readonly get => SkillRanks[11]; set => SkillRanks[11] = value; }
+        public byte Skill_Fortitude { readonly get => SkillRanks[12]; set => SkillRanks[12] = value; }
+        public byte Skill_Craft { readonly get => SkillRanks[13]; set => SkillRanks[13] = value; }
+        public byte Skill_Harvest { readonly get => SkillRanks[14]; set => SkillRanks[14] = value; }
+        public byte Skill_GoldenFleece { readonly get => SkillRanks[15]; set => SkillRanks[15] = value; }
+        public byte Skill_Thunderer { readonly get => SkillRanks[16]; set => SkillRanks[16] = value; }
+        public byte Skill_DoubleStrike { readonly get => SkillRanks[17]; set => SkillRanks[17] = value; }
+        public byte Skill_LastStand { readonly get => SkillRanks[18]; set => SkillRanks[18] = value; }
+        public byte Skill_Scholar { readonly get => SkillRanks[19]; set => SkillRanks[19] = value; }
 
         // Modul: whether a respec is available, so the panel can say so
         // without a REST round trip. See PlayerRecord for why there are two
