@@ -397,10 +397,11 @@ whatever 122-124 have not closed yet, through its allow-list.
 ### 127. The Clumsy Hands flaw does nothing - BUG, BALANCE DECISION
 
 **Current state.** Found by the stat audit (#208, task 126).
-- The flaw trait Clumsy Hands promises "-6% gathering speed".
-  `GatheringToolEngine.TotalSpeedBonusPct` adds the extra-speed term only
-  `if (toolAffixSpeedPct > 0)`, so a negative total is dropped and the flaw
-  never applies.
+- The flaw trait Clumsy Hands promises "-6% gathering speed". Two guards
+  in `GatheringToolEngine` drop it: `TotalSpeedBonusPct` adds the extra-speed
+  term only `if (toolAffixSpeedPct > 0)`, and `ComputeRequiredTicks` applies
+  the total only `if (totalSpeedBonusPct > 0)`. Changing only the first one
+  still changes nothing (verified 2026-10-29); both have to change.
 - The other flaws (Thin Blood, Faint Heart) do apply.
 - #208 lists the trait under `KnownDefects`. That is NOT acceptance: the
   audit fails the moment the flaw starts working, so the fix must delete
