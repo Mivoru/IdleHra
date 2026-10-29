@@ -6003,6 +6003,14 @@ namespace FolkIdle.Server.Domain.Combat
             // (CodexEngine.MaxYieldMultiplier), never this sum.
             additionalYieldBonus += InheritanceRegistry.GetBonusPct(payload.Inherit_GatheringYield);
 
+            // Modul: the worn tools' gather_yield_pct, which ToolLoadoutResolver
+            // summed, the checkpoint stored and the packet shipped - and no
+            // simulation code read (found 2026-10-29). Affix magnitudes are
+            // tenths of a percent (the tooltip divides by ten, and so does the
+            // pet's GatherYieldTenthsPct just above), so /10 is the number the
+            // player was shown.
+            additionalYieldBonus += payload.ToolGatherYieldPct / 10;
+
             // Modul: LootLuckPct no longer multiplies the roll COUNT
             // (which previously inflated absolute yield of every
             // table entry, common trash and rare drops alike, in
@@ -6016,7 +6024,12 @@ namespace FolkIdle.Server.Domain.Combat
             return new GatheringYield
             {
                 MultiplierPct = (int)((localDropMultiplier + additionalYieldBonus) * payload.CachedCodexYieldMultiplier),
-                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct),
+                // Modul: gather_rare_find_pct rides the one rare-favouring
+                // lever gathering already has - LootLuckPct's flat weight bonus,
+                // which lifts low-weight (rare) entries far more than common
+                // ones - in the same tenths-of-a-percent units. Before
+                // 2026-10-29 the affix was summed, stored and read by nothing.
+                LuckWeightBonus = GatheringYield.LuckWeightBonusFor(gatherCombatStats.LootLuckPct + payload.ToolRareFindPct / 10f),
             };
         }
 

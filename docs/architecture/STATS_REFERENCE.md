@@ -852,7 +852,15 @@ Each item was checked by grepping for readers of the field. Status as of
     2026-10-29. `ToolLoadoutResolver` sums `gather_yield_pct` and
     `gather_rare_find_pct` into `ToolGatherYieldPct` / `ToolRareFindPct`, which
     are stored, swapped per slot and broadcast, and read by no simulation code.
-    Only `gather_speed_pct` reaches `RequiredGatherTicks`. Open.
+    Only `gather_speed_pct` reaches `RequiredGatherTicks`. **FIXED
+    2026-10-29:** yield adds `ToolGatherYieldPct / 10` points to the yield pool,
+    rare find adds `ToolRareFindPct / 10` to the luck that sets
+    `LuckWeightBonus` (the rare-favouring weight), live and offline.
+    **Still open, owner's call:** `gather_speed_pct` is added to the speed bonus
+    as WHOLE percent (`GatheringToolEngine.TotalSpeedBonusPct`), while the
+    tooltip and every other affix read the magnitude as tenths - a Legendary
+    roll shows +5.5% and pays +55%. And all three tools' affixes are summed into
+    one figure, so an axe's yield affix also helps mining.
 11. **The weapon damage affixes are one stat with three names.**
     `melee_dmg_pct`, `range_dmg_pct` and `magic_dmg_pct` all add to the same
     damage bonus. The client now labels all three "Damage" (2026-10-29); the
