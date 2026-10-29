@@ -149,13 +149,8 @@ namespace FolkIdle.Server.Domain.Shared
             return (int)(MasterySpeedPctAtLevelOne * Math.Sqrt(masteryLevel));
         }
 
-        /// <summary>
-        /// The whole speed bonus, in percent: tool, mastery, village building
-        /// and the flat extras. ComputeRequiredTicks divides by it and the
-        /// character stat sheet prints it - one sum, so the number a player
-        /// reads is the number the tick uses.
-        /// </summary>
-        public static int TotalSpeedBonusPct(int masteryLevel, int toolTier, int villageProductionLevel, int toolAffixSpeedPct)
+        /// <summary>The CORE speed bonus, in percent: tool tier, mastery and village building, summed.</summary>
+        public static int CoreSpeedBonusPct(int masteryLevel, int toolTier, int villageProductionLevel)
         {
             int total = GetToolSpeedBonusPct(toolTier);
             total += GetMasterySpeedBonusPct(masteryLevel);
@@ -163,14 +158,38 @@ namespace FolkIdle.Server.Domain.Shared
             {
                 total += villageProductionLevel * VillageYieldBonusPctPerLevel;
             }
-            if (toolAffixSpeedPct > 0)
-            {
-                total += toolAffixSpeedPct;
-            }
             return total;
         }
 
-        public static int ComputeRequiredTicks(int baseTickThreshold, int masteryLevel, int toolTier, int villageProductionLevel, int toolAffixSpeedPct)
+        /// <summary>
+        /// How far the extras (tool affix, the Harvest bough, the Skill
+        /// aptitude, traits and the pet) may pull speed down: never more than
+        /// half. Only a flaw makes the extras negative.
+        /// </summary>
+        public const int MinExtraSpeedPct = -50;
+
+        /// <summary>
+        /// The whole speed bonus, in percent, as one figure: the core, then the
+        /// extras MULTIPLIED on top - so ComputeRequiredTicks is
+        /// base x 100 / (100 + this), and the stat sheet prints this.
+        /// </summary>
+        /// <remarks>
+        /// Modul: EXTRAS MULTIPLY, THEY DO NOT ADD (TASK_BOARD 121 follow-up,
+        /// owner 2026-10-29). Added to a core of tool + mastery that reaches
+        /// several hundred percent, a "+5% gathering speed" trait was worth
+        /// 0.7% in the middle game and a "-6%" flaw 0.8% - every small bonus
+        /// shrank as the character grew. Multiplied, +5% is 5% at every
+        /// stage. And negatives apply now: two "> 0" guards here dropped the
+        /// Clumsy Hands flaw entirely (TASK_BOARD 127, found by the stat audit).
+        /// </remarks>
+        public static int TotalSpeedBonusPct(int masteryLevel, int toolTier, int villageProductionLevel, int extraSpeedPct)
+        {
+            long core = 100 + CoreSpeedBonusPct(masteryLevel, toolTier, villageProductionLevel);
+            long extra = 100 + Math.Max(MinExtraSpeedPct, extraSpeedPct);
+            return (int)(core * extra / 100 - 100);
+        }
+
+        public static int ComputeRequiredTicks(int baseTickThreshold, int masteryLevel, int toolTier, int villageProductionLevel, int extraSpeedPct)
         {
             int ticks = baseTickThreshold;
             if (ticks < MinRequiredTicks)
@@ -178,11 +197,11 @@ namespace FolkIdle.Server.Domain.Shared
                 return MinRequiredTicks;
             }
 
-            int totalSpeedBonusPct = TotalSpeedBonusPct(masteryLevel, toolTier, villageProductionLevel, toolAffixSpeedPct);
-            if (totalSpeedBonusPct > 0)
-            {
-                ticks = ticks * 100 / (100 + totalSpeedBonusPct);
-            }
+            // One division over both factors, so the rounding is the same as
+            // base x 100 / (100 + TotalSpeedBonusPct) up to the last tick.
+            long core = 100 + CoreSpeedBonusPct(masteryLevel, toolTier, villageProductionLevel);
+            long extra = 100 + Math.Max(MinExtraSpeedPct, extraSpeedPct);
+            ticks = (int)(ticks * 10_000L / (core * extra));
 
             return ticks < MinRequiredTicks ? MinRequiredTicks : ticks;
         }

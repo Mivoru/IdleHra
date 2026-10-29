@@ -122,8 +122,21 @@ export function isPercentageAffix(affixId: string): boolean {
   return affixId.endsWith('_pct');
 }
 
+/**
+ * Affixes the server applies in WHOLE percent rather than tenths.
+ *
+ * Modul: gather_speed_pct only (TASK_BOARD 121, issue #203, owner 2026-10-29).
+ * GatheringToolEngine has always added its magnitude as whole percent of
+ * speed, while this tooltip divided by ten like every other affix - so a roll
+ * of 55 read "+5.5%" and paid +55%. The owner chose to make the tooltip tell
+ * the truth rather than cut the affix tenfold. StatAuditTests pins the server
+ * half (The_tool_speed_affix_pays_the_whole_percent_its_tooltip_now_prints).
+ */
+const WHOLE_PERCENT_AFFIXES: ReadonlySet<string> = new Set(['gather_speed_pct']);
+
 /** Formats a magnitude for a BARE id - call parseAffixKey first. */
 export function formatAffixValue(affixId: string, magnitude: number): string {
+  if (WHOLE_PERCENT_AFFIXES.has(affixId)) return `+${formatNumber(magnitude)}%`;
   if (isPercentageAffix(affixId)) return `+${(magnitude / 10).toFixed(1)}%`;
   return `+${formatNumber(magnitude)}`;
 }

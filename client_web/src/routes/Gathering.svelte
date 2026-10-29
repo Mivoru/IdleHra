@@ -11,7 +11,7 @@
   import ItemIcon from '../lib/ui/ItemIcon.svelte';
   import WorkerPicker from '../lib/ui/WorkerPicker.svelte';
   import { createQuery } from '@tanstack/svelte-query';
-  import { queryKeys, fetchBreedingRoster } from '../lib/net/rest';
+  import { queryKeys, fetchBreedingRoster, fetchCharacterStats } from '../lib/net/rest';
   import { prettifyBaseId, monsterName } from '../lib/net/content';
   import { workersOf, workerName, describeJob, kindTakenBy, slotBars, type Worker } from '../lib/ui/workers';
   import { selectedCharacterSlot } from '../lib/stores/selectedCharacter';
@@ -161,52 +161,46 @@
   // rather than quietly presented as exact.
   const MIN_GATHER_TICKS = 2;
 
-  // Modul: EVERYTHING IS A PERCENTAGE NOW - mirrors
-  // GatheringToolEngine.ComputeRequiredTicks.
-  //
-  // Mastery used to SUBTRACT two ticks a level before any multiplier applied,
-  // which on region 1's 30-tick node goes negative at mastery 15 and clamps to
-  // the two-tick minimum. That is what put "0.2s / unit (floor)" on this
-  // screen: the first two regions gathered instantly, and no tool, building or
-  // affix could move a number already pinned to the bottom. A subtraction
-  // cannot be balanced against a threshold it does not know about.
-  //
-  // The tool curve is geometric, 1.35x a tier, so the ladder from Birch to
-  // Void Bark is worth about twenty times rather than the old threefold.
-  const TOOL_SPEED_PCT = [0, 35, 82, 146, 232, 348, 505, 717, 1003, 1390, 1912];
   // Mirrors GatheringToolEngine.GetMasterySpeedBonusPct: 40 * sqrt(level),
-  // where it used to be a flat 10% a level with no ceiling.
+  // where it used to be a flat 10% a level with no ceiling. Shown in the
+  // mastery line below; the RATES no longer use it (see speedPctFor).
   const MASTERY_SPEED_PCT_AT_LEVEL_ONE = 40;
   function masterySpeedPct(level: number): number {
     return level <= 0 ? 0 : Math.floor(MASTERY_SPEED_PCT_AT_LEVEL_ONE * Math.sqrt(level));
   }
-  const VILLAGE_SPEED_PCT_PER_LEVEL = 5;
 
-  function villageLevelFor(professionId: number): number {
-    if (!snap) return 0;
-    // Only woodcutting and mining have a production building; fishing gets no
-    // acceleration rather than silently borrowing the Mine's.
-    if (professionId === 0) return Number(snap.LumberjackLevel ?? 0);
-    if (professionId === 1) return Number(snap.MineLevel ?? 0);
-    return 0;
+  // Modul: THE RATE IS THE SERVER'S, NOT A COPY OF ITS FORMULA (TASK_BOARD
+  // 121, 2026-10-29). This screen used to re-derive the speed from tool tier,
+  // mastery, village and ToolGatherSpeedPct. That copy left out the Harvest
+  // bough, the Skill aptitude, traits and the pet; it read slot 1's tools
+  // whatever character was picked; and it had to change every time the
+  // formula did - and the formula changed: extras multiply now, and each tool
+  // speeds only its own profession. The stat sheet's gather_speed_N row is
+  // GatheringToolEngine.TotalSpeedBonusPct for the PICKED character, the same
+  // figure the tick divides by.
+  const statSlot = $derived(Math.max(0, (chosen?.slot ?? 1) - 1));
+  const speedSheet = createQuery(() => ({
+    queryKey: queryKeys.characterStats(statSlot),
+    queryFn: () => fetchCharacterStats(statSlot),
+    staleTime: 15_000,
+  }));
+  function speedPctFor(professionId: number): number | null {
+    const rows = speedSheet.data?.Sections.flatMap((section) => section.Rows) ?? [];
+    const row = rows.find((r) => r.Key === `gather_speed_${professionId}`);
+    return row ? Number(row.Value) : null;
   }
 
-  function effectiveTicks(node: GatheringNodeDefinition): number {
-    if (!snap) return node.BaseTickThreshold;
-
-    const tier = toolTierFor(node.ProfessionType);
-    const speedPct =
-      (TOOL_SPEED_PCT[Math.max(0, Math.min(tier, TOOL_SPEED_PCT.length - 1))] ?? 0) +
-      masterySpeedPct(masteryLevelOf(node.ProfessionType)) +
-      villageLevelFor(node.ProfessionType) * VILLAGE_SPEED_PCT_PER_LEVEL +
-      Number(snap.ToolGatherSpeedPct ?? 0);
-
+  /** Ticks per harvest, or null until the picked character's stat sheet has loaded. */
+  function effectiveTicks(node: GatheringNodeDefinition): number | null {
+    const speedPct = speedPctFor(node.ProfessionType);
+    if (speedPct === null) return null;
     const ticks = Math.floor((node.BaseTickThreshold * 100) / (100 + speedPct));
     return Math.max(MIN_GATHER_TICKS, ticks);
   }
 
   function secondsPerUnit(node: GatheringNodeDefinition): string {
-    return (effectiveTicks(node) / 10).toFixed(1);
+    const ticks = effectiveTicks(node);
+    return ticks === null ? '…' : (ticks / 10).toFixed(1);
   }
 
   function isFloored(node: GatheringNodeDefinition): boolean {

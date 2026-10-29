@@ -801,7 +801,9 @@ namespace FolkIdle.Server.Domain.Combat
             update.AxeToolTier = tools.AxeTier;
             update.PickaxeToolTier = tools.PickaxeTier;
             update.RodToolTier = tools.RodTier;
-            update.ToolGatherSpeedPct = tools.GatherSpeedPct;
+            update.ToolAxeSpeedPct = tools.AxeSpeedPct;
+            update.ToolPickaxeSpeedPct = tools.PickaxeSpeedPct;
+            update.ToolRodSpeedPct = tools.RodSpeedPct;
             update.ToolAxeYieldPct = tools.AxeYieldPct;
             update.ToolPickaxeYieldPct = tools.PickaxeYieldPct;
             update.ToolRodYieldPct = tools.RodYieldPct;

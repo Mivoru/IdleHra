@@ -401,7 +401,9 @@ namespace FolkIdle.Server.Engine
         // Modul: what the equipped tools add, summed. Percentages, because a
         // tool's job is to multiply a rate and a weighted table - a flat bonus
         // would mean nothing against either.
-        public ushort ToolGatherSpeedPct;
+        public ushort ToolAxeSpeedPct;
+        public ushort ToolPickaxeSpeedPct;
+        public ushort ToolRodSpeedPct;
         // Per tool, so each pays only its own profession (2026-10-29).
         public ushort ToolAxeYieldPct;
         public ushort ToolPickaxeYieldPct;

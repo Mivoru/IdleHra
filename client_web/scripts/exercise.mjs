@@ -1365,6 +1365,18 @@ await go('Home');
 if (want('gathering')) {
 await go('Gathering');
 {
+  // Modul: THE RATES COME FROM THE SERVER NOW (TASK_BOARD 121). Each node's
+  // "N.Ns" is read from the picked character's stat sheet; until it loads
+  // the row shows "…". A screen whose stat sheet never arrives renders
+  // perfectly and tells the player nothing, so the rate must turn numeric.
+  const rate = page.locator('.rate').first();
+  await page
+    .waitForFunction(() => /\d+\.\d+s/.test(document.querySelector('.rate')?.textContent ?? ''), null, { timeout: 15000 })
+    .catch(() => {});
+  const text = ((await rate.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim();
+  record('gathering rates come from the server, per character', /\d+\.\d+s/.test(text), text.slice(0, 40));
+}
+{
   // Parsed by walking lines rather than by building a RegExp from a template
   // literal: `\s` inside backticks is just "s", so a constructed pattern
   // silently matches nothing and the check then fails for a reason that has

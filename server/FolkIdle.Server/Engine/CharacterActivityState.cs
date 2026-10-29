@@ -93,7 +93,9 @@ namespace FolkIdle.Server.Engine
         public byte AxeToolTier;
         public byte PickaxeToolTier;
         public byte RodToolTier;
-        public ushort ToolGatherSpeedPct;
+        public ushort ToolAxeSpeedPct;
+        public ushort ToolPickaxeSpeedPct;
+        public ushort ToolRodSpeedPct;
         // Per tool, so each pays only its own profession (2026-10-29).
         public ushort ToolAxeYieldPct;
         public ushort ToolPickaxeYieldPct;

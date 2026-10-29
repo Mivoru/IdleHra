@@ -1411,7 +1411,9 @@ namespace FolkIdle.Server.Domain.Shared
                 AxeToolTier = toolLoadout.AxeTier,
                 PickaxeToolTier = toolLoadout.PickaxeTier,
                 RodToolTier = toolLoadout.RodTier,
-                ToolGatherSpeedPct = toolLoadout.GatherSpeedPct,
+                ToolAxeSpeedPct = toolLoadout.AxeSpeedPct,
+                ToolPickaxeSpeedPct = toolLoadout.PickaxeSpeedPct,
+                ToolRodSpeedPct = toolLoadout.RodSpeedPct,
                 ToolAxeYieldPct = toolLoadout.AxeYieldPct,
                 ToolPickaxeYieldPct = toolLoadout.PickaxeYieldPct,
                 ToolRodYieldPct = toolLoadout.RodYieldPct,
@@ -1753,7 +1755,9 @@ namespace FolkIdle.Server.Domain.Shared
             slot.AxeToolTier = tools.AxeTier;
             slot.PickaxeToolTier = tools.PickaxeTier;
             slot.RodToolTier = tools.RodTier;
-            slot.ToolGatherSpeedPct = tools.GatherSpeedPct;
+            slot.ToolAxeSpeedPct = tools.AxeSpeedPct;
+            slot.ToolPickaxeSpeedPct = tools.PickaxeSpeedPct;
+            slot.ToolRodSpeedPct = tools.RodSpeedPct;
             slot.ToolAxeYieldPct = tools.AxeYieldPct;
             slot.ToolPickaxeYieldPct = tools.PickaxeYieldPct;
             slot.ToolRodYieldPct = tools.RodYieldPct;

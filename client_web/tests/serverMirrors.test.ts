@@ -189,26 +189,10 @@ describe('the numbers the client mirrors still match the server', () => {
     );
   });
 
-  it('gathering: the tool speed curve, tier for tier', () => {
-    const tools = read(serverRoot, 'Domain', 'Shared', 'GatheringToolEngine.cs');
-    const gathering = read(clientRoot, 'routes', 'Gathering.svelte');
-
-    const serverTable = [...tools.matchAll(/^\s*(\d+) => (\d+),/gm)].map((m) => [
-      Number(m[1]),
-      Number(m[2]),
-    ]);
-    expect(serverTable.length).toBe(10);
-
-    const clientTable = JSON.parse(
-      gathering.match(/TOOL_SPEED_PCT = (\[[^\]]+\])/)![1],
-    ) as number[];
-
-    for (const [tier, pct] of serverTable) {
-      expect(clientTable[tier], `tool tier ${tier}`).toBe(pct);
-    }
-    // Index 0 is "no tool", which the switch answers with its default.
-    expect(clientTable[0]).toBe(0);
-  });
+  // Modul: the tool speed curve and the village percentage were mirrored here
+  // for Gathering.svelte's own copy of the speed formula. That copy is gone
+  // (TASK_BOARD 121): the screen reads the stat sheet's gather_speed_N row,
+  // which is the server's figure, so there is nothing left to mirror.
 
   // Modul: THE AFFIX ORDER IS A WIRE FORMAT.
   //
@@ -323,7 +307,7 @@ describe('the numbers the client mirrors still match the server', () => {
     }
   });
 
-  it('gathering: mastery and village production percentages', () => {
+  it('gathering: the mastery percentage the screen prints', () => {
     const tools = read(serverRoot, 'Domain', 'Shared', 'GatheringToolEngine.cs');
     const gathering = read(clientRoot, 'routes', 'Gathering.svelte');
 
@@ -337,9 +321,6 @@ describe('the numbers the client mirrors still match the server', () => {
     );
     expect(gathering).toMatch(/Math\.sqrt\(level\)/);
     expect(tools).toMatch(/Math\.Sqrt\(masteryLevel\)/);
-    expect(num(gathering, /VILLAGE_SPEED_PCT_PER_LEVEL = (\d+)/, 'client village pct')).toBe(
-      num(tools, /VillageYieldBonusPctPerLevel = (\d+)/, 'server village pct'),
-    );
   });
 
   // Modul: found while drawing the skill tree - the node table is a TENTH
