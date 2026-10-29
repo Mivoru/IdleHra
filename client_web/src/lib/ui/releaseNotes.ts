@@ -35,6 +35,29 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.37.0',
+    date: '2026-10-29',
+    headline: 'Gathering bonuses count in full, and the Fairy gets the dodge she was missing.',
+    sections: [
+      {
+        title: 'Gathering',
+        items: [
+          'Gathering speed bonuses from tools, the Harvest branch, the Skill aptitude, traits and pets now multiply your speed instead of being added to it. A +5% bonus is a real 5% at every stage - before, it shrank to almost nothing once your tool and mastery were high.',
+          'The speed bonus on tools now shows its real size: a tool that says +55% gives +55%. It always did; the number on the tool used to read ten times too small.',
+          'Each tool now speeds up only its own work: an axe for woodcutting, a pickaxe for mining, a rod for fishing.',
+          'The Clumsy Hands flaw now really slows gathering by 6%, as its card says.',
+          'The Gathering screen shows the real harvest time for the character you picked, with every bonus included.',
+        ],
+      },
+      {
+        title: 'Races',
+        items: [
+          'The Fairy now has +15 dodge. Her "+20% ranged damage" did nothing - there is no separate ranged damage in this game - so it became +5 dodge.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.36.0',
     date: '2026-10-29',
     headline: 'Every point of dodge counts now.',
