@@ -35,6 +35,21 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.33.0',
+    date: '2026-10-29',
+    headline: 'Two bonuses that did nothing now work.',
+    sections: [
+      {
+        title: 'Fixes',
+        items: [
+          'Gathering yield from the Inheritance store now pays: +2% more harvest rolls per level, online and while you are away. If you bought it, the levels you already own start paying today.',
+          'The Fortitude branch of the skill tree now gives the armour its card promised: +2% armour per level, on top of the health it already gave.',
+          'Weapon damage bonuses are all called "Damage" now. Melee, ranged and magic damage were always the same bonus to your attack, and the old names suggested otherwise.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.32.1',
     date: '2026-10-28',
     sections: [
