@@ -818,8 +818,27 @@ Every stat number on the Character screen comes from the server's own
 
 ## 16. Defects found while writing this
 
-Each item was checked by grepping for readers of the field. Status as of
-2026-10-29: 1, 2, 3 and the attack-speed half of 4 FIXED; the rest open.
+Each item was checked by grepping for readers of the field. Status at the
+end of 2026-10-29:
+
+| # | Status | Where |
+|---|---|---|
+| 1, 2 | FIXED, live | #197 |
+| 3 | FIXED, live | #199 |
+| 4 | attack speed FIXED, live (#199); dodge + potion in PR #200; Fairy's ranged damage open | TASK_BOARD 124 |
+| 5 | FIXED | #207 |
+| 6 | open, design | TASK_BOARD 125 |
+| 7 | kept on purpose | - |
+| 8 | open, design | TASK_BOARD 125 |
+| 9 | FIXED | #206 |
+| 10 | yield and rare find FIXED, live (#202); speed open | issue #203, TASK_BOARD 121 |
+| 11 | labels FIXED, live | #197 |
+| 12 | open, balance | TASK_BOARD 127 |
+| 13 | open, design | TASK_BOARD 125 |
+
+`StatAuditTests` (task 126, #208) now fails the suite when a stat has no
+consumer or a percentage affix pays a different number than its tooltip, so
+a new item of this kind is caught in CI rather than by reading code.
 
 1. **Inheritance "Gathering yield" does nothing.** `Inherit_GatheringYield` is
    bought with diamonds, persisted and broadcast. No gathering or yield
@@ -888,3 +907,11 @@ Each item was checked by grepping for readers of the field. Status as of
     `melee_dmg_pct`, `range_dmg_pct` and `magic_dmg_pct` all add to the same
     damage bonus. The client now labels all three "Damage" (2026-10-29); the
     ids stay, because their order crosses the wire.
+12. **The Clumsy Hands flaw does nothing.** Found by the stat audit on
+    2026-10-29. Its -6% gathering speed is dropped by two `> 0` guards in
+    `GatheringToolEngine` (`TotalSpeedBonusPct` and `ComputeRequiredTicks`).
+    The other flaws apply. TASK_BOARD 127.
+13. **Legacy perks can be neither bought nor earned.** No client screen calls
+    `purchaseLegacyUnlock`, and legacy shards are credited only by
+    `GuildWarEngine` - Guild Wars are parked. Production, 2026-10-29: 0 of 26
+    accounts hold a perk; one account holds shards (37,628). TASK_BOARD 125.
