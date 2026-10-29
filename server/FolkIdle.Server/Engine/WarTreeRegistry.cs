@@ -28,6 +28,14 @@ namespace FolkIdle.Server.Engine
         CrushingChance,
         /// <summary>Extra damage, in tenths of a percent, on a hit against a monster at full health.</summary>
         FirstStrikePct,
+        /// <summary>Extra damage, in tenths of a percent, against a monster below WarEffects.ExecuteBelowPct of its health.</summary>
+        ExecutePct,
+        /// <summary>Chance, in tenths of a percent, that a crit lands twice.</summary>
+        DoubleStrikeChance,
+        /// <summary>Chance, in tenths of a percent, that a crit repeats at WarEffects.EchoShare of its damage.</summary>
+        EchoChance,
+        /// <summary>Attack interval cut, in tenths of a percent of the crit chance.</summary>
+        FrenzyOfCrit,
     }
 
     /// <summary>
@@ -118,8 +126,8 @@ namespace FolkIdle.Server.Engine
             // short farming fights and barely moves a long boss wall.
             Add(FirstStrike, "First Strike", "breach", ColumnMight, 0, 1, "Minor", 5, 1, WarEffect.FirstStrikePct, 250, "+{0}% damage on the first hit against each monster");
             Add(CrushingBlow, "Crushing Blow", "crushing_blow", ColumnMight, 1, -1, "Notable", 3, 2, WarEffect.CrushingChance, 0, "{0}% chance a hit lands for double damage", ranks: new[] { 30, 60, 100 });
-            Add(Executioner, "Executioner", "executioner", ColumnMight, 2, 0, "Fork", 5, 1, WarEffect.Mechanic, 0, "More damage against monsters below 35% health", fork: Bossbreaker);
-            Add(Bossbreaker, "Bossbreaker", "bossbreaker", ColumnMight, 2, 1, "Fork", 5, 1, WarEffect.BossDamagePct, 40, "+{0}% damage against bosses", fork: Executioner);
+            Add(Executioner, "Executioner", "executioner", ColumnMight, 2, 0, "Fork", 5, 1, WarEffect.ExecutePct, 40, "+{0}% damage against monsters below 35% health", fork: Bossbreaker);
+            Add(Bossbreaker, "Bossbreaker", "bossbreaker", ColumnMight, 2, 1, "Fork", 5, 1, WarEffect.BossDamagePct, 40, "+{0}% damage against region and world bosses", fork: Executioner);
             Add(HeavyHand, "Heavy Hand", "heavy_hand", ColumnMight, 3, 0, "Minor", 5, 1, WarEffect.DamagePct, 15, "+{0}% damage");
             Add(Thunderer, "Thunderer", "thunderer", ColumnMight, 3, 1, "Notable", 3, 2, WarEffect.Mechanic, 0, "Opens a boss fight with a heavy blow");
             Add(Ruin, "Ruin", "ruin", ColumnMight, 4, -1, "Keystone", 1, 5, WarEffect.Mechanic, 0, "Every 8th hit lands far harder; attack speed counts half");
@@ -128,10 +136,16 @@ namespace FolkIdle.Server.Engine
             Add(KeenEye, "Keen Eye", "keen_eye", ColumnPrecision, 0, 0, "Minor", 5, 1, WarEffect.CritChancePoints, 5, "+{0} crit chance");
             Add(CruelEdge, "Cruel Edge", "cruel_edge", ColumnPrecision, 0, 1, "Minor", 5, 1, WarEffect.CritDamagePct, 40, "+{0}% crit damage");
             Add(Relentless, "Relentless", "relentless", ColumnPrecision, 1, -1, "Notable", 3, 2, WarEffect.AttackIntervalPct, 30, "-{0}% attack interval");
-            Add(Echo, "Echo", "echo", ColumnPrecision, 2, 0, "Fork", 5, 1, WarEffect.Mechanic, 0, "A crit may repeat at half damage", fork: Frenzy);
-            Add(Frenzy, "Frenzy", "frenzy", ColumnPrecision, 2, 1, "Fork", 5, 1, WarEffect.Mechanic, 0, "After a crit, the next swing comes sooner", fork: Echo);
+            Add(Echo, "Echo", "echo", ColumnPrecision, 2, 0, "Fork", 5, 1, WarEffect.EchoChance, 80, "{0}% chance a crit repeats at half damage", fork: Frenzy);
+            // Modul: FRENZY IS A CONVERSION, NOT A STATE. "After a crit, the next
+            // swing comes sooner" needs a timer, and the player's and the
+            // monster's swings share one accumulator - shifting it would move
+            // the monster's swings too, and the projection could not price it.
+            // So crit chance buys swing speed directly: the crit build still
+            // gets faster, live and away alike.
+            Add(Frenzy, "Frenzy", "frenzy", ColumnPrecision, 2, 1, "Fork", 5, 1, WarEffect.FrenzyOfCrit, 60, "Attack interval -{0}% of your crit chance", fork: Echo);
             Add(SteadyHand, "Steady Hand", "steady_hand", ColumnPrecision, 3, 0, "Minor", 5, 1, WarEffect.AccuracyPoints, 50, "+{0} accuracy");
-            Add(DoubleStrike, "Double Strike", "double_strike", ColumnPrecision, 3, 1, "Notable", 3, 2, WarEffect.Mechanic, 0, "A chance that a critical hit lands twice");
+            Add(DoubleStrike, "Double Strike", "double_strike", ColumnPrecision, 3, 1, "Notable", 3, 2, WarEffect.DoubleStrikeChance, 0, "{0}% chance a critical hit lands twice", ranks: new[] { 80, 160, 250 });
             Add(PerfectSequence, "Perfect Sequence", "perfect_sequence", ColumnPrecision, 4, -1, "Keystone", 1, 5, WarEffect.Mechanic, 0, "Every 6th swing is a guaranteed heavy crit");
 
             // ---- Guard: survives, and turns defence into damage ----------------
@@ -161,7 +175,8 @@ namespace FolkIdle.Server.Engine
         {
             WarEffect.DamagePct, WarEffect.CritChancePoints, WarEffect.CritDamagePct, WarEffect.AttackIntervalPct,
             WarEffect.MaxHpPct, WarEffect.ArmourPct, WarEffect.DodgePoints, WarEffect.BlockPoints, WarEffect.AccuracyPoints,
-            WarEffect.FirstStrikePct, WarEffect.CrushingChance,
+            WarEffect.FirstStrikePct, WarEffect.CrushingChance, WarEffect.BossDamagePct, WarEffect.ExecutePct,
+            WarEffect.DoubleStrikeChance, WarEffect.EchoChance, WarEffect.FrenzyOfCrit,
         };
 
         public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);
@@ -264,6 +279,11 @@ namespace FolkIdle.Server.Engine
                     case WarEffect.BlockPoints: e.BlockTenths += v; break;
                     case WarEffect.AccuracyPoints: e.AccuracyTenths += v; break;
                     case WarEffect.FirstStrikePct: e.FirstStrikeTenthsPct += v; break;
+                    case WarEffect.BossDamagePct: e.BossDamageTenthsPct += v; break;
+                    case WarEffect.ExecutePct: e.ExecuteTenthsPct += v; break;
+                    case WarEffect.DoubleStrikeChance: e.DoubleStrikeTenths += v; break;
+                    case WarEffect.EchoChance: e.EchoTenths += v; break;
+                    case WarEffect.FrenzyOfCrit: e.FrenzyTenths += v; break;
                     case WarEffect.CrushingChance: e.CrushingChanceTenths += v; break;
                 }
             }
@@ -314,6 +334,31 @@ namespace FolkIdle.Server.Engine
         public int AccuracyTenths;
         public int FirstStrikeTenthsPct;
         public int CrushingChanceTenths;
+        public int BossDamageTenthsPct;
+        public int ExecuteTenthsPct;
+        public int DoubleStrikeTenths;
+        public int EchoTenths;
+        public int FrenzyTenths;
+
+        /// <summary>Echo repeats a crit at this share of its damage, and never echoes an echo.</summary>
+        public const double EchoShare = 0.5;
+
+        public readonly double EchoChance => Math.Clamp(EchoTenths / 1000.0, 0.0, 1.0);
+
+        /// <summary>Executioner's line: a monster below this share of its health takes the bonus.</summary>
+        public const int ExecuteBelowPct = 35;
+
+        /// <summary>
+        /// Monster health as the swing count sees it under Executioner: the
+        /// last ExecuteBelowPct of the bar falls faster by the bonus, which is
+        /// the same as that part of the bar being smaller.
+        /// </summary>
+        public readonly long ExecuteAdjustedHp(long milliHp)
+        {
+            if (ExecuteTenthsPct <= 0 || milliHp <= 0) return milliHp;
+            double tail = milliHp * ExecuteBelowPct / 100.0;
+            return (long)(milliHp - tail + tail / (1.0 + ExecuteTenthsPct / 1000.0));
+        }
 
         /// <summary>Crushing Blow doubles a hit: the multiplier it rolls.</summary>
         public const int CrushingMultiplier = 2;

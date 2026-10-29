@@ -159,6 +159,23 @@
     font-size: 0.7em;
   }
 
+  /* Echo: pale cyan, with a fading copy of the number trailing it - the
+     repeat the player is being told about. */
+  .hit[data-proc='echo'] {
+    --half: 3.8rem;
+    font-size: 1.6rem;
+    color: #d8f6ff;
+    text-shadow:
+      0 2px 4px rgba(0, 0, 0, 0.8),
+      0 0 10px rgba(87, 199, 227, 0.95),
+      14px -6px 0 rgba(87, 199, 227, 0.35);
+  }
+
+  .hit[data-proc='echo'] .tag.skill {
+    color: #57c7e3;
+    font-size: 0.66em;
+  }
+
   @keyframes crush-shake {
     0%, 100% { translate: 0 0; }
     20% { translate: -3px 1px; }

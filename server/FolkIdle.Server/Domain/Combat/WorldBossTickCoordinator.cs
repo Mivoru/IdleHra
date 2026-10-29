@@ -99,7 +99,9 @@ namespace FolkIdle.Server.Domain.Combat
             // to read a tree level from, and passing the payload in
             // would hand it far more than it needs.
             float giantslayerPct = SkillTreeRegistry.GetBonusPercent(
-                SkillTreeRegistry.BranchWorldBossDamage, currentPayload.Skill_WorldBossDamage);
+                SkillTreeRegistry.BranchWorldBossDamage, currentPayload.Skill_WorldBossDamage)
+                // The War half's Bossbreaker counts against the world boss too.
+                + WarTreeRegistry.Resolve(in currentPayload).BossDamageTenthsPct / 10f;
 
             // Modul: THE SERVER ANSWERS "how hard does this player
             // hit" ITSELF NOW.

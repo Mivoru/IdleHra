@@ -9,6 +9,7 @@ import type { ClipName } from './audio';
 export const SKILL_PROC = {
   None: 0,
   CrushingBlow: 1,
+  Echo: 2,
 } as const;
 
 export interface SkillCallout {
@@ -21,6 +22,7 @@ export interface SkillCallout {
 
 export const SKILL_CALLOUTS: Readonly<Record<number, SkillCallout>> = {
   [SKILL_PROC.CrushingBlow]: { label: 'CRUSH!', tone: 'crush', clip: 'skillCrush' },
+  [SKILL_PROC.Echo]: { label: 'ECHO', tone: 'echo', clip: 'skillEcho' },
 };
 
 export function calloutFor(proc: number): SkillCallout | null {

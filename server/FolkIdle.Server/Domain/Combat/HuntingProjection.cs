@@ -232,14 +232,16 @@ namespace FolkIdle.Server.Domain.Combat
                 // First Strike: the first CONNECTING hit of each fight lands
                 // harder. Priced as the health it takes off before the count
                 // starts - the mean of a connecting swing, times the bonus.
-                int firstStrike = WarTreeRegistry.Resolve(in copy).FirstStrikeTenthsPct;
+                var warFight = WarTreeRegistry.Resolve(in copy);
+                int firstStrike = warFight.FirstStrikeTenthsPct;
                 double pHit = CombatDamageModel.HitChance(in stats, in monster);
                 long opening = firstStrike > 0 && pHit > 0 ? (long)(swing.Mean / pHit * firstStrike / 1000.0) : 0L;
 
-                SwingsToKill? firstClearKill = thorns ? null : SwingsToKill.For(in swing, Math.Max(1L, firstClearHp - opening));
+                // Executioner: the bar's last 35% priced as smaller by the bonus.
+                SwingsToKill? firstClearKill = thorns ? null : SwingsToKill.For(in swing, Math.Max(1L, warFight.ExecuteAdjustedHp(firstClearHp) - opening));
                 SwingsToKill? farmKill = thorns ? null
                     : farmHp == firstClearHp ? firstClearKill
-                    : SwingsToKill.For(in swing, Math.Max(1L, farmHp - opening));
+                    : SwingsToKill.For(in swing, Math.Max(1L, warFight.ExecuteAdjustedHp(farmHp) - opening));
 
                 return new FightSetup
                 {
@@ -686,13 +688,15 @@ namespace FolkIdle.Server.Domain.Combat
                 double pHit = CombatDamageModel.HitChance(in stats, in monster);
                 double pCrit = SimulationEngine.LiveCritChancePct(in payload, in stats) / 100.0;
                 float critMult = SimulationEngine.LiveCritMultiplier(in payload, in stats);
-                double pDouble = payload.Skill_DoubleStrike > 0
-                    ? Math.Clamp(SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.CrownDoubleStrike, payload.Skill_DoubleStrike) / 100.0, 0.0, 1.0)
-                    : 0.0;
+                double pDouble = SimulationEngine.DoubleStrikeChance(in payload);
 
                 double normal = Landed(in payload, in stats, in monster, rawMilliAttack, 1.0f);
                 double crit = Landed(in payload, in stats, in monster, rawMilliAttack, critMult);
                 double dbl = Landed(in payload, in stats, in monster, rawMilliAttack, critMult * 2f);
+                // Echo, as an expectation on every crit, doubled ones included.
+                double echo = 1.0 + WarTreeRegistry.Resolve(in payload).EchoChance * WarEffects.EchoShare;
+                crit *= echo;
+                dbl *= echo;
 
                 long bloodthirst = payload.Skill_Bloodthirst > 0
                     ? (long)SkillTreeRegistry.GetBonusTenthsOfPercent(SkillTreeRegistry.BoughBloodthirst, payload.Skill_Bloodthirst)
@@ -708,8 +712,11 @@ namespace FolkIdle.Server.Domain.Combat
                 int net = (int)CombatDamageModel.Mitigate(
                     raw, monster.Armor, CombatDamageModel.MonsterArmourHalvingConstant(monster.RegionTier), stats.FlatArmorPenetration);
                 // Crushing Blow, as the live swing rolls it: a share of hits doubled.
-                double crushing = WarTreeRegistry.Resolve(in payload).CrushingChance;
+                var war = WarTreeRegistry.Resolve(in payload);
+                double crushing = war.CrushingChance;
                 if (crushing > 0) net = (int)(net * (1 + crushing * (WarEffects.CrushingMultiplier - 1)));
+                if (war.BossDamageTenthsPct > 0 && ContentRegistry.IsRegionalBoss(monster.Id))
+                    net += (int)((long)net * war.BossDamageTenthsPct / 1000L);
                 net = (int)(net * payload.CachedCodexDamageMultiplier);
                 if (stats.SetFireDamageMultiplierPct > 0f)
                 {

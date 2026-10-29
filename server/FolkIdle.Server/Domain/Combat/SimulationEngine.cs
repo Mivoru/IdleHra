@@ -3881,12 +3881,32 @@ namespace FolkIdle.Server.Domain.Combat
                     SkillTreeRegistry.BoughRelentless, payload.Skill_Relentless) / 100f;
                 playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - faster)));
             }
-            int warFaster = WarTreeRegistry.Resolve(in payload).AttackIntervalTenthsPct;
-            if (warFaster > 0)
+            var warSpeed = WarTreeRegistry.Resolve(in payload);
+            if (warSpeed.AttackIntervalTenthsPct > 0)
             {
-                playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - warFaster / 1000f)));
+                playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - warSpeed.AttackIntervalTenthsPct / 1000f)));
+            }
+            // Frenzy: a share of the crit chance, taken off the interval.
+            if (warSpeed.FrenzyTenths > 0)
+            {
+                float cut = LiveCritChancePct(in payload, in combatStats) / 100f * (warSpeed.FrenzyTenths / 1000f);
+                playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - Math.Clamp(cut, 0f, 0.9f))));
             }
             return playerAttackSpeedMs;
+        }
+
+        /// <summary>
+        /// Double Strike's chance as a probability: today's crown or the War
+        /// half's notable, whichever the payload runs. The live roll and the
+        /// projection both ask this.
+        /// </summary>
+        internal static double DoubleStrikeChance(in TickStatePayload payload)
+        {
+            double today = payload.Skill_DoubleStrike > 0
+                ? SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.CrownDoubleStrike, payload.Skill_DoubleStrike) / 100.0
+                : 0.0;
+            double war = WarTreeRegistry.Resolve(in payload).DoubleStrikeTenths / 1000.0;
+            return Math.Clamp(Math.Max(today, war), 0.0, 1.0);
         }
 
         /// <summary>Crit chance in percent, with the Precision branch, clamped.</summary>
@@ -4880,10 +4900,8 @@ namespace FolkIdle.Server.Domain.Combat
                         // to-hit, its own lifesteal and its own kill check -
                         // three places to get out of step for an effect the
                         // player experiences as "that one hit harder".
-                        if (payload.Skill_DoubleStrike > 0
-                            && Random.Shared.NextDouble()
-                               <= (SkillTreeRegistry.GetBonusPercent(
-                                       SkillTreeRegistry.CrownDoubleStrike, payload.Skill_DoubleStrike) / 100.0f))
+                        double doubleChance = DoubleStrikeChance(in payload);
+                        if (doubleChance > 0 && Random.Shared.NextDouble() <= doubleChance)
                         {
                             critMult *= 2f;
                             doubleStrikeLanded = true;
@@ -4941,6 +4959,18 @@ namespace FolkIdle.Server.Domain.Combat
                         combatStats.FlatArmorPenetration);
                     if (crushed) netDamage *= WarEffects.CrushingMultiplier;
                     if (firstStrike) netDamage += (int)((long)netDamage * warHit.FirstStrikeTenthsPct / 1000L);
+                    // Bossbreaker against a region boss; Executioner below 35% of
+                    // the bar, judged on the health before this hit lands.
+                    if (warHit.BossDamageTenthsPct > 0 && ContentRegistry.IsRegionalBoss(activeMonster.Id))
+                        netDamage += (int)((long)netDamage * warHit.BossDamageTenthsPct / 1000L);
+                    if (warHit.ExecuteTenthsPct > 0
+                        && payload.CurrentMonsterHp * 100L < (long)SpawnHpFor(in payload) * WarEffects.ExecuteBelowPct)
+                        netDamage += (int)((long)netDamage * warHit.ExecuteTenthsPct / 1000L);
+                    // Echo: a crit repeats at half its damage. Folded into this
+                    // hit, so it heals, kills and logs as one blow; an echo is
+                    // never rolled again.
+                    bool echoed = payload.LastHitWasCrit == 1 && warHit.EchoTenths > 0 && Random.Shared.NextDouble() < warHit.EchoChance;
+                    if (echoed) netDamage += (int)(netDamage * WarEffects.EchoShare);
                     netDamage = (int)(netDamage * payload.CachedCodexDamageMultiplier);
 
                     // Modul: set bonuses made real. The Chiming Steel 4-piece
@@ -5057,7 +5087,7 @@ namespace FolkIdle.Server.Domain.Combat
                         (byte)((payload.LastHitWasCrit == 1 ? Network.ResponseCombatEventPacket.FlagCrit : 0)
                              | (doubleStrikeLanded ? Network.ResponseCombatEventPacket.FlagDoubleStrike : 0)
                              | (burnDamageDealt > 0 ? Network.ResponseCombatEventPacket.FlagBurn : 0)),
-                        crushed ? Network.SkillProc.CrushingBlow : Network.SkillProc.None);
+                        crushed ? Network.SkillProc.CrushingBlow : echoed ? Network.SkillProc.Echo : Network.SkillProc.None);
 
                     // Separate line, because it is health arriving rather than
                     // damage leaving - folding it into the hit above would make
