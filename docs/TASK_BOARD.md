@@ -40,8 +40,13 @@ the old one reached 420 KB and three contradictory START HERE blocks.
     tests. After it ships, check the region-2 and region-3 first clears and
     seasonal tier 6 in production.
   - It carries no release notes yet. Add them at deploy time.
-  - Also open: #206 (task 123) and #207 (task 122), both cleanup with no
-    behaviour change.
+- **Tasks in flight (2026-10-29, later):**
+  - **120 merged** as #209: `exercise` re-seeds its fixture, the flaky steps
+    poll instead of sleeping, `EXERCISE_ONLY=<sections>` and
+    `EXERCISE_ONLY=list`, and the `OfflineCombatParityTests` flake (3 of 20
+    on `main`) is fixed.
+  - **122** #207 and **123** #206: cleanup, no behaviour change, CI green.
+  - **126** #208: the stat audit. Its first run found task 127 below.
 
 ## State on 2026-10-14
 
@@ -388,6 +393,34 @@ consumer, or with a unit that disagrees with how it is shown.
 
 **Depends on.** 120, so the CI it runs in is trustworthy. It will surface
 whatever 122-124 have not closed yet, through its allow-list.
+
+### 127. The Clumsy Hands flaw does nothing - BUG, BALANCE DECISION
+
+**Current state.** Found by the stat audit (#208, task 126).
+- The flaw trait Clumsy Hands promises "-6% gathering speed".
+  `GatheringToolEngine.TotalSpeedBonusPct` adds the extra-speed term only
+  `if (toolAffixSpeedPct > 0)`, so a negative total is dropped and the flaw
+  never applies.
+- The other flaws (Thin Blood, Faint Heart) do apply.
+- #208 lists the trait under `KnownDefects`. That is NOT acceptance: the
+  audit fails the moment the flaw starts working, so the fix must delete
+  the row.
+
+**Expected result.** The flaw does what its card says, or the card changes.
+
+**Depends on.** The owner's choice. Making a flaw start to bite slows
+gathering for every character that carries it, so it is a balance change,
+not a cleanup.
+
+**Options.**
+- **(a)** Apply negative totals, with a floor so speed never goes below base
+  by more than the flaw itself. Measure what share of characters carry the
+  flaw (read-only query) and their speed change.
+- **(b)** Reword or retire the flaw.
+
+**Acceptance.** The option is chosen, `trait:clumsy_hands` leaves
+`KnownDefects`, and a test shows a Clumsy Hands character harvesting slower
+(or the card no longer promises it).
 
 ### 46 follow-up. Confirm the compression ratio live
 
