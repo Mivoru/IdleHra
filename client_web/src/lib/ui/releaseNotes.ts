@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.38.1',
+    date: '2026-10-29',
+    sections: [
+      {
+        title: 'Skill Tree',
+        items: [
+          'The tree in the background no longer shifts when you tap a rune.',
+          'The buttons under a rune (+1, Max, Confirm and the rest) are readable in the dark look as well.',
+          'Tapping a rune near the bottom scrolls it into view, so its details never cover the branch you tapped.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.38.0',
     date: '2026-10-29',
     headline: 'A new Skill Tree screen: plan your build first, then confirm it.',
