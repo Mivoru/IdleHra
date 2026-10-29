@@ -4,11 +4,28 @@ name: Build, Test, and Deploy
 # suite, runs the full Testcontainers-backed test suite, and - only if that
 # suite is green - builds the production server image and pushes it tagged
 # with the commit SHA.
+#
+# Modul: AND ON EVERY PULL REQUEST INTO MAIN (2026-10-29), tests and client
+# checks only. The full server suite takes ~10 minutes, and it used to be run
+# by hand on the developer's machine before each PR while nothing else could
+# happen (the stale-DLL hook blocks a build while any server runs). Running it
+# here, in parallel with the work, is the point. Everything that publishes -
+# the image push, migrations, the cluster deploy - stays push-to-main only:
+# see the `if:` on build-and-push.
 
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
+
+# A new push to a PR supersedes the run already going for it; main's runs are
+# never cancelled, because each one may publish an image.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   DOTNET_VERSION: "8.0.x"
@@ -321,6 +338,9 @@ jobs:
     # Gated on the client checks too: a server image whose packet layout no
     # longer matches the committed client protocol should not ship.
     needs: [test, client]
+    # Never from a pull request: a PR run is a check, not a release. migrate
+    # and deploy need this job, so they inherit the gate.
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
