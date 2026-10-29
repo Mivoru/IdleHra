@@ -31,7 +31,8 @@ After that, `SimulationEngine` applies the account-wide multipliers.
 8. Attribute milestones, including the percentage ones (they act on gear).
 9. Pet armour %.
 10. Heritable traits (crit, speed, dodge, lifesteal, elevation).
-11. Set bonuses (flat attack, armour %, fire %, 5-piece flags).
+11. Set bonuses (armour %, fire %, 5-piece flags; the old flat attack bonus is
+    gone, see 16.5).
 12. Age penalty: × 0.95 (Senior) or × 0.90 (Elder) on melee damage, max HP and
     attack speed.
 
@@ -503,9 +504,11 @@ Owners: `Engine/CombatDamageModel.cs`, `Domain/Combat/SimulationEngine.cs`.
 
 **The monster's swing**
 
-- **Hit chance:** `100 / (100 + your dodge) − 5%`, clamped 5-95% (since
-  2026-10-29; before that there was no −5%, so the 95% clamp swallowed the first
-  5.26 points of dodge).
+- **Hit chance:** `10000 / (100 + dodge) − 5` percent, clamped 5-95, where
+  dodge is in percentage points (`SimulationEngine.MonsterHitChance` computes
+  the same as a fraction: `100 / (100 + dodge) − 0.05`, clamped 0.05-0.95). Since
+  2026-10-29; before that there was no −5, so the 95% clamp swallowed the first
+  5.26 points of dodge.
 - **Crit chance:** 5% + 0.5% per region. **Crit multiplier:** 1.5 minus crit
   mitigation%, minimum 1.0.
 - **Your armour:** `K = 40 × 3^(region−1)`. Region 1 is 40, region 5 is 3,240.
@@ -735,6 +738,10 @@ A full stat costs **19,758 diamonds**. Inheritance survives rebirth.
 ### 13.1 Race innate passives
 
 The **slot 1** character's race is active.
+
+This document uses the internal race ids. Players read other names
+(`RaceUnlockRegistry.GetRaceName`): Vila is **Fairy**, Kobold is **Leshy**,
+Vodnik is **Vodyanoy**, Moosleute is **Bies**. Human and Draugr are the same.
 
 | Race | Innate effect |
 |---|---|
