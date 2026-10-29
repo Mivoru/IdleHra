@@ -49,6 +49,8 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "echo r3", 3, r3, new[] { WarTreeRegistry.Echo }, new byte[] { 5 } };
             yield return new object[] { "frenzy r3", 3, r3, new[] { WarTreeRegistry.Frenzy }, new byte[] { 5 } };
             yield return new object[] { "double strike r3", 3, r3, new[] { WarTreeRegistry.DoubleStrike }, new byte[] { 3 } };
+            // Riposte answers the block's share of each connecting swing.
+            yield return new object[] { "riposte + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Riposte }, new byte[] { 5, 3 } };
             yield return new object[] { "bossbreaker on r2 boss", 4, RaceUnlockRegistry.GetRegionBossMonsterId(2), new[] { WarTreeRegistry.Bossbreaker }, new byte[] { 5 } };
         }
 
@@ -71,6 +73,35 @@ namespace FolkIdle.Server.Tests
             Assert.True(live.Kills > liveWithout.Kills * 1.01, $"{row}: the live tick does not use it ({live.Kills:F0} vs {liveWithout.Kills:F0} without)");
             double slack = Math.Max(live.Kills * 0.05, 1.0);
             Assert.True(Math.Abs(offline.Kills - live.Kills) <= slack, $"{row}: offline {offline.Kills:F1}, live {live.Kills:F1}");
+        }
+
+        /// <summary>
+        /// Bloodthirst heals rather than kills, so it shows in the larder: the
+        /// same hour eats fewer fish with it, live and away alike.
+        /// </summary>
+        [Fact]
+        public void Bloodthirst_eats_fewer_fish_away_as_watched()
+        {
+            int r4 = RegularOf(4);
+            var with = War(4, r4, (WarTreeRegistry.Bloodthirst, 3));
+            var without = War(4, r4);
+            var live = OfflineCombatParityTests.RunLive(with);
+            var offline = OfflineCombatParityTests.RunOffline(with);
+            var liveWithout = OfflineCombatParityTests.RunLive(without);
+            _output.WriteLine($"bloodthirst r4 food offline {offline.Food:F0} / live {live.Food:F0}, live without it {liveWithout.Food:F0}");
+
+            Assert.True(live.Food < liveWithout.Food, $"the live tick does not heal with it ({live.Food:F0} fish vs {liveWithout.Food:F0} without)");
+            Assert.True(Math.Abs(offline.Food - live.Food) <= Math.Max(live.Food * 0.05, 3.0), $"food: offline {offline.Food:F1}, live {live.Food:F1}");
+        }
+
+        /// <summary>Last Stand on the War half arms the same rule today's crown does.</summary>
+        [Fact]
+        public void War_last_stand_is_the_same_last_stand()
+        {
+            var payload = War(3, RegularOf(3));
+            Assert.False(FolkIdle.Server.Domain.Combat.SimulationEngine.HasLastStand(in payload));
+            payload.SkillRanks[WarTreeRegistry.LastStand] = 1;
+            Assert.True(FolkIdle.Server.Domain.Combat.SimulationEngine.HasLastStand(in payload));
         }
     }
 }

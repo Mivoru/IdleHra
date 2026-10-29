@@ -36,6 +36,12 @@ namespace FolkIdle.Server.Engine
         EchoChance,
         /// <summary>Attack interval cut, in tenths of a percent of the crit chance.</summary>
         FrenzyOfCrit,
+        /// <summary>Damage dealt that heals, in tenths of a percent (today's Bloodthirst, War-sized).</summary>
+        BloodthirstPct,
+        /// <summary>A dodged or blocked monster swing answers at this share of weapon damage, in tenths of a percent.</summary>
+        RipostePct,
+        /// <summary>Once an hour a killing blow leaves 1 health; the rank is the flag.</summary>
+        LastStand,
     }
 
     /// <summary>
@@ -151,11 +157,11 @@ namespace FolkIdle.Server.Engine
             // ---- Guard: survives, and turns defence into damage ----------------
             Add(Vitality, "Vitality", "vitality", ColumnGuard, 0, 0, "Minor", 5, 1, WarEffect.MaxHpPct, 25, "+{0}% max health");
             Add(Ironhide, "Ironhide", "ironhide", ColumnGuard, 0, 1, "Minor", 5, 1, WarEffect.ArmourPct, 25, "+{0}% armour");
-            Add(Bloodthirst, "Bloodthirst", "bloodthirst", ColumnGuard, 1, -1, "Notable", 3, 2, WarEffect.Mechanic, 0, "A share of the damage you deal heals you");
+            Add(Bloodthirst, "Bloodthirst", "bloodthirst", ColumnGuard, 1, -1, "Notable", 3, 2, WarEffect.BloodthirstPct, 0, "{0}% of the damage you deal heals you", ranks: new[] { 13, 26, 40 });
             Add(Evasion, "Evasion", "evasion", ColumnGuard, 2, 0, "Fork", 5, 1, WarEffect.DodgePoints, 15, "+{0} dodge", fork: ShieldWall);
             Add(ShieldWall, "Shield Wall", "shield_wall", ColumnGuard, 2, 1, "Fork", 5, 1, WarEffect.BlockPoints, 20, "+{0} block", fork: Evasion);
-            Add(Riposte, "Riposte", "riposte", ColumnGuard, 3, 0, "Notable", 3, 2, WarEffect.Mechanic, 0, "A dodged or blocked blow answers back");
-            Add(LastStand, "Last Stand", "last_stand", ColumnGuard, 3, 1, "Notable", 1, 3, WarEffect.Mechanic, 0, "Once an hour, a killing blow leaves you at 1 health");
+            Add(Riposte, "Riposte", "riposte", ColumnGuard, 3, 0, "Notable", 3, 2, WarEffect.RipostePct, 0, "A dodged or blocked blow answers at {0}% weapon damage", ranks: new[] { 250, 500, 750 });
+            Add(LastStand, "Last Stand", "last_stand", ColumnGuard, 3, 1, "Notable", 1, 3, WarEffect.LastStand, 1, "Once an hour, a killing blow leaves you at 1 health");
             Add(LivingFortress, "Living Fortress", "living_fortress", ColumnGuard, 4, -1, "Keystone", 1, 5, WarEffect.Mechanic, 0, "Crit chance becomes block and the block cap rises; you never crit");
 
             // ---- Bridges: 10 points in both columns they join ------------------
@@ -177,6 +183,7 @@ namespace FolkIdle.Server.Engine
             WarEffect.MaxHpPct, WarEffect.ArmourPct, WarEffect.DodgePoints, WarEffect.BlockPoints, WarEffect.AccuracyPoints,
             WarEffect.FirstStrikePct, WarEffect.CrushingChance, WarEffect.BossDamagePct, WarEffect.ExecutePct,
             WarEffect.DoubleStrikeChance, WarEffect.EchoChance, WarEffect.FrenzyOfCrit,
+            WarEffect.BloodthirstPct, WarEffect.RipostePct, WarEffect.LastStand,
         };
 
         public static bool IsPending(int id) => Get(id) is { } n && !Wired.Contains(n.Effect);
@@ -284,6 +291,9 @@ namespace FolkIdle.Server.Engine
                     case WarEffect.DoubleStrikeChance: e.DoubleStrikeTenths += v; break;
                     case WarEffect.EchoChance: e.EchoTenths += v; break;
                     case WarEffect.FrenzyOfCrit: e.FrenzyTenths += v; break;
+                    case WarEffect.BloodthirstPct: e.BloodthirstTenths += v; break;
+                    case WarEffect.RipostePct: e.RiposteTenthsPct += v; break;
+                    case WarEffect.LastStand: e.LastStand = true; break;
                     case WarEffect.CrushingChance: e.CrushingChanceTenths += v; break;
                 }
             }
@@ -339,6 +349,9 @@ namespace FolkIdle.Server.Engine
         public int DoubleStrikeTenths;
         public int EchoTenths;
         public int FrenzyTenths;
+        public int BloodthirstTenths;
+        public int RiposteTenthsPct;
+        public bool LastStand;
 
         /// <summary>Echo repeats a crit at this share of its damage, and never echoes an echo.</summary>
         public const double EchoShare = 0.5;
