@@ -67,8 +67,13 @@
   let previewTimer: ReturnType<typeof setTimeout> | null = null;
   let previewSeq = 0;
 
+  // Modul: KEYED ON THE CONTENT. `levels` is a fresh array on every snapshot
+  // (about once a second), so an effect on `draft` itself re-asked the server
+  // every second and Confirm flickered disabled while each answer was out.
+  const draftKey = $derived(draft.join(','));
+
   $effect(() => {
-    const target = draft;
+    const target = draftKey.split(',').map(Number);
     if (!def) return;
     if (previewTimer) clearTimeout(previewTimer);
     previewTimer = setTimeout(async () => {
@@ -337,6 +342,7 @@
       {/each}
     </div>
 
+    <div class="dock">
     {#if selectedNode}
       {@const n = selectedNode}
       {@const st = statusOf(n)}
@@ -394,6 +400,7 @@
         </div>
       </div>
     {/if}
+    </div>
 
     <div class="respec-row">
       {#if spentTotal === 0 && points === 0}
@@ -436,6 +443,9 @@
 <style>
   .panel {
     position: relative;
+    /* Modul: an explicit ink. The page theme is parchment with dark text, and
+       inherited dark text on this darkened painting read as nothing at all. */
+    color: #ece6d8;
     border-radius: 8px;
     padding: 1rem 1.15rem 1.25rem;
     overflow: hidden;
@@ -454,7 +464,7 @@
   }
 
   .head { display: flex; align-items: baseline; gap: 0.75rem; flex-wrap: wrap; }
-  .head h2 { margin: 0 0 0.2rem; }
+  .head h2 { margin: 0 0 0.2rem; color: #f6efe0; }
   .points {
     margin-left: auto;
     font-size: 1.4rem;
@@ -557,8 +567,22 @@
   }
 
   /* ---- detail sheet ---- */
-  .sheet {
+  /* Modul: THE DETAIL AND THE DRAFT RIDE THE BOTTOM OF THE VIEW. On a phone the
+     tree is taller than the screen, so a detail drawn after it opened below the
+     fold of the rune that was tapped and looked like nothing happened. */
+  .dock {
+    position: sticky;
+    bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+    z-index: 5;
+    display: grid;
+    gap: 0.5rem;
     margin-top: 0.8rem;
+  }
+  @media (min-width: 60rem) {
+    .dock { bottom: 0.5rem; }
+  }
+
+  .sheet {
     padding: 0.75rem 0.85rem;
     border-radius: 10px;
     background: rgb(12 14 20 / 0.92);
@@ -576,9 +600,6 @@
 
   /* ---- draft bar ---- */
   .draftbar {
-    position: sticky;
-    bottom: 0;
-    margin-top: 0.8rem;
     padding: 0.7rem 0.85rem;
     border-radius: 10px;
     background: rgb(30 26 12 / 0.95);
@@ -613,7 +634,32 @@
 
   .small { font-size: 0.9rem; max-width: 46rem; }
   .tiny { font-size: 0.8rem; }
-  .dim { opacity: 0.75; }
+  /* The app's global .dim is a dark ink for parchment; on this panel it has to
+     be a light one. */
+  .panel .dim { color: #c9c0ad; opacity: 1; }
+  .panel .sheet button:not(.primary):not(.x),
+  .panel .draft-actions button:not(.primary),
+  .panel .respec-row button,
+  .panel .sheet .x { color: #2a2218; }
+
+  /* Wide screens: five limbs standing side by side, root at the foot and crown
+     at the top, so the screen reads as the tree it is named after. */
+  @media (min-width: 60rem) {
+    .grove { grid-template-columns: repeat(5, minmax(0, 1fr)); align-items: stretch; }
+    .limb {
+      grid-template-columns: 1fr;
+      justify-items: center;
+      background: linear-gradient(0deg, color-mix(in srgb, var(--hue) 16%, transparent), transparent 80%);
+    }
+    .limb-name { order: 2; }
+    .path { flex-direction: column-reverse; gap: 0.5rem; }
+    .fork { flex-direction: row; gap: 0.9rem; }
+    .fork-cell { flex-direction: column; }
+    .cap { max-width: 5.5rem; text-align: center; }
+    .wire { flex: none; width: 3px; height: 1.4rem; min-width: 0; }
+    .rune.big { width: 4.2rem; height: 4.2rem; }
+    .rune.small { width: 3.4rem; height: 3.4rem; }
+  }
 
   @media (max-width: 26rem) {
     .limb { grid-template-columns: 1fr; }
