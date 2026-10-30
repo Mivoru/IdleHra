@@ -18,23 +18,18 @@
   import { openModal } from './modalStack';
   import { registerOverlay } from '../stores/sheet';
   import { LAYER_Z } from '../net/backButton';
-  import { volume, muted, pageActive, play } from './audio';
+  import { play } from './audio';
   import Avatar from './Avatar.svelte';
   import Burst from './Burst.svelte';
+  import ChestStage from './ChestStage.svelte';
   import { COSMETIC_KIND, rarityClass, type OpenedCosmetic } from '../net/cosmetics';
   import {
     chestBackground,
-    CHEST_IDLE_IMAGE,
-    OPEN_MS,
-    SHAKE_MS,
-    SHAKE_RATE,
     TAPS_TO_OPEN,
-    chestClip,
     initialChestState,
     oddsLine,
     pressChest,
     tapWord,
-    videoFlavour,
     type ChestOpeningState,
   } from './chestOpening';
 
@@ -65,8 +60,6 @@
 
   let stage = $state<HTMLElement | null>(null);
   let inner = $state<HTMLElement | null>(null);
-  let shakeEl = $state<HTMLVideoElement | null>(null);
-  let openEl = $state<HTMLVideoElement | null>(null);
 
   let chest = $state<ChestOpeningState>(initialChestState());
   // Modul: A BATCH IS A LIST OF RESULTS AND A CURSOR. `opened` stays the one
@@ -83,27 +76,21 @@
   let size = $state(batch);
   let wornIds = $state<string[]>([]);
   const opened = $derived<OpenedCosmetic | null>(results[cursor] ?? null);
-  // Next has moved the stage off the first piece: the open clip is held on
-  // its last frame (the chest lit in this piece's rarity) instead of playing.
-  let holdingEnd = $state(false);
   let finalShakeDone = $state(false);
-  let openClipPlaying = $state(false);
   const worn = $derived(opened !== null && wornIds.includes(opened.DefinitionId + ':' + cursor));
   let failed = $state('');
-  // Restarts the CSS shake on the still (no-video path) for every tap.
-  let cssShake = $state(0);
-  let flash = $state(false);
-
-  let flavour = $state<'webm' | 'mp4' | 'none'>('none');
   let coarse = $state(true);
   // Read once when the stage opens: the event theme does not change mid-chest.
   const stageBackground = chestBackground(document.documentElement.dataset.event);
   const timers: ReturnType<typeof setTimeout>[] = [];
 
   onMount(() => {
-    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const probe = document.createElement('video');
-    flavour = reduced ? 'none' : videoFlavour((t) => probe.canPlayType(t), navigator.userAgent);
+    // Modul: THE CHEST IS DRAWN BY ChestStage NOW (2026-10-30, owner: "I see
+    // no change in the cosmetic chest"). The keyed video clips had alpha
+    // Safari cannot draw and a jump between the shake and the burst; the
+    // stills-plus-canvas stage has neither, and the loot chests already use
+    // it. The tap rules, the server timing and the reveal are unchanged -
+    // only the drawing moved.
     coarse = matchMedia('(pointer: coarse)').matches;
     return () => timers.forEach(clearTimeout);
   });
@@ -115,45 +102,7 @@
 
   $effect(() => registerOverlay(() => onClose(), LAYER_Z.modal));
 
-  // The shake's crunch is the clip's own track; it follows the game's volume
-  // and mute like every other effect, and stops when the player looks away.
-  $effect(() => {
-    if (!shakeEl) return;
-    shakeEl.volume = $volume;
-    shakeEl.muted = $muted || !$pageActive;
-  });
 
-  const shakeSrc = $derived(chestClip('shake')[flavour === 'mp4' ? 'mp4' : 'webm']);
-  // Mounted as soon as the result is known, so it buffers during the last
-  // shake and starts with no gap when that shake ends.
-  function clipFor(rarity: number): string {
-    return chestClip(rarity as 1 | 2 | 3 | 4)[flavour === 'mp4' ? 'mp4' : 'webm'];
-  }
-  // The burst that PLAYS is always the first piece's; Next never reloads it.
-  const openSrc = $derived(results.length > 0 ? clipFor(results[0].Rarity) : null);
-
-  // Modul: NEXT MUST NOT RELOAD A VIDEO (owner, 2026-10-28: a grey video
-  // icon flashed on every Next). Swapping the one clip's src made the browser
-  // drop the frame and fetch again. Instead each rarity in the batch gets its
-  // own clip, preloaded as soon as its result arrives and parked on its last
-  // frame; Next only changes which one is visible. Until a clip has finished
-  // seeking, the last one shown stays up, so there is never an empty frame.
-  const heldRarities = $derived([...new Set(results.map((r) => r.Rarity))]);
-  let heldReady = $state<number[]>([]);
-  let shownHeld = $state(0);
-  $effect(() => {
-    const want = opened?.Rarity ?? 0;
-    if (holdingEnd && want > 0 && heldReady.includes(want)) shownHeld = want;
-  });
-
-  function parkOnLastFrame(event: Event): void {
-    const video = event.currentTarget as HTMLVideoElement;
-    if (Number.isFinite(video.duration)) video.currentTime = Math.max(0, video.duration - 0.05);
-  }
-
-  function markHeld(rarity: number): void {
-    if (!heldReady.includes(rarity)) heldReady = [...heldReady, rarity];
-  }
   const word = $derived(tapWord(coarse));
   const chestName = $derived(rarityNames[chestRarity] ?? 'Common');
   const resultClass = $derived(opened ? rarityClass(opened.Rarity) : '');
@@ -166,18 +115,11 @@
     const { next, sendOpen, shake } = pressChest(chest);
     if (!shake) return;
     chest = next;
-    if (flavour !== 'none' && shakeEl) {
-      shakeEl.currentTime = 0;
-      shakeEl.playbackRate = SHAKE_RATE;
-      shakeEl.play().catch(() => (flavour = 'none'));
-    } else {
-      cssShake++;
-      play('buttonClick');
-      if (sendOpen) later(onShakeEnded, 520);
-    }
+    // ChestStage shakes on `taps` going up; the third shake's length is
+    // the wait before the burst may start.
+    play('buttonClick');
     if (sendOpen) {
-      // Safety net: a clip that never reports `ended` must not hold the prize.
-      later(onShakeEnded, SHAKE_MS / SHAKE_RATE + 600);
+      later(onShakeEnded, 640);
       open()
         .then((result) => {
           if (!result) {
@@ -213,7 +155,6 @@
   function showNext(): void {
     if (cursor >= results.length - 1) return;
     cursor++;
-    holdingEnd = true;
     play('lootRare', 1 + ((results[cursor]?.Rarity ?? 1) - 1) * 0.08);
   }
 
@@ -227,16 +168,9 @@
     if (chest.phase !== 'final-shake' || !finalShakeDone || !opened) return;
     chest = { ...chest, phase: 'opening' };
     play('chestShine');
-    if (flavour === 'none') {
-      flash = true;
-      later(reveal, 650);
-    } else {
-      if (openEl) {
-        openEl.currentTime = 0;
-        openEl.play().catch(() => reveal());
-      }
-      later(reveal, OPEN_MS + 1500);
-    }
+    // ChestStage's burst peaks at 180 ms and settles by 900; the prize card
+    // comes in as the light does.
+    later(reveal, 1000);
   }
 
   function reveal(): void {
@@ -252,15 +186,9 @@
     chest = initialChestState();
     results = [];
     cursor = 0;
-    holdingEnd = false;
-    heldReady = [];
-    shownHeld = 0;
     finalShakeDone = false;
-    openClipPlaying = false;
     wornIds = [];
     failed = '';
-    flash = false;
-    if (shakeEl) shakeEl.currentTime = 0;
   }
 
   function wear(): void {
@@ -280,7 +208,7 @@
   use:portal
   data-testid="chest-opening"
   data-phase={chest.phase}
-  data-flavour={flavour}
+  data-flavour="stage"
 >
   <div
     class="inner {resultClass}"
@@ -317,7 +245,6 @@
          for the whole burst - so the chest played as glass. -->
     <div
       class="chest-hit"
-      class:hidden-shake={openClipPlaying}
       class:locked={chest.phase !== 'waiting-taps'}
       role="button"
       tabindex={chest.phase === 'waiting-taps' ? 0 : -1}
@@ -332,53 +259,12 @@
         }
       }}
     >
-      {#if flavour === 'none'}
-        {#key cssShake}
-          <img class="still" class:shaking={cssShake > 0} class:flash src={CHEST_IDLE_IMAGE} alt="" draggable="false" />
-        {/key}
-      {:else}
-        <video
-          class="clip"
-          class:blend={flavour === 'mp4'}
-          bind:this={shakeEl}
-          src={shakeSrc}
-          poster={CHEST_IDLE_IMAGE}
-          preload="auto"
-          playsinline
-          onended={onShakeEnded}
-          onerror={() => (flavour = 'none')}
-        ></video>
-        {#if openSrc}
-          <video
-            class="clip open"
-            class:blend={flavour === 'mp4'}
-            class:showing={openClipPlaying && shownHeld === 0}
-            bind:this={openEl}
-            src={openSrc}
-            preload="auto"
-            muted
-            playsinline
-            onplaying={() => (openClipPlaying = true)}
-            onended={reveal}
-            onerror={reveal}
-          ></video>
-        {/if}
-        {#if size > 1}
-          {#each heldRarities as rarity (rarity)}
-            <video
-              class="clip open"
-              class:blend={flavour === 'mp4'}
-              class:showing={holdingEnd && shownHeld === rarity}
-              src={clipFor(rarity)}
-              preload="auto"
-              muted
-              playsinline
-              onloadedmetadata={parkOnLastFrame}
-              onseeked={() => markHeld(rarity)}
-            ></video>
-          {/each}
-        {/if}
-      {/if}
+      <ChestStage
+        art="cosmetic"
+        rarity={opened?.Rarity ?? 1}
+        taps={chest.taps}
+        opened={chest.phase === 'opening' || chest.phase === 'revealed'}
+      />
     </div>
     </div>
 
@@ -575,26 +461,21 @@
      (measured), so this stands the chest on --floor of the painting. */
   .chest-hit {
     position: absolute;
-    left: 50%;
-    top: calc(var(--floor) - 0.66 * var(--chest-h));
+    /* Centred with auto margins, NOT translateX: a transform (and the old
+       mask) made this box its own compositing group, so ChestStage's
+       screen-blended dust blended against nothing and stood in a black
+       square. The mask only ever trimmed the video strip's hard edges. */
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    top: calc(var(--floor) - 0.85 * var(--chest-h));
     height: var(--chest-h);
-    aspect-ratio: 406 / 720;
-    transform: translateX(-50%);
+    aspect-ratio: 1;
     padding: 0;
     border: 0;
     background: none;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
-    /* The source's light rays end in a hard edge at the strip's sides and
-       top; fade them out. On the BOX, not on the <video>: Chrome draws a
-       masked video that is PLAYING with its alpha applied twice, and the
-       chest turned to glass for the whole burst (paused frames were fine). */
-    -webkit-mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent),
-      linear-gradient(to bottom, transparent, #000 10%);
-    -webkit-mask-composite: source-in;
-    mask-image: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent),
-      linear-gradient(to bottom, transparent, #000 10%);
-    mask-composite: intersect;
   }
 
   .chest-hit.locked {
