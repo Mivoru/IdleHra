@@ -256,3 +256,89 @@ with "the background must stay perfectly black for the whole clip" added.
 **Order:** the cosmetic casket (section 1.1) and the vault background (1.3)
 first - that fixes the opening players already see. Then the loot chests,
 the tickets, and the dungeon art when the dungeon phase starts.
+
+## 9. Hearth skill icons, herbs and potions (2026-10-30)
+
+Made through the Gemini API (`tools/assets/gemini.mjs`, entries in
+`tools/assets/gemini.json`), so nothing here has to be made by hand. Listed so
+the prompts can be read and changed in one place.
+
+### 9.1 Hearth skill icons (32 nodes + 4 columns)
+
+Style: the War icons (`client/Assets/Images/SpritesWeb/SkillIcons/bloodthirst.jpg`
+and `col_fortune.jpg`) are passed as references - a single painted object on
+the same dark navy background with a soft vignette, square, no text, no frame.
+Every prompt is that style line plus the object below. Keystones add
+"keystone, radiant".
+
+| File | Object |
+|---|---|
+| `hearth_sharp_axe` | A freshly honed woodcutter axe with a gleaming edge, a wood chip flying. |
+| `hearth_hard_pick` | A sturdy iron pickaxe striking sparks off a rock. |
+| `hearth_seam_sense` | A glowing seam of ore running through split timber and stone. |
+| `hearth_steady_swing` | An axe and a pickaxe crossed, motion arcs behind them. |
+| `hearth_clearcut` | A neat stack of logs beside a pile of ore chunks. |
+| `hearth_prospector` | A miner's lamp shining on a glittering gemstone in rock. |
+| `hearth_double_haul` | A wooden cart overflowing with logs and ore, two of everything. |
+| `hearth_deep_vein` | A deep glowing vein of rare crystal ore opening in a cave wall, keystone, radiant. |
+| `hearth_patient_line` | A fishing rod with a still float on calm water at dawn. |
+| `hearth_green_thumb` | A hand-sized bundle of fresh herbs with a green glow. |
+| `hearth_good_waters` | A clear stream full of fish and riverside herbs. |
+| `hearth_still_water` | A mirror-calm pond with a single ripple. |
+| `hearth_keen_angler` | A sharp fish hook glinting, a rare golden fish nearby. |
+| `hearth_netmaker` | A finely knotted fishing net with a shining scale caught in it. |
+| `hearth_full_net` | A fishing net bursting with fish and herbs. |
+| `hearth_moonlit_catch` | A fish leaping under a full moon, silver light, keystone, radiant. |
+| `hearth_quick_hands` | A craftsman's hands blurred with speed over a workbench. |
+| `hearth_thrifty` | A coin purse and spare materials saved on a workbench. |
+| `hearth_ledger` | An open ledger book with a quill and a few coins. |
+| `hearth_batch_work` | Several identical tools laid out in a row on a bench. |
+| `hearth_fine_work` | A delicate gold filigree being worked with tiny tools. |
+| `hearth_salvager` | A broken sword being melted into gold coins in a small crucible. |
+| `hearth_patron` | A stone monument under construction with a banner. |
+| `hearth_masterwork` | A perfect glowing weapon on an anvil with three runes floating above it, keystone, radiant. |
+| `hearth_studious` | An open book with a candle and floating glowing letters. |
+| `hearth_homebody` | A cosy cottage hearth with a crackling fire. |
+| `hearth_long_absence` | An hourglass beside a travelling pack and a lantern. |
+| `hearth_matchmaker` | Two intertwined wedding rings with a ribbon. |
+| `hearth_strong_blood` | A drop of red blood glowing with an upward arrow of light. |
+| `hearth_nursery` | A carved wooden cradle with a soft blanket. |
+| `hearth_mentor` | An old hand guiding a young hand holding a small hammer. |
+| `hearth_bloodline_memory` | A glowing family tree with roots and branches of light, keystone, radiant. |
+| `hearth_col_wood_stone` | A tree stump and a boulder side by side, column emblem. |
+| `hearth_col_water_herb` | A fish and a herb sprig circling each other over water, column emblem. |
+| `hearth_col_workshop` | An anvil with a hammer, column emblem. |
+| `hearth_col_kin` | A hearth with a family of three silhouettes, column emblem. |
+
+### 9.2 Herbs (one normal and one rare per region; design in HERBS_POTIONS_ASCENSION.md)
+
+Painted on a flat key colour (magenta, blue for the pink marsh mallow) and keyed
+out by `keyout.py`. Each prompt ends with "Game item icon, one bold readable
+shape, centred with a margin, three-quarter view."
+
+| File | Prompt |
+|---|---|
+| `herb_yarrow` | Yarrow: a sprig of white flat-topped yarrow flowers with feathery leaves. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+| `herb_golden_chamomile` | Golden Chamomile, rare: chamomile flowers with glowing golden petals. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+| `herb_marsh_mallow` | Marsh Mallow: pale pink marsh mallow flowers on a stem with soft leaves. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+| `herb_wisp_moss` | Will-o-wisp Moss, rare: a clump of moss with tiny floating pale-green lights. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+| `herb_thyme` | Thyme: a bundle of small-leaved thyme sprigs tied with twine. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+| `herb_dragons_blood_sage` | Dragon's Blood Sage, rare: deep red sage leaves with ember-like glowing veins. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+| `herb_sea_kale` | Sea Kale: blue-green curly sea kale leaves with sea spray. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+| `herb_frost_lichen` | Frost Lichen, rare: icy blue lichen with frost crystals. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+| `herb_mugwort` | Mugwort: silvery-green mugwort leaves on a stalk. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+| `herb_fern_flower` | Fern Flower, rare: the mythical Kupala night fern flower, a radiant red-gold bloom glowing among fern fronds. Game item icon, one bold readable shape, centred with a margin, three-quarter view. |
+
+### 9.3 Potions (buffs, not heals)
+
+| File | Prompt |
+|---|---|
+| `potion_hunt` | Elixir of the Hunt: a round flask of deep red potion with a wolf-tooth charm on the cord. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. |
+| `potion_fortune` | Draught of Fortune: a slim bottle of shimmering gold potion with a four-leaf clover pressed on the label-free glass. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. |
+| `potion_goldmoss` | Goldmoss Tonic: a squat jar of amber potion with gold flecks swirling. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. |
+| `potion_ironbark` | Ironbark Brew: a heavy dark-glass bottle of grey-brown potion bound with iron bands. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. |
+| `potion_swiftroot` | Swiftroot Tea: a narrow vial of bright teal potion with a small feather tied to it. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. |
+| `potion_gatherer` | Gatherer's Draught: a corked bottle of fresh green potion with a tiny leaf inside. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. |
+| `potion_kupala` | Kupala Night: a star-shaped bottle of deep blue potion glowing with tiny red-gold sparks. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. |
+| `potion_bossbane` | Boss-bane Philtre: a sharp crystal flask of violet potion with a small skull stopper. Game item icon, one bold readable shape, centred with a margin, three-quarter view, no text on the bottle. |
+
