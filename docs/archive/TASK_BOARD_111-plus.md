@@ -371,3 +371,49 @@ with other tests (static queues, the shared Random) before widening any
 tolerance.
 
 **Closed 2026-10-30.** #209 fixed the row (a character that dies in its first six hours gets 48 lives). The remaining full-suite flakes are open task 129 on the board.
+
+### 120. `exercise.mjs` flakes - BUG, high priority (issue #204, roadmap 2.1)
+
+**Partly done in #209** (2026-10-29): `exercise` re-seeds the fixture at start
+and the seed stamps it as just logged out, the wear-a-drop step falls back to
+region 1 after 20 s, two checks poll instead of sleeping, and
+`EXERCISE_ONLY=<sections>` exists. **Still open** (roadmap 2.1, steps 1 and
+3-5): measure 5 runs; the Delve step compares against its own debit, not the
+wallet; the wearable drop comes from a dev grant, not RNG; the "told what to
+do next" step restores what it spends.
+
+**Current state.** On 2026-10-29, four runs against working builds failed three
+different single steps, none caused by the change under test:
+
+| Step | Cause |
+|---|---|
+| "the gold actually left" (Delve) | The fixture had been away about a day. Its offline `CombatAway` payout (707,733 gold, read from `gold_income_daily`) landed mid-step. |
+| "a mature account is told what to do next" | Spent fixture state. It passes after `--seed-dev`. |
+| "a drop can be worn from the loot list" | A fixed 90 s wait on drop RNG. The fixture's slot-1 character is Human, so the race changes did not cause it. |
+
+**Expected result.** A green run means the game works and a red run means it
+does not. Nobody reruns to find out which.
+
+**Depends on.** Nothing. Do it before CI (#201) is trusted as the gate, or CI
+only produces false alarms faster.
+
+**Acceptance.**
+- `exercise` seeds the fixture itself at start (`--seed-dev` is idempotent),
+  and the seed stamps the fixture's last-seen time to now, so no offline
+  payout can land mid-run.
+- The wearable-drop step uses a drop the fixture is granted, or polls against
+  a time budget instead of one fixed wait.
+- **5 consecutive full runs green** on an unchanged build, recorded with their
+  counts.
+- Optional, but it is the speed win: `EXERCISE_ONLY=<sections>`.
+
+**Tests.** The five recorded runs; and each step, re-run after the fixture is
+deliberately left spent, still passes.
+
+**Closed 2026-10-30** (#209 and the follow-up PR for roadmap 2.1). The Delve's
+gold checks read its own ledger rows (dev-only `GET /api/v1/dev/gold-ledger`);
+the "what to do next" step restores the onboarding seen-set; the blind
+shield-wheel strike throws off-seam; the practice-resume check leaves instead
+of reloading (a reload submitted the run, racily). The wearable-drop step keeps
+#209's time budget and region-1 fallback. **5 consecutive full runs: 389/389
+each**, on an unchanged build, 2026-10-30.
