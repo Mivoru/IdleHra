@@ -230,6 +230,9 @@ namespace FolkIdle.Server.Engine
             // War node's chance to double a hit (3% at its top), 1-4.2% per affix
             // by rarity, on gloves only, so one slot never outgrows the node.
             new AffixDefinition("crushing_blow_pct", EquipmentSlotMask.Gloves, AffixScalingLaw.Percentage, 10, 8),
+            // thorns_pct adds to the set's 20% reflect, 2-8% per affix by rarity,
+            // on the chest only - the defensive build's damage.
+            new AffixDefinition("thorns_pct", EquipmentSlotMask.Chest, AffixScalingLaw.Percentage, 20, 15),
         };
 
         private static readonly Dictionary<string, int> _indexById = BuildIndex();
