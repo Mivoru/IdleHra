@@ -41,7 +41,7 @@ export const RELEASE_NOTES: readonly Release[] = [
       {
         title: 'Forge',
         items: [
-          'New: Refine. It keeps an affix and its rarity and rerolls only the number, up to 20% up or down, for a quarter of a reroll's price.',
+          "New: Refine. It keeps an affix and its rarity and rerolls only the number, up to 20% up or down, for a quarter of a reroll's price.",
           'Loot chests open in front of a shaft of light with dust drifting through it.',
         ],
       },
