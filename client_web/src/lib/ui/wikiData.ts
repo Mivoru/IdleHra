@@ -544,10 +544,15 @@ export const MARKET_FEE_BRACKETS: readonly { wealth: string; feePct: number }[] 
  * title names (tests/titles.test.ts).
  */
 export const DEEP_STAKE_PCT = 0.2;
-export const DEEP_TOLL_GROWTH_PCT = 35;
+export const DEEP_TOLL_GROWTH_PCT = 25;
 /** Diamonds a Deep floor pays when it is a new personal deepest floor of the week (DelveRegistry.DeepRecordDiamonds). */
-export const DEEP_RECORD_DIAMONDS = 1;
-/** The weekly diamond ceiling the Deep shares with the Delve (DelveRegistry.MaxDiamondsPerWeek). */
+export const DEEP_RECORD_DIAMONDS = 2;
+/** The first and last Deep floors whose weekly record pays (DelveRegistry.FirstDiamondDeepFloor / LastDiamondDeepFloor). */
+export const DEEP_FIRST_DIAMOND_FLOOR = 10;
+export const DEEP_LAST_DIAMOND_FLOOR = 19;
+/** The Deep's OWN weekly diamond ceiling (DelveRegistry.MaxDeepDiamondsPerWeek), apart from the Delve's. */
+export const DEEP_WEEKLY_DIAMOND_CEILING = 20;
+/** The Delve's weekly diamond ceiling (DelveRegistry.MaxDiamondsPerWeek). */
 export const DELVE_WEEKLY_DIAMOND_CEILING = 60;
 export const DEEP_MIN_DOOR_CHANCE_PCT = 25;
 export const DEEP_MAX_LANTERNS = 8;

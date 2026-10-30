@@ -1966,6 +1966,9 @@ export interface DelveRunView {
   ConsolationGoldIfCapped: number;
   DiamondsEarnedThisWeek: number;
   WeeklyDiamondCeiling: number;
+  /** The Deep's own weekly ceiling and what it has paid this week (floors 10-19). */
+  DeepWeeklyDiamondCeiling: number;
+  DeepDiamondsEarnedThisWeek: number;
   EntryFeeForNextRun: number;
   HighestRegionReached: number;
   CurrentGold: number;

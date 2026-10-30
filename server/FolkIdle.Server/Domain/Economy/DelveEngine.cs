@@ -102,6 +102,12 @@ namespace FolkIdle.Server.Domain.Economy
         public int DiamondsEarnedThisWeek { get; set; }
         public int WeeklyDiamondCeiling { get; set; }
 
+        /// <summary>The Deep's own weekly ceiling (DelveRegistry.MaxDeepDiamondsPerWeek), apart from the Delve's.</summary>
+        public int DeepWeeklyDiamondCeiling { get; set; }
+
+        /// <summary>Deep record diamonds paid this ISO week, derived from DeepestThisWeek.</summary>
+        public int DeepDiamondsEarnedThisWeek { get; set; }
+
         /// <summary>What a run would cost to start, for the screen that has none in progress.</summary>
         public long EntryFeeForNextRun { get; set; }
         public int HighestRegionReached { get; set; }
@@ -407,6 +413,8 @@ namespace FolkIdle.Server.Domain.Economy
             view.CurrentGold = gold;
             view.WeeklyDiamondCeiling = DelveRegistry.MaxDiamondsPerWeek;
             view.DiamondsEarnedThisWeek = thisWeek ? player.DelveDiamondsThisWeek : 0;
+            view.DeepWeeklyDiamondCeiling = DelveRegistry.MaxDeepDiamondsPerWeek;
+            view.DeepDiamondsEarnedThisWeek = thisWeek ? DelveRegistry.DeepDiamondsEarned(player.DelveDeepestThisWeek) : 0;
             view.Attributes = new[] { player.BaseStrength, player.BaseDexterity, player.BaseConstitution, player.BaseLuck };
             view.DeepEnabled = _deep.Enabled;
             view.DeepestFloor = player.DelveDeepestFloor;
@@ -681,11 +689,11 @@ namespace FolkIdle.Server.Domain.Economy
                     run.RevealedDoorMask = 0;
 
                     // Modul: 2026-10-07 - A NEW PERSONAL DEEPEST FLOOR OF THE WEEK PAYS
-                    // ONE DIAMOND, AND IT IS WRITTEN HERE, in the transaction that
+                    // DIAMONDS, AND THEY ARE WRITTEN HERE, in the transaction that
                     // records the floor. RollWeek first, so a record set on the first
                     // clear of a new week is compared against 0 rather than against
-                    // last week's. Capped by exactly what floors 1-8 are capped by
-                    // (MaxDiamondsPerWeek - DelveDiamondsThisWeek, BankFloorsAsync), and
+                    // last week's. Since 2026-10-30 floors 10-19 pay 2 each under the
+                    // Deep's own ceiling (DelveRegistry.MaxDeepDiamondsPerWeek), and
                     // the compare is against DelveDeepestThisWeek BEFORE RecordDepth
                     // raises it, so re-clearing the same floor (a second run reaching a
                     // floor already recorded) pays nothing. The client sends no floor and
@@ -695,7 +703,7 @@ namespace FolkIdle.Server.Domain.Economy
                     RecordDepth(player, run.CurrentFloor, Now());
                     if (newWeeklyDeepest)
                     {
-                        outcome.DiamondsGranted = PayDeepRecordDiamond(player);
+                        outcome.DiamondsGranted = PayDeepRecordDiamond(player, run.CurrentFloor);
                     }
 
                     // Modul: THE TITLE IS GRANTED IN THE SAME TRANSACTION AS THE
@@ -836,7 +844,7 @@ namespace FolkIdle.Server.Domain.Economy
 
         /// <summary>
         /// Pays the Deep's record diamond onto the locked player row and returns what
-        /// was actually paid (0 when the weekly ceiling is spent). Changes the tracked
+        /// was actually paid (0 outside floors 10-19). Changes the tracked
         /// entity only; the caller saves and commits in the same transaction as the
         /// floor clear.
         ///
@@ -844,17 +852,16 @@ namespace FolkIdle.Server.Domain.Economy
         /// BankFloorsAsync on purpose: DeepestBoardTests.NothingInTheDeepOrTheBoard
         /// AssignsDiamonds pins that every PremiumDiamonds assignment sits in that
         /// span, so a third, stray grant fails a test rather than shipping. It uses the
-        /// SAME counter and ceiling as the bank (DelveDiamondsThisWeek against
-        /// MaxDiamondsPerWeek), so the Deep cannot raise the weekly total.
+        /// Deep's OWN ceiling since 2026-10-30 (DelveRegistry.MaxDeepDiamondsPerWeek):
+        /// 2 for each of floors 10-19 the first time it is this week's deepest, and
+        /// nothing from DelveDiamondsThisWeek, which stays the Delve's alone.
         /// </summary>
-        private static int PayDeepRecordDiamond(PlayerRecord player)
+        private static int PayDeepRecordDiamond(PlayerRecord player, int floor)
         {
-            int room = Math.Max(0, DelveRegistry.MaxDiamondsPerWeek - player.DelveDiamondsThisWeek);
-            int paid = Math.Min(DelveRegistry.DeepRecordDiamonds, room);
+            int paid = DelveRegistry.DeepDiamondsForFloor(floor);
             if (paid <= 0) return 0;
 
             player.PremiumDiamonds += paid;
-            player.DelveDiamondsThisWeek += paid;
             return paid;
         }
 

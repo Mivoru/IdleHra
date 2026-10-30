@@ -106,6 +106,9 @@ keystones, gold respecs. Compare with the harness's predicted best builds.
 
 ### 131. The gathering economy after #211 - MEASURE (roadmap 3.4)
 
+**First read 2026-10-30:** gathered per day 2.0-2.7M before #211, 2.69M on
+10-29 (one day after). Too early; re-run in a week with 111.
+
 Material flow per active player before and after #211 (the extras now
 multiply). Run it with 111's queries. It feeds Hearth's D2.
 
@@ -131,6 +134,15 @@ Needs phase 3, and is best after 2b.
 
 ### 37. The Deep - measure the retune (PAST DUE since 2026-10-14, roadmap 3.1)
 
+**Measured 2026-10-30, acted on (PR `claude/deep-reward`).** Week 1 file:
+deepest floor 23 (yes), one payer. Fresh read-only query: a second payer
+(Tomda, 3.65M, floor 10); the diamond ceiling held (60/60). But Deep spend
+fell from 41.2% of the gold minted (week of 10-12) to 0.8% in the weeks of
+10-19 and 10-26: depth paid nothing the shared 60-diamond ceiling had not
+already paid. Owner decision: toll x1.35 -> x1.25 and the Deep's own 20
+diamonds a week (floors 10-19, 2 each). **Re-measure the Deep's share of
+minted gold two weeks after that deploys.**
+
 The retune (stake 0.2%, toll x1.35 a floor, 1 diamond per new deepest floor
 of the week) went live 2026-10-07. Week 1 before it: one payer, 683.8M spent,
 115.5% of the gold minted that week. The scheduled task **"FolkIdle Deep
@@ -140,6 +152,15 @@ deepest floor past 13, a second payer, diamonds paid inside the cap. Full
 history: archive section 37.
 
 ### 111. Rations - three weeks of data (live since 2026-10-07, roadmap 3.2)
+
+**Measured 2026-10-30 (read-only, the 3 players at level 95+).** Rations
+cost nothing yet: every larder holds about 3 x 10,000 fish, and fish
+gathered outruns fish spent 5-15x a week (week of 10-19: 4.65M gathered,
+0.25M spent). Every player runs 1 fighter and 2 gatherers all the time.
+Hunger time is not recorded anywhere, so it cannot be read directly.
+**Recommendation: no change yet.** #211 changed gathering yields on
+10-29; re-measure with 130/131 in a week, then decide `RationIntervalTicks`
+with the owner.
 
 From region 2 a fighting character eats one ration every 10/8/7/6 s
 (regions 2-5): a fish of the monster's region or later, older fish at double
