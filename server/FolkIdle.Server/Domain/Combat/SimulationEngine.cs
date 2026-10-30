@@ -3904,8 +3904,11 @@ namespace FolkIdle.Server.Domain.Combat
                 playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - Math.Clamp(cut, 0f, 0.9f))));
             }
             // Ruin's price: every source of attack speed counts at
-            // WarEffects.RuinSpeedSharePct. Measured at half, the price ate the
-            // gain (+5% kills for a keystone), so slice 2.4 moved it to 75%.
+            // WarEffects.RuinSpeedSharePct. The price grows with the speed a
+            // character has while the gain does not, so a fast build pays most:
+            // at 75% and x1.6 a geared region-5 character LOST 3.6% of its kills
+            // (owner decision 2026-10-30: x1.7 and 85%, never a loss, measured
+            // +1.8% fast to +5.7% slow - Perfect Sequence's size).
             if (warSpeed.Ruin && playerAttackSpeedMs < BaseAttackIntervalMs)
             {
                 playerAttackSpeedMs = BaseAttackIntervalMs - (BaseAttackIntervalMs - playerAttackSpeedMs) * WarEffects.RuinSpeedSharePct / 100;

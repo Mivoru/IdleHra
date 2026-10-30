@@ -636,7 +636,9 @@
   .tiers { display: grid; gap: 0.35rem; }
   .tier {
     display: grid;
-    grid-template-columns: 2.6rem 1fr;
+    /* A mirror column on the right, as wide as the gate label on the left, so
+       the runes centre on the card rather than on what the label leaves. */
+    grid-template-columns: 2.6rem 1fr 2.6rem;
     align-items: center;
     gap: 0.4rem;
     padding: 0.25rem 0;
@@ -646,7 +648,7 @@
   .tier:first-child .tier-nodes { grid-column: 1 / -1; }
   .gate { color: #c9c0ad; white-space: nowrap; }
   .gate.met { color: var(--hue); }
-  .tier-nodes { display: flex; align-items: flex-start; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
+  .tier-nodes { grid-column: 2; display: flex; align-items: flex-start; justify-content: center; gap: 0.5rem; flex-wrap: wrap; min-width: 0; }
   .cell { display: grid; justify-items: center; gap: 0.2rem; min-width: 0; }
   .or { align-self: center; opacity: 0.7; }
 
@@ -913,6 +915,7 @@
     .column { background: linear-gradient(0deg, color-mix(in srgb, var(--hue) 16%, transparent), transparent 80%); }
     .tiers { display: flex; flex-direction: column-reverse; gap: 0.35rem; }
     .tier { grid-template-columns: 1fr; justify-items: center; border-top: none; border-bottom: 1px solid rgb(255 255 255 / 0.07); }
+    .tier-nodes { grid-column: 1; }
     .tier:first-child { border-bottom: none; }
     .tier-nodes { justify-content: center; }
     .rune.big { width: 4rem; height: 4rem; }
@@ -921,7 +924,7 @@
   }
 
   @media (max-width: 26rem) {
-    .tier { grid-template-columns: 2.3rem 1fr; }
+    .tier { grid-template-columns: 2.3rem 1fr 2.3rem; }
     .rune.big { width: 3.2rem; height: 3.2rem; }
     .rune.small { width: 2.9rem; height: 2.9rem; }
   }

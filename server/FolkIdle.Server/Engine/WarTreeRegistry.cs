@@ -163,7 +163,7 @@ namespace FolkIdle.Server.Engine
             Add(Bossbreaker, "Bossbreaker", "bossbreaker", ColumnMight, 2, 1, "Fork", 5, 1, WarEffect.FirstClearReliefPct, 64, "-{0}% of a first-clear boss's extra health", fork: Executioner);
             Add(HeavyHand, "Heavy Hand", "heavy_hand", ColumnMight, 3, 0, "Minor", 5, 1, WarEffect.DamagePct, 2, "+{0}% damage");
             Add(Thunderer, "Thunderer", "thunderer", ColumnMight, 3, 1, "Notable", 3, 2, WarEffect.ThundererPct, 0, "Opens a boss fight with a blow at {0}% weapon damage", ranks: new[] { 1500, 3000, 5000 });
-            Add(Ruin, "Ruin", "ruin", ColumnMight, 4, -1, "Keystone", 1, 5, WarEffect.Ruin, 1, "Every 8th hit lands for x1.6; attack speed counts 75%");
+            Add(Ruin, "Ruin", "ruin", ColumnMight, 4, -1, "Keystone", 1, 5, WarEffect.Ruin, 1, "Every 8th hit lands for x1.7; attack speed counts 85%");
 
             // ---- Precision: crits, tempo, repeated hits ------------------------
             Add(KeenEye, "Keen Eye", "keen_eye", ColumnPrecision, 0, 0, "Minor", 5, 1, WarEffect.CritChancePoints, 3, "+{0} crit chance");
@@ -187,7 +187,7 @@ namespace FolkIdle.Server.Engine
             Add(Bloodthirst, "Bloodthirst", "bloodthirst", ColumnGuard, 1, -1, "Notable", 3, 2, WarEffect.BloodthirstPct, 0, "{0}% of the damage you deal heals you", ranks: new[] { 13, 26, 40 });
             Add(Evasion, "Evasion", "evasion", ColumnGuard, 2, 0, "Fork", 5, 1, WarEffect.DodgePoints, 15, "+{0} dodge", fork: ShieldWall);
             Add(ShieldWall, "Shield Wall", "shield_wall", ColumnGuard, 2, 1, "Fork", 5, 1, WarEffect.BlockPoints, 20, "+{0} block", fork: Evasion);
-            Add(Riposte, "Riposte", "riposte", ColumnGuard, 3, 0, "Notable", 3, 2, WarEffect.RipostePct, 0, "A dodged or blocked blow answers at {0}% weapon damage", ranks: new[] { 30, 60, 90 });
+            Add(Riposte, "Riposte", "riposte", ColumnGuard, 3, 0, "Notable", 3, 2, WarEffect.RipostePct, 0, "A dodged or blocked blow answers at {0}% weapon damage", ranks: new[] { 10, 15, 20 });
             Add(LastStand, "Last Stand", "last_stand", ColumnGuard, 3, 1, "Notable", 1, 3, WarEffect.LastStand, 1, "Once an hour, a killing blow leaves you at 1 health");
             Add(LivingFortress, "Living Fortress", "living_fortress", ColumnGuard, 4, -1, "Keystone", 1, 5, WarEffect.LivingFortress, 1, "Crit chance becomes block and the block cap rises to 85%; you never crit");
 
@@ -205,10 +205,10 @@ namespace FolkIdle.Server.Engine
             // Know Your Prey reads the highest UNLOCKED region, derived from the
             // boss mask: the frontier the player is pushing, not a region they
             // have outgrown.
-            Add(KnowYourPrey, "Know Your Prey", "know_your_prey", ColumnFortune, 2, 2, "Bridge", 3, 2, WarEffect.KnowYourPreyPct, 0, "+{0}% damage and gold against monsters of your highest unlocked region", bridge: ColumnMight, ranks: new[] { 5, 10, 20 });
-            Add(PiercingCrit, "Piercing Crit", "piercing_crit", ColumnMight, 2, 2, "Bridge", 3, 2, WarEffect.CritDamagePct, 0, "+{0}% crit damage", bridge: ColumnPrecision, ranks: new[] { 15, 30, 45 });
+            Add(KnowYourPrey, "Know Your Prey", "know_your_prey", ColumnFortune, 2, 2, "Bridge", 3, 2, WarEffect.KnowYourPreyPct, 0, "+{0}% damage and gold against monsters of your highest unlocked region", bridge: ColumnMight, ranks: new[] { 5, 10, 15 });
+            Add(PiercingCrit, "Piercing Crit", "piercing_crit", ColumnMight, 2, 2, "Bridge", 3, 2, WarEffect.CritDamagePct, 0, "+{0}% crit damage", bridge: ColumnPrecision, ranks: new[] { 10, 20, 30 });
             // A conversion, as Frenzy is: defence buys crit chance directly.
-            Add(Counterstroke, "Counterstroke", "counterstroke", ColumnPrecision, 2, 2, "Bridge", 3, 2, WarEffect.CounterstrokeOfDefence, 0, "Crit chance +{0}% of your dodge and block", bridge: ColumnGuard, ranks: new[] { 20, 40, 60 });
+            Add(Counterstroke, "Counterstroke", "counterstroke", ColumnPrecision, 2, 2, "Bridge", 3, 2, WarEffect.CounterstrokeOfDefence, 0, "Crit chance +{0}% of your dodge and block", bridge: ColumnGuard, ranks: new[] { 5, 10, 15 });
 
             return t;
         }
@@ -488,9 +488,9 @@ namespace FolkIdle.Server.Engine
         public int KnowYourPreyTenthsPct;
 
         public const int RuinEvery = 8;
-        public const float RuinMultiplier = 1.6f;
+        public const float RuinMultiplier = 1.7f;
         /// <summary>The share of every attack-speed source Ruin leaves, in percent.</summary>
-        public const int RuinSpeedSharePct = 75;
+        public const int RuinSpeedSharePct = 85;
         public const int PerfectEvery = 12;
         public const float PerfectCritBonus = 0.2f;
         public const float PerfectOtherCritCapPct = 50f;

@@ -494,6 +494,52 @@ swings survived each.
 `BossGearBenchmark` assumes), and the tree's combat slack is today's within
 the ratios above. `WallWindowScanTests` and `BossWallTests` pass unchanged.
 
+### 8.2 Ruin, and the secondary targets (2026-10-30, owner-approved)
+
+**Ruin cost a fast build kills.** Its price (attack speed counts at a
+share) grows with the speed a character has, but its gain does not. These
+are kills an hour by the projection (deterministic): "fast" is the
+region's required gear, "slow" the Rare reference.
+
+| Ruin | fast r3 / r4 / r5 | slow r3 / r4 / r5 |
+|---|---|---|
+| x1.6, speed 75% (2.4) | +1.8 / -2.9 / -3.6 | +3.7 / +3.0 / +2.6 |
+| speed 85% | +4.2 / +0.6 / +0.5 | +5.4 / +4.8 / +4.5 |
+| x1.8 | +3.9 / -0.4 / -1.5 | +6.0 / +5.4 / +5.0 |
+| every 6th | the same as x1.8 | |
+| **x1.7, speed 85% (chosen)** | **+4.3 / +1.9 / +1.8** | **+5.5 / +5.7 / +5.7** |
+| Perfect Sequence, for scale | +5.6 / +4.8 / +4.8 | +4.3 / +5.4 / +5.2 |
+
+The chosen numbers raised the ceiling to 1.08x at 129 points. To pay for
+it, the late nodes were trimmed: Riposte 1 / 1.5 / 2%, Counterstroke
+0.5 / 1 / 1.5% of defence, Piercing Crit 1 / 2 / 3%, and Know Your Prey
+0.5 / 1 / 1.5%.
+
+The best build against today's tree after this:
+
+| Region (budget) | Ratio |
+|---|---|
+| 1 (19) | 0.99 |
+| 2 (39) | 1.04 |
+| 3 (59) | 0.98 |
+| 4 (79) | 1.05 |
+| 5 (99) | 1.05 |
+| 5 (129) | 1.05 |
+
+**The secondary targets** (`War_archetypes_and_secondary_targets`):
+
+- *Each column's keystone build, every node at its maximum, region 5:*
+  Might +14.7% kills, Precision +16.2%. They are within 15% of each other
+  (at region 3: +14.8% and +13.6%). Guard gives +93% swings survived for
+  -10% kills. Fortune moves no kills; its metric is loot and gold.
+- *Fortune keeps at least 70% of the Duelist's damage:* the whole Fortune
+  column first, then the rest greedy, comes to 0.88-0.96 of the Duelist's
+  DPS at every band. **Met.**
+- *The archetypes, region 5, 99 points:* Duelist +33.6% kills, Fencer
+  +17.1% kills with +40% survived, Bounty Hunter +16.2%, and Warden +2.0%
+  kills with +93% survived. The Bounty Hunter and the Warden stop
+  spending early, because their remaining nodes buy no kills.
+
 ## 9. Decisions for the owner
 
 | # | Question | Recommendation |
