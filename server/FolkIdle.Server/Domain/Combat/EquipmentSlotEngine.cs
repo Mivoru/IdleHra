@@ -1084,6 +1084,9 @@ namespace FolkIdle.Server.Domain.Combat
                     case "lifesteal_pct": totals.LifestealTenthsPct += magnitude; break;
                     case "dodge_chance_pct": totals.DodgeTenthsPct += magnitude; break;
                     case "block_chance_pct": totals.BlockTenthsPct += magnitude; break;
+                    case "boss_dmg_pct": totals.WorldBossDamageTenthsPct += magnitude; break;
+                    case "loot_luck_pct": totals.LootLuckTenthsPct += magnitude; break;
+                    case "gold_find_pct": totals.GoldTenthsPct += magnitude; break;
                 }
             }
         }

@@ -116,9 +116,17 @@ namespace FolkIdle.Server.Engine
         /// </summary>
         public readonly bool Retired;
 
-        public AffixDefinition(string id, EquipmentSlotMask allowedSlots, AffixScalingLaw law, int baseValueTenthsPct = 0, int growthTenthsPctPerTier = 0, bool retired = false)
+        /// <summary>
+        /// Changes no fight (world boss, loot, gold). BossGearBenchmark leaves
+        /// these out of its representative pieces, because the walls are tuned
+        /// against fighting gear - a player pushing a wall wears that.
+        /// </summary>
+        public readonly bool Utility;
+
+        public AffixDefinition(string id, EquipmentSlotMask allowedSlots, AffixScalingLaw law, int baseValueTenthsPct = 0, int growthTenthsPctPerTier = 0, bool retired = false, bool utility = false)
         {
             Retired = retired;
+            Utility = utility;
             Id = id;
             AllowedSlots = allowedSlots;
             Law = law;
@@ -197,7 +205,26 @@ namespace FolkIdle.Server.Engine
             // moves to the Ring rather than being deleted: an affix pool of one
             // legal slot that no longer exists rolls on nothing, and the GDD's
             // twelve-affix pool is the part of this that was never wrong.
-            new AffixDefinition("block_chance_pct", EquipmentSlotMask.Ring, AffixScalingLaw.Percentage, 10, 8)
+            new AffixDefinition("block_chance_pct", EquipmentSlotMask.Ring, AffixScalingLaw.Percentage, 10, 8),
+
+            // Modul: roadmap 3.2/3.3 (2026-10-30). APPENDED, never inserted -
+            // the order is auto-reroll's wire index. Sized against what already
+            // pays the same stat: a world-boss pet gives 8-10%, the War tree's
+            // Scavenger 7.5% loot luck and Golden Touch 10% gold. One ring and
+            // one amulet can each carry loot luck and gold, so their per-affix
+            // ceiling stays under the tree node's.
+            //
+            // boss_dmg_pct is WORLD BOSS damage only (owner decision, roadmap
+            // section 9 #2): BossGearBenchmark builds its reference gear from
+            // these pools, so a region-boss bonus here would move every wall.
+            //
+            // The combat half of D4 (crit chance on the ring, crit damage on the
+            // amulet) is NOT here yet: measured, it moved every wall and tier 6,
+            // because the benchmark ring stacked block five times. That waits
+            // for the re-measure step (roadmap 3.5).
+            new AffixDefinition("boss_dmg_pct", EquipmentSlotMask.Ring, AffixScalingLaw.Percentage, 30, 20, utility: true),
+            new AffixDefinition("loot_luck_pct", EquipmentSlotMask.Ring | EquipmentSlotMask.Amulet, AffixScalingLaw.Percentage, 15, 10, utility: true),
+            new AffixDefinition("gold_find_pct", EquipmentSlotMask.Ring | EquipmentSlotMask.Amulet, AffixScalingLaw.Percentage, 20, 15, utility: true),
         };
 
         private static readonly Dictionary<string, int> _indexById = BuildIndex();
