@@ -65,6 +65,43 @@ the new ring affixes) and measured before shipping, the way the affixes were.
 - **Loot chests:** herbs of the chest's region as a material line.
 - **Quest line / achievements:** first herb, first potion.
 
+### 1.2a Build plan (2026-10-30, after H1-H3 were approved)
+
+**What already exists and is reused:**
+- Herbalism is a profession in the tick (`HerbalismMasteryXp/Level`,
+  `AdvanceMastery`, the realtime and offline gathering paths handle type 3),
+  and `ContentRegistry` already has herb loot-table slots (401-412) - only
+  `gathering_nodes.json` has no herbalism node, so nothing reaches them.
+- A dormant potion engine (`ConsumableEngine`): payload slots
+  `ActiveOffensivePotionId` / `ActiveDefensivePotionId` with millisecond
+  countdowns, checkpoint persistence as an absolute expiry, the offline
+  projection and the wire already carry them. It was left inert on
+  2026-10-07 because no content fed it. A new consumable needs only an
+  items.json entry with the BaseId marker.
+- The images: 10 herbs and 8 potions are generated (tools/assets/staging,
+  prompts in ASSET_PROMPTS.md 9.2-9.3).
+
+**Steps (one PR each, each with exercise coverage):**
+1. **Herbs gathered:** 5 herbalism nodes in `gathering_nodes.json` (one per
+   region) and 10 herb items (normal + rare per region) in `items.json`,
+   wired to the existing loot slots. Green Thumb comes off pending. Herb
+   icons into the sprite pipeline.
+2. **Potions brewed:** 8 potion items (normal + strong = 16 entries) and
+   Alchemy recipes (`RecipeDefinition.ProfessionType` 5) from herbs, the
+   strong version from the rare herb or rare fish (R1's edge for the rare
+   catch). Crafting screen tab.
+3. **Potions drunk:** the effects through ConsumableEngine's slots (one
+   offensive, one defensive, plus a gathering slot if needed), each effect
+   read where its stat already is (XP, loot luck, gold, armour, attack speed,
+   gathering speed, rare find, boss damage) - online and offline alike (H2),
+   with a parity row each. Magnitudes sized against the War nodes and pets,
+   and **the wall scan run with each combat potion active**: a potion must
+   not lower a wall the way the rare-fish heal would have.
+4. **Larder and UI:** a Potions shelf beside the food, an auto-drink rule
+   ("keep X up"), the active potion and its timer in the header.
+5. **Sources and sinks:** herbs as a material line in loot chests; potions in
+   the quest line and achievements.
+
 ### 1.3 Decisions
 
 - **H1.** Build herbalism + potions as described? Recommendation: yes, as its
@@ -98,7 +135,27 @@ Birch Axe. Rare fish heal the same share as normal fish of their region.
 ### 2.3 Decision
 
 - **R1.** Give rare-material crafts a real edge as above? Recommendation: yes,
-  measured against the gathering economy (task 131).
+  measured against the gathering economy (task 131). **Approved 2026-10-30.**
+
+### 2.4 Built, and what waits (2026-10-30)
+
+- **Built:** a recipe that takes a rare material (`VillageManagementEngine
+  .IsRareMaterial`: the golden logs, rare ores and rare catch) crafts one
+  quality step higher with one more affix. Golden Birch Axe vs Birch Axe:
+  Common with 2 affixes vs Normal with 1.
+- **Rare fish x1.5 heal WAITS for a measurement.** The wall benchmark eats a
+  region's common fish (`FoodRegistry.FirstRawFishOfTier`), so the walls
+  would not see the change, but players would: they catch 5-15x what they
+  eat, so the rare catch alone covers most bites, and x1.5 would act as a
+  near-global +50% sustain - and the larder is this game's difficulty
+  ceiling.
+- **Measured the same day and DROPPED:** the wall scan with the benchmark's
+  bite healing x1.2 broke the walls of regions 1, 2, 3 and 5 and let region
+  5's wall gear win tier 6; x1.5 broke all five (region 2's window moved from
+  1.861-1.884 to 2.782-2.819). No heal bonus is small enough to matter and
+  safe at once. **The rare catch gets its edge elsewhere:** it becomes the
+  rare ingredient of the strong potions in the herbs phase (section 1), and
+  is worth more at the chest sale. Heal stays the same as the common fish.
 
 ---
 
@@ -138,9 +195,41 @@ and nobody is behind for having played early.
   against that region's monsters), so the ladder pays progress, not only
   cosmetics.
 
+### 3.2a A concrete A2 (drafted 2026-10-30, after A1 was approved)
+
+**What exists:** 10 steps per boss; health and attack grow geometrically to a
+per-region ratio at step 10 (`BossAscensionRegistry`), and the even steps add
+a time limit (200% -> 120% of Swift). Rewards: a title per step, a Laurel
+frame and a Crown frame at step 10, and since today a loot chest per step.
+
+**Why reset only WITH a new ladder:** resetting the counters on the same
+ladder would only let everyone re-climb known steps for chests - a gift, not
+a redesign. So A1 ships together with this:
+
+| Steps | What the boss gains | Reward per step |
+|---|---|---|
+| 1-3 | health and attack only (today's curve) | chest (50/30/15/5) |
+| 4-6 | + **Enrage**: below 30% health its attack rises by a third | chest, +5% Silver-or-better |
+| 7-9 | + **Ward**: every 25% of health it shields itself for 3 s (no damage) | chest, +10% Gold-or-better |
+| 10 | + both, and the tightest clock | Gold-or-better chest guaranteed, the Crown, and **+2% damage against that region's monsters** (account-wide) |
+
+- The two mechanics are each one rule in `RunCombatTick` with a projection
+  term and a parity row - the same discipline as the War mechanics.
+- The step-10 bonus is +2% per region, at most +10% for all five, against
+  monsters of that region only; sized under one War node (Edge) so it never
+  outweighs the tree.
+- **Conversion (A1, approved):** keep every title and frame; reset the step
+  counters to 0; mail each player one chest per step they had cleared, at the
+  new odds, so early players are paid for what they did and nobody re-climbs
+  for a double reward. In-game message: "Ascension has been rebuilt with new
+  mechanics. Your titles and frames stay; your old steps were paid out as
+  chests in your mail."
+- Measured before shipping: each step's win line with the region's best gear
+  (BossChallengeCalibrationTests' Malakor ladder), so step 10 stays beatable.
+
 ### 3.3 Decisions
 
 - **A1.** Reset with the conversion above? Recommendation: yes, with the
-  backup and the message.
+  backup and the message. **Approved 2026-10-30.** Ships together with A2.
 - **A2.** The new ladder's shape and the step-10 account bonus? Needs the
   owner's call; it changes power, so it is measured before shipping.

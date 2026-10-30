@@ -126,6 +126,26 @@ namespace FolkIdle.Server.Domain.Progression
             ("ebon_log",      "darksteel_ore", "golden_ebon_log",      "astralite_ore"),
         };
 
+        /// <summary>
+        /// Whether a material is one of the rare ones (owner decision R1,
+        /// 2026-10-30): the golden logs and rare ores of this table, and the
+        /// rare catch of each region. Read from this one table, so a new tier
+        /// cannot be rare in one place and common in another.
+        /// </summary>
+        public static bool IsRareMaterial(string baseItemId)
+        {
+            if (string.IsNullOrEmpty(baseItemId)) return false;
+            foreach (var t in TierMaterials)
+                if (t.RareLog == baseItemId || t.RareOre == baseItemId) return true;
+            return RareFish.Contains(baseItemId);
+        }
+
+        /// <summary>The rare catch of each region (ContentRegistry's fishing tables, weight 10).</summary>
+        public static readonly System.Collections.Generic.HashSet<string> RareFish = new(StringComparer.Ordinal)
+        {
+            "shimmering_trout", "ancient_eel", "hellfire_salmon", "glacier_halibut", "spectral_lanternfish",
+        };
+
         public static (string Log, string Ore, string RareLog, string RareOre) GetTierMaterials(int currentLevel)
         {
             int tier = Math.Clamp(currentLevel / 5, 0, 4);
