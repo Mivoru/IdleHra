@@ -2460,7 +2460,14 @@ export interface SkillTreeNodeDef {
   Pending: boolean;
 }
 
+/** Which half of the tree: War is paid with skill points, Hearth with craft points (gathering mastery). */
+export type SkillTreeHalf = 'war' | 'hearth';
+
 export interface SkillTreeDefinition {
+  /** 'hearth' on the Hearth half's answer; absent on the War half's (an older server). */
+  Half?: SkillTreeHalf;
+  /** Hearth only: summed gathering mastery levels per craft point. */
+  MasteryLevelsPerPoint?: number;
   Columns: { Id: number; Name: string; Icon: string | null }[];
   Nodes: SkillTreeNodeDef[];
   /** Length of every rank array: Levels, drafts and commits. Node ids index it. */
@@ -2491,15 +2498,19 @@ export interface SkillTreeCommitResult {
   Spent: number;
 }
 
-let skillTreeDefinition: Promise<SkillTreeDefinition> | null = null;
+const skillTreeDefinitions = new Map<SkillTreeHalf, Promise<SkillTreeDefinition>>();
 
-/** Fetched once per page load: the definition is the same for everyone. */
-export function fetchSkillTreeDefinition(): Promise<SkillTreeDefinition> {
-  skillTreeDefinition ??= authedGet<SkillTreeDefinition>('/api/v1/skilltree').catch((e) => {
-    skillTreeDefinition = null;
-    throw e;
-  });
-  return skillTreeDefinition;
+/** Fetched once per page load and half: the definition is the same for everyone. */
+export function fetchSkillTreeDefinition(half: SkillTreeHalf = 'war'): Promise<SkillTreeDefinition> {
+  let pending = skillTreeDefinitions.get(half);
+  if (!pending) {
+    pending = authedGet<SkillTreeDefinition>(half === 'hearth' ? '/api/v1/skilltree?half=hearth' : '/api/v1/skilltree').catch((e) => {
+      skillTreeDefinitions.delete(half);
+      throw e;
+    });
+    skillTreeDefinitions.set(half, pending);
+  }
+  return pending;
 }
 
 /** The player's ranks and respec state - off the snapshot since rework slice 2.1b. */
@@ -2512,21 +2523,26 @@ export interface SkillTreeState {
   /** What a respec costs in gold when neither the free one nor a grant is left. */
   RespecGoldPrice: number;
   Gold: number;
+  /** The Hearth half: craft points are derived from gathering mastery, never stored. */
+  CraftPointsAvailable?: number;
+  CraftPointsSpent?: number;
+  /** A Hearth respec always costs gold, and never spends the War half's free respec. */
+  HearthRespecGoldPrice?: number;
 }
 
 export function fetchSkillTreeState(): Promise<SkillTreeState> {
   return authedGet<SkillTreeState>('/api/v1/skilltree/state');
 }
 
-export async function previewSkillTree(levels: number[], slot = 0): Promise<SkillTreePreview> {
-  const res = await authedPost<SkillTreePreview>('/api/v1/skilltree/preview', { Levels: levels, Slot: slot });
+export async function previewSkillTree(levels: number[], slot = 0, half: SkillTreeHalf = 'war'): Promise<SkillTreePreview> {
+  const res = await authedPost<SkillTreePreview>('/api/v1/skilltree/preview', { Levels: levels, Slot: slot, Half: half });
   if (!res) throw new AuthError('POST /api/v1/skilltree/preview answered nothing', 500);
   return res;
 }
 
 /** Buys the whole draft or nothing; a refusal still answers 200 with its Reason. */
-export async function commitSkillTree(levels: number[]): Promise<SkillTreeCommitResult> {
-  const res = await authedPost<SkillTreeCommitResult>('/api/v1/skilltree/commit', { Levels: levels });
+export async function commitSkillTree(levels: number[], half: SkillTreeHalf = 'war'): Promise<SkillTreeCommitResult> {
+  const res = await authedPost<SkillTreeCommitResult>('/api/v1/skilltree/commit', { Levels: levels, Half: half });
   if (!res) throw new AuthError('POST /api/v1/skilltree/commit answered nothing', 500);
   return res;
 }
@@ -2541,8 +2557,8 @@ export interface SkillTreeRespecResult {
  * Refunds the whole tree: with the free respec or a paid grant, or for gold
  * when `gold` is true. A refusal still answers 200 with its Reason.
  */
-export async function respecSkillTreeRest(gold: boolean): Promise<SkillTreeRespecResult> {
-  const res = await authedPost<SkillTreeRespecResult>('/api/v1/skilltree/respec', { Gold: gold });
+export async function respecSkillTreeRest(gold: boolean, half: SkillTreeHalf = 'war'): Promise<SkillTreeRespecResult> {
+  const res = await authedPost<SkillTreeRespecResult>('/api/v1/skilltree/respec', { Gold: gold, Half: half });
   if (!res) throw new AuthError('POST /api/v1/skilltree/respec answered nothing', 500);
   return res;
 }
