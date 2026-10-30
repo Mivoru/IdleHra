@@ -26,6 +26,10 @@ browser's own 404. Dropping a file in starts playing it with no code change.
 The miss is remembered per session, so an absent clip is fetched once rather
 than on every swing.
 
+The **2026-10-31** loot, chest, pet, Forge, birth and building clips were generated
+with ElevenLabs too (prompts in `tools/assets/manifest.json`), replacing the
+0.25 s `loot_rare_dropped.wav` that was pitched up a semitone per tier.
+
 The **2026-10-29** clips were generated with the ElevenLabs Sound Effects API
 and converted the same way; the prompts are in `docs/design/SKILL_TREE_ART.md`.
 
@@ -58,7 +62,14 @@ loud for what is rare (the first-clear fanfare at -4).
 | `combat_player_died_female.wav` | The same, a woman; sex read from the Hall (`deathSound.ts`) - **2026-09-27** |
 | `combat_boss_first_clear.wav` | A boss beaten for the first time - **2026-09-27** |
 | `loot_dropped.wav` | A drop below quality tier 10; a mail claim |
-| `loot_rare_dropped.wav` | A drop at quality tier 10 or above (see `rarity.ts`, `shouldGlow`) |
+| `loot_rare.wav` | A Rare to Epic drop (tiers 4-6), once per burst of drops (`lootFeel.ts`, LootSoundGate) |
+| `loot_legendary.wav` | A Legendary or Mythic drop (tiers 7-8), or a cosmetic chest |
+| `loot_relic.wav` | A Relic or better drop (tier 9+), or a Legendary cosmetic chest |
+| `chest_open_rare.wav` / `chest_open_epic.wav` / `chest_open_legendary.wav` | A loot chest opening, by the chest's tier (Common and Rare share the first) |
+| `pet_found.wav` | A new pet's window |
+| `forge_reroll.wav` | A Forge fusion, reroll or refine going through |
+| `child_born.wav` | A child born on the Breeding screen |
+| `building_done.wav` | A village building finishing its upgrade while the Village is open |
 | `item_sold.wav` | A chest sale to the vendor - **2026-09-27** |
 | `item_equipped.wav` | An equip sent from the Chest or the Character screen - **2026-09-27** |
 | `combat_hit_crit.wav` | A critical hit, on top of the weapon's own hit - **2026-10-29** |

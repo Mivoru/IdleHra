@@ -49,7 +49,7 @@
     if (!pet || duplicate || pet.Id === lastShown) return;
     lastShown = pet.Id;
     picking = false;
-    play('itemEquipped');
+    play('petFound');
   });
 
   function howFound(p: Pet, view: PetsView): string {
