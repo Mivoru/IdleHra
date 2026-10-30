@@ -142,6 +142,14 @@ export function formatAffixValue(affixId: string, magnitude: number): string {
 }
 
 /**
+ * Ids no new item rolls (AffixDefinition.Retired on the server), so the
+ * Forge's "stop on stat" must not offer them: the server refuses a run toward
+ * a stat that can never roll. Stored items keep them, so they still get a
+ * label. serverMirrors.test.ts compares this set with the C# `retired: true`.
+ */
+export const RETIRED_AFFIX_IDS: ReadonlySet<string> = new Set(['range_dmg_pct', 'magic_dmg_pct']);
+
+/**
  * Ids whose mechanical label would describe something the server does not do.
  *
  * Modul: melee_dmg_pct, range_dmg_pct and magic_dmg_pct all land in ONE

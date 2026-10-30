@@ -109,8 +109,16 @@ namespace FolkIdle.Server.Engine
         public readonly int BaseValueTenthsPct;
         public readonly int GrowthTenthsPctPerTier;
 
-        public AffixDefinition(string id, EquipmentSlotMask allowedSlots, AffixScalingLaw law, int baseValueTenthsPct = 0, int growthTenthsPctPerTier = 0)
+        /// <summary>
+        /// Out of every NEW roll (drops, rerolls, commissions), still read on
+        /// stored items. A retired id keeps its place in the table, because the
+        /// table's order is a wire index (auto-reroll's stop-on-stat).
+        /// </summary>
+        public readonly bool Retired;
+
+        public AffixDefinition(string id, EquipmentSlotMask allowedSlots, AffixScalingLaw law, int baseValueTenthsPct = 0, int growthTenthsPctPerTier = 0, bool retired = false)
         {
+            Retired = retired;
             Id = id;
             AllowedSlots = allowedSlots;
             Law = law;
@@ -158,8 +166,12 @@ namespace FolkIdle.Server.Engine
             new AffixDefinition("gather_rare_find_pct", EquipmentSlotMask.Tool, AffixScalingLaw.Percentage, 30, 22),
 
             new AffixDefinition("melee_dmg_pct", EquipmentSlotMask.Weapon, AffixScalingLaw.Percentage, 20, 15),
-            new AffixDefinition("range_dmg_pct", EquipmentSlotMask.Weapon, AffixScalingLaw.Percentage, 20, 15),
-            new AffixDefinition("magic_dmg_pct", EquipmentSlotMask.Weapon, AffixScalingLaw.Percentage, 20, 15),
+            // Modul: RETIRED 2026-10-30 (roadmap 3.1). All three damage ids add
+            // to the same DamageTenthsPct, so a weapon pool of eight held one
+            // stat three times. New rolls use melee_dmg_pct only; stored items
+            // keep theirs, and every reader still sums them.
+            new AffixDefinition("range_dmg_pct", EquipmentSlotMask.Weapon, AffixScalingLaw.Percentage, 20, 15, retired: true),
+            new AffixDefinition("magic_dmg_pct", EquipmentSlotMask.Weapon, AffixScalingLaw.Percentage, 20, 15, retired: true),
 
             new AffixDefinition("attack_speed_pct",
                 EquipmentSlotMask.Weapon | EquipmentSlotMask.Gloves | EquipmentSlotMask.Boots,
@@ -470,7 +482,7 @@ namespace FolkIdle.Server.Engine
             int count = 0;
             for (int i = 0; i < _definitions.Length && count < destination.Length; i++)
             {
-                if ((_definitions[i].AllowedSlots & mask) != 0)
+                if ((_definitions[i].AllowedSlots & mask) != 0 && !_definitions[i].Retired)
                 {
                     destination[count++] = i;
                 }
