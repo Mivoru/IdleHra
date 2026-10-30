@@ -16,6 +16,7 @@ namespace FolkIdle.Server.Tests
     /// mechanic wired into the projection but not the tick (or the reverse)
     /// fails one of the two.
     /// </summary>
+    [Collection("Static loot queues")]
     public class WarMechanicParityTests
     {
         private readonly ITestOutputHelper _output;
@@ -58,16 +59,16 @@ namespace FolkIdle.Server.Tests
             yield return new object[] { "riposte + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Riposte }, new byte[] { 5, 3 } };
             // Ruin is a TRADE: x1.7 every 8th hit against attack speed counting
             // 85%, worth little on this fast region-5 character (+1.8% by the
-            // projection, inside one live hour's noise), so the row proves the
-            // tick reads it either way rather than that it pays.
+            // projection, inside one live hour's noise). Its wiring is proved by
+            // Weak_mechanics_are_read_by_the_live_stats; this row holds parity.
             yield return new object[] { "ruin r5", 5, r5, new[] { WarTreeRegistry.Ruin }, new byte[] { 1 }, true };
             yield return new object[] { "perfect sequence r3", 3, r3, new[] { WarTreeRegistry.PerfectSequence }, new byte[] { 1 } };
             // The bridges (owner, 2026-10-30). Character() beats every boss
             // behind the monster, so region 3 is the highest unlocked one.
-            yield return new object[] { "piercing crit r3", 3, r3, new[] { WarTreeRegistry.PiercingCrit }, new byte[] { 3 } };
+            yield return new object[] { "piercing crit r3", 3, r3, new[] { WarTreeRegistry.PiercingCrit }, new byte[] { 3 }, true };
             // Counterstroke converts defence, so it rides Shield Wall's block, as
             // Riposte's row does; block alone moves no kills.
-            yield return new object[] { "counterstroke + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Counterstroke }, new byte[] { 5, 3 } };
+            yield return new object[] { "counterstroke + shield wall r3", 3, r3, new[] { WarTreeRegistry.ShieldWall, WarTreeRegistry.Counterstroke }, new byte[] { 5, 3 }, true };
             yield return new object[] { "know your prey r3", 3, r3, new[] { WarTreeRegistry.KnowYourPrey }, new byte[] { 3 } };
         }
 
@@ -123,6 +124,36 @@ namespace FolkIdle.Server.Tests
             Assert.Equal(0, FolkIdle.Server.Domain.Combat.SimulationEngine.KnowYourPreyTenthsPct(in behind, in monster));
         }
 
+        /// <summary>
+        /// The three mechanics too small to show in an hour's kills, proved on the
+        /// exact numbers the live swing reads: Ruin's price on the swing interval,
+        /// Piercing Crit's crit multiplier, Counterstroke's crit chance.
+        /// </summary>
+        [Fact]
+        public void Weak_mechanics_are_read_by_the_live_stats()
+        {
+            int r3 = RegularOf(3), r5 = RegularOf(5);
+
+            var bare5 = War(5, r5);
+            var ruin = War(5, r5, (WarTreeRegistry.Ruin, 1));
+            var s5 = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in bare5);
+            int intervalBare = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveAttackIntervalMs(in bare5, in s5);
+            int intervalRuin = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveAttackIntervalMs(in ruin, in s5);
+            Assert.True(intervalRuin > intervalBare, $"Ruin's attack-speed price: {intervalRuin} ms vs {intervalBare} ms");
+
+            var bare3 = War(3, r3);
+            var pierce = War(3, r3, (WarTreeRegistry.PiercingCrit, 3));
+            var s3 = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in bare3);
+            Assert.True(FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritMultiplier(in pierce, in s3)
+                > FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritMultiplier(in bare3, in s3));
+
+            var wall = War(3, r3, (WarTreeRegistry.ShieldWall, 5));
+            var counter = War(3, r3, (WarTreeRegistry.ShieldWall, 5), (WarTreeRegistry.Counterstroke, 3));
+            var sw = FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCombatStats(in wall);
+            Assert.True(FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritChancePct(in counter, in sw)
+                > FolkIdle.Server.Domain.Combat.SimulationEngine.LiveCritChancePct(in wall, in sw));
+        }
+
         /// <summary>Counterstroke reads the Guard column's dodge and block: more defence, more crit.</summary>
         [Fact]
         public void Counterstroke_turns_defence_into_crit_chance()
@@ -141,7 +172,7 @@ namespace FolkIdle.Server.Tests
 
         [Theory]
         [MemberData(nameof(Rows))]
-        public void A_war_mechanic_pays_the_same_away_as_watched(string row, int region, int monsterId, int[] ids, byte[] ranks, bool eitherWay = false)
+        public void A_war_mechanic_pays_the_same_away_as_watched(string row, int region, int monsterId, int[] ids, byte[] ranks, bool provedByStats = false)
         {
             var set = new (int, byte)[ids.Length];
             for (int i = 0; i < ids.Length; i++) set[i] = (ids[i], ranks[i]);
@@ -155,10 +186,16 @@ namespace FolkIdle.Server.Tests
             _output.WriteLine($"{row,-22} kills offline {offline.Kills:F0} / live {live.Kills:F0}, live without it {liveWithout.Kills:F0}");
 
             Assert.Equal(0.0, live.DeathShare);
-            bool moved = eitherWay
-                ? Math.Abs(live.Kills - liveWithout.Kills) > liveWithout.Kills * 0.01
-                : live.Kills > liveWithout.Kills * 1.01;
-            Assert.True(moved, $"{row}: the live tick does not use it ({live.Kills:F0} vs {liveWithout.Kills:F0} without)");
+            // Modul: A KILL COUNT CANNOT PROVE A 2% MECHANIC (2026-10-30). Six
+            // runs of every row: ruin r5 moved kills 0.0-2.1% (failed 2 of 6
+            // against the 1% bar), counterstroke 1.7-2.3%, piercing crit
+            // 1.7-3.4%, and both failed full-suite runs; every other row moved
+            // 2.2-17.5%. One live hour's kills are too noisy to tell those three
+            // from nothing, so their wiring is proved where it is exact - the
+            // stat the live tick reads (Weak_mechanics_are_read_by_the_live_stats) -
+            // and this row holds them to parity only. The bar is not lowered.
+            if (!provedByStats)
+                Assert.True(live.Kills > liveWithout.Kills * 1.01, $"{row}: the live tick does not use it ({live.Kills:F0} vs {liveWithout.Kills:F0} without)");
             double slack = Math.Max(live.Kills * 0.05, 1.0);
             Assert.True(Math.Abs(offline.Kills - live.Kills) <= slack, $"{row}: offline {offline.Kills:F1}, live {live.Kills:F1}");
         }

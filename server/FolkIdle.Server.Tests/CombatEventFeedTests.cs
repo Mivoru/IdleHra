@@ -32,6 +32,7 @@ namespace FolkIdle.Server.Tests
     /// Deliberately fixture-free: the tick is a static method over a struct,
     /// so this needs no Postgres and no Redis.
     /// </summary>
+    [Collection("Static loot queues")]
     public class CombatEventFeedTests
     {
         private readonly ITestOutputHelper _output;

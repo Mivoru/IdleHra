@@ -21,6 +21,7 @@ namespace FolkIdle.Server.Tests
     /// five regions, fed and hungry; a fast killer; a first-clear boss; and a
     /// lifesteal + Bloodthirst build.
     /// </summary>
+    [Collection("Static loot queues")]
     public class OfflineCombatParityTests
     {
         private const int LiveHours = 6;

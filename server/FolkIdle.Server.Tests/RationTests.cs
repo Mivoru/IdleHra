@@ -12,6 +12,7 @@ namespace FolkIdle.Server.Tests
     /// region 2+ eats one fish of the monster's region or later on a fixed
     /// interval, whatever its health; unpaid, it is hungry and kills pay half.
     /// </summary>
+    [Collection("Static loot queues")]
     public class RationTests
     {
         private readonly ITestOutputHelper _output;

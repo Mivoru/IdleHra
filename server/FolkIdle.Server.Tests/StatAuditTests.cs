@@ -30,6 +30,7 @@ namespace FolkIdle.Server.Tests
     /// bonus, an offline cap) is allowed only through NotInProbe, which names
     /// the consumer. A new stat with no consumer has no line there, and fails.
     /// </summary>
+    [Collection("Static loot queues")]
     public class StatAuditTests
     {
         private readonly ITestOutputHelper _out;

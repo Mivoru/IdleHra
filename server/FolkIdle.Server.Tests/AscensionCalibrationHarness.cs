@@ -28,6 +28,7 @@ namespace FolkIdle.Server.Tests
     /// the account that broke the ladder is the only anchor that cannot be
     /// argued with.
     /// </summary>
+    [Collection("Static loot queues")]
     public class AscensionCalibrationHarness
     {
         private readonly ITestOutputHelper _output;

@@ -19,6 +19,7 @@ namespace FolkIdle.Server.Tests
     /// so this needs no Postgres and no Redis - same shape as
     /// CombatEventFeedTests, which documents the same technique.
     /// </summary>
+    [Collection("Static loot queues")]
     public class ProcessSubTickDispatchTests
     {
         private const long TestPlayerId = 987_655;

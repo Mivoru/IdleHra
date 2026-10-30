@@ -29,6 +29,7 @@ namespace FolkIdle.Server.Tests
     /// question about DPS against monster HP, not about reward arithmetic.
     /// These tests measure it, headlessly, at the real tick rate.
     /// </summary>
+    [Collection("Static loot queues")]
     public class ProgressionRateTests
     {
         private readonly ITestOutputHelper _output;

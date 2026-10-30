@@ -17,6 +17,7 @@ namespace FolkIdle.Server.Tests
     /// fought last, and a slot that had been working or offline walked into a
     /// fight on the hydration default of 100 HP.
     /// </summary>
+    [Collection("Static loot queues")]
     public class KindOfWorkAndRestedHealthTests
     {
         public KindOfWorkAndRestedHealthTests()

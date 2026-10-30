@@ -15,6 +15,7 @@ namespace FolkIdle.Server.Tests
     /// thing that notices when the two drift. It is the guard the task asked
     /// for, and the reason the projection calls the tick's own helpers.
     /// </summary>
+    [Collection("Static loot queues")]
     public class HuntingProjectionTests
     {
         private readonly ITestOutputHelper _output;

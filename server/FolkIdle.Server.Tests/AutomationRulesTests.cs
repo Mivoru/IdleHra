@@ -10,6 +10,7 @@ namespace FolkIdle.Server.Tests
     /// Task 85: the rules themselves - storage, the level gate, the ladder, and
     /// each rule acting through the function every path calls.
     /// </summary>
+    [Collection("Static loot queues")]
     public class AutomationRulesTests
     {
         public AutomationRulesTests()
