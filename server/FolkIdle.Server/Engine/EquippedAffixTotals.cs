@@ -42,6 +42,8 @@ namespace FolkIdle.Server.Engine
         public int GoldTenthsPct;
         public int GatherSpeedTenthsPct;
         public int WorldBossDamageTenthsPct;
+        /// <summary>crushing_blow_pct: added to Crushing Blow's chance to double a hit (WarEffects.CrushingChanceWith).</summary>
+        public int CrushingChanceTenthsPct;
 
         // Monster pets (2026-10-10): three more stats no affix rolls. Read by
         // EffectiveMaxMilliHpFor (health), StatsCalculator (armour) and

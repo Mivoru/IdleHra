@@ -759,7 +759,7 @@ namespace FolkIdle.Server.Domain.Combat
                     raw, monster.Armor, CombatDamageModel.MonsterArmourHalvingConstant(monster.RegionTier), stats.FlatArmorPenetration);
                 // Crushing Blow, as the live swing rolls it: a share of hits doubled.
                 var war = WarTreeRegistry.Resolve(in payload);
-                double crushing = war.CrushingChance;
+                double crushing = war.CrushingChanceWith(in payload.CachedAffixTotals);
                 if (crushing > 0) net = (int)(net * (1 + crushing * (WarEffects.CrushingMultiplier - 1)));
                 int knowYourPrey = SimulationEngine.KnowYourPreyTenthsPct(in payload, in monster);
                 if (knowYourPrey > 0) net += (int)((long)net * knowYourPrey / 1000L);
