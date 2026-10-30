@@ -35,6 +35,22 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.41.0',
+    date: '2026-10-30',
+    headline: 'The skill tree has a second half: the Hearth.',
+    sections: [
+      {
+        title: 'The Hearth',
+        items: [
+          'Switch the Skill Tree between War and Hearth with the tabs at the top.',
+          'Hearth is paid with craft points. You get one for every 10 levels of Woodcutting, Mining, Fishing and Herbalism added together.',
+          'Its four columns make gathering faster and richer, crafting quicker and thriftier, Workshop commissions cheaper, and breeding and Great Works go further.',
+          'Your Hearth stays when you are reborn. Resetting it costs gold and never touches your War skills.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.40.0',
     date: '2026-10-30',
     sections: [
