@@ -14,6 +14,8 @@
   import { prettifyBaseId } from '../net/content';
   import { formatGold, formatNumber } from './format';
   import ChestStage from './ChestStage.svelte';
+  import Modal from './Modal.svelte';
+  import { invalidateOwnedItems } from '../net/queryClient';
 
   const client = useQueryClient();
   const shelf = createQuery(() => ({ queryKey: queryKeys.lootChests, queryFn: fetchLootChests }));
@@ -49,7 +51,7 @@
         opened = true;
       }
       client.setQueryData(queryKeys.lootChests, (old: typeof shelf.data) => (old ? { ...old, Chests: res.Chests } : old));
-      void client.invalidateQueries({ queryKey: queryKeys.inventory });
+      invalidateOwnedItems(client);
     } catch {
       error = 'The chest would not open. Try again in a moment.';
       stageTier = 0;
@@ -70,6 +72,9 @@
   });
 </script>
 
+{#if shelf.isError}
+  <p class="dim tiny" role="alert">Your loot chests could not be loaded. They are safe - try again in a moment.</p>
+{/if}
 {#if owned.length > 0 || stageTier > 0}
   <section class="shelf panel" data-testid="loot-chest-shelf" aria-label="Loot chests">
     <h2>Loot chests</h2>
@@ -101,7 +106,9 @@
 {/if}
 
 {#if stageTier > 0}
-  <div class="overlay" role="dialog" aria-modal="true" aria-label="Opening a loot chest">
+  <!-- The chest cannot be closed while it opens: onClose exists only once
+       the server has answered and the reveal is on screen. -->
+  <Modal label="Opening a loot chest" onClose={opened ? close : undefined} width="28rem" layout="block" testid="loot-chest-dialog">
     <div class="stage-wrap">
       <ChestStage art="loot" rarity={stageTier} {taps} {opened} />
     </div>
@@ -119,7 +126,7 @@
         <button class="primary" onclick={close} data-testid="loot-chest-collect">Collect</button>
       </div>
     {/if}
-  </div>
+  </Modal>
 {/if}
 
 <style>
@@ -131,19 +138,7 @@
   .actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
   .actions button { min-height: 44px; }
   .odds { grid-column: 1 / -1; margin: 0; padding-left: 18px; }
-  .overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 60;
-    background: rgba(8, 8, 12, 0.82);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 16px;
-  }
-  .stage-wrap { width: min(80vw, 380px); }
+  .stage-wrap { width: min(80vw, 380px); margin: 0 auto; }
   .reveal { width: min(92vw, 420px); text-align: center; }
   .reveal ul { list-style: none; padding: 0; margin: 8px 0 12px; display: grid; gap: 4px; }
   .reveal .piece { font-weight: 600; }
