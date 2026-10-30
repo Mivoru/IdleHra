@@ -161,6 +161,7 @@ namespace FolkIdle.Server.Tests
             ["hearth:matchmaker"] = "breeding price, BreedingEngine.CostFor(gen, discount) - the breed and its preview",
             ["hearth:strong_blood"] = "the up-mutation chance, BreedingAptitudes.Mutate",
             ["hearth:patron"] = "Great Works progress per material, GreatWorksEngine contribute (GreatWorksPatron)",
+            ["hearth:ledger"] = "commission materials, WorkshopCommissionRules.Quote (WorkshopCommissionTests)",
             ["hearth:nursery"] = "the breeding cooldown, BreedingEngine.CooldownSecondsFor",
             ["hearth:mentor"] = "XP while a child works in a slot; the probe's baseline has no child (HearthTreeRegistryTests)",
             ["hearth:bloodline_memory"] = "a +1 chance on each bred aptitude, BreedingAptitudes.Breed",
