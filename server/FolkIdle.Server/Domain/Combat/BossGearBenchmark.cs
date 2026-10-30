@@ -199,14 +199,12 @@ namespace FolkIdle.Server.Domain.Combat
             // exists to reduce this penalty, so a wall that only holds against a
             // character who has not invested in it is not a wall.
             long bossMilliHp = BossFirstClearRules.MaxHpFor(
-                defeatedMask, bossMonsterId,
-                SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.BoughFirstBlood)) * 1000L;
+                defeatedMask, bossMonsterId, BossFirstClearRules.MaxRelief) * 1000L;
             if (hpMultiplierOverride > 0.0)
             {
                 // Calibration only: the wall's HP multiplier replaced, softened by
                 // First Blood exactly as MaxHpFor softens the real one.
-                float relief = SkillTreeRegistry.GetBonusPercent(
-                    SkillTreeRegistry.BoughFirstBlood, SkillTreeRegistry.MaxLevelOf(SkillTreeRegistry.BoughFirstBlood)) / 100f;
+                float relief = BossFirstClearRules.MaxRelief;
                 double softened = 1.0 + (hpMultiplierOverride - 1.0) * Math.Max(0f, 1f - relief);
                 bossMilliHp = (long)(ContentRegistry.GetScaledMonsterMaxHp(bossMonsterId) * Math.Max(1.0, softened)) * 1000L;
             }

@@ -486,28 +486,14 @@ namespace FolkIdle.Server.Engine
         public int WarSwingCount;
         public int WarHitCount;
 
-        // Today's twenty nodes by name, kept so the readers written against
-        // them still read the same byte. SimulationEngine.SetSkillTreeLevel
-        // writes SkillRanks by id.
-        public byte Skill_LootRarity { readonly get => SkillRanks[0]; set => SkillRanks[0] = value; }
-        public byte Skill_WorldBossDamage { readonly get => SkillRanks[1]; set => SkillRanks[1] = value; }
-        public byte Skill_CritChance { readonly get => SkillRanks[2]; set => SkillRanks[2] = value; }
-        public byte Skill_CritDamage { readonly get => SkillRanks[3]; set => SkillRanks[3] = value; }
-        public byte Skill_XpGain { readonly get => SkillRanks[4]; set => SkillRanks[4] = value; }
-        public byte Skill_Plenty { readonly get => SkillRanks[5]; set => SkillRanks[5] = value; }
-        public byte Skill_Rarity { readonly get => SkillRanks[6]; set => SkillRanks[6] = value; }
-        public byte Skill_FirstBlood { readonly get => SkillRanks[7]; set => SkillRanks[7] = value; }
-        public byte Skill_TrophyHunter { readonly get => SkillRanks[8]; set => SkillRanks[8] = value; }
-        public byte Skill_Guile { readonly get => SkillRanks[9]; set => SkillRanks[9] = value; }
-        public byte Skill_Relentless { readonly get => SkillRanks[10]; set => SkillRanks[10] = value; }
-        public byte Skill_Bloodthirst { readonly get => SkillRanks[11]; set => SkillRanks[11] = value; }
-        public byte Skill_Fortitude { readonly get => SkillRanks[12]; set => SkillRanks[12] = value; }
+        // Modul: the old tree's Insight limb by name (Craft, Harvest, Scholar),
+        // the only slots of ids 0-19 still read. The War switch (rework slice
+        // 2.5) refunded and deleted every old row, and nothing can buy these
+        // any more, so they read 0 - kept because the Hearth half (phase 4)
+        // takes their effects over, and its wiring starts here. The other
+        // seventeen were replaced by the War half and deleted.
         public byte Skill_Craft { readonly get => SkillRanks[13]; set => SkillRanks[13] = value; }
         public byte Skill_Harvest { readonly get => SkillRanks[14]; set => SkillRanks[14] = value; }
-        public byte Skill_GoldenFleece { readonly get => SkillRanks[15]; set => SkillRanks[15] = value; }
-        public byte Skill_Thunderer { readonly get => SkillRanks[16]; set => SkillRanks[16] = value; }
-        public byte Skill_DoubleStrike { readonly get => SkillRanks[17]; set => SkillRanks[17] = value; }
-        public byte Skill_LastStand { readonly get => SkillRanks[18]; set => SkillRanks[18] = value; }
         public byte Skill_Scholar { readonly get => SkillRanks[19]; set => SkillRanks[19] = value; }
 
         // Modul: whether a respec is available, so the panel can say so

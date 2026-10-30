@@ -127,21 +127,20 @@ namespace FolkIdle.Server.Tests
             string source = System.IO.File.ReadAllText(
                 System.IO.Path.Combine(RepoRoot(), "FolkIdle.Server", "Engine", "CombatLootEngine.cs"));
 
-            int at = source.IndexOf("MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(", StringComparison.Ordinal);
-            Assert.True(at > 0, "the loot request no longer sets MaterialQuantityPct - update this test");
+            // Since the War switch (rework slice 2.5) Plenty is the War half's
+            // node, and its assignment is one term.
+            const string assignment = "MaterialQuantityPct = WarTreeRegistry.Resolve(in payload).MaterialStackTenthsPct / 10f";
+            int at = source.IndexOf(assignment, StringComparison.Ordinal);
+            Assert.True(at > 0, "the loot request no longer sets MaterialQuantityPct from Plenty - update this test");
 
             while (at > 0)
             {
-                // The assignment must END at BoughPlenty. Anything summed onto
-                // it afterwards is a term that belongs to loot luck.
-                int close = source.IndexOf("payload.Skill_Plenty)", at, StringComparison.Ordinal);
-                Assert.True(close > 0, "Plenty's assignment lost its argument");
+                // The assignment must END at Plenty. Anything summed onto it
+                // afterwards is a term that belongs to loot luck.
+                string tail = source.Substring(at + assignment.Length, Math.Min(4, source.Length - at - assignment.Length));
+                Assert.StartsWith(",", tail.TrimStart());
 
-                string tail = source.Substring(close, Math.Min(120, source.Length - close));
-                Assert.DoesNotContain("+ SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.Branch", tail);
-                Assert.DoesNotContain("+ BreedingAptitudes.BonusPercentFor", tail);
-
-                at = source.IndexOf("MaterialQuantityPct = SkillTreeRegistry.GetBonusPercent(", at + 1, StringComparison.Ordinal);
+                at = source.IndexOf(assignment, at + 1, StringComparison.Ordinal);
             }
         }
 

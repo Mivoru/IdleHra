@@ -35,14 +35,11 @@ namespace FolkIdle.Server.Domain.Combat
 
             gold = (long)(gold * f.Tree);
 
-            // Trophy Hunter, on either tree: region bosses only.
+            // Trophy Hunter: region bosses only.
             if (RaceUnlockRegistry.GetRegionForBossMonsterId(monster.Id) > 0)
             {
-                float today = payload.Skill_TrophyHunter > 0
-                    ? SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughTrophyHunter, payload.Skill_TrophyHunter) / 100f
-                    : 0f;
                 float war = WarTreeRegistry.Resolve(in payload).TrophyGoldTenthsPct / 1000f;
-                if (today > 0f || war > 0f) gold = (long)(gold * (1.0f + Math.Max(today, war)));
+                if (war > 0f) gold = (long)(gold * (1.0f + war));
             }
 
             // Know Your Prey: monsters of the highest unlocked region only.

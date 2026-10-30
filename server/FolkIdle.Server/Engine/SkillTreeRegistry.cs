@@ -56,6 +56,15 @@ namespace FolkIdle.Server.Engine
     /// rewritten. Only the root CAP moved, 20 to 10, which
     /// SkillTreeEngine.ReconcileRootCapAsync refunds.
     /// </summary>
+    /// <remarks>
+    /// Modul: LEGACY SINCE 2026-10-30 (rework slice 2.5). Players run the War
+    /// half (WarTreeRegistry); nothing can buy these nodes, and the switch
+    /// refunded and deleted every row. Two things still read this table:
+    /// SkillTreeEngine.LegacyRefundOf, which needs the old cost curve for a
+    /// player who has not logged in since, and the Insight limb's hooks
+    /// (Craft, Harvest, Scholar), kept at 0 for the Hearth half to take over.
+    /// Do not add readers.
+    /// </remarks>
     public static class SkillTreeRegistry
     {
         // --- roots ---------------------------------------------------------

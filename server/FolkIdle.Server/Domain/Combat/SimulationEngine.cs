@@ -3817,11 +3817,24 @@ namespace FolkIdle.Server.Domain.Combat
         {
             int activeAgePhase = payload.Slot1_CharacterId != System.Guid.Empty ? payload.Slot1_AgePhase : 1;
             CombatStats stats = StatsCalculator.Calculate(payload.STR, payload.DEX, payload.CON, payload.LCK, payload.ActiveOffensivePotionId, payload.ActiveDefensivePotionId, activeAgePhase, payload.CompletedAreaFlags, ActiveRaceId(in payload), payload.HumanMasteryLevel, payload.VilaMasteryLevel, payload.DraugrMasteryLevel, payload.CachedAffixTotals, payload.IsEpicMutation, TraitTotals.From(payload.TraitMask), payload.CachedSetIds);
-            stats.FlatPhysicalArmor = SkillTreeRegistry.ApplyFortitudeArmour(stats.FlatPhysicalArmor, payload.Skill_Fortitude);
+            ApplyTreeStats(ref stats, in payload);
+            return stats;
+        }
 
-            // Modul: the War half's stat nodes (rework slice 2.2). Resolve answers
-            // all zeros unless the payload runs the War tree, so a player on
-            // today's tree fights with exactly the numbers above.
+        /// <summary>
+        /// The skill tree's share of the combat stats: armour, dodge, block,
+        /// accuracy and Living Fortress. LiveCombatStats and the Character
+        /// screen's roster both call this, so the armour a player reads is the
+        /// armour the tick mitigates with.
+        /// </summary>
+        /// <remarks>
+        /// Modul: ONE DERIVATION FOR BOTH (rework slice 2.5 cleanup). The roster
+        /// used to apply today's Fortitude armour by itself and never learned
+        /// about the War half, so after the switch it showed every character
+        /// without Ironhide, Evasion, Shield Wall or Steady Hand.
+        /// </remarks>
+        internal static void ApplyTreeStats(ref CombatStats stats, in TickStatePayload payload)
+        {
             var war = WarTreeRegistry.Resolve(in payload);
             if (war.ArmourTenthsPct > 0 && stats.FlatPhysicalArmor > 0)
                 stats.FlatPhysicalArmor = (int)(stats.FlatPhysicalArmor + (long)stats.FlatPhysicalArmor * war.ArmourTenthsPct / 1000L);
@@ -3834,7 +3847,6 @@ namespace FolkIdle.Server.Domain.Combat
                 stats.BlockStrengthPct += CritChanceBeforeKeystones(in payload, in stats);
                 stats.BlockCapBonusPct += WarEffects.LivingFortressBlockCapBonusPct;
             }
-            return stats;
         }
 
         /// <summary>
@@ -3864,10 +3876,6 @@ namespace FolkIdle.Server.Domain.Combat
             // The character's pet (a monster pet's +health), on the whole pool
             // like inheritance - a flat addition would stop mattering.
             effectiveMilliHp += effectiveMilliHp * payload.CachedAffixTotals.HpTenthsPct / 1000L;
-            // Modul: Fortitude, the Cruelty bough - more health, layered the
-            // same additive-percent way inheritance is just above.
-            effectiveMilliHp += effectiveMilliHp * (long)SkillTreeRegistry.GetBonusTenthsOfPercent(
-                SkillTreeRegistry.BoughFortitude, payload.Skill_Fortitude) / 1000L;
             // The War half's Vitality, in the same additive-percent layer.
             effectiveMilliHp += effectiveMilliHp * (long)WarTreeRegistry.Resolve(in payload).MaxHpTenthsPct / 1000L;
 
@@ -3880,16 +3888,10 @@ namespace FolkIdle.Server.Domain.Combat
         /// <summary>The swing interval with no attack speed at all (CombatDamageModel.AttackIntervalMs).</summary>
         internal const int BaseAttackIntervalMs = 1500;
 
-        /// <summary>The live swing interval: the stat, then Relentless.</summary>
+        /// <summary>The live swing interval: the stat, then Relentless, Frenzy and Ruin's price.</summary>
         internal static int LiveAttackIntervalMs(in TickStatePayload payload, in CombatStats combatStats)
         {
             int playerAttackSpeedMs = CombatDamageModel.AttackIntervalMs(in combatStats);
-            if (payload.Skill_Relentless > 0)
-            {
-                float faster = SkillTreeRegistry.GetBonusPercent(
-                    SkillTreeRegistry.BoughRelentless, payload.Skill_Relentless) / 100f;
-                playerAttackSpeedMs = Math.Max(200, (int)(playerAttackSpeedMs * (1f - faster)));
-            }
             var warSpeed = WarTreeRegistry.Resolve(in payload);
             if (warSpeed.AttackIntervalTenthsPct > 0)
             {
@@ -3912,27 +3914,15 @@ namespace FolkIdle.Server.Domain.Combat
         }
 
         /// <summary>
-        /// Double Strike's chance as a probability: today's crown or the War
-        /// half's notable, whichever the payload runs. The live roll and the
+        /// Double Strike's chance as a probability. The live roll and the
         /// projection both ask this.
         /// </summary>
         internal static double DoubleStrikeChance(in TickStatePayload payload)
-        {
-            double today = payload.Skill_DoubleStrike > 0
-                ? SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.CrownDoubleStrike, payload.Skill_DoubleStrike) / 100.0
-                : 0.0;
-            double war = WarTreeRegistry.Resolve(in payload).DoubleStrikeTenths / 1000.0;
-            return Math.Clamp(Math.Max(today, war), 0.0, 1.0);
-        }
+            => Math.Clamp(WarTreeRegistry.Resolve(in payload).DoubleStrikeTenths / 1000.0, 0.0, 1.0);
 
-        /// <summary>Bloodthirst in tenths of a percent of damage dealt: today's bough or the War notable.</summary>
+        /// <summary>Bloodthirst in tenths of a percent of damage dealt.</summary>
         internal static long BloodthirstTenths(in TickStatePayload payload)
-        {
-            long today = payload.Skill_Bloodthirst > 0
-                ? SkillTreeRegistry.GetBonusTenthsOfPercent(SkillTreeRegistry.BoughBloodthirst, payload.Skill_Bloodthirst)
-                : 0L;
-            return Math.Max(today, WarTreeRegistry.Resolve(in payload).BloodthirstTenths);
-        }
+            => WarTreeRegistry.Resolve(in payload).BloodthirstTenths;
 
         /// <summary>
         /// A Riposte landing: damage off the monster's bar, logged as the
@@ -3966,13 +3956,13 @@ namespace FolkIdle.Server.Domain.Combat
             return scholar > 0 && codex > 1f ? 1f + (codex - 1f) * (1f + scholar / 1000f) : codex;
         }
 
-        /// <summary>Whether the payload holds Golden Fleece on either tree.</summary>
+        /// <summary>Whether the payload holds Golden Fleece.</summary>
         internal static bool HasGoldenFleece(in TickStatePayload payload)
-            => payload.Skill_GoldenFleece > 0 || WarTreeRegistry.Resolve(in payload).GoldenFleece;
+            => WarTreeRegistry.Resolve(in payload).GoldenFleece;
 
-        /// <summary>Whether the payload holds Last Stand on either tree.</summary>
+        /// <summary>Whether the payload holds Last Stand.</summary>
         internal static bool HasLastStand(in TickStatePayload payload)
-            => payload.Skill_LastStand > 0 || WarTreeRegistry.Resolve(in payload).LastStand;
+            => WarTreeRegistry.Resolve(in payload).LastStand;
 
         /// <summary>
         /// Riposte's chance per MONSTER swing: a dodge, or a connecting swing
@@ -4034,7 +4024,6 @@ namespace FolkIdle.Server.Domain.Combat
         private static float CritChanceBeforeKeystones(in TickStatePayload payload, in CombatStats combatStats)
             => Math.Clamp(
                 combatStats.CritChancePct
-                    + SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritChance, payload.Skill_CritChance)
                     + WarTreeRegistry.Resolve(in payload).CritChanceTenths / 10f,
                 0f,
                 MaxCritChancePct);
@@ -4042,8 +4031,6 @@ namespace FolkIdle.Server.Domain.Combat
         /// <summary>A crit's multiplier before Double Strike: the stat, Cruelty, Guile.</summary>
         internal static float LiveCritMultiplier(in TickStatePayload payload, in CombatStats combatStats)
             => StatsCalculator.ComputeCritMultiplier(combatStats)
-                + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchCritDamage, payload.Skill_CritDamage) / 100f)
-                + (SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BoughGuile, payload.Skill_Guile) / 100f)
                 + (WarTreeRegistry.Resolve(in payload).CritDamageTenthsPct / 1000f);
 
         // Modul: THE MONSTER'S SWING, ONE DEFINITION FOR EVERY PATH THAT PRICES IT.
@@ -4142,7 +4129,6 @@ namespace FolkIdle.Server.Domain.Combat
             finalXpMultiplier += RaceMasteryResolver.GetHumanXpBonusPct(payload.HumanMasteryLevel);
             finalXpMultiplier += LegacyPerkResolver.GetXpBonusPct(payload.CachedLegacyPerks);
             finalXpMultiplier += InheritanceRegistry.GetBonusPct(payload.Inherit_XpGain);
-            finalXpMultiplier += (int)SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.BranchXpGain, payload.Skill_XpGain);
             // The War half's Quick Study, in the same additive layer.
             finalXpMultiplier += WarTreeRegistry.Resolve(in payload).XpTenthsPct / 10;
             finalXpMultiplier += FolkIdle.Server.Engine.GuildBonusesCache.GetBuffTier(payload.GuildId, "Exp") * 2;
@@ -4630,14 +4616,11 @@ namespace FolkIdle.Server.Domain.Combat
 
         private static void ArmThundererIfBoss(ref TickStatePayload payload)
         {
-            float today = payload.Skill_Thunderer > 0
-                ? SkillTreeRegistry.GetBonusPercent(SkillTreeRegistry.CrownThunderer, payload.Skill_Thunderer) / 100f
-                : 0f;
             float war = WarTreeRegistry.Resolve(in payload).ThundererTenthsPct / 1000f;
-            if (today <= 0f && war <= 0f) return;
+            if (war <= 0f) return;
             if (RaceUnlockRegistry.GetRegionForBossMonsterId(payload.CurrentMonsterId) <= 0) return;
 
-            payload.PendingSkillDamageMultiplier = Math.Max(today, war);
+            payload.PendingSkillDamageMultiplier = war;
         }
 
         // Modul: widened from private to internal so the Progression-domain

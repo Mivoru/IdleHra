@@ -199,32 +199,32 @@ namespace FolkIdle.Server.Domain.Combat
         /// health bar jumping when a player switches targets and comes back.
         /// </summary>
         public static long MaxHpFor(byte defeatedMask, int monsterId)
-            => MaxHpFor(defeatedMask, monsterId, firstBloodLevel: 0);
-
-        /// <summary>
-        /// The same, softened by First Blood - the Giantslayer bough.
-        ///
-        /// It reduces the PENALTY, never the boss: at level 8 the 5x multiplier
-        /// becomes about 3.4x, and no amount of investment can take it below
-        /// 1x. Softening the wall is the reward; removing it would delete the
-        /// mechanic the wall exists for.
-        /// </summary>
-        public static long MaxHpFor(byte defeatedMask, int monsterId, int firstBloodLevel)
-            => MaxHpFor(defeatedMask, monsterId, Engine.SkillTreeRegistry.GetBonusPercent(
-                Engine.SkillTreeRegistry.BoughFirstBlood, firstBloodLevel) / 100f);
+            => MaxHpFor(defeatedMask, monsterId, relief: 0f);
 
         /// <summary>
         /// The share of the first-clear penalty a payload's tree takes off:
-        /// today's First Blood, or the War half's Bossbreaker, whichever tree
-        /// the payload runs. Both cap at 32%, the relief BossGearBenchmark
-        /// calibrates the walls against.
+        /// the War half's Bossbreaker, which caps at MaxRelief - the relief
+        /// BossGearBenchmark calibrates the walls against.
         /// </summary>
         public static float ReliefFor(in Engine.TickStatePayload payload)
-            => Math.Max(
-                Engine.SkillTreeRegistry.GetBonusPercent(Engine.SkillTreeRegistry.BoughFirstBlood, payload.Skill_FirstBlood) / 100f,
-                Engine.WarTreeRegistry.Resolve(in payload).FirstClearReliefTenthsPct / 1000f);
+            => Engine.WarTreeRegistry.Resolve(in payload).FirstClearReliefTenthsPct / 1000f;
 
-        /// <summary>The same, with the relief already worked out (ReliefFor).</summary>
+        /// <summary>
+        /// Bossbreaker's relief at its maximum: 32%, today's First Blood at its
+        /// cap, carried over so the walls did not move (rework slice 2.4).
+        /// </summary>
+        public static float MaxRelief
+            => Engine.WarTreeRegistry.Get(Engine.WarTreeRegistry.Bossbreaker)!.ValueAt(Engine.WarTreeRegistry.Get(Engine.WarTreeRegistry.Bossbreaker)!.MaxLevel) / 1000f;
+
+        /// <summary>
+        /// The same, softened by a share of the penalty (ReliefFor: Bossbreaker,
+        /// the War half's First Blood).
+        ///
+        /// It reduces the PENALTY, never the boss: at 32% the 5x multiplier
+        /// becomes about 3.7x, and no amount of investment can take it below
+        /// 1x. Softening the wall is the reward; removing it would delete the
+        /// mechanic the wall exists for.
+        /// </summary>
         public static long MaxHpFor(byte defeatedMask, int monsterId, float relief)
         {
             long baseHp = ContentRegistry.GetScaledMonsterMaxHp(monsterId);

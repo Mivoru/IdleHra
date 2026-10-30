@@ -212,16 +212,14 @@ namespace FolkIdle.Server.Tests
             else if (variant == 2)
             {
                 payload.CachedAffixTotals.LifestealTenthsPct += 100;
-                payload.Skill_Bloodthirst = 5;
+                // Rank 2 heals 2.6%, the old tree's Bloodthirst 5 (2.5%) this row was built on.
+                payload = TestTree.With(payload, (WarTreeRegistry.Bloodthirst, 2));
             }
             else if (variant == 3)
             {
-                payload.Skill_Relentless = 8;
-                payload.Skill_CritChance = 10;
-                payload.Skill_CritDamage = 10;
-                payload.Skill_Guile = 8;
-                payload.Skill_DoubleStrike = 1;
-                payload.Skill_XpGain = 10;
+                payload = TestTree.With(payload,
+                    (WarTreeRegistry.Relentless, 3), (WarTreeRegistry.KeenEye, 5), (WarTreeRegistry.CruelEdge, 5),
+                    (WarTreeRegistry.DoubleStrike, 3), (WarTreeRegistry.QuickStudy, 5));
                 payload.HumanMasteryLevel = 10;
                 payload.CachedMentorCount = 2;
                 payload.CurrentLevel = 45; // the mentor term needs a level under 50

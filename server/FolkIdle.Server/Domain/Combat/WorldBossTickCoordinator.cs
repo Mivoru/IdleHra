@@ -89,18 +89,10 @@ namespace FolkIdle.Server.Domain.Combat
         /// </summary>
         internal static long ServerStrikeDamage(ref TickStatePayload currentPayload)
         {
-            // Modul: skill tree, Giantslayer. The most generous
-            // branch in the tree - 40% at cap - because the world
-            // boss is its own activity on its own timer and cannot
-            // reach a region's pacing however large it grows.
-            //
-            // Applied HERE rather than inside WorldBossEngine: the
-            // engine takes a damage figure and has no player state
-            // to read a tree level from, and passing the payload in
-            // would hand it far more than it needs.
-            float giantslayerPct = SkillTreeRegistry.GetBonusPercent(
-                SkillTreeRegistry.BranchWorldBossDamage, currentPayload.Skill_WorldBossDamage);
-
+            // Modul: the old tree's Giantslayer root (+world boss damage) left
+            // with that tree (rework slice 2.5); the War half has no world-boss
+            // node. The pet's bonus below is applied HERE rather than inside
+            // WorldBossEngine, which takes a damage figure and no player state.
             // Modul: THE SERVER ANSWERS "how hard does this player
             // hit" ITSELF NOW.
             //
@@ -118,7 +110,7 @@ namespace FolkIdle.Server.Domain.Combat
 
             return (long)Math.Min(
                 uint.MaxValue,
-                (double)serverAttack * (1.0 + (giantslayerPct / 100.0))
+                (double)serverAttack
                     // The striking character's pet (PetRegistry).
                     * (1.0 + currentPayload.CachedAffixTotals.WorldBossDamageTenthsPct / 1000.0));
         }

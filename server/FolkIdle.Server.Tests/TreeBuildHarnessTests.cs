@@ -26,11 +26,14 @@ namespace FolkIdle.Server.Tests
     /// monster. Every number comes from HuntingProjection, the model offline
     /// catch-up pays out of - so "the tree is worth X%" means X% of real loot.
     ///
-    /// "Best" is a greedy search on seconds per kill, one purchase at a time,
-    /// where a purchase may also be "open the fork" (root to 5 plus one bough
-    /// level) or "take the crown" (bough to 5 plus the crown), so a gated node's
-    /// value is visible before its gate is paid. Greedy is not optimal; it is a
-    /// fixed, repeatable yardstick, and the new tree is measured by the same one.
+    /// "Best" is a greedy search, one purchase at a time, where a purchase may
+    /// also be a whole path to the next gate. Greedy is not optimal; it is a
+    /// fixed, repeatable yardstick.
+    ///
+    /// Modul: THE OLD TREE'S BASELINE IS FROZEN (rework slice 2.5). Today's tree
+    /// was deleted after the switch, so its measured best builds live on as
+    /// TodayBest below - the same numbers SKILL_TREE_REWORK.md section 8 records,
+    /// measured by this harness's own greedy search on 2026-10-30.
     /// </summary>
     public class TreeBuildHarnessTests
     {
@@ -95,10 +98,11 @@ namespace FolkIdle.Server.Tests
         /// First Strike or Executioner: they shorten a kill without raising the
         /// mean swing, so a DPS search never buys them. Kills an hour sees them,
         /// and it is what the walls and the loot actually pay on.
-        /// </remarks>
+        ///
         /// Past 60 expected swings the projection drops the distribution and
         /// tracks health (FarmKill is null), so the mean is health over the
         /// mean swing there - not zero kills.
+        /// </remarks>
         private static double KillsPerHour(in HuntingProjection.FightSetup setup)
         {
             if (setup.PlayerIntervalMs <= 0) return 0;
@@ -107,138 +111,40 @@ namespace FolkIdle.Server.Tests
             return swings > 0 ? 3_600_000.0 / (swings * setup.PlayerIntervalMs) : 0;
         }
 
-        internal static Score Measure(TickStatePayload payload, byte[] levels, int monsterId)
+        /// <summary>
+        /// Today's tree's best build, measured before it was deleted (2026-10-30):
+        /// DPS and kills an hour over no tree, by region; region 5 is the same at
+        /// 99 and 129 points (today's tree ran out of combat power at 58).
+        /// </summary>
+        internal static readonly Dictionary<int, (double Dps, double Kills)> TodayBest = new()
         {
-            for (int id = 0; id < SkillTreeRegistry.NodeCount; id++) SimulationEngine.SetSkillTreeLevel(ref payload, id, levels[id]);
+            [1] = (0.086, 0.083),
+            [2] = (0.185, 0.158),
+            [3] = (0.260, 0.240),
+            [4] = (0.286, 0.279),
+            [5] = (0.301, 0.298),
+        };
+
+        /// <summary>One fight's score off the projection, for a payload as given.</summary>
+        internal static Score MeasureRaw(in TickStatePayload payload, int monsterId)
+        {
             var setup = HuntingProjection.FightSetup.For(in payload, monsterId, timedEffects: false);
             if (!setup.CanDamage) return new Score(0, 0, false);
             double dps = setup.Swing.Mean * 1000.0 / setup.PlayerIntervalMs;
             double survived = setup.FarmMonsterSwing > 0 ? setup.MaxMilliHp / setup.FarmMonsterSwing : double.PositiveInfinity;
             return new Score(dps, survived, true, KillsPerHour(in setup));
-        }
-
-        /// <summary>The moves a greedy step may take: each a whole target, judged by PlanReason.</summary>
-        private static IEnumerable<byte[]> Moves(byte[] levels)
-        {
-            for (int id = 0; id < SkillTreeRegistry.NodeCount; id++)
-            {
-                var plus = (byte[])levels.Clone();
-                if (plus[id] < SkillTreeRegistry.MaxLevelOf(id)) { plus[id]++; yield return plus; }
-            }
-            for (int root = 0; root < SkillTreeRegistry.RootCount; root++)
-            {
-                var (a, b) = SkillTreeRegistry.BoughsOfRoot(root);
-                foreach (int bough in new[] { a, b })
-                {
-                    var open = (byte[])levels.Clone();
-                    open[root] = (byte)Math.Max((int)open[root], SkillTreeRegistry.BoughRequiresRootLevel);
-                    open[bough] = (byte)Math.Max((int)open[bough], 1);
-                    yield return open;
-
-                    var crown = (byte[])open.Clone();
-                    crown[bough] = (byte)Math.Max((int)crown[bough], SkillTreeRegistry.CrownRequiresBoughLevel);
-                    crown[SkillTreeRegistry.CrownOfRoot(root)] = 1;
-                    yield return crown;
-                }
-            }
-        }
-
-        internal static (byte[] Levels, Score Estimate) BestCombatBuild(int region, int budget)
-            => BestCombatBuild(region, budget, sc => sc.Dps);
-
-        internal static (byte[] Levels, Score Estimate) BestCombatBuild(int region, int budget, Func<Score, double> objective)
-        {
-            var payload = Reference(region);
-            int monster = Target(region);
-            var levels = new byte[SkillTreeRegistry.NodeCount];
-            var best = Measure(payload, levels, monster);
-            int left = budget;
-
-            while (left > 0)
-            {
-                byte[]? pick = null;
-                Score pickEstimate = best;
-                int pickCost = 0;
-                double pickValue = 0;
-
-                foreach (var target in Moves(levels))
-                {
-                    if (SkillTreeRegistry.PlanReason(levels, target, left, out int cost) != null || cost <= 0) continue;
-                    var estimate = Measure(payload, target, monster);
-                    if (!estimate.CanDamage) continue;
-                    double gain = (objective(estimate) - objective(best)) / objective(best);
-                    double value = gain / cost;
-                    if (value > pickValue)
-                    {
-                        pick = target;
-                        pickEstimate = estimate;
-                        pickCost = cost;
-                        pickValue = value;
-                    }
-                }
-
-                if (pick == null) break;
-                levels = pick;
-                best = pickEstimate;
-                left -= pickCost;
-            }
-
-            return (levels, best);
-        }
-
-        private static string Describe(byte[] levels)
-        {
-            var parts = new List<string>();
-            for (int id = 0; id < SkillTreeRegistry.NodeCount; id++)
-                if (levels[id] > 0) parts.Add($"{SkillTreeRegistry.GetName(id)} {levels[id]}");
-            return parts.Count == 0 ? "-" : string.Join(", ", parts);
-        }
-
-        [Fact]
-        public void Baseline_today_tree_best_combat_build()
-        {
-            if (!Enabled) return;
-            var table = new StringBuilder();
-            table.AppendLine("Today's tree, best combat build by greedy search on expected damage per second (HuntingProjection.FightSetup, region's third ordinary monster).");
-            table.AppendLine("region | level | budget | spent | DPS + | swings survived (bare -> best) | build");
-
-            foreach (int region in new[] { 1, 2, 3, 4, 5 })
-            {
-                int level = BossGearBenchmark.ReferenceLevelForRegion(region);
-                var bare = Measure(Reference(region), new byte[SkillTreeRegistry.NodeCount], Target(region));
-                // Points at the band top: one a level, plus the seals a player
-                // at that stage plausibly holds; and the end-game 129.
-                var budgets = new SortedSet<int> { Math.Max(1, level - 1), Math.Max(1, level - 1) + Math.Min(10, 2 * (region - 1)) };
-                if (region == 5) budgets.Add(129);
-
-                foreach (int budget in budgets)
-                {
-                    var (levels, est) = BestCombatBuild(region, budget);
-                    double gain = est.Dps / bare.Dps - 1.0;
-                    var none = new byte[SkillTreeRegistry.NodeCount];
-                    SkillTreeRegistry.PlanReason(none, levels, int.MaxValue, out int spent);
-                    table.AppendLine(FormattableString.Invariant(
-                        $"{region} | {level} | {budget} | {spent} | {gain:+0.0%;-0.0%} | {bare.SwingsSurvived:0.0} -> {est.SwingsSurvived:0.0} | {Describe(levels)}"));
-                }
-            }
-
-            _out.WriteLine(table.ToString());
         }
 
         // ---- the War half (rework slice 2.2) -----------------------------------
 
         internal static Score MeasureWar(TickStatePayload payload, byte[] ranks, int monsterId)
         {
-            payload.SkillTreeVersion = 1;
+            payload.SkillTreeVersion = WarTreeRegistry.CurrentVersion;
             for (int id = 0; id < SkillRankBuffer.Length; id++) payload.SkillRanks[id] = ranks[id];
-            var setup = HuntingProjection.FightSetup.For(in payload, monsterId, timedEffects: false);
-            if (!setup.CanDamage) return new Score(0, 0, false);
-            double dps = setup.Swing.Mean * 1000.0 / setup.PlayerIntervalMs;
-            double survived = setup.FarmMonsterSwing > 0 ? setup.MaxMilliHp / setup.FarmMonsterSwing : double.PositiveInfinity;
-            return new Score(dps, survived, true, KillsPerHour(in setup));
+            return MeasureRaw(in payload, monsterId);
         }
 
-        /// <summary>The same greedy yardstick as BestCombatBuild, on the War table.</summary>
+        /// <summary>The greedy yardstick on the War table.</summary>
         /// <remarks>
         /// Modul: A MOVE MAY BE A PATH (slice 2.4). One rank at a time, the
         /// search stopped wherever the next row's gate needed points in a weak
@@ -353,35 +259,6 @@ namespace FolkIdle.Server.Tests
         }
 
         /// <summary>
-        /// The War half's STAT nodes only (slice 2.2: its mechanics are pending
-        /// and cannot be bought), beside today's tree at the same budgets.
-        /// </summary>
-        [Fact]
-        public void War_half_stat_nodes_against_today()
-        {
-            if (!Enabled) return;
-            var table = new StringBuilder();
-            table.AppendLine("War half, stat nodes only (mechanics pending), greedy on DPS; then greedy on DPS x swings survived. Same character and target as the baseline.");
-            table.AppendLine("region | budget | today DPS+ | War DPS+ (spent) | War balanced: DPS+ / survival+ | DPS build");
-            foreach (int region in new[] { 1, 2, 3, 4, 5 })
-            {
-                int level = BossGearBenchmark.ReferenceLevelForRegion(region);
-                var bare = Measure(Reference(region), new byte[SkillTreeRegistry.NodeCount], Target(region));
-                foreach (int budget in region == 5 ? new[] { level - 1, 129 } : new[] { level - 1 })
-                {
-                    var (_, today) = BestCombatBuild(region, budget);
-                    var (ranks, war) = BestWarBuild(region, budget, sc => sc.Dps);
-                    var (_, balanced) = BestWarBuild(region, budget, sc => sc.Dps * sc.SwingsSurvived);
-                    int spent = 0;
-                    foreach (var node in WarTreeRegistry.All()) spent += ranks[node.Id] * node.CostPerRank;
-                    table.AppendLine(FormattableString.Invariant(
-                        $"{region} | {budget} | {today.Dps / bare.Dps - 1:+0.0%} | {war.Dps / bare.Dps - 1:+0.0%} ({spent}) | {balanced.Dps / bare.Dps - 1:+0.0%} / {balanced.SwingsSurvived / bare.SwingsSurvived - 1:+0.0%} | {DescribeWar(ranks)}"));
-                }
-            }
-            _out.WriteLine(table.ToString());
-        }
-
-        /// <summary>
         /// Slice 2.4's table: the whole War half (mechanics and bridges wired)
         /// against today's tree, on both objectives, at each band's budget.
         /// The target is the War best within ±5% of today's best at every band.
@@ -396,17 +273,16 @@ namespace FolkIdle.Server.Tests
             foreach (int region in new[] { 1, 2, 3, 4, 5 })
             {
                 int level = BossGearBenchmark.ReferenceLevelForRegion(region);
-                var bare = Measure(Reference(region), new byte[SkillTreeRegistry.NodeCount], Target(region));
+                var bare = MeasureWar(Reference(region), new byte[SkillRankBuffer.Length], Target(region));
+                var today = TodayBest[region];
                 foreach (int budget in region == 5 ? new[] { level - 1, 129 } : new[] { level - 1 })
                 {
-                    var (_, todayDps) = BestCombatBuild(region, budget, sc => sc.Dps);
-                    var (_, todayKills) = BestCombatBuild(region, budget, sc => sc.KillsPerHour);
                     var (_, warDps) = BestWarBuild(region, budget, sc => sc.Dps);
                     var (ranks, warKills) = BestWarBuild(region, budget, sc => sc.KillsPerHour);
                     int spent = 0;
                     foreach (var node in WarTreeRegistry.All()) spent += ranks[node.Id] * node.CostPerRank;
                     table.AppendLine(FormattableString.Invariant(
-                        $"{region} | {budget} | {todayDps.Dps / bare.Dps - 1:+0.0%} / {todayKills.KillsPerHour / bare.KillsPerHour - 1:+0.0%} | {warDps.Dps / bare.Dps - 1:+0.0%} / {warDps.KillsPerHour / bare.KillsPerHour - 1:+0.0%} | {warKills.Dps / bare.Dps - 1:+0.0%} / {warKills.KillsPerHour / bare.KillsPerHour - 1:+0.0%} ({spent}) | {DescribeWar(ranks)}"));
+                        $"{region} | {budget} | {today.Dps:+0.0%} / {today.Kills:+0.0%} | {warDps.Dps / bare.Dps - 1:+0.0%} / {warDps.KillsPerHour / bare.KillsPerHour - 1:+0.0%} | {warKills.Dps / bare.Dps - 1:+0.0%} / {warKills.KillsPerHour / bare.KillsPerHour - 1:+0.0%} ({spent}) | {DescribeWar(ranks)}"));
                 }
             }
             _out.WriteLine(table.ToString());
@@ -444,16 +320,16 @@ namespace FolkIdle.Server.Tests
             _out.WriteLine(table.ToString());
         }
 
-        /// <summary>ALWAYS ON: today's players are untouched - War ranks on a version-0 payload do nothing.</summary>
+        /// <summary>ALWAYS ON: a payload that does not run the War tree ignores War ranks.</summary>
         [Fact]
-        public void War_ranks_do_nothing_on_todays_tree()
+        public void War_ranks_do_nothing_off_the_war_tree()
         {
             var payload = Reference(3);
-            var bare = Measure(payload, new byte[SkillTreeRegistry.NodeCount], Target(3));
+            var bare = MeasureRaw(in payload, Target(3));
             payload.SkillRanks[WarTreeRegistry.Edge] = 5;
             payload.SkillRanks[WarTreeRegistry.KeenEye] = 5;
             payload.SkillRanks[WarTreeRegistry.Vitality] = 5;
-            var still = Measure(payload, new byte[SkillTreeRegistry.NodeCount], Target(3));
+            var still = MeasureRaw(in payload, Target(3));
             Assert.Equal(bare.Dps, still.Dps, 6);
             Assert.Equal(bare.SwingsSurvived, still.SwingsSurvived, 6);
 
@@ -472,8 +348,8 @@ namespace FolkIdle.Server.Tests
         [Fact]
         public void The_tree_makes_a_region_one_character_kill_faster()
         {
-            var bare = Measure(Reference(1), new byte[SkillTreeRegistry.NodeCount], Target(1));
-            var (_, est) = BestCombatBuild(1, 15);
+            var bare = MeasureWar(Reference(1), new byte[SkillRankBuffer.Length], Target(1));
+            var (_, est) = BestWarBuild(1, 15, sc => sc.Dps);
             Assert.True(bare.CanDamage && est.Dps > bare.Dps,
                 $"no tree {bare.Dps:0} milli-DPS, best 15-point build {est.Dps:0}");
         }
