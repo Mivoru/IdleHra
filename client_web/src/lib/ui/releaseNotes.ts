@@ -35,6 +35,20 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.42.0',
+    date: '2026-10-30',
+    sections: [
+      {
+        title: 'Gear',
+        items: [
+          'New rings can roll World Boss Damage, Loot Luck and Gold Find. New amulets can roll Loot Luck and Gold Find.',
+          "New weapons roll Damage once instead of under three names that all did the same thing. Your old weapons keep what they have.",
+          'Swift boss challenges in regions 3 and 4 now allow 205 and 225 seconds.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.41.0',
     date: '2026-10-30',
     headline: 'The skill tree has a second half: the Hearth.',
