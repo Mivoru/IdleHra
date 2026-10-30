@@ -35,6 +35,19 @@ export interface Release {
 /** Newest first. */
 export const RELEASE_NOTES: readonly Release[] = [
   {
+    version: '1.44.0',
+    date: '2026-10-30',
+    sections: [
+      {
+        title: 'Forge',
+        items: [
+          "New: Refine. It keeps an affix and its rarity and rerolls only the number, up to 20% up or down, for a quarter of a reroll's price.",
+          'Loot chests open in front of a shaft of light with dust drifting through it.',
+        ],
+      },
+    ],
+  },
+  {
     version: '1.43.0',
     date: '2026-10-30',
     headline: 'Loot chests.',

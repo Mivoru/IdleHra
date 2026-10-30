@@ -12571,6 +12571,15 @@ namespace FolkIdle.Server.Network
                     return;
                 }
 
+                // Refine (roadmap 3.4): read an item's raw affix payload, or put
+                // one back and refund gold - so exercise.mjs can refine on the
+                // fixture and leave the item and the wallet as it found them.
+                if (requestPath == "/api/v1/dev/item/payload" && context.Request.HttpMethod == "POST")
+                {
+                    await HandleDevItemPayload(context, playerId);
+                    return;
+                }
+
                 // Loot chests: grant one, so exercise.mjs can open it on the fixture.
                 if (requestPath == "/api/v1/dev/chests/grant" && context.Request.HttpMethod == "POST")
                 {
@@ -13423,5 +13432,37 @@ namespace FolkIdle.Server.Network
             }
         }
 
+
+        /// <summary>
+        /// Dev only: POST /api/v1/dev/item/payload { "Id": 1 } answers the item's
+        /// raw AffixPayload; with "Payload" it writes it back, and with "Gold" it
+        /// refunds that much - the round trip exercise.mjs's Refine step needs.
+        /// </summary>
+        private async Task HandleDevItemPayload(HttpListenerContext context, long playerId)
+        {
+            long id = 0; string? payload = null; long gold = 0;
+            try
+            {
+                string body = await ReadBodyAsync(context);
+                using var parsed = System.Text.Json.JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
+                if (parsed.RootElement.TryGetProperty("Id", out var i) && i.TryGetInt64(out long iv)) id = iv;
+                if (parsed.RootElement.TryGetProperty("Payload", out var p) && p.ValueKind == System.Text.Json.JsonValueKind.String) payload = p.GetString();
+                if (parsed.RootElement.TryGetProperty("Gold", out var g) && g.TryGetInt64(out long gv)) gold = Math.Max(0L, gv);
+            }
+            catch (System.Text.Json.JsonException) { context.Response.StatusCode = 400; return; }
+
+            using var scope = _serviceProvider.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<FolkIdleDbContext>();
+            var item = await db.EquipmentInstances.FirstOrDefaultAsync(e => e.Id == id && e.PlayerId == playerId);
+            if (item == null) { context.Response.StatusCode = 404; return; }
+            if (payload != null)
+            {
+                item.AffixPayload = payload;
+                // GoldLedger: not income - a dev refund of a Refine the exercise spent a moment ago.
+                if (gold > 0) await CommodityLedger.AddAsync(db, playerId, "gold", gold);
+                await db.SaveChangesAsync();
+            }
+            await WriteJsonAsync(context, new { item.Id, item.AffixPayload });
+        }
 }
 }

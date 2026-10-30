@@ -6,6 +6,7 @@ import {
   APTITUDE_VILLAGE_CEILING,
 } from '../src/lib/net/commands';
 import { MAX_MARKET_PRICE, MAX_FORGE_LEVEL } from '../src/lib/net/commands';
+import { refineCost, REFINE_OPERATION } from '../src/lib/net/commands';
 import { KNOWN_AFFIX_IDS, RETIRED_AFFIX_IDS } from '../src/lib/ui/affixes';
 import { SKILL_PROC, SKILL_CALLOUTS } from '../src/lib/ui/skillProcs';
 import { LANGUAGES } from '../src/lib/ui/i18n';
@@ -204,6 +205,14 @@ describe('the numbers the client mirrors still match the server', () => {
   // drifted for ten of its twelve entries. Picking "crit chance" sent the index
   // the server reads as `range_dmg_pct`, which is weapon-only, so on any other
   // slot the run was refused before it rolled once.
+  it('refine: a quarter of the reroll price, rounded up, and operation 3', () => {
+    const engine = read(serverRoot, 'Engine', 'AffixRerollEngine.cs');
+    expect(engine).toContain('RefineCost(long rerollCost) => Math.Max(1L, (rerollCost + 3L) / 4L)');
+    expect(engine).toMatch(/Refine = 3,/);
+    expect(REFINE_OPERATION).toBe(3);
+    expect([1, 4, 5, 1000, 10001].map(refineCost)).toEqual([1, 1, 2, 250, 2501]);
+  });
+
   it('affixes: the registry order, which auto-reroll sends as an index', () => {
     const registry = read(serverRoot, 'Engine', 'AffixRegistry.cs');
     const serverOrder = [...registry.matchAll(/new AffixDefinition\("([a-z_]+)"/g)].map((m) => m[1]);

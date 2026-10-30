@@ -924,6 +924,45 @@ await go('Forge');
   record('the forge lists one fusion row per item', rows > 0, `${rows} rows`);
 }
 
+// --- Refine (roadmap 3.4, 2026-10-30) -------------------------------------------
+// Modul: ROUND-TRIPS. The item's raw payload is read through a dev route
+// before the refine and written back after it with the gold refunded, so
+// the fixture's gear and wallet end as they began. Proven: the gold ledger's
+// Refine spend grows, and the item keeps every affix key (type and rarity
+// are in the key) - only a value may move.
+{
+  const refineSpent = async () =>
+    ((await apiGet('/api/v1/player/gold-ledger').catch(() => null))?.Categories ?? [])
+      .filter((c) => c.Category === 'Refine').reduce((a, c) => a + (c.SinceRecorded ?? 0), 0);
+  const firstRow = page.locator('[data-guide="forge-reroll-item"] [data-item-id]').first();
+  await firstRow.waitFor({ timeout: 10000 }).catch(() => {});
+  const itemId = Number(await firstRow.getAttribute('data-item-id').catch(() => 0));
+  await firstRow.click().catch(() => {});
+  const before = itemId > 0 ? await apiPost('/api/v1/dev/item/payload', { Id: itemId }).catch(() => null) : null;
+  const spentBefore = await refineSpent();
+  const button = page.getByTestId('forge-refine');
+  let enabled = false;
+  for (let t = 0; t < 20 && !enabled; t++) {
+    enabled = await button.isEnabled({ timeout: 500 }).catch(() => false);
+    if (!enabled) await page.waitForTimeout(300);
+  }
+  await button.click().catch(() => {});
+  let after = null;
+  let spentAfter = spentBefore;
+  for (let t = 0; t < 20 && spentAfter <= spentBefore; t++) {
+    await page.waitForTimeout(500);
+    spentAfter = await refineSpent();
+  }
+  after = itemId > 0 ? await apiPost('/api/v1/dev/item/payload', { Id: itemId }).catch(() => null) : null;
+  const keys = (p) => Object.keys(JSON.parse(p?.AffixPayload ?? '{}')).join(',');
+  record('a Refine keeps every affix and charges the ledger as Refine',
+    itemId > 0 && enabled && spentAfter > spentBefore && keys(before) === keys(after) && keys(before) !== '',
+    `item ${itemId}, button ${enabled ? 'on' : 'off'}, Refine spend ${spentBefore} -> ${spentAfter}, keys ${keys(before)} -> ${keys(after)}`);
+  if (before?.AffixPayload) {
+    await apiPost('/api/v1/dev/item/payload', { Id: itemId, Payload: before.AffixPayload, Gold: Math.max(0, spentAfter - spentBefore) }).catch(() => null);
+  }
+}
+
 // --- forge: a whole stack in one press (task 69) --------------------------------
 // The dev route hands the fixture nine Normal Doom Gorgets - a region-5 piece
 // it holds none of - so the stack is exactly 9 -> 3 Common -> 1 Uncommon. The
